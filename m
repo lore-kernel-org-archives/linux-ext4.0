@@ -1,193 +1,78 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: Re: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Thu, 5 Jan 2012 14:21:07 +0100
-Message-ID: <197607646.20120105142107@eikelenboom.it>
-References: <217150909.20120105113759@eikelenboom.it>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="----------141A523919D196DC"
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:34952
-	"EHLO smtp.eikelenboom.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756664Ab2AENVN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 08:21:13 -0500
-In-Reply-To: <217150909.20120105113759@eikelenboom.it>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/3] fs: Do not clear uptodate flag on write IO error
+Date: Thu,  5 Jan 2012 15:40:06 +0100
+Message-ID: <1325774407-28531-3-git-send-email-jack@suse.cz>
+References: <1325774407-28531-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Edward Shishkin <edward@redhat.com>, Jan Kara <jack@suse.cz>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1325774407-28531-1-git-send-email-jack@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-------------141A523919D196DC
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+It is semantically wrong to clear uptodate flag of buffers where the write has
+failed since the data in the buffer is still correct despite the write failing.
+This also causes spurious warnings when IO error happens, we decide to write
+the buffer again and call mark_buffer_dirty() which warns us about non-uptodate
+buffer.
 
-Hmm it seems to be over by reverting from a 3.2.0 to a 3.1.5 kernel, i now can copy the files after the fsck without it being remounted-ro due to the error.
+Sadly, historically buffer_uptodate() check has been the way we detected IO
+errors and quite some code still uses this check. Eventually we'd like to
+convert all users to use buffer_write_io_error() test instead but that requires
+audit of all filesystems. So for now just provide an opt-in flag in
+file_system_type by which filesystem can say it detects write IO errors by
+checking buffer_write_io_error() and thus we don't have to clear uptodate flag.
 
---
-Sander
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/buffer.c        |    8 ++++++--
+ include/linux/fs.h |    3 +++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
-
-This is a forwarded message
-From: Sander Eikelenboom <linux@eikelenboom.it>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Date: Thursday, January 5, 2012, 11:37:59 AM
-Subject: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-
-===8<==============Original message text===============
-
-I'm having some troubles with a ext4 filesystem on LVM, it seems bricked and fsck doesn't seem to find and correct the problem.
-
-Steps:
-1) fsck -v -p -f the filesystem
-2) mount the filesystem
-3) Try to copy a file
-4) filesystem will be mounted RO on error  (see below)
-5) fsck again, journal will be recovered, no other errors
-6) start at 1)
-
-
-I think the way i bricked it is:
-- make a lvm snapshot from that lvm logical disk
-- mount that lvm snapshot as RO
-- try to copy a file from that mounted RO snapshot to a diffrent dir on the lvm logical disk the snapshot is from.
-- it fails and i can't recover (see above)
-
-
-Is there a way to recover from this ?
-
-
-
-[  220.748928] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-[  220.749415] Aborting journal on device dm-2-8.
-[  220.771633] EXT4-fs error (device dm-2): ext4_journal_start_sb:327: Detected aborted journal
-[  220.772593] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.792455] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.805118] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 9680 pages, ino 4079617; err -30
-serveerstertje:/mnt/xen_images/domains/production# cd /
-serveerstertje:/# umount /mnt/xen_images/
-serveerstertje:/# fsck -f -v -p /dev/serveerstertje/xen_images
-fsck from util-linux-ng 2.17.2
-/dev/mapper/serveerstertje-xen_images: recovering journal
-
-     277 inodes used (0.00%)
-       5 non-contiguous files (1.8%)
-       0 non-contiguous directories (0.0%)
-         # of inodes with ind/dind/tind blocks: 41/41/3
-         Extent depth histogram: 69/28/2
-51890920 blocks used (79.18%)
-       0 bad blocks
-      41 large files
-
-     199 regular files
-      53 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       0 links
-      16 symbolic links (16 fast symbolic links)
-       0 sockets
---------
-     268 files
-serveerstertje:/#
-
-
-
-
-System:
-- Kernel 3.2.0
-- Debian Squeeze with:
-ii  e2fslibs                              1.41.12-4stable1                     ext2/ext3/ext4 file system libraries
-ii  e2fsprogs                             1.41.12-4stable1                     ext2/ext3/ext4 file system utilities
-
-===8<===========End of original message text===========
-
-
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 3469d53..96cbb4c 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -156,7 +156,9 @@ void end_buffer_write_sync(struct buffer_head *bh, int uptodate)
+ 				       bdevname(bh->b_bdev, b));
+ 		}
+ 		set_buffer_write_io_error(bh);
+-		clear_buffer_uptodate(bh);
++		if (!(bh->b_bdev->bd_super->s_type->fs_flags &
++						FS_HANDLE_WRITE_ERROR))
++			clear_buffer_uptodate(bh);
+ 	}
+ 	unlock_buffer(bh);
+ 	put_bh(bh);
+@@ -389,7 +391,9 @@ void end_buffer_async_write(struct buffer_head *bh, int uptodate)
+ 		}
+ 		set_bit(AS_EIO, &page->mapping->flags);
+ 		set_buffer_write_io_error(bh);
+-		clear_buffer_uptodate(bh);
++		if (!(bh->b_bdev->bd_super->s_type->fs_flags &
++						FS_HANDLE_WRITE_ERROR))
++			clear_buffer_uptodate(bh);
+ 		SetPageError(page);
+ 	}
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e0bc4ff..f69e5f3 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -181,6 +181,9 @@ struct inodes_stat_t {
+ #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move()
+ 					 * during rename() internally.
+ 					 */
++#define FS_HANDLE_WRITE_ERROR	65536	/* Don't clear uptodate flag on buffers
++					 * when write IO error happens
++					 */
+ 
+ /*
+  * These are the fs-independent mount-flags: up to 32 flags are supported
 -- 
-Best regards,
- Sander                            mailto:linux@eikelenboom.it
-------------141A523919D196DC
-Content-Type: message/rfc822;
- name="Message01.eml"
-Content-Disposition: attachment;
- filename="Message01.eml"
-
-Date: Thu, 5 Jan 2012 11:37:59 +0100
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Organization: Eikelenboom IT services
-X-Priority: 3 (Normal)
-Message-ID: <217150909.20120105113759@eikelenboom.it>
-To: "Theodore Ts'o" <tytso@mit.edu>
-CC: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-
-
-I'm having some troubles with a ext4 filesystem on LVM, it seems bricked and fsck doesn't seem to find and correct the problem.
-
-Steps:
-1) fsck -v -p -f the filesystem
-2) mount the filesystem
-3) Try to copy a file
-4) filesystem will be mounted RO on error  (see below)
-5) fsck again, journal will be recovered, no other errors
-6) start at 1)
-
-
-I think the way i bricked it is:
-- make a lvm snapshot from that lvm logical disk
-- mount that lvm snapshot as RO
-- try to copy a file from that mounted RO snapshot to a diffrent dir on the lvm logical disk the snapshot is from.
-- it fails and i can't recover (see above)
-
-
-Is there a way to recover from this ?
-
-
-
-[  220.748928] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-[  220.749415] Aborting journal on device dm-2-8.
-[  220.771633] EXT4-fs error (device dm-2): ext4_journal_start_sb:327: Detected aborted journal
-[  220.772593] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.792455] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.805118] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 9680 pages, ino 4079617; err -30
-serveerstertje:/mnt/xen_images/domains/production# cd /
-serveerstertje:/# umount /mnt/xen_images/
-serveerstertje:/# fsck -f -v -p /dev/serveerstertje/xen_images
-fsck from util-linux-ng 2.17.2
-/dev/mapper/serveerstertje-xen_images: recovering journal
-
-     277 inodes used (0.00%)
-       5 non-contiguous files (1.8%)
-       0 non-contiguous directories (0.0%)
-         # of inodes with ind/dind/tind blocks: 41/41/3
-         Extent depth histogram: 69/28/2
-51890920 blocks used (79.18%)
-       0 bad blocks
-      41 large files
-
-     199 regular files
-      53 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       0 links
-      16 symbolic links (16 fast symbolic links)
-       0 sockets
---------
-     268 files
-serveerstertje:/#
-
-
-
-
-System:
-- Kernel 3.2.0
-- Debian Squeeze with:
-ii  e2fslibs                              1.41.12-4stable1                     ext2/ext3/ext4 file system libraries
-ii  e2fsprogs                             1.41.12-4stable1                     ext2/ext3/ext4 file system utilities
-
-------------141A523919D196DC--
-
+1.7.1
