@@ -1,92 +1,75 @@
-From: Djalal Harouni <tixxdz@opendz.org>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Thu, 5 Jan 2012 01:40:09 +0100
-Message-ID: <20120105003751.GA4010@dztty>
-References: <20120103013152.GA26455@dztty>
- <20120104174609.GD28907@quack.suse.cz>
- <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
- <20120104233254.GH28907@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH V2] xfstests: make 275 pass
+Date: Thu, 5 Jan 2012 11:39:28 +1100
+Message-ID: <20120105003928.GC24466@dastard>
+References: <4F04A6E6.1090304@redhat.com>
+ <4F04BC81.1000207@redhat.com>
+ <20120104231725.GB24466@dastard>
+ <4F04DEDC.6020807@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+Cc: xfs-oss <xfs@oss.sgi.com>,
 	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
+	Eryu Guan <eguan@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from numidia.opendz.org ([98.142.220.152]:34554 "EHLO
-	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757296Ab2AEAhG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 19:37:06 -0500
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:26620 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757264Ab2AEAjq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2012 19:39:46 -0500
 Content-Disposition: inline
-In-Reply-To: <20120104233254.GH28907@quack.suse.cz>
+In-Reply-To: <4F04DEDC.6020807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 05, 2012 at 12:32:54AM +0100, Jan Kara wrote:
-> On Wed 04-01-12 16:15:04, Andreas Dilger wrote:
-> > On 2012-01-04, at 10:46 AM, Jan Kara wrote:
-> > > On Tue 03-01-12 02:31:52, Djalal Harouni wrote:
-> > >> 
-> > >> The EXT{3,4}_IOC_SETVERSION ioctl() updates the inode without i_mutex,
-> > >> this can lead to a race with the other operations that update the same
-> > >> inode.
-> > >> 
-> > >> Patch tested.
-> > > 
-> > >  OK, so I've taken the patch into my tree, just updated the changelog
-> > > which result of our discussion in this thread. I also took the ext4 part
-> > > since there is no risk of conflict and the patch looks obvious.
+On Wed, Jan 04, 2012 at 05:21:00PM -0600, Eric Sandeen wrote:
+> On 1/4/12 5:17 PM, Dave Chinner wrote:
+> > On Wed, Jan 04, 2012 at 02:54:25PM -0600, Eric Sandeen wrote:
+> >> Ok, this is a significant rework of 275, which made too many
+> >> assumptions about details of space usage and failed on several
+> >> filesystems (it passed on xfs, but only by accident).
+> >>
+> >> This new version tries to leave about 256k free, then tries
+> >> a single 1M IO, and fails only if 0 bytes are written.
+> >>
+> >> It also sends a lot more to $seq.full for debugging on failure
+> >> and fixes a few other stylistic things.
+> >>
+> >> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > > 
-> > Actually, I'd like to hear more about whether this is a real problem, or
-> > if it is just a theoretical problem found during code inspection or from
-> > some static code analysis tool?
->   As far as I understood that was just a theoretical issue and I applied
-> the patch just on the grounds that it is more consistent to use i_mutex for
-> i_generation changes.
-This was found using a static code analysis tool (currently a PoC) which
-is a part of a research project at our university.
-
-And later, code inspection confirms that i_ctime updates can be disturbed.
-
-I should have specified this. Sorry.
-
-> > With the metadata checksum feature we were discussing using the inode
-> > generation as part of the seed for the directory leaf block checksum, so
-> > that it wasn't possible to incorrectly access stale directory blocks from
-> > a previous incarnation of the same inode number.
+> > I just had another thought about this, Eric....
 > > 
-> > We were discussing just disabling this ioctl on filesystems with metadata
-> > checksums, and printing a deprecation warning for filesystems without that
-> > feature enabled.  I'm not aware of any real-world use for this ioctl, since
-> > NFS cannot use it to reconstruct handles because there's no API to allocate
-> > an inode with a specific number, so setting the generation is pointless.
->   OK, I didn't know this. I'm fine with deprecating the ioctl if it's
-> useless but since that's going to take a while I think the cleanup still
-> makes some sense.
-Actually I've grepped this ioctl but did not found use cases, but as
-ext{3,2} also support it, I did not say anything (this is old, there is
-even the EXT4_IOC_SETVERSION_OLD ioctl ?). I don't know if this ioctl is
-used or not.
+> >> +# And at least some of it should succeed.
+> >> +_filesize=`du $SCRATCH_MNT/tmp1 | awk '{print $1}'`
+> >> +[ $_filesize -eq 0 ] && _fail "write file err: Partial write until enospc failed; wrote 0 bytes."
+> > 
+> > The question that just came to mind was this assumes that allocation
+> > succeeded so therefore the partial write succeeded. But that's not
+> > necessary the case. The partial write might not succeed leaving the
+> > file size as zero, but the underlying FS might not remove all the
+> > blocks it allocated (nothing says that it has to). Hence to
+> > determine if a partial write succeeded, we also need to check that
+> > the file size itself is greater than zero....
+> 
+> Probably need to read up on what posix says it should do.  I think
+> what you're saying is that it might leave blocks allocated past EOF?
+> That'd be surprising to me, but maybe I misunderstand?
 
-Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
-do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
-test and set _all_ the possible values of the i_flags field.
-Perhaps I should also send a patch for this ?
+There's no guarantee that du is even reporting blocks on disk. e.g
+for XFS du will also report reserved (in-memory) delalloc space on
+the inode and that includes speculative allocation beyond EOF. We
+don't have to remove specultive delalloc ranges when a partial write
+occurs, so effectively checking du output to see if a partial write
+succeeded is not a sufficient test to determine if the partial write
+succeeded or not.
 
-And perhaps ext2 should also be updated.
+However, if the partial write did succeed then the file size *must*
+change to reflect what was written. Hence I suspect all we actually
+need here is a file size check...
 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-Thanks for the feedback.
+Cheers,
 
+Dave.
 -- 
-tixxdz
-http://opendz.org
+Dave Chinner
+david@fromorbit.com
