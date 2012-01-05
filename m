@@ -1,77 +1,64 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Thu, 5 Jan 2012 11:37:59 +0100
-Message-ID: <217150909.20120105113759@eikelenboom.it>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
+ updates inode
+Date: Thu, 5 Jan 2012 12:42:05 +0100
+Message-ID: <20120105114205.GB14947@quack.suse.cz>
+References: <20120103013152.GA26455@dztty>
+ <20120104174609.GD28907@quack.suse.cz>
+ <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
+ <20120104233254.GH28907@quack.suse.cz>
+ <20120105003751.GA4010@dztty>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Djalal Harouni <tixxdz@opendz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:47851 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755739Ab2AELmK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jan 2012 06:42:10 -0500
+Content-Disposition: inline
+In-Reply-To: <20120105003751.GA4010@dztty>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu 05-01-12 01:40:09, Djalal Harouni wrote:
+> On Thu, Jan 05, 2012 at 12:32:54AM +0100, Jan Kara wrote:
+> > > With the metadata checksum feature we were discussing using the inode
+> > > generation as part of the seed for the directory leaf block checksum, so
+> > > that it wasn't possible to incorrectly access stale directory blocks from
+> > > a previous incarnation of the same inode number.
+> > > 
+> > > We were discussing just disabling this ioctl on filesystems with metadata
+> > > checksums, and printing a deprecation warning for filesystems without that
+> > > feature enabled.  I'm not aware of any real-world use for this ioctl, since
+> > > NFS cannot use it to reconstruct handles because there's no API to allocate
+> > > an inode with a specific number, so setting the generation is pointless.
+> >   OK, I didn't know this. I'm fine with deprecating the ioctl if it's
+> > useless but since that's going to take a while I think the cleanup still
+> > makes some sense.
+> Actually I've grepped this ioctl but did not found use cases, but as
+> ext{3,2} also support it, I did not say anything (this is old, there is
+> even the EXT4_IOC_SETVERSION_OLD ioctl ?). I don't know if this ioctl is
+> used or not.
+> 
+> Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
+> do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
+> test and set _all_ the possible values of the i_flags field.
+> Perhaps I should also send a patch for this ?
+  Yes, possibly reiserfs should use i_mutex for that ioctl.
 
-I'm having some troubles with a ext4 filesystem on LVM, it seems bricked and fsck doesn't seem to find and correct the problem.
+> And perhaps ext2 should also be updated.
+  Sure. Send a patch my way when you have it.
 
-Steps:
-1) fsck -v -p -f the filesystem
-2) mount the filesystem
-3) Try to copy a file
-4) filesystem will be mounted RO on error  (see below)
-5) fsck again, journal will be recovered, no other errors
-6) start at 1)
-
-
-I think the way i bricked it is:
-- make a lvm snapshot from that lvm logical disk
-- mount that lvm snapshot as RO
-- try to copy a file from that mounted RO snapshot to a diffrent dir on the lvm logical disk the snapshot is from.
-- it fails and i can't recover (see above)
-
-
-Is there a way to recover from this ?
-
-
-
-[  220.748928] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-[  220.749415] Aborting journal on device dm-2-8.
-[  220.771633] EXT4-fs error (device dm-2): ext4_journal_start_sb:327: Detected aborted journal
-[  220.772593] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.792455] EXT4-fs (dm-2): Remounting filesystem read-only
-[  220.805118] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 9680 pages, ino 4079617; err -30
-serveerstertje:/mnt/xen_images/domains/production# cd /
-serveerstertje:/# umount /mnt/xen_images/
-serveerstertje:/# fsck -f -v -p /dev/serveerstertje/xen_images
-fsck from util-linux-ng 2.17.2
-/dev/mapper/serveerstertje-xen_images: recovering journal
-
-     277 inodes used (0.00%)
-       5 non-contiguous files (1.8%)
-       0 non-contiguous directories (0.0%)
-         # of inodes with ind/dind/tind blocks: 41/41/3
-         Extent depth histogram: 69/28/2
-51890920 blocks used (79.18%)
-       0 bad blocks
-      41 large files
-
-     199 regular files
-      53 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       0 links
-      16 symbolic links (16 fast symbolic links)
-       0 sockets
---------
-     268 files
-serveerstertje:/#
-
-
-
-
-System:
-- Kernel 3.2.0
-- Debian Squeeze with:
-ii  e2fslibs                              1.41.12-4stable1                     ext2/ext3/ext4 file system libraries
-ii  e2fsprogs                             1.41.12-4stable1                     ext2/ext3/ext4 file system utilities
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
