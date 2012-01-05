@@ -1,77 +1,46 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] jbd2: jbd2_journal_stop needs an exclusive control
- to synchronize around t_update operations
-Date: Wed, 4 Jan 2012 22:12:40 -0500
-Message-ID: <20120105031240.GC24494@thunk.org>
+Subject: Re: [PATCH 2/2 take2] jbd2: delete spin_lock(t_handle_lock) inside
+ wirte_lock(j_state_lock)
+Date: Wed, 4 Jan 2012 22:27:54 -0500
+Message-ID: <20120105032754.GD24494@thunk.org>
 References: <20111216201915.4a012154.toshi.okajima@jp.fujitsu.com>
  <CAGBYx2YZ4M8QwwOcnLAaf+934WAcZoNS_pPrw8j3Nkr3=6fA5g@mail.gmail.com>
  <4EF066F0.5010809@jp.fujitsu.com>
  <20111222203639.4200538e.toshi.okajima@jp.fujitsu.com>
- <20111222205650.fe9d1b36.toshi.okajima@jp.fujitsu.com>
- <20120103153245.GE31457@quack.suse.cz>
+ <20111222210007.ca8fb54f.toshi.okajima@jp.fujitsu.com>
+ <CAGBYx2YBq_=N0Gnky7RhNHhyTybhP1fLB6Fzzp-GLhEy6Lyekw@mail.gmail.com>
+ <4EF7BDE2.4000309@jp.fujitsu.com>
+ <20111226101727.1ca09119.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	adilger.kernel@dilger.ca, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+Cc: adilger.kernel@dilger.ca, Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56998 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34263 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757852Ab2AEDMs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 22:12:48 -0500
+	id S1757525Ab2AED15 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 22:27:57 -0500
 Content-Disposition: inline
-In-Reply-To: <20120103153245.GE31457@quack.suse.cz>
+In-Reply-To: <20111226101727.1ca09119.toshi.okajima@jp.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 03, 2012 at 04:32:45PM +0100, Jan Kara wrote:
->   Thanks for the analysis. Actually, you fix adds unnecessary overhead.
-> The problem really is the wrong ordering of prepare_to_wait() and t_updates
-> check. So attached patch should fix the issue as well without introducing
-> the overhead.
+On Mon, Dec 26, 2011 at 10:17:27AM +0900, Toshiyuki Okajima wrote:
+> Delete all spin_lock(t_handle_lock) statements inside write_lock(j_state_lock) 
+> because the critical code sections can be protected by write_lock(j_state_lock)
+> only.
+> 
+> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+> Reported-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-Thanks, applied.
+This may be true today, but I'm worried this is going to make the code
+more fragile.  The header file include/linux/jbd2.h defines which
+fields are protected by which lock.  This patch is going to make those
+comments partially obsolete.  We need to make sure the locking
+protocol is clearly defined before we go around removing locks.
 
-						- Ted
+This is something I would like to do, but we need to make sure the
+code remains maintainable in the long run.
 
-
-> From 1cd5b8178893f3f186ce93eb1f47664a1a3e81fc Mon Sep 17 00:00:00 2001
-> From: Jan Kara <jack@suse.cz>
-> Date: Tue, 3 Jan 2012 16:13:29 +0100
-> Subject: [PATCH] jbd2: Fix hung processes in jbd2_journal_lock_updates()
-> 
-> Toshiyuki Okajima found out that when running
-> 
-> for ((i=0; i < 100000; i++)); do
->         if ((i%2 == 0)); then
->                 chattr +j /mnt/file
->         else
->                 chattr -j /mnt/file
->         fi
->         echo "0" >> /mnt/file
-> done
-> 
-> process sometimes hangs indefinitely in jbd2_journal_lock_updates().
-> 
-> Toshiyuki identified that the following race happens:
-> 
-> jbd2_journal_lock_updates()            |jbd2_journal_stop()
-> ---------------------------------------+---------------------------------------
->  write_lock(&journal->j_state_lock)    |    .
->  ++journal->j_barrier_count            |    .
->  spin_lock(&tran->t_handle_lock)       |    .
->  atomic_read(&tran->t_updates) //not 0 |
->                                        | atomic_dec_and_test(&tran->t_updates)
->                                        |    // t_updates = 0
->                                        | wake_up(&journal->j_wait_updates)
->  prepare_to_wait()                     |    // no process is woken up.
->  spin_unlock(&tran->t_handle_lock)     |
->  write_unlock(&journal->j_state_lock)  |
->  schedule() // never return            |
-> 
-> We fix the problem by first calling prepare_to_wait() and only after that
-> checking t_updates in jbd2_journal_lock_updates().
-> 
-> Reported-and-analyzed-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+					- Ted
