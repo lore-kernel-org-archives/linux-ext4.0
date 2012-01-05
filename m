@@ -1,7 +1,7 @@
 From: Sander Eikelenboom <linux@eikelenboom.it>
 Subject: Re: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Thu, 5 Jan 2012 15:52:18 +0100
-Message-ID: <903212040.20120105155218@eikelenboom.it>
+Date: Thu, 5 Jan 2012 16:46:54 +0100
+Message-ID: <138879124.20120105164654@eikelenboom.it>
 References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
@@ -9,10 +9,10 @@ Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:35118
+Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:35231
 	"EHLO smtp.eikelenboom.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932392Ab2AEOwX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 09:52:23 -0500
+	with ESMTP id S1755164Ab2AEPrA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 10:47:00 -0500
 In-Reply-To: <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -59,14 +59,14 @@ d drives directly (i.e., no RAID)?
 
 > -- Ted
 
+Hmm it seems i can't reproduce :-(
+Not under 3.2.0, not while copying from a RO snapshot of the same LV.
 
-Yes well, since it worked again, i continued reshuffling the lvm layout=
- that was planned for today, but this specific LV is still there, so i =
-will try booting 3.2 again to see if i can reproduce and do the things =
-you asked for.
-No MD is used, it's one sata disk, containing 2 partitions (boot and a =
-lvm PV), it has one VG that has the PV. That one is split into multiple=
- LV's.
+At least i know the steps to take when encountering a potential filesys=
+tem bug in the future.
+
+--
+Sander
 
 
 
