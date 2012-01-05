@@ -1,76 +1,77 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: 3.2.0-rc5 NULL dereference BUG
-Date: Thu, 5 Jan 2012 10:25:25 +0800
-Message-ID: <20120105022525.GA9408@localhost>
-References: <20111218055359.GA17182@localhost>
- <20111218063054.GA4979@localhost>
- <CAGBYx2bxdnkXcZF+A1iOvnsW=xdtDJR7Fx3Rz-HWeWH5n0ByKg@mail.gmail.com>
- <20111218113237.GA1359@localhost>
- <20120105015609.GA7913@localhost>
- <CAGBYx2ZyiKrbsQmiC3YxB7sKjhEQVeznUM2cGrXMyQuXPZ5o1Q@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] jbd2: jbd2_journal_stop needs an exclusive control
+ to synchronize around t_update operations
+Date: Wed, 4 Jan 2012 22:12:40 -0500
+Message-ID: <20120105031240.GC24494@thunk.org>
+References: <20111216201915.4a012154.toshi.okajima@jp.fujitsu.com>
+ <CAGBYx2YZ4M8QwwOcnLAaf+934WAcZoNS_pPrw8j3Nkr3=6fA5g@mail.gmail.com>
+ <4EF066F0.5010809@jp.fujitsu.com>
+ <20111222203639.4200538e.toshi.okajima@jp.fujitsu.com>
+ <20111222205650.fe9d1b36.toshi.okajima@jp.fujitsu.com>
+ <20120103153245.GE31457@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	adilger.kernel@dilger.ca, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:33127 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751467Ab2AECZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jan 2012 21:25:28 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:56998 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757852Ab2AEDMs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jan 2012 22:12:48 -0500
 Content-Disposition: inline
-In-Reply-To: <CAGBYx2ZyiKrbsQmiC3YxB7sKjhEQVeznUM2cGrXMyQuXPZ5o1Q@mail.gmail.com>
+In-Reply-To: <20120103153245.GE31457@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 05, 2012 at 10:23:13AM +0800, Yongqiang Yang wrote:
-> Hi Fengguang,
->=20
-> > [ =C2=A0646.051405] =C2=A0ffff880004ee1978 0000000000000000 0000000=
-000000170 0000000000000000
-> > [ =C2=A0646.051405] Call Trace:
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff81099aa3>] ? sched_clock_local+=
-0x12/0x75
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff810a5a16>] lock_acquire+0xdd/0x=
-10a
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff81175de4>] ? create_empty_buffe=
-rs+0x4a/0xc1
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff8199f623>] _raw_spin_lock+0x36/=
-0x69
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff81175de4>] ? create_empty_buffe=
-rs+0x4a/0xc1
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff81175de4>] create_empty_buffers=
-+0x4a/0xc1
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff811efd2f>] ext4_discard_partial=
-_page_buffers_no_lock+0x9f/0x406
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff8199ffeb>] ? _raw_spin_unlock+0=
-x2b/0x2f
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff81170c26>] ? __mark_inode_dirty=
-+0x1ac/0x1cc
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff811767f3>] ? generic_write_end+=
-0x6d/0x7f
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff811f15e5>] ext4_da_write_end+0x=
-244/0x2ed
-> > [ =C2=A0646.051405] =C2=A0[<ffffffff810ffeec>] generic_file_buffere=
-d_write+0x183/0x22d
-> It seems that you are running in to several problems related to
-> discard_page_buffers_no_lock in write_end.  The problems had been
-> fixed by following patches [ext4: avoid potential hang in
-> mpage_submit_io() when blocksize < pagesize], [ext4: correctly handle
-> pages w/o buffers in ext4_discard_partial_buffers()] and [ext4: handl=
-e
-> EOF correctly in ext4_bio_write_page()].   The patches had been merge=
-d
-> to rc6.
+On Tue, Jan 03, 2012 at 04:32:45PM +0100, Jan Kara wrote:
+>   Thanks for the analysis. Actually, you fix adds unnecessary overhead.
+> The problem really is the wrong ordering of prepare_to_wait() and t_updates
+> check. So attached patch should fix the issue as well without introducing
+> the overhead.
 
-That's great! I'll test rc7+.
+Thanks, applied.
 
-Thanks,
-=46engguang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
+
+
+> From 1cd5b8178893f3f186ce93eb1f47664a1a3e81fc Mon Sep 17 00:00:00 2001
+> From: Jan Kara <jack@suse.cz>
+> Date: Tue, 3 Jan 2012 16:13:29 +0100
+> Subject: [PATCH] jbd2: Fix hung processes in jbd2_journal_lock_updates()
+> 
+> Toshiyuki Okajima found out that when running
+> 
+> for ((i=0; i < 100000; i++)); do
+>         if ((i%2 == 0)); then
+>                 chattr +j /mnt/file
+>         else
+>                 chattr -j /mnt/file
+>         fi
+>         echo "0" >> /mnt/file
+> done
+> 
+> process sometimes hangs indefinitely in jbd2_journal_lock_updates().
+> 
+> Toshiyuki identified that the following race happens:
+> 
+> jbd2_journal_lock_updates()            |jbd2_journal_stop()
+> ---------------------------------------+---------------------------------------
+>  write_lock(&journal->j_state_lock)    |    .
+>  ++journal->j_barrier_count            |    .
+>  spin_lock(&tran->t_handle_lock)       |    .
+>  atomic_read(&tran->t_updates) //not 0 |
+>                                        | atomic_dec_and_test(&tran->t_updates)
+>                                        |    // t_updates = 0
+>                                        | wake_up(&journal->j_wait_updates)
+>  prepare_to_wait()                     |    // no process is woken up.
+>  spin_unlock(&tran->t_handle_lock)     |
+>  write_unlock(&journal->j_state_lock)  |
+>  schedule() // never return            |
+> 
+> We fix the problem by first calling prepare_to_wait() and only after that
+> checking t_updates in jbd2_journal_lock_updates().
+> 
+> Reported-and-analyzed-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
