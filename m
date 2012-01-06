@@ -1,186 +1,96 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: Re: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Thu, 5 Jan 2012 23:43:22 +0100
-Message-ID: <1829329984.20120105234322@eikelenboom.it>
-References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu> <4910694144.20120105171428@eikelenboom.it> <20120105181535.GB26382@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 2/7] Freeze and thaw the journal on ext4 freeze
+Date: Fri, 6 Jan 2012 01:32:48 +0100
+Message-ID: <20120106003248.GA3790@quack.suse.cz>
+References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+ <1323367477-21685-3-git-send-email-kamal@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	<dm-devel@redhat.com>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:35930
-	"EHLO smtp.eikelenboom.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754000Ab2AEWnb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 17:43:31 -0500
-In-Reply-To: <20120105181535.GB26382@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
+	Valerie Aurora <val@vaaconsulting.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
+To: Kamal Mostafa <kamal@canonical.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1323367477-21685-3-git-send-email-kamal@canonical.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Ted,
+On Thu 08-12-11 10:04:32, Kamal Mostafa wrote:
+> From: Surbhi Palande <surbhi.palande@canonical.com>
+> 
+> Freeze and thaw the journal when you freeze and thaw the filesystem.
+> 
+> BugLink: https://bugs.launchpad.net/bugs/897421
+> Signed-off-by: Surbhi Palande <surbhi.palande@canonical.com>
+> Cc: Kamal Mostafa <kamal@canonical.com>
+> Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+> Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+  The patch looks good. You can add:
+Acked-by: Jan Kara <jack@suse.cz>
 
-Thursday, January 5, 2012, 7:15:35 PM, you wrote:
-
-> On Thu, Jan 05, 2012 at 05:14:28PM +0100, Sander Eikelenboom wrote:
->> 
->> OK spoke too soon, i have been able to trigger it again:
->> - copying files from LV to the same LV without the snapshot went OK
->> - copying from the RO snapshot of a LV to the same LV gave the error while copying the file again:
-
-> OK.  Originally, you said you did this:
-
-> 1) fsck -v -p -f the filesystem
-> 2) mount the filesystem
-> 3) Try to copy a file
-> 4) filesystem will be mounted RO on error  (see below)
-> 5) fsck again, journal will be recovered, no other errors
-> 6) start at 1)
-
-> Was this with with a read-only snapshot always being in existence
-> through all of these five steps?  When was the RO snapshot created?
-
-> If a RO snapshot has to be there in order for this to happen, then
-> this is almost certainly a device-mapper regression.  (dm-devel folks,
-> this is a problem which apparently occurred when the user went from
-> v3.1.5 to v3.2, so this looks likes 3.2 regression.)
-
->                                                 - Ted
-
-Tried to bisect, but every kernel in between seems to have some drivers for devices f*cked up so it doesn't even boot.
-That was a quite frustrating and disappointing experience.
-So it's back to 3.1.5 and continue with i was actually trying to do, and try later if it's still reproducible with another disk layout.
-
-Thx for your effort so far.
-
---
-Sander
-
->> 
->> [ 2357.655783] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1861, 32254 clusters in bitmap, 32258 in gd
->> [ 2357.656056] Aborting journal on device dm-2-8.
->> [ 2357.718473] EXT4-fs (dm-2): Remounting filesystem read-only
->> [ 2357.736680] EXT4-fs error (device dm-2) in ext4_da_write_end:2532: IO failure
->> [ 2357.738328] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 7615 pages, ino 4079617; err -30
->> [ 2716.125010] EXT4-fs error (device dm-2): ext4_put_super:818: Couldn't clean up the journal
->> 
->> 
->> Attached are 4x output from dumpe2fs
->> - dumpe2fs-xen_images-3.2.0                           Made just after boot
->> - dumpe2fs-xen_images-3.2.0-afterfsck                 Made after doing a fsck -v -p -f on the unmounted LV
->> - dumpe2fs-xen_images-3.2.0-aftererror                Made after the error occured on the mounted LV
->> - dumpe2fs-xen_images-3.2.0-aftererror-afterfsck      Made after the error occured, and after a subsequent fsck -v -p -f on the unmounted LV
->> - dumpe2fs-xen_images-3.1.5                           Made after booting into 3.1.5 after all of the above
->> 
->> Oh yes also did a badblock scan to rule that out, and it seems the numbers stay the same.
->> e2fsck 1.41.12 (17-May-2010) (from debian squeeze)
->> 
->> --
->> Sander
->> 
->> 
->> 
->> >> 
->> >> --
->> >> Sander
->> >> 
->> >> 
->> >> This is a forwarded message
->> >> From: Sander Eikelenboom <linux@eikelenboom.it>
->> >> To: "Theodore Ts'o" <tytso@mit.edu>
->> >> Date: Thursday, January 5, 2012, 11:37:59 AM
->> >> Subject: can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
->> >> 
->> >> ===8<==============Original message text===============
->> >> 
->> >> I'm having some troubles with a ext4 filesystem on LVM, it seems bricked and fsck doesn't seem to find and correct the problem.
->> >> 
->> >> Steps:
->> >> 1) fsck -v -p -f the filesystem
->> >> 2) mount the filesystem
->> >> 3) Try to copy a file
->> >> 4) filesystem will be mounted RO on error  (see below)
->> >> 5) fsck again, journal will be recovered, no other errors
->> >> 6) start at 1)
->> >> 
->> >> 
->> >> I think the way i bricked it is:
->> >> - make a lvm snapshot from that lvm logical disk
->> >> - mount that lvm snapshot as RO
->> >> - try to copy a file from that mounted RO snapshot to a diffrent dir on the lvm logical disk the snapshot is from.
->> >> - it fails and i can't recover (see above)
->> >> 
->> >> 
->> >> Is there a way to recover from this ?
->> >> 
->> >> 
->> >> 
->> >> [  220.748928] EXT4-fs error (device dm-2): ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
->> >> [  220.749415] Aborting journal on device dm-2-8.
->> >> [  220.771633] EXT4-fs error (device dm-2): ext4_journal_start_sb:327: Detected aborted journal
->> >> [  220.772593] EXT4-fs (dm-2): Remounting filesystem read-only
->> >> [  220.792455] EXT4-fs (dm-2): Remounting filesystem read-only
->> >> [  220.805118] EXT4-fs (dm-2): ext4_da_writepages: jbd2_start: 9680 pages, ino 4079617; err -30
->> >> serveerstertje:/mnt/xen_images/domains/production# cd /
->> >> serveerstertje:/# umount /mnt/xen_images/
->> >> serveerstertje:/# fsck -f -v -p /dev/serveerstertje/xen_images
->> >> fsck from util-linux-ng 2.17.2
->> >> /dev/mapper/serveerstertje-xen_images: recovering journal
->> >> 
->> >>     277 inodes used (0.00%)
->> >>       5 non-contiguous files (1.8%)
->> >>       0 non-contiguous directories (0.0%)
->> >>         # of inodes with ind/dind/tind blocks: 41/41/3
->> >>         Extent depth histogram: 69/28/2
->> >> 51890920 blocks used (79.18%)
->> >>       0 bad blocks
->> >>      41 large files
->> >> 
->> >>     199 regular files
->> >>      53 directories
->> >>       0 character device files
->> >>       0 block device files
->> >>       0 fifos
->> >>       0 links
->> >>      16 symbolic links (16 fast symbolic links)
->> >>       0 sockets
->> >> --------
->> >>     268 files
->> >> serveerstertje:/#
->> >> 
->> >> 
->> >> 
->> >> 
->> >> System:
->> >> - Kernel 3.2.0
->> >> - Debian Squeeze with:
->> >> ii  e2fslibs                              1.41.12-4stable1                     ext2/ext3/ext4 file system libraries
->> >> ii  e2fsprogs                             1.41.12-4stable1                     ext2/ext3/ext4 file system utilities
->> >> 
->> >> ===8<===========End of original message text===========
->> >> 
->> >> 
->> >> 
->> >> -- 
->> >> Best regards,
->> >> Sander                            mailto:linux@eikelenboom.it<Message01.eml>
->> 
->> 
->> 
->> 
->> -- 
->> Best regards,
->>  Sander                            mailto:linux@eikelenboom.it
-
-
-
-
-
-
-
-
-
+								Honza
+> ---
+>  fs/ext4/super.c |   13 ++++++-------
+>  1 files changed, 6 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3858767..751908b 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4330,14 +4330,11 @@ static int ext4_freeze(struct super_block *sb)
+>  
+>  	journal = EXT4_SB(sb)->s_journal;
+>  
+> -	/* Now we set up the journal barrier. */
+> -	jbd2_journal_lock_updates(journal);
+> -
+> +	error = jbd2_journal_freeze(journal);
+>  	/*
+> -	 * Don't clear the needs_recovery flag if we failed to flush
+> +	 * Don't clear the needs_recovery flag if we failed to freeze
+>  	 * the journal.
+>  	 */
+> -	error = jbd2_journal_flush(journal);
+>  	if (error < 0)
+>  		goto out;
+>  
+> @@ -4345,8 +4342,6 @@ static int ext4_freeze(struct super_block *sb)
+>  	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	error = ext4_commit_super(sb, 1);
+>  out:
+> -	/* we rely on s_frozen to stop further updates */
+> -	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+>  	return error;
+>  }
+>  
+> @@ -4356,10 +4351,14 @@ out:
+>   */
+>  static int ext4_unfreeze(struct super_block *sb)
+>  {
+> +	journal_t *journal;
+>  	if (sb->s_flags & MS_RDONLY)
+>  		return 0;
+>  
+>  	lock_super(sb);
+> +	journal = EXT4_SB(sb)->s_journal;
+> +
+> +	jbd2_journal_thaw(journal);
+>  	/* Reset the needs_recovery flag before the fs is unlocked. */
+>  	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  	ext4_commit_super(sb, 1);
+> -- 
+> 1.7.5.4
+> 
 -- 
-Best regards,
- Sander                            mailto:linux@eikelenboom.it
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
