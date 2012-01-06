@@ -1,125 +1,225 @@
-From: Djalal Harouni <tixxdz@opendz.org>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Fri, 6 Jan 2012 02:00:11 +0100
-Message-ID: <20120106010011.GA9028@dztty>
-References: <20120103013152.GA26455@dztty>
- <20120104174609.GD28907@quack.suse.cz>
- <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
- <20120104233254.GH28907@quack.suse.cz>
- <20120105003751.GA4010@dztty>
- <20120105114205.GB14947@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 3/7] VFS: Fix s_umount thaw/write deadlock
+Date: Fri, 6 Jan 2012 02:50:26 +0100
+Message-ID: <20120106015026.GF3790@quack.suse.cz>
+References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+ <1323367477-21685-4-git-send-email-kamal@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
+	Valerie Aurora <val@vaaconsulting.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>
+To: Kamal Mostafa <kamal@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from numidia.opendz.org ([98.142.220.152]:40301 "EHLO
-	numidia.opendz.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758394Ab2AFA5I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Jan 2012 19:57:08 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:43630 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756482Ab2AFBu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Jan 2012 20:50:29 -0500
 Content-Disposition: inline
-In-Reply-To: <20120105114205.GB14947@quack.suse.cz>
+In-Reply-To: <1323367477-21685-4-git-send-email-kamal@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 05, 2012 at 12:42:05PM +0100, Jan Kara wrote:
-> On Thu 05-01-12 01:40:09, Djalal Harouni wrote:
-> > Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
-> > do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
-> > test and set _all_ the possible values of the i_flags field.
-> > Perhaps I should also send a patch for this ?
->   Yes, possibly reiserfs should use i_mutex for that ioctl.
-For the reiserfs I've missed some locks.
+  Hello,
 
-It seems that reiserfs uses its own 'reiserfs_sb_info->lock' (reiserfs
-super block data) to serialize writers in all the ioctl, even the GET
-(readers) ioctl operations. But I also know that the VFS layer uses i_mutex
-to protect inode changes, so ? I'm not sure, If I can test it I'll send a
-patch.
+On Thu 08-12-11 10:04:33, Kamal Mostafa wrote:
+> From: Valerie Aurora <val@vaaconsulting.com>
+> 
+> File system freeze/thaw require the superblock's s_umount lock.
+> However, we write to the file system while holding the s_umount lock
+> in several places (e.g., writeback and quotas).  Any of these can
+> block on a frozen file system while holding s_umount, preventing any
+> later thaw from occurring, since thaw requires s_umount.
+> 
+> The solution is to add a check, vfs_is_frozen(), to all code paths
+> that write while holding sb->s_umount and return without writing if it
+> is true.
+  Mikulas Patocka correctly pointed out (in thread starting by
+https://lkml.org/lkml/2011/11/25/169) that skipping frozen filesystem is
+currently actually wrong for filesystems such as ext2. These filesystems
+cannot stop modifications from happening and thus sync must not skip them
+even when they are marked as frozen. That complicates the solution of the
+deadlock you observe.
 
-> > And perhaps ext2 should also be updated.
->   Sure. Send a patch my way when you have it.
-Here's the tested ext2 patch, thanks.
+Another issue is that even with ext4 current freezing code can leave dirty
+data on frozen filesystem. Consider the following race:
+  Thread 1				  Thread 2
+freeze_super()				__generic_file_aio_write()
+  ...					  vfs_check_frozen(sb)
+  sb->s_frozen = SB_FREEZE_WRITE;	  ...
+  sync_filesystem(sb);
+					  now we go and write to the fs
+  sb->s_frozen = SB_FREEZE_TRANS;
 
---------
+Your patches would just hide this race (which I can actually trigger rather
+easily in my testing).
 
-From: Djalal Harouni <tixxdz@opendz.org>
+Above two issues make me think more about how to really avoid having any
+dirty bits set on frozen filesystem. Then we shouldn't need this patch at
+all. The trouble is that race like above can really happen with any
+operation modifying the filesystem so it's not really easy to fix. I'll
+write email about that tomorrow...
 
-ext2: protect inode changes in the SETVERSION and SETFLAGS ioctls
+								Honza
 
-Unlock mutex after i_flags and i_ctime updates in the EXT2_IOC_SETFLAGS
-ioctl.
-
-Use i_mutex in the EXT2_IOC_SETVERSION ioctl to protect i_ctime and
-i_generation updates and make the ioctl consistent since i_mutex is
-also used in other places to protect timestamps and inode changes.
-
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
----
- fs/ext2/ioctl.c |   22 ++++++++++++++++------
- 1 files changed, 16 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext2/ioctl.c b/fs/ext2/ioctl.c
-index f81e250..b7f931f 100644
---- a/fs/ext2/ioctl.c
-+++ b/fs/ext2/ioctl.c
-@@ -77,10 +77,11 @@ long ext2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		flags = flags & EXT2_FL_USER_MODIFIABLE;
- 		flags |= oldflags & ~EXT2_FL_USER_MODIFIABLE;
- 		ei->i_flags = flags;
--		mutex_unlock(&inode->i_mutex);
- 
- 		ext2_set_inode_flags(inode);
- 		inode->i_ctime = CURRENT_TIME_SEC;
-+		mutex_unlock(&inode->i_mutex);
-+
- 		mark_inode_dirty(inode);
- setflags_out:
- 		mnt_drop_write(filp->f_path.mnt);
-@@ -88,20 +89,29 @@ setflags_out:
- 	}
- 	case EXT2_IOC_GETVERSION:
- 		return put_user(inode->i_generation, (int __user *) arg);
--	case EXT2_IOC_SETVERSION:
-+	case EXT2_IOC_SETVERSION: {
-+		__u32 generation;
-+
- 		if (!inode_owner_or_capable(inode))
- 			return -EPERM;
- 		ret = mnt_want_write(filp->f_path.mnt);
- 		if (ret)
- 			return ret;
--		if (get_user(inode->i_generation, (int __user *) arg)) {
-+		if (get_user(generation, (int __user *) arg)) {
- 			ret = -EFAULT;
--		} else {
--			inode->i_ctime = CURRENT_TIME_SEC;
--			mark_inode_dirty(inode);
-+			goto setversion_out;
- 		}
-+
-+		mutex_lock(&inode->i_mutex);
-+		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_generation = generation;
-+		mutex_unlock(&inode->i_mutex);
-+
-+		mark_inode_dirty(inode);
-+setversion_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return ret;
-+	}
- 	case EXT2_IOC_GETRSVSZ:
- 		if (test_opt(inode->i_sb, RESERVATION)
- 			&& S_ISREG(inode->i_mode)
+> BugLink: https://bugs.launchpad.net/bugs/897421
+> Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
+> Cc: Kamal Mostafa <kamal@canonical.com>
+> Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+> [kamal@canonical.com: minor changes; patch restructure]
+> Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+> ---
+>  fs/fs-writeback.c  |    8 ++++++++
+>  fs/quota/quota.c   |   21 ++++++++++++++++++++-
+>  fs/super.c         |    8 ++++++++
+>  fs/sync.c          |    4 ++--
+>  include/linux/fs.h |    7 ++++++-
+>  5 files changed, 44 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> index 73c3992..eee01cd 100644
+> --- a/fs/fs-writeback.c
+> +++ b/fs/fs-writeback.c
+> @@ -554,6 +554,14 @@ static long writeback_sb_inodes(struct super_block *sb,
+>  	while (!list_empty(&wb->b_io)) {
+>  		struct inode *inode = wb_inode(wb->b_io.prev);
+>  
+> +		if (inode->i_sb == sb && vfs_is_frozen(sb)) {
+> +			/*
+> +			 * Inode is on a frozen superblock; skip it for now.
+> +			 */
+> +			redirty_tail(inode, wb);
+> +			continue;
+> +		}
+> +
+>  		if (inode->i_sb != sb) {
+>  			if (work->sb) {
+>  				/*
+> diff --git a/fs/quota/quota.c b/fs/quota/quota.c
+> index 35f4b0e..1d770f2 100644
+> --- a/fs/quota/quota.c
+> +++ b/fs/quota/quota.c
+> @@ -47,7 +47,7 @@ static int check_quotactl_permission(struct super_block *sb, int type, int cmd,
+>  
+>  static void quota_sync_one(struct super_block *sb, void *arg)
+>  {
+> -	if (sb->s_qcop && sb->s_qcop->quota_sync)
+> +	if (sb->s_qcop && sb->s_qcop->quota_sync && !vfs_is_frozen(sb))
+>  		sb->s_qcop->quota_sync(sb, *(int *)arg, 1);
+>  }
+>  
+> @@ -368,8 +368,27 @@ SYSCALL_DEFINE4(quotactl, unsigned int, cmd, const char __user *, special,
+>  		goto out;
+>  	}
+>  
+> +	/*
+> +	 * If the fs is frozen, only allow read-only quota subcmds.
+> +	 */
+> +	if (vfs_is_frozen(sb)) {
+> +		switch (cmd) {
+> +			case Q_GETFMT:
+> +			case Q_GETINFO:
+> +			case Q_XGETQSTAT:
+> +				ret = 0;
+> +				break;
+> +			default:
+> +				ret = -EBUSY;
+> +				break;
+> +		}
+> +		if ( ret != 0 )
+> +		    goto out_drop_super;
+> +	}
+> +
+>  	ret = do_quotactl(sb, type, cmds, id, addr, pathp);
+>  
+> +out_drop_super:
+>  	drop_super(sb);
+>  out:
+>  	if (pathp && !IS_ERR(pathp))
+> diff --git a/fs/super.c b/fs/super.c
+> index afd0f1a..5629d06 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -526,6 +526,10 @@ void sync_supers(void)
+>   *
+>   *	Scans the superblock list and calls given function, passing it
+>   *	locked superblock and given argument.
+> + *
+> + *	Note: If @f is going to write to the file system, it must first
+> + *	check if the file system is frozen (via vfs_is_frozen(sb)) and
+> + *	refuse to write if so.
+>   */
+>  void iterate_supers(void (*f)(struct super_block *, void *), void *arg)
+>  {
+> @@ -595,6 +599,10 @@ EXPORT_SYMBOL(iterate_supers_type);
+>   *	
+>   *	Scans the superblock list and finds the superblock of the file system
+>   *	mounted on the device given. %NULL is returned if no match is found.
+> + *
+> + *	Note: If caller is going to write to the superblock, it must first
+> + *	check if the file system is frozen (via vfs_is_frozen(sb)) and
+> + *	refuse to write if so.
+>   */
+>  
+>  struct super_block *get_super(struct block_device *bdev)
+> diff --git a/fs/sync.c b/fs/sync.c
+> index 101b8ef..e8166db 100644
+> --- a/fs/sync.c
+> +++ b/fs/sync.c
+> @@ -68,7 +68,7 @@ int sync_filesystem(struct super_block *sb)
+>  	/*
+>  	 * No point in syncing out anything if the filesystem is read-only.
+>  	 */
+> -	if (sb->s_flags & MS_RDONLY)
+> +	if ((sb->s_flags & MS_RDONLY) || vfs_is_frozen(sb))
+>  		return 0;
+>  
+>  	ret = __sync_filesystem(sb, 0);
+> @@ -80,7 +80,7 @@ EXPORT_SYMBOL_GPL(sync_filesystem);
+>  
+>  static void sync_one_sb(struct super_block *sb, void *arg)
+>  {
+> -	if (!(sb->s_flags & MS_RDONLY))
+> +	if (!(sb->s_flags & MS_RDONLY) && !vfs_is_frozen(sb))
+>  		__sync_filesystem(sb, *(int *)arg);
+>  }
+>  /*
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 019dc55..ec33b4c 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1490,7 +1490,7 @@ extern void prune_dcache_sb(struct super_block *sb, int nr_to_scan);
+>  extern struct timespec current_fs_time(struct super_block *sb);
+>  
+>  /*
+> - * Snapshotting support.
+> + * Snapshotting support.  See freeze_super() for documentation.
+>   */
+>  enum {
+>  	SB_UNFROZEN = 0,
+> @@ -1501,6 +1501,11 @@ enum {
+>  #define vfs_check_frozen(sb, level) \
+>  	wait_event((sb)->s_wait_unfrozen, ((sb)->s_frozen < (level)))
+>  
+> +static inline int vfs_is_frozen(struct super_block *sb)
+> +{
+> +	return sb->s_frozen == SB_FREEZE_TRANS;
+> +}
+> +
+>  /*
+>   * until VFS tracks user namespaces for inodes, just make all files
+>   * belong to init_user_ns
+> -- 
+> 1.7.5.4
+> 
 -- 
-1.7.1
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
