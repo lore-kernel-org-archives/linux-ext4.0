@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 12/14] crypto: crc32c should use library implementation
-Date: Fri, 06 Jan 2012 21:52:02 -0800
-Message-ID: <20120107055202.31315.50101.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 08/14] crc32: Add slice-by-8 algorithm to existing code
+Date: Fri, 06 Jan 2012 21:51:34 -0800
+Message-ID: <20120107055134.31315.82660.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,156 +17,266 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:45062 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759464Ab2AGFwA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 00:52:00 -0500
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 7 Jan 2012 00:51:58 -0500
 In-Reply-To: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Since lib/crc32.c now provides crc32c, remove the software implementation here
-and call the library function instead.
+add slicing-by-8 algorithm to the existing
+slicing-by-4 algorithm. This consists of:
+	- extend largest BITS size from 32 to 64
+	- extend tables from tab[4][256] to up to tab[8][256]
+	- Add code for inner loop.
 
+From: Bob Pearson <rpearson@systemfabricworks.com>
+Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
+[djwong@us.ibm.com: Minor changelog tweaks]
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- crypto/Kconfig  |    1 +
- crypto/crc32c.c |   94 ++-----------------------------------------------------
- 2 files changed, 4 insertions(+), 91 deletions(-)
+ lib/crc32.c          |   40 ++++++++++++++++++++++++++++------------
+ lib/crc32defs.h      |   29 +++++++++++++++++++++--------
+ lib/gen_crc32table.c |   43 +++++++++++++++++++++++++++----------------
+ 3 files changed, 76 insertions(+), 36 deletions(-)
 
 
-diff --git a/crypto/Kconfig b/crypto/Kconfig
-index 527a857..4c9e93a 100644
---- a/crypto/Kconfig
-+++ b/crypto/Kconfig
-@@ -310,6 +310,7 @@ comment "Digest"
- config CRYPTO_CRC32C
- 	tristate "CRC32c CRC algorithm"
- 	select CRYPTO_HASH
-+	select CRC32
- 	help
- 	  Castagnoli, et al Cyclic Redundancy-Check Algorithm.  Used
- 	  by iSCSI for header and data digests and by others.
-diff --git a/crypto/crc32c.c b/crypto/crc32c.c
-index 3f9ad28..06f7018 100644
---- a/crypto/crc32c.c
-+++ b/crypto/crc32c.c
-@@ -40,6 +40,7 @@
- #include <linux/module.h>
- #include <linux/string.h>
- #include <linux/kernel.h>
-+#include <linux/crc32.h>
+diff --git a/lib/crc32.c b/lib/crc32.c
+index 157b35f..6311712 100644
+--- a/lib/crc32.c
++++ b/lib/crc32.c
+@@ -47,25 +47,28 @@ MODULE_LICENSE("GPL");
  
- #define CHKSUM_BLOCK_SIZE	1
- #define CHKSUM_DIGEST_SIZE	4
-@@ -53,95 +54,6 @@ struct chksum_desc_ctx {
- };
+ #if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
+ 
++/* implements slicing-by-4 or slicing-by-8 algorithm */
+ static inline u32
+ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+ {
+ # ifdef __LITTLE_ENDIAN
+ #  define DO_CRC(x) (crc = t0[(crc ^ (x)) & 255] ^ (crc >> 8))
+-#  define DO_CRC4 crc = t3[(crc) & 255] ^ \
+-			t2[(crc >> 8) & 255] ^ \
+-			t1[(crc >> 16) & 255] ^ \
+-			t0[(crc >> 24) & 255]
++#  define DO_CRC4 (t3[(q) & 255] ^ t2[(q >> 8) & 255] ^ \
++		   t1[(q >> 16) & 255] ^ t0[(q >> 24) & 255])
++#  define DO_CRC8 (t7[(q) & 255] ^ t6[(q >> 8) & 255] ^ \
++		   t5[(q >> 16) & 255] ^ t4[(q >> 24) & 255])
+ # else
+ #  define DO_CRC(x) (crc = t0[((crc >> 24) ^ (x)) & 255] ^ (crc << 8))
+-#  define DO_CRC4 crc = t0[(crc) & 255] ^ \
+-			t1[(crc >> 8) & 255] ^ \
+-			t2[(crc >> 16) & 255] ^ \
+-			t3[(crc >> 24) & 255]
++#  define DO_CRC4 (t0[(q) & 255] ^ t1[(q >> 8) & 255] ^ \
++		   t2[(q >> 16) & 255] ^ t3[(q >> 24) & 255])
++#  define DO_CRC8 (t4[(q) & 255] ^ t5[(q >> 8) & 255] ^ \
++		   t6[(q >> 16) & 255] ^ t7[(q >> 24) & 255])
+ # endif
+ 	const u32 *b;
+-	size_t    rem_len;
++	size_t rem_len;
+ 	const u32 *t0 = tab[0], *t1 = tab[1], *t2 = tab[2], *t3 = tab[3];
++	const u32 *t4 = tab[4], *t5 = tab[5], *t6 = tab[6], *t7 = tab[7];
++	u32 q;
+ 
+ 	/* Align it */
+ 	if (unlikely((long)buf & 3 && len)) {
+@@ -73,13 +76,25 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+ 			DO_CRC(*buf++);
+ 		} while ((--len) && ((long)buf)&3);
+ 	}
++
++# if CRC_LE_BITS == 32
+ 	rem_len = len & 3;
+-	/* load data 32 bits wide, xor data 32 bits wide. */
+ 	len = len >> 2;
++# else
++	rem_len = len & 7;
++	len = len >> 3;
++# endif
++
+ 	b = (const u32 *)buf;
+ 	for (--b; len; --len) {
+-		crc ^= *++b; /* use pre increment for speed */
+-		DO_CRC4;
++		q = crc ^ *++b; /* use pre increment for speed */
++# if CRC_LE_BITS == 32
++		crc = DO_CRC4;
++# else
++		crc = DO_CRC8;
++		q = *++b;
++		crc ^= DO_CRC4;
++# endif
+ 	}
+ 	len = rem_len;
+ 	/* And the last few bytes */
+@@ -92,6 +107,7 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+ 	return crc;
+ #undef DO_CRC
+ #undef DO_CRC4
++#undef DO_CRC8
+ }
+ #endif
+ 
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index daa3a5e..8181592 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -6,29 +6,42 @@
+ #define CRCPOLY_LE 0xedb88320
+ #define CRCPOLY_BE 0x04c11db7
+ 
+-/* How many bits at a time to use.  Valid values are 1, 2, 4, 8, and 32. */
+-/* For less performance-sensitive, use 4 or 8 */
++/*
++ * How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64.
++ * For less performance-sensitive, use 4 or 8 to save table size.
++ * For larger systems choose same as CPU architecture as default.
++ * This works well on X86_64, SPARC64 systems. This may require some
++ * elaboration after experiments with other architectures.
++ */
+ #ifndef CRC_LE_BITS
+-# define CRC_LE_BITS 32
++#  ifdef CONFIG_64BIT
++#  define CRC_LE_BITS 64
++#  else
++#  define CRC_LE_BITS 32
++#  endif
+ #endif
+ #ifndef CRC_BE_BITS
+-# define CRC_BE_BITS 32
++#  ifdef CONFIG_64BIT
++#  define CRC_BE_BITS 64
++#  else
++#  define CRC_BE_BITS 32
++#  endif
+ #endif
  
  /*
-- * This is the CRC-32C table
-- * Generated with:
-- * width = 32 bits
-- * poly = 0x1EDC6F41
-- * reflect input bytes = true
-- * reflect output bytes = true
-- */
--
--static const u32 crc32c_table[256] = {
--	0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
--	0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
--	0x8AD958CFL, 0x78B2DBCCL, 0x6BE22838L, 0x9989AB3BL,
--	0x4D43CFD0L, 0xBF284CD3L, 0xAC78BF27L, 0x5E133C24L,
--	0x105EC76FL, 0xE235446CL, 0xF165B798L, 0x030E349BL,
--	0xD7C45070L, 0x25AFD373L, 0x36FF2087L, 0xC494A384L,
--	0x9A879FA0L, 0x68EC1CA3L, 0x7BBCEF57L, 0x89D76C54L,
--	0x5D1D08BFL, 0xAF768BBCL, 0xBC267848L, 0x4E4DFB4BL,
--	0x20BD8EDEL, 0xD2D60DDDL, 0xC186FE29L, 0x33ED7D2AL,
--	0xE72719C1L, 0x154C9AC2L, 0x061C6936L, 0xF477EA35L,
--	0xAA64D611L, 0x580F5512L, 0x4B5FA6E6L, 0xB93425E5L,
--	0x6DFE410EL, 0x9F95C20DL, 0x8CC531F9L, 0x7EAEB2FAL,
--	0x30E349B1L, 0xC288CAB2L, 0xD1D83946L, 0x23B3BA45L,
--	0xF779DEAEL, 0x05125DADL, 0x1642AE59L, 0xE4292D5AL,
--	0xBA3A117EL, 0x4851927DL, 0x5B016189L, 0xA96AE28AL,
--	0x7DA08661L, 0x8FCB0562L, 0x9C9BF696L, 0x6EF07595L,
--	0x417B1DBCL, 0xB3109EBFL, 0xA0406D4BL, 0x522BEE48L,
--	0x86E18AA3L, 0x748A09A0L, 0x67DAFA54L, 0x95B17957L,
--	0xCBA24573L, 0x39C9C670L, 0x2A993584L, 0xD8F2B687L,
--	0x0C38D26CL, 0xFE53516FL, 0xED03A29BL, 0x1F682198L,
--	0x5125DAD3L, 0xA34E59D0L, 0xB01EAA24L, 0x42752927L,
--	0x96BF4DCCL, 0x64D4CECFL, 0x77843D3BL, 0x85EFBE38L,
--	0xDBFC821CL, 0x2997011FL, 0x3AC7F2EBL, 0xC8AC71E8L,
--	0x1C661503L, 0xEE0D9600L, 0xFD5D65F4L, 0x0F36E6F7L,
--	0x61C69362L, 0x93AD1061L, 0x80FDE395L, 0x72966096L,
--	0xA65C047DL, 0x5437877EL, 0x4767748AL, 0xB50CF789L,
--	0xEB1FCBADL, 0x197448AEL, 0x0A24BB5AL, 0xF84F3859L,
--	0x2C855CB2L, 0xDEEEDFB1L, 0xCDBE2C45L, 0x3FD5AF46L,
--	0x7198540DL, 0x83F3D70EL, 0x90A324FAL, 0x62C8A7F9L,
--	0xB602C312L, 0x44694011L, 0x5739B3E5L, 0xA55230E6L,
--	0xFB410CC2L, 0x092A8FC1L, 0x1A7A7C35L, 0xE811FF36L,
--	0x3CDB9BDDL, 0xCEB018DEL, 0xDDE0EB2AL, 0x2F8B6829L,
--	0x82F63B78L, 0x709DB87BL, 0x63CD4B8FL, 0x91A6C88CL,
--	0x456CAC67L, 0xB7072F64L, 0xA457DC90L, 0x563C5F93L,
--	0x082F63B7L, 0xFA44E0B4L, 0xE9141340L, 0x1B7F9043L,
--	0xCFB5F4A8L, 0x3DDE77ABL, 0x2E8E845FL, 0xDCE5075CL,
--	0x92A8FC17L, 0x60C37F14L, 0x73938CE0L, 0x81F80FE3L,
--	0x55326B08L, 0xA759E80BL, 0xB4091BFFL, 0x466298FCL,
--	0x1871A4D8L, 0xEA1A27DBL, 0xF94AD42FL, 0x0B21572CL,
--	0xDFEB33C7L, 0x2D80B0C4L, 0x3ED04330L, 0xCCBBC033L,
--	0xA24BB5A6L, 0x502036A5L, 0x4370C551L, 0xB11B4652L,
--	0x65D122B9L, 0x97BAA1BAL, 0x84EA524EL, 0x7681D14DL,
--	0x2892ED69L, 0xDAF96E6AL, 0xC9A99D9EL, 0x3BC21E9DL,
--	0xEF087A76L, 0x1D63F975L, 0x0E330A81L, 0xFC588982L,
--	0xB21572C9L, 0x407EF1CAL, 0x532E023EL, 0xA145813DL,
--	0x758FE5D6L, 0x87E466D5L, 0x94B49521L, 0x66DF1622L,
--	0x38CC2A06L, 0xCAA7A905L, 0xD9F75AF1L, 0x2B9CD9F2L,
--	0xFF56BD19L, 0x0D3D3E1AL, 0x1E6DCDEEL, 0xEC064EEDL,
--	0xC38D26C4L, 0x31E6A5C7L, 0x22B65633L, 0xD0DDD530L,
--	0x0417B1DBL, 0xF67C32D8L, 0xE52CC12CL, 0x1747422FL,
--	0x49547E0BL, 0xBB3FFD08L, 0xA86F0EFCL, 0x5A048DFFL,
--	0x8ECEE914L, 0x7CA56A17L, 0x6FF599E3L, 0x9D9E1AE0L,
--	0xD3D3E1ABL, 0x21B862A8L, 0x32E8915CL, 0xC083125FL,
--	0x144976B4L, 0xE622F5B7L, 0xF5720643L, 0x07198540L,
--	0x590AB964L, 0xAB613A67L, 0xB831C993L, 0x4A5A4A90L,
--	0x9E902E7BL, 0x6CFBAD78L, 0x7FAB5E8CL, 0x8DC0DD8FL,
--	0xE330A81AL, 0x115B2B19L, 0x020BD8EDL, 0xF0605BEEL,
--	0x24AA3F05L, 0xD6C1BC06L, 0xC5914FF2L, 0x37FACCF1L,
--	0x69E9F0D5L, 0x9B8273D6L, 0x88D28022L, 0x7AB90321L,
--	0xAE7367CAL, 0x5C18E4C9L, 0x4F48173DL, 0xBD23943EL,
--	0xF36E6F75L, 0x0105EC76L, 0x12551F82L, 0xE03E9C81L,
--	0x34F4F86AL, 0xC69F7B69L, 0xD5CF889DL, 0x27A40B9EL,
--	0x79B737BAL, 0x8BDCB4B9L, 0x988C474DL, 0x6AE7C44EL,
--	0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L
--};
--
--/*
-- * Steps through buffer one byte at at time, calculates reflected
-- * crc using table.
-- */
--
--static u32 crc32c(u32 crc, const u8 *data, unsigned int length)
--{
--	while (length--)
--		crc = crc32c_table[(crc ^ *data++) & 0xFFL] ^ (crc >> 8);
--
--	return crc;
--}
--
--/*
-  * Steps through buffer one byte at at time, calculates reflected
-  * crc using table.
+  * Little-endian CRC computation.  Used with serial bit streams sent
+  * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
   */
-@@ -179,7 +91,7 @@ static int chksum_update(struct shash_desc *desc, const u8 *data,
- {
- 	struct chksum_desc_ctx *ctx = shash_desc_ctx(desc);
+-#if CRC_LE_BITS > 32 || CRC_LE_BITS < 1 || CRC_LE_BITS == 16 || \
++#if CRC_LE_BITS > 64 || CRC_LE_BITS < 1 || CRC_LE_BITS == 16 || \
+ 	CRC_LE_BITS & CRC_LE_BITS-1
+-# error "CRC_LE_BITS must be one of {1, 2, 4, 8, 32}"
++# error "CRC_LE_BITS must be one of {1, 2, 4, 8, 32, 64}"
+ #endif
  
--	ctx->crc = crc32c(ctx->crc, data, length);
-+	ctx->crc = __crc32c_le(ctx->crc, data, length);
- 	return 0;
+ /*
+  * Big-endian CRC computation.  Used with serial bit streams sent
+  * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
+  */
+-#if CRC_BE_BITS > 32 || CRC_BE_BITS < 1 || CRC_BE_BITS == 16 || \
++#if CRC_BE_BITS > 64 || CRC_BE_BITS < 1 || CRC_BE_BITS == 16 || \
+ 	CRC_BE_BITS & CRC_BE_BITS-1
+-# error "CRC_BE_BITS must be one of {1, 2, 4, 8, 32}"
++# error "CRC_BE_BITS must be one of {1, 2, 4, 8, 32, 64}"
+ #endif
+diff --git a/lib/gen_crc32table.c b/lib/gen_crc32table.c
+index 99ac744..0d9edd1 100644
+--- a/lib/gen_crc32table.c
++++ b/lib/gen_crc32table.c
+@@ -1,23 +1,28 @@
+ #include <stdio.h>
++#include "../include/generated/autoconf.h"
+ #include "crc32defs.h"
+ #include <inttypes.h>
+ 
+ #define ENTRIES_PER_LINE 4
+ 
+-#if CRC_LE_BITS <= 8
+-#define LE_TABLE_SIZE (1 << CRC_LE_BITS)
++#if CRC_LE_BITS > 8
++# define LE_TABLE_ROWS (CRC_LE_BITS/8)
++# define LE_TABLE_SIZE 256
+ #else
+-#define LE_TABLE_SIZE 256
++# define LE_TABLE_ROWS 1
++# define LE_TABLE_SIZE (1 << CRC_LE_BITS)
+ #endif
+ 
+-#if CRC_BE_BITS <= 8
+-#define BE_TABLE_SIZE (1 << CRC_BE_BITS)
++#if CRC_BE_BITS > 8
++# define BE_TABLE_ROWS (CRC_BE_BITS/8)
++# define BE_TABLE_SIZE 256
+ #else
+-#define BE_TABLE_SIZE 256
++# define BE_TABLE_ROWS 1
++# define BE_TABLE_SIZE (1 << CRC_BE_BITS)
+ #endif
+ 
+-static uint32_t crc32table_le[4][256];
+-static uint32_t crc32table_be[4][256];
++static uint32_t crc32table_le[LE_TABLE_ROWS][256];
++static uint32_t crc32table_be[BE_TABLE_ROWS][256];
+ 
+ /**
+  * crc32init_le() - allocate and initialize LE table data
+@@ -40,7 +45,7 @@ static void crc32init_le(void)
+ 	}
+ 	for (i = 0; i < LE_TABLE_SIZE; i++) {
+ 		crc = crc32table_le[0][i];
+-		for (j = 1; j < 4; j++) {
++		for (j = 1; j < LE_TABLE_ROWS; j++) {
+ 			crc = crc32table_le[0][crc & 0xff] ^ (crc >> 8);
+ 			crc32table_le[j][i] = crc;
+ 		}
+@@ -64,18 +69,18 @@ static void crc32init_be(void)
+ 	}
+ 	for (i = 0; i < BE_TABLE_SIZE; i++) {
+ 		crc = crc32table_be[0][i];
+-		for (j = 1; j < 4; j++) {
++		for (j = 1; j < BE_TABLE_ROWS; j++) {
+ 			crc = crc32table_be[0][(crc >> 24) & 0xff] ^ (crc << 8);
+ 			crc32table_be[j][i] = crc;
+ 		}
+ 	}
  }
  
-@@ -193,7 +105,7 @@ static int chksum_final(struct shash_desc *desc, u8 *out)
- 
- static int __chksum_finup(u32 *crcp, const u8 *data, unsigned int len, u8 *out)
+-static void output_table(uint32_t (*table)[256], int len, char *trans)
++static void output_table(uint32_t (*table)[256], int rows, int len, char *trans)
  {
--	*(__le32 *)out = ~cpu_to_le32(crc32c(*crcp, data, len));
-+	*(__le32 *)out = ~cpu_to_le32(__crc32c_le(*crcp, data, len));
- 	return 0;
- }
+ 	int i, j;
  
+-	for (j = 0 ; j < 4; j++) {
++	for (j = 0 ; j < rows; j++) {
+ 		printf("{");
+ 		for (i = 0; i < len - 1; i++) {
+ 			if (i % ENTRIES_PER_LINE == 0)
+@@ -92,15 +97,21 @@ int main(int argc, char** argv)
+ 
+ 	if (CRC_LE_BITS > 1) {
+ 		crc32init_le();
+-		printf("static const u32 crc32table_le[4][256] = {");
+-		output_table(crc32table_le, LE_TABLE_SIZE, "tole");
++		printf("static const u32 __cacheline_aligned "
++		       "crc32table_le[%d][%d] = {",
++		       LE_TABLE_ROWS, LE_TABLE_SIZE);
++		output_table(crc32table_le, LE_TABLE_ROWS,
++			     LE_TABLE_SIZE, "tole");
+ 		printf("};\n");
+ 	}
+ 
+ 	if (CRC_BE_BITS > 1) {
+ 		crc32init_be();
+-		printf("static const u32 crc32table_be[4][256] = {");
+-		output_table(crc32table_be, BE_TABLE_SIZE, "tobe");
++		printf("static const u32 __cacheline_aligned "
++		       "crc32table_be[%d][%d] = {",
++		       BE_TABLE_ROWS, BE_TABLE_SIZE);
++		output_table(crc32table_be, LE_TABLE_ROWS,
++			     BE_TABLE_SIZE, "tobe");
+ 		printf("};\n");
+ 	}
+ 
+
