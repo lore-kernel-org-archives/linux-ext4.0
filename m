@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 10/23] ext4: Calculate and verify checksums for htree nodes
-Date: Sat, 07 Jan 2012 00:28:59 -0800
-Message-ID: <20120107082859.21970.18700.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 14/23] ext4: Add checksums to the MMP block
+Date: Sat, 07 Jan 2012 00:29:26 -0800
+Message-ID: <20120107082926.21970.91132.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,251 +19,120 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum for directory index tree (htree) node blocks.
-The checksum is stored in the last 4 bytes of the htree block and requires the
-dx_entry array to stop 1 dx_entry short of the end of the block.
+Compute and verify a checksum for the MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/namei.c |  160 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 156 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h |    3 +++
+ fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 42 insertions(+), 5 deletions(-)
 
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ebfc499..8721f51 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -188,6 +188,121 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
- static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e24386f..325bae0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2378,6 +2378,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
  
-+/* checksumming functions */
-+static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
-+					       struct ext4_dir_entry *dirent,
-+					       int *offset)
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
++extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
++extern int ext4_mmp_csum_verify(struct super_block *sb,
++				struct mmp_struct *mmp);
+ 
+ /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+ enum ext4_state_bits {
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ea4ba4..142e9d7 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -6,12 +6,45 @@
+ 
+ #include "ext4.h"
+ 
++/* Checksumming functions */
++static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	struct ext4_dir_entry *dp;
-+	struct dx_root_info *root;
-+	int count_offset;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int offset = offsetof(struct mmp_struct, mmp_checksum);
++	__u32 csum;
 +
-+	if (le16_to_cpu(dirent->rec_len) == EXT4_BLOCK_SIZE(inode->i_sb))
-+		count_offset = 8;
-+	else if (le16_to_cpu(dirent->rec_len) == 12) {
-+		dp = (struct ext4_dir_entry *)(((void *)dirent) + 12);
-+		if (le16_to_cpu(dp->rec_len) !=
-+		    EXT4_BLOCK_SIZE(inode->i_sb) - 12)
-+			return NULL;
-+		root = (struct dx_root_info *)(((void *)dp + 12));
-+		if (root->reserved_zero ||
-+		    root->info_length != sizeof(struct dx_root_info))
-+			return NULL;
-+		count_offset = 32;
-+	} else
-+		return NULL;
-+
-+	if (offset)
-+		*offset = count_offset;
-+	return (struct dx_countlimit *)(((void *)dirent) + count_offset);
-+}
-+
-+static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
-+			   int count_offset, int count, struct dx_tail *t)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	__u32 csum, old_csum;
-+	int size;
-+
-+	size = count_offset + (count * sizeof(struct dx_entry));
-+	old_csum = t->dt_checksum;
-+	t->dt_checksum = 0;
-+	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
-+	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
-+	t->dt_checksum = old_csum;
++	csum = ext4_chksum(sbi, sbi->s_csum_seed, (char *)mmp, offset);
 +
 +	return cpu_to_le32(csum);
 +}
 +
-+static int ext4_dx_csum_verify(struct inode *inode,
-+			       struct ext4_dir_entry *dirent)
++int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	struct dx_countlimit *c;
-+	struct dx_tail *t;
-+	int count_offset, limit, count;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	c = get_dx_countlimit(inode, dirent, &count_offset);
-+	if (!c) {
-+		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-+		return 1;
-+	}
-+	limit = le16_to_cpu(c->limit);
-+	count = le16_to_cpu(c->count);
-+	if (count_offset + (limit * sizeof(struct dx_entry)) >
-+	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
-+		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
-+				 "tree checksum found.  Run e2fsck -D.");
-+		return 1;
-+	}
-+	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-+
-+	if (t->dt_checksum != ext4_dx_csum(inode, dirent, count_offset,
-+					    count, t))
-+		return 0;
-+	return 1;
++	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
 +}
 +
-+static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
++void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	struct dx_countlimit *c;
-+	struct dx_tail *t;
-+	int count_offset, limit, count;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return;
 +
-+	c = get_dx_countlimit(inode, dirent, &count_offset);
-+	if (!c) {
-+		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-+		return;
-+	}
-+	limit = le16_to_cpu(c->limit);
-+	count = le16_to_cpu(c->count);
-+	if (count_offset + (limit * sizeof(struct dx_entry)) >
-+	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
-+		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
-+				 "tree checksum.  Run e2fsck -D.");
-+		return;
-+	}
-+	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-+
-+	t->dt_checksum = ext4_dx_csum(inode, dirent, count_offset, count, t);
-+}
-+
-+static inline int ext4_handle_dirty_dx_node(handle_t *handle,
-+					    struct inode *inode,
-+					    struct buffer_head *bh)
-+{
-+	ext4_dx_csum_set(inode, (struct ext4_dir_entry *)bh->b_data);
-+	return ext4_handle_dirty_metadata(handle, inode, bh);
++	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
 +}
 +
  /*
-  * p is at least 6 bytes before the end of page
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
   */
-@@ -247,12 +362,20 @@ static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
  {
- 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(1) -
- 		EXT4_DIR_REC_LEN(2) - infosize;
++	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
 +
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		entry_space -= sizeof(struct dx_tail);
- 	return entry_space / sizeof(struct dx_entry);
- }
- 
- static inline unsigned dx_node_limit(struct inode *dir)
- {
- 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(0);
-+
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		entry_space -= sizeof(struct dx_tail);
- 	return entry_space / sizeof(struct dx_entry);
- }
- 
-@@ -398,6 +521,15 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 		goto fail;
++	ext4_mmp_csum_set(sb, mmp);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
  	}
  
-+	if (!buffer_verified(bh) &&
-+	    !ext4_dx_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data)) {
-+		ext4_warning(dir->i_sb, "Root failed checksum");
-+		brelse(bh);
-+		*err = ERR_BAD_DX_DIR;
-+		goto fail;
-+	}
-+	set_buffer_verified(bh);
-+
- 	entries = (struct dx_entry *) (((char *)&root->info) +
- 				       root->info.info_length);
+ 	mmp = (struct mmp_struct *)((*bh)->b_data);
+-	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
++	    !ext4_mmp_csum_verify(sb, mmp))
+ 		return -EINVAL;
  
-@@ -458,6 +590,17 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 		if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err)))
- 			goto fail2;
- 		at = entries = ((struct dx_node *) bh->b_data)->entries;
-+
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dx_csum_verify(dir,
-+					 (struct ext4_dir_entry *)bh->b_data)) {
-+			ext4_warning(dir->i_sb, "Node failed checksum");
-+			brelse(bh);
-+			*err = ERR_BAD_DX_DIR;
-+			goto fail;
-+		}
-+		set_buffer_verified(bh);
-+
- 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
- 			ext4_warning(dir->i_sb,
- 				     "dx entry: limit != node limit");
-@@ -557,6 +700,15 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
- 		if (!(bh = ext4_bread(NULL, dir, dx_get_block(p->at),
- 				      0, &err)))
- 			return err; /* Failure */
-+
-+		if (!buffer_verified(bh) &&
-+		    !ext4_dx_csum_verify(dir,
-+					 (struct ext4_dir_entry *)bh->b_data)) {
-+			ext4_warning(dir->i_sb, "Node failed checksum");
-+			return -EIO;
-+		}
-+		set_buffer_verified(bh);
-+
- 		p++;
- 		brelse(p->bh);
- 		p->bh = bh;
-@@ -1232,7 +1384,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	err = ext4_handle_dirty_metadata(handle, dir, bh2);
- 	if (err)
- 		goto journal_error;
--	err = ext4_handle_dirty_metadata(handle, dir, frame->bh);
-+	err = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
- 	if (err)
- 		goto journal_error;
- 	brelse(bh2);
-@@ -1419,7 +1571,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	frame->bh = bh;
- 	bh = bh2;
+ 	return 0;
+@@ -120,7 +154,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
  
--	ext4_handle_dirty_metadata(handle, dir, frame->bh);
-+	ext4_handle_dirty_dx_node(handle, dir, frame->bh);
- 	ext4_handle_dirty_metadata(handle, dir, bh);
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +234,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
  
- 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
-@@ -1594,7 +1746,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			dxtrace(dx_show_index("node", frames[1].entries));
- 			dxtrace(dx_show_index("node",
- 			       ((struct dx_node *) bh2->b_data)->entries));
--			err = ext4_handle_dirty_metadata(handle, dir, bh2);
-+			err = ext4_handle_dirty_dx_node(handle, dir, bh2);
- 			if (err)
- 				goto journal_error;
- 			brelse (bh2);
-@@ -1620,7 +1772,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			if (err)
- 				goto journal_error;
- 		}
--		err = ext4_handle_dirty_metadata(handle, dir, frames[0].bh);
-+		err = ext4_handle_dirty_dx_node(handle, dir, frames[0].bh);
- 		if (err) {
- 			ext4_std_error(inode->i_sb, err);
- 			goto cleanup;
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 
+ failed:
+ 	kfree(data);
+@@ -299,7 +333,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
+ 
+
