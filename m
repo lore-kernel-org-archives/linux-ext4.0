@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 06/14] crc32: Fix mixing of endian-specific types
-Date: Fri, 06 Jan 2012 21:51:21 -0800
-Message-ID: <20120107055121.31315.48442.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 04/14] crc32: Speed up memory table access on powerpc
+Date: Fri, 06 Jan 2012 21:51:09 -0800
+Message-ID: <20120107055109.31315.85783.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,66 +17,57 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-crc32.c in its original version freely mixed u32, __le32 and __be32 types
-which caused warnings from sparse with __CHECK_ENDIAN__.
-This patch fixes these by forcing the types to u32.
+Replace 2D array references by pointer references in loops.
+This change has no effect on X86 code but improves PPC
+performance.
 
 From: Bob Pearson <rpearson@systemfabricworks.com>
 Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
 [djwong@us.ibm.com: Minor changelog tweaks]
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/crc32.c |   12 ++++++------
- 1 files changed, 6 insertions(+), 6 deletions(-)
+ lib/crc32.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
 
 
 diff --git a/lib/crc32.c b/lib/crc32.c
-index 2a87ea2..ff6bb9a 100644
+index 7a0e5a9..c93c9ae 100644
 --- a/lib/crc32.c
 +++ b/lib/crc32.c
-@@ -28,13 +28,13 @@
- #include "crc32defs.h"
- 
- #if CRC_LE_BITS == 8
--# define tole(x) __constant_cpu_to_le32(x)
-+# define tole(x) (__force u32) __constant_cpu_to_le32(x)
- #else
- # define tole(x) (x)
- #endif
- 
- #if CRC_BE_BITS == 8
--# define tobe(x) __constant_cpu_to_be32(x)
-+# define tobe(x) (__force u32) __constant_cpu_to_be32(x)
- #else
- # define tobe(x) (x)
- #endif
-@@ -128,9 +128,9 @@ u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
- # elif CRC_LE_BITS == 8
- 	const u32      (*tab)[] = crc32table_le;
- 
--	crc = __cpu_to_le32(crc);
-+	crc = (__force u32) __cpu_to_le32(crc);
- 	crc = crc32_body(crc, p, len, tab);
--	crc = __le32_to_cpu(crc);
-+	crc = __le32_to_cpu((__force __le32)crc);
- #endif
- 	return crc;
- }
-@@ -171,9 +171,9 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
- # elif CRC_BE_BITS == 8
- 	const u32      (*tab)[] = crc32table_be;
- 
--	crc = __cpu_to_be32(crc);
-+	crc = (__force u32) __cpu_to_be32(crc);
- 	crc = crc32_body(crc, p, len, tab);
--	crc = __be32_to_cpu(crc);
-+	crc = __be32_to_cpu((__force __be32)crc);
+@@ -53,20 +53,21 @@ static inline u32
+ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+ {
+ # ifdef __LITTLE_ENDIAN
+-#  define DO_CRC(x) crc = tab[0][(crc ^ (x)) & 255] ^ (crc >> 8)
+-#  define DO_CRC4 crc = tab[3][(crc) & 255] ^ \
+-		tab[2][(crc >> 8) & 255] ^ \
+-		tab[1][(crc >> 16) & 255] ^ \
+-		tab[0][(crc >> 24) & 255]
++#  define DO_CRC(x) (crc = t0[(crc ^ (x)) & 255] ^ (crc >> 8))
++#  define DO_CRC4 crc = t3[(crc) & 255] ^ \
++			t2[(crc >> 8) & 255] ^ \
++			t1[(crc >> 16) & 255] ^ \
++			t0[(crc >> 24) & 255]
+ # else
+-#  define DO_CRC(x) crc = tab[0][((crc >> 24) ^ (x)) & 255] ^ (crc << 8)
+-#  define DO_CRC4 crc = tab[0][(crc) & 255] ^ \
+-		tab[1][(crc >> 8) & 255] ^ \
+-		tab[2][(crc >> 16) & 255] ^ \
+-		tab[3][(crc >> 24) & 255]
++#  define DO_CRC(x) (crc = t0[((crc >> 24) ^ (x)) & 255] ^ (crc << 8))
++#  define DO_CRC4 crc = t0[(crc) & 255] ^ \
++			t1[(crc >> 8) & 255] ^ \
++			t2[(crc >> 16) & 255] ^ \
++			t3[(crc >> 24) & 255]
  # endif
- 	return crc;
- }
-
+ 	const u32 *b;
+ 	size_t    rem_len;
++	const u32 *t0 = tab[0], *t1 = tab[1], *t2 = tab[2], *t3 = tab[3];
+ 
+ 	/* Align it */
+ 	if (unlikely((long)buf & 3 && len)) {
