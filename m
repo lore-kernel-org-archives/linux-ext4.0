@@ -1,54 +1,72 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH] libext2fs: When truncating file, punch out blocks at end
-Date: Fri, 06 Jan 2012 20:47:37 -0800
-Message-ID: <20120107044737.3366.45151.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH v5.3 00/14] crc32c: Add faster algorithm and self-test code
+Date: Fri, 06 Jan 2012 21:50:42 -0800
+Message-ID: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>, "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:43760 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759084Ab2AGEsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Jan 2012 23:48:25 -0500
-Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Fri, 6 Jan 2012 23:48:23 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q074lcRR223680
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Jan 2012 23:47:38 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q074lcq6002898
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 02:47:38 -0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	"Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently, ext2fs_file_set_size2 punches out data blocks between the end of the
-file and infinity when truncate_block <= old_truncate (i.e. when you've made
-the file longer).  This is not a useful behavior, particularly since it *fails*
-to punch out the data blocks when the file is shortened (i.e. truncate_block <
-old_truncate).  This seems to be the result of the test being backwards, so fix
-the code to punch only when the file is getting shorter.
+Hi all,
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- lib/ext2fs/fileio.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+software crc32c implementation.  It removes the crc32c implementation in
+crypto/ in favor of using the stamped-out one in lib/.  There is also a change
+to Kconfig so that the kernel builder can pick an implementation best suited
+for the hardware.
 
+The motivation for this patchset is that I am working on adding full metadata
+checksumming to ext4.  As far as performance impact of adding checksumming
+goes, I see nearly no change with a standard mail server ffsb simulation.  On a
+test that involves only file creation and deletion and extent tree writes, I
+see a drop of about 50 pcercent with the current kernel crc32c implementation;
+this improves to a drop of about 20 percent with the enclosed crc32c code.
 
-diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
-index d56f5b5..8751635 100644
---- a/lib/ext2fs/fileio.c
-+++ b/lib/ext2fs/fileio.c
-@@ -389,7 +389,7 @@ errcode_t ext2fs_file_set_size2(ext2_file_t file, ext2_off64_t size)
- 			return retval;
- 	}
- 
--	if (truncate_block <= old_truncate)
-+	if (truncate_block >= old_truncate)
- 		return 0;
- 
- 	return ext2fs_punch(file->fs, file->ino, &file->inode, 0,
+When metadata is usually a small fraction of total IO, this new implementation
+doesn't help much because metadata is usually a small fraction of total IO.
+However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
+tree), then this patch speeds up the operation substantially.
 
+Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
+should improve their speed as well.  I have not yet quantified that, however.
+This latest submission combines Bob's patches from late August 2011 with mine
+so that they can be one coherent patch set.  Please excuse my inability to
+combine some of the patches; I've been advised to leave Bob's patches alone and
+build atop them instead. :/
+
+Since the last posting, I've also collected some crc32c test results on a bunch
+of different x86/powerpc/sparc platforms.  The results can be viewed here:
+http://goo.gl/sgt3i ; the "crc32-kern-le" and "crc32c" columns describe the
+performance of the kernel's current crc32 and crc32c software implementations.
+The "crc32c-by8-le" column shows crc32c performance with this patchset applied.
+I expect crc32 performance to be roughly the same.
+
+The two _boost columns at the right side of the spreadsheet shows how much
+faster the new implementation is over the old one.  As you can see, crc32 rises
+substantially, and crc32c experiences a huge increase.
+
+Since this patch has been out for review for several weeks now without
+objections, can this go into 3.3, please?
+
+v2: Use the crypto testmgr api for self-test.
+v3: Get rid of the -be version, which had no users.
+v4: Allow kernel builder a choice of speed vs. space optimization.
+v5: Reuse lib/crc32 for crc32c as well, and make crypto/crc32c use lib/crc32.c.
+v5.1: Include Bob Pearson's patches in submission request.
+v5.2: Fix changelogs for Bob's patches per akpm request.
+v5.3: Fix from header bug in patch mail generation scripts.
+
+--D
