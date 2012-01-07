@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 35/51] mke2fs: Record the checksum algorithm in use in the
-	superblock
-Date: Sat, 07 Jan 2012 00:36:40 -0800
-Message-ID: <20120107083640.25788.24598.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 36/51] libext2fs: Block group checksum should use
+	metadata_csum algorithm (if feature flag set)
+Date: Sat, 07 Jan 2012 00:36:47 -0800
+Message-ID: <20120107083647.25788.84677.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,46 +17,122 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:58832 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755369Ab2AGIgt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:36:49 -0500
+Received: from e32.co.us.ibm.com ([32.97.110.150]:34219 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751732Ab2AGIgw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:36:52 -0500
 Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:36:48 -0500
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078aitO308352
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:36:44 -0500
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078agT6026534
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:36:43 -0700
+	Sat, 7 Jan 2012 01:36:51 -0700
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078anhV133394
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:36:49 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078am4r010885
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:36:49 -0700
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Record the type of checksum algorithm we're using for metadata in the
-superblock when creating a filesystem.
+Change the block group algorithm to use the same algorithm as the rest of the
+metadata_csum, if a certain incompat feature flag is set.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/mke2fs.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ lib/e2p/feature.c |    2 ++
+ lib/ext2fs/csum.c |   60 +++++++++++++++++++++++++++++++++++------------------
+ 2 files changed, 42 insertions(+), 20 deletions(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 7888a2f..14c047a 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2419,6 +2419,10 @@ int main (int argc, char *argv[])
- 			sizeof(fs->super->s_last_mounted));
+diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
+index 63486f3..dc52ba7 100644
+--- a/lib/e2p/feature.c
++++ b/lib/e2p/feature.c
+@@ -85,6 +85,8 @@ static struct feature feature_list[] = {
+ 			"mmp" },
+ 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FLEX_BG,
+ 			"flex_bg"},
++	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM,
++			"bg_use_meta_csum"},
+ 	{	0, 0, 0 },
+ };
+ 
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 11a24f0..6d8125e 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -696,32 +696,52 @@ STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ 
+ 	desc = ext2fs_group_desc(fs, fs->group_desc, group);
+ 
+-	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+-		size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
+-
+ #ifdef WORDS_BIGENDIAN
+-		struct ext4_group_desc swabdesc;
++	struct ext4_group_desc swabdesc;
+ 
+-		/* Have to swab back to little-endian to do the checksum */
+-		memcpy(&swabdesc, desc, size);
+-		ext2fs_swap_group_desc2(fs,
+-					(struct ext2_group_desc *) &swabdesc);
+-		desc = (struct ext2_group_desc *) &swabdesc;
++	/* Have to swab back to little-endian to do the checksum */
++	memcpy(&swabdesc, desc, size);
++	ext2fs_swap_group_desc2(fs,
++				(struct ext2_group_desc *) &swabdesc);
++	desc = (struct ext2_group_desc *) &swabdesc;
+ 
+-		group = ext2fs_swab32(group);
++	group = ext2fs_swab32(group);
+ #endif
+-		crc = ext2fs_crc16(~0, fs->super->s_uuid,
+-				   sizeof(fs->super->s_uuid));
+-		crc = ext2fs_crc16(crc, &group, sizeof(group));
+-		crc = ext2fs_crc16(crc, desc, offset);
+-		offset += sizeof(desc->bg_checksum); /* skip checksum */
+-		/* for checksum of struct ext4_group_desc do the rest...*/
+-		if (offset < size) {
+-			crc = ext2fs_crc16(crc, (char *)desc + offset,
+-					   size - offset);
+-		}
++
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM)) {
++		/* new metadata csum code */
++		__u16 old_crc;
++		__u32 crc32;
++
++		old_crc = desc->bg_checksum;
++		desc->bg_checksum = 0;
++		crc32 = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&group,
++					 sizeof(group));
++		crc32 = ext2fs_crc32c_le(crc32, (unsigned char *)desc,
++					 size);
++		desc->bg_checksum = old_crc;
++
++		crc = crc32 & 0xFFFF;
++		goto out;
++	}
++
++	/* old crc16 code */
++	size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
++	crc = ext2fs_crc16(~0, fs->super->s_uuid,
++			   sizeof(fs->super->s_uuid));
++	crc = ext2fs_crc16(crc, &group, sizeof(group));
++	crc = ext2fs_crc16(crc, desc, offset);
++	offset += sizeof(desc->bg_checksum); /* skip checksum */
++	/* for checksum of struct ext4_group_desc do the rest...*/
++	if (offset < size) {
++		crc = ext2fs_crc16(crc, (char *)desc + offset,
++				   size - offset);
  	}
  
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		fs->super->s_checksum_type = EXT2_CRC32C_CHKSUM;
-+
- 	if (!quiet || noaction)
- 		show_stats(fs);
++out:
+ 	return crc;
+ }
  
 
