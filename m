@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 46/51] e2fsck: Check descriptor block checksum when recovering
-	journal
-Date: Sat, 07 Jan 2012 00:37:50 -0800
-Message-ID: <20120107083750.25788.11844.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 47/51] e2fsck: Check commit block checksum during recovery
+Date: Sat, 07 Jan 2012 00:37:56 -0800
+Message-ID: <20120107083756.25788.26866.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,108 +16,81 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:55096 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751894Ab2AGIhy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:37:54 -0500
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:42810 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751970Ab2AGIiC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:38:02 -0500
 Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 01:37:54 -0700
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078bqH7143712
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:37:52 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078bp92001655
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:37:52 -0700
+	Sat, 7 Jan 2012 03:38:01 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078bwB4226450
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:37:58 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078bveU002992
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:37:58 -0200
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Verify the descriptor block checksum when recovering a journal.
+When recovering a journal with checksum v2, verify the commit block checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/recovery.c |   39 ++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 38 insertions(+), 1 deletions(-)
+ e2fsck/recovery.c |   33 +++++++++++++++++++++++++++++++++
+ 1 files changed, 33 insertions(+), 0 deletions(-)
 
 
 diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 60c8ceb..f76e7d8 100644
+index f76e7d8..8f55411 100644
 --- a/e2fsck/recovery.c
 +++ b/e2fsck/recovery.c
-@@ -174,6 +174,27 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
+@@ -375,6 +375,26 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
  	return 0;
  }
  
-+static int jbd2_descr_block_csum_verify(journal_t *j,
-+					void *buf)
++static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
 +{
-+	struct journal_block_tail *tail;
++	struct commit_header *h;
 +	__u32 provided, calculated;
 +
 +	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
 +		return 1;
 +
-+	tail = (struct journal_block_tail *)(buf + j->j_blocksize -
-+			sizeof(struct journal_block_tail));
-+	provided = tail->t_checksum;
-+	tail->t_checksum = 0;
++	h = buf;
++	provided = h->h_chksum[0];
++	h->h_chksum[0] = 0;
 +	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
 +				      sizeof(j->j_superblock->s_uuid));
 +	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
-+	tail->t_checksum = provided;
++	h->h_chksum[0] = provided;
 +
 +	provided = ext2fs_be32_to_cpu(provided);
 +	return provided == calculated;
 +}
- 
- /*
-  * Count the number of in-use tags in a journal descriptor block.
-@@ -186,6 +207,9 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- 	int			nr = 0, size = journal->j_blocksize;
- 	int			tag_bytes = journal_tag_bytes(journal);
- 
-+	if (JFS_HAS_INCOMPAT_FEATURE(journal, JFS_FEATURE_INCOMPAT_CSUM_V2))
-+		size -= sizeof(struct journal_block_tail);
 +
- 	tagp = &bh->b_data[sizeof(journal_header_t)];
- 
- 	while ((tagp - bh->b_data + tag_bytes) <= size) {
-@@ -364,6 +388,7 @@ static int do_one_pass(journal_t *journal,
- 	int			blocktype;
- 	int			tag_bytes = journal_tag_bytes(journal);
- 	__u32			crc32_sum = ~0; /* Transactional Checksums */
-+	int			descr_csum_size = 0;
- 
- 	/* Precompute the maximum metadata descriptors in a descriptor block */
- 	int			MAX_BLOCKS_PER_DESC;
-@@ -454,6 +479,18 @@ static int do_one_pass(journal_t *journal,
- 
- 		switch(blocktype) {
- 		case JFS_DESCRIPTOR_BLOCK:
-+			/* Verify checksum first */
-+			if (JFS_HAS_INCOMPAT_FEATURE(journal,
-+					JFS_FEATURE_INCOMPAT_CSUM_V2))
-+				descr_csum_size =
-+					sizeof(struct journal_block_tail);
-+			if (descr_csum_size > 0 &&
-+			    !jbd2_descr_block_csum_verify(journal,
-+							  bh->b_data)) {
-+				err = -EIO;
-+				goto failed;
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -696,6 +716,19 @@ static int do_one_pass(journal_t *journal,
+ 				}
+ 				crc32_sum = ~0;
+ 			}
++			if (pass == PASS_SCAN &&
++			    !jbd2_commit_block_csum_verify(journal,
++							   bh->b_data)) {
++				info->end_transaction = next_commit_ID;
++
++				if (!JFS_HAS_INCOMPAT_FEATURE(journal,
++				     JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++					journal->j_failed_commit =
++						next_commit_ID;
++					brelse(bh);
++					break;
++				}
 +			}
-+
- 			/* If it is a valid descriptor block, replay it
- 			 * in pass REPLAY; if journal_checksums enabled, then
- 			 * calculate checksums in PASS_SCAN, otherwise,
-@@ -484,7 +521,7 @@ static int do_one_pass(journal_t *journal,
- 
- 			tagp = &bh->b_data[sizeof(journal_header_t)];
- 			while ((tagp - bh->b_data + tag_bytes)
--			       <= journal->j_blocksize) {
-+			       <= journal->j_blocksize - descr_csum_size) {
- 				unsigned long io_block;
- 
- 				tag = (journal_block_tag_t *) tagp;
+ 			brelse(bh);
+ 			next_commit_ID++;
+ 			continue;
 
