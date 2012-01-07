@@ -1,272 +1,187 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 05/23] ext4: Calculate and verify superblock checksum
-Date: Sat, 07 Jan 2012 00:28:26 -0800
-Message-ID: <20120107082826.21970.33859.stgit@elm3c44.beaverton.ibm.com>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 08/51] e2fsck: Verify and correct inode checksums
+Date: Sat, 07 Jan 2012 00:33:47 -0800
+Message-ID: <20120107083347.25788.55969.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:51611 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759568Ab2AGIdx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:33:53 -0500
+Received: from /spool/local
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 7 Jan 2012 03:33:53 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078XoPY3035390
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:33:50 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078XnfK004721
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:33:50 -0200
+In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Calculate and verify the superblock checksum.  Since the UUID and block group
-number are embedded in each copy of the superblock, we need only checksum the
-entire block.  Refactor some of the code to eliminate open-coding of the
-checksum update call.
+Detect mismatches of the inode and checksum, and prompt the user to fix the
+situation.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h      |   10 ++++++++++
- fs/ext4/ext4_jbd2.c |    9 ++++++++-
- fs/ext4/ext4_jbd2.h |    7 +++++--
- fs/ext4/inode.c     |    3 +--
- fs/ext4/namei.c     |    4 ++--
- fs/ext4/resize.c    |    6 +++++-
- fs/ext4/super.c     |   47 +++++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 78 insertions(+), 8 deletions(-)
+ e2fsck/pass1.c   |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ e2fsck/problem.c |   10 +++++++++
+ e2fsck/problem.h |    6 +++++
+ 3 files changed, 75 insertions(+), 1 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a6de0d2..9d1504e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1263,6 +1263,9 @@ struct ext4_sb_info {
- 
- 	/* Reference to checksum algorithm driver via cryptoapi */
- 	struct crypto_shash *s_chksum_driver;
-+
-+	/* Precomputed FS UUID checksum for seeding other checksums */
-+	__u32 s_csum_seed;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1976,6 +1979,10 @@ extern int ext4_group_extend(struct super_block *sb,
- 				ext4_fsblk_t n_blocks_count);
- 
- /* super.c */
-+extern int ext4_superblock_csum_verify(struct super_block *sb,
-+				       struct ext4_super_block *es);
-+extern void ext4_superblock_csum_set(struct super_block *sb,
-+				     struct ext4_super_block *es);
- extern void *ext4_kvmalloc(size_t size, gfp_t flags);
- extern void *ext4_kvzalloc(size_t size, gfp_t flags);
- extern void ext4_kvfree(void *ptr);
-@@ -2251,6 +2258,9 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 
- static inline void ext4_mark_super_dirty(struct super_block *sb)
- {
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-+
-+	ext4_superblock_csum_set(sb, es);
- 	if (EXT4_SB(sb)->s_journal == NULL)
- 		sb->s_dirt =1;
- }
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index aca1790..90f7c2e 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -138,16 +138,23 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 62e49c6..c382a7b 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -540,6 +540,40 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
+ 		*ret = 0;
  }
  
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb)
-+			      handle_t *handle, struct super_block *sb,
-+			      int now)
++static errcode_t recheck_bad_inode_checksum(ext2_filsys fs, ext2_ino_t ino,
++					    e2fsck_t ctx,
++					    struct problem_context *pctx)
++{
++	errcode_t retval;
++	struct ext2_inode_large inode;
++
++	/*
++	 * Reread inode.  If we don't see checksum error, then this inode
++	 * has been fixed elsewhere.
++	 */
++	retval = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
++					sizeof(inode));
++	if (retval && retval != EXT2_ET_INODE_CSUM_INVALID)
++		return retval;
++	if (!retval)
++		return 0;
++
++	/*
++	 * Checksum still doesn't match.  That implies that the inode passes
++	 * all the sanity checks, so maybe the checksum is simply corrupt.
++	 * See if the user will go for fixing that.
++	 */
++	if (!fix_problem(ctx, PR_1_INODE_ONLY_CSUM_INVALID, pctx))
++		return 0;
++
++	retval = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&inode,
++					 sizeof(inode));
++	if (retval)
++		return retval;
++
++	return 0;
++}
++
+ void e2fsck_pass1(e2fsck_t ctx)
  {
- 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
- 	int err = 0;
+ 	int	i;
+@@ -560,6 +594,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	int		imagic_fs, extent_fs;
+ 	int		busted_fs_time = 0;
+ 	int		inode_size;
++	int		failed_csum = 0;
  
- 	if (ext4_handle_valid(handle)) {
-+		ext4_superblock_csum_set(sb,
-+				(struct ext4_super_block *)bh->b_data);
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		if (err)
- 			ext4_journal_abort_handle(where, line, __func__,
- 						  bh, handle, err);
-+	} else if (now) {
-+		ext4_superblock_csum_set(sb,
-+				(struct ext4_super_block *)bh->b_data);
-+		mark_buffer_dirty(bh);
- 	} else
- 		sb->s_dirt = 1;
- 	return err;
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 5802fa1..ed9b78d 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -141,7 +141,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 				 struct buffer_head *bh);
- 
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb);
-+			      handle_t *handle, struct super_block *sb,
-+			      int now);
- 
- #define ext4_journal_get_write_access(handle, bh) \
- 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
-@@ -153,8 +154,10 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- #define ext4_handle_dirty_metadata(handle, inode, bh) \
- 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
- 				     (bh))
-+#define ext4_handle_dirty_super_now(handle, sb) \
-+	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
- #define ext4_handle_dirty_super(handle, sb) \
--	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
-+	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
- 
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 92655fd..07cd63d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4044,8 +4044,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			sb->s_dirt = 1;
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_metadata(handle, NULL,
--					EXT4_SB(sb)->s_sbh);
-+			err = ext4_handle_dirty_super_now(handle, sb);
+ 	init_resource_track(&rtrack, ctx->fs->io);
+ 	clear_problem_context(&pctx);
+@@ -729,7 +764,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
+ 			continue;
  		}
- 	}
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index c10ae34..ebfc499 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2021,7 +2021,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_super_now(handle, sb);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2094,7 +2094,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
-+		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 996780a..c33b72a 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -511,7 +511,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	ext4_kvfree(o_group_desc);
+-		if (pctx.errcode) {
++		if (pctx.errcode &&
++		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID) {
+ 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
+ 			ctx->flags |= E2F_FLAG_ABORT;
+ 			return;
+@@ -739,6 +775,14 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		pctx.ino = ino;
+ 		pctx.inode = inode;
+ 		ctx->stashed_ino = ino;
++
++		/* Clear corrupt inode? */
++		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID) {
++			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
++				goto clear_inode;
++			failed_csum = 1;
++		}
++
+ 		if (inode->i_links_count) {
+ 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
+ 					   ino, inode->i_links_count);
+@@ -1135,6 +1179,20 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		} else
+ 			check_blocks(ctx, &pctx, block_buf);
  
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
--	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
-+	err = ext4_handle_dirty_super_now(handle, sb);
- 	if (err)
- 		ext4_std_error(sb, err);
++		/*
++		 * If the inode failed the checksum and the user didn't
++		 * clear the inode, test the checksum again -- if it still
++		 * fails, ask the user if the checksum should be corrected.
++		 */
++		if (failed_csum) {
++			pctx.errcode = recheck_bad_inode_checksum(fs, ino, ctx,
++								  &pctx);
++			if (pctx.errcode) {
++				ctx->flags |= E2F_FLAG_ABORT;
++				return;
++			}
++		}
++
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			return;
  
-@@ -682,6 +682,8 @@ static void update_backups(struct super_block *sb,
- 		goto exit_err;
- 	}
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index f042b89..39e34b4 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -934,8 +934,18 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Quota inode is user visible */
+ 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
+ 	  N_("@q @i is visible to the user.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* inode checksum does not match inode */
++	{ PR_1_INODE_CSUM_INVALID,
++	  N_("@i %i checksum does not match @i.  "),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
  
-+	ext4_superblock_csum_set(sb, (struct ext4_super_block *)data);
++	/* inode passes checks, but checksum does not match inode */
++	{ PR_1_INODE_ONLY_CSUM_INVALID,
++	  N_("@i %i passes checks, but checksum does not match @i.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
 +
- 	while ((group = ext4_list_backups(sb, &three, &five, &seven)) < last) {
- 		struct buffer_head *bh;
+ 	/* Invalid bad inode */
+ 	{ PR_1_INVALID_BAD_INODE,
+ 	  N_("The bad @b @i looks @n.  "),
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 9db29d8..4ce9f41 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -550,6 +550,12 @@ struct problem_context {
+ /* Invalid bad inode */
+ #define PR_1_INVALID_BAD_INODE		0x010065
  
-@@ -925,6 +927,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	/* Update the global fs size fields */
- 	sbi->s_groups_count++;
- 
-+	ext4_superblock_csum_set(sb,
-+				 (struct ext4_super_block *)primary->b_data);
- 	err = ext4_handle_dirty_metadata(handle, NULL, primary);
- 	if (unlikely(err)) {
- 		ext4_std_error(sb, err);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 58c697f..99bee03 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -121,6 +121,38 @@ static int ext4_verify_csum_type(struct super_block *sb,
- 	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
- }
- 
-+static __le32 ext4_superblock_csum(struct super_block *sb,
-+				   struct ext4_super_block *es)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int offset = offsetof(struct ext4_super_block, s_checksum);
-+	__u32 csum;
++/* inode checksum does not match inode */
++#define PR_1_INODE_CSUM_INVALID		0x010066
 +
-+	csum = ext4_chksum(sbi, ~0, (char *)es, offset);
++/* inode passes checks, but checksum does not match inode */
++#define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
 +
-+	return cpu_to_le32(csum);
-+}
-+
-+int ext4_superblock_csum_verify(struct super_block *sb,
-+				struct ext4_super_block *es)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	return es->s_checksum == ext4_superblock_csum(sb, es);
-+}
-+
-+void ext4_superblock_csum_set(struct super_block *sb,
-+			      struct ext4_super_block *es)
-+{
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	es->s_checksum = ext4_superblock_csum(sb, es);
-+}
-+
- void *ext4_kvmalloc(size_t size, gfp_t flags)
- {
- 	void *ret;
-@@ -3213,6 +3245,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		}
- 	}
- 
-+	/* Check superblock checksum */
-+	if (!ext4_superblock_csum_verify(sb, es)) {
-+		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
-+			 "invalid superblock checksum.  Run e2fsck?");
-+		silent = 1;
-+		goto cantfind_ext4;
-+	}
-+
-+	/* Precompute checksum seed for all metadata */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		sbi->s_csum_seed = ext4_chksum(sbi, ~0, es->s_uuid,
-+					       sizeof(es->s_uuid));
-+
- 	/* Set defaults before we parse the mount options */
- 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
- 	set_opt(sb, INIT_INODE_TABLE);
-@@ -4218,6 +4264,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 				&EXT4_SB(sb)->s_freeinodes_counter));
- 	sb->s_dirt = 0;
- 	BUFFER_TRACE(sbh, "marking dirty");
-+	ext4_superblock_csum_set(sb, es);
- 	mark_buffer_dirty(sbh);
- 	if (sync) {
- 		error = sync_dirty_buffer(sbh);
+ /*
+  * Pass 1b errors
+  */
+
