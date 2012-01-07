@@ -1,57 +1,71 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [RFC 0/2] e2fsprogs: Add FUSE server
-Date: Sat, 07 Jan 2012 00:55:23 -0800
-Message-ID: <20120107085523.4325.42183.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 1/2] libext2fs: Add ext2fs_file_get_inode_num call (for
+	fuse2fs)
+Date: Sat, 07 Jan 2012 00:55:29 -0800
+Message-ID: <20120107085529.4325.17894.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107085523.4325.42183.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>, "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:42389 "EHLO e9.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:33033 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751282Ab2AGIz1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:55:27 -0500
+	id S1751282Ab2AGIzd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:55:33 -0500
 Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:55:26 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078tOf5247222
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:55:24 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078tO69013566
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:55:24 -0200
+	Sat, 7 Jan 2012 03:55:32 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078tU69161972
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:55:30 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078tTU3022709
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:55:30 -0200
+In-Reply-To: <20120107085523.4325.42183.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Add a function to return the inode number of an open file.
 
-This patchset creates a FUSE server for the ext4 filesystem.  This enables ext4
-to be run (albeit slowly) in environments which lack a native ext4 driver, such
-as Solaris, BSD, and Mac OS X.  It uses the functionality in libext2fs to
-manipulate the filesystem.
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ lib/ext2fs/ext2fs.h |    1 +
+ lib/ext2fs/fileio.c |    8 ++++++++
+ 2 files changed, 9 insertions(+), 0 deletions(-)
 
-Currently, the filesystem can be mounted for both reading and writing.  I
-wouldn't mount a production filesystem rw, though in my nail-biting tests so
-far it hasn't destroyed anything.  Journalling is not supported, though I'm
-working on at least enabling journal replay on mount.  I suspect that full
-journalling (such as what you get with kernel ext4 on Linux) is a long way off.
 
-The performance of fuse2fs (as opposed to kernel ext4) is noticeably slow.
-
-This patchset has been tested on 3.1 on x64 and i386, and Mac OS X.  On Linux
-you'll need a libfuse that supports the v28 API; on Mac you'll need osxfuse
-2.3.8.  The patchset is based atop the 1.42 release and requires three patches:
-
-1. libext2fs: Read and write full size inodes
-2. libext2fs: When truncating file, punch out blocks at end
-3. libext2fs: Only link an inode into a directory once
-
-The first patch is in the metadata checksumming set, and the other two are
-general bugfixes that I posted earlier.
-
-Let me know what you think!
-
---D
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 227ee58..0b4b285 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1094,6 +1094,7 @@ extern errcode_t ext2fs_file_open(ext2_filsys fs, ext2_ino_t ino,
+ 				  int flags, ext2_file_t *ret);
+ extern ext2_filsys ext2fs_file_get_fs(ext2_file_t file);
+ struct ext2_inode *ext2fs_file_get_inode(ext2_file_t file);
++extern ext2_ino_t ext2fs_file_get_inode_num(ext2_file_t file);
+ extern errcode_t ext2fs_file_close(ext2_file_t file);
+ extern errcode_t ext2fs_file_flush(ext2_file_t file);
+ extern errcode_t ext2fs_file_read(ext2_file_t file, void *buf,
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 8751635..1f7002c 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -106,6 +106,14 @@ struct ext2_inode *ext2fs_file_get_inode(ext2_file_t file)
+ 	return &file->inode;
+ }
+ 
++/* This function returns the inode number from the structure */
++ext2_ino_t ext2fs_file_get_inode_num(ext2_file_t file)
++{
++	if (file->magic != EXT2_ET_MAGIC_EXT2_FILE)
++		return 0;
++	return file->ino;
++}
++
+ /*
+  * This function flushes the dirty block buffer out to disk if
+  * necessary.
 
