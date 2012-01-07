@@ -1,208 +1,100 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 07/23] ext4: Calculate and verify checksums for inode bitmaps
-Date: Sat, 07 Jan 2012 00:28:39 -0800
-Message-ID: <20120107082838.21970.79533.stgit@elm3c44.beaverton.ibm.com>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 09/51] mke2fs: Allow metadata checksums to be turned on at
+	mkfs time
+Date: Sat, 07 Jan 2012 00:33:54 -0800
+Message-ID: <20120107083354.25788.49388.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:51302 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754772Ab2AGIeD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:34:03 -0500
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 7 Jan 2012 03:34:02 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078XvOT285626
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:33:57 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078XtJo004804
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:33:56 -0500
+In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Compute and verify the checksum of the inode bitmap; the checkum is stored in
-the block group descriptor.
+Write out reserved inodes with full checksums when writing out a zeroed table.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/bitmap.c |   39 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h   |   13 +++++++++++++
- fs/ext4/ialloc.c |   30 +++++++++++++++++++++++++++---
- 3 files changed, 79 insertions(+), 3 deletions(-)
+ misc/mke2fs.c |   29 ++++++++++++++++++++++++++++-
+ 1 files changed, 28 insertions(+), 1 deletions(-)
 
 
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index fa3af81..0ae4a01 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -29,3 +29,42 @@ unsigned int ext4_count_free(struct buffer_head *map, unsigned int numchars)
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index f2d7c81..7888a2f 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -305,6 +305,27 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
+ 	ext2fs_badblocks_list_iterate_end(bb_iter);
+ }
  
- #endif  /*  EXT4FS_DEBUG  */
- 
-+int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+				  struct ext4_group_desc *gdp,
-+				  struct buffer_head *bh, int sz)
++static void write_reserved_inodes(ext2_filsys fs)
 +{
-+	__u32 hi;
-+	__u32 provided, calculated;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	errcode_t	retval;
++	ext2_ino_t	ino;
++	struct ext2_inode *inode;
 +
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
++	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	if (retval) {
++		com_err("inode_init", retval,
++			"while allocating memory");
++		exit(1);
++	}
++	bzero(inode, EXT2_INODE_SIZE(fs->super));
 +
-+	provided = le16_to_cpu(gdp->bg_inode_bitmap_csum_lo);
-+	calculated = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
-+	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END) {
-+		hi = le16_to_cpu(gdp->bg_inode_bitmap_csum_hi);
-+		provided |= (hi << 16);
-+	} else
-+		calculated &= 0xFFFF;
++	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
++		ext2fs_write_inode_full(fs, ino, inode,
++					EXT2_INODE_SIZE(fs->super));
 +
-+	return provided == calculated;
++	ext2fs_free_mem(&inode);
 +}
 +
-+void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+				struct ext4_group_desc *gdp,
-+				struct buffer_head *bh, int sz)
-+{
-+	__u32 csum;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+ {
+ 	errcode_t	retval;
+@@ -350,6 +371,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+ 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
+ 	ext2fs_numeric_progress_close(fs, &progress,
+ 				      _("done                            \n"));
 +
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
-+	gdp->bg_inode_bitmap_csum_lo = cpu_to_le16(csum & 0xFFFF);
-+	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
-+		gdp->bg_inode_bitmap_csum_hi = cpu_to_le16(csum >> 16);
-+}
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 57c1e39..4bb9fb3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -308,6 +308,13 @@ struct ext4_group_desc
- 	__u32   bg_reserved;
++	/* Reserved inodes must always have correct checksums */
++	if (fs->super->s_creator_os == EXT2_OS_LINUX &&
++	    fs->super->s_feature_ro_compat &
++	    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++		write_reserved_inodes(fs);
+ }
+ 
+ static void create_root_dir(ext2_filsys fs)
+@@ -869,7 +896,7 @@ static __u32 ok_features[3] = {
+ #ifdef CONFIG_QUOTA
+ 		EXT4_FEATURE_RO_COMPAT_QUOTA|
+ #endif
+-		0
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
  };
  
-+#define EXT4_BG_INODE_BITMAP_CSUM_HI_END	\
-+	(offsetof(struct ext4_group_desc, bg_inode_bitmap_csum_hi) + \
-+	 sizeof(__le16))
-+#define EXT4_BG_BLOCK_BITMAP_CSUM_HI_END	\
-+	(offsetof(struct ext4_group_desc, bg_block_bitmap_csum_hi) + \
-+	 sizeof(__le16))
-+
- /*
-  * Structure of a flex block group info
-  */
-@@ -1815,6 +1822,12 @@ struct mmpd_data {
  
- /* bitmap.c */
- extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
-+void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-+				struct ext4_group_desc *gdp,
-+				struct buffer_head *bh, int sz);
-+int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
-+				  struct ext4_group_desc *gdp,
-+				  struct buffer_head *bh, int sz);
- 
- /* balloc.c */
- extern unsigned int ext4_block_group(struct super_block *sb,
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9884fa1..59e3644 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -82,12 +82,17 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
-+		ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
-+					   EXT4_INODES_PER_GROUP(sb) / 8);
- 		return 0;
- 	}
- 
- 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
- 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
- 			bh->b_data);
-+	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
-+				   EXT4_INODES_PER_GROUP(sb) / 8);
-+	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- 
- 	return EXT4_INODES_PER_GROUP(sb);
- }
-@@ -118,12 +123,12 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 		return NULL;
- 	}
- 	if (bitmap_uptodate(bh))
--		return bh;
-+		goto verify;
- 
- 	lock_buffer(bh);
- 	if (bitmap_uptodate(bh)) {
- 		unlock_buffer(bh);
--		return bh;
-+		goto verify;
- 	}
- 
- 	ext4_lock_group(sb, block_group);
-@@ -131,6 +136,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
- 		set_bitmap_uptodate(bh);
- 		set_buffer_uptodate(bh);
-+		set_buffer_verified(bh);
- 		ext4_unlock_group(sb, block_group);
- 		unlock_buffer(bh);
- 		return bh;
-@@ -144,7 +150,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 		 */
- 		set_bitmap_uptodate(bh);
- 		unlock_buffer(bh);
--		return bh;
-+		goto verify;
- 	}
- 	/*
- 	 * submit the buffer_head for read. We can
-@@ -161,6 +167,20 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 			    block_group, bitmap_blk);
- 		return NULL;
- 	}
-+
-+verify:
-+	ext4_lock_group(sb, block_group);
-+	if (!buffer_verified(bh) &&
-+	    !ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
-+					   EXT4_INODES_PER_GROUP(sb) / 8)) {
-+		ext4_unlock_group(sb, block_group);
-+		put_bh(bh);
-+		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
-+			   "inode_bitmap = %llu", block_group, bitmap_blk);
-+		return NULL;
-+	}
-+	ext4_unlock_group(sb, block_group);
-+	set_buffer_verified(bh);
- 	return bh;
- }
- 
-@@ -265,6 +285,8 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 		ext4_used_dirs_set(sb, gdp, count);
- 		percpu_counter_dec(&sbi->s_dirs_counter);
- 	}
-+	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
-+				   EXT4_INODES_PER_GROUP(sb) / 8);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 
-@@ -673,6 +695,8 @@ static int ext4_claim_inode(struct super_block *sb,
- 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
- 		}
- 	}
-+	ext4_inode_bitmap_csum_set(sb, group, gdp, inode_bitmap_bh,
-+				   EXT4_INODES_PER_GROUP(sb) / 8);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
- err_ret:
- 	ext4_unlock_group(sb, group);
+
