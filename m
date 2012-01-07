@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 21/51] e2fsck: Verify extent tree blocks and clear the bad ones
-Date: Sat, 07 Jan 2012 00:35:10 -0800
-Message-ID: <20120107083510.25788.57961.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 23/51] libext2fs: Add dx_root/dx_node checksum calculation and
+	verification helpers
+Date: Sat, 07 Jan 2012 00:35:22 -0800
+Message-ID: <20120107083522.25788.83355.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,153 +17,219 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:41500 "EHLO e6.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:58742 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753116Ab2AGIfS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:35:18 -0500
+	id S1753116Ab2AGIf3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:35:29 -0500
 Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:35:17 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078ZFT7349968
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:35:15 -0500
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078ZBsx017687
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:14 -0700
+	Sat, 7 Jan 2012 03:35:28 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078ZPOf284272
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:35:25 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078ZOvq028740
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:35:25 -0200
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we encounter an extent tree block that passes the header check but fails
-the checksum, offer to clear just that extent block instead of failing the
-whole tree, which results in the entire inode being wiped out.
+Verify and calculate checksums of htree internal node blocks.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |   34 ++++++++++++++++++++++++++++++++--
- e2fsck/problem.c |   15 +++++++++++++++
- e2fsck/problem.h |    6 ++++++
- 3 files changed, 53 insertions(+), 2 deletions(-)
+ lib/ext2fs/csum.c         |  149 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 +
+ lib/ext2fs/ext2fs.h       |    4 +
+ 3 files changed, 156 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c382a7b..1ae117d 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1805,6 +1805,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 	int			is_dir, is_leaf;
- 	errcode_t		problem;
- 	struct ext2_extent_info	info;
-+	int			failed_csum;
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 8a0543c..8907459 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,155 @@
+ #define STATIC static
+ #endif
  
- 	pctx->errcode = ext2fs_extent_get_info(ehandle, &info);
- 	if (pctx->errcode)
-@@ -1812,11 +1813,25 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 
- 	pctx->errcode = ext2fs_extent_get(ehandle, EXT2_EXTENT_FIRST_SIB,
- 					  &extent);
--	while (!pctx->errcode && info.num_entries-- > 0) {
-+	while ((pctx->errcode == 0 ||
-+		pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID) &&
-+	       info.num_entries-- > 0) {
-+		failed_csum = 0;
- 		is_leaf = extent.e_flags & EXT2_EXTENT_FLAGS_LEAF;
- 		is_dir = LINUX_S_ISDIR(pctx->inode->i_mode);
- 
- 		problem = 0;
-+		/* Ask to clear a corrupt extent block */
-+		if (pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID) {
-+			pctx->blk = extent.e_pblk;
-+			pctx->blk2 = extent.e_lblk;
-+			pctx->num = extent.e_len;
-+			problem = PR_1_EXTENT_CSUM_INVALID;
-+			if (fix_problem(ctx, problem, pctx))
-+				goto fix_problem_now;
-+			failed_csum = 1;
-+		}
++static __u16 do_nothing16(__u16 x)
++{
++	return x;
++}
 +
- 		if (extent.e_pblk == 0 ||
- 		    extent.e_pblk < ctx->fs->super->s_first_data_block ||
- 		    extent.e_pblk >= ext2fs_blocks_count(ctx->fs->super))
-@@ -1828,12 +1843,24 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 			 ext2fs_blocks_count(ctx->fs->super))
- 			problem = PR_1_EXTENT_ENDS_BEYOND;
++static __u16 disk_to_host16(__u16 x)
++{
++	return ext2fs_le16_to_cpu(x);
++}
++
++static errcode_t __get_dx_countlimit(ext2_filsys fs,
++				     struct ext2_dir_entry *dirent,
++				     struct ext2_dx_countlimit **cc,
++				     int *offset,
++				     int need_swab)
++{
++	struct ext2_dir_entry *dp;
++	struct ext2_dx_root_info *root;
++	struct ext2_dx_countlimit *c;
++	int count_offset, max_sane_entries;
++	unsigned int rec_len;
++	__u16 (*translate)(__u16) = (need_swab ? disk_to_host16 : do_nothing16);
++
++	rec_len = translate(dirent->rec_len);
++
++	if (rec_len == fs->blocksize && translate(dirent->name_len) == 0)
++		count_offset = 8;
++	else if (rec_len == 12) {
++		dp = (struct ext2_dir_entry *)(((void *)dirent) + rec_len);
++		rec_len = translate(dp->rec_len);
++		if (rec_len != fs->blocksize - 12)
++			return EXT2_ET_DB_NOT_FOUND;
++		root = (struct ext2_dx_root_info *)(((void *)dp + 12));
++		if (root->reserved_zero ||
++		    root->info_length != sizeof(struct ext2_dx_root_info))
++			return EXT2_ET_DB_NOT_FOUND;
++		count_offset = 32;
++	} else
++		return EXT2_ET_DB_NOT_FOUND;
++
++	c = (struct ext2_dx_countlimit *)(((void *)dirent) + count_offset);
++	max_sane_entries = (fs->blocksize - count_offset) /
++			   sizeof(struct ext2_dx_entry);
++	if (ext2fs_le16_to_cpu(c->limit) > max_sane_entries ||
++	    ext2fs_le16_to_cpu(c->count) > max_sane_entries)
++		return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
++
++	if (offset)
++		*offset = count_offset;
++	if (cc)
++		*cc = c;
++
++	return 0;
++}
++
++errcode_t ext2fs_get_dx_countlimit(ext2_filsys fs,
++				   struct ext2_dir_entry *dirent,
++				   struct ext2_dx_countlimit **cc,
++				   int *offset)
++{
++	return __get_dx_countlimit(fs, dirent, cc, offset, 0);
++}
++
++static errcode_t ext2fs_dx_csum(ext2_filsys fs, ext2_ino_t inum,
++				struct ext2_dir_entry *dirent,
++				__u32 *crc, int count_offset, int count,
++				struct ext2_dx_tail *t)
++{
++	errcode_t retval;
++	char *buf = (char *)dirent;
++	int size;
++	__u32 old_csum, gen;
++	struct ext2_inode inode;
++
++	size = count_offset + (count * sizeof(struct ext2_dx_entry));
++	old_csum = t->dt_checksum;
++	t->dt_checksum = 0;
++
++	retval = ext2fs_read_inode(fs, inum, &inode);
++	if (retval)
++		return retval;
++
++	inum = ext2fs_cpu_to_le32(inum);
++	gen = ext2fs_cpu_to_le32(inode.i_generation);
++	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
++				sizeof(inum));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen, sizeof(gen));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, size);
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)t,
++				sizeof(struct ext2_dx_tail));
++	t->dt_checksum = old_csum;
++
++	return 0;
++}
++
++static int ext2fs_dx_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++				 struct ext2_dir_entry *dirent)
++{
++	__u32 calculated;
++	errcode_t retval;
++	struct ext2_dx_countlimit *c;
++	struct ext2_dx_tail *t;
++	int count_offset, limit, count;
++
++	retval = __get_dx_countlimit(fs, dirent, &c, &count_offset, 1);
++	if (retval)
++		return 1;
++	limit = ext2fs_le16_to_cpu(c->limit);
++	count = ext2fs_le16_to_cpu(c->count);
++	if (count_offset + (limit * sizeof(struct ext2_dx_entry)) >
++	    fs->blocksize - sizeof(struct ext2_dx_tail))
++		return 0;
++	/* htree structs are accessed in LE order */
++	t = (struct ext2_dx_tail *)(((struct ext2_dx_entry *)c) + limit);
++	retval = ext2fs_dx_csum(fs, inum, dirent, &calculated, count_offset,
++				count, t);
++	if (retval)
++		return 0;
++
++	return ext2fs_le32_to_cpu(t->dt_checksum) == calculated;
++}
++
++static errcode_t ext2fs_dx_csum_set(ext2_filsys fs, ext2_ino_t inum,
++				    struct ext2_dir_entry *dirent)
++{
++	__u32 crc;
++	errcode_t retval = 0;
++	struct ext2_dx_countlimit *c;
++	struct ext2_dx_tail *t;
++	int count_offset, limit, count;
++
++	retval = __get_dx_countlimit(fs, dirent, &c, &count_offset, 1);
++	if (retval)
++		return retval;
++	limit = ext2fs_le16_to_cpu(c->limit);
++	count = ext2fs_le16_to_cpu(c->count);
++	if (count_offset + (limit * sizeof(struct ext2_dx_entry)) >
++	    fs->blocksize - sizeof(struct ext2_dx_tail))
++		return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
++	t = (struct ext2_dx_tail *)(((struct ext2_dx_entry *)c) + limit);
++
++	/* htree structs are accessed in LE order */
++	retval = ext2fs_dx_csum(fs, inum, dirent, &crc, count_offset, count, t);
++	if (retval)
++		return retval;
++	t->dt_checksum = ext2fs_cpu_to_le32(crc);
++	return retval;
++}
++
+ #define EXT3_EXTENT_TAIL_OFFSET(hdr)	(sizeof(struct ext3_extent_header) + \
+ 	(sizeof(struct ext3_extent) * ext2fs_le16_to_cpu((hdr)->eh_max)))
  
-+		/* Corrupt but passes checks?  Ask to fix checksum. */
-+		if (failed_csum) {
-+			pctx->blk = extent.e_pblk;
-+			pctx->blk2 = extent.e_lblk;
-+			pctx->num = extent.e_len;
-+			problem = 0;
-+			if (fix_problem(ctx, PR_1_EXTENT_ONLY_CSUM_INVALID,
-+					pctx))
-+				ext2fs_extent_replace(ehandle, 0, &extent);
-+		}
-+
- 		if (problem) {
- 		report_problem:
- 			pctx->blk = extent.e_pblk;
- 			pctx->blk2 = extent.e_lblk;
- 			pctx->num = extent.e_len;
- 			if (fix_problem(ctx, problem, pctx)) {
-+fix_problem_now:
- 				e2fsck_read_bitmaps(ctx);
- 				pctx->errcode =
- 					ext2fs_extent_delete(ehandle, 0);
-@@ -1860,7 +1887,10 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 			if (pctx->errcode) {
- 				pctx->str = "EXT2_EXTENT_DOWN";
- 				problem = PR_1_EXTENT_HEADER_INVALID;
--				if (pctx->errcode == EXT2_ET_EXTENT_HEADER_BAD)
-+				if (pctx->errcode ==
-+					EXT2_ET_EXTENT_HEADER_BAD ||
-+				    pctx->errcode ==
-+					EXT2_ET_EXTENT_CSUM_INVALID)
- 					goto report_problem;
- 				return;
- 			}
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 95813ce..cd404f8 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -951,6 +951,21 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("The bad @b @i looks @n.  "),
- 	  PROMPT_CLEAR, 0 },
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 9019026..1e51384 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -452,4 +452,7 @@ ec	EXT2_ET_INODE_BITMAP_CSUM_INVALID,
+ ec	EXT2_ET_EXTENT_CSUM_INVALID,
+ 	"Extent block checksum does not match extent block"
  
-+	/* Inode extent block checksum does not match extent */
-+	{ PR_1_EXTENT_CSUM_INVALID,
-+	  N_("@i %i extent block checksum does not match extent\n\t(logical @b "
-+	     "%c, @n physical @b %b, len %N)\n"),
-+	  PROMPT_CLEAR, 0 },
++ec	EXT2_ET_DIR_NO_SPACE_FOR_CSUM,
++	"Directory block does not have space for checksum"
 +
-+	/*
-+	 * Inode extent block passes checks, but checksum does not match
-+	 * extent
-+	 */
-+	{ PR_1_EXTENT_ONLY_CSUM_INVALID,
-+	  N_("@i %i extent block passes checks, but checksum does not match "
-+	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
-+	  PROMPT_FIX, 0 },
-+
- 	/* Pass 1b errors */
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 5fa809a..5943ecc 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -943,6 +943,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
  
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 51a911b..cd9e4ed 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -556,6 +556,12 @@ struct problem_context {
- /* inode passes checks, but checksum does not match inode */
- #define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
- 
-+/* extent block checksum does not match extent block */
-+#define PR_1_EXTENT_CSUM_INVALID	0x010068
-+
-+/* extent block passes checks, but checksum does not match extent block */
-+#define PR_1_EXTENT_ONLY_CSUM_INVALID	0x010069
-+
- /*
-  * Pass 1b errors
-  */
+ /* csum.c */
++extern errcode_t ext2fs_get_dx_countlimit(ext2_filsys fs,
++					  struct ext2_dir_entry *dirent,
++					  struct ext2_dx_countlimit **cc,
++					  int *offset);
+ extern errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs,
+ 					      ext2_ino_t inum,
+ 					      struct ext3_extent_header *eh);
 
