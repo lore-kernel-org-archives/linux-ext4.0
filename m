@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 40/51] e2fsck: Verify and correct MMP checksum problems
-Date: Sat, 07 Jan 2012 00:37:12 -0800
-Message-ID: <20120107083712.25788.15425.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 41/51] tune2fs: Force MMP update when changing metadata_csum
+	flag
+Date: Sat, 07 Jan 2012 00:37:18 -0800
+Message-ID: <20120107083718.25788.37628.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,78 +17,42 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:50256 "EHLO e4.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:59872 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751732Ab2AGIhT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:37:19 -0500
+	id S1752232Ab2AGIhZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:37:25 -0500
 Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:37:18 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078bFA53621114
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:37:15 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078bDOP014643
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:37:14 -0200
+	Sat, 7 Jan 2012 03:37:24 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078bLkB3408126
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:37:21 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078bKBA014052
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:37:21 -0500
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check and handle MMP checksum problems by resetting the block.
+When changing the metadata_csum flag, always force out a new MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/problem.c |    5 +++++
- e2fsck/problem.h |    3 +++
- e2fsck/unix.c    |    5 +++++
- 3 files changed, 13 insertions(+), 0 deletions(-)
+ misc/tune2fs.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index bfc1ece..46c20ba 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -428,6 +428,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@S has invalid MMP magic.  "),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
- 
-+	/* Superblock has invalid MMP checksum. */
-+	{ PR_0_MMP_CSUM_INVALID,
-+	  N_("@S MMP block checksum does not match MMP block.  "),
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3d952d5..d8bb675 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -242,6 +242,9 @@ struct problem_context {
- /* Superblock has invalid MMP magic. */
- #define PR_0_MMP_INVALID_MAGIC			0x000043
- 
-+/* Superblock has invalid MMP checksum. */
-+#define PR_0_MMP_CSUM_INVALID			0x000044
-+
- 
- /*
-  * Pass 1 errors
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 0881002..3f7ca62 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1086,6 +1086,11 @@ check_error:
- 			ext2fs_mmp_clear(fs);
- 			retval = 0;
- 		}
-+	} else if (retval == EXT2_ET_MMP_CSUM_INVALID) {
-+		if (fix_problem(ctx, PR_0_MMP_CSUM_INVALID, &pctx)) {
-+			ext2fs_mmp_clear(fs);
-+			retval = 0;
-+		}
- 	}
- 	return retval;
- }
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 2d0ea50..cba4d4c 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -706,6 +706,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
+ 	ext2fs_read_bitmaps(fs);
+ 	ext2fs_mark_ib_dirty(fs);
+ 	ext2fs_mark_bb_dirty(fs);
++	ext2fs_mmp_update2(fs, 1);
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 
