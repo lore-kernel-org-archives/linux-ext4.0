@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/23] ext4: Verify and calculate checksums for extent tree
-	blocks
-Date: Sat, 07 Jan 2012 00:28:53 -0800
-Message-ID: <20120107082853.21970.2536.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 16/23] jbd2: Enable journal clients to enable v2 checksumming
+Date: Sat, 07 Jan 2012 00:29:39 -0800
+Message-ID: <20120107082939.21970.9531.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -25,132 +24,185 @@ In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum for each extent tree block.  The checksum is
-located in the space immediately after the last possible ext4_extent in the
-block.  The space is is typically the last 4-8 bytes in the block.
+Add in the necessary code so that journal clients can enable the new journal
+checksumming features.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4_extents.h |   11 +++++++++++
- fs/ext4/extents.c      |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 61 insertions(+), 0 deletions(-)
+ fs/ext4/super.c   |   55 ++++++++++++++++++++++++++++++++++++++++-------------
+ fs/jbd2/journal.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 92 insertions(+), 13 deletions(-)
 
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 5c7fbad..7514176 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -114,6 +114,17 @@ struct ext4_extent_header {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1b2d91b..1d7c5fb 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3172,6 +3172,44 @@ static void ext4_destroy_lazyinit_thread(void)
+ 	kthread_stop(ext4_lazyinit_task);
+ }
  
- #define EXT4_EXT_MAGIC		cpu_to_le16(0xf30a)
- 
-+#define EXT4_EXTENT_TAIL_OFFSET(hdr) \
-+	(sizeof(struct ext4_extent_header) + \
-+	 (sizeof(struct ext4_extent) * le16_to_cpu((hdr)->eh_max)))
-+
-+static inline struct ext4_extent_tail *
-+find_ext4_extent_tail(struct ext4_extent_header *eh)
++static int set_journal_csum_feature_set(struct super_block *sb)
 +{
-+	return (struct ext4_extent_tail *)(((void *)eh) +
-+					   EXT4_EXTENT_TAIL_OFFSET(eh));
++	int ret = 1;
++	int compat, incompat;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		/* journal checksum v2 */
++		compat = 0;
++		incompat = JBD2_FEATURE_INCOMPAT_CSUM_V2;
++	} else {
++		/* journal checksum v1 */
++		compat = JBD2_FEATURE_COMPAT_CHECKSUM;
++		incompat = 0;
++	}
++
++	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
++		ret = jbd2_journal_set_features(sbi->s_journal,
++				compat, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
++				incompat);
++	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
++		ret = jbd2_journal_set_features(sbi->s_journal,
++				compat, 0,
++				incompat);
++		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++	} else {
++		jbd2_journal_clear_features(sbi->s_journal,
++				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
++				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
++				JBD2_FEATURE_INCOMPAT_CSUM_V2);
++	}
++
++	return ret;
++}
++
+ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	char *orig_data = kstrdup(data, GFP_KERNEL);
+@@ -3761,19 +3799,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount_wq;
+ 	}
+ 
+-	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
+-		jbd2_journal_set_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+-	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
+-		jbd2_journal_set_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0, 0);
+-		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+-	} else {
+-		jbd2_journal_clear_features(sbi->s_journal,
+-				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
+-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
++	if (!set_journal_csum_feature_set(sb)) {
++		ext4_msg(sb, KERN_ERR, "Failed to set journal checksum "
++			 "feature set");
++		goto failed_mount_wq;
+ 	}
+ 
+ 	/* We have now updated the journal if required, so we can
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 0fa0123..300b46f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -100,6 +100,15 @@ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
+ static int jbd2_journal_create_slab(size_t slab_size);
+ 
++/* Checksumming functions */
++int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
++{
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
 +}
 +
  /*
-  * Array of ext4_ext_path contains path to some extent.
-  * Creation/lookup routines use it for traversal/splitting/etc.
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 148f89f..c501980 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -45,6 +45,46 @@
- 
- #include <trace/events/ext4.h>
- 
-+static __le32 ext4_extent_block_csum(struct inode *inode,
-+				     struct ext4_extent_header *eh)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	__u32 csum;
-+
-+	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)eh,
-+			   EXT4_EXTENT_TAIL_OFFSET(eh));
-+	return cpu_to_le32(csum);
-+}
-+
-+static int ext4_extent_block_csum_verify(struct inode *inode,
-+					 struct ext4_extent_header *eh)
-+{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	et = find_ext4_extent_tail(eh);
-+	if (et->et_checksum != ext4_extent_block_csum(inode, eh))
-+		return 0;
-+	return 1;
-+}
-+
-+static void ext4_extent_block_csum_set(struct inode *inode,
-+				       struct ext4_extent_header *eh)
-+{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	et = find_ext4_extent_tail(eh);
-+	et->et_checksum = ext4_extent_block_csum(inode, eh);
-+}
-+
- static int ext4_split_extent(handle_t *handle,
- 				struct inode *inode,
- 				struct ext4_ext_path *path,
-@@ -103,6 +143,7 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
- {
- 	int err;
- 	if (path->p_bh) {
-+		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
- 		/* path points to block */
- 		err = __ext4_handle_dirty_metadata(where, line, handle,
- 						   inode, path->p_bh);
-@@ -375,6 +416,12 @@ static int __ext4_ext_check(const char *function, unsigned int line,
- 		error_msg = "invalid extent entries";
- 		goto corrupted;
+  * Helper function used to manage commit timeouts
+  */
+@@ -1222,6 +1231,9 @@ static int journal_get_superblock(journal_t *journal)
+ 		}
  	}
-+	/* Verify checksum on non-root extent tree nodes */
-+	if (ext_depth(inode) != depth &&
-+	    !ext4_extent_block_csum_verify(inode, eh)) {
-+		error_msg = "extent tree corrupted";
-+		goto corrupted;
+ 
++	if (buffer_verified(bh))
++		return 0;
++
+ 	sb = journal->j_superblock;
+ 
+ 	err = -EINVAL;
+@@ -1259,6 +1271,21 @@ static int journal_get_superblock(journal_t *journal)
+ 		goto out;
+ 	}
+ 
++	if (JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM) &&
++	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
++		/* Can't have checksum v1 and v2 on at the same time! */
++		printk(KERN_ERR "JBD: Can't enable checksumming v1 and v2 "
++		       "at the same time!\n");
++		goto out;
 +	}
++
++	if (!jbd2_verify_csum_type(journal, sb)) {
++		printk(KERN_ERR "JBD: Unknown checksum type\n");
++		goto out;
++	}
++
++	set_buffer_verified(bh);
++
  	return 0;
  
- corrupted:
-@@ -914,6 +961,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		le16_add_cpu(&neh->eh_entries, m);
- 	}
+ out:
+@@ -1502,6 +1529,10 @@ int jbd2_journal_check_available_features (journal_t *journal, unsigned long com
+ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 			  unsigned long ro, unsigned long incompat)
+ {
++#define INCOMPAT_FEATURE_ON(f) \
++		((incompat & (f)) && !(sb->s_feature_incompat & cpu_to_be32(f)))
++#define COMPAT_FEATURE_ON(f) \
++		((compat & (f)) && !(sb->s_feature_compat & cpu_to_be32(f)))
+ 	journal_superblock_t *sb;
  
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
+ 	if (jbd2_journal_check_used_features(journal, compat, ro, incompat))
+@@ -1510,16 +1541,35 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 	if (!jbd2_journal_check_available_features(journal, compat, ro, incompat))
+ 		return 0;
  
-@@ -992,6 +1040,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 				sizeof(struct ext4_extent_idx) * m);
- 			le16_add_cpu(&neh->eh_entries, m);
- 		}
-+		ext4_extent_block_csum_set(inode, neh);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
++	/* Asking for checksumming v2 and v1?  Only give them v2. */
++	if (incompat & JBD2_FEATURE_INCOMPAT_CSUM_V2 &&
++	    compat & JBD2_FEATURE_COMPAT_CHECKSUM)
++		compat &= ~JBD2_FEATURE_COMPAT_CHECKSUM;
++
+ 	jbd_debug(1, "Setting new features 0x%lx/0x%lx/0x%lx\n",
+ 		  compat, ro, incompat);
  
-@@ -1089,6 +1138,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	else
- 		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
+ 	sb = journal->j_superblock;
  
++	/* If enabling v2 checksums, update superblock */
++	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
++		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
++		sb->s_feature_compat &=
++			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
++	}
++
++	/* If enabling v1 checksums, downgrade superblock */
++	if (COMPAT_FEATURE_ON(JBD2_FEATURE_COMPAT_CHECKSUM))
++		sb->s_feature_incompat &=
++			~cpu_to_be32(JBD2_FEATURE_INCOMPAT_CSUM_V2);
++
+ 	sb->s_feature_compat    |= cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+ 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
+ 
+ 	return 1;
++#undef COMPAT_FEATURE_ON
++#undef INCOMPAT_FEATURE_ON
+ }
+ 
+ /*
