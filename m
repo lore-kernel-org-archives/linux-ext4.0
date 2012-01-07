@@ -1,187 +1,208 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 08/51] e2fsck: Verify and correct inode checksums
-Date: Sat, 07 Jan 2012 00:33:47 -0800
-Message-ID: <20120107083347.25788.55969.stgit@elm3c44.beaverton.ibm.com>
-References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 07/23] ext4: Calculate and verify checksums for inode bitmaps
+Date: Sat, 07 Jan 2012 00:28:39 -0800
+Message-ID: <20120107082838.21970.79533.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
-	Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:51611 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759568Ab2AGIdx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:33:53 -0500
-Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:33:53 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078XoPY3035390
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:33:50 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078XnfK004721
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:33:50 -0200
-In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Detect mismatches of the inode and checksum, and prompt the user to fix the
-situation.
+Compute and verify the checksum of the inode bitmap; the checkum is stored in
+the block group descriptor.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- e2fsck/problem.c |   10 +++++++++
- e2fsck/problem.h |    6 +++++
- 3 files changed, 75 insertions(+), 1 deletions(-)
+ fs/ext4/bitmap.c |   39 +++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h   |   13 +++++++++++++
+ fs/ext4/ialloc.c |   30 +++++++++++++++++++++++++++---
+ 3 files changed, 79 insertions(+), 3 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 62e49c6..c382a7b 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -540,6 +540,40 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
- 		*ret = 0;
- }
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index fa3af81..0ae4a01 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -29,3 +29,42 @@ unsigned int ext4_count_free(struct buffer_head *map, unsigned int numchars)
  
-+static errcode_t recheck_bad_inode_checksum(ext2_filsys fs, ext2_ino_t ino,
-+					    e2fsck_t ctx,
-+					    struct problem_context *pctx)
+ #endif  /*  EXT4FS_DEBUG  */
+ 
++int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++				  struct ext4_group_desc *gdp,
++				  struct buffer_head *bh, int sz)
 +{
-+	errcode_t retval;
-+	struct ext2_inode_large inode;
++	__u32 hi;
++	__u32 provided, calculated;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
 +
-+	/*
-+	 * Reread inode.  If we don't see checksum error, then this inode
-+	 * has been fixed elsewhere.
-+	 */
-+	retval = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
-+					sizeof(inode));
-+	if (retval && retval != EXT2_ET_INODE_CSUM_INVALID)
-+		return retval;
-+	if (!retval)
-+		return 0;
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
 +
-+	/*
-+	 * Checksum still doesn't match.  That implies that the inode passes
-+	 * all the sanity checks, so maybe the checksum is simply corrupt.
-+	 * See if the user will go for fixing that.
-+	 */
-+	if (!fix_problem(ctx, PR_1_INODE_ONLY_CSUM_INVALID, pctx))
-+		return 0;
++	provided = le16_to_cpu(gdp->bg_inode_bitmap_csum_lo);
++	calculated = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
++	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END) {
++		hi = le16_to_cpu(gdp->bg_inode_bitmap_csum_hi);
++		provided |= (hi << 16);
++	} else
++		calculated &= 0xFFFF;
 +
-+	retval = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&inode,
-+					 sizeof(inode));
-+	if (retval)
-+		return retval;
-+
-+	return 0;
++	return provided == calculated;
 +}
 +
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	int	i;
-@@ -560,6 +594,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	int		imagic_fs, extent_fs;
- 	int		busted_fs_time = 0;
- 	int		inode_size;
-+	int		failed_csum = 0;
++void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++				struct ext4_group_desc *gdp,
++				struct buffer_head *bh, int sz)
++{
++	__u32 csum;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return;
++
++	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)bh->b_data, sz);
++	gdp->bg_inode_bitmap_csum_lo = cpu_to_le16(csum & 0xFFFF);
++	if (sbi->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
++		gdp->bg_inode_bitmap_csum_hi = cpu_to_le16(csum >> 16);
++}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 57c1e39..4bb9fb3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -308,6 +308,13 @@ struct ext4_group_desc
+ 	__u32   bg_reserved;
+ };
  
- 	init_resource_track(&rtrack, ctx->fs->io);
- 	clear_problem_context(&pctx);
-@@ -729,7 +764,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
- 			continue;
- 		}
--		if (pctx.errcode) {
-+		if (pctx.errcode &&
-+		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID) {
- 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return;
-@@ -739,6 +775,14 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		pctx.ino = ino;
- 		pctx.inode = inode;
- 		ctx->stashed_ino = ino;
-+
-+		/* Clear corrupt inode? */
-+		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID) {
-+			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
-+				goto clear_inode;
-+			failed_csum = 1;
-+		}
-+
- 		if (inode->i_links_count) {
- 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
- 					   ino, inode->i_links_count);
-@@ -1135,6 +1179,20 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		} else
- 			check_blocks(ctx, &pctx, block_buf);
- 
-+		/*
-+		 * If the inode failed the checksum and the user didn't
-+		 * clear the inode, test the checksum again -- if it still
-+		 * fails, ask the user if the checksum should be corrected.
-+		 */
-+		if (failed_csum) {
-+			pctx.errcode = recheck_bad_inode_checksum(fs, ino, ctx,
-+								  &pctx);
-+			if (pctx.errcode) {
-+				ctx->flags |= E2F_FLAG_ABORT;
-+				return;
-+			}
-+		}
-+
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 			return;
- 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index f042b89..39e34b4 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -934,8 +934,18 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Quota inode is user visible */
- 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
- 	  N_("@q @i is visible to the user.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	/* inode checksum does not match inode */
-+	{ PR_1_INODE_CSUM_INVALID,
-+	  N_("@i %i checksum does not match @i.  "),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
-+	/* inode passes checks, but checksum does not match inode */
-+	{ PR_1_INODE_ONLY_CSUM_INVALID,
-+	  N_("@i %i passes checks, but checksum does not match @i.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
- 	/* Invalid bad inode */
- 	{ PR_1_INVALID_BAD_INODE,
- 	  N_("The bad @b @i looks @n.  "),
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 9db29d8..4ce9f41 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -550,6 +550,12 @@ struct problem_context {
- /* Invalid bad inode */
- #define PR_1_INVALID_BAD_INODE		0x010065
- 
-+/* inode checksum does not match inode */
-+#define PR_1_INODE_CSUM_INVALID		0x010066
-+
-+/* inode passes checks, but checksum does not match inode */
-+#define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
++#define EXT4_BG_INODE_BITMAP_CSUM_HI_END	\
++	(offsetof(struct ext4_group_desc, bg_inode_bitmap_csum_hi) + \
++	 sizeof(__le16))
++#define EXT4_BG_BLOCK_BITMAP_CSUM_HI_END	\
++	(offsetof(struct ext4_group_desc, bg_block_bitmap_csum_hi) + \
++	 sizeof(__le16))
 +
  /*
-  * Pass 1b errors
+  * Structure of a flex block group info
   */
-
+@@ -1815,6 +1822,12 @@ struct mmpd_data {
+ 
+ /* bitmap.c */
+ extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
++void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
++				struct ext4_group_desc *gdp,
++				struct buffer_head *bh, int sz);
++int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
++				  struct ext4_group_desc *gdp,
++				  struct buffer_head *bh, int sz);
+ 
+ /* balloc.c */
+ extern unsigned int ext4_block_group(struct super_block *sb,
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9884fa1..59e3644 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -82,12 +82,17 @@ static unsigned ext4_init_inode_bitmap(struct super_block *sb,
+ 		ext4_free_inodes_set(sb, gdp, 0);
+ 		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
++		ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
++					   EXT4_INODES_PER_GROUP(sb) / 8);
+ 		return 0;
+ 	}
+ 
+ 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+ 	ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
+ 			bh->b_data);
++	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 
+ 	return EXT4_INODES_PER_GROUP(sb);
+ }
+@@ -118,12 +123,12 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		return NULL;
+ 	}
+ 	if (bitmap_uptodate(bh))
+-		return bh;
++		goto verify;
+ 
+ 	lock_buffer(bh);
+ 	if (bitmap_uptodate(bh)) {
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 
+ 	ext4_lock_group(sb, block_group);
+@@ -131,6 +136,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+ 		set_bitmap_uptodate(bh);
+ 		set_buffer_uptodate(bh);
++		set_buffer_verified(bh);
+ 		ext4_unlock_group(sb, block_group);
+ 		unlock_buffer(bh);
+ 		return bh;
+@@ -144,7 +150,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		 */
+ 		set_bitmap_uptodate(bh);
+ 		unlock_buffer(bh);
+-		return bh;
++		goto verify;
+ 	}
+ 	/*
+ 	 * submit the buffer_head for read. We can
+@@ -161,6 +167,20 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
++
++verify:
++	ext4_lock_group(sb, block_group);
++	if (!buffer_verified(bh) &&
++	    !ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
++					   EXT4_INODES_PER_GROUP(sb) / 8)) {
++		ext4_unlock_group(sb, block_group);
++		put_bh(bh);
++		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
++			   "inode_bitmap = %llu", block_group, bitmap_blk);
++		return NULL;
++	}
++	ext4_unlock_group(sb, block_group);
++	set_buffer_verified(bh);
+ 	return bh;
+ }
+ 
+@@ -265,6 +285,8 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 		ext4_used_dirs_set(sb, gdp, count);
+ 		percpu_counter_dec(&sbi->s_dirs_counter);
+ 	}
++	ext4_inode_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	ext4_unlock_group(sb, block_group);
+ 
+@@ -673,6 +695,8 @@ static int ext4_claim_inode(struct super_block *sb,
+ 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
++	ext4_inode_bitmap_csum_set(sb, group, gdp, inode_bitmap_bh,
++				   EXT4_INODES_PER_GROUP(sb) / 8);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+ err_ret:
+ 	ext4_unlock_group(sb, group);
