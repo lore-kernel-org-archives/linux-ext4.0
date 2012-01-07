@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 07/51] tune2fs: Add inode checksum support
-Date: Sat, 07 Jan 2012 00:33:41 -0800
-Message-ID: <20120107083341.25788.90104.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 10/51] libext2fs: Create the inode bitmap checksum
+Date: Sat, 07 Jan 2012 00:34:00 -0800
+Message-ID: <20120107083400.25788.83713.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,208 +16,253 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:53375 "EHLO e1.ny.us.ibm.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:52094 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758743Ab2AGIeI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:34:08 -0500
+	id S1754772Ab2AGIeG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:34:06 -0500
 Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:34:08 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078XiDe281470
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:33:44 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078XghR024583
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:33:43 -0200
+	Sat, 7 Jan 2012 03:34:05 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078Y3GM339024
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:34:03 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078Y2ir024578
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:34:03 -0500
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds to tune2fs the ability to toggle the metadata checksum rocompat
-feature flag, which will rewrite the inode table with checksums.  Disallow
-changing the UUID while the fs is mounted, because rewriting the metadata
-objects is racy.
+Provide a field in the block group descriptor to store inode bitmap checksum,
+and some helper functions to calculate and verify it.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |  108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 106 insertions(+), 2 deletions(-)
+ lib/ext2fs/blknum.c       |   15 +++++++++++++++
+ lib/ext2fs/closefs.c      |   29 +++++++++++++++++------------
+ lib/ext2fs/csum.c         |   40 ++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 +++
+ lib/ext2fs/ext2_fs.h      |    4 ++++
+ lib/ext2fs/ext2fs.h       |    6 ++++++
+ lib/ext2fs/rw_bitmaps.c   |   16 ++++++++++++++++
+ 7 files changed, 101 insertions(+), 12 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 74a0489..cb1aff3 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -91,6 +91,7 @@ static char *extended_cmd;
- static unsigned long new_inode_size;
- static char *ext_mount_opts;
- static int usrquota, grpquota;
-+static int rewrite_checksums;
- 
- int journal_size, journal_flags;
- char *journal_device;
-@@ -142,7 +143,8 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
- 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
--		EXT4_FEATURE_RO_COMPAT_QUOTA
-+		EXT4_FEATURE_RO_COMPAT_QUOTA |
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
- };
- 
- static __u32 clear_ok_features[3] = {
-@@ -160,7 +162,8 @@ static __u32 clear_ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
--		EXT4_FEATURE_RO_COMPAT_QUOTA
-+		EXT4_FEATURE_RO_COMPAT_QUOTA |
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
- };
- 
- /*
-@@ -351,6 +354,16 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
- 	return 0;
- }
- 
-+static int check_fsck_needed(ext2_filsys fs)
-+{
-+	if (fs->super->s_state & EXT2_VALID_FS)
-+		return 0;
-+	printf("\n%s\n", _(please_fsck));
-+	if (mount_flags & EXT2_MF_READONLY)
-+		printf(_("(and reboot afterwards!)\n"));
-+	return 1;
-+}
-+
- static void request_fsck_afterwards(ext2_filsys fs)
- {
- 	static int requested = 0;
-@@ -364,6 +377,60 @@ static void request_fsck_afterwards(ext2_filsys fs)
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index 33da7d6..212ad48 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -230,6 +230,21 @@ void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
  }
  
  /*
-+ * Forcibly set checksums in all inodes.
++ * Return the inode bitmap checksum of a group
 + */
-+static void rewrite_inodes(ext2_filsys fs)
++__u32 ext2fs_inode_bitmap_checksum(ext2_filsys fs, dgrp_t group)
 +{
-+	int length = EXT2_INODE_SIZE(fs->super);
-+	struct ext2_inode *inode;
-+	ext2_inode_scan	scan;
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
++	struct ext4_group_desc *gdp;
++	__u32 csum;
 +
-+	if (fs->super->s_creator_os != EXT2_OS_LINUX)
-+		return;
-+
-+	retval = ext2fs_open_inode_scan(fs, 0, &scan);
-+	if (retval) {
-+		com_err("set_csum", retval, "while opening inode scan");
-+		exit(1);
-+	}
-+
-+	retval = ext2fs_get_mem(length, &inode);
-+	if (retval) {
-+		com_err("set_csum", retval, "while allocating memory");
-+		exit(1);
-+	}
-+
-+	do {
-+		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
-+		if (retval) {
-+			com_err("set_csum", retval, "while getting next inode");
-+			exit(1);
-+		}
-+		if (!ino)
-+			break;
-+
-+		retval = ext2fs_write_inode_full(fs, ino, inode, length);
-+		if (retval) {
-+			com_err("set_csum", retval, "while writing inode");
-+			exit(1);
-+		}
-+	} while (ino);
-+
-+	ext2fs_free_mem(&inode);
-+	ext2fs_close_inode_scan(scan);
-+}
-+
-+static void rewrite_metadata_checksums(ext2_filsys fs)
-+{
-+	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+	ext2fs_init_csum_seed(fs);
-+	rewrite_inodes(fs);
-+	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
++	gdp = ext4fs_group_desc(fs, fs->group_desc, group);
++	csum = gdp->bg_inode_bitmap_csum_lo;
++	if (fs->super->s_desc_size < EXT4_BG_INODE_BITMAP_CSUM_HI_END)
++		csum |= ((__u32)gdp->bg_inode_bitmap_csum_hi << 16);
++	return csum;
 +}
 +
 +/*
-  * Update the feature set as provided by the user.
+  * Return the inode bitmap block of a group
   */
- static int update_feature_set(ext2_filsys fs, char *features)
-@@ -536,6 +603,20 @@ mmp_error:
- 	}
+ blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group)
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 973c2a2..1867be3 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -288,6 +288,23 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
  
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
-+		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		if (check_fsck_needed(fs))
-+			exit(1);
-+		rewrite_checksums = 1;
+ 	fs->super->s_wtime = fs->now ? fs->now : time(NULL);
+ 	fs->super->s_block_group_nr = 0;
++
++	/*
++	 * If the write_bitmaps() function is present, call it to
++	 * flush the bitmaps.  This is done this way so that a simple
++	 * program that doesn't mess with the bitmaps doesn't need to
++	 * drag in the bitmaps.c code.
++	 *
++	 * Bitmap checksums live in the group descriptor, so the
++	 * bitmaps need to be written before the descriptors.
++	 */
++	if (fs->write_bitmaps) {
++		retval = fs->write_bitmaps(fs);
++		if (retval)
++			goto errout;
 +	}
 +
-+	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		if (check_fsck_needed(fs))
-+			exit(1);
-+		rewrite_checksums = 1;
-+	}
-+
-+	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
- 		for (i = 0; i < fs->group_desc_count; i++) {
- 			gd = ext2fs_group_desc(fs, fs->group_desc, i);
-@@ -2128,6 +2209,23 @@ retry_open:
- 		int set_csum = 0;
- 		dgrp_t i;
++	/* Prepare the group descriptors for writing */
+ #ifdef WORDS_BIGENDIAN
+ 	retval = EXT2_ET_NO_MEMORY;
+ 	retval = ext2fs_get_mem(SUPERBLOCK_SIZE, &super_shadow);
+@@ -378,18 +395,6 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
  
-+		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			/*
-+			 * Changing the UUID requires rewriting all metadata,
-+			 * which can race with a mounted fs.  Don't allow that.
-+			 */
-+			if (mount_flags & EXT2_MF_MOUNTED) {
-+				fputs(_("The UUID may only be "
-+					"changed when the filesystem is "
-+					"unmounted.\n"), stderr);
-+				exit(1);
-+			}
+ 	ext2fs_numeric_progress_close(fs, &progress, NULL);
+ 
+-	/*
+-	 * If the write_bitmaps() function is present, call it to
+-	 * flush the bitmaps.  This is done this way so that a simple
+-	 * program that doesn't mess with the bitmaps doesn't need to
+-	 * drag in the bitmaps.c code.
+-	 */
+-	if (fs->write_bitmaps) {
+-		retval = fs->write_bitmaps(fs);
+-		if (retval)
+-			goto errout;
+-	}
+-
+ write_primary_superblock_only:
+ 	/*
+ 	 * Write out master superblock.  This has to be done
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 5091a00..90ccd18 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,46 @@
+ #define STATIC static
+ #endif
+ 
++int ext2fs_inode_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
++				    char *bitmap, int size)
++{
++	struct ext4_group_desc *gdp = (struct ext4_group_desc *)
++			ext2fs_group_desc(fs, fs->group_desc, group);
++	__u32 provided, calculated;
 +
-+			if (check_fsck_needed(fs))
-+				exit(1);
-+		}
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++	provided = gdp->bg_inode_bitmap_csum_lo;
++	calculated = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)bitmap,
++				      size);
++	if (fs->super->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
++		provided |= (__u32)gdp->bg_inode_bitmap_csum_hi << 16;
++	else
++		calculated &= 0xFFFF;
 +
- 		if (sb->s_feature_ro_compat &
- 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
- 			/*
-@@ -2153,13 +2251,19 @@ retry_open:
- 			rc = 1;
- 			goto closefs;
- 		}
-+		ext2fs_init_csum_seed(fs);
- 		if (set_csum) {
- 			for (i = 0; i < fs->group_desc_count; i++)
- 				ext2fs_group_desc_csum_set(fs, i);
- 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
- 		}
- 		ext2fs_mark_super_dirty(fs);
-+		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+			rewrite_checksums = 1;
- 	}
-+	if (rewrite_checksums)
-+		rewrite_metadata_checksums(fs);
- 	if (I_flag) {
- 		if (mount_flags & EXT2_MF_MOUNTED) {
- 			fputs(_("The inode size may only be "
++	return provided == calculated;
++}
++
++errcode_t ext2fs_inode_bitmap_csum_set(ext2_filsys fs, dgrp_t group,
++				       char *bitmap, int size)
++{
++	__u32 crc;
++	struct ext4_group_desc *gdp = (struct ext4_group_desc *)
++			ext2fs_group_desc(fs, fs->group_desc, group);
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)bitmap, size);
++	gdp->bg_inode_bitmap_csum_lo = crc & 0xFFFF;
++	if (fs->super->s_desc_size >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
++		gdp->bg_inode_bitmap_csum_hi = crc >> 16;
++
++	return 0;
++}
++
+ static errcode_t ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
+ 			       struct ext2_inode_large *inode,
+ 			       __u32 *crc, int has_hi)
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index d4a5b10..3f5d08f 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -446,4 +446,7 @@ ec	EXT2_ET_MMP_OPEN_DIRECT,
+ ec	EXT2_ET_INODE_CSUM_INVALID,
+ 	"Inode checksum does not match inode"
+ 
++ec	EXT2_ET_INODE_BITMAP_CSUM_INVALID,
++	"Inode bitmap checksum does not match bitmap"
++
+ 	end
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index ed648a9..63f323f 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -191,6 +191,10 @@ struct ext4_group_desc
+ 	__u32	bg_reserved;
+ };
+ 
++#define EXT4_BG_INODE_BITMAP_CSUM_HI_END	\
++	(offsetof(struct ext4_group_desc, bg_inode_bitmap_csum_hi) + \
++	 sizeof(__u16))
++
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+ #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 858a338..c74e960 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -800,6 +800,7 @@ extern errcode_t ext2fs_get_block_bitmap_range2(ext2fs_block_bitmap bmap,
+ 					 void *out);
+ 
+ /* blknum.c */
++extern __u32 ext2fs_inode_bitmap_checksum(ext2_filsys fs, dgrp_t group);
+ extern dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t);
+ extern blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group);
+ extern blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group);
+@@ -830,6 +831,7 @@ extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+ extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
+ extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
+ 					blk64_t blk);
++extern __u32 ext2fs_inode_bitmap_csum(ext2_filsys fs, dgrp_t group);
+ extern blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group);
+ extern void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
+ 					blk64_t blk);
+@@ -939,6 +941,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
+ 
+ /* csum.c */
++extern errcode_t ext2fs_inode_bitmap_csum_set(ext2_filsys fs, dgrp_t group,
++					      char *bitmap, int size);
++extern int ext2fs_inode_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
++					   char *bitmap, int size);
+ extern errcode_t ext2fs_inode_csum_set(ext2_filsys fs, ext2_ino_t inum,
+ 				       struct ext2_inode_large *inode);
+ extern int ext2fs_inode_csum_verify(ext2_filsys fs, ext2_ino_t inum,
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index 1d5f7b2..0ad5eb1 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -117,6 +117,12 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 		if (retval)
+ 			goto errout;
+ 
++		retval = ext2fs_inode_bitmap_csum_set(fs, i, inode_buf,
++						      inode_nbytes);
++		if (retval)
++			goto errout;
++		ext2fs_group_desc_csum_set(fs, i);
++
+ 		blk = ext2fs_inode_bitmap_loc(fs, i);
+ 		if (blk) {
+ 			retval = io_channel_write_blk64(fs->io, blk, 1,
+@@ -288,6 +294,16 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 					retval = EXT2_ET_INODE_BITMAP_READ;
+ 					goto cleanup;
+ 				}
++
++				/* verify inode bitmap checksum */
++				if (!(fs->flags &
++				      EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
++				    !ext2fs_inode_bitmap_csum_verify(fs, i,
++						inode_bitmap, inode_nbytes)) {
++					retval =
++					EXT2_ET_INODE_BITMAP_CSUM_INVALID;
++					goto cleanup;
++				}
+ 			} else
+ 				memset(inode_bitmap, 0, inode_nbytes);
+ 			cnt = inode_nbytes << 3;
 
