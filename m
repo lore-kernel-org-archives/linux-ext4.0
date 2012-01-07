@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v2.3 00/51] e2fsprogs: Add metadata checksumming
-Date: Sat, 07 Jan 2012 00:32:57 -0800
-Message-ID: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 03/51] debugfs: Optionally ignore bad checksums
+Date: Sat, 07 Jan 2012 00:33:16 -0800
+Message-ID: <20120107083316.25788.60080.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -15,54 +16,84 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:59980 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751660Ab2AGIdB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:33:01 -0500
+Received: from e33.co.us.ibm.com ([32.97.110.151]:46802 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751660Ab2AGId3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:33:29 -0500
 Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:33:00 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078Wxtn3465394
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:32:59 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078Ww4x002740
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:32:59 -0200
+	Sat, 7 Jan 2012 01:33:27 -0700
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078XJqK144624
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:33:19 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078XH0H014779
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:33:18 -0700
+In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+If someone is debugging a badly damaged filesystem, it might be useful to
+disable the checksum verifications that will otherwise prevent the filesystem
+from loading.
 
-This patchset adds support in e2fsprogs for attaching crc32c checksums to most
-of the ext4 metadata objects.  A full design document is on the ext4 wiki[1].
-Please see the cover letter for the kernel patches for a more thorough summary
-of this work.
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ debugfs/debugfs.8.in |    7 ++++++-
+ debugfs/debugfs.c    |    7 +++++--
+ 2 files changed, 11 insertions(+), 3 deletions(-)
 
-Please have a look at the design document and patches, and please feel free to
-suggest any changes.
 
-v2: Checksum the MMP block, store the checksum type in the superblock, include
-the inode generation in file checksums, and finally solve the problem of limited
-space in block groups by splitting the checksum into two halves.
-
-v2.1: Checksum the reserved parts of the htree tail structure.
-
-v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
-disk layout changes to the front and the feature flag enablement to the end of
-the patch set.  Fail journal recovery if revoke block fails checksum.
-
-v2.3: Change fsck handling of checksum errors: First ask to clear the item; if
-the user declines, run the regular checks; if no corrective actions result, ask
-to reset the checksum.  Also, precompute the UUID checksum seed, refactor the
-inode generation patch into respective patches, and clean up structure member
-declarations.
-
-This patchset has been tested on 3.2.0-rc7 on x64, i386, ppc64, and ppc32.  The
-patches seems to work fine on all four platforms.  The patchset is based atop
-the 1.42 release.
-
---D
-
-[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Disk_Layout_aecb.html
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 70c8326..310dae2 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -8,7 +8,7 @@ debugfs \- ext2/ext3/ext4 file system debugger
+ .SH SYNOPSIS
+ .B debugfs
+ [
+-.B \-DVwci
++.B \-DVwcin
+ ]
+ [
+ .B \-b
+@@ -48,6 +48,11 @@ file system (e.g /dev/hdXX).
+ Specifies that the file system should be opened in read-write mode.
+ Without this option, the file system is opened in read-only mode.
+ .TP
++.I \-n
++Disables metadata checksum verification.  This should only be used if
++you believe the metadata to be correct despite the complaints of
++e2fsprogs.
++.TP
+ .I \-c
+ Specifies that the file system should be opened in catastrophic mode, in
+ which the inode and group bitmaps are not read initially.  This can be
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index b7ff00d..419c76c 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -2300,9 +2300,9 @@ int main(int argc, char **argv)
+ 	int		catastrophic = 0;
+ 	char		*data_filename = 0;
+ #ifdef READ_ONLY
+-	const char	*opt_string = "icR:f:b:s:Vd:D";
++	const char	*opt_string = "nicR:f:b:s:Vd:D";
+ #else
+-	const char	*opt_string = "iwcR:f:b:s:Vd:D";
++	const char	*opt_string = "niwcR:f:b:s:Vd:D";
+ #endif
+ 
+ 	if (debug_prog_name == 0)
+@@ -2329,6 +2329,9 @@ int main(int argc, char **argv)
+ 		case 'i':
+ 			open_flags |= EXT2_FLAG_IMAGE_FILE;
+ 			break;
++		case 'n':
++			open_flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++			break;
+ #ifndef READ_ONLY
+ 		case 'w':
+ 			open_flags |= EXT2_FLAG_RW;
 
