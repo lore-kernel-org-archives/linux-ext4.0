@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 17/23] jbd2: Grab a reference to the crc32c driver only when
-	necessary
-Date: Sat, 07 Jan 2012 00:29:46 -0800
-Message-ID: <20120107082946.21970.61744.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 18/23] jbd2: Checksum journal superblock
+Date: Sat, 07 Jan 2012 00:29:53 -0800
+Message-ID: <20120107082953.21970.97151.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -20,139 +19,134 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:60468 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759512Ab2AGIae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:30:34 -0500
-Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:30:31 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Obtain a reference to the crc32c driver only when the journal needs it for
-checksum v2.
+Calculate and verify a checksum covering the journal superblock.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/Kconfig      |    2 ++
- fs/jbd2/journal.c    |   25 +++++++++++++++++++++++++
- include/linux/jbd2.h |   23 +++++++++++++++++++++++
- 3 files changed, 50 insertions(+), 0 deletions(-)
+ fs/jbd2/journal.c    |   50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    3 +++
+ 2 files changed, 53 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/jbd2/Kconfig b/fs/jbd2/Kconfig
-index f32f346..69a48c2 100644
---- a/fs/jbd2/Kconfig
-+++ b/fs/jbd2/Kconfig
-@@ -1,6 +1,8 @@
- config JBD2
- 	tristate
- 	select CRC32
-+	select CRYPTO
-+	select CRYPTO_CRC32C
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 300b46f..bb7f03f 100644
+index bb7f03f..bc80533 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -1284,6 +1284,17 @@ static int journal_get_superblock(journal_t *journal)
- 		goto out;
+@@ -109,6 +109,34 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+ 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+ }
+ 
++static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
++{
++	__u32 csum, old_csum;
++
++	old_csum = sb->s_checksum;
++	sb->s_checksum = 0;
++	csum = jbd2_chksum(j, ~0, (char *)sb, sizeof(journal_superblock_t));
++	sb->s_checksum = old_csum;
++
++	return cpu_to_be32(csum);
++}
++
++int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb)
++{
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	return sb->s_checksum == jbd2_superblock_csum(j, sb);
++}
++
++void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++{
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return;
++
++	sb->s_checksum = jbd2_superblock_csum(j, sb);
++}
++
+ /*
+  * Helper function used to manage commit timeouts
+  */
+@@ -1178,6 +1206,7 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
+ 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
+ 	sb->s_start    = cpu_to_be32(journal->j_tail);
+ 	sb->s_errno    = cpu_to_be32(journal->j_errno);
++	jbd2_superblock_csum_set(journal, sb);
+ 	read_unlock(&journal->j_state_lock);
+ 
+ 	BUFFER_TRACE(bh, "marking dirty");
+@@ -1295,6 +1324,17 @@ static int journal_get_superblock(journal_t *journal)
+ 		}
  	}
  
-+	/* Load the checksum driver */
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
-+		journal->j_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+		if (IS_ERR(journal->j_chksum_driver)) {
-+			printk(KERN_ERR "JBD: Cannot load crc32c driver.\n");
-+			err = PTR_ERR(journal->j_chksum_driver);
-+			journal->j_chksum_driver = NULL;
-+			goto out;
-+		}
++	/* Check superblock checksum */
++	if (!jbd2_superblock_csum_verify(journal, sb)) {
++		printk(KERN_ERR "JBD: journal checksum error\n");
++		goto out;
 +	}
++
++	/* Precompute checksum seed for all metadata */
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		journal->j_csum_seed = jbd2_chksum(journal, ~0, sb->s_uuid,
++						   sizeof(sb->s_uuid));
 +
  	set_buffer_verified(bh);
  
  	return 0;
-@@ -1440,6 +1451,8 @@ int jbd2_journal_destroy(journal_t *journal)
- 		iput(journal->j_inode);
- 	if (journal->j_revoke)
- 		jbd2_journal_destroy_revoke(journal);
-+	if (journal->j_chksum_driver)
-+		crypto_free_shash(journal->j_chksum_driver);
- 	kfree(journal->j_wbuf);
- 	kfree(journal);
- 
-@@ -1556,6 +1569,18 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
- 		sb->s_feature_compat &=
- 			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
+@@ -1581,6 +1621,13 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 				return 0;
+ 			}
+ 		}
 +
-+		/* Load the checksum driver */
-+		if (journal->j_chksum_driver == NULL) {
-+			journal->j_chksum_driver = crypto_alloc_shash("crc32c",
-+								      0, 0);
-+			if (IS_ERR(journal->j_chksum_driver)) {
-+				printk(KERN_ERR "JBD: Cannot load crc32c "
-+				       "driver.\n");
-+				journal->j_chksum_driver = NULL;
-+				return 0;
-+			}
-+		}
++		/* Precompute checksum seed for all metadata */
++		if (JBD2_HAS_INCOMPAT_FEATURE(journal,
++					      JBD2_FEATURE_INCOMPAT_CSUM_V2))
++			journal->j_csum_seed = jbd2_chksum(journal, ~0,
++							   sb->s_uuid,
++							   sizeof(sb->s_uuid));
  	}
  
  	/* If enabling v1 checksums, downgrade superblock */
+@@ -1591,6 +1638,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 	sb->s_feature_compat    |= cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+ 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
++	jbd2_journal_update_superblock(journal, 0);
+ 
+ 	return 1;
+ #undef COMPAT_FEATURE_ON
+@@ -1621,6 +1669,7 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
+ 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
+ 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
++	jbd2_journal_update_superblock(journal, 0);
+ }
+ EXPORT_SYMBOL(jbd2_journal_clear_features);
+ 
+@@ -1669,6 +1718,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
+ 
+ 	sb->s_nr_users = cpu_to_be32(1);
+ 	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
++	jbd2_superblock_csum_set(journal, sb);
+ 	journal->j_format_version = 2;
+ 
+ 	bh = journal->j_sb_buffer;
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index ecd9b45..5b2abf9 100644
+index 5b2abf9..51d4a0b 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -31,6 +31,7 @@
- #include <linux/mutex.h>
- #include <linux/timer.h>
- #include <linux/slab.h>
-+#include <crypto/hash.h>
- #endif
+@@ -969,6 +969,9 @@ struct journal_s
  
- #define journal_oom_retry 1
-@@ -965,6 +966,9 @@ struct journal_s
- 	 * superblock pointer here
- 	 */
- 	void *j_private;
+ 	/* Reference to checksum algorithm driver via cryptoapi */
+ 	struct crypto_shash *j_chksum_driver;
 +
-+	/* Reference to checksum algorithm driver via cryptoapi */
-+	struct crypto_shash *j_chksum_driver;
++	/* Precomputed journal UUID checksum for seeding other checksums */
++	__u32 j_csum_seed;
  };
  
  /*
-@@ -1283,6 +1287,25 @@ static inline int jbd_space_needed(journal_t *journal)
- 
- extern int jbd_blocks_per_page(struct inode *inode);
- 
-+static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
-+			      const void *address, unsigned int length)
-+{
-+	struct {
-+		struct shash_desc shash;
-+		char ctx[crypto_shash_descsize(journal->j_chksum_driver)];
-+	} desc;
-+	int err;
-+
-+	desc.shash.tfm = journal->j_chksum_driver;
-+	desc.shash.flags = 0;
-+	*(u32 *)desc.ctx = crc;
-+
-+	err = crypto_shash_update(&desc.shash, address, length);
-+	BUG_ON(err);
-+
-+	return *(u32 *)desc.ctx;
-+}
-+
- #ifdef __KERNEL__
- 
- #define buffer_trace_init(bh)	do {} while (0)
-
