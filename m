@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/14] crc32: Optimize loop counter for x86
-Date: Fri, 06 Jan 2012 21:51:42 -0800
-Message-ID: <20120107055142.31315.39907.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 14/14] crc32: Select an algorithm via kconfig
+Date: Fri, 06 Jan 2012 21:52:14 -0800
+Message-ID: <20120107055214.31315.46724.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,76 +17,100 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-crypto-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120107055042.31315.63119.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-crypto-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add two changes that improve the performance of x86 systems
-	1. replace main loop with incrementing counter
-	   this change improves the performance of the selftest
-	   by about 5-6% on Nehalem CPUs. The apparent
-	   reason is that the compiler can use the loop index
-	   to perform an indexed memory access. This is
-	   reported to make the performance of PowerPC CPUs
-	   to get worse.
-	2. replace the rem_len loop with incrementing counter
-	   this change improves the performance of the selftest,
-	   which has more than the usual number of occurances,
-	   by about 1-2% on x86 CPUs. In actual work loads
-	   the length is most often a multiple of 4 bytes and
-	   this code does not get executed as often if at all.
-	   Again this change is reported to make the performance
-	   of PowerPC get worse.
+Allow the kernel builder to choose a crc32* algorithm for the kernel.
 
-From: Bob Pearson <rpearson@systemfabricworks.com>
-Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
-[djwong@us.ibm.com: Minor changelog tweaks]
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/crc32.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+ lib/Kconfig     |   43 +++++++++++++++++++++++++++++++++++++++++++
+ lib/crc32defs.h |   18 ++++++++++++++++++
+ 2 files changed, 61 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/crc32.c b/lib/crc32.c
-index 6311712..2c8e8c0 100644
---- a/lib/crc32.c
-+++ b/lib/crc32.c
-@@ -66,6 +66,9 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
- # endif
- 	const u32 *b;
- 	size_t rem_len;
-+# ifdef CONFIG_X86
-+	size_t i;
-+# endif
- 	const u32 *t0 = tab[0], *t1 = tab[1], *t2 = tab[2], *t3 = tab[3];
- 	const u32 *t4 = tab[4], *t5 = tab[5], *t6 = tab[6], *t7 = tab[7];
- 	u32 q;
-@@ -86,7 +89,12 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
- # endif
+diff --git a/lib/Kconfig b/lib/Kconfig
+index cfddafc..029c0e3 100644
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -70,6 +70,49 @@ config CRC32_SELFTEST
+ 	  and crc32_be over byte strings with random alignment and length
+ 	  and computes the total elapsed time and number of bytes processed.
  
- 	b = (const u32 *)buf;
-+# ifdef CONFIG_X86
-+	--b;
-+	for (i = 0; i < len; i++) {
-+# else
- 	for (--b; len; --len) {
-+# endif
- 		q = crc ^ *++b; /* use pre increment for speed */
- # if CRC_LE_BITS == 32
- 		crc = DO_CRC4;
-@@ -100,9 +108,14 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
- 	/* And the last few bytes */
- 	if (len) {
- 		u8 *p = (u8 *)(b + 1) - 1;
-+# ifdef CONFIG_X86
-+		for (i = 0; i < len; i++)
-+			DO_CRC(*++p); /* use pre increment for speed */
-+# else
- 		do {
- 			DO_CRC(*++p); /* use pre increment for speed */
- 		} while (--len);
-+# endif
- 	}
- 	return crc;
- #undef DO_CRC
++choice
++	prompt "CRC32 implementation"
++	depends on CRC32
++	default CRC32_SLICEBY8
++
++config CRC32_SLICEBY8
++	bool "Slice by 8 bytes"
++	help
++	  Calculate checksum 8 bytes at a time with a clever slicing algorithm.
++	  This is the fastest algorithm, but comes with a 8KiB lookup table.
++	  Most modern processors have enough cache to hold this table without
++	  thrashing the cache.
++
++	  This is the default implementation choice.  Choose this one unless
++	  you have a good reason not to.
++
++config CRC32_SLICEBY4
++	bool "Slice by 4 bytes"
++	help
++	  Calculate checksum 4 bytes at a time with a clever slicing algorithm.
++	  This is a bit slower than slice by 8, but has a smaller 4KiB lookup
++	  table.
++
++	  Only choose this option if you know what you are doing.
++
++config CRC32_SARWATE
++	bool "Sarwate's Algorithm (one byte at a time)"
++	help
++	  Calculate checksum a byte at a time using Sarwate's algorithm.  This
++	  is not particularly fast, but has a small 256 byte lookup table.
++
++	  Only choose this option if you know what you are doing.
++
++config CRC32_BIT
++	bool "Classic Algorithm (one bit at a time)"
++	help
++	  Calculate checksum one bit at a time.  This is VERY slow, but has
++	  no lookup table.  This is provided as a debugging option.
++
++	  Only choose this option if you are debugging crc32.
++
++endchoice
++
+ config CRC7
+ 	tristate "CRC7 functions"
+ 	help
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index 6fd1917..64cba2c 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -13,6 +13,24 @@
+  */
+ #define CRC32C_POLY_LE 0x82F63B78
+ 
++/* Try to choose an implementation variant via Kconfig */
++#ifdef CONFIG_CRC32_SLICEBY8
++# define CRC_LE_BITS 64
++# define CRC_BE_BITS 64
++#endif
++#ifdef CONFIG_CRC32_SLICEBY4
++# define CRC_LE_BITS 32
++# define CRC_BE_BITS 32
++#endif
++#ifdef CONFIG_CRC32_SARWATE
++# define CRC_LE_BITS 8
++# define CRC_BE_BITS 8
++#endif
++#ifdef CONFIG_CRC32_BIT
++# define CRC_LE_BITS 1
++# define CRC_BE_BITS 1
++#endif
++
+ /*
+  * How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64.
+  * For less performance-sensitive, use 4 or 8 to save table size.
