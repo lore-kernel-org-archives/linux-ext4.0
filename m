@@ -1,7 +1,9 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v2.3 00/23] ext4: Add metadata checksumming
-Date: Sat, 07 Jan 2012 00:27:52 -0800
-Message-ID: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 01/23] ext4: Create a new BH_Verified flag to avoid
+	unnecessary metadata validation
+Date: Sat, 07 Jan 2012 00:27:59 -0800
+Message-ID: <20120107082759.21970.86022.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -19,100 +21,139 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:51712 "EHLO e4.ny.us.ibm.com"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:48859 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751242Ab2AGI2A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:28:00 -0500
+	id S1751872Ab2AGI2G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:28:06 -0500
 Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:27:59 -0500
+	Sat, 7 Jan 2012 03:28:05 -0500
+In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Create a new BH_Verified flag to indicate that we've verified all the data in a
+buffer_head for correctness.  This allows us to bypass expensive verification
+steps when they are not necessary without missing them when they are.
 
-This patchset adds crc32c checksums to most of the ext4 metadata objects.  A
-full design document is on the ext4 wiki[1] but I will summarize that document here.
+v2: The later jbd2 metadata checksumming patches need a BH_Verified flag for
+journal metadata, so put the flag in jbd2.h so that both drivers can share the
+same bit.
 
-As much as we wish our storage hardware was totally reliable, it is still
-quite possible for data to be corrupted on disk, corrupted during transfer over
-a wire, or written to the wrong places.  To protect against this sort of
-non-hostile corruption, it is desirable to store checksums of metadata objects
-on the filesystem to prevent broken metadata from shredding the filesystem.
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ fs/ext4/extents.c          |   35 ++++++++++++++++++++++++++---------
+ include/linux/jbd_common.h |    2 ++
+ 2 files changed, 28 insertions(+), 9 deletions(-)
 
-The crc32c polynomial was chosen for its improved error detection capabilities
-over crc32 and crc16, and because of its hardware acceleration on current and
-upcoming Intel and Sparc chips.
 
-Each type of metadata object has been retrofitted to store a checksum as follows:
-
-- The superblock stores a crc32c of itself.
-- Each inode stores crc32c(fs_uuid + inode_num + inode_gen + inode +
-  slack_space_after_inode)
-- Block and inode bitmaps each get their own crc32c(fs_uuid + group_num +
-  bitmap), stored in the block group descriptor.
-- Each extent tree block stores a crc32c(fs_uuid + inode_num + inode_gen +
-  extent_entries) in unused space at the end of the block.
-- Each directory leaf block has an unused-looking directory entry big enough to
-  store a crc32c(fs_uuid + inode_num + inode_gen + block) at the end of the
-  block.
-- Each directory htree block is shortened to contain a crc32c(fs_uuid +
-  inode_num + inode_gen + block) at the end of the block.
-- Extended attribute blocks store crc32c(fs_uuid + id + ea_block) in the
-  header, where id is, depending on the refcount, either the inode_num and
-  inode_gen; or the block number.
-- MMP blocks store crc32c(fs_uuid + mmpblock) at the end of the MMP block.
-- Block groups can now use crc32c instead of crc16.
-- The journal now has a v2 checksum feature flag.
-- crc32c(j_uuid + block) checksums have been inserted into descriptor blocks,
-  commit blocks, revoke blocks, and the journal superblock.
-- Each block tag in a descriptor block has a checksum of the related data block.
-
-The patchset for e2fsprogs will be sent under separate cover only to linux-ext4
-as it is quite lengthy (~51 patches).
-
-As far as performance impact goes, I see nearly no change with a standard mail
-server ffsb simulation.  On a test that involves only file creation and
-deletion and extent tree modifications, I see a drop of about 50 percent with
-the current kernel crc32c implementation; this improves to a drop of about 20
-percent with the enclosed crc32c implementation.  However, given that metadata
-is usually a small fraction of total IO, it doesn't seem like the cost of
-enabling this feature is unreasonable.
-
-There are a few unresolved issues:
-
-- I haven't fixed it up to checksum the exclude bitmap yet.  I'll probably
-  submit that as an add-on to the snapshot patchset.
-
-- Using the journal commit hooks to delay crc32c calculation until dirty
-  buffers are actually being written to disk.
-
-- Interaction with online resize code.  Yongqiang seems to be in the process of
-  rewriting this not to use custom metadata block write functions, but I haven't
-  looked at it very closely yet.
-
-Please have a look at the design document and patches, and please feel free to
-suggest any changes.
-
-v2: Checksum the MMP block, store the checksum type in the superblock, include
-the inode generation in file checksums, and finally solve the problem of limited
-space in block groups by splitting the checksum into two halves.
-
-v2.1: Checksum the reserved parts of the htree tail structure.  Fix some flag
-handling bugs with the mb cache init routine wherein bitmaps could fail to be
-checksummed at read time.
-
-v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
-disk layout changes to the front and the feature flag enablement to the end of
-the patch set.  Fail journal recovery if revoke block fails checksum.
-
-v2.3: Update the design document URL, and various minor naming cleanups.
-
-This patchset has been tested on 3.2.0-rc7 on x64, i386, ppc64, and ppc32.  The
-patches seems to work fine on all four platforms.
-
---D
-
-[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Metadata_Checksums_4d24.html
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 607b155..148f89f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -396,6 +396,26 @@ int ext4_ext_check_inode(struct inode *inode)
+ 	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode));
+ }
+ 
++static int __ext4_ext_check_block(const char *function, unsigned int line,
++				  struct inode *inode,
++				  struct ext4_extent_header *eh,
++				  int depth,
++				  struct buffer_head *bh)
++{
++	int ret;
++
++	if (buffer_verified(bh))
++		return 0;
++	ret = ext4_ext_check(inode, eh, depth);
++	if (ret)
++		return ret;
++	set_buffer_verified(bh);
++	return ret;
++}
++
++#define ext4_ext_check_block(inode, eh, depth, bh)	\
++	__ext4_ext_check_block(__func__, __LINE__, inode, eh, depth, bh)
++
+ #ifdef EXT_DEBUG
+ static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
+ {
+@@ -652,8 +672,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 	i = depth;
+ 	/* walk through the tree */
+ 	while (i) {
+-		int need_to_validate = 0;
+-
+ 		ext_debug("depth %d: num %d, max %d\n",
+ 			  ppos, le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
+ 
+@@ -672,8 +690,6 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 				put_bh(bh);
+ 				goto err;
+ 			}
+-			/* validate the extent entries */
+-			need_to_validate = 1;
+ 		}
+ 		eh = ext_block_hdr(bh);
+ 		ppos++;
+@@ -687,7 +703,7 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		path[ppos].p_hdr = eh;
+ 		i--;
+ 
+-		if (need_to_validate && ext4_ext_check(inode, eh, i))
++		if (ext4_ext_check_block(inode, eh, i, bh))
+ 			goto err;
+ 	}
+ 
+@@ -1328,7 +1344,8 @@ got_index:
+ 			return -EIO;
+ 		eh = ext_block_hdr(bh);
+ 		/* subtract from p_depth to get proper eh_depth */
+-		if (ext4_ext_check(inode, eh, path->p_depth - depth)) {
++		if (ext4_ext_check_block(inode, eh,
++					 path->p_depth - depth, bh)) {
+ 			put_bh(bh);
+ 			return -EIO;
+ 		}
+@@ -1341,7 +1358,7 @@ got_index:
+ 	if (bh == NULL)
+ 		return -EIO;
+ 	eh = ext_block_hdr(bh);
+-	if (ext4_ext_check(inode, eh, path->p_depth - depth)) {
++	if (ext4_ext_check_block(inode, eh, path->p_depth - depth, bh)) {
+ 		put_bh(bh);
+ 		return -EIO;
+ 	}
+@@ -2572,8 +2589,8 @@ again:
+ 				err = -EIO;
+ 				break;
+ 			}
+-			if (ext4_ext_check(inode, ext_block_hdr(bh),
+-							depth - i - 1)) {
++			if (ext4_ext_check_block(inode, ext_block_hdr(bh),
++							depth - i - 1, bh)) {
+ 				err = -EIO;
+ 				break;
+ 			}
+diff --git a/include/linux/jbd_common.h b/include/linux/jbd_common.h
+index 6230f85..6133679 100644
+--- a/include/linux/jbd_common.h
++++ b/include/linux/jbd_common.h
+@@ -12,6 +12,7 @@ enum jbd_state_bits {
+ 	BH_State,		/* Pins most journal_head state */
+ 	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+ 	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
++	BH_Verified,		/* Metadata block has been verified ok */
+ 	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+ };
+ 
+@@ -24,6 +25,7 @@ TAS_BUFFER_FNS(Revoked, revoked)
+ BUFFER_FNS(RevokeValid, revokevalid)
+ TAS_BUFFER_FNS(RevokeValid, revokevalid)
+ BUFFER_FNS(Freed, freed)
++BUFFER_FNS(Verified, verified)
+ 
+ static inline struct buffer_head *jh2bh(struct journal_head *jh)
+ {
 
