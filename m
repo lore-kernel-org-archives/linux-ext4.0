@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 27/51] tune2fs: Rebuild and checksum directories when toggling
-	metadata_csum or changing UUID
-Date: Sat, 07 Jan 2012 00:35:49 -0800
-Message-ID: <20120107083549.25788.9500.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 19/51] libext2fs: Verify and calculate extent tree block
+	checksums
+Date: Sat, 07 Jan 2012 00:34:58 -0800
+Message-ID: <20120107083458.25788.65429.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,258 +17,205 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:47243 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752455Ab2AGIfy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:35:54 -0500
+Received: from e32.co.us.ibm.com ([32.97.110.150]:34089 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752455Ab2AGIf6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:35:58 -0500
 Received: from /spool/local
-	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 01:35:54 -0700
+	Sat, 7 Jan 2012 01:35:58 -0700
 Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078ZqiQ163492
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:52 -0700
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078Z1OQ112186
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:01 -0700
 Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078Zo5A022742
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:52 -0700
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078YxFP019963
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:00 -0700
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since all the metadata checksums depend on the fs UUID, tune2fs must be able to
-rewrite the checksums of _all_ metadata.  It's not that hard to add in the bits
-to resize the directory block structures at the same time.
+Verify and calculate extent tree block checksums when processing filesystems.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |  194 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 194 insertions(+), 0 deletions(-)
+ lib/ext2fs/csum.c         |   79 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 ++
+ lib/ext2fs/ext2fs.h       |    6 +++
+ lib/ext2fs/extent.c       |   21 ++++++++++++
+ 4 files changed, 109 insertions(+), 0 deletions(-)
 
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 784df9a..801e6ea 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -106,6 +106,8 @@ struct blk_move {
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 5c5b7fb..8a0543c 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,85 @@
+ #define STATIC static
+ #endif
  
- 
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
-+static const char *please_dir_fsck =
-+		N_("Please run e2fsck -D on the filesystem.\n");
- 
- #ifdef CONFIG_BUILD_FINDFS
- void do_findfs(int argc, char **argv);
-@@ -364,6 +366,18 @@ static int check_fsck_needed(ext2_filsys fs)
- 	return 1;
- }
- 
-+static void request_dir_fsck_afterwards(ext2_filsys fs)
-+{
-+	static int requested;
++#define EXT3_EXTENT_TAIL_OFFSET(hdr)	(sizeof(struct ext3_extent_header) + \
++	(sizeof(struct ext3_extent) * ext2fs_le16_to_cpu((hdr)->eh_max)))
 +
-+	if (requested++)
-+		return;
-+	fs->super->s_state &= ~EXT2_VALID_FS;
-+	printf("\n%s\n", _(please_dir_fsck));
-+	if (mount_flags & EXT2_MF_READONLY)
-+		printf(_("(and reboot afterwards!)\n"));
++static struct ext3_extent_tail *get_extent_tail(struct ext3_extent_header *h)
++{
++	return (struct ext3_extent_tail *)(((void *)h) +
++					   EXT3_EXTENT_TAIL_OFFSET(h));
 +}
 +
- static void request_fsck_afterwards(ext2_filsys fs)
- {
- 	static int requested = 0;
-@@ -419,6 +433,177 @@ static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
- }
- 
- /*
-+ * Rewrite directory blocks with checksums
-+ */
-+struct rewrite_dir_context {
-+	char *buf;
-+	errcode_t errcode;
-+	ext2_ino_t dir;
-+	int is_htree;
-+};
-+
-+static int rewrite_dir_block(ext2_filsys fs,
-+			     blk64_t	*blocknr,
-+			     e2_blkcnt_t blockcnt,
-+			     blk64_t	ref_block EXT2FS_ATTR((unused)),
-+			     int	ref_offset EXT2FS_ATTR((unused)),
-+			     void	*priv_data)
++static errcode_t ext2fs_extent_block_csum(ext2_filsys fs, ext2_ino_t inum,
++					  struct ext3_extent_header *eh,
++					  __u32 *crc)
 +{
-+	struct ext2_dx_countlimit *dcl = NULL;
-+	struct rewrite_dir_context *ctx = priv_data;
-+	int dcl_offset, changed = 0;
++	int size;
++	__u32 gen;
++	errcode_t retval;
++	struct ext2_inode inode;
 +
-+	ctx->errcode = ext2fs_read_dir_block4(fs, *blocknr, ctx->buf, 0,
-+					      ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
++	size = EXT3_EXTENT_TAIL_OFFSET(eh) + offsetof(struct ext3_extent_tail,
++						      et_checksum);
 +
-+	/* if htree node... */
-+	if (ctx->is_htree)
-+		ext2fs_get_dx_countlimit(fs, (struct ext2_dir_entry *)ctx->buf,
-+					 &dcl, &dcl_offset);
-+	if (dcl) {
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			/* Ensure limit is the max size */
-+			int max_entries = (fs->blocksize - dcl_offset) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries) {
-+				changed = 1;
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			}
-+		} else {
-+			/* If htree block is full then rebuild the dir */
-+			if (ext2fs_le16_to_cpu(dcl->count) ==
-+			    ext2fs_le16_to_cpu(dcl->limit)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/*
-+			 * Ensure dcl->limit is small enough to leave room for
-+			 * the checksum tail.
-+			 */
-+			int max_entries = (fs->blocksize - (dcl_offset +
-+						sizeof(struct ext2_dx_tail))) /
-+					  sizeof(struct ext2_dx_entry);
-+			if (ext2fs_le16_to_cpu(dcl->limit) != max_entries)
-+				dcl->limit = ext2fs_cpu_to_le16(max_entries);
-+			/* Always rewrite checksum */
-+			changed = 1;
-+		}
-+	} else {
-+		unsigned int rec_len, name_size;
-+		char *top = ctx->buf + fs->blocksize;
-+		struct ext2_dir_entry *de = (struct ext2_dir_entry *)ctx->buf;
-+		struct ext2_dir_entry *last_de = NULL, *penultimate_de = NULL;
-+
-+		/* Find last and penultimate dirent */
-+		while ((char *)de < top) {
-+			penultimate_de = last_de;
-+			last_de = de;
-+			ctx->errcode = ext2fs_get_rec_len(fs, de, &rec_len);
-+			if (!ctx->errcode && !rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			de = (struct ext2_dir_entry *)(((void *)de) + rec_len);
-+		}
-+		ctx->errcode = ext2fs_get_rec_len(fs, last_de, &rec_len);
-+		if (ctx->errcode)
-+			return BLOCK_ABORT;
-+		name_size = last_de->name_len & 0xFF;
-+
-+		if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			if (!penultimate_de)
-+				return 0;
-+			if (last_de->inode ||
-+			    name_size ||
-+			    rec_len != sizeof(struct ext2_dir_entry_tail))
-+				return 0;
-+			/*
-+			 * The last dirent is unused and the right length to
-+			 * have stored a checksum.  Erase it.
-+			 */
-+			ctx->errcode = ext2fs_get_rec_len(fs, penultimate_de,
-+							  &rec_len);
-+			if (!rec_len)
-+				ctx->errcode = EXT2_ET_DIR_CORRUPTED;
-+			if (ctx->errcode)
-+				return BLOCK_ABORT;
-+			ext2fs_set_rec_len(fs, rec_len +
-+					sizeof(struct ext2_dir_entry_tail),
-+					penultimate_de);
-+			changed = 1;
-+		} else {
-+			int csum_size = sizeof(struct ext2_dir_entry_tail);
-+			struct ext2_dir_entry_tail *t;
-+
-+			/*
-+			 * If the last dirent looks like the tail, just update
-+			 * the checksum.
-+			 */
-+			if (!last_de->inode &&
-+			    rec_len == csum_size) {
-+				t = (struct ext2_dir_entry_tail *)last_de;
-+				t->det_reserved_name_len =
-+						EXT2_DIR_NAME_LEN_CSUM;
-+				changed = 1;
-+				goto out;
-+			}
-+			if (name_size & 3)
-+				name_size = (name_size & ~3) + 4;
-+			/* If there's not enough space for the tail, e2fsck */
-+			if (rec_len <= (8 + name_size + csum_size)) {
-+				request_dir_fsck_afterwards(fs);
-+				return 0;
-+			}
-+			/* Shorten that last de and insert the tail */
-+			ext2fs_set_rec_len(fs, rec_len - csum_size, last_de);
-+			t = EXT2_DIRENT_TAIL(ctx->buf, fs->blocksize);
-+			ext2fs_initialize_dirent_tail(fs, t);
-+
-+			/* Always update checksum */
-+			changed = 1;
-+		}
-+	}
-+
-+out:
-+	if (!changed)
-+		return 0;
-+
-+	ctx->errcode = ext2fs_write_dir_block4(fs, *blocknr, ctx->buf,
-+					       0, ctx->dir);
-+	if (ctx->errcode)
-+		return BLOCK_ABORT;
++	retval = ext2fs_read_inode(fs, inum, &inode);
++	if (retval)
++		return retval;
++	inum = ext2fs_cpu_to_le32(inum);
++	gen = ext2fs_cpu_to_le32(inode.i_generation);
++	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
++				sizeof(inum));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen, sizeof(gen));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)eh, size);
 +
 +	return 0;
 +}
 +
-+errcode_t rewrite_directory(ext2_filsys fs, ext2_ino_t dir,
-+			    struct ext2_inode *inode)
++int ext2fs_extent_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++				    struct ext3_extent_header *eh)
 +{
-+	errcode_t	retval;
-+	struct rewrite_dir_context ctx;
++	errcode_t retval;
++	__u32 provided, calculated;
++	struct ext3_extent_tail *t = get_extent_tail(eh);
 +
-+	retval = ext2fs_get_mem(fs->blocksize, &ctx.buf);
++	/*
++	 * The extent tree structures are accessed in LE order, so we must
++	 * swap the checksum bytes here.
++	 */
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	provided = ext2fs_le32_to_cpu(t->et_checksum);
++	retval = ext2fs_extent_block_csum(fs, inum, eh, &calculated);
 +	if (retval)
-+		return retval;
++		return 0;
 +
-+	ctx.is_htree = (inode->i_flags & EXT2_INDEX_FL);
-+	ctx.dir = dir;
-+	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_READ_ONLY |
-+						BLOCK_FLAG_DATA_ONLY,
-+				       0, rewrite_dir_block, &ctx);
-+
-+	ext2fs_free_mem(&ctx.buf);
-+	if (retval)
-+		return retval;
-+
-+	return ctx.errcode;
++	return provided == calculated;
 +}
 +
-+/*
-  * Forcibly set checksums in all inodes.
-  */
- static void rewrite_inodes(ext2_filsys fs)
-@@ -465,6 +650,15 @@ static void rewrite_inodes(ext2_filsys fs)
- 				"while rewriting extents");
- 			exit(1);
- 		}
++errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs, ext2_ino_t inum,
++				       struct ext3_extent_header *eh)
++{
++	errcode_t retval;
++	__u32 crc;
++	struct ext3_extent_tail *t = get_extent_tail(eh);
 +
-+		if (LINUX_S_ISDIR(inode->i_mode)) {
-+			retval = rewrite_directory(fs, ino, inode);
-+			if (retval) {
-+				com_err("rewrite_directory", retval,
-+					"while rewriting directories");
-+				exit(1);
-+			}
-+		}
- 	} while (ino);
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	/*
++	 * The extent tree structures are accessed in LE order, so we must
++	 * swap the checksum bytes here.
++	 */
++	retval = ext2fs_extent_block_csum(fs, inum, eh, &crc);
++	if (retval)
++		return retval;
++	t->et_checksum = ext2fs_cpu_to_le32(crc);
++	return retval;
++}
++
+ int ext2fs_inode_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
+ 				    char *bitmap, int size)
+ {
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 3f5d08f..9019026 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -449,4 +449,7 @@ ec	EXT2_ET_INODE_CSUM_INVALID,
+ ec	EXT2_ET_INODE_BITMAP_CSUM_INVALID,
+ 	"Inode bitmap checksum does not match bitmap"
  
- 	ext2fs_free_mem(&inode);
++ec	EXT2_ET_EXTENT_CSUM_INVALID,
++	"Extent block checksum does not match extent block"
++
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 921ecb2..5fa809a 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -943,6 +943,12 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
+ 
+ /* csum.c */
++extern errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs,
++					      ext2_ino_t inum,
++					      struct ext3_extent_header *eh);
++extern int ext2fs_extent_block_csum_verify(ext2_filsys fs,
++					   ext2_ino_t inum,
++					   struct ext3_extent_header *eh);
+ extern errcode_t ext2fs_block_bitmap_csum_set(ext2_filsys fs, dgrp_t group,
+ 					      char *bitmap, int size);
+ extern int ext2fs_block_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index eb096d6..7d456ef 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -455,6 +455,13 @@ retry:
+ 			return retval;
+ 		}
+ 
++		if (!(handle->fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
++		    !ext2fs_extent_block_csum_verify(handle->fs, handle->ino,
++						     eh)) {
++			handle->level--;
++			return EXT2_ET_EXTENT_CSUM_INVALID;
++		}
++
+ 		newpath->left = newpath->entries =
+ 			ext2fs_le16_to_cpu(eh->eh_entries);
+ 		newpath->max_entries = ext2fs_le16_to_cpu(eh->eh_max);
+@@ -541,6 +548,7 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 	blk64_t				blk;
+ 	errcode_t			retval;
+ 	struct ext3_extent_idx		*ix;
++	struct ext3_extent_header	*eh;
+ 
+ 	if (handle->level == 0) {
+ 		retval = ext2fs_write_inode(handle->fs, handle->ino,
+@@ -550,6 +558,14 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
+ 			((__u64) ext2fs_le16_to_cpu(ix->ei_leaf_hi) << 32);
+ 
++		/* then update the checksum */
++		eh = (struct ext3_extent_header *)
++				handle->path[handle->level].buf;
++		retval = ext2fs_extent_block_csum_set(handle->fs, handle->ino,
++						      eh);
++		if (retval)
++			return retval;
++
+ 		retval = io_channel_write_blk64(handle->fs->io,
+ 				      blk, 1, handle->path[handle->level].buf);
+ 	}
+@@ -958,6 +974,11 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
+ 
+ 	new_node_start = ext2fs_le32_to_cpu(EXT_FIRST_INDEX(neweh)->ei_block);
+ 
++	/* then update the checksum */
++	retval = ext2fs_extent_block_csum_set(handle->fs, handle->ino, neweh);
++	if (retval)
++		goto done;
++
+ 	/* ...and write the new node block out to disk. */
+ 	retval = io_channel_write_blk64(handle->fs->io, new_node_pblk, 1,
+ 					block_buf);
 
