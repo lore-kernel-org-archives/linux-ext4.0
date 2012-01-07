@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 29/51] e2fsck: Check extended attribute block checksums
-Date: Sat, 07 Jan 2012 00:36:01 -0800
-Message-ID: <20120107083601.25788.40869.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 31/51] libext2fs: Calculate and verify superblock checksums
+Date: Sat, 07 Jan 2012 00:36:14 -0800
+Message-ID: <20120107083614.25788.36697.stgit@elm3c44.beaverton.ibm.com>
 References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,119 +16,183 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:34117 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758826Ab2AGIgI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 03:36:08 -0500
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:51617 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751660Ab2AGIgU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:36:20 -0500
 Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 01:36:08 -0700
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078a4jf096532
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:36:04 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078a3v5020848
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:36:04 -0700
+	Sat, 7 Jan 2012 03:36:20 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078aHVE3391704
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:36:17 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078aGwl031381
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:36:17 -0200
 In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Verify the checksums of separate extended attribute blocks and offer to clear
-it if there is a mismatch.
+Calculate and verify the superblock checksums.  Each copy of the superblock
+records the number of the group it's in and the FS UUID, so we can simply
+checksum the whole block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |   18 ++++++++++++++++++
- e2fsck/problem.c |   15 +++++++++++++++
- e2fsck/problem.h |    6 ++++++
- 3 files changed, 39 insertions(+), 0 deletions(-)
+ lib/ext2fs/closefs.c      |   19 ++++++++++++-------
+ lib/ext2fs/csum.c         |   35 +++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 +++
+ lib/ext2fs/ext2fs.h       |    4 ++++
+ lib/ext2fs/openfs.c       |    6 ++++++
+ 5 files changed, 60 insertions(+), 7 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 2fb5560..5484840 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1540,6 +1540,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	struct ext2_ext_attr_entry *entry;
- 	int		count;
- 	region_t	region = 0;
-+	int		failed_csum = 0;
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 1867be3..a0e28ba 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -246,15 +246,19 @@ static errcode_t write_backup_super(ext2_filsys fs, dgrp_t group,
+ 				    blk_t group_block,
+ 				    struct ext2_super_block *super_shadow)
+ {
++	errcode_t retval;
+ 	dgrp_t	sgrp = group;
  
- 	blk = ext2fs_file_acl_block(fs, inode);
- 	if (blk == 0)
-@@ -1613,6 +1614,11 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 	if (sgrp > ((1 << 16) - 1))
+ 		sgrp = (1 << 16) - 1;
++
++	super_shadow->s_block_group_nr = sgrp;
+ #ifdef WORDS_BIGENDIAN
+-	super_shadow->s_block_group_nr = ext2fs_swab16(sgrp);
+-#else
+-	fs->super->s_block_group_nr = sgrp;
++	ext2fs_swap_super(super_shadow);
+ #endif
++	retval = ext2fs_superblock_csum_set(fs, super_shadow);
++	if (retval)
++		return retval;
+ 
+ 	return io_channel_write_blk64(fs->io, group_block, -SUPERBLOCK_SIZE,
+ 				    super_shadow);
+@@ -314,6 +318,7 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 				  &group_shadow);
+ 	if (retval)
+ 		goto errout;
++	memcpy(super_shadow, fs->super, sizeof(struct ext2_super_block));
+ 	memcpy(group_shadow, fs->group_desc, (size_t) fs->blocksize *
+ 	       fs->desc_blocks);
+ 
+@@ -334,10 +339,6 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
  	 */
- 	pctx->blk = blk;
- 	pctx->errcode = ext2fs_read_ext_attr3(fs, blk, block_buf, pctx->ino);
-+	if (pctx->errcode == EXT2_ET_EXT_ATTR_CSUM_INVALID) {
-+		if (fix_problem(ctx, PR_1_EA_BLOCK_CSUM_INVALID, pctx))
-+			goto clear_extattr;
-+		failed_csum = 1;
+ 	fs->super->s_state &= ~EXT2_VALID_FS;
+ 	fs->super->s_feature_incompat &= ~EXT3_FEATURE_INCOMPAT_RECOVER;
+-#ifdef WORDS_BIGENDIAN
+-	*super_shadow = *fs->super;
+-	ext2fs_swap_super(super_shadow);
+-#endif
+ 
+ 	/*
+ 	 * If this is an external journal device, don't write out the
+@@ -412,6 +413,10 @@ write_primary_superblock_only:
+ 	ext2fs_swap_super(super_shadow);
+ #endif
+ 
++	retval = ext2fs_superblock_csum_set(fs, super_shadow);
++	if (retval)
++		return retval;
++
+ 	if (!(flags & EXT2_FLAG_FLUSH_NO_SYNC))
+ 		retval = io_channel_flush(fs->io);
+ 	retval = write_primary_superblock(fs, super_shadow);
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 46f0cb5..4d01bcd 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,41 @@
+ #define STATIC static
+ #endif
+ 
++static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
++{
++	int offset = offsetof(struct ext2_super_block, s_checksum);
++
++	return ext2fs_crc32c_le(~0, (unsigned char *)sb, offset);
++}
++
++int ext2fs_superblock_csum_verify(ext2_filsys fs, struct ext2_super_block *sb)
++{
++	__u32 calculated;
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	calculated = ext2fs_superblock_csum(fs, sb);
++
++	return ext2fs_le32_to_cpu(sb->s_checksum) == calculated;
++}
++
++errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
++				     struct ext2_super_block *sb)
++{
++	__u32 crc;
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	crc = ext2fs_superblock_csum(fs, sb);
++	sb->s_checksum = ext2fs_cpu_to_le32(crc);
++
++	return 0;
++}
++
+ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
+ 					    blk64_t block,
+ 					    struct ext2_ext_attr_header *hdr,
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 177a97f..0fab4e0 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -461,4 +461,7 @@ ec	EXT2_ET_DIR_CSUM_INVALID,
+ ec	EXT2_ET_EXT_ATTR_CSUM_INVALID,
+ 	"Extended attribute block checksum does not match block"
+ 
++ec	EXT2_ET_SB_CSUM_INVALID,
++	"Superblock checksum does not match superblock"
++
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index dba187a..e80fd17 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -943,6 +943,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
+ 
+ /* csum.c */
++extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
++					    struct ext2_super_block *sb);
++extern int ext2fs_superblock_csum_verify(ext2_filsys fs,
++					 struct ext2_super_block *sb);
+ extern errcode_t ext2fs_ext_attr_block_csum_set(ext2_filsys fs,
+ 					ext2_ino_t inum, blk64_t block,
+ 					struct ext2_ext_attr_header *hdr);
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 6cb629e..3b1e872 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -193,6 +193,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	if (fs->orig_super)
+ 		memcpy(fs->orig_super, fs->super, SUPERBLOCK_SIZE);
+ 
++	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
++	    !ext2fs_superblock_csum_verify(fs, fs->super)) {
++		retval = EXT2_ET_SB_CSUM_INVALID;
++		goto cleanup;
 +	}
- 	if (pctx->errcode && fix_problem(ctx, PR_1_READ_EA_BLOCK, pctx))
- 		goto clear_extattr;
- 	header = (struct ext2_ext_attr_header *) block_buf;
-@@ -1694,6 +1700,18 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	}
- 	region_free(region);
- 
-+	/*
-+	 * We only get here if there was no other errors that were fixed.
-+	 * If there was a checksum fail, ask to correct it.
-+	 */
-+	if (failed_csum &&
-+	    fix_problem(ctx, PR_1_EA_BLOCK_ONLY_CSUM_INVALID, pctx)) {
-+		pctx->errcode = ext2fs_write_ext_attr3(fs, blk, block_buf,
-+						       pctx->ino);
-+		if (pctx->errcode)
-+			return 0;
-+	}
 +
- 	count = header->h_refcount - 1;
- 	if (count)
- 		ea_refcount_store(ctx->refcount, blk, count);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 6dbd01c..bfc1ece 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -966,6 +966,21 @@ static struct e2fsck_problem problem_table[] = {
- 	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
- 	  PROMPT_FIX, 0 },
- 
-+	/* Extended attribute block checksum for inode does not match. */
-+	{ PR_1_EA_BLOCK_CSUM_INVALID,
-+	  N_("Extended attribute @a @b %b checksum for @i %i does not "
-+	     "match.  "),
-+	  PROMPT_CLEAR, 0 },
-+
-+	/*
-+	 * Extended attribute block passes checks, but checksum for inode does
-+	 * not match.
-+	 */
-+	{ PR_1_EA_BLOCK_CSUM_INVALID,
-+	  N_("Extended attribute @a @b %b passes checks, but checksum for "
-+	     "@i %i does not match.  "),
-+	  PROMPT_FIX, 0 },
-+
- 	/* Pass 1b errors */
- 
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3f2b2e9..3d952d5 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -562,6 +562,12 @@ struct problem_context {
- /* extent block passes checks, but checksum does not match extent block */
- #define PR_1_EXTENT_ONLY_CSUM_INVALID	0x010069
- 
-+/* ea block checksum invalid */
-+#define PR_1_EA_BLOCK_CSUM_INVALID	0x010070
-+
-+/* ea block passes checks, but checksum invalid */
-+#define PR_1_EA_BLOCK_ONLY_CSUM_INVALID	0x010071
-+
- /*
-  * Pass 1b errors
-  */
+ #ifdef WORDS_BIGENDIAN
+ 	fs->flags |= EXT2_FLAG_SWAP_BYTES;
+ 	ext2fs_swap_super(fs->super);
 
