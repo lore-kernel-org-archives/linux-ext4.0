@@ -1,247 +1,168 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 06/23] ext4: Calculate and verify inode checksums
-Date: Sat, 07 Jan 2012 00:28:32 -0800
-Message-ID: <20120107082832.21970.68799.stgit@elm3c44.beaverton.ibm.com>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 21/51] e2fsck: Verify extent tree blocks and clear the bad ones
+Date: Sat, 07 Jan 2012 00:35:10 -0800
+Message-ID: <20120107083510.25788.57961.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:41500 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753116Ab2AGIfS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Jan 2012 03:35:18 -0500
+Received: from /spool/local
+	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Sat, 7 Jan 2012 03:35:17 -0500
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078ZFT7349968
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:35:15 -0500
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078ZBsx017687
+	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 01:35:14 -0700
+In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch introduces to ext4 the ability to calculate and verify inode
-checksums.  This requires the use of a new ro compatibility flag and some
-accompanying e2fsprogs patches to provide the relevant features in tune2fs and
-e2fsck.  The inode generation changes have been integrated into this patch.
+When we encounter an extent tree block that passes the header check but fails
+the checksum, offer to clear just that extent block instead of failing the
+whole tree, which results in the entire inode being wiped out.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h   |    3 +
- fs/ext4/ialloc.c |   13 ++++++
- fs/ext4/inode.c  |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/ioctl.c  |    7 +++
- 4 files changed, 126 insertions(+), 8 deletions(-)
+ e2fsck/pass1.c   |   34 ++++++++++++++++++++++++++++++++--
+ e2fsck/problem.c |   15 +++++++++++++++
+ e2fsck/problem.h |    6 ++++++
+ 3 files changed, 53 insertions(+), 2 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9d1504e..57c1e39 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -897,6 +897,9 @@ struct ext4_inode_info {
- 	 */
- 	tid_t i_sync_tid;
- 	tid_t i_datasync_tid;
-+
-+	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
-+	__u32 i_csum_seed;
- };
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index c382a7b..1ae117d 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1805,6 +1805,7 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 	int			is_dir, is_leaf;
+ 	errcode_t		problem;
+ 	struct ext2_extent_info	info;
++	int			failed_csum;
  
+ 	pctx->errcode = ext2fs_extent_get_info(ehandle, &info);
+ 	if (pctx->errcode)
+@@ -1812,11 +1813,25 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 
+ 	pctx->errcode = ext2fs_extent_get(ehandle, EXT2_EXTENT_FIRST_SIB,
+ 					  &extent);
+-	while (!pctx->errcode && info.num_entries-- > 0) {
++	while ((pctx->errcode == 0 ||
++		pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID) &&
++	       info.num_entries-- > 0) {
++		failed_csum = 0;
+ 		is_leaf = extent.e_flags & EXT2_EXTENT_FLAGS_LEAF;
+ 		is_dir = LINUX_S_ISDIR(pctx->inode->i_mode);
+ 
+ 		problem = 0;
++		/* Ask to clear a corrupt extent block */
++		if (pctx->errcode == EXT2_ET_EXTENT_CSUM_INVALID) {
++			pctx->blk = extent.e_pblk;
++			pctx->blk2 = extent.e_lblk;
++			pctx->num = extent.e_len;
++			problem = PR_1_EXTENT_CSUM_INVALID;
++			if (fix_problem(ctx, problem, pctx))
++				goto fix_problem_now;
++			failed_csum = 1;
++		}
++
+ 		if (extent.e_pblk == 0 ||
+ 		    extent.e_pblk < ctx->fs->super->s_first_data_block ||
+ 		    extent.e_pblk >= ext2fs_blocks_count(ctx->fs->super))
+@@ -1828,12 +1843,24 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			 ext2fs_blocks_count(ctx->fs->super))
+ 			problem = PR_1_EXTENT_ENDS_BEYOND;
+ 
++		/* Corrupt but passes checks?  Ask to fix checksum. */
++		if (failed_csum) {
++			pctx->blk = extent.e_pblk;
++			pctx->blk2 = extent.e_lblk;
++			pctx->num = extent.e_len;
++			problem = 0;
++			if (fix_problem(ctx, PR_1_EXTENT_ONLY_CSUM_INVALID,
++					pctx))
++				ext2fs_extent_replace(ehandle, 0, &extent);
++		}
++
+ 		if (problem) {
+ 		report_problem:
+ 			pctx->blk = extent.e_pblk;
+ 			pctx->blk2 = extent.e_lblk;
+ 			pctx->num = extent.e_len;
+ 			if (fix_problem(ctx, problem, pctx)) {
++fix_problem_now:
+ 				e2fsck_read_bitmaps(ctx);
+ 				pctx->errcode =
+ 					ext2fs_extent_delete(ehandle, 0);
+@@ -1860,7 +1887,10 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 			if (pctx->errcode) {
+ 				pctx->str = "EXT2_EXTENT_DOWN";
+ 				problem = PR_1_EXTENT_HEADER_INVALID;
+-				if (pctx->errcode == EXT2_ET_EXTENT_HEADER_BAD)
++				if (pctx->errcode ==
++					EXT2_ET_EXTENT_HEADER_BAD ||
++				    pctx->errcode ==
++					EXT2_ET_EXTENT_CSUM_INVALID)
+ 					goto report_problem;
+ 				return;
+ 			}
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 95813ce..cd404f8 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -951,6 +951,21 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("The bad @b @i looks @n.  "),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	/* Inode extent block checksum does not match extent */
++	{ PR_1_EXTENT_CSUM_INVALID,
++	  N_("@i %i extent block checksum does not match extent\n\t(logical @b "
++	     "%c, @n physical @b %b, len %N)\n"),
++	  PROMPT_CLEAR, 0 },
++
++	/*
++	 * Inode extent block passes checks, but checksum does not match
++	 * extent
++	 */
++	{ PR_1_EXTENT_ONLY_CSUM_INVALID,
++	  N_("@i %i extent block passes checks, but checksum does not match "
++	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
++	  PROMPT_FIX, 0 },
++
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 51a911b..cd9e4ed 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -556,6 +556,12 @@ struct problem_context {
+ /* inode passes checks, but checksum does not match inode */
+ #define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
+ 
++/* extent block checksum does not match extent block */
++#define PR_1_EXTENT_CSUM_INVALID	0x010068
++
++/* extent block passes checks, but checksum does not match extent block */
++#define PR_1_EXTENT_ONLY_CSUM_INVALID	0x010069
++
  /*
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 00beb4f..9884fa1 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -892,6 +892,19 @@ got:
- 	inode->i_generation = sbi->s_next_generation++;
- 	spin_unlock(&sbi->s_next_gen_lock);
- 
-+	/* Precompute checksum seed for inode metadata */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		__u32 csum;
-+		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+		__le32 inum = cpu_to_le32(inode->i_ino);
-+		__le32 gen = cpu_to_le32(inode->i_generation);
-+		csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&inum,
-+				   sizeof(inum));
-+		ei->i_csum_seed = ext4_chksum(sbi, csum, (__u8 *)&gen,
-+					      sizeof(gen));
-+	}
-+
- 	ext4_clear_state_flags(ei); /* Only relevant on 32-bit archs */
- 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 07cd63d..d8f6a63 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -48,6 +48,73 @@
- 
- #define MPAGE_DA_EXTENT_TAIL 0x01
- 
-+static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
-+			      struct ext4_inode_info *ei)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	__u16 csum_lo;
-+	__u16 csum_hi = 0;
-+	__u32 csum;
-+
-+	csum_lo = raw->i_checksum_lo;
-+	raw->i_checksum_lo = 0;
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-+		csum_hi = raw->i_checksum_hi;
-+		raw->i_checksum_hi = 0;
-+	}
-+
-+	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
-+			   EXT4_INODE_SIZE(inode->i_sb));
-+
-+	raw->i_checksum_lo = csum_lo;
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		raw->i_checksum_hi = csum_hi;
-+
-+	return csum;
-+}
-+
-+static int ext4_inode_csum_verify(struct inode *inode, struct ext4_inode *raw,
-+				  struct ext4_inode_info *ei)
-+{
-+	__u32 provided, calculated;
-+
-+	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-+	    cpu_to_le32(EXT4_OS_LINUX) ||
-+	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	provided = le16_to_cpu(raw->i_checksum_lo);
-+	calculated = ext4_inode_csum(inode, raw, ei);
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		provided |= ((__u32)le16_to_cpu(raw->i_checksum_hi)) << 16;
-+	else
-+		calculated &= 0xFFFF;
-+
-+	return provided == calculated;
-+}
-+
-+static void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw,
-+				struct ext4_inode_info *ei)
-+{
-+	__u32 csum;
-+
-+	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
-+	    cpu_to_le32(EXT4_OS_LINUX) ||
-+	    !EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	csum = ext4_inode_csum(inode, raw, ei);
-+	raw->i_checksum_lo = cpu_to_le16(csum & 0xFFFF);
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-+		raw->i_checksum_hi = cpu_to_le16(csum >> 16);
-+}
-+
- static inline int ext4_begin_ordered_truncate(struct inode *inode,
- 					      loff_t new_size)
- {
-@@ -3751,6 +3818,39 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (ret < 0)
- 		goto bad_inode;
- 	raw_inode = ext4_raw_inode(&iloc);
-+
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-+		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
-+		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
-+		    EXT4_INODE_SIZE(inode->i_sb)) {
-+			EXT4_ERROR_INODE(inode, "bad extra_isize (%u != %u)",
-+				EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize,
-+				EXT4_INODE_SIZE(inode->i_sb));
-+			ret = -EIO;
-+			goto bad_inode;
-+		}
-+	} else
-+		ei->i_extra_isize = 0;
-+
-+	/* Precompute checksum seed for inode metadata */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+		__u32 csum;
-+		__le32 inum = cpu_to_le32(inode->i_ino);
-+		__le32 gen = raw_inode->i_generation;
-+		csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&inum,
-+				   sizeof(inum));
-+		ei->i_csum_seed = ext4_chksum(sbi, csum, (__u8 *)&gen,
-+					      sizeof(gen));
-+	}
-+
-+	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
-+		EXT4_ERROR_INODE(inode, "checksum invalid");
-+		ret = -EIO;
-+		goto bad_inode;
-+	}
-+
- 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
- 	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
- 	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
-@@ -3828,12 +3928,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	}
- 
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
--		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
--		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
--		    EXT4_INODE_SIZE(inode->i_sb)) {
--			ret = -EIO;
--			goto bad_inode;
--		}
- 		if (ei->i_extra_isize == 0) {
- 			/* The extra space is currently unused. Use it. */
- 			ei->i_extra_isize = sizeof(struct ext4_inode) -
-@@ -3845,8 +3939,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
- 				ext4_set_inode_state(inode, EXT4_STATE_XATTR);
- 		}
--	} else
--		ei->i_extra_isize = 0;
-+	}
- 
- 	EXT4_INODE_GET_XTIME(i_ctime, inode, raw_inode);
- 	EXT4_INODE_GET_XTIME(i_mtime, inode, raw_inode);
-@@ -4071,6 +4164,8 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_extra_isize = cpu_to_le16(ei->i_extra_isize);
- 	}
- 
-+	ext4_inode_csum_set(inode, raw_inode, ei);
-+
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
- 	if (!err)
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a567968..4217f99 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -150,6 +150,13 @@ flags_out:
- 		if (!inode_owner_or_capable(inode))
- 			return -EPERM;
- 
-+		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+			ext4_warning(sb, "Setting inode version is not "
-+				     "supported with metadata_csum enabled.");
-+			return -ENOTTY;
-+		}
-+
- 		err = mnt_want_write(filp->f_path.mnt);
- 		if (err)
- 			return err;
+  * Pass 1b errors
+  */
 
