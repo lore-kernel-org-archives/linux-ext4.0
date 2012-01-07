@@ -1,235 +1,72 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 23/51] libext2fs: Add dx_root/dx_node checksum calculation and
-	verification helpers
-Date: Sat, 07 Jan 2012 00:35:22 -0800
-Message-ID: <20120107083522.25788.83355.stgit@elm3c44.beaverton.ibm.com>
-References: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 03/23] ext4: Record the checksum algorithm in use in the
+	superblock
+Date: Sat, 07 Jan 2012 00:28:13 -0800
+Message-ID: <20120107082813.21970.67772.stgit@elm3c44.beaverton.ibm.com>
+References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
 	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andi Kleen <andi@firstfloor.org>,
 	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
-	Coly Li <colyli@gmail.com>
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:58742 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753116Ab2AGIf3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Jan 2012 03:35:29 -0500
-Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Sat, 7 Jan 2012 03:35:28 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q078ZPOf284272
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 03:35:25 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q078ZOvq028740
-	for <linux-ext4@vger.kernel.org>; Sat, 7 Jan 2012 06:35:25 -0200
-In-Reply-To: <20120107083256.25788.41238.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Verify and calculate checksums of htree internal node blocks.
+Record the type of checksum algorithm we're using for metadata in the
+superblock, in case we ever want/need to change the algorithm.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/csum.c         |  149 +++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_err.et.in |    3 +
- lib/ext2fs/ext2fs.h       |    4 +
- 3 files changed, 156 insertions(+), 0 deletions(-)
+ fs/ext4/super.c |   18 ++++++++++++++++++
+ 1 files changed, 18 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 8a0543c..8907459 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,155 @@
- #define STATIC static
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3e1329e..de9f78c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -111,6 +111,16 @@ static struct file_system_type ext3_fs_type = {
+ #define IS_EXT3_SB(sb) (0)
  #endif
  
-+static __u16 do_nothing16(__u16 x)
++static int ext4_verify_csum_type(struct super_block *sb,
++				 struct ext4_super_block *es)
 +{
-+	return x;
-+}
-+
-+static __u16 disk_to_host16(__u16 x)
-+{
-+	return ext2fs_le16_to_cpu(x);
-+}
-+
-+static errcode_t __get_dx_countlimit(ext2_filsys fs,
-+				     struct ext2_dir_entry *dirent,
-+				     struct ext2_dx_countlimit **cc,
-+				     int *offset,
-+				     int need_swab)
-+{
-+	struct ext2_dir_entry *dp;
-+	struct ext2_dx_root_info *root;
-+	struct ext2_dx_countlimit *c;
-+	int count_offset, max_sane_entries;
-+	unsigned int rec_len;
-+	__u16 (*translate)(__u16) = (need_swab ? disk_to_host16 : do_nothing16);
-+
-+	rec_len = translate(dirent->rec_len);
-+
-+	if (rec_len == fs->blocksize && translate(dirent->name_len) == 0)
-+		count_offset = 8;
-+	else if (rec_len == 12) {
-+		dp = (struct ext2_dir_entry *)(((void *)dirent) + rec_len);
-+		rec_len = translate(dp->rec_len);
-+		if (rec_len != fs->blocksize - 12)
-+			return EXT2_ET_DB_NOT_FOUND;
-+		root = (struct ext2_dx_root_info *)(((void *)dp + 12));
-+		if (root->reserved_zero ||
-+		    root->info_length != sizeof(struct ext2_dx_root_info))
-+			return EXT2_ET_DB_NOT_FOUND;
-+		count_offset = 32;
-+	} else
-+		return EXT2_ET_DB_NOT_FOUND;
-+
-+	c = (struct ext2_dx_countlimit *)(((void *)dirent) + count_offset);
-+	max_sane_entries = (fs->blocksize - count_offset) /
-+			   sizeof(struct ext2_dx_entry);
-+	if (ext2fs_le16_to_cpu(c->limit) > max_sane_entries ||
-+	    ext2fs_le16_to_cpu(c->count) > max_sane_entries)
-+		return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
-+
-+	if (offset)
-+		*offset = count_offset;
-+	if (cc)
-+		*cc = c;
-+
-+	return 0;
-+}
-+
-+errcode_t ext2fs_get_dx_countlimit(ext2_filsys fs,
-+				   struct ext2_dir_entry *dirent,
-+				   struct ext2_dx_countlimit **cc,
-+				   int *offset)
-+{
-+	return __get_dx_countlimit(fs, dirent, cc, offset, 0);
-+}
-+
-+static errcode_t ext2fs_dx_csum(ext2_filsys fs, ext2_ino_t inum,
-+				struct ext2_dir_entry *dirent,
-+				__u32 *crc, int count_offset, int count,
-+				struct ext2_dx_tail *t)
-+{
-+	errcode_t retval;
-+	char *buf = (char *)dirent;
-+	int size;
-+	__u32 old_csum, gen;
-+	struct ext2_inode inode;
-+
-+	size = count_offset + (count * sizeof(struct ext2_dx_entry));
-+	old_csum = t->dt_checksum;
-+	t->dt_checksum = 0;
-+
-+	retval = ext2fs_read_inode(fs, inum, &inode);
-+	if (retval)
-+		return retval;
-+
-+	inum = ext2fs_cpu_to_le32(inum);
-+	gen = ext2fs_cpu_to_le32(inode.i_generation);
-+	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
-+				sizeof(inum));
-+	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen, sizeof(gen));
-+	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, size);
-+	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)t,
-+				sizeof(struct ext2_dx_tail));
-+	t->dt_checksum = old_csum;
-+
-+	return 0;
-+}
-+
-+static int ext2fs_dx_csum_verify(ext2_filsys fs, ext2_ino_t inum,
-+				 struct ext2_dir_entry *dirent)
-+{
-+	__u32 calculated;
-+	errcode_t retval;
-+	struct ext2_dx_countlimit *c;
-+	struct ext2_dx_tail *t;
-+	int count_offset, limit, count;
-+
-+	retval = __get_dx_countlimit(fs, dirent, &c, &count_offset, 1);
-+	if (retval)
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
-+	limit = ext2fs_le16_to_cpu(c->limit);
-+	count = ext2fs_le16_to_cpu(c->count);
-+	if (count_offset + (limit * sizeof(struct ext2_dx_entry)) >
-+	    fs->blocksize - sizeof(struct ext2_dx_tail))
-+		return 0;
-+	/* htree structs are accessed in LE order */
-+	t = (struct ext2_dx_tail *)(((struct ext2_dx_entry *)c) + limit);
-+	retval = ext2fs_dx_csum(fs, inum, dirent, &calculated, count_offset,
-+				count, t);
-+	if (retval)
-+		return 0;
 +
-+	return ext2fs_le32_to_cpu(t->dt_checksum) == calculated;
++	return es->s_checksum_type == EXT4_CRC32C_CHKSUM;
 +}
 +
-+static errcode_t ext2fs_dx_csum_set(ext2_filsys fs, ext2_ino_t inum,
-+				    struct ext2_dir_entry *dirent)
-+{
-+	__u32 crc;
-+	errcode_t retval = 0;
-+	struct ext2_dx_countlimit *c;
-+	struct ext2_dx_tail *t;
-+	int count_offset, limit, count;
-+
-+	retval = __get_dx_countlimit(fs, dirent, &c, &count_offset, 1);
-+	if (retval)
-+		return retval;
-+	limit = ext2fs_le16_to_cpu(c->limit);
-+	count = ext2fs_le16_to_cpu(c->count);
-+	if (count_offset + (limit * sizeof(struct ext2_dx_entry)) >
-+	    fs->blocksize - sizeof(struct ext2_dx_tail))
-+		return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
-+	t = (struct ext2_dx_tail *)(((struct ext2_dx_entry *)c) + limit);
-+
-+	/* htree structs are accessed in LE order */
-+	retval = ext2fs_dx_csum(fs, inum, dirent, &crc, count_offset, count, t);
-+	if (retval)
-+		return retval;
-+	t->dt_checksum = ext2fs_cpu_to_le32(crc);
-+	return retval;
-+}
-+
- #define EXT3_EXTENT_TAIL_OFFSET(hdr)	(sizeof(struct ext3_extent_header) + \
- 	(sizeof(struct ext3_extent) * ext2fs_le16_to_cpu((hdr)->eh_max)))
+ void *ext4_kvmalloc(size_t size, gfp_t flags)
+ {
+ 	void *ret;
+@@ -3181,6 +3191,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto cantfind_ext4;
+ 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
  
-diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index 9019026..1e51384 100644
---- a/lib/ext2fs/ext2_err.et.in
-+++ b/lib/ext2fs/ext2_err.et.in
-@@ -452,4 +452,7 @@ ec	EXT2_ET_INODE_BITMAP_CSUM_INVALID,
- ec	EXT2_ET_EXTENT_CSUM_INVALID,
- 	"Extent block checksum does not match extent block"
- 
-+ec	EXT2_ET_DIR_NO_SPACE_FOR_CSUM,
-+	"Directory block does not have space for checksum"
++	/* Check for a known checksum algorithm */
++	if (!ext4_verify_csum_type(sb, es)) {
++		ext4_msg(sb, KERN_ERR, "VFS: Found ext4 filesystem with "
++			 "unknown checksum algorithm.");
++		silent = 1;
++		goto cantfind_ext4;
++	}
 +
- 	end
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 5fa809a..5943ecc 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -943,6 +943,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-+extern errcode_t ext2fs_get_dx_countlimit(ext2_filsys fs,
-+					  struct ext2_dir_entry *dirent,
-+					  struct ext2_dx_countlimit **cc,
-+					  int *offset);
- extern errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs,
- 					      ext2_ino_t inum,
- 					      struct ext3_extent_header *eh);
-
+ 	/* Set defaults before we parse the mount options */
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+ 	set_opt(sb, INIT_INODE_TABLE);
