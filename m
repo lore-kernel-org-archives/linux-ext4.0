@@ -1,133 +1,28 @@
-From: Andrei Popa <andrei.popa@i-neo.ro>
-Subject: ext4 discard does not apper in /proc/mounts
-Date: Sun, 08 Jan 2012 01:23:39 +0200
-Message-ID: <1325978619.4567.2.camel@ierdnac-hp>
-Reply-To: andrei.popa@i-neo.ro
+From: "Mr. Leung Cheung" <mmorales@mlareina.cl>
+Subject: URGENT ATTENTION
+Date: Sun, 08 Jan 2012 09:20:27 -0300 (CLST)
+Message-ID: <540b12b0-eafe-45b7-baee-6a37b89ba5a0@mail>
+Reply-To: "Mr. Leung Cheung" <leungcheung1@admin.in.th>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="sha512";
-	protocol="application/x-pkcs7-signature";
-	boundary="=-pKKD7g62JsJHXYpGlGVI"
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:43648 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751350Ab2AGXX4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Jan 2012 18:23:56 -0500
-Received: by eaad14 with SMTP id d14so1533425eaa.19
-        for <linux-ext4@vger.kernel.org>; Sat, 07 Jan 2012 15:23:54 -0800 (PST)
+Received: from mail.mlareina.cl ([200.75.2.92]:56645 "EHLO mail.mlareina.cl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751388Ab2AHM0M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Jan 2012 07:26:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---=-pKKD7g62JsJHXYpGlGVI
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-Hello,
-
-ierdnac-hp ~ # cat /etc/fstab |grep discard
-/dev/sda3               /               ext4
-discard,noatime,norelatime,barrier=3D0,errors=3Dremount-ro,data=3Dwriteback
-0 1
-
-ierdnac-hp ~ # tune2fs -l /dev/sda3|grep discard
-Default mount options:    journal_data_writeback discard
-
-ierdnac-hp ~ # cat /proc/mounts |grep write
-/dev/root / ext4 rw,noatime,user_xattr,acl,barrier=3D0,data=3Dwriteback 0 0
 
 
---=20
-Andrei Popa
-(+4) 0741.57.80.90
-
-
---=-pKKD7g62JsJHXYpGlGVI
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCDu0w
-ggSdMIIDhaADAgECAhA0PekrrCc0/4/LNJT7zHBUMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNVBAYT
-AlNFMRQwEgYDVQQKEwtBZGRUcnVzdCBBQjEmMCQGA1UECxMdQWRkVHJ1c3QgRXh0ZXJuYWwgVFRQ
-IE5ldHdvcmsxIjAgBgNVBAMTGUFkZFRydXN0IEV4dGVybmFsIENBIFJvb3QwHhcNMDUwNjA3MDgw
-OTEwWhcNMjAwNTMwMTA0ODM4WjCBrjELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQH
-Ew5TYWx0IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYDVQQL
-ExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xNjA0BgNVBAMTLVVUTi1VU0VSRmlyc3QtQ2xpZW50
-IEF1dGhlbnRpY2F0aW9uIGFuZCBFbWFpbDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
-ALI5haTyfatBO2JGN67NwWB1vDll+UoaR6K5zEjMapjVTTUZuaRC5c5J4oovHnzSMQfHTrSDZJ0u
-KdWiZMSFvYVRNXmkTmiQexx6pJKoF/KYFfKTzMmkMpW7DE8wvZigC4vlbhuiRvp4vKJvq1lepS/P
-ytptqi/rrKGzaqq3Lmc1i3nhHmmI4uZGzaCl6r4LznY6eg6b6vzaJ1s9cx8i5khhxkzzabGoLhu2
-1DEgLLyCio6kDqXXiUP8FlqvHXHXEVnauocNr/rz4cLwpMVnjNbWVDreCqS6A3ezZcj9HtN0YqoY
-ymiTHqGFfvVHZcv4TVcodNI0/zC27vZiMBSMLOsCAwEAAaOB9DCB8TAfBgNVHSMEGDAWgBStvZh6
-NLQm9/rEJlTvA73gJMtUGjAdBgNVHQ4EFgQUiYJnfcSdJnAAS7RQSHzePa4Ebn0wDgYDVR0PAQH/
-BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wEQYDVR0gBAowCDAGBgRVHSAAMEQGA1UdHwQ9MDswOaA3
-oDWGM2h0dHA6Ly9jcmwudXNlcnRydXN0LmNvbS9BZGRUcnVzdEV4dGVybmFsQ0FSb290LmNybDA1
-BggrBgEFBQcBAQQpMCcwJQYIKwYBBQUHMAGGGWh0dHA6Ly9vY3NwLnVzZXJ0cnVzdC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBAAG8nONjKLDzMQHC33vdYqABnSMxD5ySc1NR6h9M+tafxMovZ354Mw90
-FrmRh5H1iib6ZHAA2B75CwRiUIeTgdTa9SPbNLuFVrRwNG54gzcehRzFERWSX4cXvaxq/fHC0cyJ
-X7F88D5R8jXzfOxgmGs6K+Dv37N9huu1G/Vb7KJ8mBPXAFC50S1z3gN4dOEFhTFey5q5nZTGuZQ3
-dXLcRPtn6PD6JR5Sp9ol6UfgoMc8oE6xCjb7d0if75eK+7T+45QUqIO8XC0/0mBxYO7CcYIM6Yg2
-49ogtKOgbKqWS7iAjnXKSQf2OxS639wF2Z/b4LLmTaB4JufnLW5/X8YeiBUwggUaMIIEAqADAgEC
-AhBtGeqnGU9qMyLmIjJ6qnHeMA0GCSqGSIb3DQEBBQUAMIGuMQswCQYDVQQGEwJVUzELMAkGA1UE
-CBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5l
-dHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVROLVVT
-RVJGaXJzdC1DbGllbnQgQXV0aGVudGljYXRpb24gYW5kIEVtYWlsMB4XDTExMDQyODAwMDAwMFoX
-DTIwMDUzMDEwNDgzOFowgZMxCzAJBgNVBAYTAkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNoZXN0
-ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNVBAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYDVQQD
-EzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0EwggEiMA0G
-CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCShIRbS1eY1F4vi6ThQMijU1hfZmXxMk73nzJ9VdB4
-TFW3QpTg+SdxB8XGaaS5MsTxQBqQzCdWYn8XtXFpruUgG+TLY15gyqJB9mrho/+43x9IbWVDjCou
-K2M4d9+xF6zC2oIC1tQyatRnbyATj1w1+uVUgK/YcQodNwoCUFNslR2pEBS0mZVZEjH/CaLSTNxS
-297iQAFbSGjdxUq04O0kHzqvcV8H46y/FDuwJXFoPfQP1hdYRhWBPGiLi4MPbXohV+Y0sNsyfuNK
-4aVScmQmkU6lkg//4LFg/RpvaFGZY40ai6XMQpubfSJj06mg/M6ekN9EGfRcWzW6FvOnm//BAgMB
-AAGjggFLMIIBRzAfBgNVHSMEGDAWgBSJgmd9xJ0mcABLtFBIfN49rgRufTAdBgNVHQ4EFgQUehNO
-AHRbxnhjZCfBL+KgW7x5xXswDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwEQYD
-VR0gBAowCDAGBgRVHSAAMFgGA1UdHwRRME8wTaBLoEmGR2h0dHA6Ly9jcmwudXNlcnRydXN0LmNv
-bS9VVE4tVVNFUkZpcnN0LUNsaWVudEF1dGhlbnRpY2F0aW9uYW5kRW1haWwuY3JsMHQGCCsGAQUF
-BwEBBGgwZjA9BggrBgEFBQcwAoYxaHR0cDovL2NydC51c2VydHJ1c3QuY29tL1VUTkFkZFRydXN0
-Q2xpZW50X0NBLmNydDAlBggrBgEFBQcwAYYZaHR0cDovL29jc3AudXNlcnRydXN0LmNvbTANBgkq
-hkiG9w0BAQUFAAOCAQEAhda+eFdVbTN/RFL+QtUGqAEDgIr7DbL9Sr/2r0FJ9RtaxdKtG3NuPukm
-fOZMmMEwKN/L+0I8oSU+CnXW0D05hmbRoZu1TZtvryhsHa/l6nRaqNqxwPF1ei+eupN5yv7ikR5W
-dLL4jdPgQ3Ib7Y/9YDkgR/uLrzplSDyYPaUlv73vYOBJ5RbI6z9Dg/Dg7g3B080zX5vQvWBqszv+
-+tTJOjwf7Zv/m0kzvkIpOYPuM2kugp1FTahp2oAbHj3SGl18R5mlmwhtEpmG1l1XBxunML5LSUS4
-kH7K0Xk467Qz+qA6XSZYnmFVGLQh1ZnV4ENAQjC+6qXnlNKw/vN1+X9u5zCCBSowggQSoAMCAQIC
-EQCC1iLWCNlC//08NoDW0yDKMA0GCSqGSIb3DQEBBQUAMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UE
-CBMSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8g
-Q0EgTGltaXRlZDE5MDcGA1UEAxMwQ09NT0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2Vj
-dXJlIEVtYWlsIENBMB4XDTExMDczMDAwMDAwMFoXDTEyMDcyOTIzNTk1OVowJTEjMCEGCSqGSIb3
-DQEJARYUYW5kcmVpLnBvcGFAaS1uZW8ucm8wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB
-AQDC7/8Wo7gDAqT2EkXadu9fEj4lW88MRYTy3axwSw8xnKZjAEK7opewFhj+a5VgXwS5yTSfbBl1
-8wwSoApW2trvCZeUHJvQ0XTXJvfEzCjz8vJkqUu/3qNBLkxWQGq/7ZIDF7oi8fUi8qUQJutfMl9O
-qfjscSAhCsbBy/Z2y3cijVVSkOJSpe7YTfO8FeOEGOR0xf2AiZ2K/4kJHNRB94L6Np7AgzAWaK/I
-7kRVjnaR2ToltdvwVEwpCyLAIwdhb/M7HfpiB4pdx3zUagnF3deK+2/DpbqxkBVzIb/Jl9tC8qA5
-kqcxtRBqGBQsQyj9ixaAXuxnozgl/hYulf2fcMLRAgMBAAGjggHkMIIB4DAfBgNVHSMEGDAWgBR6
-E04AdFvGeGNkJ8Ev4qBbvHnFezAdBgNVHQ4EFgQUNOswJ18cdPpt45Hjk7cuY+8mZIcwDgYDVR0P
-AQH/BAQDAgWgMAwGA1UdEwEB/wQCMAAwIAYDVR0lBBkwFwYIKwYBBQUHAwQGCysGAQQBsjEBAwUC
-MBEGCWCGSAGG+EIBAQQEAwIFIDBGBgNVHSAEPzA9MDsGDCsGAQQBsjEBAgEBATArMCkGCCsGAQUF
-BwIBFh1odHRwczovL3NlY3VyZS5jb21vZG8ubmV0L0NQUzBXBgNVHR8EUDBOMEygSqBIhkZodHRw
-Oi8vY3JsLmNvbW9kb2NhLmNvbS9DT01PRE9DbGllbnRBdXRoZW50aWNhdGlvbmFuZFNlY3VyZUVt
-YWlsQ0EuY3JsMIGIBggrBgEFBQcBAQR8MHowUgYIKwYBBQUHMAKGRmh0dHA6Ly9jcnQuY29tb2Rv
-Y2EuY29tL0NPTU9ET0NsaWVudEF1dGhlbnRpY2F0aW9uYW5kU2VjdXJlRW1haWxDQS5jcnQwJAYI
-KwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmNvbW9kb2NhLmNvbTAfBgNVHREEGDAWgRRhbmRyZWkucG9w
-YUBpLW5lby5ybzANBgkqhkiG9w0BAQUFAAOCAQEAO7mdp0TD7EDtK8g3pBvTLB6RyFeN9kuskL9y
-V7LSd3XMRM6nFQXDXY44mTMBKfMqIxzWdO8TNvkuBDeUsRS2XpgoHmaVYXrYOZbtTHsbDjYvOOG4
-PtTqF3gvUooC3a7TylM3TdIAm4I3DFKxDDh3uJGh7d+G1tgjC0iCEh/xquZLpj/B3Mahp8QWODWb
-u6Nzql/2ar8cz66JGjEjrOcSTB+zKVN6YY8o1JscMYsjKe1g4Dq0kq3NkFpSvgBzerdT7Au5haLY
-+vw6WZwhMPjLdWRqd8Lk5vB0PGNOU1HpoQhsE8Wd0dr5t8S3lTnWmlHy4G6+H1XmwSkm8RxHEjAt
-DzGCAmEwggJdAgEBMIGpMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVz
-dGVyMRAwDgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UE
-AxMwQ09NT0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBAhEAgtYi
-1gjZQv/9PDaA1tMgyjANBglghkgBZQMEAgMFAKCBiTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAxMDcyMzIzMzlaME8GCSqGSIb3DQEJBDFCBEC0DCV3bRYIFUQ0
-3jIqOm5Fl6a2Q+UHtzJ3JmSwEntwtiM60/Rfuz+5IzUnn8fJd1zyF3fOhN/8FBiPJhLtFjs8MA0G
-CSqGSIb3DQEBAQUABIIBALoS3tKZaNLalW9OGZtiYDO+k9LWsPFw48l2xjn29/bGfk6TFWztQt+Y
-NX0iM0Fo4splrVp1njAZ5D+8VHlIj74cBTH7MahwQkeDK4/wn9yUQBDBQmmFvK+l3ePQf+egzGAv
-6265iVf+pftDdWf7ZLH/UFVwp+vus2L5g7j8Fewz3pmDcZ104p89jaIqpth9HJk1AL9U1p1l8nlq
-c1qqOSOCn6qaKmdCwMP6wGKAO20ljVhvpbEfrR+zTiLUsu+hgl3wJg5Au9NjAnMoPmP8gPAJx0Vg
-qn+dnWRnJNNpvvjxc7gWtRvSUjgw2K/eXdYkM4v40NjUJxcSH58y58c8y8QAAAAAAAA=
-
-
---=-pKKD7g62JsJHXYpGlGVI--
-
+ I need your assistance to transfer Abandoned
+ sum of $22.5Million Dollars own by (late Aziz
+ Musa Omar Numan) from my bank Hang Seng
+ Bank here in Hong Kong.We share in ratio 60%/
+ 40%. Reply if interested reply via email:
+ leungcheung1@admin.in.th
+ Best Regards
+ Mr Leung Cheung.
