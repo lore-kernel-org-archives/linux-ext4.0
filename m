@@ -1,132 +1,63 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext{3,4}: fix potential race when setversion ioctl
- updates inode
-Date: Mon, 9 Jan 2012 16:03:38 +0100
-Message-ID: <20120109150338.GB18898@quack.suse.cz>
-References: <20120103013152.GA26455@dztty>
- <20120104174609.GD28907@quack.suse.cz>
- <6C16105A-D0EE-413E-B993-F223CFC75307@dilger.ca>
- <20120104233254.GH28907@quack.suse.cz>
- <20120105003751.GA4010@dztty>
- <20120105114205.GB14947@quack.suse.cz>
- <20120106010011.GA9028@dztty>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Darrick J. Wong" <djwong@us.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Djalal Harouni <tixxdz@opendz.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: setattr: Forbid setting data journalling when delalloc enabled
+Date: Mon,  9 Jan 2012 16:45:03 +0100
+Message-ID: <1326123903-21040-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57736 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:62521 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755060Ab2AIPDk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jan 2012 10:03:40 -0500
-Content-Disposition: inline
-In-Reply-To: <20120106010011.GA9028@dztty>
+	id S932099Ab2AIPpM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jan 2012 10:45:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 06-01-12 02:00:11, Djalal Harouni wrote:
-> On Thu, Jan 05, 2012 at 12:42:05PM +0100, Jan Kara wrote:
-> > On Thu 05-01-12 01:40:09, Djalal Harouni wrote:
-> > > Only the reiserfs and ext{2,3,4} filesystems support this ioctl. The reiserfs
-> > > do not use mutexes at all, even in the REISERFS_IOC_SETFLAGS ioctl which will
-> > > test and set _all_ the possible values of the i_flags field.
-> > > Perhaps I should also send a patch for this ?
-> >   Yes, possibly reiserfs should use i_mutex for that ioctl.
-> For the reiserfs I've missed some locks.
-> 
-> It seems that reiserfs uses its own 'reiserfs_sb_info->lock' (reiserfs
-> super block data) to serialize writers in all the ioctl, even the GET
-> (readers) ioctl operations. But I also know that the VFS layer uses i_mutex
-> to protect inode changes, so ? I'm not sure, If I can test it I'll send a
-> patch.
-> 
-> > > And perhaps ext2 should also be updated.
-> >   Sure. Send a patch my way when you have it.
-> Here's the tested ext2 patch, thanks.
-  Thanks I've taken it into my tree.
+Ext4 does not support data journalling with delayed allocation enabled.
+We even does not allow to mount the file system with delayed allocation
+and data journalling enabled, but it can be set via FS_IOC_SETFLAGS
+which is wrong.
 
-									Honza
-> --------
-> 
-> From: Djalal Harouni <tixxdz@opendz.org>
-> 
-> ext2: protect inode changes in the SETVERSION and SETFLAGS ioctls
-> 
-> Unlock mutex after i_flags and i_ctime updates in the EXT2_IOC_SETFLAGS
-> ioctl.
-> 
-> Use i_mutex in the EXT2_IOC_SETVERSION ioctl to protect i_ctime and
-> i_generation updates and make the ioctl consistent since i_mutex is
-> also used in other places to protect timestamps and inode changes.
-> 
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Jan Kara <jack@suse.cz>
-> Signed-off-by: Djalal Harouni <tixxdz@opendz.org>
-> ---
->  fs/ext2/ioctl.c |   22 ++++++++++++++++------
->  1 files changed, 16 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext2/ioctl.c b/fs/ext2/ioctl.c
-> index f81e250..b7f931f 100644
-> --- a/fs/ext2/ioctl.c
-> +++ b/fs/ext2/ioctl.c
-> @@ -77,10 +77,11 @@ long ext2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  		flags = flags & EXT2_FL_USER_MODIFIABLE;
->  		flags |= oldflags & ~EXT2_FL_USER_MODIFIABLE;
->  		ei->i_flags = flags;
-> -		mutex_unlock(&inode->i_mutex);
->  
->  		ext2_set_inode_flags(inode);
->  		inode->i_ctime = CURRENT_TIME_SEC;
-> +		mutex_unlock(&inode->i_mutex);
-> +
->  		mark_inode_dirty(inode);
->  setflags_out:
->  		mnt_drop_write(filp->f_path.mnt);
-> @@ -88,20 +89,29 @@ setflags_out:
->  	}
->  	case EXT2_IOC_GETVERSION:
->  		return put_user(inode->i_generation, (int __user *) arg);
-> -	case EXT2_IOC_SETVERSION:
-> +	case EXT2_IOC_SETVERSION: {
-> +		__u32 generation;
-> +
->  		if (!inode_owner_or_capable(inode))
->  			return -EPERM;
->  		ret = mnt_want_write(filp->f_path.mnt);
->  		if (ret)
->  			return ret;
-> -		if (get_user(inode->i_generation, (int __user *) arg)) {
-> +		if (get_user(generation, (int __user *) arg)) {
->  			ret = -EFAULT;
-> -		} else {
-> -			inode->i_ctime = CURRENT_TIME_SEC;
-> -			mark_inode_dirty(inode);
-> +			goto setversion_out;
->  		}
-> +
-> +		mutex_lock(&inode->i_mutex);
-> +		inode->i_ctime = CURRENT_TIME_SEC;
-> +		inode->i_generation = generation;
-> +		mutex_unlock(&inode->i_mutex);
-> +
-> +		mark_inode_dirty(inode);
-> +setversion_out:
->  		mnt_drop_write(filp->f_path.mnt);
->  		return ret;
-> +	}
->  	case EXT2_IOC_GETRSVSZ:
->  		if (test_opt(inode->i_sb, RESERVATION)
->  			&& S_ISREG(inode->i_mode)
-> -- 
-> 1.7.1
+When data journalling and delayed allocation is enabled it can lead to
+troubles. Here is one example how to reproduce an oops:
+
+ mkfs.ext4 /dev/sdd
+ mount /dev/sdd /mnt/test1
+ dd if=/dev/zero of=/mnt/test1/file bs=1M count=4
+ chattr +j /mnt/test1/file
+ dd if=/dev/zero of=/mnt/test1/file bs=1M count=4 conv=notrunc
+ chattr -j /mnt/test1/file
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/ioctl.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a567968..f1b8226 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -126,7 +126,21 @@ flags_err:
+ 		if (err)
+ 			goto flags_out;
+ 
++		/*
++		 * We absolutely can not journal data when delayed allocation
++		 * is enabled. This is not possible to do via mount option
++		 * and it should not be possible to do via setattr as well.
++		 * Delayed allocation with data=journal is simply not
++		 * supported.
++		 */
+ 		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL))
++			if (test_opt(sb, DELALLOC)) {
++				ext4_msg(sb, KERN_ERR,
++					 "Data journalling not supported "
++					 "with delayed allocation.");
++				err = -EOPNOTSUPP;
++				goto flags_out;
++			}
+ 			err = ext4_change_inode_journal_flag(inode, jflag);
+ 		if (err)
+ 			goto flags_out;
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.4.4
+
