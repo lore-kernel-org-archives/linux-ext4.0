@@ -1,93 +1,56 @@
 From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Subject: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int may_flags' in
- nfsd_open()
-Date: Mon, 09 Jan 2012 14:21:53 +0100
-Message-ID: <20120109132153.2616029.26302.stgit@localhost.localdomain>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+Subject: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
+Date: Mon, 09 Jan 2012 14:21:38 +0100
+Message-ID: <20120109132137.2616029.76288.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-	"J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
-	adilger@whamcloud.com
+	bfields@redhat.com, sandeen@redhat.com, adilger@whamcloud.com
 To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Just rename this variable, as the next patch will add a flag and
-'access' as variable name would not be correct any more.
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
+The following series adds two new f_mode flags to tell ext4
+to use 32-bit or 64-bit hash values for llseek() calls.
+These flags can then used by network file systems, such as NFS, to
+request 32-bit or 64-bit offsets (hashes).
 
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Acked-by: J. Bruce Fields<bfields@redhat.com>
----
- fs/nfsd/vfs.c |   18 ++++++++++--------
- 1 files changed, 10 insertions(+), 8 deletions(-)
+Version 5
+- update NFSD_MAY_64BIT_COOKIE to 0x1000
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index d25a723..20fa252 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -726,12 +726,13 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
- 
- /*
-  * Open an existing file or directory.
-- * The access argument indicates the type of open (read/write/lock)
-+ * The may_flags argument indicates the type of open (read/write/lock)
-+ * and additional flags.
-  * N.B. After this call fhp needs an fh_put
-  */
- __be32
- nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
--			int access, struct file **filp)
-+			int may_flags, struct file **filp)
- {
- 	struct dentry	*dentry;
- 	struct inode	*inode;
-@@ -746,7 +747,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 	 * and (hopefully) checked permission - so allow OWNER_OVERRIDE
- 	 * in case a chmod has now revoked permission.
- 	 */
--	err = fh_verify(rqstp, fhp, type, access | NFSD_MAY_OWNER_OVERRIDE);
-+	err = fh_verify(rqstp, fhp, type, may_flags | NFSD_MAY_OWNER_OVERRIDE);
- 	if (err)
- 		goto out;
- 
-@@ -757,7 +758,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 	 * or any access when mandatory locking enabled
- 	 */
- 	err = nfserr_perm;
--	if (IS_APPEND(inode) && (access & NFSD_MAY_WRITE))
-+	if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
- 		goto out;
- 	/*
- 	 * We must ignore files (but only files) which might have mandatory
-@@ -770,12 +771,12 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 	if (!inode->i_fop)
- 		goto out;
- 
--	host_err = nfsd_open_break_lease(inode, access);
-+	host_err = nfsd_open_break_lease(inode, may_flags);
- 	if (host_err) /* NOMEM or WOULDBLOCK */
- 		goto out_nfserr;
- 
--	if (access & NFSD_MAY_WRITE) {
--		if (access & NFSD_MAY_READ)
-+	if (may_flags & NFSD_MAY_WRITE) {
-+		if (may_flags & NFSD_MAY_READ)
- 			flags = O_RDWR|O_LARGEFILE;
- 		else
- 			flags = O_WRONLY|O_LARGEFILE;
-@@ -785,7 +786,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
- 	else
--		host_err = ima_file_check(*filp, access);
-+		host_err = ima_file_check(*filp, may_flags);
-+
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
+Version 4
+- Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
+  CONFIG_COMPAT in the 
+  "Return 32/64-bit dir name hash according to usage type"
+  patch
+
+Version 3:
+- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
+  as it was included upstream separately
+- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+  two separate patches as suggested by Bruce, one patch to rename 
+  'access' to 'may_flags'. And the remainder of the original patch to set 
+  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+  NFSD_MAY_64BIT_COOKIE flag
+
+Version 2:
+- use f_mode instead of O_* flags and also in a separate patch
+- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+- fix SEEK_END in ext4_dir_llseek()
+- set f_mode flags in NFS code as early as possible and introduce a new
+  NFSD_MAY_64BIT_COOKIE flag for that
+
+--
+Bernd Schubert
+Fraunhofer ITWM
 
