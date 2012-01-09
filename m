@@ -1,56 +1,66 @@
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Subject: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
-Date: Mon, 09 Jan 2012 14:21:38 +0100
-Message-ID: <20120109132137.2616029.76288.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-	bfields@redhat.com, sandeen@redhat.com, adilger@whamcloud.com
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd: Issue cache flush after checkpointing
+Date: Mon,  9 Jan 2012 15:04:44 +0100
+Message-ID: <1326117884-19928-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:51050 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754820Ab2AIOEu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jan 2012 09:04:50 -0500
+Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.221.2])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 1A8AC9141C
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Jan 2012 15:04:49 +0100 (CET)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
+When we reach cleanup_journal_tail(), there is no guarantee that
+checkpointed buffers are on a stable storage - especially if buffers were
+written out by log_do_checkpoint(), they are likely to be only in disk's
+caches. Thus when we update journal superblock, effectively removing old
+transaction from journal, this write of superblock can get to stable storage
+before those checkpointed buffers which can result in filesystem corruption
+after a crash.
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+Thus we must unconditionally issue a cache flush before we update journal
+superblock.
 
-Version 5
-- update NFSD_MAY_64BIT_COOKIE to 0x1000
+I managed to reproduce the corruption using somewhat tweaked Chris Mason's
+barrier-test scheduler. Also this should fix occasional reports of 'Bit already
+freed' filesystem errors which are totally unreproducible but inspection of
+several fs images I've gathered over time points to a problem like this.
 
-Version 4
-- Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
-  CONFIG_COMPAT in the 
-  "Return 32/64-bit dir name hash according to usage type"
-  patch
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/checkpoint.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
-Version 3:
-- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
-  as it was included upstream separately
-- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
-  two separate patches as suggested by Bruce, one patch to rename 
-  'access' to 'may_flags'. And the remainder of the original patch to set 
-  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
-  NFSD_MAY_64BIT_COOKIE flag
+ I've added this patch to my tree and plan to push it to Linus soon.
 
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
-
---
-Bernd Schubert
-Fraunhofer ITWM
+diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
+index f94fc48..3396c0f 100644
+--- a/fs/jbd/checkpoint.c
++++ b/fs/jbd/checkpoint.c
+@@ -522,6 +522,16 @@ int cleanup_journal_tail(journal_t *journal)
+ 	journal->j_tail_sequence = first_tid;
+ 	journal->j_tail = blocknr;
+ 	spin_unlock(&journal->j_state_lock);
++	/*
++	 * We need to make sure that any blocks that were recently written out
++	 * --- perhaps by log_do_checkpoint() --- are flushed out before we
++	 * drop the transactions from the journal. It's unlikely this will be
++	 * necessary, especially with an appropriately sized journal, but we
++	 * need this to guarantee correctness.  Fortunately
++	 * cleanup_journal_tail() doesn't get called all that often.
++	 */
++	if (journal->j_flags & JFS_BARRIER)
++		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+ 	if (!(journal->j_flags & JFS_ABORT))
+ 		journal_update_superblock(journal, 1);
+ 	return 0;
+-- 
+1.7.1
 
