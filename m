@@ -1,70 +1,68 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: setattr: Forbid setting data journalling when
- delalloc enabled
-Date: Mon, 9 Jan 2012 17:22:24 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1201091719220.8881@dhcp-27-109.brq.redhat.com>
-References: <1326123903-21040-1-git-send-email-lczerner@redhat.com> <20120109155504.GE22175@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4 discard does not apper in /proc/mounts
+Date: Mon, 09 Jan 2012 11:12:24 -0600
+Message-ID: <4F0B1FF8.8010200@redhat.com>
+References: <1325978619.4567.2.camel@ierdnac-hp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: andrei.popa@i-neo.ro
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12486 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5747 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932178Ab2AIQWb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jan 2012 11:22:31 -0500
-In-Reply-To: <20120109155504.GE22175@thunk.org>
+	id S932266Ab2AIRM3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jan 2012 12:12:29 -0500
+In-Reply-To: <1325978619.4567.2.camel@ierdnac-hp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 9 Jan 2012, Ted Ts'o wrote:
-
-> On Mon, Jan 09, 2012 at 04:45:03PM +0100, Lukas Czerner wrote:
-> > Ext4 does not support data journalling with delayed allocation enabled.
-> > We even does not allow to mount the file system with delayed allocation
-> > and data journalling enabled, but it can be set via FS_IOC_SETFLAGS
-> > which is wrong.
-> > 
-> > When data journalling and delayed allocation is enabled it can lead to
-> > troubles. Here is one example how to reproduce an oops:
-> > 
-> >  mkfs.ext4 /dev/sdd
-> >  mount /dev/sdd /mnt/test1
-> >  dd if=/dev/zero of=/mnt/test1/file bs=1M count=4
-> >  chattr +j /mnt/test1/file
-> >  dd if=/dev/zero of=/mnt/test1/file bs=1M count=4 conv=notrunc
-> >  chattr -j /mnt/test1/file
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+On 1/7/12 5:23 PM, Andrei Popa wrote:
+> Hello,
 > 
-> Don't we also need to add a check in ext4_should_journal_data() in
-> fs/ext4/ext4_jbd2.h?  Otherwise we could get in trouble if the data
-> journalling flag had been set previously when the file system was
-> mounted nodelalloc.
-
-Ah, of course you're right. We should add a check into
-ext4_should_journal_data().
-
+> ierdnac-hp ~ # cat /etc/fstab |grep discard
+> /dev/sda3               /               ext4
+> discard,noatime,norelatime,barrier=0,errors=remount-ro,data=writeback
+> 0 1
 > 
-> In fact it could be argued that we don't need to return EOPNOSUPP, or
-> printk a message, but simply make sure that the data journal flag is
-> ignored in if delayed allocation is enabled.  If that's true, we can
-> allow the user to set or clear the journal flag as much as they like;
-> it would just be ignored.
-
-I am fine with ignoring the flag silently without any information for
-the user that the flag will be ignored when delalloc is enabled. After
-all it should be clear from documentation that we do not allow data
-journalling and delayed allocation together.
-
-Thanks!
-
--Lukas
-
+> ierdnac-hp ~ # tune2fs -l /dev/sda3|grep discard
+> Default mount options:    journal_data_writeback discard
 > 
-> Thanks,
+> ierdnac-hp ~ # cat /proc/mounts |grep write
+> /dev/root / ext4 rw,noatime,user_xattr,acl,barrier=0,data=writeback 0 0
 > 
-> 					- Ted
 > 
 
--- 
+What kernel?
+
+If it's a recent kernel, here is the logic which controls whether to show it:
+
+        if (test_opt(sb, DISCARD) && !(def_mount_opts & EXT4_DEFM_DISCARD))
+                seq_puts(seq, ",discard");
+
+i.e. if "discard" is in the default mount options for the fs, it is not
+shown, by design - although I am not 100% sure why that design decision
+was made; that logic was explicitly added here:
+
+commit 8b67f04ab9de5d8f3a71aef72bf02c995a506db5
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Aug 1 23:14:20 2010 -0400
+
+    ext4: Add mount options in superblock
+    
+    Allow mount options to be stored in the superblock.  Also add default
+    mount option bits for nobarrier, block_validity, discard, and nodelalloc.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+which contained:
+
+-       if (test_opt(sb, DISCARD))
++       if (test_opt(sb, DISCARD) && !(def_mount_opts & EXT4_DEFM_DISCARD))
+                seq_puts(seq, ",discard");
+
+so maybe Ted can speak to the reasoning behind it; I think the general philosophy
+is to not show any defaults in /proc/mounts.
+
+Thanks,
+-Eric
