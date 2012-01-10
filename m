@@ -1,96 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] libquota: Do not build libquota when disabled
-Date: Tue, 10 Jan 2012 17:46:36 +0100
-Message-ID: <1326213996-13759-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH RESEND] ext4: fix undefined behavior in
+ ext4_fill_flex_info()
+Date: Tue, 10 Jan 2012 11:54:40 -0500
+Message-ID: <20120110165440.GA6034@thunk.org>
+References: <1326152840-1188-1-git-send-email-xi.wang@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+To: Xi Wang <xi.wang@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35378 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932114Ab2AJQqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 11:46:46 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:59908 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932088Ab2AJQyo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 11:54:44 -0500
+Content-Disposition: inline
+In-Reply-To: <1326152840-1188-1-git-send-email-xi.wang@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Due to missing QUOTA_CMT definition in configure.in, libquota was built
-(and e.g. include file was installed) even when quota support was disabled.
-Fix it. Also fix help text of the configure option when we are at it.
+On Mon, Jan 09, 2012 at 06:47:20PM -0500, Xi Wang wrote:
+> Commit 503358ae01b70ce6909d19dd01287093f6b6271c ("ext4: avoid divide by
+> zero when trying to mount a corrupted file system") fixes CVE-2009-4307
+> by performing a sanity check on s_log_groups_per_flex, since it can be
+> set to a bogus value by an attacker.
+> 
+> 	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
+> 	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
+> 
+> 	if (groups_per_flex < 2) { ... }
+> 
+> This patch fixes two potential issues in the previous commit.
+> 
+> 1) The sanity check might only work on architectures like PowerPC.
+> On x86, 5 bits are used for the shifting amount.  That means, given a
+> large s_log_groups_per_flex value like 36, groups_per_flex = 1 << 36
+> is essentially 1 << 4 = 16, rather than 0.  This will bypass the check,
+> leaving s_log_groups_per_flex and groups_per_flex inconsistent.
+> 
+> 2) The sanity check relies on undefined behavior, i.e., oversized shift.
+> A standard-confirming C compiler could rewrite the check in unexpected
+> ways.  Consider the following equivalent form, assuming groups_per_flex
+> is unsigned for simplicity.
+> 
+> 	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
+> 	if (groups_per_flex == 0 || groups_per_flex == 1) {
+> 
+> We compile the code snippet using Clang 3.0 and GCC 4.6.  Clang will
+> completely optimize away the check groups_per_flex == 0, leaving the
+> patched code as vulnerable as the original.  GCC keeps the check, but
+> there is no guarantee that future versions will do the same.
+> 
+> Signed-off-by: Xi Wang <xi.wang@gmail.com>
+> Cc: stable@vger.kernel.org
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- configure    |   11 ++++++-----
- configure.in |    4 +++-
- 2 files changed, 9 insertions(+), 6 deletions(-)
+Thanks, applied.  And thanks for the expanded commit description!
 
-diff --git a/configure b/configure
-index 9f5eeb5..965f7cf 100755
---- a/configure
-+++ b/configure
-@@ -1462,7 +1462,7 @@ Optional Features:
-   --disable-testio-debug  disable the use of the test I/O manager for debugging
-   --disable-libuuid	  do not build private uuid library
-   --disable-libblkid	  do not build private blkid library
--  --enable-libquota	  enable quota support
-+  --enable-quota	  enable quota support
-   --disable-debugfs   	  disable support of debugfs program
-   --disable-imager   	  disable support of e2image program
-   --disable-resizer   	  disable support of e2resize program
-@@ -5209,11 +5209,13 @@ fi
- if test "${enable_quota+set}" = set; then :
-   enableval=$enable_quota; if test "$enableval" = "no"
- then
-+	QUOTA_CMT="#"
- 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling quota support" >&5
- $as_echo "Disabling quota support" >&6; }
- else
- 	$as_echo "#define CONFIG_QUOTA 1" >>confdefs.h
- 
-+	QUOTA_CMT=""
- 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling quota support" >&5
- $as_echo "Enabling quota support" >&6; }
- fi
-@@ -7127,7 +7129,6 @@ int
- main ()
- {
-   char *data, *data2, *data3;
--  const char *cdata2;
-   int i, pagesize;
-   int fd, fd2;
- 
-@@ -7152,10 +7153,10 @@ main ()
-   fd2 = open ("conftest.txt", O_RDWR | O_CREAT | O_TRUNC, 0600);
-   if (fd2 < 0)
-     return 4;
--  cdata2 = "";
--  if (write (fd2, cdata2, 1) != 1)
-+  data2 = "";
-+  if (write (fd2, data2, 1) != 1)
-     return 5;
--  data2 = (char *) mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0L);
-+  data2 = mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0L);
-   if (data2 == MAP_FAILED)
-     return 6;
-   for (i = 0; i < pagesize; ++i)
-diff --git a/configure.in b/configure.in
-index c304a8d..94e7c21 100644
---- a/configure.in
-+++ b/configure.in
-@@ -531,12 +531,14 @@ dnl
- PKG_PROG_PKG_CONFIG
- AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota support])
- AC_ARG_ENABLE([quota],
--[  --enable-libquota	  enable quota support],
-+[  --enable-quota	  enable quota support],
- if test "$enableval" = "no"
- then
-+	QUOTA_CMT="#"
- 	AC_MSG_RESULT([Disabling quota support])
- else
- 	AC_DEFINE(CONFIG_QUOTA, 1)
-+	QUOTA_CMT=""
- 	AC_MSG_RESULT([Enabling quota support])
- fi
- ,
--- 
-1.7.1
-
+		      	     	     - Ted
