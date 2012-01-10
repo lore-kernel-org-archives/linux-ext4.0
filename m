@@ -1,74 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Support "check=none" "nocheck" mount options
-Date: Tue, 10 Jan 2012 11:43:41 -0600
-Message-ID: <4F0C78CD.6070809@redhat.com>
-References: <20120110174118.GB3015@zod.bos.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	kernel-team@fedoraproject.org
-To: Josh Boyer <jwboyer@redhat.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH] jbd: clear b_modified before moving the jh to a different transaction
+Date: Tue, 10 Jan 2012 13:12:55 -0500
+Message-ID: <1326219175-4529-1-git-send-email-josef@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12259 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9999 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932404Ab2AJRnp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 12:43:45 -0500
-In-Reply-To: <20120110174118.GB3015@zod.bos.redhat.com>
+	id S1755839Ab2AJSNV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 13:13:21 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/10/12 11:41 AM, Josh Boyer wrote:
-> The ext2/ext3 filesystems supported "check=none" and "nocheck" as mount options
-> even though that was already the default behavior and it essentially did
-> nothing.  When using ext4 to mount ext2/ext3 filesystems, that mount option
-> causes the mount to fail.  That isn't as backward compatible as it could be,
-> so add support to ext4 to accept the option.
+If we are journalling data (ie journal=data or big symlinks) we can discard
+buffers and move them to different transactions to make sure they get cleaned up
+properly.  The problem is b_modified could still be set from the last
+transaction that touched it, so putting it on the currently running transaction
+or setting it up to be put on the next transaction will run into problems if the
+buffer gets reused in that transaction as the space accounting logic won't be
+done, which will result in panics at commit time because t_nr_buffers will end
+up being more than t_outstanding_credits.  Thanks to Jan Kara for pointing out
+the other part of this problem a few months ago.  Thanks,
 
-The only thing ext2 does with those options today is to clear the flag,
-and I can't find anything in userspace or kernelspace which would have set
-it in any case.  It seem dead, but we do need the compatibility in ext4
-if it's to handle ext2&3 seamlessly, I guess.
+Signed-off-by: Josef Bacik <josef@redhat.com>
+---
+ fs/jbd/transaction.c  |    5 ++++-
+ fs/jbd2/transaction.c |    5 ++++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-> Signed-off-by: Josh Boyer <jwboyer@redhat.com>
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-> 
-> ---
->  fs/ext4/super.c |    7 ++++++-
->  1 files changed, 6 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3e1329e..5ff09e7 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1333,7 +1333,7 @@ enum {
->  	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
->  	Opt_inode_readahead_blks, Opt_journal_ioprio,
->  	Opt_dioread_nolock, Opt_dioread_lock,
-> -	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-> +	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable, Opt_nocheck,
->  };
->  
->  static const match_table_t tokens = {
-> @@ -1409,6 +1409,8 @@ static const match_table_t tokens = {
->  	{Opt_init_itable, "init_itable=%u"},
->  	{Opt_init_itable, "init_itable"},
->  	{Opt_noinit_itable, "noinit_itable"},
-> +	{Opt_nocheck, "check=none"},
-> +	{Opt_nocheck, "nocheck"},
->  	{Opt_err, NULL},
->  };
->  
-> @@ -1905,6 +1907,9 @@ set_qf_format:
->  		case Opt_noinit_itable:
->  			clear_opt(sb, INIT_INODE_TABLE);
->  			break;
-> +		case Opt_nocheck:
-> +			/* ext2/ext3 used to "support" this option.  Silently eat it */
-> +			break;
->  		default:
->  			ext4_msg(sb, KERN_ERR,
->  			       "Unrecognized mount option \"%s\" "
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 7e59c6e..c968788 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -1784,6 +1784,7 @@ static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
+ 		 */
+ 		clear_buffer_dirty(bh);
+ 		__journal_file_buffer(jh, transaction, BJ_Forget);
++		jh->b_modified = 0;
+ 		may_free = 0;
+ 	} else {
+ 		JBUFFER_TRACE(jh, "on running transaction");
+@@ -1952,8 +1953,10 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		 * clear dirty bits when it is done with the buffer.
+ 		 */
+ 		set_buffer_freed(bh);
+-		if (journal->j_running_transaction && buffer_jbddirty(bh))
++		if (journal->j_running_transaction && buffer_jbddirty(bh)) {
++			jh->b_modified = 0;
+ 			jh->b_next_transaction = journal->j_running_transaction;
++		}
+ 		journal_put_journal_head(jh);
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a0e41a4..094dcd8 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1756,6 +1756,7 @@ static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
+ 		 * __journal_file_buffer
+ 		 */
+ 		clear_buffer_dirty(bh);
++		jh->b_modified = 0;
+ 		__jbd2_journal_file_buffer(jh, transaction, BJ_Forget);
+ 		may_free = 0;
+ 	} else {
+@@ -1917,8 +1918,10 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh)
+ 		 * clear dirty bits when it is done with the buffer.
+ 		 */
+ 		set_buffer_freed(bh);
+-		if (journal->j_running_transaction && buffer_jbddirty(bh))
++		if (journal->j_running_transaction && buffer_jbddirty(bh)) {
++			jh->b_modified = 0;
+ 			jh->b_next_transaction = journal->j_running_transaction;
++		}
+ 		jbd2_journal_put_journal_head(jh);
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
+-- 
+1.7.5.2
 
