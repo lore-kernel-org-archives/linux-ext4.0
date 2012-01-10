@@ -1,30 +1,87 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: change getpagesize to sysconf
-Date: Mon, 9 Jan 2012 21:38:07 -0500
-Message-ID: <20120110023807.GB1450@thunk.org>
-References: <1323274568-13551-1-git-send-email-vapier@gentoo.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
+Date: Tue, 10 Jan 2012 04:27:15 -0700
+Message-ID: <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-nfs@vger.kernel.org,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
+	Fan Yong <yong.fan@whamcloud.com>,
+	"J. Bruce Fields" <bfields@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35293 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755952Ab2AJCiK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jan 2012 21:38:10 -0500
-Content-Disposition: inline
-In-Reply-To: <1323274568-13551-1-git-send-email-vapier@gentoo.org>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:40767 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752613Ab2AJL1V convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 06:27:21 -0500
+In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 07, 2011 at 11:16:08AM -0500, Mike Frysinger wrote:
-> Newer versions of glibc no longer export the getpagesize() prototype when
-> using recent versions of POSIX (_XOPEN_SOURCE).  So building tdb.c gives
-> use implicit function declaration warnings.  Fix the issue by using the
-> portable sysconf() function which returns the same answer.
+On 2012-01-09, at 6:21 AM, Bernd Schubert wrote:
+> With the ext3/ext4 directory index implementation hashes are used to specify
+> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+> hashes and therefore the probability of hash collisions for larger directories
+> is rather high. As recently reported on the NFS mailing list that theoretical
+> problem also happens on real systems:
+> http://comments.gmane.org/gmane.linux.nfs/40863
 > 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> The following series adds two new f_mode flags to tell ext4
+> to use 32-bit or 64-bit hash values for llseek() calls.
+> These flags can then used by network file systems, such as NFS, to
+> request 32-bit or 64-bit offsets (hashes).
 
-Applied, thanks.
+Ted, it would be great if these patches could land.  We hit issues like
+this previously as well, which is why we started this patch series in the
+first place.
 
-						- Ted
+> Version 5
+> - update NFSD_MAY_64BIT_COOKIE to 0x1000
+> 
+> Version 4
+> - Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
+>  CONFIG_COMPAT in the 
+>  "Return 32/64-bit dir name hash according to usage type"
+>  patch
+> 
+> Version 3:
+> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
+>  as it was included upstream separately
+> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+>  two separate patches as suggested by Bruce, one patch to rename 
+>  'access' to 'may_flags'. And the remainder of the original patch to set 
+>  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+>  NFSD_MAY_64BIT_COOKIE flag
+> 
+> Version 2:
+> - use f_mode instead of O_* flags and also in a separate patch
+> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+> - fix SEEK_END in ext4_dir_llseek()
+> - set f_mode flags in NFS code as early as possible and introduce a new
+>  NFSD_MAY_64BIT_COOKIE flag for that
+> 
+> --
+> Bernd Schubert
+> Fraunhofer ITWM
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+--
+Andreas Dilger                       Whamcloud, Inc.
+Principal Engineer                   http://www.whamcloud.com/
+
+
+
+
