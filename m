@@ -1,103 +1,58 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 3.3
-Date: Tue, 10 Jan 2012 15:52:04 -0500
-Message-ID: <E1Rkift-0006hB-04@tytso-glaptop.cam.corp.google.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd: clear b_modified before moving the jh to a
+ different transaction
+Date: Tue, 10 Jan 2012 22:10:09 +0100
+Message-ID: <20120110211009.GF4516@quack.suse.cz>
+References: <1326219175-4529-1-git-send-email-josef@redhat.com>
+ <20120110201706.GD4516@quack.suse.cz>
+ <20120110202119.GA3523@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38944 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932372Ab2AJUwI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 15:52:08 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:47960 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751280Ab2AJVKL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 16:10:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20120110202119.GA3523@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+On Tue 10-01-12 15:21:20, Josef Bacik wrote:
+> On Tue, Jan 10, 2012 at 09:17:06PM +0100, Jan Kara wrote:
+> > On Tue 10-01-12 13:12:55, Josef Bacik wrote:
+> > > If we are journalling data (ie journal=data or big symlinks) we can discard
+> > > buffers and move them to different transactions to make sure they get cleaned up
+> > > properly.  The problem is b_modified could still be set from the last
+> > > transaction that touched it, so putting it on the currently running transaction
+> > > or setting it up to be put on the next transaction will run into problems if the
+> > > buffer gets reused in that transaction as the space accounting logic won't be
+> > > done, which will result in panics at commit time because t_nr_buffers will end
+> > > up being more than t_outstanding_credits.  Thanks to Jan Kara for pointing out
+> > > the other part of this problem a few months ago.  Thanks,
+> >   Ho hum, I'm inclined to apply this just because it makes sense. But I
+> > still don't see how a transaction can reuse a buffer from BJ_Forget list.
+> > We attach there only truncated buffers and their underlying block can be
+> > reallocated only after the transaction freeing them is committed. So have
+> > you some incentive that this patch indeed fixes the t_outstanding_credits
+> > assertion you were hunting?
+> 
+> So more the problem is where we set b_next_transaction, since it could be
+> reallocated in the next transaction after the current transaction commits and
+> then we're really screwed.  I have no real evidence to prove that this is
+> causing my problem yet, but it's definitely wrong and I want to get it fixed
+> before I forget it :).
+  I see. But journal_invalidatepage() is called before blocks are freed
+which means that the freeing of the block happens either in the running
+transaction (to which we set b_next_transaction) or even in the following
+one. And we also set buffer_freed() so the buffer should be filed to
+BJ_Forget list when it is refiled. I agree the logic is kind of fragile so
+there can be bug somewhere. Just I don't see it (yet).
 
-There is a signed tag ext4_for_linus covering these commits.  In
-addition, there is merge conflict resolution in the branch
-for_linus_merge covering a relatively simple fixup needed in
-fs/ext4/ioctl.c.
-
-Thanks!!
-
-                                                - Ted
-
-The following changes since commit 384703b8e6cd4c8ef08512e596024e028c91c339:
-
-  Linux 3.2-rc6 (2011-12-16 18:36:26 -0800)
-
-are available in the git repository at:
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-
-Akinobu Mita (1):
-      ext4: use proper little-endian bitops
-
-Ben Hutchings (1):
-      ext4: Report max_batch_time option correctly
-
-Curt Wohlgemuth (1):
-      ext4: remove unused local variable
-
-Djalal Harouni (2):
-      ext4: add missing ext4_resize_end on error paths
-      ext4: make local symbol ext4_initxattrs static
-
-Eric Sandeen (1):
-      ext4: make more symbols static
-
-Jan Kara (2):
-      ext4: fix error handling on inode bitmap corruption
-      jbd2: fix hung processes in jbd2_journal_lock_updates()
-
-Robin Dong (1):
-      ext4: optimize ext4_find_delalloc_range() in nodelalloc mode
-
-Theodore Ts'o (3):
-      ext4: remove unneeded file_remove_suid() from ext4_ioctl()
-      ext4: avoid counting the number of free inodes twice in find_group_orlov()
-      ext4: reserve new feature flag codepoints
-
-Xi Wang (1):
-      ext4: fix undefined behavior in ext4_fill_flex_info()
-
-Yongqiang Yang (16):
-      ext4: do not reference pa_inode from group_pa
-      ext4: allocate delalloc blocks before changing journal mode
-      ext4: flush journal when switching from data=journal mode
-      jbd2: clear revoked flag on buffers before a new transaction started
-      ext4: add a function which extends a group without checking parameters
-      ext4: add a function which adds a new group descriptors to a fs
-      ext4: add a structure which will be used by 64bit-resize interface
-      ext4: add a function which sets up group blocks of a flex bg
-      ext4: add a function which sets up a block group descriptors of a flex bg
-      ext4: add a function which updates the super block during online resizing
-      ext4: pass verify_reserved_gdb() the number of group decriptors
-      ext4: add a new function which allocates bitmaps and inode tables
-      ext4: add a new function which adds a flex group to a fs
-      ext4: add new online resize interface
-      ext4: let ext4_group_extend() use common code
-      ext4: let ext4_group_add() use common code
-
-Zheng Liu (3):
-      ext4: add missing space to ext4_msg output in ext4_fill_super()
-      ext4: add missing spaces to debugging printk's
-      ext4: remove no longer used functions in inode.c
-
- Documentation/filesystems/ext4.txt |    7 +
- fs/ext4/balloc.c                   |    4 +-
- fs/ext4/ext4.h                     |   29 +-
- fs/ext4/extents.c                  |   10 +-
- fs/ext4/ialloc.c                   |   18 +-
- fs/ext4/inode.c                    |  143 +----
- fs/ext4/ioctl.c                    |   87 +++-
- fs/ext4/mballoc.c                  |    2 +-
- fs/ext4/resize.c                   | 1175 +++++++++++++++++++++++++++---------
- fs/ext4/super.c                    |   11 +-
- fs/ext4/xattr_security.c           |    5 +-
- fs/jbd2/commit.c                   |    6 +
- fs/jbd2/revoke.c                   |   34 +
- fs/jbd2/transaction.c              |    5 +-
- include/linux/jbd2.h               |    1 +
- include/trace/events/ext4.h        |    6 +-
- 16 files changed, 1080 insertions(+), 463 deletions(-)
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
