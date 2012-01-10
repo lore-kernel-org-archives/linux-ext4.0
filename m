@@ -1,87 +1,96 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
-Date: Tue, 10 Jan 2012 04:27:15 -0700
-Message-ID: <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-nfs@vger.kernel.org,
-	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
-	Fan Yong <yong.fan@whamcloud.com>,
-	"J. Bruce Fields" <bfields@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] libquota: Do not build libquota when disabled
+Date: Tue, 10 Jan 2012 17:46:36 +0100
+Message-ID: <1326213996-13759-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:40767 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752613Ab2AJL1V convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 06:27:21 -0500
-In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+Received: from cantor2.suse.de ([195.135.220.15]:35378 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932114Ab2AJQqq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 11:46:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-01-09, at 6:21 AM, Bernd Schubert wrote:
-> With the ext3/ext4 directory index implementation hashes are used to specify
-> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-> hashes and therefore the probability of hash collisions for larger directories
-> is rather high. As recently reported on the NFS mailing list that theoretical
-> problem also happens on real systems:
-> http://comments.gmane.org/gmane.linux.nfs/40863
-> 
-> The following series adds two new f_mode flags to tell ext4
-> to use 32-bit or 64-bit hash values for llseek() calls.
-> These flags can then used by network file systems, such as NFS, to
-> request 32-bit or 64-bit offsets (hashes).
+Due to missing QUOTA_CMT definition in configure.in, libquota was built
+(and e.g. include file was installed) even when quota support was disabled.
+Fix it. Also fix help text of the configure option when we are at it.
 
-Ted, it would be great if these patches could land.  We hit issues like
-this previously as well, which is why we started this patch series in the
-first place.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ configure    |   11 ++++++-----
+ configure.in |    4 +++-
+ 2 files changed, 9 insertions(+), 6 deletions(-)
 
-> Version 5
-> - update NFSD_MAY_64BIT_COOKIE to 0x1000
-> 
-> Version 4
-> - Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
->  CONFIG_COMPAT in the 
->  "Return 32/64-bit dir name hash according to usage type"
->  patch
-> 
-> Version 3:
-> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
->  as it was included upstream separately
-> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
->  two separate patches as suggested by Bruce, one patch to rename 
->  'access' to 'may_flags'. And the remainder of the original patch to set 
->  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
->  NFSD_MAY_64BIT_COOKIE flag
-> 
-> Version 2:
-> - use f_mode instead of O_* flags and also in a separate patch
-> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-> - fix SEEK_END in ext4_dir_llseek()
-> - set f_mode flags in NFS code as early as possible and introduce a new
->  NFSD_MAY_64BIT_COOKIE flag for that
-> 
-> --
-> Bernd Schubert
-> Fraunhofer ITWM
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
---
-Andreas Dilger                       Whamcloud, Inc.
-Principal Engineer                   http://www.whamcloud.com/
-
-
-
+diff --git a/configure b/configure
+index 9f5eeb5..965f7cf 100755
+--- a/configure
++++ b/configure
+@@ -1462,7 +1462,7 @@ Optional Features:
+   --disable-testio-debug  disable the use of the test I/O manager for debugging
+   --disable-libuuid	  do not build private uuid library
+   --disable-libblkid	  do not build private blkid library
+-  --enable-libquota	  enable quota support
++  --enable-quota	  enable quota support
+   --disable-debugfs   	  disable support of debugfs program
+   --disable-imager   	  disable support of e2image program
+   --disable-resizer   	  disable support of e2resize program
+@@ -5209,11 +5209,13 @@ fi
+ if test "${enable_quota+set}" = set; then :
+   enableval=$enable_quota; if test "$enableval" = "no"
+ then
++	QUOTA_CMT="#"
+ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Disabling quota support" >&5
+ $as_echo "Disabling quota support" >&6; }
+ else
+ 	$as_echo "#define CONFIG_QUOTA 1" >>confdefs.h
+ 
++	QUOTA_CMT=""
+ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: Enabling quota support" >&5
+ $as_echo "Enabling quota support" >&6; }
+ fi
+@@ -7127,7 +7129,6 @@ int
+ main ()
+ {
+   char *data, *data2, *data3;
+-  const char *cdata2;
+   int i, pagesize;
+   int fd, fd2;
+ 
+@@ -7152,10 +7153,10 @@ main ()
+   fd2 = open ("conftest.txt", O_RDWR | O_CREAT | O_TRUNC, 0600);
+   if (fd2 < 0)
+     return 4;
+-  cdata2 = "";
+-  if (write (fd2, cdata2, 1) != 1)
++  data2 = "";
++  if (write (fd2, data2, 1) != 1)
+     return 5;
+-  data2 = (char *) mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0L);
++  data2 = mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0L);
+   if (data2 == MAP_FAILED)
+     return 6;
+   for (i = 0; i < pagesize; ++i)
+diff --git a/configure.in b/configure.in
+index c304a8d..94e7c21 100644
+--- a/configure.in
++++ b/configure.in
+@@ -531,12 +531,14 @@ dnl
+ PKG_PROG_PKG_CONFIG
+ AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota support])
+ AC_ARG_ENABLE([quota],
+-[  --enable-libquota	  enable quota support],
++[  --enable-quota	  enable quota support],
+ if test "$enableval" = "no"
+ then
++	QUOTA_CMT="#"
+ 	AC_MSG_RESULT([Disabling quota support])
+ else
+ 	AC_DEFINE(CONFIG_QUOTA, 1)
++	QUOTA_CMT=""
+ 	AC_MSG_RESULT([Enabling quota support])
+ fi
+ ,
+-- 
+1.7.1
 
