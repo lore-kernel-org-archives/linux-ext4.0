@@ -1,78 +1,44 @@
-From: Surbhi Palande <csurbhi@gmail.com>
-Subject: Re: [PATCH v2 1/7] Adding support to freeze and unfreeze a journal
-Date: Tue, 10 Jan 2012 16:13:46 -0800
-Message-ID: <CAMBkX3e_jyTZ=i8D8_cza23Xygd+Gf5iACZ+hbo5TaYLrJPH-Q@mail.gmail.com>
-References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
-	<1323367477-21685-2-git-send-email-kamal@canonical.com>
-	<4F0C9D87.8010006@sandeen.net>
-	<20120110213104.GI4516@quack.suse.cz>
-	<CAMBkX3eVeKSmEzmYTe6Oe_D6kAMQTL5LYoi1-Axj7CcrM85Pow@mail.gmail.com>
-	<20120111000448.GA16395@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@sandeen.net>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Surbhi Palande <surbhi.palande@canonical.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20120111000448.GA16395@quack.suse.cz>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-Hi Jan,
-
->>
->>
->> If all the write operations were journaled, then this patch would no=
-t allow
->> ext4 filesystem to have any dirty data after its frozen.
->> (as journal_start() would block).
->>
->> =C2=A0I think the only one candidate that creates dirty data without=
- calling
->> ext4_journal_start() is mmapped?
-> =C2=A0No, the problem is in any write path. The problem is with opera=
-tions
-> that happen during the phase when s_frozen =3D=3D SB_FREEZE_WRITE. Th=
-ese
-> operations dirty the filesystem but running sync may easily miss them=
-=2E
-> During this phase journal is not frozen so that does not help you in =
-any
-> way.
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0Honza
-
-Ok! No new transaction can really start after the journal is frozen.
-But we can have dirty data after SB_FREEZE_WRITE and before
-SB_FREEZE_TRANS.
-I agree with you. However, can this be fixed by adding a
-sync_filesystem() in freeze_super() after the sb->s_op->freeze_fs() is
-over?
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/6] jbd2: Checkpointing fix and cleanups
+Date: Wed, 11 Jan 2012 01:31:06 +0100
+Message-ID: <1326241872-20142-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:56921 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756903Ab2AKAbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 19:31:23 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-So then essentially, when freeze_super() returns, the page cache is cle=
-an?
+  Hello,
 
-I do definitely agree that the fix is to add a lock for mutual
-exclusion between freeze filesystem and writes to a frozen filesystem.
+  I'm chasing for some time occasional reports of filesystem corruption
+demonstrated most often by 'bit already cleared' errors. I'm seeing such
+reports for several years with a rate of about 1 - 2 per year. At first I
+attributed those to memory errors (and some of those reports indeed might
+be due to HW problems) but some of them probably are not. Recently I've got
+one such report and user was nice enough to get me e2image of corrupted
+filesystem from which it was more or less obvious that during a crash we lost
+writes to some blocks (bitmap was among them).
 
-Thanks!
+I think the problem is due to a missing cache flush in checkpointing code
+(see patch 1 for details). I've tweaked Chris Mason's barrier-test IO
+scheduler to be evil in reordering requests in the right way and indeed I
+was able to trigger the fs corruption after a crash.
 
-Regards,
-Surbhi.
+When I was inspecting checkpointing code, I also found several things that
+deserve a cleanup so patches 2-5 are a result of that. Finally patch 6 is
+a possible speedup - we can use barriers happening during transaction commits
+for pushing the journal tail safely. The observable speedup is disputable
+since jbd2_cleanup_journal_tail() is called rather rarely (for metadata heavy
+load I saw about one jbd2_cleanup_journal_tail() for about 200 commits) so
+the cost of additional cache flush will be likely in the noise. But the patch
+is simple enough so I send it for others to judge whether it makes sense or
+not.
+
+Review is highly welcome.
+
+								Honza
