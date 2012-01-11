@@ -1,62 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] ext4: remove block bitmap initialization in ext4_new_inode()
-Date: Fri, 13 Jan 2012 16:30:47 -0500
-Message-ID: <1326490249-1685-2-git-send-email-tytso@mit.edu>
-References: <1326490249-1685-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 14972] [regression] msync() call on ext4 causes disk thrashing
+Date: Wed, 11 Jan 2012 00:08:00 GMT
+Message-ID: <201201110008.q0B080aJ015397@bugzilla.kernel.org>
+References: <bug-14972-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42562 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759230Ab2AMVbB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Jan 2012 16:31:01 -0500
-In-Reply-To: <1326490249-1685-1-git-send-email-tytso@mit.edu>
+Received: from bugzilla.kernel.org ([198.145.19.204]:41307 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756145Ab2AMXNv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jan 2012 18:13:51 -0500
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q0B080Ou015398
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2012 00:08:00 GMT
+In-Reply-To: <bug-14972-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We don't need to initialize the block bitmap when we allocate a new
-inode.  This is old code from the very early days that is just
-confusing things, and also has the problem of modifying the block
-group descriptor without obeying the ext4_journal_get_write_access() /
-ext4_handle_dirty_metadata() modification protocols.
+https://bugzilla.kernel.org/show_bug.cgi?id=14972
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c |   31 -------------------------------
- 1 files changed, 0 insertions(+), 31 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 72fc989..a4ce10f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -807,37 +807,6 @@ repeat_in_this_group:
- 	goto out;
- 
- got:
--	/* We may have to initialize the block bitmap if it isn't already */
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
--	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--		struct buffer_head *block_bitmap_bh;
--
--		block_bitmap_bh = ext4_read_block_bitmap(sb, group);
--		BUFFER_TRACE(block_bitmap_bh, "get block bitmap access");
--		err = ext4_journal_get_write_access(handle, block_bitmap_bh);
--		if (err) {
--			brelse(block_bitmap_bh);
--			goto fail;
--		}
--
--		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
--		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
--		brelse(block_bitmap_bh);
--
--		/* recheck and clear flag under lock if we still need to */
--		ext4_lock_group(sb, group);
--		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_group_clusters_set(sb, gdp,
--				ext4_free_clusters_after_init(sb, group, gdp));
--			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
--								gdp);
--		}
--		ext4_unlock_group(sb, group);
+Artem S. Tashkinov <t.artem@mailcity.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|                            |CODE_FIX
+
+
+
+
+--- Comment #13 from Artem S. Tashkinov <t.artem@mailcity.com>  2012-01-11 00:07:59 ---
+In one of recent kernels (somewhere around 2.6.38) this issue was fixed.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
