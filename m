@@ -1,130 +1,308 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH v2] jbd: Issue cache flush after checkpointing
-Date: Wed, 11 Jan 2012 20:00:13 +0100
-Message-ID: <1326308413-21483-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>, stable@kernel.org
-To: linux-ext4@vger.kernel.org
+From: Aditya Kali <adityakali@google.com>
+Subject: [PATCH v5] ext4: make quota as first class supported feature
+Date: Wed, 11 Jan 2012 11:11:56 -0800
+Message-ID: <1326309116-28723-1-git-send-email-adityakali@google.com>
+Cc: Aditya Kali <adityakali@google.com>
+To: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	jack@suse.cz, johann@whamcloud.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49409 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933645Ab2AKTAU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jan 2012 14:00:20 -0500
+Received: from mail-yw0-f74.google.com ([209.85.213.74]:60084 "EHLO
+	mail-yw0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753324Ab2AKTMJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 14:12:09 -0500
+Received: by yhpp56 with SMTP id p56so136583yhp.1
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2012 11:12:08 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we reach cleanup_journal_tail(), there is no guarantee that
-checkpointed buffers are on a stable storage - especially if buffers were
-written out by log_do_checkpoint(), they are likely to be only in disk's
-caches. Thus when we update journal superblock, effectively removing old
-transaction from journal, this write of superblock can get to stable storage
-before those checkpointed buffers which can result in filesystem corruption
-after a crash.
+This patch is an attempt towards supporting quotas as first class
+feature in ext4. It is based on the proposal at:
+https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+turned on, enables quota accounting at mount time iteself. Also, the
+quota inodes are stored in two additional superblock fields.
+Some changes introduced by this patch that should be pointed out are:
+1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
+   for storing the quota inodes in use.
+2) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
+   tracking group quota. The superblock fields can be set to use other inodes
+   as well.
+3) If the QUOTA feature and corresponding quota inodes are set in superblock,
+   the quota usage tracking is turned on at mount time. On 'quotaon' ioctl, the
+   quota limits enforcement is turned on. 'quotaoff' ioctl turns off only the
+   limits enforcement in this case.
+4) When QUOTA feature is in use, the quota mount options 'quota', 'usrquota',
+   'grpquota' are ignored by the kernel.
+5) mke2fs or tune2fs can be used to set the QUOTA feature and initialize quota
+   inodes. The default reserved inodes will not be visible to user as
+   regular files.
+6) The quota-tools will need to be modified to support hidden quota files on
+   ext4. E2fsprogs will also include support for creating and fixing quota
+   files.
+7) Support is only for the new V2 quota file format.
 
-A similar problem can happen if we replay the journal and wipe it before
-flushing disk's caches.
-
-Thus we must unconditionally issue a cache flush before we update journal
-superblock in these cases. The fix is slightly complicated by the fact that we
-have to get log tail before we issue cache flush but we can store it in the
-journal superblock only after the cache flush. Otherwise we risk races where
-new tail is written before appropriate cache flush is finished.
-
-I managed to reproduce the corruption using somewhat tweaked Chris Mason's
-barrier-test scheduler. Also this should fix occasional reports of 'Bit already
-freed' filesystem errors which are totally unreproducible but inspection of
-several fs images I've gathered over time points to a problem like this.
-
-CC: stable@kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Aditya Kali <adityakali@google.com>
 ---
- fs/jbd/checkpoint.c |   27 ++++++++++++++++++++++-----
- fs/jbd/recovery.c   |    4 ++++
- 2 files changed, 26 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h      |    5 ++-
+ fs/ext4/ext4_jbd2.h |   18 +++++--
+ fs/ext4/super.c     |  135 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 149 insertions(+), 9 deletions(-)
 
- Updated version of the patch. I've added missing cache flush also after
-journal recovery and moved the cache flush in cleanup_journal_tail() before
-updating the journal fields to avoid races between parallel invocations of
-cleanup_journal_tail().
-
-diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-index 5d1a00a..05f0754 100644
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -453,8 +453,6 @@ out:
-  *
-  * Return <0 on error, 0 on success, 1 if there was nothing to clean up.
-  *
-- * Called with the journal lock held.
-- *
-  * This is the only part of the journaling code which really needs to be
-  * aware of transaction aborts.  Checkpointing involves writing to the
-  * main filesystem area rather than to the journal, so it can proceed
-@@ -472,13 +470,14 @@ int cleanup_journal_tail(journal_t *journal)
- 	if (is_journal_aborted(journal))
- 		return 1;
- 
--	/* OK, work out the oldest transaction remaining in the log, and
-+	/*
-+	 * OK, work out the oldest transaction remaining in the log, and
- 	 * the log block it starts at.
- 	 *
- 	 * If the log is now empty, we need to work out which is the
- 	 * next transaction ID we will write, and where it will
--	 * start. */
--
-+	 * start.
-+	 */
- 	spin_lock(&journal->j_state_lock);
- 	spin_lock(&journal->j_list_lock);
- 	transaction = journal->j_checkpoint_transactions;
-@@ -504,7 +503,25 @@ int cleanup_journal_tail(journal_t *journal)
- 		spin_unlock(&journal->j_state_lock);
- 		return 1;
- 	}
-+	spin_unlock(&journal->j_state_lock);
-+
-+	/*
-+	 * We need to make sure that any blocks that were recently written out
-+	 * --- perhaps by log_do_checkpoint() --- are flushed out before we
-+	 * drop the transactions from the journal. It's unlikely this will be
-+	 * necessary, especially with an appropriately sized journal, but we
-+	 * need this to guarantee correctness.  Fortunately
-+	 * cleanup_journal_tail() doesn't get called all that often.
-+	 */
-+	if (journal->j_flags & JFS_BARRIER)
-+		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
- 
-+	spin_lock(&journal->j_state_lock);
-+	if (!tid_gt(first_tid, journal->j_tail_sequence)) {
-+		spin_unlock(&journal->j_state_lock);
-+		/* Someone else cleaned up journal so return 0 */
-+		return 0;
-+	}
- 	/* OK, update the superblock to recover the freed space.
- 	 * Physical blocks come first: have we wrapped beyond the end of
- 	 * the log?  */
-diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
-index 5b43e96..008bf06 100644
---- a/fs/jbd/recovery.c
-+++ b/fs/jbd/recovery.c
-@@ -20,6 +20,7 @@
- #include <linux/fs.h>
- #include <linux/jbd.h>
- #include <linux/errno.h>
-+#include <linux/blkdev.h>
- #endif
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..9345150 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1279,6 +1279,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
+ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ {
+ 	return ino == EXT4_ROOT_INO ||
++		ino == EXT4_USR_QUOTA_INO ||
++		ino == EXT4_GRP_QUOTA_INO ||
+ 		ino == EXT4_JOURNAL_INO ||
+ 		ino == EXT4_RESIZE_INO ||
+ 		(ino >= EXT4_FIRST_INO(sb) &&
+@@ -1453,7 +1455,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+ 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+-					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
++					 EXT4_FEATURE_RO_COMPAT_BIGALLOC | \
++					 EXT4_FEATURE_RO_COMPAT_QUOTA)
  
  /*
-@@ -263,6 +264,9 @@ int journal_recover(journal_t *journal)
- 	err2 = sync_blockdev(journal->j_fs_dev);
- 	if (!err)
- 		err = err2;
-+	/* Flush disk caches to get replayed data on the permanent storage */
-+	if (journal->j_flags & JFS_BARRIER)
-+		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+  * Default values for user and/or group using reserved blocks
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 5802fa1..45de190 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -87,14 +87,20 @@
+ #ifdef CONFIG_QUOTA
+ /* Amount of blocks needed for quota update - we know that the structure was
+  * allocated so we need to update only data block */
+-#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
++#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		1 : 0)
+ /* Amount of blocks needed for quota insert/delete - we do some block writes
+  * but inode, sb and group updates are done only once */
+-#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+-		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
+-
+-#define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
+-		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
++#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
++		 +3+DQUOT_INIT_REWRITE) : 0)
++
++#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
++		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
++		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
++		 +3+DQUOT_DEL_REWRITE) : 0)
+ #else
+ #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
+ #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..14cc694 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1238,12 +1238,18 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+ static int ext4_write_info(struct super_block *sb, int type);
+ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 			 struct path *path);
++static int ext4_quota_on_sysfile(struct super_block *sb, int type,
++				 int format_id);
+ static int ext4_quota_off(struct super_block *sb, int type);
++static int ext4_quota_off_sysfile(struct super_block *sb, int type);
+ static int ext4_quota_on_mount(struct super_block *sb, int type);
+ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+ 			       size_t len, loff_t off);
+ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 				const char *data, size_t len, loff_t off);
++static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
++			     unsigned int flags);
++static int ext4_enable_quotas(struct super_block *sb);
  
- 	return err;
+ static const struct dquot_operations ext4_quota_operations = {
+ 	.get_reserved_space = ext4_get_reserved_space,
+@@ -1265,6 +1271,16 @@ static const struct quotactl_ops ext4_qctl_operations = {
+ 	.get_dqblk	= dquot_get_dqblk,
+ 	.set_dqblk	= dquot_set_dqblk
+ };
++
++static const struct quotactl_ops ext4_qctl_sysfile_operations = {
++	.quota_on_meta	= ext4_quota_on_sysfile,
++	.quota_off	= ext4_quota_off_sysfile,
++	.quota_sync	= dquot_quota_sync,
++	.get_info	= dquot_get_dqinfo,
++	.set_info	= dquot_set_dqinfo,
++	.get_dqblk	= dquot_get_dqblk,
++	.set_dqblk	= dquot_set_dqblk
++};
+ #endif
+ 
+ static const struct super_operations ext4_sops = {
+@@ -2710,6 +2726,16 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 			 "extents feature\n");
+ 		return 0;
+ 	}
++
++#ifndef CONFIG_QUOTA
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	    !readonly) {
++		ext4_msg(sb, KERN_ERR,
++			 "Filesystem with quota feature cannot be mounted RDWR "
++			 "without CONFIG_QUOTA");
++		return 0;
++	}
++#endif  /* CONFIG_QUOTA */
+ 	return 1;
  }
+ 
+@@ -3606,6 +3632,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_QUOTA
+ 	sb->s_qcop = &ext4_qctl_operations;
+ 	sb->dq_op = &ext4_quota_operations;
++
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++		/* Use qctl operations for hidden quota files. */
++		sb->s_qcop = &ext4_qctl_sysfile_operations;
++	}
+ #endif
+ 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+ 
+@@ -3813,6 +3844,16 @@ no_journal:
+ 	} else
+ 		descr = "out journal";
+ 
++#ifdef CONFIG_QUOTA
++	/* Enable quota usage during mount. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
++	    !(sb->s_flags & MS_RDONLY)) {
++		ret = ext4_enable_quotas(sb);
++		if (ret)
++			goto failed_mount7;
++	}
++#endif  /* CONFIG_QUOTA */
++
+ 	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+ 		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+ 		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+@@ -4553,8 +4594,18 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			kfree(old_opts.s_qf_names[i]);
+ #endif
+ 	unlock_super(sb);
+-	if (enable_quota)
+-		dquot_resume(sb, -1);
++	if (enable_quota) {
++		if (sb_any_quota_suspended(sb))
++			dquot_resume(sb, -1);
++		else if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
++			err = ext4_enable_quotas(sb);
++			if (err) {
++				lock_super(sb);
++				goto restore_opts;
++			}
++		}
++	}
+ 
+ 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+ 	kfree(orig_data);
+@@ -4813,6 +4864,74 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+ 	return dquot_quota_on(sb, type, format_id, path);
+ }
+ 
++static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
++			     unsigned int flags)
++{
++	int err;
++	struct inode *qf_inode;
++	unsigned long qf_inums[MAXQUOTAS] = {
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++	};
++
++	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
++
++	if (!qf_inums[type])
++		return -EPERM;
++
++	qf_inode = ext4_iget(sb, qf_inums[type]);
++	if (IS_ERR(qf_inode)) {
++		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
++		return PTR_ERR(qf_inode);
++	}
++
++	err = dquot_enable(qf_inode, type, format_id, flags);
++	iput(qf_inode);
++
++	return err;
++}
++
++/* Enable usage tracking for all quota types. */
++static int ext4_enable_quotas(struct super_block *sb)
++{
++	int type, err = 0;
++	unsigned long qf_inums[MAXQUOTAS] = {
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
++		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
++	};
++
++	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
++	for (type = 0; type < MAXQUOTAS; type++) {
++		if (qf_inums[type]) {
++			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
++						DQUOT_USAGE_ENABLED);
++			if (err) {
++				ext4_warning(sb,
++					"Failed to enable quota (type=%d) "
++					"tracking. Please run e2fsck to fix.",
++					type);
++				return err;
++			}
++		}
++	}
++	return 0;
++}
++
++/*
++ * quota_on function that is used when QUOTA feature is set.
++ */
++static int ext4_quota_on_sysfile(struct super_block *sb, int type,
++				 int format_id)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++		return -EINVAL;
++
++	/*
++	 * USAGE was enabled at mount time. Only need to enable LIMITS now.
++	 */
++	return ext4_quota_enable(sb, type, format_id, DQUOT_LIMITS_ENABLED);
++}
++
+ static int ext4_quota_off(struct super_block *sb, int type)
+ {
+ 	struct inode *inode = sb_dqopt(sb)->files[type];
+@@ -4839,6 +4958,18 @@ out:
+ 	return dquot_quota_off(sb, type);
+ }
+ 
++/*
++ * quota_off function that is used when QUOTA feature is set.
++ */
++static int ext4_quota_off_sysfile(struct super_block *sb, int type)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
++		return -EINVAL;
++
++	/* Disable only the limits. */
++	return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
++}
++
+ /* Read data from quotafile - avoid pagecache and such because we cannot afford
+  * acquiring the locks... As quota files are never truncated and quota code
+  * itself serializes the operations (and no one else should touch the files)
 -- 
-1.7.1
+1.7.7.3
 
