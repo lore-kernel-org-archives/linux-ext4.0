@@ -1,129 +1,197 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 1/7] Adding support to freeze and unfreeze a journal
-Date: Wed, 11 Jan 2012 19:13:43 +0100
-Message-ID: <20120111181343.GA13476@quack.suse.cz>
-References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
- <1323367477-21685-2-git-send-email-kamal@canonical.com>
- <4F0C9D87.8010006@sandeen.net>
- <20120110213104.GI4516@quack.suse.cz>
- <CAMBkX3eVeKSmEzmYTe6Oe_D6kAMQTL5LYoi1-Axj7CcrM85Pow@mail.gmail.com>
- <20120111000448.GA16395@quack.suse.cz>
- <CAMBkX3e_jyTZ=i8D8_cza23Xygd+Gf5iACZ+hbo5TaYLrJPH-Q@mail.gmail.com>
- <CAMBkX3e8CKaDh7vdqAcTH1tnye4UusPZ_XjJdNVRZcaDqZnt2g@mail.gmail.com>
- <20120111121022.GB26337@quack.suse.cz>
- <CAMBkX3e_OvCZS2nrwmxHfUONXmVttQP0N4=31mgbAA4V=WVdjA@mail.gmail.com>
+From: Aditya Kali <adityakali@google.com>
+Subject: Re: [PATCH] libquota: Do not build libquota when disabled
+Date: Wed, 11 Jan 2012 10:58:12 -0800
+Message-ID: <CAGr1F2E98=CDrLR5Qb5X8_qYOSHZ-YTKg890BP26dkRZnow9nQ@mail.gmail.com>
+References: <1326213996-13759-1-git-send-email-jack@suse.cz>
+ <20120110193814.GC4516@quack.suse.cz> <CAGr1F2FDpTa=JZeseByRwshUj652M+U_vj+O52k_XEaJxaK+Nw@mail.gmail.com>
+ <20120111001305.GB16395@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@sandeen.net>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>
-To: Surbhi Palande <csurbhi@gmail.com>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46790 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933507Ab2AKSNq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jan 2012 13:13:46 -0500
-Content-Disposition: inline
-In-Reply-To: <CAMBkX3e_OvCZS2nrwmxHfUONXmVttQP0N4=31mgbAA4V=WVdjA@mail.gmail.com>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:57043 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932324Ab2AKS6f convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 13:58:35 -0500
+Received: by pbdu13 with SMTP id u13so657674pbd.19
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2012 10:58:35 -0800 (PST)
+In-Reply-To: <20120111001305.GB16395@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Tue, Jan 10, 2012 at 4:13 PM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 10-01-12 13:50:06, Aditya Kali wrote:
+>> Libquota is supposed to be internal library of e2fsprogs. Initially =
+I
+>> added the code thinking that it would be an independent library, but
+>> it depends too much on libext2fs and should be part of libext2fs
+>> itself. The quota header files should not be installed.
+> =C2=A0Thanks for clarification! Do you plan to work on fixing this or=
+ should I
+> have a look at it?
+>
+I have planned to work on fixing this. But I wasn't able to give time
+for quota stuff recently. I will try to look at this asap.
 
-On Wed 11-01-12 08:45:17, Surbhi Palande wrote:
-> Isn't dirty data flushed out in "ordered" mode? as
-> ext4_jbd2_file_inode() will get called for ordered writes. Thus this
-> inode's data is flushed at journal commit time through
-> journal_submit_data_buffers()?
-  Well, not with delayed allocation and also not for example for xfs. S=
-o
-in some special cases it might happen but we cannot really depend on it=
-=2E
+>> Also, e2fsck should compile even without quota support. This needs t=
+o be
+>> fixed.
+> =C2=A0Hum, but why would anyone want to compile e2fsprogs without quo=
+ta
+> support? We also don't provide a way to switch off for example indexe=
+d
+> directories support. So why would be quota different?
+>
+The quota support isn't fully baked-in yet. There are still some
+e2fsck changes needed (currently, we simply recreate quota files after
+e2fsck and do not check if the previous quota information was correct
+or not). Also, the kernel side changes are not yet accepted. Since
+this code has not been tested much, it would be better for people to
+have an option to exclude it out. That was the reasoning behind adding
+that option. Eventually we might want to remove it though.
 
-> However I do see that we will still have a dirty data problem for
-> "writeback" and "journalled" mode?
-  For journalled mode, data is treated as metadata so it's the mode whe=
-re
-the problems are smallest (although we'd still have problems because ev=
-en
-though kjournald writes the data, it clears only buffer dirty bits but =
-not
-page dirty bits). For writeback mode you are correct.
+Thanks,
+--
+Aditya
 
-								Honza
-
-> On Wed, Jan 11, 2012 at 4:10 AM, Jan Kara <jack@suse.cz> wrote:
-> > On Tue 10-01-12 21:38:29, Surbhi Palande wrote:
-> >> On second thoughts, I fail to see why there is still a race window
-> >> after this patch.
-> >>
-> >> Here are the reasons why i fail to see how the data can be dirtied
-> >> when all the operations involve a journal:
-> >>
-> >> ----------
-> >> So here is the problem that we see
-> >> =A0 =A0 =A0 CPU1 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 CPU2
-> >> =A0 =A0 =A0 =A0Task1 (write operation) =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Task2
-> >> ------------------------------------------------------------------=
----------------------
-> >> t1 =A0 =A0ext4_journal_start()
-> >> t2 =A0 =A0 =A0ext4_journal_start_sb()
-> >> t3 =A0 =A0 =A0 =A0vfs_check_frozen =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0sb->frozen=3DSB_FREEZE_WRITE
-> >> t4 =A0 =A0 =A0 =A0 =A0 =A0jbd2_journal_start() =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0/* hence forth all processes calling
-> >> vfs_check_frozen will wait */
-> > =A0Note that we call vfs_check_frozen(sb, SB_FREEZE_TRANS) in
-> > ext4_journal_start_sb(). Thus we start blocking only when s_frozen =
-=3D=3D
-> > SB_FREEZE_TRANS and we just ignore s_frozen =3D=3D SB_FREEZE_WRITE.
-> >
-> >> Now, our aim is to stop Task1 from dirtying the page cache ie in
-> >> starting this transaction. However if it is successful in starting
-> >> this transaction, then we want to make sure that this transaction =
-is
-> >> flushed out.
-> >> Correct?
-> > =A0Not quite. Flushing a journal will flush dirty metadata but we w=
-ill still
-> > have dirty pages (dirty data is not part of any transaction). So in=
- the
-> > scenarion I describe in
-> > http://marc.info/?l=3Dlinux-fsdevel&m=3D132585911925796&w=3D2
-> > all metadata changes will be flushed inside ->freeze_fs (at least f=
-or
-> > journalling filesystems) but pages will be left dirty. Is it cleare=
-r now?
-> >
-> > But your comment makes me realize that the situation is simpler tha=
-n I
-> > thought by the fact that we only have to protect paths that create =
-dirty
-> > data as dirty metadata can be handled by flushing a journal. And th=
-ere are
-> > only a few places creating dirty data. So a reasonably clean soluti=
-on
-> > shouldn't be that complicated after all. I'll tweak my patch and tr=
-y it in
-> > a moment.
-> >
-> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Honza
-> > --
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0Honza
+>
+>> On Tue, Jan 10, 2012 at 11:38 AM, Jan Kara <jack@suse.cz> wrote:
+>> > On Tue 10-01-12 17:46:36, Jan Kara wrote:
+>> >> Due to missing QUOTA_CMT definition in configure.in, libquota was=
+ built
+>> >> (and e.g. include file was installed) even when quota support was=
+ disabled.
+>> >> Fix it. Also fix help text of the configure option when we are at=
+ it.
+>> > =C2=A0Hum, but after this e2fsck does not compile because of missi=
+ng
+>> > libquota.a. So should it be possible to disable quota support (and=
+ thus
+>> > e2fsck should be fixed) or not (and then config option should be r=
+emoved)?
+>> >
+>> > Also I've also noticed that libquota is generated as a static libr=
+ary even
+>> > if --enable-elf-shlibs is specified. Bug? Or is libquota supposed =
+to be
+>> > internal library of e2fsprogs and never used outside of e2fsprogs?=
+ But then
+>> > why is it and its header files installed?
+>> >
+>> > BTW, since the library is tied to ext4 anyway, won't it be more lo=
+gical for
+>> > external developpers to make it part of libext2fs?
+>> >
+>> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0Honza
+>> >>
+>> >> Signed-off-by: Jan Kara <jack@suse.cz>
+>> >> ---
+>> >> =C2=A0configure =C2=A0 =C2=A0| =C2=A0 11 ++++++-----
+>> >> =C2=A0configure.in | =C2=A0 =C2=A04 +++-
+>> >> =C2=A02 files changed, 9 insertions(+), 6 deletions(-)
+>> >>
+>> >> diff --git a/configure b/configure
+>> >> index 9f5eeb5..965f7cf 100755
+>> >> --- a/configure
+>> >> +++ b/configure
+>> >> @@ -1462,7 +1462,7 @@ Optional Features:
+>> >> =C2=A0 =C2=A0--disable-testio-debug =C2=A0disable the use of the =
+test I/O manager for debugging
+>> >> =C2=A0 =C2=A0--disable-libuuid =C2=A0 =C2=A0do not build private =
+uuid library
+>> >> =C2=A0 =C2=A0--disable-libblkid =C2=A0 do not build private blkid=
+ library
+>> >> - =C2=A0--enable-libquota =C2=A0 =C2=A0enable quota support
+>> >> + =C2=A0--enable-quota =C2=A0 =C2=A0 =C2=A0 enable quota support
+>> >> =C2=A0 =C2=A0--disable-debugfs =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0disable support of debugfs program
+>> >> =C2=A0 =C2=A0--disable-imager =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 disable support of e2image program
+>> >> =C2=A0 =C2=A0--disable-resizer =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0disable support of e2resize program
+>> >> @@ -5209,11 +5209,13 @@ fi
+>> >> =C2=A0if test "${enable_quota+set}" =3D set; then :
+>> >> =C2=A0 =C2=A0enableval=3D$enable_quota; if test "$enableval" =3D =
+"no"
+>> >> =C2=A0then
+>> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D"#"
+>> >> =C2=A0 =C2=A0 =C2=A0 { $as_echo "$as_me:${as_lineno-$LINENO}: res=
+ult: Disabling quota support" >&5
+>> >> =C2=A0$as_echo "Disabling quota support" >&6; }
+>> >> =C2=A0else
+>> >> =C2=A0 =C2=A0 =C2=A0 $as_echo "#define CONFIG_QUOTA 1" >>confdefs=
+=2Eh
+>> >>
+>> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D""
+>> >> =C2=A0 =C2=A0 =C2=A0 { $as_echo "$as_me:${as_lineno-$LINENO}: res=
+ult: Enabling quota support" >&5
+>> >> =C2=A0$as_echo "Enabling quota support" >&6; }
+>> >> =C2=A0fi
+>> >> @@ -7127,7 +7129,6 @@ int
+>> >> =C2=A0main ()
+>> >> =C2=A0{
+>> >> =C2=A0 =C2=A0char *data, *data2, *data3;
+>> >> - =C2=A0const char *cdata2;
+>> >> =C2=A0 =C2=A0int i, pagesize;
+>> >> =C2=A0 =C2=A0int fd, fd2;
+>> >>
+>> >> @@ -7152,10 +7153,10 @@ main ()
+>> >> =C2=A0 =C2=A0fd2 =3D open ("conftest.txt", O_RDWR | O_CREAT | O_T=
+RUNC, 0600);
+>> >> =C2=A0 =C2=A0if (fd2 < 0)
+>> >> =C2=A0 =C2=A0 =C2=A0return 4;
+>> >> - =C2=A0cdata2 =3D "";
+>> >> - =C2=A0if (write (fd2, cdata2, 1) !=3D 1)
+>> >> + =C2=A0data2 =3D "";
+>> >> + =C2=A0if (write (fd2, data2, 1) !=3D 1)
+>> >> =C2=A0 =C2=A0 =C2=A0return 5;
+>> >> - =C2=A0data2 =3D (char *) mmap (0, pagesize, PROT_READ | PROT_WR=
+ITE, MAP_SHARED, fd2, 0L);
+>> >> + =C2=A0data2 =3D mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_=
+SHARED, fd2, 0L);
+>> >> =C2=A0 =C2=A0if (data2 =3D=3D MAP_FAILED)
+>> >> =C2=A0 =C2=A0 =C2=A0return 6;
+>> >> =C2=A0 =C2=A0for (i =3D 0; i < pagesize; ++i)
+>> >> diff --git a/configure.in b/configure.in
+>> >> index c304a8d..94e7c21 100644
+>> >> --- a/configure.in
+>> >> +++ b/configure.in
+>> >> @@ -531,12 +531,14 @@ dnl
+>> >> =C2=A0PKG_PROG_PKG_CONFIG
+>> >> =C2=A0AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota su=
+pport])
+>> >> =C2=A0AC_ARG_ENABLE([quota],
+>> >> -[ =C2=A0--enable-libquota =C2=A0 enable quota support],
+>> >> +[ =C2=A0--enable-quota =C2=A0 =C2=A0 =C2=A0enable quota support]=
+,
+>> >> =C2=A0if test "$enableval" =3D "no"
+>> >> =C2=A0then
+>> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D"#"
+>> >> =C2=A0 =C2=A0 =C2=A0 AC_MSG_RESULT([Disabling quota support])
+>> >> =C2=A0else
+>> >> =C2=A0 =C2=A0 =C2=A0 AC_DEFINE(CONFIG_QUOTA, 1)
+>> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D""
+>> >> =C2=A0 =C2=A0 =C2=A0 AC_MSG_RESULT([Enabling quota support])
+>> >> =C2=A0fi
+>> >> =C2=A0,
+>> >> --
+>> >> 1.7.1
+>> >>
+>> > --
+>> > Jan Kara <jack@suse.cz>
+>> > SUSE Labs, CR
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
