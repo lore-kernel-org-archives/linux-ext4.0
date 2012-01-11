@@ -1,45 +1,72 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
-Date: Wed, 11 Jan 2012 09:48:27 -0500
-Message-ID: <20120111144827.GA32381@fieldses.org>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
- <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com>
+From: Josh Boyer <jwboyer@redhat.com>
+Subject: Re: [PATCH] ext4: Support "check=none" "nocheck" mount options
+Date: Wed, 11 Jan 2012 09:50:07 -0500
+Message-ID: <20120111145004.GA13986@zod.bos.redhat.com>
+References: <20120110174118.GB3015@zod.bos.redhat.com>
+ <4F0C78CD.6070809@redhat.com>
+ <7A0721E1-689F-4B9B-BD8C-86A03DDF20CE@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-nfs@vger.kernel.org,
-	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
-	Fan Yong <yong.fan@whamcloud.com>,
-	"J. Bruce Fields" <bfields@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Andreas Dilger <adilger@whamcloud.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, kernel-team@fedoraproject.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:4153 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755950Ab2AKOuN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jan 2012 09:50:13 -0500
 Content-Disposition: inline
-In-Reply-To: <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <7A0721E1-689F-4B9B-BD8C-86A03DDF20CE@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 10, 2012 at 04:27:15AM -0700, Andreas Dilger wrote:
-> On 2012-01-09, at 6:21 AM, Bernd Schubert wrote:
-> > With the ext3/ext4 directory index implementation hashes are used to specify
-> > offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-> > on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-> > hashes and therefore the probability of hash collisions for larger directories
-> > is rather high. As recently reported on the NFS mailing list that theoretical
-> > problem also happens on real systems:
-> > http://comments.gmane.org/gmane.linux.nfs/40863
+On Wed, Jan 11, 2012 at 03:07:33AM -0700, Andreas Dilger wrote:
+> On 2012-01-10, at 10:43 AM, Eric Sandeen wrote:
+> > On 1/10/12 11:41 AM, Josh Boyer wrote:
+> >> The ext2/ext3 filesystems supported "check=none" and "nocheck" as mount options
+> >> even though that was already the default behavior and it essentially did
+> >> nothing.  When using ext4 to mount ext2/ext3 filesystems, that mount option
+> >> causes the mount to fail.  That isn't as backward compatible as it could be,
+> >> so add support to ext4 to accept the option.
 > > 
-> > The following series adds two new f_mode flags to tell ext4
-> > to use 32-bit or 64-bit hash values for llseek() calls.
-> > These flags can then used by network file systems, such as NFS, to
-> > request 32-bit or 64-bit offsets (hashes).
+> > The only thing ext2 does with those options today is to clear the flag,
+> > and I can't find anything in userspace or kernelspace which would have set
+> > it in any case.  It seem dead, but we do need the compatibility in ext4
+> > if it's to handle ext2&3 seamlessly, I guess.
 > 
-> Ted, it would be great if these patches could land.  We hit issues like
-> this previously as well, which is why we started this patch series in the
-> first place.
+> At a minimum the use of obsolete options like this should print a warning
+> at mount time so that there is some chance the user will notice and remove
+> the old option from their config.  Otherwise it is impossible to even get
+> rid of old useless cruft like this if we need to maintain functionally-useless
+> compatibility forever.
 
-Yes, this needs to be fixed--is there anything in particular holding up
-these patches?
+I can add a printk(KERN_WARN in the case statement instead of just
+having it break.  That's not a big deal, but I doubt it's going to get
+seen much.  I'm very hesitant to add a WARN_ON or anything else that is
+going to generate a backtrace because it's just going to be scary
+looking and cause more work for distributions that have automated bug
+reporting tools.
 
---b.
+> Dredging through my memories, I recall that this option used to disable
+> the checks done at mount(?) time that compared the bits set in the block
+> and inode bitmaps against the summary values in the group descriptors
+> (AFAIR).  Or maybe it was comparing the group descriptor summary values
+> against the superblock values?
+
+Yeah, something like that.  It's been the default behavior of ext2/ext3
+for a long time now.  So long that the "check=normal" and "check=strict"
+options (non-default) aren't even supported there anymore.
+
+> In any case, I can't imagine why a user would have this set for a kernel
+> option that might have last been valid 10 years ago, and why the 5 users
+> in the world that might have this set cannot simply remove it from their
+> fstab, since it does absolutely nothing?
+
+This was prompted by a bug report against util-linux, as the man page
+still had the option as valid for ext2 (which it is).  Since ext4 is
+claiming to be directly usable for ext2 filesystems, I don't think it is
+unreasonable to mount an fs that has that option set.  If it makes
+things easier I could wrap all of this in CONFIG_EXT4_USE_FOR_EXT23
+ifdefs, but that seemed to make the code unnecessarily uglier.
+
+josh
