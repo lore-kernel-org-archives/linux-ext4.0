@@ -1,146 +1,106 @@
-From: Kamal Mostafa <kamal@canonical.com>
-Subject: Re: [PATCH v2 5/7] VFS: Avoid read-write deadlock in
- try_to_writeback_inodes_sb
-Date: Wed, 11 Jan 2012 12:29:02 -0800
-Message-ID: <1326313742.25050.137.camel@fourier>
-References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
-	 <1323367477-21685-6-git-send-email-kamal@canonical.com>
-	 <20120106003533.GC3790@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha256";
-	protocol="application/pgp-signature"; boundary="=-U2xfAI58b+tRyk5peQa0"
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
-	Valerie Aurora <val@vaaconsulting.com>,
-	Christopher Chaltain <christopher.chaltain@canonical.com>,
-	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
-	Mikulas Patocka <mpatocka@redhat.com>
-To: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120106003533.GC3790@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Support "check=none" "nocheck" mount options
+Date: Wed, 11 Jan 2012 14:07:26 -0700
+Message-ID: <6791F004-7305-43C8-A144-834A8FCF9495@dilger.ca>
+References: <20120110174118.GB3015@zod.bos.redhat.com> <4F0C78CD.6070809@redhat.com> <7A0721E1-689F-4B9B-BD8C-86A03DDF20CE@dilger.ca> <20120111145004.GA13986@zod.bos.redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, kernel-team@fedoraproject.org
+To: Josh Boyer <jwboyer@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:51583 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751176Ab2AKVH1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 16:07:27 -0500
+In-Reply-To: <20120111145004.GA13986@zod.bos.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+On 2012-01-11, at 7:50 AM, Josh Boyer wrote:
+> On Wed, Jan 11, 2012 at 03:07:33AM -0700, Andreas Dilger wrote:
+>> At a minimum the use of obsolete options like this should print a warning
+>> at mount time so that there is some chance the user will notice and remove
+>> the old option from their config.  Otherwise it is impossible to even get
+>> rid of old useless cruft like this if we need to maintain functionally-useless
+>> compatibility forever.
+> 
+> I can add a printk(KERN_WARN in the case statement instead of just
+> having it break.  That's not a big deal, but I doubt it's going to get
+> seen much.
+
+It not being seen much/ever is fine (expected even), but at least anyone
+using this option has some advance warning that it will disappear.
+
+As stated separately, a printk() should also be added to ext2/ext3 so
+that it is deprecated there as well.
+
+> I'm very hesitant to add a WARN_ON or anything else that is
+> going to generate a backtrace because it's just going to be scary
+> looking and cause more work for distributions that have automated bug
+> reporting tools.
+
+Right, WARN_ON() is too strong, and having a stack trace isn't useful.
+
+>> Dredging through my memories, I recall that this option used to disable
+>> the checks done at mount(?) time that compared the bits set in the block
+>> and inode bitmaps against the summary values in the group descriptors
+>> (AFAIR).  Or maybe it was comparing the group descriptor summary values
+>> against the superblock values?
+> 
+> Yeah, something like that.  It's been the default behavior of ext2/ext3
+> for a long time now.  So long that the "check=normal" and "check=strict"
+> options (non-default) aren't even supported there anymore.
+
+Not surprising.
+
+>> In any case, I can't imagine why a user would have this set for a kernel
+>> option that might have last been valid 10 years ago, and why the 5 users
+>> in the world that might have this set cannot simply remove it from their
+>> fstab, since it does absolutely nothing?
+> 
+> This was prompted by a bug report against util-linux, as the man page
+> still had the option as valid for ext2 (which it is).
+
+Is there a patch being submitted to util-linux that removes this option
+from the man page as well?
+
+>  Since ext4 is
+> claiming to be directly usable for ext2 filesystems, I don't think it is
+> unreasonable to mount an fs that has that option set.  If it makes
+> things easier I could wrap all of this in CONFIG_EXT4_USE_FOR_EXT23
+> ifdefs, but that seemed to make the code unnecessarily uglier.
+
+No, I don't think a CONFIG option is needed.  What I'd actually prefer is
+to add a LINUX_VERSION_CODE check for some time in the future (say 3 years
+with 4 kernel versions per year) that adds a #warning to remove this code:
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 50) /* approx 2014 */
+	case Opt_nocheck:
+		/* ext2/ext3 used to "support" this option. */
+		ext4_msg(sb, KERN_INFO, "the '%s' option is deprecated, "
+			 "please remove it from /etc/fstab\n", p);
+		break;
+#else
+#warning "remove obsolete 'nocheck' and 'check=none' mount options"
+#endif
+
+This at least ensures that the obsolete code is noticed (which is what we
+do for Lustre), but it puts the burden of removing the obsolete code onto
+the person who updates the version (which is Linus, and I don't think he
+would be happy about it).  IMHO existing Linux "deprecated" mechanism does
+not work very well, because there is still tons of deprecated code that is
+never removed because it isn't "in your face" enough (i.e. stuff that is
+marked to be deprecated in 2007 or 2008.
+
+Another option would be to just have the version check without the #warning
+and then at least the code will be automatically disabled at that time, and
+can be deleted by one of the ext4 maintainers at any convenient later time.
+
+Cheers, Andreas
 
 
---=-U2xfAI58b+tRyk5peQa0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, 2012-01-06 at 01:35 +0100, Jan Kara wrote:
-> On Thu 08-12-11 10:04:35, Kamal Mostafa wrote:
-> > From: Valerie Aurora <val@vaaconsulting.com>
-> >=20
-> > Use trylock in try_to_writeback_inodes_sb to avoid read-write
-> > deadlocks that could be triggered by freeze.
-
->   Christoph asked about what is the exact deadlock this patch tries to fi=
-x.
-> I don't think you answered that. So can you elaborate please? Is it someh=
-ow
-> connected with the fact that ext4 calls try_to_writeback_inodes_sb() with
-> i_mutex held?
->=20
-> 								Honza
-
-This was discussed in the thread
-http://www.spinics.net/lists/linux-fsdevel/msg48754.html
-Summarizing...
-
-Jan>   What's exactly the deadlock trylock protects from here?
-Jan>   Or is it just an optimization?
-
-Val>   The trylock is an optimization Dave Chinner suggested.  The first
-Val>   version I wrote acquired the lock and then checked vfs_is_frozen().
-
-Dave>  It's not so much an optimisation, but the general case of avoiding
-Dave>  read-write deadlocks such that freezing can trigger. I think remount
-Dave>  can trigger the same deadlock as freezing, so the trylock avoids
-Dave>  both deadlock cases rather than just working around the freeze
-Dave>  problem....
-
- -Kamal
 
 
-> > BugLink: https://bugs.launchpad.net/bugs/897421
-> > Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
-> > Cc: Kamal Mostafa <kamal@canonical.com>
-> > Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
-> > [kamal@canonical.com: patch restructure]
-> > Signed-off-by: Kamal Mostafa <kamal@canonical.com>
-> > ---
-> >  fs/fs-writeback.c |   13 ++++++++-----
-> >  1 files changed, 8 insertions(+), 5 deletions(-)
-> >=20
-> > diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> > index ea89b3f..3a80f1b 100644
-> > --- a/fs/fs-writeback.c
-> > +++ b/fs/fs-writeback.c
-> > @@ -1274,8 +1274,9 @@ EXPORT_SYMBOL(writeback_inodes_sb);
-> >   * try_to_writeback_inodes_sb	-	start writeback if none underway
-> >   * @sb: the superblock
-> >   *
-> > - * Invoke writeback_inodes_sb if no writeback is currently underway.
-> > - * Returns 1 if writeback was started, 0 if not.
-> > + * Invoke writeback_inodes_sb if no writeback is currently underway
-> > + * and no one else holds the s_umount lock.  Returns 1 if writeback
-> > + * was started, 0 if not.
-> >   */
-> >  int try_to_writeback_inodes_sb(struct super_block *sb, enum wb_reason =
-reason)
-> >  {
-> > @@ -1288,15 +1289,17 @@ EXPORT_SYMBOL(try_to_writeback_inodes_sb);
-> >   * @sb: the superblock
-> >   * @nr: the number of pages to write
-> >   *
-> > - * Invoke writeback_inodes_sb if no writeback is currently underway.
-> > - * Returns 1 if writeback was started, 0 if not.
-> > + * Invoke writeback_inodes_sb if no writeback is currently underway
-> > + * and no one else holds the s_umount lock.  Returns 1 if writeback
-> > + * was started, 0 if not.
-> >   */
-> >  int try_to_writeback_inodes_sb_nr(struct super_block *sb,
-> >  				   unsigned long nr,
-> >  				   enum wb_reason reason)
-> >  {
-> >  	if (!writeback_in_progress(sb->s_bdi)) {
-> > -		down_read(&sb->s_umount);
-> > +		if (!down_read_trylock(&sb->s_umount))
-> > +		    return 0;
-> >  		if (nr =3D=3D 0)
-> >  			writeback_inodes_sb(sb, reason);
-> >  		else
-> > --=20
-> > 1.7.5.4
-> >=20
-
-
---=-U2xfAI58b+tRyk5peQa0
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAABCAAGBQJPDfEOAAoJEOf3EFVUCeQi2MgP/in+4Oox6XpRiKDQR6xlSziq
-NTEr0GxiFqY5wg64PaJunHJW9c/yFP0qocWsHKm1YUEl6UI0v8VjwMo0T634rBkh
-aUYjuHLHvwFjh54fK1Tq2eur/pPA6hzWuDvaGG5S506N4+TSSVpctSmVlUwh1E2+
-25q5YfVicX+ym624kasGMWfEQ7a8n6Q53jVryGvSET38ml52BIjz0Jzf6UksC7Zc
-J3l09WEIC0eO7RTgHFFD7D1PHxfFtBcloC3T6wP3cb/7Q5qOzTVcCNMHxO0rdX+c
-POJP7722IGIxstkiOJjn3kAZg+pcRVhb9u4a9RSmkm/V2fHfhZ0f3oNqxOW/0r8G
-sGxLXPa3OBVxHxzg8w3ePd+BI+PJjgADkxdAfua7m028ZVryKBMg1xi8jzLr29Nt
-DOz7spHeCbizCGZS33g8nAbkwJnuw7qkeX+5rmtMPHuS+78uk/wE1G+MBalLpUO2
-wMEL8dAOg7I/Mr9k2ADVL0IFXVlCdhxxnnNKbNXWgSU+LV7QR8Lnvt1XKXP/5D8+
-GiCIK94cWIECYj3sDMBXDAO34CCofN60e3/5WcQJxzOGZtY+o7eTkidfmxwzQA6A
-5ISG/2QueOU2oUyR3ErWWgHIJUCGr/VdkTsi/eBv9kS0sjtwjTQAVds7OuB/r8di
-bZG28lJk08i9s/9mMxSi
-=jaJy
------END PGP SIGNATURE-----
-
---=-U2xfAI58b+tRyk5peQa0--
 
