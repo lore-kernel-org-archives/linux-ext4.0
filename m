@@ -1,45 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/6] jbd2: Remove always true condition in __journal_try_to_free_buffer()
-Date: Wed, 11 Jan 2012 01:31:10 +0100
-Message-ID: <1326241872-20142-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/6] jbd2: Fix BH_JWrite setting in checkpointing code
+Date: Wed, 11 Jan 2012 01:31:08 +0100
+Message-ID: <1326241872-20142-3-git-send-email-jack@suse.cz>
 References: <1326241872-20142-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56928 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:56925 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757157Ab2AKAb2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 19:31:28 -0500
+	id S1757145Ab2AKAb1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 19:31:27 -0500
 In-Reply-To: <1326241872-20142-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The check b_jlist == BJ_None in __journal_try_to_free_buffer() is
-always true (__jbd2_journal_temp_unlink_buffer() also checks this in
-an assertion) so just remove it.
+BH_JWrite bit should be set when buffer is written to the journal. So
+checkpointing shouldn't set this bit when writing out buffer. This didn't
+cause any observable bug since BH_JWrite bit is used only for debugging
+purposes but it's good to have this consistent.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+ fs/jbd2/checkpoint.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index acd08be..52154c9 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1645,10 +1645,8 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
- 	spin_lock(&journal->j_list_lock);
- 	if (jh->b_cp_transaction != NULL && jh->b_transaction == NULL) {
- 		/* written-back checkpointed metadata buffer */
--		if (jh->b_jlist == BJ_None) {
--			JBUFFER_TRACE(jh, "remove from checkpoint list");
--			__jbd2_journal_remove_checkpoint(jh);
--		}
-+		JBUFFER_TRACE(jh, "remove from checkpoint list");
-+		__jbd2_journal_remove_checkpoint(jh);
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index a5285d6..3816695 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -266,7 +266,6 @@ __flush_batch(journal_t *journal, int *batch_count)
+ 
+ 	for (i = 0; i < *batch_count; i++) {
+ 		struct buffer_head *bh = journal->j_chkpt_bhs[i];
+-		clear_buffer_jwrite(bh);
+ 		BUFFER_TRACE(bh, "brelse");
+ 		__brelse(bh);
  	}
- 	spin_unlock(&journal->j_list_lock);
- out:
+@@ -340,7 +339,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
+ 		BUFFER_TRACE(bh, "queue");
+ 		get_bh(bh);
+ 		J_ASSERT_BH(bh, !buffer_jwrite(bh));
+-		set_buffer_jwrite(bh);
+ 		journal->j_chkpt_bhs[*batch_count] = bh;
+ 		__buffer_relink_io(jh);
+ 		jbd_unlock_bh_state(bh);
 -- 
 1.7.1
 
