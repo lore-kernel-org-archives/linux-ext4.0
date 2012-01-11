@@ -1,72 +1,81 @@
-From: NeilBrown <neilb@suse.de>
-Subject: Re: [GIT PULL] ext4 updates for 3.3
-Date: Wed, 11 Jan 2012 10:54:14 +1100
-Message-ID: <20120111105414.240c0a46@notabene.brown>
-References: <E1Rkift-0006hB-04@tytso-glaptop.cam.corp.google.com>
-	<CA+55aFwON1TgKhAg6EAkN-D-N87cw9H9UrmyJhzA0G3Rt8TSqw@mail.gmail.com>
-	<20120110234250.GC6034@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 1/7] Adding support to freeze and unfreeze a journal
+Date: Wed, 11 Jan 2012 01:04:48 +0100
+Message-ID: <20120111000448.GA16395@quack.suse.cz>
+References: <1323367477-21685-1-git-send-email-kamal@canonical.com>
+ <1323367477-21685-2-git-send-email-kamal@canonical.com>
+ <4F0C9D87.8010006@sandeen.net>
+ <20120110213104.GI4516@quack.suse.cz>
+ <CAMBkX3eVeKSmEzmYTe6Oe_D6kAMQTL5LYoi1-Axj7CcrM85Pow@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/kiKgN7kTlg+E3ukOe0FlFeQ"; protocol="application/pgp-signature"
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@sandeen.net>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Theodore Tso <tytso@mit.edu>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Valerie Aurora <val@vaaconsulting.com>,
+	Christopher Chaltain <christopher.chaltain@canonical.com>,
+	"Peter M. Petrakis" <peter.petrakis@canonical.com>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Surbhi Palande <surbhi.palande@canonical.com>
+To: Surbhi Palande <csurbhi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55755 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:56484 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932087Ab2AJXy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jan 2012 18:54:28 -0500
-In-Reply-To: <20120110234250.GC6034@thunk.org>
+	id S1755971Ab2AKAEv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jan 2012 19:04:51 -0500
+Content-Disposition: inline
+In-Reply-To: <CAMBkX3eVeKSmEzmYTe6Oe_D6kAMQTL5LYoi1-Axj7CcrM85Pow@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/kiKgN7kTlg+E3ukOe0FlFeQ
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 10 Jan 2012 18:42:50 -0500 Ted Ts'o <tytso@mit.edu> wrote:
-
-> On Tue, Jan 10, 2012 at 03:15:53PM -0800, Linus Torvalds wrote:
-> > On Tue, Jan 10, 2012 at 12:52 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+On Tue 10-01-12 13:50:22, Surbhi Palande wrote:
+> > > Hrm let me think through this a little more; we actually do:
 > > >
-> > > There is a signed tag ext4_for_linus covering these commits.
-> >=20
-> > I'm not seeing any such tag. Forgot to push out?
->=20
-> Argh, I always forget to do "git push --tags".  Pushed now...
->=20
+> > > t16) ext4_journal_start()
+> > >   t17) ext4_journal_start_sb()
+> > >     t18) handle = ext4_journal_current_handle();
+> > >     t19) if (!handle) vfs_check_frozen()
+> > >     t20) ... jbd2_journal_start()
+> >   Ah, right. I forgot.
+> >
+> > > So actually we *do* block new handles, but let *existing* ones
+> > > continue (see commits 6b0310fbf087ad6e9e3b8392adca97cd77184084
+> > > and be4f27d324e8ddd57cc0d4d604fe85ee0425cba9)
+> > >
+> > > So your assertion that a new handle is started is incorrect
+> > > in general, isn't it?  So then does the fix seem necessary?
+> > > Or, at least, in the fashion below - maybe we need to just make
+> > > sure all started handles complete before the unlock_updates?
+> > > Or am I missing something...?
+> >   Well, the problem with running operations and freezing is more
+> > fundamental I believe. See my email
+> > http://marc.info/?l=linux-fsdevel&m=132585911925796&w=2
+> >
+> > So I believe we'll need some better exclusion mechanism already in VFS.
+> >
+> >                                                                Honza
+> >
+> 
+> 
+> If all the write operations were journaled, then this patch would not allow
+> ext4 filesystem to have any dirty data after its frozen.
+> (as journal_start() would block).
+> 
+>  I think the only one candidate that creates dirty data without calling
+> ext4_journal_start() is mmapped?
+  No, the problem is in any write path. The problem is with operations
+that happen during the phase when s_frozen == SB_FREEZE_WRITE. These
+operations dirty the filesystem but running sync may easily miss them.
+During this phase journal is not frozen so that does not help you in any
+way.
 
-I always
-   git push $name-of-tag
-and then
-   git request-pull ....
-
-and make sure it mentions the right tag.  If 'request-pull' can see it, then
-I can be sure that Linus can.
-
-NeilBrown
-
-
---Sig_/kiKgN7kTlg+E3ukOe0FlFeQ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBTwzPpjnsnt1WYoG5AQKhxw//TVBRFt2DxSd2IaRoyXBlXLwnYkB+feFj
-F7S/tU/BabmZcNzYnsJKd3fvTpQlNh6SUhzCkHsImDVOgxLBIufo4ra0rnca0UYU
-5KdeEwjs1dND7Okys1OhtnQIgh9JF6kBHAiqb4g96i1HQVeqIaZ6AdYic9WbGs04
-0dFWFiElx4Xwl5RtT4Fo19QqlYazmZka4d17WYSlM7M7gKnual4/H4sjIrA9g9rZ
-ivvRWk3wsI/rapOFb0EfqL6uzcgdzv/EBHRyzvbq8are5rvgBNQx1KAIeDVHyW6Y
-Oj5EclpE2qIErUy8eo2lNl9uQB/VQrKO6R8pOXfGph1zcuXQkrL5i+kEGZ7t/8T2
-VoFE8EoNSLLtCAygMks6feqV0h6NtZ1cwG+pFQZrZySlyYbpbJUUzpAQ999B9PXy
-mMi8rMOM+EfjAOb35TA1x0UrZAdrhB3erA5Nqd2c/bDCCs7hd1I8JUSLMZkvg09f
-xz846u5YsAIxQr0lfU8BbOiLxHnEtOYYwO4BeTovzBNQh0MwIzcfvSGjmcISBVsX
-kSoYyvnF17mQ8NgMFgwkP4Q2u0patDpQTcX/7VL+UNFLxvbWjmRBUTLwbg3iB8Av
-5yf02kI3rtdYjREkbKR2SNOIdjlos9EmP6HDTc1aa9vRhP3HYbuifoMsW+1qFqfk
-9Hh75HG0tEk=
-=ICdc
------END PGP SIGNATURE-----
-
---Sig_/kiKgN7kTlg+E3ukOe0FlFeQ--
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
