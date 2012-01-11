@@ -1,199 +1,130 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH] libquota: Do not build libquota when disabled
-Date: Wed, 11 Jan 2012 10:58:12 -0800
-Message-ID: <CAGr1F2E98=CDrLR5Qb5X8_qYOSHZ-YTKg890BP26dkRZnow9nQ@mail.gmail.com>
-References: <1326213996-13759-1-git-send-email-jack@suse.cz>
- <20120110193814.GC4516@quack.suse.cz> <CAGr1F2FDpTa=JZeseByRwshUj652M+U_vj+O52k_XEaJxaK+Nw@mail.gmail.com>
- <20120111001305.GB16395@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] jbd: Issue cache flush after checkpointing
+Date: Wed, 11 Jan 2012 20:00:13 +0100
+Message-ID: <1326308413-21483-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, stable@kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:57043 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932324Ab2AKS6f convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 13:58:35 -0500
-Received: by pbdu13 with SMTP id u13so657674pbd.19
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jan 2012 10:58:35 -0800 (PST)
-In-Reply-To: <20120111001305.GB16395@quack.suse.cz>
+Received: from cantor2.suse.de ([195.135.220.15]:49409 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933645Ab2AKTAU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jan 2012 14:00:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 10, 2012 at 4:13 PM, Jan Kara <jack@suse.cz> wrote:
-> On Tue 10-01-12 13:50:06, Aditya Kali wrote:
->> Libquota is supposed to be internal library of e2fsprogs. Initially =
-I
->> added the code thinking that it would be an independent library, but
->> it depends too much on libext2fs and should be part of libext2fs
->> itself. The quota header files should not be installed.
-> =C2=A0Thanks for clarification! Do you plan to work on fixing this or=
- should I
-> have a look at it?
->
-I have planned to work on fixing this. But I wasn't able to give time
-for quota stuff recently. I will try to look at this asap.
+When we reach cleanup_journal_tail(), there is no guarantee that
+checkpointed buffers are on a stable storage - especially if buffers were
+written out by log_do_checkpoint(), they are likely to be only in disk's
+caches. Thus when we update journal superblock, effectively removing old
+transaction from journal, this write of superblock can get to stable storage
+before those checkpointed buffers which can result in filesystem corruption
+after a crash.
 
->> Also, e2fsck should compile even without quota support. This needs t=
-o be
->> fixed.
-> =C2=A0Hum, but why would anyone want to compile e2fsprogs without quo=
-ta
-> support? We also don't provide a way to switch off for example indexe=
-d
-> directories support. So why would be quota different?
->
-The quota support isn't fully baked-in yet. There are still some
-e2fsck changes needed (currently, we simply recreate quota files after
-e2fsck and do not check if the previous quota information was correct
-or not). Also, the kernel side changes are not yet accepted. Since
-this code has not been tested much, it would be better for people to
-have an option to exclude it out. That was the reasoning behind adding
-that option. Eventually we might want to remove it though.
+A similar problem can happen if we replay the journal and wipe it before
+flushing disk's caches.
 
-Thanks,
---
-Aditya
+Thus we must unconditionally issue a cache flush before we update journal
+superblock in these cases. The fix is slightly complicated by the fact that we
+have to get log tail before we issue cache flush but we can store it in the
+journal superblock only after the cache flush. Otherwise we risk races where
+new tail is written before appropriate cache flush is finished.
 
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0Honza
->
->> On Tue, Jan 10, 2012 at 11:38 AM, Jan Kara <jack@suse.cz> wrote:
->> > On Tue 10-01-12 17:46:36, Jan Kara wrote:
->> >> Due to missing QUOTA_CMT definition in configure.in, libquota was=
- built
->> >> (and e.g. include file was installed) even when quota support was=
- disabled.
->> >> Fix it. Also fix help text of the configure option when we are at=
- it.
->> > =C2=A0Hum, but after this e2fsck does not compile because of missi=
-ng
->> > libquota.a. So should it be possible to disable quota support (and=
- thus
->> > e2fsck should be fixed) or not (and then config option should be r=
-emoved)?
->> >
->> > Also I've also noticed that libquota is generated as a static libr=
-ary even
->> > if --enable-elf-shlibs is specified. Bug? Or is libquota supposed =
-to be
->> > internal library of e2fsprogs and never used outside of e2fsprogs?=
- But then
->> > why is it and its header files installed?
->> >
->> > BTW, since the library is tied to ext4 anyway, won't it be more lo=
-gical for
->> > external developpers to make it part of libext2fs?
->> >
->> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0Honza
->> >>
->> >> Signed-off-by: Jan Kara <jack@suse.cz>
->> >> ---
->> >> =C2=A0configure =C2=A0 =C2=A0| =C2=A0 11 ++++++-----
->> >> =C2=A0configure.in | =C2=A0 =C2=A04 +++-
->> >> =C2=A02 files changed, 9 insertions(+), 6 deletions(-)
->> >>
->> >> diff --git a/configure b/configure
->> >> index 9f5eeb5..965f7cf 100755
->> >> --- a/configure
->> >> +++ b/configure
->> >> @@ -1462,7 +1462,7 @@ Optional Features:
->> >> =C2=A0 =C2=A0--disable-testio-debug =C2=A0disable the use of the =
-test I/O manager for debugging
->> >> =C2=A0 =C2=A0--disable-libuuid =C2=A0 =C2=A0do not build private =
-uuid library
->> >> =C2=A0 =C2=A0--disable-libblkid =C2=A0 do not build private blkid=
- library
->> >> - =C2=A0--enable-libquota =C2=A0 =C2=A0enable quota support
->> >> + =C2=A0--enable-quota =C2=A0 =C2=A0 =C2=A0 enable quota support
->> >> =C2=A0 =C2=A0--disable-debugfs =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0disable support of debugfs program
->> >> =C2=A0 =C2=A0--disable-imager =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 disable support of e2image program
->> >> =C2=A0 =C2=A0--disable-resizer =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0disable support of e2resize program
->> >> @@ -5209,11 +5209,13 @@ fi
->> >> =C2=A0if test "${enable_quota+set}" =3D set; then :
->> >> =C2=A0 =C2=A0enableval=3D$enable_quota; if test "$enableval" =3D =
-"no"
->> >> =C2=A0then
->> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D"#"
->> >> =C2=A0 =C2=A0 =C2=A0 { $as_echo "$as_me:${as_lineno-$LINENO}: res=
-ult: Disabling quota support" >&5
->> >> =C2=A0$as_echo "Disabling quota support" >&6; }
->> >> =C2=A0else
->> >> =C2=A0 =C2=A0 =C2=A0 $as_echo "#define CONFIG_QUOTA 1" >>confdefs=
-=2Eh
->> >>
->> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D""
->> >> =C2=A0 =C2=A0 =C2=A0 { $as_echo "$as_me:${as_lineno-$LINENO}: res=
-ult: Enabling quota support" >&5
->> >> =C2=A0$as_echo "Enabling quota support" >&6; }
->> >> =C2=A0fi
->> >> @@ -7127,7 +7129,6 @@ int
->> >> =C2=A0main ()
->> >> =C2=A0{
->> >> =C2=A0 =C2=A0char *data, *data2, *data3;
->> >> - =C2=A0const char *cdata2;
->> >> =C2=A0 =C2=A0int i, pagesize;
->> >> =C2=A0 =C2=A0int fd, fd2;
->> >>
->> >> @@ -7152,10 +7153,10 @@ main ()
->> >> =C2=A0 =C2=A0fd2 =3D open ("conftest.txt", O_RDWR | O_CREAT | O_T=
-RUNC, 0600);
->> >> =C2=A0 =C2=A0if (fd2 < 0)
->> >> =C2=A0 =C2=A0 =C2=A0return 4;
->> >> - =C2=A0cdata2 =3D "";
->> >> - =C2=A0if (write (fd2, cdata2, 1) !=3D 1)
->> >> + =C2=A0data2 =3D "";
->> >> + =C2=A0if (write (fd2, data2, 1) !=3D 1)
->> >> =C2=A0 =C2=A0 =C2=A0return 5;
->> >> - =C2=A0data2 =3D (char *) mmap (0, pagesize, PROT_READ | PROT_WR=
-ITE, MAP_SHARED, fd2, 0L);
->> >> + =C2=A0data2 =3D mmap (0, pagesize, PROT_READ | PROT_WRITE, MAP_=
-SHARED, fd2, 0L);
->> >> =C2=A0 =C2=A0if (data2 =3D=3D MAP_FAILED)
->> >> =C2=A0 =C2=A0 =C2=A0return 6;
->> >> =C2=A0 =C2=A0for (i =3D 0; i < pagesize; ++i)
->> >> diff --git a/configure.in b/configure.in
->> >> index c304a8d..94e7c21 100644
->> >> --- a/configure.in
->> >> +++ b/configure.in
->> >> @@ -531,12 +531,14 @@ dnl
->> >> =C2=A0PKG_PROG_PKG_CONFIG
->> >> =C2=A0AH_TEMPLATE([CONFIG_QUOTA], [Define to 1 to enable quota su=
-pport])
->> >> =C2=A0AC_ARG_ENABLE([quota],
->> >> -[ =C2=A0--enable-libquota =C2=A0 enable quota support],
->> >> +[ =C2=A0--enable-quota =C2=A0 =C2=A0 =C2=A0enable quota support]=
-,
->> >> =C2=A0if test "$enableval" =3D "no"
->> >> =C2=A0then
->> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D"#"
->> >> =C2=A0 =C2=A0 =C2=A0 AC_MSG_RESULT([Disabling quota support])
->> >> =C2=A0else
->> >> =C2=A0 =C2=A0 =C2=A0 AC_DEFINE(CONFIG_QUOTA, 1)
->> >> + =C2=A0 =C2=A0 QUOTA_CMT=3D""
->> >> =C2=A0 =C2=A0 =C2=A0 AC_MSG_RESULT([Enabling quota support])
->> >> =C2=A0fi
->> >> =C2=A0,
->> >> --
->> >> 1.7.1
->> >>
->> > --
->> > Jan Kara <jack@suse.cz>
->> > SUSE Labs, CR
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I managed to reproduce the corruption using somewhat tweaked Chris Mason's
+barrier-test scheduler. Also this should fix occasional reports of 'Bit already
+freed' filesystem errors which are totally unreproducible but inspection of
+several fs images I've gathered over time points to a problem like this.
+
+CC: stable@kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/checkpoint.c |   27 ++++++++++++++++++++++-----
+ fs/jbd/recovery.c   |    4 ++++
+ 2 files changed, 26 insertions(+), 5 deletions(-)
+
+ Updated version of the patch. I've added missing cache flush also after
+journal recovery and moved the cache flush in cleanup_journal_tail() before
+updating the journal fields to avoid races between parallel invocations of
+cleanup_journal_tail().
+
+diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
+index 5d1a00a..05f0754 100644
+--- a/fs/jbd/checkpoint.c
++++ b/fs/jbd/checkpoint.c
+@@ -453,8 +453,6 @@ out:
+  *
+  * Return <0 on error, 0 on success, 1 if there was nothing to clean up.
+  *
+- * Called with the journal lock held.
+- *
+  * This is the only part of the journaling code which really needs to be
+  * aware of transaction aborts.  Checkpointing involves writing to the
+  * main filesystem area rather than to the journal, so it can proceed
+@@ -472,13 +470,14 @@ int cleanup_journal_tail(journal_t *journal)
+ 	if (is_journal_aborted(journal))
+ 		return 1;
+ 
+-	/* OK, work out the oldest transaction remaining in the log, and
++	/*
++	 * OK, work out the oldest transaction remaining in the log, and
+ 	 * the log block it starts at.
+ 	 *
+ 	 * If the log is now empty, we need to work out which is the
+ 	 * next transaction ID we will write, and where it will
+-	 * start. */
+-
++	 * start.
++	 */
+ 	spin_lock(&journal->j_state_lock);
+ 	spin_lock(&journal->j_list_lock);
+ 	transaction = journal->j_checkpoint_transactions;
+@@ -504,7 +503,25 @@ int cleanup_journal_tail(journal_t *journal)
+ 		spin_unlock(&journal->j_state_lock);
+ 		return 1;
+ 	}
++	spin_unlock(&journal->j_state_lock);
++
++	/*
++	 * We need to make sure that any blocks that were recently written out
++	 * --- perhaps by log_do_checkpoint() --- are flushed out before we
++	 * drop the transactions from the journal. It's unlikely this will be
++	 * necessary, especially with an appropriately sized journal, but we
++	 * need this to guarantee correctness.  Fortunately
++	 * cleanup_journal_tail() doesn't get called all that often.
++	 */
++	if (journal->j_flags & JFS_BARRIER)
++		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+ 
++	spin_lock(&journal->j_state_lock);
++	if (!tid_gt(first_tid, journal->j_tail_sequence)) {
++		spin_unlock(&journal->j_state_lock);
++		/* Someone else cleaned up journal so return 0 */
++		return 0;
++	}
+ 	/* OK, update the superblock to recover the freed space.
+ 	 * Physical blocks come first: have we wrapped beyond the end of
+ 	 * the log?  */
+diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+index 5b43e96..008bf06 100644
+--- a/fs/jbd/recovery.c
++++ b/fs/jbd/recovery.c
+@@ -20,6 +20,7 @@
+ #include <linux/fs.h>
+ #include <linux/jbd.h>
+ #include <linux/errno.h>
++#include <linux/blkdev.h>
+ #endif
+ 
+ /*
+@@ -263,6 +264,9 @@ int journal_recover(journal_t *journal)
+ 	err2 = sync_blockdev(journal->j_fs_dev);
+ 	if (!err)
+ 		err = err2;
++	/* Flush disk caches to get replayed data on the permanent storage */
++	if (journal->j_flags & JFS_BARRIER)
++		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
+ 
+ 	return err;
+ }
+-- 
+1.7.1
+
