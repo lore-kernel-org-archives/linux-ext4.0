@@ -1,205 +1,84 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v2] ext4: ignore EXT4_INODE_JOURNAL_DATA flag with delalloc
-Date: Thu, 12 Jan 2012 12:03:44 +0100
-Message-ID: <1326366224-22885-1-git-send-email-lczerner@redhat.com>
-References: <1326266607-15211-1-git-send-email-lczerner@redhat.com>
-Cc: Eric Sandeen <sandeen@redhat.com>, tytso@mit.edu,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/4] Fix filesystem freezing
+Date: Thu, 12 Jan 2012 12:30:31 +0100
+Message-ID: <20120112113031.GA8778@quack.suse.cz>
+References: <1326331253-6497-1-git-send-email-jack@suse.cz>
+ <20120112024841.GB2806@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55911 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:54019 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752506Ab2ALLD4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jan 2012 06:03:56 -0500
-In-Reply-To: <1326266607-15211-1-git-send-email-lczerner@redhat.com>
+	id S1751153Ab2ALLae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jan 2012 06:30:34 -0500
+Content-Disposition: inline
+In-Reply-To: <20120112024841.GB2806@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4 does not support data journalling with delayed allocation enabled.
-We even do not allow to mount the file system with delayed allocation
-and data journalling enabled, however it can be set via FS_IOC_SETFLAGS
-so we can hit the inode with EXT4_INODE_JOURNAL_DATA set even on file
-system mounted with delayed allocation (default) and that's where
-problem arises. The easies way to reproduce this problem is with the
-following set of commands:
-
- mkfs.ext4 /dev/sdd
- mount /dev/sdd /mnt/test1
- dd if=/dev/zero of=/mnt/test1/file bs=1M count=4
- chattr +j /mnt/test1/file
- dd if=/dev/zero of=/mnt/test1/file bs=1M count=4 conv=notrunc
- chattr -j /mnt/test1/file
-
-Additionally it can be reproduced quite reliably with xfstests 272 and
-269. In fact the above reproducer is a part of test 272.
-
-To fix this we should ignore the EXT4_INODE_JOURNAL_DATA inode flag if
-the file system is mounted with delayed allocation. This can be easily
-done by fixing ext4_should_*_data() functions do ignore data journal
-flag when delalloc is set (suggested by Ted). We also have to set the
-appropriate address space operations for the inode (again, ignoring data
-journal flag if delalloc enabled).
-
-Additionally this commit introduces ext4_inode_journal_mode() function
-because ext4_should_*_data() has already had a lot of common code and
-this change is putting it all into one function so it is easier to
-read.
-
-Successfully tested with xfstest in following configurations:
-
-delalloc + data=ordered
-delalloc + data=writeback
-data=journal
-nodelalloc + data=ordered
-nodelalloc + data=writeback
-nodelalloc + data=journal
-
-(I wish we can get rid of the data=journal mode)
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
-v2: - Change ORDER_DATA to ORDERED_DATA in flag name
-    - two tiny formatting changes
-
- fs/ext4/ext4_jbd2.h |   55 ++++++++++++++++++++++++++-------------------------
- fs/ext4/inode.c     |   36 ++++++++++++++++++++-------------
- 2 files changed, 50 insertions(+), 41 deletions(-)
-
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 5802fa1..137e4ba 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -261,43 +261,44 @@ static inline void ext4_update_inode_fsync_trans(handle_t *handle,
- /* super.c */
- int ext4_force_commit(struct super_block *sb);
+On Thu 12-01-12 13:48:41, Dave Chinner wrote:
+> On Thu, Jan 12, 2012 at 02:20:49AM +0100, Jan Kara wrote:
+> > 
+> >   Hello,
+> > 
+> >   filesystem freezing is currently racy and thus we can end up with dirty data
+> > on frozen filesystem (see changelog of the first patch for detailed race
+> > description and proposed fix). This patch series aims at fixing this.
+> 
+> It only fixes the dirty data race (i.e. SB_FREEZE_WRITE). The same
+> race conditions exist for SB_FREEZE_TRANS on XFS, and so need the
+> same fix. That race has had one previous attempt at fixing it in
+> XFS but that's not possible:
+> 
+> b2ce397 Revert "xfs: fix filesystsem freeze race in xfs_trans_alloc"
+> 7a249cf xfs: fix filesystsem freeze race in xfs_trans_alloc
+> 
+> It was looking at that problem earlier today that lead to the
+> solution Eric proposed. Essentially the method in these patches
+> needs to replace the xfs specifc m_active_trans counter and delay
+> during ->fs_freeze to prevent that race condition....
+  OK, I see. I just checked ext4 to make sure and ext4 seems to get this
+right. Looking into Christoph's original patch it shouldn't be hard to fix
+it. Instead of:
+        atomic_inc(&mp->m_active_trans);
  
--static inline int ext4_should_journal_data(struct inode *inode)
-+/*
-+ * Ext4 inode journal modes
-+ */
-+#define EXT4_INODE_JOURNAL_DATA_MODE	0x01 /* journal data mode */
-+#define EXT4_INODE_ORDERED_DATA_MODE	0x02 /* ordered data mode */
-+#define EXT4_INODE_WRITEBACK_DATA_MODE	0x04 /* writeback data mode */
-+
-+static inline int ext4_inode_journal_mode(struct inode *inode)
- {
- 	if (EXT4_JOURNAL(inode) == NULL)
--		return 0;
--	if (!S_ISREG(inode->i_mode))
--		return 1;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
--		return 1;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 1;
--	return 0;
-+		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
-+	/* We do not support data journalling with delayed allocation */
-+	if (!S_ISREG(inode->i_mode) ||
-+	   (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) ||
-+	   (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-+	   !test_opt(inode->i_sb, DELALLOC)))
-+		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
-+		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
-+		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
-+	else
-+		BUG();
-+}
-+
-+static inline int ext4_should_journal_data(struct inode *inode)
-+{
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_JOURNAL_DATA_MODE;
- }
- 
- static inline int ext4_should_order_data(struct inode *inode)
- {
--	if (EXT4_JOURNAL(inode) == NULL)
--		return 0;
--	if (!S_ISREG(inode->i_mode))
--		return 0;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 0;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
--		return 1;
--	return 0;
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_ORDERED_DATA_MODE;
- }
- 
- static inline int ext4_should_writeback_data(struct inode *inode)
- {
--	if (EXT4_JOURNAL(inode) == NULL)
--		return 1;
--	if (!S_ISREG(inode->i_mode))
--		return 0;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 0;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
--		return 1;
--	return 0;
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_WRITEBACK_DATA_MODE;
- }
- 
- /*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index aa8efa6..e56e23b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2479,13 +2479,14 @@ static int ext4_da_write_end(struct file *file,
- 	int write_mode = (int)(unsigned long)fsdata;
- 
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
--		if (ext4_should_order_data(inode)) {
-+		switch (ext4_inode_journal_mode(inode)) {
-+		case EXT4_INODE_ORDERED_DATA_MODE:
- 			return ext4_ordered_write_end(file, mapping, pos,
- 					len, copied, page, fsdata);
--		} else if (ext4_should_writeback_data(inode)) {
-+		case EXT4_INODE_WRITEBACK_DATA_MODE:
- 			return ext4_writeback_write_end(file, mapping, pos,
- 					len, copied, page, fsdata);
--		} else {
-+		default:
- 			BUG();
- 		}
- 	}
-@@ -3083,18 +3084,25 @@ static const struct address_space_operations ext4_da_aops = {
- 
- void ext4_set_aops(struct inode *inode)
- {
--	if (ext4_should_order_data(inode) &&
--		test_opt(inode->i_sb, DELALLOC))
--		inode->i_mapping->a_ops = &ext4_da_aops;
--	else if (ext4_should_order_data(inode))
--		inode->i_mapping->a_ops = &ext4_ordered_aops;
--	else if (ext4_should_writeback_data(inode) &&
--		 test_opt(inode->i_sb, DELALLOC))
--		inode->i_mapping->a_ops = &ext4_da_aops;
--	else if (ext4_should_writeback_data(inode))
--		inode->i_mapping->a_ops = &ext4_writeback_aops;
--	else
-+	switch (ext4_inode_journal_mode(inode)) {
-+	case EXT4_INODE_ORDERED_DATA_MODE:
-+		if (test_opt(inode->i_sb, DELALLOC))
-+			inode->i_mapping->a_ops = &ext4_da_aops;
-+		else
-+			inode->i_mapping->a_ops = &ext4_ordered_aops;
-+		break;
-+	case EXT4_INODE_WRITEBACK_DATA_MODE:
-+		if (test_opt(inode->i_sb, DELALLOC))
-+			inode->i_mapping->a_ops = &ext4_da_aops;
-+		else
-+			inode->i_mapping->a_ops = &ext4_writeback_aops;
-+		break;
-+	case EXT4_INODE_JOURNAL_DATA_MODE:
- 		inode->i_mapping->a_ops = &ext4_journalled_aops;
-+		break;
-+	default:
-+		BUG();
-+	}
- }
- 
- 
+        if (wait_for_freeze)
+              xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
+
+we just need to do a bit more elaborate
+
+retry:
+        if (wait_for_freeze)
+              xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
+        atomic_inc(&mp->m_active_trans);
+	if (wait_for_freeze && mp->m_super->s_frozen >= SB_FREEZE_TRANS) {
+        	atomic_dec(&mp->m_active_trans);
+		goto retry;
+	}
+
+Or does XFS support nested transactions (i.e. a thread already holding a
+running transaction can call into xfs_trans_alloc() again)?
+That would make things more complicated...
+
+Using sb_start_write() instead of m_active_trans won't be that easy because
+it can create A-A deadlocks (e.g. we do sb_start_write in
+block_page_mkwrite() and then xfs_get_blocks() decides to start a
+transaction and calls sb_start_write() again which might block if
+filesystem freezing started in the mean time).
+
+So it's up to XFS maintainers to decide what's best but I'd take
+Christoph's patch with above fixup. I guess I'll put it in this series and
+see what people say.
+
+									Honza
 -- 
-1.7.4.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
