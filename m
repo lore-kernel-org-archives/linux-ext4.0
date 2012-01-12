@@ -1,84 +1,323 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/4] Fix filesystem freezing
-Date: Thu, 12 Jan 2012 12:30:31 +0100
-Message-ID: <20120112113031.GA8778@quack.suse.cz>
-References: <1326331253-6497-1-git-send-email-jack@suse.cz>
- <20120112024841.GB2806@dastard>
+Subject: Re: [PATCH v5] ext4: make quota as first class supported feature
+Date: Thu, 12 Jan 2012 13:26:18 +0100
+Message-ID: <20120112122618.GB8778@quack.suse.cz>
+References: <1326309116-28723-1-git-send-email-adityakali@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <dchinner@redhat.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: Dave Chinner <david@fromorbit.com>
+Cc: adilger@dilger.ca, tytso@mit.edu, dmonakhov@openvz.org,
+	jack@suse.cz, johann@whamcloud.com, linux-ext4@vger.kernel.org
+To: Aditya Kali <adityakali@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54019 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:56242 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153Ab2ALLae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jan 2012 06:30:34 -0500
+	id S1751050Ab2ALM0V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jan 2012 07:26:21 -0500
 Content-Disposition: inline
-In-Reply-To: <20120112024841.GB2806@dastard>
+In-Reply-To: <1326309116-28723-1-git-send-email-adityakali@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 12-01-12 13:48:41, Dave Chinner wrote:
-> On Thu, Jan 12, 2012 at 02:20:49AM +0100, Jan Kara wrote:
-> > 
-> >   Hello,
-> > 
-> >   filesystem freezing is currently racy and thus we can end up with dirty data
-> > on frozen filesystem (see changelog of the first patch for detailed race
-> > description and proposed fix). This patch series aims at fixing this.
+On Wed 11-01-12 11:11:56, Aditya Kali wrote:
+> This patch is an attempt towards supporting quotas as first class
+> feature in ext4. It is based on the proposal at:
+> https://ext4.wiki.kernel.org/index.php/Design_For_1st_Class_Quota_in_Ext4
+> This patch introduces a new feature - EXT4_FEATURE_RO_COMPAT_QUOTA which, when
+> turned on, enables quota accounting at mount time iteself. Also, the
+> quota inodes are stored in two additional superblock fields.
+> Some changes introduced by this patch that should be pointed out are:
+> 1) Two new ext4-superblock fields - s_usr_quota_inum and s_grp_quota_inum
+>    for storing the quota inodes in use.
+> 2) Default quota inodes are: inode#3 for tracking userquota and inode#4 for
+>    tracking group quota. The superblock fields can be set to use other inodes
+>    as well.
+> 3) If the QUOTA feature and corresponding quota inodes are set in superblock,
+>    the quota usage tracking is turned on at mount time. On 'quotaon' ioctl, the
+>    quota limits enforcement is turned on. 'quotaoff' ioctl turns off only the
+>    limits enforcement in this case.
+> 4) When QUOTA feature is in use, the quota mount options 'quota', 'usrquota',
+>    'grpquota' are ignored by the kernel.
+> 5) mke2fs or tune2fs can be used to set the QUOTA feature and initialize quota
+>    inodes. The default reserved inodes will not be visible to user as
+>    regular files.
+> 6) The quota-tools will need to be modified to support hidden quota files on
+>    ext4. E2fsprogs will also include support for creating and fixing quota
+>    files.
+> 7) Support is only for the new V2 quota file format.
 > 
-> It only fixes the dirty data race (i.e. SB_FREEZE_WRITE). The same
-> race conditions exist for SB_FREEZE_TRANS on XFS, and so need the
-> same fix. That race has had one previous attempt at fixing it in
-> XFS but that's not possible:
+> Signed-off-by: Aditya Kali <adityakali@google.com>
+  Thanks. The patch looks good now. I also tested it with latest
+quota-tools & e2fsprogs + one change to quota code and quota works as
+expected. You can add:
+  Tested-by: Jan Kara <jack@suse.cz>
+  Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/ext4/ext4.h      |    5 ++-
+>  fs/ext4/ext4_jbd2.h |   18 +++++--
+>  fs/ext4/super.c     |  135 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  3 files changed, 149 insertions(+), 9 deletions(-)
 > 
-> b2ce397 Revert "xfs: fix filesystsem freeze race in xfs_trans_alloc"
-> 7a249cf xfs: fix filesystsem freeze race in xfs_trans_alloc
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 513004f..9345150 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1279,6 +1279,8 @@ static inline struct timespec ext4_current_time(struct inode *inode)
+>  static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>  {
+>  	return ino == EXT4_ROOT_INO ||
+> +		ino == EXT4_USR_QUOTA_INO ||
+> +		ino == EXT4_GRP_QUOTA_INO ||
+>  		ino == EXT4_JOURNAL_INO ||
+>  		ino == EXT4_RESIZE_INO ||
+>  		(ino >= EXT4_FIRST_INO(sb) &&
+> @@ -1453,7 +1455,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>  					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
+>  					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
+>  					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
+> -					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
+> +					 EXT4_FEATURE_RO_COMPAT_BIGALLOC | \
+> +					 EXT4_FEATURE_RO_COMPAT_QUOTA)
+>  
+>  /*
+>   * Default values for user and/or group using reserved blocks
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index 5802fa1..45de190 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -87,14 +87,20 @@
+>  #ifdef CONFIG_QUOTA
+>  /* Amount of blocks needed for quota update - we know that the structure was
+>   * allocated so we need to update only data block */
+> -#define EXT4_QUOTA_TRANS_BLOCKS(sb) (test_opt(sb, QUOTA) ? 1 : 0)
+> +#define EXT4_QUOTA_TRANS_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+> +		1 : 0)
+>  /* Amount of blocks needed for quota insert/delete - we do some block writes
+>   * but inode, sb and group updates are done only once */
+> -#define EXT4_QUOTA_INIT_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_INIT_ALLOC*\
+> -		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_INIT_REWRITE) : 0)
+> -
+> -#define EXT4_QUOTA_DEL_BLOCKS(sb) (test_opt(sb, QUOTA) ? (DQUOT_DEL_ALLOC*\
+> -		(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)+3+DQUOT_DEL_REWRITE) : 0)
+> +#define EXT4_QUOTA_INIT_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+> +		(DQUOT_INIT_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
+> +		 +3+DQUOT_INIT_REWRITE) : 0)
+> +
+> +#define EXT4_QUOTA_DEL_BLOCKS(sb) ((test_opt(sb, QUOTA) ||\
+> +		EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) ?\
+> +		(DQUOT_DEL_ALLOC*(EXT4_SINGLEDATA_TRANS_BLOCKS(sb)-3)\
+> +		 +3+DQUOT_DEL_REWRITE) : 0)
+>  #else
+>  #define EXT4_QUOTA_TRANS_BLOCKS(sb) 0
+>  #define EXT4_QUOTA_INIT_BLOCKS(sb) 0
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 502c61f..14cc694 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1238,12 +1238,18 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot);
+>  static int ext4_write_info(struct super_block *sb, int type);
+>  static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  			 struct path *path);
+> +static int ext4_quota_on_sysfile(struct super_block *sb, int type,
+> +				 int format_id);
+>  static int ext4_quota_off(struct super_block *sb, int type);
+> +static int ext4_quota_off_sysfile(struct super_block *sb, int type);
+>  static int ext4_quota_on_mount(struct super_block *sb, int type);
+>  static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
+>  			       size_t len, loff_t off);
+>  static ssize_t ext4_quota_write(struct super_block *sb, int type,
+>  				const char *data, size_t len, loff_t off);
+> +static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+> +			     unsigned int flags);
+> +static int ext4_enable_quotas(struct super_block *sb);
+>  
+>  static const struct dquot_operations ext4_quota_operations = {
+>  	.get_reserved_space = ext4_get_reserved_space,
+> @@ -1265,6 +1271,16 @@ static const struct quotactl_ops ext4_qctl_operations = {
+>  	.get_dqblk	= dquot_get_dqblk,
+>  	.set_dqblk	= dquot_set_dqblk
+>  };
+> +
+> +static const struct quotactl_ops ext4_qctl_sysfile_operations = {
+> +	.quota_on_meta	= ext4_quota_on_sysfile,
+> +	.quota_off	= ext4_quota_off_sysfile,
+> +	.quota_sync	= dquot_quota_sync,
+> +	.get_info	= dquot_get_dqinfo,
+> +	.set_info	= dquot_set_dqinfo,
+> +	.get_dqblk	= dquot_get_dqblk,
+> +	.set_dqblk	= dquot_set_dqblk
+> +};
+>  #endif
+>  
+>  static const struct super_operations ext4_sops = {
+> @@ -2710,6 +2726,16 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+>  			 "extents feature\n");
+>  		return 0;
+>  	}
+> +
+> +#ifndef CONFIG_QUOTA
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
+> +	    !readonly) {
+> +		ext4_msg(sb, KERN_ERR,
+> +			 "Filesystem with quota feature cannot be mounted RDWR "
+> +			 "without CONFIG_QUOTA");
+> +		return 0;
+> +	}
+> +#endif  /* CONFIG_QUOTA */
+>  	return 1;
+>  }
+>  
+> @@ -3606,6 +3632,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  #ifdef CONFIG_QUOTA
+>  	sb->s_qcop = &ext4_qctl_operations;
+>  	sb->dq_op = &ext4_quota_operations;
+> +
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+> +		/* Use qctl operations for hidden quota files. */
+> +		sb->s_qcop = &ext4_qctl_sysfile_operations;
+> +	}
+>  #endif
+>  	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
+>  
+> @@ -3813,6 +3844,16 @@ no_journal:
+>  	} else
+>  		descr = "out journal";
+>  
+> +#ifdef CONFIG_QUOTA
+> +	/* Enable quota usage during mount. */
+> +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
+> +	    !(sb->s_flags & MS_RDONLY)) {
+> +		ret = ext4_enable_quotas(sb);
+> +		if (ret)
+> +			goto failed_mount7;
+> +	}
+> +#endif  /* CONFIG_QUOTA */
+> +
+>  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+>  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+>  		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+> @@ -4553,8 +4594,18 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  			kfree(old_opts.s_qf_names[i]);
+>  #endif
+>  	unlock_super(sb);
+> -	if (enable_quota)
+> -		dquot_resume(sb, -1);
+> +	if (enable_quota) {
+> +		if (sb_any_quota_suspended(sb))
+> +			dquot_resume(sb, -1);
+> +		else if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> +					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+> +			err = ext4_enable_quotas(sb);
+> +			if (err) {
+> +				lock_super(sb);
+> +				goto restore_opts;
+> +			}
+> +		}
+> +	}
+>  
+>  	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+>  	kfree(orig_data);
+> @@ -4813,6 +4864,74 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  	return dquot_quota_on(sb, type, format_id, path);
+>  }
+>  
+> +static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+> +			     unsigned int flags)
+> +{
+> +	int err;
+> +	struct inode *qf_inode;
+> +	unsigned long qf_inums[MAXQUOTAS] = {
+> +		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+> +		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
+> +	};
+> +
+> +	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
+> +
+> +	if (!qf_inums[type])
+> +		return -EPERM;
+> +
+> +	qf_inode = ext4_iget(sb, qf_inums[type]);
+> +	if (IS_ERR(qf_inode)) {
+> +		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
+> +		return PTR_ERR(qf_inode);
+> +	}
+> +
+> +	err = dquot_enable(qf_inode, type, format_id, flags);
+> +	iput(qf_inode);
+> +
+> +	return err;
+> +}
+> +
+> +/* Enable usage tracking for all quota types. */
+> +static int ext4_enable_quotas(struct super_block *sb)
+> +{
+> +	int type, err = 0;
+> +	unsigned long qf_inums[MAXQUOTAS] = {
+> +		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+> +		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
+> +	};
+> +
+> +	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
+> +	for (type = 0; type < MAXQUOTAS; type++) {
+> +		if (qf_inums[type]) {
+> +			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
+> +						DQUOT_USAGE_ENABLED);
+> +			if (err) {
+> +				ext4_warning(sb,
+> +					"Failed to enable quota (type=%d) "
+> +					"tracking. Please run e2fsck to fix.",
+> +					type);
+> +				return err;
+> +			}
+> +		}
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+> + * quota_on function that is used when QUOTA feature is set.
+> + */
+> +static int ext4_quota_on_sysfile(struct super_block *sb, int type,
+> +				 int format_id)
+> +{
+> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+> +		return -EINVAL;
+> +
+> +	/*
+> +	 * USAGE was enabled at mount time. Only need to enable LIMITS now.
+> +	 */
+> +	return ext4_quota_enable(sb, type, format_id, DQUOT_LIMITS_ENABLED);
+> +}
+> +
+>  static int ext4_quota_off(struct super_block *sb, int type)
+>  {
+>  	struct inode *inode = sb_dqopt(sb)->files[type];
+> @@ -4839,6 +4958,18 @@ out:
+>  	return dquot_quota_off(sb, type);
+>  }
+>  
+> +/*
+> + * quota_off function that is used when QUOTA feature is set.
+> + */
+> +static int ext4_quota_off_sysfile(struct super_block *sb, int type)
+> +{
+> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+> +		return -EINVAL;
+> +
+> +	/* Disable only the limits. */
+> +	return dquot_disable(sb, type, DQUOT_LIMITS_ENABLED);
+> +}
+> +
+>  /* Read data from quotafile - avoid pagecache and such because we cannot afford
+>   * acquiring the locks... As quota files are never truncated and quota code
+>   * itself serializes the operations (and no one else should touch the files)
+> -- 
+> 1.7.7.3
 > 
-> It was looking at that problem earlier today that lead to the
-> solution Eric proposed. Essentially the method in these patches
-> needs to replace the xfs specifc m_active_trans counter and delay
-> during ->fs_freeze to prevent that race condition....
-  OK, I see. I just checked ext4 to make sure and ext4 seems to get this
-right. Looking into Christoph's original patch it shouldn't be hard to fix
-it. Instead of:
-        atomic_inc(&mp->m_active_trans);
- 
-        if (wait_for_freeze)
-              xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
-
-we just need to do a bit more elaborate
-
-retry:
-        if (wait_for_freeze)
-              xfs_wait_for_freeze(mp, SB_FREEZE_TRANS);
-        atomic_inc(&mp->m_active_trans);
-	if (wait_for_freeze && mp->m_super->s_frozen >= SB_FREEZE_TRANS) {
-        	atomic_dec(&mp->m_active_trans);
-		goto retry;
-	}
-
-Or does XFS support nested transactions (i.e. a thread already holding a
-running transaction can call into xfs_trans_alloc() again)?
-That would make things more complicated...
-
-Using sb_start_write() instead of m_active_trans won't be that easy because
-it can create A-A deadlocks (e.g. we do sb_start_write in
-block_page_mkwrite() and then xfs_get_blocks() decides to start a
-transaction and calls sb_start_write() again which might block if
-filesystem freezing started in the mean time).
-
-So it's up to XFS maintainers to decide what's best but I'd take
-Christoph's patch with above fixup. I guess I'll put it in this series and
-see what people say.
-
-									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
