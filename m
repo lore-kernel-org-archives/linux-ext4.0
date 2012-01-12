@@ -1,106 +1,120 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Support "check=none" "nocheck" mount options
-Date: Wed, 11 Jan 2012 14:07:26 -0700
-Message-ID: <6791F004-7305-43C8-A144-834A8FCF9495@dilger.ca>
-References: <20120110174118.GB3015@zod.bos.redhat.com> <4F0C78CD.6070809@redhat.com> <7A0721E1-689F-4B9B-BD8C-86A03DDF20CE@dilger.ca> <20120111145004.GA13986@zod.bos.redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
+From: Seiji Aguchi <seiji.aguchi@hds.com>
+Subject: [PATCH][RESEND]tracepoint: add
+ drop_transaction/update_superblock_end to jbd2
+Date: Wed, 11 Jan 2012 19:10:40 -0500
+Message-ID: <5C4C569E8A4B9B42A84A977CF070A35B2C58316AF9@USINDEVS01.corp.hds.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 8BIT
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, kernel-team@fedoraproject.org
-To: Josh Boyer <jwboyer@redhat.com>
+Cc: "dle-develop@lists.sourceforge.net"
+	<dle-develop@lists.sourceforge.net>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Satoru Moriya <satoru.moriya@hds.com>
+To: "jack@suse.cz" <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:51583 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751176Ab2AKVH1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 16:07:27 -0500
-In-Reply-To: <20120111145004.GA13986@zod.bos.redhat.com>
+Received: from usindpps06.hds.com ([207.126.252.19]:44786 "EHLO
+	usindpps06.hds.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751413Ab2ALANH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jan 2012 19:13:07 -0500
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-01-11, at 7:50 AM, Josh Boyer wrote:
-> On Wed, Jan 11, 2012 at 03:07:33AM -0700, Andreas Dilger wrote:
->> At a minimum the use of obsolete options like this should print a warning
->> at mount time so that there is some chance the user will notice and remove
->> the old option from their config.  Otherwise it is impossible to even get
->> rid of old useless cruft like this if we need to maintain functionally-useless
->> compatibility forever.
-> 
-> I can add a printk(KERN_WARN in the case statement instead of just
-> having it break.  That's not a big deal, but I doubt it's going to get
-> seen much.
+Hi Jan,
 
-It not being seen much/ever is fine (expected even), but at least anyone
-using this option has some advance warning that it will disappear.
+Please review this patch below (and hopefully apply to your tree).
+This has already been reviewed by Lukas.
 
-As stated separately, a printk() should also be added to ext2/ext3 so
-that it is deprecated there as well.
+Seiji
 
-> I'm very hesitant to add a WARN_ON or anything else that is
-> going to generate a backtrace because it's just going to be scary
-> looking and cause more work for distributions that have automated bug
-> reporting tools.
-
-Right, WARN_ON() is too strong, and having a stack trace isn't useful.
-
->> Dredging through my memories, I recall that this option used to disable
->> the checks done at mount(?) time that compared the bits set in the block
->> and inode bitmaps against the summary values in the group descriptors
->> (AFAIR).  Or maybe it was comparing the group descriptor summary values
->> against the superblock values?
-> 
-> Yeah, something like that.  It's been the default behavior of ext2/ext3
-> for a long time now.  So long that the "check=normal" and "check=strict"
-> options (non-default) aren't even supported there anymore.
-
-Not surprising.
-
->> In any case, I can't imagine why a user would have this set for a kernel
->> option that might have last been valid 10 years ago, and why the 5 users
->> in the world that might have this set cannot simply remove it from their
->> fstab, since it does absolutely nothing?
-> 
-> This was prompted by a bug report against util-linux, as the man page
-> still had the option as valid for ext2 (which it is).
-
-Is there a patch being submitted to util-linux that removes this option
-from the man page as well?
-
->  Since ext4 is
-> claiming to be directly usable for ext2 filesystems, I don't think it is
-> unreasonable to mount an fs that has that option set.  If it makes
-> things easier I could wrap all of this in CONFIG_EXT4_USE_FOR_EXT23
-> ifdefs, but that seemed to make the code unnecessarily uglier.
-
-No, I don't think a CONFIG option is needed.  What I'd actually prefer is
-to add a LINUX_VERSION_CODE check for some time in the future (say 3 years
-with 4 kernel versions per year) that adds a #warning to remove this code:
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 50) /* approx 2014 */
-	case Opt_nocheck:
-		/* ext2/ext3 used to "support" this option. */
-		ext4_msg(sb, KERN_INFO, "the '%s' option is deprecated, "
-			 "please remove it from /etc/fstab\n", p);
-		break;
-#else
-#warning "remove obsolete 'nocheck' and 'check=none' mount options"
-#endif
-
-This at least ensures that the obsolete code is noticed (which is what we
-do for Lustre), but it puts the burden of removing the obsolete code onto
-the person who updates the version (which is Linus, and I don't think he
-would be happy about it).  IMHO existing Linux "deprecated" mechanism does
-not work very well, because there is still tons of deprecated code that is
-never removed because it isn't "in your face" enough (i.e. stuff that is
-marked to be deprecated in 2007 or 2008.
-
-Another option would be to just have the version check without the #warning
-and then at least the code will be automatically disabled at that time, and
-can be deleted by one of the ext4 maintainers at any convenient later time.
-
-Cheers, Andreas
+---
+This patch adds trace_jbd2_drop_transaction and 
+trace_jbd2_update_superblock_end because there are similar tracepoints in jbd and 
+they are needed in jbd2 as well.
 
 
+ Signed-off-by: Seiji Aguchi <seiji.aguchi@hds.com>
+ Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
 
+---
+ fs/jbd2/checkpoint.c        |    2 ++
+ fs/jbd2/journal.c           |    2 ++
+ include/trace/events/jbd2.h |   28 ++++++++++++++++++++++++++++
+ 3 files changed, 32 insertions(+), 0 deletions(-)
+
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 16a698b..2bfd8b0 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -797,5 +797,7 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
+ 	J_ASSERT(journal->j_committing_transaction != transaction);
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+ 
++	trace_jbd2_drop_transaction(journal, transaction);
++
+ 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
+ }
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index f24df13..5953b3d 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1185,6 +1185,8 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
+ 	} else
+ 		write_dirty_buffer(bh, WRITE);
+ 
++	trace_jbd2_update_superblock_end(journal, wait);
++
+ out:
+ 	/* If we have just flushed the log (by marking s_start==0), then
+ 	 * any future commit will have to be careful to update the
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index 7596441..ae59bc2 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -81,6 +81,13 @@ DEFINE_EVENT(jbd2_commit, jbd2_commit_logging,
+ 	TP_ARGS(journal, commit_transaction)
+ );
+ 
++DEFINE_EVENT(jbd2_commit, jbd2_drop_transaction,
++
++	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
++
++	TP_ARGS(journal, commit_transaction)
++);
++
+ TRACE_EVENT(jbd2_end_commit,
+ 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
+ 
+@@ -229,6 +236,27 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
+ 		  __entry->block_nr, __entry->freed)
+ );
+ 
++TRACE_EVENT(jbd2_update_superblock_end,
++
++	TP_PROTO(journal_t *journal, int wait),
++
++	TP_ARGS(journal, wait),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,  dev			)
++		__field(	int,    wait			)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= journal->j_fs_dev->bd_dev;
++		__entry->wait		= wait;
++	),
++
++	TP_printk("dev %d,%d wait %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->wait)
++);
++
+ #endif /* _TRACE_JBD2_H */
+ 
+ /* This part must be outside protection */
+-- 
+1.7.1
 
