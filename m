@@ -1,121 +1,56 @@
-From: Seiji Aguchi <seiji.aguchi@hds.com>
-Subject: [PATCH][RESEND]tracepoint: add
- drop_transaction/update_superblock_end to jbd2
-Date: Thu, 12 Jan 2012 15:58:51 -0500
-Message-ID: <5C4C569E8A4B9B42A84A977CF070A35B2C5839432C@USINDEVS01.corp.hds.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 4/4] xfs: Protect xfs_file_aio_write() with
+ sb_start_write - sb_end_write
+Date: Thu, 12 Jan 2012 21:29:41 +0000
+Message-ID: <20120112212941.GI23916@ZenIV.linux.org.uk>
+References: <1326331253-6497-1-git-send-email-jack@suse.cz>
+ <1326331253-6497-5-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "dle-develop@lists.sourceforge.net"
-	<dle-develop@lists.sourceforge.net>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"jack@suse.cz" <jack@suse.cz>,
-	Satoru Moriya <satoru.moriya@hds.com>
-To: "tytso@mit.edu" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christoph Hellwig <hch@infradead.org>, Ben Myers <bpm@sgi.com>,
+	Alex Elder <elder@kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from usindpps06.hds.com ([207.126.252.19]:42927 "EHLO
-	usindpps06.hds.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755346Ab2ALVBP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jan 2012 16:01:15 -0500
-Content-Language: en-US
+Received: from zeniv.linux.org.uk ([195.92.253.2]:55158 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755369Ab2ALV3q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jan 2012 16:29:46 -0500
+Content-Disposition: inline
+In-Reply-To: <1326331253-6497-5-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Ted,
+On Thu, Jan 12, 2012 at 02:20:53AM +0100, Jan Kara wrote:
+> Replace racy xfs_wait_for_freeze() check with reliable sb_start_write()
+> - sb_end_write() locking. Due to lock ranking dictated by the page fault
+> code we have to call sb_start_write() after we acquire ilock.
+> 
+> CC: Ben Myers <bpm@sgi.com>
+> CC: Alex Elder <elder@kernel.org>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/xfs/xfs_file.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 753ed9b..c5f879b 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -862,9 +862,11 @@ xfs_file_dio_aio_write(
+>  		*iolock = XFS_IOLOCK_SHARED;
+>  	}
+>  
+> +	sb_start_write(inode->i_sb);
+>  	trace_xfs_file_direct_write(ip, count, iocb->ki_pos, 0);
+>  	ret = generic_file_direct_write(iocb, iovp,
+>  			&nr_segs, pos, &iocb->ki_pos, count, ocount);
+> +	sb_end_write(inode->i_sb);
 
-Please review this patch adding jbd2 tracepoints(and hopefully apply to your tree).
-This has already been accepted by Lukas and Jan.
-
-Seiji
-
----
-This patch adds trace_jbd2_drop_transaction and 
-trace_jbd2_update_superblock_end because there are similar tracepoints in jbd and 
-they are needed in jbd2 as well.
-
-
- Signed-off-by: Seiji Aguchi <seiji.aguchi@hds.com>
- Reviewed-by: Lukas Czerner <lczerner@redhat.com>
- Acked-by: Jan Kara <jack@suse.cz>
-
----
- fs/jbd2/checkpoint.c        |    2 ++
- fs/jbd2/journal.c           |    2 ++
- include/trace/events/jbd2.h |   28 ++++++++++++++++++++++++++++
- 3 files changed, 32 insertions(+), 0 deletions(-)
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 16a698b..2bfd8b0 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -797,5 +797,7 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
- 	J_ASSERT(journal->j_committing_transaction != transaction);
- 	J_ASSERT(journal->j_running_transaction != transaction);
- 
-+	trace_jbd2_drop_transaction(journal, transaction);
-+
- 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
- }
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index f24df13..5953b3d 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1185,6 +1185,8 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
- 	} else
- 		write_dirty_buffer(bh, WRITE);
- 
-+	trace_jbd2_update_superblock_end(journal, wait);
-+
- out:
- 	/* If we have just flushed the log (by marking s_start==0), then
- 	 * any future commit will have to be careful to update the
-diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-index 7596441..ae59bc2 100644
---- a/include/trace/events/jbd2.h
-+++ b/include/trace/events/jbd2.h
-@@ -81,6 +81,13 @@ DEFINE_EVENT(jbd2_commit, jbd2_commit_logging,
- 	TP_ARGS(journal, commit_transaction)
- );
- 
-+DEFINE_EVENT(jbd2_commit, jbd2_drop_transaction,
-+
-+	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
-+
-+	TP_ARGS(journal, commit_transaction)
-+);
-+
- TRACE_EVENT(jbd2_end_commit,
- 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
- 
-@@ -229,6 +236,27 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
- 		  __entry->block_nr, __entry->freed)
- );
- 
-+TRACE_EVENT(jbd2_update_superblock_end,
-+
-+	TP_PROTO(journal_t *journal, int wait),
-+
-+	TP_ARGS(journal, wait),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,  dev			)
-+		__field(	int,    wait			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= journal->j_fs_dev->bd_dev;
-+		__entry->wait		= wait;
-+	),
-+
-+	TP_printk("dev %d,%d wait %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->wait)
-+);
-+
- #endif /* _TRACE_JBD2_H */
- 
- /* This part must be outside protection */
--- 
-1.7.1
-
+What lock ordering do you have in mind?  Explicit description in fs/super.c,
+please...
