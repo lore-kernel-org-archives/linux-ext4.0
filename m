@@ -1,66 +1,57 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: working on extent locks for i_mutex
-Date: Thu, 12 Jan 2012 20:01:43 -0700
-Message-ID: <4F0F9E97.1090403@linux.vnet.ibm.com>
+Subject: Re: punch-hole should go beyond i_size
+Date: Thu, 12 Jan 2012 20:18:11 -0700
+Message-ID: <4F0FA273.5060108@linux.vnet.ibm.com>
+References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com> <alpine.LSU.2.00.1201121617320.1541@eggly.anvils>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org
+To: Hugh Dickins <hughd@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:55484 "EHLO e4.ny.us.ibm.com"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:47103 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751173Ab2AMDCZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jan 2012 22:02:25 -0500
+	id S1751420Ab2AMDSj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jan 2012 22:18:39 -0500
 Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Thu, 12 Jan 2012 22:02:23 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0D31kEH1896548
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2012 22:01:47 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0D31j44022000
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2012 22:01:46 -0500
+	Thu, 12 Jan 2012 22:18:38 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0D3IEWf473776
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2012 22:18:14 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0D3IEoD004721
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2012 22:18:14 -0500
+In-Reply-To: <alpine.LSU.2.00.1201121617320.1541@eggly.anvils>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+On 01/12/2012 05:21 PM, Hugh Dickins wrote:
+> On Thu, 12 Jan 2012, Allison Henderson wrote:
+>> On 01/11/2012 07:55 PM, Dave Chinner wrote:
+>>> On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
+>>>>
+>>>> ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
+>>>> early return, and trimming to i_size below, but forgets that the other
+>>>> variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
+>>>> blocks beyond i_size.  They can be removed with ftruncate(), but it is
+>>>> unexpected for fallocate() not to undo its own work, and xfs does so.
+>>>
+>>> I'm pretty sure that's a bug as XFS allows punching holes in extents
+>>> beyond EOF.
+>>
+>> Oh I see, I'll take a look at it, I think it will be ok to just take out the
+>> early return.  Thx!
+>
+> Thanks.  And I've just noticed another, very easily fixed, error:
+> I believe those -ENOTSUPPs in ext4_punch_hole() should be -EOPNOTSUPPs.
+>
+> Hugh
+>
+Ah, I think youre right, I will change the error values.  I have the 
+current solution running in a test right now, and will post the patch 
+when it comes up clean.  Thx!
 
-I know this is an old topic, but I am poking it again because I've had 
-some work items wrap up, and Im planning on picking up on this one 
-again.  I am thinking about implementing extent locks to replace 
-i_mutex.  So I just wanted to touch base with folks and see what people 
-are working on because I know there were some folks out there that were 
-thing about doing similar solutions.
-
-A while ago I had done some investigation on where i_mutex is currently 
-used, so I did a review and updated my list.  Only one thing had been 
-removed, but I will leave the list here since it was a while ago.  Let 
-me know if anyone has been working on similar concept.  Thx!
-
-Allison
-
-
-List of ext4 functions that lock i_mutex:
-ext4_sync_file
-ext4_fallocate
-ext4_move_extents via two helper routines:
-     mext_inode_double_lock and mext_inode_double_unlock
-ext4_ioctl (for the EXT4_IOC_SETFLAGS ioctl)
-ext4_quota_write
-ext4_llseek
-ext4_end_io_work
-ext4_ind_direct_IO (only while calling ext4_flush_completed_IO)
-
-
-Functions called by vfs with i_mutex locked:
-ext4_setattr
-ext4_da_writepages
-ext4_rmdir
-ext4_unlink
-ext4_symlink
-ext4_link
-ext4_rename
-ext4_get_block
+Allison Henderson
 
