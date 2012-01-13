@@ -1,75 +1,51 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: working on extent locks for i_mutex
-Date: Thu, 12 Jan 2012 21:01:39 -0700
-Message-ID: <4161CDFC-FEEB-4AAF-A0EA-B18F9FE8B7B1@dilger.ca>
+Date: Fri, 13 Jan 2012 15:34:11 +1100
+Message-ID: <20120113043411.GH2806@dastard>
 References: <4F0F9E97.1090403@linux.vnet.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Zhen Liang <liang@whamcloud.com>
+	Lukas Czerner <lczerner@redhat.com>, xfs@oss.sgi.com
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:64787 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751206Ab2AMEBl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jan 2012 23:01:41 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:58452 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751206Ab2AMEeO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jan 2012 23:34:14 -0500
+Content-Disposition: inline
 In-Reply-To: <4F0F9E97.1090403@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-01-12, at 8:01 PM, Allison Henderson wrote:
-> I know this is an old topic, but I am poking it again because I've had some work items wrap up, and Im planning on picking up on this one again.  I am thinking about implementing extent locks to replace i_mutex.  So I just wanted to touch base with folks and see what people are working on because I know there were some folks out there that were thing about doing similar solutions.
+On Thu, Jan 12, 2012 at 08:01:43PM -0700, Allison Henderson wrote:
+> Hi All,
 > 
-> A while ago I had done some investigation on where i_mutex is currently used, so I did a review and updated my list.  Only one thing had been removed, but I will leave the list here since it was a while ago.  Let me know if anyone has been working on similar concept.  Thx!
+> I know this is an old topic, but I am poking it again because I've
+> had some work items wrap up, and Im planning on picking up on this
+> one again.  I am thinking about implementing extent locks to replace
+> i_mutex.  So I just wanted to touch base with folks and see what
+> people are working on because I know there were some folks out there
+> that were thing about doing similar solutions.
 
-The in-ext4 users appear to all be file IO related, while the VFS functions
-are mostly directory related, though I don't see any mention of the callers
-of ext4_mkdir() or ext4_mknod() or ext4_create()?
+What locking API are you looking at? If you are looking at an
+something like:
 
-For Lustre we developed a patch that allows parallel metadata operations on
-directories (e.g. concurrent lookup, mkdir, rmdir, create, unlink in a single
-directory) which would replace i_mutex for the namespace operations.  Patch:
+read_range_{try}lock(lock, off, len)
+read_range_unlock(lock, off, len)
+write_range_{try}lock(lock, off, len)
+write_range_unlock(lock, off, len)
 
-http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob;f=ldiskfs/kernel_patches/patches/ext4_pdirop-rhel6.patch;hb=HEAD
+and implementing with an rbtree or a btree for tracking, then I
+definitely have a use for it in XFS - replacing the current rwsem
+that is used for the iolock. Range locks like this are the only
+thing we need to allow concurrent buffered writes to the same file
+to maintain the per-write exclusion that posix requires.
 
-though this in itself isn't enough to allow the VFS to do parallel directory
-operations.  We're of course also interested in parallel file IO operations
-through the VFS for the client, though this hasn't been a focus of ours since
-we typically have a large number of clients doing IO concurrently.
+Cheers,
 
-> List of ext4 functions that lock i_mutex:
-> ext4_sync_file
-> ext4_fallocate
-> ext4_move_extents via two helper routines:
->    mext_inode_double_lock and mext_inode_double_unlock
-> ext4_ioctl (for the EXT4_IOC_SETFLAGS ioctl)
-> ext4_quota_write
-> ext4_llseek
-> ext4_end_io_work
-> ext4_ind_direct_IO (only while calling ext4_flush_completed_IO)
-> 
-> 
-> Functions called by vfs with i_mutex locked:
-> ext4_setattr
-> ext4_da_writepages
-> ext4_rmdir
-> ext4_unlink
-> ext4_symlink
-> ext4_link
-> ext4_rename
-> ext4_get_block
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
