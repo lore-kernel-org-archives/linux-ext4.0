@@ -1,41 +1,60 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: punch-hole should go beyond i_size
-Date: Thu, 12 Jan 2012 16:21:30 -0800 (PST)
-Message-ID: <alpine.LSU.2.00.1201121617320.1541@eggly.anvils>
-References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/4] fs: Improve filesystem freezing handling
+Date: Fri, 13 Jan 2012 12:26:43 +1100
+Message-ID: <20120113012643.GF2806@dastard>
+References: <1326331253-6497-1-git-send-email-jack@suse.cz>
+ <1326331253-6497-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Eric Sandeen <sandeen@sandeen.net>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:58516 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756073Ab2AMAVu (ORCPT
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:40589 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756792Ab2AMB0r (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jan 2012 19:21:50 -0500
-Received: by obcva7 with SMTP id va7so1451934obc.19
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Jan 2012 16:21:48 -0800 (PST)
-In-Reply-To: <4F0F08F6.2000205@linux.vnet.ibm.com>
+	Thu, 12 Jan 2012 20:26:47 -0500
+Content-Disposition: inline
+In-Reply-To: <1326331253-6497-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 12 Jan 2012, Allison Henderson wrote:
-> On 01/11/2012 07:55 PM, Dave Chinner wrote:
-> > On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
-> > > 
-> > > ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
-> > > early return, and trimming to i_size below, but forgets that the other
-> > > variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
-> > > blocks beyond i_size.  They can be removed with ftruncate(), but it is
-> > > unexpected for fallocate() not to undo its own work, and xfs does so.
-> > 
-> > I'm pretty sure that's a bug as XFS allows punching holes in extents
-> > beyond EOF.
-> 
-> Oh I see, I'll take a look at it, I think it will be ok to just take out the
-> early return.  Thx!
+On Thu, Jan 12, 2012 at 02:20:50AM +0100, Jan Kara wrote:
+> + *
+> + * Decrement number of writers to the filesystem and wake up possible
+> + * waiters wanting to freeze the filesystem.
+> + */
+> +void sb_end_write(struct super_block *sb)
+> +{
+> +#ifdef CONFIG_SMP
+> +	this_cpu_dec(sb->s_writers);
+> +#else
+> +	preempt_disable();
+> +	sb->s_writers--;
+> +	preempt_enable();
+> +#endif
 
-Thanks.  And I've just noticed another, very easily fixed, error:
-I believe those -ENOTSUPPs in ext4_punch_hole() should be -EOPNOTSUPPs.
+I really dislike this type of open coded per-cpu counter
+implementation. I can't see that there is no good reason to use it
+over percpu_counters here which abstract all this mess away.
 
-Hugh
+i.e. it is relatively rare that the per-cpu count will nest
+greater than the percpu_counter batch size (needs more than 32
+concurrent blocked active writes per CPU), so there is no
+significant overhead to using the percpu_counters here.
+
+Indeed, if there are that many blocked writes per CPU, then the
+overhead of an occasional global counter update is going to be lost
+in the noise of everything else that is going on.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
