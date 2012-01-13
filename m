@@ -1,95 +1,275 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: working on extent locks for i_mutex
-Date: Fri, 13 Jan 2012 13:50:48 -0700
-Message-ID: <4F109928.9030004@linux.vnet.ibm.com>
-References: <4F0F9E97.1090403@linux.vnet.ibm.com> <4161CDFC-FEEB-4AAF-A0EA-B18F9FE8B7B1@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Zhen Liang <liang@whamcloud.com>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/3] ext4: fold ext4_claim_inode into ext4_new_inode
+Date: Fri, 13 Jan 2012 16:30:48 -0500
+Message-ID: <1326490249-1685-3-git-send-email-tytso@mit.edu>
+References: <1326490249-1685-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:33962 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932647Ab2AMUu6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jan 2012 15:50:58 -0500
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Fri, 13 Jan 2012 13:50:58 -0700
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0DKopda137464
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jan 2012 13:50:51 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0DKopgm019016
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jan 2012 13:50:51 -0700
-In-Reply-To: <4161CDFC-FEEB-4AAF-A0EA-B18F9FE8B7B1@dilger.ca>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42558 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756213Ab2AMVaw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jan 2012 16:30:52 -0500
+In-Reply-To: <1326490249-1685-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/12/2012 09:01 PM, Andreas Dilger wrote:
-> On 2012-01-12, at 8:01 PM, Allison Henderson wrote:
->> I know this is an old topic, but I am poking it again because I've had some work items wrap up, and Im planning on picking up on this one again.  I am thinking about implementing extent locks to replace i_mutex.  So I just wanted to touch base with folks and see what people are working on because I know there were some folks out there that were thing about doing similar solutions.
->>
->> A while ago I had done some investigation on where i_mutex is currently used, so I did a review and updated my list.  Only one thing had been removed, but I will leave the list here since it was a while ago.  Let me know if anyone has been working on similar concept.  Thx!
->
-> The in-ext4 users appear to all be file IO related, while the VFS functions
-> are mostly directory related, though I don't see any mention of the callers
-> of ext4_mkdir() or ext4_mknod() or ext4_create()?
-Hmm, those ones didnt turn up when I was looking for i_mutex locking. 
-Though it would make sense that they would be locked.  Did I over look 
-it in a helper function somewhere?
+The function ext4_claim_inode() is only called by one function,
+ext4_new_inode(), and by folding the functionality into
+ext4_new_inode(), we can remove almost 50 lines of code, and put all
+of the logic of allocating a new inode into a single place.
 
->
-> For Lustre we developed a patch that allows parallel metadata operations on
-> directories (e.g. concurrent lookup, mkdir, rmdir, create, unlink in a single
-> directory) which would replace i_mutex for the namespace operations.  Patch:
->
-> http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob;f=ldiskfs/kernel_patches/patches/ext4_pdirop-rhel6.patch;hb=HEAD
->
-> though this in itself isn't enough to allow the VFS to do parallel directory
-> operations.  We're of course also interested in parallel file IO operations
-> through the VFS for the client, though this hasn't been a focus of ours since
-> we typically have a large number of clients doing IO concurrently.
->
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ialloc.c |  207 ++++++++++++++++++++----------------------------------
+ 1 files changed, 75 insertions(+), 132 deletions(-)
 
-I see, I will take a look at it, maybe there will be some things I can 
-borrow from it.  Thx!
-
->> List of ext4 functions that lock i_mutex:
->> ext4_sync_file
->> ext4_fallocate
->> ext4_move_extents via two helper routines:
->>     mext_inode_double_lock and mext_inode_double_unlock
->> ext4_ioctl (for the EXT4_IOC_SETFLAGS ioctl)
->> ext4_quota_write
->> ext4_llseek
->> ext4_end_io_work
->> ext4_ind_direct_IO (only while calling ext4_flush_completed_IO)
->>
->>
->> Functions called by vfs with i_mutex locked:
->> ext4_setattr
->> ext4_da_writepages
->> ext4_rmdir
->> ext4_unlink
->> ext4_symlink
->> ext4_link
->> ext4_rename
->> ext4_get_block
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> Cheers, Andreas
->
->
->
->
->
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index a4ce10f..7d7f3b4 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -593,94 +593,6 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ }
+ 
+ /*
+- * claim the inode from the inode bitmap. If the group
+- * is uninit we need to take the groups's ext4_group_lock
+- * and clear the uninit flag. The inode bitmap update
+- * and group desc uninit flag clear should be done
+- * after holding ext4_group_lock so that ext4_read_inode_bitmap
+- * doesn't race with the ext4_claim_inode
+- */
+-static int ext4_claim_inode(struct super_block *sb,
+-			struct buffer_head *inode_bitmap_bh,
+-			unsigned long ino, ext4_group_t group, int mode)
+-{
+-	int free = 0, retval = 0, count;
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+-	struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
+-
+-	/*
+-	 * We have to be sure that new inode allocation does not race with
+-	 * inode table initialization, because otherwise we may end up
+-	 * allocating and writing new inode right before sb_issue_zeroout
+-	 * takes place and overwriting our new inode with zeroes. So we
+-	 * take alloc_sem to prevent it.
+-	 */
+-	down_read(&grp->alloc_sem);
+-	ext4_lock_group(sb, group);
+-	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
+-		/* not a free inode */
+-		retval = 1;
+-		goto err_ret;
+-	}
+-	ino++;
+-	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
+-			ino > EXT4_INODES_PER_GROUP(sb)) {
+-		ext4_unlock_group(sb, group);
+-		up_read(&grp->alloc_sem);
+-		ext4_error(sb, "reserved inode or inode > inodes count - "
+-			   "block_group = %u, inode=%lu", group,
+-			   ino + group * EXT4_INODES_PER_GROUP(sb));
+-		return 1;
+-	}
+-	/* If we didn't allocate from within the initialized part of the inode
+-	 * table then we need to initialize up to this inode. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-
+-		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+-			/* When marking the block group with
+-			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
+-			 * on the value of bg_itable_unused even though
+-			 * mke2fs could have initialized the same for us.
+-			 * Instead we calculated the value below
+-			 */
+-
+-			free = 0;
+-		} else {
+-			free = EXT4_INODES_PER_GROUP(sb) -
+-				ext4_itable_unused_count(sb, gdp);
+-		}
+-
+-		/*
+-		 * Check the relative inode number against the last used
+-		 * relative inode number in this group. if it is greater
+-		 * we need to  update the bg_itable_unused count
+-		 *
+-		 */
+-		if (ino > free)
+-			ext4_itable_unused_set(sb, gdp,
+-					(EXT4_INODES_PER_GROUP(sb) - ino));
+-	}
+-	count = ext4_free_inodes_count(sb, gdp) - 1;
+-	ext4_free_inodes_set(sb, gdp, count);
+-	if (S_ISDIR(mode)) {
+-		count = ext4_used_dirs_count(sb, gdp) + 1;
+-		ext4_used_dirs_set(sb, gdp, count);
+-		if (sbi->s_log_groups_per_flex) {
+-			ext4_group_t f = ext4_flex_group(sbi, group);
+-
+-			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+-		}
+-	}
+-	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+-err_ret:
+-	ext4_unlock_group(sb, group);
+-	up_read(&grp->alloc_sem);
+-	return retval;
+-}
+-
+-/*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+  * free space and a low directory-to-inode ratio; if that fails, then of
+@@ -741,6 +653,11 @@ got_group:
+ 	if (ret2 == -1)
+ 		goto out;
+ 
++	/*
++	 * Normally we will only go through one pass of this loop,
++	 * unless we get unlucky and it turns the group we selected
++	 * had its last inode grabbed by someone else.
++	 */
+ 	for (i = 0; i < ngroups; i++, ino = 0) {
+ 		err = -EIO;
+ 
+@@ -757,56 +674,82 @@ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+ 					      inode_bitmap_bh->b_data,
+ 					      EXT4_INODES_PER_GROUP(sb), ino);
++		if (ino >= EXT4_INODES_PER_GROUP(sb)) {
++			if (++group == ngroups)
++				group = 0;
++			continue;
++		}
++		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
++			ext4_error(sb, "reserved inode found cleared - "
++				   "inode=%lu", ino + 1);
++			continue;
++		}
++		ext4_lock_group(sb, group);
++		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
++		ext4_unlock_group(sb, group);
++		ino++;		/* the inode bitmap is zero-based */
++		if (!ret2)
++			goto got; /* we grabbed the inode! */
++		if (ino < EXT4_INODES_PER_GROUP(sb))
++			goto repeat_in_this_group;
++	}
++	err = -ENOSPC;
++	goto out;
+ 
+-		if (ino < EXT4_INODES_PER_GROUP(sb)) {
+-
+-			BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle,
+-							    inode_bitmap_bh);
+-			if (err)
+-				goto fail;
+-
+-			BUFFER_TRACE(group_desc_bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle,
+-								group_desc_bh);
+-			if (err)
+-				goto fail;
+-			if (!ext4_claim_inode(sb, inode_bitmap_bh,
+-						ino, group, mode)) {
+-				/* we won it */
+-				BUFFER_TRACE(inode_bitmap_bh,
+-					"call ext4_handle_dirty_metadata");
+-				err = ext4_handle_dirty_metadata(handle,
+-								 NULL,
+-							inode_bitmap_bh);
+-				if (err)
+-					goto fail;
+-				/* zero bit is inode number 1*/
+-				ino++;
+-				goto got;
+-			}
+-			/* we lost it */
+-			ext4_handle_release_buffer(handle, inode_bitmap_bh);
+-			ext4_handle_release_buffer(handle, group_desc_bh);
++got:
++	BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
++	if (err)
++		goto fail;
+ 
+-			if (++ino < EXT4_INODES_PER_GROUP(sb))
+-				goto repeat_in_this_group;
+-		}
++	BUFFER_TRACE(group_desc_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, group_desc_bh);
++	if (err)
++		goto fail;
++
++	/* Update the relevant bg descriptor fields */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		int free;
++		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+ 
++		down_read(&grp->alloc_sem); /* protect vs itable lazyinit */
++		ext4_lock_group(sb, group); /* while we modify the bg desc */
++		free = EXT4_INODES_PER_GROUP(sb) -
++			ext4_itable_unused_count(sb, gdp);
++		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
++			free = 0;
++		}
+ 		/*
+-		 * This case is possible in concurrent environment.  It is very
+-		 * rare.  We cannot repeat the find_group_xxx() call because
+-		 * that will simply return the same blockgroup, because the
+-		 * group descriptor metadata has not yet been updated.
+-		 * So we just go onto the next blockgroup.
++		 * Check the relative inode number against the last used
++		 * relative inode number in this group. if it is greater
++		 * we need to  update the bg_itable_unused count
++		 *
+ 		 */
+-		if (++group == ngroups)
+-			group = 0;
++		if (ino > free)
++			ext4_itable_unused_set(sb, gdp,
++					(EXT4_INODES_PER_GROUP(sb) - ino));
++		up_read(&grp->alloc_sem);
+ 	}
+-	err = -ENOSPC;
+-	goto out;
++	ext4_free_inodes_set(sb, gdp, ext4_free_inodes_count(sb, gdp) - 1);
++	if (S_ISDIR(mode)) {
++		ext4_used_dirs_set(sb, gdp, ext4_used_dirs_count(sb, gdp) + 1);
++		if (sbi->s_log_groups_per_flex) {
++			ext4_group_t f = ext4_flex_group(sbi, group);
++
++			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
++		}
++	}
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
++		ext4_unlock_group(sb, group);
++	}
++
++	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
++	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
++	if (err)
++		goto fail;
+ 
+-got:
+ 	BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_metadata(handle, NULL, group_desc_bh);
+ 	if (err)
+@@ -1070,7 +1013,7 @@ unsigned long ext4_count_dirs(struct super_block * sb)
+  * where it is called from on active part of filesystem is ext4lazyinit
+  * thread, so we do not need any special locks, however we have to prevent
+  * inode allocation from the current group, so we take alloc_sem lock, to
+- * block ext4_claim_inode until we are finished.
++ * block ext4_new_inode() until we are finished.
+  */
+ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ 				 int barrier)
+-- 
+1.7.8.11.gefc1f.dirty
 
