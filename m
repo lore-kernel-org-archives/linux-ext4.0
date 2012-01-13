@@ -1,55 +1,63 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: working on extent locks for i_mutex
-Date: Fri, 13 Jan 2012 15:14:51 +0800
-Message-ID: <4F0FD9EB.5050707@tao.ma>
-References: <4F0F9E97.1090403@linux.vnet.ibm.com> <20120113043411.GH2806@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/4] fs: Improve filesystem freezing handling
+Date: Fri, 13 Jan 2012 11:12:20 +0100
+Message-ID: <20120113101220.GA13641@quack.suse.cz>
+References: <1326331253-6497-1-git-send-email-jack@suse.cz>
+ <1326331253-6497-2-git-send-email-jack@suse.cz>
+ <20120113012643.GF2806@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>, xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Eric Sandeen <sandeen@sandeen.net>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:48055 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751126Ab2AMHO6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jan 2012 02:14:58 -0500
-In-Reply-To: <20120113043411.GH2806@dastard>
+Received: from cantor2.suse.de ([195.135.220.15]:45340 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751658Ab2AMKMX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jan 2012 05:12:23 -0500
+Content-Disposition: inline
+In-Reply-To: <20120113012643.GF2806@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/13/2012 12:34 PM, Dave Chinner wrote:
-> On Thu, Jan 12, 2012 at 08:01:43PM -0700, Allison Henderson wrote:
->> Hi All,
->>
->> I know this is an old topic, but I am poking it again because I've
->> had some work items wrap up, and Im planning on picking up on this
->> one again.  I am thinking about implementing extent locks to replace
->> i_mutex.  So I just wanted to touch base with folks and see what
->> people are working on because I know there were some folks out there
->> that were thing about doing similar solutions.
+On Fri 13-01-12 12:26:43, Dave Chinner wrote:
+> On Thu, Jan 12, 2012 at 02:20:50AM +0100, Jan Kara wrote:
+> > + *
+> > + * Decrement number of writers to the filesystem and wake up possible
+> > + * waiters wanting to freeze the filesystem.
+> > + */
+> > +void sb_end_write(struct super_block *sb)
+> > +{
+> > +#ifdef CONFIG_SMP
+> > +	this_cpu_dec(sb->s_writers);
+> > +#else
+> > +	preempt_disable();
+> > +	sb->s_writers--;
+> > +	preempt_enable();
+> > +#endif
 > 
-> What locking API are you looking at? If you are looking at an
-> something like:
+> I really dislike this type of open coded per-cpu counter
+> implementation. I can't see that there is no good reason to use it
+> over percpu_counters here which abstract all this mess away.
 > 
-> read_range_{try}lock(lock, off, len)
-> read_range_unlock(lock, off, len)
-> write_range_{try}lock(lock, off, len)
-> write_range_unlock(lock, off, len)
+> i.e. it is relatively rare that the per-cpu count will nest
+> greater than the percpu_counter batch size (needs more than 32
+> concurrent blocked active writes per CPU), so there is no
+> significant overhead to using the percpu_counters here.
 > 
-> and implementing with an rbtree or a btree for tracking, then I
-> definitely have a use for it in XFS - replacing the current rwsem
-> that is used for the iolock. Range locks like this are the only
-> thing we need to allow concurrent buffered writes to the same file
-> to maintain the per-write exclusion that posix requires.
-Interesting, so xfs already have these range lock, right? If yes, any
-possibility that the code can be reused in ext4 since we have the same
-thing in mind but don't have any resource to work on it by now.
+> Indeed, if there are that many blocked writes per CPU, then the
+> overhead of an occasional global counter update is going to be lost
+> in the noise of everything else that is going on.
+  Well, I just did it the way mnt_want_write / mnt_put_write does it. But
+you are right that it's unnecessary so it's a good idea to switch the code
+to using per-cpu counters. Thanks for the idea.
 
-btw, IIRC flock(2) uses a list to indicate the range lock, so if we can
-make these pieces of codes common, at least there are 3 places that can
-benefit from it. ;)
-
-Thanks
-Tao
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
