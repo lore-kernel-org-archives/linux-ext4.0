@@ -1,106 +1,45 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH RESEND] ext4: replace ll_rw_block with other functions
-Date: Mon, 16 Jan 2012 15:49:28 +0800
-Message-ID: <1326700168-4435-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH RESEND] ext4: make sure O_(D)SYNC semantic in ext4_fallocate()
+Date: Mon, 16 Jan 2012 16:47:43 +0800
+Message-ID: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:41391 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:47643 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750858Ab2APHps (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2012 02:45:48 -0500
-Received: by iagf6 with SMTP id f6so2167597iag.19
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Jan 2012 23:45:48 -0800 (PST)
+	with ESMTP id S1753522Ab2APIoF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2012 03:44:05 -0500
+Received: by iagf6 with SMTP id f6so2240032iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jan 2012 00:44:05 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ll_rw_block() is deprecated. Thus we replace it with other functions.
+Ext4 must make sure the transaction to be commited to the disk when user opens
+a file with O_(D)SYNC flag and do a fallocate(2) call.
+
+This problem had been reported by Christoph Hellwig in this thread:
+http://www.spinics.net/lists/linux-btrfs/msg13621.html
 
 CC: "Theodore Ts'o" <tytso@mit.edu>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reported-by: Christoph Hellwig <hch@infradead.org>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/inode.c |   14 +++++++-------
- fs/ext4/namei.c |    9 ++++++---
- fs/ext4/super.c |   11 ++++++-----
- 3 files changed, 19 insertions(+), 15 deletions(-)
+ fs/ext4/extents.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..956b359 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -699,9 +699,11 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 	bh = ext4_getblk(handle, inode, block, create, err);
- 	if (!bh)
- 		return bh;
--	if (buffer_uptodate(bh))
-+	if (bh_uptodate_or_lock(bh))
- 		return bh;
--	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &bh);
-+	get_bh(bh);
-+	bh->b_end_io = end_buffer_read_sync;
-+	submit_bh(READ | REQ_META | REQ_PRIO, bh);
- 	wait_on_buffer(bh);
- 	if (buffer_uptodate(bh))
- 		return bh;
-@@ -3269,12 +3271,10 @@ static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
- 		if (PageUptodate(page))
- 			set_buffer_uptodate(bh);
- 
--		if (!buffer_uptodate(bh)) {
--			err = -EIO;
--			ll_rw_block(READ, 1, &bh);
--			wait_on_buffer(bh);
-+		if (!bh_uptodate_or_lock(bh)) {
-+			err = bh_submit_read(bh);
- 			/* Uhhuh. Read error. Complain and punt.*/
--			if (!buffer_uptodate(bh))
-+			if (err)
- 				goto next;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 74f23c2..00e32d9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4356,6 +4356,8 @@ retry:
+ 			ret = PTR_ERR(handle);
+ 			break;
  		}
- 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 2043f48..e79f5c4 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -921,9 +921,12 @@ restart:
- 				num++;
- 				bh = ext4_getblk(NULL, dir, b++, 0, &err);
- 				bh_use[ra_max] = bh;
--				if (bh)
--					ll_rw_block(READ | REQ_META | REQ_PRIO,
--						    1, &bh);
-+				if (bh && !bh_uptodate_or_lock(bh)) {
-+					get_bh(bh);
-+					bh->b_end_io = end_buffer_read_sync;
-+					submit_bh(READ | REQ_META | REQ_PRIO,
-+						  bh);
-+				}
- 			}
- 		}
- 		if ((bh = bh_use[ra_ptr++]) == NULL)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502c61f..647de31 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4010,11 +4010,12 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
- 		goto out_bdev;
- 	}
- 	journal->j_private = sb;
--	ll_rw_block(READ, 1, &journal->j_sb_buffer);
--	wait_on_buffer(journal->j_sb_buffer);
--	if (!buffer_uptodate(journal->j_sb_buffer)) {
--		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
--		goto out_journal;
-+	if (!bh_uptodate_or_lock(journal->j_sb_buffer)) {
-+		if (bh_submit_read(journal->j_sb_buffer)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "I/O error on journal device");
-+			goto out_journal;
-+		}
- 	}
- 	if (be32_to_cpu(journal->j_superblock->s_nr_users) != 1) {
- 		ext4_msg(sb, KERN_ERR, "External journal has more than one "
++		if (file->f_flags & O_SYNC)
++			ext4_handle_sync(handle);
+ 		ret = ext4_map_blocks(handle, inode, &map, flags);
+ 		if (ret <= 0) {
+ #ifdef EXT4FS_DEBUG
 -- 
 1.7.4.1
 
