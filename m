@@ -1,45 +1,40 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH RESEND] ext4: make sure O_(D)SYNC semantic in ext4_fallocate()
-Date: Mon, 16 Jan 2012 16:47:43 +0800
-Message-ID: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH RESEND] ext4: format flag in dx_probe()
+Date: Mon, 16 Jan 2012 17:01:40 +0800
+Message-ID: <1326704500-4368-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:47643 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:58960 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753522Ab2APIoF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2012 03:44:05 -0500
-Received: by iagf6 with SMTP id f6so2240032iag.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Jan 2012 00:44:05 -0800 (PST)
+	with ESMTP id S1753658Ab2API6A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2012 03:58:00 -0500
+Received: by iagf6 with SMTP id f6so2257228iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jan 2012 00:58:00 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4 must make sure the transaction to be commited to the disk when user opens
-a file with O_(D)SYNC flag and do a fallocate(2) call.
-
-This problem had been reported by Christoph Hellwig in this thread:
-http://www.spinics.net/lists/linux-btrfs/msg13621.html
+Fix ext4_warning format flag in dx_probe().
 
 CC: "Theodore Ts'o" <tytso@mit.edu>
-Reported-by: Christoph Hellwig <hch@infradead.org>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/namei.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74f23c2..00e32d9 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4356,6 +4356,8 @@ retry:
- 			ret = PTR_ERR(handle);
- 			break;
- 		}
-+		if (file->f_flags & O_SYNC)
-+			ext4_handle_sync(handle);
- 		ret = ext4_map_blocks(handle, inode, &map, flags);
- 		if (ret <= 0) {
- #ifdef EXT4FS_DEBUG
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2043f48..349d7b3 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -468,7 +468,7 @@ fail2:
+ fail:
+ 	if (*err == ERR_BAD_DX_DIR)
+ 		ext4_warning(dir->i_sb,
+-			     "Corrupt dir inode %ld, running e2fsck is "
++			     "Corrupt dir inode %lu, running e2fsck is "
+ 			     "recommended.", dir->i_ino);
+ 	return NULL;
+ }
 -- 
 1.7.4.1
 
