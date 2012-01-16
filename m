@@ -1,36 +1,106 @@
-From: "Tai Bei" <bei@optusnet.com.au>
-Subject: Please Help.
-Date: Mon, 16 Jan 2012 06:25:25 +0700 (WIT)
-Message-ID: <5e5567e835a72f1b56c5015c61c678e9.squirrel@webmail.speedmark.co.id>
-Reply-To: mr.tai@9.cn
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: unlisted-recipients:; (no To-header on input)
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH RESEND] ext4: replace ll_rw_block with other functions
+Date: Mon, 16 Jan 2012 15:49:28 +0800
+Message-ID: <1326700168-4435-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from speedmark.co.id ([202.51.112.171]:49713 "EHLO
-	mail.fafakids.web.id" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753288Ab2APEzf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Jan 2012 23:55:35 -0500
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41391 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750858Ab2APHps (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2012 02:45:48 -0500
+Received: by iagf6 with SMTP id f6so2167597iag.19
+        for <linux-ext4@vger.kernel.org>; Sun, 15 Jan 2012 23:45:48 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is understandable that you might be a little bit apprehensive because
-you do not know me but I have a lucrative business proposal of mutual
-interest to share with you. I got your reference in my search for someone
-who suits my proposed business relationship. I am Mr. Tai Bei bank officer
-with the International bank of Taipei. I will need you to assist me in
-executing a business project from Taiwan to your country. It involves the
-transfer of money. Everything concerning this transaction shall be legally
-done without hitch.
+ll_rw_block() is deprecated. Thus we replace it with other functions.
 
+CC: "Theodore Ts'o" <tytso@mit.edu>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/inode.c |   14 +++++++-------
+ fs/ext4/namei.c |    9 ++++++---
+ fs/ext4/super.c |   11 ++++++-----
+ 3 files changed, 19 insertions(+), 15 deletions(-)
 
-Once the funds have been successfully transferred into your account, we
-shall share in the ratio to be agreed by both of us. Contact me for more
-information about this operation immediately I receive a positive response
-from you.
-
-
-Kind Regards,
-Mr. Tai Bei
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..956b359 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -699,9 +699,11 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
+ 	bh = ext4_getblk(handle, inode, block, create, err);
+ 	if (!bh)
+ 		return bh;
+-	if (buffer_uptodate(bh))
++	if (bh_uptodate_or_lock(bh))
+ 		return bh;
+-	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &bh);
++	get_bh(bh);
++	bh->b_end_io = end_buffer_read_sync;
++	submit_bh(READ | REQ_META | REQ_PRIO, bh);
+ 	wait_on_buffer(bh);
+ 	if (buffer_uptodate(bh))
+ 		return bh;
+@@ -3269,12 +3271,10 @@ static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+ 		if (PageUptodate(page))
+ 			set_buffer_uptodate(bh);
+ 
+-		if (!buffer_uptodate(bh)) {
+-			err = -EIO;
+-			ll_rw_block(READ, 1, &bh);
+-			wait_on_buffer(bh);
++		if (!bh_uptodate_or_lock(bh)) {
++			err = bh_submit_read(bh);
+ 			/* Uhhuh. Read error. Complain and punt.*/
+-			if (!buffer_uptodate(bh))
++			if (err)
+ 				goto next;
+ 		}
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2043f48..e79f5c4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -921,9 +921,12 @@ restart:
+ 				num++;
+ 				bh = ext4_getblk(NULL, dir, b++, 0, &err);
+ 				bh_use[ra_max] = bh;
+-				if (bh)
+-					ll_rw_block(READ | REQ_META | REQ_PRIO,
+-						    1, &bh);
++				if (bh && !bh_uptodate_or_lock(bh)) {
++					get_bh(bh);
++					bh->b_end_io = end_buffer_read_sync;
++					submit_bh(READ | REQ_META | REQ_PRIO,
++						  bh);
++				}
+ 			}
+ 		}
+ 		if ((bh = bh_use[ra_ptr++]) == NULL)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..647de31 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4010,11 +4010,12 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
+ 		goto out_bdev;
+ 	}
+ 	journal->j_private = sb;
+-	ll_rw_block(READ, 1, &journal->j_sb_buffer);
+-	wait_on_buffer(journal->j_sb_buffer);
+-	if (!buffer_uptodate(journal->j_sb_buffer)) {
+-		ext4_msg(sb, KERN_ERR, "I/O error on journal device");
+-		goto out_journal;
++	if (!bh_uptodate_or_lock(journal->j_sb_buffer)) {
++		if (bh_submit_read(journal->j_sb_buffer)) {
++			ext4_msg(sb, KERN_ERR,
++				 "I/O error on journal device");
++			goto out_journal;
++		}
+ 	}
+ 	if (be32_to_cpu(journal->j_superblock->s_nr_users) != 1) {
+ 		ext4_msg(sb, KERN_ERR, "External journal has more than one "
+-- 
+1.7.4.1
 
