@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 04/13] crc32: Miscellaneous cleanups
-Date: Wed, 18 Jan 2012 14:28:00 -0800
-Message-ID: <20120118222800.4079.79731.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 06/13] crc32: Make CRC_*_BITS definition correspond to actual
+	bit counts
+Date: Wed, 18 Jan 2012 14:28:14 -0800
+Message-ID: <20120118222814.4079.82206.stgit@elm3c44.beaverton.ibm.com>
 References: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,234 +18,159 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-crypto-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-crypto-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Misc cleanup of lib/crc32.c and related files
-	- removed unnecessary header files.
-	- straightened out some convoluted ifdef's
-	- rewrote some references to 2 dimensional arrays as 1 dimensional
-	  arrays to make them correct. I.e. replaced tab[i] with tab[0][i].
-	- a few trivial whitespace changes
-	- fixed a warning in gen_crc32tables.c caused by a mismatch in the
-	  type of the pointer passed to output table. Since the table is
-	  only used at kernel compile time, it is simpler to make the table
-	  big enough to hold the largest column size used. One cannot make the
-	  column size smaller in output_table because it has to be used by
-	  both the le and be tables and they can have different column sizes.
+crc32.c provides a choice of one of several algorithms for
+computing the LSB and LSB versions of the CRC32 checksum
+based on the parameters CRC_LE_BITS and CRC_BE_BITS. In the
+original version the values 1, 2, 4 and 8 respectively selected
+versions of the alrogithm that computed the crc 1, 2, 4 and 32
+bits as a time. This patch series adds a new version that computes
+the CRC 64 bits at a time. To make things easier to understand
+the parameter has been reinterpreted to actually stand for the
+number of bits processed in each step of the algorithm so that
+the old value 8 has been replaced with the value 32. This also
+allows us to add in a widely used crc algorithm that
+computes the crc 8 bits at a time called the Sarwate algorithm.
 
 From: Bob Pearson <rpearson@systemfabricworks.com>
 Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
 [djwong@us.ibm.com: Minor changelog tweaks]
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/crc32.c          |  104 +++++++++++++++++---------------------------------
- lib/gen_crc32table.c |    6 +--
- 2 files changed, 39 insertions(+), 71 deletions(-)
+ lib/crc32.c          |   17 ++++++++++++++---
+ lib/crc32defs.h      |   18 ++++++++++--------
+ lib/gen_crc32table.c |   11 ++++++++++-
+ 3 files changed, 34 insertions(+), 12 deletions(-)
 
 
 diff --git a/lib/crc32.c b/lib/crc32.c
-index 996115d..bf03922 100644
+index 7394288..5971f2a 100644
 --- a/lib/crc32.c
 +++ b/lib/crc32.c
-@@ -23,13 +23,10 @@
- /* see: Documentation/crc32.txt for a description of algorithms */
- 
- #include <linux/crc32.h>
--#include <linux/kernel.h>
- #include <linux/module.h>
--#include <linux/compiler.h>
+@@ -27,13 +27,13 @@
  #include <linux/types.h>
--#include <linux/init.h>
--#include <linux/atomic.h>
  #include "crc32defs.h"
-+
- #if CRC_LE_BITS == 8
- # define tole(x) __constant_cpu_to_le32(x)
+ 
+-#if CRC_LE_BITS == 8
++#if CRC_LE_BITS > 8
+ # define tole(x) ((__force u32) __constant_cpu_to_le32(x))
  #else
-@@ -41,6 +38,7 @@
+ # define tole(x) (x)
+ #endif
+ 
+-#if CRC_BE_BITS == 8
++#if CRC_BE_BITS > 8
+ # define tobe(x) ((__force u32) __constant_cpu_to_be32(x))
  #else
  # define tobe(x) (x)
+@@ -45,7 +45,7 @@ MODULE_AUTHOR("Matt Domsch <Matt_Domsch@dell.com>");
+ MODULE_DESCRIPTION("Ethernet CRC32 calculations");
+ MODULE_LICENSE("GPL");
+ 
+-#if CRC_LE_BITS == 8 || CRC_BE_BITS == 8
++#if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
+ 
+ static inline u32
+ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
+@@ -126,6 +126,12 @@ u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
+ 		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
+ 	}
+ # elif CRC_LE_BITS == 8
++	/* aka Sarwate algorithm */
++	while (len--) {
++		crc ^= *p++;
++		crc = (crc >> 8) ^ crc32table_le[0][crc & 255];
++	}
++# else
+ 	const u32      (*tab)[] = crc32table_le;
+ 
+ 	crc = (__force u32) __cpu_to_le32(crc);
+@@ -169,6 +175,11 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
+ 		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
+ 	}
+ # elif CRC_BE_BITS == 8
++	while (len--) {
++		crc ^= *p++ << 24;
++		crc = (crc << 8) ^ crc32table_be[0][crc >> 24];
++	}
++# else
+ 	const u32      (*tab)[] = crc32table_be;
+ 
+ 	crc = (__force u32) __cpu_to_be32(crc);
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index f5a5401..daa3a5e 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -6,27 +6,29 @@
+ #define CRCPOLY_LE 0xedb88320
+ #define CRCPOLY_BE 0x04c11db7
+ 
+-/* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
+-/* For less performance-sensitive, use 4 */
++/* How many bits at a time to use.  Valid values are 1, 2, 4, 8, and 32. */
++/* For less performance-sensitive, use 4 or 8 */
+ #ifndef CRC_LE_BITS
+-# define CRC_LE_BITS 8
++# define CRC_LE_BITS 32
  #endif
-+
- #include "crc32table.h"
- 
- MODULE_AUTHOR("Matt Domsch <Matt_Domsch@dell.com>");
-@@ -96,6 +94,7 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
- #undef DO_CRC4
- }
+ #ifndef CRC_BE_BITS
+-# define CRC_BE_BITS 8
++# define CRC_BE_BITS 32
  #endif
-+
- /**
-  * crc32_le() - Calculate bitwise little-endian Ethernet AUTODIN II CRC32
-  * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
-@@ -103,53 +102,39 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
-  */
--u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len);
--
--#if CRC_LE_BITS == 1
--/*
-- * In fact, the table-based code will work in this case, but it can be
-- * simplified by inlining the table in ?: form.
-- */
--
- u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
- {
-+#if CRC_LE_BITS == 1
- 	int i;
- 	while (len--) {
- 		crc ^= *p++;
- 		for (i = 0; i < 8; i++)
- 			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
- 	}
--	return crc;
--}
--#else				/* Table-based approach */
--
--u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
--{
--# if CRC_LE_BITS == 8
--	const u32      (*tab)[] = crc32table_le;
--
--	crc = __cpu_to_le32(crc);
--	crc = crc32_body(crc, p, len, tab);
--	return __le32_to_cpu(crc);
--# elif CRC_LE_BITS == 4
-+# elif CRC_LE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 4) ^ crc32table_le[crc & 15];
--		crc = (crc >> 4) ^ crc32table_le[crc & 15];
-+		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
-+		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
-+		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
-+		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
- 	}
--	return crc;
--# elif CRC_LE_BITS == 2
-+# elif CRC_LE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 2) ^ crc32table_le[crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[crc & 3];
-+		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
-+		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
- 	}
-+# elif CRC_LE_BITS == 8
-+	const u32      (*tab)[] = crc32table_le;
-+
-+	crc = __cpu_to_le32(crc);
-+	crc = crc32_body(crc, p, len, tab);
-+	crc = __le32_to_cpu(crc);
-+#endif
- 	return crc;
--# endif
- }
--#endif
-+EXPORT_SYMBOL(crc32_le);
  
- /**
-  * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
-@@ -158,16 +143,9 @@ u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
+ /*
+  * Little-endian CRC computation.  Used with serial bit streams sent
+  * lsbit-first.  Be sure to use cpu_to_le32() to append the computed CRC.
   */
--u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len);
--
--#if CRC_BE_BITS == 1
--/*
-- * In fact, the table-based code will work in this case, but it can be
-- * simplified by inlining the table in ?: form.
-- */
--
- u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
- {
-+#if CRC_BE_BITS == 1
- 	int i;
- 	while (len--) {
- 		crc ^= *p++ << 24;
-@@ -176,39 +154,29 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
- 			    (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE :
- 					  0);
- 	}
--	return crc;
--}
--
--#else				/* Table-based approach */
--u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
--{
--# if CRC_BE_BITS == 8
--	const u32      (*tab)[] = crc32table_be;
--
--	crc = __cpu_to_be32(crc);
--	crc = crc32_body(crc, p, len, tab);
--	return __be32_to_cpu(crc);
--# elif CRC_BE_BITS == 4
-+# elif CRC_BE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 4) ^ crc32table_be[crc >> 28];
--		crc = (crc << 4) ^ crc32table_be[crc >> 28];
-+		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
-+		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
-+		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
-+		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
- 	}
--	return crc;
--# elif CRC_BE_BITS == 2
-+# elif CRC_BE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 2) ^ crc32table_be[crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[crc >> 30];
-+		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
-+		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
- 	}
--	return crc;
-+# elif CRC_BE_BITS == 8
-+	const u32      (*tab)[] = crc32table_be;
-+
-+	crc = __cpu_to_be32(crc);
-+	crc = crc32_body(crc, p, len, tab);
-+	crc = __be32_to_cpu(crc);
- # endif
-+	return crc;
- }
--#endif
--
--EXPORT_SYMBOL(crc32_le);
- EXPORT_SYMBOL(crc32_be);
+-#if CRC_LE_BITS > 8 || CRC_LE_BITS < 1 || CRC_LE_BITS & CRC_LE_BITS-1
+-# error CRC_LE_BITS must be a power of 2 between 1 and 8
++#if CRC_LE_BITS > 32 || CRC_LE_BITS < 1 || CRC_LE_BITS == 16 || \
++	CRC_LE_BITS & CRC_LE_BITS-1
++# error "CRC_LE_BITS must be one of {1, 2, 4, 8, 32}"
+ #endif
  
- #ifdef CONFIG_CRC32_SELFTEST
+ /*
+  * Big-endian CRC computation.  Used with serial bit streams sent
+  * msbit-first.  Be sure to use cpu_to_be32() to append the computed CRC.
+  */
+-#if CRC_BE_BITS > 8 || CRC_BE_BITS < 1 || CRC_BE_BITS & CRC_BE_BITS-1
+-# error CRC_BE_BITS must be a power of 2 between 1 and 8
++#if CRC_BE_BITS > 32 || CRC_BE_BITS < 1 || CRC_BE_BITS == 16 || \
++	CRC_BE_BITS & CRC_BE_BITS-1
++# error "CRC_BE_BITS must be one of {1, 2, 4, 8, 32}"
+ #endif
 diff --git a/lib/gen_crc32table.c b/lib/gen_crc32table.c
-index 85d0e41..eced769 100644
+index eced769..99ac744 100644
 --- a/lib/gen_crc32table.c
 +++ b/lib/gen_crc32table.c
-@@ -7,8 +7,8 @@
+@@ -4,8 +4,17 @@
+ 
+ #define ENTRIES_PER_LINE 4
+ 
++#if CRC_LE_BITS <= 8
  #define LE_TABLE_SIZE (1 << CRC_LE_BITS)
++#else
++#define LE_TABLE_SIZE 256
++#endif
++
++#if CRC_BE_BITS <= 8
  #define BE_TABLE_SIZE (1 << CRC_BE_BITS)
++#else
++#define BE_TABLE_SIZE 256
++#endif
  
--static uint32_t crc32table_le[4][LE_TABLE_SIZE];
--static uint32_t crc32table_be[4][BE_TABLE_SIZE];
-+static uint32_t crc32table_le[4][256];
-+static uint32_t crc32table_be[4][256];
+ static uint32_t crc32table_le[4][256];
+ static uint32_t crc32table_be[4][256];
+@@ -24,7 +33,7 @@ static void crc32init_le(void)
  
- /**
-  * crc32init_le() - allocate and initialize LE table data
-@@ -62,7 +62,7 @@ static void crc32init_be(void)
- 	}
- }
+ 	crc32table_le[0][0] = 0;
  
--static void output_table(uint32_t table[4][256], int len, char *trans)
-+static void output_table(uint32_t (*table)[256], int len, char *trans)
- {
- 	int i, j;
- 
+-	for (i = 1 << (CRC_LE_BITS - 1); i; i >>= 1) {
++	for (i = LE_TABLE_SIZE >> 1; i; i >>= 1) {
+ 		crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
+ 		for (j = 0; j < LE_TABLE_SIZE; j += 2 * i)
+ 			crc32table_le[0][i + j] = crc ^ crc32table_le[0][j];
