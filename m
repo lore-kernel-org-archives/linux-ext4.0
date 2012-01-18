@@ -1,138 +1,63 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: working on extent locks for i_mutex
-Date: Wed, 18 Jan 2012 20:02:23 +0800
-Message-ID: <20120118120223.GA4322@gmail.com>
-References: <4F0F9E97.1090403@linux.vnet.ibm.com>
- <20120113043411.GH2806@dastard>
- <4F10992C.3070303@linux.vnet.ibm.com>
- <20120115235747.GA6922@dastard>
- <4F146275.8090304@linux.vnet.ibm.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH 01/13] crc32: removed two instances of trailing whitespaces
+Date: Wed, 18 Jan 2012 14:27:40 -0800
+Message-ID: <20120118222740.4079.56984.stgit@elm3c44.beaverton.ibm.com>
+References: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Tao Ma <tm@tao.ma>, xfs@oss.sgi.com
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:60781 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751552Ab2ARL6i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2012 06:58:38 -0500
-Received: by iagf6 with SMTP id f6so5901232iag.19
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Jan 2012 03:58:37 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <4F146275.8090304@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+	Bob Pearson <rpearson@systemfabricworks.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-crypto <linux-crypto@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	"Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+In-Reply-To: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 16, 2012 at 10:46:29AM -0700, Allison Henderson wrote:
-> On 01/15/2012 04:57 PM, Dave Chinner wrote:
-> >On Fri, Jan 13, 2012 at 01:50:52PM -0700, Allison Henderson wrote:
-> >>On 01/12/2012 09:34 PM, Dave Chinner wrote:
-> >>>On Thu, Jan 12, 2012 at 08:01:43PM -0700, Allison Henderson wrote:
-> >>>>Hi All,
-> >>>>
-> >>>>I know this is an old topic, but I am poking it again because I've
-> >>>>had some work items wrap up, and Im planning on picking up on this
-> >>>>one again.  I am thinking about implementing extent locks to replace
-> >>>>i_mutex.  So I just wanted to touch base with folks and see what
-> >>>>people are working on because I know there were some folks out there
-> >>>>that were thing about doing similar solutions.
-> >>>
-> >>>What locking API are you looking at? If you are looking at an
-> >>>something like:
-> >>>
-> >>>read_range_{try}lock(lock, off, len)
-> >>>read_range_unlock(lock, off, len)
-> >>>write_range_{try}lock(lock, off, len)
-> >>>write_range_unlock(lock, off, len)
-> >>>
-> >>>and implementing with an rbtree or a btree for tracking, then I
-> >>>definitely have a use for it in XFS - replacing the current rwsem
-> >>>that is used for the iolock. Range locks like this are the only
-> >>>thing we need to allow concurrent buffered writes to the same file
-> >>>to maintain the per-write exclusion that posix requires.
-> >>
-> >>Yes that is generally the idea I was thinking about doing, but at
-> >>the time, I was not thinking outside the scope of ext4.  You are
-> >>thinking maybe it should be in vfs layer so that it's something that
-> >>all the filesystems will use?  That seems to be the impression I'm
-> >>getting from folks.  Thx!
-> >
-> >Yes, that's what I'm suggesting. Not so much a vfs layer function,
-> >but a library (range locks could be useful outside filesystems) so
-> >locating it in lib/ was what I was thinking....
-> >
-> >Cheers,
-> >
-> >Dave.
-> 
-> Alrighty, that sounds good to me.  I will aim to keep it as general
-> purpose as I can.  I am going to start some proto typing and will
-> post back when I get something working.  Thx for the feedback all!
-> :)
+- remove trailing whitespace from lib/crc32.c
+	- remove trailing whitespace from lib/crc32defs.h
 
-Hi Allison,
+From: Bob Pearson <rpearson@systemfabricworks.com>
+Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
+[djwong@us.ibm.com: changelog tweaks]
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ lib/crc32.c     |    2 +-
+ lib/crc32defs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-For this project, do you have a schedule? Would you like to share to me? This
-lock contention heavily impacts the performance of direct IO in our production
-environment. So we hope to improve it ASAP.
 
-I have done some direct IO benchmarks to compare ext4 with xfs using fio
-in Intel SSD. The result shows that, in direct IO, xfs outperforms ext4 and
-ext4 with dioread_nolock.
-
-To understand the effect of lock contention, I define a new function called 
-ext4_file_aio_write() that calls __generic_file_aio_write() without acquiring 
-i_mutex lock. Meanwhile, I remove DIO_LOCKING flag when __blockdev_direct_IO() 
-is called and do the similar benchmarks. The result shows that the performance 
-in ext4 is almost the same to the xfs. Thus, it proves that the i_mutex heavily
-impacts the performance. Hopefully the result is useful for you. :-)
-
-I post the result in here.
-
-config file:
-[global]
-filesize=64G
-size=64G
-bs=16k
-ioengine=psync
-direct=1
-filename=/mnt/ext4/benchmark
-runtime=600
-group_reporting
-thread
-
-[randrw]
-numjobs=32
-rw=randrw
-rwmixread=90
-
-result:
-
-iops			1 (r/w)		2		3
-ext4			5584/622	5726/636	5719/636
-ext4+dioread_nolock	7105/789	7117/793	7129/795
-ext4+dio_nolock		8920/992	8956/995	8976/997
-xfs			8726/971	8962/994	8975/998
-
-bandwidth		1 (r/w)		2		3		KB/s
-ext4			89359/9955.3	91621/10186	91519/10185
-ext4+dioread_nolock	113691/12635	113882/12692	114066/12728
-ext4+dio_nolock		142731/15888	143301/15930	143617/15959
-xfs			139627/15537	143400/15914	143603/15980
-
-latency			1 (r/w)		2		3		usec
-ext4			5163.28/5048.31	5037.81/4914.82	5041.49/4932.81
-ext4+dioread_nolock	1220.04/29510.5 1213.67/29418.9 1208.77/29361.49
-ext4+dio_nolock		3226.61/3194.35	3214.59/3178.09	3207.34/3173.78
-xfs			3299.87/3266.32	3213.73/3182.20	3208.16/3178.10
-
-Regards,
-Zheng
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/lib/crc32.c b/lib/crc32.c
+index 4b35d2b..ffea0c9 100644
+--- a/lib/crc32.c
++++ b/lib/crc32.c
+@@ -317,7 +317,7 @@ EXPORT_SYMBOL(crc32_be);
+  * in the correct multiple to subtract, we can shift a byte at a time.
+  * This produces a 40-bit (rather than a 33-bit) intermediate remainder,
+  * but again the multiple of the polynomial to subtract depends only on
+- * the high bits, the high 8 bits in this case.  
++ * the high bits, the high 8 bits in this case.
+  *
+  * The multiple we need in that case is the low 32 bits of a 40-bit
+  * value whose high 8 bits are given, and which is a multiple of the
+diff --git a/lib/crc32defs.h b/lib/crc32defs.h
+index 9b6773d..f5a5401 100644
+--- a/lib/crc32defs.h
++++ b/lib/crc32defs.h
+@@ -8,7 +8,7 @@
+ 
+ /* How many bits at a time to use.  Requires a table of 4<<CRC_xx_BITS bytes. */
+ /* For less performance-sensitive, use 4 */
+-#ifndef CRC_LE_BITS 
++#ifndef CRC_LE_BITS
+ # define CRC_LE_BITS 8
+ #endif
+ #ifndef CRC_BE_BITS
