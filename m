@@ -1,308 +1,73 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 10/13] crc32: Bolt on crc32c
-Date: Wed, 18 Jan 2012 14:28:41 -0800
-Message-ID: <20120118222841.4079.77264.stgit@elm3c44.beaverton.ibm.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v5.4 00/13] crc32c: Add faster algorithm and self-test
+ code
+Date: Wed, 18 Jan 2012 15:01:14 -0800
+Message-ID: <20120118150114.2e2dac2d.akpm@linux-foundation.org>
 References: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
+Cc: Herbert Xu <herbert@gondor.hengli.com.au>,
+	Theodore Tso <tytso@mit.edu>,
 	Joakim Tjernlund <joakim.tjernlund@transmode.se>,
 	Bob Pearson <rpearson@systemfabricworks.com>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-crypto <linux-crypto@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
+	linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+	netfilter-devel@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
 In-Reply-To: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Reuse the existing crc32 code to stamp out a crc32c implementation.
+On Wed, 18 Jan 2012 14:27:33 -0800
+"Darrick J. Wong" <djwong@us.ibm.com> wrote:
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- include/linux/crc32.h |    2 ++
- lib/Kconfig           |    8 +++---
- lib/crc32.c           |   62 +++++++++++++++++++++++++++++++------------------
- lib/crc32defs.h       |    7 ++++++
- lib/gen_crc32table.c  |   35 ++++++++++++++++++++++------
- 5 files changed, 80 insertions(+), 34 deletions(-)
+> This patchset (re)uses Bob Pearson's crc32 slice-by-8 code to stamp out a
+> software crc32c implementation.  It removes the crc32c implementation in
+> crypto/ in favor of using the stamped-out one in lib/.  There is also a change
+> to Kconfig so that the kernel builder can pick an implementation best suited
+> for the hardware.
+> 
+> The motivation for this patchset is that I am working on adding full metadata
+> checksumming to ext4.  As far as performance impact of adding checksumming
+> goes, I see nearly no change with a standard mail server ffsb simulation.  On a
+> test that involves only file creation and deletion and extent tree writes, I
+> see a drop of about 50 pcercent with the current kernel crc32c implementation;
+> this improves to a drop of about 20 percent with the enclosed crc32c code.
+> 
+> When metadata is usually a small fraction of total IO, this new implementation
+> doesn't help much because metadata is usually a small fraction of total IO.
+> However, when we are doing IO that is almost all metadata (such as rm -rf'ing a
+> tree), then this patch speeds up the operation substantially.
+> 
+> Incidentally, given that iscsi, sctp, and btrfs also use crc32c, this patchset
+> should improve their speed as well.  I have not yet quantified that, however.
+> This latest submission combines Bob's patches from late August 2011 with mine
+> so that they can be one coherent patch set.  Please excuse my inability to
+> combine some of the patches; I've been advised to leave Bob's patches alone and
+> build atop them instead. :/
+> 
+> Since the last posting, I've also collected some crc32c test results on a bunch
+> of different x86/powerpc/sparc platforms.  The results can be viewed here:
+> http://goo.gl/sgt3i ; the "crc32-kern-le" and "crc32c" columns describe the
+> performance of the kernel's current crc32 and crc32c software implementations.
+> The "crc32c-by8-le" column shows crc32c performance with this patchset applied.
+> I expect crc32 performance to be roughly the same.
+> 
+> The two _boost columns at the right side of the spreadsheet shows how much
+> faster the new implementation is over the old one.  As you can see, crc32 rises
+> substantially, and crc32c experiences a huge increase.
 
+I grabbed this lot, so it will turn up in linux-next soon.
 
-diff --git a/include/linux/crc32.h b/include/linux/crc32.h
-index 391a259..68267b6 100644
---- a/include/linux/crc32.h
-+++ b/include/linux/crc32.h
-@@ -11,6 +11,8 @@
- extern u32  crc32_le(u32 crc, unsigned char const *p, size_t len);
- extern u32  crc32_be(u32 crc, unsigned char const *p, size_t len);
- 
-+extern u32  __crc32c_le(u32 crc, unsigned char const *p, size_t len);
-+
- #define crc32(seed, data, length)  crc32_le(seed, (unsigned char const *)(data), length)
- 
- /*
-diff --git a/lib/Kconfig b/lib/Kconfig
-index 4656dff..58da52d 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -58,14 +58,14 @@ config CRC_ITU_T
- 	  functions require M here.
- 
- config CRC32
--	tristate "CRC32 functions"
-+	tristate "CRC32/CRC32c functions"
- 	default y
- 	select BITREVERSE
- 	help
- 	  This option is provided for the case where no in-kernel-tree
--	  modules require CRC32 functions, but a module built outside the
--	  kernel tree does. Such modules that use library CRC32 functions
--	  require M here.
-+	  modules require CRC32/CRC32c functions, but a module built outside
-+	  the kernel tree does. Such modules that use library CRC32/CRC32c
-+	  functions require M here.
- 
- config CRC32_SELFTEST
- 	bool "CRC32 perform self test on init"
-diff --git a/lib/crc32.c b/lib/crc32.c
-index a1a5145..22e3643 100644
---- a/lib/crc32.c
-+++ b/lib/crc32.c
-@@ -46,7 +46,7 @@
- #include "crc32table.h"
- 
- MODULE_AUTHOR("Matt Domsch <Matt_Domsch@dell.com>");
--MODULE_DESCRIPTION("Ethernet CRC32 calculations");
-+MODULE_DESCRIPTION("Various CRC32 calculations");
- MODULE_LICENSE("GPL");
- 
- #if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
-@@ -135,46 +135,57 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
-  */
--u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
-+static inline u32 __pure crc32_le_generic(u32 crc, unsigned char const *p,
-+					  size_t len, const u32 (*tab)[256],
-+					  u32 polynomial)
- {
- #if CRC_LE_BITS == 1
- 	int i;
- 	while (len--) {
- 		crc ^= *p++;
- 		for (i = 0; i < 8; i++)
--			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-+			crc = (crc >> 1) ^ ((crc & 1) ? polynomial : 0);
- 	}
- # elif CRC_LE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
--		crc = (crc >> 2) ^ crc32table_le[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
-+		crc = (crc >> 2) ^ tab[0][crc & 3];
- 	}
- # elif CRC_LE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
--		crc = (crc >> 4) ^ crc32table_le[0][crc & 15];
-+		crc = (crc >> 4) ^ tab[0][crc & 15];
-+		crc = (crc >> 4) ^ tab[0][crc & 15];
- 	}
- # elif CRC_LE_BITS == 8
- 	/* aka Sarwate algorithm */
- 	while (len--) {
- 		crc ^= *p++;
--		crc = (crc >> 8) ^ crc32table_le[0][crc & 255];
-+		crc = (crc >> 8) ^ tab[0][crc & 255];
- 	}
- # else
--	const u32      (*tab)[] = crc32table_le;
--
- 	crc = (__force u32) __cpu_to_le32(crc);
- 	crc = crc32_body(crc, p, len, tab);
- 	crc = __le32_to_cpu((__force __le32)crc);
- #endif
- 	return crc;
- }
-+
-+u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
-+{
-+	return crc32_le_generic(crc, p, len, crc32table_le, CRCPOLY_LE);
-+}
- EXPORT_SYMBOL(crc32_le);
- 
-+u32 __pure __crc32c_le(u32 crc, unsigned char const *p, size_t len)
-+{
-+	return crc32_le_generic(crc, p, len, crc32ctable_le, CRC32C_POLY_LE);
-+}
-+EXPORT_SYMBOL(__crc32c_le);
-+
- /**
-  * crc32_be() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
-  * @crc: seed value for computation.  ~0 for Ethernet, sometimes 0 for
-@@ -182,7 +193,9 @@ EXPORT_SYMBOL(crc32_le);
-  * @p: pointer to buffer over which CRC is run
-  * @len: length of buffer @p
-  */
--u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
-+static inline u32 __pure crc32_be_generic(u32 crc, unsigned char const *p,
-+					  size_t len, const u32 (*tab)[256],
-+					  u32 polynomial)
- {
- #if CRC_BE_BITS == 1
- 	int i;
-@@ -190,37 +203,40 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
- 		crc ^= *p++ << 24;
- 		for (i = 0; i < 8; i++)
- 			crc =
--			    (crc << 1) ^ ((crc & 0x80000000) ? CRCPOLY_BE :
-+			    (crc << 1) ^ ((crc & 0x80000000) ? polynomial :
- 					  0);
- 	}
- # elif CRC_BE_BITS == 2
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
--		crc = (crc << 2) ^ crc32table_be[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
-+		crc = (crc << 2) ^ tab[0][crc >> 30];
- 	}
- # elif CRC_BE_BITS == 4
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
--		crc = (crc << 4) ^ crc32table_be[0][crc >> 28];
-+		crc = (crc << 4) ^ tab[0][crc >> 28];
-+		crc = (crc << 4) ^ tab[0][crc >> 28];
- 	}
- # elif CRC_BE_BITS == 8
- 	while (len--) {
- 		crc ^= *p++ << 24;
--		crc = (crc << 8) ^ crc32table_be[0][crc >> 24];
-+		crc = (crc << 8) ^ tab[0][crc >> 24];
- 	}
- # else
--	const u32      (*tab)[] = crc32table_be;
--
- 	crc = (__force u32) __cpu_to_be32(crc);
- 	crc = crc32_body(crc, p, len, tab);
- 	crc = __be32_to_cpu((__force __be32)crc);
- # endif
- 	return crc;
- }
-+
-+u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
-+{
-+	return crc32_be_generic(crc, p, len, crc32table_be, CRCPOLY_BE);
-+}
- EXPORT_SYMBOL(crc32_be);
- 
- #ifdef CONFIG_CRC32_SELFTEST
-diff --git a/lib/crc32defs.h b/lib/crc32defs.h
-index 8181592..6fd1917 100644
---- a/lib/crc32defs.h
-+++ b/lib/crc32defs.h
-@@ -7,6 +7,13 @@
- #define CRCPOLY_BE 0x04c11db7
- 
- /*
-+ * This is the CRC32c polynomial, as outlined by Castagnoli.
-+ * x^32+x^28+x^27+x^26+x^25+x^23+x^22+x^20+x^19+x^18+x^14+x^13+x^11+x^10+x^9+
-+ * x^8+x^6+x^0
-+ */
-+#define CRC32C_POLY_LE 0x82F63B78
-+
-+/*
-  * How many bits at a time to use.  Valid values are 1, 2, 4, 8, 32 and 64.
-  * For less performance-sensitive, use 4 or 8 to save table size.
-  * For larger systems choose same as CPU architecture as default.
-diff --git a/lib/gen_crc32table.c b/lib/gen_crc32table.c
-index 0d9edd1..8f8d543 100644
---- a/lib/gen_crc32table.c
-+++ b/lib/gen_crc32table.c
-@@ -23,6 +23,7 @@
- 
- static uint32_t crc32table_le[LE_TABLE_ROWS][256];
- static uint32_t crc32table_be[BE_TABLE_ROWS][256];
-+static uint32_t crc32ctable_le[LE_TABLE_ROWS][256];
- 
- /**
-  * crc32init_le() - allocate and initialize LE table data
-@@ -31,27 +32,38 @@ static uint32_t crc32table_be[BE_TABLE_ROWS][256];
-  * fact that crctable[i^j] = crctable[i] ^ crctable[j].
-  *
-  */
--static void crc32init_le(void)
-+static void crc32init_le_generic(const uint32_t polynomial,
-+				 uint32_t (*tab)[256])
- {
- 	unsigned i, j;
- 	uint32_t crc = 1;
- 
--	crc32table_le[0][0] = 0;
-+	tab[0][0] = 0;
- 
- 	for (i = LE_TABLE_SIZE >> 1; i; i >>= 1) {
--		crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-+		crc = (crc >> 1) ^ ((crc & 1) ? polynomial : 0);
- 		for (j = 0; j < LE_TABLE_SIZE; j += 2 * i)
--			crc32table_le[0][i + j] = crc ^ crc32table_le[0][j];
-+			tab[0][i + j] = crc ^ tab[0][j];
- 	}
- 	for (i = 0; i < LE_TABLE_SIZE; i++) {
--		crc = crc32table_le[0][i];
-+		crc = tab[0][i];
- 		for (j = 1; j < LE_TABLE_ROWS; j++) {
--			crc = crc32table_le[0][crc & 0xff] ^ (crc >> 8);
--			crc32table_le[j][i] = crc;
-+			crc = tab[0][crc & 0xff] ^ (crc >> 8);
-+			tab[j][i] = crc;
- 		}
- 	}
- }
- 
-+static void crc32init_le(void)
-+{
-+	crc32init_le_generic(CRCPOLY_LE, crc32table_le);
-+}
-+
-+static void crc32cinit_le(void)
-+{
-+	crc32init_le_generic(CRC32C_POLY_LE, crc32ctable_le);
-+}
-+
- /**
-  * crc32init_be() - allocate and initialize BE table data
-  */
-@@ -114,6 +126,15 @@ int main(int argc, char** argv)
- 			     BE_TABLE_SIZE, "tobe");
- 		printf("};\n");
- 	}
-+	if (CRC_LE_BITS > 1) {
-+		crc32cinit_le();
-+		printf("static const u32 __cacheline_aligned "
-+		       "crc32ctable_le[%d][%d] = {",
-+		       LE_TABLE_ROWS, LE_TABLE_SIZE);
-+		output_table(crc32ctable_le, LE_TABLE_ROWS,
-+			     LE_TABLE_SIZE, "tole");
-+		printf("};\n");
-+	}
- 
- 	return 0;
- }
+There are quite a lot of clients of the crc32 code.  net, netfilter and
+wireless are prominent, but there are others everywhere.
+
+So I cc'ed various other mailing lists just as a heads-up that this
+work is inbound and will hopefully yield performance improvements.  But
+of course, it might also yield bugs.
