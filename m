@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/13] crc32: Add note about this patchset to crc32.c
-Date: Wed, 18 Jan 2012 14:28:35 -0800
-Message-ID: <20120118222835.4079.84248.stgit@elm3c44.beaverton.ibm.com>
+Subject: [PATCH 05/13] crc32: Fix mixing of endian-specific types
+Date: Wed, 18 Jan 2012 14:28:07 -0800
+Message-ID: <20120118222807.4079.77106.stgit@elm3c44.beaverton.ibm.com>
 References: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,34 +17,65 @@ Cc: Theodore Tso <tytso@mit.edu>,
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Herbert Xu <herbert@gondor.apana.org.au>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120118222733.4079.13377.stgit@elm3c44.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Some final changes
-	- added a comment at the top of crc32.c
+crc32.c in its original version freely mixed u32, __le32 and __be32 types
+which caused warnings from sparse with __CHECK_ENDIAN__.
+This patch fixes these by forcing the types to u32.
 
 From: Bob Pearson <rpearson@systemfabricworks.com>
 Signed-off-by: Bob Pearson <rpearson@systemfabricworks.com>
 [djwong@us.ibm.com: Minor changelog tweaks]
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/crc32.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ lib/crc32.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
 
 diff --git a/lib/crc32.c b/lib/crc32.c
-index 4eac9c7..a1a5145 100644
+index bf03922..7394288 100644
 --- a/lib/crc32.c
 +++ b/lib/crc32.c
-@@ -1,4 +1,8 @@
- /*
-+ * Aug 8, 2011 Bob Pearson with help from Joakim Tjernlund and George Spelvin
-+ * cleaned up code to current version of sparse and added the slicing-by-8
-+ * algorithm to the closely similar existing slicing-by-4 algorithm.
-+ *
-  * Oct 15, 2000 Matt Domsch <Matt_Domsch@dell.com>
-  * Nicer crc32 functions/docs submitted by linux@horizon.com.  Thanks!
-  * Code was from the public domain, copyright abandoned.  Code was
-
+@@ -28,13 +28,13 @@
+ #include "crc32defs.h"
+ 
+ #if CRC_LE_BITS == 8
+-# define tole(x) __constant_cpu_to_le32(x)
++# define tole(x) ((__force u32) __constant_cpu_to_le32(x))
+ #else
+ # define tole(x) (x)
+ #endif
+ 
+ #if CRC_BE_BITS == 8
+-# define tobe(x) __constant_cpu_to_be32(x)
++# define tobe(x) ((__force u32) __constant_cpu_to_be32(x))
+ #else
+ # define tobe(x) (x)
+ #endif
+@@ -128,9 +128,9 @@ u32 __pure crc32_le(u32 crc, unsigned char const *p, size_t len)
+ # elif CRC_LE_BITS == 8
+ 	const u32      (*tab)[] = crc32table_le;
+ 
+-	crc = __cpu_to_le32(crc);
++	crc = (__force u32) __cpu_to_le32(crc);
+ 	crc = crc32_body(crc, p, len, tab);
+-	crc = __le32_to_cpu(crc);
++	crc = __le32_to_cpu((__force __le32)crc);
+ #endif
+ 	return crc;
+ }
+@@ -171,9 +171,9 @@ u32 __pure crc32_be(u32 crc, unsigned char const *p, size_t len)
+ # elif CRC_BE_BITS == 8
+ 	const u32      (*tab)[] = crc32table_be;
+ 
+-	crc = __cpu_to_be32(crc);
++	crc = (__force u32) __cpu_to_be32(crc);
+ 	crc = crc32_body(crc, p, len, tab);
+-	crc = __be32_to_cpu(crc);
++	crc = __be32_to_cpu((__force __be32)crc);
+ # endif
+ 	return crc;
+ }
