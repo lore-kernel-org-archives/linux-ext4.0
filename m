@@ -1,48 +1,66 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: newsletter: Re: ext4 crashes on nfs server
-Date: Thu, 19 Jan 2012 11:18:36 -0600
-Message-ID: <4F18506C.9050601@redhat.com>
-References: <OF2380C53F.32FE8350-ONC125798A.00494E7A@aschendorff.de> <4F1835F3.9060604@redhat.com> <OFBE4B8BA4.837045FD-ONC125798A.005E13C5@aschendorff.de>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH] xfstests: mount other filesystems with selinux context
+ as well
+Date: Thu, 19 Jan 2012 12:37:48 -0600
+Message-ID: <4F1862FC.1050401@sandeen.net>
+References: <4ECD3262.105@redhat.com> <20111128110228.GC13766@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: muellejo@aschendorff.de
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45444 "EHLO mx1.redhat.com"
+Received: from sandeen.net ([63.231.237.45]:48518 "EHLO mail.sandeen.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756638Ab2ASRSk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jan 2012 12:18:40 -0500
-In-Reply-To: <OFBE4B8BA4.837045FD-ONC125798A.005E13C5@aschendorff.de>
+	id S932544Ab2ASSht (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jan 2012 13:37:49 -0500
+In-Reply-To: <20111128110228.GC13766@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/19/12 11:07 AM, muellejo@aschendorff.de wrote:
-> Thanks Eric,
+On 11/28/11 5:02 AM, Christoph Hellwig wrote:
+> On Wed, Nov 23, 2011 at 11:50:26AM -0600, Eric Sandeen wrote:
+>> -----BEGIN PGP SIGNED MESSAGE-----
+>> Hash: SHA1
+>>
+>> For some reason, non-xfs filesystems aren't getting mounted with
+>> the selinux context; perhaps because none of the xattr tests used
+>> to work on anything but xfs?
+>>
+>> Anyway, 062 fails for extN unless we mount with the fs-wide
+>> context.
+>>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>> - ---
+>>
+>> diff --git a/common.rc b/common.rc
+>> index cab0b64..5998ff2 100644
+>> - --- a/common.rc
+>> +++ b/common.rc
+>> @@ -86,14 +86,17 @@ _mount_opts()
+>>  	export MOUNT_OPTIONS=$NFS_MOUNT_OPTIONS
+>>  	;;
+>>      ext2|ext3|ext4|ext4dev)
+>> - -	# acls & xattrs aren't turned on by default on ext$FOO
+>> +	export SELINUX_MOUNT_OPTIONS
+>> +	# acls & xattrs aren't turned on by default on ext$FOO in old kernels
+>>  	export MOUNT_OPTIONS="-o acl,user_xattr $EXT_MOUNT_OPTIONS"
+>>  	;;
+>>      reiserfs)
+>> +	export SELINUX_MOUNT_OPTIONS
+>>  	# acls & xattrs aren't turned on by default on reiserfs
+>>  	export MOUNT_OPTIONS="-o acl,user_xattr $REISERFS_MOUNT_OPTIONS"
+>>  	;;
+>>      gfs2)
+>> +	export SELINUX_MOUNT_OPTIONS
+>>  	# acls aren't turned on by default on gfs2
+>>  	export MOUNT_OPTIONS="-o acl $GFS2_MOUNT_OPTIONS"
+>>  	;;
 > 
->> Looks like an oops/panic/BUG - but are you sure you didn't start copying a line or two too late?
-> 
-> Well, there are other interesting information in /var/log/messages about 10 minutes
-> I uploaded them here http://vam-emp.aschendorff.de/tmp/
+> shouldn't the "export SELINUX_MOUNT_OPTIONS" simply move to common code?
 
-That all looks like a mess.  I think you need to go through your logs and find
-the first sign of trouble, and start there.
-
-I don't know what is dumping out all that hex...
+I wasn't sure if nfs would grok it.
 
 -Eric
-
-> We also suffered from a huge amount from these log entries
-> they are somehow related to disabling ipv6 and vsftp but I
-> guess this is not really related to our ext4 crashes.
-> After now upgrading vsftp they disappeared, debian has got a bug for that
-> http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=590653
-> 
-> Jan 18 20:52:26 ez-nfs-prod-vm1 kernel: [14913.361952] lo: Disabled Privacy Extensions
-> 
-> Thanks
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
