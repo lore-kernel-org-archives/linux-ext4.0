@@ -1,126 +1,57 @@
-From: Seiji Aguchi <seiji.aguchi@hds.com>
-Subject: RE: [PATCH][RESEND]tracepoint: add
- drop_transaction/update_superblock_end to jbd2
-Date: Thu, 19 Jan 2012 11:05:00 -0500
-Message-ID: <5C4C569E8A4B9B42A84A977CF070A35B2DA7B65F26@USINDEVS01.corp.hds.com>
-References: <32727E9A83EE9A42A1F0906295A3A77B2C78F4996B@USINDEVS01.corp.hds.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: ignore EXT4_INODE_JOURNAL_DATA flag with
+ delalloc
+Date: Thu, 19 Jan 2012 11:50:07 -0500
+Message-ID: <20120119165007.GA32029@thunk.org>
+References: <1326266607-15211-1-git-send-email-lczerner@redhat.com>
+ <1326366224-22885-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "dle-develop@lists.sourceforge.net"
-	<dle-develop@lists.sourceforge.net>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"jack@suse.cz" <jack@suse.cz>,
-	Satoru Moriya <satoru.moriya@hds.com>
-To: "tytso@mit.edu" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from usindpps03.hds.com ([207.126.252.16]:46265 "EHLO
-	usindpps03.hds.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932296Ab2ASQIn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jan 2012 11:08:43 -0500
-In-Reply-To: <32727E9A83EE9A42A1F0906295A3A77B2C78F4996B@USINDEVS01.corp.hds.com>
-Content-Language: ja-JP
+Received: from li9-11.members.linode.com ([67.18.176.11]:41827 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756283Ab2ASQuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jan 2012 11:50:16 -0500
+Content-Disposition: inline
+In-Reply-To: <1326366224-22885-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ping?
-________________________________________
+On Thu, Jan 12, 2012 at 12:03:44PM +0100, Lukas Czerner wrote:
+> +	/* We do not support data journalling with delayed allocation */
+> +	if (!S_ISREG(inode->i_mode) ||
+> +	   (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) ||
+> +	   (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+> +	   !test_opt(inode->i_sb, DELALLOC)))
+> +		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
 
-Hello Ted,
+It's probably clearer to make avoid the complex boolean expression:
 
-Please review this patch adding jbd2 tracepoints(and hopefully apply to your tree).
-This has already been accepted by Lukas and Jan.
+	if (!S_ISREG(inode->i_mode))
+		return EXT4_INODE_JOURNAL_DATA_MODE;
+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA))
+		return EXT4_INODE_JOURNAL_DATA_MODE;
+	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+	    !test_opt(inode->i_sb, DELALLOC)))
+		return EXT4_INODE_JOURNAL_DATA_MODE;
 
-Seiji
+You could combine the first two condiionals:
 
----
-This patch adds trace_jbd2_drop_transaction and
-trace_jbd2_update_superblock_end because there are similar tracepoints in jbd and
-they are needed in jbd2 as well.
+	if (!S_ISREG(inode->i_mode) ||
+	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
+		return EXT4_INODE_JOURNAL_DATA_MODE;
+	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+	    !test_opt(inode->i_sb, DELALLOC)))
+		return EXT4_INODE_JOURNAL_DATA_MODE;
 
+... but combining || and && where someone has to squint and count
+parenthesis can be error-prone.  I can look at either of the above two
+and understand quickly what's going on.  With what you had (especially
+since the identation of !test_opt(...) wasn't quite right, I had to
+squint and think for a bit before I convince dmyself it was correct.
 
- Signed-off-by: Seiji Aguchi <seiji.aguchi@hds.com>
- Reviewed-by: Lukas Czerner <lczerner@redhat.com>
- Acked-by: Jan Kara <jack@suse.cz>
+Otherwise, looks good!
 
----
- fs/jbd2/checkpoint.c        |    2 ++
- fs/jbd2/journal.c           |    2 ++
- include/trace/events/jbd2.h |   28 ++++++++++++++++++++++++++++
- 3 files changed, 32 insertions(+), 0 deletions(-)
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 16a698b..2bfd8b0 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -797,5 +797,7 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
-        J_ASSERT(journal->j_committing_transaction != transaction);
-        J_ASSERT(journal->j_running_transaction != transaction);
-
-+       trace_jbd2_drop_transaction(journal, transaction);
-+
-        jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
- }
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index f24df13..5953b3d 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1185,6 +1185,8 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
-        } else
-                write_dirty_buffer(bh, WRITE);
-
-+       trace_jbd2_update_superblock_end(journal, wait);
-+
- out:
-        /* If we have just flushed the log (by marking s_start==0), then
-         * any future commit will have to be careful to update the
-diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-index 7596441..ae59bc2 100644
---- a/include/trace/events/jbd2.h
-+++ b/include/trace/events/jbd2.h
-@@ -81,6 +81,13 @@ DEFINE_EVENT(jbd2_commit, jbd2_commit_logging,
-        TP_ARGS(journal, commit_transaction)
- );
-
-+DEFINE_EVENT(jbd2_commit, jbd2_drop_transaction,
-+
-+       TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
-+
-+       TP_ARGS(journal, commit_transaction)
-+);
-+
- TRACE_EVENT(jbd2_end_commit,
-        TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
-
-@@ -229,6 +236,27 @@ TRACE_EVENT(jbd2_cleanup_journal_tail,
-                  __entry->block_nr, __entry->freed)
- );
-
-+TRACE_EVENT(jbd2_update_superblock_end,
-+
-+       TP_PROTO(journal_t *journal, int wait),
-+
-+       TP_ARGS(journal, wait),
-+
-+       TP_STRUCT__entry(
-+               __field(        dev_t,  dev                     )
-+               __field(        int,    wait                    )
-+       ),
-+
-+       TP_fast_assign(
-+               __entry->dev            = journal->j_fs_dev->bd_dev;
-+               __entry->wait           = wait;
-+       ),
-+
-+       TP_printk("dev %d,%d wait %d",
-+                 MAJOR(__entry->dev), MINOR(__entry->dev),
-+                 __entry->wait)
-+);
-+
- #endif /* _TRACE_JBD2_H */
-
- /* This part must be outside protection */
---
-1.7.1
-
+					- Ted
