@@ -1,57 +1,35 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: ignore EXT4_INODE_JOURNAL_DATA flag with
- delalloc
-Date: Thu, 19 Jan 2012 11:50:07 -0500
-Message-ID: <20120119165007.GA32029@thunk.org>
-References: <1326266607-15211-1-git-send-email-lczerner@redhat.com>
- <1326366224-22885-1-git-send-email-lczerner@redhat.com>
+From: <muellejo@aschendorff.de>
+Subject: Re: newsletter: Re: ext4 crashes on nfs server
+Date: Thu, 19 Jan 2012 18:07:33 +0100
+Message-ID: <OFBE4B8BA4.837045FD-ONC125798A.005E13C5@aschendorff.de>
+References: <OF2380C53F.32FE8350-ONC125798A.00494E7A@aschendorff.de>
+	<4F1835F3.9060604@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41827 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756283Ab2ASQuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jan 2012 11:50:16 -0500
-Content-Disposition: inline
-In-Reply-To: <1326366224-22885-1-git-send-email-lczerner@redhat.com>
+Received: from mail.print.wnonline.de ([195.66.76.20]:3391 "EHLO
+	vam-dom2.aschendorff.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752847Ab2ASRHg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jan 2012 12:07:36 -0500
+In-Reply-To: <4F1835F3.9060604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 12, 2012 at 12:03:44PM +0100, Lukas Czerner wrote:
-> +	/* We do not support data journalling with delayed allocation */
-> +	if (!S_ISREG(inode->i_mode) ||
-> +	   (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) ||
-> +	   (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-> +	   !test_opt(inode->i_sb, DELALLOC)))
-> +		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+Thanks Eric,
 
-It's probably clearer to make avoid the complex boolean expression:
+> Looks like an oops/panic/BUG - but are you sure you didn't start copying a line or two too late?
 
-	if (!S_ISREG(inode->i_mode))
-		return EXT4_INODE_JOURNAL_DATA_MODE;
-	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA))
-		return EXT4_INODE_JOURNAL_DATA_MODE;
-	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-	    !test_opt(inode->i_sb, DELALLOC)))
-		return EXT4_INODE_JOURNAL_DATA_MODE;
+Well, there are other interesting information in /var/log/messages about 10 minutes
+I uploaded them here http://vam-emp.aschendorff.de/tmp/
 
-You could combine the first two condiionals:
+We also suffered from a huge amount from these log entries
+they are somehow related to disabling ipv6 and vsftp but I
+guess this is not really related to our ext4 crashes.
+After now upgrading vsftp they disappeared, debian has got a bug for that
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=590653
 
-	if (!S_ISREG(inode->i_mode) ||
-	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
-		return EXT4_INODE_JOURNAL_DATA_MODE;
-	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-	    !test_opt(inode->i_sb, DELALLOC)))
-		return EXT4_INODE_JOURNAL_DATA_MODE;
+Jan 18 20:52:26 ez-nfs-prod-vm1 kernel: [14913.361952] lo: Disabled Privacy Extensions
 
-... but combining || and && where someone has to squint and count
-parenthesis can be error-prone.  I can look at either of the above two
-and understand quickly what's going on.  With what you had (especially
-since the identation of !test_opt(...) wasn't quite right, I had to
-squint and think for a bit before I convince dmyself it was correct.
-
-Otherwise, looks good!
-
-					- Ted
+Thanks
