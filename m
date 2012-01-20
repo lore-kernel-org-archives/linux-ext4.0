@@ -1,31 +1,63 @@
-From: Bluflonalgul <bluflonalgul@gmail.com>
-Subject: Ext4 bigalloc and sparc ext3 16k blocksize
-Date: Fri, 20 Jan 2012 12:20:28 +0100
-Message-ID: <CALbEkhsi=Nqz=rfOApPsFi_Bk+cR5NE-VXcvVEZB3nC2MxebVA@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: ignore EXT4_INODE_JOURNAL_DATA flag with
+ delalloc
+Date: Fri, 20 Jan 2012 13:09:37 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1201201308510.7115@dhcp-27-109.brq.redhat.com>
+References: <1326266607-15211-1-git-send-email-lczerner@redhat.com> <1326366224-22885-1-git-send-email-lczerner@redhat.com> <20120119165007.GA32029@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <sandeen@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:60246 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751546Ab2ATLU3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jan 2012 06:20:29 -0500
-Received: by wgbed3 with SMTP id ed3so221310wgb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Jan 2012 03:20:28 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:59002 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750950Ab2ATMJn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jan 2012 07:09:43 -0500
+In-Reply-To: <20120119165007.GA32029@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some (misleading?) article on kernelnewbies.org said the new Ext4
-Bigalloc feature was about supporting block size up to 1MB.
-I tried to use this feature to read an ext3 fs with 16k blocksize made
-on a Linux Debian Sparc (NAS).
-But I couldn't read such filesystem with the Linux 3.2 kernel on x86
-PC... It fails to read fs structure (as it used to fail with previous
-kernels).
+On Thu, 19 Jan 2012, Ted Ts'o wrote:
 
-Could someone point me to some documentation, or give me some clues:
-I'd like to understand what's wrong and if I can hope to read such fs
-with Linux on x86 (natively, without fusefs tricks or additional
-tools).
-Thanks.
-B.
+> On Thu, Jan 12, 2012 at 12:03:44PM +0100, Lukas Czerner wrote:
+> > +	/* We do not support data journalling with delayed allocation */
+> > +	if (!S_ISREG(inode->i_mode) ||
+> > +	   (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) ||
+> > +	   (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+> > +	   !test_opt(inode->i_sb, DELALLOC)))
+> > +		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+> 
+> It's probably clearer to make avoid the complex boolean expression:
+> 
+> 	if (!S_ISREG(inode->i_mode))
+> 		return EXT4_INODE_JOURNAL_DATA_MODE;
+> 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA))
+> 		return EXT4_INODE_JOURNAL_DATA_MODE;
+> 	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+> 	    !test_opt(inode->i_sb, DELALLOC)))
+> 		return EXT4_INODE_JOURNAL_DATA_MODE;
+> 
+> You could combine the first two condiionals:
+> 
+> 	if (!S_ISREG(inode->i_mode) ||
+> 	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
+> 		return EXT4_INODE_JOURNAL_DATA_MODE;
+> 	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+> 	    !test_opt(inode->i_sb, DELALLOC)))
+> 		return EXT4_INODE_JOURNAL_DATA_MODE;
+> 
+> ... but combining || and && where someone has to squint and count
+> parenthesis can be error-prone.  I can look at either of the above two
+> and understand quickly what's going on.  With what you had (especially
+> since the identation of !test_opt(...) wasn't quite right, I had to
+> squint and think for a bit before I convince dmyself it was correct.
+> 
+> Otherwise, looks good!
+> 
+> 					- Ted
+
+Thanks Ted, you're right it is much clearer this way. I'll resend the
+patch.
+
+-Lukas
