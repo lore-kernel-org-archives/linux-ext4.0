@@ -1,207 +1,75 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH v3] ext4: ignore EXT4_INODE_JOURNAL_DATA flag with delalloc
-Date: Fri, 20 Jan 2012 13:10:59 +0100
-Message-ID: <1327061459-20610-1-git-send-email-lczerner@redhat.com>
-References: <20120119165007.GA32029@thunk.org>
-Cc: Eric Sandeen <sandeen@redhat.com>, tytso@mit.edu,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 3/8] ext4: Protect ext4_page_mkwrite & ext4_setattr with sb_start_write - sb_end_write
+Date: Fri, 20 Jan 2012 21:34:41 +0100
+Message-ID: <1327091686-23177-4-git-send-email-jack@suse.cz>
+References: <1327091686-23177-1-git-send-email-jack@suse.cz>
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11195 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44698 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750950Ab2ATMLG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Jan 2012 07:11:06 -0500
-In-Reply-To: <20120119165007.GA32029@thunk.org>
+	id S1753612Ab2ATUe5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jan 2012 15:34:57 -0500
+In-Reply-To: <1327091686-23177-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4 does not support data journalling with delayed allocation enabled.
-We even do not allow to mount the file system with delayed allocation
-and data journalling enabled, however it can be set via FS_IOC_SETFLAGS
-so we can hit the inode with EXT4_INODE_JOURNAL_DATA set even on file
-system mounted with delayed allocation (default) and that's where
-problem arises. The easies way to reproduce this problem is with the
-following set of commands:
+Since ext4_page_mkwrite() calls into __block_page_mkwrite() it has to
+provide freezing protection on it's own. Also ext4_setattr() needs protection
+because ext4_truncate() can modify last page of the file.
 
- mkfs.ext4 /dev/sdd
- mount /dev/sdd /mnt/test1
- dd if=/dev/zero of=/mnt/test1/file bs=1M count=4
- chattr +j /mnt/test1/file
- dd if=/dev/zero of=/mnt/test1/file bs=1M count=4 conv=notrunc
- chattr -j /mnt/test1/file
-
-Additionally it can be reproduced quite reliably with xfstests 272 and
-269. In fact the above reproducer is a part of test 272.
-
-To fix this we should ignore the EXT4_INODE_JOURNAL_DATA inode flag if
-the file system is mounted with delayed allocation. This can be easily
-done by fixing ext4_should_*_data() functions do ignore data journal
-flag when delalloc is set (suggested by Ted). We also have to set the
-appropriate address space operations for the inode (again, ignoring data
-journal flag if delalloc enabled).
-
-Additionally this commit introduces ext4_inode_journal_mode() function
-because ext4_should_*_data() has already had a lot of common code and
-this change is putting it all into one function so it is easier to
-read.
-
-Successfully tested with xfstest in following configurations:
-
-delalloc + data=ordered
-delalloc + data=writeback
-data=journal
-nodelalloc + data=ordered
-nodelalloc + data=writeback
-nodelalloc + data=journal
-
-(I wish we can get rid of the data=journal mode)
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-v2: - Change ORDER_DATA to ORDERED_DATA in flag name
-    - two tiny formatting changes
-v3: - Change the condition formatting
+ fs/ext4/inode.c |    9 ++++-----
+ 1 files changed, 4 insertions(+), 5 deletions(-)
 
- fs/ext4/ext4_jbd2.h |   56 ++++++++++++++++++++++++++------------------------
- fs/ext4/inode.c     |   36 ++++++++++++++++++++------------
- 2 files changed, 51 insertions(+), 41 deletions(-)
-
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 5802fa1..95af6f8 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -261,43 +261,45 @@ static inline void ext4_update_inode_fsync_trans(handle_t *handle,
- /* super.c */
- int ext4_force_commit(struct super_block *sb);
- 
--static inline int ext4_should_journal_data(struct inode *inode)
-+/*
-+ * Ext4 inode journal modes
-+ */
-+#define EXT4_INODE_JOURNAL_DATA_MODE	0x01 /* journal data mode */
-+#define EXT4_INODE_ORDERED_DATA_MODE	0x02 /* ordered data mode */
-+#define EXT4_INODE_WRITEBACK_DATA_MODE	0x04 /* writeback data mode */
-+
-+static inline int ext4_inode_journal_mode(struct inode *inode)
- {
- 	if (EXT4_JOURNAL(inode) == NULL)
--		return 0;
--	if (!S_ISREG(inode->i_mode))
--		return 1;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
--		return 1;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 1;
--	return 0;
-+		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
-+	/* We do not support data journalling with delayed allocation */
-+	if (!S_ISREG(inode->i_mode) ||
-+	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
-+		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
-+	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-+	    !test_opt(inode->i_sb, DELALLOC))
-+		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
-+		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
-+		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
-+	else
-+		BUG();
-+}
-+
-+static inline int ext4_should_journal_data(struct inode *inode)
-+{
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_JOURNAL_DATA_MODE;
- }
- 
- static inline int ext4_should_order_data(struct inode *inode)
- {
--	if (EXT4_JOURNAL(inode) == NULL)
--		return 0;
--	if (!S_ISREG(inode->i_mode))
--		return 0;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 0;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
--		return 1;
--	return 0;
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_ORDERED_DATA_MODE;
- }
- 
- static inline int ext4_should_writeback_data(struct inode *inode)
- {
--	if (EXT4_JOURNAL(inode) == NULL)
--		return 1;
--	if (!S_ISREG(inode->i_mode))
--		return 0;
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
--		return 0;
--	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
--		return 1;
--	return 0;
-+	return ext4_inode_journal_mode(inode) & EXT4_INODE_WRITEBACK_DATA_MODE;
- }
- 
- /*
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index aa8efa6..e56e23b 100644
+index 848f436..05d6328 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2479,13 +2479,14 @@ static int ext4_da_write_end(struct file *file,
- 	int write_mode = (int)(unsigned long)fsdata;
+@@ -4225,6 +4225,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (error)
+ 		return error;
  
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
--		if (ext4_should_order_data(inode)) {
-+		switch (ext4_inode_journal_mode(inode)) {
-+		case EXT4_INODE_ORDERED_DATA_MODE:
- 			return ext4_ordered_write_end(file, mapping, pos,
- 					len, copied, page, fsdata);
--		} else if (ext4_should_writeback_data(inode)) {
-+		case EXT4_INODE_WRITEBACK_DATA_MODE:
- 			return ext4_writeback_write_end(file, mapping, pos,
- 					len, copied, page, fsdata);
--		} else {
-+		default:
- 			BUG();
- 		}
- 	}
-@@ -3083,18 +3084,25 @@ static const struct address_space_operations ext4_da_aops = {
++	sb_start_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	if (is_quota_modification(inode, attr))
+ 		dquot_initialize(inode);
+ 	if ((ia_valid & ATTR_UID && attr->ia_uid != inode->i_uid) ||
+@@ -4327,6 +4328,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 		rc = ext4_acl_chmod(inode);
  
- void ext4_set_aops(struct inode *inode)
- {
--	if (ext4_should_order_data(inode) &&
--		test_opt(inode->i_sb, DELALLOC))
--		inode->i_mapping->a_ops = &ext4_da_aops;
--	else if (ext4_should_order_data(inode))
--		inode->i_mapping->a_ops = &ext4_ordered_aops;
--	else if (ext4_should_writeback_data(inode) &&
--		 test_opt(inode->i_sb, DELALLOC))
--		inode->i_mapping->a_ops = &ext4_da_aops;
--	else if (ext4_should_writeback_data(inode))
--		inode->i_mapping->a_ops = &ext4_writeback_aops;
--	else
-+	switch (ext4_inode_journal_mode(inode)) {
-+	case EXT4_INODE_ORDERED_DATA_MODE:
-+		if (test_opt(inode->i_sb, DELALLOC))
-+			inode->i_mapping->a_ops = &ext4_da_aops;
-+		else
-+			inode->i_mapping->a_ops = &ext4_ordered_aops;
-+		break;
-+	case EXT4_INODE_WRITEBACK_DATA_MODE:
-+		if (test_opt(inode->i_sb, DELALLOC))
-+			inode->i_mapping->a_ops = &ext4_da_aops;
-+		else
-+			inode->i_mapping->a_ops = &ext4_writeback_aops;
-+		break;
-+	case EXT4_INODE_JOURNAL_DATA_MODE:
- 		inode->i_mapping->a_ops = &ext4_journalled_aops;
-+		break;
-+	default:
-+		BUG();
-+	}
+ err_out:
++	sb_end_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	ext4_std_error(inode->i_sb, error);
+ 	if (!error)
+ 		error = rc;
+@@ -4733,11 +4735,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	get_block_t *get_block;
+ 	int retries = 0;
+ 
+-	/*
+-	 * This check is racy but catches the common case. We rely on
+-	 * __block_page_mkwrite() to do a reliable check.
+-	 */
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	sb_start_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	/* Delalloc case is easy... */
+ 	if (test_opt(inode->i_sb, DELALLOC) &&
+ 	    !ext4_should_journal_data(inode) &&
+@@ -4805,5 +4803,6 @@ retry_alloc:
+ out_ret:
+ 	ret = block_page_mkwrite_return(ret);
+ out:
++	sb_end_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	return ret;
  }
- 
- 
 -- 
-1.7.4.4
+1.7.1
 
