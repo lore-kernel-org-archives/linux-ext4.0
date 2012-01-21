@@ -1,97 +1,109 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH] ext4: add error handling when discarding is fail in FITRIM ioctl
-Date: Sat, 21 Jan 2012 02:56:12 -0500
-Message-ID: <1327132572-11841-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Namjae Jeon <linkinjeon@gmail.com>,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: Question about writable ext4-snapshot
+Date: Sat, 21 Jan 2012 18:09:49 +0200
+Message-ID: <CAOQ4uxgUFqYeCWiuHn+jXSS0bD=8u1aM5ujcd9BRdpMJtHeFdQ@mail.gmail.com>
+References: <CAFZ0FUWzq4GV-Xi6n+8+5R+oVi8uPBFg6XHzgwZfXVP_FbMz=w@mail.gmail.com>
+	<92365222-576D-43F6-8BC0-3F7D4A663D05@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>, Tao Ma <taoma.tm@gmail.com>,
+	coly <colyli@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:60275 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751109Ab2AUH5N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2012 02:57:13 -0500
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:52343 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751356Ab2AUQJv convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Jan 2012 11:09:51 -0500
+Received: by lahc1 with SMTP id c1so871754lah.19
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jan 2012 08:09:49 -0800 (PST)
+In-Reply-To: <92365222-576D-43F6-8BC0-3F7D4A663D05@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Although free extents is proper not trimmed(mmc driver return error code while sending trim command), currently FITRIM ioctl return success.
-I tried to add exception routine to inform user error code.
+On Sat, Jan 21, 2012 at 6:24 AM, Theodore Tso <tytso@mit.edu> wrote:
+>
+> On Jan 20, 2012, at 9:45 PM, Robin Dong wrote:
+>
+>> Hello, Amir
+>>
+>> I am evaluating ext4-snapshot (on github) for TAOBAO recently. The
+>> snapshot of an ext4 fs is READONLY now, but we do need to write data
+>> into snapshot.
+>> We also want using =A0ext4-snapshot to do online-fsck on
+>> Hadoop clusters, but our hadoop clusters are using no-journal ext4
+>> now. So we have some question
+>>
+>> 1. Will it be possible to implement a writable ext4-snapshot ?
+>> 2. Will it be possible to snapshot a no-journal ext4-fs ?
+>> 3. What's the difficult point of =A0implementing above ?
+>
 
-#> ./fitrim_test 
-end_request: I/O error, dev mmcblk0, sector 27232
-EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857: Discard command returned error -5
-#>
+Hello Robin,
 
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
----
- fs/ext4/mballoc.c |   22 +++++++++++++++-------
- 1 files changed, 15 insertions(+), 7 deletions(-)
+1. writable snapshots (snapshot clones) are actually quite simple to im=
+plement
+(a sparse file containing all changes from a read-only snapshot).
+The real challenge is how to support snapshots of these clones and how =
+to
+implement the space reclaim efficiently (time wise) when deleting snaps=
+hots.
+indeed, LVM thin-provisioning target handles space reclaim very efficie=
+ntly.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index cb990b2..09cc09a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4901,10 +4901,11 @@ error_return:
-  * one will allocate those blocks, mark it as used in buddy bitmap. This must
-  * be called with under the group lock.
-  */
--static void ext4_trim_extent(struct super_block *sb, int start, int count,
-+static int ext4_trim_extent(struct super_block *sb, int start, int count,
- 			     ext4_group_t group, struct ext4_buddy *e4b)
- {
- 	struct ext4_free_extent ex;
-+	int err;
- 
- 	trace_ext4_trim_extent(sb, group, start, count);
- 
-@@ -4920,9 +4921,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
- 	 */
- 	mb_mark_used(e4b, &ex);
- 	ext4_unlock_group(sb, group);
--	ext4_issue_discard(sb, group, start, count);
-+	err = ext4_issue_discard(sb, group, start, count);
- 	ext4_lock_group(sb, group);
- 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
-+	return err;
- }
- 
- /**
-@@ -4978,15 +4980,21 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 		next = mb_find_next_bit(bitmap, max, start);
- 
- 		if ((next - start) >= minblocks) {
--			ext4_trim_extent(sb, start,
--					 next - start, group, &e4b);
--			count += next - start;
-+			ret = ext4_trim_extent(sb, start,
-+						next - start, group, &e4b);
-+			if (ret < 0) {
-+				if (ret != -EOPNOTSUPP)
-+					ext4_warning(sb, "Discard command "
-+						 "returned error %d\n", ret);
-+				break;
-+			} else
-+				count += next - start;
- 		}
- 		free_count += next - start;
- 		start = next + 1;
- 
- 		if (fatal_signal_pending(current)) {
--			count = -ERESTARTSYS;
-+			ret = -ERESTARTSYS;
- 			break;
- 		}
- 
-@@ -5009,7 +5017,7 @@ out:
- 	ext4_debug("trimmed %d blocks in the group %d\n",
- 		count, group);
- 
--	return count;
-+	return (ret < 0) ? ret : count;
- }
- 
- /**
--- 
-1.7.5.4
+2. I think it is possible, but I never looked into it, so there may
+be challenges that I haven't foreseen.
+The obvious culprit is that snapshots will not be reliable after crash.
+JBD ensures that metadata is not overwritten on-disk before it is
+copied to snapshot,
+but without journal, after a crash, meta data could have already been
+written and you loose
+the origin data that was supposed to be copied to snapshot.
 
+3. I think I have already answered that question above, but the actual
+difficulty
+really depends on your specific needs.
+
+> Something else to consider is that the device mapper thin-provisionin=
+g approach. =A0 This approach does the snapshotting at the device-mappe=
+r layer, which means it is separate from the file system. =A0It relies =
+on using the discard request when the file is unlinked to know when blo=
+cks can be released from the snapshot. =A0It also uses a granularity mu=
+ch smaller than that of the traditional LVM-style snapshots.
+>
+> This code will still need a few months to be mature (the thin-provisi=
+oning code just got merged into 3.2, but discard support isn't done yet=
+, and the userspace support is lagging). =A0 But in the long run, this =
+might be a very attractive way of providing multiple levels of writeabl=
+e snapshots, in a clean and relatively simple way.
+>
+
+There are some lengthy threads about LVM thinp vs. Ext4 snapshots here:
+http://thread.gmane.org/gmane.comp.file-systems.ext4/25968/focus=3D2605=
+6
+and here:
+http://thread.gmane.org/gmane.comp.file-systems.ext4/26041
+
+At the end of the day, thinp target is a very powerful tool, but is
+does not fit all
+use cases. In particular, it fragments the on-disk layout of ext4 metad=
+ata and
+benchmark results for how this affect performance were never published.
+
+Also, thinp needs to store quite a lot of metadata for the mapping of
+all thinp blocks
+and in order to keep this metadata durable and not hurt write speed per=
+formance
+you will almost certainly need to store this metadata on an SSD - not
+a bad solution
+for a high end server, but not sure if everyone can afford this.
+
+Amir.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
