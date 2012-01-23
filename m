@@ -1,58 +1,39 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4 Filesystem recovery ...
-Date: Mon, 23 Jan 2012 10:49:20 -0600
-Message-ID: <4F1D8F90.3080909@redhat.com>
-References: <CAHw_BJ3w84hoeW5-XsNWaRZPp5vB4Jp_ecdQ86iauEw4qHPyFQ@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] e2fsprogs: add a function computing old desc
+ blocks without reserved ones
+Date: Mon, 23 Jan 2012 11:45:27 -0500
+Message-ID: <20120123164527.GA4439@thunk.org>
+References: <1325674932-26069-1-git-send-email-xiaoqiangnk@gmail.com>
+ <1325674932-26069-3-git-send-email-xiaoqiangnk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Paul Richter <iamcomcy@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64271 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751332Ab2AWQtX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jan 2012 11:49:23 -0500
-In-Reply-To: <CAHw_BJ3w84hoeW5-XsNWaRZPp5vB4Jp_ecdQ86iauEw4qHPyFQ@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34114 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750923Ab2AWSJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jan 2012 13:09:56 -0500
+Content-Disposition: inline
+In-Reply-To: <1325674932-26069-3-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/21/12 12:23 AM, Paul Richter wrote:
-> Hey guys,
+On Wed, Jan 04, 2012 at 07:02:12PM +0800, Yongqiang Yang wrote:
+> If first_meta_bg > desc_blocks, ext2fs_open reads more decs_blocks,
+> however desc buffer in memory is allocated based on desc_blocks.
+> Maybe there are similar problems in other places, so this patch adds a
+> function which computes right old_desc_blocks.
 > 
-> I am trying to recover 8Tb after a raid failure. RAID issues seem to
-> be resolved, but cannot mount the fs,
-> 
-> dmesg says:
->  EXT4-fs (md127): bad geometry: block count 1953512448 exceeds size of
-> device (1953509376 blocks)
+> The problem can be reproduced by setting first_meta_bg.
 
-Are you sure the md device is set up properly?  It seems to be 3072
-shorter than the fs...
+s_first_meta_bg should never be greater than desc_blocks.  If it is,
+the file system is corrupt.  This is something that we should check in
+ext2fs_open() and in e2fsck as well.
 
-> OS sees ext4
+A much better thing to do would be to have ext2fs_open simply fail the
+open with an EXT2_ET_CORRUPT_SUPERBLOCK error.  Then e2fsck will
+automatically try using the backup superblock, which will hopefully
+allow the user to recover from the corrupted superblock.
 
-What does that mean?
-
-> have complete dd back of fs, so I can kick it around
-> 
-> debugfs cannot see fs structure.
-> 
-> fsck tried to fix every inode, but at 500M inodes (and would take a
-> month to complete), that far exceeds used inodes
-> 
-> Am I beating a dead horse here, or is there some hope for recovery?
-
-Off the top of my head, I think maybe your raid is not as happy as you
-hope it is...
-
--Eric
-
-> Thanks in advance,
-> 
-> Paul
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+      	       	  	       	   	     - Ted
