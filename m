@@ -1,60 +1,66 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] e2fsprogs: move code computing old_desc_blocks to
- a function
-Date: Mon, 23 Jan 2012 11:56:33 -0500
-Message-ID: <20120123165633.GC4439@thunk.org>
-References: <1325674932-26069-1-git-send-email-xiaoqiangnk@gmail.com>
- <1325674932-26069-2-git-send-email-xiaoqiangnk@gmail.com>
+Subject: Re: [RFC] Add new extent structure in ext4
+Date: Mon, 23 Jan 2012 13:59:33 -0500
+Message-ID: <20120123185933.GC9775@thunk.org>
+References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34118 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49441 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751109Ab2AWSKB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jan 2012 13:10:01 -0500
+	id S1752629Ab2AWS7g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jan 2012 13:59:36 -0500
 Content-Disposition: inline
-In-Reply-To: <1325674932-26069-2-git-send-email-xiaoqiangnk@gmail.com>
+In-Reply-To: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 04, 2012 at 07:02:11PM +0800, Yongqiang Yang wrote:
-> diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-> index 33da7d6..f1d5156 100644
-> --- a/lib/ext2fs/blknum.c
-> +++ b/lib/ext2fs/blknum.c
-> @@ -98,6 +98,20 @@ blk64_t ext2fs_blocks_count(struct ext2_super_block *super)
->  }
->  
->  /*
-> + * Return the old desc blocks count
-> + */
-> +blk64_t ext2fs_old_desc_blocks_count(ext2_filsys fs)
-> +{
-> +	blk64_t old_desc_blocks;
-> +
-> +	old_desc_blocks = fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
-> +	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG &&
-> +	    old_desc_blocks > fs->super->s_first_meta_bg)
-> +		old_desc_blocks = fs->super->s_first_meta_bg;
-> +	return old_desc_blocks;
+On Mon, Jan 23, 2012 at 08:51:53PM +0800, Robin Dong wrote:
+> 
+> We could solve the problem by creating a new extent format to support
+> larger extent size, which looks like this:
+> 
+> struct ext4_extent2 {
+> 	__le64	ee_block;	/* first logical block extent covers */
+> 	__le64	ee_start;	        /* starting physical block */
+> 	__le32	ee_len;		/* number of blocks covered by extent */
+> 	__le32	ee_flags;	/* flags and future extension */
+> };
+>
+> I think we could keep the structure of ext4_extent_header and add new
+> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
 
-I'd prefer if you don't refactor code and change what it does at the
-same time.  That makes it harder later to figure out whether a bug is
-introduced by the refactorization, or by the change in the
-calculation.  It's especially bad when there is no mention of the
-change of the calculation in the commit description.
+The really unfortunate thing about using a 24 byte on-disk extent
+structure is that you can only fit 2 extents in the inode before
+needing to spill out to an external header.
 
-As I mentioned in my comments for your 3/3 patch, s_first_meta_bg
-should *always* be less than old_desc_blocks, since it describes the
-meta-blockgroup number where we start using the meta-blockgroup
-layout.  Since there the size of the meta-blockgroup is defined to be
-the number of block groups descriptors that fit in a block, by
-definition the meta_bg must be less than or equal to old_desc_blocks.
-If it isn't the superblock must be corrupt.
+So being able to support multiple exent formats in the inode (by using
+a different eh_magic number) would probably be a good thing.  In fact,
+it might be useful to also have a version which looks like this:
 
-I think it's much better to fix this by adding a check to open and
-initialization functions.
+struct ext4_extent_packed {
+	__le32	ee_start_lo;
+	__le16	ee_start_hi;
+	__le16	ee_len;
+};
 
-						- Ted
+i.e., something which only takes 8 bytes, but which is only used for
+non-sparse files in the inode structure, so that you can fit 6 extents
+in the inode.
+
+The hard part will be cleaning up and refactoring the extent code to
+support multiple on-disk extent formats.  (That's going to be very
+messy, though!  So if we're going to go through all of that work, it
+would benice if it had advantages not for huge file systems, but also
+for desktop workloads.)  Once this investment gets done, supporting a
+third extent format should be relatively straight forward.
+
+This would also allow us to make the new extent format be an RO_COMPAT
+feature, so that an existing ext4 file system could be converted to
+take advantage of the new extent encodings without needing to do a
+backup / reformat / restore pass.
+
+	      	    	   	     	     - Ted
