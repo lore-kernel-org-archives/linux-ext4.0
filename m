@@ -1,24 +1,23 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v4 7/8] ext4: request accouting in direct io
-Date: Tue, 24 Jan 2012 00:50:27 +0800
-Message-ID: <1327337428-8266-8-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v4 8/8] ext4: show the result of io types accouting
+Date: Tue, 24 Jan 2012 00:50:28 +0800
+Message-ID: <1327337428-8266-9-git-send-email-wenqing.lz@taobao.com>
 References: <1327337428-8266-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, Jens Axboe <axboe@kernel.dk>,
 	Steven Whitehouse <swhiteho@redhat.com>,
 	Aditya Kali <adityakali@google.com>,
 	Wang Shaoyan <wangshaoyan.pt@taobao.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:48297 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752930Ab2AWQrJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jan 2012 11:47:09 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1327337428-8266-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4_ios_submit_io() function is defined to be called by __blockdev_direct_IO()
-to count direct io.
+We create three files to control io type accouting and show the result.
+
+* io_stats_enable is used to turn on/off io type accouting.
+* io_stats_reset is used to reset the counters.
+* io_stats shows the result of accouting.
 
 CC: Jens Axboe <axboe@kernel.dk>
 CC: Steven Whitehouse <swhiteho@redhat.com>
@@ -26,76 +25,178 @@ CC: Aditya Kali <adityakali@google.com>
 Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/ext4.h     |    2 ++
- fs/ext4/indirect.c |    9 ++++++---
- fs/ext4/inode.c    |   13 ++++++++++++-
- 3 files changed, 20 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h  |    3 ++
+ fs/ext4/super.c |  101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 103 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 688891e..0f67d92 100644
+index 0f67d92..8c6d25f 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1923,6 +1923,8 @@ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
-+extern void ext4_ios_submit_io(int rw, struct bio *bio,
-+			       struct inode *inode, loff_t file_offset);
+@@ -1117,6 +1117,8 @@ struct ext4_super_block {
+ #define EXT4_MF_MNTDIR_SAMPLED	0x0001
+ #define EXT4_MF_FS_ABORTED	0x0002	/* Fatal error detected */
  
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 8f9bfd2..143276a 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -820,10 +820,13 @@ retry:
- 		ret = __blockdev_direct_IO(rw, iocb, inode,
- 				 inode->i_sb->s_bdev, iov,
- 				 offset, nr_segs,
--				 ext4_get_block, NULL, NULL, 0);
-+				 ext4_get_block, NULL, ext4_ios_submit_io, 0);
- 	} else {
--		ret = blockdev_direct_IO(rw, iocb, inode, iov,
--				 offset, nr_segs, ext4_get_block);
-+		ret = __blockdev_direct_IO(rw, iocb, inode,
-+				 inode->i_sb->s_bdev, iov,
-+				 offset, nr_segs,
-+				 ext4_get_block, NULL, ext4_ios_submit_io,
-+				 DIO_LOCKING | DIO_SKIP_HOLES);
++#define EXT4_IOS_VERSION	"1.0"
++
+ /*
+  * ext4 io types
+  */
+@@ -1278,6 +1280,7 @@ struct ext4_sb_info {
+ 	atomic_t s_last_trim_minblks;
  
- 		if (unlikely((rw & WRITE) && ret < 0)) {
- 			loff_t isize = i_size_read(inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cfebc6d..8ff6aea 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2948,7 +2948,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 					 offset, nr_segs,
- 					 ext4_get_block_write,
- 					 ext4_end_io_dio,
--					 NULL,
-+					 ext4_ios_submit_io,
- 					 DIO_LOCKING | DIO_SKIP_HOLES);
- 		if (iocb->private)
- 			EXT4_I(inode)->cur_aio_dio = NULL;
-@@ -2989,6 +2989,17 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+ 	/* for io type accouting */
++	int s_ios_enable;
+ 	struct percpu_counter s_ios_counters[EXT4_IOS_TYPE_END][2];
+ };
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7aee0dd..0a47cee 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2535,6 +2535,96 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ 	return count;
  }
  
-+void ext4_ios_submit_io(int rw, struct bio *bio,
-+			struct inode *inode, loff_t file_offset)
++static inline u64 ext4_get_ios_counter(struct ext4_sb_info *sbi,
++		int rw, int flag);
++static inline void ext4_reset_ios_counter(struct ext4_sb_info *sbi);
++static ssize_t io_stats_show(struct ext4_attr *a,
++		struct ext4_sb_info *sbi, char *buf)
 +{
-+	int tmprw = !!rw;
++	int i;
++	unsigned long ios_counters[EXT4_IOS_TYPE_END][2] = {{0,},};
 +
-+	/* ext4 io type accouting */
-+	__ext4_io_stat(inode->i_sb, tmprw, EXT4_IOS_REGULAR_DATA,
-+			ext4_blocks_per_page(inode));
-+	submit_bio(rw, bio);
++	if (!sbi->s_ios_enable)
++		return snprintf(buf, PAGE_SIZE, "disabled\n");
++
++	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
++		ios_counters[i][READ] = ext4_get_ios_counter(sbi, READ, i);
++		ios_counters[i][WRITE] = ext4_get_ios_counter(sbi, WRITE, i);
++	}
++
++	return snprintf(buf, PAGE_SIZE,
++			"Version: %s\n"
++			"TYPE                   READ    WRITE\n"
++			"super block            %8lu %8lu\n"
++			"group descriptor       %8lu %8lu\n"
++			"inode bitmap           %8lu %8lu\n"
++			"block bitmap           %8lu %8lu\n"
++			"inode table            %8lu %8lu\n"
++			"extent block           %8lu %8lu\n"
++			"indirect block         %8lu %8lu\n"
++			"dir entry              %8lu %8lu\n"
++			"extended attribute     %8lu %8lu\n"
++			"regular data           %8lu %8lu\n",
++			EXT4_IOS_VERSION,
++			ios_counters[EXT4_IOS_SUPER_BLOCK][READ],
++			ios_counters[EXT4_IOS_SUPER_BLOCK][WRITE],
++			ios_counters[EXT4_IOS_GROUP_DESC][READ],
++			ios_counters[EXT4_IOS_GROUP_DESC][WRITE],
++			ios_counters[EXT4_IOS_INODE_BITMAP][READ],
++			ios_counters[EXT4_IOS_INODE_BITMAP][WRITE],
++			ios_counters[EXT4_IOS_BLOCK_BITMAP][READ],
++			ios_counters[EXT4_IOS_BLOCK_BITMAP][WRITE],
++			ios_counters[EXT4_IOS_INODE_TABLE][READ],
++			ios_counters[EXT4_IOS_INODE_TABLE][WRITE],
++			ios_counters[EXT4_IOS_EXTENT_BLOCK][READ],
++			ios_counters[EXT4_IOS_EXTENT_BLOCK][WRITE],
++			ios_counters[EXT4_IOS_INDIRECT_BLOCK][READ],
++			ios_counters[EXT4_IOS_INDIRECT_BLOCK][WRITE],
++			ios_counters[EXT4_IOS_DIR_ENTRY][READ],
++			ios_counters[EXT4_IOS_DIR_ENTRY][WRITE],
++			ios_counters[EXT4_IOS_EXTENDED_ATTR][READ],
++			ios_counters[EXT4_IOS_EXTENDED_ATTR][WRITE],
++			ios_counters[EXT4_IOS_REGULAR_DATA][READ],
++			ios_counters[EXT4_IOS_REGULAR_DATA][WRITE]);
 +}
 +
- static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 			      const struct iovec *iov, loff_t offset,
- 			      unsigned long nr_segs)
++static ssize_t io_stats_reset_store(struct ext4_attr *a,
++				    struct ext4_sb_info *sbi,
++				    const char *buf, size_t count)
++{
++	unsigned long t;
++
++	if (parse_strtoul(buf, 0xffffffff, &t))
++		return -EINVAL;
++	if (t == 1)
++		ext4_reset_ios_counter(sbi);
++	return count;
++}
++
++static ssize_t io_stats_enable_show(struct ext4_attr *a,
++				    struct ext4_sb_info *sbi, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", sbi->s_ios_enable);
++}
++
++static ssize_t io_stats_enable_store(struct ext4_attr *a,
++				     struct ext4_sb_info *sbi,
++				     const char *buf, size_t count)
++{
++	unsigned long val;
++
++	if (parse_strtoul(buf, 0xffffffff, &val))
++		return -EINVAL;
++
++	switch (val) {
++	case 0: ext4_reset_ios_counter(sbi);
++	case 1: sbi->s_ios_enable = val; break;
++	default: return -EINVAL;
++	}
++
++	return count;
++}
++
+ static ssize_t sbi_ui_show(struct ext4_attr *a,
+ 			   struct ext4_sb_info *sbi, char *buf)
+ {
+@@ -2568,6 +2658,7 @@ static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
+ 
+ #define EXT4_INFO_ATTR(name) EXT4_ATTR(name, 0444, NULL, NULL)
+ #define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
++#define EXT4_WO_ATTR(name) EXT4_ATTR(name, 0222, NULL, name##_store)
+ #define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
+ #define EXT4_RW_ATTR_SBI_UI(name, elname)	\
+ 	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
+@@ -2578,6 +2669,9 @@ EXT4_RO_ATTR(session_write_kbytes);
+ EXT4_RO_ATTR(lifetime_write_kbytes);
+ EXT4_RO_ATTR(extent_cache_hits);
+ EXT4_RO_ATTR(extent_cache_misses);
++EXT4_RO_ATTR(io_stats);
++EXT4_RW_ATTR(io_stats_enable);
++EXT4_WO_ATTR(io_stats_reset);
+ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
+ 		 inode_readahead_blks_store, s_inode_readahead_blks);
+ EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
+@@ -2597,6 +2691,9 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(extent_cache_misses),
+ 	ATTR_LIST(inode_readahead_blks),
+ 	ATTR_LIST(inode_goal),
++	ATTR_LIST(io_stats),
++	ATTR_LIST(io_stats_enable),
++	ATTR_LIST(io_stats_reset),
+ 	ATTR_LIST(mb_stats),
+ 	ATTR_LIST(mb_max_to_scan),
+ 	ATTR_LIST(mb_min_to_scan),
+@@ -3160,6 +3257,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * Note: s_ios_counters must be initialized as soon as possible becuase
+ 	 *       ext4 io type accouting depends on it
+ 	 */
++	sbi->s_ios_enable = 0;
+ 	for (i = 0; i < EXT4_IOS_TYPE_END; i++) {
+ 		if (percpu_counter_init(&sbi->s_ios_counters[i][READ], 0))
+ 			goto out_init_ios;
+@@ -4985,7 +5083,8 @@ void __ext4_io_stat(struct super_block *sb, int rw,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	BUG_ON(type < 0 || type >= EXT4_IOS_TYPE_END);
+-	percpu_counter_add(&sbi->s_ios_counters[type][rw], count);
++	if (sbi->s_ios_enable)
++		percpu_counter_add(&sbi->s_ios_counters[type][rw], count);
+ }
+ 
+ void ext4_ios_write(struct super_block *sb, handle_t *handle,
 -- 
 1.7.4.1
 
