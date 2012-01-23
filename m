@@ -1,19 +1,23 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v4 3/8] ext4: account the metadata request of read operations in buffered io
-Date: Tue, 24 Jan 2012 00:50:23 +0800
-Message-ID: <1327337428-8266-4-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH v4 5/8] ext4: account the metadata request of write operations in buffered io
+Date: Tue, 24 Jan 2012 00:50:25 +0800
+Message-ID: <1327337428-8266-6-git-send-email-wenqing.lz@taobao.com>
 References: <1327337428-8266-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, Jens Axboe <axboe@kernel.dk>,
 	Steven Whitehouse <swhiteho@redhat.com>,
 	Aditya Kali <adityakali@google.com>,
 	Wang Shaoyan <wangshaoyan.pt@taobao.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:48297 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752863Ab2AWQrB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jan 2012 11:47:01 -0500
 In-Reply-To: <1327337428-8266-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We replace all the call to the buffer layer with wrapper functions we defined.
+ext4_ios_write is used to account metadata request of write in buffered io.
 
 CC: Jens Axboe <axboe@kernel.dk>
 CC: Steven Whitehouse <swhiteho@redhat.com>
@@ -21,319 +25,423 @@ CC: Aditya Kali <adityakali@google.com>
 Signed-off-by: Wang Shaoyan <wangshaoyan.pt@taobao.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/balloc.c      |    2 +-
- fs/ext4/extents.c     |   11 +++++++----
- fs/ext4/ialloc.c      |    2 +-
- fs/ext4/indirect.c    |    6 ++++--
- fs/ext4/inode.c       |   17 +++++++----------
- fs/ext4/mballoc.c     |    5 ++---
- fs/ext4/move_extent.c |    8 +++++---
- fs/ext4/namei.c       |    7 ++++---
- fs/ext4/super.c       |    9 ++++++---
- fs/ext4/xattr.c       |   18 ++++++++++++------
- 10 files changed, 49 insertions(+), 36 deletions(-)
+ fs/ext4/extents.c     |    6 ++++++
+ fs/ext4/ialloc.c      |    8 ++++++++
+ fs/ext4/indirect.c    |   15 +++++++++++++--
+ fs/ext4/inode.c       |    4 ++++
+ fs/ext4/mballoc.c     |    7 +++++++
+ fs/ext4/move_extent.c |    2 ++
+ fs/ext4/namei.c       |   19 +++++++++++++++++++
+ fs/ext4/super.c       |    2 ++
+ fs/ext4/xattr.c       |   11 ++++++++++-
+ 9 files changed, 71 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index f9e2cd8..6768a03 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -389,7 +389,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	 */
- 	trace_ext4_read_block_bitmap_load(sb, block_group);
- 	set_bitmap_uptodate(bh);
--	if (bh_submit_read(bh) < 0) {
-+	if (ext4_bh_submit_read(bh, sb, EXT4_IOS_BLOCK_BITMAP, 1) < 0) {
- 		put_bh(bh);
- 		ext4_error(sb, "Cannot read block bitmap - "
- 			    "block_group = %u, block_bitmap = %llu",
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74f23c2..a26423f 100644
+index a26423f..1f0938a 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -667,7 +667,8 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
- 		if (!bh_uptodate_or_lock(bh)) {
- 			trace_ext4_ext_load_extent(inode, block,
- 						path[ppos].p_block);
--			if (bh_submit_read(bh) < 0) {
-+			if (ext4_bh_submit_read(bh, inode->i_sb,
-+				EXT4_IOS_EXTENT_BLOCK, 1) < 0) {
- 				put_bh(bh);
- 				goto err;
- 			}
-@@ -1322,7 +1323,8 @@ got_index:
- 	ix++;
- 	block = ext4_idx_pblock(ix);
- 	while (++depth < path->p_depth) {
--		bh = sb_bread(inode->i_sb, block);
-+		bh = ext4_sb_bread(inode->i_sb, block,
-+				   EXT4_IOS_EXTENT_BLOCK, 1);
- 		if (bh == NULL)
- 			return -EIO;
- 		eh = ext_block_hdr(bh);
-@@ -1336,7 +1338,7 @@ got_index:
- 		put_bh(bh);
- 	}
+@@ -105,6 +105,8 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
+ 		/* path points to block */
+ 		err = __ext4_handle_dirty_metadata(where, line, handle,
+ 						   inode, path->p_bh);
++		ext4_ios_write(inode->i_sb, handle, path->p_bh,
++				EXT4_IOS_EXTENT_BLOCK, 1);
+ 	} else {
+ 		/* path points to leaf/index in inode body */
+ 		err = ext4_mark_inode_dirty(handle, inode);
+@@ -901,6 +903,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
  
--	bh = sb_bread(inode->i_sb, block);
-+	bh = ext4_sb_bread(inode->i_sb, block, EXT4_IOS_EXTENT_BLOCK, 1);
- 	if (bh == NULL)
- 		return -EIO;
- 	eh = ext_block_hdr(bh);
-@@ -2561,7 +2563,8 @@ again:
- 			ext_debug("move to level %d (block %llu)\n",
- 				  i + 1, ext4_idx_pblock(path[i].p_idx));
- 			memset(path + i + 1, 0, sizeof(*path));
--			bh = sb_bread(sb, ext4_idx_pblock(path[i].p_idx));
-+			bh = ext4_sb_bread(sb, ext4_idx_pblock(path[i].p_idx),
-+					   EXT4_IOS_EXTENT_BLOCK, 1);
- 			if (!bh) {
- 				/* should we reset i_size? */
- 				err = -EIO;
++	ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_EXTENT_BLOCK, 1);
+ 	err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 	if (err)
+ 		goto cleanup;
+@@ -979,6 +982,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		set_buffer_uptodate(bh);
+ 		unlock_buffer(bh);
+ 
++		ext4_ios_write(inode->i_sb, handle, bh,
++				EXT4_IOS_EXTENT_BLOCK, 1);
+ 		err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (err)
+ 			goto cleanup;
+@@ -1076,6 +1081,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
+ 
++	ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_EXTENT_BLOCK, 1);
+ 	err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 	if (err)
+ 		goto out;
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 25d8c97..7edc9c0 100644
+index 7edc9c0..88424c5 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -154,7 +154,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	 */
- 	trace_ext4_load_inode_bitmap(sb, block_group);
- 	set_bitmap_uptodate(bh);
--	if (bh_submit_read(bh) < 0) {
-+	if (ext4_bh_submit_read(bh, sb, EXT4_IOS_INODE_BITMAP, 1) < 0) {
- 		put_bh(bh);
- 		ext4_error(sb, "Cannot read inode bitmap - "
- 			    "block_group = %u, inode_bitmap = %llu",
+@@ -277,10 +277,12 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 			atomic_dec(&sbi->s_flex_groups[f].used_dirs);
+ 	}
+ 	BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
++	ext4_ios_write(sb, handle, bh2, EXT4_IOS_GROUP_DESC, 1);
+ 	fatal = ext4_handle_dirty_metadata(handle, NULL, bh2);
+ out:
+ 	if (cleared) {
+ 		BUFFER_TRACE(bitmap_bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(sb, handle, bitmap_bh, EXT4_IOS_INODE_BITMAP, 1);
+ 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 		if (!fatal)
+ 			fatal = err;
+@@ -776,6 +778,8 @@ repeat_in_this_group:
+ 				/* we won it */
+ 				BUFFER_TRACE(inode_bitmap_bh,
+ 					"call ext4_handle_dirty_metadata");
++				ext4_ios_write(sb, handle, inode_bitmap_bh,
++						EXT4_IOS_INODE_BITMAP, 1);
+ 				err = ext4_handle_dirty_metadata(handle,
+ 								 NULL,
+ 							inode_bitmap_bh);
+@@ -821,6 +825,8 @@ got:
+ 		}
+ 
+ 		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
++		ext4_ios_write(sb, handle, block_bitmap_bh,
++				EXT4_IOS_BLOCK_BITMAP, 1);
+ 		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
+ 		brelse(block_bitmap_bh);
+ 
+@@ -839,6 +845,7 @@ got:
+ 			goto fail;
+ 	}
+ 	BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_metadata");
++	ext4_ios_write(sb, handle, group_desc_bh, EXT4_IOS_GROUP_DESC, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, group_desc_bh);
+ 	if (err)
+ 		goto fail;
+@@ -1191,6 +1198,7 @@ skip_zeroout:
+ 
+ 	BUFFER_TRACE(group_desc_bh,
+ 		     "call ext4_handle_dirty_metadata");
++	ext4_ios_write(sb, handle, group_desc_bh, EXT4_IOS_GROUP_DESC, 1);
+ 	ret = ext4_handle_dirty_metadata(handle, NULL,
+ 					 group_desc_bh);
+ 
 diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 830e1b2..f0219fa 100644
+index f0219fa..8f9bfd2 100644
 --- a/fs/ext4/indirect.c
 +++ b/fs/ext4/indirect.c
-@@ -157,7 +157,8 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
- 			goto failure;
+@@ -505,6 +505,8 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		unlock_buffer(bh);
  
- 		if (!bh_uptodate_or_lock(bh)) {
--			if (bh_submit_read(bh) < 0) {
-+			if (ext4_bh_submit_read(bh, sb,
-+			    EXT4_IOS_INDIRECT_BLOCK, 1) < 0) {
- 				put_bh(bh);
- 				goto failure;
- 			}
-@@ -1253,7 +1254,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			}
- 
- 			/* Go read the buffer for the next level down */
--			bh = sb_bread(inode->i_sb, nr);
-+			bh = ext4_sb_bread(inode->i_sb, nr,
-+					   EXT4_IOS_INDIRECT_BLOCK, 1);
- 
- 			/*
- 			 * A read failure? Report error and clear slot
+ 		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(inode->i_sb, handle, bh,
++				EXT4_IOS_INDIRECT_BLOCK, 1);
+ 		err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (err)
+ 			goto failed;
+@@ -592,6 +594,8 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 		 */
+ 		jbd_debug(5, "splicing indirect only\n");
+ 		BUFFER_TRACE(where->bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(inode->i_sb, handle, where->bh,
++				EXT4_IOS_INDIRECT_BLOCK, 1);
+ 		err = ext4_handle_dirty_metadata(handle, inode, where->bh);
+ 		if (err)
+ 			goto err_out;
+@@ -1092,6 +1096,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 	if (try_to_extend_transaction(handle, inode)) {
+ 		if (bh) {
+ 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++			ext4_ios_write(inode->i_sb, handle, bh,
++					EXT4_IOS_INDIRECT_BLOCK, 1);
+ 			err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 			if (unlikely(err))
+ 				goto out_err;
+@@ -1202,9 +1208,11 @@ static void ext4_free_data(handle_t *handle, struct inode *inode,
+ 		 * block pointed to itself, it would have been detached when
+ 		 * the block was cleared. Check for this instead of OOPSing.
+ 		 */
+-		if ((EXT4_JOURNAL(inode) == NULL) || bh2jh(this_bh))
++		if ((EXT4_JOURNAL(inode) == NULL) || bh2jh(this_bh)) {
++			ext4_ios_write(inode->i_sb, handle, this_bh,
++					EXT4_IOS_INDIRECT_BLOCK, 1);
+ 			ext4_handle_dirty_metadata(handle, inode, this_bh);
+-		else
++		} else
+ 			EXT4_ERROR_INODE(inode,
+ 					 "circular indirect block detected at "
+ 					 "block %llu",
+@@ -1325,6 +1333,9 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 					*p = 0;
+ 					BUFFER_TRACE(parent_bh,
+ 					"call ext4_handle_dirty_metadata");
++					ext4_ios_write(inode->i_sb, handle,
++						parent_bh,
++						EXT4_IOS_INDIRECT_BLOCK, 1);
+ 					ext4_handle_dirty_metadata(handle,
+ 								   inode,
+ 								   parent_bh);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..b68d129 100644
+index ff56658..176977a 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -699,11 +699,10 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 	bh = ext4_getblk(handle, inode, block, create, err);
- 	if (!bh)
- 		return bh;
--	if (buffer_uptodate(bh))
-+	if (bh_uptodate_or_lock(bh))
- 		return bh;
--	ll_rw_block(READ | REQ_META | REQ_PRIO, 1, &bh);
--	wait_on_buffer(bh);
--	if (buffer_uptodate(bh))
-+	if (!ext4_submit_bh_read(READ | REQ_META | REQ_PRIO, bh, inode->i_sb,
-+				 EXT4_IOS_DIR_ENTRY, 1))
- 		return bh;
- 	put_bh(bh);
- 	*err = -EIO;
-@@ -3513,7 +3512,8 @@ make_io:
- 			if (end > table)
- 				end = table;
- 			while (b <= end)
--				sb_breadahead(sb, b++);
-+				ext4_sb_breadahead(sb, b++,
-+					EXT4_IOS_INODE_TABLE);
+@@ -677,6 +677,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
  		}
+ 		unlock_buffer(bh);
+ 		BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_DIR_ENTRY, 1);
+ 		err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (!fatal)
+ 			fatal = err;
+@@ -3927,6 +3928,8 @@ static int ext4_do_update_inode(handle_t *handle,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+ 			sb->s_dirt = 1;
+ 			ext4_handle_sync(handle);
++			ext4_ios_write(inode->i_sb, handle, EXT4_SB(sb)->s_sbh,
++					EXT4_IOS_SUPER_BLOCK, 1);
+ 			err = ext4_handle_dirty_metadata(handle, NULL,
+ 					EXT4_SB(sb)->s_sbh);
+ 		}
+@@ -3956,6 +3959,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	}
  
- 		/*
-@@ -3522,11 +3522,8 @@ make_io:
- 		 * Read the block from disk.
- 		 */
- 		trace_ext4_load_inode(inode);
--		get_bh(bh);
--		bh->b_end_io = end_buffer_read_sync;
--		submit_bh(READ | REQ_META | REQ_PRIO, bh);
--		wait_on_buffer(bh);
--		if (!buffer_uptodate(bh)) {
-+		if (ext4_submit_bh_read(READ | REQ_META | REQ_PRIO, bh, sb,
-+					EXT4_IOS_INODE_TABLE, 1)) {
- 			EXT4_ERROR_INODE_BLOCK(inode, block,
- 					       "unable to read itable block");
- 			brelse(bh);
+ 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++	ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_INODE_TABLE, 1);
+ 	rc = ext4_handle_dirty_metadata(handle, NULL, bh);
+ 	if (!err)
+ 		err = rc;
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index cb990b2..f9bc9eb 100644
+index f9bc9eb..f09416c 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -873,7 +873,6 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 			unlock_buffer(bh[i]);
- 			continue;
- 		}
--		get_bh(bh[i]);
- 		/*
- 		 * submit the buffer_head for read. We can
- 		 * safely mark the bitmap as uptodate now.
-@@ -881,8 +880,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		 * get set with buffer lock held.
- 		 */
- 		set_bitmap_uptodate(bh[i]);
--		bh[i]->b_end_io = end_buffer_read_sync;
--		submit_bh(READ, bh[i]);
-+		ext4_submit_bh_read_nowait(READ, bh[i], sb,
-+					EXT4_IOS_BLOCK_BITMAP, 1);
- 		mb_debug(1, "read bitmap for group %u\n", first_group + i);
+@@ -2823,6 +2823,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
+ 			      ac->ac_b_ex.fe_len);
+ 		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
++		ext4_ios_write(sb, handle, bitmap_bh, EXT4_IOS_BLOCK_BITMAP, 1);
+ 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 		if (!err)
+ 			err = -EAGAIN;
+@@ -2868,9 +2869,11 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 			   &sbi->s_flex_groups[flex_group].free_clusters);
  	}
  
++	ext4_ios_write(sb, handle, bitmap_bh, EXT4_IOS_BLOCK_BITMAP, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 	if (err)
+ 		goto out_err;
++	ext4_ios_write(sb, handle, gdp_bh, EXT4_IOS_GROUP_DESC, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
+ 
+ out_err:
+@@ -4734,10 +4737,12 @@ do_more:
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
++	ext4_ios_write(sb, handle, bitmap_bh, EXT4_IOS_BLOCK_BITMAP, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 
+ 	/* And the group descriptor block */
+ 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
++	ext4_ios_write(sb, handle, gd_bh, EXT4_IOS_GROUP_DESC, 1);
+ 	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
+ 	if (!err)
+ 		err = ret;
+@@ -4874,10 +4879,12 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
++	ext4_ios_write(sb, handle, bitmap_bh, EXT4_IOS_BLOCK_BITMAP, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 
+ 	/* And the group descriptor block */
+ 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
++	ext4_ios_write(sb, handle, gd_bh, EXT4_IOS_GROUP_DESC, 1);
+ 	ret = ext4_handle_dirty_metadata(handle, NULL, gd_bh);
+ 	if (!err)
+ 		err = ret;
 diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index c5826c6..c1d2d3a 100644
+index c1d2d3a..8807abc 100644
 --- a/fs/ext4/move_extent.c
 +++ b/fs/ext4/move_extent.c
-@@ -99,7 +99,8 @@ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
- 			if (path[ppos+1].p_bh)
- 				brelse(path[ppos+1].p_bh);
- 			path[ppos+1].p_bh =
--				sb_bread(inode->i_sb, path[ppos].p_block);
-+				ext4_sb_bread(inode->i_sb, path[ppos].p_block,
-+					      EXT4_IOS_EXTENT_BLOCK, 1);
- 			if (!path[ppos+1].p_bh)
- 				return -EIO;
- 			path[ppos+1].p_hdr =
-@@ -113,8 +114,9 @@ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
- 					ext4_idx_pblock(path[cur_ppos].p_idx);
- 				if (path[cur_ppos+1].p_bh)
- 					brelse(path[cur_ppos+1].p_bh);
--				path[cur_ppos+1].p_bh = sb_bread(inode->i_sb,
--					path[cur_ppos].p_block);
-+				path[cur_ppos+1].p_bh = ext4_sb_bread(
-+					inode->i_sb, path[cur_ppos].p_block,
-+					EXT4_IOS_EXTENT_BLOCK, 1);
- 				if (!path[cur_ppos+1].p_bh)
- 					return -EIO;
- 				path[cur_ppos+1].p_hdr =
+@@ -441,6 +441,8 @@ mext_insert_extents(handle_t *handle, struct inode *orig_inode,
+ 						end_ext, eh, range_to_move);
+ 
+ 	if (depth) {
++		ext4_ios_write(orig_inode->i_sb, handle, orig_path->p_bh,
++				EXT4_IOS_EXTENT_BLOCK, 1);
+ 		ret = ext4_handle_dirty_metadata(handle, orig_inode,
+ 						 orig_path->p_bh);
+ 		if (ret)
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 2043f48..4508257 100644
+index 4508257..a4f83f2 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -921,9 +921,10 @@ restart:
- 				num++;
- 				bh = ext4_getblk(NULL, dir, b++, 0, &err);
- 				bh_use[ra_max] = bh;
--				if (bh)
--					ll_rw_block(READ | REQ_META | REQ_PRIO,
--						    1, &bh);
-+				if (bh && !bh_uptodate_or_lock(bh))
-+					ext4_submit_bh_read_nowait(
-+						READ | REQ_META | REQ_PRIO,
-+						bh, sb, EXT4_IOS_DIR_ENTRY, 1);
- 			}
+@@ -1222,9 +1222,11 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 		de = de2;
+ 	}
+ 	dx_insert_block(frame, hash2 + continued, newblock);
++	ext4_ios_write(dir->i_sb, handle, bh2, EXT4_IOS_DIR_ENTRY, 1);
+ 	err = ext4_handle_dirty_metadata(handle, dir, bh2);
+ 	if (err)
+ 		goto journal_error;
++	ext4_ios_write(dir->i_sb, handle, frame->bh, EXT4_IOS_DIR_ENTRY, 1);
+ 	err = ext4_handle_dirty_metadata(handle, dir, frame->bh);
+ 	if (err)
+ 		goto journal_error;
+@@ -1322,6 +1324,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
+ 	dir->i_version++;
+ 	ext4_mark_inode_dirty(handle, dir);
+ 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++	ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_DIR_ENTRY, 1);
+ 	err = ext4_handle_dirty_metadata(handle, dir, bh);
+ 	if (err)
+ 		ext4_std_error(dir->i_sb, err);
+@@ -1412,7 +1415,9 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	frame->bh = bh;
+ 	bh = bh2;
+ 
++	ext4_ios_write(inode->i_sb, handle, frame->bh, EXT4_IOS_DIR_ENTRY, 1);
+ 	ext4_handle_dirty_metadata(handle, dir, frame->bh);
++	ext4_ios_write(inode->i_sb, handle, bh, EXT4_IOS_DIR_ENTRY, 1);
+ 	ext4_handle_dirty_metadata(handle, dir, bh);
+ 
+ 	de = do_split(handle,dir, &bh, frame, &hinfo, &retval);
+@@ -1587,6 +1592,8 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			dxtrace(dx_show_index("node", frames[1].entries));
+ 			dxtrace(dx_show_index("node",
+ 			       ((struct dx_node *) bh2->b_data)->entries));
++			ext4_ios_write(inode->i_sb, handle, bh2,
++					EXT4_IOS_DIR_ENTRY, 1);
+ 			err = ext4_handle_dirty_metadata(handle, dir, bh2);
+ 			if (err)
+ 				goto journal_error;
+@@ -1613,6 +1620,8 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			if (err)
+ 				goto journal_error;
  		}
- 		if ((bh = bh_use[ra_ptr++]) == NULL)
++		ext4_ios_write(inode->i_sb, handle, frames[0].bh,
++				EXT4_IOS_DIR_ENTRY, 1);
+ 		err = ext4_handle_dirty_metadata(handle, dir, frames[0].bh);
+ 		if (err) {
+ 			ext4_std_error(inode->i_sb, err);
+@@ -1671,6 +1680,8 @@ static int ext4_delete_entry(handle_t *handle,
+ 				de->inode = 0;
+ 			dir->i_version++;
+ 			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++			ext4_ios_write(dir->i_sb, handle, bh,
++					EXT4_IOS_DIR_ENTRY, 1);
+ 			err = ext4_handle_dirty_metadata(handle, dir, bh);
+ 			if (unlikely(err)) {
+ 				ext4_std_error(dir->i_sb, err);
+@@ -1863,6 +1874,7 @@ retry:
+ 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
+ 	set_nlink(inode, 2);
+ 	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
++	ext4_ios_write(inode->i_sb, handle, dir_block, EXT4_IOS_DIR_ENTRY, 1);
+ 	err = ext4_handle_dirty_metadata(handle, inode, dir_block);
+ 	if (err)
+ 		goto out_clear_inode;
+@@ -2014,6 +2026,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	/* Insert this inode at the head of the on-disk orphan list... */
+ 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+ 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
++	ext4_ios_write(sb, handle, EXT4_SB(sb)->s_sbh, EXT4_IOS_DIR_ENTRY, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
+ 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	if (!err)
+@@ -2087,6 +2100,8 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		if (err)
+ 			goto out_brelse;
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
++		ext4_ios_write(inode->i_sb, handle, sbi->s_sbh,
++				EXT4_IOS_SUPER_BLOCK, 1);
+ 		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+@@ -2476,6 +2491,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 					ext4_current_time(new_dir);
+ 		ext4_mark_inode_dirty(handle, new_dir);
+ 		BUFFER_TRACE(new_bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(old_dir->i_sb, handle, new_bh,
++				EXT4_IOS_DIR_ENTRY, 1);
+ 		retval = ext4_handle_dirty_metadata(handle, new_dir, new_bh);
+ 		if (unlikely(retval)) {
+ 			ext4_std_error(new_dir->i_sb, retval);
+@@ -2530,6 +2547,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+ 						cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
++		ext4_ios_write(old_dir->i_sb, handle, dir_bh,
++				EXT4_IOS_DIR_ENTRY, 1);
+ 		retval = ext4_handle_dirty_metadata(handle, old_inode, dir_bh);
+ 		if (retval) {
+ 			ext4_std_error(old_dir->i_sb, retval);
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 305ece7..f6f4a0f 100644
+index f6f4a0f..7aee0dd 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3177,7 +3177,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		logical_sb_block = sb_block;
- 	}
- 
--	if (!(bh = sb_bread(sb, logical_sb_block))) {
-+	if (!(bh = ext4_sb_bread(sb, logical_sb_block,
-+				 EXT4_IOS_SUPER_BLOCK, 1))) {
- 		ext4_msg(sb, KERN_ERR, "unable to read superblock");
- 		goto out_fail;
- 	}
-@@ -3349,7 +3350,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		brelse(bh);
- 		logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
- 		offset = do_div(logical_sb_block, blocksize);
--		bh = sb_bread(sb, logical_sb_block);
-+		bh = ext4_sb_bread(sb, logical_sb_block,
-+				EXT4_IOS_SUPER_BLOCK, 1);
- 		if (!bh) {
- 			ext4_msg(sb, KERN_ERR,
- 			       "Can't read superblock on 2nd try");
-@@ -3558,7 +3560,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	for (i = 0; i < db_count; i++) {
- 		block = descriptor_loc(sb, logical_sb_block, i);
--		sbi->s_group_desc[i] = sb_bread(sb, block);
-+		sbi->s_group_desc[i] = ext4_sb_bread(sb, block,
-+					EXT4_IOS_GROUP_DESC, 1);
- 		if (!sbi->s_group_desc[i]) {
- 			ext4_msg(sb, KERN_ERR,
- 			       "can't read group descriptor %d", i);
+@@ -4206,6 +4206,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+ 	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
++	ext4_ios_write(sb, NULL, sbh, EXT4_IOS_SUPER_BLOCK, 1);
+ 	mark_buffer_dirty(sbh);
+ 	if (sync) {
+ 		error = sync_dirty_buffer(sbh);
+@@ -4943,6 +4944,7 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 	memcpy(bh->b_data+offset, data, len);
+ 	flush_dcache_page(bh->b_page);
+ 	unlock_buffer(bh);
++	ext4_ios_write(sb, handle, bh, EXT4_IOS_SUPER_BLOCK, 1);
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bh);
+ 	brelse(bh);
+ out:
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 93a00d8..a7b393f 100644
+index a7b393f..7bb3258 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -221,7 +221,8 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	if (!EXT4_I(inode)->i_file_acl)
- 		goto cleanup;
- 	ea_idebug(inode, "reading block %u", EXT4_I(inode)->i_file_acl);
--	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-+	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl,
+@@ -491,6 +491,8 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	} else {
+ 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
++		ext4_ios_write(inode->i_sb, handle, bh,
 +				EXT4_IOS_EXTENDED_ATTR, 1);
- 	if (!bh)
- 		goto cleanup;
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
-@@ -364,7 +365,8 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	if (!EXT4_I(inode)->i_file_acl)
- 		goto cleanup;
- 	ea_idebug(inode, "reading block %u", EXT4_I(inode)->i_file_acl);
--	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-+	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl,
-+				EXT4_IOS_EXTENDED_ATTR, 1);
- 	error = -EIO;
- 	if (!bh)
- 		goto cleanup;
-@@ -655,7 +657,8 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 
- 	if (EXT4_I(inode)->i_file_acl) {
- 		/* The inode already has an extended attribute block. */
--		bs->bh = sb_bread(sb, EXT4_I(inode)->i_file_acl);
-+		bs->bh = ext4_sb_bread(sb, EXT4_I(inode)->i_file_acl,
+ 		error = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (IS_SYNC(inode))
+ 			ext4_handle_sync(handle);
+@@ -727,10 +729,13 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			unlock_buffer(bs->bh);
+ 			if (error == -EIO)
+ 				goto bad_block;
+-			if (!error)
++			if (!error) {
++				ext4_ios_write(sb, handle, bs->bh,
 +					EXT4_IOS_EXTENDED_ATTR, 1);
- 		error = -EIO;
- 		if (!bs->bh)
- 			goto cleanup;
-@@ -1188,7 +1191,8 @@ retry:
- 	 * EA block can hold new_extra_isize bytes.
- 	 */
- 	if (EXT4_I(inode)->i_file_acl) {
--		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-+		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl,
+ 				error = ext4_handle_dirty_metadata(handle,
+ 								   inode,
+ 								   bs->bh);
++			}
+ 			if (error)
+ 				goto cleanup;
+ 			goto inserted;
+@@ -799,6 +804,8 @@ inserted:
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					le32_to_cpu(BHDR(new_bh)->h_refcount));
+ 				unlock_buffer(new_bh);
++				ext4_ios_write(sb, handle, new_bh,
++						EXT4_IOS_EXTENDED_ATTR, 1);
+ 				error = ext4_handle_dirty_metadata(handle,
+ 								   inode,
+ 								   new_bh);
+@@ -857,6 +864,8 @@ getblk_failed:
+ 			set_buffer_uptodate(new_bh);
+ 			unlock_buffer(new_bh);
+ 			ext4_xattr_cache_insert(new_bh);
++			ext4_ios_write(sb, handle, new_bh,
 +					EXT4_IOS_EXTENDED_ATTR, 1);
- 		error = -EIO;
- 		if (!bh)
- 			goto cleanup;
-@@ -1369,7 +1373,8 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
- 
- 	if (!EXT4_I(inode)->i_file_acl)
- 		goto cleanup;
--	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-+	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl,
-+				EXT4_IOS_EXTENDED_ATTR, 1);
- 	if (!bh) {
- 		EXT4_ERROR_INODE(inode, "block %llu read error",
- 				 EXT4_I(inode)->i_file_acl);
-@@ -1501,7 +1506,8 @@ again:
- 				goto again;
- 			break;
- 		}
--		bh = sb_bread(inode->i_sb, ce->e_block);
-+		bh = ext4_sb_bread(inode->i_sb, ce->e_block,
-+					EXT4_IOS_EXTENDED_ATTR, 1);
- 		if (!bh) {
- 			EXT4_ERROR_INODE(inode, "block %lu read error",
- 					 (unsigned long) ce->e_block);
+ 			error = ext4_handle_dirty_metadata(handle,
+ 							   inode, new_bh);
+ 			if (error)
 -- 
 1.7.4.1
 
