@@ -1,52 +1,105 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] quota: Remove unnecessary definitions
-Date: Tue, 24 Jan 2012 14:56:29 +0100
-Message-ID: <20120124135629.GB18136@quack.suse.cz>
-References: <1327004329-6909-1-git-send-email-jack@suse.cz>
- <20120123210922.GA17974@thunk.org>
+Subject: Re: [PATCH] ext4: add error handling when discarding is fail in
+ FITRIM ioctl
+Date: Tue, 24 Jan 2012 15:13:32 +0100
+Message-ID: <20120124141332.GD18136@quack.suse.cz>
+References: <1327132572-11841-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Aditya Kali <adityakali@google.com>,
-	linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52411 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53777 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754513Ab2AXN4b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jan 2012 08:56:31 -0500
+	id S1756610Ab2AXONg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jan 2012 09:13:36 -0500
 Content-Disposition: inline
-In-Reply-To: <20120123210922.GA17974@thunk.org>
+In-Reply-To: <1327132572-11841-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 23-01-12 16:09:22, Ted Tso wrote:
-> On Thu, Jan 19, 2012 at 09:18:49PM +0100, Jan Kara wrote:
-> > 
-> >  Ted, after applying this patch, you'll need to run 'make depend' to fixup
-> > dependencies in makefiles. I didn't include that in the patch because on my
-> > system the dependencies are different and so diff is 1500+ lines.
-> > 
-> > Also I've talked with Aditya and there's no real reason for libquota to be a
-> > separate library. So I think it would be best to just make it part of
-> > libext2fs. Do you agree?
+On Sat 21-01-12 02:56:12, Namjae Jeon wrote:
+> Although free extents is proper not trimmed(mmc driver return error code while sending trim command), currently FITRIM ioctl return success.
+> I tried to add exception routine to inform user error code.
 > 
-> My current thinking is to rename it to libinternal, and only build it
-> statically.  It has all sorts of namespace leakage issues, and it's
-> not clear any programs outside of e2fsprogs would need it any way.
-> What do folks think?
-  Well, I could see someone interested in modifying quota information on
-unmounted fs image. So I believe there is some use in exporting at least
-some quota functions. But it's better to export less in the beginning and
-add what's needed later than having to maintain crappy API. So I'm OK with
-your plan.
-
-BTW one more question: So far I've kept quota format abstractions (taken
-from quota-tools) in the quota code in e2fsprogs. But it's not really
-needed and it's one of reasons why quota code I wrote for ocfs2-tools
-achieves the same functionality in about half amount of lines (and that's
-after reductions I already made). But the abstraction could become handy if
-you decided to change quota file format. So should I keep the abstraction or
-rip it out?
+> #> ./fitrim_test 
+> end_request: I/O error, dev mmcblk0, sector 27232
+> EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857: Discard command returned error -5
+> #>
+> 
+> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+> ---
+>  fs/ext4/mballoc.c |   22 +++++++++++++++-------
+>  1 files changed, 15 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index cb990b2..09cc09a 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4901,10 +4901,11 @@ error_return:
+>   * one will allocate those blocks, mark it as used in buddy bitmap. This must
+>   * be called with under the group lock.
+>   */
+> -static void ext4_trim_extent(struct super_block *sb, int start, int count,
+> +static int ext4_trim_extent(struct super_block *sb, int start, int count,
+>  			     ext4_group_t group, struct ext4_buddy *e4b)
+>  {
+>  	struct ext4_free_extent ex;
+> +	int err;
+>  
+>  	trace_ext4_trim_extent(sb, group, start, count);
+>  
+> @@ -4920,9 +4921,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
+>  	 */
+>  	mb_mark_used(e4b, &ex);
+>  	ext4_unlock_group(sb, group);
+> -	ext4_issue_discard(sb, group, start, count);
+> +	err = ext4_issue_discard(sb, group, start, count);
+>  	ext4_lock_group(sb, group);
+>  	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+> +	return err;
+>  }
+>  
+>  /**
+> @@ -4978,15 +4980,21 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>  		next = mb_find_next_bit(bitmap, max, start);
+>  
+>  		if ((next - start) >= minblocks) {
+> -			ext4_trim_extent(sb, start,
+> -					 next - start, group, &e4b);
+> -			count += next - start;
+> +			ret = ext4_trim_extent(sb, start,
+> +						next - start, group, &e4b);
+> +			if (ret < 0) {
+> +				if (ret != -EOPNOTSUPP)
+> +					ext4_warning(sb, "Discard command "
+> +						 "returned error %d\n", ret);
+> +				break;
+> +			} else
+> +				count += next - start;
+>  		}
+>  		free_count += next - start;
+>  		start = next + 1;
+>  
+>  		if (fatal_signal_pending(current)) {
+> -			count = -ERESTARTSYS;
+> +			ret = -ERESTARTSYS;
+>  			break;
+>  		}
+>  
+> @@ -5009,7 +5017,7 @@ out:
+>  	ext4_debug("trimmed %d blocks in the group %d\n",
+>  		count, group);
+>  
+> -	return count;
+> +	return (ret < 0) ? ret : count;
+  I think you need to initialize ret to 0 at the beginning of the function.
+Otherwise you could use it uninitialized. Otherwise the patch looks good to
+me and makes things consistent with ext3 so after fixing that bug you can add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 -- 
