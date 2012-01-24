@@ -1,107 +1,70 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: add error handling when discarding is fail in
- FITRIM ioctl
-Date: Tue, 24 Jan 2012 15:13:32 +0100
-Message-ID: <20120124141332.GD18136@quack.suse.cz>
-References: <1327132572-11841-1-git-send-email-linkinjeon@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC] Add new extent structure in ext4
+Date: Tue, 24 Jan 2012 10:32:06 -0700
+Message-ID: <E7A109F0-FD6C-4CA4-8B55-6FB12D809896@dilger.ca>
+References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com> <20120124133436.GA18136@quack.suse.cz>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Robin Dong <hao.bigrat@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Ext4Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53777 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756610Ab2AXONg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jan 2012 09:13:36 -0500
-Content-Disposition: inline
-In-Reply-To: <1327132572-11841-1-git-send-email-linkinjeon@gmail.com>
+Received: from shawmail.shawcable.com ([64.59.128.220]:16165 "EHLO
+	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756902Ab2AXRbs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jan 2012 12:31:48 -0500
+In-Reply-To: <20120124133436.GA18136@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 21-01-12 02:56:12, Namjae Jeon wrote:
-> Although free extents is proper not trimmed(mmc driver return error code while sending trim command), currently FITRIM ioctl return success.
-> I tried to add exception routine to inform user error code.
+On 2012-01-24, at 6:34, Jan Kara <jack@suse.cz> wrote:
+> On Mon 23-01-12 20:51:53, Robin Dong wrote:
+>> After the bigalloc-feature is completed in ext4, we could have much more
+>> big size of block-group (also bigger continuous space), but the extent
+>> structure of files now limit the extent size below 128MB, which is not
+>> optimal.
 > 
-> #> ./fitrim_test 
-> end_request: I/O error, dev mmcblk0, sector 27232
-> EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857: Discard command returned error -5
-> #>
-> 
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
-> ---
->  fs/ext4/mballoc.c |   22 +++++++++++++++-------
->  1 files changed, 15 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index cb990b2..09cc09a 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4901,10 +4901,11 @@ error_return:
->   * one will allocate those blocks, mark it as used in buddy bitmap. This must
->   * be called with under the group lock.
->   */
-> -static void ext4_trim_extent(struct super_block *sb, int start, int count,
-> +static int ext4_trim_extent(struct super_block *sb, int start, int count,
->  			     ext4_group_t group, struct ext4_buddy *e4b)
->  {
->  	struct ext4_free_extent ex;
-> +	int err;
->  
->  	trace_ext4_trim_extent(sb, group, start, count);
->  
-> @@ -4920,9 +4921,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
->  	 */
->  	mb_mark_used(e4b, &ex);
->  	ext4_unlock_group(sb, group);
-> -	ext4_issue_discard(sb, group, start, count);
-> +	err = ext4_issue_discard(sb, group, start, count);
->  	ext4_lock_group(sb, group);
->  	mb_free_blocks(NULL, e4b, start, ex.fe_len);
-> +	return err;
->  }
->  
->  /**
-> @@ -4978,15 +4980,21 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
->  		next = mb_find_next_bit(bitmap, max, start);
->  
->  		if ((next - start) >= minblocks) {
-> -			ext4_trim_extent(sb, start,
-> -					 next - start, group, &e4b);
-> -			count += next - start;
-> +			ret = ext4_trim_extent(sb, start,
-> +						next - start, group, &e4b);
-> +			if (ret < 0) {
-> +				if (ret != -EOPNOTSUPP)
-> +					ext4_warning(sb, "Discard command "
-> +						 "returned error %d\n", ret);
-> +				break;
-> +			} else
-> +				count += next - start;
->  		}
->  		free_count += next - start;
->  		start = next + 1;
->  
->  		if (fatal_signal_pending(current)) {
-> -			count = -ERESTARTSYS;
-> +			ret = -ERESTARTSYS;
->  			break;
->  		}
->  
-> @@ -5009,7 +5017,7 @@ out:
->  	ext4_debug("trimmed %d blocks in the group %d\n",
->  		count, group);
->  
-> -	return count;
-> +	return (ret < 0) ? ret : count;
-  I think you need to initialize ret to 0 at the beginning of the function.
-Otherwise you could use it uninitialized. Otherwise the patch looks good to
-me and makes things consistent with ext3 so after fixing that bug you can add:
-  Reviewed-by: Jan Kara <jack@suse.cz>
+>  It is not optimal but does it really make difference? I.e. what
+> improvement do you expect from enlarging extents from 128MB to say 4GB (or
+> do you expect to be consistently able to allocate continguous chunks larger
+> than 4GB?)? All you save is a single read of an indirect block... Is that
+> really worth the complications with another extent format? But maybe I miss
+> some benefit.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+What I'm (somewhat) interested in is increasing the maximum file size. IMHO, I think it would be better to do this with a larger block size (similar to bigalloc, but actually handling large blocks as a side benefit) since this will reduce the allocation overhead as well. 
+
+Even if the blocksize is only 64kB, that would allow files up to 256TB, and filesystems up to 2^64 bytes without the complexity of changing the extent format (which Ted looked at once and thought was difficult).  Since Robin and Ted already did most of that work for bigalloc, I think the remaining effort would be manageable, especially if mmap is disabled on such a filesystem. 
+
+Increasing the maximum extent size may have some small benefit, but I don't think it would be noticeable, and would rarely be used due to fragmentation and such. A single index block with 128MB extents can already address over 16GB, and with large blocks this increases with the square of the blocksize (larger extents * more extents per index block).
+
+Cheers, Andreas
+
+>> We could solve the problem by creating a new extent format to support
+>> larger extent size, which looks like this:
+>> 
+>> struct ext4_extent2 {
+>>    __le64    ee_block;    /* first logical block extent covers */
+>>    __le64    ee_start;            /* starting physical block */
+>>    __le32    ee_len;        /* number of blocks covered by extent */
+>>    __le32    ee_flags;    /* flags and future extension */
+>> };
+>> 
+>> struct ext4_extent2_idx {
+>>    __le64    ei_block;            /* index covers logical blocks from 'block' */
+>>    __le64    ei_leaf;            /* pointer to the physical block of the next level */
+>>    __le32    ei_flags;            /* flags and future extension */
+>>    __le32    ei_unused;    /* padding */
+>> };
+>> 
+>> I think we could keep the structure of ext4_extent_header and add new
+>> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
+>> 
+>> The new extent format could support 16TB continuous space and larger volumes.
+>> 
+>> What's your opinion?
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
