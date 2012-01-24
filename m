@@ -1,79 +1,62 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 0/3] Stop clearing uptodate flag on write IO error
-Date: Tue, 24 Jan 2012 13:13:14 +0100
-Message-ID: <20120124121314.GE15974@quack.suse.cz>
-References: <CA+55aFy0sidnCzPkP6yjnarLZx3a=7QSpgfaf2mUNVy14y3vCw@mail.gmail.com>
- <20120116160136.GC16431@quack.suse.cz>
- <CA+55aFyUiLq7UZeQD=-MU5ppvEDULiBP8xV0mJqVLL6nFAi7VA@mail.gmail.com>
- <20120117003613.GA28571@dastard>
- <CA+55aFxZ8dF8WagoyQPYTm92R1ZKd0G_tztqmAc+jrv0LkWGAA@mail.gmail.com>
- <20120123030422.GE15102@dastard>
- <20120123214709.GB17974@thunk.org>
- <CA+55aFxggjW6FKhf7KSCRMD-4YF9ymsxDQ+EMtUTThX16r-8tw@mail.gmail.com>
- <20120124061211.GK15102@dastard>
- <CA+55aFxVKEHrfXwnDb5Q8Y5CkPVn=aVXj=SfVtr98g6ZP1mEmg@mail.gmail.com>
+Subject: Re: [RFC] Add new extent structure in ext4
+Date: Tue, 24 Jan 2012 14:34:36 +0100
+Message-ID: <20120124133436.GA18136@quack.suse.cz>
+References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, Ted Ts'o <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Edward Shishkin <edward@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ted Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Robin Dong <hao.bigrat@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50998 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756344Ab2AXNej (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jan 2012 08:34:39 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+55aFxVKEHrfXwnDb5Q8Y5CkPVn=aVXj=SfVtr98g6ZP1mEmg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 23-01-12 23:10:53, Linus Torvalds wrote:
-> On Mon, Jan 23, 2012 at 10:12 PM, Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > You still haven't grasped that there are many different
-> > classes of IO errors and that some require different handling to
-> > others. :/
-> 
-> I think *you* haven't grasped what we're talking about.
-> 
-> Did you look at the thread?
-> 
-> We're not talking about some filesystem-specific buffer handling.
-> We're talking about the *default* hander in fs/buffer.c for IO
-> completion.
-  Well, not sure if you remember but the change I was proposing was only
-for filesystems that would promise (in their fstype) they they know better
-how to handle IO errors. 
+  Hello,
 
-> A filesystem can override that handler if it wants to and you can do
-> whatever the f*ck you want in your filesystem end-of-io handler.
-  That's another possibility but a flag in fstype and a check in default
-end-of-io handler looked like an easier solution to me.
+On Mon 23-01-12 20:51:53, Robin Dong wrote:
+> After the bigalloc-feature is completed in ext4, we could have much more
+> big size of block-group (also bigger continuous space), but the extent
+> structure of files now limit the extent size below 128MB, which is not
+> optimal.
+  It is not optimal but does it really make difference? I.e. what
+improvement do you expect from enlarging extents from 128MB to say 4GB (or
+do you expect to be consistently able to allocate continguous chunks larger
+than 4GB?)? All you save is a single read of an indirect block... Is that
+really worth the complications with another extent format? But maybe I miss
+some benefit.
 
-> But dammit, in the default handler - which BY DEFINITION IS ABOUT
-> FILESYSTEMS THAT DO NOT DO THOSE "many different classes of IO errors"
-> that you continue to blather about, there really are two choices:
->  - throw the damn thing away
->  - retry the write forever
-> 
-> It really is that simple. The thing I objected to was Jan claiming
-> that clearing the up-to-date flag made no semantic sense. That's just
-> crazy talk.
-> 
-> What does *not* make any semantic sense is to just mark the damn thing
-> clean after an IO error!
-  I agree that just keeping the uptodate flag was a half-baked proposal. I
-ultimately want to set the dirty flag back as well and we seem to agree
-that that would be logically correct. But then, as you noted, filesystem
-has to propely handle unwriteable pages to not bring system OOM (or
-actually block all writes due to exceeded dirty limit) and that is more
-complicated (distinguishing path temporarily down from USB stick is gone
-etc.) so I didn't want to go there in the beginning. But it seems I'll have
-to ;)
+									Honza
 
-								Honza
+> We could solve the problem by creating a new extent format to support
+> larger extent size, which looks like this:
+> 
+> struct ext4_extent2 {
+> 	__le64	ee_block;	/* first logical block extent covers */
+> 	__le64	ee_start;	        /* starting physical block */
+> 	__le32	ee_len;		/* number of blocks covered by extent */
+> 	__le32	ee_flags;	/* flags and future extension */
+> };
+> 
+> struct ext4_extent2_idx {
+> 	__le64	ei_block;	        /* index covers logical blocks from 'block' */
+> 	__le64	ei_leaf;	        /* pointer to the physical block of the next level */
+> 	__le32	ei_flags;	        /* flags and future extension */
+> 	__le32	ei_unused;	/* padding */
+> };
+> 
+> I think we could keep the structure of ext4_extent_header and add new
+> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
+> 
+> The new extent format could support 16TB continuous space and larger volumes.
+> 
+> What's your opinion?
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
