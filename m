@@ -1,83 +1,65 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC PATCH 0/3] Stop clearing uptodate flag on write IO error
-Date: Tue, 24 Jan 2012 17:12:11 +1100
-Message-ID: <20120124061211.GK15102@dastard>
-References: <1325774407-28531-1-git-send-email-jack@suse.cz>
- <CA+55aFy0sidnCzPkP6yjnarLZx3a=7QSpgfaf2mUNVy14y3vCw@mail.gmail.com>
- <20120116160136.GC16431@quack.suse.cz>
- <CA+55aFyUiLq7UZeQD=-MU5ppvEDULiBP8xV0mJqVLL6nFAi7VA@mail.gmail.com>
- <20120117003613.GA28571@dastard>
- <CA+55aFxZ8dF8WagoyQPYTm92R1ZKd0G_tztqmAc+jrv0LkWGAA@mail.gmail.com>
- <20120123030422.GE15102@dastard>
- <20120123214709.GB17974@thunk.org>
- <CA+55aFxggjW6FKhf7KSCRMD-4YF9ymsxDQ+EMtUTThX16r-8tw@mail.gmail.com>
+Subject: Re: [PATCH 4/8] xfs: Move ilock before transaction start in
+ xfs_setattr_size()
+Date: Tue, 24 Jan 2012 17:59:45 +1100
+Message-ID: <20120124065945.GL15102@dastard>
+References: <1327091686-23177-1-git-send-email-jack@suse.cz>
+ <1327091686-23177-5-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
+Cc: linux-fsdevel@vger.kernel.org, Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
 	Christoph Hellwig <hch@infradead.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Edward Shishkin <edward@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Ben Myers <bpm@sgi.com>,
+	Alex Elder <elder@kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:38107 "EHLO
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:20032 "EHLO
 	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751235Ab2AXGMQ (ORCPT
+	by vger.kernel.org with ESMTP id S1751951Ab2AXG7t (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jan 2012 01:12:16 -0500
+	Tue, 24 Jan 2012 01:59:49 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+55aFxggjW6FKhf7KSCRMD-4YF9ymsxDQ+EMtUTThX16r-8tw@mail.gmail.com>
+In-Reply-To: <1327091686-23177-5-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 23, 2012 at 03:49:39PM -0800, Linus Torvalds wrote:
-> On Mon, Jan 23, 2012 at 1:47 PM, Ted Ts'o <tytso@mit.edu> wrote:
-> >
-> > So how does XFS decide whether a write should fail and shutdown the
-> > file system, or just "try forever"?
-> 
-> Why would it bother? XFS tends to be a filesystem that you'd only use
-> for core files in environments where you have a system manager that
-> knows what he is doing.
+On Fri, Jan 20, 2012 at 09:34:42PM +0100, Jan Kara wrote:
+> In xfs we first take ilock and start transaction afterwards.
 
-Oh, man, what a troll.
+The correct order is to allocate the transaction, reserve the space
+for it and then take the ilock.  We cannot hold the ilock over the
+transaction reservation because that can deadlock the journal.
 
-Even my *TV* uses XFS. First google reference:
+That is, to make space for the new transaction reservation, we may
+need to take the ilock to flush the inode and allow the journal tail
+to move forwards to make space for the new transaction.  If we
+already hold the ilock, then it can't be flushed, we can't make
+space available in the journal and hence deadlock.
 
-http://settorezero.blogspot.com/2010/10/xfs-filesystem-and-samsung-ledtvs.html
+Maybe you confused the ilock vs the iolock.  We can hold the iolock
+over the trans alloc/reserve because that lock is not required to
+move the tail of the journal, so the deadlock doesn't exist.
 
-You won't find a more hostile "pull-the-drive-without-unmounting"
-environment than a TV. XFS handles this sort of stuff just fine and
-it has for a long time.
+> We should obey
+> this order in all places because otherwise we can create the following deadlock
+> with filesystem freezing: One process holds ilock and blocks on s_frozen ==
+> SB_FREEZE_TRANS in xfs_trans_alloc(), another process has a transaction started
+> (thus blocking freezing) and blocks on ilock. So we have to take ilock earlier
+> in xfs_setattr_size().
 
-> So there, maybe "try forever" is the right
-> thing to do.
-
-You still haven't grasped that there are many different
-classes of IO errors and that some require different handling to
-others. :/
-
-> Things are a bit different with some random unreliable USB stick FAT32
-> filesystem that just died on you, with a normal user that just removes
-> the thing or doesn't even notice that the stick is now dead. There the
-> "try forever" is totally the wrong thing to do.
-
-I'm not saying that "try forever" is how all errors should be
-handled. You are completely focussed on that as the only possible
-error handling technique that can be used. Stop being stupid!
-
-I'm saying that the dirty, uptodate, errored buffer should
-be handled back to the filesystem so that it can decide what to do
-with it.  For filesystems that can differentiate the types of
-errors, let them choose how to handle the problem. Those that are
-unable to handle the error can do the invalidation themselves. One
-size does not fit all...
+Where are we taking the ilock and then calling xfs_trans_alloc()?
+That's the caller needs to be fixed, not the 40-odd that do the
+right thing by taking the ilock -after- the trans alloc/reserve
+calls.
 
 Cheers,
 
 Dave.
+
 -- 
 Dave Chinner
 david@fromorbit.com
