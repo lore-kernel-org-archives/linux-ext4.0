@@ -1,56 +1,77 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/8] xfs: Move ilock before transaction start in
- xfs_setattr_size()
-Date: Tue, 24 Jan 2012 12:52:34 +0100
-Message-ID: <20120124115234.GD15974@quack.suse.cz>
-References: <1327091686-23177-1-git-send-email-jack@suse.cz>
- <1327091686-23177-5-git-send-email-jack@suse.cz>
- <20120124065945.GL15102@dastard>
+Subject: Re: [RFC PATCH 0/3] Stop clearing uptodate flag on write IO error
+Date: Tue, 24 Jan 2012 13:13:14 +0100
+Message-ID: <20120124121314.GE15974@quack.suse.cz>
+References: <CA+55aFy0sidnCzPkP6yjnarLZx3a=7QSpgfaf2mUNVy14y3vCw@mail.gmail.com>
+ <20120116160136.GC16431@quack.suse.cz>
+ <CA+55aFyUiLq7UZeQD=-MU5ppvEDULiBP8xV0mJqVLL6nFAi7VA@mail.gmail.com>
+ <20120117003613.GA28571@dastard>
+ <CA+55aFxZ8dF8WagoyQPYTm92R1ZKd0G_tztqmAc+jrv0LkWGAA@mail.gmail.com>
+ <20120123030422.GE15102@dastard>
+ <20120123214709.GB17974@thunk.org>
+ <CA+55aFxggjW6FKhf7KSCRMD-4YF9ymsxDQ+EMtUTThX16r-8tw@mail.gmail.com>
+ <20120124061211.GK15102@dastard>
+ <CA+55aFxVKEHrfXwnDb5Q8Y5CkPVn=aVXj=SfVtr98g6ZP1mEmg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <dchinner@redhat.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Kamal Mostafa <kamal@canonical.com>,
+Cc: Dave Chinner <david@fromorbit.com>, Ted Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Christoph Hellwig <hch@infradead.org>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Ben Myers <bpm@sgi.com>,
-	Alex Elder <elder@kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45604 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755697Ab2AXLwg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jan 2012 06:52:36 -0500
+	Al Viro <viro@zeniv.linux.org.uk>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Edward Shishkin <edward@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120124065945.GL15102@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CA+55aFxVKEHrfXwnDb5Q8Y5CkPVn=aVXj=SfVtr98g6ZP1mEmg@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 24-01-12 17:59:45, Dave Chinner wrote:
-> On Fri, Jan 20, 2012 at 09:34:42PM +0100, Jan Kara wrote:
-> > In xfs we first take ilock and start transaction afterwards.
+On Mon 23-01-12 23:10:53, Linus Torvalds wrote:
+> On Mon, Jan 23, 2012 at 10:12 PM, Dave Chinner <david@fromorbit.com> wrote:
+> >
+> > You still haven't grasped that there are many different
+> > classes of IO errors and that some require different handling to
+> > others. :/
 > 
-> The correct order is to allocate the transaction, reserve the space
-> for it and then take the ilock.  We cannot hold the ilock over the
-> transaction reservation because that can deadlock the journal.
->
-> That is, to make space for the new transaction reservation, we may
-> need to take the ilock to flush the inode and allow the journal tail
-> to move forwards to make space for the new transaction.  If we
-> already hold the ilock, then it can't be flushed, we can't make
-> space available in the journal and hence deadlock.
-  Thanks for clarification!
+> I think *you* haven't grasped what we're talking about.
+> 
+> Did you look at the thread?
+> 
+> We're not talking about some filesystem-specific buffer handling.
+> We're talking about the *default* hander in fs/buffer.c for IO
+> completion.
+  Well, not sure if you remember but the change I was proposing was only
+for filesystems that would promise (in their fstype) they they know better
+how to handle IO errors. 
 
-> Maybe you confused the ilock vs the iolock.  We can hold the iolock
-> over the trans alloc/reserve because that lock is not required to
-> move the tail of the journal, so the deadlock doesn't exist.
-  Ups! I now had a look at what xfs_rw_ilock() does. I always thought it's
-just a plain rw semaphore and now I see it takes several locks depending on
-the argument. Ugh, a bit surprising for XFS newcomer as me ;) But now
-things become clearer so I fix my patches with this new knowledge in mind.
-So just disregard my locking comments. They were likely bogus.
+> A filesystem can override that handler if it wants to and you can do
+> whatever the f*ck you want in your filesystem end-of-io handler.
+  That's another possibility but a flag in fstype and a check in default
+end-of-io handler looked like an easier solution to me.
+
+> But dammit, in the default handler - which BY DEFINITION IS ABOUT
+> FILESYSTEMS THAT DO NOT DO THOSE "many different classes of IO errors"
+> that you continue to blather about, there really are two choices:
+>  - throw the damn thing away
+>  - retry the write forever
+> 
+> It really is that simple. The thing I objected to was Jan claiming
+> that clearing the up-to-date flag made no semantic sense. That's just
+> crazy talk.
+> 
+> What does *not* make any semantic sense is to just mark the damn thing
+> clean after an IO error!
+  I agree that just keeping the uptodate flag was a half-baked proposal. I
+ultimately want to set the dirty flag back as well and we seem to agree
+that that would be logically correct. But then, as you noted, filesystem
+has to propely handle unwriteable pages to not bring system OOM (or
+actually block all writes due to exceeded dirty limit) and that is more
+complicated (distinguishing path temporarily down from USB stick is gone
+etc.) so I didn't want to go there in the beginning. But it seems I'll have
+to ;)
 
 								Honza
 -- 
