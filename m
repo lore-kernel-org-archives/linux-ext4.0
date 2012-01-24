@@ -1,62 +1,54 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] Add new extent structure in ext4
-Date: Tue, 24 Jan 2012 14:34:36 +0100
-Message-ID: <20120124133436.GA18136@quack.suse.cz>
-References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+Subject: Re: [PATCH] quota: Remove unnecessary definitions
+Date: Tue, 24 Jan 2012 14:56:29 +0100
+Message-ID: <20120124135629.GB18136@quack.suse.cz>
+References: <1327004329-6909-1-git-send-email-jack@suse.cz>
+ <20120123210922.GA17974@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Robin Dong <hao.bigrat@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, Aditya Kali <adityakali@google.com>,
+	linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50998 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:52411 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756344Ab2AXNej (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jan 2012 08:34:39 -0500
+	id S1754513Ab2AXN4b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jan 2012 08:56:31 -0500
 Content-Disposition: inline
-In-Reply-To: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+In-Reply-To: <20120123210922.GA17974@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Mon 23-01-12 16:09:22, Ted Tso wrote:
+> On Thu, Jan 19, 2012 at 09:18:49PM +0100, Jan Kara wrote:
+> > 
+> >  Ted, after applying this patch, you'll need to run 'make depend' to fixup
+> > dependencies in makefiles. I didn't include that in the patch because on my
+> > system the dependencies are different and so diff is 1500+ lines.
+> > 
+> > Also I've talked with Aditya and there's no real reason for libquota to be a
+> > separate library. So I think it would be best to just make it part of
+> > libext2fs. Do you agree?
+> 
+> My current thinking is to rename it to libinternal, and only build it
+> statically.  It has all sorts of namespace leakage issues, and it's
+> not clear any programs outside of e2fsprogs would need it any way.
+> What do folks think?
+  Well, I could see someone interested in modifying quota information on
+unmounted fs image. So I believe there is some use in exporting at least
+some quota functions. But it's better to export less in the beginning and
+add what's needed later than having to maintain crappy API. So I'm OK with
+your plan.
 
-On Mon 23-01-12 20:51:53, Robin Dong wrote:
-> After the bigalloc-feature is completed in ext4, we could have much more
-> big size of block-group (also bigger continuous space), but the extent
-> structure of files now limit the extent size below 128MB, which is not
-> optimal.
-  It is not optimal but does it really make difference? I.e. what
-improvement do you expect from enlarging extents from 128MB to say 4GB (or
-do you expect to be consistently able to allocate continguous chunks larger
-than 4GB?)? All you save is a single read of an indirect block... Is that
-really worth the complications with another extent format? But maybe I miss
-some benefit.
+BTW one more question: So far I've kept quota format abstractions (taken
+from quota-tools) in the quota code in e2fsprogs. But it's not really
+needed and it's one of reasons why quota code I wrote for ocfs2-tools
+achieves the same functionality in about half amount of lines (and that's
+after reductions I already made). But the abstraction could become handy if
+you decided to change quota file format. So should I keep the abstraction or
+rip it out?
 
-									Honza
-
-> We could solve the problem by creating a new extent format to support
-> larger extent size, which looks like this:
-> 
-> struct ext4_extent2 {
-> 	__le64	ee_block;	/* first logical block extent covers */
-> 	__le64	ee_start;	        /* starting physical block */
-> 	__le32	ee_len;		/* number of blocks covered by extent */
-> 	__le32	ee_flags;	/* flags and future extension */
-> };
-> 
-> struct ext4_extent2_idx {
-> 	__le64	ei_block;	        /* index covers logical blocks from 'block' */
-> 	__le64	ei_leaf;	        /* pointer to the physical block of the next level */
-> 	__le32	ei_flags;	        /* flags and future extension */
-> 	__le32	ei_unused;	/* padding */
-> };
-> 
-> I think we could keep the structure of ext4_extent_header and add new
-> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
-> 
-> The new extent format could support 16TB continuous space and larger volumes.
-> 
-> What's your opinion?
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
