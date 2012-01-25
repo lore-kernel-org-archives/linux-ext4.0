@@ -1,34 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 39732] JBD: Spotted dirty metadata buffer (dev = dm-2, blocknr
- = 2512725). There's a risk of filesystem corruption in case of system crash.
-Date: Tue, 24 Jan 2012 23:17:12 GMT
-Message-ID: <201201242317.q0ONHCJo032491@bugzilla.kernel.org>
-References: <bug-39732-13602@https.bugzilla.kernel.org/>
+From: Amit Sahrawat <amit.sahrawat83@gmail.com>
+Subject: Does Ext4 support parallel write similar to XFS?
+Date: Wed, 25 Jan 2012 10:49:59 +0530
+Message-ID: <CADDb1s2w9ZwMXn38n8TcxhFNrUsXN1Gnxq-suAP2-M+R7YhFsg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:39505 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752759Ab2AXXRM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jan 2012 18:17:12 -0500
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q0ONHCrh032492
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jan 2012 23:17:12 GMT
-In-Reply-To: <bug-39732-13602@https.bugzilla.kernel.org/>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:52530 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906Ab2AYFUA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jan 2012 00:20:00 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=39732
+In XFS we can write parallel (i.,e we can make use of allocation
+groups for writing process). If the files are kept in individual
+directories, there is a possibility that first the blocks for that
+files be used from individual allocation groups. If I start =914=92
+writing process(cp 100MB_file /<dirnum>/) =96 after writing is finished
+=96 if I check the bmap =96 it does shows that initial allocation was f=
+rom
+individual allocation groups.
+Even though in Ext4 also we do have groups =96 but I am not able to get
+behavior similar to XFS.
+If I check the file extents =96 the extents are in mixed form, the
+allocation pattern is also very fragmented.
 
+Please share more on this. Also, if there is a possible exact test
+case to check for parallel writes support.
 
-
-
-
---- Comment #2 from Florian Mickler <florian@mickler.org>  2012-01-24 23:17:10 ---
-Is this still a problem in v3.2 / v3.3-rc1 ?
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks & Regards,
+Amit Sahrawat
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
