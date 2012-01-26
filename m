@@ -1,103 +1,94 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch|rfc] ext4: fix race between unwritten extent conversion
- and truncate
-Date: Thu, 26 Jan 2012 21:10:56 +0100
-Message-ID: <20120126201056.GA27283@quack.suse.cz>
-References: <x491uqno6qv.fsf@segfault.boston.devel.redhat.com>
- <20120126170209.GE17113@quack.suse.cz>
- <x49liouz6ft.fsf@segfault.boston.devel.redhat.com>
+Subject: Re: [RFC PATCH 0/3] Stop clearing uptodate flag on write IO error
+Date: Thu, 26 Jan 2012 21:51:05 +0100
+Message-ID: <20120126205105.GC27283@quack.suse.cz>
+References: <1325774407-28531-1-git-send-email-jack@suse.cz>
+ <CA+55aFy0sidnCzPkP6yjnarLZx3a=7QSpgfaf2mUNVy14y3vCw@mail.gmail.com>
+ <20120116160136.GC16431@quack.suse.cz>
+ <CA+55aFyUiLq7UZeQD=-MU5ppvEDULiBP8xV0mJqVLL6nFAi7VA@mail.gmail.com>
+ <20120117003613.GA28571@dastard>
+ <CA+55aFxZ8dF8WagoyQPYTm92R1ZKd0G_tztqmAc+jrv0LkWGAA@mail.gmail.com>
+ <20120123030422.GE15102@dastard>
+ <20120123214709.GB17974@thunk.org>
+ <20120124003657.GJ15102@dastard>
+ <4F214465.9010600@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>, Ted Ts'o <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Edward Shishkin <edward@redhat.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48697 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:50412 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752491Ab2AZUK6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jan 2012 15:10:58 -0500
+	id S1752011Ab2AZUvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jan 2012 15:51:09 -0500
 Content-Disposition: inline
-In-Reply-To: <x49liouz6ft.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <4F214465.9010600@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 26-01-12 13:04:22, Jeff Moyer wrote:
-> Jan Kara <jack@suse.cz> writes:
+On Thu 26-01-12 07:17:41, Ric Wheeler wrote:
+> On 01/23/2012 07:36 PM, Dave Chinner wrote:
+> >On Mon, Jan 23, 2012 at 04:47:09PM -0500, Ted Ts'o wrote:
+> >>>The thing is, transient write errors tend to be isolated and go away
+> >>>when a retry occurs (think of IO timeouts when multipath failover
+> >>>occurs). When non-isolated IO or unrecoverable problems occur (e.g.
+> >>>no paths left to fail over onto), critical other metadata reads and
+> >>>writes will fail and shut down the filesystem, thereby terminating
+> >>>the "try forever" background writeback loop those delayed write
+> >>>buffers may be in. So the truth is that "trying forever" on write
+> >>>errors can handle a whole class of write IO errors very
+> >>>effectively....
+> >>So how does XFS decide whether a write should fail and shutdown the
+> >>file system, or just "try forever"?
+> >The IO dispatcher decides that. If the dispatcher has handed the IO
+> >off to the delayed write queue, then failed writes will be tried
+> >again. If the caller is catching the IO completion (e.g. sync
+> >writes) or attaching a completion callback (journal IO), then the
+> >completion context will handle the error appropriately. Journal IO
+> >errors tend to shutdown the filesystem on the first error, other
+> >contexts may handle the error, retry or shutdown the filesystem
+> >depending on their current state when the error occurs.
+> >
+> >Reads are even more complex, because ithe dispatch context can be
+> >within a transaction and the correct error handling is then
+> >dependent on the current state of the transaction....
 > 
-> >> --- a/fs/ext4/fsync.c
-> >> +++ b/fs/ext4/fsync.c
-> >> @@ -104,7 +104,7 @@ int ext4_flush_completed_IO(struct inode *inode)
-> >>  		 * queue work.
-> >>  		 */
-> >>  		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
-> >> -		ret = ext4_end_io_nolock(io);
-> >> +		ret = ext4_end_io_nolock(io, false);
-> >   This is wrong. i_completed_io_list contains work items for both direct
-> > and buffered IO. Just in ext4_flush_completed_IO() we process the list
-> > synchronously while ext4_end_io_work() processes the list in the
-> > background. So what you have to do is store in ext4_io_end_t whether the IO
-> > was direct or not and then use that in ext4_end_io_nolock() function.
+> I think that having retry logic at the file system layer is really
+> putting the fix in the wrong place.
 > 
-> OK, thanks for the review.  Is the following what you had in mind?  If
-> so, I'll repost with a proper header.
-  Exactly. Thanks!
+> Specifically, if we have multipath configured under a file system,
+> it is up to the multipath logic to handle the failure (and use
+> another path, retry, etc).  If we see a failed IO further up the
+> stack, it is *really* dead at that point.
+  Yes, that makes sense. Only, if my memory serves well, e.g. with iSCSI we
+do see transient errors so it's not like they don't happen.
+
+> Transient errors on normal drives are also rarely worth re-trying
+> since pretty much all modern storage devices have firmware that will
+> have done exhaustive retries on a failed write. Definitely not worth
+> retrying forever for a normal device.
+  Agreed. But we could still be clever enough to write the data / metadata
+to a different place.
+
+> At one end of the spectrum, think of a box with dozens of storage
+> devices attached (either via SAN or local S-ATA devices). If we are
+> doing large, streaming writes, we could get a large amount of memory
+> dirtied while writing. If that one device dies and we keep that
+> memory in use for the endless retry loop, we have really cripple the
+> box which still has multiple happy storage devices and file
+> systems....
+  I agree that if we ever decide to keep unwriteable data in memory,
+kernel has to have a way to get rid of this data if it needs to.
 
 								Honza
-> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 513004f..2d55d7c 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -184,6 +184,7 @@ struct mpage_da_data {
->  #define	EXT4_IO_END_UNWRITTEN	0x0001
->  #define EXT4_IO_END_ERROR	0x0002
->  #define EXT4_IO_END_QUEUED	0x0004
-> +#define EXT4_IO_END_DIRECT	0x0008
->  
->  struct ext4_io_page {
->  	struct page	*p_page;
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index feaa82f..f6dc02b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2795,9 +2795,6 @@ out:
->  
->  	/* queue the work to convert unwritten extents to written */
->  	queue_work(wq, &io_end->work);
-> -
-> -	/* XXX: probably should move into the real I/O completion handler */
-> -	inode_dio_done(inode);
->  }
->  
->  static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
-> @@ -2921,9 +2918,12 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
->  		iocb->private = NULL;
->  		EXT4_I(inode)->cur_aio_dio = NULL;
->  		if (!is_sync_kiocb(iocb)) {
-> -			iocb->private = ext4_init_io_end(inode, GFP_NOFS);
-> -			if (!iocb->private)
-> +			ext4_io_end_t *io_end =
-> +				ext4_init_io_end(inode, GFP_NOFS);
-> +			if (!io_end)
->  				return -ENOMEM;
-> +			io_end->flag |= EXT4_IO_END_DIRECT;
-> +			iocb->private = io_end;
->  			/*
->  			 * we save the io structure for current async
->  			 * direct IO, so that later ext4_map_blocks()
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 4758518..9e1b8eb 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -110,6 +110,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
->  	if (io->iocb)
->  		aio_complete(io->iocb, io->result, 0);
->  
-> +	if (io->flag & EXT4_IO_END_DIRECT)
-> +		inode_dio_done(inode);
->  	/* Wake up anyone waiting on unwritten extent conversion */
->  	if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten))
->  		wake_up_all(ext4_ioend_wq(io->inode));
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
