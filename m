@@ -1,42 +1,64 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [patch] ext4: fix race between unwritten extent conversion and truncate
-Date: Thu, 26 Jan 2012 16:17:08 -0500
-Message-ID: <x4962fyyxij.fsf@segfault.boston.devel.redhat.com>
-References: <x49aa5ayycg.fsf@segfault.boston.devel.redhat.com>
-	<20120126211526.GA28368@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext2: Replace tests of write IO errors using buffer_uptodate
+Date: Thu, 26 Jan 2012 23:01:58 +0100
+Message-ID: <1327615318-18674-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51729 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:54297 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752123Ab2AZVRf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:17:35 -0500
-In-Reply-To: <20120126211526.GA28368@quack.suse.cz> (Jan Kara's message of
-	"Thu, 26 Jan 2012 22:15:26 +0100")
+	id S1752788Ab2AZWCG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Jan 2012 17:02:06 -0500
+Received: from relay2.suse.de (unknown [195.135.220.254])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 49ABB8FE69
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Jan 2012 23:02:04 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/inode.c |    5 ++---
+ fs/ext2/xattr.c |    5 ++---
+ 2 files changed, 4 insertions(+), 6 deletions(-)
 
-> On Thu 26-01-12 15:59:11, Jeff Moyer wrote:
->> Hi,
->> 
->> The following comment in ext4_end_io_dio caught my attention:
->> 
->> 	/* XXX: probably should move into the real I/O completion handler */
->>         inode_dio_done(inode);
->> 
->> The truncate code takes i_mutex, then calls inode_dio_wait.  Because the
->> ext4 code path above will end up dropping the mutex before it is
->> reacquired by the worker thread that does the extent conversion, it
->> seems to me that the truncate can happen out of order.  Jan Kara
->> mentioned that this might result in extra journal I/O, which isn't nice,
->   Funny misunderstanding ;) I meant we will complain to system log with error
-> messages / WARN_ON.
+  I plan to put this minor cleanup into my tree for the next merge window.
 
-Heh.  Ted, let me know if I need to repost to fix that up...
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 740cad8..f832a4c 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1501,11 +1501,10 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
+ 		raw_inode->i_block[n] = ei->i_data[n];
+ 	mark_buffer_dirty(bh);
+ 	if (do_sync) {
+-		sync_dirty_buffer(bh);
+-		if (buffer_req(bh) && !buffer_uptodate(bh)) {
++		err = sync_dirty_buffer(bh);
++		if (err) {
+ 			printk ("IO error syncing ext2 inode [%s:%08lx]\n",
+ 				sb->s_id, (unsigned long) ino);
+-			err = -EIO;
+ 		}
+ 	}
+ 	ei->i_state &= ~EXT2_STATE_NEW;
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 6dcafc7..f3dfb27 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -679,9 +679,8 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 		}
+ 		mark_buffer_dirty(new_bh);
+ 		if (IS_SYNC(inode)) {
+-			sync_dirty_buffer(new_bh);
+-			error = -EIO;
+-			if (buffer_req(new_bh) && !buffer_uptodate(new_bh))
++			error = sync_dirty_buffer(new_bh);
++			if (error)
+ 				goto cleanup;
+ 		}
+ 	}
+-- 
+1.7.1
 
-Cheers,
-Jeff
