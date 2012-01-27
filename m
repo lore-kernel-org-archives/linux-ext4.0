@@ -1,7 +1,7 @@
 From: Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH 1/3] xfs: honor the O_SYNC flag for aysnchronous direct I/O requests
-Date: Fri, 27 Jan 2012 16:15:47 -0500
-Message-ID: <1327698949-12616-2-git-send-email-jmoyer@redhat.com>
+Subject: [PATCH 2/3] ext4: honor the O_SYNC flag for aysnchronous direct I/O requests
+Date: Fri, 27 Jan 2012 16:15:48 -0500
+Message-ID: <1327698949-12616-3-git-send-email-jmoyer@redhat.com>
 References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
 Cc: Jeff Moyer <jmoyer@redhat.com>
 To: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
@@ -23,154 +23,159 @@ when EIOCBQUEUED is returned.
 
 Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
 ---
- fs/xfs/xfs_aops.c |   69 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/xfs/xfs_aops.h |    1 +
- fs/xfs/xfs_buf.c  |    9 +++++++
- 3 files changed, 77 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h    |    4 ++++
+ fs/ext4/inode.c   |   11 +++++++++--
+ fs/ext4/page-io.c |   39 ++++++++++++++++++++++++++++++++-------
+ fs/ext4/super.c   |   11 +++++++++++
+ 4 files changed, 56 insertions(+), 9 deletions(-)
 
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 574d4ee..909e020 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -158,6 +158,48 @@ xfs_setfilesize(
- }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2d55d7c..4377ed3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -185,6 +185,7 @@ struct mpage_da_data {
+ #define EXT4_IO_END_ERROR	0x0002
+ #define EXT4_IO_END_QUEUED	0x0004
+ #define EXT4_IO_END_DIRECT	0x0008
++#define EXT4_IO_END_NEEDS_SYNC	0x0010
  
- /*
-+ * In the case of synchronous, AIO, O_DIRECT writes, we need to flush
-+ * the disk cache when the I/O is complete.
-+ */
-+STATIC bool
-+xfs_ioend_needs_cache_flush(
-+	struct xfs_ioend	*ioend)
-+{
-+	if (!ioend->io_isasync)
-+		return false;
+ struct ext4_io_page {
+ 	struct page	*p_page;
+@@ -1247,6 +1248,9 @@ struct ext4_sb_info {
+ 	/* workqueue for dio unwritten */
+ 	struct workqueue_struct *dio_unwritten_wq;
+ 
++	/* workqueue for aio+dio+o_sync disk cache flushing */
++	struct workqueue_struct *aio_dio_flush_wq;
 +
-+	return (IS_SYNC(ioend->io_inode) ||
-+		(ioend->io_iocb->ki_filp->f_flags & O_DSYNC));
-+}
+ 	/* timer for periodic error stats printing */
+ 	struct timer_list s_err_report;
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f6dc02b..13cdb4c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2769,8 +2769,12 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 
+ 	iocb->private = NULL;
+ 
++	/* AIO+DIO+O_SYNC I/Os need a cache flush after completion */
++	if (is_async && (IS_SYNC(inode) || (iocb->ki_filp->f_flags & O_DSYNC)))
++		io_end->flag |= EXT4_IO_END_NEEDS_SYNC;
 +
-+STATIC void
-+xfs_end_io_flush(
-+	struct bio	*bio,
-+	int		error)
-+{
-+	struct xfs_ioend *ioend = bio->bi_private;
-+
-+	if (error && ioend->io_result > 0)
-+		ioend->io_result = error;
-+
-+	xfs_destroy_ioend(ioend);
-+	bio_put(bio);
-+}
-+
-+STATIC void
-+xfs_ioend_flush_cache(
-+	struct xfs_ioend	*ioend)
-+{
-+	struct bio *bio;
-+
-+	bio = bio_alloc(GFP_KERNEL, 0);
-+	bio->bi_end_io = xfs_end_io_flush;
-+	bio->bi_bdev = xfs_find_bdev_for_inode(ioend->io_inode);
-+	bio->bi_private = ioend;
-+	submit_bio(WRITE_FLUSH, bio);
-+}
-+
-+/*
-  * Schedule IO completion handling on the final put of an ioend.
-  *
-  * If there is no work to do we might as well call it a day and free the
-@@ -172,6 +214,8 @@ xfs_finish_ioend(
- 			queue_work(xfsconvertd_workqueue, &ioend->io_work);
- 		else if (xfs_ioend_is_append(ioend))
- 			queue_work(xfsdatad_workqueue, &ioend->io_work);
-+		else if (xfs_ioend_needs_cache_flush(ioend))
-+			queue_work(xfsflushd_workqueue, &ioend->io_work);
- 		else
- 			xfs_destroy_ioend(ioend);
+ 	/* if not aio dio with unwritten extents, just free io and return */
+-	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
++	if (!(io_end->flag & (EXT4_IO_END_UNWRITTEN|EXT4_IO_END_NEEDS_SYNC))) {
+ 		ext4_free_io_end(io_end);
+ out:
+ 		if (is_async)
+@@ -2785,7 +2789,10 @@ out:
+ 		io_end->iocb = iocb;
+ 		io_end->result = ret;
  	}
-@@ -226,9 +270,30 @@ done:
- 		xfs_finish_ioend(ioend);
- 		/* ensure we don't spin on blocked ioends */
- 		delay(1);
--	} else {
-+	} else if (xfs_ioend_needs_cache_flush(ioend)) {
-+		struct xfs_inode *ip = XFS_I(ioend->io_inode);
-+		struct xfs_mount *mp = ip->i_mount;
-+		int	err;
-+		int	log_flushed = 0;
+-	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
++	if (io_end->flag & EXT4_IO_END_UNWRITTEN)
++		wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
++	else
++		wq = EXT4_SB(io_end->inode->i_sb)->aio_dio_flush_wq;
+ 
+ 	/* Add the io_end to per-inode completed aio dio list*/
+ 	ei = EXT4_I(io_end->inode);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 9e1b8eb..d07cd40 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -98,15 +98,40 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+ 		   "list->prev 0x%p\n",
+ 		   io, inode->i_ino, io->list.next, io->list.prev);
+ 
+-	ret = ext4_convert_unwritten_extents(inode, offset, size);
+-	if (ret < 0) {
+-		ext4_msg(inode->i_sb, KERN_EMERG,
+-			 "failed to convert unwritten extents to written "
+-			 "extents -- potential data loss!  "
+-			 "(inode %lu, offset %llu, size %zd, error %d)",
+-			 inode->i_ino, offset, size, ret);
++	if (io->flag & EXT4_IO_END_UNWRITTEN) {
 +
-+		/*
-+		 * Check to see if we only need to sync data.  If so,
-+		 * we can skip the log flush.
-+		 */
-+		if (IS_SYNC(ioend->io_inode) ||
-+		    (ioend->io_iocb->ki_filp->f_flags & __O_SYNC)) {
-+			err = _xfs_log_force(mp, XFS_LOG_SYNC, &log_flushed);
-+			if (err && ioend->io_result > 0)
-+				ioend->io_result = err;
-+			if (err || log_flushed) {
-+				xfs_destroy_ioend(ioend);
-+				return;
-+			}
++		ret = ext4_convert_unwritten_extents(inode, offset, size);
++		if (ret < 0) {
++			ext4_msg(inode->i_sb, KERN_EMERG,
++				 "failed to convert unwritten extents to "
++				 "written extents -- potential data loss!  "
++				 "(inode %lu, offset %llu, size %zd, error %d)",
++				 inode->i_ino, offset, size, ret);
++			goto endio;
 +		}
-+		/* log not flushed or data sync only, flush the disk cache */
-+		xfs_ioend_flush_cache(ioend);
-+	} else
- 		xfs_destroy_ioend(ioend);
--	}
- }
- 
- /*
-diff --git a/fs/xfs/xfs_aops.h b/fs/xfs/xfs_aops.h
-index 116dd5c..3f4a1c4 100644
---- a/fs/xfs/xfs_aops.h
-+++ b/fs/xfs/xfs_aops.h
-@@ -20,6 +20,7 @@
- 
- extern struct workqueue_struct *xfsdatad_workqueue;
- extern struct workqueue_struct *xfsconvertd_workqueue;
-+extern struct workqueue_struct *xfsflushd_workqueue;
- extern mempool_t *xfs_ioend_pool;
- 
- /*
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 4dff85c..39980a8 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -47,6 +47,7 @@ STATIC int xfsbufd(void *);
- static struct workqueue_struct *xfslogd_workqueue;
- struct workqueue_struct *xfsdatad_workqueue;
- struct workqueue_struct *xfsconvertd_workqueue;
-+struct workqueue_struct *xfsflushd_workqueue;
- 
- #ifdef XFS_BUF_LOCK_TRACKING
- # define XB_SET_OWNER(bp)	((bp)->b_last_holder = current->pid)
-@@ -1802,8 +1803,15 @@ xfs_buf_init(void)
- 	if (!xfsconvertd_workqueue)
- 		goto out_destroy_xfsdatad_workqueue;
- 
-+	xfsflushd_workqueue = alloc_workqueue("xfsflushd",
-+					      WQ_MEM_RECLAIM, 1);
-+	if (!xfsflushd_workqueue)
-+		goto out_destroy_xfsconvertd_workqueue;
++	}
 +
- 	return 0;
++	/*
++	 * This function has two callers.  The first is the end_io_work
++	 * routine just below.  This is an asynchronous completion context.
++	 * The second is in the fsync path.  For the latter path, we can't
++	 * return from here until the job is done.  Hence, we issue a
++	 * blocking blkdev_issue_flush call.
++	 */
++	if (io->flag & EXT4_IO_END_NEEDS_SYNC) {
++		/*
++		 * Ideally, we'd like to know if the force_commit routine
++		 * actually did send something to disk.  If it didn't,
++		 * then we need to issue the cache flush by hand.  For now,
++		 * play it safe and do both.
++		 */
++		ret = ext4_force_commit(inode->i_sb);
++		if (ret)
++			goto endio;
++		ret = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+ 	}
  
-+ out_destroy_xfsconvertd_workqueue:
-+	destroy_workqueue(xfsconvertd_workqueue);
-  out_destroy_xfsdatad_workqueue:
- 	destroy_workqueue(xfsdatad_workqueue);
-  out_destroy_xfslogd_workqueue:
-@@ -1817,6 +1825,7 @@ xfs_buf_init(void)
- void
- xfs_buf_terminate(void)
- {
-+	destroy_workqueue(xfsflushd_workqueue);
- 	destroy_workqueue(xfsconvertd_workqueue);
- 	destroy_workqueue(xfsdatad_workqueue);
- 	destroy_workqueue(xfslogd_workqueue);
++endio:
+ 	if (io->iocb)
+ 		aio_complete(io->iocb, io->result, 0);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..a24938e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -805,6 +805,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+ 
+ 	flush_workqueue(sbi->dio_unwritten_wq);
++	destroy_workqueue(sbi->aio_dio_flush_wq);
+ 	destroy_workqueue(sbi->dio_unwritten_wq);
+ 
+ 	lock_super(sb);
+@@ -3718,6 +3719,13 @@ no_journal:
+ 		goto failed_mount_wq;
+ 	}
+ 
++	EXT4_SB(sb)->aio_dio_flush_wq =
++		alloc_workqueue("ext4-aio-dio-flush", WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
++	if (!EXT4_SB(sb)->aio_dio_flush_wq) {
++		printk(KERN_ERR "EXT4-fs: failed to create flush workqueue\n");
++		goto failed_flush_wq;
++	}
++
+ 	/*
+ 	 * The jbd2_journal_load will have done any necessary log recovery,
+ 	 * so we can safely mount the rest of the filesystem now.
+@@ -3840,6 +3848,8 @@ failed_mount4a:
+ 	sb->s_root = NULL;
+ failed_mount4:
+ 	ext4_msg(sb, KERN_ERR, "mount failed");
++	destroy_workqueue(EXT4_SB(sb)->aio_dio_flush_wq);
++failed_flush_wq:
+ 	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
+ failed_mount_wq:
+ 	if (sbi->s_journal) {
+@@ -4303,6 +4313,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 
+ 	trace_ext4_sync_fs(sb, wait);
+ 	flush_workqueue(sbi->dio_unwritten_wq);
++	flush_workqueue(sbi->aio_dio_flush_wq);
+ 	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+ 		if (wait)
+ 			jbd2_log_wait_commit(sbi->s_journal, target);
 -- 
 1.7.1
 
