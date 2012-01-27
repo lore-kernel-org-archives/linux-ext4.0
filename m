@@ -1,33 +1,35 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH V2] xfstests: mount other filesystems with selinux
- context as well
-Date: Fri, 27 Jan 2012 06:00:27 -0500
-Message-ID: <20120127110027.GD23335@infradead.org>
-References: <4ECD3262.105@redhat.com>
- <20111128110228.GC13766@infradead.org>
- <4F1862FC.1050401@sandeen.net>
- <20120124174500.GB9853@infradead.org>
- <4F20700B.8060307@sandeen.net>
- <20120125211438.GA11821@infradead.org>
- <4F2073EC.80208@sandeen.net>
+From: <muellejo@aschendorff.de>
+Subject: Re: ext4 crashes on nfs server
+Date: Fri, 27 Jan 2012 13:27:35 +0100
+Message-ID: <OFCCAF165E.53B68550-ONC1257992.00447220@aschendorff.de>
+References: <OF2380C53F.32FE8350-ONC125798A.00494E7A@aschendorff.de>
+	<4F1835F3.9060604@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@sandeen.net>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:34598
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754239Ab2A0LA2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jan 2012 06:00:28 -0500
-Content-Disposition: inline
-In-Reply-To: <4F2073EC.80208@sandeen.net>
+Received: from isolde.aschendorff.de ([195.66.76.23]:49865 "EHLO
+	vam-dom2.aschendorff.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751747Ab2A0M1k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jan 2012 07:27:40 -0500
+In-Reply-To: <4F1835F3.9060604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In that case the update patch is fine with me,
+Hi,
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+It happened again several times, this is the first message that appears in syslog related to ext4:
+
+	EXT4-fs (dm-2): Inode 10910806 (ffff88006e445ae8): orphan list check failed!
+
+Here is the complete logfile http://preflight.aschendorff.de/tmp/syslog.1.gz
+
+How can we debug this further ?
+
+Should we kdump the kernel once this happens ?
+
+Thanks
+Jo
+
