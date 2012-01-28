@@ -1,18 +1,19 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/3] xfs: honor the O_SYNC flag for aysnchronous direct
-	I/O requests
-Date: Sat, 28 Jan 2012 09:59:33 -0500
-Message-ID: <20120128145933.GA10931@infradead.org>
+From: Martin Steigerwald <Martin@lichtvoll.de>
+Subject: Re: [PATCH 3/3] filemap: don't call generic_write_sync for
+	-EIOCBQUEUED
+Date: Sat, 28 Jan 2012 16:08:06 +0100
+Message-ID: <201201281608.07348.Martin@lichtvoll.de>
 References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
-	<1327698949-12616-2-git-send-email-jmoyer@redhat.com>
+	<1327698949-12616-4-git-send-email-jmoyer@redhat.com>
+	(sfid-20120127_225408_201177_50791DCC)
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Jeff Moyer <jmoyer@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+To: xfs@oss.sgi.com
 Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <1327698949-12616-2-git-send-email-jmoyer@redhat.com>
+In-Reply-To: <1327698949-12616-4-git-send-email-jmoyer@redhat.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -24,68 +25,51 @@ Sender: xfs-bounces@oss.sgi.com
 Errors-To: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-This looks pretty good.  Did this past xfstests?  I'd also like to add
-tests actually executing this code path just, to be sure.  E.g. variants
-of aio-stress actually using O_SYNC.  We can't easily test data really
-made it to disk that way, although at least we make sure the code
-doesn't break.
+Adding linux-btrfs to Cc.
 
-On Fri, Jan 27, 2012 at 04:15:47PM -0500, Jeff Moyer wrote:
+Am Freitag, 27. Januar 2012 schrieb Jeff Moyer:
 > Hi,
+
+Hi,
+ 
+> As it stands, generic_file_aio_write will call into generic_write_sync
+> when -EIOCBQUEUED is returned from __generic_file_aio_write. 
+> EIOCBQUEUED indicates that an I/O was submitted but NOT completed. 
+> Thus, we will flush the disk cache, potentially before the write(s)
+> even make it to the disk!  Up until now, this has been the best we
+> could do, as file systems didn't bother to flush the disk cache after
+> an O_SYNC AIO+DIO write.  After applying the prior two patches to xfs
+> and ext4, at least the major two file systems do the right thing.  So,
+> let's go ahead and fix this backwards logic.
+
+Would this need an adaption to BTRFS as well?
+
+Thanks,
+Martin
+
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> ---
+>  mm/filemap.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
-> flushed after the write completion.  Instead, it's flushed *before* the
-> I/O is sent to the disk (in __generic_file_aio_write).
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index c4ee2e9..004442f 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -2634,7 +2634,7 @@ ssize_t generic_file_aio_write(struct kiocb
+> *iocb, const struct iovec *iov, ret = __generic_file_aio_write(iocb,
+> iov, nr_segs, &iocb->ki_pos); mutex_unlock(&inode->i_mutex);
+> 
+> -	if (ret > 0 || ret == -EIOCBQUEUED) {
+> +	if (ret > 0) {
+>  		ssize_t err;
+> 
+>  		err = generic_write_sync(file, pos, ret);
 
-XFS doesn't actually use __generic_file_aio_write, so this sentence
-isn't correct for XFS.
 
-> +	} else if (xfs_ioend_needs_cache_flush(ioend)) {
-> +		struct xfs_inode *ip = XFS_I(ioend->io_inode);
-> +		struct xfs_mount *mp = ip->i_mount;
-> +		int	err;
-> +		int	log_flushed = 0;
-> +
-> +		/*
-> +		 * Check to see if we only need to sync data.  If so,
-> +		 * we can skip the log flush.
-> +		 */
-> +		if (IS_SYNC(ioend->io_inode) ||
-> +		    (ioend->io_iocb->ki_filp->f_flags & __O_SYNC)) {
-
-> +			err = _xfs_log_force(mp, XFS_LOG_SYNC, &log_flushed);
-
-Can you add a TODO comment that this actually is synchronous and thus
-will block the I/O completion work queue?
-
-Also you can use _xfs_log_force_lsn here as don't need to flush the
-whole log, just up to the last lsn that touched the inode.  Copy, or
-better factor the code from xfs_dir_fsync for that.
-
-Last but not least this won't catch timestamp updates.  Given that I'm
-about to send a series making timestamp updates transaction I would not
-recommend you to bother with that, but if you want to take a look
-at how xfs_file_fsync deals with them.  Given that this series touches
-the same area I'd also like to take your xfs patch in through the xfs tree
-to avoid conflicts.
-
-> @@ -47,6 +47,7 @@ STATIC int xfsbufd(void *);
->  static struct workqueue_struct *xfslogd_workqueue;
->  struct workqueue_struct *xfsdatad_workqueue;
->  struct workqueue_struct *xfsconvertd_workqueue;
-> +struct workqueue_struct *xfsflushd_workqueue;
->  
->  #ifdef XFS_BUF_LOCK_TRACKING
->  # define XB_SET_OWNER(bp)	((bp)->b_last_holder = current->pid)
-> @@ -1802,8 +1803,15 @@ xfs_buf_init(void)
->  	if (!xfsconvertd_workqueue)
->  		goto out_destroy_xfsdatad_workqueue;
->  
-> +	xfsflushd_workqueue = alloc_workqueue("xfsflushd",
-> +					      WQ_MEM_RECLAIM, 1);
-
-This should allow a higher concurrently level, it's probably a good
-idea to pass 0 and use the default.
+-- 
+Martin 'Helios' Steigerwald - http://www.Lichtvoll.de
+GPG: 03B0 0D6C 0040 0710 4AFA  B82F 991B EAAC A599 84C7
 
 _______________________________________________
 xfs mailing list
