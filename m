@@ -1,48 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: New warning: Unable to get device geometry for [filename]
-Date: Fri, 27 Jan 2012 21:57:27 -0600
-Message-ID: <4F237227.2000208@redhat.com>
-References: <20120127225346.GA7449@amd.home.annexia.org>
+From: WIMPy <WIMPy@yeti.dk>
+Subject: Re: [dm-devel] can't recover ext4 on lvm from =?utf-8?b?ZXh0NF9tYl9nZW5lcmF0ZV9idWRkeTo3Mzk6?= group 1687, 32254 clusters in bitmap, 32258 in gd
+Date: Sat, 28 Jan 2012 04:53:26 +0000 (UTC)
+Message-ID: <loom.20120128T050950-718@post.gmane.org>
+References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu> <4910694144.20120105171428@eikelenboom.it> <20120105181535.GB26382@thunk.org> <Pine.LNX.4.64.1201061133140.6954@hs20-bc2-1.build.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Richard W.M. Jones" <rjones@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21376 "EHLO mx1.redhat.com"
+Received: from lo.gmane.org ([80.91.229.12]:51962 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751666Ab2A1D52 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jan 2012 22:57:28 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0S3vSu5026586
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jan 2012 22:57:28 -0500
-In-Reply-To: <20120127225346.GA7449@amd.home.annexia.org>
+	id S1751447Ab2A1GKJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Jan 2012 01:10:09 -0500
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1Rr1UG-0003UL-H3
+	for linux-ext4@vger.kernel.org; Sat, 28 Jan 2012 07:10:08 +0100
+Received: from e183095026.adsl.alicedsl.de ([85.183.95.26])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2012 07:10:08 +0100
+Received: from WIMPy by e183095026.adsl.alicedsl.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2012 07:10:08 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/27/12 4:53 PM, Richard W.M. Jones wrote:
-> 
-> I've just noticed that with the latest e2fsprogs, kernel 3.3.0 and
-> blkid (util-linux 2.20.1), I see this spurious warning when using
-> mke2fs on a file:
-> 
->   $ truncate -s 4G test1.img
->   $ mke2fs -t ext2 -q -F test1.img 
->   warning: Unable to get device geometry for test1.img
-> 
-> Oddly this *doesn't* happen except on the very bleeding edge latest
-> versions of everything.  I've not (yet) worked out exactly what
-> component has to be upgraded to see it ...
+Mikulas Patocka <mpatocka <at> redhat.com> writes:
 
-Taking a quick look, I don't _think_ anything above blkid changed
-in e2fsprogs lately, but keep us posted.
+> The existence of a snapshot changes I/O completion times significantly, so 
+> it may be a race condition in ext4 that gets triggered which changed 
+> timings.
 
-Does mkfs.xfs do any differently?
+The idea that timing might cause issues on a FS is disturbing.
 
-thanks,
--Eric
- 
-> Rich.
-> 
+> > this is a problem which apparently occurred when the user went from
+> > v3.1.5 to v3.2, so this looks likes 3.2 regression.)
+
+I am on 3.2.0 as well.
+
+It happened for me on a freshly created FS.
+"mke2fs -j -O sparse_super -O dir_index -O extents -O filetype -O uninit_bg"
+mounted with no additional options for the first time I got an
+"EXT4-fs error (device md127): ext4_mb_generate_buddy:739: group 28671, 32765 
+clusters in bitmap, 32766 in gd"
+after writing about 3TB of data.
+I do not have RO snapshots as the OP, but my md sits on to of luks containers. 
+So we do have the device mapper in common.
+
+Just for the records: Unlike the contents, the hardware is not new and did not 
+have any known issues.
+
+  Greetings,
+    WIMPy
 
