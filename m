@@ -1,81 +1,93 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [dm-devel] can't recover ext4 on lvm from ext4_mb_generate_buddy:739: group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Sat, 28 Jan 2012 01:34:28 -0700
-Message-ID: <EBC820CD-E86F-48BB-ADA3-38B5C8A75187@dilger.ca>
-References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu> <4910694144.20120105171428@eikelenboom.it> <20120105181535.GB26382@thunk.org> <Pine.LNX.4.64.1201061133140.6954@hs20-bc2-1.build.redhat.com> <loom.20120128T050950-718@post.gmane.org> <loom.20120128T090712-530@post.gmane.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: WIMPy <WIMPy@yeti.dk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from shawmail.shawcable.com ([64.59.128.220]:39718 "EHLO
-	mail.shawcable.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751530Ab2A1IeJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jan 2012 03:34:09 -0500
-In-Reply-To: <loom.20120128T090712-530@post.gmane.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/3] xfs: honor the O_SYNC flag for aysnchronous direct
+	I/O requests
+Date: Sat, 28 Jan 2012 09:59:33 -0500
+Message-ID: <20120128145933.GA10931@infradead.org>
+References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
+	<1327698949-12616-2-git-send-email-jmoyer@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1327698949-12616-2-git-send-email-jmoyer@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Could you please try to bisect the problem, if it is reproducible?
+This looks pretty good.  Did this past xfstests?  I'd also like to add
+tests actually executing this code path just, to be sure.  E.g. variants
+of aio-stress actually using O_SYNC.  We can't easily test data really
+made it to disk that way, although at least we make sure the code
+doesn't break.
 
-I was looking for a change which I thought might be responsible (removal of block bitmap initialization when inodes are first allocated from an uninitialized inode table) but I couldn't see it in the git log, so maybe that change has not landed yet.
+On Fri, Jan 27, 2012 at 04:15:47PM -0500, Jeff Moyer wrote:
+> Hi,
+> 
+> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
+> flushed after the write completion.  Instead, it's flushed *before* the
+> I/O is sent to the disk (in __generic_file_aio_write).
 
-I don't have any other ideas of which recent patches might be responsible at this point. 
+XFS doesn't actually use __generic_file_aio_write, so this sentence
+isn't correct for XFS.
 
-Cheers, Andreas
+> +	} else if (xfs_ioend_needs_cache_flush(ioend)) {
+> +		struct xfs_inode *ip = XFS_I(ioend->io_inode);
+> +		struct xfs_mount *mp = ip->i_mount;
+> +		int	err;
+> +		int	log_flushed = 0;
+> +
+> +		/*
+> +		 * Check to see if we only need to sync data.  If so,
+> +		 * we can skip the log flush.
+> +		 */
+> +		if (IS_SYNC(ioend->io_inode) ||
+> +		    (ioend->io_iocb->ki_filp->f_flags & __O_SYNC)) {
 
-On 2012-01-28, at 1:14, WIMPy <WIMPy@yeti.dk> wrote:
+> +			err = _xfs_log_force(mp, XFS_LOG_SYNC, &log_flushed);
 
-> Update:
-> 
->>>>> this is a problem which apparently occurred when the user went from
->>>> v3.1.5 to v3.2, so this looks likes 3.2 regression.)
->> 
->> I am on 3.2.0 as well.
-> 
-> I didn't spot anything obvious in the logs.
-> 
->> It happened for me on a freshly created FS.
->> "mke2fs -j -O sparse_super -O dir_index -O extents -O filetype -O uninit_bg"
->> mounted with no additional options for the first time I got an
->> "EXT4-fs error (device md127): ext4_mb_generate_buddy:739: group 28671, 32765 
->> clusters in bitmap, 32766 in gd"
->> after writing about 3TB of data.
->> I do not have RO snapshots as the OP, but my md sits on to of luks 
-> containers. 
->> So we do have the device mapper in common.
-> 
-> After I did an fsck and tried to continue, I didn't get that far.
-> After another 200GB or so it happened again.
-> And now it's reproducible:
-> I can run fsck and then try to continue (using rsync). But as soon as writing 
-> starts, the process hangs for a long time. At least one minute, probably longer.
-> Then the ext4_mb_generate_buddy comes again.
-> 
-> I upgraded e2fstools from 1.41.14 to 1.42 and the kernel to 3.2.2.
-> No difference.
-> That FS is unusable.
-> 
->> Just for the records: Unlike the contents, the hardware is not new and did 
-> not 
->> have any known issues.
->> 
->>  Greetings,
->>    WIMPy
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo <at> vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Can you add a TODO comment that this actually is synchronous and thus
+will block the I/O completion work queue?
+
+Also you can use _xfs_log_force_lsn here as don't need to flush the
+whole log, just up to the last lsn that touched the inode.  Copy, or
+better factor the code from xfs_dir_fsync for that.
+
+Last but not least this won't catch timestamp updates.  Given that I'm
+about to send a series making timestamp updates transaction I would not
+recommend you to bother with that, but if you want to take a look
+at how xfs_file_fsync deals with them.  Given that this series touches
+the same area I'd also like to take your xfs patch in through the xfs tree
+to avoid conflicts.
+
+> @@ -47,6 +47,7 @@ STATIC int xfsbufd(void *);
+>  static struct workqueue_struct *xfslogd_workqueue;
+>  struct workqueue_struct *xfsdatad_workqueue;
+>  struct workqueue_struct *xfsconvertd_workqueue;
+> +struct workqueue_struct *xfsflushd_workqueue;
+>  
+>  #ifdef XFS_BUF_LOCK_TRACKING
+>  # define XB_SET_OWNER(bp)	((bp)->b_last_holder = current->pid)
+> @@ -1802,8 +1803,15 @@ xfs_buf_init(void)
+>  	if (!xfsconvertd_workqueue)
+>  		goto out_destroy_xfsdatad_workqueue;
+>  
+> +	xfsflushd_workqueue = alloc_workqueue("xfsflushd",
+> +					      WQ_MEM_RECLAIM, 1);
+
+This should allow a higher concurrently level, it's probably a good
+idea to pass 0 and use the default.
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
