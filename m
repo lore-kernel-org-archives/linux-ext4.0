@@ -1,54 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42694] New: lvcreate: lock held when returning to user space
-Date: Mon, 30 Jan 2012 14:07:42 GMT
-Message-ID: <bug-42694-13602@https.bugzilla.kernel.org/>
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: New warning: Unable to get device geometry for [filename]
+Date: Mon, 30 Jan 2012 14:34:33 +0000
+Message-ID: <20120130143433.GW27709@amd.home.annexia.org>
+References: <20120127225346.GA7449@amd.home.annexia.org>
+ <4F237227.2000208@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:51957 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752541Ab2A3OHm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2012 09:07:42 -0500
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q0UE7g5c008073
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2012 14:07:42 GMT
+Received: from mx1.redhat.com ([209.132.183.28]:9220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752495Ab2A3Oeg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jan 2012 09:34:36 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0UEYaCi027460
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2012 09:34:36 -0500
+Content-Disposition: inline
+In-Reply-To: <4F237227.2000208@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42694
+On Fri, Jan 27, 2012 at 09:57:27PM -0600, Eric Sandeen wrote:
+> On 1/27/12 4:53 PM, Richard W.M. Jones wrote:
+> > 
+> > I've just noticed that with the latest e2fsprogs, kernel 3.3.0 and
+> > blkid (util-linux 2.20.1), I see this spurious warning when using
+> > mke2fs on a file:
+> > 
+> >   $ truncate -s 4G test1.img
+> >   $ mke2fs -t ext2 -q -F test1.img 
+> >   warning: Unable to get device geometry for test1.img
+> > 
+> > Oddly this *doesn't* happen except on the very bleeding edge latest
+> > versions of everything.  I've not (yet) worked out exactly what
+> > component has to be upgraded to see it ...
+> 
+> Taking a quick look, I don't _think_ anything above blkid changed
+> in e2fsprogs lately, but keep us posted.
 
-           Summary: lvcreate: lock held when returning to user space
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.2.2
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-        AssignedTo: fs_ext3@kernel-bugs.osdl.org
-        ReportedBy: ryan@tau.solarneutrino.net
-        Regression: No
+Some more observations:
 
+- The warning is 32 bit *only*.  Sorry I didn't notice this rather
+  obvious point before.  I have two identically configured Rawhide
+  guests, except that one is i686 and the other is x86-64, and only
+  the i686 guest gives this warning.
 
-I got this with 3.2.2, creating a snapshot of an ext3 filesystem on lvm.
+- If the disk is 1G, no warning.  After some binary searching I found
+  the threshold for the warning is 'truncate -s 2048M' (greater than
+  or equal gives the warning; smaller, no warning).
 
-Let me know if you need more information.
+> Does mkfs.xfs do any differently?
 
-lvcreate: sending ioctl 1261 to a partition!
+No warning, at least, not with the default settings and a 4G disk on
+32 bit.
 
-================================================
-[ BUG: lock held when returning to user space! ]
-------------------------------------------------
-lvcreate/23845 is leaving the kernel with locks still held!
-1 lock held by lvcreate/23845:
- #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff8110a60a>]
-journal_lock_updates+0xdc/0xeb
+Rich.
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+libguestfs lets you edit virtual machines.  Supports shell scripting,
+bindings from many languages.  http://libguestfs.org
