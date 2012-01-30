@@ -1,48 +1,67 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Ext4 Kernel Crash
-Date: Mon, 30 Jan 2012 12:26:59 -0500
-Message-ID: <20120130172659.GA7681@thunk.org>
-References: <20120129175057.GA4699@dinofilaria.home>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext3: Don't update ctime in ext3_splice_branch()
+Date: Mon, 30 Jan 2012 18:52:17 +0100
+Message-ID: <20120130175217.GA7827@quack.suse.cz>
+References: <4F2657BD.8030208@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Nanakos Chrysostomos <nanakos@wired-net.gr>
+Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58173 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752408Ab2A3R1G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jan 2012 12:27:06 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:44878 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752028Ab2A3RwT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jan 2012 12:52:19 -0500
 Content-Disposition: inline
-In-Reply-To: <20120129175057.GA4699@dinofilaria.home>
+In-Reply-To: <4F2657BD.8030208@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 29, 2012 at 07:50:57PM +0200, Nanakos Chrysostomos wrote:
-> Dear Linux Kernel Developers,
-> I am writing to report a kernel or ext4 bug.
+On Mon 30-01-12 17:41:33, Kazuya Mio wrote:
+> VFS handles updating ctime, so we don't need to update i_ctime
+> in ext3_splace_branch().
+  Thanks for the patches.  This is true for ordinary writes but not true
+when you write via mmap. We call file_update_time() during page fault so
+ctime won't be completely wrong but still we should update it after block
+is allocated during writeback to reflect that new block is allocated to
+the inode.
 
-Hi Nanakos,
+								Honza
 
-My apologies for not responding to the message that you sent to me
-personally three days ago, but I was on vacation in Hawaii; the best
-place to send queries about ext4 file systems is to use the
-linux-ext4@vger.kernel.org mailing list.
-
-One thing that I would immediately suggest is to see whether you can
-reproduce this bug using a modern kernel.  You are currently using a
-RHEL6-derived kernel (2.6.32-220.4.1.el6.x86_64).  The ext4 file
-system in such a kernel is quite different from what is in upstream,
-and there were a large number of bugs that have been fixed in ext4
-since 2.6.32.  Many of these fixes were backported into the RHEL6
-kernel, but I'm not an expert on which fixes have been backported into
-RHEL6 and which haven't.  (Especially since Red Hat doesn't release
-broken-out patches for their RHEL kernels....)
-
-My understanding is that Gluster doesn't require any kernel-side
-patches, so it should be OK to run Gluster on a v3.2 kernel.
-Alternatively, if you are a paid customer of RHEL6, I'd suggest
-sending a support request to Red Hat.
-
-Best regards,
-
-					- Ted
+> I backport the following patch for ext3:
+> http://marc.info/?l=linux-ext4&m=124505184027078&w=4
+> 
+> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+> ---
+>  fs/ext3/inode.c |    6 +-----
+>  1 file changed, 1 insertion(+), 5 deletions(-)
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 2d0afec..95cb0d1 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -795,10 +795,6 @@ static int ext3_splice_branch(handle_t *handle, struct inode *inode,
+>  	}
+>  
+>  	/* We are done with atomic stuff, now do the rest of housekeeping */
+> -
+> -	inode->i_ctime = CURRENT_TIME_SEC;
+> -	ext3_mark_inode_dirty(handle, inode);
+> -	/* ext3_mark_inode_dirty already updated i_sync_tid */
+>  	atomic_set(&ei->i_datasync_tid, handle->h_transaction->t_tid);
+>  
+>  	/* had we spliced it onto indirect block? */
+> @@ -819,9 +815,9 @@ static int ext3_splice_branch(handle_t *handle, struct inode *inode,
+>  	} else {
+>  		/*
+>  		 * OK, we spliced it into the inode itself on a direct block.
+> -		 * Inode was dirtied above.
+>  		 */
+>  		jbd_debug(5, "splicing direct\n");
+> +		ext3_mark_inode_dirty(handle, inode);
+>  	}
+>  	return err;
+>  
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
