@@ -1,35 +1,54 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 2/2] ext3: Don't update ctime in ext3_splice_branch()
-Date: Mon, 30 Jan 2012 17:41:33 +0900
-Message-ID: <4F2657BD.8030208@sx.jp.nec.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42694] New: lvcreate: lock held when returning to user space
+Date: Mon, 30 Jan 2012 14:07:42 GMT
+Message-ID: <bug-42694-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41002 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753831Ab2A3IoU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2012 03:44:20 -0500
+Received: from bugzilla.kernel.org ([198.145.19.204]:51957 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752541Ab2A3OHm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2012 09:07:42 -0500
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q0UE7g5c008073
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2012 14:07:42 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-VFS handles updating ctime, so we don't need to update i_ctime
-in ext3_splace_branch().
+https://bugzilla.kernel.org/show_bug.cgi?id=42694
 
-I backport the following patch for ext3:
-http://marc.info/?l=linux-ext4&m=124505184027078&w=4
+           Summary: lvcreate: lock held when returning to user space
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.2.2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: ryan@tau.solarneutrino.net
+        Regression: No
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- fs/ext3/inode.c |    6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 2d0afec..95cb0d1 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -795,10 +795,6 @@ static int ext3_splice_branch(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/* We are done with atomic stuff, now do the rest of housekeeping */
+
+I got this with 3.2.2, creating a snapshot of an ext3 filesystem on lvm.
+
+Let me know if you need more information.
+
+lvcreate: sending ioctl 1261 to a partition!
+
+================================================
+[ BUG: lock held when returning to user space! ]
+------------------------------------------------
+lvcreate/23845 is leaving the kernel with locks still held!
+1 lock held by lvcreate/23845:
+ #0:  (&journal->j_barrier){+.+...}, at: [<ffffffff8110a60a>]
+journal_lock_updates+0xdc/0xeb
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
