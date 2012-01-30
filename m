@@ -1,72 +1,50 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC] Add new extent structure in ext4
-Date: Mon, 30 Jan 2012 14:41:53 -0600
-Message-ID: <4F270091.3050000@redhat.com>
-References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+Subject: Bigalloc ENOSPC woes
+Date: Mon, 30 Jan 2012 15:19:05 -0600
+Message-ID: <4F270949.30800@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Robin Dong <hao.bigrat@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3569 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63807 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752595Ab2A3Ul6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jan 2012 15:41:58 -0500
-In-Reply-To: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+	id S1751936Ab2A3VTG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jan 2012 16:19:06 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0ULJ6Dh018391
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2012 16:19:06 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q0ULJ5iK011715
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2012 16:19:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/23/12 6:51 AM, Robin Dong wrote:
-> Hi Ted, Andreas and the list,
-> 
-> After the bigalloc-feature is completed in ext4, we could have much more
-> big size of block-group (also bigger continuous space), but the extent
-> structure of files now limit the extent size below 128MB, which is not
-> optimal.
-> 
-> We could solve the problem by creating a new extent format to support
-> larger extent size, which looks like this:
-> 
-> struct ext4_extent2 {
-> 	__le64	ee_block;	/* first logical block extent covers */
-> 	__le64	ee_start;	        /* starting physical block */
-> 	__le32	ee_len;		/* number of blocks covered by extent */
-> 	__le32	ee_flags;	/* flags and future extension */
-> };
-> 
-> struct ext4_extent2_idx {
-> 	__le64	ei_block;	        /* index covers logical blocks from 'block' */
-> 	__le64	ei_leaf;	        /* pointer to the physical block of the next level */
-> 	__le32	ei_flags;	        /* flags and future extension */
-> 	__le32	ei_unused;	/* padding */
-> };
-> 
-> I think we could keep the structure of ext4_extent_header and add new
-> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
-> 
-> The new extent format could support 16TB continuous space and larger volumes.
+I got nervous when I tried this on an -O bigalloc -C 65536 fs:
 
-(larger volumes?)
+# echo foo > blah; du -hc blah; sync; du -hc blah
+4.0K blah
+4.0K total
+64K blah
+64K total
 
-> What's your opinion?
-> 
+Seems that du should never report less than the cluster size, should it?
 
-I think that mailing list drama aside ;) Dave has a decent point that we shouldn't
-allow structures to scale out further than the code *using* them can scale.
+And that made me wonder about ENOSPC handling - are we tracing delalloc allocations correctly?
 
-In other words, if we already have some trouble being efficient with 2^32 blocks
-in a file, it is risky and perhaps unwise to allow even larger files, until
-those problems are resolved.  At a minimum, I'd suggest that such a change
-should not go in until it is demonstrated that ext4 can, in general, handle such
-large file sizes efficiently.
+>From running xfstest 204 on a similarly-created fs, it really seems that we are not.
 
-It'd be nice to be able to self-host large sparse images for large fs testing,
-though.
+A manual test of creating 4-byte files until ENOSPC (which was really when I ran out of inodes) and then issuing a sync led to a storm of kernel messages about allocation failures:
 
-I suppose bigalloc solves that a little, though with some backing store space
-usage penalty.  I suppose if a bigalloc fs is hosted on a bigalloc fs, things
-should (?) line up and be reasonable.
+[  482.154538] EXT4-fs (sdb6): delayed block allocation failed for inode 1664 at logical offset 0 with max blocks 1 with error -28
+[  482.154540] EXT4-fs (sdb6): This should not happen!! Data will be lost
+
+<ad infinitum, or at least 600 or so in my case>
+
+and an end result of a bunch of 4 byte long files with no extents.  Almost like files full of NULLs.  Careful - that is hard to live down.  :)
+
+Ted, are you aware of those issues in bigalloc?
 
 -Eric
