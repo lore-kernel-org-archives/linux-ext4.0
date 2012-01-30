@@ -1,92 +1,72 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for speedup
-Date: Mon, 30 Jan 2012 13:36:14 -0700
-Message-ID: <97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>
-References: <4F2657AD.9060901@sx.jp.nec.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC] Add new extent structure in ext4
+Date: Mon, 30 Jan 2012 14:41:53 -0600
+Message-ID: <4F270091.3050000@redhat.com>
+References: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:61869 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753762Ab2A3UgP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2012 15:36:15 -0500
-In-Reply-To: <4F2657AD.9060901@sx.jp.nec.com>
+Received: from mx1.redhat.com ([209.132.183.28]:3569 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752595Ab2A3Ul6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jan 2012 15:41:58 -0500
+In-Reply-To: <CAFZ0FUXT-X146SEAHCcNh-bGARUTgLOSP1dCrqeOrT48REN+ow@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-01-30, at 1:41 AM, Kazuya Mio wrote:
-> ext3 has a performance problem that parallel write is too slow.
-> I looked into this and found out that ext3 calls ext3_mark_inode_dirty()
-> unnecessarily.
+On 1/23/12 6:51 AM, Robin Dong wrote:
+> Hi Ted, Andreas and the list,
 > 
-> The following result is the time of writing 16 files whose size are 3GB
-> by 16 threads. This measurement was performed in linux3.3-rc1 with
-> 4-way server, 512GB memory.
+> After the bigalloc-feature is completed in ext4, we could have much more
+> big size of block-group (also bigger continuous space), but the extent
+> structure of files now limit the extent size below 128MB, which is not
+> optimal.
 > 
->    filesystem        time(sec)  call ext3_mark_inode_dirty(times)
->    ---
->    ext3              220.5      50,338,104
->    ext3 (patched)    196.3      25,169,658
->    ext4 (*1)         190.3      28,465,799
+> We could solve the problem by creating a new extent format to support
+> larger extent size, which looks like this:
 > 
->    *1 disable ext4-specific option (delalloc, extent, and so on)
-
-Can you please run this same measurement on ext4 formatted and running
-with the default options?  I'd like to know if this is still a problem
-in ext4 or not.
-
-
-There is a better mechanism to handle the inode updates that could be
-implemented if there is still a real performance concern.  There are
-journal pre-commit callbacks on the buffer heads that could be run to
-copy the modified data from the VFS inodes to the buffer blocks.
-
-This would reduce the ext4_mark_inode_dirty() to setting a single dirty
-flag in the inode, and updating the VFS inode ctime.  Only once per
-journal commit would the VFS inode be copied into the buffer, greatly
-reducing the overhead of these operations.  This should also noticeably
-reduce the overhead from metadata checksums, since the checksum would
-only be computed once for each inode per journal commit.
-
-> ext3 in RHEL5.5 clearly shows the difference in performance.
-> Writing by the same method takes 533 seconds, though writing by one thread
-> takes 191 seconds.
+> struct ext4_extent2 {
+> 	__le64	ee_block;	/* first logical block extent covers */
+> 	__le64	ee_start;	        /* starting physical block */
+> 	__le32	ee_len;		/* number of blocks covered by extent */
+> 	__le32	ee_flags;	/* flags and future extension */
+> };
 > 
-> Every time we write one page, ext3 calls ext3_mark_inode_dirty() four times.
-> Two of these are unnecessary in many case, so I add the conditions to call
-> the function only when it is necessary.
+> struct ext4_extent2_idx {
+> 	__le64	ei_block;	        /* index covers logical blocks from 'block' */
+> 	__le64	ei_leaf;	        /* pointer to the physical block of the next level */
+> 	__le32	ei_flags;	        /* flags and future extension */
+> 	__le32	ei_unused;	/* padding */
+> };
 > 
->      sys_write
->        ...
->          __generic_file_aio_write
->            file_update_time
->              mark_inode_dirty_sync
->            generic_file_buffered_write
->              ...
->                ext3_get_blocks_handle
->                  ext3_write_begin
->                    ...
->                      ext3_new_blocks
->                        vfs_dq_alloc_block
->    1)                    mark_inode_dirty
->                        vfs_dq_free_block
->    2)                    mark_inode_dirty      <-- patch 1/2
->                    ext3_splice_branch
->    3)                ext3_mark_inode_dirty     <-- patch 2/2
->                  ext3_ordered_write_end
->                    update_file_sizes
->    4)                mark_inode_dirty
+> I think we could keep the structure of ext4_extent_header and add new
+> imcompat flag EXT4_FEATURE_INCOMPAT_EXTENTS2.
 > 
-> Regards,
-> Kazuya Mio
+> The new extent format could support 16TB continuous space and larger volumes.
 
+(larger volumes?)
 
-Cheers, Andreas
+> What's your opinion?
+> 
 
+I think that mailing list drama aside ;) Dave has a decent point that we shouldn't
+allow structures to scale out further than the code *using* them can scale.
 
+In other words, if we already have some trouble being efficient with 2^32 blocks
+in a file, it is risky and perhaps unwise to allow even larger files, until
+those problems are resolved.  At a minimum, I'd suggest that such a change
+should not go in until it is demonstrated that ext4 can, in general, handle such
+large file sizes efficiently.
 
+It'd be nice to be able to self-host large sparse images for large fs testing,
+though.
 
+I suppose bigalloc solves that a little, though with some backing store space
+usage penalty.  I suppose if a bigalloc fs is hosted on a bigalloc fs, things
+should (?) line up and be reasonable.
 
+-Eric
