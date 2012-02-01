@@ -1,41 +1,61 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 1/2] ext4: teach resize report old blocks count correctly
-Date: Wed,  1 Feb 2012 11:01:30 +0800
-Message-ID: <1328065291-13607-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org, dsd@laptop.org
+Subject: [PATCH] resize2fs: let online resizing report new blocks count right
+Date: Wed,  1 Feb 2012 11:04:08 +0800
+Message-ID: <1328065448-13693-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu, dsd@laptop.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:50373 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41304 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751212Ab2DAMBI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Apr 2012 08:01:08 -0400
-Received: by iagz16 with SMTP id z16so2911633iag.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Apr 2012 05:01:08 -0700 (PDT)
+	with ESMTP id S1751030Ab2DAMDk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Apr 2012 08:03:40 -0400
+Received: by iagz16 with SMTP id z16so2913062iag.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Apr 2012 05:03:40 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-o_blocks_count should not be changed, becasuse it is used later when
-reporting old blocks count in debug mode.
+After online resizing finishes, resize2fs loads the latest super block
+so that the new blocks count is reported correctly.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/resize.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ resize/online.c |   16 ++++++++++++++--
+ 1 files changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 59fa0be..601fea1 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1654,8 +1654,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	    es->s_log_groups_per_flex)
- 		flexbg_size = 1 << es->s_log_groups_per_flex;
+diff --git a/resize/online.c b/resize/online.c
+index 966ea1e..cb48556 100644
+--- a/resize/online.c
++++ b/resize/online.c
+@@ -97,8 +97,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
+ 			exit(1);
+ 		}
+ 	} else {
+-		close(fd);
+-		return 0;
++		goto succeeded;
+ 	}
  
--	o_blocks_count = ext4_blocks_count(es);
--	if (o_blocks_count == n_blocks_count)
-+	if (ext4_blocks_count(es) == n_blocks_count)
- 		goto out;
+ 	if ((ext2fs_blocks_count(sb) > MAX_32_NUM) ||
+@@ -220,6 +219,19 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
+ 	}
  
- 	flex_gd = alloc_flex_gd(flexbg_size);
+ 	ext2fs_free(new_fs);
++succeeded:
++	/*
++	 * load the lastest super block.
++ 	 */
++	io_channel_set_blksize(fs->io, SUPERBLOCK_OFFSET);
++	retval = io_channel_read_blk(fs->io, 1, -SUPERBLOCK_SIZE,
++			     fs->super);
++	if (retval == 0)
++		*new_size = ext2fs_blocks_count(fs->super);
++	else
++		printf(_("Resize succeeded, however an error happened "
++		       "when loading super block.\n\n"));
++
+ 	close(fd);
+ 
+ 	return 0;
 -- 
 1.7.5.1
 
