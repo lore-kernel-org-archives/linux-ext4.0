@@ -1,49 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext3: Don't update ctime in ext3_splice_branch()
-Date: Wed, 1 Feb 2012 11:46:33 +0100
-Message-ID: <20120201104633.GA16714@quack.suse.cz>
-References: <4F2657BD.8030208@sx.jp.nec.com>
- <20120130175217.GA7827@quack.suse.cz>
- <4F28F021.8030904@sx.jp.nec.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Delayed Extent Tree and Extent Lock Tree
+Date: Wed, 1 Feb 2012 10:47:37 -0700
+Message-ID: <F538A310-AA89-4D2E-A160-1B5385B0227F@dilger.ca>
+References: <4F286C35.8080402@linux.vnet.ibm.com> <4F28E936.20303@tao.ma>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Transfer-Encoding: 7bit
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55657 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753845Ab2BAKqg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Feb 2012 05:46:36 -0500
-Content-Disposition: inline
-In-Reply-To: <4F28F021.8030904@sx.jp.nec.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:62615 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756172Ab2BARri (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2012 12:47:38 -0500
+In-Reply-To: <4F28E936.20303@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 01-02-12 16:56:17, Kazuya Mio wrote:
-> 2012/01/31 2:52, Jan Kara wrote:
-> >  Thanks for the patches.  This is true for ordinary writes but not true
-> >when you write via mmap. We call file_update_time() during page fault so
-> >ctime won't be completely wrong but still we should update it after block
-> >is allocated during writeback to reflect that new block is allocated to
-> >the inode.
+On 2012-02-01, at 12:26 AM, Tao Ma wrote:
+> On 02/01/2012 06:33 AM, Allison Henderson wrote:
+>> Hi Yongqiang,
+>> 
+>> I've have been working on an extent lock implementation that uses an
+>> rbtree to keep track of locked extents, and I think I will probably end
+>> up with a something similar to the tree that you've already set up for
+>> delayed extents.  So I wanted to send a note out to see what folks would
+>> think about the idea of merging the two solutions.
+>> 
+>> If we did this, the tree would get a little more complex in that it
+>> would have to keep track of more than just delayed extents. It would
+>> have to keep track of all extents and the processes that are waiting on
+>> them.  So I guess it would kind of turn into an extent status tree.  I
+>> also realize that some folks wanted to see range locks go into /lib as
+>> general purpose code so that other filesystems or kernel code could use
+>> it too, but the advantage to this approach would be one less tree for
+>> ext4 to keep track of.  Any thoughts?
 > 
-> Should we update ctime whenever a block is allocated?
-  Since ctime should be updated whenever inode is changed, and allocating
-block updates i_blocks (via dquot_alloc_block()), we should update ctime.
+> We (Taobao) are very interested in this stuff and it should benefit
+> several of our workload(It is on our todo list for a long time). I guess
+> Yongqiang's solution is a little bit limited to the only delayed extent
+> case, and your new solution at least has 2 more benefits:
+> 1. improve the direct i/o read/write
+> 2. speed up the extent search since now we only cache one in
+> ei_cached_extent.
 
-> If so, ordinary write in ext4 with indirect block mapping has the same problem
-> due to the following patch, right?
-> http://marc.info/?l=linux-ext4&m=124505184027078&w=4
-  It's kind of the same problem. But things are more complicated by the
-fact that ext4 also does delayed allocation so, as changelog of the patch
-you reference says, it's kind of unexpected from users to see ctime
-suddently update when VM decides to do writeout triggering block
-allocation. I'd think updating ctime is a correct (although unexpected)
-thing to do but I can understand Ted's position as well and he's ext4
-maintainer :).
+Another related usage is to use a tree to track free extents in the
+block allocation bitmaps.  We already have a thread starting at mount
+time to do itable_init, and it would be possible to have that same
+thread read block bitmaps from disk and generate a free extents tree.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+That would allow much faster extent allocation without changing the
+on-disk format.
+
+Cheers, Andreas
+
+
+
+
+
