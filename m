@@ -1,41 +1,49 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for
- speedup
-Date: Wed, 01 Feb 2012 17:35:46 +0900
-Message-ID: <4F28F962.2040209@sx.jp.nec.com>
-References: <4F2657AD.9060901@sx.jp.nec.com> <97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext3: Don't update ctime in ext3_splice_branch()
+Date: Wed, 1 Feb 2012 11:46:33 +0100
+Message-ID: <20120201104633.GA16714@quack.suse.cz>
+References: <4F2657BD.8030208@sx.jp.nec.com>
+ <20120130175217.GA7827@quack.suse.cz>
+ <4F28F021.8030904@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:33603 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753157Ab2BAIjB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2012 03:39:01 -0500
-In-Reply-To: <97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>
+Received: from cantor2.suse.de ([195.135.220.15]:55657 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753845Ab2BAKqg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Feb 2012 05:46:36 -0500
+Content-Disposition: inline
+In-Reply-To: <4F28F021.8030904@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/01/31 5:36, Andreas Dilger wrote:
-> Can you please run this same measurement on ext4 formatted and running
-> with the default options?  I'd like to know if this is still a problem
-> in ext4 or not.
+On Wed 01-02-12 16:56:17, Kazuya Mio wrote:
+> 2012/01/31 2:52, Jan Kara wrote:
+> >  Thanks for the patches.  This is true for ordinary writes but not true
+> >when you write via mmap. We call file_update_time() during page fault so
+> >ctime won't be completely wrong but still we should update it after block
+> >is allocated during writeback to reflect that new block is allocated to
+> >the inode.
+> 
+> Should we update ctime whenever a block is allocated?
+  Since ctime should be updated whenever inode is changed, and allocating
+block updates i_blocks (via dquot_alloc_block()), we should update ctime.
 
-I performed the same measurement on ext4 with the default options.
-Here is its result:
+> If so, ordinary write in ext4 with indirect block mapping has the same problem
+> due to the following patch, right?
+> http://marc.info/?l=linux-ext4&m=124505184027078&w=4
+  It's kind of the same problem. But things are more complicated by the
+fact that ext4 also does delayed allocation so, as changelog of the patch
+you reference says, it's kind of unexpected from users to see ctime
+suddently update when VM decides to do writeout triggering block
+allocation. I'd think updating ctime is a correct (although unexpected)
+thing to do but I can understand Ted's position as well and he's ext4
+maintainer :).
 
-    filesystem        time(sec)  call extX_mark_inode_dirty(times)
-    ---
-    ext3              220.5      50,338,104
-    ext3 (patched)    196.3      25,169,658
-    ext4 (*1)         190.3      28,465,799
-    ext4 (*2)         201.5      27,963,473
-    ext4 (default)    223.3      14,026,118
-
-    *1 disable ext4-specific options (delalloc, extent, and so on)
-    *2 disable only delalloc option
-
-Regards,
-Kazuya Mio
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
