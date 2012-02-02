@@ -1,56 +1,24 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext3: Don't call dquot_free_block() if we don't
- update anything
-Date: Thu, 2 Feb 2012 17:01:18 +0100
-Message-ID: <20120202160118.GI31730@quack.suse.cz>
-References: <4F2657B5.9050100@sx.jp.nec.com>
+From: David Barker <dbarker44@att.net>
+Subject: Ref: Information about Your late Relation/Family member-Final Notice.
+Date: Thu, 2 Feb 2012 17:20:02 +0100
+Message-ID: <201202021620.q12GK2tg013009@houlin04.farm.elogic.it>
+Reply-To: consult4444@aol.co.uk
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56188 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756808Ab2BBQBV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Feb 2012 11:01:21 -0500
-Content-Disposition: inline
-In-Reply-To: <4F2657B5.9050100@sx.jp.nec.com>
+Received: from ip245.net-a.elogic.it ([213.92.102.245]:54446 "EHLO
+	houlin04.farm.elogic.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751858Ab2BBQUE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2012 11:20:04 -0500
+Received: from houlin04.farm.elogic.it (localhost [127.0.0.1])
+	by houlin04.farm.elogic.it (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id q12GK29E013010
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Feb 2012 17:20:02 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 30-01-12 17:41:25, Kazuya Mio wrote:
-> dquot_free_block() is called in the end of ext3_new_blocks() and updates
-> information of the inode structure. However, this update is not necessary
-> if the number of blocks we requested is equal to the number of
-> allocated blocks.
-  This is obviously correct thing to do so I've merged this patch into
-my tree. Thanks.
 
-								Honza
-> 
-> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-> ---
->  fs/ext3/balloc.c |    7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index a203892..954a7d3 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -1743,8 +1743,11 @@ allocated:
->  
->  	*errp = 0;
->  	brelse(bitmap_bh);
-> -	dquot_free_block(inode, *count-num);
-> -	*count = num;
-> +
-> +	if (num < *count) {
-> +		dquot_free_block(inode, *count-num);
-> +		*count = num;
-> +	}
->  
->  	trace_ext3_allocate_blocks(inode, goal, num,
->  				   (unsigned long long)ret_block);
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+
+
