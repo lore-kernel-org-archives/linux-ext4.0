@@ -1,92 +1,56 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: fix resize when resizing within single group
-Date: Thu,  2 Feb 2012 10:05:55 +0100
-Message-ID: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Milan Broz <mbroz@redhat.com>,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Ext4 developer's workshop website is now up
+Date: Thu, 2 Feb 2012 10:30:52 -0500
+Message-ID: <20120202153052.GA4308@thunk.org>
+References: <E1RsS5K-0002Cn-E0@tytso-glaptop.cam.corp.google.com>
+ <4F29A413.9090002@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21509 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752956Ab2BBJGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Feb 2012 04:06:15 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:34236 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932126Ab2BBPa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Feb 2012 10:30:59 -0500
+Content-Disposition: inline
+In-Reply-To: <4F29A413.9090002@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When resizing file system in the way that the new size of the file
-system is still in the same group (no new groups are added), then we can
-hit a BUG_ON in ext4_alloc_group_tables()
+On Wed, Feb 01, 2012 at 03:44:03PM -0500, Ric Wheeler wrote:
+> 
+> One question, any chance to pull it back closer in to LSF or have it
+> on one of the collab summit days? Having it take place on the Friday
+> adds several hotel nights I suspect for non-locals (and significant
+> cost)....
 
-BUG_ON(flex_gd->count == 0 || group_data == NULL);
+Well, keep in mind that LSF is starting Sunday already, so it means
+for people who are from out of town, the weekend[1] is already shot;
+there were issues with hotel space, from what I was told when I asked
+Angela, which is why it's Sunday and Monday as opposed to Monday and
+Tuesday.
 
-because flex_gd->count is zero. The reason is the missing check for such
-case, so the code always extend the last group fully and then attempt to
-add more groups, but at that time n_blocks_count is actually smaller
-than o_blocks_count.
+[1] Which for me means I miss participating in my church's Palm Sunday
+celebration, and LSF and the Collab Summit overlaps with Holy Week.
+On the other hand I believe it was last year that Collab Summit
+overlaps with Passover, so I guess it's equal-opportunity stomping on
+religious holdays.  :-/
 
-It can be easily reproduced like this:
+So it's really only two extra hotel nights; if we met on Saturday
+instead of Friday, it gets hard for people who are local to the bay
+area, as well as people who might be conferencing continuously from
+the Ext4 Workshop, through LSF, through to the Collab Summit.  And
+meeting during the LSF gets hard from a scheduling point of view,
+especially since XFS is already meeting (all day?) during Collab
+Summit already.
 
-mkfs.ext4 -b 4096 /dev/sda 30M
-mount /dev/sda /mnt/test
-resize2fs /dev/sda 50M
+Also, there are some relatively inexpensive hotels (under $100/day) in
+the South Bay, and if necessary I would be happy to organize some car
+pools so that people can get back and forth from their hotels to the
+Google Campus, and from Mountain View up to San Francisco on Saturday
+to save on ground transportation results.
 
-Fix this by checking whether the resize happens within the singe group
-and only add that many blocks into the last group to satisfy user
-request. Then o_blocks_count == n_blocks_count and the resize will exit
-successfully without and attempt to add more groups into the fs.
+Regards,
 
-Also fix mixing together block number and blocks count which might be
-confusing and can easily lead to off-by-one errors (but it is actually
-not the case here since the two occurrence of this mix-up will cancel
-each other).
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Milan Broz <mbroz@redhat.com>
----
- fs/ext4/resize.c |   14 ++++++++------
- 1 files changed, 8 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index f9d948f..3fed79d 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	ext4_fsblk_t o_blocks_count;
- 	ext4_group_t o_group;
- 	ext4_group_t n_group;
--	ext4_grpblk_t offset;
-+	ext4_grpblk_t offset, add;
- 	unsigned long n_desc_blocks;
- 	unsigned long o_desc_blocks;
- 	unsigned long desc_blocks;
-@@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		return 0;
- 
- 	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
--	ext4_get_group_no_and_offset(sb, o_blocks_count, &o_group, &offset);
-+	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
- 
- 	n_desc_blocks = (n_group + EXT4_DESC_PER_BLOCK(sb)) /
- 			EXT4_DESC_PER_BLOCK(sb);
-@@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	}
- 	brelse(bh);
- 
--	if (offset != 0) {
--		/* extend the last group */
--		ext4_grpblk_t add;
--		add = EXT4_BLOCKS_PER_GROUP(sb) - offset;
-+	/* extend the last group */
-+	if (n_group == o_group)
-+		add = n_blocks_count - o_blocks_count;
-+	else
-+		add = EXT4_BLOCKS_PER_GROUP(sb) - (offset + 1);
-+	if (add > 0) {
- 		err = ext4_group_extend_no_check(sb, o_blocks_count, add);
- 		if (err)
- 			goto out;
--- 
-1.7.4.4
-
+						- Ted
