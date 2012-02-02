@@ -1,56 +1,56 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Ext4 developer's workshop website is now up
-Date: Thu, 2 Feb 2012 10:30:52 -0500
-Message-ID: <20120202153052.GA4308@thunk.org>
-References: <E1RsS5K-0002Cn-E0@tytso-glaptop.cam.corp.google.com>
- <4F29A413.9090002@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext3: Don't call dquot_free_block() if we don't
+ update anything
+Date: Thu, 2 Feb 2012 17:01:18 +0100
+Message-ID: <20120202160118.GI31730@quack.suse.cz>
+References: <4F2657B5.9050100@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34236 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932126Ab2BBPa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Feb 2012 10:30:59 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:56188 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756808Ab2BBQBV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Feb 2012 11:01:21 -0500
 Content-Disposition: inline
-In-Reply-To: <4F29A413.9090002@gmail.com>
+In-Reply-To: <4F2657B5.9050100@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 01, 2012 at 03:44:03PM -0500, Ric Wheeler wrote:
+On Mon 30-01-12 17:41:25, Kazuya Mio wrote:
+> dquot_free_block() is called in the end of ext3_new_blocks() and updates
+> information of the inode structure. However, this update is not necessary
+> if the number of blocks we requested is equal to the number of
+> allocated blocks.
+  This is obviously correct thing to do so I've merged this patch into
+my tree. Thanks.
+
+								Honza
 > 
-> One question, any chance to pull it back closer in to LSF or have it
-> on one of the collab summit days? Having it take place on the Friday
-> adds several hotel nights I suspect for non-locals (and significant
-> cost)....
-
-Well, keep in mind that LSF is starting Sunday already, so it means
-for people who are from out of town, the weekend[1] is already shot;
-there were issues with hotel space, from what I was told when I asked
-Angela, which is why it's Sunday and Monday as opposed to Monday and
-Tuesday.
-
-[1] Which for me means I miss participating in my church's Palm Sunday
-celebration, and LSF and the Collab Summit overlaps with Holy Week.
-On the other hand I believe it was last year that Collab Summit
-overlaps with Passover, so I guess it's equal-opportunity stomping on
-religious holdays.  :-/
-
-So it's really only two extra hotel nights; if we met on Saturday
-instead of Friday, it gets hard for people who are local to the bay
-area, as well as people who might be conferencing continuously from
-the Ext4 Workshop, through LSF, through to the Collab Summit.  And
-meeting during the LSF gets hard from a scheduling point of view,
-especially since XFS is already meeting (all day?) during Collab
-Summit already.
-
-Also, there are some relatively inexpensive hotels (under $100/day) in
-the South Bay, and if necessary I would be happy to organize some car
-pools so that people can get back and forth from their hotels to the
-Google Campus, and from Mountain View up to San Francisco on Saturday
-to save on ground transportation results.
-
-Regards,
-
-						- Ted
+> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+> ---
+>  fs/ext3/balloc.c |    7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index a203892..954a7d3 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -1743,8 +1743,11 @@ allocated:
+>  
+>  	*errp = 0;
+>  	brelse(bitmap_bh);
+> -	dquot_free_block(inode, *count-num);
+> -	*count = num;
+> +
+> +	if (num < *count) {
+> +		dquot_free_block(inode, *count-num);
+> +		*count = num;
+> +	}
+>  
+>  	trace_ext3_allocate_blocks(inode, goal, num,
+>  				   (unsigned long long)ret_block);
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
