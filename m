@@ -1,89 +1,92 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: Re: [PATCH] ext4: s_dirtyclusters_counter should tranform to unit of
- cluster before assigning to "dirty_clusters" in ext4_has_free_clusters()
-Date: Thu, 2 Feb 2012 15:48:49 +0800
-Message-ID: <CAFZ0FUUNRrSa0RvqXcmp_JoZpefDd5pSyx=5LCz5jwDUhUd=_w@mail.gmail.com>
-References: <1328066270-4461-1-git-send-email-hao.bigrat@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: fix resize when resizing within single group
+Date: Thu,  2 Feb 2012 10:05:55 +0100
+Message-ID: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Milan Broz <mbroz@redhat.com>,
+	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:56553 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752661Ab2BBHsu convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Feb 2012 02:48:50 -0500
-Received: by obcva7 with SMTP id va7so2409101obc.19
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Feb 2012 23:48:49 -0800 (PST)
-In-Reply-To: <1328066270-4461-1-git-send-email-hao.bigrat@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:21509 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752956Ab2BBJGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Feb 2012 04:06:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/2/1 Robin Dong <hao.bigrat@gmail.com>:
-> From: Robin Dong <sanbai@taobao.com>
->
-> Creating 4-byte files until ENOSPC in a delay-allocation and bigalloc=
- ext4 fs and then sync it, the dmseg will report like:
->
-> =A0 =A0 =A0 =A0[ =A0482.154538] EXT4-fs (sdb6): delayed block allocat=
-ion failed for inode 1664 at logical offset 0 with max blocks 1 with er=
-ror -28
-> =A0 =A0 =A0 =A0[ =A0482.154540] EXT4-fs (sdb6): This should not happe=
-n!! Data will be lost
->
-> The reason is ext4_has_free_clusters reporting wrong result. Actually=
-, the unit of sbi->s_dirtyclusters_counter is block, so we should tranf=
-orm it to cluster for argument "dirty_clusters", just like "free_cluste=
-rs".
+When resizing file system in the way that the new size of the file
+system is still in the same group (no new groups are added), then we can
+hit a BUG_ON in ext4_alloc_group_tables()
 
-Sorry, the description is in confusion, the correct version is:
+BUG_ON(flex_gd->count == 0 || group_data == NULL);
 
-The reason is ext4_has_free_clusters reporting wrong result. Actually,
-the unit of argument "dirty_clusters" is block, so we should tranform
-the
-sbi->s_dirtyclusters_counter to block , just like "free_clusters".
+because flex_gd->count is zero. The reason is the missing check for such
+case, so the code always extend the last group fully and then attempt to
+add more groups, but at that time n_blocks_count is actually smaller
+than o_blocks_count.
 
->
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Eric Sandeen <sandeen@redhat.com>
-> Signed-off-by: Robin Dong <sanbai@taobao.com>
-> ---
-> =A0fs/ext4/balloc.c | =A0 =A02 +-
-> =A01 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index f9e2cd8..8ff10c4 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -427,7 +427,7 @@ static int ext4_has_free_clusters(struct ext4_sb_=
-info *sbi,
-> =A0 =A0 =A0 =A0if (free_clusters - (nclusters + root_clusters + dirty=
-_clusters) <
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0EXT4_FREECLUSTERS_WATERMARK) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0free_clusters =A0=3D EXT4_C2B(sbi, per=
-cpu_counter_sum_positive(fcc));
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 dirty_clusters =3D percpu_counter_sum_p=
-ositive(dcc);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 dirty_clusters =3D EXT4_C2B(sbi, percpu=
-_counter_sum_positive(dcc));
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0/* Check whether we have space after accounting for cu=
-rrent
-> =A0 =A0 =A0 =A0 * dirty clusters & root reserved clusters.
-> --
-> 1.7.4.1
->
+It can be easily reproduced like this:
 
+mkfs.ext4 -b 4096 /dev/sda 30M
+mount /dev/sda /mnt/test
+resize2fs /dev/sda 50M
 
+Fix this by checking whether the resize happens within the singe group
+and only add that many blocks into the last group to satisfy user
+request. Then o_blocks_count == n_blocks_count and the resize will exit
+successfully without and attempt to add more groups into the fs.
 
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Also fix mixing together block number and blocks count which might be
+confusing and can easily lead to off-by-one errors (but it is actually
+not the case here since the two occurrence of this mix-up will cancel
+each other).
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reported-by: Milan Broz <mbroz@redhat.com>
+---
+ fs/ext4/resize.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index f9d948f..3fed79d 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 	ext4_fsblk_t o_blocks_count;
+ 	ext4_group_t o_group;
+ 	ext4_group_t n_group;
+-	ext4_grpblk_t offset;
++	ext4_grpblk_t offset, add;
+ 	unsigned long n_desc_blocks;
+ 	unsigned long o_desc_blocks;
+ 	unsigned long desc_blocks;
+@@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 		return 0;
+ 
+ 	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
+-	ext4_get_group_no_and_offset(sb, o_blocks_count, &o_group, &offset);
++	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
+ 
+ 	n_desc_blocks = (n_group + EXT4_DESC_PER_BLOCK(sb)) /
+ 			EXT4_DESC_PER_BLOCK(sb);
+@@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 	}
+ 	brelse(bh);
+ 
+-	if (offset != 0) {
+-		/* extend the last group */
+-		ext4_grpblk_t add;
+-		add = EXT4_BLOCKS_PER_GROUP(sb) - offset;
++	/* extend the last group */
++	if (n_group == o_group)
++		add = n_blocks_count - o_blocks_count;
++	else
++		add = EXT4_BLOCKS_PER_GROUP(sb) - (offset + 1);
++	if (add > 0) {
+ 		err = ext4_group_extend_no_check(sb, o_blocks_count, add);
+ 		if (err)
+ 			goto out;
+-- 
+1.7.4.4
+
