@@ -1,63 +1,48 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for speedup
-Date: Thu, 2 Feb 2012 15:36:27 -0700
-Message-ID: <E2F2E1D0-8937-419F-8201-B2E9F3961AD7@dilger.ca>
-References: <4F2657AD.9060901@sx.jp.nec.com> <97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca> <4F28F962.2040209@sx.jp.nec.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: WIMPy <wimpy@yeti.dk>
+Subject: Re: [dm-devel] can't recover ext4 on lvm from =?utf-8?b?ZXh0NF9tYl9nZW5lcmF0ZV9idWRkeTo3Mzk6?= group 1687, 32254 clusters in bitmap, 32258 in gd
+Date: Fri, 3 Feb 2012 05:30:05 +0000 (UTC)
+Message-ID: <loom.20120203T055930-479@post.gmane.org>
+References: <217150909.20120105113759@eikelenboom.it> <197607646.20120105142107@eikelenboom.it> <6FC155DD-80C1-4088-B745-6B74D9D5AA48@mit.edu> <4910694144.20120105171428@eikelenboom.it> <20120105181535.GB26382@thunk.org> <Pine.LNX.4.64.1201061133140.6954@hs20-bc2-1.build.redhat.com> <loom.20120128T050950-718@post.gmane.org> <loom.20120128T090712-530@post.gmane.org> <EBC820CD-E86F-48BB-ADA3-38B5C8A75187@dilger.ca> <loom.20120128T162211-867@post.gmane.org> <loom.20120128T215220-189@post.gmane.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:56194 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933144Ab2BBWg3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2012 17:36:29 -0500
-In-Reply-To: <4F28F962.2040209@sx.jp.nec.com>
+Received: from plane.gmane.org ([80.91.229.3]:36955 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750759Ab2BCFaS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Feb 2012 00:30:18 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1RtBix-0004jp-SH
+	for linux-ext4@vger.kernel.org; Fri, 03 Feb 2012 06:30:16 +0100
+Received: from e183095026.adsl.alicedsl.de ([85.183.95.26])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 06:30:15 +0100
+Received: from wimpy by e183095026.adsl.alicedsl.de with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 06:30:15 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-01, at 1:35 AM, Kazuya Mio wrote:
-> 2012/01/31 5:36, Andreas Dilger wrote:
->> Can you please run this same measurement on ext4 formatted and running
->> with the default options?  I'd like to know if this is still a problem
->> in ext4 or not.
-> 
-> I performed the same measurement on ext4 with the default options.
+WIMPy <WIMPy <at> yeti.dk> writes:
 
-Kazuya,
-thank you for running this test.  I'm unfortunately confused by the result.
+> ... and another update:
 
-> Here is its result:
-> 
->   filesystem        time(sec)  call extX_mark_inode_dirty(times)
->   ---
->   ext3              220.5      50,338,104
->   ext3 (patched)    196.3      25,169,658
->   ext4 (*1)         190.3      28,465,799
->   ext4 (*2)         201.5      27,963,473
->   ext4 (default)    223.3      14,026,118
-> 
->   *1 disable ext4-specific options (delalloc, extent, and so on)
->   *2 disable only delalloc option
+I don't know what the cause is, but I think I've got the trigger.
+Those errors appeared when using rsync on a directory containing a file that was 
+written to (extended) while the rsync was running, which seems to be a 
+situation, where rsync causes a lot of stress. It certainly takes a hell of a 
+lot of time.
 
-This shows that ext4 with extents+delalloc is _slower_ than ext3, which
-is very strange.  In other similar tests of write performance (see
-http://downloads.linux.hp.com/~enw/ext4/3.2/large_file_creates.html,
-showing multi-threaded 1GB file writes) ext4 is much faster than ext3.
+I suspect any of the ext4 related commits from Jan 9th/10th. From the log I 
+guess they should still exist in 3.3-rc1. I'm currently testing that, but 
+unfortunately that might take some time.
 
-Looking at your original email, is ext4 being tested on a RHEL 5.5
-(2.6.18) kernel, or a more recent kernel?  It would be more useful
-to run this on a more modern kernel, since the ext4 code backported
-to RHEL5 was barely supporting delalloc at all, if I remember correctly.
+And a short repeat: I'm using an md, but no lvm.
 
-The good news is that the number of extN_mark_inode_dirty() calls is
-far lower in ext4 than in ext3, though this doesn't seem to be the
-primary factor in the performance in this case.
-
-Cheers, Andreas
-
-
-
+  Greetings,
+    WIMPy
 
 
