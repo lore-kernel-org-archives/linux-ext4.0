@@ -1,115 +1,122 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: Delayed Extent Tree and Extent Lock Tree
-Date: Fri, 3 Feb 2012 17:00:37 +0800
-Message-ID: <CAGBYx2YemP=EMr-03MQBuS+yjzn6d6W1NEGesZHeXuV4Y=oWYg@mail.gmail.com>
-References: <4F286C35.8080402@linux.vnet.ibm.com>
-	<4F28E936.20303@tao.ma>
-	<4F29B6E9.3060008@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: fix resize when resizing within single group
+Date: Fri, 3 Feb 2012 19:13:21 +0800
+Message-ID: <CAGBYx2Y-q6h20450hHZwV1X9rOA+UqQfB3eKpifbGkcJai6zJw@mail.gmail.com>
+References: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Tao Ma <tm@tao.ma>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Milan Broz <mbroz@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:54194 "EHLO
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:44086 "EHLO
 	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755045Ab2BCJAi convert rfc822-to-8bit
+	by vger.kernel.org with ESMTP id S1755690Ab2BCLNV convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Feb 2012 04:00:38 -0500
-Received: by obcva7 with SMTP id va7so3947557obc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 01:00:37 -0800 (PST)
-In-Reply-To: <4F29B6E9.3060008@linux.vnet.ibm.com>
+	Fri, 3 Feb 2012 06:13:21 -0500
+Received: by obcva7 with SMTP id va7so4089927obc.19
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 03:13:21 -0800 (PST)
+In-Reply-To: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 2, 2012 at 6:04 AM, Allison Henderson
-<achender@linux.vnet.ibm.com> wrote:
-> On 02/01/2012 12:26 AM, Tao Ma wrote:
->>
->> Hi Allison,
->> On 02/01/2012 06:33 AM, Allison Henderson wrote:
->>>
->>> Hi Yongqiang,
->>>
->>> I've have been working on an extent lock implementation that uses a=
-n
->>> rbtree to keep track of locked extents, and I think I will probably=
- end
->>> up with a something similar to the tree that you've already set up =
-for
->>> delayed extents. =A0So I wanted to send a note out to see what folk=
-s would
->>> think about the idea of merging the two solutions.
->>>
->>> If we did this, the tree would get a little more complex in that it
->>> would have to keep track of more than just delayed extents. It woul=
-d
->>> have to keep track of all extents and the processes that are waitin=
-g on
->>> them. =A0So I guess it would kind of turn into an extent status tre=
-e. =A0I
->>> also realize that some folks wanted to see range locks go into /lib=
- as
->>> general purpose code so that other filesystems or kernel code could=
- use
->>> it too, but the advantage to this approach would be one less tree f=
-or
->>> ext4 to keep track of. =A0Any thoughts?
->>
->> We (Taobao) are very interested in this stuff and it should benefit
->> several of our workload(It is on our todo list for a long time). I g=
-uess
->> Yongqiang's solution is a little bit limited to the only delayed ext=
-ent
->> case, and your new solution at least has 2 more benefits:
->> 1. improve the direct i/o read/write
->> 2. speed up the extent search since now we only cache one in
->> ei_cached_extent.
->>
->> So please go ahead with your new solution. btw, do you have any time=
-line
->> for it? We are glad to provide any help if needed.
->>
->> Thanks
->> Tao
->>
->
-> Thx all for the feed back, it sounds like there will be a lot of bene=
-fits to
-> extending Yongqiang's delayed extent tree, so I will work on a soluti=
-on
-> based on that patch set. =A0Unfortunately though, I cannot give a tim=
-e frame
-> for this work item at the moment. =A0There are currently some other b=
-usiness
-> needs that may take priority over this one, and until those have been
-> decided, I cannot make any promises at this point in time. =A0But I w=
-ill work
-> as quickly as I can with it since it is currently on my plate, and I =
-will
-> keep folks updated. =A0At the moment, feed back and guidance is most =
-helpful
-> to me. =A0Also, since the delayed extent solution is now a dependency=
- for my
-> solution, anything to help get that reviewed and merged would help me=
- too.
-> =A0Yongqiang, does the set still need review? =A0I think I recall Ted=
- saying it
-It passed xfstests last year and I think you can go ahead on the set.
- It seems that your changes are a lot, so maybe we can merge the whole
-set until your work is done.  At least, your work and the merging work
-can be undertaken concurrently.
+Thanks!  The patch looks good to me.
 
-If you need any help,  I am available.
-
-Yongqiang.
-> was still on his list of things to look at. =A0Im sure I will give it=
- some
-> good exercise here too. =A0Thx all for your help! =A0:)
+On Thu, Feb 2, 2012 at 5:05 PM, Lukas Czerner <lczerner@redhat.com> wro=
+te:
+> When resizing file system in the way that the new size of the file
+> system is still in the same group (no new groups are added), then we =
+can
+> hit a BUG_ON in ext4_alloc_group_tables()
 >
-> Allison Henderson
+> BUG_ON(flex_gd->count =3D=3D 0 || group_data =3D=3D NULL);
+>
+> because flex_gd->count is zero. The reason is the missing check for s=
+uch
+> case, so the code always extend the last group fully and then attempt=
+ to
+> add more groups, but at that time n_blocks_count is actually smaller
+> than o_blocks_count.
+>
+> It can be easily reproduced like this:
+>
+> mkfs.ext4 -b 4096 /dev/sda 30M
+> mount /dev/sda /mnt/test
+> resize2fs /dev/sda 50M
+>
+> Fix this by checking whether the resize happens within the singe grou=
+p
+> and only add that many blocks into the last group to satisfy user
+> request. Then o_blocks_count =3D=3D n_blocks_count and the resize wil=
+l exit
+> successfully without and attempt to add more groups into the fs.
+>
+> Also fix mixing together block number and blocks count which might be
+> confusing and can easily lead to off-by-one errors (but it is actuall=
+y
+> not the case here since the two occurrence of this mix-up will cancel
+> each other).
+>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reported-by: Milan Broz <mbroz@redhat.com>
+> ---
+> =A0fs/ext4/resize.c | =A0 14 ++++++++------
+> =A01 files changed, 8 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index f9d948f..3fed79d 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4=
+_fsblk_t n_blocks_count)
+> =A0 =A0 =A0 =A0ext4_fsblk_t o_blocks_count;
+> =A0 =A0 =A0 =A0ext4_group_t o_group;
+> =A0 =A0 =A0 =A0ext4_group_t n_group;
+> - =A0 =A0 =A0 ext4_grpblk_t offset;
+> + =A0 =A0 =A0 ext4_grpblk_t offset, add;
+> =A0 =A0 =A0 =A0unsigned long n_desc_blocks;
+> =A0 =A0 =A0 =A0unsigned long o_desc_blocks;
+> =A0 =A0 =A0 =A0unsigned long desc_blocks;
+> @@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4=
+_fsblk_t n_blocks_count)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return 0;
+>
+> =A0 =A0 =A0 =A0ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &=
+n_group, &offset);
+> - =A0 =A0 =A0 ext4_get_group_no_and_offset(sb, o_blocks_count, &o_gro=
+up, &offset);
+> + =A0 =A0 =A0 ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o=
+_group, &offset);
+>
+> =A0 =A0 =A0 =A0n_desc_blocks =3D (n_group + EXT4_DESC_PER_BLOCK(sb)) =
+/
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT4_DESC_PER_BLOCK(sb=
+);
+> @@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ex=
+t4_fsblk_t n_blocks_count)
+> =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0brelse(bh);
+>
+> - =A0 =A0 =A0 if (offset !=3D 0) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* extend the last group */
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_grpblk_t add;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D EXT4_BLOCKS_PER_GROUP(sb) - off=
+set;
+> + =A0 =A0 =A0 /* extend the last group */
+> + =A0 =A0 =A0 if (n_group =3D=3D o_group)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D n_blocks_count - o_blocks_count=
+;
+> + =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D EXT4_BLOCKS_PER_GROUP(sb) - (of=
+fset + 1);
+> + =A0 =A0 =A0 if (add > 0) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext4_group_extend_no_check(sb,=
+ o_blocks_count, add);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
+> --
+> 1.7.4.4
 >
 
 
