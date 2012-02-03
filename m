@@ -1,123 +1,95 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH] ext4: fix resize when resizing within single group
-Date: Fri, 3 Feb 2012 19:13:21 +0800
-Message-ID: <CAGBYx2Y-q6h20450hHZwV1X9rOA+UqQfB3eKpifbGkcJai6zJw@mail.gmail.com>
-References: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for speedup
+Date: Fri, 3 Feb 2012 21:28:02 +0800
+Message-ID: <CAGBYx2ZATt7KG0oUvYSVWkwpVdio7iAJHHVHXFFkPqFp13Xi-Q@mail.gmail.com>
+References: <4F2657AD.9060901@sx.jp.nec.com>
+	<97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>
+	<4F28F962.2040209@sx.jp.nec.com>
+	<E2F2E1D0-8937-419F-8201-B2E9F3961AD7@dilger.ca>
+	<4F2B919D.1030307@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Milan Broz <mbroz@redhat.com>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:44086 "EHLO
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:56209 "EHLO
 	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755690Ab2BCLNV convert rfc822-to-8bit
+	by vger.kernel.org with ESMTP id S1755024Ab2BCN2E convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Feb 2012 06:13:21 -0500
-Received: by obcva7 with SMTP id va7so4089927obc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 03:13:21 -0800 (PST)
-In-Reply-To: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
+	Fri, 3 Feb 2012 08:28:04 -0500
+Received: by obcva7 with SMTP id va7so4236802obc.19
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2012 05:28:02 -0800 (PST)
+In-Reply-To: <4F2B919D.1030307@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks!  The patch looks good to me.
+On Fri, Feb 3, 2012 at 3:49 PM, Kazuya Mio <k-mio@sx.jp.nec.com> wrote:
+> 2012/02/03 7:36, Andreas Dilger wrote:
+>>>
+>>> =A0filesystem =A0 =A0 =A0 =A0time(sec) =A0call extX_mark_inode_dirt=
+y(times)
+>>> =A0---
+>>> =A0ext3 =A0 =A0 =A0 =A0 =A0 =A0 =A0220.5 =A0 =A0 =A050,338,104
+>>> =A0ext3 (patched) =A0 =A0196.3 =A0 =A0 =A025,169,658
+>>> =A0ext4 (*1) =A0 =A0 =A0 =A0 190.3 =A0 =A0 =A028,465,799
+>>> =A0ext4 (*2) =A0 =A0 =A0 =A0 201.5 =A0 =A0 =A027,963,473
+>>> =A0ext4 (default) =A0 =A0223.3 =A0 =A0 =A014,026,118
+>>>
+>>> =A0*1 disable ext4-specific options (delalloc, extent, and so on)
+>>> =A0*2 disable only delalloc option
+>>
+>> This shows that ext4 with extents+delalloc is _slower_ than ext3, wh=
+ich
+>> is very strange. =A0In other similar tests of write performance (see
+>
+>
+> One more thing is that ext4+delalloc is slower than ext4+nodelalloc.
+And according to the data, maybe ext4+extent is also slower than ext4+n=
+oextent.
 
-On Thu, Feb 2, 2012 at 5:05 PM, Lukas Czerner <lczerner@redhat.com> wro=
-te:
-> When resizing file system in the way that the new size of the file
-> system is still in the same group (no new groups are added), then we =
-can
-> hit a BUG_ON in ext4_alloc_group_tables()
+What's the size of the fs?  and what kind of the tested device?
+
+Yongqiang.
 >
-> BUG_ON(flex_gd->count =3D=3D 0 || group_data =3D=3D NULL);
 >
-> because flex_gd->count is zero. The reason is the missing check for s=
-uch
-> case, so the code always extend the last group fully and then attempt=
- to
-> add more groups, but at that time n_blocks_count is actually smaller
-> than o_blocks_count.
+>> http://downloads.linux.hp.com/~enw/ext4/3.2/large_file_creates.html,
+>> showing multi-threaded 1GB file writes) ext4 is much faster than ext=
+3.
 >
-> It can be easily reproduced like this:
 >
-> mkfs.ext4 -b 4096 /dev/sda 30M
-> mount /dev/sda /mnt/test
-> resize2fs /dev/sda 50M
+> I guess write buffer size of my test is different from ffsb's one.
+> My test calls write systemcall every time one block is allocated,
+> so it is close to the stress test I think.
 >
-> Fix this by checking whether the resize happens within the singe grou=
-p
-> and only add that many blocks into the last group to satisfy user
-> request. Then o_blocks_count =3D=3D n_blocks_count and the resize wil=
-l exit
-> successfully without and attempt to add more groups into the fs.
 >
-> Also fix mixing together block number and blocks count which might be
-> confusing and can easily lead to off-by-one errors (but it is actuall=
-y
-> not the case here since the two occurrence of this mix-up will cancel
-> each other).
+>> Looking at your original email, is ext4 being tested on a RHEL 5.5
+>> (2.6.18) kernel, or a more recent kernel? =A0It would be more useful
+>> to run this on a more modern kernel, since the ext4 code backported
+>> to RHEL5 was barely supporting delalloc at all, if I remember correc=
+tly.
 >
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reported-by: Milan Broz <mbroz@redhat.com>
-> ---
-> =A0fs/ext4/resize.c | =A0 14 ++++++++------
-> =A01 files changed, 8 insertions(+), 6 deletions(-)
 >
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index f9d948f..3fed79d 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4=
-_fsblk_t n_blocks_count)
-> =A0 =A0 =A0 =A0ext4_fsblk_t o_blocks_count;
-> =A0 =A0 =A0 =A0ext4_group_t o_group;
-> =A0 =A0 =A0 =A0ext4_group_t n_group;
-> - =A0 =A0 =A0 ext4_grpblk_t offset;
-> + =A0 =A0 =A0 ext4_grpblk_t offset, add;
-> =A0 =A0 =A0 =A0unsigned long n_desc_blocks;
-> =A0 =A0 =A0 =A0unsigned long o_desc_blocks;
-> =A0 =A0 =A0 =A0unsigned long desc_blocks;
-> @@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4=
-_fsblk_t n_blocks_count)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return 0;
+> I tested on the recent kernel (3.3-rc1).
+> I also tested on RHEL5.5, and its result showed that ext3 was much sl=
+ower
+> than
+> the recent kernel's one.
 >
-> =A0 =A0 =A0 =A0ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &=
-n_group, &offset);
-> - =A0 =A0 =A0 ext4_get_group_no_and_offset(sb, o_blocks_count, &o_gro=
-up, &offset);
-> + =A0 =A0 =A0 ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o=
-_group, &offset);
+> =A0filesystem =A0 =A0 =A0 =A0time(sec)
+> =A0---
+> =A0ext3(RHEL5.5) =A0 =A0 438.6
+> =A0ext3(3.3-rc1) =A0 =A0 220.5
 >
-> =A0 =A0 =A0 =A0n_desc_blocks =3D (n_group + EXT4_DESC_PER_BLOCK(sb)) =
-/
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT4_DESC_PER_BLOCK(sb=
-);
-> @@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ex=
-t4_fsblk_t n_blocks_count)
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0brelse(bh);
+> Regards,
+> Kazuya Mio
 >
-> - =A0 =A0 =A0 if (offset !=3D 0) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* extend the last group */
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext4_grpblk_t add;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D EXT4_BLOCKS_PER_GROUP(sb) - off=
-set;
-> + =A0 =A0 =A0 /* extend the last group */
-> + =A0 =A0 =A0 if (n_group =3D=3D o_group)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D n_blocks_count - o_blocks_count=
-;
-> + =A0 =A0 =A0 else
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 add =3D EXT4_BLOCKS_PER_GROUP(sb) - (of=
-fset + 1);
-> + =A0 =A0 =A0 if (add > 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext4_group_extend_no_check(sb,=
- o_blocks_count, add);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
 > --
-> 1.7.4.4
->
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 
 
 
