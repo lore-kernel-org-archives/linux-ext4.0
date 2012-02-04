@@ -1,57 +1,54 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: sparsify - utility to punch out blocks of 0s in a file
-Date: Sat, 04 Feb 2012 14:04:00 -0600
-Message-ID: <4F2D8F30.3090802@redhat.com>
+Subject: Re: sparsify - utility to punch out blocks of 0s in a file
+Date: Sat, 04 Feb 2012 14:10:30 -0600
+Message-ID: <4F2D90B6.4070008@redhat.com>
+References: <4F2D8F30.3090802@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>,
 	xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55849 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60935 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754242Ab2BDUEE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Feb 2012 15:04:04 -0500
+	id S1754175Ab2BDUKe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Feb 2012 15:10:34 -0500
+In-Reply-To: <4F2D8F30.3090802@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that ext4, xfs, & ocfs2 can support punch hole, a tool to
-"re-sparsify" a file by punching out ranges of 0s might be in order.
+On 2/4/12 2:04 PM, Eric Sandeen wrote:
+> Now that ext4, xfs, & ocfs2 can support punch hole, a tool to
+> "re-sparsify" a file by punching out ranges of 0s might be in order.
 
-I whipped this up fast, it probably has bugs & off-by-ones but thought
-I'd send it out.  It's not terribly efficient doing 4k reads by default
-I suppose.
+Gah, of course I sent the version with the actual hole punch commented out ;)
+Try this one.
 
-I'll see if util-linux wants it after it gets beat into shape.
-(or did a tool like this already exist and I missed it?)
-
-(Another mode which does a file copy, possibly from stdin
-might be good, like e2fsprogs/contrib/make-sparse.c ?  Although
-that can be hacked up with cp already).
-
-It works like this:
-
-[root@inode sparsify]# ./sparsify  -h
-Usage: sparsify [-m min hole size] [-o offset] [-l length] filename
-
-[root@inode sparsify]# dd if=/dev/zero of=fsfile bs=1M count=512
-[root@inode sparsify]# mkfs.xfs fsfile >/dev/null
-[root@inode sparsify]# du -hc fsfile
-512M	fsfile
-512M	total
-[root@inode sparsify]# ./sparsify fsfile
+[root@inode sparsify]# ./sparsify -v fsfile
+blocksize is 4096
+orig start/end 0/536870912/0
+new start/end/min 0/536870912/4096
 punching out holes of minimum size 4096 in range 0-536870912
+punching at 16384 len 16384
+punching at 49152 len 134168576
+punching at 134234112 len 134201344
+punching at 268455936 len 134197248
+punching at 402669568 len 134201344
+[root@inode sparsify]#
+
+Hm but something is weird, right after the punch-out xfs says
+it uses 84K:
+
 [root@inode sparsify]# du -hc fsfile
-129M	fsfile
-129M	total
-[root@inode sparsify]# xfs_repair fsfile
-Phase 1 - find and verify superblock...
-<snip>
-Phase 7 - verify and correct link counts...
-done
-[root@inode sparsify]# echo $?
-0
-[root@inode sparsify]# 
+84K	fsfile
+84K	total
+
+but then after an xfs_repair it looks saner:
+# du -hc fsfile
+4.8M	fsfile
+4.8M	total
+
+something to look into I guess... weird.
 
 /*
  * sparsify - utility to punch out blocks of 0s in a file
@@ -149,8 +146,8 @@ int punch_hole(int fd, off_t offset, off_t len)
 
 	if (debug)
 		printf("punching at %lld len %lld\n", offset, len);
-	//error = fallocate(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE,
-	//		  offset, len);
+	error = fallocate(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE,
+			  offset, len);
 	if (error < 0) {
 		perror("punch failed");
 		exit(EXIT_FAILURE);
@@ -337,4 +334,6 @@ int main(int argc, char **argv)
 	close(fd);
 	return 0;
 }
+
+
 
