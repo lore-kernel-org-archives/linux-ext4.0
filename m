@@ -1,88 +1,100 @@
 From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 1/8] fs: Improve filesystem freezing handling
-Date: Fri, 03 Feb 2012 21:03:20 -0600
-Message-ID: <4F2C9FF8.2010207@sandeen.net>
-References: <1327091686-23177-1-git-send-email-jack@suse.cz> <1327091686-23177-2-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 5/8] xfs: Protect xfs_file_aio_write() & xfs_setattr_size()
+	with sb_start_write - sb_end_write
+Date: Fri, 03 Feb 2012 22:30:05 -0600
+Message-ID: <4F2CB44D.4060006@sandeen.net>
+References: <1327091686-23177-1-git-send-email-jack@suse.cz>
+	<1327091686-23177-6-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org
+Cc: Alex Elder <elder@kernel.org>, Surbhi Palande <csurbhi@gmail.com>,
+        Kamal Mostafa <kamal@canonical.com>,
+        LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+        Christoph Hellwig <hch@infradead.org>, Ben Myers <bpm@sgi.com>,
+        Dave Chinner <dchinner@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sandeen.net ([63.231.237.45]:39081 "EHLO mail.sandeen.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751066Ab2BDDDV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Feb 2012 22:03:21 -0500
-In-Reply-To: <1327091686-23177-2-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1327091686-23177-6-git-send-email-jack@suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
 On 1/20/12 2:34 PM, Jan Kara wrote:
-> vfs_check_frozen() tests are racy since the filesystem can be frozen just after
-> the test is performed. Thus in write paths we can end up marking some pages or
-> inodes dirty even though filesystem is already frozen. This creates problems
-> with flusher thread hanging on frozen filesystem.
-> 
-> Another problem is that exclusion between ->page_mkwrite() and filesystem
-> freezing has been handled by setting page dirty and then verifying s_frozen.
-> This guaranteed that either the freezing code sees the faulted page, writes it,
-> and writeprotects it again or we see s_frozen set and bail out of page fault.
-> This works to protect from page being marked writeable while filesystem
-> freezing is running but has an unpleasant artefact of leaving dirty (although
-> unmodified and writeprotected) pages on frozen filesystem resulting in similar
-> problems with flusher thread as the first problem.
-> 
-> This patch aims at providing exclusion between write paths and filesystem
-> freezing. We implement a writer-freeze read-write semaphores in the superblock
-> for each freezing level (currently there are two - SB_FREEZE_WRITE for data and
-> SB_FREEZE_TRANS for metadata). Write paths which should block freezing on given
-> level (e.g. ->block_page_mkwrite(), ->aio_write() for SB_FREEZE_WRITE level;
-> transaction lifetime for SB_FREEZE_TRANS level) hold reader side of the
-> semaphore. Code freezing the filesystem to a given level takes the writer side.
-> 
-> Only that we don't really want to bounce cachelines of the semaphore between
-> CPUs for each write happening. So we implement the reader side of the semaphore
-> as a per-cpu counter and the writer side is implemented using s_frozen
-> superblock field.
-> 
-> Acked-by: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Replace racy xfs_wait_for_freeze() check in xfs_file_aio_write() with
+> a reliable sb_start_write() - sb_end_write() locking.
 
-...
-
-> @@ -135,6 +157,11 @@ static struct super_block *alloc_super(struct file_system_type *type)
->  #else
->  		INIT_LIST_HEAD(&s->s_files);
->  #endif
-> +		if (init_sb_writers(s, SB_FREEZE_WRITE, "sb_writers_write"))
-> +			goto err_out;
-> +		if (init_sb_writers(s, SB_FREEZE_TRANS, "sb_writers_trans"))
-> +			goto err_out;
-> +
->  		s->s_bdi = &default_backing_dev_info;
->  		INIT_LIST_HEAD(&s->s_instances);
->  		INIT_HLIST_BL_HEAD(&s->s_anon);
-> @@ -186,6 +213,17 @@ static struct super_block *alloc_super(struct file_system_type *type)
->  	}
->  out:
->  	return s;
-> +err_out:
-> +	security_sb_free(s);
-> +#ifdef CONFIG_SMP
-> +	if (s->s_files)
-> +		free_percpu(s->s_files);
-> +#endif
-> +	destroy_sb_writers(s, SB_FREEZE_WRITE);
-> +	destroy_sb_writers(s, SB_FREEZE_TRANS);
-
-You probably ran into this already but the writer percpu vars need
-to be torn down in destroy_super() as well.
+Here's what I'm running with now.  With this and my modified
+patch6, I can pass xfstests 068 on xfs.
 
 -Eric
 
 
+
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 7e5bc87..f1cacdc 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -874,11 +874,11 @@ xfs_file_aio_write(
+ 	if (ocount == 0)
+ 		return 0;
+ 
+-	xfs_wait_for_freeze(ip->i_mount, SB_FREEZE_WRITE);
+-
+ 	if (XFS_FORCED_SHUTDOWN(ip->i_mount))
+ 		return -EIO;
+ 
++	sb_start_write(inode->i_sb, SB_FREEZE_WRITE);
++
+ 	if (unlikely(file->f_flags & O_DIRECT))
+ 		ret = xfs_file_dio_aio_write(iocb, iovp, nr_segs, pos, ocount);
+ 	else
+@@ -895,6 +895,7 @@ xfs_file_aio_write(
+ 		if (err < 0)
+ 			ret = err;
+ 	}
++	sb_end_write(inode->i_sb, SB_FREEZE_WRITE);
+ 
+ 	return ret;
+ }
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index ab30253..7f3fa17 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -773,6 +773,7 @@ xfs_setattr_size(
+ 			ATTR_MTIME_SET|ATTR_KILL_SUID|ATTR_KILL_SGID|
+ 			ATTR_KILL_PRIV|ATTR_TIMES_SET)) == 0);
+ 
++	sb_start_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	lock_flags = XFS_ILOCK_EXCL;
+ 	if (!(flags & XFS_ATTR_NOLOCK))
+ 		lock_flags |= XFS_IOLOCK_EXCL;
+@@ -792,6 +793,7 @@ xfs_setattr_size(
+ 		 * Use the regular setattr path to update the timestamps.
+ 		 */
+ 		xfs_iunlock(ip, lock_flags);
++		sb_end_write(inode->i_sb, SB_FREEZE_WRITE);
+ 		iattr->ia_valid &= ~ATTR_SIZE;
+ 		return xfs_setattr_nonsize(ip, iattr, 0);
+ 	}
+@@ -938,6 +940,7 @@ xfs_setattr_size(
+ out_unlock:
+ 	if (lock_flags)
+ 		xfs_iunlock(ip, lock_flags);
++	sb_end_write(inode->i_sb, SB_FREEZE_WRITE);
+ 	return error;
+ 
+ out_trans_abort:
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
