@@ -1,90 +1,340 @@
-From: Hin-Tak Leung <htl10@users.sourceforge.net>
-Subject: Re: sane fsck default behavior for "Entry ... in ... has deleted/unused inode ....  Clear? yes"
-Date: Sat, 4 Feb 2012 17:53:10 +0000 (GMT)
-Message-ID: <1328377990.1636.YahooMailClassic@web29504.mail.ird.yahoo.com>
-References: <1AB9AC11-F9E9-4F52-8CBC-D050B056D013@mit.edu>
-Reply-To: htl10@users.sourceforge.net
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: sparsify - utility to punch out blocks of 0s in a file
+Date: Sat, 04 Feb 2012 14:04:00 -0600
+Message-ID: <4F2D8F30.3090802@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Tso <tytso@MIT.EDU>, tytso@users.sourceforge.net,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm7.bullet.mail.ird.yahoo.com ([77.238.189.21]:47596 "HELO
-	nm7.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753917Ab2BDR7r convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Feb 2012 12:59:47 -0500
-In-Reply-To: <1AB9AC11-F9E9-4F52-8CBC-D050B056D013@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:55849 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754242Ab2BDUEE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Feb 2012 15:04:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---- On Sat, 4/2/12, Theodore Tso <tytso@MIT.EDU> wrote:
+Now that ext4, xfs, & ocfs2 can support punch hole, a tool to
+"re-sparsify" a file by punching out ranges of 0s might be in order.
 
-<snipped>
-> Most of this message isn't appropriate for
-> fs-devel.=A0=A0=A0The ext4 bits are
-> germane to the ext4 list, and the USB read errors should be
-> taken to
-> the usb folks.=A0 =A0 I've removed fs-devel from the
-> reply-to header, and
-> I'll ask people who are replying to further edit the cc list
-> if appropriate.
+I whipped this up fast, it probably has bugs & off-by-ones but thought
+I'd send it out.  It's not terribly efficient doing 4k reads by default
+I suppose.
 
-=46air enough - I just thought the interaction between usb-storage and =
-lvm2 would warrant some wider discussion.=20
+I'll see if util-linux wants it after it gets beat into shape.
+(or did a tool like this already exist and I missed it?)
 
-> This error means the inode entry (and perhaps the entire
-> inode table
-> block in your case) has been zapped.=A0 So all that's
-> left is the directory
-> entry, containing the file name and inode
-> number.=A0=A0=A0There's nothing
-> really left to save.
->=20
-> > I also want to make a suggestion: when such a decision
-> is made, I'd like to keep a record of what files are lost,
-> etc. Can an option be added to e2fsck to log its decisions
-> somewhere?
->=20
-> I suggest that you look at using the "script" program if you
-> are running
-> e2fsck manually, or if you are interested in saving the
-> output of fsck
-> during the boot sequence, if your distro isn't already using
-> logsave,
-> consider using that binary.
+(Another mode which does a file copy, possibly from stdin
+might be good, like e2fsprogs/contrib/make-sparse.c ?  Although
+that can be hacked up with cp already).
 
-That files are lost forever I understand, but from a user's point of vi=
-ew, the most important thing is preserving data, or at least, when lost=
- is inevitable, know that they are lost and hope to recover that somewh=
-ere. Is it possible to offer that - i.e. prompt for a log file - when s=
-uch a decision is needed, when run interactively?
-=20
-> > it appears that some combination of SATA->USB
-> enclosure plus usb-storage plus usb hci driver doesn't like
-> read errors, and the kernel resets the usb device and
-> reconnects whenever that happens. That has the unfortunate
-> side effect of renaming /dev/sdb into /dev/sdc, etc,
-> underneath lvm2, and causes lvm2 to get stuck. I suppose
-> that's the sane behavior since one wants to stop I/O and
-> further damage, but maybe the kernel should only reset usb
-> storage devices on write-errors, rather than read-errors?
-> And somehow limit the device to read-only access after a
-> read-error?
->=20
-> I'd suggest that you send your dmesg output to the USB
-> folks.
-> That might give them more of an idea which portion of the
-> stack is causing the stack is causing the
-> reset.=A0=A0=A0It may very
-> well be the SATA->USB enclosure is reporting some error
-> much worse than a read error as a result of the error.=20
+It works like this:
 
-Thanks. The curious thing is that running hdparm -a0/-A0 can get around=
- the reset, so it seems to be a performance related issue.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[root@inode sparsify]# ./sparsify  -h
+Usage: sparsify [-m min hole size] [-o offset] [-l length] filename
+
+[root@inode sparsify]# dd if=/dev/zero of=fsfile bs=1M count=512
+[root@inode sparsify]# mkfs.xfs fsfile >/dev/null
+[root@inode sparsify]# du -hc fsfile
+512M	fsfile
+512M	total
+[root@inode sparsify]# ./sparsify fsfile
+punching out holes of minimum size 4096 in range 0-536870912
+[root@inode sparsify]# du -hc fsfile
+129M	fsfile
+129M	total
+[root@inode sparsify]# xfs_repair fsfile
+Phase 1 - find and verify superblock...
+<snip>
+Phase 7 - verify and correct link counts...
+done
+[root@inode sparsify]# echo $?
+0
+[root@inode sparsify]# 
+
+/*
+ * sparsify - utility to punch out blocks of 0s in a file
+ *
+ * Copyright (C) 2011 Red Hat, Inc. All rights reserved.
+ * Written by Eric Sandeen <sandeen@redhat.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <ctype.h>
+#include <string.h>
+
+#include <linux/falloc.h>
+
+#ifndef FALLOC_FL_PUNCH_HOLE
+#define FALLOC_FL_PUNCH_HOLE    0x02 /* de-allocates range */
+#endif
+
+void usage(void)
+{
+	printf("Usage: sparsify [-m min hole size] [-o offset] [-l length] filename\n");
+	exit(EXIT_FAILURE);
+}
+
+#define EXABYTES(x)     ((long long)(x) << 60)
+#define PETABYTES(x)    ((long long)(x) << 50)
+#define TERABYTES(x)    ((long long)(x) << 40)
+#define GIGABYTES(x)    ((long long)(x) << 30)
+#define MEGABYTES(x)    ((long long)(x) << 20)
+#define KILOBYTES(x)    ((long long)(x) << 10)
+
+#define __round_mask(x, y) ((__typeof__(x))((y)-1))
+#define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
+#define round_down(x, y) ((x) & ~__round_mask(x, y))
+
+int debug;
+
+long long
+cvtnum(char *s)
+{
+	long long	i;
+	char		*sp;
+	int		c;
+
+	i = strtoll(s, &sp, 0);
+	if (i == 0 && sp == s)
+		return -1LL;
+	if (*sp == '\0')
+		return i;
+	if (sp[1] != '\0')
+		return -1LL;
+
+	c = tolower(*sp);
+	switch (c) {
+	case 'k':
+		return KILOBYTES(i);
+	case 'm':
+		return MEGABYTES(i);
+	case 'g':
+		return GIGABYTES(i);
+	case 't':
+		return TERABYTES(i);
+	case 'p':
+		return PETABYTES(i);
+	case 'e':
+		return  EXABYTES(i);
+	}
+
+	return -1LL;
+}
+
+int punch_hole(int fd, off_t offset, off_t len)
+{
+	int error = 0;
+
+	if (debug)
+		printf("punching at %lld len %lld\n", offset, len);
+	//error = fallocate(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE,
+	//		  offset, len);
+	if (error < 0) {
+		perror("punch failed");
+		exit(EXIT_FAILURE);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int	fd;
+	char	*fname;
+	int	opt;
+	loff_t	min_hole = 0;
+	loff_t	punch_range_start = 0;
+	loff_t	punch_range_len = 0;
+	loff_t	punch_range_end = 0;
+	loff_t	cur_offset = 0;
+	unsigned long blocksize;
+	struct statvfs statvfsbuf;
+	struct stat statbuf;
+	ssize_t	ret;
+	off_t	punch_offset, punch_len;
+	char	*readbuf, *zerobuf;
+
+	while ((opt = getopt(argc, argv, "m:l:o:vh")) != -1) {
+		switch(opt) {
+		case 'm':
+			min_hole = cvtnum(optarg);
+			break;
+		case 'o':
+			punch_range_start = cvtnum(optarg);
+			break;
+		case 'l':
+			punch_range_len = cvtnum(optarg);
+			break;
+		case 'v':
+			debug++;
+			break;
+		case 'h':
+		default:
+			usage();
+		}
+	}
+
+	if (min_hole < 0) {
+		printf("Error: invalid min hole value specified\n");
+		usage();
+	}
+
+	if (punch_range_len < 0) {
+		printf("Error: invalid length value specified\n");
+		usage();
+	}
+
+	if (punch_range_start < 0) {
+		printf("Error: invalid offset value specified\n");
+		usage();
+	}
+
+	if (optind == argc) {
+		printf("Error: no filename specified\n");
+		usage();
+	}
+
+	fname = argv[optind++];
+
+	fd = open(fname, O_RDWR);
+	if (fd < 0) {
+		perror("Error opening file");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fstat(fd, &statbuf) < 0) {
+		perror("Error stat-ing file");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fstatvfs(fd, &statvfsbuf) < 0) {
+		perror("Error stat-ing fs");
+		exit(EXIT_FAILURE);
+	}
+
+	blocksize = statvfsbuf.f_bsize;
+	if (debug)
+		printf("blocksize is %lu\n", blocksize);
+
+	/* default range end is end of file */
+	if (!punch_range_len)
+		punch_range_end = statbuf.st_size;
+	else
+		punch_range_end = punch_range_start + punch_range_len;
+
+	if (punch_range_end > statbuf.st_size) {
+		printf("Error: range extends past EOF\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (debug)
+		printf("orig start/end %lld/%lld/%lld\n", punch_range_start, punch_range_end, min_hole);
+
+	/*
+	 * Normalize to blocksize-aligned range:
+	 * round start down, round end up - get all blocks including the range specified
+	 */
+
+	punch_range_start = round_down(punch_range_start, blocksize);
+	punch_range_end = round_up(punch_range_end, blocksize);
+	min_hole = round_up(min_hole, blocksize);
+	if (!min_hole)
+		min_hole = blocksize;
+
+	if (debug)
+		printf("new start/end/min %lld/%lld/%lld\n", punch_range_start, punch_range_end, min_hole);
+
+	if (punch_range_end <= punch_range_start) {
+		printf("Range too small, nothing to do\n");
+		exit(0);
+	}
+
+	readbuf = malloc(min_hole);
+	zerobuf = malloc(min_hole);
+
+	if (!readbuf || !zerobuf) {
+		perror("buffer allocation failed");
+		exit(EXIT_FAILURE);
+	}
+
+	memset(zerobuf, 0, min_hole);
+
+	punch_offset = -1;
+	punch_len = 0;
+
+	/* Move to the start of our requested range */
+	if (punch_range_start)
+		lseek(fd, punch_range_start, SEEK_SET);
+	cur_offset = punch_range_start;
+
+	printf("punching out holes of minimum size %lld in range %lld-%lld\n",
+		min_hole, punch_range_start, punch_range_end);
+
+	/*
+	 * Read through the file, finding block-aligned regions of 0s.
+	 * If the region is at least min_hole, punch it out.
+	 * This should be starting at a block-aligned offset
+	 */
+
+	while ((ret = read(fd, readbuf, min_hole)) > 0) {
+
+		if (!memcmp(readbuf, zerobuf, min_hole)) {
+			/* Block of zeros, so extend punch range */
+			if (punch_offset < 0)
+				punch_offset = cur_offset;
+			punch_len += min_hole;
+			if (debug > 1)
+				printf("found zeros at %lld, hole len now %lld\n", cur_offset, punch_len);
+		} else if (punch_offset > 0) {
+			/* Found nonzero byte; punch accumulated hole if it's big enough */
+ 			if (punch_len >= min_hole)
+				punch_hole(fd, punch_offset, punch_len);
+			else if (debug > 1)
+				printf("skipping hole of insufficient size %lld\n", punch_len);
+
+			/* reset punch range */
+			punch_offset = -1;
+			punch_len = 0;
+		}
+
+		cur_offset += ret;
+		/* Quit if we've moved beyond the specified range to punch */
+		if (cur_offset >= punch_range_end) {
+			/* punch out last hole in range if needed */
+			if (punch_offset > 0 && punch_len >= min_hole)
+				punch_hole(fd, punch_offset, punch_len);
+			break;
+		}
+	}
+
+	if (ret < 0) {
+		perror("read failed");
+		exit(EXIT_FAILURE);
+	}
+
+	free(readbuf);
+	free(zerobuf);
+	close(fd);
+	return 0;
+}
+
