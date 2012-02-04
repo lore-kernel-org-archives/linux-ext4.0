@@ -1,53 +1,88 @@
-From: Hin-Tak Leung <htl10@users.sourceforge.net>
-Subject: sane fsck default behavior for "Entry ... in ... has deleted/unused inode ....  Clear? yes"
-Date: Sat, 4 Feb 2012 02:51:47 +0000 (GMT)
-Message-ID: <1328323907.72548.YahooMailClassic@web29505.mail.ird.yahoo.com>
-Reply-To: htl10@users.sourceforge.net
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH 1/8] fs: Improve filesystem freezing handling
+Date: Fri, 03 Feb 2012 21:03:20 -0600
+Message-ID: <4F2C9FF8.2010207@sandeen.net>
+References: <1327091686-23177-1-git-send-email-jack@suse.cz> <1327091686-23177-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-To: linux-fsdevel@vger.kernel.org, tytso@users.sourceforge.net,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
 	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm8-vm0.bullet.mail.ird.yahoo.com ([77.238.189.203]:34797 "HELO
-	nm8-vm0.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752488Ab2BDCvt convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Feb 2012 21:51:49 -0500
+Received: from sandeen.net ([63.231.237.45]:39081 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751066Ab2BDDDV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Feb 2012 22:03:21 -0500
+In-Reply-To: <1327091686-23177-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-(I did subscribe to fs-devel, but it seems not to like @sf alias and unsubscribed me after a while - and did that circle a few times; please CC).
+On 1/20/12 2:34 PM, Jan Kara wrote:
+> vfs_check_frozen() tests are racy since the filesystem can be frozen just after
+> the test is performed. Thus in write paths we can end up marking some pages or
+> inodes dirty even though filesystem is already frozen. This creates problems
+> with flusher thread hanging on frozen filesystem.
+> 
+> Another problem is that exclusion between ->page_mkwrite() and filesystem
+> freezing has been handled by setting page dirty and then verifying s_frozen.
+> This guaranteed that either the freezing code sees the faulted page, writes it,
+> and writeprotects it again or we see s_frozen set and bail out of page fault.
+> This works to protect from page being marked writeable while filesystem
+> freezing is running but has an unpleasant artefact of leaving dirty (although
+> unmodified and writeprotected) pages on frozen filesystem resulting in similar
+> problems with flusher thread as the first problem.
+> 
+> This patch aims at providing exclusion between write paths and filesystem
+> freezing. We implement a writer-freeze read-write semaphores in the superblock
+> for each freezing level (currently there are two - SB_FREEZE_WRITE for data and
+> SB_FREEZE_TRANS for metadata). Write paths which should block freezing on given
+> level (e.g. ->block_page_mkwrite(), ->aio_write() for SB_FREEZE_WRITE level;
+> transaction lifetime for SB_FREEZE_TRANS level) hold reader side of the
+> semaphore. Code freezing the filesystem to a given level takes the writer side.
+> 
+> Only that we don't really want to bounce cachelines of the semaphore between
+> CPUs for each write happening. So we implement the reader side of the semaphore
+> as a per-cpu counter and the writer side is implemented using s_frozen
+> superblock field.
+> 
+> Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Have a rather broken hard disk at the moment - the bulk of it is ext3 on top of lvm2 - the default for fedora almost exactly 4 years ago. So been doing a lot of 'e2fsck -fv -y ...' lately.
+...
 
-Am a little surprised about what "Entry <file> in <dir> (<num>) has deleted/unused inode <num>  Clear? yes" does. it deletes the file.
+> @@ -135,6 +157,11 @@ static struct super_block *alloc_super(struct file_system_type *type)
+>  #else
+>  		INIT_LIST_HEAD(&s->s_files);
+>  #endif
+> +		if (init_sb_writers(s, SB_FREEZE_WRITE, "sb_writers_write"))
+> +			goto err_out;
+> +		if (init_sb_writers(s, SB_FREEZE_TRANS, "sb_writers_trans"))
+> +			goto err_out;
+> +
+>  		s->s_bdi = &default_backing_dev_info;
+>  		INIT_LIST_HEAD(&s->s_instances);
+>  		INIT_HLIST_BL_HEAD(&s->s_anon);
+> @@ -186,6 +213,17 @@ static struct super_block *alloc_super(struct file_system_type *type)
+>  	}
+>  out:
+>  	return s;
+> +err_out:
+> +	security_sb_free(s);
+> +#ifdef CONFIG_SMP
+> +	if (s->s_files)
+> +		free_percpu(s->s_files);
+> +#endif
+> +	destroy_sb_writers(s, SB_FREEZE_WRITE);
+> +	destroy_sb_writers(s, SB_FREEZE_TRANS);
 
-I wonder should it be re-tried, or relocated to /lost+found, or anything else?
+You probably ran into this already but the writer percpu vars need
+to be torn down in destroy_super() as well.
 
-I also want to make a suggestion: when such a decision is made, I'd like to keep a record of what files are lost, etc. Can an option be added to e2fsck to log its decisions somewhere?
-
-Thanks for all the hard-work to make fsck even possible - the hard disk has been well-used :-).
-
-For those people who might come across this in the future - here is a tips, and may be another question/discussion about sane behavior on error:
-
-it appears that some combination of SATA->USB enclosure plus usb-storage plus usb hci driver doesn't like read errors, and the kernel resets the usb device and reconnects whenever that happens. That has the unfortunate side effect of renaming /dev/sdb into /dev/sdc, etc, underneath lvm2, and causes lvm2 to get stuck. I suppose that's the sane behavior since one wants to stop I/O and further damage, but maybe the kernel should only reset usb storage devices on write-errors, rather than read-errors? And somehow limit the device to read-only access after a read-error?
-
-In any case, I somehow found that I could persuade the kernel not to reset the usb device, if I disable read-ahead (i.e. hdparm -a0/-A0). I also tried disabling read-ahead on the lvm2 device itself (-A0 /dev/dm-X, where X is the logical volume), and "echo 128 > /sys/block/sdc/device/max_sectors" (or smaller number).
-
-So it seems that slowing it down make it more reliable for an unreliable disk. Maybe this can be made automatic inside the kernel?
-
-
-
- 
-
-
- 
-
-
-
-
-
-
+-Eric
 
 
