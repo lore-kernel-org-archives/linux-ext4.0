@@ -1,72 +1,74 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 5/8] xfs: Protect xfs_file_aio_write() &
- xfs_setattr_size() with sb_start_write - sb_end_write
-Date: Mon, 6 Feb 2012 10:11:27 +1100
-Message-ID: <20120205231127.GH6922@dastard>
-References: <1327091686-23177-1-git-send-email-jack@suse.cz>
- <1327091686-23177-6-git-send-email-jack@suse.cz>
- <4F2CB44D.4060006@sandeen.net>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: sparsify - utility to punch out blocks of 0s in a file
+Date: Mon, 06 Feb 2012 03:44:43 +0400
+Message-ID: <4F2F146B.6050003@msgid.tls.msk.ru>
+References: <4F2D8F30.3090802@redhat.com> <4F2D90B6.4070008@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Alex Elder <elder@kernel.org>,
-	Surbhi Palande <csurbhi@gmail.com>,
-	Kamal Mostafa <kamal@canonical.com>,
-	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>, Ben Myers <bpm@sgi.com>,
-	Dave Chinner <dchinner@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@sandeen.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	xfs-oss <xfs@oss.sgi.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:5957 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752003Ab2BEXLb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Feb 2012 18:11:31 -0500
-Content-Disposition: inline
-In-Reply-To: <4F2CB44D.4060006@sandeen.net>
+Received: from isrv.corpit.ru ([86.62.121.231]:52843 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753429Ab2BEXoq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Feb 2012 18:44:46 -0500
+In-Reply-To: <4F2D90B6.4070008@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 03, 2012 at 10:30:05PM -0600, Eric Sandeen wrote:
-> On 1/20/12 2:34 PM, Jan Kara wrote:
-> > Replace racy xfs_wait_for_freeze() check in xfs_file_aio_write() with
-> > a reliable sb_start_write() - sb_end_write() locking.
+On 05.02.2012 00:10, Eric Sandeen wrote:
+[]
+
+Just a very quick look:
+
+>  * sparsify - utility to punch out blocks of 0s in a file
+> int main(int argc, char **argv)
+> {
+[]
+> 	if (optind == argc) {
+> 		printf("Error: no filename specified\n");
+> 		usage();
+> 	}
 > 
-> Here's what I'm running with now.  With this and my modified
-> patch6, I can pass xfstests 068 on xfs.
+> 	fname = argv[optind++];
 
-Just a quick question this raises - is .splice_write() protected?
+There's no handling of the case when there are more than one file
+specified on the command line.
 
-Cheers,
 
-Dave.
+> 	/*
+> 	 * Normalize to blocksize-aligned range:
+> 	 * round start down, round end up - get all blocks including the range specified
+> 	 */
 > 
-> -Eric
-> 
-> 
-> 
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 7e5bc87..f1cacdc 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -874,11 +874,11 @@ xfs_file_aio_write(
->  	if (ocount == 0)
->  		return 0;
->  
-> -	xfs_wait_for_freeze(ip->i_mount, SB_FREEZE_WRITE);
-> -
->  	if (XFS_FORCED_SHUTDOWN(ip->i_mount))
->  		return -EIO;
->  
-> +	sb_start_write(inode->i_sb, SB_FREEZE_WRITE);
-> +
+> 	punch_range_start = round_down(punch_range_start, blocksize);
+> 	punch_range_end = round_up(punch_range_end, blocksize);
+> 	min_hole = round_up(min_hole, blocksize);
+> 	if (!min_hole)
+> 		min_hole = blocksize;
 
-This check really should go before the shutdown check - if the
-filesystem shuts down while we are freezing or attempting to freeze,
-we want to abort the write after we are woken....
+I think this deserves some bold warning if punch_range_start
+or punch_hole_end is not a multiple of blocksize.
 
-Cheers,
+[]
+> 	/*
+> 	 * Read through the file, finding block-aligned regions of 0s.
+> 	 * If the region is at least min_hole, punch it out.
+> 	 * This should be starting at a block-aligned offset
+> 	 */
+> 
+> 	while ((ret = read(fd, readbuf, min_hole)) > 0) {
+> 
+> 		if (!memcmp(readbuf, zerobuf, min_hole)) {
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Now this is interesting.  Can ret be < min_hole?  Can a read
+in a middle of a file be shorter than specified?
+
+How it will work together with some other operation being done
+at the same file -- ftruncate anyone?
+
+Thanks!
+
+/mjt
