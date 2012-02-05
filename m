@@ -1,53 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Matthias Schniedermeyer <ms@citd.de>
 Subject: Re: sparsify - utility to punch out blocks of 0s in a file
-Date: Sun, 05 Feb 2012 11:23:21 -0600
-Message-ID: <4F2EBB09.6080905@redhat.com>
-References: <4F2D8F30.3090802@redhat.com> <201202050933.q159XQpB026380@helium.internal.tigress.co.uk> <4F2EB017.5090006@redhat.com> <9C5B5C07-B0E4-4D13-BCFE-7F35162DF5E8@dilger.ca>
+Date: Sun, 5 Feb 2012 18:23:02 +0100
+Message-ID: <20120205172302.GA7057@citd.de>
+References: <4F2D8F30.3090802@redhat.com>
+	<201202050933.q159XQpB026380@helium.internal.tigress.co.uk>
+	<4F2EB017.5090006@redhat.com>
+	<9C5B5C07-B0E4-4D13-BCFE-7F35162DF5E8@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Ron Yorston <rmy@tigress.co.uk>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Ron Yorston <rmy@tigress.co.uk>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>
 To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8985 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753888Ab2BERXZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Feb 2012 12:23:25 -0500
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
 In-Reply-To: <9C5B5C07-B0E4-4D13-BCFE-7F35162DF5E8@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On 2/5/12 10:55 AM, Andreas Dilger wrote:
-> On 2012-02-05, at 9:36, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 2/5/12 3:33 AM, Ron Yorston wrote:
->>> Eric Sandeen wrote:
->>>> Now that ext4, xfs, & ocfs2 can support punch hole, a tool to
->>>> "re-sparsify" a file by punching out ranges of 0s might be in order.
->>>>
->>>> I'll see if util-linux wants it after it gets beat into shape.
->>>> (or did a tool like this already exist and I missed it?)
->>
->> Matthias' suggestion of adding SEEK_HOLE/SEEK_DATA makes very good sense too.
+On 05.02.2012 09:55, Andreas Dilger wrote:
+
+> > Matthias' suggestion of adding SEEK_HOLE/SEEK_DATA makes very good sense too.
 > 
-> I thought about this, but if SEEK_HOLE/SEEK_DATA (or FIEMAP) worked,
-> then the file would already be sparse, so I don't think that will
-> help in this case...
+> I thought about this, but if SEEK_HOLE/SEEK_DATA (or FIEMAP) worked, then the file would already be sparse, so I don't think that will help in this case...
 
-But only if other tools originally used them, and there will probably be plenty
-of cases where they don't, or legacy files, or ....
+With that argumentation you wouldn't need the tool in the first place.
 
->> I should also untie the read/zero buffer size from the minimum hole size,
->> we should do optimal IO sizes regardless of the minimum hole size desired...
-> 
-> Definitely. 4kB IO is a killer for large files.
+"How can a bunch of zeros be in a file in the first place?"
+"Can only be because of the deficiency of another program."
 
-yeah, it was a quick hack, I'll try to fix that up.
+And who is to say that you wouldn't want to repeat such a thing from 
+time to time, without SEEK_HOLE/SEEK_DATE you MAY crunch through big 
+regions of zeros for no gain at all.
 
-(OTOH for large files you man not want a 4k hole granularity either)
 
--Eric
 
-> Cheers, Andreas
+Bis denn
 
+-- 
+Real Programmers consider "what you see is what you get" to be just as 
+bad a concept in Text Editors as it is in women. No, the Real Programmer
+wants a "you asked for it, you got it" text editor -- complicated, 
+cryptic, powerful, unforgiving, dangerous.
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
