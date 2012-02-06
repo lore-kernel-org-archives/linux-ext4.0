@@ -1,59 +1,50 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: sane fsck default behavior for "Entry ... in ... has
- deleted/unused inode ....  Clear? yes"
-Date: Sun, 5 Feb 2012 19:03:53 -0500
-Message-ID: <20120206000353.GA13391@thunk.org>
-References: <1AB9AC11-F9E9-4F52-8CBC-D050B056D013@mit.edu>
- <1328377990.1636.YahooMailClassic@web29504.mail.ird.yahoo.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for
+ speedup
+Date: Mon, 06 Feb 2012 13:13:17 +0900
+Message-ID: <4F2F535D.7050202@sx.jp.nec.com>
+References: <4F2657AD.9060901@sx.jp.nec.com>	<97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>	<4F28F962.2040209@sx.jp.nec.com>	<E2F2E1D0-8937-419F-8201-B2E9F3961AD7@dilger.ca>	<4F2B919D.1030307@sx.jp.nec.com> <CAGBYx2ZATt7KG0oUvYSVWkwpVdio7iAJHHVHXFFkPqFp13Xi-Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@users.sourceforge.net,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Hin-Tak Leung <htl10@users.sourceforge.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43403 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754003Ab2BFADy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Feb 2012 19:03:54 -0500
-Content-Disposition: inline
-In-Reply-To: <1328377990.1636.YahooMailClassic@web29504.mail.ird.yahoo.com>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:34382 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753250Ab2BFEQm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Feb 2012 23:16:42 -0500
+In-Reply-To: <CAGBYx2ZATt7KG0oUvYSVWkwpVdio7iAJHHVHXFFkPqFp13Xi-Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 04, 2012 at 05:53:10PM +0000, Hin-Tak Leung wrote:
-> 
-> Fair enough - I just thought the interaction between usb-storage and
-> lvm2 would warrant some wider discussion.
+2012/02/03 22:28, Yongqiang Yang wrote:
+> On Fri, Feb 3, 2012 at 3:49 PM, Kazuya Mio<k-mio@sx.jp.nec.com>  wrote:
+>> 2012/02/03 7:36, Andreas Dilger wrote:
+>>>>
+>>>>   filesystem        time(sec)  call extX_mark_inode_dirty(times)
+>>>>   ---
+>>>>   ext3              220.5      50,338,104
+>>>>   ext3 (patched)    196.3      25,169,658
+>>>>   ext4 (*1)         190.3      28,465,799
+>>>>   ext4 (*2)         201.5      27,963,473
+>>>>   ext4 (default)    223.3      14,026,118
+>>>>
+>>>>   *1 disable ext4-specific options (delalloc, extent, and so on)
+>>>>   *2 disable only delalloc option
+>>>
+>>> This shows that ext4 with extents+delalloc is _slower_ than ext3, which
+>>> is very strange.  In other similar tests of write performance (see
+>>
+>>
+>> One more thing is that ext4+delalloc is slower than ext4+nodelalloc.
+> And according to the data, maybe ext4+extent is also slower than ext4+noextent.
+>
+> What's the size of the fs?  and what kind of the tested device?
 
-If device driver thinks the device has disappeared, and then it
-reappears so that it gets a new identity (i.e. sdb -> sdc), the
-problem is below LVM2.  It's either a problem with the hardware
-actually disconnecting from the USB bus, or the with the device
-driver.  But the people who have expertise with the USB device driver
-and the USB hardware aren't going to be on fs-devel.
+I tested on Express5800/A1080a-S (4-way server with 8-core processors).
+Filesystem size was 100GB. I used the 266GB LUN from the FC-SAN storage.
 
-> That files are lost forever I understand, but from a user's point of
-> view, the most important thing is preserving data, or at least, when
-> lost is inevitable, know that they are lost and hope to recover that
-> somewhere. Is it possible to offer that - i.e. prompt for a log file
-> - when such a decision is needed, when run interactively?
-
-If you know that fsck has failed with the automatic (preen) pass, such
-that you are running fsck interactively by definition you know there
-will be some decision that will be required.  So why not always use
-the script command when you're running e2fsck interactively?
-
-We could replicate the functionality of script in e2fsck, but given
-that script is a perfectly good implementation, it's not clear it's
-worth it.
-
-> > It may very well be the SATA->USB enclosure is reporting some
-> > error much worse than a read error as a result of the error.
-> 
-> Thanks. The curious thing is that running hdparm -a0/-A0 can get
-> around the reset, so it seems to be a performance related issue.
-
-Well, we don't know that.  This is why you really need to get the USB
-storage folks involved, and they don't hang out on fs-devel.
-
-	      		    	       	    - Ted
+Regards,
+Kazuya Mio
