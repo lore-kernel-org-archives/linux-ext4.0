@@ -1,32 +1,38 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: sparsify - utility to punch out blocks of 0s in a file
-Date: Mon, 06 Feb 2012 15:47:37 -0600
-Message-ID: <4F304A79.8050004@redhat.com>
-References: <4F2D8F30.3090802@redhat.com> <20120206214132.GA22019@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH][RESEND]tracepoint: add
+ drop_transaction/update_superblock_end to jbd2
+Date: Mon, 6 Feb 2012 18:27:27 -0500
+Message-ID: <20120206232727.GA22324@thunk.org>
+References: <5C4C569E8A4B9B42A84A977CF070A35B2C58316AF9@USINDEVS01.corp.hds.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "jack@suse.cz" <jack@suse.cz>,
+	"dle-develop@lists.sourceforge.net"
+	<dle-develop@lists.sourceforge.net>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Satoru Moriya <satoru.moriya@hds.com>
+To: Seiji Aguchi <seiji.aguchi@hds.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63186 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755262Ab2BFVrm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Feb 2012 16:47:42 -0500
-In-Reply-To: <20120206214132.GA22019@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34090 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755015Ab2BFX1n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Feb 2012 18:27:43 -0500
+Content-Disposition: inline
+In-Reply-To: <5C4C569E8A4B9B42A84A977CF070A35B2C58316AF9@USINDEVS01.corp.hds.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/6/12 3:41 PM, Ted Ts'o wrote:
-> Cool!  I assume you're going to try to get this into util-linux-ng?
-> 
-> I'm tempted to drop it in e2fsprogs's contrib directxory for now, but
-> I think the best home for it is util-linux-ng.
-> 
-> 							- Ted
+On Wed, Jan 11, 2012 at 07:10:40PM -0500, Seiji Aguchi wrote:
 
-Yep, I will do that, though it could use a fair bit of cleanup first.
-kzak seemed amenable to taking it in.
+> This patch adds trace_jbd2_drop_transaction and
+> trace_jbd2_update_superblock_end because there are similar
+> tracepoints in jbd and they are needed in jbd2 as well.
+> 
+>  Signed-off-by: Seiji Aguchi <seiji.aguchi@hds.com>
+>  Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
--Eric
+I've applied this patch to my ext4 tree.  Apologies for the delay in
+getting back to you.
+
+						- Ted
