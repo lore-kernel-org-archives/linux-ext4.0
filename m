@@ -1,90 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: sparsify - utility to punch out blocks of 0s in a file
-Date: Sun, 05 Feb 2012 17:55:41 -0600
-Message-ID: <4F2F16FD.2090400@redhat.com>
-References: <4F2D8F30.3090802@redhat.com> <4F2D90B6.4070008@redhat.com> <4F2F146B.6050003@msgid.tls.msk.ru>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: sane fsck default behavior for "Entry ... in ... has
+ deleted/unused inode ....  Clear? yes"
+Date: Sun, 5 Feb 2012 19:03:53 -0500
+Message-ID: <20120206000353.GA13391@thunk.org>
+References: <1AB9AC11-F9E9-4F52-8CBC-D050B056D013@mit.edu>
+ <1328377990.1636.YahooMailClassic@web29504.mail.ird.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Michael Tokarev <mjt@tls.msk.ru>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@users.sourceforge.net,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Hin-Tak Leung <htl10@users.sourceforge.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22221 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753927Ab2BEXz7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Feb 2012 18:55:59 -0500
-In-Reply-To: <4F2F146B.6050003@msgid.tls.msk.ru>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43403 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754003Ab2BFADy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Feb 2012 19:03:54 -0500
+Content-Disposition: inline
+In-Reply-To: <1328377990.1636.YahooMailClassic@web29504.mail.ird.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/5/12 5:44 PM, Michael Tokarev wrote:
-> On 05.02.2012 00:10, Eric Sandeen wrote:
-> []
+On Sat, Feb 04, 2012 at 05:53:10PM +0000, Hin-Tak Leung wrote:
 > 
-> Just a very quick look:
+> Fair enough - I just thought the interaction between usb-storage and
+> lvm2 would warrant some wider discussion.
+
+If device driver thinks the device has disappeared, and then it
+reappears so that it gets a new identity (i.e. sdb -> sdc), the
+problem is below LVM2.  It's either a problem with the hardware
+actually disconnecting from the USB bus, or the with the device
+driver.  But the people who have expertise with the USB device driver
+and the USB hardware aren't going to be on fs-devel.
+
+> That files are lost forever I understand, but from a user's point of
+> view, the most important thing is preserving data, or at least, when
+> lost is inevitable, know that they are lost and hope to recover that
+> somewhere. Is it possible to offer that - i.e. prompt for a log file
+> - when such a decision is needed, when run interactively?
+
+If you know that fsck has failed with the automatic (preen) pass, such
+that you are running fsck interactively by definition you know there
+will be some decision that will be required.  So why not always use
+the script command when you're running e2fsck interactively?
+
+We could replicate the functionality of script in e2fsck, but given
+that script is a perfectly good implementation, it's not clear it's
+worth it.
+
+> > It may very well be the SATA->USB enclosure is reporting some
+> > error much worse than a read error as a result of the error.
 > 
->>  * sparsify - utility to punch out blocks of 0s in a file
->> int main(int argc, char **argv)
->> {
-> []
->> 	if (optind == argc) {
->> 		printf("Error: no filename specified\n");
->> 		usage();
->> 	}
->>
->> 	fname = argv[optind++];
-> 
-> There's no handling of the case when there are more than one file
-> specified on the command line.
+> Thanks. The curious thing is that running hdparm -a0/-A0 can get
+> around the reset, so it seems to be a performance related issue.
 
-ok
+Well, we don't know that.  This is why you really need to get the USB
+storage folks involved, and they don't hang out on fs-devel.
 
-> 
->> 	/*
->> 	 * Normalize to blocksize-aligned range:
->> 	 * round start down, round end up - get all blocks including the range specified
->> 	 */
->>
->> 	punch_range_start = round_down(punch_range_start, blocksize);
->> 	punch_range_end = round_up(punch_range_end, blocksize);
->> 	min_hole = round_up(min_hole, blocksize);
->> 	if (!min_hole)
->> 		min_hole = blocksize;
-> 
-> I think this deserves some bold warning if punch_range_start
-> or punch_hole_end is not a multiple of blocksize.
-
-well, we can only punch on block boundaries.  But I suppose I should swap
-round_up and round_down, so that we never punch anything that isn't *inside*
-the specified range.
-
-> []
->> 	/*
->> 	 * Read through the file, finding block-aligned regions of 0s.
->> 	 * If the region is at least min_hole, punch it out.
->> 	 * This should be starting at a block-aligned offset
->> 	 */
->>
->> 	while ((ret = read(fd, readbuf, min_hole)) > 0) {
->>
->> 		if (!memcmp(readbuf, zerobuf, min_hole)) {
-> 
-> Now this is interesting.  Can ret be < min_hole?  Can a read
-> in a middle of a file be shorter than specified?
-
-yes, and yes (but unlikely i think)...
-
-
-> How it will work together with some other operation being done
-> at the same file -- ftruncate anyone?
-
-I probably have some boundary condition & error checking to do yet :)
-
-Thanks for the review,
--Eric
- 
-> Thanks!
-> 
-> /mjt
-
+	      		    	       	    - Ted
