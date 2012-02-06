@@ -1,75 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: allow the block bitmap to be uninit when the inode bitmap is in use
-Date: Mon,  6 Feb 2012 14:55:15 -0500
-Message-ID: <1328558115-19526-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 3/3] filemap: don't call generic_write_sync for
+ -EIOCBQUEUED
+Date: Mon, 6 Feb 2012 14:55:47 -0500
+Message-ID: <20120206195546.GA22640@infradead.org>
+References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
+ <1327698949-12616-4-git-send-email-jmoyer@redhat.com>
+ <20120202175219.GB6640@quack.suse.cz>
+ <x497gzzrkfa.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34467 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754562Ab2BFTzQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Feb 2012 14:55:16 -0500
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:56863
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752841Ab2BFTzt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Feb 2012 14:55:49 -0500
+Content-Disposition: inline
+In-Reply-To: <x497gzzrkfa.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Removing this check will allow us to eventually eliminate code from
-the kernel which forcibly initialized the block bitmap when the inode
-bitmap is first used.  This would eliminate a required journal credit
-and extra disk write.
+On Mon, Feb 06, 2012 at 11:33:29AM -0500, Jeff Moyer wrote:
+> > code, right? Before that we'd drain the IO queue when cache flush is issued
+> > and thus effectively wait for IO completion...
+> 
+> Right, though hch seems to think even then the problem existed.
 
-Addresses-Google-Bug: #5944440
+I was wrong, using -o barrier it didn't.  That was however not something
+people using O_SYNC heavy production loads would do, they'd use disabled
+caches and nobarrier.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/problem.c |    5 -----
- e2fsck/problem.h |    4 ++--
- e2fsck/super.c   |    9 ---------
- 3 files changed, 2 insertions(+), 16 deletions(-)
+> > Also I was thinking whether we couldn't implement the fix in VFS. Basically
+> > it would be the same like the fix for ext4. Like having a per-sb workqueue
+> > and queue work calling generic_write_sync() from end_io handler when the
+> > file is O_SYNC? That would solve the issue for all filesystems...
+> 
+> Well, that would require buy-in from the other file system developers.
+> What do the XFS folks think?
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index f042b89..579c838 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -362,11 +362,6 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@g descriptor %g marked uninitialized without feature set.\n"),
- 	     PROMPT_FIX, PR_PREEN_OK },
- 
--	/* group N block bitmap uninitialized but inode bitmap in use. */
--	{ PR_0_BB_UNINIT_IB_INIT,
--	  N_("@g %g @b @B uninitialized but @i @B in use.\n"),
--	     PROMPT_FIX, PR_PREEN_OK },
--
- 	/* Group descriptor N has invalid unused inodes count. */
- 	{ PR_0_GDT_ITABLE_UNUSED,
- 	  N_("@g descriptor %g has invalid unused inodes count %b.  "),
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 9db29d8..3fabc90 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -203,8 +203,8 @@ struct problem_context {
- /* Group descriptor N marked uninitialized without feature set. */
- #define PR_0_GDT_UNINIT				0x000036
- 
--/* Block bitmap is not initialised and Inode bitmap is */
--#define PR_0_BB_UNINIT_IB_INIT			0x000037
-+/* Block bitmap is not initialised and Inode bitmap is -- NO LONGER USED */
-+/* #define PR_0_BB_UNINIT_IB_INIT			0x000037 */
- 
- /* Group descriptor N has invalid unused inodes count. */
- #define PR_0_GDT_ITABLE_UNUSED			0x000038
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index afec4b4..3397d77 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -666,15 +666,6 @@ void check_super_block(e2fsck_t ctx)
- 			ext2fs_unmark_valid(fs);
- 		}
- 
--		if (ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
--		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT)) {
--			if (fix_problem(ctx, PR_0_BB_UNINIT_IB_INIT, &pctx)) {
--				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
--				should_be = 1;
--			}
--			ext2fs_unmark_valid(fs);
--		}
+I don't think using that code for XFS makes sene.  But just like
+generic_write_sync there's no reason it can't be added to generic code,
+just make sure only generic_file_aio_write/__generic_file_aio_write use
+it, but generic_file_buffered_write and generic_file_direct_write stay
+clear of it.
+
