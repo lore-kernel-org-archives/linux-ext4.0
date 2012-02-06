@@ -1,50 +1,94 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH 0/2] ext3: Reduce calling ext3_mark_inode_dirty() for
- speedup
-Date: Mon, 06 Feb 2012 13:13:17 +0900
-Message-ID: <4F2F535D.7050202@sx.jp.nec.com>
-References: <4F2657AD.9060901@sx.jp.nec.com>	<97F0BDAD-B6D8-4246-B790-E269025F4A7D@dilger.ca>	<4F28F962.2040209@sx.jp.nec.com>	<E2F2E1D0-8937-419F-8201-B2E9F3961AD7@dilger.ca>	<4F2B919D.1030307@sx.jp.nec.com> <CAGBYx2ZATt7KG0oUvYSVWkwpVdio7iAJHHVHXFFkPqFp13Xi-Q@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/8] fs: Improve filesystem freezing handling
+Date: Mon, 6 Feb 2012 16:17:45 +0100
+Message-ID: <20120206151745.GD6890@quack.suse.cz>
+References: <1327091686-23177-1-git-send-email-jack@suse.cz>
+ <1327091686-23177-2-git-send-email-jack@suse.cz>
+ <4F2C9FF8.2010207@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	Dave Chinner <dchinner@redhat.com>,
+	Surbhi Palande <csurbhi@gmail.com>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:34382 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753250Ab2BFEQm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Feb 2012 23:16:42 -0500
-In-Reply-To: <CAGBYx2ZATt7KG0oUvYSVWkwpVdio7iAJHHVHXFFkPqFp13Xi-Q@mail.gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45910 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755348Ab2BFPRs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Feb 2012 10:17:48 -0500
+Content-Disposition: inline
+In-Reply-To: <4F2C9FF8.2010207@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/02/03 22:28, Yongqiang Yang wrote:
-> On Fri, Feb 3, 2012 at 3:49 PM, Kazuya Mio<k-mio@sx.jp.nec.com>  wrote:
->> 2012/02/03 7:36, Andreas Dilger wrote:
->>>>
->>>>   filesystem        time(sec)  call extX_mark_inode_dirty(times)
->>>>   ---
->>>>   ext3              220.5      50,338,104
->>>>   ext3 (patched)    196.3      25,169,658
->>>>   ext4 (*1)         190.3      28,465,799
->>>>   ext4 (*2)         201.5      27,963,473
->>>>   ext4 (default)    223.3      14,026,118
->>>>
->>>>   *1 disable ext4-specific options (delalloc, extent, and so on)
->>>>   *2 disable only delalloc option
->>>
->>> This shows that ext4 with extents+delalloc is _slower_ than ext3, which
->>> is very strange.  In other similar tests of write performance (see
->>
->>
->> One more thing is that ext4+delalloc is slower than ext4+nodelalloc.
-> And according to the data, maybe ext4+extent is also slower than ext4+noextent.
->
-> What's the size of the fs?  and what kind of the tested device?
+On Fri 03-02-12 21:03:20, Eric Sandeen wrote:
+> On 1/20/12 2:34 PM, Jan Kara wrote:
+> > vfs_check_frozen() tests are racy since the filesystem can be frozen just after
+> > the test is performed. Thus in write paths we can end up marking some pages or
+> > inodes dirty even though filesystem is already frozen. This creates problems
+> > with flusher thread hanging on frozen filesystem.
+> > 
+> > Another problem is that exclusion between ->page_mkwrite() and filesystem
+> > freezing has been handled by setting page dirty and then verifying s_frozen.
+> > This guaranteed that either the freezing code sees the faulted page, writes it,
+> > and writeprotects it again or we see s_frozen set and bail out of page fault.
+> > This works to protect from page being marked writeable while filesystem
+> > freezing is running but has an unpleasant artefact of leaving dirty (although
+> > unmodified and writeprotected) pages on frozen filesystem resulting in similar
+> > problems with flusher thread as the first problem.
+> > 
+> > This patch aims at providing exclusion between write paths and filesystem
+> > freezing. We implement a writer-freeze read-write semaphores in the superblock
+> > for each freezing level (currently there are two - SB_FREEZE_WRITE for data and
+> > SB_FREEZE_TRANS for metadata). Write paths which should block freezing on given
+> > level (e.g. ->block_page_mkwrite(), ->aio_write() for SB_FREEZE_WRITE level;
+> > transaction lifetime for SB_FREEZE_TRANS level) hold reader side of the
+> > semaphore. Code freezing the filesystem to a given level takes the writer side.
+> > 
+> > Only that we don't really want to bounce cachelines of the semaphore between
+> > CPUs for each write happening. So we implement the reader side of the semaphore
+> > as a per-cpu counter and the writer side is implemented using s_frozen
+> > superblock field.
+> > 
+> > Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> ...
+> 
+> > @@ -135,6 +157,11 @@ static struct super_block *alloc_super(struct file_system_type *type)
+> >  #else
+> >  		INIT_LIST_HEAD(&s->s_files);
+> >  #endif
+> > +		if (init_sb_writers(s, SB_FREEZE_WRITE, "sb_writers_write"))
+> > +			goto err_out;
+> > +		if (init_sb_writers(s, SB_FREEZE_TRANS, "sb_writers_trans"))
+> > +			goto err_out;
+> > +
+> >  		s->s_bdi = &default_backing_dev_info;
+> >  		INIT_LIST_HEAD(&s->s_instances);
+> >  		INIT_HLIST_BL_HEAD(&s->s_anon);
+> > @@ -186,6 +213,17 @@ static struct super_block *alloc_super(struct file_system_type *type)
+> >  	}
+> >  out:
+> >  	return s;
+> > +err_out:
+> > +	security_sb_free(s);
+> > +#ifdef CONFIG_SMP
+> > +	if (s->s_files)
+> > +		free_percpu(s->s_files);
+> > +#endif
+> > +	destroy_sb_writers(s, SB_FREEZE_WRITE);
+> > +	destroy_sb_writers(s, SB_FREEZE_TRANS);
+> 
+> You probably ran into this already but the writer percpu vars need
+> to be torn down in destroy_super() as well.
+  Actually not. Thanks for spotting this.
 
-I tested on Express5800/A1080a-S (4-way server with 8-core processors).
-Filesystem size was 100GB. I used the 266GB LUN from the FC-SAN storage.
-
-Regards,
-Kazuya Mio
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
