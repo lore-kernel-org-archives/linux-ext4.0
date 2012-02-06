@@ -1,43 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: 3.2.2: edquota: WARNING - /dev/md2: cannot change current
- block allocation
-Date: Mon, 6 Feb 2012 17:10:12 +0100
-Message-ID: <20120206161012.GG6890@quack.suse.cz>
-References: <20267.692.189880.355136@fisica.ufpr.br>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 2/3] ext4: honor the O_SYNC flag for aysnchronous direct I/O requests
+Date: Mon, 06 Feb 2012 11:20:29 -0500
+Message-ID: <x49bopcq6gi.fsf@segfault.boston.devel.redhat.com>
+References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
+	<1327698949-12616-3-git-send-email-jmoyer@redhat.com>
+	<20120202173120.GA6640@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Carvalho <carlos@fisica.ufpr.br>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49915 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755353Ab2BFQKO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Feb 2012 11:10:14 -0500
-Content-Disposition: inline
-In-Reply-To: <20267.692.189880.355136@fisica.ufpr.br>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120202173120.GA6640@quack.suse.cz> (Jan Kara's message of
+	"Thu, 2 Feb 2012 18:31:20 +0100")
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 02-02-12 19:40:04, Carlos Carvalho wrote:
-> When I tried to increase the quota of a user (postgres) I got this
-> edquota warning. The output of quota still showed the * indicating the
-> limit and the user couldn't allocate more disk. After a reboot (to
-> 3.2.1) and quotacheck I had to use edquota again, and then it accepted
-> the increase and unblocked the allocations.
-> 
-> This is the output of mount|grep /dev/md2:
-> /dev/md2 on /home type ext4 (rw,relatime,user_xattr,acl,barrier=0,stripe=128,data=ordered,inode_readahead_blks=64,jqfmt=vfsv1,usrjquota=aquota.user,grpjquota=aquota.group)
-> 
-> How can this be?
-  Well, the message suggests that you edited actual block usage of user and
-not his limit. That's why edquota complained and didn't change anything...
-So it's nothing related to kernel nor a bug ;).
+Jan Kara <jack@suse.cz> writes:
 
-  As a side note, I always found edquota(8) error prone and I think
-setquota(8) is a better tool to do what I need. But I guess it depends on
-one's taste.
+>> +	/* workqueue for aio+dio+o_sync disk cache flushing */
+>> +	struct workqueue_struct *aio_dio_flush_wq;
+>> +
+>   Hmm, looking at the patch I'm wondering why did you introduce the new
+> workqueue? It seems dio_unwritten_wq would be enough? You just need to
+> rename it to something more appropriate ;)
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I used a new workqueue as the operations are blocking, and I didn't want
+to hold up other progress.  If you think re-using the unwritten_wq is
+the right thing to do, I'm happy to comply.
+
+>> +	/*
+>> +	 * This function has two callers.  The first is the end_io_work
+>> +	 * routine just below.  This is an asynchronous completion context.
+>> +	 * The second is in the fsync path.  For the latter path, we can't
+>> +	 * return from here until the job is done.  Hence, we issue a
+>> +	 * blocking blkdev_issue_flush call.
+>> +	 */
+>> +	if (io->flag & EXT4_IO_END_NEEDS_SYNC) {
+>> +		/*
+>> +		 * Ideally, we'd like to know if the force_commit routine
+>> +		 * actually did send something to disk.  If it didn't,
+>> +		 * then we need to issue the cache flush by hand.  For now,
+>> +		 * play it safe and do both.
+>> +		 */
+>> +		ret = ext4_force_commit(inode->i_sb);
+>> +		if (ret)
+>> +			goto endio;
+>> +		ret = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+>   Look at what ext4_sync_file() does. It's more efficient than this.
+> You need something like:
+> 	commit_tid = file->f_flags & __O_SYNC ? EXT4_I(inode)->i_sync_tid :
+> 						EXT4_I(inode)->i_datasync_tid;
+> 	if (journal->j_flags & JBD2_BARRIER &&
+> 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+> 		needs_barrier = true;
+> 	jbd2_log_start_commit(journal, commit_tid);
+> 	jbd2_log_wait_commit(journal, commit_tid);
+> 	if (needs_barrier)
+> 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+
+Great, thanks for the pointer!
+
+Cheers,
+Jeff
