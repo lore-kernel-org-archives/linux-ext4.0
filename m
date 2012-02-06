@@ -1,56 +1,281 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: Re: sparsify - utility to punch out blocks of 0s in a file
-Date: Mon, 06 Feb 2012 10:40:11 -0800
-Message-ID: <4F301E8B.7050909@oracle.com>
-References: <4F2D8F30.3090802@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>, ocfs2-devel@oss.oracle.com
-To: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: fold ext4_claim_inode into ext4_new_inode
+Date: Mon,  6 Feb 2012 14:54:43 -0500
+Message-ID: <1328558084-19430-2-git-send-email-tytso@mit.edu>
+References: <1328558084-19430-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:34795 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755425Ab2BFSl2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Feb 2012 13:41:28 -0500
-In-Reply-To: <4F2D8F30.3090802@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34461 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754852Ab2BFTyz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Feb 2012 14:54:55 -0500
+In-Reply-To: <1328558084-19430-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/04/2012 12:04 PM, Eric Sandeen wrote:
-> Now that ext4, xfs,&  ocfs2 can support punch hole, a tool to
-> "re-sparsify" a file by punching out ranges of 0s might be in order.
->
-> I whipped this up fast, it probably has bugs&  off-by-ones but thought
-> I'd send it out.  It's not terribly efficient doing 4k reads by default
-> I suppose.
->
-> I'll see if util-linux wants it after it gets beat into shape.
-> (or did a tool like this already exist and I missed it?)
->
-> (Another mode which does a file copy, possibly from stdin
-> might be good, like e2fsprogs/contrib/make-sparse.c ?  Although
-> that can be hacked up with cp already).
->
-> It works like this:
->
-> [root@inode sparsify]# ./sparsify  -h
-> Usage: sparsify [-m min hole size] [-o offset] [-l length] filename
+The function ext4_claim_inode() is only called by one function,
+ext4_new_inode(), and by folding the functionality into
+ext4_new_inode(), we can remove over 50 lines of code, and put all
+of the logic of allocating a new inode into a single place.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ialloc.c |  212 ++++++++++++++++++++----------------------------------
+ 1 files changed, 79 insertions(+), 133 deletions(-)
 
-So I have a similar tool queued up in ocfs2-tools. Named puncher.
-http://oss.oracle.com/git/?p=ocfs2-tools.git;a=shortlog;h=puncher
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 25d8c97..ced06fc 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -593,94 +593,6 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ }
+ 
+ /*
+- * claim the inode from the inode bitmap. If the group
+- * is uninit we need to take the groups's ext4_group_lock
+- * and clear the uninit flag. The inode bitmap update
+- * and group desc uninit flag clear should be done
+- * after holding ext4_group_lock so that ext4_read_inode_bitmap
+- * doesn't race with the ext4_claim_inode
+- */
+-static int ext4_claim_inode(struct super_block *sb,
+-			struct buffer_head *inode_bitmap_bh,
+-			unsigned long ino, ext4_group_t group, umode_t mode)
+-{
+-	int free = 0, retval = 0, count;
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+-	struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
+-
+-	/*
+-	 * We have to be sure that new inode allocation does not race with
+-	 * inode table initialization, because otherwise we may end up
+-	 * allocating and writing new inode right before sb_issue_zeroout
+-	 * takes place and overwriting our new inode with zeroes. So we
+-	 * take alloc_sem to prevent it.
+-	 */
+-	down_read(&grp->alloc_sem);
+-	ext4_lock_group(sb, group);
+-	if (ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data)) {
+-		/* not a free inode */
+-		retval = 1;
+-		goto err_ret;
+-	}
+-	ino++;
+-	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
+-			ino > EXT4_INODES_PER_GROUP(sb)) {
+-		ext4_unlock_group(sb, group);
+-		up_read(&grp->alloc_sem);
+-		ext4_error(sb, "reserved inode or inode > inodes count - "
+-			   "block_group = %u, inode=%lu", group,
+-			   ino + group * EXT4_INODES_PER_GROUP(sb));
+-		return 1;
+-	}
+-	/* If we didn't allocate from within the initialized part of the inode
+-	 * table then we need to initialize up to this inode. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-
+-		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+-			/* When marking the block group with
+-			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
+-			 * on the value of bg_itable_unused even though
+-			 * mke2fs could have initialized the same for us.
+-			 * Instead we calculated the value below
+-			 */
+-
+-			free = 0;
+-		} else {
+-			free = EXT4_INODES_PER_GROUP(sb) -
+-				ext4_itable_unused_count(sb, gdp);
+-		}
+-
+-		/*
+-		 * Check the relative inode number against the last used
+-		 * relative inode number in this group. if it is greater
+-		 * we need to  update the bg_itable_unused count
+-		 *
+-		 */
+-		if (ino > free)
+-			ext4_itable_unused_set(sb, gdp,
+-					(EXT4_INODES_PER_GROUP(sb) - ino));
+-	}
+-	count = ext4_free_inodes_count(sb, gdp) - 1;
+-	ext4_free_inodes_set(sb, gdp, count);
+-	if (S_ISDIR(mode)) {
+-		count = ext4_used_dirs_count(sb, gdp) + 1;
+-		ext4_used_dirs_set(sb, gdp, count);
+-		if (sbi->s_log_groups_per_flex) {
+-			ext4_group_t f = ext4_flex_group(sbi, group);
+-
+-			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+-		}
+-	}
+-	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+-err_ret:
+-	ext4_unlock_group(sb, group);
+-	up_read(&grp->alloc_sem);
+-	return retval;
+-}
+-
+-/*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+  * free space and a low directory-to-inode ratio; if that fails, then of
+@@ -741,6 +653,11 @@ got_group:
+ 	if (ret2 == -1)
+ 		goto out;
+ 
++	/*
++	 * Normally we will only go through one pass of this loop,
++	 * unless we get unlucky and it turns out the group we selected
++	 * had its last inode grabbed by someone else.
++	 */
+ 	for (i = 0; i < ngroups; i++, ino = 0) {
+ 		err = -EIO;
+ 
+@@ -757,51 +674,24 @@ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+ 					      inode_bitmap_bh->b_data,
+ 					      EXT4_INODES_PER_GROUP(sb), ino);
+-
+-		if (ino < EXT4_INODES_PER_GROUP(sb)) {
+-
+-			BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle,
+-							    inode_bitmap_bh);
+-			if (err)
+-				goto fail;
+-
+-			BUFFER_TRACE(group_desc_bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle,
+-								group_desc_bh);
+-			if (err)
+-				goto fail;
+-			if (!ext4_claim_inode(sb, inode_bitmap_bh,
+-						ino, group, mode)) {
+-				/* we won it */
+-				BUFFER_TRACE(inode_bitmap_bh,
+-					"call ext4_handle_dirty_metadata");
+-				err = ext4_handle_dirty_metadata(handle,
+-								 NULL,
+-							inode_bitmap_bh);
+-				if (err)
+-					goto fail;
+-				/* zero bit is inode number 1*/
+-				ino++;
+-				goto got;
+-			}
+-			/* we lost it */
+-			ext4_handle_release_buffer(handle, inode_bitmap_bh);
+-			ext4_handle_release_buffer(handle, group_desc_bh);
+-
+-			if (++ino < EXT4_INODES_PER_GROUP(sb))
+-				goto repeat_in_this_group;
++		if (ino >= EXT4_INODES_PER_GROUP(sb)) {
++			if (++group == ngroups)
++				group = 0;
++			continue;
+ 		}
+-
+-		/*
+-		 * This case is possible in concurrent environment.  It is very
+-		 * rare.  We cannot repeat the find_group_xxx() call because
+-		 * that will simply return the same blockgroup, because the
+-		 * group descriptor metadata has not yet been updated.
+-		 * So we just go onto the next blockgroup.
+-		 */
+-		if (++group == ngroups)
+-			group = 0;
++		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
++			ext4_error(sb, "reserved inode found cleared - "
++				   "inode=%lu", ino + 1);
++			continue;
++		}
++		ext4_lock_group(sb, group);
++		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
++		ext4_unlock_group(sb, group);
++		ino++;		/* the inode bitmap is zero-based */
++		if (!ret2)
++			goto got; /* we grabbed the inode! */
++		if (ino < EXT4_INODES_PER_GROUP(sb))
++			goto repeat_in_this_group;
+ 	}
+ 	err = -ENOSPC;
+ 	goto out;
+@@ -838,6 +728,62 @@ got:
+ 		if (err)
+ 			goto fail;
+ 	}
++
++	BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
++	if (err)
++		goto fail;
++
++	BUFFER_TRACE(group_desc_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, group_desc_bh);
++	if (err)
++		goto fail;
++
++	/* Update the relevant bg descriptor fields */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		int free;
++		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
++ 
++		down_read(&grp->alloc_sem); /* protect vs itable lazyinit */
++		ext4_lock_group(sb, group); /* while we modify the bg desc */
++		free = EXT4_INODES_PER_GROUP(sb) -
++			ext4_itable_unused_count(sb, gdp);
++		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
++			free = 0;
++		}
++		/*
++		 * Check the relative inode number against the last used
++		 * relative inode number in this group. if it is greater
++		 * we need to update the bg_itable_unused count
++		 */
++		if (ino > free)
++			ext4_itable_unused_set(sb, gdp,
++					(EXT4_INODES_PER_GROUP(sb) - ino));
++		up_read(&grp->alloc_sem);
++	}
++	err = -ENOSPC;
++	goto out;
++
++	ext4_free_inodes_set(sb, gdp, ext4_free_inodes_count(sb, gdp) - 1);
++	if (S_ISDIR(mode)) {
++		ext4_used_dirs_set(sb, gdp, ext4_used_dirs_count(sb, gdp) + 1);
++		if (sbi->s_log_groups_per_flex) {
++			ext4_group_t f = ext4_flex_group(sbi, group);
++
++			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
++		}
++	}
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++		gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
++		ext4_unlock_group(sb, group);
++	}
++
++	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
++	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
++	if (err)
++		goto fail;
++
+ 	BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_metadata(handle, NULL, group_desc_bh);
+ 	if (err)
+@@ -1101,7 +1047,7 @@ unsigned long ext4_count_dirs(struct super_block * sb)
+  * where it is called from on active part of filesystem is ext4lazyinit
+  * thread, so we do not need any special locks, however we have to prevent
+  * inode allocation from the current group, so we take alloc_sem lock, to
+- * block ext4_claim_inode until we are finished.
++ * block ext4_new_inode() until we are finished.
+  */
+ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ 				 int barrier)
+-- 
+1.7.9.107.g8e04a
 
-I'll pull it out if we get something in util-linux. But maybe you can 
-extract something useful from it.
-
-Like.... maybe doing dry-run as default. It is an inplace modification
-after all. Also using a large hole size as default (1MB). Over using 
-hole punching will negatively affect read performance. We should make 
-the sane choice for the user.
-
-On a related note, it may make sense for ext4 to populate the cluster 
-size (bigalloc) in stat.st_blksize.
-
-2 cents...
