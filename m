@@ -1,38 +1,34 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH][RESEND]tracepoint: add
- drop_transaction/update_superblock_end to jbd2
-Date: Mon, 6 Feb 2012 18:27:27 -0500
-Message-ID: <20120206232727.GA22324@thunk.org>
-References: <5C4C569E8A4B9B42A84A977CF070A35B2C58316AF9@USINDEVS01.corp.hds.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 41682] INFO: possible circular locking dependency detected ..
+ at ext4_evict_inode
+Date: Tue, 7 Feb 2012 12:41:45 GMT
+Message-ID: <201202071241.q17CfjXM004951@bugzilla.kernel.org>
+References: <bug-41682-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "jack@suse.cz" <jack@suse.cz>,
-	"dle-develop@lists.sourceforge.net"
-	<dle-develop@lists.sourceforge.net>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Satoru Moriya <satoru.moriya@hds.com>
-To: Seiji Aguchi <seiji.aguchi@hds.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34090 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755015Ab2BFX1n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Feb 2012 18:27:43 -0500
-Content-Disposition: inline
-In-Reply-To: <5C4C569E8A4B9B42A84A977CF070A35B2C58316AF9@USINDEVS01.corp.hds.com>
+Received: from bugzilla.kernel.org ([198.145.19.204]:41571 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756113Ab2BGMlp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Feb 2012 07:41:45 -0500
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q17Cfjmf004952
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Feb 2012 12:41:45 GMT
+In-Reply-To: <bug-41682-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 11, 2012 at 07:10:40PM -0500, Seiji Aguchi wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=41682
 
-> This patch adds trace_jbd2_drop_transaction and
-> trace_jbd2_update_superblock_end because there are similar
-> tracepoints in jbd and they are needed in jbd2 as well.
-> 
->  Signed-off-by: Seiji Aguchi <seiji.aguchi@hds.com>
->  Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-I've applied this patch to my ext4 tree.  Apologies for the delay in
-getting back to you.
 
-						- Ted
+
+
+--- Comment #13 from Witold Baryluk <baryluk@smp.if.uj.edu.pl>  2012-02-07 12:41:44 ---
+Cannot reproduce anymore at 3.2.4 or 3.3-rc2+. I think this can be closed.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
