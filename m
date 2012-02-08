@@ -1,63 +1,54 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Collapsing the number of feature flags (was Re: [PATCH v2.3 00/23]
- ext4: Add metadata checksumming)
-Date: Wed, 8 Feb 2012 13:08:47 -0500
-Message-ID: <20120208180847.GA3654@thunk.org>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] mke2fs: recognize mke4fs program name
+Date: Wed, 08 Feb 2012 14:56:19 -0600
+Message-ID: <4F32E173.2050103@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35606 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750899Ab2BHSIv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Feb 2012 13:08:51 -0500
-Content-Disposition: inline
-In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6549 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752183Ab2BHU4U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Feb 2012 15:56:20 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q18KuKrY015078
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 8 Feb 2012 15:56:20 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q18KuJnM006082
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 8 Feb 2012 15:56:20 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So I've started looking at this patch series, and I'm wondering if it
-might be better if we collapse these two feature flags:
+We shipped "mke4fs" alongside mke2fs in RHEL5, so that ext4-capable
+utilities could be installed without disturbing the venerable e2fsprogs-1.39
+shipped in RHEL5 from the beginning.  But it surprised some users that
+"mke4fs" created ext2 filesystems by default rather than ext4.
+While it was my intent to have the renamed binaries behave exactly
+like the stock ones, it seems that there is some precedence for
+handling "mkeNfs" in the code, so seems reasonable to add 
+mke4fs -> ext4 as well.
 
-	EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
-and
-	EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-To a single feature flag, EXT4_FEATURE_INCOMPAT_METADATA_CSUM, which
-also implies EXT4_FEATURE_RO_COMPAT_GDT_CSUM.  (So in the future, when
-we enable INCOMPAT_CSUM_METADATA, the presense or absence of
-EXT4_RO_COMPAT_GDT_CSUM won't matter, and in fact mke2fs will skip
-setting that feature flag altogether.  Tune2fs could also drop the
-GDT_CSUM flag when adding the CSUM_METADATA flag.)
+This probably doesn't matter much to upstream, but it seems consistent
+with the existing code, below, if you'd like to include it.
 
-The reasoning behind this is that it simplifies the combinatorics we
-need to test, and it also simplifies our code base.  In addition, it's
-really easy to make tune2fs recalculate the checksums when the feature
-flag is set, and reculate the block group checksums using the old
-algorithm when the metadata flag is unset.  So if someone wants to
-mount the file system on a downlevel kernel, it's really not that bad
-that this feature is an INCOMPAT feature; we can easily downgrade it
-using tune2fs.
 
-In fact, if we wanted to take this to extremes, we could call it
-EXT4_FEATURE_INCOMPAT_NEW_METADATA, and then let it imply the
-following feature flags as well:
-
-	EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER
-	EXT4_FEATURE_RO_COMPAT_LARGE_FILE
-	EXT4_FEATURE_RO_COMPAT_HUGE_FILE
-	EXT4_FEATURE_RO_COMPAT_DIR_NLINK
-	EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE
-	EXT4_FEATURE_INCOMPAT_FILETYPE
-	EXT4_FEATURE_INCOMPAT_FLEX_BG
-
-We can add inline functions in fs/ext4/ext4.h and in
-lib/ext2fs/ext2fs.h to make the source code look a bit simpler.
-
-This would help to reduce our testing load, and it would also make the
-output of dumpe2fs easier to understand...
-
-						- Ted
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index e97e44e..410f880 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1014,6 +1014,8 @@ static char **parse_fs_type(const char *fs_type,
+ 		ext_type = "ext2";
+ 	else if (!strcmp(program_name, "mke3fs"))
+ 		ext_type = "ext3";
++	else if (!strcmp(program_name, "mke4fs"))
++		ext_type = "ext4";
+ 	else if (progname) {
+ 		ext_type = strrchr(progname, '/');
+ 		if (ext_type)
 
