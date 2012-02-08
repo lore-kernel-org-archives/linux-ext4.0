@@ -1,72 +1,63 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 3/3] filemap: don't call generic_write_sync for -EIOCBQUEUED
-Date: Wed, 08 Feb 2012 11:38:22 -0500
-Message-ID: <x49obt9z3ep.fsf@segfault.boston.devel.redhat.com>
-References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
-	<1327698949-12616-4-git-send-email-jmoyer@redhat.com>
-	<20120202175219.GB6640@quack.suse.cz>
-	<x497gzzrkfa.fsf@segfault.boston.devel.redhat.com>
-	<20120206195546.GA22640@infradead.org>
-	<x49pqdqml91.fsf@segfault.boston.devel.redhat.com>
-	<20120208160945.GB1696@quack.suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Collapsing the number of feature flags (was Re: [PATCH v2.3 00/23]
+ ext4: Add metadata checksumming)
+Date: Wed, 8 Feb 2012 13:08:47 -0500
+Message-ID: <20120208180847.GA3654@thunk.org>
+References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7946 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755839Ab2BHQiw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Feb 2012 11:38:52 -0500
-In-Reply-To: <20120208160945.GB1696@quack.suse.cz> (Jan Kara's message of
-	"Wed, 8 Feb 2012 17:09:45 +0100")
+Received: from li9-11.members.linode.com ([67.18.176.11]:35606 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750899Ab2BHSIv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Feb 2012 13:08:51 -0500
+Content-Disposition: inline
+In-Reply-To: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+So I've started looking at this patch series, and I'm wondering if it
+might be better if we collapse these two feature flags:
 
-> On Tue 07-02-12 15:39:06, Jeff Moyer wrote:
->> Christoph Hellwig <hch@infradead.org> writes:
->> > On Mon, Feb 06, 2012 at 11:33:29AM -0500, Jeff Moyer wrote:
->> >> > code, right? Before that we'd drain the IO queue when cache flush is issued
->> >> > and thus effectively wait for IO completion...
->> >> 
->> >> Right, though hch seems to think even then the problem existed.
->> >
->> > I was wrong, using -o barrier it didn't.  That was however not something
->> > people using O_SYNC heavy production loads would do, they'd use disabled
->> > caches and nobarrier.
->> >
->> >> > Also I was thinking whether we couldn't implement the fix in VFS. Basically
->> >> > it would be the same like the fix for ext4. Like having a per-sb workqueue
->> >> > and queue work calling generic_write_sync() from end_io handler when the
->> >> > file is O_SYNC? That would solve the issue for all filesystems...
->> >> 
->> >> Well, that would require buy-in from the other file system developers.
->> >> What do the XFS folks think?
->> >
->> > I don't think using that code for XFS makes sene.  But just like
->> > generic_write_sync there's no reason it can't be added to generic code,
->> > just make sure only generic_file_aio_write/__generic_file_aio_write use
->> > it, but generic_file_buffered_write and generic_file_direct_write stay
->> > clear of it.
->> 
->> ext4_file_write (ext4's .aio_write routine) calls into
->> generic_file_aio_write.  So, I don't think we can generalize that this
->> routine means that the file system doesn't install its own endio
->> handler.  What's more, we'd have to pass an endio routine down the call
->> stack quite a ways.  In all, I think that would be an uglier solution to
->> the problem.  Did I miss something?
->   I think it can be done in a relatively elegant way. POC patch (completely
-> untested) is attached. What do you think? All filesystems using
-> blockdev_direct_IO() can be easily converted to use this, gfs2 & ocfs2 can
-> also use the framework. That leaves only ext4, xfs & btrfs which need
-> special handling. Actually, maybe btrfs could be converted as well because
-> it doesn't seem to need to offload anything else to workqueue. But I'm not
-> really sure...
+	EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+and
+	EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM
 
-I like it!
+To a single feature flag, EXT4_FEATURE_INCOMPAT_METADATA_CSUM, which
+also implies EXT4_FEATURE_RO_COMPAT_GDT_CSUM.  (So in the future, when
+we enable INCOMPAT_CSUM_METADATA, the presense or absence of
+EXT4_RO_COMPAT_GDT_CSUM won't matter, and in fact mke2fs will skip
+setting that feature flag altogether.  Tune2fs could also drop the
+GDT_CSUM flag when adding the CSUM_METADATA flag.)
 
--Jeff
+The reasoning behind this is that it simplifies the combinatorics we
+need to test, and it also simplifies our code base.  In addition, it's
+really easy to make tune2fs recalculate the checksums when the feature
+flag is set, and reculate the block group checksums using the old
+algorithm when the metadata flag is unset.  So if someone wants to
+mount the file system on a downlevel kernel, it's really not that bad
+that this feature is an INCOMPAT feature; we can easily downgrade it
+using tune2fs.
+
+In fact, if we wanted to take this to extremes, we could call it
+EXT4_FEATURE_INCOMPAT_NEW_METADATA, and then let it imply the
+following feature flags as well:
+
+	EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER
+	EXT4_FEATURE_RO_COMPAT_LARGE_FILE
+	EXT4_FEATURE_RO_COMPAT_HUGE_FILE
+	EXT4_FEATURE_RO_COMPAT_DIR_NLINK
+	EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE
+	EXT4_FEATURE_INCOMPAT_FILETYPE
+	EXT4_FEATURE_INCOMPAT_FLEX_BG
+
+We can add inline functions in fs/ext4/ext4.h and in
+lib/ext2fs/ext2fs.h to make the source code look a bit simpler.
+
+This would help to reduce our testing load, and it would also make the
+output of dumpe2fs easier to understand...
+
+						- Ted
+
