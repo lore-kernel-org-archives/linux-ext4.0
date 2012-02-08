@@ -1,34 +1,41 @@
-From: "Mr.Patrick Otah" <patrickotah_004@virgilio.it>
-Subject: Be Informed,
-Date: Wed, 8 Feb 2012 07:28:32 -0000
-Message-ID: <e35505c9524f104bd6d79a20beac414b.squirrel@211.103.208.230>
-Reply-To: dhlfastcourier@w.cn
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 2/3] ext4: honor the O_SYNC flag for aysnchronous direct I/O requests
+Date: Wed, 08 Feb 2012 10:11:47 -0500
+Message-ID: <x491uq51hsc.fsf@segfault.boston.devel.redhat.com>
+References: <1327698949-12616-1-git-send-email-jmoyer@redhat.com>
+	<1327698949-12616-3-git-send-email-jmoyer@redhat.com>
+	<20120202173120.GA6640@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [211.103.208.230] ([211.103.208.230]:46189 "EHLO
-	www.jointbest.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1756013Ab2BHKvj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Feb 2012 05:51:39 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:48678 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754067Ab2BHPMN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Feb 2012 10:12:13 -0500
+In-Reply-To: <20120202173120.GA6640@quack.suse.cz> (Jan Kara's message of
+	"Thu, 2 Feb 2012 18:31:20 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Jan Kara <jack@suse.cz> writes:
 
-Be Informed,
+>   Look at what ext4_sync_file() does. It's more efficient than this.
+> You need something like:
+> 	commit_tid = file->f_flags & __O_SYNC ? EXT4_I(inode)->i_sync_tid :
+> 						EXT4_I(inode)->i_datasync_tid;
+> 	if (journal->j_flags & JBD2_BARRIER &&
+> 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+> 		needs_barrier = true;
+> 	jbd2_log_start_commit(journal, commit_tid);
+> 	jbd2_log_wait_commit(journal, commit_tid);
+> 	if (needs_barrier)
+> 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
 
-Your Compensation BANK DRAFT worth of ($1.5 Million USD) was converted
-into ATM-Card which you can withdraw in any ATM Cash Point Machine
-Worldwide .Your ATM Card have been programmed by the issuing bank"
-<<UNITED BANK FOR AFRICA=BB and register it with DHL. for delivery. Con=
-tact
-DHL COMPANY via Email:(dhlfastcourier@w.cn) Mr.Elias Ahoueke Contact th=
-em
-with your information for delivery.
+If the transaction won't send a data barrier, wouldn't you want to issue
+the flush on the data device prior to commiting the transaction, not
+after it?
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Jeff
