@@ -1,123 +1,106 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] ext4: fix wrong counting of s_dirtyclusters_counter for bigalloc in race condition
-Date: Thu,  9 Feb 2012 18:46:34 +0800
-Message-ID: <1328784394-12977-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Rudolf Zran <rudolfzran@yahoo.com>
+Subject: Restoring filenames from partly damaged ext4-filesystem
+Date: Thu, 9 Feb 2012 16:29:53 +0000 (GMT)
+Message-ID: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com>
+Reply-To: Rudolf Zran <rudolfzran@yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"debian-user@lists.debian.org" <debian-user@lists.debian.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:43781 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432Ab2BIKqm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2012 05:46:42 -0500
-Received: by pbcun15 with SMTP id un15so1429375pbc.19
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Feb 2012 02:46:42 -0800 (PST)
+Received: from nm6.bullet.mail.ird.yahoo.com ([77.238.189.63]:23799 "HELO
+	nm6.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752059Ab2BIQ3z convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Feb 2012 11:29:55 -0500
+References: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+Hi everybody!
 
-When I run the shell scripts below for about 10 minutes in a 16-core server (upstream kernel):
+I recently damaged an ext4 partition by accident (mistakenly forced
+a RAID sync with another partition onto it, which I realized after
+about 3% completion). As a result the beginning of the ext4 partition
+seems to be overwritten with garbage and refuses to mount.
 
+As you might guess, I'd now like to get as most of my data back (from
+the part which hasn't been overwritten, of course :)).
 
-
-DEV=/dev/sdc
-FILE=/test/hello
-
-
-do_write()
-{
-	while [ 1 ]
-	do
-		dd if=/dev/zero of=$FILE bs=1k count=$1 conv=notrunc &> /dev/null
-	done
-}
-
-do_truncate()
-{
-	while [ 1 ]
-	do
-		truncate -s $1 $FILE
-	done
-}
-
-mke2fs -m 0 -C 1048576 -O ^has_journal,^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,bigalloc $DEV
-mount -t ext4 $DEV /test/
-
-do_write 1 &
-do_write 3 &
-do_write 5 &
-do_write 7 &
-do_truncate 0 &
-do_truncate 0 &
-do_truncate 0 &
+Maybe somebody knows a good method to just "repair" the ext4-structure
+from the remaining part of the partition?
 
 
+Background information:
 
-The "Used" ratio of ext4 filesystem ( which reported from "df" command ) grow very fast until it reach 100%, but actually the max size of the file in /test/ is only 7k.
-
-Imaging a file has only one page (0~4k) which is delayed and not writeback yet (the i_reserved_data_blocks is 1),
-and here comes two processes, process0 truncate page0(bh0), process1 write page1(bh1), the race condition will be like:
-
-
-             process0                                                   process1
-
-  -->truncate
-    -->ext4_da_invalidatepage
-      -->ext4_da_page_release_reservation
-        -->clear_buffer_delay(bh0)                          
-                                                                        -->ext4_da_map_blocks
-                                                                          -->ext4_ext_map_blocks
-                                                                            -->map->m_flags |= EXT4_MAP_FROM_CLUSTER
-                                                                              (because bh0 is not delay now)
-                                                                          -->ext4_da_reserve_space
-                                                                            (i_reserved_data_blocks is 2 now)
-
-        (the bh1 is delay, so ext4_da_release_space
-         will not be called)
+Operation system:=A0=A0 Debian GNU/Linux 6.0.4 (Squeeze)
+Kernel:=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 Linux 2.6.32-5
+Architecture:=A0=A0=A0=A0=A0=A0 x86-amd64
+e2fsprogs:=A0=A0=A0=A0=A0=A0=A0=A0=A0 1.41.12
+=46ilesystem type:=A0=A0=A0 ext4, with default settings (mkfs.ext4 /dev=
+/xyz)
+=46ilesystem size:=A0=A0=A0 Around 1TB, filled with around 800GB of dat=
+a.
+=46ilesystem content: From a lot of ASCII stuff up to files with severa=
+l
+=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 GB in size an=
+d arbitrary non-standard type.
 
 
-after bh1 writeback, the i_reserved_data_blocks is 1 but there is no really dirty cluster in the fs.
+What I've tried so far:
 
-The following write operations will call ext4_da_update_reserve_space, but the sbi->s_dirtyclusters_counter will not be decreased since the i_reserved_data_block will not be zero any more. As a result, the s_dirtyclusters_counter grows fast.
+* First of all, though the source drive is physically fine, I work on
+=A0 images of the partition on a spare drive, to experiment with. Every=
+time
+=A0 I make unrecoverable errors to that image, I recopy the original.
 
-Signed-off-by: Robin Dong <sanbai@taobao.com>
----
- fs/ext4/inode.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+* "dumpe2fs -b $SBERR /dev/loop0" does NOT work, for SBERR=3D{32768, 98=
+304,
+=A0 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 4096000,
+=A0 7962624} ( see https://pzt.me/1l55 )
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..9b3ceac 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1209,10 +1209,10 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	do {
- 		unsigned int next_off = curr_off + bh->b_size;
- 
--		if ((offset <= curr_off) && (buffer_delay(bh))) {
-+		if ((offset <= curr_off) && buffer_delay(bh) &&
-+				!buffer_da_mapped(bh)) {
- 			to_release++;
- 			clear_buffer_delay(bh);
--			clear_buffer_da_mapped(bh);
- 		}
- 		curr_off = next_off;
- 	} while ((bh = bh->b_this_page) != head);
-@@ -2544,6 +2544,7 @@ static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
- 	 * Drop reserved blocks
- 	 */
- 	BUG_ON(!PageLocked(page));
-+	down_write(&EXT4_I(page->mapping->host)->i_data_sem);
- 	if (!page_has_buffers(page))
- 		goto out;
- 
-@@ -2552,6 +2553,7 @@ static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
- out:
- 	ext4_invalidatepage(page, offset);
- 
-+	up_write(&EXT4_I(page->mapping->host)->i_data_sem);
- 	return;
- }
- 
--- 
-1.7.3.2
+* "dumpe2fs -b $SBOK /dev/loop0" DOES (partly) work, for SBOK=3D{112394=
+24,
+=A0 20480000, 23887872, 71663616, 78675968, 214990848} ( see https://pz=
+t.me/6txz )
 
+* "mkfs.ext4 -S /dev/loop0" results in a completely empty filesystem
+
+* "fsck.ext4 -b $SBOK -B 4096 -v -n /dev/loop0" shows a lot of errors.
+=A0 Filesystem isn't mountable afterwards ( see https://pzt.me/42yk and
+=A0 https://pzt.me/3frg )
+
+* "fsck.ext4 -b $SBOK -B 4096 -v -y /dev/loop0" recoveres after a long =
+time.
+=A0 Filesystem is mountable. Root is empty besides lost+found folder, w=
+hich
+=A0 contains about 300GB mostly useless data: Millions of files with wr=
+ong
+=A0 permissions, useless names and some random content.
+
+* photorec from the testdisk package recoveres, luckily!, about 500GB o=
+f
+=A0 data. Though the content seems to be pretty reasonable, no filename=
+s
+=A0 are recovered, since photorec operates without using filesystem kno=
+wledge.
+
+Do you see any chances (besides consulting professional recovery compan=
+ies)
+getting the filenames back? I looked into the ext4 specs a bit to figur=
+e out
+where this information is stored on disk, but before I step with hexedi=
+t
+through a terabyte of data, I'd rather try some solutions which are may=
+be
+already out there.
+
+Any help is appretiated.
+
+Thanks in advance, Rudolf.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
