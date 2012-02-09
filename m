@@ -1,104 +1,91 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Restoring filenames from partly damaged ext4-filesystem
-Date: Thu, 9 Feb 2012 11:50:43 -0700
-Message-ID: <ADF9EEFE-188A-4E88-BA8E-45D2607B1F3B@dilger.ca>
-References: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: Collapsing the number of feature flags (was Re: [PATCH v2.3
+	00/23] ext4: Add metadata checksumming)
+Date: Thu, 9 Feb 2012 11:54:44 -0800
+Message-ID: <20120209195444.GA15164@tux1.beaverton.ibm.com>
+References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com> <20120208180847.GA3654@thunk.org>
+Reply-To: djwong@us.ibm.com
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"debian-user@lists.debian.org" <debian-user@lists.debian.org>
-To: Rudolf Zran <rudolfzran@yahoo.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:44777 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758190Ab2BISuo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2012 13:50:44 -0500
-In-Reply-To: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com>
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:58621 "EHLO e8.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758516Ab2BITzS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Feb 2012 14:55:18 -0500
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Thu, 9 Feb 2012 14:55:17 -0500
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 217036E8060
+	for <linux-ext4@vger.kernel.org>; Thu,  9 Feb 2012 14:54:45 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q19Jsj9D216876
+	for <linux-ext4@vger.kernel.org>; Thu, 9 Feb 2012 14:54:45 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q19Jsiai021888
+	for <linux-ext4@vger.kernel.org>; Thu, 9 Feb 2012 14:54:45 -0500
+Content-Disposition: inline
+In-Reply-To: <20120208180847.GA3654@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-09, at 9:29 AM, Rudolf Zran wrote:
-> I recently damaged an ext4 partition by accident (mistakenly forced
-> a RAID sync with another partition onto it, which I realized after
-> about 3% completion). As a result the beginning of the ext4 partition
-> seems to be overwritten with garbage and refuses to mount.
+On Wed, Feb 08, 2012 at 01:08:47PM -0500, Ted Ts'o wrote:
+> So I've started looking at this patch series, and I'm wondering if it
+> might be better if we collapse these two feature flags:
 > 
-> As you might guess, I'd now like to get as most of my data back (from
-> the part which hasn't been overwritten, of course :)).
+> 	EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
+> and
+> 	EXT4_FEATURE_INCOMPAT_BG_USE_META_CSUM
 > 
-> Maybe somebody knows a good method to just "repair" the ext4-structure
-> from the remaining part of the partition?
-> 
-> 
-> Background information:
-> 
-> Operation system:   Debian GNU/Linux 6.0.4 (Squeeze)
-> Kernel:             Linux 2.6.32-5
-> Architecture:       x86-amd64
-> e2fsprogs:          1.41.12
-> Filesystem type:    ext4, with default settings (mkfs.ext4 /dev/xyz)
-> Filesystem size:    Around 1TB, filled with around 800GB of data.
-> Filesystem content: From a lot of ASCII stuff up to files with several
->                     GB in size and arbitrary non-standard type.
-> 
-> 
-> What I've tried so far:
-> 
-> * First of all, though the source drive is physically fine, I work on
->   images of the partition on a spare drive, to experiment with. Everytime
->   I make unrecoverable errors to that image, I recopy the original.
-> 
-> * "dumpe2fs -b $SBERR /dev/loop0" does NOT work, for SBERR={32768, 98304,
->   163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 4096000,
->   7962624} ( see https://pzt.me/1l55 )
-> 
-> * "dumpe2fs -b $SBOK /dev/loop0" DOES (partly) work, for SBOK={11239424,
->   20480000, 23887872, 71663616, 78675968, 214990848} ( see https://pzt.me/6txz )
-> 
-> * "mkfs.ext4 -S /dev/loop0" results in a completely empty filesystem
-> 
-> * "fsck.ext4 -b $SBOK -B 4096 -v -n /dev/loop0" shows a lot of errors.
->   Filesystem isn't mountable afterwards ( see https://pzt.me/42yk and
->   https://pzt.me/3frg )
-> 
-> * "fsck.ext4 -b $SBOK -B 4096 -v -y /dev/loop0" recoveres after a long time.
->   Filesystem is mountable. Root is empty besides lost+found folder, which
->   contains about 300GB mostly useless data: Millions of files with wrong
->   permissions, useless names and some random content.
+> To a single feature flag, EXT4_FEATURE_INCOMPAT_METADATA_CSUM, which
+> also implies EXT4_FEATURE_RO_COMPAT_GDT_CSUM.  (So in the future, when
+> we enable INCOMPAT_CSUM_METADATA, the presense or absence of
+> EXT4_RO_COMPAT_GDT_CSUM won't matter, and in fact mke2fs will skip
+> setting that feature flag altogether.  Tune2fs could also drop the
+> GDT_CSUM flag when adding the CSUM_METADATA flag.)
 
-The ability to recover from something like this depends heavily on where
-the directory structure and inodes were located.  Filesystems tend to use
-the start of the disk first, because it has the best performance (about 2x
-as fast as the end).
+I'm ok with this.
 
-> * photorec from the testdisk package recoveres, luckily!, about 500GB of
->   data. Though the content seems to be pretty reasonable, no filenames
->   are recovered, since photorec operates without using filesystem knowledge.
+> The reasoning behind this is that it simplifies the combinatorics we
+> need to test, and it also simplifies our code base.  In addition, it's
+> really easy to make tune2fs recalculate the checksums when the feature
+> flag is set, and reculate the block group checksums using the old
+> algorithm when the metadata flag is unset.  So if someone wants to
+> mount the file system on a downlevel kernel, it's really not that bad
+> that this feature is an INCOMPAT feature; we can easily downgrade it
+> using tune2fs.
 > 
-> Do you see any chances (besides consulting professional recovery companies)
-> getting the filenames back?
-
-There was an ext3grep tool that some people had success with, but when I
-looked at it, it was still fairly complex to use.
-
-> I looked into the ext4 specs a bit to figure out
-> where this information is stored on disk, but before I step with hexedit
-> through a terabyte of data, I'd rather try some solutions which are maybe
-> already out there.
+> In fact, if we wanted to take this to extremes, we could call it
+> EXT4_FEATURE_INCOMPAT_NEW_METADATA, and then let it imply the
+> following feature flags as well:
 > 
-> Any help is appretiated.
+> 	EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER
+> 	EXT4_FEATURE_RO_COMPAT_LARGE_FILE
+> 	EXT4_FEATURE_RO_COMPAT_HUGE_FILE
+> 	EXT4_FEATURE_RO_COMPAT_DIR_NLINK
+> 	EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE
+> 	EXT4_FEATURE_INCOMPAT_FILETYPE
+> 	EXT4_FEATURE_INCOMPAT_FLEX_BG
 > 
-> Thanks in advance, Rudolf.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> We can add inline functions in fs/ext4/ext4.h and in
+> lib/ext2fs/ext2fs.h to make the source code look a bit simpler.
+> 
+> This would help to reduce our testing load, and it would also make the
+> output of dumpe2fs easier to understand...
 
+Hm... does this make it impossible to add checksums to a fs that doesn't have
+flexbg set?  I'm not 100% sure what happens if you enable the flexbg bit on a
+filesystem that wasn't mkfs'd with that turned on.  Most of the other flags
+look like they've been mkfs default for years, but I could be wrong.
 
-Cheers, Andreas
+I'm concerned that implementing this second idea would make it more difficult
+to add checksums to an older filesystem.
 
-
-
-
+--D
+> 
+> 						- Ted
+> 
 
