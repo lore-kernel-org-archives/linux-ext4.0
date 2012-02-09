@@ -1,49 +1,111 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Collapsing the number of feature flags (was Re: [PATCH v2.3
- 00/23] ext4: Add metadata checksumming)
-Date: Thu, 9 Feb 2012 17:49:25 -0500
-Message-ID: <20120209224925.GA11737@thunk.org>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
- <20120208180847.GA3654@thunk.org>
- <20120209195444.GA15164@tux1.beaverton.ibm.com>
+From: Walter Hurry <walterhurry@lavabit.com>
+Subject: Re: Restoring filenames from partly damaged ext4-filesystem
+Date: Thu, 9 Feb 2012 23:20:38 +0000 (UTC)
+Message-ID: <jh1kc6$nt9$1@dough.gmane.org>
+References: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50853 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753372Ab2BIWt3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Feb 2012 17:49:29 -0500
-Content-Disposition: inline
-In-Reply-To: <20120209195444.GA15164@tux1.beaverton.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: debian-user@lists.debian.org
+Return-path: <bounce-debian-user=gldu-debian-user-2=m.gmane.org@lists.debian.org>
+Resent-Message-ID: <3BxFt9HFZgK.A.GtC.AUFNPB@liszt>
+List-Post: <mailto:debian-user@lists.debian.org>
+List-Help: <mailto:debian-user-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-user-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-user-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 09, 2012 at 11:54:44AM -0800, Darrick J. Wong wrote:
-> 
-> Hm... does this make it impossible to add checksums to a fs that doesn't have
-> flexbg set?  I'm not 100% sure what happens if you enable the flexbg bit on a
-> filesystem that wasn't mkfs'd with that turned on.  Most of the other flags
-> look like they've been mkfs default for years, but I could be wrong.
+On Thu, 09 Feb 2012 16:29:53 +0000, Rudolf Zran wrote:
 
-You can enable flexbg on any file system, and it will work.
-Technically the defintion of flexbg is that the block group's metadata
-blocks (i.e., allocation bitmaps and inode table) can be located
-anywhere on the disk, not just in its own blockgroup.  So it just
-relaxs checks in the kernel and in e2fsck.
+> Hi everybody!
+>=20
+> I recently damaged an ext4 partition by accident (mistakenly forced a
+> RAID sync with another partition onto it, which I realized after about
+> 3% completion). As a result the beginning of the ext4 partition seems t=
+o
+> be overwritten with garbage and refuses to mount.
+>=20
+> As you might guess, I'd now like to get as most of my data back (from
+> the part which hasn't been overwritten, of course :)).
+>=20
+> Maybe somebody knows a good method to just "repair" the ext4-structure
+> from the remaining part of the partition?
+>=20
+>=20
+> Background information:
+>=20
+> Operation system:=C2=A0=C2=A0 Debian GNU/Linux 6.0.4 (Squeeze) Kernel:=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0
+> Linux 2.6.32-5 Architecture:=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 x86-am=
+d64 e2fsprogs:=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 1.41=
+.12
+> Filesystem type:=C2=A0=C2=A0=C2=A0 ext4, with default settings (mkfs.ex=
+t4 /dev/xyz)
+> Filesystem size:=C2=A0=C2=A0=C2=A0 Around 1TB, filled with around 800GB=
+ of data.
+> Filesystem content: From a lot of ASCII stuff up to files with several
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 GB in size and arbitrary
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 non-standard type.
+>=20
+>=20
+> What I've tried so far:
+>=20
+> * First of all, though the source drive is physically fine, I work on
+> =C2=A0 images of the partition on a spare drive, to experiment with.
+> =C2=A0 Everytime I make unrecoverable errors to that image, I recopy th=
+e
+> =C2=A0 original.
+>=20
+> * "dumpe2fs -b $SBERR /dev/loop0" does NOT work, for SBERR=3D{32768,
+> 98304,
+> =C2=A0 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 409600=
+0,
+> =C2=A0 7962624} ( see https://pzt.me/1l55 )
+>=20
+> * "dumpe2fs -b $SBOK /dev/loop0" DOES (partly) work, for SBOK=3D{112394=
+24,
+> =C2=A0 20480000, 23887872, 71663616, 78675968, 214990848} ( see
+> =C2=A0 https://pzt.me/6txz )
+>=20
+> * "mkfs.ext4 -S /dev/loop0" results in a completely empty filesystem
+>=20
+> * "fsck.ext4 -b $SBOK -B 4096 -v -n /dev/loop0" shows a lot of errors.
+> =C2=A0 Filesystem isn't mountable afterwards ( see https://pzt.me/42yk =
+and
+> =C2=A0 https://pzt.me/3frg )
+>=20
+> * "fsck.ext4 -b $SBOK -B 4096 -v -y /dev/loop0" recoveres after a long
+> time.
+> =C2=A0 Filesystem is mountable. Root is empty besides lost+found folder=
+,
+> =C2=A0 which contains about 300GB mostly useless data: Millions of file=
+s
+> =C2=A0 with wrong permissions, useless names and some random content.
+>=20
+> * photorec from the testdisk package recoveres, luckily!, about 500GB o=
+f
+> =C2=A0 data. Though the content seems to be pretty reasonable, no filen=
+ames
+> =C2=A0 are recovered, since photorec operates without using filesystem
+> =C2=A0 knowledge.
+>=20
+> Do you see any chances (besides consulting professional recovery
+> companies) getting the filenames back? I looked into the ext4 specs a
+> bit to figure out where this information is stored on disk, but before =
+I
+> step with hexedit through a terabyte of data, I'd rather try some
+> solutions which are maybe already out there.
 
-Once you do this there is the natural question of what is the block
-group layout that should be used by mke2fs and resize2fs.  So we talk
-about the flexbg layout, but that's not required by the flexbg feature
-flag.  For example, for a long time, before we added the new resize
-ioctl, an on-line resize would create new block groups using the old
-layout (i.e., with the bitmap and inode table blocks in their own
-block group).
+The best, simplest and safest plan I think, would be simply to format the=
+=20
+partition and restore from backup.
 
-Try it!  You can enable flex_bg on any file system you want, including
-an old ext2 file system.  That's also a cheap way to force a file
-system to be mounted by ext3 or ext4, without making any serious
-change to the file system.
 
-					- Ted
+--=20
+To UNSUBSCRIBE, email to debian-user-REQUEST@lists.debian.org=20
+with a subject of "unsubscribe". Trouble? Contact listmaster@lists.debian=
+.org
+Archive: http://lists.debian.org/jh1kc6$nt9$1@dough.gmane.org
