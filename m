@@ -1,60 +1,45 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/6] jbd2: Issue cache flush after checkpointing even
- with internal journal
-Date: Wed, 8 Feb 2012 22:05:51 -0500
-Message-ID: <20120209030551.GH18461@thunk.org>
-References: <1326241872-20142-1-git-send-email-jack@suse.cz>
- <1326241872-20142-2-git-send-email-jack@suse.cz>
- <20120111124918.GD26337@quack.suse.cz>
+Subject: Re: [PATCH] jbd2: clear BH_Delay & BH_Unwritten in
+ journal_unmap_buffer
+Date: Wed, 8 Feb 2012 22:12:29 -0500
+Message-ID: <20120209031229.GI18461@thunk.org>
+References: <4F31A098.4050601@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42211 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56360 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757542Ab2BIDF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Feb 2012 22:05:56 -0500
+	id S1757739Ab2BIDMc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Feb 2012 22:12:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20120111124918.GD26337@quack.suse.cz>
+In-Reply-To: <4F31A098.4050601@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+On Tue, Feb 07, 2012 at 04:07:20PM -0600, Eric Sandeen wrote:
+> journal_unmap_buffer()'s zap_buffer: code clears a lot of buffer head
+> state ala discard_buffer(), but does not touch _Delay or _Unwritten
+> as discard_buffer() does.
+> 
+> This can be problematic in some areas of the ext4 code which assume
+> that if they have found a buffer marked unwritten or delay, then it's
+> a live one.  Perhaps those spots should check whether it is mapped
+> as well, but if jbd2 is going to tear down a buffer, let's really
+> tear it down completely.
+> 
+> Without this I get some fsx failures on sub-page-block filesystems
+> up until v3.2, at which point 4e96b2dbbf1d7e81f22047a50f862555a6cb87cb
+> and 189e868fa8fdca702eb9db9d8afc46b5cb9144c9 make the failures go
+> away, because buried within that large change is some more flag
+> clearing.  I still think it's worth doing in jbd2, since
+> ->invalidatepage leads here directly, and it's the right place
+> to clear away these flags.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Cc: stable@vger.kernel.org
 
-Am I missing something?  In the original code, we figure out the block
-# of the tail of the journal while holding the j_state_lock for
-writing, and we hold the lock until journal->j_tail is updated.
+Thanks, applied.
 
-In your proposed replacement code, you call
-jbd2_journal_get_log_tail() to determine the block #, but you aren't
-holding any locks.  jbd2_journal_get_log_tail() grabs a read lock to
-figure out the block number, but then drops the lock before it
-returns.  So then journal->j_tail gets updated by
-jbd2_journal_update_tail() --- using the block # determined by
-jbd2_journal_get_log_tail(), but we've released the lock, so can we
-guarantee the block number is still accurate?
-
-In particular, since jbd2_cleanup_journal_tail() is now not holding
-any locks, what if it is racing against itself?  I can't quite see
-race that would lead to something horrible happening, but my spidey
-sense is tingling....
-
-Also:
-
-> +/*
-> + * Update information in journal about log tail. The function returns 1 if
-> + * tail was updated, 0 otherwise. If 1 is returned, caller *must* write
-> + * journal superblock before next transaction commit is started.
-> + */
-
-If jbd2_update_log_tail() returns 1, how is this enforced?  The caller
-can issue a journal superblocok update, sure, but there's no locking
-to prevent some other process from immediately starting a new
-transaction?
-
-Again, am I missing something?
-
-Regards,
-
-							- Ted
+					- Ted
