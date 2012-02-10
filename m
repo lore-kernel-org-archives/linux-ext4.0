@@ -1,49 +1,85 @@
 From: Cong Wang <amwang@redhat.com>
-Subject: [PATCH 32/60] ext2: remove the second argument of k[un]map_atomic()
-Date: Fri, 10 Feb 2012 13:39:53 +0800
-Message-ID: <1328852421-19678-33-git-send-email-amwang@redhat.com>
+Subject: [PATCH 35/60] jbd: remove the second argument of k[un]map_atomic()
+Date: Fri, 10 Feb 2012 13:39:56 +0800
+Message-ID: <1328852421-19678-36-git-send-email-amwang@redhat.com>
 References: <1328852421-19678-1-git-send-email-amwang@redhat.com>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
 	Cong Wang <amwang@redhat.com>, Jan Kara <jack@suse.cz>,
 	linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23746 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932391Ab2BJFpu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Feb 2012 00:45:50 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1328852421-19678-1-git-send-email-amwang@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 Acked-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Cong Wang <amwang@redhat.com>
 ---
- fs/ext2/dir.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/jbd/journal.c     |   12 ++++++------
+ fs/jbd/transaction.c |    4 ++--
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index d37df35..0f4f5c9 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -645,7 +645,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
- 		unlock_page(page);
- 		goto fail;
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 59c09f9..e49e81b 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -328,7 +328,7 @@ repeat:
+ 		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
  	}
--	kaddr = kmap_atomic(page, KM_USER0);
-+	kaddr = kmap_atomic(page);
- 	memset(kaddr, 0, chunk_size);
- 	de = (struct ext2_dir_entry_2 *)kaddr;
- 	de->name_len = 1;
-@@ -660,7 +660,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
- 	de->inode = cpu_to_le32(parent->i_ino);
- 	memcpy (de->name, "..\0", 4);
- 	ext2_set_de_type (de, inode);
--	kunmap_atomic(kaddr, KM_USER0);
-+	kunmap_atomic(kaddr);
- 	err = ext2_commit_chunk(page, 0, chunk_size);
- fail:
- 	page_cache_release(page);
+ 
+-	mapped_data = kmap_atomic(new_page, KM_USER0);
++	mapped_data = kmap_atomic(new_page);
+ 	/*
+ 	 * Check for escaping
+ 	 */
+@@ -337,7 +337,7 @@ repeat:
+ 		need_copy_out = 1;
+ 		do_escape = 1;
+ 	}
+-	kunmap_atomic(mapped_data, KM_USER0);
++	kunmap_atomic(mapped_data);
+ 
+ 	/*
+ 	 * Do we need to do a data copy?
+@@ -354,9 +354,9 @@ repeat:
+ 		}
+ 
+ 		jh_in->b_frozen_data = tmp;
+-		mapped_data = kmap_atomic(new_page, KM_USER0);
++		mapped_data = kmap_atomic(new_page);
+ 		memcpy(tmp, mapped_data + new_offset, jh2bh(jh_in)->b_size);
+-		kunmap_atomic(mapped_data, KM_USER0);
++		kunmap_atomic(mapped_data);
+ 
+ 		new_page = virt_to_page(tmp);
+ 		new_offset = offset_in_page(tmp);
+@@ -368,9 +368,9 @@ repeat:
+ 	 * copying, we can finally do so.
+ 	 */
+ 	if (do_escape) {
+-		mapped_data = kmap_atomic(new_page, KM_USER0);
++		mapped_data = kmap_atomic(new_page);
+ 		*((unsigned int *)(mapped_data + new_offset)) = 0;
+-		kunmap_atomic(mapped_data, KM_USER0);
++		kunmap_atomic(mapped_data);
+ 	}
+ 
+ 	set_bh_page(new_bh, new_page, new_offset);
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 7fce94b..b2a7e52 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -718,9 +718,9 @@ done:
+ 			    "Possible IO failure.\n");
+ 		page = jh2bh(jh)->b_page;
+ 		offset = offset_in_page(jh2bh(jh)->b_data);
+-		source = kmap_atomic(page, KM_USER0);
++		source = kmap_atomic(page);
+ 		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
+-		kunmap_atomic(source, KM_USER0);
++		kunmap_atomic(source);
+ 	}
+ 	jbd_unlock_bh_state(bh);
+ 
 -- 
 1.7.7.6
-
