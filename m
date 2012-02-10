@@ -1,67 +1,62 @@
-From: Martin Wilck <martin.wilck@ts.fujitsu.com>
-Subject: [resend PATCH] ext4: avoid deadlock on sync-mounted ext2 FS
-Date: Fri, 10 Feb 2012 11:31:57 +0100
-Message-ID: <1328869917-21492-1-git-send-email-martin.wilck@ts.fujitsu.com>
-References: <1327941292-3907-1-git-send-email-martin.wilck@ts.fujitsu.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, fmayhar@google.com,
-	esandeen@redhat.com, Martin Wilck <martin.wilck@ts.fujitsu.com>
-To: linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: Restoring filenames from partly damaged ext4-filesystem
+Date: Fri, 10 Feb 2012 14:41:14 +0100
+Message-ID: <4F351E7A.2070005@fastmail.fm>
+References: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com> <ADF9EEFE-188A-4E88-BA8E-45D2607B1F3B@dilger.ca> <1328822543.65833.YahooMailNeo@web132404.mail.ird.yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"debian-user@lists.debian.org" <debian-user@lists.debian.org>
+To: Rudolf Zran <rudolfzran@yahoo.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:2130 "EHLO
-	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758930Ab2BJKdu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Feb 2012 05:33:50 -0500
-In-Reply-To: <1327941292-3907-1-git-send-email-martin.wilck@ts.fujitsu.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:50332 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759286Ab2BJNlU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Feb 2012 08:41:20 -0500
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id q1ADfHht003026
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Feb 2012 14:41:18 +0100
+In-Reply-To: <1328822543.65833.YahooMailNeo@web132404.mail.ird.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I don't want to bother, but could someone have a look at this
-patch please?
+On 02/09/2012 10:22 PM, Rudolf Zran wrote:
+> Hello Andreas!
+>
+>
+> [ext4 partition overwritten with garbage at the beginning]
+>
+>
+>>>   * photorec from the testdisk package recoveres, luckily!, about 500GB of
+>>>     data. Though the content seems to be pretty reasonable, no filenames
+>>>     are recovered, since photorec operates without using filesystem
+>>>    knowledge.
+>>>
+>>>   Do you see any chances (besides consulting professional recovery companies)
+>>>   getting the filenames back?
+>>
+>> There was an ext3grep tool that some people had success with, but when I
+>> looked at it, it was still fairly complex to use.
+>
+> Thanks for the hint, but the problem with ext3grep is that it seems to
+> rely on an intact filesystem structure. It even has no option to set
+> another superblock besides the default one and fails with all commands
+> I tried ( see https://pzt.me/8q6k ).
+>
 
-Martin
+I have written some tools in the past to recover the file structure of 
+an over-formated ext3/ext4 device based on directory blocks.
+With some tweaks it should be able to assign the file#inode_numbers in 
+lost+found to a directory structure.
+Problem is that I'm rather busy with too many other projects already. Do 
+you know C and could you add some code on your own for the lost+found 
+assignment? I can assist you, but it is unlikely that I find much time 
+do it myself...
 
-Processes hang forever on a sync-mounted ext2 file system that
-is mounted with the ext4 module (default in Fedora 16).
 
-I can reproduce this reliably by mounting an ext2 partition with
-"-o sync" and opening a new file an that partition with vim. vim
-will hang in "D" state forever.
-
-I am attaching a small patch here that solves this issue for me.
-In the sync mounted case, ext4_handle_dirty_metadata() may call
-sync_dirty_buffer(), which can't be called with buffer lock held.
-
-My knowledge of locking in ext4 is insufficient to judge if this
-patch is correct, but it may serve as starting point for others.
-
-Signed-off-by: Martin.Wilck@ts.fujitsu.com
----
- fs/ext4/xattr.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 93a00d8..eb771ea 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -487,8 +487,10 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 		ext4_free_blocks(handle, inode, bh, 0, 1,
- 				 EXT4_FREE_BLOCKS_METADATA |
- 				 EXT4_FREE_BLOCKS_FORGET);
-+		unlock_buffer(bh);
- 	} else {
- 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
-+		unlock_buffer(bh);
- 		error = ext4_handle_dirty_metadata(handle, inode, bh);
- 		if (IS_SYNC(inode))
- 			ext4_handle_sync(handle);
-@@ -498,7 +500,6 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 		if (ce)
- 			mb_cache_entry_release(ce);
- 	}
--	unlock_buffer(bh);
- out:
- 	ext4_std_error(inode->i_sb, error);
- 	return;
--- 
-1.7.7.5
+Cheers,
+Bernd
 
