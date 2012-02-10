@@ -1,39 +1,32 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 0/4] Generic O_SYNC AIO DIO handling
-Date: Fri, 10 Feb 2012 11:09:09 -0500
-Message-ID: <x49aa4qpt5m.fsf@segfault.boston.devel.redhat.com>
-References: <1328889842-23231-1-git-send-email-jack@suse.cz>
+From: Rudolf Zran <rudolfzran@yahoo.com>
+Subject: Re: Restoring filenames from partly damaged ext4-filesystem
+Date: Fri, 10 Feb 2012 17:07:53 +0000 (GMT)
+Message-ID: <1328893673.79058.YahooMailNeo@web132401.mail.ird.yahoo.com>
+References: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com> <ADF9EEFE-188A-4E88-BA8E-45D2607B1F3B@dilger.ca> <1328822543.65833.YahooMailNeo@web132404.mail.ird.yahoo.com> <4F351E7A.2070005@fastmail.fm>
+Reply-To: Rudolf Zran <rudolfzran@yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-	LKML <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59305 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752939Ab2BJQJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Feb 2012 11:09:50 -0500
-In-Reply-To: <1328889842-23231-1-git-send-email-jack@suse.cz> (Jan Kara's
-	message of "Fri, 10 Feb 2012 17:03:58 +0100")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+  "debian-user@lists.debian.org" <debian-user@lists.debian.org>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Return-path: <bounce-debian-user=gldu-debian-user-2=m.gmane.org@lists.debian.org>
+In-Reply-To: <4F351E7A.2070005@fastmail.fm>
+Resent-Message-ID: <Xbdib3vIj8J.A.X1B.p8UNPB@liszt>
+List-Post: <mailto:debian-user@lists.debian.org>
+List-Help: <mailto:debian-user-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-user-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-user-request@lists.debian.org?subject=unsubscribe>
+List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara <jack@suse.cz> writes:
-
->   Hi Jeff,
->
->   these patches implement generic way of handling O_SYNC AIO DIO. They work
-> for all filesystems except for ext4 and xfs. Thus together with your patches,
-> all filesystems should handle O_SYNC AIO DIO correctly. I've tested ext3,
-> btrfs, and xfs (to check that I didn't break anything when the generic code
-> is unused) and things seem to work fine. Will you add these patches to your
-> series please? Thanks.
-
-Thanks, Jan!  I'll add them in and give them some testing.  I should be
-ready to repost the series early next week.
-
-Cheers,
-Jeff
+Hello Bernd!=0A=0A=0A> I have written some tools in the past to recover the=
+ file structure of =0A> an over-formated ext3/ext4 device based on director=
+y blocks.=0A> With some tweaks it should be able to assign the file#inode_n=
+umbers in =0A> lost+found to a directory structure.=0A> Problem is that I'm=
+ rather busy with too many other projects already. Do =0A> you know C and c=
+ould you add some code on your own for the lost+found =0A> assignment? I ca=
+n assist you, but it is unlikely that I find much time =0A> do it myself...=
+=0A=0AI'm not that fluent in C, but I could just give it a try. Since it's =
+my=0Aown data and this recovery for personal "fun" I can't do something bad=
+=0Awith it :) So, if you could share the code I'd be happy!=0A=0AThanks, Ru=
+dolf.=0A
