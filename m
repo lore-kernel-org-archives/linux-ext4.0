@@ -1,89 +1,59 @@
-From: Rudolf Zran <rudolfzran@yahoo.com>
-Subject: Re: Restoring filenames from partly damaged ext4-filesystem
-Date: Fri, 10 Feb 2012 18:36:52 +0000 (GMT)
-Message-ID: <1328899012.92220.YahooMailNeo@web132404.mail.ird.yahoo.com>
-References: <1328804993.34330.YahooMailNeo@web132403.mail.ird.yahoo.com> <B43723CA-78A5-416D-B44F-3018CE981211@mit.edu>
-Reply-To: Rudolf Zran <rudolfzran@yahoo.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Punch hole problem on PAGE_SIZE > blocksize
+Date: Fri, 10 Feb 2012 20:10:38 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1202101959490.27190@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"debian-user@lists.debian.org" <debian-user@lists.debian.org>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm25.bullet.mail.ird.yahoo.com ([212.82.109.132]:47278 "HELO
-	nm25.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1759830Ab2BJSg4 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Feb 2012 13:36:56 -0500
-In-Reply-To: <B43723CA-78A5-416D-B44F-3018CE981211@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:34776 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759903Ab2BJTKn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Feb 2012 14:10:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Ted!
+Hi Allison,
 
->>  I recently damaged an ext4 partition by accident
-[...]
->>  Maybe somebody knows a good method to just "repair" the
->> ext4-structure from the remaining part of the partition?
->=20
-> Have you tried just simply running e2fsck, specifying an alternate su=
-perblock?
+I found quite disturbing problem when testing loop discard support on
+file systems where PAGE_SIZE > blocksize. The result is that the file
+system image is completely destroyed, but the underlying file system
+seems ok. I have seen this messages in the logs:
 
-Yes of course I tried, as I wrote in my original post ($SBOK is one
-of the intact superblocks at 11239424, 20480000, 23887872, 71663616,
-78675968 and 214990848).
+EXT4-fs error (device sdb): ext4_ext_search_left:1221: inode #12: comm
+flush-8:16: ix (2248761) != EXT_FIRST_INDEX (0) (depth 1)!
+EXT4-fs (sdb): delayed block allocation failed for inode 12 at logical
+offset 2258177 with max blocks 64 with error -5
+EXT4-fs (sdb): This should not happen!! Data will be lost
 
-With "all answers: no":
+and
 
->> * "fsck.ext4 -b $SBOK -B 4096 -v -n /dev/loop0" shows a lot of error=
-s.
->> =C2=A0 Filesystem isn't mountable afterwards
+EXT4-fs error (device sdd2): ext4_ext_get_blocks: inode #12: (comm
+loop0) bad extent address iblock: 34479, depth: 3 pblock 0
 
-# fsck.ext4 -b 214990848 -B 4096 -v -n /dev/loop0
-e2fsck 1.41.12 (17-May-2010)
-One or more block group descriptor checksums are invalid.=C2=A0 Fix? no
-Group descriptor 0 checksum is invalid.=C2=A0 IGNORED.
-Group descriptor 1 checksum is invalid.=C2=A0 IGNORED.
-=2E..
-Group descriptor 7451 checksum is invalid.=C2=A0 IGNORED.
-Group descriptor 7452 checksum is invalid.=C2=A0 IGNORED.
-/dev/loop0 contains a file system with errors, check forced.
-Resize inode not valid.=C2=A0 Recreate? no
-Pass 1: Checking inodes, blocks, and sizes
-Root inode is not a directory.=C2=A0 Clear? no
-Inode 5 should not have EOFBLOCKS_FL set (size 2642074971391648798, lbl=
-k -1)
-Clear? no
-=2E..
+Steps to reproduce
 
-# mount -o ro /dev/loop0 /mnt
-mount: /dev/loop0: can't read superblock
+mkfs.ext4 -b1024 /dev/sdb
+mount /dev/sdb /mnt/test2
+dd if=/dev/zero of=/mnt/test2/file bs=1M count=4096
+losetup /dev/loop0 /mnt/test2/file
 
-# dmesg=20
-[504508.215515] EXT4-fs error (device loop0): ext4_iget: bad extended a=
-ttribute block 1920620055 in inode #2
-[504508.215530] EXT4-fs (loop0): get root inode failed
-[504508.215534] EXT4-fs (loop0): mount failed
+cd xfstests
 
-With "all answers: yes":
+export TEST_DIR=/mnt/test
+export TEST_DEV=/dev/sda
+export SCRATCH_DEV=/dev/loop0
+export SCRATCH_MNT=/mnt/test1
+export MKFS_OPTIONS="-F -b1024"
+export MOUNT_OPTIONS="-o discard"
+export FSTYP="ext4"
 
->> * "fsck.ext4 -b $SBOK -B 4096 -v -y /dev/loop0" recoveres after a lo=
-ng time.
->> =C2=A0 Filesystem is mountable. Root is empty besides lost+found fol=
-der, which
->> =C2=A0 contains about 300GB mostly useless data: Millions of files w=
-ith wrong
->> =C2=A0 permissions, useless names and some random content.
+while ./check 251; do echo "OK"; done
 
-> I'd do this by making a copy of the file system first, of course=E2=80=
-=A6.
+..and just wait and watch the logs.
 
-=46or sure! :) I solely work on copies.
+Do you have any idea what might be the problem ?
 
-Thanks, Rudolf.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks!
+-Lukas
