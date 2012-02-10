@@ -1,32 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/4] Generic O_SYNC AIO DIO handling
-Date: Fri, 10 Feb 2012 17:03:58 +0100
-Message-ID: <1328889842-23231-1-git-send-email-jack@suse.cz>
-Cc: cluster-devel@redhat.com, LKML <linux-kernel@vger.kernel.org>,
-        xfs@oss.sgi.com, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/4] Generic O_SYNC AIO DIO handling
+Date: Fri, 10 Feb 2012 11:09:09 -0500
+Message-ID: <x49aa4qpt5m.fsf@segfault.boston.devel.redhat.com>
+References: <1328889842-23231-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+	LKML <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59305 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752939Ab2BJQJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Feb 2012 11:09:50 -0500
+In-Reply-To: <1328889842-23231-1-git-send-email-jack@suse.cz> (Jan Kara's
+	message of "Fri, 10 Feb 2012 17:03:58 +0100")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Jan Kara <jack@suse.cz> writes:
 
-  Hi Jeff,
+>   Hi Jeff,
+>
+>   these patches implement generic way of handling O_SYNC AIO DIO. They work
+> for all filesystems except for ext4 and xfs. Thus together with your patches,
+> all filesystems should handle O_SYNC AIO DIO correctly. I've tested ext3,
+> btrfs, and xfs (to check that I didn't break anything when the generic code
+> is unused) and things seem to work fine. Will you add these patches to your
+> series please? Thanks.
 
-  these patches implement generic way of handling O_SYNC AIO DIO. They work
-for all filesystems except for ext4 and xfs. Thus together with your patches,
-all filesystems should handle O_SYNC AIO DIO correctly. I've tested ext3,
-btrfs, and xfs (to check that I didn't break anything when the generic code
-is unused) and things seem to work fine. Will you add these patches to your
-series please? Thanks.
+Thanks, Jan!  I'll add them in and give them some testing.  I should be
+ready to repost the series early next week.
 
-								Honza
+Cheers,
+Jeff
