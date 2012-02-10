@@ -1,96 +1,74 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH] libext2fs: quiet spurious group checksum errors
-Date: Fri, 10 Feb 2012 11:42:47 +0900
-Message-ID: <4F348427.5050109@rs.jp.nec.com>
-References: <1328048130-40981-1-git-send-email-adilger@whamcloud.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: s_dirtyclusters_counter should tranform to unit
+ of cluster before assigning to "dirty_clusters" in
+ ext4_has_free_clusters()
+Date: Thu, 9 Feb 2012 21:55:26 -0500
+Message-ID: <20120210025526.GB21496@thunk.org>
+References: <1328066270-4461-1-git-send-email-hao.bigrat@gmail.com>
+ <CAFZ0FUUNRrSa0RvqXcmp_JoZpefDd5pSyx=5LCz5jwDUhUd=_w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Robin Dong <hao.bigrat@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41666 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758184Ab2BJCnL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Feb 2012 21:43:11 -0500
-In-Reply-To: <1328048130-40981-1-git-send-email-adilger@whamcloud.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48280 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758083Ab2BJCz3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Feb 2012 21:55:29 -0500
+Content-Disposition: inline
+In-Reply-To: <CAFZ0FUUNRrSa0RvqXcmp_JoZpefDd5pSyx=5LCz5jwDUhUd=_w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
-
-Thank you for the patch.
-I confirmed that the bug which I reported originally was fixed with it.
-
-Tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-
-Regards,
-Akira Fujita
-
-(2012/02/01 7:15), Andreas Dilger wrote:
-> If we have to read the backup group descriptor checksums, the UNINIT
-> flags are cleared to ensure that all of the inodes in the filesystem
-> are scanned.  However, the code that reset the UNINIT flags did not
-> reset the group checksum, and this produced many spurious error
-> messages in e2fsck.
+On Thu, Feb 02, 2012 at 03:48:49PM +0800, Robin Dong wrote:
 > 
-> Group descriptor 0 checksum is invalid.  FIXED.
-> Group descriptor 1 checksum is invalid.  FIXED.
-> :
-> :
-> 
-> Recompute checksums after modifying group descriptors to avoid these
-> error messages.  Remove expected error messages in f_illitable_flexbg.
-> 
-> Signed-off-by: Andreas Dilger<adilger@whamcloud.com>
-> ---
-> lib/ext2fs/openfs.c               |    3 +++
-> tests/f_illitable_flexbg/expect.1 |    8 ++------
-> 2 files changed, 5 insertions(+), 6 deletions(-)
-> 
-> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> index 40a52c5..b1b68ad 100644
-> --- a/lib/ext2fs/openfs.c
-> +++ b/lib/ext2fs/openfs.c
-> @@ -378,6 +378,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
-> 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
-> 			ext2fs_bg_itable_unused_set(fs, group, 0);
-> +			/* The checksum will be reset later, but fix it here
-> +			 * anyway to avoid printing a lot of spurious errors. */
-> +			ext2fs_group_desc_csum_set(fs, group);
-> 		}
-> 		ext2fs_mark_super_dirty(fs);
-> 	}
-> diff --git a/tests/f_illitable_flexbg/expect.1 b/tests/f_illitable_flexbg/expect.1
-> index 2d8bd0c..af30bd4 100644
-> --- a/tests/f_illitable_flexbg/expect.1
-> +++ b/tests/f_illitable_flexbg/expect.1
-> @@ -1,17 +1,13 @@
-> ../e2fsck/e2fsck: Group descriptors look bad... trying backup blocks...
-> -One or more block group descriptor checksums are invalid.  Fix? yes
-> -
-> -Group descriptor 0 checksum is invalid.  FIXED.
-> Inode table for group 1 is not in group.  (block 0)
-> WARNING: SEVERE DATA LOSS POSSIBLE.
-> Relocate? yes
-> 
-> -Group descriptor 1 checksum is invalid.  FIXED.
-> -Group descriptor 2 checksum is invalid.  FIXED.
-> -Group descriptor 3 checksum is invalid.  FIXED.
-> Pass 1: Checking inodes, blocks, and sizes
-> Relocating group 1's inode table to 142...
-> Restarting e2fsck from the beginning...
-> +One or more block group descriptor checksums are invalid.  Fix? yes
-> +
-> Group descriptor 1 checksum is invalid.  FIXED.
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
+> The reason is ext4_has_free_clusters reporting wrong
+> result. Actually, the unit of argument "dirty_clusters" is block, so
+> we should tranform the sbi->s_dirtyclusters_counter to block , just
+> like "free_clusters".
 
--- 
-Akira Fujita <a-fujita@rs.jp.nec.com>
+I've been looking at the the delayed allocation reservation code, and
+I think it's a lot more confused that this.  Some places we are
+playing with fields as if they are clusters, and some times as if they
+are blocks, and I've definitely found places where we're not handling
+quota correctly with bigalloc (ext4_map_blocks is calling
+ext4_da_update_reserve_space() with a value which is clearly in units
+of blocks, but we are treating that vale as if it is clusters, etc.)
 
-The First Fundamental Software Development Group,
-Platform Division, NEC Software Tohoku, Ltd.
+So I think the problem is a lot larger than what you pointed out, and
+we shouldn't fix it just by throwing in an EXT4_C2B call.  If
+s_dirtyclusters_counter should be denominated in blocks, then we need
+to rename it.  And there there's this comment which made me wince:
 
+   	   * Note that in case of bigalloc, i_reserved_meta_blocks,
+	   * i_reserved_data_blocks, etc. refer to number of clusters.
+
+Argh, no.  If something is denominated in clusters, then it should be
+appropriately named as such.
+
+Actually, I think the problem is a lot bigger than this, and it's a
+conceptual one.  When we try writing to a block which does not have a
+mapping, and bigalloc is enabled, there are three cases:
+
+1) This is the first time the cluster has ever been written to; hence,
+even though we are dirtying a block, we need to reserve room for the
+entire cluster.
+
+2) While the block has not been mapped (and so the data on disk is
+uninitialized) the cluster has indeed been allocated, so we don't need
+to reserve any additional room for the block.
+
+3) One or more blocks in the cluster have already been written to via
+delayed allocation, but the cluster itself has not been selected
+(allocated) yet.  But since the space for the entire cluster was
+reserved when the first block in the cluster was dirtied (case #1), we
+don't need to reserve any more space.
+
+We aren't handling these cases correctly today, since we don't have
+this logic here.  These cases don't matter if you're only using
+fallocate() and direct I/O, but if you are using buffered writes and
+delayed allocation, they obviously matter a huge amount.
+
+And I don't think we're handling it correctly.   Argh...
+
+      	    	  		    		 - Ted
