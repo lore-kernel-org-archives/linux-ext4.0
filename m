@@ -1,43 +1,30 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 13/23] ext4: Add new feature to make block group
- checksums use metadata_csum algorithm
-Date: Mon, 13 Feb 2012 17:28:28 -0500
-Message-ID: <20120213222828.GF21641@thunk.org>
-References: <20120107082751.21970.84856.stgit@elm3c44.beaverton.ibm.com>
- <20120107082919.21970.99182.stgit@elm3c44.beaverton.ibm.com>
- <8ED6E1F9-DB56-4D31-BCA8-2A3A8D514BD5@dilger.ca>
+Subject: Re: [PATCH 1/2] ext4: remove a the journal=update mount option
+Date: Mon, 13 Feb 2012 17:41:23 -0500
+Message-ID: <20120213224123.GA24098@thunk.org>
+References: <4EB17085.9060107@redhat.com>
+ <4EB170E0.7090701@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48995 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43386 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753847Ab2BMW2q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Feb 2012 17:28:46 -0500
+	id S1751277Ab2BMWlZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Feb 2012 17:41:25 -0500
 Content-Disposition: inline
-In-Reply-To: <8ED6E1F9-DB56-4D31-BCA8-2A3A8D514BD5@dilger.ca>
+In-Reply-To: <4EB170E0.7090701@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 13, 2012 at 02:40:26PM -0700, Andreas Dilger wrote:
+On Wed, Nov 02, 2011 at 11:33:36AM -0500, Eric Sandeen wrote:
+> The V2 journal format was introduced around ten years ago,
+> for ext3. It seems highly unlikely that anyone will need this
+> migration option for ext4.
 > 
-> If a kernel understands METADATA_CSUM, it will check this first and
-> ignore whether GDT_CSUM is set or not (though it shouldn't ever be
-> set at the same time).  Either of these features will cause an older
-> kernel to mount the filesystem read-only, which is all that is needed.
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-... note that when we check for the uninit bits, this will have to be
-done if GDT_CSUM || METADATA_CSUM are set.
+Applied, thanks.
 
 					- Ted
