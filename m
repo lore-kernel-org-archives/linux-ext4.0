@@ -1,68 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42763] New: directory access hangs without error
-Date: Mon, 13 Feb 2012 03:41:28 GMT
-Message-ID: <bug-42763-13602@https.bugzilla.kernel.org/>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 3/4] gfs2: Use generic handlers of
+ O_SYNC AIO DIO
+Date: Mon, 13 Feb 2012 09:42:18 +0000
+Message-ID: <1329126138.2702.4.camel@menhir>
+References: <1328889842-23231-1-git-send-email-jack@suse.cz>
+	 <1328889842-23231-4-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Jeff Moyer <jmoyer@redhat.com>, cluster-devel@redhat.com,
+	LKML <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
+	linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:53595 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754540Ab2BMDl3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Feb 2012 22:41:29 -0500
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q1D3fS66008142
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2012 03:41:28 GMT
+Received: from mx1.redhat.com ([209.132.183.28]:16952 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751908Ab2BMJlt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Feb 2012 04:41:49 -0500
+In-Reply-To: <1328889842-23231-4-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42763
+Hi,
 
-           Summary: directory access hangs without error
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.2.5
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: ebuddington@wesleyan.edu
-        Regression: No
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+
+That looks ok to me,
+
+Steve.
+
+On Fri, 2012-02-10 at 17:04 +0100, Jan Kara wrote:
+> Use generic handlers to queue fsync() when AIO DIO is completed for O_SYNC
+> file.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/gfs2/aops.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
+> index 501e5cb..9c381ff 100644
+> --- a/fs/gfs2/aops.c
+> +++ b/fs/gfs2/aops.c
+> @@ -1034,7 +1034,7 @@ static ssize_t gfs2_direct_IO(int rw, struct kiocb *iocb,
+>  
+>  	rv = __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
+>  				  offset, nr_segs, gfs2_get_block_direct,
+> -				  NULL, NULL, 0);
+> +				  NULL, NULL, DIO_SYNC_WRITES);
+>  out:
+>  	gfs2_glock_dq_m(1, &gh);
+>  	gfs2_holder_uninit(&gh);
 
 
-Kernel 3.2.5
-ext4 over RAID-6
-
-I have a specific directory that freezes all processes that try to getdents()
-or open() a new file. In some cases, the kernel gives  me "blocked for more
-than 120 seconds" messages, often reporting that the process is stuck in
-ext4_getblk.
-
-I have found no errors, however. The stuck processes stay stuck forever (at
-least hours), and dmesg shows no complaints about RAID, filesystem, or anything
-else. Full reads of the RAID devices work without hanging, and drive self-tests
-pass.
-
-Other processes are able to access other parts of the filesystem normally; this
-is not a system-wide or fs-wide hang.
-
-Rebooting and fscking made the directory accessible again, but now there is a
-different directory exhibiting the problem (unknown whether it had the problem
-before the fsck/reboot)
-
-This particular problem exhibited itself for the first time after tests of my
-multi-threaded 'du' that beat the filesystem with a few dozen threads
-simultaneously.
-
-Given that this seems to very reproducible, I have many opportunities to poke
-at a hung process, query the filesystem, or recompile the kernel in any way
-that would be helpful; I just don't know to approach it from here.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
