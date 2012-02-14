@@ -1,54 +1,110 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH] ext4: expand commit callback
-Date: Mon, 13 Feb 2012 16:50:57 -0700
-Message-ID: <4FC52D3C-E489-43A7-96BB-433D0E8F15CB@whamcloud.com>
-References: <y> <1319626156-2444-1-git-send-email-bobijam@whamcloud.com> <20120213210225.GA21641@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Bobi Jam <bobijam@whamcloud.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [SOLVED] (was "Re: Restoring filenames from partly damaged ext4-filesystem")
+Date: Mon, 13 Feb 2012 19:25:08 -0500
+Message-ID: <CAGpXXZKra-GJji_Y96kYGHLKCuabqNskoq2aSsx8OB6dB279YQ@mail.gmail.com>
+References: <6D9A985A8374004AA880FD5D70B2D3C449AE04494A@ABGEX73E.FSC.NET> <20120213155146.GA17061@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Maar, Roberto" <roberto.maar@ts.fujitsu.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:60434 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755431Ab2BMXvD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2012 18:51:03 -0500
-Received: by iacb35 with SMTP id b35so5196388iac.19
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2012 15:51:02 -0800 (PST)
-In-Reply-To: <20120213210225.GA21641@thunk.org>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:58743 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750726Ab2BNAZi convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Feb 2012 19:25:38 -0500
+Received: by obcva7 with SMTP id va7so7319267obc.19
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2012 16:25:38 -0800 (PST)
+In-Reply-To: <20120213155146.GA17061@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-13, at 2:02 PM, Ted Ts'o wrote:
-> On Wed, Oct 26, 2011 at 06:49:16PM +0800, Bobi Jam wrote:
->> The per-commit callback is now used by mballoc code to manage free
->> space bitmaps after deleted blocks have been released. This patch
->> expand it to contain multiple different callbacks.
->> 
->> Signed-off-by: Bobi Jam <bobijam@whamcloud.com>
->> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> 
-> Thanks, applied.
-> 
-> Note: since this callback is called *after* the commit is completed,
-> we can't really use this to do things like compute metadata checksums
-> or update atimes more efficiently, since those sorts of things have to
-> happen *before* we actually finish up the commit.
+On Mon, Feb 13, 2012 at 10:51 AM, Ted Ts'o <tytso@mit.edu> wrote:
+> On Mon, Feb 13, 2012 at 11:00:21AM +0100, Maar, Roberto wrote:
+>> Everyone has a good backup, and no one destroy its files and file sy=
+stems.
+>
+> If only that were true. =A0:-)
+>
+> Of course the developers who can do a good job writing recovery
+> programs are smart enough to do regular backups. =A0This is why tools
+> like extundelete and ext4magic generally don't get a lot of volunteer=
+s
+> to help with documentation and development.
+>
+> But you'd be amazed how many people contact me, or the ext4 list, or
+> the ext3-users list, asking for help, and who obviously had _not_ bee=
+n
+> doing regular backups. =A0:-(
+>
+>>
+>> One of the problems of ext4magic, of course, no English documentatio=
+n.
+>> But at the moment is the one man show, and my English is a disaster.
+>> The world would laugh at it. I need some help for translation.
+>> Proofread, for a native speaker with technical understanding a few m=
+inutes work,
+>> for me ...
+>> We'll see, I try
+>
+> Well, I can certainly call for help, and see if there are folks who
+> would be interested in helping you with the translation and
+> creating/improving the English documentation
+>
+> And now that I know about it, I'll certainly be pointing people at it=
+=2E
+>
+> Thanks for creating it!
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0- Ted
 
-Right, though a similar commit callback (using the same infrastructure)
-could be added before the commit is started.
+I took a minute and tried to put together a opensuse package for
+ext4magic in my home directory for testing.
 
-There is already the buffer_head callback that OCFS is using for their
-data checksums, which is called before the transaction commit.  I haven't
-looked at that closely enough to know whether the ext4 metadata checksums
-could use it (e.g. if it can handle different metadata block types with
-different checksum chunks and locations).
+https://build.opensuse.org/package/show?package=3Dext4magic&project=3Dh=
+ome%3Agregfreemyer%3ATools-for-forensic-boot-cd
 
-Cheers, Andreas
+I haven't tried to patch the source, but at present it has some
+compile errors that keep OBS from publishing it even from a home
+directory.
+
+=3D=3D=3D=3D
+I: Program returns random data in a function
+E: ext4magic no-return-in-nonvoid-function hard_link_stack.c:87
+E: ext4magic no-return-in-nonvoid-function imap_search.c:362
+E: ext4magic no-return-in-nonvoid-function magic_block_scan.c:203, 1028=
+, 249
+
+I: A function uses a 'return;' statement, but has actually a value
+   to return, like an integer ('return 42;') or similar.
+W: ext4magic voidreturn ext4magic.c:888
+
+I: Program is using implicit definitions of functions getting
+   pointers or implemented by macros. These functions need to use their
+   correct prototypes to allow correct argument passing on e.g. x86_64 =
+=2E
+     - Implicit memory/string functions need #include <string.h>.
+     - Implicit *printf functions need #include <stdio.h>.
+     - Implicit *printf functions need #include <stdio.h>.
+     - Implicit *read* functions need #include <unistd.h>.
+     - Implicit *recv* functions need #include <sys/socket.h>.
+W: ext4magic implicit-pointer-decl journal.c:754
+
+=3D=3D=3D=3D=3D
+
+I think just the E: errors are mandatory to fix for OBS to publish the
+package, but I'm not sure about that.
+
+Roberto, if you think you'll come out with a cleaner build in the next
+couple weeks, I won't bother to patch up those errors.
+
+Thanks
+Greg
 --
-Andreas Dilger                       Whamcloud, Inc.
-Principal Lustre Engineer            http://www.whamcloud.com/
-
-
-
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
