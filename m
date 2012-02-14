@@ -1,30 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Journal async commit broken for data=ordered?
-Date: Tue, 14 Feb 2012 16:55:36 +0100
-Message-ID: <20120214155536.GA16561@quack.suse.cz>
+From: "Maar, Roberto" <roberto.maar@ts.fujitsu.com>
+Subject: RE: [SOLVED] (was "Re: Restoring filenames from partly damaged
+ ext4-filesystem")
+Date: Tue, 14 Feb 2012 20:10:36 +0100
+Message-ID: <6D9A985A8374004AA880FD5D70B2D3C449AE04545B@ABGEX73E.FSC.NET>
+References: <6D9A985A8374004AA880FD5D70B2D3C449AE04494A@ABGEX73E.FSC.NET>
+ <20120213155146.GA17061@thunk.org>
+ <CAGpXXZKra-GJji_Y96kYGHLKCuabqNskoq2aSsx8OB6dB279YQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="Windows-1252"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>, Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44773 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752076Ab2BNPzj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Feb 2012 10:55:39 -0500
-Content-Disposition: inline
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:56665 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752976Ab2BNTKj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2012 14:10:39 -0500
+In-Reply-To: <CAGpXXZKra-GJji_Y96kYGHLKCuabqNskoq2aSsx8OB6dB279YQ@mail.gmail.com>
+Content-Language: de-DE
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Tuesday, February 14, 2012 1:25 AM, Greg Freemyer wrote:
+> I took a minute and tried to put together a opensuse package for
+> ext4magic in my home directory for testing.
+> I haven't tried to patch the source, but at present it has some
+> compile errors that keep OBS from publishing it even from a home
+> directory.
+> Roberto, if you think you'll come out with a cleaner build in the next
+> couple weeks, I won't bother to patch up those errors.
 
-  I've just realized that JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT breaks
-guarantees of data=ordered mode in ext4. The problem is that async commit
-code assumes that when a checksum of a transaction in the journal matches,
-all necessary data is on disk. This is true for metadata but need not be so
-for data - the whole transaction may be correctly on pernament storage
-while some data is still sitting in drive's caches. Thus if a power failure
-happens at that moment, we have broken guarantees of data=ordered mode.
-Seeing that async commit code isn't used by default anyway (I remember
-there used to be some problems with it), shouldn't we just rip it out?
+Ops, a little dirty code. Full compiler checking, I've never tried. ;-(
+Let me clean up this and one more intensive checking for all sorts of memory problems.
+Think then ext4magic is ready to prove whether it is usable and useful.
 
-								Honza
+
+The proposal to try a translation direct on the wiki is a good idea.
+
+Thank you all for your interest for ext4magic, this gives me new energy 
+and positive motivation to work on it.
+
+Regards,
+Roberto Maar
+
