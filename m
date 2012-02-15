@@ -1,96 +1,43 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 8/8] jbd2: Cleanup journal tail after transaction commit
-Date: Wed, 15 Feb 2012 14:03:30 -0800
-Message-ID: <377B1146-3A57-4959-A0AA-012D5813A514@dilger.ca>
-References: <1329330854-14237-1-git-send-email-jack@suse.cz> <1329330854-14237-9-git-send-email-jack@suse.cz>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs: Only link an inode into a directory once
+Date: Wed, 15 Feb 2012 17:23:42 -0500
+Message-ID: <20120215222342.GB20023@thunk.org>
+References: <20120107044743.3366.16848.stgit@elm3c44.beaverton.ibm.com>
+ <20120215192537.GI11382@thunk.org>
+ <20120215204015.GB15164@tux1.beaverton.ibm.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:50650 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752812Ab2BOWDc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Feb 2012 17:03:32 -0500
-In-Reply-To: <1329330854-14237-9-git-send-email-jack@suse.cz>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52394 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751388Ab2BOWXr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Feb 2012 17:23:47 -0500
+Content-Disposition: inline
+In-Reply-To: <20120215204015.GB15164@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-15, at 10:34 AM, Jan Kara wrote:
-> Normally, we have to issue a cache flush before we can update journal tail in
-> journal superblock, effectively wiping out old transactions from the journal.
-> So use the fact that during transaction commit we issue cache flush anyway and
-> opportunistically push journal tail as far as we can. Since update of journal
-> superblock is still costly (we have to use WRITE_FUA), we update log tail only
-> if we can free significant amount of space.
+On Wed, Feb 15, 2012 at 12:40:15PM -0800, Darrick J. Wong wrote:
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
-> fs/jbd2/commit.c     |   32 ++++++++++++++++++++++++++++++++
-> fs/jbd2/journal.c    |   13 +++++++++++++
-> include/linux/jbd2.h |    1 +
-> 3 files changed, 46 insertions(+), 0 deletions(-)
+> Yes.  I took a look at the block iteration code again, and I'm
+> wondering, do we need one of these:
 > 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index f37b783..245201c 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -331,6 +331,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> 	struct buffer_head *cbh = NULL; /* For transactional checksums */
-> 	__u32 crc32_sum = ~0;
-> 	struct blk_plug plug;
-> +	/* Tail of the journal */
-> +	unsigned long first_block;
-> +	tid_t first_tid;
-> +	int update_tail;
+> if (ret & BLOCK_ABORT)
+> 	break;
 > 
-> 	/*
-> 	 * First job: lock down the current transaction and wait for
-> @@ -682,10 +686,30 @@ start_journal_io:
-> 		err = 0;
-> 	}
-> 
-> +	/*
-> +	 * Get current oldest transaction in the log before we issue flush
-> +	 * to the filesystem device. After the flush we can be sure that
-> +	 * blocks of all older transactions are checkpointed to persistent
-> +	 * storage and we will be safe to update journal start in the
-> +	 * superblock with the numbers we get here.
-> +	 */
-> +	update_tail =
-> +		jbd2_journal_get_log_tail(journal, &first_tid, &first_block);
-> +
-> 	write_lock(&journal->j_state_lock);
-> +	if (update_tail) {
-> +		long freed = first_block - journal->j_tail;
-> +
-> +		if (first_block < journal->j_tail)
-> +			freed += journal->j_last - journal->j_first;
-> +		/* Update tail only if we free significant amount of space */
-> +		if (freed < journal->j_maxlen / 4)
-> +			update_tail = 0;
-> +	}
+> ...around lib/ext2fs/block.c, line 450?
 
-Have you done any performance testing on this?  I expect that it may give
-a nice boost in performance when there are lots of small transactions in
-the journal.  However, it might also increase latency if the journal is
-nearly full and no new transactions can be started until 1/4 of the journal
-is checkpointed.
+Good spotting; it turns out there was another problem later on, where the
 
-This should probably be conditional on a decent amount of free blocks left
-in the journal, for example:
+	if (ret & BLOCK_ABORT)
+		break;
 
-		if (j_free >= j_maxlen / 8 && freed < journal->j_maxlen / 4)
-			update_tail = 0;
+does the wrong thing, since we need to break out of both the for loop
+*and* the while loop.
 
-or
-		if (freed >= j_free)
-			update_tail = 0;
+I'll send a patch which I believe will fix BLOCK_ABORT in the block
+iterator for the extent case.
 
-Cheers, Andreas
-
-
-
-
-
+						- Ted
