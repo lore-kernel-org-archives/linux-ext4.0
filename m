@@ -1,199 +1,130 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 7/8] jbd2: Remove bh_state lock from checkpointing code
-Date: Wed, 15 Feb 2012 19:34:13 +0100
-Message-ID: <1329330854-14237-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 8/8] jbd2: Cleanup journal tail after transaction commit
+Date: Wed, 15 Feb 2012 19:34:14 +0100
+Message-ID: <1329330854-14237-9-git-send-email-jack@suse.cz>
 References: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54105 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:54106 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753800Ab2BOSem (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754175Ab2BOSem (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 15 Feb 2012 13:34:42 -0500
 In-Reply-To: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-All accesses to checkpointing entries in journal_head are protected
-by j_list_lock. Thus __jbd2_journal_remove_checkpoint() doesn't really
-need bh_state lock.
-
-Also the only part of journal head that the rest of checkpointing code
-needs to check is jh->b_transaction which is safe to read under
-j_list_lock.
-
-So we can safely remove bh_state lock from all of checkpointing code which
-makes it considerably prettier.
+Normally, we have to issue a cache flush before we can update journal tail in
+journal superblock, effectively wiping out old transactions from the journal.
+So use the fact that during transaction commit we issue cache flush anyway and
+opportunistically push journal tail as far as we can. Since update of journal
+superblock is still costly (we have to use WRITE_FUA), we update log tail only
+if we can free significant amount of space.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/checkpoint.c         |   59 +++++-------------------------------------
- include/linux/journal-head.h |    2 +
- 2 files changed, 9 insertions(+), 52 deletions(-)
+ fs/jbd2/commit.c     |   32 ++++++++++++++++++++++++++++++++
+ fs/jbd2/journal.c    |   13 +++++++++++++
+ include/linux/jbd2.h |    1 +
+ 3 files changed, 46 insertions(+), 0 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index e68a820..b884adf 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -88,14 +88,13 @@ static inline void __buffer_relink_io(struct journal_head *jh)
-  * whole transaction.
-  *
-  * Requires j_list_lock
-- * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
-  */
- static int __try_to_free_cp_buf(struct journal_head *jh)
- {
- 	int ret = 0;
- 	struct buffer_head *bh = jh2bh(jh);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index f37b783..245201c 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -331,6 +331,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	struct buffer_head *cbh = NULL; /* For transactional checksums */
+ 	__u32 crc32_sum = ~0;
+ 	struct blk_plug plug;
++	/* Tail of the journal */
++	unsigned long first_block;
++	tid_t first_tid;
++	int update_tail;
  
--	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
-+	if (jh->b_transaction == NULL && !buffer_locked(bh) &&
- 	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
- 		/*
- 		 * Get our reference so that bh cannot be freed before
-@@ -104,11 +103,8 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
- 		get_bh(bh);
- 		JBUFFER_TRACE(jh, "remove from checkpoint list");
- 		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
--		jbd_unlock_bh_state(bh);
- 		BUFFER_TRACE(bh, "release");
- 		__brelse(bh);
--	} else {
--		jbd_unlock_bh_state(bh);
- 	}
- 	return ret;
- }
-@@ -180,21 +176,6 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- }
- 
- /*
-- * We were unable to perform jbd_trylock_bh_state() inside j_list_lock.
-- * The caller must restart a list walk.  Wait for someone else to run
-- * jbd_unlock_bh_state().
-- */
--static void jbd_sync_bh(journal_t *journal, struct buffer_head *bh)
--	__releases(journal->j_list_lock)
--{
--	get_bh(bh);
--	spin_unlock(&journal->j_list_lock);
--	jbd_lock_bh_state(bh);
--	jbd_unlock_bh_state(bh);
--	put_bh(bh);
--}
--
--/*
-  * Clean up transaction's list of buffers submitted for io.
-  * We wait for any pending IO to complete and remove any clean
-  * buffers. Note that we take the buffers in the opposite ordering
-@@ -222,15 +203,9 @@ restart:
- 	while (!released && transaction->t_checkpoint_io_list) {
- 		jh = transaction->t_checkpoint_io_list;
- 		bh = jh2bh(jh);
--		if (!jbd_trylock_bh_state(bh)) {
--			jbd_sync_bh(journal, bh);
--			spin_lock(&journal->j_list_lock);
--			goto restart;
--		}
- 		get_bh(bh);
- 		if (buffer_locked(bh)) {
- 			spin_unlock(&journal->j_list_lock);
--			jbd_unlock_bh_state(bh);
- 			wait_on_buffer(bh);
- 			/* the journal_head may have gone by now */
- 			BUFFER_TRACE(bh, "brelse");
-@@ -246,7 +221,6 @@ restart:
- 		 * it has been written out and so we can drop it from the list
- 		 */
- 		released = __jbd2_journal_remove_checkpoint(jh);
--		jbd_unlock_bh_state(bh);
- 		__brelse(bh);
+ 	/*
+ 	 * First job: lock down the current transaction and wait for
+@@ -682,10 +686,30 @@ start_journal_io:
+ 		err = 0;
  	}
  
-@@ -280,7 +254,6 @@ __flush_batch(journal_t *journal, int *batch_count)
-  * be written out.
-  *
-  * Called with j_list_lock held and drops it if 1 is returned
-- * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
-  */
- static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 			    int *batch_count, transaction_t *transaction)
-@@ -291,7 +264,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 	if (buffer_locked(bh)) {
- 		get_bh(bh);
- 		spin_unlock(&journal->j_list_lock);
--		jbd_unlock_bh_state(bh);
- 		wait_on_buffer(bh);
- 		/* the journal_head may have gone by now */
- 		BUFFER_TRACE(bh, "brelse");
-@@ -303,7 +275,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
++	/*
++	 * Get current oldest transaction in the log before we issue flush
++	 * to the filesystem device. After the flush we can be sure that
++	 * blocks of all older transactions are checkpointed to persistent
++	 * storage and we will be safe to update journal start in the
++	 * superblock with the numbers we get here.
++	 */
++	update_tail =
++		jbd2_journal_get_log_tail(journal, &first_tid, &first_block);
++
+ 	write_lock(&journal->j_state_lock);
++	if (update_tail) {
++		long freed = first_block - journal->j_tail;
++
++		if (first_block < journal->j_tail)
++			freed += journal->j_last - journal->j_first;
++		/* Update tail only if we free significant amount of space */
++		if (freed < journal->j_maxlen / 4)
++			update_tail = 0;
++	}
+ 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
+ 	commit_transaction->t_state = T_COMMIT_DFLUSH;
+ 	write_unlock(&journal->j_state_lock);
++
+ 	/* 
+ 	 * If the journal is not located on the file system device,
+ 	 * then we must flush the file system device before we issue
+@@ -836,6 +860,14 @@ wait_for_iobuf:
+ 	if (err)
+ 		jbd2_journal_abort(journal, err);
  
- 		transaction->t_chp_stats.cs_forced_to_close++;
- 		spin_unlock(&journal->j_list_lock);
--		jbd_unlock_bh_state(bh);
- 		if (unlikely(journal->j_flags & JBD2_UNMOUNT))
- 			/*
- 			 * The journal thread is dead; so starting and
-@@ -322,11 +293,9 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 		if (unlikely(buffer_write_io_error(bh)))
- 			ret = -EIO;
- 		get_bh(bh);
--		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
- 		BUFFER_TRACE(bh, "remove from checkpoint");
- 		__jbd2_journal_remove_checkpoint(jh);
- 		spin_unlock(&journal->j_list_lock);
--		jbd_unlock_bh_state(bh);
- 		__brelse(bh);
- 	} else {
- 		/*
-@@ -341,7 +310,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 		J_ASSERT_BH(bh, !buffer_jwrite(bh));
- 		journal->j_chkpt_bhs[*batch_count] = bh;
- 		__buffer_relink_io(jh);
--		jbd_unlock_bh_state(bh);
- 		transaction->t_chp_stats.cs_written++;
- 		(*batch_count)++;
- 		if (*batch_count == JBD2_NR_BATCH) {
-@@ -405,15 +373,7 @@ restart:
- 		int retry = 0, err;
++	/*
++	 * Now disk caches for filesystem device are flushed so we are safe to
++	 * erase checkpointed transactions from the log by updating journal
++	 * superblock.
++	 */
++	if (update_tail)
++		jbd2_update_log_tail(journal, first_tid, first_block);
++
+ 	/* End of a transaction!  Finally, we can do checkpoint
+            processing: any buffers committed as a result of this
+            transaction can be removed from any checkpoint list it was on
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 192558f..be304b9 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -823,6 +823,19 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+ 	write_unlock(&journal->j_state_lock);
+ }
  
- 		while (!retry && transaction->t_checkpoint_list) {
--			struct buffer_head *bh;
--
- 			jh = transaction->t_checkpoint_list;
--			bh = jh2bh(jh);
--			if (!jbd_trylock_bh_state(bh)) {
--				jbd_sync_bh(journal, bh);
--				retry = 1;
--				break;
--			}
- 			retry = __process_buffer(journal, jh, &batch_count,
- 						 transaction);
- 			if (retry < 0 && !result)
-@@ -529,15 +489,12 @@ static int journal_clean_one_cp_list(struct journal_head *jh, int *released)
- 	do {
- 		jh = next_jh;
- 		next_jh = jh->b_cpnext;
--		/* Use trylock because of the ranking */
--		if (jbd_trylock_bh_state(jh2bh(jh))) {
--			ret = __try_to_free_cp_buf(jh);
--			if (ret) {
--				freed++;
--				if (ret == 2) {
--					*released = 1;
--					return freed;
--				}
-+		ret = __try_to_free_cp_buf(jh);
-+		if (ret) {
-+			freed++;
-+			if (ret == 2) {
-+				*released = 1;
-+				return freed;
- 			}
- 		}
- 		/*
-@@ -620,9 +577,7 @@ out:
-  * The function can free jh and bh.
-  *
-  * This function is called with j_list_lock held.
-- * This function is called with jbd_lock_bh_state(jh2bh(jh))
-  */
++/*
++ * This is a variaon of __jbd2_update_log_tail which checks for validity of
++ * provided log tail and locks j_checkpoint_mutex. So it is safe against races
++ * with other threads updating log tail.
++ */
++void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
++{
++	mutex_lock(&journal->j_checkpoint_mutex);
++	if (tid_gt(tid, journal->j_tail_sequence))
++		__jbd2_update_log_tail(journal, tid, block);
++	mutex_unlock(&journal->j_checkpoint_mutex);
++}
++
+ struct jbd2_stats_proc_session {
+ 	journal_t *journal;
+ 	struct transaction_stats_s *stats;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 1b10c2a..8dccaaa 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -974,6 +974,7 @@ int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+ int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+ 			      unsigned long *block);
+ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
++void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+ 
+ /* Commit management */
+ extern void jbd2_journal_commit_transaction(journal_t *);
+-- 
+1.7.1
+
