@@ -1,49 +1,122 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/8] jbd2: Fix BH_JWrite setting in checkpointing code
-Date: Wed, 15 Feb 2012 19:34:10 +0100
-Message-ID: <1329330854-14237-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/8] jbd2: Protect all log tail updates with j_checkpoint_mutex
+Date: Wed, 15 Feb 2012 19:34:08 +0100
+Message-ID: <1329330854-14237-3-git-send-email-jack@suse.cz>
 References: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54089 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:54091 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753754Ab2BOSek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753682Ab2BOSek (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 15 Feb 2012 13:34:40 -0500
 In-Reply-To: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-BH_JWrite bit should be set when buffer is written to the journal. So
-checkpointing shouldn't set this bit when writing out buffer. This didn't
-cause any observable bug since BH_JWrite bit is used only for debugging
-purposes but it's good to have this consistent.
+There are some log tail updates that are not protected by j_checkpoint_mutex.
+Some of these are harmless because they happen during startup or shutdown but
+updates in jbd2_journal_commit_transaction() and jbd2_journal_flush() can
+really race with other log tail updates (e.g. someone doing
+jbd2_journal_flush() with someone running jbd2_cleanup_journal_tail()). So
+protect all log tail updates with j_checkpoint_mutex.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/checkpoint.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c  |    2 ++
+ fs/jbd2/journal.c |   19 ++++++++++++++++---
+ 2 files changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index de76f1f..e68a820 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -266,7 +266,6 @@ __flush_batch(journal_t *journal, int *batch_count)
- 
- 	for (i = 0; i < *batch_count; i++) {
- 		struct buffer_head *bh = journal->j_chkpt_bhs[i];
--		clear_buffer_jwrite(bh);
- 		BUFFER_TRACE(bh, "brelse");
- 		__brelse(bh);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index ffdf512..39978c1 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -340,7 +340,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	/* Do we need to erase the effects of a prior jbd2_journal_flush? */
+ 	if (journal->j_flags & JBD2_FLUSHED) {
+ 		jbd_debug(3, "super block updated\n");
++		mutex_lock(&journal->j_checkpoint_mutex);
+ 		jbd2_journal_update_sb_log_tail(journal);
++		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	} else {
+ 		jbd_debug(3, "superblock not updated\n");
  	}
-@@ -340,7 +339,6 @@ static int __process_buffer(journal_t *journal, struct journal_head *jh,
- 		BUFFER_TRACE(bh, "queue");
- 		get_bh(bh);
- 		J_ASSERT_BH(bh, !buffer_jwrite(bh));
--		set_buffer_jwrite(bh);
- 		journal->j_chkpt_bhs[*batch_count] = bh;
- 		__buffer_relink_io(jh);
- 		jbd_unlock_bh_state(bh);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index ec05900..183a099 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1125,8 +1125,11 @@ static int journal_reset(journal_t *journal)
+ 			journal->j_errno);
+ 		journal->j_flags |= JBD2_FLUSHED;
+ 	} else {
++		/* Lock here to make assertions happy... */
++		mutex_lock(&journal->j_checkpoint_mutex);
+ 		/* Add the dynamic fields and write it to disk. */
+ 		jbd2_journal_update_sb_log_tail(journal);
++		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	}
+ 	return jbd2_journal_start_thread(journal);
+ }
+@@ -1174,6 +1177,7 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 
++	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+ 	read_lock(&journal->j_state_lock);
+ 	jbd_debug(1, "JBD2: updating superblock (start %ld, seq %d)\n",
+ 		  journal->j_tail, journal->j_tail_sequence);
+@@ -1202,6 +1206,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 
++	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+ 	read_lock(&journal->j_state_lock);
+ 	jbd_debug(1, "JBD2: Marking journal as empty (seq %d)\n",
+ 		  journal->j_tail_sequence);
+@@ -1435,9 +1440,11 @@ int jbd2_journal_destroy(journal_t *journal)
+ 	spin_unlock(&journal->j_list_lock);
+ 
+ 	if (journal->j_sb_buffer) {
+-		if (!is_journal_aborted(journal))
++		if (!is_journal_aborted(journal)) {
++			mutex_lock(&journal->j_checkpoint_mutex);
+ 			jbd2_mark_journal_empty(journal);
+-		else
++			mutex_unlock(&journal->j_checkpoint_mutex);
++		} else
+ 			err = -EIO;
+ 		brelse(journal->j_sb_buffer);
+ 	}
+@@ -1686,6 +1693,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	if (is_journal_aborted(journal))
+ 		return -EIO;
+ 
++	mutex_lock(&journal->j_checkpoint_mutex);
+ 	jbd2_cleanup_journal_tail(journal);
+ 
+ 	/* Finally, mark the journal as really needing no recovery.
+@@ -1694,6 +1702,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	 * commits of data to the journal will restore the current
+ 	 * s_start value. */
+ 	jbd2_mark_journal_empty(journal);
++	mutex_unlock(&journal->j_checkpoint_mutex);
+ 	write_lock(&journal->j_state_lock);
+ 	J_ASSERT(!journal->j_running_transaction);
+ 	J_ASSERT(!journal->j_committing_transaction);
+@@ -1734,8 +1743,12 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+ 		write ? "Clearing" : "Ignoring");
+ 
+ 	err = jbd2_journal_skip_recovery(journal);
+-	if (write)
++	if (write) {
++		/* Lock to make assertions happy... */
++		mutex_lock(&journal->j_checkpoint_mutex);
+ 		jbd2_mark_journal_empty(journal);
++		mutex_unlock(&journal->j_checkpoint_mutex);
++	}
+ 
+  no_recovery:
+ 	return err;
 -- 
 1.7.1
 
