@@ -1,194 +1,89 @@
-From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
-Subject: Re: [PATCH 01/18] Added hacking menu for override optimization by  GCC.
-Date: Thu, 16 Feb 2012 21:26:00 +0100
-Message-ID: <76ede790fcc4ab73f969761034554e92@rsmogura.net>
-References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
- <op.v9sctsrj3l0zgt@mpn-glaptop>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [patch, resend] ext4: fix race between unwritten extent conversion and truncate
+Date: Thu, 16 Feb 2012 15:26:48 -0500
+Message-ID: <x49hayqy16f.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
- <linux-ext4@vger.kernel.org>
-To: Michal Nazarewicz <mina86@mina86.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <op.v9sctsrj3l0zgt@mpn-glaptop>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:13431 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755835Ab2BPU0v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:26:51 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 Feb 2012 11:09:18 -0800, Michal Nazarewicz wrote:
-> On Thu, 16 Feb 2012 06:31:28 -0800, Rados=C5=82aw Smogura=20
-> <mail@smogura.eu> wrote:
->> Supporting files, like Kconfig, Makefile are auto-generated due to=20
->> large amount
->> of available options.
->
-> So why not run the script as part of make rather then store generated
-> files in
-> repository?
-Idea to run this script through make is quite good, and should work,=20
-because new mane will be generated before "config" starts.
+Hi,
 
-"Bashizms" are indeed unneeded, I will try to replace this with sed.
+The following comment in ext4_end_io_dio caught my attention:
 
->> diff --git a/scripts/debug/make_config_optim.sh=20
->> b/scripts/debug/make_config_optim.sh
->> new file mode 100644
->> index 0000000..26865923
->> --- /dev/null
->> +++ b/scripts/debug/make_config_optim.sh
->> @@ -0,0 +1,88 @@
->> +#!/bin/sh
->
-> The below won't run on POSIX-compatible sh.  Address my comments
-> below to fix that.
->
->> +
->> +## Utility script for generating optimization override options
->> +## for kernel compilation.
->> +##
->> +## Distributed under GPL v2 license
->> +## (c) Rados=C5=82aw Smogura, 2011
->> +
->> +# Prefix added for variable
->> +CFG_PREFIX=3D"HACK_OPTIM"
->> +
->> +KCFG=3D"Kconfig.debug.optim"
->> +MKFI=3D"Makefile.optim.inc"
->
-> How about names that mean something?
->
-> KCONFIG=3D...
-> MAKEFILE=3D...
->
->> +
->> +OPTIMIZATIONS_PARAMS=3D"-fno-inline-functions-called-once \
->> + -fno-combine-stack-adjustments \
->> + -fno-tree-dce \
->> + -fno-tree-dominator-opts \
->> + -fno-dse "
->
-> Slashes at end of lines are not necessary here.
->
->> +
->> +echo "# This file was auto generated. It's utility configuration" >=20
->> $KCFG
->> +echo "# Distributed under GPL v2 License" >> $KCFG
->> +echo >> $KCFG
->> +echo "menuconfig ${CFG_PREFIX}" >> $KCFG
->> +echo -e "\tbool \"Allows to override GCC optimization\"" >> $KCFG
->> +echo -e "\tdepends on DEBUG_KERNEL && EXPERIMENTAL" >> $KCFG
->> +echo -e "\thelp" >> $KCFG
->> +echo -e "\t  If you say Y here you will be able to override" >>=20
->> $KCFG
->> +echo -e "\t  how GCC optimize kernel code. This will create" >>=20
->> $KCFG
->> +echo -e "\t  more debug friendly, but with not guarentee"    >>=20
->> $KCFG
->> +echo -e "\t  about same runi, like production, kernel."      >>=20
->> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  If you say Y here probably You will want say"   >>=20
->> $KCFG
->> +echo -e "\t  for all suboptions" >> $KCFG
->> +echo >> $KCFG
->> +echo "if ${CFG_PREFIX}" >> $KCFG
->> +echo >> $KCFG
->
-> Use:
->
-> cat > $KCFG <<EOF
-> ...
-> EOF
->
-> through the file (of course, in next runs you'll need to use =E2=80=9C>=
->=20
-> $KCFG=E2=80=9D).
-> More readable and also =E2=80=9C-e=E2=80=9D argument to echo is bash-sp=
-ecific.
->
-> Alternatively to using =E2=80=9C> $KCFG=E2=80=9D all the time, you can =
-also do:
->
-> exec 3> Kconfig.debug.optim
-> exec 4> Makefile.optim.inc
->
-> at the beginning of the script and later use >&3 and >&4, which will=20
-> save
-> you some open/close calls and make the strangely named $KCFG and=20
-> $MKFI
-> variables no longer needed.
->
->> +
->> +echo "# This file was auto generated. It's utility configuration" >=20
->> $MKFI
->> +echo "# Distributed under GPL v2 License" >> $MKFI
->> +echo >> $MKFI
->> +
->> +# Insert standard override optimization level
->> +# This is exception, and this value will not be included
->> +# in auto generated makefile. Support for this value
->> +# is hard coded in main Makefile.
->> +echo -e "config ${CFG_PREFIX}_FORCE_O1_LEVEL" >> $KCFG
->> +echo -e "\tbool \"Forces -O1 optimization level\"" >> $KCFG
->> +echo -e "\t---help---" >> $KCFG
->> +echo -e "\t  This will change how GCC optimize code. Code" >> $KCFG
->> +echo -e "\t  may be slower and larger but will be more debug" >>=20
->> $KCFG
->> +echo -e "\t  \"friendly\"." >> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  In some cases there is low chance that kernel" >>=20
->> $KCFG
->> +echo -e "\t  will run different then normal, reporting or not" >>=20
->> $KCFG
->> +echo -e "\t  some bugs or errors. Refere to GCC manual for" >>=20
->> $KCFG
->> +echo -e "\t  more details." >> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  You SHOULD say N here." >> $KCFG
->> +echo >> $KCFG
->> +
->> +for o in $OPTIMIZATIONS_PARAMS ; do
->> +	cfg_o=3D"${CFG_PREFIX}_${o//-/_}";
->
-> cfg_o=3D$CFG_PREFIX_$(echo "$o" | tr '[:lower:]-' '[:upper:]_')
->
->> +	echo "Processing param ${o} config variable will be $cfg_o";
->> +
->> +	# Generate kconfig entry
->> +	echo -e "config ${cfg_o}" >> $KCFG
->> +	echo -e "\tbool \"Adds $o parameter to gcc invoke line.\"" >>=20
->> $KCFG
->> +	echo -e "\t---help---" >> $KCFG
->> +	echo -e "\t  This will change how GCC optimize code. Code" >>=20
->> $KCFG
->> +	echo -e "\t  may be slower and larger but will be more debug" >>=20
->> $KCFG
->> +	echo -e "\t  \"friendly\"." >> $KCFG
->> +	echo >> $KCFG
->> +	echo -e "\t  In some cases there is low chance that kernel" >>=20
->> $KCFG
->> +	echo -e "\t  will run different then normal, reporting or not" >>=20
->> $KCFG
->> +	echo -e "\t  some bugs or errors. Refere to GCC manual for" >>=20
->> $KCFG
->> +	echo -e "\t  more details." >> $KCFG
->> +	echo >> $KCFG
->> +	echo -e "\t  You SHOULD say N here." >> $KCFG
->> +	echo >> $KCFG
->> +
->> +	#Generate Make for include
->> +	echo "ifdef CONFIG_${cfg_o}" >> $MKFI
->> +	echo -e "\tKBUILD_CFLAGS +=3D $o" >> $MKFI
->> +	echo "endif" >> $MKFI
->> +	echo  >> $MKFI
->> +done;
->> +echo "endif #${CFG_PREFIX}" >> $KCFG
+	/* XXX: probably should move into the real I/O completion handler */
+        inode_dio_done(inode);
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+The truncate code takes i_mutex, then calls inode_dio_wait.  Because the
+ext4 code path above will end up dropping the mutex before it is
+reacquired by the worker thread that does the extent conversion, it
+seems to me that the truncate can happen out of order.  Jan Kara
+mentioned that this might result in error messages in the system logs,
+but that should be the extent of the "damage."
+
+The fix is pretty straight-forward: don't call inode_dio_done until the
+extent conversion is complete.
+
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..2d55d7c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -184,6 +184,7 @@ struct mpage_da_data {
+ #define	EXT4_IO_END_UNWRITTEN	0x0001
+ #define EXT4_IO_END_ERROR	0x0002
+ #define EXT4_IO_END_QUEUED	0x0004
++#define EXT4_IO_END_DIRECT	0x0008
+ 
+ struct ext4_io_page {
+ 	struct page	*p_page;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..f6dc02b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2795,9 +2795,6 @@ out:
+ 
+ 	/* queue the work to convert unwritten extents to written */
+ 	queue_work(wq, &io_end->work);
+-
+-	/* XXX: probably should move into the real I/O completion handler */
+-	inode_dio_done(inode);
+ }
+ 
+ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+@@ -2921,9 +2918,12 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		iocb->private = NULL;
+ 		EXT4_I(inode)->cur_aio_dio = NULL;
+ 		if (!is_sync_kiocb(iocb)) {
+-			iocb->private = ext4_init_io_end(inode, GFP_NOFS);
+-			if (!iocb->private)
++			ext4_io_end_t *io_end =
++				ext4_init_io_end(inode, GFP_NOFS);
++			if (!io_end)
+ 				return -ENOMEM;
++			io_end->flag |= EXT4_IO_END_DIRECT;
++			iocb->private = io_end;
+ 			/*
+ 			 * we save the io structure for current async
+ 			 * direct IO, so that later ext4_map_blocks()
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 4758518..9e1b8eb 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -110,6 +110,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+ 	if (io->iocb)
+ 		aio_complete(io->iocb, io->result, 0);
+ 
++	if (io->flag & EXT4_IO_END_DIRECT)
++		inode_dio_done(inode);
+ 	/* Wake up anyone waiting on unwritten extent conversion */
+ 	if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten))
+ 		wake_up_all(ext4_ioend_wq(io->inode));
