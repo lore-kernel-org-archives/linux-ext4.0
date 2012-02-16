@@ -1,1107 +1,377 @@
 From: =?UTF-8?q?Rados=C5=82aw=20Smogura?= <mail@smogura.eu>
-Subject: [PATCH 10/18] Support for huge page faulting
-Date: Thu, 16 Feb 2012 15:31:37 +0100
-Message-ID: <1329402705-25454-10-git-send-email-mail@smogura.eu>
-References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
+Subject: [WIP 13/18] Zapping and freeing huge mappings
+Date: Thu, 16 Feb 2012 15:47:52 +0100
+Message-ID: <1329403677-25629-3-git-send-email-mail@smogura.eu>
+References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	mail@smogura.eu,
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, mail@smogura.eu,
 	linux-ext4@vger.kernel.org
 To: linux-mm@kvack.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1329402705-25454-1-git-send-email-mail@smogura.eu>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from flawless.hostnac.com ([67.23.244.186]:49436 "EHLO
+	flawless.hostnac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752127Ab2BPOsu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 09:48:50 -0500
+In-Reply-To: <1329403677-25629-1-git-send-email-mail@smogura.eu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Adds some basic vm routines and macros to operate on huge page
-cache, designed to proper faulting of huge pages.
-
-1. __do_fault - made it common for huge and small.
-2. Simple wrappers for huge pages for rmapping.
-3. Other changes.
+Changes to VM subsytem allowing zapping and freeing huge pages,
+additional functions for removing mapping.
 
 Signed-off-by: Rados=C5=82aw Smogura <mail@smogura.eu>
 ---
- include/linux/defrag-pagecache.h |   18 +--
- include/linux/fs.h               |   19 +-
- include/linux/mm.h               |   28 ++
- include/linux/mm_types.h         |    2 +-
- include/linux/rmap.h             |    9 +
- mm/huge_memory.c                 |   42 +++
- mm/memory.c                      |  528 +++++++++++++++++++++++++++++++-=
-------
- mm/page-writeback.c              |   31 +++
- mm/rmap.c                        |   29 ++
- 9 files changed, 582 insertions(+), 124 deletions(-)
+ include/asm-generic/tlb.h |   21 ++++++
+ include/linux/huge_mm.h   |   13 ++++-
+ mm/huge_memory.c          |  153 +++++++++++++++++++++++++++++++++++++=
++++++---
+ mm/memory.c               |   39 +++++++-----
+ 4 files changed, 202 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/defrag-pagecache.h b/include/linux/defrag-page=
-cache.h
-index 46793de..4ca3468 100644
---- a/include/linux/defrag-pagecache.h
-+++ b/include/linux/defrag-pagecache.h
-@@ -8,7 +8,7 @@
-=20
- #ifndef DEFRAG_PAGECACHE_H
- #define DEFRAG_PAGECACHE_H
--#include <linux/fs.h>
-+#include <linux/defrag-pagecache.h>
-=20
- /* XXX Split this file into two public and protected - comments below
-  * Protected will contain
-@@ -24,22 +24,6 @@ typedef struct page *defrag_generic_get_page(
- 	const struct defrag_pagecache_ctl *ctl, struct inode *inode,
- 	pgoff_t pageIndex);
-=20
--/** Passes additional information and controls to page defragmentation. =
-*/
--struct defrag_pagecache_ctl {
--	/** If yes defragmentation will try to fill page caches. */
--	char fillPages:1;
--
--	/** If filling of page fails, defragmentation will fail too. Setting
--	 * this requires {@link #fillPages} will be setted.
--	 */
--	char requireFillPages:1;
--
--	/** If yes defragmentation will try to force in many aspects, this may
--	 * cause, operation to run longer, but with greater probability of
--	 * success. */
--	char force:1;
--};
--
- /** Defragments page cache of specified file and migrates it's to huge p=
-ages.
-  *
-  * @param f
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bfd9122..7288166 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -10,10 +10,7 @@
- #include <linux/ioctl.h>
- #include <linux/blk_types.h>
- #include <linux/types.h>
--
--#ifdef CONFIG_HUGEPAGECACHE
--#include <linux/defrag-pagecache.h>
--#endif
-+#include <linux/defrag-pagecache-base.h>
-=20
- /*
-  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
-@@ -596,6 +593,9 @@ struct address_space_operations {
- 	/* Set a page dirty.  Return true if this dirtied it */
- 	int (*set_page_dirty)(struct page *page);
-=20
-+	/** Same as \a set_page_dirty but for huge page */
-+	int (*set_page_dirty_huge)(struct page *page);
-+=09
- 	int (*readpages)(struct file *filp, struct address_space *mapping,
- 			struct list_head *pages, unsigned nr_pages);
-=20
-@@ -606,7 +606,6 @@ struct address_space_operations {
- 				loff_t pos, unsigned len, unsigned copied,
- 				struct page *page, void *fsdata);
-=20
--#ifdef CONFIG_HUGEPAGECACHE
- 	/** Used to defrag (migrate) pages at position {@code pos}
- 	 * to huge pages. Having this not {@code NULL} will indicate that
- 	 * address space, generally, supports huge pages (transaprent
-@@ -616,15 +615,19 @@ struct address_space_operations {
- 	 *
- 	 * @param pagep on success will be setted to established huge page
- 	 *
--	 * @returns TODO What to return?
--	 *	    {@code 0} on success, value less then {@code 0} on error
-+	 * @returns {@code 0} on success, value less then {@code 0} on error
- 	 */
- 	int (*defragpage) (struct file *, struct address_space *mapping,
- 				loff_t pos,
- 				struct page **pagep,
- 				const struct defrag_pagecache_ctl *ctl);
--#endif
-=20
-+	/** Used to split page, this method may be called under memory
-+	 * preasure. Actaully, You should not split page.
-+	 */
-+	int (*split_page) (struct file *file, struct address_space *mapping,
-+		loff_t pos, struct page *hueg_page);
-+=09
- 	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
- 	sector_t (*bmap)(struct address_space *, sector_t);
- 	void (*invalidatepage) (struct page *, unsigned long);
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 72f6a50..27a10c8 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -206,10 +206,19 @@ struct vm_operations_struct {
- 	void (*close)(struct vm_area_struct * area);
- 	int (*fault)(struct vm_area_struct *vma, struct vm_fault *vmf);
-=20
-+	/** Same as \a fault but should return huge page, instead of single one=
-.
-+	 * If function fails, then caller may try again with fault.
-+	 */
-+	int (*fault_huge)(struct vm_area_struct *vma, struct vm_fault *vmf);
-+=09
- 	/* notification that a previously read-only page is about to become
- 	 * writable, if an error is returned it will cause a SIGBUS */
- 	int (*page_mkwrite)(struct vm_area_struct *vma, struct vm_fault *vmf);
-=20
-+	/** Same as \a page_mkwrite, but for huge page. */
-+	int (*page_mkwrite_huge)(struct vm_area_struct *vma,
-+				 struct vm_fault *vmf);
-+=09
- 	/* called by access_process_vm when get_user_pages() fails, typically
- 	 * for use by special VMAs that can switch between memory and hardware
- 	 */
-@@ -534,6 +543,16 @@ static inline void get_page(struct page *page)
- 	}
+diff --git a/include/asm-generic/tlb.h b/include/asm-generic/tlb.h
+index f96a5b5..f7fc543 100644
+--- a/include/asm-generic/tlb.h
++++ b/include/asm-generic/tlb.h
+@@ -126,6 +126,27 @@ static inline void tlb_remove_page(struct mmu_gath=
+er *tlb, struct page *page)
+ 		tlb_flush_mmu(tlb);
  }
 =20
-+/** Bumps tail pages usage count. If there is at least one page that do =
-not have
-+ * valid mapping page count is left untoach.
-+ */
-+extern void get_page_tails_for_fmap(struct page *head);
++/** Compound page must be getted frozen. */
++static inline void tlb_remove_page_huge(struct mmu_gather *tlb,
++	struct page *head)
++{
++	struct page *page;
 +
-+/** Decrease tail pages usage count.
-+ * This function assumes you have getted compound or forozen compound.
-+ */
-+extern void put_page_tails_for_fmap(struct page *head);
++	VM_BUG_ON(!PageHead(head));
++	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
 +
- static inline void get_huge_page_tail(struct page *page)
- {
- 	/*
-@@ -996,6 +1015,7 @@ static inline int page_mapped(struct page *page)
- #define VM_FAULT_NOPAGE	0x0100	/* ->fault installed the pte, not return =
-page */
- #define VM_FAULT_LOCKED	0x0200	/* ->fault locked the returned page */
- #define VM_FAULT_RETRY	0x0400	/* ->fault blocked, must retry */
-+#define VM_FAULT_NOHUGE 0x0800  /* ->fault_huge, no huge page available =
-.*/
-=20
- #define VM_FAULT_HWPOISON_LARGE_MASK 0xf000 /* encodes hpage index for l=
-arge hwpoison */
-=20
-@@ -1161,6 +1181,14 @@ int redirty_page_for_writepage(struct writeback_co=
-ntrol *wbc,
- void account_page_dirtied(struct page *page, struct address_space *mappi=
-ng);
- void account_page_writeback(struct page *page);
- int set_page_dirty(struct page *page);
++	tlb_remove_page(tlb, head);
++	tlb_remove_page(tlb, head + 1);
++	if (likely(compound_order(head) > 1)) {
++		for (page =3D head+2; page->__first_page =3D=3D head; page++) {
++			tlb_remove_page(tlb, page);
++			/* Such situation should not happen, it means we mapped
++			 * dangling page.
++			 */
++			BUG_ON(!PageAnon(page) && !page->mapping);
++		}
++	}
++}
+ /**
+  * tlb_remove_tlb_entry - remember a pte unmapping for later tlb inval=
+idation.
+  *
+diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+index c2407e4..c72a849 100644
+--- a/include/linux/huge_mm.h
++++ b/include/linux/huge_mm.h
+@@ -88,12 +88,21 @@ extern int handle_pte_fault(struct mm_struct *mm,
+ 			    pte_t *pte, pmd_t *pmd, unsigned int flags);
+ extern int split_huge_page(struct page *page);
+ extern void __split_huge_page_pmd(struct mm_struct *mm, pmd_t *pmd);
++extern void __split_huge_page_pmd_vma(struct vm_area_struct *vma,
++	unsigned long address, pmd_t *pmd);
 +
-+/** Sets huge page dirty, this will lock all tails, head should be locke=
-d.
-+ * Compound should be getted or frozen. Skips all pages that have no map=
-ping
-+ *
-+ * @param head
-+ * @return number of sucessfull set_page_dirty
-+ */
-+int set_page_dirty_huge(struct page *page);
- int set_page_dirty_lock(struct page *page);
- int clear_page_dirty_for_io(struct page *page);
-=20
-diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
-index 7649722..7d2c09d 100644
---- a/include/linux/mm_types.h
-+++ b/include/linux/mm_types.h
-@@ -296,7 +296,7 @@ struct vm_area_struct {
-=20
- 	/* Function pointers to deal with this struct. */
- 	const struct vm_operations_struct *vm_ops;
--
-+=09
- 	/* Information about our backing store: */
- 	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
- 					   units, *not* PAGE_CACHE_SIZE */
-diff --git a/include/linux/rmap.h b/include/linux/rmap.h
-index 1cdd62a..bc547cb 100644
---- a/include/linux/rmap.h
-+++ b/include/linux/rmap.h
-@@ -142,8 +142,17 @@ void do_page_add_anon_rmap(struct page *, struct vm_=
-area_struct *,
- 			   unsigned long, int);
- void page_add_new_anon_rmap(struct page *, struct vm_area_struct *, unsi=
-gned long);
- void page_add_file_rmap(struct page *);
+ #define split_huge_page_pmd(__mm, __pmd)				\
+ 	do {								\
+ 		pmd_t *____pmd =3D (__pmd);				\
+-		if (unlikely(pmd_trans_huge(*____pmd)))			\
++	if (unlikely(pmd_trans_huge(*____pmd)))			\
+ 			__split_huge_page_pmd(__mm, ____pmd);		\
+ 	}  while (0)
++#define split_huge_page_pmd_vma(__vma, __addr, __pmd)			\
++	do {								\
++		pmd_t *____pmd =3D (__pmd);				\
++		if (unlikely(pmd_trans_huge(*____pmd)))			\
++			__split_huge_page_pmd_vma(__vma, __addr, ____pmd);\
++	}  while (0)
+ #define wait_split_huge_page(__anon_vma, __pmd)				\
+ 	do {								\
+ 		pmd_t *____pmd =3D (__pmd);				\
+@@ -160,6 +169,8 @@ static inline int split_huge_page(struct page *page=
+)
+ }
+ #define split_huge_page_pmd(__mm, __pmd)	\
+ 	do { } while (0)
++#define split_huge_page_pmd_vma(__vma, __addr, __pmd) do { } while (0)
 +
-+/** Adds remap for huge page, compound page must be getted or frozen.
-+ */
-+extern void page_add_file_rmap_huge(struct page *head);
-+
- void page_remove_rmap(struct page *);
-=20
-+/** Removes rmap for huge page, compound page must be getted or frozen.
-+ */
-+void page_remove_rmap_huge(struct page *);
-+
- void hugepage_add_anon_rmap(struct page *, struct vm_area_struct *,
- 			    unsigned long);
- void hugepage_add_new_anon_rmap(struct page *, struct vm_area_struct *,
+ #define wait_split_huge_page(__anon_vma, __pmd)	\
+ 	do { } while (0)
+ #define compound_trans_head(page) compound_head(page)
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index e3b4c38..74d2e84 100644
+index 74d2e84..95c9ce7 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -2455,3 +2455,45 @@ void __vma_adjust_trans_huge(struct vm_area_struct=
- *vma,
- 			split_huge_page_address(next->vm_mm, nstart);
- 	}
- }
-+
-+/** Bumps tail pages usage count. This function assumes you have getted =
-compound
-+ * or forozen compound.
-+ */
-+void get_page_tails_for_fmap(struct page *head)
-+{
-+	struct page *page;
-+
-+	VM_BUG_ON(!PageHead(head));
-+	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
-+	VM_BUG_ON(compound_order(head) < 2);
-+
-+	get_page(head + 1);
-+	/* We may use __first_page, because we getts compound at whole. */
-+	for (page =3D head + 2; page->__first_page =3D=3D head; page++) {
-+		VM_BUG_ON(!atomic_read(&page->_count));
-+		VM_BUG_ON(!page->mapping);
-+		VM_BUG_ON(!PageTail(page));
-+		get_page(page);
-+	}
-+}
-+
-+/** Decrease tail pages usage count.
-+ * This function assumes you have getted compound or forozen compound.
-+ */
-+void put_page_tails_for_fmap(struct page *head)
-+{
-+	struct page *page;
-+
-+	VM_BUG_ON(!PageHead(head));
-+	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
-+	VM_BUG_ON(compound_order(head) < 2);
-+
-+	put_page(head + 1);
-+	/* We may use __first_page, because we getts compound at whole. */
-+	for (page =3D head + 2; page->__first_page =3D=3D head; page++) {
-+		VM_BUG_ON(!atomic_read(&page->_count));
-+		VM_BUG_ON(!page->mapping);
-+		VM_BUG_ON(!PageTail(page));
-+		put_page(page);
-+	}
-+}
-diff --git a/mm/memory.c b/mm/memory.c
-index a0ab73c..7427c9b 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -3148,7 +3148,137 @@ oom:
- 	return VM_FAULT_OOM;
- }
+@@ -807,6 +807,9 @@ pgtable_t get_pmd_huge_pte(struct mm_struct *mm)
 =20
--/*
-+/** Level 0 check if it's possible to establish huge pmd in process addr=
-ess
-+ * space.
-+ */
-+static int check_if_hugemapping_is_possible0(
-+		struct vm_area_struct *vma,
-+		unsigned long address,
-+		pgoff_t pgoff,
-+		pmd_t pmdVal /* Keep pmd for THP for Pivate Mapping. */)
-+{
-+	if (vma->vm_ops) {
-+		/* This is base chcek. */
-+		if (!vma->vm_ops->fault_huge)
-+			return 0;
-+	} else {
-+		return 0;
-+	}
-+
-+	if (vma->vm_flags & VM_SHARED && !(vma->vm_flags & VM_NONLINEAR)) {
-+		/* Check if VMA address is pmd aligned */
-+		if ((address & ~PMD_MASK) !=3D 0)
-+			return 0;
-+
-+		/* Check if pgoff is huge page aligned */
-+		/* XXX This should be exported as it's reused in defrag. */
-+		if ((pgoff & ((1 << (PMD_SHIFT - PAGE_SHIFT)) - 1)) !=3D 0)
-+			return 0;
-+
-+		/* Check if huge pmd will fit inside VMA.
-+		 * pmd_address_end returns first byte after end, not last byte!
-+		 */
-+		if (!(pmd_addr_end(address, (unsigned long) -1) <=3D vma->vm_end))
-+			return 0;
-+
-+		/* WIP [Private THP], check if pmd is marked as do not make THP,
-+		 * e.g. because it has COWs. (COWs gives milk).
-+		 * We need add such flag because
-+		 */
-+
-+		/* Check if file has enaugh length - not needed if there is
-+		 * huge page in page cache, this implies file has enaugh lenght.
-+		 * TODO Think on above. If true make requirement for THP support
-+		 *      in page cache (put in documentation).
-+		 * This may break some concepts that page cache may have not
-+		 * up to date huge page, too.
-+		 */
-+	} else {
-+		/* Anonymous VMA - not opcoded, yet. */
-+		return 0;
-+	}
-+
-+	/* All tests passed */
-+	printk(KERN_INFO "Chk - All passed");
-+	return 1;
-+}
-+
-+
-+/** Commons function for performing faulting with support for huge pages=
-.
-+ * This method is designed to be facade-ed, by others.
-+ *
-+ * TODO Still need to consider locking order, to prevent dead locks...
-+ * it's looks like better will be compound_lock -> page_lock
-+ *
-+ * @param page loaded head page, locked iff compound_lock, getted
-+ *
-+ * @return {@code 0} on success
-+ */
-+static /*inline*/ int __huge_lock_check(
-+					struct mm_struct *mm,
-+					struct vm_area_struct *vma,
-+					unsigned long address,
-+					pud_t *pud,
-+					pmd_t pmd,
-+					pgoff_t pgoff,
-+					unsigned int flags,
-+					struct page *head)
-+{
-+	struct page *workPage;
-+	unsigned long workAddress;
-+	unsigned int processedPages;
-+
-+	int result =3D 0;
-+
-+	VM_BUG_ON(!check_if_hugemapping_is_possible0(vma, address, pgoff,
-+		pmd));
-+	VM_BUG_ON(atomic_read(&head->_count) <=3D 2);
-+	VM_BUG_ON(!PageHead(head));
-+
-+	/* TODO [Documentation] expose below rules, from code.
-+	 *
-+	 * XXX Is it possible to with tests in loop to map not uptodate pages?
-+	 *
-+	 * It's looks like that with following designe we require that removing
-+	 * page uptodate flag, for compound pages, may require compound lock
-+	 * or something else.
-+	 */
-+
-+	/* Check if tail pages are uptodate, this should not happen,
-+	 * as we have compound_lock, but I can't guarantee and linear ordered.
-+	 */
-+	processedPages =3D 0;
-+	workAddress =3D address;
-+	/** XXX [Performance] compound_head is rather slow make new macro, when
-+	 * we have compound page getted.
-+	 */
-+	for (workPage =3D head; compound_head(workPage) =3D=3D head; workPage++=
-) {
-+		if (!PageUptodate(workPage)
-+			|| !workPage->mapping
-+			|| (workPage->index - processedPages !=3D pgoff)) {
-+			result =3D -EINVAL;
-+			goto exit_processing;
-+		}
-+		/* We don't check ptes, because we have shared mapping
-+		 * so all ptes should be (or could be in future) same, meaning
-+		 * mainly protection flags. This check will be required for
-+		 * private mapping.
-+		 */
-+		processedPages++;
-+		workAddress +=3D PAGE_SIZE;
-+	}
-+	if (processedPages !=3D (1 << (PMD_SHIFT - PAGE_SHIFT))) {
-+		/* Not enaugh processed pages, why? */
-+		return processedPages + 1;
-+	}
-+
-+exit_processing:
-+	printk("Processed %d", processedPages);
-+
-+	return result;
-+}
-+
-+/**
-  * __do_fault() tries to create a new page mapping. It aggressively
-  * tries to share with existing pages, but makes a separate copy if
-  * the FAULT_FLAG_WRITE is set in the flags parameter in order to avoid
-@@ -3160,28 +3290,45 @@ oom:
-  * We enter with non-exclusive mmap_sem (to exclude vma changes,
-  * but allow concurrent faults), and pte neither mapped nor locked.
-  * We return with mmap_sem still held, but pte unmapped and unlocked.
-+ *
-+ * This method shares same concepts for single and huge pages.
-+ *
-+ * @param pud pud entry, if NULL method operates in single page mode, ot=
-herwise
-+ *            operates in huge page mode.
-  */
--static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
--		unsigned long address, pmd_t *pmd,
--		pgoff_t pgoff, unsigned int flags, pte_t orig_pte)
-+static inline int __do_fault(struct mm_struct *mm, struct vm_area_struct=
- *vma,
-+		unsigned long address, pud_t *pud, pmd_t *pmd,
-+		pgoff_t pgoff, unsigned int flags,
-+		pmd_t orig_pmd, pte_t orig_pte)
- {
- 	pte_t *page_table;
-+	pmd_t *huge_table;
-+
-+	pte_t entry;
-+	pmd_t hentry;
-+
- 	spinlock_t *ptl;
- 	struct page *page;
- 	struct page *cow_page;
--	pte_t entry;
-+
- 	int anon =3D 0;
- 	struct page *dirty_page =3D NULL;
- 	struct vm_fault vmf;
-+	const struct vm_operations_struct *vm_ops =3D vma->vm_ops;
- 	int ret;
- 	int page_mkwrite =3D 0;
-=20
-+	VM_BUG_ON((!!pmd) =3D=3D (!!pud));
-+
- 	/*
- 	 * If we do COW later, allocate page befor taking lock_page()
- 	 * on the file cache page. This will reduce lock holding time.
- 	 */
- 	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {
--
-+		if (pud) {
-+			/* Privte mapping write not supported yet. */
-+			BUG();
-+		}
- 		if (unlikely(anon_vma_prepare(vma)))
- 			return VM_FAULT_OOM;
-=20
-@@ -3196,14 +3343,20 @@ static int __do_fault(struct mm_struct *mm, struc=
-t vm_area_struct *vma,
- 	} else
- 		cow_page =3D NULL;
-=20
--	vmf.virtual_address =3D (void __user *)(address & PAGE_MASK);
-+	vmf.virtual_address =3D (void __user *)
-+		(address & (pud ? HPAGE_MASK : PAGE_MASK));
- 	vmf.pgoff =3D pgoff;
- 	vmf.flags =3D flags;
- 	vmf.page =3D NULL;
-=20
--	ret =3D vma->vm_ops->fault(vma, &vmf);
-+	/** XXX Tails should be getted to. */
-+	if (pud)
-+		ret =3D vm_ops->fault_huge(vma, &vmf);
-+	else
-+		ret =3D vm_ops->fault(vma, &vmf);
-+
- 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
--			    VM_FAULT_RETRY)))
-+			    VM_FAULT_RETRY | VM_FAULT_NOHUGE)))
- 		goto uncharge_out;
-=20
- 	if (unlikely(PageHWPoison(vmf.page))) {
-@@ -3213,21 +3366,36 @@ static int __do_fault(struct mm_struct *mm, struc=
-t vm_area_struct *vma,
- 		goto uncharge_out;
- 	}
-=20
--	/*
--	 * For consistency in subsequent calls, make the faulted page always
--	 * locked.
-+	/* For consistency in subsequent calls, make the faulted page
-+	 * always locked.
- 	 */
- 	if (unlikely(!(ret & VM_FAULT_LOCKED)))
--		lock_page(vmf.page);
-+			lock_page(vmf.page);
- 	else
- 		VM_BUG_ON(!PageLocked(vmf.page));
-=20
-+	page =3D vmf.page;
-+	if (pud) {
-+		/* Check consystency of page, if it is applicable for huge
-+		 * mapping.
-+		 */
-+		if (__huge_lock_check(mm, vma, address, pud, orig_pmd, pgoff,
-+			flags, vmf.page)) {
-+			unlock_page(page);
-+			goto unwritable_page;
-+		}
-+	}
-+
- 	/*
- 	 * Should we do an early C-O-W break?
- 	 */
--	page =3D vmf.page;
- 	if (flags & FAULT_FLAG_WRITE) {
- 		if (!(vma->vm_flags & VM_SHARED)) {
-+			if (pud) {
-+				/* Private cowing not supported yet for huge. */
-+				BUG();
-+			}
-+
- 			page =3D cow_page;
- 			anon =3D 1;
- 			copy_user_highpage(page, vmf.page, address, vma);
-@@ -3238,89 +3406,156 @@ static int __do_fault(struct mm_struct *mm, stru=
-ct vm_area_struct *vma,
- 			 * address space wants to know that the page is about
- 			 * to become writable
- 			 */
--			if (vma->vm_ops->page_mkwrite) {
-+			if ((!pud && vm_ops->page_mkwrite) ||
-+			    (pud && vm_ops->page_mkwrite_huge)) {
- 				int tmp;
--
- 				unlock_page(page);
- 				vmf.flags =3D FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
--				tmp =3D vma->vm_ops->page_mkwrite(vma, &vmf);
-+				tmp =3D vm_ops->page_mkwrite(vma, &vmf);
- 				if (unlikely(tmp &
- 					  (VM_FAULT_ERROR | VM_FAULT_NOPAGE))) {
- 					ret =3D tmp;
- 					goto unwritable_page;
- 				}
- 				if (unlikely(!(tmp & VM_FAULT_LOCKED))) {
-+					if (pud)
-+						BUG();
- 					lock_page(page);
- 					if (!page->mapping) {
- 						ret =3D 0; /* retry the fault */
--						unlock_page(page);
- 						goto unwritable_page;
- 					}
- 				} else
- 					VM_BUG_ON(!PageLocked(page));
--				page_mkwrite =3D 1;
-+				page_mkwrite =3D 1 << (PMD_SHIFT - PAGE_SHIFT);
- 			}
- 		}
-=20
- 	}
-=20
--	page_table =3D pte_offset_map_lock(mm, pmd, address, &ptl);
--
--	/*
--	 * This silly early PAGE_DIRTY setting removes a race
--	 * due to the bad i386 page protection. But it's valid
--	 * for other architectures too.
--	 *
--	 * Note that if FAULT_FLAG_WRITE is set, we either now have
--	 * an exclusive copy of the page, or this is a shared mapping,
--	 * so we can make it writable and dirty to avoid having to
--	 * handle that later.
-+	/* Following if is almost same for pud and not pud just, specified
-+	 * methods changed. Keep it as far as possi	ble synchronized
- 	 */
--	/* Only go through if we didn't race with anybody else... */
--	if (likely(pte_same(*page_table, orig_pte))) {
--		flush_icache_page(vma, page);
--		entry =3D mk_pte(page, vma->vm_page_prot);
--		if (flags & FAULT_FLAG_WRITE)
--			entry =3D maybe_mkwrite(pte_mkdirty(entry), vma);
--		if (anon) {
--			inc_mm_counter_fast(mm, MM_ANONPAGES);
--			page_add_new_anon_rmap(page, vma, address);
--		} else {
--			inc_mm_counter_fast(mm, MM_FILEPAGES);
--			page_add_file_rmap(page);
-+	if (pud) {
-+		huge_table =3D pmd_offset(pud, address);
-+		/* During allocation of pte pte_alloc uses, mm's page table lock
-+		 * it is not best solution, but we reuse it here.
-+		 */
-+		ptl =3D &mm->page_table_lock;
-+		spin_lock(ptl);
-+		if (likely(pmd_same(*huge_table, orig_pmd))) {
-+			flush_icache_page(vma, page);/* TODO Arch specific? */
-+			hentry =3D mk_pmd(page, vma->vm_page_prot);
-+			hentry =3D pmd_mkhuge(hentry);
-+
- 			if (flags & FAULT_FLAG_WRITE) {
--				dirty_page =3D page;
--				get_page(dirty_page);
-+				hentry =3D pmd_mkdirty(hentry);
-+				/* TODO make it pmd_maybe_mkwrite*/
-+				if (likely(vma->vm_flags & VM_WRITE))
-+					hentry =3D pmd_mkwrite(hentry);
- 			}
--		}
--		set_pte_at(mm, address, page_table, entry);
-+			if (anon) {
-+				BUG();
-+				inc_mm_counter_fast(mm, MM_ANONPAGES);
-+				page_add_new_anon_rmap(page, vma, address);
-+			} else {
-+				/* TODO Inc of huge pages counter...*/
-+				add_mm_counter_fast(mm, MM_FILEPAGES,
-+					HPAGE_PMD_NR);
-+				page_add_file_rmap_huge(page);
-+				if (flags & FAULT_FLAG_WRITE) {
-+					dirty_page =3D page;
-+					get_page(dirty_page);
-+					get_page_tails_for_fmap(dirty_page);
-+				}
-+			}
-+			set_pmd_at(mm, address, huge_table, hentry);
-=20
--		/* no need to invalidate: a not-present page won't be cached */
--		update_mmu_cache(vma, address, page_table);
-+			/* no need to invalidate: a not-present page won't be
-+			 * cached */
-+			update_mmu_cache(vma, address, page_table);
-+		} else {
-+			if (cow_page)
-+				mem_cgroup_uncharge_page(cow_page);
-+			if (anon)
-+				page_cache_release(page);
-+			else
-+				anon =3D 1; /* no anon but release faulted_page */
-+		}
-+		spin_unlock(ptl);
- 	} else {
--		if (cow_page)
--			mem_cgroup_uncharge_page(cow_page);
--		if (anon)
--			page_cache_release(page);
--		else
--			anon =3D 1; /* no anon but release faulted_page */
--	}
-+		page_table =3D pte_offset_map_lock(mm, pmd, address, &ptl);
-+		/*
-+		* This silly early PAGE_DIRTY setting removes a race
-+		* due to the bad i386 page protection. But it's valid
-+		* for other architectures too.
-+		*
-+		* Note that if FAULT_FLAG_WRITE is set, we either now have
-+		* an exclusive copy of the page, or this is a shared mapping,
-+		* so we can make it writable and dirty to avoid having to
-+		* handle that later.
-+		*/
-+		/* Only go through if we didn't race with anybody else... */
-+		if (likely(pte_same(*page_table, orig_pte))) {
-+			flush_icache_page(vma, page);
-+			entry =3D mk_pte(page, vma->vm_page_prot);
-+			if (flags & FAULT_FLAG_WRITE)
-+				entry =3D maybe_mkwrite(pte_mkdirty(entry), vma);
-+			if (anon) {
-+				inc_mm_counter_fast(mm, MM_ANONPAGES);
-+				page_add_new_anon_rmap(page, vma, address);
-+			} else {
-+				inc_mm_counter_fast(mm, MM_FILEPAGES);
-+				page_add_file_rmap(page);
-+				if (flags & FAULT_FLAG_WRITE) {
-+					dirty_page =3D page;
-+					get_page(dirty_page);
-+				}
-+			}
-+			set_pte_at(mm, address, page_table, entry);
-=20
--	pte_unmap_unlock(page_table, ptl);
-+			/* no need to invalidate: a not-present page won't be
-+			 * cached */
-+			update_mmu_cache(vma, address, page_table);
-+		} else {
-+			if (cow_page)
-+				mem_cgroup_uncharge_page(cow_page);
-+			if (anon)
-+				page_cache_release(page);
-+			else
-+				anon =3D 1; /* no anon but release faulted_page */
-+		}
-+		pte_unmap_unlock(page_table, ptl);
-+	}
-=20
- 	if (dirty_page) {
- 		struct address_space *mapping =3D page->mapping;
-=20
--		if (set_page_dirty(dirty_page))
--			page_mkwrite =3D 1;
--		unlock_page(dirty_page);
-+		if (pud) {
-+			int dirtied;
-+			dirtied =3D set_page_dirty_huge(dirty_page);
-+			unlock_page(dirty_page);
-+			if (dirtied)
-+				page_mkwrite =3D dirtied;
-+		} else {
-+			if (set_page_dirty(dirty_page))
-+				page_mkwrite =3D 1;
-+			unlock_page(dirty_page);
-+		}
-+
-+		if (pud) {
-+			put_page_tails_for_fmap(dirty_page);
-+			compound_put(page);
-+		}
-+
- 		put_page(dirty_page);
- 		if (page_mkwrite && mapping) {
- 			/*
- 			 * Some device drivers do not set page.mapping but still
- 			 * dirty their pages
- 			 */
--			balance_dirty_pages_ratelimited(mapping);
-+			balance_dirty_pages_ratelimited_nr(mapping,
-+				page_mkwrite);
- 		}
-=20
- 		/* file_update_time outside page_lock */
-@@ -3328,6 +3563,8 @@ static int __do_fault(struct mm_struct *mm, struct =
-vm_area_struct *vma,
- 			file_update_time(vma->vm_file);
- 	} else {
- 		unlock_page(vmf.page);
-+		if (pud)
-+			compound_put(page);
- 		if (anon)
- 			page_cache_release(vmf.page);
- 	}
-@@ -3335,6 +3572,10 @@ static int __do_fault(struct mm_struct *mm, struct=
+ 	/* FIFO */
+ 	pgtable =3D mm->pmd_huge_pte;
++	if (!pgtable)
++		return NULL;
++=09
+ 	if (list_empty(&pgtable->lru))
+ 		mm->pmd_huge_pte =3D NULL;
+ 	else {
+@@ -1029,27 +1032,56 @@ int zap_huge_pmd(struct mmu_gather *tlb, struct=
  vm_area_struct *vma,
- 	return ret;
+ 		 pmd_t *pmd, unsigned long addr)
+ {
+ 	int ret =3D 0;
++	pmd_t pmd_val;
 =20
- unwritable_page:
-+	if (pud) {
-+		compound_put(page);
-+		put_page_tails_for_fmap(page);
-+	}
- 	page_cache_release(page);
- 	return ret;
- uncharge_out:
-@@ -3346,6 +3587,33 @@ uncharge_out:
- 	return ret;
- }
-=20
-+/** Facade for {@link __do_fault} to fault "huge" pages.
-+ * GCC will strip unneeded code basing on parameters passed.
-+ */
-+static int __do_fault_huge(struct mm_struct *mm,
-+		struct vm_area_struct *vma,
-+		unsigned long address, pud_t *pud,
-+		pgoff_t pgoff, unsigned int flags,
-+		pmd_t orig_pmd)
-+{
-+	pte_t pte_any;
-+	return __do_fault(
-+		mm, vma, address, pud, NULL, pgoff, flags, orig_pmd, pte_any);
-+}
++	/* We are going to get page, but if we will be during split, split ma=
+y
++	 * lock page_table_lock, then we may wait for compound_get, and split
++	 * may wait for page_table_lock, we have here. So... double check
++	 * locking.
++	 */
++again:
+ 	spin_lock(&tlb->mm->page_table_lock);
+-	if (likely(pmd_trans_huge(*pmd))) {
+-		if (unlikely(pmd_trans_splitting(*pmd))) {
++	pmd_val =3D *pmd;
++	if (likely(pmd_trans_huge(pmd_val))) {
++		if (unlikely(pmd_trans_splitting(pmd_val))) {
+ 			spin_unlock(&tlb->mm->page_table_lock);
+ 			wait_split_huge_page(vma->anon_vma,
+ 					     pmd);
+ 		} else {
+ 			struct page *page;
+ 			pgtable_t pgtable;
 +
-+/** Facade for {@link __do_fault} to fault "normal", pte level pages.
-+ * GCC will strip unneeded code basing on parameters passed.
-+ */
-+static int __do_fault_normal(struct mm_struct *mm,
-+		struct vm_area_struct *vma,
-+		unsigned long address, pmd_t *pmd,
-+		pgoff_t pgoff, unsigned int flags, pte_t orig_pte)
-+{
-+	pmd_t pmd_any;
-+	return __do_fault(
-+		mm, vma, address, NULL, pmd, pgoff, flags, pmd_any, orig_pte);
-+}
+ 			pgtable =3D get_pmd_huge_pte(tlb->mm);
+ 			page =3D pmd_page(*pmd);
++			spin_unlock(&tlb->mm->page_table_lock);
++			if (!compound_get(page))
++				return 0;
++			spin_lock(&tlb->mm->page_table_lock);
++			smp_rmb();
++			if (unlikely(!pmd_same(pmd_val, *pmd))) {
++				spin_unlock(&tlb->mm->page_table_lock);
++				compound_put(page);
++				goto again;
++			}
+ 			pmd_clear(pmd);
+ 			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
+-			page_remove_rmap(page);
++			if (PageAnon(page))
++				page_remove_rmap(page);
++			else
++				page_remove_rmap_huge(page);
 +
- static int do_linear_fault(struct mm_struct *mm, struct vm_area_struct *=
-vma,
- 		unsigned long address, pte_t *page_table, pmd_t *pmd,
- 		unsigned int flags, pte_t orig_pte)
-@@ -3354,7 +3622,7 @@ static int do_linear_fault(struct mm_struct *mm, st=
-ruct vm_area_struct *vma,
- 			- vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
-=20
- 	pte_unmap(page_table);
--	return __do_fault(mm, vma, address, pmd, pgoff, flags, orig_pte);
-+	return __do_fault_normal(mm, vma, address, pmd, pgoff, flags, orig_pte)=
-;
- }
-=20
- /*
-@@ -3386,7 +3654,7 @@ static int do_nonlinear_fault(struct mm_struct *mm,=
- struct vm_area_struct *vma,
- 	}
-=20
- 	pgoff =3D pte_to_pgoff(orig_pte);
--	return __do_fault(mm, vma, address, pmd, pgoff, flags, orig_pte);
-+	return __do_fault_normal(mm, vma, address, pmd, pgoff, flags, orig_pte)=
-;
- }
-=20
- /*
-@@ -3455,6 +3723,105 @@ unlock:
+ 			VM_BUG_ON(page_mapcount(page) < 0);
+-			add_mm_counter(tlb->mm, MM_ANONPAGES, -HPAGE_PMD_NR);
++			add_mm_counter(tlb->mm, PageAnon(page) ?
++				MM_ANONPAGES : MM_FILEPAGES, -HPAGE_PMD_NR);
+ 			VM_BUG_ON(!PageHead(page));
+ 			spin_unlock(&tlb->mm->page_table_lock);
+-			tlb_remove_page(tlb, page);
+-			pte_free(tlb->mm, pgtable);
++			if (PageAnon(page))
++				tlb_remove_page(tlb, page);
++			else
++				tlb_remove_page_huge(tlb, page);
++			if (pgtable)
++				pte_free(tlb->mm, pgtable);
++			compound_put(page);
+ 		}
+ 	} else
+ 		spin_unlock(&tlb->mm->page_table_lock);
+@@ -2368,16 +2400,121 @@ static int khugepaged(void *none)
  	return 0;
  }
 =20
-+/** Handles fault on pde level.*/
-+int handle_pmd_fault(struct mm_struct *mm,
-+		     struct vm_area_struct *vma, unsigned long address,
-+		     pud_t *pud, pmd_t *pmd, unsigned int flags)
+-void __split_huge_page_pmd(struct mm_struct *mm, pmd_t *pmd)
++/** Makes inplace split of huge pmd to normal pmd, pmd is filled
++ * with ptes compatible with pmd,
++ * <br/>
++ * On success new page table is modified and flushed.
++ * May work only for file pmds.
++ *
++ * This method copies logic from __pte_alloc.
++ */
++int __inplace_split_pmd(struct mm_struct *mm, struct vm_area_struct *v=
+ma,
++	unsigned long address, pmd_t *pmd)
 +{
-+	pte_t *pte;
-+	pgoff_t pgoff;
-+	pmd_t pmdVal;
-+	int faultResult;
++	unsigned long addr, end_addr;
++	pmd_t pmdv, pmd_fake;
++	pte_t pte, pte_pmd;
++	pte_t *ptep;
++	pgtable_t new;
++	struct page *page;
 +
-+	if (!vma->vm_file) {
-+		/* Anonymous THP handling */
-+		if (pmd_none(*pmd) && transparent_hugepage_enabled(vma)) {
-+			if (!vma->vm_ops) {
-+				return do_huge_pmd_anonymous_page(mm, vma,
-+					address, pmd, flags);
-+			}
-+		} else {
-+			pmd_t orig_pmd =3D *pmd;
-+			barrier();
-+			if (pmd_trans_huge(orig_pmd)) {
-+				if (flags & FAULT_FLAG_WRITE &&
-+				!pmd_write(orig_pmd) &&
-+				!pmd_trans_splitting(orig_pmd))
-+					return do_huge_pmd_wp_page(mm, vma,
-+						address, pmd, orig_pmd);
-+				return 0;
-+			}
-+			goto handle_pte_level;
-+		}
-+	}
-+	/***************************
-+	 * Page cache THP handling *
-+	 ***************************/
-+	pmdVal =3D *pmd;
-+	if (pmd_present(pmdVal) && !pmd_trans_huge(pmdVal))
-+		goto handle_pte_level;
++	address &=3D HPAGE_PMD_MASK;
 +
-+	if ((address & HPAGE_MASK) < vma->vm_start)
-+		goto handle_pte_level;
++	/* TODO Good place to change locking technique for pmds. */
++repeat:
++	addr =3D address & HPAGE_PMD_MASK;
 +
-+	/* Even if possible we currently support only for SHARED VMA.
-+	 *
-+	 * We support this only for shmem fs, but everyone is encorege
-+	 * to add few simple methods and test it for other file systems.
-+	 * Notes, warrnings etc are always welcome.
-+	 */
-+	if (!(vma->vm_flags & VM_SHARED))
-+		goto handle_pte_level;
-+
-+	/* Handle fault of possible vma with huge page. */
-+	pgoff =3D (((address & HPAGE_MASK) - vma->vm_start) >> PAGE_SHIFT)
-+		+ vma->vm_pgoff;
-+
-+	if (!pmd_present(pmdVal)) {
-+		/* No page at all. */
-+		if (!check_if_hugemapping_is_possible0(vma, address, pgoff,
-+			pmdVal))
-+			goto handle_pte_level;
-+	} else {
-+		/* TODO Jump to make page writable. If not for regular
-+		 *      filesystems, full fault path will be reused.
-+		 */
-+	}
-+
-+	faultResult =3D __do_fault_huge(mm, vma, address, pud, pgoff, flags,
-+		pmdVal);
-+	if (!(faultResult & (VM_FAULT_ERROR | VM_FAULT_NOHUGE))) {
-+		printk(KERN_INFO "Setted huge pmd");
-+		return faultResult;
-+	}
-+
-+handle_pte_level:
-+	/*
-+	 * Use __pte_alloc instead of pte_alloc_map, because we can't
-+	 * run pte_offset_map on the pmd, if an huge pmd could
-+	 * materialize from under us from a different thread.
-+	 */
-+	if (unlikely(pmd_none(*pmd)) && __pte_alloc(mm, vma, pmd, address))
-+		return VM_FAULT_OOM;
-+	/* Page cache THP uses mm->page_table_lock to check if pmd is still
-+	 * none just before setting ne huge pmd, is __pte_alloc suceeded
-+	 * then pmd may be huge or "normal" with ptes page.
-+	 *
-+	 * if an huge pmd materialized from under us just retry later */
-+	if (unlikely(pmd_trans_huge(*pmd)))
++	smp_mb();
++	if (pmd_none(*pmd) || !pmd_trans_huge(*pmd))
 +		return 0;
 +
-+	/*
-+	 * A regular pmd is established and it can't morph into a huge pmd
-+	 * from under us anymore at this point because we hold the mmap_sem
-+	 * read mode and khugepaged takes it in write mode. So now it's
-+	 * safe to run pte_offset_map().
-+	 */
-+	pte =3D pte_offset_map(pmd, address);
++	new =3D pte_alloc_one(mm, addr);
 +
-+	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
-+}
++	if (!new)
++		return -ENOMEM;
++	pmdv =3D *pmd;
 +
- /*
-  * By the time we get here, we already hold the mm semaphore
-  */
-@@ -3464,7 +3831,6 @@ int handle_mm_fault(struct mm_struct *mm, struct vm=
-_area_struct *vma,
- 	pgd_t *pgd;
- 	pud_t *pud;
- 	pmd_t *pmd;
--	pte_t *pte;
-=20
- 	__set_current_state(TASK_RUNNING);
-=20
-@@ -3484,42 +3850,8 @@ int handle_mm_fault(struct mm_struct *mm, struct v=
-m_area_struct *vma,
- 	pmd =3D pmd_alloc(mm, pud, address);
- 	if (!pmd)
- 		return VM_FAULT_OOM;
--	if (pmd_none(*pmd) && transparent_hugepage_enabled(vma)) {
--		if (!vma->vm_ops)
--			return do_huge_pmd_anonymous_page(mm, vma, address,
--							  pmd, flags);
--	} else {
--		pmd_t orig_pmd =3D *pmd;
--		barrier();
--		if (pmd_trans_huge(orig_pmd)) {
--			if (flags & FAULT_FLAG_WRITE &&
--			    !pmd_write(orig_pmd) &&
--			    !pmd_trans_splitting(orig_pmd))
--				return do_huge_pmd_wp_page(mm, vma, address,
--							   pmd, orig_pmd);
--			return 0;
--		}
--	}
-=20
--	/*
--	 * Use __pte_alloc instead of pte_alloc_map, because we can't
--	 * run pte_offset_map on the pmd, if an huge pmd could
--	 * materialize from under us from a different thread.
--	 */
--	if (unlikely(pmd_none(*pmd)) && __pte_alloc(mm, vma, pmd, address))
--		return VM_FAULT_OOM;
--	/* if an huge pmd materialized from under us just retry later */
--	if (unlikely(pmd_trans_huge(*pmd)))
--		return 0;
--	/*
--	 * A regular pmd is established and it can't morph into a huge pmd
--	 * from under us anymore at this point because we hold the mmap_sem
--	 * read mode and khugepaged takes it in write mode. So now it's
--	 * safe to run pte_offset_map().
--	 */
--	pte =3D pte_offset_map(pmd, address);
--
--	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
-+	return handle_pmd_fault(mm, vma, address, pud, pmd, flags);
- }
-=20
- #ifndef __PAGETABLE_PUD_FOLDED
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 363ba70..ff32b5d 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2072,6 +2072,37 @@ int set_page_dirty(struct page *page)
- }
- EXPORT_SYMBOL(set_page_dirty);
-=20
-+int set_page_dirty_huge(struct page *head)
-+{
-+	struct page *work;
-+	int result =3D 0;
++	pmd_fake =3D pmdv;
++	pte_pmd =3D pte_clrhuge(*((pte_t *) &pmd_fake));
++	pmd_fake =3D *((pmd_t *) &pte_pmd);
 +
-+	VM_BUG_ON(!PageHead(head));
-+	VM_BUG_ON(!PageLocked(head));
-+	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
++	pmd_populate(mm, &pmd_fake, new);
 +
-+	if (head->mapping)
-+		result +=3D set_page_dirty(head);
-+	else
-+		BUG_ON(!PageSplitDeque(head));
++	page =3D pmd_page(pmdv);
++	end_addr =3D pmd_addr_end(addr, 0L);
++	for (; addr < end_addr; addr +=3D PAGE_SIZE, page++) {
++		if (!pmd_present(pmdv))
++			continue;
++		/* Copy protection from pmd. */
++		pte =3D mk_pte(page, vma->vm_page_prot);
 +
-+	for (work =3D head+1; compound_head(work) =3D=3D head; work++) {
-+		VM_BUG_ON(page_has_private(work));
-+		VM_BUG_ON(page_has_buffers(work));
++		if (pmd_dirty(pmdv))
++			pte =3D pte_mkdirty(pte);
++		if (pmd_write(pmdv))
++			pte =3D pte_mkwrite(pte);
++		if (pmd_exec(pmdv))
++			pte =3D pte_mkexec(pte);
++		if (pmd_young(pmdv))
++			pte =3D pte_mkyoung(pte);
 +
-+		lock_page(work);
-+		if (work->mapping) {
-+			result +=3D set_page_dirty(work);
-+		} else {
-+			/* Bug if there is no mapping and split is not
-+			 * dequeued.
-+			 */
-+			BUG_ON(!PageSplitDeque(head));
-+		}
-+		unlock_page(work);
++		ptep =3D pte_offset_map(&pmd_fake, addr);
++		set_pte_at(mm, addr, ptep, pte);
++		pte_unmap(ptep);
 +	}
-+	return result;
++
++	/* Ensure everything is visible before populating pmd. */
++	smp_mb();
++
++	spin_lock(&mm->page_table_lock);
++	if (pmd_same(pmdv, *pmd)) {
++		set_pmd(pmd, pmd_fake);
++		mm->nr_ptes++;
++		new =3D NULL;
++	}
++	spin_unlock(&mm->page_table_lock);
++
++	/* Now we have new tlb, make it visible to all. */
++	flush_tlb_range(vma, address, address + HPAGE_SIZE);
++
++	if (new) {
++		pte_free(mm, new);
++		goto repeat;
++	}
++
++	return 0;
 +}
- /*
-  * set_page_dirty() is racy if the caller has no reference against
-  * page->mapping->host, and if the page is unlocked.  This is because an=
-other
-diff --git a/mm/rmap.c b/mm/rmap.c
-index c8454e0..11f54e0 100644
---- a/mm/rmap.c
-+++ b/mm/rmap.c
-@@ -1157,6 +1157,21 @@ void page_add_file_rmap(struct page *page)
++
++/** Splits huge page for vma. */
++void __split_huge_page_pmd_vma(struct vm_area_struct *vma,
++	unsigned long address, pmd_t *pmd)
+ {
+ 	struct page *page;
++	int anonPage;
++	/* XXX Ineficient locking for pmd. */
++	spin_lock(&vma->vm_mm->page_table_lock);
++	if (!pmd_trans_huge(*pmd)) {
++		spin_unlock(&vma->vm_mm->page_table_lock);
++		return;
++	}
++	page =3D pmd_page(*pmd);
++	anonPage =3D PageAnon(page);
++	spin_unlock(&vma->vm_mm->page_table_lock);
+=20
++	if (anonPage)
++		__split_huge_page_pmd(vma->vm_mm, pmd);
++	else
++		__inplace_split_pmd(vma->vm_mm, vma, address, pmd);
++}
++void __split_huge_page_pmd(struct mm_struct *mm, pmd_t *pmd)
++{
++	struct page *page =3D pmd_page(*pmd);
++
++	VM_BUG_ON(!rwsem_is_locked(&mm->mmap_sem));
+ 	spin_lock(&mm->page_table_lock);
+ 	if (unlikely(!pmd_trans_huge(*pmd))) {
+ 		spin_unlock(&mm->page_table_lock);
+ 		return;
+ 	}
+-	page =3D pmd_page(*pmd);
+ 	VM_BUG_ON(!page_count(page));
+ 	get_page(page);
+ 	spin_unlock(&mm->page_table_lock);
+diff --git a/mm/memory.c b/mm/memory.c
+index 7427c9b..539d1f4 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -572,22 +572,28 @@ void free_pgtables(struct mmu_gather *tlb, struct=
+ vm_area_struct *vma,
+ 		unlink_file_vma(vma);
+=20
+ 		if (is_vm_hugetlb_page(vma)) {
+-			hugetlb_free_pgd_range(tlb, addr, vma->vm_end,
+-				floor, next? next->vm_start: ceiling);
+-		} else {
+-			/*
+-			 * Optimization: gather nearby vmas into one call down
+-			 */
+-			while (next && next->vm_start <=3D vma->vm_end + PMD_SIZE
+-			       && !is_vm_hugetlb_page(next)) {
+-				vma =3D next;
+-				next =3D vma->vm_next;
+-				unlink_anon_vmas(vma);
+-				unlink_file_vma(vma);
++			if (vma->vm_file) {
++				if (vma->vm_file->f_mapping->a_ops->defragpage)
++					goto free_normal;
+ 			}
+-			free_pgd_range(tlb, addr, vma->vm_end,
++			hugetlb_free_pgd_range(tlb, addr, vma->vm_end,
+ 				floor, next? next->vm_start: ceiling);
++		}=20
++
++free_normal:	=09
++		/*
++		* Optimization: gather nearby vmas into one call down
++		*/
++		while (next && next->vm_start <=3D vma->vm_end + PMD_SIZE
++			&& !is_vm_hugetlb_page(next)) {
++			vma =3D next;
++			next =3D vma->vm_next;
++			unlink_anon_vmas(vma);
++			unlink_file_vma(vma);
+ 		}
++		free_pgd_range(tlb, addr, vma->vm_end,
++			floor, next? next->vm_start: ceiling);
++
+ 		vma =3D next;
  	}
  }
-=20
-+void page_add_file_rmap_huge(struct page *head)
-+{
-+	struct page *page;
-+
-+	VM_BUG_ON(!PageHead(head));
-+	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
-+
-+	page_add_file_rmap(head);
-+	page_add_file_rmap(head + 1);
-+	if (likely(compound_order(head) > 1)) {
-+		for (page =3D head+2; page->__first_page =3D=3D head; page++)
-+			page_add_file_rmap(page);
-+	}
-+}
-+
- /**
-  * page_remove_rmap - take down pte mapping from a page
-  * @page: page to remove mapping from
-@@ -1207,6 +1222,20 @@ void page_remove_rmap(struct page *page)
- 	 */
- }
-=20
-+void page_remove_rmap_huge(struct page *head)
-+{
-+	struct page *page;
-+
-+	VM_BUG_ON(!PageHead(head));
-+	VM_BUG_ON(atomic_read(&head[2]._compound_usage) =3D=3D 1);
-+
-+	page_remove_rmap(head);
-+	page_remove_rmap(head + 1);
-+	if (likely(compound_order(head) > 1)) {
-+		for (page =3D head+2; page->__first_page =3D=3D head; page++)
-+			page_remove_rmap(page);
-+	}
-+}
- /*
-  * Subfunctions of try_to_unmap: try_to_unmap_one called
-  * repeatedly from try_to_unmap_ksm, try_to_unmap_anon or try_to_unmap_f=
-ile.
+@@ -1248,8 +1254,11 @@ static inline unsigned long zap_pmd_range(struct=
+ mmu_gather *tlb,
+ 		next =3D pmd_addr_end(addr, end);
+ 		if (pmd_trans_huge(*pmd)) {
+ 			if (next-addr !=3D HPAGE_PMD_SIZE) {
+-				VM_BUG_ON(!rwsem_is_locked(&tlb->mm->mmap_sem));
+-				split_huge_page_pmd(vma->vm_mm, pmd);
++				/* And now we go again in conflict with, THP...
++				 * THP requires semaphore, we require compound
++				 * frozen, why...?
++				 */
++				split_huge_page_pmd_vma(vma, addr, pmd);
+ 			} else if (zap_huge_pmd(tlb, vma, pmd, addr))
+ 				continue;
+ 			/* fall through */
 --=20
 1.7.3.4
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
