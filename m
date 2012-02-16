@@ -1,50 +1,58 @@
-From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
-Subject: Re: [PATCH 01/18] Added hacking menu for override optimization by  GCC.
-Date: Thu, 16 Feb 2012 23:40:17 +0100
-Message-ID: <ab8f1052da1c6b03f70379ecbd9e1d65@rsmogura.net>
-References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
- <op.v9sctsrj3l0zgt@mpn-glaptop>
- <76ede790fcc4ab73f969761034554e92@rsmogura.net>
- <op.v9skpfhq3l0zgt@mpn-glaptop>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
+Date: Thu, 16 Feb 2012 17:58:10 -0500
+Message-ID: <20120216225810.GB26473@thunk.org>
+References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
- <linux-ext4@vger.kernel.org>
-To: Michal Nazarewicz <mina86@mina86.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <op.v9skpfhq3l0zgt@mpn-glaptop>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Phillip Susi <psusi@ubuntu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:53910 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751534Ab2BPW6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Feb 2012 17:58:15 -0500
+Content-Disposition: inline
+In-Reply-To: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 Feb 2012 13:59:29 -0800, Michal Nazarewicz wrote:
-> On Thu, 16 Feb 2012 12:26:00 -0800, Rados=C5=82aw Smogura=20
-> <mail@smogura.eu> wrote:
->
->> On Thu, 16 Feb 2012 11:09:18 -0800, Michal Nazarewicz wrote:
->>> On Thu, 16 Feb 2012 06:31:28 -0800, Rados=C5=82aw Smogura
->>> <mail@smogura.eu> wrote:
->>>> Supporting files, like Kconfig, Makefile are auto-generated due to
->>>> large amount
->>>> of available options.
->>>
->>> So why not run the script as part of make rather then store=20
->>> generated
->>> files in
->>> repository?
->> Idea to run this script through make is quite good, and should work,
->> because new mane will be generated before "config" starts.
->>
->> "Bashizms" are indeed unneeded, I will try to replace this with sed.
->
-> Uh? Why sed?
-There are some substitutions so I it will be better to use sed.
+On Thu, Feb 16, 2012 at 04:35:11PM -0500, Phillip Susi wrote:
+> At the end of writing the raw image file, output_meta_data_blocks()
+> wrote a single zero byte.  Not only does this cause the last block
+> of the image file to be non sparse, but this was being skipped if
+> there were no leftover sparse bytes from the main loop.  This would
+> happen if the source fs happened to have an even multiple of 1MiB
+> of free blocks at the end, leaving the sparse image file shorter
+> than it should be.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+I don't see the bug here.  If there are no leftover sparse bytes,
+there's no need to write the last zero byte.  The whole point was to
+make sure i_size was set correctly, and if sparse==0, then i_size is
+correct.
+
+> Instead of writing a null byte, just truncate() the file instead,
+> whether or not there are any leftover sparse bytes.
+
+ftruncate() happens to work today for Linux, but it's not guaranteed
+to do anything on all operating systems or even all file systems.  Per
+the standards spec:
+
+	If the file previously was smaller than this size, ftruncate()
+	shall either increase the size of the file or fail.
+
+Speaking of which, you're not checking the return value from ftruncate
+in your patch.  So I'd be happy if you checked ftruncate, and if it
+failed, falling back to the
+
+	if (sparse)
+		write_block(fd, zero_buf, sparse-1, 1, -1);
+
+code path.  That way, if ftruncate() happens to fail on NFS, or ceph,
+or some random file system that chose to meet the standards spec, but
+by failing if someone tries to increase the size of the file using
+ftruncate.  (Or some other OS; there are other operating systems,
+including GNU Hurd and BSD, and I don't know for sure how ftruncate
+behaves on all of those other OS's and file systems.)
+
+						- Ted
