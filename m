@@ -1,82 +1,119 @@
 From: =?UTF-8?q?Rados=C5=82aw=20Smogura?= <mail@smogura.eu>
-Subject: [WIP 12/18] Additional macros for pmd operations
-Date: Thu, 16 Feb 2012 15:47:51 +0100
-Message-ID: <1329403677-25629-2-git-send-email-mail@smogura.eu>
+Subject: [WIP 16/18] SHM: Support for splitting on truncation
+Date: Thu, 16 Feb 2012 15:47:55 +0100
+Message-ID: <1329403677-25629-6-git-send-email-mail@smogura.eu>
 References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	mail@smogura.eu,
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, mail@smogura.eu,
 	linux-ext4@vger.kernel.org
 To: linux-mm@kvack.org
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from flawless.hostnac.com ([67.23.244.186]:49449 "EHLO
+	flawless.hostnac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752564Ab2BPOsx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 09:48:53 -0500
 In-Reply-To: <1329403677-25629-1-git-send-email-mail@smogura.eu>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Macros for operating on pmd in simillar way like for pte.
+Writeback will be added in next patches, but after experimental support
+for huge pages for EXT 4.
 
 Signed-off-by: Rados=C5=82aw Smogura <mail@smogura.eu>
 ---
- arch/x86/include/asm/pgtable.h |   21 +++++++++++++++++++++
- 1 files changed, 21 insertions(+), 0 deletions(-)
+ mm/shmem.c |   39 ++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 38 insertions(+), 1 deletions(-)
 
-diff --git a/arch/x86/include/asm/pgtable.h b/arch/x86/include/asm/pgtabl=
-e.h
-index 49afb3f..38fd008 100644
---- a/arch/x86/include/asm/pgtable.h
-+++ b/arch/x86/include/asm/pgtable.h
-@@ -265,6 +265,11 @@ static inline pmd_t pmd_wrprotect(pmd_t pmd)
- 	return pmd_clear_flags(pmd, _PAGE_RW);
- }
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 97e76b9..db377bf 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -454,6 +454,7 @@ void shmem_truncate_range(struct inode *inode, loff=
+_t lstart, loff_t lend)
+ 		mem_cgroup_uncharge_start();
+ 		for (i =3D 0; i < pagevec_count(&pvec); i++) {
+ 			struct page *page =3D pvec.pages[i];
++			struct page *head =3D NULL;
 =20
-+static inline int pmd_dirty(pmd_t pmd)
-+{
-+	return pmd_flags(pmd) & _PAGE_DIRTY;
-+}
-+
- static inline pmd_t pmd_mkdirty(pmd_t pmd)
- {
- 	return pmd_set_flags(pmd, _PAGE_DIRTY);
-@@ -285,6 +290,11 @@ static inline pmd_t pmd_mkwrite(pmd_t pmd)
- 	return pmd_set_flags(pmd, _PAGE_RW);
- }
+ 			index =3D indices[i];
+ 			if (index > end)
+@@ -464,12 +465,32 @@ void shmem_truncate_range(struct inode *inode, lo=
+ff_t lstart, loff_t lend)
+ 								index, page);
+ 				continue;
+ 			}
+-
+ 			if (!trylock_page(page))
+ 				continue;
++			if (PageCompound(page)) {
++				head =3D compound_head(page);
++				switch (compound_try_freeze(head, false)) {
++				case -1:
++					head =3D NULL;
++					break;
++				case 1:
++					unlock_page(page);
++					continue;
++				case 0:
++					if (!split_huge_page_file(head, page))
++						head =3D NULL;
++					break;
++				}
++			}
++			/* Truncate inode page may try to freez, so unfreez. */
+ 			if (page->mapping =3D=3D mapping) {
+ 				VM_BUG_ON(PageWriteback(page));
++				if (head !=3D NULL)
++					compound_unfreeze(head);
+ 				truncate_inode_page(mapping, page);
++			} else {
++				if (head !=3D NULL)
++					compound_unfreeze(head);
+ 			}
+ 			unlock_page(page);
+ 		}
+@@ -511,6 +532,7 @@ void shmem_truncate_range(struct inode *inode, loff=
+_t lstart, loff_t lend)
+ 		mem_cgroup_uncharge_start();
+ 		for (i =3D 0; i < pagevec_count(&pvec); i++) {
+ 			struct page *page =3D pvec.pages[i];
++			struct page *head =3D NULL;
 =20
-+static inline pmd_t pmd_writeprotect(pmd_t pmd)
-+{
-+	return pmd_clear_flags(pmd, _PAGE_RW);
-+}
-+
- static inline pmd_t pmd_mknotpresent(pmd_t pmd)
- {
- 	return pmd_clear_flags(pmd, _PAGE_PRESENT);
-@@ -731,6 +741,17 @@ static inline int pmd_write(pmd_t pmd)
- 	return pmd_flags(pmd) & _PAGE_RW;
- }
+ 			index =3D indices[i];
+ 			if (index > end)
+@@ -523,9 +545,24 @@ void shmem_truncate_range(struct inode *inode, lof=
+f_t lstart, loff_t lend)
+ 			}
 =20
-+#define __HAVE_ARCH_PMD_EXEC
-+static inline int pmd_exec(pmd_t pmd)
-+{
-+	return !(pmd_flags(pmd) & _PAGE_NX);
-+}
-+
-+static inline void pmd_mkexec(pmd_t pmd)
-+{
-+	pmd_clear_flags(pmd, _PAGE_NX);
-+}
-+
- #define __HAVE_ARCH_PMDP_GET_AND_CLEAR
- static inline pmd_t pmdp_get_and_clear(struct mm_struct *mm, unsigned lo=
-ng addr,
- 				       pmd_t *pmdp)
+ 			lock_page(page);
++			if (PageCompound(page)) {
++				head =3D compound_head(page);
++				if (compound_freeze(head)) {
++					if (!split_huge_page_file(head, page))
++						head =3D NULL;
++				} else {
++					head =3D NULL;
++				}
++			}
++			/* Truncate inode page may try to freez, so unfreez. */
+ 			if (page->mapping =3D=3D mapping) {
+ 				VM_BUG_ON(PageWriteback(page));
++				if (head !=3D NULL)
++					compound_unfreeze(head);
+ 				truncate_inode_page(mapping, page);
++			} else {
++				if (head !=3D NULL)
++					compound_unfreeze(head);
+ 			}
+ 			unlock_page(page);
+ 		}
 --=20
 1.7.3.4
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
