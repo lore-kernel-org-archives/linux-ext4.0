@@ -1,119 +1,47 @@
-From: =?UTF-8?q?Rados=C5=82aw=20Smogura?= <mail@smogura.eu>
-Subject: [PATCH 16/18] SHM: Support for splitting on truncation
-Date: Thu, 16 Feb 2012 15:31:43 +0100
-Message-ID: <1329402705-25454-16-git-send-email-mail@smogura.eu>
-References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, mail@smogura.eu,
-	linux-ext4@vger.kernel.org
-To: linux-mm@kvack.org
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH 1/2] e2image: truncate raw image file to correct size
+Date: Thu, 16 Feb 2012 16:35:11 -0500
+Message-ID: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org, Phillip Susi <psusi@ubuntu.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from flawless.hostnac.com ([67.23.244.186]:57254 "EHLO
-	flawless.hostnac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754131Ab2BPVZs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 16:25:48 -0500
-In-Reply-To: <1329402705-25454-1-git-send-email-mail@smogura.eu>
+Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:50779 "EHLO
+	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754269Ab2BPVm7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 16:42:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Writeback will be added in next patches, but after experimental support
-for huge pages for EXT 4.
+At the end of writing the raw image file, output_meta_data_blocks()
+wrote a single zero byte.  Not only does this cause the last block
+of the image file to be non sparse, but this was being skipped if
+there were no leftover sparse bytes from the main loop.  This would
+happen if the source fs happened to have an even multiple of 1MiB
+of free blocks at the end, leaving the sparse image file shorter
+than it should be.
 
-Signed-off-by: Rados=C5=82aw Smogura <mail@smogura.eu>
+Instead of writing a null byte, just truncate() the file instead,
+whether or not there are any leftover sparse bytes.
+
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
 ---
- mm/shmem.c |   39 ++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 38 insertions(+), 1 deletions(-)
+ misc/e2image.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index 97e76b9..db377bf 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -454,6 +454,7 @@ void shmem_truncate_range(struct inode *inode, loff=
-_t lstart, loff_t lend)
- 		mem_cgroup_uncharge_start();
- 		for (i =3D 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page =3D pvec.pages[i];
-+			struct page *head =3D NULL;
-=20
- 			index =3D indices[i];
- 			if (index > end)
-@@ -464,12 +465,32 @@ void shmem_truncate_range(struct inode *inode, lo=
-ff_t lstart, loff_t lend)
- 								index, page);
- 				continue;
+diff --git a/misc/e2image.c b/misc/e2image.c
+index d888e5a..722737c 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -511,8 +511,7 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
  			}
--
- 			if (!trylock_page(page))
- 				continue;
-+			if (PageCompound(page)) {
-+				head =3D compound_head(page);
-+				switch (compound_try_freeze(head, false)) {
-+				case -1:
-+					head =3D NULL;
-+					break;
-+				case 1:
-+					unlock_page(page);
-+					continue;
-+				case 0:
-+					if (!split_huge_page_file(head, page))
-+						head =3D NULL;
-+					break;
-+				}
-+			}
-+			/* Truncate inode page may try to freez, so unfreez. */
- 			if (page->mapping =3D=3D mapping) {
- 				VM_BUG_ON(PageWriteback(page));
-+				if (head !=3D NULL)
-+					compound_unfreeze(head);
- 				truncate_inode_page(mapping, page);
-+			} else {
-+				if (head !=3D NULL)
-+					compound_unfreeze(head);
- 			}
- 			unlock_page(page);
  		}
-@@ -511,6 +532,7 @@ void shmem_truncate_range(struct inode *inode, loff=
-_t lstart, loff_t lend)
- 		mem_cgroup_uncharge_start();
- 		for (i =3D 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page =3D pvec.pages[i];
-+			struct page *head =3D NULL;
-=20
- 			index =3D indices[i];
- 			if (index > end)
-@@ -523,9 +545,24 @@ void shmem_truncate_range(struct inode *inode, lof=
-f_t lstart, loff_t lend)
- 			}
-=20
- 			lock_page(page);
-+			if (PageCompound(page)) {
-+				head =3D compound_head(page);
-+				if (compound_freeze(head)) {
-+					if (!split_huge_page_file(head, page))
-+						head =3D NULL;
-+				} else {
-+					head =3D NULL;
-+				}
-+			}
-+			/* Truncate inode page may try to freez, so unfreez. */
- 			if (page->mapping =3D=3D mapping) {
- 				VM_BUG_ON(PageWriteback(page));
-+				if (head !=3D NULL)
-+					compound_unfreeze(head);
- 				truncate_inode_page(mapping, page);
-+			} else {
-+				if (head !=3D NULL)
-+					compound_unfreeze(head);
- 			}
- 			unlock_page(page);
- 		}
---=20
-1.7.3.4
+ 	}
+-	if (sparse)
+-		write_block(fd, zero_buf, sparse-1, 1, -1);
++	ftruncate(fd, lseek(fd, sparse, SEEK_CUR));
+ 	ext2fs_free_mem(&zero_buf);
+ 	ext2fs_free_mem(&buf);
+ }
+-- 
+1.7.5.4
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
