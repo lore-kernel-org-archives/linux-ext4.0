@@ -1,89 +1,83 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: [patch, resend] ext4: fix race between unwritten extent conversion and truncate
-Date: Thu, 16 Feb 2012 15:26:48 -0500
-Message-ID: <x49hayqy16f.fsf@segfault.boston.devel.redhat.com>
+From: =?UTF-8?q?Rados=C5=82aw=20Smogura?= <mail@smogura.eu>
+Subject: [PATCH 12/18] Additional macros for pmd operations
+Date: Thu, 16 Feb 2012 15:31:39 +0100
+Message-ID: <1329402705-25454-12-git-send-email-mail@smogura.eu>
+References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, mail@smogura.eu,
+	linux-ext4@vger.kernel.org
+To: linux-mm@kvack.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13431 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755835Ab2BPU0v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:26:51 -0500
+Received: from flawless.hostnac.com ([67.23.244.186]:60126 "EHLO
+	flawless.hostnac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752824Ab2BPVI6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 16:08:58 -0500
+In-Reply-To: <1329402705-25454-1-git-send-email-mail@smogura.eu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Macros for operating on pmd in simillar way like for pte.
 
-The following comment in ext4_end_io_dio caught my attention:
+Signed-off-by: Rados=C5=82aw Smogura <mail@smogura.eu>
+---
+ arch/x86/include/asm/pgtable.h |   21 +++++++++++++++++++++
+ 1 files changed, 21 insertions(+), 0 deletions(-)
 
-	/* XXX: probably should move into the real I/O completion handler */
-        inode_dio_done(inode);
-
-The truncate code takes i_mutex, then calls inode_dio_wait.  Because the
-ext4 code path above will end up dropping the mutex before it is
-reacquired by the worker thread that does the extent conversion, it
-seems to me that the truncate can happen out of order.  Jan Kara
-mentioned that this might result in error messages in the system logs,
-but that should be the extent of the "damage."
-
-The fix is pretty straight-forward: don't call inode_dio_done until the
-extent conversion is complete.
-
-Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 513004f..2d55d7c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -184,6 +184,7 @@ struct mpage_da_data {
- #define	EXT4_IO_END_UNWRITTEN	0x0001
- #define EXT4_IO_END_ERROR	0x0002
- #define EXT4_IO_END_QUEUED	0x0004
-+#define EXT4_IO_END_DIRECT	0x0008
- 
- struct ext4_io_page {
- 	struct page	*p_page;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..f6dc02b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2795,9 +2795,6 @@ out:
- 
- 	/* queue the work to convert unwritten extents to written */
- 	queue_work(wq, &io_end->work);
--
--	/* XXX: probably should move into the real I/O completion handler */
--	inode_dio_done(inode);
+diff --git a/arch/x86/include/asm/pgtable.h b/arch/x86/include/asm/pgta=
+ble.h
+index 49afb3f..38fd008 100644
+--- a/arch/x86/include/asm/pgtable.h
++++ b/arch/x86/include/asm/pgtable.h
+@@ -265,6 +265,11 @@ static inline pmd_t pmd_wrprotect(pmd_t pmd)
+ 	return pmd_clear_flags(pmd, _PAGE_RW);
  }
- 
- static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
-@@ -2921,9 +2918,12 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		iocb->private = NULL;
- 		EXT4_I(inode)->cur_aio_dio = NULL;
- 		if (!is_sync_kiocb(iocb)) {
--			iocb->private = ext4_init_io_end(inode, GFP_NOFS);
--			if (!iocb->private)
-+			ext4_io_end_t *io_end =
-+				ext4_init_io_end(inode, GFP_NOFS);
-+			if (!io_end)
- 				return -ENOMEM;
-+			io_end->flag |= EXT4_IO_END_DIRECT;
-+			iocb->private = io_end;
- 			/*
- 			 * we save the io structure for current async
- 			 * direct IO, so that later ext4_map_blocks()
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 4758518..9e1b8eb 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -110,6 +110,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
- 	if (io->iocb)
- 		aio_complete(io->iocb, io->result, 0);
- 
-+	if (io->flag & EXT4_IO_END_DIRECT)
-+		inode_dio_done(inode);
- 	/* Wake up anyone waiting on unwritten extent conversion */
- 	if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten))
- 		wake_up_all(ext4_ioend_wq(io->inode));
+=20
++static inline int pmd_dirty(pmd_t pmd)
++{
++	return pmd_flags(pmd) & _PAGE_DIRTY;
++}
++
+ static inline pmd_t pmd_mkdirty(pmd_t pmd)
+ {
+ 	return pmd_set_flags(pmd, _PAGE_DIRTY);
+@@ -285,6 +290,11 @@ static inline pmd_t pmd_mkwrite(pmd_t pmd)
+ 	return pmd_set_flags(pmd, _PAGE_RW);
+ }
+=20
++static inline pmd_t pmd_writeprotect(pmd_t pmd)
++{
++	return pmd_clear_flags(pmd, _PAGE_RW);
++}
++
+ static inline pmd_t pmd_mknotpresent(pmd_t pmd)
+ {
+ 	return pmd_clear_flags(pmd, _PAGE_PRESENT);
+@@ -731,6 +741,17 @@ static inline int pmd_write(pmd_t pmd)
+ 	return pmd_flags(pmd) & _PAGE_RW;
+ }
+=20
++#define __HAVE_ARCH_PMD_EXEC
++static inline int pmd_exec(pmd_t pmd)
++{
++	return !(pmd_flags(pmd) & _PAGE_NX);
++}
++
++static inline void pmd_mkexec(pmd_t pmd)
++{
++	pmd_clear_flags(pmd, _PAGE_NX);
++}
++
+ #define __HAVE_ARCH_PMDP_GET_AND_CLEAR
+ static inline pmd_t pmdp_get_and_clear(struct mm_struct *mm, unsigned =
+long addr,
+ 				       pmd_t *pmdp)
+--=20
+1.7.3.4
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
