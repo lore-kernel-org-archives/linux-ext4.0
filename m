@@ -1,423 +1,95 @@
-From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
-Subject: Re: [PATCH 01/18] Added hacking menu for override optimization by  GCC.
-Date: Thu, 16 Feb 2012 17:11:25 +0100
-Message-ID: <4b43b68b3b8493ca733602d813855819@rsmogura.net>
+From: =?UTF-8?q?Rados=C5=82aw=20Smogura?= <mail@smogura.eu>
+Subject: [PATCH 18/18] [WIP] Dummy patch for details
+Date: Thu, 16 Feb 2012 15:31:45 +0100
+Message-ID: <1329402705-25454-18-git-send-email-mail@smogura.eu>
 References: <1329402705-25454-1-git-send-email-mail@smogura.eu>
- <4F3D2476.4030409@xenotime.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
- <linux-ext4@vger.kernel.org>
-To: Randy Dunlap <rdunlap@xenotime.net>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <4F3D2476.4030409@xenotime.net>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>, mail@smogura.eu,
+	linux-ext4@vger.kernel.org
+To: linux-mm@kvack.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from flawless.hostnac.com ([67.23.244.186]:34043 "EHLO
+	flawless.hostnac.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753981Ab2BPSEO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2012 13:04:14 -0500
+In-Reply-To: <1329402705-25454-1-git-send-email-mail@smogura.eu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 Feb 2012 07:44:54 -0800, Randy Dunlap wrote:
-> On 02/16/2012 06:31 AM, Rados=C5=82aw Smogura wrote:
->> From: mail@smogura.eu <mail@smogura.eu>
->>
->> This patch gives ability for add some "-fno-..." options for GCC
->> and to force -O1 optimization. Supporting files, like Kconfig,=20
->> Makefile
->> are auto-generated due to large amount of available options.
->>
->> Patch helps to debug kernel.
->
-> Note: I only see patches 1-10.
->
-> I fix a few typos below (comments in the generated files only).
->
->
->> ---
->>  Makefile                           |   11 ++++
->>  lib/Kconfig.debug                  |    2 +
->>  lib/Kconfig.debug.optim            |  102=20
->> ++++++++++++++++++++++++++++++++++++
->>  scripts/Makefile.optim.inc         |   23 ++++++++
->>  scripts/debug/make_config_optim.sh |   88=20
->> +++++++++++++++++++++++++++++++
->>  5 files changed, 226 insertions(+), 0 deletions(-)
->>  create mode 100644 lib/Kconfig.debug.optim
->>  create mode 100644 scripts/Makefile.optim.inc
->>  create mode 100644 scripts/debug/make_config_optim.sh
->>
->> diff --git a/Makefile b/Makefile
->> index 7c44b67..bc9a961 100644
->> --- a/Makefile
->> +++ b/Makefile
->> @@ -558,12 +558,23 @@ endif # $(dot-config)
->>  # Defaults to vmlinux, but the arch makefile usually adds further=20
->> targets
->>  all: vmlinux
->>
->> +ifdef CONFIG_HACK_OPTIM_FORCE_O1_LEVEL
->> +KBUILD_CFLAGS +=3D -O1
->> +else
->> +
->>  ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
->>  KBUILD_CFLAGS	+=3D -Os
->>  else
->>  KBUILD_CFLAGS	+=3D -O2
->>  endif
->>
->> +endif
->> +
->> +# Include makefile for optimization override
->> +ifdef CONFIG_HACK_OPTIM
->> +include $(srctree)/scripts/Makefile.optim.inc
->> +endif
->> +
->>  include $(srctree)/arch/$(SRCARCH)/Makefile
->>
->>  ifneq ($(CONFIG_FRAME_WARN),0)
->> diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
->> index 8745ac7..928265e 100644
->> --- a/lib/Kconfig.debug
->> +++ b/lib/Kconfig.debug
->> @@ -1274,5 +1274,7 @@ source "lib/Kconfig.kgdb"
->>
->>  source "lib/Kconfig.kmemcheck"
->>
->> +source "lib/Kconfig.debug.optim"
->> +
->>  config TEST_KSTRTOX
->>  	tristate "Test kstrto*() family of functions at runtime"
->> diff --git a/lib/Kconfig.debug.optim b/lib/Kconfig.debug.optim
->> new file mode 100644
->> index 0000000..09b1012
->> --- /dev/null
->> +++ b/lib/Kconfig.debug.optim
->> @@ -0,0 +1,102 @@
->> +# This file was auto generated. It's utility configuration
->
->                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
-> That sentence(?) (fragment?) is not helpful.  I would drop it.
->
->> +# Distributed under GPL v2 License
->> +
->> +menuconfig HACK_OPTIM
->> +	bool "Allows to override GCC optimization"
->
-> 	      Allows the user to override GCC optimization
->
->> +	depends on DEBUG_KERNEL && EXPERIMENTAL
->> +	help
->> +	  If you say Y here you will be able to override
->> +	  how GCC optimize kernel code. This will create
->
-> 	          optimizes
->
->> +	  more debug friendly, but with not guarentee
->
-> 	             friendly code, but will not guarantee
->
->> +	  about same runi, like production, kernel.
->
-> 	  the same running, like a production kernel.
->
->> +
->> +	  If you say Y here probably You will want say
->
-> 	                             you will want to say Y
->
->> +	  for all suboptions
->
-> 	  for all suboptions.
->
->> +
->> +if HACK_OPTIM
->> +
->> +config HACK_OPTIM_FORCE_O1_LEVEL
->> +	bool "Forces -O1 optimization level"
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> 	                           optimizes
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->
-> 	  will run differently than normal,
->
->> +	  some bugs or errors. Refere to GCC manual for
->
-> 	                       Refer
->
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +config HACK_OPTIM__fno_inline_functions_called_once
->> +	bool "Adds -fno-inline-functions-called-once parameter to gcc=20
->> invoke line."
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> 	                           optimizes
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->
-> 	  will run differently than normal,
->
->> +	  some bugs or errors. Refere to GCC manual for
->
-> 	                       Refer
->
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +config HACK_OPTIM__fno_combine_stack_adjustments
->> +	bool "Adds -fno-combine-stack-adjustments parameter to gcc invoke=20
->> line."
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> 	                           optimizes
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->
-> 	  will run differently than normal,
->
->> +	  some bugs or errors. Refere to GCC manual for
->
-> 	                       Refer
->
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +config HACK_OPTIM__fno_tree_dce
->> +	bool "Adds -fno-tree-dce parameter to gcc invoke line."
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> 	                           optimizes
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->
-> 	  will run differently than normal,
->
->> +	  some bugs or errors. Refere to GCC manual for
->
-> 	                       Refer
->
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +config HACK_OPTIM__fno_tree_dominator_opts
->> +	bool "Adds -fno-tree-dominator-opts parameter to gcc invoke line."
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> same ...
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->> +	  some bugs or errors. Refere to GCC manual for
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +config HACK_OPTIM__fno_dse
->> +	bool "Adds -fno-dse parameter to gcc invoke line."
->> +	---help---
->> +	  This will change how GCC optimize code. Code
->
-> same ...
->
->> +	  may be slower and larger but will be more debug
->> +	  "friendly".
->> +
->> +	  In some cases there is low chance that kernel
->> +	  will run different then normal, reporting or not
->> +	  some bugs or errors. Refere to GCC manual for
->> +	  more details.
->> +
->> +	  You SHOULD say N here.
->> +
->> +endif #HACK_OPTIM
->> diff --git a/scripts/Makefile.optim.inc b/scripts/Makefile.optim.inc
->> new file mode 100644
->> index 0000000..e78cc92
->> --- /dev/null
->> +++ b/scripts/Makefile.optim.inc
->> @@ -0,0 +1,23 @@
->> +# This file was auto generated. It's utility configuration
->> +# Distributed under GPL v2 License
->> +
->> +ifdef CONFIG_HACK_OPTIM__fno_inline_functions_called_once
->> +	KBUILD_CFLAGS +=3D -fno-inline-functions-called-once
->> +endif
->> +
->> +ifdef CONFIG_HACK_OPTIM__fno_combine_stack_adjustments
->> +	KBUILD_CFLAGS +=3D -fno-combine-stack-adjustments
->> +endif
->> +
->> +ifdef CONFIG_HACK_OPTIM__fno_tree_dce
->> +	KBUILD_CFLAGS +=3D -fno-tree-dce
->> +endif
->> +
->> +ifdef CONFIG_HACK_OPTIM__fno_tree_dominator_opts
->> +	KBUILD_CFLAGS +=3D -fno-tree-dominator-opts
->> +endif
->> +
->> +ifdef CONFIG_HACK_OPTIM__fno_dse
->> +	KBUILD_CFLAGS +=3D -fno-dse
->> +endif
->> +
->> diff --git a/scripts/debug/make_config_optim.sh=20
->> b/scripts/debug/make_config_optim.sh
->> new file mode 100644
->> index 0000000..26865923
->> --- /dev/null
->> +++ b/scripts/debug/make_config_optim.sh
->> @@ -0,0 +1,88 @@
->> +#!/bin/sh
->> +
->> +## Utility script for generating optimization override options
->> +## for kernel compilation.
->> +##
->> +## Distributed under GPL v2 license
->> +## (c) Rados=C5=82aw Smogura, 2011
->> +
->> +# Prefix added for variable
->> +CFG_PREFIX=3D"HACK_OPTIM"
->> +
->> +KCFG=3D"Kconfig.debug.optim"
->> +MKFI=3D"Makefile.optim.inc"
->> +
->> +OPTIMIZATIONS_PARAMS=3D"-fno-inline-functions-called-once \
->> + -fno-combine-stack-adjustments \
->> + -fno-tree-dce \
->> + -fno-tree-dominator-opts \
->> + -fno-dse "
->> +
->> +echo "# This file was auto generated. It's utility configuration" >=20
->> $KCFG
->> +echo "# Distributed under GPL v2 License" >> $KCFG
->> +echo >> $KCFG
->> +echo "menuconfig ${CFG_PREFIX}" >> $KCFG
->> +echo -e "\tbool \"Allows to override GCC optimization\"" >> $KCFG
->> +echo -e "\tdepends on DEBUG_KERNEL && EXPERIMENTAL" >> $KCFG
->> +echo -e "\thelp" >> $KCFG
->> +echo -e "\t  If you say Y here you will be able to override" >>=20
->> $KCFG
->> +echo -e "\t  how GCC optimize kernel code. This will create" >>=20
->> $KCFG
->> +echo -e "\t  more debug friendly, but with not guarentee"    >>=20
->> $KCFG
->> +echo -e "\t  about same runi, like production, kernel."      >>=20
->> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  If you say Y here probably You will want say"   >>=20
->> $KCFG
->> +echo -e "\t  for all suboptions" >> $KCFG
->> +echo >> $KCFG
->> +echo "if ${CFG_PREFIX}" >> $KCFG
->> +echo >> $KCFG
->> +
->> +echo "# This file was auto generated. It's utility configuration" >=20
->> $MKFI
->> +echo "# Distributed under GPL v2 License" >> $MKFI
->> +echo >> $MKFI
->> +
->> +# Insert standard override optimization level
->> +# This is exception, and this value will not be included
->> +# in auto generated makefile. Support for this value
->> +# is hard coded in main Makefile.
->> +echo -e "config ${CFG_PREFIX}_FORCE_O1_LEVEL" >> $KCFG
->> +echo -e "\tbool \"Forces -O1 optimization level\"" >> $KCFG
->> +echo -e "\t---help---" >> $KCFG
->> +echo -e "\t  This will change how GCC optimize code. Code" >> $KCFG
->> +echo -e "\t  may be slower and larger but will be more debug" >>=20
->> $KCFG
->> +echo -e "\t  \"friendly\"." >> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  In some cases there is low chance that kernel" >>=20
->> $KCFG
->> +echo -e "\t  will run different then normal, reporting or not" >>=20
->> $KCFG
->> +echo -e "\t  some bugs or errors. Refere to GCC manual for" >>=20
->> $KCFG
->> +echo -e "\t  more details." >> $KCFG
->> +echo >> $KCFG
->> +echo -e "\t  You SHOULD say N here." >> $KCFG
->> +echo >> $KCFG
->> +
->> +for o in $OPTIMIZATIONS_PARAMS ; do
->> +	cfg_o=3D"${CFG_PREFIX}_${o//-/_}";
->> +	echo "Processing param ${o} config variable will be $cfg_o";
->> +
->> +	# Generate kconfig entry
->> +	echo -e "config ${cfg_o}" >> $KCFG
->> +	echo -e "\tbool \"Adds $o parameter to gcc invoke line.\"" >>=20
->> $KCFG
->> +	echo -e "\t---help---" >> $KCFG
->> +	echo -e "\t  This will change how GCC optimize code. Code" >>=20
->> $KCFG
->> +	echo -e "\t  may be slower and larger but will be more debug" >>=20
->> $KCFG
->> +	echo -e "\t  \"friendly\"." >> $KCFG
->> +	echo >> $KCFG
->> +	echo -e "\t  In some cases there is low chance that kernel" >>=20
->> $KCFG
->> +	echo -e "\t  will run different then normal, reporting or not" >>=20
->> $KCFG
->> +	echo -e "\t  some bugs or errors. Refere to GCC manual for" >>=20
->> $KCFG
->> +	echo -e "\t  more details." >> $KCFG
->> +	echo >> $KCFG
->> +	echo -e "\t  You SHOULD say N here." >> $KCFG
->> +	echo >> $KCFG
->> +
->> +	#Generate Make for include
->> +	echo "ifdef CONFIG_${cfg_o}" >> $MKFI
->> +	echo -e "\tKBUILD_CFLAGS +=3D $o" >> $MKFI
->> +	echo "endif" >> $MKFI
->> +	echo  >> $MKFI
->> +done;
->> +echo "endif #${CFG_PREFIX}" >> $KCFG
+I send this dummy patch to describe a bit of work, maybe someone may
+have additional ideas, concepts and tips. In any case I'm glad I mapped=
+ huge
+EXT4 and data was synced to disk.
 
-I sent rest later, when I realized not all ware sent. It's looks like=20
-my mail server stopped after 10 (maybe spam protection...?).
-Those have [WIP] prefix, my bad, but currently are visible on marc.info=20
-(http://marc.info/?l=3Dlinux-mm&r=3D1&b=3D201202&w=3D3).
+Some concepts about compounds:
+	- first_page moved to lru union to free place for buffers
+	- refcounting changed - compound pages are "auto managed",
+	  page recovering is for backward
+	  compatibilit with 2.6 kernels, actully those kernels allowed
+	  getting tail page of count 0, but at eye glance moving few
+	  times around 0 could cause dangling pointer bug
 
-Oh... and I saw I merged two patches during rebase into patch 2 -=20
-change of refcounting and moving first page to "LRU union", so there is=20
-no info about moving fisrt_page.
+Compound view.
+In distinction to huge pages and THP, file system
+compound pages are really loosely treated, as a main difference there i=
+s no
+implication huge page =3D> huge pmd, huge page may exist and may have n=
+o
+huge mappings at all.
 
-Regards,
-Radek
+Each page is managed almost like stand alone, have own count, mapcount,=
+ dirty
+bit etc. It can't be added to any LRU nor list, because list_head is
+shared with compound metadata.
+
+Read / write locking of compound.
+
+Splitting may be dequeued this is to prevent deadlocks, "legacy" code
+will probably start with normal page locked, and then try to lock
+compound, for splitting purposes this may cause deadlocks (actually thi=
+s
+flag was not included in faulting and enywhere else, but should be).
+
+Still there is no defragmentation daemon nor anything simillar, this
+behaviour is forced by MAP_HUGETLB.
+
+Things not made:
+* kswapd & co. not tested.
+* mlock not fixed, fix will cover get_user_pages & follow_user_pages.
+* fork, page_mkclean, mlock,  not fixed.
+* dropping caches =3D bug.
+* migration not checked
+* shmfs - writeback for reclaim should split, simple to make, but ext4
+  experiments should go first (syncing)
+* no huge COW mapping allowed.
+* code cleaning from all printk...
+
+Signed-off-by: Rados=C5=82aw Smogura <mail@smogura.eu>
+---
+ mm/filemap.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/mm/filemap.c b/mm/filemap.c
+index f050209..7174fff 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1783,7 +1783,7 @@ int filemap_fault_huge(struct vm_area_struct *vma=
+, struct vm_fault *vmf)
+ 	int ret =3D VM_FAULT_LOCKED;
+=20
+ 	error =3D vma->vm_ops->fault(vma, vmf);
+-	/* XXX Repeatable flags in __do fault etc. */
++	/* XXX Repeatable flags in __do fault etc.  */
+ 	if (error & (VM_FAULT_ERROR | VM_FAULT_NOPAGE
+ 		| VM_FAULT_RETRY | VM_FAULT_NOHUGE)) {
+ 		return error;
+--=20
+1.7.3.4
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
