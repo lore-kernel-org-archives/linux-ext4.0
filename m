@@ -1,154 +1,105 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [RFC] new infrastructure for manipulating different extent format
-Date: Thu, 16 Feb 2012 18:51:42 +0800
-Message-ID: <CAFZ0FUXAdY7CsTfC_CqPZd-hqS2C6MGEbC5oyUGMCR2-ay1g+Q@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 8/8] jbd2: Cleanup journal tail after transaction commit
+Date: Thu, 16 Feb 2012 13:59:27 +0100
+Message-ID: <20120216125927.GC18613@quack.suse.cz>
+References: <1329330854-14237-1-git-send-email-jack@suse.cz>
+ <1329330854-14237-9-git-send-email-jack@suse.cz>
+ <377B1146-3A57-4959-A0AA-012D5813A514@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:53344 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750842Ab2BPKvn convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Feb 2012 05:51:43 -0500
-Received: by obcva7 with SMTP id va7so2846057obc.19
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Feb 2012 02:51:42 -0800 (PST)
+Received: from cantor2.suse.de ([195.135.220.15]:59497 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751231Ab2BPM7a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Feb 2012 07:59:30 -0500
+Content-Disposition: inline
+In-Reply-To: <377B1146-3A57-4959-A0AA-012D5813A514@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, Andreas and the list,
+On Wed 15-02-12 14:03:30, Andreas Dilger wrote:
+> On 2012-02-15, at 10:34 AM, Jan Kara wrote:
+> > Normally, we have to issue a cache flush before we can update journal tail in
+> > journal superblock, effectively wiping out old transactions from the journal.
+> > So use the fact that during transaction commit we issue cache flush anyway and
+> > opportunistically push journal tail as far as we can. Since update of journal
+> > superblock is still costly (we have to use WRITE_FUA), we update log tail only
+> > if we can free significant amount of space.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> > fs/jbd2/commit.c     |   32 ++++++++++++++++++++++++++++++++
+> > fs/jbd2/journal.c    |   13 +++++++++++++
+> > include/linux/jbd2.h |    1 +
+> > 3 files changed, 46 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index f37b783..245201c 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -331,6 +331,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+> > 	struct buffer_head *cbh = NULL; /* For transactional checksums */
+> > 	__u32 crc32_sum = ~0;
+> > 	struct blk_plug plug;
+> > +	/* Tail of the journal */
+> > +	unsigned long first_block;
+> > +	tid_t first_tid;
+> > +	int update_tail;
+> > 
+> > 	/*
+> > 	 * First job: lock down the current transaction and wait for
+> > @@ -682,10 +686,30 @@ start_journal_io:
+> > 		err = 0;
+> > 	}
+> > 
+> > +	/*
+> > +	 * Get current oldest transaction in the log before we issue flush
+> > +	 * to the filesystem device. After the flush we can be sure that
+> > +	 * blocks of all older transactions are checkpointed to persistent
+> > +	 * storage and we will be safe to update journal start in the
+> > +	 * superblock with the numbers we get here.
+> > +	 */
+> > +	update_tail =
+> > +		jbd2_journal_get_log_tail(journal, &first_tid, &first_block);
+> > +
+> > 	write_lock(&journal->j_state_lock);
+> > +	if (update_tail) {
+> > +		long freed = first_block - journal->j_tail;
+> > +
+> > +		if (first_block < journal->j_tail)
+> > +			freed += journal->j_last - journal->j_first;
+> > +		/* Update tail only if we free significant amount of space */
+> > +		if (freed < journal->j_maxlen / 4)
+> > +			update_tail = 0;
+> > +	}
+> 
+> Have you done any performance testing on this?  I expect that it may give
+> a nice boost in performance when there are lots of small transactions in
+> the journal.  However, it might also increase latency if the journal is
+> nearly full and no new transactions can be started until 1/4 of the journal
+> is checkpointed.
+  Well, I didn't do serious performance testing because I failed to find a
+workload where I would think it could make a difference. For example for
+workload creating and deleting directories and 0-length files, I saw about
+one jbd2_cleanup_journal_tail() invocation per 200 transaction commits. So
+the possible gain would be very well in the noise.
 
-After the bigalloc-feature is completed in ext4, we could have much
-more big size of block-group (also bigger continuous space), so larger
-extent size which is above 128MB is necessary, such as:
+> This should probably be conditional on a decent amount of free blocks left
+> in the journal, for example:
+> 
+> 		if (j_free >= j_maxlen / 8 && freed < journal->j_maxlen / 4)
+> 			update_tail = 0;
+> 
+> or
+> 		if (freed >= j_free)
+> 			update_tail = 0;
+  Yeah. Currently, I'm doubtful we should apply this patch at all. But if
+we do, tweaking the condition is certainly possible. I mostly wanted to
+gather people's thoughts regarding this particular patch in the first
+round.
 
-struct ext4_extent_large {
-=A0 =A0 =A0 =A0__le64 =A0ee_block; =A0 =A0 =A0 /* first logical block e=
-xtent covers */
-=A0 =A0 =A0 =A0__le64 =A0ee_start; =A0 =A0 =A0 /* starting physical blo=
-ck */
-=A0 =A0 =A0 =A0__le32 =A0ee_len; =A0 =A0 =A0 =A0 /* number of blocks co=
-vered by extent */
-=A0 =A0 =A0 =A0__le32 =A0ee_flags; =A0 =A0 =A0 /* flags and future exte=
-nsion */
-};
-
-On the other hand, people who use ext4 in desktop environment may need
-more compact format like:
-
-struct ext4_extent_packed {
-=A0 =A0 =A0 =A0__le32 =A0ee_start_lo;
-=A0 =A0 =A0 =A0__le16 =A0ee_start_hi;
-=A0 =A0 =A0 =A0__le16 =A0ee_len;
-};
-
-which they can fit 6 extents in the inode.
-
-Therefore, supporting multiple extent formats is the solution which
-satisfied both.
-
-My Plan:
-
-=46irst, abstracting the operation on disk extent format out:
-
-struct ext4_ext_operation {
-=A0 =A0 =A0 =A0 __u16 =A0 =A0 =A0 =A0 =A0 (*ext_size) (void);
- /* the size of struct ext4_extent_### */
-=A0 =A0 =A0 =A0 ext4_fsblk_t =A0 =A0(*ext_pblock) (void *extent);
-=A0 =A0 =A0 =A0 void =A0 =A0 =A0 =A0 =A0 =A0(*ext_store_pblock) (void *=
-extent, __u64 pb);
-=A0 =A0 =A0 =A0 ext4_lblk_t =A0 =A0 (*ext_lblock) (void *extent);
-=A0 =A0 =A0 =A0 ext4_lblk_t =A0 =A0 (*ext_len) (void *extent);
-=A0 =A0 =A0 =A0 int =A0 =A0 =A0 =A0 =A0 =A0 (*is_uninit) (void *extent)=
-;
-=A0 =A0 =A0 =A0 void =A0 =A0 =A0 =A0 =A0 =A0(*mark_uninit) (void *exten=
-t);
-=A0 =A0 =A0 =A0 void =A0 =A0 =A0 =A0 =A0 =A0(*mark_init) (void *extent)=
-;
-
-=A0 =A0 =A0 =A0 __u16 =A0 =A0 =A0 =A0 =A0 (*idx_size) (void);
-=A0 =A0 =A0 =A0 ext4_fsblk_t =A0 =A0(*idx_pblock) (void *idx);
-=A0 =A0 =A0 =A0 void =A0 =A0 =A0 =A0 =A0 =A0(*idx_store_pblock) (void *=
-idx, __u64 pb);
-=A0 =A0 =A0 =A0 ext4_lblk_t =A0 =A0 (*idx_lblock) (void *idx);
-};
-
-We can use this single entry to handle different extent format through
-different implementation of ext4_ext_operation (choosing different
-implementation by different eh_magic number),
-and the extent format which is used now could be implemented like:
-
-static const struct ext4_ext_operation ext4_normal_eops=3D {
-=A0 =A0 =A0 =A0 .ext_size =A0 =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_ext_size=
-,
-=A0 =A0 =A0 =A0 .ext_pblock =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_ext_pblock=
-,
-=A0 =A0 =A0 =A0 .ext_store_pblock =A0 =A0 =A0 =3D ext4_ext_store_pblock=
-,
-=A0 =A0 =A0 =A0 .ext_lblock =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_ext_lblock=
-,
-=A0 =A0 =A0 =A0 .ext_len =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=3D ext4_ext_ge=
-t_actual_len,
-=A0 =A0 =A0 =A0 .is_uninit =A0 =A0 =A0 =A0 =A0 =A0 =A0=3D ext4_ext_is_u=
-ninitialized,
-=A0 =A0 =A0 =A0 .mark_uninit =A0 =A0 =A0 =A0 =A0 =A0=3D ext4_ext_mark_u=
-ninitialized,
-=A0 =A0 =A0 =A0 .mark_init =A0 =A0 =A0 =A0 =A0 =A0 =A0=3D ext4_ext_mark=
-_initialized,
-
-=A0 =A0 =A0 =A0 .idx_size =A0 =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_idx_size=
-,
-=A0 =A0 =A0 =A0 .idx_pblock =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_idx_pblock=
-,
-=A0 =A0 =A0 =A0 .idx_store_pblock =A0 =A0 =A0 =3D ext4_idx_store_pblock=
-,
-=A0 =A0 =A0 =A0 .idx_lblock =A0 =A0 =A0 =A0 =A0 =A0 =3D ext4_idx_lblock=
-,
-};
-
-=46or instance, the function ext4_ext_binsearch_idx() may look like:
-
-static void ext4_ext_binsearch_idx(struct inode *inode,
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct ext4_ext_path *p=
-ath, ext4_lblk_t block)
-{
-=A0 =A0 =A0 =A0 struct ext4_extent_header *eh =3D path->p_hdr;
-=A0 =A0 =A0 =A0 struct void *r, *l, *m;
-=A0 =A0 =A0 =A0 struct ext4_ext_operation *op =3D (struct
-ext4_ext_operation*)inode->private;
-
-=A0 =A0 =A0 =A0 l =3D (char *) (eh) + sizeof(struct ext4_extent_header)=
- +
-op->idx_size();
-=A0 =A0 =A0 =A0 r =3D l + (le16_to_cpu(eh)->eh_entries) * op->idx_size(=
-);
-=A0 =A0 =A0 =A0 while (l <=3D r) {
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 m =3D l + op->idx_size() * ((r - l) / o=
-p->idx_size())/
-2;
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (block < op->idx_lblock(m))
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 r =3D m - op->idx_size(=
-);
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 else
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 l =3D m + op->idx_size(=
-);
-	}
-	path->p_idx =3D l - op->idx_size();
-}
-
-The only problem is the performance regression caused by frequent
-function calls.
-
-Any suggestions will be appreciated.
-
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  Thanks for your comments.
+								Honza
