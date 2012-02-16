@@ -1,69 +1,70 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
-Date: Thu, 16 Feb 2012 18:30:31 -0500
-Message-ID: <20120216233031.GD26473@thunk.org>
-References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
- <20120216225810.GB26473@thunk.org>
- <4F3D8D01.5040604@ubuntu.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] ext4: avoid deadlock on sync-mounted FS w/o journal
+Date: Thu, 16 Feb 2012 15:41:45 -0800
+Message-ID: <4F3D9439.3050908@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Phillip Susi <psusi@ubuntu.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Martin.Wilck@ts.fujitsu.com
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55434 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756023Ab2BPXae (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Feb 2012 18:30:34 -0500
-Content-Disposition: inline
-In-Reply-To: <4F3D8D01.5040604@ubuntu.com>
+Received: from mx1.redhat.com ([209.132.183.28]:15077 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755161Ab2BPXlv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Feb 2012 18:41:51 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 16, 2012 at 06:10:57PM -0500, Phillip Susi wrote:
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> On 02/16/2012 05:58 PM, Ted Ts'o wrote:
-> > I don't see the bug here.  If there are no leftover sparse bytes,
-> > there's no need to write the last zero byte.  The whole point was to
-> > make sure i_size was set correctly, and if sparse==0, then i_size is
-> > correct.
-> 
-> - From what I can see, when sparse == 0, the last write does a seek
-> to move the file pointer, but doesn't write anything beyond the last
-> hole, so i_size is not updated.  This resulted in an image file I
-> took of a 20gb fs being 124 MiB too small.  I can only assume that
-> this is to be expected, and is the reason for passing one byte of
-> zero_buff to write_block instead of not giving it any bytes to
-> write, and just asking it to do the seek the way the loop does.
+From: Martin.Wilck@ts.fujitsu.com
 
-Sorry, I'm still not understanding what you're concerned about.  The
-last write should seek to the end of the file system, and write a
-single byte --- which would be past the last hole.  The goal is to
-make sure the file system is large enough that e2fsck doesn't
-complain about the file system image being apparently too small.
+Processes hang forever on a sync-mounted ext2 file system that
+is mounted with the ext4 module (default in Fedora 16).
 
-And in fact, it's doing the right thing:
+I can reproduce this reliably by mounting an ext2 partition with
+"-o sync" and opening a new file an that partition with vim. vim
+will hang in "D" state forever.  The same happens on ext4 without
+a journal.
 
-tytso.root@tytso-glaptop.cam.corp.google.com> {/home/tytso}  
-2007# strace -o /tmp/foo /sbin/e2image -r /dev/funarg/library  /kbuild/test.img
-e2image 1.42 (29-Nov-2011)
-<tytso.root@tytso-glaptop.cam.corp.google.com> {/home/tytso}  
-2008# tail /tmp/foo
-lseek(5, 1048576, SEEK_CUR)             = 16102031360
-lseek(5, 1048576, SEEK_CUR)             = 16103079936
-lseek(5, 1048576, SEEK_CUR)             = 16104128512
-lseek(5, 1048576, SEEK_CUR)             = 16105177088
-lseek(5, 950271, SEEK_CUR)              = 16106127359
-write(5, "\0", 1)                       = 1           <=====
-munmap(0x7f7b6dace000, 495616)          = 0
-close(4)                                = 0
-close(3)                                = 0
-exit_group(0)                           = ?
+I am attaching a small patch here that solves this issue for me.
+In the sync mounted case without a journal,
+ext4_handle_dirty_metadata() may call sync_dirty_buffer(), which
+can't be called with buffer lock held.
 
-I don't understand why you're saying that it's not writing anything
-beyond the last hole, and why you're saying i_size is not being
-updated.  It's working for me; I can run e2fsck on the generated
-image, and it's not complaining that the file system is too small.
+Also move mb_cache_entry_release inside lock to avoid race
+fixed previously by 8a2bfdcb ext[34]: EA block reference count racing fix
+Nonte too that ext2 fixed this same problem in 2006 with
+b2f49033 [PATCH] fix deadlock in ext2
 
-       	   	    		     	 - Ted
+Signed-off-by: Martin.Wilck@ts.fujitsu.com
+[sandeen@redhat.com: move mb_cache_entry_release before unlock, edit commit msg]
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 93a00d8..4410ae7 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -487,18 +487,19 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 		ext4_free_blocks(handle, inode, bh, 0, 1,
+ 				 EXT4_FREE_BLOCKS_METADATA |
+ 				 EXT4_FREE_BLOCKS_FORGET);
++		unlock_buffer(bh);
+ 	} else {
+ 		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
++		if (ce)
++			mb_cache_entry_release(ce);
++		unlock_buffer(bh);
+ 		error = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (IS_SYNC(inode))
+ 			ext4_handle_sync(handle);
+ 		dquot_free_block(inode, 1);
+ 		ea_bdebug(bh, "refcount now=%d; releasing",
+ 			  le32_to_cpu(BHDR(bh)->h_refcount));
+-		if (ce)
+-			mb_cache_entry_release(ce);
+ 	}
+-	unlock_buffer(bh);
+ out:
+ 	ext4_std_error(inode->i_sb, error);
+ 	return;
+
