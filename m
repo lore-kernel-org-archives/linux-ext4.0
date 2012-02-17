@@ -1,50 +1,29 @@
-From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
-Subject: Re: [WIP 11/18] Basic support (faulting) for huge pages for shmfs
-Date: Fri, 17 Feb 2012 15:51:11 +0100
-Message-ID: <f78370f3c3fefc9b89c44522f874730d@rsmogura.net>
-References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
- <20120216234233.GE26473@thunk.org>
- <bdec95398caa767d4ee9c998e49dddda@rsmogura.net>
- <20120217144118.GB19606@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] libext2fs: Add ext2fs_file_get_inode_num call (for
+ fuse2fs)
+Date: Fri, 17 Feb 2012 10:01:10 -0500
+Message-ID: <20120217150110.GD19606@thunk.org>
+References: <20120107085523.4325.42183.stgit@elm3c44.beaverton.ibm.com>
+ <20120107085529.4325.17894.stgit@elm3c44.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: quoted-printable
-Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
- <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20120217144118.GB19606@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:34033 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751282Ab2BQPBQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 10:01:16 -0500
+Content-Disposition: inline
+In-Reply-To: <20120107085529.4325.17894.stgit@elm3c44.beaverton.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 17 Feb 2012 09:41:18 -0500, Ted Ts'o wrote:
-> On Fri, Feb 17, 2012 at 03:12:44PM +0100, Rados=C5=82aw Smogura wrote:
->> On Thu, 16 Feb 2012 18:42:33 -0500, Ted Ts'o wrote:
->> >OK, stupid question... where are patches 1 through 10?  I'm=20
->> guessing
->> >linux-ext4 wasn't cc'ed on them?
->> >
->> >					- Ted
->> Actually, I added those for --cc (checked in command history). I
->> think problems went from mail server, it first sent 10 first
->> patches, then no more, after 20 min I resented patches from 11, but
->> after few hours some "not sent" patches were sent (I putted self to
->> cc, so I know). Now, I see those at
->> http://www.spinics.net/lists/linux-ext4/.
->
-> Ok, so there's no difference between the patches sent yesterday with
-> "WIP" in the subject line, and the ones which didn't?  It was just a
-> resend, then, correct?
->
->       	     	     	       	   	- Ted
-Yes, indeed.
-Regards
+On Sat, Jan 07, 2012 at 12:55:29AM -0800, Darrick J. Wong wrote:
+> Add a function to return the inode number of an open file.
+> 
+> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter=
-.ca/
-Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks, applied.
+
+					- Ted
