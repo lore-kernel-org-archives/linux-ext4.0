@@ -1,48 +1,43 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
-Date: Fri, 17 Feb 2012 09:46:12 -0500
-Message-ID: <4F3E6834.1030606@ubuntu.com>
-References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com> <20120216225810.GB26473@thunk.org> <4F3D8D01.5040604@ubuntu.com> <20120216233031.GD26473@thunk.org> <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com> <20120217143026.GA19606@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] e2image: add -a switch to include all data
+Date: Fri, 17 Feb 2012 09:50:25 -0500
+Message-ID: <20120217145025.GC19606@thunk.org>
+References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
+ <1329428112-8911-2-git-send-email-psusi@ubuntu.com>
+ <20120216231745.GC26473@thunk.org>
+ <4F3D9CB3.4020704@ubuntu.com>
+ <alpine.LFD.2.00.1202171006380.6479@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Phillip Susi <psusi@ubuntu.com>, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:18971 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751056Ab2BQOqO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Feb 2012 09:46:14 -0500
-In-Reply-To: <20120217143026.GA19606@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44491 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751567Ab2BQOu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 09:50:29 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1202171006380.6479@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-On 2/17/2012 9:30 AM, Ted Ts'o wrote:
-> Yep, thanks for the suggestion; I like that.  I'll chain to this 
-> message the two patches that I've put together which I think
-> should address this issue.  The first uses your suggestion so
-> sparse never gets set to zero when we are still extending the
-> hole.
+On Fri, Feb 17, 2012 at 10:17:43AM +0100, Lukas Czerner wrote:
 > 
-> The second uses ftruncate64() if possible to set i_size (which
-> saves allocating a block, which is cool when it works).
-> 
-> What do folks think?
+> So the problem actually is that I have made some assumptions, like for
+> example that all data are laid out sequentially (because it is how we
+> are creating the qcow2 images with e2image) and possibly more. 
 
-Sounds good to me.
+So if your code doesn't work correctly if the block numbers are
+monotonically increasing in the qcow2 image, I would *have* to assume
+there would be plenty of qemu-generated images files that don't have
+this constraint (i.e., suppose you write blocks 10000, 42, 16, and 24
+while running under qemu, presumably that is the order the blocks
+would be written and would show up in the qcow2 file).
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+Or am I misunderstanding what you are saying here; is it that you are
+fairly sure the code will break if the data is not laid out
+sequentially, or that you've never tested this case?
 
-iQEcBAEBAgAGBQJPPmg0AAoJEJrBOlT6nu757WsH/Akcc1iQH70NzwKcyxgkGGJf
-b7/as/olbJE+ZQhmYswMzcwQjwYDsbTfQZLLZM5KRZZGNpmaGhW9FtrV5U7ayiYf
-FU9duik/BUXfH1pmg6jmyM+QDgIuxFghFT3WOAWS5PosECJ0P0ORQ1sxARp9+P2W
-jSiaJCeHZZ37dDej1qEOy8S6IKwLPmlIroSuUBckkOcGewBzaZWvQYjxkmz4Dv8V
-PTmeTFwpcz8mBECHXyun1mE5Ym44yfD+bYazQZO3sVRqF5O+T5uktmte10905g+4
-Qluv7rv/6ZT2j/S9MIMylA7pOfJNgcdkjKjSlxZLIofmRVm/1yeA70YJWfkFpCg=
-=+I+P
------END PGP SIGNATURE-----
+Regards,
+
+						- Ted
