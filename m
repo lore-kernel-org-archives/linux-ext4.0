@@ -1,51 +1,44 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: Phillip Susi <psusi@ubuntu.com>
 Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
-Date: Fri, 17 Feb 2012 09:30:26 -0500
-Message-ID: <20120217143026.GA19606@thunk.org>
-References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
- <20120216225810.GB26473@thunk.org>
- <4F3D8D01.5040604@ubuntu.com>
- <20120216233031.GD26473@thunk.org>
- <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
+Date: Fri, 17 Feb 2012 09:31:42 -0500
+Message-ID: <4F3E64CE.6060504@ubuntu.com>
+References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com> <20120216225810.GB26473@thunk.org> <4F3D8D01.5040604@ubuntu.com> <20120216233031.GD26473@thunk.org> <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Phillip Susi <psusi@ubuntu.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55877 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751037Ab2BQOac (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Feb 2012 09:30:32 -0500
-Content-Disposition: inline
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:31965 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751037Ab2BQObo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Feb 2012 09:31:44 -0500
 In-Reply-To: <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 17, 2012 at 11:04:22AM +0100, Lukas Czerner wrote:
-> > lseek(5, 1048576, SEEK_CUR)             = 16105177088
->   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> So if blocks count ends right here^^, then the last write would not
-> happen, because sparse == 0. The reason is that we will seek when the
-> sparse >= 1024*1024 and then set sparse = 0
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Yes, there are two cases when sparse can get set to zero.  I was
-thinking of the other one; thanks for pointing that out.
-
+On 2/17/2012 5:04 AM, Lukas Czerner wrote:
 > We can easily fix that by doing this instead:
 > 
-> if (sparse > 1024*1024) {
-> 	write_block(fd, 0, 1024*1024, 0, 0);
-> 	sparse -= 1024*1024;
-> }
+> if (sparse > 1024*1024) { write_block(fd, 0, 1024*1024, 0, 0); 
+> sparse -= 1024*1024; }
 
-Yep, thanks for the suggestion; I like that.  I'll chain to this
-message the two patches that I've put together which I think should
-address this issue.  The first uses your suggestion so sparse never
-gets set to zero when we are still extending the hole.
+That occurred to me last night while I slept.  I still would like to try
+to truncate instead of write the last zero though.  Patch coming up.
 
-The second uses ftruncate64() if possible to set i_size (which saves
-allocating a block, which is cool when it works).
 
-What do folks think?
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-	     	    	     	       	  - Ted
+iQEcBAEBAgAGBQJPPmTOAAoJEJrBOlT6nu75TekH/RAG5FgOHsUU0uMFG3v9Z1av
+sw/KTmaLpnFGOkQDBYzgZ8+1StfhVdZOUpjNduNWots5cv5+9YoMwyBaLgw51YPN
+1HIi5UucRiW5KT8j+FShbHbv4SBtU/PaMvqxangNETttT+MMbPj288QSldEYv1Zf
+E/0ZPnYxmtd55vs0tee+q0XdSJNLBpMV64nOVIMDPXwOYbjZr+nhAv8LrRGvIk5a
+2kduQ2zbN47CjPSod8PjlHIq3MQ+SqYgI9/7aHye9a/K3sGMVMAekacs7vCQquFe
+lLx593a6F32p6f2ee+3uqleftzUzxRsDAE3Myollq0STLsfdm9+P+5fdfp8iLEs=
+=BYbM
+-----END PGP SIGNATURE-----
