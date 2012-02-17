@@ -1,57 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2 -v2] e2image: attempt to use ftruncate64 to set i_size for raw images
-Date: Fri, 17 Feb 2012 09:35:50 -0500
-Message-ID: <1329489350-22260-1-git-send-email-tytso@mit.edu>
-References: <1329489163-21918-2-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [WIP 11/18] Basic support (faulting) for huge pages for shmfs
+Date: Fri, 17 Feb 2012 09:41:18 -0500
+Message-ID: <20120217144118.GB19606@thunk.org>
+References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
+ <20120216234233.GE26473@thunk.org>
+ <bdec95398caa767d4ee9c998e49dddda@rsmogura.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-mm@kvack.org, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: =?utf-8?B?UmFkb3PFgmF3?= Smogura <mail@smogura.eu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45269 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:35215 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab2BQOfw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Feb 2012 09:35:52 -0500
-In-Reply-To: <1329489163-21918-2-git-send-email-tytso@mit.edu>
+	id S1751180Ab2BQOlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 09:41:23 -0500
+Content-Disposition: inline
+In-Reply-To: <bdec95398caa767d4ee9c998e49dddda@rsmogura.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ftruncate64() exists, try to use it to set i_size.  This isn't
-guaranteed to work, per SuSv3, but if it doesn't work, it's guaranteed
-to return an error.  So for file systems and/or operating systems that
-don't support extending i_size via ftruncate64(), fall back to writing
-the trailing null.
+On Fri, Feb 17, 2012 at 03:12:44PM +0100, Rados=C5=82aw Smogura wrote:
+> On Thu, 16 Feb 2012 18:42:33 -0500, Ted Ts'o wrote:
+> >OK, stupid question... where are patches 1 through 10?  I'm guessing
+> >linux-ext4 wasn't cc'ed on them?
+> >
+> >					- Ted
+> Actually, I added those for --cc (checked in command history). I
+> think problems went from mail server, it first sent 10 first
+> patches, then no more, after 20 min I resented patches from 11, but
+> after few hours some "not sent" patches were sent (I putted self to
+> cc, so I know). Now, I see those at
+> http://www.spinics.net/lists/linux-ext4/.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
+Ok, so there's no difference between the patches sent yesterday with
+"WIP" in the subject line, and the ones which didn't?  It was just a
+resend, then, correct?
 
-Oops, sent the wrong version of the patch.  My bad.
-
- misc/e2image.c |   11 +++++++++++
- 1 files changed, 11 insertions(+), 0 deletions(-)
-
-diff --git a/misc/e2image.c b/misc/e2image.c
-index 3cb92fe..93359cf 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -510,8 +510,19 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
- 			}
- 		}
- 	}
-+#ifdef HAVE_FTRUNCATE64
-+	if (sparse) {
-+		ext2_loff_t offset = ext2fs_llseek(fd, sparse, SEEK_CUR);
-+
-+		if (offset < 0)
-+			lseek_error_and_exit(errno);
-+		if (ftruncate64(fd, offset) < 0)
-+			write_block(fd, zero_buf, -1, 1, -1);
-+	}
-+#else
- 	if (sparse)
- 		write_block(fd, zero_buf, sparse-1, 1, -1);
-+#endif
- 	ext2fs_free_mem(&zero_buf);
- 	ext2fs_free_mem(&buf);
- }
--- 
-1.7.9.107.g97f9a
-
+      	     	     	       	   	- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
