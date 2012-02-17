@@ -1,39 +1,51 @@
-From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
-Subject: Re: [WIP 11/18] Basic support (faulting) for huge pages for shmfs
-Date: Fri, 17 Feb 2012 15:12:44 +0100
-Message-ID: <bdec95398caa767d4ee9c998e49dddda@rsmogura.net>
-References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
- <20120216234233.GE26473@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
+Date: Fri, 17 Feb 2012 09:30:26 -0500
+Message-ID: <20120217143026.GA19606@thunk.org>
+References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com>
+ <20120216225810.GB26473@thunk.org>
+ <4F3D8D01.5040604@ubuntu.com>
+ <20120216233031.GD26473@thunk.org>
+ <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	<linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Phillip Susi <psusi@ubuntu.com>, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static-ip-217-118-26-141.inaddr.ip-pool.com ([217.118.26.141]:46961
-	"EHLO mail.softperience.eu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751784Ab2BQOMr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Feb 2012 09:12:47 -0500
-In-Reply-To: <20120216234233.GE26473@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55877 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751037Ab2BQOac (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 09:30:32 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 Feb 2012 18:42:33 -0500, Ted Ts'o wrote:
-> OK, stupid question... where are patches 1 through 10?  I'm guessing
-> linux-ext4 wasn't cc'ed on them?
->
-> 					- Ted
-Actually, I added those for --cc (checked in command history). I think 
-problems went from mail server, it first sent 10 first patches, then no 
-more, after 20 min I resented patches from 11, but after few hours some 
-"not sent" patches were sent (I putted self to cc, so I know). Now, I 
-see those at http://www.spinics.net/lists/linux-ext4/.
+On Fri, Feb 17, 2012 at 11:04:22AM +0100, Lukas Czerner wrote:
+> > lseek(5, 1048576, SEEK_CUR)             = 16105177088
+>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> So if blocks count ends right here^^, then the last write would not
+> happen, because sparse == 0. The reason is that we will seek when the
+> sparse >= 1024*1024 and then set sparse = 0
 
-Really sorry I haven't suppose of such behavior.
+Yes, there are two cases when sparse can get set to zero.  I was
+thinking of the other one; thanks for pointing that out.
 
-Regards,
-Radek
+> We can easily fix that by doing this instead:
+> 
+> if (sparse > 1024*1024) {
+> 	write_block(fd, 0, 1024*1024, 0, 0);
+> 	sparse -= 1024*1024;
+> }
 
+Yep, thanks for the suggestion; I like that.  I'll chain to this
+message the two patches that I've put together which I think should
+address this issue.  The first uses your suggestion so sparse never
+gets set to zero when we are still extending the hole.
+
+The second uses ftruncate64() if possible to set i_size (which saves
+allocating a block, which is cool when it works).
+
+What do folks think?
+
+	     	    	     	       	  - Ted
