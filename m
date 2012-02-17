@@ -1,96 +1,39 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
-Date: Fri, 17 Feb 2012 11:04:22 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
-References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com> <20120216225810.GB26473@thunk.org> <4F3D8D01.5040604@ubuntu.com> <20120216233031.GD26473@thunk.org>
+From: =?UTF-8?Q?Rados=C5=82aw_Smogura?= <mail@smogura.eu>
+Subject: Re: [WIP 11/18] Basic support (faulting) for huge pages for shmfs
+Date: Fri, 17 Feb 2012 15:12:44 +0100
+Message-ID: <bdec95398caa767d4ee9c998e49dddda@rsmogura.net>
+References: <1329403677-25629-1-git-send-email-mail@smogura.eu>
+ <20120216234233.GE26473@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Phillip Susi <psusi@ubuntu.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: <linux-mm@kvack.org>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	<linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28409 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752381Ab2BQKE2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Feb 2012 05:04:28 -0500
-In-Reply-To: <20120216233031.GD26473@thunk.org>
+Received: from static-ip-217-118-26-141.inaddr.ip-pool.com ([217.118.26.141]:46961
+	"EHLO mail.softperience.eu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751784Ab2BQOMr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 09:12:47 -0500
+In-Reply-To: <20120216234233.GE26473@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 16 Feb 2012, Ted Ts'o wrote:
+On Thu, 16 Feb 2012 18:42:33 -0500, Ted Ts'o wrote:
+> OK, stupid question... where are patches 1 through 10?  I'm guessing
+> linux-ext4 wasn't cc'ed on them?
+>
+> 					- Ted
+Actually, I added those for --cc (checked in command history). I think 
+problems went from mail server, it first sent 10 first patches, then no 
+more, after 20 min I resented patches from 11, but after few hours some 
+"not sent" patches were sent (I putted self to cc, so I know). Now, I 
+see those at http://www.spinics.net/lists/linux-ext4/.
 
-> On Thu, Feb 16, 2012 at 06:10:57PM -0500, Phillip Susi wrote:
-> > -----BEGIN PGP SIGNED MESSAGE-----
-> > Hash: SHA1
-> > 
-> > On 02/16/2012 05:58 PM, Ted Ts'o wrote:
-> > > I don't see the bug here.  If there are no leftover sparse bytes,
-> > > there's no need to write the last zero byte.  The whole point was to
-> > > make sure i_size was set correctly, and if sparse==0, then i_size is
-> > > correct.
-> > 
-> > - From what I can see, when sparse == 0, the last write does a seek
-> > to move the file pointer, but doesn't write anything beyond the last
-> > hole, so i_size is not updated.  This resulted in an image file I
-> > took of a 20gb fs being 124 MiB too small.  I can only assume that
-> > this is to be expected, and is the reason for passing one byte of
-> > zero_buff to write_block instead of not giving it any bytes to
-> > write, and just asking it to do the seek the way the loop does.
-> 
-> Sorry, I'm still not understanding what you're concerned about.  The
-> last write should seek to the end of the file system, and write a
-> single byte --- which would be past the last hole.  The goal is to
-> make sure the file system is large enough that e2fsck doesn't
-> complain about the file system image being apparently too small.
-> 
-> And in fact, it's doing the right thing:
-> 
-> tytso.root@tytso-glaptop.cam.corp.google.com> {/home/tytso}  
-> 2007# strace -o /tmp/foo /sbin/e2image -r /dev/funarg/library  /kbuild/test.img
-> e2image 1.42 (29-Nov-2011)
-> <tytso.root@tytso-glaptop.cam.corp.google.com> {/home/tytso}  
-> 2008# tail /tmp/foo
-> lseek(5, 1048576, SEEK_CUR)             = 16102031360
-> lseek(5, 1048576, SEEK_CUR)             = 16103079936
-> lseek(5, 1048576, SEEK_CUR)             = 16104128512
-> lseek(5, 1048576, SEEK_CUR)             = 16105177088
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-So if blocks count ends right here^^, then the last write would not
-happen, because sparse == 0. The reason is that we will seek when the
-sparse >= 1024*1024 and then set sparse = 0
+Really sorry I haven't suppose of such behavior.
 
-if (sparse >= 1024*1024) {
-	write_block(fd, 0, sparse, 0, 0);
-	sparse = 0;
-}
+Regards,
+Radek
 
-if the file system ends right after that point, then we will not write
-that one last byte.
-
-We can easily fix that by doing this instead:
-
-if (sparse > 1024*1024) {
-	write_block(fd, 0, 1024*1024, 0, 0);
-	sparse -= 1024*1024;
-}
-
-Thanks!
--Lukas
-
-> lseek(5, 950271, SEEK_CUR)              = 16106127359
-> write(5, "\0", 1)                       = 1           <=====
-> munmap(0x7f7b6dace000, 495616)          = 0
-> close(4)                                = 0
-> close(3)                                = 0
-> exit_group(0)                           = ?
-> 
-> I don't understand why you're saying that it's not writing anything
-> beyond the last hole, and why you're saying i_size is not being
-> updated.  It's working for me; I can run e2fsck on the generated
-> image, and it's not complaining that the file system is too small.
-> 
->        	   	    		     	 - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
