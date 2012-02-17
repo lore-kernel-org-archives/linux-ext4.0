@@ -1,51 +1,63 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] misc: Add fuse2fs, a FUSE server for e2fsprogs
-Date: Fri, 17 Feb 2012 10:18:40 -0500
-Message-ID: <20120217151840.GE19606@thunk.org>
-References: <20120107085523.4325.42183.stgit@elm3c44.beaverton.ibm.com>
- <20120107085534.4325.32519.stgit@elm3c44.beaverton.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/2] e2image: add -a switch to include all data
+Date: Fri, 17 Feb 2012 16:35:20 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1202171630130.5649@dhcp-27-109.brq.redhat.com>
+References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com> <1329428112-8911-2-git-send-email-psusi@ubuntu.com> <20120216231745.GC26473@thunk.org> <4F3D9CB3.4020704@ubuntu.com> <alpine.LFD.2.00.1202171006380.6479@dhcp-27-109.brq.redhat.com>
+ <20120217145025.GC19606@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Phillip Susi <psusi@ubuntu.com>, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39658 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751571Ab2BQPSp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Feb 2012 10:18:45 -0500
-Content-Disposition: inline
-In-Reply-To: <20120107085534.4325.32519.stgit@elm3c44.beaverton.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:51436 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752971Ab2BQPf1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 10:35:27 -0500
+In-Reply-To: <20120217145025.GC19606@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 07, 2012 at 12:55:35AM -0800, Darrick J. Wong wrote:
-> This is the initial implementation of a FUSE server based on e2fsprogs.  The
-> point of this program is to enable ext4 to run on any OS that FUSE supports
-> (and doesn't already have a native driver), such as MacOS X, BSDs, and Windows.
-> The code requires FUSE API v28, which is available in Linux fuse and osxfuse
-> releases that are available as of January 2012.
+On Fri, 17 Feb 2012, Ted Ts'o wrote:
+
+> On Fri, Feb 17, 2012 at 10:17:43AM +0100, Lukas Czerner wrote:
+> > 
+> > So the problem actually is that I have made some assumptions, like for
+> > example that all data are laid out sequentially (because it is how we
+> > are creating the qcow2 images with e2image) and possibly more. 
 > 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> So if your code doesn't work correctly if the block numbers are
+> monotonically increasing in the qcow2 image, I would *have* to assume
+> there would be plenty of qemu-generated images files that don't have
+> this constraint (i.e., suppose you write blocks 10000, 42, 16, and 24
+> while running under qemu, presumably that is the order the blocks
+> would be written and would show up in the qcow2 file).
+> 
+> Or am I misunderstanding what you are saying here; is it that you are
+> fairly sure the code will break if the data is not laid out
+> sequentially, or that you've never tested this case?
 
-So my system supports up to FUSE API v26 (this is an Ubuntu 10.04
-system; the same should be true for RHEL 5 and RHEL 6 as I understand
-things, since fuse 2.7 and 2.8 both stayed at the same API level).
-Nothing blew up when I built fuse2fs with this version of fuse, and
-when I mounted it, it (mostly) seemed to work --- except it corrupted
-some files randomly, and ultimately corrupted the file system itself.
+Hi Ted,
 
-I don't know yet whether this is due to the FUSE API mismatch, or some
-bugs in fuse2fs, but either way, this is scary, especially since all
-of the failures were silent until the data and file system corruption
-happened.
+as I said I have never tested this. Well, actually I did some very
+limited testing, but since this was not (and still is not right?) the
+scope of e2image I did not care enough to test that extensively enough
+to be sure that it generally works with qcow2 images other than those
+generated with e2image. But I think it should work.
 
-Do you know why the code requires FUSE API v28, and not FUSE API v26,
-and is there an explicit way (either at run time or at compile time)
-to determine if there is an API mismatch?
+Also I suppose that qemu is being a bit smarter than just writing every
+extent out so it does not seek madly back and forth when the image is
+not laid out sequentially. e2image does not do that.
 
-I'm going to hold off on including this patch for now, for the obvious
-reasons....
+Thanks!
+-Lukas
 
-Thanks,
-
-						- Ted
+> 
+> Regards,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
