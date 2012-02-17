@@ -1,44 +1,52 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH 1/2] e2image: truncate raw image file to correct size
-Date: Fri, 17 Feb 2012 09:31:42 -0500
-Message-ID: <4F3E64CE.6060504@ubuntu.com>
-References: <1329428112-8911-1-git-send-email-psusi@ubuntu.com> <20120216225810.GB26473@thunk.org> <4F3D8D01.5040604@ubuntu.com> <20120216233031.GD26473@thunk.org> <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/2] e2image: attempt to use ftruncate64 to set i_size for raw images
+Date: Fri, 17 Feb 2012 09:32:43 -0500
+Message-ID: <1329489163-21918-2-git-send-email-tytso@mit.edu>
+References: <20120217143026.GA19606@thunk.org>
+ <1329489163-21918-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:31965 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751037Ab2BQObo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Feb 2012 09:31:44 -0500
-In-Reply-To: <alpine.LFD.2.00.1202171054320.6479@dhcp-27-109.brq.redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:55879 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750814Ab2BQOcq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 09:32:46 -0500
+In-Reply-To: <1329489163-21918-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+If ftruncate64() exists, try to use it to set i_size.  This isn't
+guaranteed to work, per SuSv3, but if it doesn't work, it's guaranteed
+to return an error.  So for file systems and/or operating systems that
+don't support extending i_size via ftruncate64(), then fall back to
+writing the trailing null.
 
-On 2/17/2012 5:04 AM, Lukas Czerner wrote:
-> We can easily fix that by doing this instead:
-> 
-> if (sparse > 1024*1024) { write_block(fd, 0, 1024*1024, 0, 0); 
-> sparse -= 1024*1024; }
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/e2image.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
-That occurred to me last night while I slept.  I still would like to try
-to truncate instead of write the last zero though.  Patch coming up.
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 3cb92fe..90d69ec 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -510,6 +510,16 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
+ 			}
+ 		}
+ 	}
++#ifdef HAVE_FTRUNCATE64
++	if (sparse) {
++		ext2_loff_t offset = ext2fs_llseek(fd, sparse, SEEK_CUR);
++
++		if (offset > 0 &&
++		    ftruncate64(fd, offset) < 0)
++			write_block(fd, zero_buf, -1, 1, -1);
++		sparse = 0;
++	}
++#endif
+ 	if (sparse)
+ 		write_block(fd, zero_buf, sparse-1, 1, -1);
+ 	ext2fs_free_mem(&zero_buf);
+-- 
+1.7.9.107.g97f9a
 
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iQEcBAEBAgAGBQJPPmTOAAoJEJrBOlT6nu75TekH/RAG5FgOHsUU0uMFG3v9Z1av
-sw/KTmaLpnFGOkQDBYzgZ8+1StfhVdZOUpjNduNWots5cv5+9YoMwyBaLgw51YPN
-1HIi5UucRiW5KT8j+FShbHbv4SBtU/PaMvqxangNETttT+MMbPj288QSldEYv1Zf
-E/0ZPnYxmtd55vs0tee+q0XdSJNLBpMV64nOVIMDPXwOYbjZr+nhAv8LrRGvIk5a
-2kduQ2zbN47CjPSod8PjlHIq3MQ+SqYgI9/7aHye9a/K3sGMVMAekacs7vCQquFe
-lLx593a6F32p6f2ee+3uqleftzUzxRsDAE3Myollq0STLsfdm9+P+5fdfp8iLEs=
-=BYbM
------END PGP SIGNATURE-----
