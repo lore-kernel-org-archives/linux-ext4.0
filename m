@@ -1,73 +1,78 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] e2fsprogs: fix data lost with mke2fs -S
-Date: Thu, 16 Feb 2012 23:20:38 -0500
-Message-ID: <20120217042038.GA9319@thunk.org>
-References: <4EF2EA9E.9080500@rs.jp.nec.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [Bug 42763] directory access hangs without error
+Date: Fri, 17 Feb 2012 16:33:24 +1100
+Message-ID: <20120217053324.GJ14132@dastard>
+References: <bug-42763-13602@https.bugzilla.kernel.org/>
+ <201202131830.q1DIUSQv024633@bugzilla.kernel.org>
+ <20120214142231.GF1934@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Dave Chinner <dchinner@redhat.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57025 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229Ab2BQEUl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Feb 2012 23:20:41 -0500
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:26608 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751334Ab2BQFdm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Feb 2012 00:33:42 -0500
 Content-Disposition: inline
-In-Reply-To: <4EF2EA9E.9080500@rs.jp.nec.com>
+In-Reply-To: <20120214142231.GF1934@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 22, 2011 at 05:30:22PM +0900, Akira Fujita wrote:
-> If we run the mke2fs with the -S option and the uninit_bg feature
-> simultaneously, the mke2fs marks blockgroups as uninitialized.
-> The e2fsck which run immediately after the mke2fs
-> removes all of the files.
+On Tue, Feb 14, 2012 at 03:22:31PM +0100, Jan Kara wrote:
+> On Mon 13-02-12 18:30:28, bugzilla-daemon@bugzilla.kernel.org wrote:
+> > https://bugzilla.kernel.org/show_bug.cgi?id=42763
+> > --- Comment #6 from Eric Buddington <ebuddington@wesleyan.edu>  2012-02-13 18:30:27 ---
+> > The stuck threads look like this:
+> > 
+> > edu             D c023a2f4     0  9912      1 0x00000004
+> > f50b2b80 00000086 00000000 c023a2f4 f7b2b400 d5350000 c09f6d80 00000000
+> > c09f6d80 c1c5f500 0000000a c33dbee0 c023f172 00000000 d53515cc c33dbee0
+> > 000015cc d5352000 c8c4b4a4 c33dbee0 c1c5f500 f0e05dac c01558a1 00000246
+> > Call Trace:
+> > [<c023a2f4>] ? ext4_getblk+0x8b/0x13d
+> > [<c023f172>] ? search_dirblock+0x76/0xaf
+> > [<c01558a1>] ? arch_local_irq_save+0xf/0x14
+> > [<c0651740>] ? _raw_spin_lock_irqsave+0x8/0x2c
+> > [<c01c2cc3>] ? inode_wait+0x5/0x8
+> > [<c0650c36>] ? __wait_on_bit+0x2f/0x54
+> > [<c01c2cbe>] ? inode_owner_or_capable+0x30/0x30
+> > [<c0650cba>] ? out_of_line_wait_on_bit+0x5f/0x67
+> > [<c01c2cbe>] ? inode_owner_or_capable+0x30/0x30
+> > [<c014532b>] ? autoremove_wake_function+0x2f/0x2f
+> > [<c01c3610>] ? wait_on_bit.constprop.13+0x22/0x25
+> > [<c01c3c8b>] ? iget_locked+0x42/0xc5
+> > [<c023aad8>] ? ext4_iget+0x24/0x5be
+>   ...
+>   Interesting. So this isn't ext4 related at all. Rather it's a generic bug
+> in VFS's I_NEW handling introduced by 250df6ed (adding Dave and Al to CC).
+> That commit removed wake_up_inode() (in particular a memory barrier before
+> wake_up_bit()) on the basis that i_state transitions are protected by
+> i_lock. That would be fine if all the readers of i_state were using i_lock
+> as well.
+
+Hmmmm. I guess I missed that one.
+
+> But they don't - in particular wait_on_inode() from
+> include/linux/writeback.h does not. So that commit opened a reordering
+> possibility where __I_NEW can be cleared *after* wake_up_bit() in
+> unlock_new_inode() happens and so wait_on_bit() in wait_on_inode() goes
+> to sleep indefinitely.
 > 
-> To avoid this, the patch prohibits user from
-> setting the -S option and the uninit_bg feature simultaneously.
+> It seems to me the intent was that wait_on_inode() should use i_lock as
+> well so it would opencode bit waiting similarly to
+> __wait_on_freeing_inode().
 
-This is not the best fix.  The best fix is to clear the itable_unused
-fields in the block group descriptors if mke2fs -S is set.  See below
-for what I have in my tree.
+Yeah, more like inode_wait_for_writeback() rather than
+__wait_on_freeing_inode(), though, as we should loop until the bit
+is cleared.
 
-					- Ted
+Cheers,
 
-commit 9b6a158524fe82202bef6d0d8a101b47e6c02b64
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Feb 16 23:16:34 2012 -0500
-
-    mke2fs: allow file systems w/ uninit_bg to be recovered with mke2fs -S
-    
-    The command mke2fs -S is used as a last ditch recovery command to
-    write new superblock and block group descriptors, but _not_ to destroy
-    the inode table in hopes of recovering from a badly corrupted file
-    system.  If the uninit_bg feature is enabled, we need to make sure to
-    clear the unused inodes count field in the block group descriptors or
-    else e2fsck -fy will leave the file system completely empty.
-    
-    Thanks to Akira Fujita for reporting this problem.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 08789c4..c70c1b4 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2434,6 +2434,17 @@ int main (int argc, char *argv[])
- 	if (super_only) {
- 		fs->super->s_state |= EXT2_ERROR_FS;
- 		fs->flags &= ~(EXT2_FLAG_IB_DIRTY|EXT2_FLAG_BB_DIRTY);
-+		/* 
-+		 * The command "mke2fs -S" is used to recover
-+		 * corrupted file systems, so do not mark any of the
-+		 * inodes as unused; we want e2fsck to consider all
-+		 * inodes as potentially containing recoverable data.
-+		 */
-+		if (fs->super->s_feature_ro_compat &
-+		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
-+			for (i = 1; i < fs->group_desc_count; i++)
-+				ext2fs_bg_itable_unused_set(fs, i, 0);
-+		}
- 	} else {
- 		/* rsv must be a power of two (64kB is MD RAID sb alignment) */
- 		blk64_t rsv = 65536 / fs->blocksize;
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
