@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 17/22] ext4: let empty_dir handle inline dir.
-Date: Mon, 20 Feb 2012 15:01:51 +0800
-Message-ID: <1329721316-4955-17-git-send-email-tm@tao.ma>
+Subject: [PATCH V4 22/22] ext4: Enable ext4 inline support.
+Date: Mon, 20 Feb 2012 15:01:56 +0800
+Message-ID: <1329721316-4955-22-git-send-email-tm@tao.ma>
 References: <4F41EF95.2000909@tao.ma>
  <1329721316-4955-1-git-send-email-tm@tao.ma>
 Cc: linux-fsdevel@vger.kernel.org
@@ -13,139 +13,41 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-empty_dir is used when deleting a dir. So it should handle
-inline dir properly.
-
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inline.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/namei.c  |    8 ++++++
- fs/ext4/xattr.h  |    6 ++++
- 3 files changed, 83 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h   |    3 ++-
+ fs/ext4/ialloc.c |    4 ++++
+ 2 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 3126ac3..6612ce1 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1436,6 +1436,75 @@ out:
- 	return err;
- }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 26024a3..9486cce 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1452,7 +1452,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
+-					 EXT4_FEATURE_INCOMPAT_MMP)
++					 EXT4_FEATURE_INCOMPAT_MMP |	\
++					 EXT4_FEATURE_INCOMPAT_INLINEDATA)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 25d8c97..2401934 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -901,6 +901,10 @@ got:
  
-+int empty_inline_dir(struct inode *dir, int *has_inline_data)
-+{
-+	int err, inline_size;
-+	struct ext4_iloc iloc;
-+	void *inline_pos;
-+	unsigned int offset;
-+	struct ext4_dir_entry_2 *de, *de1;
-+	int ret = 1;
-+
-+	err = ext4_get_inode_loc(dir, &iloc);
-+	if (err) {
-+		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
-+				 err, dir->i_ino);
-+		return 1;
-+	}
-+
-+	down_read(&EXT4_I(dir)->xattr_sem);
-+	if (!ext4_has_inline_data(dir)) {
-+		*has_inline_data = 0;
-+		goto out;
-+	}
-+
-+	de = ext4_get_inline_entry(dir, &iloc, 0,
-+				   &inline_pos, &inline_size);
-+	de1 = ext4_get_inline_entry(dir, &iloc,
-+			ext4_rec_len_from_disk(de->rec_len, inline_size),
-+			&inline_pos, &inline_size);
-+	if (le32_to_cpu(de->inode) != dir->i_ino ||
-+			!le32_to_cpu(de1->inode) ||
-+			strcmp(".", de->name) ||
-+			strcmp("..", de1->name)) {
-+		ext4_warning(dir->i_sb,
-+			     "bad directory (dir #%lu) - no `.' or `..'",
-+			     dir->i_ino);
-+		ret = 1;
-+		goto out;
-+	}
-+
-+	offset = ext4_rec_len_from_disk(de->rec_len, inline_size) +
-+		 ext4_rec_len_from_disk(de1->rec_len, inline_size);
-+	while (offset < dir->i_size) {
-+		de = ext4_get_inline_entry(dir, &iloc, offset,
-+					   &inline_pos, &inline_size);
-+		if (ext4_check_dir_entry(dir, NULL, de,
-+					 iloc.bh, inline_pos,
-+					 inline_size, offset)) {
-+			ext4_warning(dir->i_sb,
-+				     "bad inline directory (dir #%lu) - "
-+				     "inode %u, rec_len %u, name_len %d"
-+				     "inline size %d\n",
-+				     dir->i_ino, le32_to_cpu(de->inode),
-+				     le16_to_cpu(de->rec_len), de->name_len,
-+				     inline_size);
-+			ret = 1;
-+			goto out;
-+		}
-+		if (le32_to_cpu(de->inode)) {
-+			ret = 0;
-+			goto out;
-+		}
-+		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
-+	}
-+
-+out:
-+	up_read(&EXT4_I(dir)->xattr_sem);
-+	brelse(iloc.bh);
-+	return ret;
-+}
-+
- int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- {
- 	int ret;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 9f7002c..b6b718e 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2015,6 +2015,14 @@ static int empty_dir(struct inode *inode)
- 	struct super_block *sb;
- 	int err = 0;
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
  
-+	if (ext4_has_inline_data(inode)) {
-+		int has_inline_data = 1;
++	ei->i_inline_off = 0;
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_INLINEDATA))
++		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
 +
-+		err = empty_inline_dir(inode, &has_inline_data);
-+		if (has_inline_data)
-+			return err;
-+	}
-+
- 	sb = inode->i_sb;
- 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
- 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 9991143..6ccfa8d 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -176,6 +176,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
- 				    struct inode *dir,
- 				    struct ext4_dir_entry_2 *de_del,
- 				    struct buffer_head *bh);
-+extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
-@@ -373,6 +374,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
- {
- 	return 0;
- }
-+
-+static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
-+{
-+	return 0;
-+}
- # endif  /* CONFIG_EXT4_FS_XATTR */
- 
- #ifdef CONFIG_EXT4_FS_SECURITY
+ 	ret = inode;
+ 	dquot_initialize(inode);
+ 	err = dquot_alloc_inode(inode);
 -- 
 1.7.0.4
 
