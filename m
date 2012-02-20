@@ -1,65 +1,165 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: 16 TB filesystem limit on 32bit machine
-Date: Mon, 20 Feb 2012 16:50:49 -0600
-Message-ID: <4F42CE49.80209@redhat.com>
-References: <CAJZuRVZ5BC+oJA_4HqdwnJvME8XuDeCWWt_6pugOuBFjp8v_SQ@mail.gmail.com> <4F4279F1.8060805@redhat.com> <4F42B86B.60706@ubuntu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Rabeeh Khoury <rabeeh3000@gmail.com>, linux-ext4@vger.kernel.org
-To: Phillip Susi <psusi@ubuntu.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: remove EXT4_MB_{BITMAP,BUDDY} macros
+Date: Mon, 20 Feb 2012 17:58:19 -0500
+Message-ID: <1329778699-1839-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51774 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752268Ab2BTWux (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 17:50:53 -0500
-In-Reply-To: <4F42B86B.60706@ubuntu.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38917 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752084Ab2BTW6W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Feb 2012 17:58:22 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+The EXT4_MB_BITMAP and EXT4_MB_BUDDY macros obfuscate more than they
+provide any abstraction.   So remove them.
 
-On 2/20/12 3:17 PM, Phillip Susi wrote:
-> On 2/20/2012 11:50 AM, Eric Sandeen wrote:
->> fs metadata is mapped into an address space, IIRC, so can't be
->> addressed past 2^32 pages.  Also, mkfs can't do buffered IO to the
->> device past 16T (it is writing to a device _file_) and ditto for
->> e2fsck.
-> 
-> But the file is only used for open(), after that the IO is handled by
-> the correct device driver, which handles 64 bit offsets ( when you
-> have CONFIG_LBDAF on ).  So if you can change the page cache index
-> size ( and it doesn't blow up ) this should work fine.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |   32 ++++++++++++++++----------------
+ fs/ext4/mballoc.h |    2 --
+ 2 files changed, 16 insertions(+), 18 deletions(-)
 
-Oh, sure - if you change pgoff_t to 64 bits, but until then, you
-can't even mkfs.ext4 a device larger than 16T; there is nowhere
-for that buffered IO to go in the page cache, right?
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8e01214..7e6fab9 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -427,7 +427,7 @@ static void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
+ {
+ 	char *bb;
+ 
+-	BUG_ON(EXT4_MB_BITMAP(e4b) == EXT4_MB_BUDDY(e4b));
++	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+ 	BUG_ON(max == NULL);
+ 
+ 	if (order > e4b->bd_blkbits + 1) {
+@@ -438,10 +438,10 @@ static void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
+ 	/* at order 0 we see each particular block */
+ 	if (order == 0) {
+ 		*max = 1 << (e4b->bd_blkbits + 3);
+-		return EXT4_MB_BITMAP(e4b);
++		return e4b->bd_bitmap;
+ 	}
+ 
+-	bb = EXT4_MB_BUDDY(e4b) + EXT4_SB(e4b->bd_sb)->s_mb_offsets[order];
++	bb = e4b->bd_buddy + EXT4_SB(e4b->bd_sb)->s_mb_offsets[order];
+ 	*max = EXT4_SB(e4b->bd_sb)->s_mb_maxs[order];
+ 
+ 	return bb;
+@@ -590,7 +590,7 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
+ 			for (j = 0; j < (1 << order); j++) {
+ 				k = (i * (1 << order)) + j;
+ 				MB_CHECK_ASSERT(
+-					!mb_test_bit(k, EXT4_MB_BITMAP(e4b)));
++					!mb_test_bit(k, e4b->bd_bitmap));
+ 			}
+ 			count++;
+ 		}
+@@ -1203,10 +1203,10 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
+ 	int order = 1;
+ 	void *bb;
+ 
+-	BUG_ON(EXT4_MB_BITMAP(e4b) == EXT4_MB_BUDDY(e4b));
++	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+ 	BUG_ON(block >= (1 << (e4b->bd_blkbits + 3)));
+ 
+-	bb = EXT4_MB_BUDDY(e4b);
++	bb = e4b->bd_buddy;
+ 	while (order <= e4b->bd_blkbits + 1) {
+ 		block = block >> 1;
+ 		if (!mb_test_bit(block, bb)) {
+@@ -1276,9 +1276,9 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 
+ 	/* let's maintain fragments counter */
+ 	if (first != 0)
+-		block = !mb_test_bit(first - 1, EXT4_MB_BITMAP(e4b));
++		block = !mb_test_bit(first - 1, e4b->bd_bitmap);
+ 	if (first + count < EXT4_SB(sb)->s_mb_maxs[0])
+-		max = !mb_test_bit(first + count, EXT4_MB_BITMAP(e4b));
++		max = !mb_test_bit(first + count, e4b->bd_bitmap);
+ 	if (block && max)
+ 		e4b->bd_info->bb_fragments--;
+ 	else if (!block && !max)
+@@ -1289,7 +1289,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 		block = first++;
+ 		order = 0;
+ 
+-		if (!mb_test_bit(block, EXT4_MB_BITMAP(e4b))) {
++		if (!mb_test_bit(block, e4b->bd_bitmap)) {
+ 			ext4_fsblk_t blocknr;
+ 
+ 			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+@@ -1300,7 +1300,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 					      "freeing already freed block "
+ 					      "(bit %u)", block);
+ 		}
+-		mb_clear_bit(block, EXT4_MB_BITMAP(e4b));
++		mb_clear_bit(block, e4b->bd_bitmap);
+ 		e4b->bd_info->bb_counters[order]++;
+ 
+ 		/* start of the buddy */
+@@ -1382,7 +1382,7 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
+ 			break;
+ 
+ 		next = (block + 1) * (1 << order);
+-		if (mb_test_bit(next, EXT4_MB_BITMAP(e4b)))
++		if (mb_test_bit(next, e4b->bd_bitmap))
+ 			break;
+ 
+ 		order = mb_find_order_for_block(e4b, next);
+@@ -1419,9 +1419,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+ 
+ 	/* let's maintain fragments counter */
+ 	if (start != 0)
+-		mlen = !mb_test_bit(start - 1, EXT4_MB_BITMAP(e4b));
++		mlen = !mb_test_bit(start - 1, e4b->bd_bitmap);
+ 	if (start + len < EXT4_SB(e4b->bd_sb)->s_mb_maxs[0])
+-		max = !mb_test_bit(start + len, EXT4_MB_BITMAP(e4b));
++		max = !mb_test_bit(start + len, e4b->bd_bitmap);
+ 	if (mlen && max)
+ 		e4b->bd_info->bb_fragments++;
+ 	else if (!mlen && !max)
+@@ -1464,7 +1464,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+ 	}
+ 	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
+ 
+-	ext4_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
++	ext4_set_bits(e4b->bd_bitmap, ex->fe_start, len0);
+ 	mb_check_buddy(e4b);
+ 
+ 	return ret;
+@@ -1763,7 +1763,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 					struct ext4_buddy *e4b)
+ {
+ 	struct super_block *sb = ac->ac_sb;
+-	void *bitmap = EXT4_MB_BITMAP(e4b);
++	void *bitmap = e4b->bd_bitmap;
+ 	struct ext4_free_extent ex;
+ 	int i;
+ 	int free;
+@@ -1823,7 +1823,7 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+ {
+ 	struct super_block *sb = ac->ac_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	void *bitmap = EXT4_MB_BITMAP(e4b);
++	void *bitmap = e4b->bd_bitmap;
+ 	struct ext4_free_extent ex;
+ 	ext4_fsblk_t first_group_block;
+ 	ext4_fsblk_t a;
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 7128f46..c070618 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -212,8 +212,6 @@ struct ext4_buddy {
+ 	__u16 bd_blkbits;
+ 	ext4_group_t bd_group;
+ };
+-#define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+-#define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+ 
+ static inline ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
+ 					struct ext4_free_extent *fex)
+-- 
+1.7.9.107.g97f9a
 
-(You could mkfs.ext4 a 16T partition on a 40T lun today, thanks
-to LBDAF, but not a 17T without changing pgoff_t et al)
-
-And "if you change the page cache index size" that's a big leap
-of faith, today.  Might be interesting work to do, but I'd bet
-it's a real chunk of work.
-
-- -Eric
------BEGIN PGP SIGNATURE-----
-Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
-Comment: GPGTools - http://gpgtools.org
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iQIcBAEBAgAGBQJPQs5IAAoJECCuFpLhPd7gFGcP/REp9fxQJEXP/JoV8ixcdPmi
-Grs15shrEuaJDTnz120wOVS+HSyYU7EczdC1uL6dHFtxqSm/gpdRka5zabz2L46l
-RWcPjEofLjR45PWJaGzkWQrmrL9tyJdgP83idUUPl9AlGLbK4jgpzgs9OB0tf639
-7lf/a711cZT1G7fLg02ZHb88TGE5BltEQHtX1nk1k4srLgjFKRCi5Am+auXgu1ta
-W0Q3a+oxPlkOiVcr499xmInsAhPHBuErtd7B/S7ViP7Cz+Bhbv25xcM77jwRHmtp
-9kwkt2ntQ4v9dccmlqpIMElqQJQGKU1li2ySzmJTUbS8jzmBXG/kXtUEr1y50tNc
-tm6kIPkMX0RkXRIOfri2jq4LBV0Nl1uGIqUEbUvtJDMh9s4tBtlKV0ZWJi9foIaW
-OqMAiEhvgb5tpMZG9gjfCSxnMelUAMC9LrygRG04O26Q9vQMEDD57Ee77MOTOZId
-1g01fxZzcmd+UXlfDWmHtgSjotSMyp6pV0lWro82qe1pKo7HwwCjIA2KeHu9owTa
-zmzvzbopd0OoUUmXzqAx2kBdxhhNqoqB2AQXfDf8tmyckA8YY4KMgJhKjFSfMc54
-ZDzvWuJI11WoBsia9LlAbcFq0Dchd64Mq6As/By9N6QBWV0LdhkikSTFGTzKL4D2
-FrAh6QhIiRhkaGiEI5XG
-=2bla
------END PGP SIGNATURE-----
