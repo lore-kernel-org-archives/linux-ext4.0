@@ -1,270 +1,44 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 20/22] ext4: Evict inline data out if we needs to strore xattr in inode.
-Date: Mon, 20 Feb 2012 15:01:54 +0800
-Message-ID: <1329721316-4955-20-git-send-email-tm@tao.ma>
-References: <4F41EF95.2000909@tao.ma>
- <1329721316-4955-1-git-send-email-tm@tao.ma>
-Cc: linux-fsdevel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
+From: "Western Union Outlet" <westernunion@wu.com>
+Subject: Transfer Notice!!
+Date: Mon, 20 Feb 2012 09:36:22 +0100
+Message-ID: <20120220083657.813025DE5467@mail.kpoly.edu.gh>
+Reply-To: westernunionpaycenter@fastservice.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <westernunion@wu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:34742 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751735Ab2BTHI7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 02:08:59 -0500
-In-Reply-To: <1329721316-4955-1-git-send-email-tm@tao.ma>
+Received: from 41-204-38-3-dedicated.4u.com.gh ([41.204.38.3]:60179 "EHLO
+	mail.kpoly.edu.gh" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752176Ab2BTKCu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 05:02:50 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+Dear Beneficiary.
 
-Now we stores data in the inode, but in case we need to store some
-xattrs and inode doesn't have enough space, Andreas suggested that
-we should keep the xattr(metadata) in and data should be pushed out.
-So this patch does the work.
+We write to inform you that we have transferred USD$400,000.00 dollars, I could have called you via phone to give you the MTCN information but we lost your contact phone number. So, I decided to email you the information so that you can start cashing your money in USD5000.00 daily installment with the same MTCN and sender's name which will be valid for 20 days until you cash the full $400,000.00usd as it automatically activates for use for 20 days after the first reactivation.
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/inline.c |   94 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/xattr.c  |   52 ++++++++++++++++++++++++++++--
- fs/ext4/xattr.h  |    9 +++--
- 3 files changed, 145 insertions(+), 10 deletions(-)
+The money is available for pick up which was deposited for transfer to you by MR Bernard Harry from United Nation Trust Funds.  The money is available for pick up by receiver (you) but when you track it, it will display PICKED UP due to the fact that it has been deactivated from our head office for security reason because it has stayed too long in the air as we have been trying to reach you on the phone for some days now but it was not reachable,so it was blocked.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 3a65e64..b8576be 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -197,7 +197,7 @@ out:
- /*
-  * write the buffer to the inline inode.
-  * If 'create' is set, we don't need to do the extra copy in the xattr
-- * value since it is already handled by ext4_xattr_ibody_set. That saves
-+ * value since it is already handled by ext4_xattr_ibody_inline_set. That saves
-  * us one memcpy.
-  */
- void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
-@@ -275,7 +275,7 @@ static int ext4_create_inline_data(handle_t *handle,
- 
- 	BUG_ON(!is.s.not_found);
- 
--	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
-+	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
- 	if (error) {
- 		if (error == -ENOSPC)
- 			ext4_clear_inode_state(inode,
-@@ -344,7 +344,7 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,
- 	i.value = value;
- 	i.value_len = len;
- 
--	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
-+	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
- 	if (error)
- 		goto out;
- 
-@@ -416,7 +416,7 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle, struct inode *inode
- 	if (error)
- 		goto out;
- 
--	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
-+	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
- 	if (error)
- 		goto out;
- 
-@@ -1565,3 +1565,89 @@ out:
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	return (error < 0 ? error : 0);
- }
-+
-+/*
-+ * Called during xattr set, and if we can sparse space 'needed',
-+ * just create the extent tree evict the data to the outer block.
-+ *
-+ * We use jbd2 instead of page cache to move data to the 1st block
-+ * so that the whole transaction can be committed as a whole and
-+ * the data isn't lost because of the delayed page cache write.
-+ */
-+int ext4_try_to_evict_inline_data(handle_t *handle,
-+				  struct inode *inode,
-+				  int needed)
-+{
-+	int error;
-+	struct ext4_xattr_entry *entry;
-+	struct ext4_xattr_ibody_header *header;
-+	struct ext4_inode *raw_inode;
-+	struct ext4_iloc iloc;
-+	void *buf = NULL;
-+	struct buffer_head *data_bh = NULL;
-+	struct ext4_map_blocks map;
-+
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
-+		return error;
-+
-+	raw_inode = ext4_raw_inode(&iloc);
-+	header = IHDR(inode, raw_inode);
-+	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
-+					    EXT4_I(inode)->i_inline_off);
-+	if (EXT4_XATTR_LEN(entry->e_name_len) +
-+	    EXT4_XATTR_SIZE(le32_to_cpu(entry->e_value_size)) < needed) {
-+		error = -ENOSPC;
-+		goto out;
-+	}
-+
-+	buf = kmalloc(ext4_get_inline_size(inode), GFP_NOFS);
-+	if (!buf) {
-+		error = -ENOMEM;
-+		goto out;
-+	}
-+
-+	error = ext4_read_inline_data(inode, buf,
-+				      ext4_get_inline_size(inode), &iloc);
-+	if (error < 0)
-+		goto out;
-+
-+	error = ext4_destroy_inline_data_nolock(handle, inode);
-+	if (error)
-+		goto out;
-+
-+	map.m_lblk = 0;
-+	map.m_len = 1;
-+	map.m_flags = 0;
-+	error = ext4_map_blocks(handle, inode, &map, EXT4_GET_BLOCKS_CREATE);
-+	if (error < 0)
-+		goto out;
-+	if (!(map.m_flags & EXT4_MAP_MAPPED)) {
-+		error = -EIO;
-+		goto out;
-+	}
-+
-+	data_bh = sb_getblk(inode->i_sb, map.m_pblk);
-+	if (!data_bh) {
-+		error = -EIO;
-+		goto out;
-+	}
-+
-+	lock_buffer(data_bh);
-+	error = ext4_journal_get_create_access(handle, data_bh);
-+	if (error) {
-+		unlock_buffer(data_bh);
-+		error = -EIO;
-+		goto out;
-+	}
-+	memcpy(data_bh->b_data, buf, data_bh->b_size);
-+	set_buffer_uptodate(data_bh);
-+	unlock_buffer(data_bh);
-+	error = ext4_handle_dirty_metadata(handle,
-+					   inode, data_bh);
-+out:
-+	brelse(data_bh);
-+	kfree(buf);
-+	brelse(iloc.bh);
-+	return error;
-+}
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 71ef45e..a296ee1 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -899,6 +899,30 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	return 0;
- }
- 
-+int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
-+				struct ext4_xattr_info *i,
-+				struct ext4_xattr_ibody_find *is)
-+{
-+	struct ext4_xattr_ibody_header *header;
-+	struct ext4_xattr_search *s = &is->s;
-+	int error;
-+
-+	if (EXT4_I(inode)->i_extra_isize == 0)
-+		return -ENOSPC;
-+	error = ext4_xattr_set_entry(i, s);
-+	if (error)
-+		return error;
-+	header = IHDR(inode, ext4_raw_inode(&is->iloc));
-+	if (!IS_LAST_ENTRY(s->first)) {
-+		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
-+		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
-+	} else {
-+		header->h_magic = cpu_to_le32(0);
-+		ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
-+	}
-+	return 0;
-+}
-+
- int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 			 struct ext4_xattr_info *i,
- 			 struct ext4_xattr_ibody_find *is)
-@@ -910,8 +934,22 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 	if (EXT4_I(inode)->i_extra_isize == 0)
- 		return -ENOSPC;
- 	error = ext4_xattr_set_entry(i, s);
--	if (error)
--		return error;
-+	if (error) {
-+		if (error == -ENOSPC &&
-+		    ext4_has_inline_data(inode)) {
-+			error = ext4_try_to_evict_inline_data(handle, inode,
-+					EXT4_XATTR_LEN(strlen(i->name) +
-+					EXT4_XATTR_SIZE(i->value_len)));
-+			if (error)
-+				return error;
-+			error = ext4_xattr_ibody_find(inode, i, is);
-+			if (error)
-+				return error;
-+			error = ext4_xattr_set_entry(i, s);
-+		}
-+		if (error)
-+			return error;
-+	}
- 	header = IHDR(inode, ext4_raw_inode(&is->iloc));
- 	if (!IS_LAST_ENTRY(s->first)) {
- 		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
-@@ -1057,9 +1095,17 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- {
- 	handle_t *handle;
- 	int error, retries = 0;
-+	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
- 
- retry:
--	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
-+	/*
-+	 * In case of inline data, we may push out the data to a block,
-+	 * So reserve the journal space first.
-+	 */
-+	if (ext4_has_inline_data(inode))
-+		credits += ext4_writepage_trans_blocks(inode) + 1;
-+
-+	handle = ext4_journal_start(inode, credits);
- 	if (IS_ERR(handle)) {
- 		error = PTR_ERR(handle);
- 	} else {
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index e80a212..d74df33 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -117,9 +117,9 @@ extern const struct xattr_handler *ext4_xattr_handlers[];
- 
- extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 				 struct ext4_xattr_ibody_find *is);
--extern int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
--			        struct ext4_xattr_info *i,
--			        struct ext4_xattr_ibody_find *is);
-+extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
-+			 	       struct ext4_xattr_info *i,
-+				       struct ext4_xattr_ibody_find *is);
- extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
- 				const char *name,
- 				void *buffer, size_t buffer_size);
-@@ -184,6 +184,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
- extern int ext4_inline_data_fiemap(struct inode *inode,
- 				   struct fiemap_extent_info *fieinfo,
- 				   int *has_inline);
-+extern int ext4_try_to_evict_inline_data(handle_t *handle,
-+					 struct inode *inode,
-+					 int needed);
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
--- 
-1.7.0.4
+Therefore you can not cash it out in any western union office due to its restriction from our head office,which was a security measure because the money has been in the air for three days now and maybe in danger, hence the mtcn has to be reactivated to enable you cash out the money in any western union office in your area, the reactivation of the MTCN will cost you a token of $155, once this is paid, our head office will release the fund on hold to enable you cash it.To be sure of this please log on to www.westernunion.com and click on track to and enter the sender's info and mtcn below.
 
+Sender's Fist name: Abraham
+Sender's Last Name: Elizabeth
+MTCN: 5801913322
+Question: Who Is Great
+Answer: God
+Amount: $5000.00USD
+Total Amount To be Cashed: $400,000.00Usd
+
+Please also send to us the following details..
+1,Re-Comfirm Your Contact Phone Number.................
+
+With due respect please get back to me urgently after tracking the money on-line so i can instruct you on how to send the $155 to us for the reactivation of the MTCN.
+
+
+Best Regards
+Mr.Smith Mcferrin.
+Outlet Manager,
+Western Union Money Transfer.
