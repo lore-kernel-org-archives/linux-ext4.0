@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 10/22] ext4: Create __ext4_insert_dentry for dir entry insertion.
-Date: Mon, 20 Feb 2012 15:01:44 +0800
-Message-ID: <1329721316-4955-10-git-send-email-tm@tao.ma>
+Subject: [PATCH V4 15/22] ext4: make ext4_delete_entry generic.
+Date: Mon, 20 Feb 2012 15:01:49 +0800
+Message-ID: <1329721316-4955-15-git-send-email-tm@tao.ma>
 References: <4F41EF95.2000909@tao.ma>
  <1329721316-4955-1-git-send-email-tm@tao.ma>
 Cc: linux-fsdevel@vger.kernel.org
@@ -13,191 +13,132 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-The old add_dirent_to_buf handles all the work related to the
-work of adding dir entry to a dir block. Now we have inline data,
-so create 2 new function __ext4_find_dest_de and __ext4_insert_dentry
-that do the real work and let add_dirent_to_buf call them.
+Currently ext4_delete_entry is used only for dir entry
+removing from a dir block. So let us create a new function
+ext4_generic_delete_entry and this function takes a entry_buf
+and a buf_size so that it can be used for inline data.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h  |   15 +++++++
- fs/ext4/namei.c |  111 +++++++++++++++++++++++++++++++++---------------------
- 2 files changed, 83 insertions(+), 43 deletions(-)
+ fs/ext4/ext4.h  |    6 +++++
+ fs/ext4/namei.c |   62 ++++++++++++++++++++++++++++++++++++------------------
+ 2 files changed, 47 insertions(+), 21 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8d27406..5fa4739 100644
+index c8dc24e..26024a3 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1828,6 +1828,21 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
-+extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+			     struct buffer_head *bh,
-+			     void *buf, int buf_size,
-+			     const char *name, int namelen,
-+			     struct ext4_dir_entry_2 **dest_de);
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen);
-+static inline void ext4_update_dx_flag(struct inode *inode)
-+{
-+	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
-+				     EXT4_FEATURE_COMPAT_DIR_INDEX))
-+		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
-+}
+@@ -1978,6 +1978,12 @@ extern int search_dir(struct buffer_head *bh,
+ 		      const struct qstr *d_name,
+ 		      unsigned int offset,
+ 		      struct ext4_dir_entry_2 **res_dir);
++extern int ext4_generic_delete_entry(handle_t *handle,
++				     struct inode *dir,
++				     struct ext4_dir_entry_2 *de_del,
++				     struct buffer_head *bh,
++				     void *entry_buf,
++				     int buf_size);
  
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
+ /* resize.c */
+ extern int ext4_group_add(struct super_block *sb,
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 8545aa3..7417f14 100644
+index 1de97f5..8293121 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -775,13 +775,6 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- 	dx_set_count(entries, count + 1);
+@@ -1693,32 +1693,28 @@ cleanup:
  }
  
--static void ext4_update_dx_flag(struct inode *inode)
--{
--	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
--				     EXT4_FEATURE_COMPAT_DIR_INDEX))
--		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
--}
--
  /*
-  * NOTE! unlike strncmp, ext4_match returns 1 for success, 0 for failure.
-  *
-@@ -1243,6 +1236,66 @@ errout:
- 	return NULL;
+- * ext4_delete_entry deletes a directory entry by merging it with the
+- * previous entry
++ * ext4_generic_delete_entry deletes a directory entry by merging it
++ * with the previous entry
+  */
+-static int ext4_delete_entry(handle_t *handle,
+-			     struct inode *dir,
+-			     struct ext4_dir_entry_2 *de_del,
+-			     struct buffer_head *bh)
++int ext4_generic_delete_entry(handle_t *handle,
++			      struct inode *dir,
++			      struct ext4_dir_entry_2 *de_del,
++			      struct buffer_head *bh,
++			      void *entry_buf,
++			      int buf_size)
+ {
+ 	struct ext4_dir_entry_2 *de, *pde;
+ 	unsigned int blocksize = dir->i_sb->s_blocksize;
+-	int i, err;
++	int i;
+ 
+ 	i = 0;
+ 	pde = NULL;
+-	de = (struct ext4_dir_entry_2 *) bh->b_data;
+-	while (i < bh->b_size) {
++	de = (struct ext4_dir_entry_2 *)entry_buf;
++	while (i < buf_size) {
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 bh->b_data, bh->b_size, i))
+ 			return -EIO;
+ 		if (de == de_del)  {
+-			BUFFER_TRACE(bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle, bh);
+-			if (unlikely(err)) {
+-				ext4_std_error(dir->i_sb, err);
+-				return err;
+-			}
+ 			if (pde)
+ 				pde->rec_len = ext4_rec_len_to_disk(
+ 					ext4_rec_len_from_disk(pde->rec_len,
+@@ -1729,12 +1725,6 @@ static int ext4_delete_entry(handle_t *handle,
+ 			else
+ 				de->inode = 0;
+ 			dir->i_version++;
+-			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+-			err = ext4_handle_dirty_metadata(handle, dir, bh);
+-			if (unlikely(err)) {
+-				ext4_std_error(dir->i_sb, err);
+-				return err;
+-			}
+ 			return 0;
+ 		}
+ 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
+@@ -1744,6 +1734,36 @@ static int ext4_delete_entry(handle_t *handle,
+ 	return -ENOENT;
  }
  
-+int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+		      struct buffer_head *bh,
-+		      void *buf, int buf_size,
-+		      const char *name, int namelen,
-+		      struct ext4_dir_entry_2 **dest_de)
++static int ext4_delete_entry(handle_t *handle,
++			     struct inode *dir,
++			     struct ext4_dir_entry_2 *de_del,
++			     struct buffer_head *bh)
 +{
-+	struct ext4_dir_entry_2 *de;
-+	unsigned short reclen = EXT4_DIR_REC_LEN(namelen);
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
++	int err;
 +
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size - reclen;
-+	while ((char *) de <= top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		if (ext4_match(namelen, name, de))
-+			return -EEXIST;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		if ((de->inode ? rlen - nlen : rlen) >= reclen)
-+			break;
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
-+	}
-+	if ((char *) de > top)
-+		return -ENOSPC;
++	BUFFER_TRACE(bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, bh);
++	if (unlikely(err))
++		goto out;
 +
-+	*dest_de = de;
++	err = ext4_generic_delete_entry(handle, dir, de_del,
++					bh, bh->b_data,
++					dir->i_sb->s_blocksize);
++	if (err)
++		goto out;
++
++	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++	err = ext4_handle_dirty_metadata(handle, dir, bh);
++	if (unlikely(err))
++		goto out;
++
 +	return 0;
++out:
++	if (err != -ENOENT)
++		ext4_std_error(dir->i_sb, err);
++	return err;
 +}
 +
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen)
-+{
-+
-+	int nlen, rlen;
-+
-+	nlen = EXT4_DIR_REC_LEN(de->name_len);
-+	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+	if (de->inode) {
-+		struct ext4_dir_entry_2 *de1 =
-+				(struct ext4_dir_entry_2 *)((char *)de + nlen);
-+		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, buf_size);
-+		de->rec_len = ext4_rec_len_to_disk(nlen, buf_size);
-+		de = de1;
-+	}
-+	de->file_type = EXT4_FT_UNKNOWN;
-+	if (inode) {
-+		de->inode = cpu_to_le32(inode->i_ino);
-+		ext4_set_de_type(inode->i_sb, de, inode->i_mode);
-+	} else
-+		de->inode = 0;
-+	de->name_len = namelen;
-+	memcpy(de->name, name, namelen);
-+}
  /*
-  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
-  * it points to a directory entry which is guaranteed to be large
-@@ -1258,31 +1311,17 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
- 	int		namelen = dentry->d_name.len;
--	unsigned int	offset = 0;
- 	unsigned int	blocksize = dir->i_sb->s_blocksize;
- 	unsigned short	reclen;
--	int		nlen, rlen, err;
--	char		*top;
-+	int		err;
- 
- 	reclen = EXT4_DIR_REC_LEN(namelen);
- 	if (!de) {
--		de = (struct ext4_dir_entry_2 *)bh->b_data;
--		top = bh->b_data + blocksize - reclen;
--		while ((char *) de <= top) {
--			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
--						 bh->b_size, offset))
--				return -EIO;
--			if (ext4_match(namelen, name, de))
--				return -EEXIST;
--			nlen = EXT4_DIR_REC_LEN(de->name_len);
--			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--			if ((de->inode? rlen - nlen: rlen) >= reclen)
--				break;
--			de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
--			offset += rlen;
--		}
--		if ((char *) de > top)
--			return -ENOSPC;
-+		err = ext4_find_dest_de(dir, inode,
-+					bh, bh->b_data, blocksize,
-+					name, namelen, &de);
-+		if (err)
-+			return err;
- 	}
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh);
-@@ -1292,22 +1331,8 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	}
- 
- 	/* By now the buffer is marked for journaling */
--	nlen = EXT4_DIR_REC_LEN(de->name_len);
--	rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--	if (de->inode) {
--		struct ext4_dir_entry_2 *de1 = (struct ext4_dir_entry_2 *)((char *)de + nlen);
--		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, blocksize);
--		de->rec_len = ext4_rec_len_to_disk(nlen, blocksize);
--		de = de1;
--	}
--	de->file_type = EXT4_FT_UNKNOWN;
--	if (inode) {
--		de->inode = cpu_to_le32(inode->i_ino);
--		ext4_set_de_type(dir->i_sb, de, inode->i_mode);
--	} else
--		de->inode = 0;
--	de->name_len = namelen;
--	memcpy(de->name, name, namelen);
-+	ext4_insert_dentry(inode, de, blocksize, name, namelen);
-+
- 	/*
- 	 * XXX shouldn't update any times until successful
- 	 * completion of syscall, but too many callers depend
+  * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
+  * since this indicates that nlinks count was previously 1.
 -- 
 1.7.0.4
 
