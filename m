@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 11/22] ext4: let add_dir_entry handle inline data properly.
-Date: Mon, 20 Feb 2012 15:01:45 +0800
-Message-ID: <1329721316-4955-11-git-send-email-tm@tao.ma>
+Subject: [PATCH V4 18/22] ext4: let ext4_rename handle inline dir.
+Date: Mon, 20 Feb 2012 15:01:52 +0800
+Message-ID: <1329721316-4955-18-git-send-email-tm@tao.ma>
 References: <4F41EF95.2000909@tao.ma>
  <1329721316-4955-1-git-send-email-tm@tao.ma>
 Cc: linux-fsdevel@vger.kernel.org
@@ -13,389 +13,143 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-This patch let add_dir_entry handle the inline data case. So the
-dir is initialized as inline dir first and then we can try to add
-some files to it, when the inline space can't hold all the entries,
-a dir block will be created and the dir entry will be moved to it.
+In case of we rename a dir, ext4_rename has to read the dir block
+and change its dotdot's information. The old ext4_rename encapsulated
+the dir_block read into itself. So this patch try to add a new function
+ext4_get_dir_block which get the dir buffer information so the
+ext4_rename can handle it properly.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h   |    2 +
- fs/ext4/inline.c |  276 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/namei.c  |   19 ++++
- fs/ext4/xattr.h  |   19 ++++
- 4 files changed, 316 insertions(+), 0 deletions(-)
+ fs/ext4/inline.c |   15 +++++++++++++++
+ fs/ext4/namei.c  |   38 ++++++++++++++++++++++++++++++++------
+ fs/ext4/xattr.h  |   12 ++++++++++++
+ 3 files changed, 59 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5fa4739..5b17550 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2267,6 +2267,8 @@ static inline void ext4_mark_super_dirty(struct super_block *sb)
- 
- /* dir.c */
- extern const struct file_operations ext4_dir_operations;
-+extern void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
-+				 void *inline_start, int inline_size);
- 
- /* file.c */
- extern const struct inode_operations ext4_file_inode_operations;
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 4e3dc98..2bf83ad 100644
+index 6612ce1..f494c5f 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -938,6 +938,282 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
- 	return copied;
+@@ -1338,6 +1338,21 @@ out:
+ 	return ret;
  }
  
-+#ifdef INLINE_DIR_DEBUG
-+void ext4_show_inline_dir(struct inode *dir, struct buffer_head *bh,
-+			  void *inline_start, int inline_size)
++struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
++				void **buf, int *buf_size, int *retval)
 +{
-+	int offset;
-+	unsigned short de_len;
-+	struct ext4_dir_entry_2 *de = inline_start;
-+	void *dlimit = inline_start + inline_size;
-+
-+	trace_printk("inode %lu\n", dir->i_ino);
-+	offset = 0;
-+	while ((void *)de < dlimit) {
-+		de_len = ext4_rec_len_from_disk(de->rec_len, inline_size);
-+		trace_printk("de: offset %u reclen %u name %*.s "
-+			     "namelen %u ino %u\n",
-+			     offset, de_len, de->name_len, de->name,
-+			     de->name_len, le32_to_cpu(de->inode));
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 inline_start, inline_size, offset))
-+			BUG();
-+
-+		offset += de_len;
-+		de = (struct ext4_dir_entry_2 *) ((char *) de + de_len);
-+	}
-+}
-+#else
-+#define ext4_show_inline_dir(dir, bh, inline_start, inline_size)
-+#endif
-+
-+/*
-+ * Add a new entry into a inline dir.
-+ * It will return -ENOSPC if no space is available, and -EIO
-+ * and -EEXIST if directory entry already exists.
-+ */
-+static int ext4_add_dirent_to_inline(handle_t *handle,
-+				     struct dentry *dentry,
-+				     struct inode *inode,
-+				     struct ext4_iloc *iloc,
-+				     void *inline_start, int inline_size)
-+{
-+	struct inode	*dir = dentry->d_parent->d_inode;
-+	const char	*name = dentry->d_name.name;
-+	int		namelen = dentry->d_name.len;
-+	unsigned short	reclen;
-+	int		err;
-+	struct ext4_dir_entry_2 *de;
-+
-+	reclen = EXT4_DIR_REC_LEN(namelen);
-+	err = ext4_find_dest_de(dir, inode, iloc->bh,
-+				inline_start, inline_size,
-+				name, namelen, &de);
-+	if (err)
-+		return err;
-+
-+	err = ext4_journal_get_write_access(handle, iloc->bh);
-+	if (err)
-+		return err;
-+	ext4_insert_dentry(inode, de, inline_size, name, namelen);
-+
-+	ext4_show_inline_dir(dir, iloc->bh, inline_start, inline_size);
-+
-+	/*
-+	 * XXX shouldn't update any times until successful
-+	 * completion of syscall, but too many callers depend
-+	 * on this.
-+	 *
-+	 * XXX similarly, too many callers depend on
-+	 * ext4_new_inode() setting the times, but error
-+	 * recovery deletes the inode, so the worst that can
-+	 * happen is that the times are slightly out of date
-+	 * and/or different from the directory change time.
-+	 */
-+	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
-+	ext4_update_dx_flag(dir);
-+	dir->i_version++;
-+	ext4_mark_inode_dirty(handle, dir);
-+	return 1;
-+}
-+
-+void* ext4_get_inline_xattr_pos(struct inode *inode, struct ext4_iloc *iloc)
-+{
-+	struct ext4_xattr_entry *entry;
-+	struct ext4_xattr_ibody_header *header;
-+
-+	BUG_ON(!EXT4_I(inode)->i_inline_off);
-+
-+	header = IHDR(inode, ext4_raw_inode(iloc));
-+	entry = (struct ext4_xattr_entry *)((void *)ext4_raw_inode(iloc) +
-+					    EXT4_I(inode)->i_inline_off);
-+
-+	return (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs);
-+}
-+
-+/* Set the final de to cover the whole block. */
-+static void ext4_update_final_de(void *de_buf, int old_size, int new_size)
-+{
-+	struct ext4_dir_entry_2 *de, *prev_de;
-+	void *limit;
-+	int de_len;
-+
-+	de = (struct ext4_dir_entry_2 *)de_buf;
-+	if (old_size) {
-+		limit = de_buf + old_size;
-+		do {
-+			prev_de = de;
-+			de_len = ext4_rec_len_from_disk(de->rec_len, old_size);
-+			de_buf += de_len;
-+			de = (struct ext4_dir_entry_2 *)de_buf;
-+		} while (de_buf < limit);
-+
-+		prev_de->rec_len = ext4_rec_len_to_disk(de_len + new_size -
-+							old_size, new_size);
-+	} else {
-+		/* this is just created, so create an empty entry. */
-+		de->inode = 0;
-+		de->rec_len = ext4_rec_len_to_disk(new_size, new_size);
-+	}
-+}
-+
-+static int ext4_update_inline_dir(handle_t *handle, struct dentry *dentry,
-+				  struct inode *dir,
-+				  struct ext4_iloc *iloc)
-+{
-+	int ret, reclen = EXT4_DIR_REC_LEN(dentry->d_name.len);
-+	int old_size = EXT4_I(dir)->i_inline_size - EXT4_MIN_INLINE_DATA_SIZE;
-+
-+	ret = ext4_update_inline_data(handle, dir,
-+				EXT4_I(dir)->i_inline_size + reclen);
-+	if (ret)
-+		return ret;
-+
-+	ext4_update_final_de(ext4_get_inline_xattr_pos(dir, iloc), old_size,
-+			     EXT4_I(dir)->i_inline_size -
-+						EXT4_MIN_INLINE_DATA_SIZE);
-+	dir->i_size = EXT4_I(dir)->i_disksize = EXT4_I(dir)->i_inline_size;
-+	return 0;
-+}
-+
-+/*
-+ * Try to add the new entry to the inline data.
-+ * If succeeds, return 0. If not, extended the inline dir and copied data to
-+ * the new created block.
-+ */
-+int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
-+			      struct inode *inode)
-+{
-+	int ret, inline_size;
-+	void *inline_start, *backup_buf = NULL;
-+	struct buffer_head *dir_block = NULL;
 +	struct ext4_iloc iloc;
-+	int blocksize = inode->i_sb->s_blocksize;
-+	struct inode *dir = dentry->d_parent->d_inode;
 +
-+	ret = ext4_get_inode_loc(dir, &iloc);
-+	if (ret)
-+		return ret;
++	*retval = ext4_get_inode_loc(inode, &iloc);
++	if (*retval)
++		return NULL;
 +
-+	down_write(&EXT4_I(dir)->xattr_sem);
-+	if (!ext4_has_inline_data(dir))
-+		goto out;
++	*buf = ext4_raw_inode(&iloc)->i_block;
++	*buf_size = EXT4_MIN_INLINE_DATA_SIZE;
 +
-+	inline_start = ext4_raw_inode(&iloc)->i_block;
-+	inline_size = EXT4_MIN_INLINE_DATA_SIZE;
-+
-+	ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
-+					inline_start, inline_size);
-+	if (ret != -ENOSPC)
-+		goto out;
-+
-+	/* check whether it can be inserted to inline xattr space. */
-+	inline_size = EXT4_I(dir)->i_inline_size -
-+			EXT4_MIN_INLINE_DATA_SIZE;
-+	if (inline_size > 0) {
-+		inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
-+
-+		ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
-+						inline_start, inline_size);
-+		if (ret != -ENOSPC)
-+			goto out;
-+	}
-+
-+	/* Try to add more xattr space.*/
-+	ret = ext4_update_inline_dir(handle, dentry, dir, &iloc);
-+	if (ret && ret != -ENOSPC)
-+		goto out;
-+	else if (!ret) {
-+		inline_size = EXT4_I(dir)->i_inline_size -
-+				EXT4_MIN_INLINE_DATA_SIZE;
-+		inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
-+
-+		ret = ext4_add_dirent_to_inline(handle, dentry, inode, &iloc,
-+						inline_start, inline_size);
-+		if (ret != -ENOSPC)
-+			goto out;
-+	}
-+
-+	/*
-+	 * The inline space is filled up, so create a new block for it.
-+	 * As the extent tree will be created, we have to save the inline
-+	 * dir first.
-+	 */
-+	inline_size = EXT4_I(dir)->i_inline_size;
-+	backup_buf = kmalloc(inline_size, GFP_NOFS);
-+	if (!backup_buf) {
-+		ret = -ENOMEM;
-+		goto out;
-+	}
-+
-+	memcpy(backup_buf, (void *)ext4_raw_inode(&iloc)->i_block,
-+	       EXT4_MIN_INLINE_DATA_SIZE);
-+	if (inline_size > EXT4_MIN_INLINE_DATA_SIZE)
-+		memcpy(backup_buf + EXT4_MIN_INLINE_DATA_SIZE,
-+		       ext4_get_inline_xattr_pos(dir, &iloc),
-+		       inline_size - EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	/* clear the entry and the flag in dir now. */
-+	ret = ext4_destroy_inline_data_nolock(handle, dir);
-+	if (ret)
-+		goto out;
-+
-+	dir->i_size = EXT4_I(dir)->i_disksize = blocksize;
-+	dir_block = ext4_bread(handle, dir, 0, 1, &ret);
-+	if (!dir_block)
-+		goto out;
-+
-+	BUFFER_TRACE(dir_block, "get_write_access");
-+	ret = ext4_journal_get_write_access(handle, dir_block);
-+	if (ret)
-+		goto out;
-+	memcpy(dir_block->b_data, backup_buf, inline_size);
-+
-+	/* Set the final de to cover the whole block. */
-+	ext4_update_final_de(dir_block->b_data, inline_size,
-+			     blocksize);
-+
-+	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
-+	ret = ext4_handle_dirty_metadata(handle, dir, dir_block);
-+
-+out:
-+	kfree(backup_buf);
-+	brelse(dir_block);
-+	if (!ret || ret == 1)
-+		ext4_mark_inode_dirty(handle, dir);
-+	up_write(&EXT4_I(dir)->xattr_sem);
-+	brelse(iloc.bh);
-+	return ret;
++	return iloc.bh;
 +}
 +
-+/*
-+ * Try to create the inline data for the new dir.
-+ * If it succeeds, return 0, otherwise return the error.
-+ * In case of ENOSPC, the caller should create the normal disk layout dir.
-+ */
-+int ext4_try_create_inline_dir(handle_t *handle, struct inode *parent,
-+			       struct inode *inode)
-+{
-+	int ret, inline_size = EXT4_MIN_INLINE_DATA_SIZE;
-+	struct ext4_iloc iloc;
-+	struct ext4_dir_entry_2 *de;
-+
-+	ret = ext4_get_inode_loc(inode, &iloc);
-+	if (ret)
-+		return ret;
-+
-+	ret = ext4_prepare_inline_data(handle, inode, inline_size);
-+	if (ret)
-+		goto out;
-+
-+	de = (struct ext4_dir_entry_2 *)ext4_raw_inode(&iloc)->i_block;
-+	ext4_init_dot_dotdot(parent, inode, de, inline_size);
-+	inode->i_size = EXT4_I(inode)->i_disksize = inline_size;
-+out:
-+	brelse(iloc.bh);
-+	return ret;
-+}
-+
- int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- {
- 	int ret;
+ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+ 					const struct qstr *d_name,
+ 					struct ext4_dir_entry_2 **res_dir,
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 7417f14..311efe2 100644
+index b6b718e..600371b 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1486,6 +1486,17 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	blocksize = sb->s_blocksize;
- 	if (!dentry->d_name.len)
- 		return -EINVAL;
-+
-+	if (ext4_has_inline_data(dir)) {
-+		retval = ext4_try_add_inline_entry(handle, dentry, inode);
-+		if (retval < 0)
-+			return retval;
-+		if (retval == 1) {
-+			retval = 0;
-+			return retval;
-+		}
-+	}
-+
- 	if (is_dx(dir)) {
- 		retval = ext4_dx_add_entry(handle, dentry, inode);
- 		if (!retval || (retval != ERR_BAD_DX_DIR))
-@@ -1862,6 +1873,14 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *parent,
- 	int err;
- 	int blocksize = inode->i_sb->s_blocksize;
+@@ -2507,6 +2507,31 @@ retry:
+ 	(ext4_next_entry((struct ext4_dir_entry_2 *)(buffer), size)->inode)
  
-+	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
-+		err = ext4_try_create_inline_dir(handle, parent, inode);
-+		if (err < 0 && err != -ENOSPC)
-+			goto out;
-+		if (!err)
-+			goto out;
+ /*
++ * Try to find buffer head where contains the parent block.
++ * It should be the inode block if it is inlined or the 1st block
++ * if it is a normal dir.
++ */
++static struct buffer_head *ext4_get_first_dir_block(handle_t *handle,
++						    struct inode *inode,
++						    void **buf,
++						    int *buf_size,
++						    int *retval)
++{
++	struct buffer_head *bh;
++
++	if (!ext4_has_inline_data(inode)) {
++		bh = ext4_bread(handle, inode, 0, 0, retval);
++		if (!bh)
++			return NULL;
++		*buf = bh->b_data;
++		*buf_size = inode->i_sb->s_blocksize;
++		return bh;
 +	}
 +
- 	inode->i_size = EXT4_I(inode)->i_disksize = blocksize;
- 	dir_block = ext4_bread(handle, inode, 0, 1, &err);
- 	if (!dir_block)
++	return ext4_get_first_inline_block(inode, buf, buf_size, retval);
++}
++
++/*
+  * Anybody can rename anything with this: the permission checks are left to the
+  * higher-level routines.
+  */
+@@ -2517,7 +2542,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *old_inode, *new_inode;
+ 	struct buffer_head *old_bh, *new_bh, *dir_bh;
+ 	struct ext4_dir_entry_2 *old_de, *new_de;
+-	int retval, force_da_alloc = 0;
++	int buf_size, retval, force_da_alloc = 0;
++	void *dir_buf = NULL;
+ 
+ 	dquot_initialize(old_dir);
+ 	dquot_initialize(new_dir);
+@@ -2564,11 +2590,12 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 				goto end_rename;
+ 		}
+ 		retval = -EIO;
+-		dir_bh = ext4_bread(handle, old_inode, 0, 0, &retval);
++		dir_bh = ext4_get_first_dir_block(handle, old_inode,
++						  &dir_buf, &buf_size, &retval);
+ 		if (!dir_bh)
+ 			goto end_rename;
+-		if (le32_to_cpu(PARENT_INO(dir_bh->b_data,
+-				old_dir->i_sb->s_blocksize)) != old_dir->i_ino)
++		if (le32_to_cpu(PARENT_INO(dir_buf,
++					   buf_size)) != old_dir->i_ino)
+ 			goto end_rename;
+ 		retval = -EMLINK;
+ 		if (!new_inode && new_dir != old_dir &&
+@@ -2648,8 +2675,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
+ 	ext4_update_dx_flag(old_dir);
+ 	if (dir_bh) {
+-		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+-						cpu_to_le32(new_dir->i_ino);
++		PARENT_INO(dir_buf, buf_size) = cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
+ 		retval = ext4_handle_dirty_metadata(handle, old_inode, dir_bh);
+ 		if (retval) {
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 7825aff..f4f3dd1 100644
+index 6ccfa8d..ed3ee6b 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -161,6 +161,11 @@ extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
- extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
- 					 unsigned len, unsigned copied,
- 					 struct page *page);
-+extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
-+				     struct inode *inode);
-+extern int ext4_try_create_inline_dir(handle_t *handle,
-+				      struct inode *parent,
-+				      struct inode *inode);
+@@ -177,6 +177,10 @@ extern int ext4_delete_inline_entry(handle_t *handle,
+ 				    struct ext4_dir_entry_2 *de_del,
+ 				    struct buffer_head *bh);
+ extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
++extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
++						       void **buf,
++						       int *buf_size,
++						       int *retval);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -324,6 +329,20 @@ static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+@@ -379,6 +383,14 @@ static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
  {
  	return 0;
  }
 +
-+static inline int ext4_try_add_inline_entry(handle_t *handle,
-+					    struct dentry *dentry,
-+					    struct inode *inode)
++static inline struct buffer_head *
++ext4_get_first_inline_block(struct inode *inode,
++			    void **buf, int *buf_size,
++			    int *retval)
 +{
-+	return 0;
-+}
-+
-+static inline int ext4_try_create_inline_dir(handle_t *handle,
-+					     struct inode *parent,
-+					     struct inode *inode)
-+{
-+	return 0;
++	return NULL;
 +}
  # endif  /* CONFIG_EXT4_FS_XATTR */
  
