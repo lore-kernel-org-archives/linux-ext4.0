@@ -1,154 +1,99 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 21/22] ext4: let ext4_truncate handle inline data correctly.
-Date: Mon, 20 Feb 2012 15:01:55 +0800
-Message-ID: <1329721316-4955-21-git-send-email-tm@tao.ma>
+Subject: [PATCH V4 13/22] ext4: Create a new function search_dir.
+Date: Mon, 20 Feb 2012 15:01:47 +0800
+Message-ID: <1329721316-4955-13-git-send-email-tm@tao.ma>
 References: <4F41EF95.2000909@tao.ma>
  <1329721316-4955-1-git-send-email-tm@tao.ma>
 Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:57084 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751710Ab2BTHI7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 02:08:59 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1329721316-4955-1-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Robin Dong <sanbai@taobao.com>
+From: Tao Ma <boyu.mt@taobao.com>
 
-Signed-off-by: Robin Dong <sanbai@taobao.com>
+search_dirblock is used to search a dir block, but the code is
+almost the same for searching an inline dir.
+
+So create a new fuction search_dir and let search_dirblock
+call it.
+
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inline.c |   74 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inode.c  |    5 +++
- fs/ext4/xattr.h  |    8 ++++++
- 3 files changed, 87 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h  |    7 +++++++
+ fs/ext4/namei.c |   26 +++++++++++++++++++-------
+ 2 files changed, 26 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index b8576be..0d32a39 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1651,3 +1651,77 @@ out:
- 	brelse(iloc.bh);
- 	return error;
- }
-+
-+void ext4_inline_data_truncate(struct inode *inode)
-+{
-+	handle_t *handle;
-+	int inline_size = ext4_get_inline_size(inode);
-+	size_t isize = i_size_read(inode);
-+	int needed_blocks, value_len;
-+	void *value = NULL;
-+	struct ext4_xattr_ibody_find is = {
-+		.s = { .not_found = -ENODATA, },
-+	};
-+	struct ext4_xattr_info i = {
-+		.name_index = EXT4_XATTR_INDEX_SYSTEM_DATA,
-+		.name = EXT4_XATTR_SYSTEM_DATA_NAME,
-+	};
-+
-+	needed_blocks = ext4_writepage_trans_blocks(inode);
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle))
-+		return;
-+
-+	if (ext4_orphan_add(handle, inode))
-+		goto out;
-+
-+	EXT4_I(inode)->i_disksize = inode->i_size;
-+
-+	if (isize < ext4_get_max_inline_size(inode)) {
-+		if (ext4_get_inode_loc(inode, &is.iloc))
-+			goto out;
-+
-+		if (isize < EXT4_MIN_INLINE_DATA_SIZE)
-+			memset(ext4_raw_inode(&is.iloc)->i_block + isize, 0,
-+					EXT4_MIN_INLINE_DATA_SIZE - isize);
-+		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE &&
-+				isize < inline_size) {
-+			if (ext4_xattr_ibody_find(inode, &i, &is))
-+				goto out_bh;
-+
-+			BUG_ON(!is.s.not_found);
-+
-+			value_len = le32_to_cpu(is.s.here->e_value_size);
-+			value = kmalloc(value_len, GFP_NOFS);
-+
-+			if (ext4_xattr_ibody_get(inode, i.name_index, i.name,
-+						value, value_len))
-+				goto out_bh;
-+
-+			i.value = value;
-+			i.value_len = isize - EXT4_MIN_INLINE_DATA_SIZE;
-+			if (ext4_xattr_ibody_inline_set(handle, inode, &i, &is))
-+				goto out_bh;
-+		}
-+		if (isize < inline_size)
-+			EXT4_I(inode)->i_inline_size = isize <
-+				EXT4_MIN_INLINE_DATA_SIZE ?
-+				EXT4_MIN_INLINE_DATA_SIZE : isize;
-+out_bh:
-+		if (value)
-+			kfree(value);
-+		brelse(is.iloc.bh);
-+	} else
-+		ext4_convert_inline_data_to_extent(inode->i_mapping, inode, 0);
-+
-+out:
-+	if (inode->i_nlink)
-+		ext4_orphan_del(handle, inode);
-+
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+	if (IS_SYNC(inode))
-+		ext4_handle_sync(handle);
-+
-+	ext4_journal_stop(handle);
-+}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 549af8f..805709b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3496,6 +3496,11 @@ void ext4_truncate(struct inode *inode)
- 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d8cd350..c8dc24e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1971,6 +1971,13 @@ extern int ext4_orphan_add(handle_t *, struct inode *);
+ extern int ext4_orphan_del(handle_t *, struct inode *);
+ extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 				__u32 start_minor_hash, __u32 *next_hash);
++extern int search_dir(struct buffer_head *bh,
++		      char *search_buf,
++		      int buf_size,
++		      struct inode *dir,
++		      const struct qstr *d_name,
++		      unsigned int offset,
++		      struct ext4_dir_entry_2 **res_dir);
  
-+	if (ext4_has_inline_data(inode)) {
-+		ext4_inline_data_truncate(inode);
-+		return;
-+	}
-+
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		ext4_ext_truncate(inode);
- 	else
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index d74df33..4f12d02 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -187,6 +187,8 @@ extern int ext4_inline_data_fiemap(struct inode *inode,
- extern int ext4_try_to_evict_inline_data(handle_t *handle,
- 					 struct inode *inode,
- 					 int needed);
-+extern void ext4_inline_data_truncate(struct inode *inode);
-+
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
-@@ -404,6 +406,12 @@ static inline int ext4_inline_data_fiemap(struct inode *inode,
+ /* resize.c */
+ extern int ext4_group_add(struct super_block *sb,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 311efe2..7e74503 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -794,11 +794,13 @@ static inline int ext4_match (int len, const char * const name,
+ /*
+  * Returns 0 if not found, -1 on failure, and 1 on success
+  */
+-static inline int search_dirblock(struct buffer_head *bh,
+-				  struct inode *dir,
+-				  const struct qstr *d_name,
+-				  unsigned int offset,
+-				  struct ext4_dir_entry_2 ** res_dir)
++int search_dir(struct buffer_head *bh,
++	       char *search_buf,
++	       int buf_size,
++	       struct inode *dir,
++	       const struct qstr *d_name,
++	       unsigned int offset,
++	       struct ext4_dir_entry_2 **res_dir)
  {
+ 	struct ext4_dir_entry_2 * de;
+ 	char * dlimit;
+@@ -806,8 +808,8 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 	const char *name = d_name->name;
+ 	int namelen = d_name->len;
+ 
+-	de = (struct ext4_dir_entry_2 *) bh->b_data;
+-	dlimit = bh->b_data + dir->i_sb->s_blocksize;
++	de = (struct ext4_dir_entry_2 *)search_buf;
++	dlimit = search_buf + buf_size;
+ 	while ((char *) de < dlimit) {
+ 		/* this code is executed quadratically often */
+ 		/* do minimal checking `by hand' */
+@@ -832,6 +834,16 @@ static inline int search_dirblock(struct buffer_head *bh,
  	return 0;
  }
-+
-+static inline void ext4_inline_data_truncate(struct inode *inode)
+ 
++static inline int search_dirblock(struct buffer_head *bh,
++				  struct inode *dir,
++				  const struct qstr *d_name,
++				  unsigned int offset,
++				  struct ext4_dir_entry_2 **res_dir)
 +{
-+	return;
++	return search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
++			  d_name, offset, res_dir);
 +}
 +
- # endif  /* CONFIG_EXT4_FS_XATTR */
  
- #ifdef CONFIG_EXT4_FS_SECURITY
+ /*
+  *	ext4_find_entry()
 -- 
 1.7.0.4
 
