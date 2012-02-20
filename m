@@ -1,47 +1,63 @@
 From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: e2image doesn't get backup superblocks?
-Date: Mon, 20 Feb 2012 14:22:34 -0500
-Message-ID: <4F429D7A.7080202@ubuntu.com>
-References: <4F42683F.3070409@ubuntu.com> <20120220190535.GA6541@thunk.org>
+Subject: e2fsck discard errors
+Date: Mon, 20 Feb 2012 15:56:28 -0500
+Message-ID: <4F42B37C.1000200@ubuntu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:23047 "EHLO
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:9726 "EHLO
 	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751736Ab2BTTWg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 14:22:36 -0500
-In-Reply-To: <20120220190535.GA6541@thunk.org>
+	with ESMTP id S1753329Ab2BTU4a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 15:56:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-On 2/20/2012 2:05 PM, Ted Ts'o wrote:
-> Why do you want to do this?  In general the tools will 
-> automatically sync the backups from the master if it is necessary 
-> (i.e., in the case of a file system resize, or if there is a
-> change in the file system features).  Otherwise, we deliberately
-> try to avoid modifying the backups, since any updates to the
-> backups is an opportunity to copy corrupted values to the backups,
-> or otherwise risk write failures that could smash the backups.
+I was experimenting with e2fsck -E discard on image files and found
+some errors introduced by commit efa1a355.  The following section of
+code attempts to discard unused portions of the inode table:
 
-Because I was experimenting with e2fsck -E discard on a raw image and
-it was clobbering the superblock, and the backups weren't in the
-image.
+
+/* Discard inode table */
+if (ctx->options & E2F_OPT_DISCARD) {
+        blk64_t used_blks, blk, num;
+
+        used_blks = DIV_ROUND_UP(
+                (EXT2_INODES_PER_GROUP(fs->super) -
+                 group_free),
+                EXT2_INODES_PER_BLOCK(fs->super));
+
+        blk = ext2fs_inode_table_loc(fs, group) +
+                used_blks;
+        num = fs->inode_blocks_per_group -
+                used_blks;
+        e2fsck_discard_blocks(ctx, manager, blk, num);
+}
+
+There are two problems with this.  The first is that trying to discard
+a count of zero blocks results in an -EINVAL, which silently halts (
+shouldn't this at least issue a warning? ) further discard attempts.
+The second I noticed after fixing that problem and had a bunch of
+valid inodes discarded.  It looks like the intent of this code is to
+free the part of the inode table that lies beyond the highest used
+inode, but instead it is using the count of free inodes, so when you
+have some free inodes followed by some used inodes, the used inodes at
+the end get discarded.
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.17 (MingW32)
 Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-iQEcBAEBAgAGBQJPQp16AAoJEJrBOlT6nu75YsYH/RfMeeqyq1YzolyRJzeQuQVB
-vi1sKkW8LlYutAU3bgJPPxNa3VEUlz5BDqOLzL2DZcsUWUU0t/XkwWGBW8M5UPuy
-LQyc/DO2Uz+ho8Jh+WSaOT0FByE5Gp4o5Xu5nhdO27MuTa1q0WiAxGneTnoN+ZNW
-G2FkaTAWEGTPhUzV8F32ZnfKNzGJExl5BhiBEm5p5d2jqdzrQS4Uz15ZDbIqSmnL
-uJNmtdcBjvq721Rcrf9U15TzZgumxy4VVaNNqR1ZhFG+HnGUVmsqC6HQ1/WaQHWh
-WqyXdgX1SlCPP2oAYE8pRvhLQkujg553QBYKkuckQfXD8YnpFWWFQ3fsGLWG5+c=
-=cqFo
+iQEcBAEBAgAGBQJPQrN8AAoJEJrBOlT6nu75X+cH/RkJeOCGM574YabLu081oGC1
+d59Y9Q3gD0jswTtceFFLHWQkRsI6IiRznEp6h+IMixl7VARL6q8eoFWW0iIWqjkX
+mCle03+fORxXOv2U4qg3bud5gZ4jDKW7cKZvKl+LbOFFuV11W8UKdmgDqL0HyUxh
+bIC5lyUCHEWSm6/ellfSRJDFLL0ygw2irktjyszIgAGPfnbtH/fu3E0se98ke9P5
+5j8jQSeONJA5VDOtVnsLR3TD9SnnhBrtbjkzSbqBDMBSy+/ji0208CY5UyrxX0y8
+Oh3pWsi6GAgAKdQgVdv/acRTirOkXLMLMK0SuoUuxIlzmrAIolWI2CO8DinwZ3U=
+=8H+8
 -----END PGP SIGNATURE-----
