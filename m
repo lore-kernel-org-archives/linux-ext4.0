@@ -1,7 +1,7 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V4 19/22] ext4: Let fiemap work with inline data.
-Date: Mon, 20 Feb 2012 15:01:53 +0800
-Message-ID: <1329721316-4955-19-git-send-email-tm@tao.ma>
+Subject: [PATCH V4 14/22] ext4: let ext4_find_entry handle inline data.
+Date: Mon, 20 Feb 2012 15:01:48 +0800
+Message-ID: <1329721316-4955-14-git-send-email-tm@tao.ma>
 References: <4F41EF95.2000909@tao.ma>
  <1329721316-4955-1-git-send-email-tm@tao.ma>
 Cc: linux-fsdevel@vger.kernel.org
@@ -13,110 +13,128 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-fiemap is used to find the disk layout of a file, as for inline data,
-let us just pretend like a file with just one extent.
+Create a new ext4_find_inline_entry to handle the case
+of inline data.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/extents.c |    9 +++++++++
- fs/ext4/inline.c  |   35 +++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.h   |   10 ++++++++++
- 3 files changed, 54 insertions(+), 0 deletions(-)
+ fs/ext4/inline.c |   47 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |   10 +++++++++-
+ fs/ext4/xattr.h  |   12 ++++++++++++
+ 3 files changed, 68 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c861727..9f609dc 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4923,6 +4923,15 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	ext4_lblk_t start_blk;
- 	int error = 0;
- 
-+	if (ext4_has_inline_data(inode)) {
-+		int has_inline = 1;
-+
-+		error = ext4_inline_data_fiemap(inode, fieinfo, &has_inline);
-+
-+		if (has_inline)
-+			return error;
-+	}
-+
- 	/* fallback to generic here if not in extents fmt */
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return generic_block_fiemap(inode, fieinfo, start, len,
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index f494c5f..3a65e64 100644
+index e238b64..90e1671 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -15,6 +15,7 @@
- #include "ext4.h"
- #include "xattr.h"
- #include "truncate.h"
-+#include <linux/fiemap.h>
- 
- #define EXT4_XATTR_SYSTEM_DATA_NAME	"data"
- #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
-@@ -1530,3 +1531,37 @@ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- 
+@@ -1338,6 +1338,53 @@ out:
  	return ret;
  }
-+
-+int ext4_inline_data_fiemap(struct inode *inode,
-+			    struct fiemap_extent_info *fieinfo,
-+			    int *has_inline)
+ 
++struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data)
 +{
-+	__u64 physical = 0;
-+	__u64 length;
-+	__u32 flags = FIEMAP_EXTENT_DATA_INLINE | FIEMAP_EXTENT_LAST;
-+	int error = 0;
++	int ret;
 +	struct ext4_iloc iloc;
++	void *inline_start;
++	int inline_size;
 +
-+	down_read(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode)) {
-+		*has_inline = 0;
++	if (ext4_get_inode_loc(dir, &iloc))
++		return NULL;
++
++	down_read(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir)) {
++		*has_inline_data = 0;
 +		goto out;
 +	}
 +
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
++	inline_start = ext4_raw_inode(&iloc)->i_block;
++	inline_size = EXT4_MIN_INLINE_DATA_SIZE;
++	ret = search_dir(iloc.bh, inline_start, inline_size,
++			 dir, d_name, 0, res_dir);
++	if (ret == 1)
++		goto out_find;
++	if (ret < 0)
 +		goto out;
 +
-+	physical = iloc.bh->b_blocknr << inode->i_sb->s_blocksize_bits;
-+	physical += (char *)ext4_raw_inode(&iloc) - iloc.bh->b_data;
-+	physical += offsetof(struct ext4_inode, i_block);
-+	length = i_size_read(inode);
++	if (ext4_get_inline_size(dir) == EXT4_MIN_INLINE_DATA_SIZE)
++		goto out;
 +
-+	if (physical)
-+		error = fiemap_fill_next_extent(fieinfo, 0, physical,
-+						length, flags);
-+	brelse(iloc.bh);
++	inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
++	inline_size = ext4_get_inline_size(dir) - EXT4_MIN_INLINE_DATA_SIZE;
++
++	ret = search_dir(iloc.bh, inline_start, inline_size,
++			 dir, d_name, 0, res_dir);
++	if (ret == 1)
++		goto out_find;
++
 +out:
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	return (error < 0 ? error : 0);
++	brelse(iloc.bh);
++	iloc.bh = NULL;
++out_find:
++	up_read(&EXT4_I(dir)->xattr_sem);
++	return iloc.bh;
 +}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 7e74503..1de97f5 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -844,7 +844,6 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 			  d_name, offset, res_dir);
+ }
+ 
+-
+ /*
+  *	ext4_find_entry()
+  *
+@@ -879,6 +878,15 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 	namelen = d_name->len;
+ 	if (namelen > EXT4_NAME_LEN)
+ 		return NULL;
++
++	if (ext4_has_inline_data(dir)) {
++		int has_inline_data = 1;
++		ret = ext4_find_inline_entry(dir, d_name, res_dir,
++					     &has_inline_data);
++		if (has_inline_data)
++			return ret;
++	}
++
+ 	if ((namelen <= 2) && (name[0] == '.') &&
+ 	    (name[1] == '.' || name[1] == '\0')) {
+ 		/*
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index ed3ee6b..e80a212 100644
+index 8092846..b86391f 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -181,6 +181,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
- 						       void **buf,
- 						       int *buf_size,
- 						       int *retval);
-+extern int ext4_inline_data_fiemap(struct inode *inode,
-+				   struct fiemap_extent_info *fieinfo,
-+				   int *has_inline);
+@@ -168,6 +168,10 @@ extern int ext4_try_create_inline_dir(handle_t *handle,
+ 				      struct inode *inode);
+ extern int ext4_read_inline_dir(struct file *filp,
+ 				void *dirent, filldir_t filldir);
++extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -391,6 +394,13 @@ ext4_get_first_inline_block(struct inode *inode,
+@@ -350,6 +354,14 @@ static inline int ext4_read_inline_dir(struct file *filp,
  {
- 	return NULL;
+ 	return 0;
  }
 +
-+static inline int ext4_inline_data_fiemap(struct inode *inode,
-+					  struct fiemap_extent_info *fieinfo,
-+					  int *has_inline)
++struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data)
 +{
-+	return 0;
++	return NULL;
 +}
  # endif  /* CONFIG_EXT4_FS_XATTR */
  
