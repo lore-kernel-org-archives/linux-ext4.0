@@ -1,44 +1,79 @@
-From: "Western Union Outlet" <westernunion@wu.com>
-Subject: Transfer Notice!!
-Date: Mon, 20 Feb 2012 09:36:22 +0100
-Message-ID: <20120220083657.813025DE5467@mail.kpoly.edu.gh>
-Reply-To: westernunionpaycenter@fastservice.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
+Date: Mon, 20 Feb 2012 12:12:23 GMT
+Message-ID: <201202201212.q1KCCNfx010492@bugzilla.kernel.org>
+References: <bug-42723-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Recipients <westernunion@wu.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 41-204-38-3-dedicated.4u.com.gh ([41.204.38.3]:60179 "EHLO
-	mail.kpoly.edu.gh" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1752176Ab2BTKCu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 05:02:50 -0500
-Content-Description: Mail message body
+Received: from bugzilla.kernel.org ([198.145.19.204]:43592 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752506Ab2BTMMY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 07:12:24 -0500
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q1KCCN76010493
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Feb 2012 12:12:23 GMT
+In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear Beneficiary.
-
-We write to inform you that we have transferred USD$400,000.00 dollars, I could have called you via phone to give you the MTCN information but we lost your contact phone number. So, I decided to email you the information so that you can start cashing your money in USD5000.00 daily installment with the same MTCN and sender's name which will be valid for 20 days until you cash the full $400,000.00usd as it automatically activates for use for 20 days after the first reactivation.
-
-The money is available for pick up which was deposited for transfer to you by MR Bernard Harry from United Nation Trust Funds.  The money is available for pick up by receiver (you) but when you track it, it will display PICKED UP due to the fact that it has been deactivated from our head office for security reason because it has stayed too long in the air as we have been trying to reach you on the phone for some days now but it was not reachable,so it was blocked.
-
-Therefore you can not cash it out in any western union office due to its restriction from our head office,which was a security measure because the money has been in the air for three days now and maybe in danger, hence the mtcn has to be reactivated to enable you cash out the money in any western union office in your area, the reactivation of the MTCN will cost you a token of $155, once this is paid, our head office will release the fund on hold to enable you cash it.To be sure of this please log on to www.westernunion.com and click on track to and enter the sender's info and mtcn below.
-
-Sender's Fist name: Abraham
-Sender's Last Name: Elizabeth
-MTCN: 5801913322
-Question: Who Is Great
-Answer: God
-Amount: $5000.00USD
-Total Amount To be Cashed: $400,000.00Usd
-
-Please also send to us the following details..
-1,Re-Comfirm Your Contact Phone Number.................
-
-With due respect please get back to me urgently after tracking the money on-line so i can instruct you on how to send the $155 to us for the reactivation of the MTCN.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D42723
 
 
-Best Regards
-Mr.Smith Mcferrin.
-Outlet Manager,
-Western Union Money Transfer.
+Pekka Pietik=C3=A4inen <pp@ee.oulu.fi> changed:
+
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+                 CC|                            |pp@ee.oulu.fi
+
+
+
+
+--- Comment #2 from Pekka Pietik=C3=A4inen <pp@ee.oulu.fi>  2012-02-20 =
+12:12:22 ---
+I've potentially seen this with 3.2.1/3.2.5 (Fedora 16)
+
+messages-20120219:Feb 16 18:11:40 laptop kernel: [688848.718886] EXT4-f=
+s error
+(device dm-1): mb_free_blocks:1348: group 28, block 924740:freeing alre=
+ady
+freed block (bit 7236)
+messages-20120219:Feb 16 18:11:40 laptop kernel: [688848.718890] EXT4-f=
+s error
+(device dm-1): mb_free_blocks:1348: group 28, block 924741:freeing alre=
+ady
+freed block (bit 7237)
+=2E..
+messages:Feb 19 04:46:02 laptop kernel: [106683.790999] EXT4-fs error (=
+device
+dm-1): ext4_mb_generate_buddy:739: group 311, 15861 clusters in bitmap,=
+ 9309 in
+gd
+messages:Feb 19 04:46:02 laptop kernel: [106683.874849] EXT4-fs error (=
+device
+dm-1): ext4_mb_generate_buddy:739: group 321, 30343 clusters in bitmap,=
+ 30295
+in gd
+
+but... the laptop in question is a quite dodgy hardware-wise (wiggle th=
+e case a
+bit and the Thinklight blinks etc.). Typical light laptop use with root=
+/home on
+LVM the way Fedora puts them by default.
+
+So far it's getting ext4 errors every few days, reboot & fsck and it's =
+fine for
+a while, running 3.2.6 now.
+
+--=20
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
