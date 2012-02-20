@@ -1,55 +1,47 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: E2fsprogs 1.42.1 release
-Date: Mon, 20 Feb 2012 14:18:20 -0500
-Message-ID: <20120220191820.GB6541@thunk.org>
-References: <4F3F1439.5000407@ubuntu.com>
- <4F3F1580.9020108@redhat.com>
- <20120218223131.GB8320@thunk.org>
- <B2C249E4-41BE-400F-BC11-B1F7ABDE308E@redhat.com>
- <20120220031938.GA5113@thunk.org>
- <4F4297FE.9090208@redhat.com>
- <4F4298A0.1000900@redhat.com>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: e2image doesn't get backup superblocks?
+Date: Mon, 20 Feb 2012 14:22:34 -0500
+Message-ID: <4F429D7A.7080202@ubuntu.com>
+References: <4F42683F.3070409@ubuntu.com> <20120220190535.GA6541@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <esandeen@redhat.com>,
-	Phillip Susi <psusi@ubuntu.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36773 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751574Ab2BTTSY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 14:18:24 -0500
-Content-Disposition: inline
-In-Reply-To: <4F4298A0.1000900@redhat.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:23047 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751736Ab2BTTWg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Feb 2012 14:22:36 -0500
+In-Reply-To: <20120220190535.GA6541@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 20, 2012 at 01:01:52PM -0600, Eric Sandeen wrote:
-> > The tarball is a little messed up:
-> > 
-> > [esandeen@neon e2fsprogs]$ tar xvzf e2fsprogs-1.42.1.tar.gz
-> > e2fsprogs-libs-1.42.1/
-> > e2fsprogs-libs-1.42.1/.gitignore
-> > e2fsprogs-libs-1.42.1/.release-checklist
-> > e2fsprogs-libs-1.42.1/lib/
-> > 
-> > why does it unpack into e2fsprogs-libs-1.42.1?
-> >                                   ^^^^
-> > 
-> > I could work around that but it's unexpected.
-> 
-> Oh actually I can't work around it, it really is just the libs.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Whoops, kup screwup.  I uploaded e2fsprogs-1.42.tar.gz and
-e2fsprogs-libs-1.42.tar.gz.... into the same destination file.  I just
-fixed it on master.kernel.org; it should propagate over in 15 minutes
-or so.
+On 2/20/2012 2:05 PM, Ted Ts'o wrote:
+> Why do you want to do this?  In general the tools will 
+> automatically sync the backups from the master if it is necessary 
+> (i.e., in the case of a file system resize, or if there is a
+> change in the file system features).  Otherwise, we deliberately
+> try to avoid modifying the backups, since any updates to the
+> backups is an opportunity to copy corrupted values to the backups,
+> or otherwise risk write failures that could smash the backups.
 
-Or you can grab the files from sourceforge.  (Note that the
-sourceforge tarballs are actually signed by me.  In contrast the
-kernel.org tarballs are signed by the ftp.kernel.org machine key, and
-the signature covers the uncompressed tar file.  That way they can use
-the same signature file for the tar.gz and tar.bz2 tarball.)
+Because I was experimenting with e2fsck -E discard on a raw image and
+it was clobbering the superblock, and the backups weren't in the
+image.
 
-    	 	   	    	       	   	   - Ted
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iQEcBAEBAgAGBQJPQp16AAoJEJrBOlT6nu75YsYH/RfMeeqyq1YzolyRJzeQuQVB
+vi1sKkW8LlYutAU3bgJPPxNa3VEUlz5BDqOLzL2DZcsUWUU0t/XkwWGBW8M5UPuy
+LQyc/DO2Uz+ho8Jh+WSaOT0FByE5Gp4o5Xu5nhdO27MuTa1q0WiAxGneTnoN+ZNW
+G2FkaTAWEGTPhUzV8F32ZnfKNzGJExl5BhiBEm5p5d2jqdzrQS4Uz15ZDbIqSmnL
+uJNmtdcBjvq721Rcrf9U15TzZgumxy4VVaNNqR1ZhFG+HnGUVmsqC6HQ1/WaQHWh
+WqyXdgX1SlCPP2oAYE8pRvhLQkujg553QBYKkuckQfXD8YnpFWWFQ3fsGLWG5+c=
+=cqFo
+-----END PGP SIGNATURE-----
