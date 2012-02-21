@@ -1,80 +1,45 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] FS: ext4: fix integer overflow in alloc_flex_gd()
-Date: Mon, 20 Feb 2012 17:47:44 -0600
-Message-ID: <4F42DBA0.4090502@redhat.com>
-References: <1329777684-18396-1-git-send-email-haogangchen@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: Haogang Chen <haogangchen@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: check new sysfs interface to determine if we are on battery
+Date: Mon, 20 Feb 2012 19:11:43 -0500
+Message-ID: <1329783103-4017-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9740 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754776Ab2BTXrt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 18:47:49 -0500
-In-Reply-To: <1329777684-18396-1-git-send-email-haogangchen@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38923 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754278Ab2BUALr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Feb 2012 19:11:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/20/12 4:41 PM, Haogang Chen wrote:
-> In alloc_flex_gd(), when flexbg_size is large, kmalloc size would
-> overflow and flex_gd->groups would point to a buffer smaller than
-> expected, causing OOB accesses when it is used.
-> 
-> Note that in ext4_resize_fs(), flexbg_size is calculated using
-> sbi->s_log_groups_per_flex, which is read from the disk and only bounded
-> to [1, 31]. The patch returns NULL for too large flexbg_size
+...since the old way is deprecated.
 
-Hm this raises a few questions I think.
+Addresses-SourceForge-Bug: #3439277
 
-On the one hand, making sure the kmalloc arg doesn't overflow here is
-certainly a good thing and probably the right thing to do in the short term.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/unix.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-So I guess:
-
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
-
-for that, to close the hole.
-
-But the types are a mess; alloc_flex_gd() takes an unsigned long; 
-it's passed an int, and assigns to flex_gd->count, an ext4_group_t
-(which is an unsigned int). They should probably all be ext4_group_t
-for consistency.
-
-But that's not the worst of it...
-
-Doesn't this also mean that a valid s_log_groups_per_flex (i.e. 31)
-will fail in this resize code?  That would be an unexpected outcome.
-2^31 groups per flex is a little crazy, but still technically valid
-according to the limits in the code.
-
-So really, trying to allocate an array of all possible groups-per-flex
-in the resize code is probably a really bad idea to start with, and the
-resize code has got serious problems if kmalloc(UINT_MAX-1) is expected
-to work...
-
--Eric
-
-> Signed-off-by: Haogang Chen <haogangchen@gmail.com>
-> ---
->  fs/ext4/resize.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index f9d948f..8601f4b 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -161,6 +161,8 @@ static struct ext4_new_flex_group_data *alloc_flex_gd(unsigned long flexbg_size)
->  	if (flex_gd == NULL)
->  		goto out3;
->  
-> +	if (flexbg_size >= UINT_MAX / sizeof(struct ext4_new_flex_group_data))
-> +		goto out2;
->  	flex_gd->count = flexbg_size;
->  
->  	flex_gd->groups = kmalloc(sizeof(struct ext4_new_group_data) *
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index c38b67a..6f97b0f 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -252,6 +252,14 @@ static int is_on_batt(void)
+ 	unsigned int	acflag;
+ 	struct dirent*	de;
+ 
++	f = fopen("/sys/class/power_supply/AC/online", "r");
++	if (f) {
++		if (fscanf(f, "%d\n", &acflag) == 1) {
++			fclose(f);
++			return (!acflag);
++		}
++		fclose(f);
++	}
+ 	f = fopen("/proc/apm", "r");
+ 	if (f) {
+ 		if (fscanf(f, "%s %s %s %x", tmp, tmp, tmp, &acflag) != 4)
+-- 
+1.7.9.107.g97f9a
 
