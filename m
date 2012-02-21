@@ -1,65 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libext2fs: support O_DIRECT functionality for Mac OS X
-Date: Mon, 20 Feb 2012 20:48:10 -0500
-Message-ID: <1329788890-26351-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [patch, resend] ext4: fix race between unwritten extent
+ conversion and truncate
+Date: Mon, 20 Feb 2012 23:00:07 -0500
+Message-ID: <20120221040007.GE25249@thunk.org>
+References: <x49hayqy16f.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57286 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53106 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752092Ab2BUBsM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 20:48:12 -0500
+	id S1752630Ab2BUEAL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Feb 2012 23:00:11 -0500
+Content-Disposition: inline
+In-Reply-To: <x49hayqy16f.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Darwin uses fcntl(fd, F_NOCACHE, 1) instead of the O_DIRECT flag.
+On Thu, Feb 16, 2012 at 03:26:48PM -0500, Jeff Moyer wrote:
+> Hi,
+> 
+> The following comment in ext4_end_io_dio caught my attention:
+> 
+> 	/* XXX: probably should move into the real I/O completion handler */
+>         inode_dio_done(inode);
+> 
+> The truncate code takes i_mutex, then calls inode_dio_wait.  Because the
+> ext4 code path above will end up dropping the mutex before it is
+> reacquired by the worker thread that does the extent conversion, it
+> seems to me that the truncate can happen out of order.  Jan Kara
+> mentioned that this might result in error messages in the system logs,
+> but that should be the extent of the "damage."
+> 
+> The fix is pretty straight-forward: don't call inode_dio_done until the
+> extent conversion is complete.
+> 
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Addresses-SourceForge-Bug: #3140289
+Thanks, applied.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/unix_io.c |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
-
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index 5337022..9f0613a 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -445,6 +445,7 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- 	struct unix_private_data *data = NULL;
- 	errcode_t	retval;
- 	int		open_flags, zeroes = 0;
-+	int		f_nocache = 0;
- 	ext2fs_struct_stat st;
- #ifdef __linux__
- 	struct 		utsname ut;
-@@ -480,9 +481,12 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- 	open_flags = (flags & IO_FLAG_RW) ? O_RDWR : O_RDONLY;
- 	if (flags & IO_FLAG_EXCLUSIVE)
- 		open_flags |= O_EXCL;
--#ifdef O_DIRECT
-+#if defined(O_DIRECT)
- 	if (flags & IO_FLAG_DIRECT_IO)
- 		open_flags |= O_DIRECT;
-+#elif defined(F_NOCACHE)
-+	if (flags & IO_FLAG_DIRECT_IO)
-+		f_nocache = F_NOCACHE;
- #endif
- 	data->flags = flags;
- 
-@@ -491,6 +495,12 @@ static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- 		retval = errno;
- 		goto cleanup;
- 	}
-+	if (f_nocache) {
-+		if (fcntl(data->dev, f_nocache, 1) < 0) {
-+			retval = errno;
-+			goto cleanup;
-+		}
-+	}
- 
- 	/*
- 	 * If the device is really a block device, then set the
--- 
-1.7.9.107.g97f9a
-
+						- Ted
