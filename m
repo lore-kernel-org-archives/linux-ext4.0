@@ -1,103 +1,174 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix resize when resizing within single group
-Date: Mon, 20 Feb 2012 18:20:29 -0600
-Message-ID: <4F42E34D.1070209@redhat.com>
-References: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: remove EXT4_MB_{BITMAP,BUDDY} macros
+Date: Mon, 20 Feb 2012 18:24:21 -0600
+Message-ID: <4F42E435.603@redhat.com>
+References: <1329778699-1839-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Milan Broz <mbroz@redhat.com>
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57002 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57483 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754055Ab2BUAUe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 19:20:34 -0500
-In-Reply-To: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
+	id S1754055Ab2BUAYY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Feb 2012 19:24:24 -0500
+In-Reply-To: <1329778699-1839-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/2/12 3:05 AM, Lukas Czerner wrote:
-> When resizing file system in the way that the new size of the file
-> system is still in the same group (no new groups are added), then we can
-> hit a BUG_ON in ext4_alloc_group_tables()
+On 2/20/12 4:58 PM, Theodore Ts'o wrote:
+> The EXT4_MB_BITMAP and EXT4_MB_BUDDY macros obfuscate more than they
+> provide any abstraction.   So remove them.
 > 
-> BUG_ON(flex_gd->count == 0 || group_data == NULL);
-> 
-> because flex_gd->count is zero. The reason is the missing check for such
-> case, so the code always extend the last group fully and then attempt to
-> add more groups, but at that time n_blocks_count is actually smaller
-> than o_blocks_count.
-> 
-> It can be easily reproduced like this:
-> 
-> mkfs.ext4 -b 4096 /dev/sda 30M
-> mount /dev/sda /mnt/test
-> resize2fs /dev/sda 50M
-> 
-> Fix this by checking whether the resize happens within the singe group
-> and only add that many blocks into the last group to satisfy user
-> request. Then o_blocks_count == n_blocks_count and the resize will exit
-> successfully without and attempt to add more groups into the fs.
-> 
-> Also fix mixing together block number and blocks count which might be
-> confusing and can easily lead to off-by-one errors (but it is actually
-> not the case here since the two occurrence of this mix-up will cancel
-> each other).
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reported-by: Milan Broz <mbroz@redhat.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+Yeah, I like that.
 
 Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Ted, if this hits linux-next we can pull it into fedora and close a bug they're tracking.  :)
-
-thanks,
--Eric
-
 > ---
->  fs/ext4/resize.c |   14 ++++++++------
->  1 files changed, 8 insertions(+), 6 deletions(-)
+>  fs/ext4/mballoc.c |   32 ++++++++++++++++----------------
+>  fs/ext4/mballoc.h |    2 --
+>  2 files changed, 16 insertions(+), 18 deletions(-)
 > 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index f9d948f..3fed79d 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
->  	ext4_fsblk_t o_blocks_count;
->  	ext4_group_t o_group;
->  	ext4_group_t n_group;
-> -	ext4_grpblk_t offset;
-> +	ext4_grpblk_t offset, add;
->  	unsigned long n_desc_blocks;
->  	unsigned long o_desc_blocks;
->  	unsigned long desc_blocks;
-> @@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
->  		return 0;
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 8e01214..7e6fab9 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -427,7 +427,7 @@ static void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
+>  {
+>  	char *bb;
 >  
->  	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
-> -	ext4_get_group_no_and_offset(sb, o_blocks_count, &o_group, &offset);
-> +	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
+> -	BUG_ON(EXT4_MB_BITMAP(e4b) == EXT4_MB_BUDDY(e4b));
+> +	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+>  	BUG_ON(max == NULL);
 >  
->  	n_desc_blocks = (n_group + EXT4_DESC_PER_BLOCK(sb)) /
->  			EXT4_DESC_PER_BLOCK(sb);
-> @@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+>  	if (order > e4b->bd_blkbits + 1) {
+> @@ -438,10 +438,10 @@ static void *mb_find_buddy(struct ext4_buddy *e4b, int order, int *max)
+>  	/* at order 0 we see each particular block */
+>  	if (order == 0) {
+>  		*max = 1 << (e4b->bd_blkbits + 3);
+> -		return EXT4_MB_BITMAP(e4b);
+> +		return e4b->bd_bitmap;
 >  	}
->  	brelse(bh);
 >  
-> -	if (offset != 0) {
-> -		/* extend the last group */
-> -		ext4_grpblk_t add;
-> -		add = EXT4_BLOCKS_PER_GROUP(sb) - offset;
-> +	/* extend the last group */
-> +	if (n_group == o_group)
-> +		add = n_blocks_count - o_blocks_count;
-> +	else
-> +		add = EXT4_BLOCKS_PER_GROUP(sb) - (offset + 1);
-> +	if (add > 0) {
->  		err = ext4_group_extend_no_check(sb, o_blocks_count, add);
->  		if (err)
->  			goto out;
+> -	bb = EXT4_MB_BUDDY(e4b) + EXT4_SB(e4b->bd_sb)->s_mb_offsets[order];
+> +	bb = e4b->bd_buddy + EXT4_SB(e4b->bd_sb)->s_mb_offsets[order];
+>  	*max = EXT4_SB(e4b->bd_sb)->s_mb_maxs[order];
+>  
+>  	return bb;
+> @@ -590,7 +590,7 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
+>  			for (j = 0; j < (1 << order); j++) {
+>  				k = (i * (1 << order)) + j;
+>  				MB_CHECK_ASSERT(
+> -					!mb_test_bit(k, EXT4_MB_BITMAP(e4b)));
+> +					!mb_test_bit(k, e4b->bd_bitmap));
+>  			}
+>  			count++;
+>  		}
+> @@ -1203,10 +1203,10 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
+>  	int order = 1;
+>  	void *bb;
+>  
+> -	BUG_ON(EXT4_MB_BITMAP(e4b) == EXT4_MB_BUDDY(e4b));
+> +	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+>  	BUG_ON(block >= (1 << (e4b->bd_blkbits + 3)));
+>  
+> -	bb = EXT4_MB_BUDDY(e4b);
+> +	bb = e4b->bd_buddy;
+>  	while (order <= e4b->bd_blkbits + 1) {
+>  		block = block >> 1;
+>  		if (!mb_test_bit(block, bb)) {
+> @@ -1276,9 +1276,9 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>  
+>  	/* let's maintain fragments counter */
+>  	if (first != 0)
+> -		block = !mb_test_bit(first - 1, EXT4_MB_BITMAP(e4b));
+> +		block = !mb_test_bit(first - 1, e4b->bd_bitmap);
+>  	if (first + count < EXT4_SB(sb)->s_mb_maxs[0])
+> -		max = !mb_test_bit(first + count, EXT4_MB_BITMAP(e4b));
+> +		max = !mb_test_bit(first + count, e4b->bd_bitmap);
+>  	if (block && max)
+>  		e4b->bd_info->bb_fragments--;
+>  	else if (!block && !max)
+> @@ -1289,7 +1289,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>  		block = first++;
+>  		order = 0;
+>  
+> -		if (!mb_test_bit(block, EXT4_MB_BITMAP(e4b))) {
+> +		if (!mb_test_bit(block, e4b->bd_bitmap)) {
+>  			ext4_fsblk_t blocknr;
+>  
+>  			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+> @@ -1300,7 +1300,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>  					      "freeing already freed block "
+>  					      "(bit %u)", block);
+>  		}
+> -		mb_clear_bit(block, EXT4_MB_BITMAP(e4b));
+> +		mb_clear_bit(block, e4b->bd_bitmap);
+>  		e4b->bd_info->bb_counters[order]++;
+>  
+>  		/* start of the buddy */
+> @@ -1382,7 +1382,7 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
+>  			break;
+>  
+>  		next = (block + 1) * (1 << order);
+> -		if (mb_test_bit(next, EXT4_MB_BITMAP(e4b)))
+> +		if (mb_test_bit(next, e4b->bd_bitmap))
+>  			break;
+>  
+>  		order = mb_find_order_for_block(e4b, next);
+> @@ -1419,9 +1419,9 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+>  
+>  	/* let's maintain fragments counter */
+>  	if (start != 0)
+> -		mlen = !mb_test_bit(start - 1, EXT4_MB_BITMAP(e4b));
+> +		mlen = !mb_test_bit(start - 1, e4b->bd_bitmap);
+>  	if (start + len < EXT4_SB(e4b->bd_sb)->s_mb_maxs[0])
+> -		max = !mb_test_bit(start + len, EXT4_MB_BITMAP(e4b));
+> +		max = !mb_test_bit(start + len, e4b->bd_bitmap);
+>  	if (mlen && max)
+>  		e4b->bd_info->bb_fragments++;
+>  	else if (!mlen && !max)
+> @@ -1464,7 +1464,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+>  	}
+>  	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
+>  
+> -	ext4_set_bits(EXT4_MB_BITMAP(e4b), ex->fe_start, len0);
+> +	ext4_set_bits(e4b->bd_bitmap, ex->fe_start, len0);
+>  	mb_check_buddy(e4b);
+>  
+>  	return ret;
+> @@ -1763,7 +1763,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+>  					struct ext4_buddy *e4b)
+>  {
+>  	struct super_block *sb = ac->ac_sb;
+> -	void *bitmap = EXT4_MB_BITMAP(e4b);
+> +	void *bitmap = e4b->bd_bitmap;
+>  	struct ext4_free_extent ex;
+>  	int i;
+>  	int free;
+> @@ -1823,7 +1823,7 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+>  {
+>  	struct super_block *sb = ac->ac_sb;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	void *bitmap = EXT4_MB_BITMAP(e4b);
+> +	void *bitmap = e4b->bd_bitmap;
+>  	struct ext4_free_extent ex;
+>  	ext4_fsblk_t first_group_block;
+>  	ext4_fsblk_t a;
+> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+> index 7128f46..c070618 100644
+> --- a/fs/ext4/mballoc.h
+> +++ b/fs/ext4/mballoc.h
+> @@ -212,8 +212,6 @@ struct ext4_buddy {
+>  	__u16 bd_blkbits;
+>  	ext4_group_t bd_group;
+>  };
+> -#define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+> -#define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+>  
+>  static inline ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
+>  					struct ext4_free_extent *fex)
 
