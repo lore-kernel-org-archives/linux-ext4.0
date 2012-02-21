@@ -1,82 +1,74 @@
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 65/73] ext2: Add ext2_dirent_in_use() [ver #2]
-Date: Tue, 21 Feb 2012 18:05:39 +0000
-Message-ID: <20120221180538.25235.94932.stgit@warthog.procyon.org.uk>
-References: <20120221175721.25235.8901.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org, viro@ZenIV.linux.org.uk,
-	valerie.aurora@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120221175721.25235.8901.stgit@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH] e2image: skip uninitialized bitmaps and inode tables
+Date: Tue, 21 Feb 2012 16:47:29 -0500
+Message-ID: <1329860849-28076-1-git-send-email-psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:43728 "EHLO
+	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752038Ab2BUVrb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2012 16:47:31 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Valerie Aurora <vaurora@redhat.com>
+When the block bitmap is uninitialized, skip copying it.
+When the inode bitmap is uninitialized, skip copying it,
+as well as the inode table.  When there are unused inodes
+towards the end of the table, skip those blocks too.
 
-Currently ext2 checks if a directory entry is in-use by checking if the inode
-is non-zero.  Fallthrus and whiteouts will have zero inode but be in-use.  Add
-a function to abstract out the directory entry in-use test.
-
-Original-author: Valerie Aurora <vaurora@redhat.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: linux-ext4@vger.kernel.org
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
 ---
+ misc/e2image.c |   22 ++++++++++++++++------
+ 1 files changed, 16 insertions(+), 6 deletions(-)
 
- fs/ext2/dir.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index d37df35..89015f1 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -218,6 +218,11 @@ fail:
- 	return ERR_PTR(-EIO);
- }
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 4343a3d..79c8afb 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -342,18 +342,27 @@ static void mark_table_blocks(ext2_filsys fs)
+ 		/*
+ 		 * Mark the blocks used for the inode table
+ 		 */
+-		if (ext2fs_inode_table_loc(fs, i)) {
++		if (!ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
++		    ext2fs_inode_table_loc(fs, i)) {
++			unsigned int end = (unsigned) fs->inode_blocks_per_group;
++			/* skip unused blocks */
++			if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++						       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++				end -= (ext2fs_bg_itable_unused(fs, i) /
++					EXT2_INODES_PER_BLOCK(fs->super));
+ 			for (j = 0, b = ext2fs_inode_table_loc(fs, i);
+-			     j < (unsigned) fs->inode_blocks_per_group;
+-			     j++, b++)
++			     j < end;
++			     j++, b++) {
+ 				ext2fs_mark_block_bitmap2(meta_block_map, b);
+-			meta_blocks_count += fs->inode_blocks_per_group;
++				meta_blocks_count++;
++			}
+ 		}
  
-+static inline int ext2_dirent_in_use(struct ext2_dir_entry_2 *de)
-+{
-+	return de->inode != 0;
-+}
-+
- /*
-  * NOTE! unlike strncmp, ext2_match returns 1 for success, 0 for failure.
-  *
-@@ -228,7 +233,7 @@ static inline int ext2_match (int len, const char * const name,
- {
- 	if (len != de->name_len)
- 		return 0;
--	if (!de->inode)
-+	if (!ext2_dirent_in_use(de))
- 		return 0;
- 	return !memcmp(name, de->name, len);
- }
-@@ -527,6 +532,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 				rec_len = chunk_size;
- 				de->rec_len = ext2_rec_len_to_disk(chunk_size);
- 				de->inode = 0;
-+				de->file_type = 0;
- 				goto got_it;
- 			}
- 			if (de->rec_len == 0) {
-@@ -540,7 +546,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 				goto out_unlock;
- 			name_len = EXT2_DIR_REC_LEN(de->name_len);
- 			rec_len = ext2_rec_len_from_disk(de->rec_len);
--			if (!de->inode && rec_len >= reclen)
-+			if (!ext2_dirent_in_use(de) && rec_len >= reclen)
- 				goto got_it;
- 			if (rec_len >= name_len + reclen)
- 				goto got_it;
-@@ -558,7 +564,7 @@ got_it:
- 	err = ext2_prepare_chunk(page, pos, rec_len);
- 	if (err)
- 		goto out_unlock;
--	if (de->inode) {
-+	if (ext2_dirent_in_use(de)) {
- 		ext2_dirent *de1 = (ext2_dirent *) ((char *) de + name_len);
- 		de1->rec_len = ext2_rec_len_to_disk(rec_len - name_len);
- 		de->rec_len = ext2_rec_len_to_disk(name_len);
+ 		/*
+ 		 * Mark block used for the block bitmap
+ 		 */
+-		if (ext2fs_block_bitmap_loc(fs, i)) {
++		if (!ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
++		    ext2fs_block_bitmap_loc(fs, i)) {
+ 			ext2fs_mark_block_bitmap2(meta_block_map,
+ 				     ext2fs_block_bitmap_loc(fs, i));
+ 			meta_blocks_count++;
+@@ -362,7 +371,8 @@ static void mark_table_blocks(ext2_filsys fs)
+ 		/*
+ 		 * Mark block used for the inode bitmap
+ 		 */
+-		if (ext2fs_inode_bitmap_loc(fs, i)) {
++		if (!ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
++		    ext2fs_inode_bitmap_loc(fs, i)) {
+ 			ext2fs_mark_block_bitmap2(meta_block_map,
+ 				 ext2fs_inode_bitmap_loc(fs, i));
+ 			meta_blocks_count++;
+-- 
+1.7.5.4
+
