@@ -1,98 +1,49 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH V4 01/22] ext4: Move extra inode read to a new function.
-Date: Tue, 21 Feb 2012 16:13:17 +0800
-Message-ID: <4F43521D.2070401@tao.ma>
-References: <4F41EF95.2000909@tao.ma> <1329721316-4955-1-git-send-email-tm@tao.ma> <77C00684-DB5E-4BDC-A500-9128D8BD0BC3@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Andreas Dilger <aedilger@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <77C00684-DB5E-4BDC-A500-9128D8BD0BC3@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Xi Wang <xi.wang@gmail.com>
+Subject: Re: [PATCH] FS: ext4: fix integer overflow in alloc_flex_gd()
+Date: Tue, 21 Feb 2012 08:55:57 -0500
+Message-ID: <0E72E3B2-DAA7-45F4-845D-AF4E76174A33@gmail.com>
+References: <1329777684-18396-1-git-send-email-haogangchen@gmail.com> <4F42DBA0.4090502@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Haogang Chen <haogangchen@gmail.com>, Theodore Tso <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:55335 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752811Ab2BUN4C convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2012 08:56:02 -0500
+In-Reply-To: <4F42DBA0.4090502@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/21/2012 02:51 PM, Andreas Dilger wrote:
-> On 2012-02-20, at 12:01 AM, Tao Ma wrote:
->> From: Tao Ma <boyu.mt@taobao.com>
->>
->> Currently, in ext4_iget we do a simple check to see whether
->> there does exist some information starting from the end
->> of i_extra_size. With inline data added, this procedure
->> is more complicated. So move it to a new function named
->> ext4_iget_extra_inode.
->>
->> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
->> ---
->> fs/ext4/inode.c |   19 ++++++++++++-------
->> 1 files changed, 12 insertions(+), 7 deletions(-)
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index feaa82f..0b2d6c1 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -3610,6 +3610,16 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
->> 	}
->> }
->>
->> +static inline void ext4_iget_extra_inode(struct inode *inode,
->> +					 struct ext4_inode *raw_inode,
->> +					 struct ext4_inode_info *ei)
->> +{
->> +	__le32 *magic = (void *)raw_inode +
->> +			EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize;
->> +	if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
->> +		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
->> +}
+On Feb 20, 2012, at 6:47 PM, Eric Sandeen wrote:
+> Hm this raises a few questions I think.
 > 
-> The patch looks fine, and is a nice little cleanup, but...
+> On the one hand, making sure the kmalloc arg doesn't overflow here is
+> certainly a good thing and probably the right thing to do in the short term.
 > 
->> struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->> {
->> 	struct ext4_iloc iloc;
->> @@ -3720,13 +3730,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->> 			/* The extra space is currently unused. Use it. */
->> 			ei->i_extra_isize = sizeof(struct ext4_inode) -
->> 					    EXT4_GOOD_OLD_INODE_SIZE;
->> -		} else {
->> -			__le32 *magic = (void *)raw_inode +
->> -					EXT4_GOOD_OLD_INODE_SIZE +
->> -					ei->i_extra_isize;
->> -			if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
->> -				ext4_set_inode_state(inode, EXT4_STATE_XATTR);
->> -		}
->> +		} else
->> +			ext4_iget_extra_inode(inode, raw_inode, ei);
+> So I guess:
 > 
-> This does not follow Documentation/CodingStyle - there should be braces around
-> the "else" clause if it is needed for the "if" clause.  The below code could be
-> fixed at the same time.
-OK, I will fix it. Thanks for the review.
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> for that, to close the hole.
 
-Thanks
-Tao
-> 
->> 	} else
->> 		ei->i_extra_isize = 0;
->>
->> -- 
->> 1.7.0.4
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Another possibility is to wait for knalloc/kmalloc_array in the -mm
+tree, which is basically the non-zeroing version of kcalloc that
+performs overflow checking.
+
+> Doesn't this also mean that a valid s_log_groups_per_flex (i.e. 31)
+> will fail in this resize code?  That would be an unexpected outcome.
+> 2^31 groups per flex is a little crazy, but still technically valid
+> according to the limits in the code.
+
+Or we could limit s_log_groups_per_flex/groups_per_flex to a
+reasonable upper bound in ext4_fill_flex_info(), right?
+
+- xi
 
