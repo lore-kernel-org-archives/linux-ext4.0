@@ -1,229 +1,78 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V4 02/22] ext4: export inline xattr functions.
-Date: Tue, 21 Feb 2012 15:45:11 -0700
-Message-ID: <277F09BF-E793-445D-A520-43E1E0F85EFE@dilger.ca>
-References: <4F41EF95.2000909@tao.ma> <1329721316-4955-1-git-send-email-tm@tao.ma> <1329721316-4955-2-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH V4 00/22] ext4: Add inline data support
+Date: Tue, 21 Feb 2012 16:44:35 -0700
+Message-ID: <FA1EAF98-9D9C-408D-BB4C-4A116C6CEA19@dilger.ca>
+References: <4F41EF95.2000909@tao.ma>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:7243 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753374Ab2BUWpP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2012 17:45:15 -0500
-In-Reply-To: <1329721316-4955-2-git-send-email-tm@tao.ma>
+Received: from smtp-out-04.shaw.ca ([64.59.134.12]:51619 "EHLO
+	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751928Ab2BUXoi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2012 18:44:38 -0500
+In-Reply-To: <4F41EF95.2000909@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-20, at 12:01 AM, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On 2012-02-20, at 12:00 AM, Tao Ma wrote:
+> Hi Ted, Andreas and list,
+>        This is the v4 attempt to add inline data support to ext4 inode.
+> For more information about the background, please refer to the thread
+> http://marc.info/?l=linux-ext4&m=131715205428067&w=2
 > 
-> Inline data needs some inline xattr functions, so export them
-> from fs/ext4/xattr.c so that inline.c can uses them.
-> 
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> ---
-> fs/ext4/xattr.c |   63 ++++++++++++++++++++++++++----------------------------
-> fs/ext4/xattr.h |   57 +++++++++++++++++++++++++++++++++++++++++++++++++
-> 2 files changed, 87 insertions(+), 33 deletions(-)
-> 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 93a00d8..07eeaf3 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -61,11 +61,6 @@
-> #include "xattr.h"
-> #include "acl.h"
-> 
-> -#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
-> -#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
-> -#define BFIRST(bh) ENTRY(BHDR(bh)+1)
-> -#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
-> -
-> #ifdef EXT4_XATTR_DEBUG
-> # define ea_idebug(inode, f...) do { \
-> 		printk(KERN_DEBUG "inode %s:%lu: ", \
-> @@ -255,7 +250,7 @@ cleanup:
-> 	return error;
-> }
-> 
-> -static int
-> +int
-> ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
-> 		     void *buffer, size_t buffer_size)
-> {
-> @@ -522,21 +517,6 @@ static size_t ext4_xattr_free_space(struct ext4_xattr_entry *last,
-> 	return (*min_offs - ((void *)last - base) - sizeof(__u32));
-> }
-> 
-> -struct ext4_xattr_info {
-> -	int name_index;
-> -	const char *name;
-> -	const void *value;
-> -	size_t value_len;
-> -};
-> -
-> -struct ext4_xattr_search {
-> -	struct ext4_xattr_entry *first;
-> -	void *base;
-> -	void *end;
-> -	struct ext4_xattr_entry *here;
-> -	int not_found;
-> -};
-> -
-> static int
-> ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
-> {
-> @@ -890,14 +870,8 @@ bad_block:
-> #undef header
-> }
-> 
-> -struct ext4_xattr_ibody_find {
-> -	struct ext4_xattr_search s;
-> -	struct ext4_iloc iloc;
-> -};
-> -
-> -static int
-> -ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> -		      struct ext4_xattr_ibody_find *is)
-> +int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> +			  struct ext4_xattr_ibody_find *is)
-> {
-> 	struct ext4_xattr_ibody_header *header;
-> 	struct ext4_inode *raw_inode;
-> @@ -925,10 +899,33 @@ ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> 	return 0;
-> }
-> 
-> -static int
-> -ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-> -		     struct ext4_xattr_info *i,
-> -		     struct ext4_xattr_ibody_find *is)
-> +int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
-> +				struct ext4_xattr_info *i,
-> +				struct ext4_xattr_ibody_find *is)
-> +{
+> Changlog from v3 to v4:
+> 1. Add support for truncate which is really a bug.
+> 2. Some bug fixes.
+> 3. rebased to the latest kernel.
 
-The addition of this function should be moved into [PATCH 03/22], since
-there are otherwise no users of this function in this patch.
+I'm starting to look through this patch series, and a number of things are
+missing that would make it much easier to understand and accept:
+- a good comment and possibly a diagram at the start of fs/ext4/xattr.c
+  that describes where and how the inline data is stored in the inode,
+  what the policies are for storing data inline or externally, etc.
+- some benchmark data that shows why landing this code is desirable.
+  My comments in the above thread show that small files and directories
+  could benefit from this, but real proof now that you have made this
+  patch is whether this translates into noticeable space savings, and
+  hopefully also noticeable performance improvements in some benchmarks:
+  - I suspect that running some tests with bigalloc + 512-byte inodes
+    or similar could show significant space savings and speedups for
+    cold-cache directory traversal
+  - measuring boot time on a distro with Gnome or KDE could show real
+    speedups due to the many small files and directories used at startup
+  - running a benchmark like mongo or postmark with small files and
+    with 256- or 512-byte inodes may also show real speedups
+  - is there some workload that you are using that shows speedups that
+    could be described in general terms and show relative performance,
+    even if it is not possible to supply the actual benchmark/tests?
 
-> +	struct ext4_xattr_ibody_header *header;
-> +	struct ext4_xattr_search *s = &is->s;
-> +	int error;
-> +
-> +	if (EXT4_I(inode)->i_extra_isize == 0)
-> +		return -ENOSPC;
-> +	error = ext4_xattr_set_entry(i, s);
-> +	if (error)
-> +		return error;
-> +	header = IHDR(inode, ext4_raw_inode(&is->iloc));
-> +	if (!IS_LAST_ENTRY(s->first)) {
-> +		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
-> +		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
-> +	} else {
-> +		header->h_magic = cpu_to_le32(0);
-> +		ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
-> +	}
-> +	return 0;
-> +}
-> +
-> +int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-> +			 struct ext4_xattr_info *i,
-> +			 struct ext4_xattr_ibody_find *is)
-> {
-> 	struct ext4_xattr_ibody_header *header;
-> 	struct ext4_xattr_search *s = &is->s;
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index 25b7387..2879761 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -63,6 +63,32 @@ struct ext4_xattr_entry {
-> 		EXT4_I(inode)->i_extra_isize))
-> #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+I'll go through the patches and suggest cleanups and improvements, but
+without improved documentation and real performance tests the patch is
+very unlikely to be accepted by Ted.
+
+> Changelog from v2 to v3:
+> 1. Add support for evict data from inode if we can store xattr in it.
+> 2. Add support for fiemap
+> 3. Some nasty bug fixes
 > 
-> +#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
-> +#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
-> +#define BFIRST(bh) ENTRY(BHDR(bh)+1)
-> +#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
-> +
-> +
-> +struct ext4_xattr_info {
-> +	int name_index;
-> +	const char *name;
-> +	const void *value;
-> +	size_t value_len;
-> +};
-> +
-> +struct ext4_xattr_search {
-> +	struct ext4_xattr_entry *first;
-> +	void *base;
-> +	void *end;
-> +	struct ext4_xattr_entry *here;
-> +	int not_found;
-> +};
-> +
-> +struct ext4_xattr_ibody_find {
-> +	struct ext4_xattr_search s;
-> +	struct ext4_iloc iloc;
-> +};
-> +
-> # ifdef CONFIG_EXT4_FS_XATTR
+> The v3 can be found here:
+> http://marc.info/?l=linux-ext4&m=132421821001634&w=2
 > 
-> extern const struct xattr_handler ext4_xattr_user_handler;
-> @@ -88,6 +114,15 @@ extern void ext4_exit_xattr(void);
+> The v2 can be found here:
+> http://marc.info/?l=linux-ext4&m=132189338604177&w=2
 > 
-> extern const struct xattr_handler *ext4_xattr_handlers[];
+> The v1 can be found here:
+> http://marc.info/?l=linux-ext4&m=131961438221255&w=2
 > 
-> +extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> +				 struct ext4_xattr_ibody_find *is);
-> +extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
-> +				       struct ext4_xattr_info *i,
-> +				       struct ext4_xattr_ibody_find *is);
-> +extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
-> +				const char *name,
-> +				void *buffer, size_t buffer_size);
-> +
-> # else  /* CONFIG_EXT4_FS_XATTR */
+> any suggestions are welcomed.
 > 
-> static inline int
-> @@ -141,6 +176,28 @@ ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
-> 
-> #define ext4_xattr_handlers	NULL
-> 
-> +static inline int
-> +ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> +		      struct ext4_xattr_ibody_find *is)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> +static inline int
-> +ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-> +		     struct ext4_xattr_info *i,
-> +		     struct ext4_xattr_ibody_find *is)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> +extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
-> +				const char *name,
-> +				void *buffer, size_t buffer_size)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> # endif  /* CONFIG_EXT4_FS_XATTR */
-> 
-> #ifdef CONFIG_EXT4_FS_SECURITY
-> -- 
-> 1.7.0.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Thanks
+> Tao
 
 
 Cheers, Andreas
