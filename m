@@ -1,67 +1,103 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsck: check new sysfs interface to determine if we
- are on battery
-Date: Mon, 20 Feb 2012 18:17:38 -0600
-Message-ID: <4F42E2A2.1020703@redhat.com>
-References: <1329783103-4017-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix resize when resizing within single group
+Date: Mon, 20 Feb 2012 18:20:29 -0600
+Message-ID: <4F42E34D.1070209@redhat.com>
+References: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Milan Broz <mbroz@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56920 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57002 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754835Ab2BUARn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Feb 2012 19:17:43 -0500
-In-Reply-To: <1329783103-4017-1-git-send-email-tytso@mit.edu>
+	id S1754055Ab2BUAUe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Feb 2012 19:20:34 -0500
+In-Reply-To: <1328173555-26452-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/20/12 6:11 PM, Theodore Ts'o wrote:
-> ...since the old way is deprecated.
+On 2/2/12 3:05 AM, Lukas Czerner wrote:
+> When resizing file system in the way that the new size of the file
+> system is still in the same group (no new groups are added), then we can
+> hit a BUG_ON in ext4_alloc_group_tables()
 > 
-> Addresses-SourceForge-Bug: #3439277
+> BUG_ON(flex_gd->count == 0 || group_data == NULL);
+> 
+> because flex_gd->count is zero. The reason is the missing check for such
+> case, so the code always extend the last group fully and then attempt to
+> add more groups, but at that time n_blocks_count is actually smaller
+> than o_blocks_count.
+> 
+> It can be easily reproduced like this:
+> 
+> mkfs.ext4 -b 4096 /dev/sda 30M
+> mount /dev/sda /mnt/test
+> resize2fs /dev/sda 50M
+> 
+> Fix this by checking whether the resize happens within the singe group
+> and only add that many blocks into the last group to satisfy user
+> request. Then o_blocks_count == n_blocks_count and the resize will exit
+> successfully without and attempt to add more groups into the fs.
+> 
+> Also fix mixing together block number and blocks count which might be
+> confusing and can easily lead to off-by-one errors (but it is actually
+> not the case here since the two occurrence of this mix-up will cancel
+> each other).
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reported-by: Milan Broz <mbroz@redhat.com>
 
-Red Hat bug #644629 too
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-But https://bugzilla.redhat.com/show_bug.cgi?id=644629#c5
-made it sound harder than this, so I was ... keeping that bug
-on the back burner ...
+Ted, if this hits linux-next we can pull it into fedora and close a bug they're tracking.  :)
 
-> You need to enumerate through all power supply devices with the "type" =
-> "Mains" attribute, and check if any of them have the "online" attribute as "1".
-> If so you have AC power. If don't find any power supply of "type" = "Mains"
-> then you are on AC power too. Only if you have one or more power supplies of
-> "type" = "Mains" and all of them have "online" = "0" then you are on battery.
-
-If your patch fixes the general case, I say go for it! :)
-
+thanks,
 -Eric
 
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  e2fsck/unix.c |    8 ++++++++
->  1 files changed, 8 insertions(+), 0 deletions(-)
+>  fs/ext4/resize.c |   14 ++++++++------
+>  1 files changed, 8 insertions(+), 6 deletions(-)
 > 
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index c38b67a..6f97b0f 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -252,6 +252,14 @@ static int is_on_batt(void)
->  	unsigned int	acflag;
->  	struct dirent*	de;
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index f9d948f..3fed79d 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -1582,7 +1582,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+>  	ext4_fsblk_t o_blocks_count;
+>  	ext4_group_t o_group;
+>  	ext4_group_t n_group;
+> -	ext4_grpblk_t offset;
+> +	ext4_grpblk_t offset, add;
+>  	unsigned long n_desc_blocks;
+>  	unsigned long o_desc_blocks;
+>  	unsigned long desc_blocks;
+> @@ -1605,7 +1605,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+>  		return 0;
 >  
-> +	f = fopen("/sys/class/power_supply/AC/online", "r");
-> +	if (f) {
-> +		if (fscanf(f, "%d\n", &acflag) == 1) {
-> +			fclose(f);
-> +			return (!acflag);
-> +		}
-> +		fclose(f);
-> +	}
->  	f = fopen("/proc/apm", "r");
->  	if (f) {
->  		if (fscanf(f, "%s %s %s %x", tmp, tmp, tmp, &acflag) != 4)
+>  	ext4_get_group_no_and_offset(sb, n_blocks_count - 1, &n_group, &offset);
+> -	ext4_get_group_no_and_offset(sb, o_blocks_count, &o_group, &offset);
+> +	ext4_get_group_no_and_offset(sb, o_blocks_count - 1, &o_group, &offset);
+>  
+>  	n_desc_blocks = (n_group + EXT4_DESC_PER_BLOCK(sb)) /
+>  			EXT4_DESC_PER_BLOCK(sb);
+> @@ -1634,10 +1634,12 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+>  	}
+>  	brelse(bh);
+>  
+> -	if (offset != 0) {
+> -		/* extend the last group */
+> -		ext4_grpblk_t add;
+> -		add = EXT4_BLOCKS_PER_GROUP(sb) - offset;
+> +	/* extend the last group */
+> +	if (n_group == o_group)
+> +		add = n_blocks_count - o_blocks_count;
+> +	else
+> +		add = EXT4_BLOCKS_PER_GROUP(sb) - (offset + 1);
+> +	if (add > 0) {
+>  		err = ext4_group_extend_no_check(sb, o_blocks_count, add);
+>  		if (err)
+>  			goto out;
 
