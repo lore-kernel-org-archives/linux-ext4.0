@@ -1,12 +1,14 @@
-From: Bart Van Assche <bvanassche@acm.org>
+From: Bart Van Assche <bart.vanassche@gmail.com>
 Subject: ext4: List corruption complaint on 2.6.32.57
-Date: Thu, 23 Feb 2012 16:59:21 +0000
-Message-ID: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
+Date: Thu, 23 Feb 2012 17:01:15 +0000
+Message-ID: <CAO+b5-rSEhhDbrgxc21C_7eA=7nsuqqc2HodWzZ4cxVQCwtYRw@mail.gmail.com>
+References: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@kernel.org, LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
