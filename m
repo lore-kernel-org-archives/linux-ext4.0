@@ -1,87 +1,132 @@
-From: Bart Van Assche <bart.vanassche@gmail.com>
-Subject: ext4: List corruption complaint on 2.6.32.57
-Date: Thu, 23 Feb 2012 17:01:15 +0000
-Message-ID: <CAO+b5-rSEhhDbrgxc21C_7eA=7nsuqqc2HodWzZ4cxVQCwtYRw@mail.gmail.com>
-References: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] libext2: clear BG_BLOCK_UNINIT in any group containing metadata
+Date: Thu, 23 Feb 2012 12:20:15 -0600
+Message-ID: <4F46835F.5080009@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@kernel.org, LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:3086 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756440Ab2BWSUS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Feb 2012 13:20:18 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q1NIKIAM022703
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Feb 2012 13:20:18 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Running a test like the m_uninit test runs:
 
-Has anyone seen this call stack before ?
+# mke2fs -F -o Linux -O uninit_bg testfs 131072
 
-Thanks,
+results in groups which have blocks allocated for metadata, but
+which still have the BLOCK_UNINIT flag set:
 
-Bart.
+Group 2: (Blocks 16385-24576) [INODE_UNINIT, BLOCK_UNINIT, ITABLE_ZEROED]
+  Checksum 0x17c2, unused inodes 2048
+  Block bitmap at 16385 (+0), Inode bitmap at 16386 (+1)
+  Inode table at 16387-16642 (+2)
 
-------------[ cut here ]------------
-WARNING: at lib/list_debug.c:30 __list_add+0x8f/0xa0()
-Hardware name: P5Q DELUXE
-list_add corruption. prev->next should be next (ffff88016a00c718), but =
-was
-ffff8801a876c300. (prev=3Dffff88016a00c718).
-Modules linked in: ext4 jbd2 crc16 ib_srp scsi_transport_srp scsi_tgt
-netconsole configfs snd_pcm_oss snd_mixer_oss snd_seq snd_seq_device
-af_packet rdma_ucm rdma_cm iw_cm ib_addr ib_ipoib ib_cm ib_sa ib_uverbs
-ib_umad mlx4_ib ib_mad ib_core microcode cpufreq_conservative
-cpufreq_userspace cpufreq_powersave acpi_cpufreq dm_mod
-snd_hda_codec_atihdmi snd_hda_codec_analog snd_hda_intel snd_hda_codec
-snd_hwdep snd_pcm sr_mod snd_timer i2c_i801 intel_agp snd sg cdrom pcsp=
-kr
-soundcore i2c_core agpgart mlx4_core button snd_page_alloc uhci_hcd ehc=
-i_hcd
-sd_mod crc_t10dif usbcore edd ext3 mbcache jbd fan ata_generic ata_piix
-pata_marvell ahci libata scsi_mod thermal processor thermal_sys hwmon [=
-last
-unloaded: scsi_transport_srp]
-Pid: 4127, comm: fio Not tainted 2.6.32.57-debug #1
-Call Trace:
-=A0<IRQ>=A0 [<ffffffff8105058b>] warn_slowpath_common+0x7b/0xc0
-=A0[<ffffffff81050631>] warn_slowpath_fmt+0x41/0x50
-=A0[<ffffffff811ef9ff>] __list_add+0x8f/0xa0
-=A0[<ffffffffa037a544>] ext4_end_io_dio+0x94/0xb0 [ext4]
-=A0[<ffffffff8116c275>] dio_complete+0xc5/0xf0
-=A0[<ffffffff8116c316>] dio_bio_end_aio+0x76/0xd0
-=A0[<ffffffff810881fd>] ? lock_release_holdtime+0x3d/0x180
-=A0[<ffffffff81167add>] bio_endio+0x1d/0x40
-=A0[<ffffffff811cebeb>] req_bio_endio+0xab/0x110
-=A0[<ffffffff811cf5af>] blk_update_request+0xff/0x4b0
-=A0[<ffffffff811cf784>] ? blk_update_request+0x2d4/0x4b0
-=A0[<ffffffff811cf994>] blk_update_bidi_request+0x34/0x80
-=A0[<ffffffff811d06bf>] blk_end_bidi_request+0x2f/0x80
-=A0[<ffffffff811d0760>] blk_end_request+0x10/0x20
-=A0[<ffffffffa00313df>] scsi_io_completion+0xaf/0x560 [scsi_mod]
-=A0[<ffffffffa0028751>] scsi_finish_command+0xc1/0x130 [scsi_mod]
-=A0[<ffffffff8108d83b>] ? mark_held_locks+0x6b/0xa0
-=A0[<ffffffffa0031245>] scsi_softirq_done+0x145/0x170 [scsi_mod]
-=A0[<ffffffff811d6425>] blk_done_softirq+0x85/0xa0
-=A0[<ffffffff81059156>] __do_softirq+0xd6/0x230
-=A0[<ffffffff8100d19c>] call_softirq+0x1c/0x30
-=A0[<ffffffff8100ec4d>] do_softirq+0x8d/0xc0
-=A0[<ffffffff810593d5>] irq_exit+0x95/0xa0
-=A0[<ffffffff813a1735>] do_IRQ+0x75/0xf0
-=A0[<ffffffff8100c993>] ret_from_intr+0x0/0xf
-=A0<EOI>=A0 [<ffffffffa037b9cb>] ? flush_aio_dio_completed_IO+0x4b/0x90=
- [ext4]
-=A0[<ffffffffa037b9bc>] ? flush_aio_dio_completed_IO+0x3c/0x90 [ext4]
-=A0[<ffffffffa0377228>] ? ext4_sync_file+0x98/0x300 [ext4]
-=A0[<ffffffff8139ab5b>] ? __mutex_unlock_slowpath+0xcb/0x160
-=A0[<ffffffff81161683>] ? vfs_fsync_range+0xa3/0xe0
-=A0[<ffffffff8116170b>] ? generic_write_sync+0x4b/0x50
-=A0[<ffffffff810e996e>] ? generic_file_aio_write+0xbe/0xe0
-=A0[<ffffffffa037711c>] ? ext4_file_write+0x3c/0xb0 [ext4]
-=A0[<ffffffff8108d9bd>] ? trace_hardirqs_on_caller+0x14d/0x190
-=A0[<ffffffffa03770e0>] ? ext4_file_write+0x0/0xb0 [ext4]
-=A0[<ffffffff8117753c>] ? aio_rw_vect_retry+0x7c/0x200
-=A0[<ffffffff811774c0>] ? aio_rw_vect_retry+0x0/0x200
-=A0[<ffffffff81178890>] ? aio_run_iocb+0x60/0x150
-=A0[<ffffffff81179e22>] ? sys_io_submit+0x222/0x6c0
-=A0[<ffffffff8100c05b>] ? system_call_fastpath+0x16/0x1b
----[ end trace 38304a60b381bf96 ]---
-------------[ cut here ]------------
+however, e2fsck doesn't find this error - which seems like another bug.
+
+Doing another test like this:
+
+mkfs.ext4 -I 256 -b 4096 -N 256 -G 1 -g 256 /dev/loop0 1024
+mount /dev/loop0 /mnt/test
+mkdir /mnt/test/dir
+umount /mnt/test
+fsck.ext4 -fn /dev/loop0
+
+does find the error on fsck, I think because BLOCK_UNINIT gets
+cleared, and the group isn't ignored at fsck time:
+
+Free blocks count wrong for group #2 (253, counted=249).
+
+In the first case, flex_bg is not set; in the 2nd it is set,
+but s_log_groups_per_flex == 0 (due to -G 1), so in neither
+case is flexbg_size set in ext2fs_allocate_group_table().
+
+This leads to skipping the code which clears BLOCK_UNINIT after
+the metadata is allocated.
+
+I think the fix is to unconditionally clear the BLOCK_UNINIT flag
+in whatever block group gets metadata allocated to it, as follows.
+
+the m_uninit test needs to be fixed up too, as does e2fsck it seems,
+to catch this error in the first place?
+
+Sorry for the long commit message, if the patch looks right I can
+try to do better ;)
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 9f3d4e0..3462e85 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -88,6 +88,7 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 	blk64_t		group_blk, start_blk, last_blk, new_blk, blk;
+ 	dgrp_t		last_grp = 0;
+ 	int		rem_grps = 0, flexbg_size = 0;
++	dgrp_t		gr;
+ 
+ 	group_blk = ext2fs_group_first_block2(fs, group);
+ 	last_blk = ext2fs_group_last_block2(fs, group);
+@@ -141,13 +142,13 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 			return retval;
+ 		ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 		ext2fs_block_bitmap_loc_set(fs, group, new_blk);
++		gr = ext2fs_group_of_blk2(fs, new_blk);
++		ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+ 		if (flexbg_size) {
+-			dgrp_t gr = ext2fs_group_of_blk2(fs, new_blk);
+ 			ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+ 			ext2fs_free_blocks_count_add(fs->super, -1);
+-			ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+-			ext2fs_group_desc_csum_set(fs, gr);
+ 		}
++		ext2fs_group_desc_csum_set(fs, gr);
+ 	}
+ 
+ 	if (flexbg_size) {
+@@ -172,13 +173,13 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 			return retval;
+ 		ext2fs_mark_block_bitmap2(bmap, new_blk);
+ 		ext2fs_inode_bitmap_loc_set(fs, group, new_blk);
++		gr = ext2fs_group_of_blk2(fs, new_blk);
++		ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+ 		if (flexbg_size) {
+-			dgrp_t gr = ext2fs_group_of_blk2(fs, new_blk);
+ 			ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+ 			ext2fs_free_blocks_count_add(fs->super, -1);
+-			ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+-			ext2fs_group_desc_csum_set(fs, gr);
+ 		}
++		ext2fs_group_desc_csum_set(fs, gr);
+ 	}
+ 
+ 	/*
+@@ -209,14 +210,13 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 		     j < fs->inode_blocks_per_group;
+ 		     j++, blk++) {
+ 			ext2fs_mark_block_bitmap2(bmap, blk);
++			gr = ext2fs_group_of_blk2(fs, blk);
++			ext2fs_bg_flags_clear(fs, gr, EXT2_BG_BLOCK_UNINIT);
+ 			if (flexbg_size) {
+-				dgrp_t gr = ext2fs_group_of_blk2(fs, blk);
+ 				ext2fs_bg_free_blocks_count_set(fs, gr, ext2fs_bg_free_blocks_count(fs, gr) - 1);
+ 				ext2fs_free_blocks_count_add(fs->super, -1);
+-				ext2fs_bg_flags_clear(fs, gr,
+-						     EXT2_BG_BLOCK_UNINIT);
+-				ext2fs_group_desc_csum_set(fs, gr);
+ 			}
++			ext2fs_group_desc_csum_set(fs, gr);
+ 		}
+ 		ext2fs_inode_table_loc_set(fs, group, new_blk);
+ 	}
+
