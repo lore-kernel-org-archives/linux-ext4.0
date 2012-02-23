@@ -1,528 +1,319 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH] ext4: modify the implementation of quota reservation in bigalloc and delay-allocation
-Date: Thu, 23 Feb 2012 17:17:08 +0800
-Message-ID: <1329988628-3482-1-git-send-email-hao.bigrat@gmail.com>
-Cc: Robin Dong <sanbai@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Aditya Kali <adityakali@google.com>
-To: linux-ext4@vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] e2fsck: Discard only unused parts of inode table
+Date: Thu, 23 Feb 2012 14:05:29 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1202231044410.7723@dhcp-27-109.brq.redhat.com>
+References: <1329840132-16808-1-git-send-email-lczerner@redhat.com> <4F458D99.30802@redhat.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, psusi@ubuntu.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:65466 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752282Ab2BWJRS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Feb 2012 04:17:18 -0500
-Received: by iacb35 with SMTP id b35so1271664iac.19
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Feb 2012 01:17:17 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:56995 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752218Ab2BWNFg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Feb 2012 08:05:36 -0500
+In-Reply-To: <4F458D99.30802@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Robin Dong <sanbai@taobao.com>
+On Wed, 22 Feb 2012, Eric Sandeen wrote:
 
-1. fix the bug reported by Eric Sandeen (http://www.spinics.net/lists/linux-ext4/msg30259.html)
+> On 2/21/12 10:02 AM, Lukas Czerner wrote:
+> > When calling e2fsck with '-E discard' option it might happen that
+> > valid inodes are discarded accidentally. This is because we just
+> > discard the part of inode table which lies past the highest used
+> > inode. This is terribly wrong (sorry!).
+> > 
+> > This patch fixes it so only the free parts of an inode table
+> > is discarded, leaving used inodes intact. This was tested with highly
+> > fragmented inode tables with block size 4k and 1k.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Reported-by: Phillip Susi <psusi@ubuntu.com>
+> > ---
+> >  e2fsck/pass5.c |   59 +++++++++++++++++++++++++++++++++++--------------------
+> >  1 files changed, 37 insertions(+), 22 deletions(-)
+> > 
+> > diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+> > index 1e836e3..9cc4a20 100644
+> > --- a/e2fsck/pass5.c
+> > +++ b/e2fsck/pass5.c
+> > @@ -94,6 +94,26 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+> >  		ctx->options &= ~E2F_OPT_DISCARD;
+> >  }
+> 
+> I could really use a comment here.  Is "start" the inode nr within
+> the group?  Is the first inode in the group 0 or 1?  The calling
+> function's loop starts at inode 1 ... but based on some testing
+> it looks like you call the first free inode in an empty group
+> "inode 0" so I'll assume that, but comments please.
 
-2. change the argument of i_{reserved_data,reserved_meta,allocated_meta}_blocks to i_*_clusters
+Yes, it should be that way. I'll comment it.
 
-3. In the old logic When we try writing to a block which does not have a mapping, and bigalloc is enabled:
-	a) one block have been mapped, a whole cluster will be reserved.
-	b) While the block has not been mapped (and so the data on disk is
-	   uninitialized) the cluster has indeed been allocated, so we don't need
-	   to reserve any additional room for the block.
+> 
+> 
+> > +static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+> > +				  int start, int count)
+> 
+> I'm not sure if ints are good here, but it's what the calling
+> function uses, I guess.
 
-   Imaging s_cluster_ratio is 4 and the clusters is: (follow the comment in fs/ext4/extent.c:4100)
+Unfortunately it is a bit messy, but this is only within one group so
+int should be enough.
 
-	[0-3], [4-7], [8-11]
+> 
+> > +{
+> > +	ext2_filsys fs = ctx->fs;
+> > +	blk64_t blk, num;
+> > +
+> > +	/*
+> > +	 * We can discard only blocks containing only unused
+> > +	 * inodes in the table.
+> > +	 */
+> > +	blk = DIV_ROUND_UP(start,
+> > +		EXT2_INODES_PER_BLOCK(fs->super));
+> > +	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
+> > +	blk += ext2fs_inode_table_loc(fs, group);
+> > +	num = count / EXT2_INODES_PER_BLOCK(fs->super);
+> > +
+> > +	if (num > 0)
+> > +		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
+> > +}
+> 
+> I can't make intuitive sense of that at all, and had to count on my fingers
+> and draw diagrams.  Maybe it's just my old brain.  :(
 
-   The new quota-reservation logic have changed to this now:
+No worries, I needed to use diagrams like that as well ;).
 
-	1. delay-allocation write blocks 10&11
-   		we reserve 1 cluster, the i_reserved_data_blocks is 1 now
-   	2. delay-allocation write blocks 3 to 8
-      		we reserve other 2 clusters, so 3 clusters totally, the
-      		i_reserved_data_blocks is 3 now
-	3. writeout the blocks 3 to 8
-		claim all 3 clusters, i_reserved_data_blocks is 0 now
-		At this moment, we really have allocated 3 clusters, and the
-		remain 10&11 block would never occupy another cluster (it would
-		definitely go into the [8-11] cluster), so, we don't need to reserve one
-		more cluster quota (which is the old logic).
-	4.  writeout the 10&11 blocks
-		the 10&11 blocks will be set EXT4_MAP_FROM_CLUSTER flag ( by
-		get_implied_cluster_alloc as the 8~9 block have been allocated), and
-		it will not call ext4_da_update_reserve_space any more
+> 
+> Let's say we have 4 inode blocks in this table, with
+> 1 == used, 0 == unused, and we start counting inodes at 0.
+> 
+> |1111111100000000|0000000000000000|0000000000000000|0000000000000001|
+>  012345678 <- start
+> 
+> so start = 8, count = 55 (note one inode used at the end)
+> 
+> In this case we should get:
+> 
+> blk = 1 (DIV_ROUND_UP(8, 16)) - ok, that's next block after the partial block
+> count = 55 - ((1 * 16) - 8) = 47
+> num = 47 / 16 = 2
+> 
+> Ok, so that works, assuming the first inode in the group is "0"
+> 
+> We can make a filesystem kind of like that, to test it:
+> 
+> # mkfs.ext4 -I 256 -b 4096 -N 256 -G 1 -g 256 /dev/loop0 1024
 
-	As this, no warning, no reserve-and-release ping pong.
+This does not have anything to do with this patch, but just out of
+curiosity try this:
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Aditya Kali <adityakali@google.com>
-Signed-off-by: Robin Dong <sanbai@taobao.com>
----
- fs/ext4/balloc.c            |    4 +-
- fs/ext4/ext4.h              |    6 +-
- fs/ext4/extents.c           |   97 +++++++++++--------------------------------
- fs/ext4/file.c              |    2 +-
- fs/ext4/inode.c             |   66 +++++++++++++++--------------
- fs/ext4/super.c             |    7 ++-
- include/trace/events/ext4.h |   42 +++++++++---------
- 7 files changed, 90 insertions(+), 134 deletions(-)
+mkfs.ext4 -I 256 -b 4096 -N 256 -G 1 -g 256 /dev/loop0 1024
+mount /dev/loop0 /mnt/test
+mkdir /mnt/test/dir
+for i in $(seq 17); do touch /mnt/test/dir/$i; done
+umount /mnt/test
+fsck.ext4 -fn /dev/loop0
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index f9e2cd8..1a67771 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -426,7 +426,7 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
- 
- 	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
- 					EXT4_FREECLUSTERS_WATERMARK) {
--		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
-+		free_clusters  = percpu_counter_sum_positive(fcc);
- 		dirty_clusters = percpu_counter_sum_positive(dcc);
- 	}
- 	/* Check whether we have space after accounting for current
-@@ -518,7 +518,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	if (!(*errp) &&
- 	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
-+		EXT4_I(inode)->i_allocated_meta_clusters += ar.len;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		dquot_alloc_block_nofail(inode,
- 				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 513004f..d23b521 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -869,9 +869,9 @@ struct ext4_inode_info {
- 
- 	/* allocation reservation info for delalloc */
- 	/* In case of bigalloc, these refer to clusters rather than blocks */
--	unsigned int i_reserved_data_blocks;
--	unsigned int i_reserved_meta_blocks;
--	unsigned int i_allocated_meta_blocks;
-+	unsigned int i_reserved_data_clusters;
-+	unsigned int i_reserved_meta_clusters;
-+	unsigned int i_allocated_meta_clusters;
- 	ext4_lblk_t i_da_metadata_calc_last_lblock;
- 	int i_da_metadata_calc_len;
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74f23c2..5200fcc 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3705,6 +3705,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent newex, *ex, *ex2;
-+	struct ext4_map_blocks tmp_map;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_fsblk_t newblock = 0;
- 	int free_on_err = 0, err = 0, depth, ret;
-@@ -3901,9 +3902,31 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	if ((sbi->s_cluster_ratio > 1) &&
--	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-+	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0)) {
- 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-+		goto got_pre_alloc_blocks;
-+	}
-+
-+	cluster_offset = map->m_lblk & (sbi->s_cluster_ratio-1);
-+	tmp_map = *map;
-+	if (cluster_offset && ex &&
-+	    get_implied_cluster_alloc(inode->i_sb, &tmp_map, ex, path)) {
-+		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-+		goto got_pre_alloc_blocks;
-+	}
-+
-+	ar.lright = map->m_lblk;
-+	ex2 = NULL;
-+	err = ext4_ext_search_right(inode, path, &ar.lright, &ar.pright, &ex2);
-+	if (err)
-+		goto out2;
- 
-+	tmp_map = *map;
-+	if ((sbi->s_cluster_ratio > 1) && ex2 &&
-+	    get_implied_cluster_alloc(inode->i_sb, &tmp_map, ex2, path))
-+		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
-+
-+got_pre_alloc_blocks:
- 	/*
- 	 * requested block isn't allocated yet;
- 	 * we couldn't try to create block if create flag is zero
-@@ -4068,80 +4091,10 @@ got_allocated_blocks:
- 	 * block allocation which had been deferred till now.
- 	 */
- 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
--		unsigned int reserved_clusters;
--		/*
--		 * Check how many clusters we had reserved this allocated range
--		 */
--		reserved_clusters = get_reserved_cluster_alloc(inode,
--						map->m_lblk, allocated);
--		if (map->m_flags & EXT4_MAP_FROM_CLUSTER) {
--			if (reserved_clusters) {
--				/*
--				 * We have clusters reserved for this range.
--				 * But since we are not doing actual allocation
--				 * and are simply using blocks from previously
--				 * allocated cluster, we should release the
--				 * reservation and not claim quota.
--				 */
--				ext4_da_update_reserve_space(inode,
--						reserved_clusters, 0);
--			}
--		} else {
--			BUG_ON(allocated_clusters < reserved_clusters);
-+		if (!(map->m_flags & EXT4_MAP_FROM_CLUSTER))
- 			/* We will claim quota for all newly allocated blocks.*/
- 			ext4_da_update_reserve_space(inode, allocated_clusters,
- 							1);
--			if (reserved_clusters < allocated_clusters) {
--				struct ext4_inode_info *ei = EXT4_I(inode);
--				int reservation = allocated_clusters -
--						  reserved_clusters;
--				/*
--				 * It seems we claimed few clusters outside of
--				 * the range of this allocation. We should give
--				 * it back to the reservation pool. This can
--				 * happen in the following case:
--				 *
--				 * * Suppose s_cluster_ratio is 4 (i.e., each
--				 *   cluster has 4 blocks. Thus, the clusters
--				 *   are [0-3],[4-7],[8-11]...
--				 * * First comes delayed allocation write for
--				 *   logical blocks 10 & 11. Since there were no
--				 *   previous delayed allocated blocks in the
--				 *   range [8-11], we would reserve 1 cluster
--				 *   for this write.
--				 * * Next comes write for logical blocks 3 to 8.
--				 *   In this case, we will reserve 2 clusters
--				 *   (for [0-3] and [4-7]; and not for [8-11] as
--				 *   that range has a delayed allocated blocks.
--				 *   Thus total reserved clusters now becomes 3.
--				 * * Now, during the delayed allocation writeout
--				 *   time, we will first write blocks [3-8] and
--				 *   allocate 3 clusters for writing these
--				 *   blocks. Also, we would claim all these
--				 *   three clusters above.
--				 * * Now when we come here to writeout the
--				 *   blocks [10-11], we would expect to claim
--				 *   the reservation of 1 cluster we had made
--				 *   (and we would claim it since there are no
--				 *   more delayed allocated blocks in the range
--				 *   [8-11]. But our reserved cluster count had
--				 *   already gone to 0.
--				 *
--				 *   Thus, at the step 4 above when we determine
--				 *   that there are still some unwritten delayed
--				 *   allocated blocks outside of our current
--				 *   block range, we should increment the
--				 *   reserved clusters count so that when the
--				 *   remaining blocks finally gets written, we
--				 *   could claim them.
--				 */
--				dquot_reserve_block(inode,
--						EXT4_C2B(sbi, reservation));
--				spin_lock(&ei->i_block_reservation_lock);
--				ei->i_reserved_data_blocks += reservation;
--				spin_unlock(&ei->i_block_reservation_lock);
--			}
--		}
- 	}
- 
- 	/*
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index cb70f18..df0c6bd 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -43,7 +43,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
- 	/* if we are the last writer on the inode, drop the block reservation */
- 	if ((filp->f_mode & FMODE_WRITE) &&
- 			(atomic_read(&inode->i_writecount) == 1) &&
--		        !EXT4_I(inode)->i_reserved_data_blocks)
-+		        !EXT4_I(inode)->i_reserved_data_clusters)
- 	{
- 		down_write(&EXT4_I(inode)->i_data_sem);
- 		ext4_discard_preallocations(inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..7e27581 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -270,31 +270,31 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 
- 	spin_lock(&ei->i_block_reservation_lock);
- 	trace_ext4_da_update_reserve_space(inode, used, quota_claim);
--	if (unlikely(used > ei->i_reserved_data_blocks)) {
-+	if (unlikely(used > ei->i_reserved_data_clusters)) {
- 		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, used %d "
--			 "with only %d reserved data blocks\n",
-+			 "with only %d reserved data clusters\n",
- 			 __func__, inode->i_ino, used,
--			 ei->i_reserved_data_blocks);
-+			 ei->i_reserved_data_clusters);
- 		WARN_ON(1);
--		used = ei->i_reserved_data_blocks;
-+		used = ei->i_reserved_data_clusters;
- 	}
- 
- 	/* Update per-inode reservations */
--	ei->i_reserved_data_blocks -= used;
--	ei->i_reserved_meta_blocks -= ei->i_allocated_meta_blocks;
-+	ei->i_reserved_data_clusters -= used;
-+	ei->i_reserved_meta_clusters -= ei->i_allocated_meta_clusters;
- 	percpu_counter_sub(&sbi->s_dirtyclusters_counter,
--			   used + ei->i_allocated_meta_blocks);
--	ei->i_allocated_meta_blocks = 0;
-+			   used + ei->i_allocated_meta_clusters);
-+	ei->i_allocated_meta_clusters = 0;
- 
--	if (ei->i_reserved_data_blocks == 0) {
-+	if (ei->i_reserved_data_clusters == 0) {
- 		/*
- 		 * We can release all of the reserved metadata blocks
- 		 * only when we have written all of the delayed
- 		 * allocation blocks.
- 		 */
- 		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
--				   ei->i_reserved_meta_blocks);
--		ei->i_reserved_meta_blocks = 0;
-+				   ei->i_reserved_meta_clusters);
-+		ei->i_reserved_meta_clusters = 0;
- 		ei->i_da_metadata_calc_len = 0;
- 	}
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-@@ -316,7 +316,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 	 * there aren't any writers on the inode, we can discard the
- 	 * inode's preallocations.
- 	 */
--	if ((ei->i_reserved_data_blocks == 0) &&
-+	if ((ei->i_reserved_data_clusters == 0) &&
- 	    (atomic_read(&inode->i_writecount) == 0))
- 		ext4_discard_preallocations(inode);
- }
-@@ -1138,8 +1138,8 @@ repeat:
- 		return -ENOSPC;
- 	}
- 	spin_lock(&ei->i_block_reservation_lock);
--	ei->i_reserved_data_blocks++;
--	ei->i_reserved_meta_blocks += md_needed;
-+	ei->i_reserved_data_clusters++;
-+	ei->i_reserved_meta_clusters += md_needed;
- 	spin_unlock(&ei->i_block_reservation_lock);
- 
- 	return 0;       /* success */
-@@ -1156,33 +1156,33 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 
- 	trace_ext4_da_release_space(inode, to_free);
--	if (unlikely(to_free > ei->i_reserved_data_blocks)) {
-+	if (unlikely(to_free > ei->i_reserved_data_clusters)) {
- 		/*
--		 * if there aren't enough reserved blocks, then the
-+		 * if there aren't enough reserved clusters, then the
- 		 * counter is messed up somewhere.  Since this
- 		 * function is called from invalidate page, it's
- 		 * harmless to return without any action.
- 		 */
- 		ext4_msg(inode->i_sb, KERN_NOTICE, "ext4_da_release_space: "
- 			 "ino %lu, to_free %d with only %d reserved "
--			 "data blocks\n", inode->i_ino, to_free,
--			 ei->i_reserved_data_blocks);
-+			 "data clusters\n", inode->i_ino, to_free,
-+			 ei->i_reserved_data_clusters);
- 		WARN_ON(1);
--		to_free = ei->i_reserved_data_blocks;
-+		to_free = ei->i_reserved_data_clusters;
- 	}
--	ei->i_reserved_data_blocks -= to_free;
-+	ei->i_reserved_data_clusters -= to_free;
- 
--	if (ei->i_reserved_data_blocks == 0) {
-+	if (ei->i_reserved_data_clusters == 0) {
- 		/*
- 		 * We can release all of the reserved metadata blocks
- 		 * only when we have written all of the delayed
- 		 * allocation blocks.
- 		 * Note that in case of bigalloc, i_reserved_meta_blocks,
--		 * i_reserved_data_blocks, etc. refer to number of clusters.
-+		 * i_reserved_data_clusters, etc. refer to number of clusters.
- 		 */
- 		percpu_counter_sub(&sbi->s_dirtyclusters_counter,
--				   ei->i_reserved_meta_blocks);
--		ei->i_reserved_meta_blocks = 0;
-+				   ei->i_reserved_meta_clusters);
-+		ei->i_reserved_meta_clusters = 0;
- 		ei->i_da_metadata_calc_len = 0;
- 	}
- 
-@@ -1439,10 +1439,10 @@ static void ext4_print_free_blocks(struct inode *inode)
- 	       (long long) EXT4_C2B(EXT4_SB(inode->i_sb),
- 		percpu_counter_sum(&sbi->s_dirtyclusters_counter)));
- 	printk(KERN_CRIT "Block reservation details\n");
--	printk(KERN_CRIT "i_reserved_data_blocks=%u\n",
--	       EXT4_I(inode)->i_reserved_data_blocks);
--	printk(KERN_CRIT "i_reserved_meta_blocks=%u\n",
--	       EXT4_I(inode)->i_reserved_meta_blocks);
-+	printk(KERN_CRIT "i_reserved_data_clusters=%u\n",
-+	       EXT4_I(inode)->i_reserved_data_clusters);
-+	printk(KERN_CRIT "i_reserved_meta_clusters=%u\n",
-+	       EXT4_I(inode)->i_reserved_meta_clusters);
- 	return;
- }
- 
-@@ -1978,7 +1978,8 @@ static int ext4_writepage(struct page *page,
- 
- static int ext4_da_writepages_trans_blocks(struct inode *inode)
- {
--	int max_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-+	int max_blocks = EXT4_C2B(EXT4_SB(inode->i_sb),
-+			EXT4_I(inode)->i_reserved_data_clusters);
- 
- 	/*
- 	 * With non-extent format the journal credit needed to
-@@ -2562,8 +2563,8 @@ int ext4_alloc_da_blocks(struct inode *inode)
- {
- 	trace_ext4_alloc_da_blocks(inode);
- 
--	if (!EXT4_I(inode)->i_reserved_data_blocks &&
--	    !EXT4_I(inode)->i_reserved_meta_blocks)
-+	if (!EXT4_I(inode)->i_reserved_data_clusters &&
-+	    !EXT4_I(inode)->i_reserved_meta_clusters)
- 		return 0;
- 
- 	/*
-@@ -4200,7 +4201,8 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 	 * will return the blocks that include the delayed allocation
- 	 * blocks for this file.
- 	 */
--	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-+	delalloc_blocks = EXT4_C2B(EXT4_SB(inode->i_sb),
-+			EXT4_I(inode)->i_reserved_data_clusters);
- 
- 	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
- 	return 0;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502c61f..1cf8321 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -899,9 +899,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
--	ei->i_reserved_data_blocks = 0;
--	ei->i_reserved_meta_blocks = 0;
--	ei->i_allocated_meta_blocks = 0;
-+	ei->i_reserved_data_clusters = 0;
-+	ei->i_reserved_meta_clusters = 0;
-+	ei->i_allocated_meta_clusters = 0;
- 	ei->i_da_metadata_calc_len = 0;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- #ifdef CONFIG_QUOTA
-@@ -4646,6 +4646,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
- 			 EXT4_C2B(sbi, sbi->s_overhead_last));
- 	bfree = percpu_counter_sum_positive(&sbi->s_freeclusters_counter) -
- 		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
-+
- 	/* prevent underflow in case that few free space is available */
- 	buf->f_bfree = EXT4_C2B(sbi, max_t(s64, bfree, 0));
- 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 319538b..280a1ea 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -829,21 +829,21 @@ TRACE_EVENT(ext4_alloc_da_blocks,
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
- 		__field(	ino_t,	ino			)
--		__field( unsigned int,	data_blocks	)
--		__field( unsigned int,	meta_blocks	)
-+		__field( unsigned int,	data_clusters	)
-+		__field( unsigned int,	meta_clusters	)
- 	),
- 
- 	TP_fast_assign(
- 		__entry->dev	= inode->i_sb->s_dev;
- 		__entry->ino	= inode->i_ino;
--		__entry->data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
-+		__entry->data_clusters = EXT4_I(inode)->i_reserved_data_clusters;
-+		__entry->meta_clusters = EXT4_I(inode)->i_reserved_meta_clusters;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu data_blocks %u meta_blocks %u",
-+	TP_printk("dev %d,%d ino %lu data_clusters %u meta_clusters %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->data_blocks, __entry->meta_blocks)
-+		  __entry->data_clusters, __entry->meta_clusters)
- );
- 
- TRACE_EVENT(ext4_mballoc_alloc,
-@@ -1058,11 +1058,11 @@ TRACE_EVENT(ext4_da_update_reserve_space,
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->used_blocks = used_blocks;
- 		__entry->reserved_data_blocks =
--				EXT4_I(inode)->i_reserved_data_blocks;
-+				EXT4_I(inode)->i_reserved_data_clusters;
- 		__entry->reserved_meta_blocks =
--				EXT4_I(inode)->i_reserved_meta_blocks;
-+				EXT4_I(inode)->i_reserved_meta_clusters;
- 		__entry->allocated_meta_blocks =
--				EXT4_I(inode)->i_allocated_meta_blocks;
-+				EXT4_I(inode)->i_allocated_meta_clusters;
- 		__entry->quota_claim = quota_claim;
- 	),
- 
-@@ -1098,8 +1098,8 @@ TRACE_EVENT(ext4_da_reserve_space,
- 		__entry->mode	= inode->i_mode;
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->md_needed = md_needed;
--		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
-+		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_clusters;
-+		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_clusters;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu md_needed %d "
-@@ -1122,9 +1122,9 @@ TRACE_EVENT(ext4_da_release_space,
- 		__field(	__u16,  mode			)
- 		__field(	__u64,	i_blocks		)
- 		__field(	int,	freed_blocks		)
--		__field(	int,	reserved_data_blocks	)
--		__field(	int,	reserved_meta_blocks	)
--		__field(	int,	allocated_meta_blocks	)
-+		__field(	int,	reserved_data_clusters	)
-+		__field(	int,	reserved_meta_clusters	)
-+		__field(	int,	allocated_meta_clusters	)
- 	),
- 
- 	TP_fast_assign(
-@@ -1133,19 +1133,19 @@ TRACE_EVENT(ext4_da_release_space,
- 		__entry->mode	= inode->i_mode;
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->freed_blocks = freed_blocks;
--		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
--		__entry->allocated_meta_blocks = EXT4_I(inode)->i_allocated_meta_blocks;
-+		__entry->reserved_data_clusters = EXT4_I(inode)->i_reserved_data_clusters;
-+		__entry->reserved_meta_clusters = EXT4_I(inode)->i_reserved_meta_clusters;
-+		__entry->allocated_meta_clusters = EXT4_I(inode)->i_allocated_meta_clusters;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu freed_blocks %d "
--		  "reserved_data_blocks %d reserved_meta_blocks %d "
--		  "allocated_meta_blocks %d",
-+		  "reserved_data_clusters %d reserved_meta_clusters %d "
-+		  "allocated_meta_clusters %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->i_blocks,
--		  __entry->freed_blocks, __entry->reserved_data_blocks,
--		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks)
-+		  __entry->freed_blocks, __entry->reserved_data_clusters,
-+		  __entry->reserved_meta_clusters, __entry->allocated_meta_clusters)
- );
- 
- DECLARE_EVENT_CLASS(ext4__bitmap_load,
+You'll be surprised :)
+
+
+> 
+> with 4 groups each having 64 inodes.
+> 
+> If I run a e2fsck -E discard on that fresh filesystem, with some debugging, I see:
+> 
+> Pass 5: Checking group summary information
+> got start 12 count 51; count reduced to 47 inodes, discarding 2 blocks starting at block 36
+> 
+> Ok, that is a little weird; on a fresh filesystem lost+found/ is 11, so the first free
+> inode is 12; but now we seem to have started counting at 1, not 0?
+> 
+> got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 291
+> got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 514
+> got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 803
+> 
+> Oh, now we're back to "the first inode in the group is 0"  :(
+> 
+> And here it looks like we are not discarding all the free blocks in the completely-free tables;
+> the last group has:
+> 
+>   Inode table at 803-806 (+35)
+>   217 free blocks, 64 free inodes, 0 directories, 64 unused inodes
+> 
+> but we only discarded 803 through 805, for example, because we were only told to discard
+> 63 inodes, not 64 as I'd have expected since 64 are free.
+> 
+> I can't really make heads or tails out of how we got here, the calling function is so
+> messy it's really hard for me to keep track of.  I think perhaps a clean up series
+> for the calling function first, and then we can try to properly extend it...?
+> 
+> I think we need ultra-careful attention to which variables are 0-based and which
+> are 1-based, for starters.
+
+You're right. There is a problem that we might discard one
+block less because of:
+
+                       if (first_free > inodes)
+                               first_free = inodes;
+
+which should really be
+
+                       if (first_free > inodes - 1)
+                               first_free = inodes - 1;
+
+The reason is that inodes variable starts from 1. But we really need the
+first_free inode to be counted from 0. Then the rest of the code should
+be fine.
+
+I was probably confused by the output of dumpe2fs which counts inodes
+from 1.
+
+But anyway, I think that the best would be to just comply with the inode
+number counting (start from 1) and then just adjust start in
+e2fsck_discard_inodes(). I think that it would be more obvious.
+
+> 
+> For e2fsck_discard_inodes() I wonder if it could be made more intuitive by:
+> 
+> 1) find first totally free block based on start
+> 2) find last totally free block based on the last free inode (start+count-1)
+> 3) find free block length, free_length = last_blk - first_blk + 1
+> 4) e2fsck_discard_blocks(..., ..., first_blk, free_length);
+> 
+> i.e. get rid of the count -= ...
+> 
+> _assuming_ we start counting at 0:
+> 
+> 	/* round up to next block after a partially free one */
+> 	first_blk = DIV_ROUND_UP(start,
+> 		EXT2_INODES_PER_BLOCK(fs->super));
+> 	first_blk += ext2fs_inode_table_loc(fs, group);
+> 
+> 	last_free_inode = start + count - 1;
+> 
+> 	/* round down to block before a partially free one */
+> 	last_blk = last_free_inode / EXT2_INODES_PER_BLOCK(fs->super));
+> 	free_blks = last_blk - first_blk + 1;
+> 	if (free_blks > 0)
+> 		e2fsck_discard_blocks(ctx, fs->io->manager, first_blk, free_blks);
+> 
+> I probably have off-by-ones there too, but you get the idea...
+
+Well, the readability is better, however we can not do this. The reason
+is that on the level of granularity of blocks when (last_blk == first_blk)
+there is no way to say if the blocks has been entirely free or not.
+
+So we need to do this:
+
+1. Adjust the start (start -= 1) - because we pass inode number into the
+function which starts with 1.
+2. find first totally free block based on start
+3. Adjust the count by the number of free inodes we skipped to find
+first totally free block.
+4. Compute number of totally free blocks from count
+5. e2fsck_discard_blocks
+
+And it is actually what I did in this patch, except the changes I
+described above.
+
+What do you think ? Do you agree with this approach ?
+
+Thanks!
+-Lukas
+
+> 
+> -Eric
+> 
+> > +
+> >  #define NO_BLK ((blk64_t) -1)
+> >  
+> >  static void print_bitmap_problem(e2fsck_t ctx, int problem,
+> > @@ -422,6 +442,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+> >  	ext2_ino_t	i;
+> >  	unsigned int	free_inodes = 0;
+> >  	int		group_free = 0;
+> > +	int		first_free = fs->super->s_inodes_per_group;
+> >  	int		dirs_count = 0;
+> >  	int		group = 0;
+> >  	unsigned int	inodes = 0;
+> > @@ -497,6 +518,7 @@ redo_counts:
+> >  				 * are 0, count the free inode,
+> >  				 * skip the current block group.
+> >  				 */
+> > +				first_free = 0;
+> >  				inodes = fs->super->s_inodes_per_group - 1;
+> >  				group_free = inodes;
+> >  				free_inodes += inodes;
+> > @@ -561,37 +583,27 @@ redo_counts:
+> >  		ctx->options &= ~E2F_OPT_DISCARD;
+> >  
+> >  do_counts:
+> > +		inodes++;
+> >  		if (bitmap) {
+> >  			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
+> >  				dirs_count++;
+> > +			if (inodes - 1 > first_free) {
+> > +				e2fsck_discard_inodes(ctx, group, first_free,
+> > +						      inodes - first_free - 1);
+> > +				first_free = fs->super->s_inodes_per_group;
+> > +			}
+> >  		} else if (!skip_group || csum_flag) {
+> >  			group_free++;
+> >  			free_inodes++;
+> > +			if (first_free > inodes)
+> > +				first_free = inodes;
+> >  		}
+> >  
+> > -		inodes++;
+> >  		if ((inodes == fs->super->s_inodes_per_group) ||
+> >  		    (i == fs->super->s_inodes_count)) {
+> > -
+> > -			free_array[group] = group_free;
+> > -			dir_array[group] = dirs_count;
+> > -
+> > -			/* Discard inode table */
+> > -			if (ctx->options & E2F_OPT_DISCARD) {
+> > -				blk64_t used_blks, blk, num;
+> > -
+> > -				used_blks = DIV_ROUND_UP(
+> > -					(EXT2_INODES_PER_GROUP(fs->super) -
+> > -					group_free),
+> > -					EXT2_INODES_PER_BLOCK(fs->super));
+> > -
+> > -				blk = ext2fs_inode_table_loc(fs, group) +
+> > -				      used_blks;
+> > -				num = fs->inode_blocks_per_group -
+> > -				      used_blks;
+> > -				e2fsck_discard_blocks(ctx, manager, blk, num);
+> > -			}
+> > -
+> > +			if (inodes - 1 > first_free)
+> > +				e2fsck_discard_inodes(ctx, group, first_free,
+> > +						      inodes - first_free - 1);
+> >  			/*
+> >  			 * If discard zeroes data and the group inode table
+> >  			 * was not zeroed yet, set itable as zeroed
+> > @@ -599,12 +611,15 @@ do_counts:
+> >  			if ((ctx->options & E2F_OPT_DISCARD) &&
+> >  			    (io_channel_discard_zeroes_data(fs->io)) &&
+> >  			    !(ext2fs_bg_flags_test(fs, group,
+> > -						  EXT2_BG_INODE_ZEROED))) {
+> > +						   EXT2_BG_INODE_ZEROED))) {
+> >  				ext2fs_bg_flags_set(fs, group,
+> >  						    EXT2_BG_INODE_ZEROED);
+> >  				ext2fs_group_desc_csum_set(fs, group);
+> >  			}
+> >  
+> > +			first_free = fs->super->s_inodes_per_group;
+> > +			free_array[group] = group_free;
+> > +			dir_array[group] = dirs_count;
+> >  			group ++;
+> >  			inodes = 0;
+> >  			skip_group = 0;
+> 
+> 
+
 -- 
-1.7.3.2
-
