@@ -1,76 +1,244 @@
-From: Roberto Ragusa <mail@robertoragusa.it>
-Subject: Re: Mkfs option to choose where metadata will be stored
-Date: Wed, 22 Feb 2012 23:13:58 +0100
-Message-ID: <4F4568A6.8020301@robertoragusa.it>
-References: <4F44EBA0.5090606@robertoragusa.it> <83247E23-F941-4E35-9D38-395A4715E383@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2] e2fsck: Discard only unused parts of inode table
+Date: Wed, 22 Feb 2012 18:51:37 -0600
+Message-ID: <4F458D99.30802@redhat.com>
+References: <1329840132-16808-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: unlisted-recipients:; (no To-header on input)
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, psusi@ubuntu.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtpi4.ngi.it ([88.149.128.104]:55811 "EHLO smtpi4.ngi.it"
+Received: from mx1.redhat.com ([209.132.183.28]:38201 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753817Ab2BVWOB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Feb 2012 17:14:01 -0500
-Received: from [127.0.0.1] (unknown [81.174.56.138])
-	by smtpi4.ngi.it (Postfix) with ESMTP id 6E4394209C
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Feb 2012 23:13:59 +0100 (CET)
-In-Reply-To: <83247E23-F941-4E35-9D38-395A4715E383@gmail.com>
+	id S1753214Ab2BWAvn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Feb 2012 19:51:43 -0500
+In-Reply-To: <1329840132-16808-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/22/2012 05:54 PM, Andreas Dilger wrote:
-> On 2012-02-22, at 6:20, Roberto Ragusa <mail@robertoragusa.it> wrote:
->
->> My idea is to have metadata on SSD and data on HDD.
->> With a linear RAID mapping, I would get a device which is a few GB of
->> SSD followed by a lot of HDD space.
+On 2/21/12 10:02 AM, Lukas Czerner wrote:
+> When calling e2fsck with '-E discard' option it might happen that
+> valid inodes are discarded accidentally. This is because we just
+> discard the part of inode table which lies past the highest used
+> inode. This is terribly wrong (sorry!).
 > 
-> I've tested something similar to this myself. The way I did it is to use the "flex_bg" option "-G 256" to put the metadata into a single 128MB group, which is allocated on an SSD LVM PV, then 255 x 128MB on an HDD PV.
-
-I actually discovered flex_bg a few minutes after sending my mail. :-)
-I tested -G 1048576 (that is "infinity") and played a little
-with -i to keep down the SSD usage (my current average filesize
-is 3MB, so I can have a big value), discovering that the bitmaps are
-in any case dominant.
-
-> This pattern repeats for the entire LV size, and can easily be created with a 128MB LV on the SSD then alternating pvextend of (255 * 128MB) on the HDD PV and 128MB on the SSD PV until the desired size is reached or you run out of space on one of the PVs. 
-
-This is a nice trick. I was thinking about only one big initial metadata zone, but
-your approach will give me back lvextend (which is useful on terabyte-range filesystems).
-
-> The exact formatting options I used are:
+> This patch fixes it so only the free parts of an inode table
+> is discarded, leaving used inodes intact. This was tested with highly
+> fragmented inode tables with block size 4k and 1k.
 > 
-> mke2fs -t ext4 -i 69905 -G 256 -E resize=4290772992 {dev}
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reported-by: Phillip Susi <psusi@ubuntu.com>
+> ---
+>  e2fsck/pass5.c |   59 +++++++++++++++++++++++++++++++++++--------------------
+>  1 files changed, 37 insertions(+), 22 deletions(-)
 > 
-> this will lay everything out on the LV nicely. Note that it assumes an average  file size of about 69kB here. Increasing this is fine, but making it smaller would disrupt the layout. 
+> diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+> index 1e836e3..9cc4a20 100644
+> --- a/e2fsck/pass5.c
+> +++ b/e2fsck/pass5.c
+> @@ -94,6 +94,26 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+>  		ctx->options &= ~E2F_OPT_DISCARD;
+>  }
 
-You really tuned -i to perfection. :-)
+I could really use a comment here.  Is "start" the inode nr within
+the group?  Is the first inode in the group 0 or 1?  The calling
+function's loop starts at inode 1 ... but based on some testing
+it looks like you call the first free inode in an empty group
+"inode 0" so I'll assume that, but comments please.
 
-It sounds very interesting that you only get 1/256 metadata overhead,
-because my tests were around 1/10 (which surely appears a lot!).
-I just discovered that -G 1048576 allocates a lot of expansion space, even if
-you set -E resize to a reasonable value.
-(delete my previous sentence about bitmaps :-) )
 
-Your refinements turned my bizarre idea into a really nice solution, I'm looking
-forward to implementing it in production.
-Even a tiny SSD can take metadata for a lot of HDD disk space. Maybe I will put
-a couple of SSD in RAID-1 as I'm still not confident about their robustness.
-(the data is backupped, in any case).
+> +static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+> +				  int start, int count)
 
-One last thing: you didn't worry about the journal. What would you suggest?
-Using an external journal appears a little dirty, maybe we could just force
-it to live in the second 128MB extent and place that one on the SSD too.
-Can this be done?
+I'm not sure if ints are good here, but it's what the calling
+function uses, I guess.
 
-Really thank you.
+> +{
+> +	ext2_filsys fs = ctx->fs;
+> +	blk64_t blk, num;
+> +
+> +	/*
+> +	 * We can discard only blocks containing only unused
+> +	 * inodes in the table.
+> +	 */
+> +	blk = DIV_ROUND_UP(start,
+> +		EXT2_INODES_PER_BLOCK(fs->super));
+> +	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
+> +	blk += ext2fs_inode_table_loc(fs, group);
+> +	num = count / EXT2_INODES_PER_BLOCK(fs->super);
+> +
+> +	if (num > 0)
+> +		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
+> +}
 
-(this should be indeed better documented; it can have dramatic performance
-implications and some optimized parameters or a spreadsheet or web form to
-calculate them would be useful to a wider audience [I mean guys which
-are not ready to use dumpe2fs to reverse engineer the layout like I did]).
+I can't make intuitive sense of that at all, and had to count on my fingers
+and draw diagrams.  Maybe it's just my old brain.  :(
 
--- 
-   Roberto Ragusa    mail at robertoragusa.it
+Let's say we have 4 inode blocks in this table, with
+1 == used, 0 == unused, and we start counting inodes at 0.
+
+|1111111100000000|0000000000000000|0000000000000000|0000000000000001|
+ 012345678 <- start
+
+so start = 8, count = 55 (note one inode used at the end)
+
+In this case we should get:
+
+blk = 1 (DIV_ROUND_UP(8, 16)) - ok, that's next block after the partial block
+count = 55 - ((1 * 16) - 8) = 47
+num = 47 / 16 = 2
+
+Ok, so that works, assuming the first inode in the group is "0"
+
+We can make a filesystem kind of like that, to test it:
+
+# mkfs.ext4 -I 256 -b 4096 -N 256 -G 1 -g 256 /dev/loop0 1024
+
+with 4 groups each having 64 inodes.
+
+If I run a e2fsck -E discard on that fresh filesystem, with some debugging, I see:
+
+Pass 5: Checking group summary information
+got start 12 count 51; count reduced to 47 inodes, discarding 2 blocks starting at block 36
+
+Ok, that is a little weird; on a fresh filesystem lost+found/ is 11, so the first free
+inode is 12; but now we seem to have started counting at 1, not 0?
+
+got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 291
+got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 514
+got start 0 count 63; count reduced to 63 inodes, discarding 3 blocks starting at block 803
+
+Oh, now we're back to "the first inode in the group is 0"  :(
+
+And here it looks like we are not discarding all the free blocks in the completely-free tables;
+the last group has:
+
+  Inode table at 803-806 (+35)
+  217 free blocks, 64 free inodes, 0 directories, 64 unused inodes
+
+but we only discarded 803 through 805, for example, because we were only told to discard
+63 inodes, not 64 as I'd have expected since 64 are free.
+
+I can't really make heads or tails out of how we got here, the calling function is so
+messy it's really hard for me to keep track of.  I think perhaps a clean up series
+for the calling function first, and then we can try to properly extend it...?
+
+I think we need ultra-careful attention to which variables are 0-based and which
+are 1-based, for starters.
+
+For e2fsck_discard_inodes() I wonder if it could be made more intuitive by:
+
+1) find first totally free block based on start
+2) find last totally free block based on the last free inode (start+count-1)
+3) find free block length, free_length = last_blk - first_blk + 1
+4) e2fsck_discard_blocks(..., ..., first_blk, free_length);
+
+i.e. get rid of the count -= ...
+
+_assuming_ we start counting at 0:
+
+	/* round up to next block after a partially free one */
+	first_blk = DIV_ROUND_UP(start,
+		EXT2_INODES_PER_BLOCK(fs->super));
+	first_blk += ext2fs_inode_table_loc(fs, group);
+
+	last_free_inode = start + count - 1;
+
+	/* round down to block before a partially free one */
+	last_blk = last_free_inode / EXT2_INODES_PER_BLOCK(fs->super));
+	free_blks = last_blk - first_blk + 1;
+	if (free_blks > 0)
+		e2fsck_discard_blocks(ctx, fs->io->manager, first_blk, free_blks);
+
+I probably have off-by-ones there too, but you get the idea...
+
+-Eric
+
+> +
+>  #define NO_BLK ((blk64_t) -1)
+>  
+>  static void print_bitmap_problem(e2fsck_t ctx, int problem,
+> @@ -422,6 +442,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+>  	ext2_ino_t	i;
+>  	unsigned int	free_inodes = 0;
+>  	int		group_free = 0;
+> +	int		first_free = fs->super->s_inodes_per_group;
+>  	int		dirs_count = 0;
+>  	int		group = 0;
+>  	unsigned int	inodes = 0;
+> @@ -497,6 +518,7 @@ redo_counts:
+>  				 * are 0, count the free inode,
+>  				 * skip the current block group.
+>  				 */
+> +				first_free = 0;
+>  				inodes = fs->super->s_inodes_per_group - 1;
+>  				group_free = inodes;
+>  				free_inodes += inodes;
+> @@ -561,37 +583,27 @@ redo_counts:
+>  		ctx->options &= ~E2F_OPT_DISCARD;
+>  
+>  do_counts:
+> +		inodes++;
+>  		if (bitmap) {
+>  			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
+>  				dirs_count++;
+> +			if (inodes - 1 > first_free) {
+> +				e2fsck_discard_inodes(ctx, group, first_free,
+> +						      inodes - first_free - 1);
+> +				first_free = fs->super->s_inodes_per_group;
+> +			}
+>  		} else if (!skip_group || csum_flag) {
+>  			group_free++;
+>  			free_inodes++;
+> +			if (first_free > inodes)
+> +				first_free = inodes;
+>  		}
+>  
+> -		inodes++;
+>  		if ((inodes == fs->super->s_inodes_per_group) ||
+>  		    (i == fs->super->s_inodes_count)) {
+> -
+> -			free_array[group] = group_free;
+> -			dir_array[group] = dirs_count;
+> -
+> -			/* Discard inode table */
+> -			if (ctx->options & E2F_OPT_DISCARD) {
+> -				blk64_t used_blks, blk, num;
+> -
+> -				used_blks = DIV_ROUND_UP(
+> -					(EXT2_INODES_PER_GROUP(fs->super) -
+> -					group_free),
+> -					EXT2_INODES_PER_BLOCK(fs->super));
+> -
+> -				blk = ext2fs_inode_table_loc(fs, group) +
+> -				      used_blks;
+> -				num = fs->inode_blocks_per_group -
+> -				      used_blks;
+> -				e2fsck_discard_blocks(ctx, manager, blk, num);
+> -			}
+> -
+> +			if (inodes - 1 > first_free)
+> +				e2fsck_discard_inodes(ctx, group, first_free,
+> +						      inodes - first_free - 1);
+>  			/*
+>  			 * If discard zeroes data and the group inode table
+>  			 * was not zeroed yet, set itable as zeroed
+> @@ -599,12 +611,15 @@ do_counts:
+>  			if ((ctx->options & E2F_OPT_DISCARD) &&
+>  			    (io_channel_discard_zeroes_data(fs->io)) &&
+>  			    !(ext2fs_bg_flags_test(fs, group,
+> -						  EXT2_BG_INODE_ZEROED))) {
+> +						   EXT2_BG_INODE_ZEROED))) {
+>  				ext2fs_bg_flags_set(fs, group,
+>  						    EXT2_BG_INODE_ZEROED);
+>  				ext2fs_group_desc_csum_set(fs, group);
+>  			}
+>  
+> +			first_free = fs->super->s_inodes_per_group;
+> +			free_array[group] = group_free;
+> +			dir_array[group] = dirs_count;
+>  			group ++;
+>  			inodes = 0;
+>  			skip_group = 0;
+
