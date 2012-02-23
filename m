@@ -1,171 +1,85 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2 v2] e2fsck: Discard only unused parts of inode table
-Date: Thu, 23 Feb 2012 17:29:25 +0100
-Message-ID: <1330014566-2020-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, psusi@ubuntu.com, sandeen@redhat.com,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15617 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752609Ab2BWQ3d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Feb 2012 11:29:33 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Bart Van Assche <bvanassche@acm.org>
+Subject: ext4: List corruption complaint on 2.6.32.57
+Date: Thu, 23 Feb 2012 16:59:21 +0000
+Message-ID: <CAO+b5-o54PzRsbvT73L5Wi9aKofKPK2e2YxcoLeVx4ffgZMTeQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@kernel.org, LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When calling e2fsck with '-E discard' option it might happen that
-valid inodes are discarded accidentally. This is because we just
-discard the part of inode table which lies past the highest used
-inode. This is terribly wrong (sorry!).
+Hello,
 
-This patch fixes it so only the free parts of an inode table
-is discarded, leaving used inodes intact. This was tested with highly
-fragmented inode tables with block size 4k and 1k.
+Has anyone seen this call stack before ?
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Phillip Susi <psusi@ubuntu.com>
----
-v2: reworked so that we comply with inode number counting and adjust
-    start in the e2fsck_discard_inodes(). Add some comments
+Thanks,
 
- e2fsck/pass5.c |   82 ++++++++++++++++++++++++++++++++++++++++---------------
- 1 files changed, 59 insertions(+), 23 deletions(-)
+Bart.
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 1e836e3..57a207d 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -94,6 +94,43 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
- 		ctx->options &= ~E2F_OPT_DISCARD;
- }
- 
-+/*
-+ * This will try to discard number 'count' starting at inode
-+ * number 'start'. Note that 'start' is a inode number and hence
-+ * it is counted from 1, it means that we need to adjust it
-+ * by -1 in this function to compute right offset in the
-+ * inode table.
-+ */
-+static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
-+				  int start, int count)
-+{
-+	ext2_filsys fs = ctx->fs;
-+	blk64_t blk, num;
-+	int orig = count;
-+
-+	if ((ctx->options & E2F_OPT_NO) || !(ctx->options & E2F_OPT_DISCARD))
-+		return;
-+
-+	/*
-+	 * Start is inode number which starts counting from 1,
-+	 * so we need to adjust it.
-+	 */
-+	start -= 1;
-+
-+	/*
-+	 * We can discard only blocks containing only unused
-+	 * inodes in the table.
-+	 */
-+	blk = DIV_ROUND_UP(start,
-+		EXT2_INODES_PER_BLOCK(fs->super));
-+	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
-+	blk += ext2fs_inode_table_loc(fs, group);
-+	num = count / EXT2_INODES_PER_BLOCK(fs->super);
-+
-+	if (num > 0)
-+		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
-+}
-+
- #define NO_BLK ((blk64_t) -1)
- 
- static void print_bitmap_problem(e2fsck_t ctx, int problem,
-@@ -435,6 +472,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 	int		skip_group = 0;
- 	int		redo_flag = 0;
- 	io_manager	manager = ctx->fs->io->manager;
-+	unsigned long long	first_free = fs->super->s_inodes_per_group + 1;
- 
- 	clear_problem_context(&pctx);
- 	free_array = (int *) e2fsck_allocate_memory(ctx,
-@@ -497,6 +535,7 @@ redo_counts:
- 				 * are 0, count the free inode,
- 				 * skip the current block group.
- 				 */
-+				first_free = 1;
- 				inodes = fs->super->s_inodes_per_group - 1;
- 				group_free = inodes;
- 				free_inodes += inodes;
-@@ -561,50 +600,47 @@ redo_counts:
- 		ctx->options &= ~E2F_OPT_DISCARD;
- 
- do_counts:
-+		inodes++;
- 		if (bitmap) {
- 			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
- 				dirs_count++;
-+			if (inodes > first_free) {
-+				e2fsck_discard_inodes(ctx, group, first_free,
-+						      inodes - first_free);
-+				first_free = fs->super->s_inodes_per_group + 1;
-+			}
- 		} else if (!skip_group || csum_flag) {
- 			group_free++;
- 			free_inodes++;
-+			if (first_free > inodes)
-+				first_free = inodes;
- 		}
- 
--		inodes++;
- 		if ((inodes == fs->super->s_inodes_per_group) ||
- 		    (i == fs->super->s_inodes_count)) {
--
--			free_array[group] = group_free;
--			dir_array[group] = dirs_count;
--
--			/* Discard inode table */
--			if (ctx->options & E2F_OPT_DISCARD) {
--				blk64_t used_blks, blk, num;
--
--				used_blks = DIV_ROUND_UP(
--					(EXT2_INODES_PER_GROUP(fs->super) -
--					group_free),
--					EXT2_INODES_PER_BLOCK(fs->super));
--
--				blk = ext2fs_inode_table_loc(fs, group) +
--				      used_blks;
--				num = fs->inode_blocks_per_group -
--				      used_blks;
--				e2fsck_discard_blocks(ctx, manager, blk, num);
--			}
--
-+			/*
-+			 * If the last inode is free, we can discard it as well.
-+			 */
-+			if (inodes >= first_free)
-+				e2fsck_discard_inodes(ctx, group, first_free,
-+						      inodes - first_free + 1);
- 			/*
- 			 * If discard zeroes data and the group inode table
- 			 * was not zeroed yet, set itable as zeroed
- 			 */
- 			if ((ctx->options & E2F_OPT_DISCARD) &&
--			    (io_channel_discard_zeroes_data(fs->io)) &&
-+			    !(ctx->options & E2F_OPT_NO) &&
-+			    io_channel_discard_zeroes_data(fs->io) &&
- 			    !(ext2fs_bg_flags_test(fs, group,
--						  EXT2_BG_INODE_ZEROED))) {
-+						   EXT2_BG_INODE_ZEROED))) {
- 				ext2fs_bg_flags_set(fs, group,
- 						    EXT2_BG_INODE_ZEROED);
- 				ext2fs_group_desc_csum_set(fs, group);
- 			}
- 
-+			first_free = fs->super->s_inodes_per_group + 1;
-+			free_array[group] = group_free;
-+			dir_array[group] = dirs_count;
- 			group ++;
- 			inodes = 0;
- 			skip_group = 0;
--- 
-1.7.4.4
-
+------------[ cut here ]------------
+WARNING: at lib/list_debug.c:30 __list_add+0x8f/0xa0()
+Hardware name: P5Q DELUXE
+list_add corruption. prev->next should be next (ffff88016a00c718), but =
+was
+ffff8801a876c300. (prev=3Dffff88016a00c718).
+Modules linked in: ext4 jbd2 crc16 ib_srp scsi_transport_srp scsi_tgt
+netconsole configfs snd_pcm_oss snd_mixer_oss snd_seq snd_seq_device
+af_packet rdma_ucm rdma_cm iw_cm ib_addr ib_ipoib ib_cm ib_sa ib_uverbs
+ib_umad mlx4_ib ib_mad ib_core microcode cpufreq_conservative
+cpufreq_userspace cpufreq_powersave acpi_cpufreq dm_mod
+snd_hda_codec_atihdmi snd_hda_codec_analog snd_hda_intel snd_hda_codec
+snd_hwdep snd_pcm sr_mod snd_timer i2c_i801 intel_agp snd sg cdrom pcsp=
+kr
+soundcore i2c_core agpgart mlx4_core button snd_page_alloc uhci_hcd ehc=
+i_hcd
+sd_mod crc_t10dif usbcore edd ext3 mbcache jbd fan ata_generic ata_piix
+pata_marvell ahci libata scsi_mod thermal processor thermal_sys hwmon [=
+last
+unloaded: scsi_transport_srp]
+Pid: 4127, comm: fio Not tainted 2.6.32.57-debug #1
+Call Trace:
+=A0<IRQ>=A0 [<ffffffff8105058b>] warn_slowpath_common+0x7b/0xc0
+=A0[<ffffffff81050631>] warn_slowpath_fmt+0x41/0x50
+=A0[<ffffffff811ef9ff>] __list_add+0x8f/0xa0
+=A0[<ffffffffa037a544>] ext4_end_io_dio+0x94/0xb0 [ext4]
+=A0[<ffffffff8116c275>] dio_complete+0xc5/0xf0
+=A0[<ffffffff8116c316>] dio_bio_end_aio+0x76/0xd0
+=A0[<ffffffff810881fd>] ? lock_release_holdtime+0x3d/0x180
+=A0[<ffffffff81167add>] bio_endio+0x1d/0x40
+=A0[<ffffffff811cebeb>] req_bio_endio+0xab/0x110
+=A0[<ffffffff811cf5af>] blk_update_request+0xff/0x4b0
+=A0[<ffffffff811cf784>] ? blk_update_request+0x2d4/0x4b0
+=A0[<ffffffff811cf994>] blk_update_bidi_request+0x34/0x80
+=A0[<ffffffff811d06bf>] blk_end_bidi_request+0x2f/0x80
+=A0[<ffffffff811d0760>] blk_end_request+0x10/0x20
+=A0[<ffffffffa00313df>] scsi_io_completion+0xaf/0x560 [scsi_mod]
+=A0[<ffffffffa0028751>] scsi_finish_command+0xc1/0x130 [scsi_mod]
+=A0[<ffffffff8108d83b>] ? mark_held_locks+0x6b/0xa0
+=A0[<ffffffffa0031245>] scsi_softirq_done+0x145/0x170 [scsi_mod]
+=A0[<ffffffff811d6425>] blk_done_softirq+0x85/0xa0
+=A0[<ffffffff81059156>] __do_softirq+0xd6/0x230
+=A0[<ffffffff8100d19c>] call_softirq+0x1c/0x30
+=A0[<ffffffff8100ec4d>] do_softirq+0x8d/0xc0
+=A0[<ffffffff810593d5>] irq_exit+0x95/0xa0
+=A0[<ffffffff813a1735>] do_IRQ+0x75/0xf0
+=A0[<ffffffff8100c993>] ret_from_intr+0x0/0xf
+=A0<EOI>=A0 [<ffffffffa037b9cb>] ? flush_aio_dio_completed_IO+0x4b/0x90=
+ [ext4]
+=A0[<ffffffffa037b9bc>] ? flush_aio_dio_completed_IO+0x3c/0x90 [ext4]
+=A0[<ffffffffa0377228>] ? ext4_sync_file+0x98/0x300 [ext4]
+=A0[<ffffffff8139ab5b>] ? __mutex_unlock_slowpath+0xcb/0x160
+=A0[<ffffffff81161683>] ? vfs_fsync_range+0xa3/0xe0
+=A0[<ffffffff8116170b>] ? generic_write_sync+0x4b/0x50
+=A0[<ffffffff810e996e>] ? generic_file_aio_write+0xbe/0xe0
+=A0[<ffffffffa037711c>] ? ext4_file_write+0x3c/0xb0 [ext4]
+=A0[<ffffffff8108d9bd>] ? trace_hardirqs_on_caller+0x14d/0x190
+=A0[<ffffffffa03770e0>] ? ext4_file_write+0x0/0xb0 [ext4]
+=A0[<ffffffff8117753c>] ? aio_rw_vect_retry+0x7c/0x200
+=A0[<ffffffff811774c0>] ? aio_rw_vect_retry+0x0/0x200
+=A0[<ffffffff81178890>] ? aio_run_iocb+0x60/0x150
+=A0[<ffffffff81179e22>] ? sys_io_submit+0x222/0x6c0
+=A0[<ffffffff8100c05b>] ? system_call_fastpath+0x16/0x1b
+---[ end trace 38304a60b381bf96 ]---
+------------[ cut here ]------------
