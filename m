@@ -1,130 +1,171 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] build: fix compile warnings on OSX
-Date: Fri, 24 Feb 2012 00:48:57 -0700
-Message-ID: <1330069737-36009-1-git-send-email-adilger@whamcloud.com>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [RESEND] [PATCH 1/2 v2] e2fsck: Discard only unused parts of inode table
+Date: Fri, 24 Feb 2012 09:34:49 +0100
+Message-ID: <1330072490-26833-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, psusi@ubuntu.com, sandeen@redhat.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:60593 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753677Ab2BXHs6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Feb 2012 02:48:58 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:62314 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754719Ab2BXIe7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Feb 2012 03:34:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Clean up some compile warnings related to fstat64(), which is
-verbosely deprecated on OSX.
+When calling e2fsck with '-E discard' option it might happen that
+valid inodes are discarded accidentally. This is because we just
+discard the part of inode table which lies past the highest used
+inode. This is terribly wrong (sorry!).
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+This patch fixes it so only the free parts of an inode table
+is discarded, leaving used inodes intact. This was tested with highly
+fragmented inode tables with block size 4k and 1k.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reported-by: Phillip Susi <psusi@ubuntu.com>
 ---
- lib/blkid/getsize.c  |   13 ++++++-------
- lib/ext2fs/getsize.c |    2 +-
- resize/main.c        |   12 ++----------
- 3 files changed, 9 insertions(+), 18 deletions(-)
+v2: reworked so that we comply with inode number counting and adjust
+    start in the e2fsck_discard_inodes(). Add some comments
 
-diff --git a/lib/blkid/getsize.c b/lib/blkid/getsize.c
-index 77e68cf..f670e1b 100644
---- a/lib/blkid/getsize.c
-+++ b/lib/blkid/getsize.c
-@@ -77,7 +77,7 @@ blkid_loff_t blkid_get_dev_size(int fd)
- {
- 	int valid_blkgetsize64 = 1;
- #ifdef __linux__
--	struct 		utsname ut;
-+	struct		utsname ut;
- #endif
- 	unsigned long long size64;
- 	unsigned long size;
-@@ -116,7 +116,7 @@ blkid_loff_t blkid_get_dev_size(int fd)
- 			return 0; /* EFBIG */
- 		return size64;
- 	}
--#endif
-+#endif /* BLKGETSIZE64 */
+ e2fsck/pass5.c |   82 ++++++++++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 59 insertions(+), 23 deletions(-)
+
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 1e836e3..57a207d 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -94,6 +94,43 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+ 		ctx->options &= ~E2F_OPT_DISCARD;
+ }
  
- #ifdef BLKGETSIZE
- 	if (ioctl(fd, BLKGETSIZE, &size) >= 0)
-@@ -143,8 +143,9 @@ blkid_loff_t blkid_get_dev_size(int fd)
- 	 * Note that FreeBSD >= 4.0 has disk devices as unbuffered (raw,
- 	 * character) devices, so we need to check for S_ISCHR, too.
- 	 */
--	if ((fstat(fd, &st) >= 0) && (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)))
-+	if (fstat(fd, &st) >= 0 && (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode)))
- 		part = st.st_rdev & 7;
++/*
++ * This will try to discard number 'count' starting at inode
++ * number 'start'. Note that 'start' is a inode number and hence
++ * it is counted from 1, it means that we need to adjust it
++ * by -1 in this function to compute right offset in the
++ * inode table.
++ */
++static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
++				  int start, int count)
++{
++	ext2_filsys fs = ctx->fs;
++	blk64_t blk, num;
++	int orig = count;
 +
- 	if (part >= 0 && (ioctl(fd, DIOCGDINFO, (char *)&lab) >= 0)) {
- 		pp = &lab.d_partitions[part];
- 		if (pp->p_size)
-@@ -152,7 +153,7 @@ blkid_loff_t blkid_get_dev_size(int fd)
- 	}
- #endif /* HAVE_SYS_DISKLABEL_H */
- 	{
--#ifdef HAVE_FSTAT64
-+#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
- 		struct stat64   st;
- 		if (fstat64(fd, &st) == 0)
- #else
-@@ -163,7 +164,6 @@ blkid_loff_t blkid_get_dev_size(int fd)
- 				return st.st_size;
- 	}
++	if ((ctx->options & E2F_OPT_NO) || !(ctx->options & E2F_OPT_DISCARD))
++		return;
++
++	/*
++	 * Start is inode number which starts counting from 1,
++	 * so we need to adjust it.
++	 */
++	start -= 1;
++
++	/*
++	 * We can discard only blocks containing only unused
++	 * inodes in the table.
++	 */
++	blk = DIV_ROUND_UP(start,
++		EXT2_INODES_PER_BLOCK(fs->super));
++	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
++	blk += ext2fs_inode_table_loc(fs, group);
++	num = count / EXT2_INODES_PER_BLOCK(fs->super);
++
++	if (num > 0)
++		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
++}
++
+ #define NO_BLK ((blk64_t) -1)
  
+ static void print_bitmap_problem(e2fsck_t ctx, int problem,
+@@ -435,6 +472,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+ 	int		skip_group = 0;
+ 	int		redo_flag = 0;
+ 	io_manager	manager = ctx->fs->io->manager;
++	unsigned long long	first_free = fs->super->s_inodes_per_group + 1;
+ 
+ 	clear_problem_context(&pctx);
+ 	free_array = (int *) e2fsck_allocate_memory(ctx,
+@@ -497,6 +535,7 @@ redo_counts:
+ 				 * are 0, count the free inode,
+ 				 * skip the current block group.
+ 				 */
++				first_free = 1;
+ 				inodes = fs->super->s_inodes_per_group - 1;
+ 				group_free = inodes;
+ 				free_inodes += inodes;
+@@ -561,50 +600,47 @@ redo_counts:
+ 		ctx->options &= ~E2F_OPT_DISCARD;
+ 
+ do_counts:
++		inodes++;
+ 		if (bitmap) {
+ 			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
+ 				dirs_count++;
++			if (inodes > first_free) {
++				e2fsck_discard_inodes(ctx, group, first_free,
++						      inodes - first_free);
++				first_free = fs->super->s_inodes_per_group + 1;
++			}
+ 		} else if (!skip_group || csum_flag) {
+ 			group_free++;
+ 			free_inodes++;
++			if (first_free > inodes)
++				first_free = inodes;
+ 		}
+ 
+-		inodes++;
+ 		if ((inodes == fs->super->s_inodes_per_group) ||
+ 		    (i == fs->super->s_inodes_count)) {
 -
- 	/*
- 	 * OK, we couldn't figure it out by using a specialized ioctl,
- 	 * which is generally the best way.  So do binary search to
-@@ -172,8 +172,7 @@ blkid_loff_t blkid_get_dev_size(int fd)
- 	low = 0;
- 	for (high = 1024; valid_offset(fd, high); high *= 2)
- 		low = high;
--	while (low < high - 1)
--	{
-+	while (low < high - 1) {
- 		const blkid_loff_t mid = (low + high) / 2;
+-			free_array[group] = group_free;
+-			dir_array[group] = dirs_count;
+-
+-			/* Discard inode table */
+-			if (ctx->options & E2F_OPT_DISCARD) {
+-				blk64_t used_blks, blk, num;
+-
+-				used_blks = DIV_ROUND_UP(
+-					(EXT2_INODES_PER_GROUP(fs->super) -
+-					group_free),
+-					EXT2_INODES_PER_BLOCK(fs->super));
+-
+-				blk = ext2fs_inode_table_loc(fs, group) +
+-				      used_blks;
+-				num = fs->inode_blocks_per_group -
+-				      used_blks;
+-				e2fsck_discard_blocks(ctx, manager, blk, num);
+-			}
+-
++			/*
++			 * If the last inode is free, we can discard it as well.
++			 */
++			if (inodes >= first_free)
++				e2fsck_discard_inodes(ctx, group, first_free,
++						      inodes - first_free + 1);
+ 			/*
+ 			 * If discard zeroes data and the group inode table
+ 			 * was not zeroed yet, set itable as zeroed
+ 			 */
+ 			if ((ctx->options & E2F_OPT_DISCARD) &&
+-			    (io_channel_discard_zeroes_data(fs->io)) &&
++			    !(ctx->options & E2F_OPT_NO) &&
++			    io_channel_discard_zeroes_data(fs->io) &&
+ 			    !(ext2fs_bg_flags_test(fs, group,
+-						  EXT2_BG_INODE_ZEROED))) {
++						   EXT2_BG_INODE_ZEROED))) {
+ 				ext2fs_bg_flags_set(fs, group,
+ 						    EXT2_BG_INODE_ZEROED);
+ 				ext2fs_group_desc_csum_set(fs, group);
+ 			}
  
- 		if (valid_offset(fd, mid))
-diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
-index 1e0ed16..0a7053e 100644
---- a/lib/ext2fs/getsize.c
-+++ b/lib/ext2fs/getsize.c
-@@ -183,7 +183,7 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
- 		*retblocks = size64 / blocksize;
- 		goto out;
- 	}
--#endif
-+#endif /* BLKGETSIZE64 */
- 
- #ifdef BLKGETSIZE
- 	if (ioctl(fd, BLKGETSIZE, &size) >= 0) {
-diff --git a/resize/main.c b/resize/main.c
-index 1ab0e04..ffefe01 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -165,11 +165,7 @@ int main (int argc, char ** argv)
- 	io_manager	io_ptr;
- 	char		*new_size_str = 0;
- 	int		use_stride = -1;
--#ifdef HAVE_FSTAT64
--	struct stat64	st_buf;
--#else
--	struct stat	st_buf;
--#endif
-+	ext2fs_struct_stat st_buf;
- 	__s64		new_file_size;
- 	unsigned int	sys_page_size = 4096;
- 	long		sysval;
-@@ -265,11 +261,7 @@ int main (int argc, char ** argv)
- 		exit(1);
- 	}
- 
--#ifdef HAVE_FSTAT64
--	ret = fstat64(fd, &st_buf);
--#else
--	ret = fstat(fd, &st_buf);
--#endif
-+	ret = ext2fs_fstat(fd, &st_buf);
- 	if (ret < 0) {
- 		com_err("open", errno,
- 			_("while getting stat information for %s"),
++			first_free = fs->super->s_inodes_per_group + 1;
++			free_array[group] = group_free;
++			dir_array[group] = dirs_count;
+ 			group ++;
+ 			inodes = 0;
+ 			skip_group = 0;
 -- 
-1.7.2
+1.7.4.4
 
