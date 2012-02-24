@@ -1,65 +1,48 @@
-From: Lukas Czerner <lczerner@redhat.com>
+From: Phillip Susi <psusi@ubuntu.com>
 Subject: Re: [RESEND] [PATCH 2/2 v2] e2fsck: Do not forget to discard last
  block group
-Date: Fri, 24 Feb 2012 15:57:19 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1202241550520.13074@dhcp-27-109.brq.redhat.com>
-References: <1330072490-26833-1-git-send-email-lczerner@redhat.com> <1330072490-26833-2-git-send-email-lczerner@redhat.com> <4F47A2BC.50307@ubuntu.com>
+Date: Fri, 24 Feb 2012 10:56:27 -0500
+Message-ID: <4F47B32B.5020006@ubuntu.com>
+References: <1330072490-26833-1-git-send-email-lczerner@redhat.com> <1330072490-26833-2-git-send-email-lczerner@redhat.com> <4F47A2BC.50307@ubuntu.com> <alpine.LFD.2.00.1202241550520.13074@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com
-To: Phillip Susi <psusi@ubuntu.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43450 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754230Ab2BXO50 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Feb 2012 09:57:26 -0500
-In-Reply-To: <4F47A2BC.50307@ubuntu.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:27984 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754567Ab2BXP4a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Feb 2012 10:56:30 -0500
+In-Reply-To: <alpine.LFD.2.00.1202241550520.13074@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Feb 2012, Phillip Susi wrote:
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> On 2/24/2012 3:34 AM, Lukas Czerner wrote:
-> > Previously when running e2fsck with '-E discard' argument the end
-> > of the last group has not been discarded. This patch fixes it so
-> > we always discard the end of the last group if needed.
-> > 
-> > This commit also removes unneeded argument from the 
-> > e2fsck_discard_blocks(). Simultaneously the commit causes the
-> > block groups with BLOCK_UNINIT flag not to be discarded, which
-> > makes since because we do not need to reclaim the space since so
-> > far there has not been written anything.
-> 
-> I don't see where this patch changes anything to do with uninitialized
-> block bitmaps.  It also is still a good idea to discard them since
-> they may have been initialized at some point in the past and become
-> uninitialized again.
+On 2/24/2012 9:57 AM, Lukas Czerner wrote:
+>> I do not see how the group would become UNINIT again, so there is
+>> not reason to discard it. Previously we could count free block
+>> through out several groups (accounting or BLOCK_UNINIT groups as
+>> well. We do not do that now, because we discard every group
+>> separately.
 
-I do not see how the group would become UNINIT again, so there is not
-reason to discard it. Previously we could count free block through out
-several groups (accounting or BLOCK_UNINIT groups as well. We do not do
-that now, because we discard every group separately.
+Simple; delete some files.  Once all blocks in the block group are
+free again, it can go back to UNINIT.  Also the fs may have been
+formatted without discard, or moved with dd, or any number of ways
+that the bock allocation bitmap could still use a discard despite
+being uninitialized.
 
-Thanks!
--Lukas
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-> 
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v2.0.17 (MingW32)
-> Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-> 
-> iQEcBAEBAgAGBQJPR6K8AAoJEJrBOlT6nu75Ad8H/A4sfRF7GGqNMpfKOHMOxwE3
-> gjHAQNP3anFJ8aa5vkHwDEsDPBMSYlOtNWYBSY1DmaBPm0AHyrFUyWN1Q9FtcOp3
-> bDdsx7SXHa0NIzcguTsjw33Ln+3jiqI3vPk7gJkZyOkRw3JNcmM1MMlu/83Vaeaa
-> p2uQc8OzNfsuFoN62kkBj502p4/pFhfN1TCFf2EEFgw7HlS0Z4xqx0Mq3JTDJH0u
-> 2GrYMz8ulwuYfRa2WUy5A11Oi/iLFVm0J+mI+gR94Li1zRqnwBaF99TGvEhzB0SF
-> MS6kykvgPU2D+n2YL9fFChQDLvyyW+zSXxYjgqrrU0DjCjVkycTQ5GsvnKoEu6c=
-> =FeTy
-> -----END PGP SIGNATURE-----
-> 
-
--- 
+iQEcBAEBAgAGBQJPR7MrAAoJEJrBOlT6nu751oMIAN4YsKxC5XjHOTyif0U4Pffj
+x0TCcXW+0BS6bOfwvGq/3DLO9oCJXOh6mCIPxNNJZJ0NQt0t6yLmpnuZIw7AXzJT
++WCxduNxnu9e/bIy1vzKlwcUkzd+lb8XIljEcO9RBDj+3LUFT4YYlCE8yiITze8V
+EZiE81U1IJtguhWzqFQmOsJrH0KP5kb7BE36yn5I+yfs5YYc3CyMrqi4SVpdv4gX
+/+YoroJCEa89nsk6pluk+uAGPd/gxeSC6w32YjJqaM5bVLpiD6yhKsqIXNQK8HzB
+uXNxZvvrHLBBQtp31+r0yy90K3eQmc2ycwn54DKkK+vOioH7Q2AB+s8YTxr/Hq0=
+=DOVr
+-----END PGP SIGNATURE-----
