@@ -1,60 +1,122 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [RESEND] [PATCH 2/2 v2] e2fsck: Do not forget to discard last
- block group
-Date: Fri, 24 Feb 2012 17:13:20 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1202241710190.13074@dhcp-27-109.brq.redhat.com>
-References: <1330072490-26833-1-git-send-email-lczerner@redhat.com> <1330072490-26833-2-git-send-email-lczerner@redhat.com> <4F47A2BC.50307@ubuntu.com> <alpine.LFD.2.00.1202241550520.13074@dhcp-27-109.brq.redhat.com> <4F47B32B.5020006@ubuntu.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, sandeen@redhat.com
-To: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH] ext3: fix start and len arguments handling in ext3_trim_fs()
+Date: Fri, 24 Feb 2012 17:33:01 +0100
+Message-ID: <1330101181-26067-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17524 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31402 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757660Ab2BXQN2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Feb 2012 11:13:28 -0500
-In-Reply-To: <4F47B32B.5020006@ubuntu.com>
+	id S1755942Ab2BXQdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Feb 2012 11:33:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Feb 2012, Phillip Susi wrote:
+The overflow can happen when we are calling get_group_no_and_offset()
+which stores the result of do_div() in 32 bit long type. However the
+result might be bigger than that if big blocknr is passed in. This will
+most likely happen when calling FITRIM with the default argument len =
+ULLONG_MAX.
 
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> On 2/24/2012 9:57 AM, Lukas Czerner wrote:
-> >> I do not see how the group would become UNINIT again, so there is
-> >> not reason to discard it. Previously we could count free block
-> >> through out several groups (accounting or BLOCK_UNINIT groups as
-> >> well. We do not do that now, because we discard every group
-> >> separately.
-> 
-> Simple; delete some files.  Once all blocks in the block group are
-> free again, it can go back to UNINIT.  Also the fs may have been
-> formatted without discard, or moved with dd, or any number of ways
-> that the bock allocation bitmap could still use a discard despite
-> being uninitialized.
+Fix this by using "end" variable instead of "start+len" as it is easier
+to get right and specifically check that the end is not beyond the end
+of the file system, so we are sure that the result of
+get_group_no_and_offset() will not overflow. Otherwise truncate it to
+the size of the file system.
 
-It does not work that way, uinit is never set back. If it has been
-formated without discard it is user choice, moving the image to the
-thinly provisioned device, or ssd with dd is really bad idea anyway.
-That said, UNINIT means that it has not been used and hence there
-should be nothing to reclaim.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext3/balloc.c |   59 +++++++++++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 29 deletions(-)
 
--Lukas
-
-> 
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v2.0.17 (MingW32)
-> Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-> 
-> iQEcBAEBAgAGBQJPR7MrAAoJEJrBOlT6nu751oMIAN4YsKxC5XjHOTyif0U4Pffj
-> x0TCcXW+0BS6bOfwvGq/3DLO9oCJXOh6mCIPxNNJZJ0NQt0t6yLmpnuZIw7AXzJT
-> +WCxduNxnu9e/bIy1vzKlwcUkzd+lb8XIljEcO9RBDj+3LUFT4YYlCE8yiITze8V
-> EZiE81U1IJtguhWzqFQmOsJrH0KP5kb7BE36yn5I+yfs5YYc3CyMrqi4SVpdv4gX
-> /+YoroJCEa89nsk6pluk+uAGPd/gxeSC6w32YjJqaM5bVLpiD6yhKsqIXNQK8HzB
-> uXNxZvvrHLBBQtp31+r0yy90K3eQmc2ycwn54DKkK+vOioH7Q2AB+s8YTxr/Hq0=
-> =DOVr
-> -----END PGP SIGNATURE-----
-> 
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index a203892..2ad59c6 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -2091,71 +2091,72 @@ err_out:
+  */
+ int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ {
+-	ext3_grpblk_t last_block, first_block, free_blocks;
+-	unsigned long first_group, last_group;
+-	unsigned long group, ngroups;
++	ext3_grpblk_t last_block, first_block;
++	unsigned long group, first_group, last_group;
+ 	struct ext3_group_desc *gdp;
+ 	struct ext3_super_block *es = EXT3_SB(sb)->s_es;
+-	uint64_t start, len, minlen, trimmed;
++	uint64_t start, minlen, end, trimmed = 0;
++	ext3_fsblk_t first_data_blk =
++			le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block);
+ 	ext3_fsblk_t max_blks = le32_to_cpu(es->s_blocks_count);
+ 	int ret = 0;
+ 
+-	start = (range->start >> sb->s_blocksize_bits) +
+-		le32_to_cpu(es->s_first_data_block);
+-	len = range->len >> sb->s_blocksize_bits;
++	start = range->start >> sb->s_blocksize_bits;
++	end = start + (range->len >> sb->s_blocksize_bits) - 1;
+ 	minlen = range->minlen >> sb->s_blocksize_bits;
+-	trimmed = 0;
+ 
+-	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)))
++	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)) ||
++	    unlikely(start >= max_blks))
+ 		return -EINVAL;
+-	if (start >= max_blks)
+-		return -EINVAL;
+-	if (start + len > max_blks)
+-		len = max_blks - start;
++	if (unlikely(end >= max_blks))
++		end = max_blks - 1;
++	if (end <= first_data_blk)
++		return 0;
++	if (start < first_data_blk)
++		start = first_data_blk;
+ 
+-	ngroups = EXT3_SB(sb)->s_groups_count;
+ 	smp_rmb();
+ 
+ 	/* Determine first and last group to examine based on start and len */
+ 	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) start,
+ 				     &first_group, &first_block);
+-	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) (start + len),
++	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) end,
+ 				     &last_group, &last_block);
+-	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
+-	last_block = EXT3_BLOCKS_PER_GROUP(sb);
+ 
+-	if (first_group > last_group)
+-		return -EINVAL;
++	/* The last block to discard in the group */
++	end = EXT3_BLOCKS_PER_GROUP(sb);
+ 
+ 	for (group = first_group; group <= last_group; group++) {
+ 		gdp = ext3_get_group_desc(sb, group, NULL);
+ 		if (!gdp)
+ 			break;
+ 
+-		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+-		if (free_blocks < minlen)
++		if (le16_to_cpu(gdp->bg_free_blocks_count) < minlen)
+ 			continue;
+ 
+ 		/*
+ 		 * For all the groups except the last one, last block will
+ 		 * always be EXT3_BLOCKS_PER_GROUP(sb), so we only need to
+-		 * change it for the last group in which case first_block +
+-		 * len < EXT3_BLOCKS_PER_GROUP(sb).
++		 * change it for the last group, note that last_block is
++		 * already computed earlier by ext3_get_group_no_and_offset()
+ 		 */
+-		if (first_block + len < EXT3_BLOCKS_PER_GROUP(sb))
+-			last_block = first_block + len;
+-		len -= last_block - first_block;
++		if (group == last_group)
++			end = last_block;
+ 
+ 		ret = ext3_trim_all_free(sb, group, first_block,
+-					last_block, minlen);
++					 end, minlen);
+ 		if (ret < 0)
+ 			break;
