@@ -1,122 +1,62 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext3: fix start and len arguments handling in ext3_trim_fs()
-Date: Fri, 24 Feb 2012 17:33:01 +0100
-Message-ID: <1330101181-26067-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: [RESEND] [PATCH 2/2 v2] e2fsck: Do not forget to discard last
+ block group
+Date: Fri, 24 Feb 2012 11:48:32 -0500
+Message-ID: <4F47BF60.2080303@ubuntu.com>
+References: <1330072490-26833-1-git-send-email-lczerner@redhat.com> <1330072490-26833-2-git-send-email-lczerner@redhat.com> <4F47A2BC.50307@ubuntu.com> <alpine.LFD.2.00.1202241550520.13074@dhcp-27-109.brq.redhat.com> <4F47B32B.5020006@ubuntu.com> <alpine.LFD.2.00.1202241710190.13074@dhcp-27-109.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31402 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755942Ab2BXQdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Feb 2012 11:33:07 -0500
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:21370 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752235Ab2BXQsd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Feb 2012 11:48:33 -0500
+In-Reply-To: <alpine.LFD.2.00.1202241710190.13074@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The overflow can happen when we are calling get_group_no_and_offset()
-which stores the result of do_div() in 32 bit long type. However the
-result might be bigger than that if big blocknr is passed in. This will
-most likely happen when calling FITRIM with the default argument len =
-ULLONG_MAX.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Fix this by using "end" variable instead of "start+len" as it is easier
-to get right and specifically check that the end is not beyond the end
-of the file system, so we are sure that the result of
-get_group_no_and_offset() will not overflow. Otherwise truncate it to
-the size of the file system.
+On 2/24/2012 11:13 AM, Lukas Czerner wrote:
+> It does not work that way, uinit is never set back. If it has been 
+> formated without discard it is user choice, moving the image to
+> the thinly provisioned device, or ssd with dd is really bad idea
+> anyway. That said, UNINIT means that it has not been used and hence
+> there should be nothing to reclaim.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext3/balloc.c |   59 +++++++++++++++++++++++++++--------------------------
- 1 files changed, 30 insertions(+), 29 deletions(-)
+I could have sworn that e2fsck set it back when the block group became
+free again, since there is once again no need to parse the bitmap and
+you can just assume it's empty without having to read it.  I certainly
+have e2defrag doing this.  If fsck and the kernel currently don't do
+this, they should.
 
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index a203892..2ad59c6 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -2091,71 +2091,72 @@ err_out:
-  */
- int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
- {
--	ext3_grpblk_t last_block, first_block, free_blocks;
--	unsigned long first_group, last_group;
--	unsigned long group, ngroups;
-+	ext3_grpblk_t last_block, first_block;
-+	unsigned long group, first_group, last_group;
- 	struct ext3_group_desc *gdp;
- 	struct ext3_super_block *es = EXT3_SB(sb)->s_es;
--	uint64_t start, len, minlen, trimmed;
-+	uint64_t start, minlen, end, trimmed = 0;
-+	ext3_fsblk_t first_data_blk =
-+			le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block);
- 	ext3_fsblk_t max_blks = le32_to_cpu(es->s_blocks_count);
- 	int ret = 0;
- 
--	start = (range->start >> sb->s_blocksize_bits) +
--		le32_to_cpu(es->s_first_data_block);
--	len = range->len >> sb->s_blocksize_bits;
-+	start = range->start >> sb->s_blocksize_bits;
-+	end = start + (range->len >> sb->s_blocksize_bits) - 1;
- 	minlen = range->minlen >> sb->s_blocksize_bits;
--	trimmed = 0;
- 
--	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)))
-+	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)) ||
-+	    unlikely(start >= max_blks))
- 		return -EINVAL;
--	if (start >= max_blks)
--		return -EINVAL;
--	if (start + len > max_blks)
--		len = max_blks - start;
-+	if (unlikely(end >= max_blks))
-+		end = max_blks - 1;
-+	if (end <= first_data_blk)
-+		return 0;
-+	if (start < first_data_blk)
-+		start = first_data_blk;
- 
--	ngroups = EXT3_SB(sb)->s_groups_count;
- 	smp_rmb();
- 
- 	/* Determine first and last group to examine based on start and len */
- 	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) start,
- 				     &first_group, &first_block);
--	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) (start + len),
-+	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) end,
- 				     &last_group, &last_block);
--	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
--	last_block = EXT3_BLOCKS_PER_GROUP(sb);
- 
--	if (first_group > last_group)
--		return -EINVAL;
-+	/* The last block to discard in the group */
-+	end = EXT3_BLOCKS_PER_GROUP(sb);
- 
- 	for (group = first_group; group <= last_group; group++) {
- 		gdp = ext3_get_group_desc(sb, group, NULL);
- 		if (!gdp)
- 			break;
- 
--		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
--		if (free_blocks < minlen)
-+		if (le16_to_cpu(gdp->bg_free_blocks_count) < minlen)
- 			continue;
- 
- 		/*
- 		 * For all the groups except the last one, last block will
- 		 * always be EXT3_BLOCKS_PER_GROUP(sb), so we only need to
--		 * change it for the last group in which case first_block +
--		 * len < EXT3_BLOCKS_PER_GROUP(sb).
-+		 * change it for the last group, note that last_block is
-+		 * already computed earlier by ext3_get_group_no_and_offset()
- 		 */
--		if (first_block + len < EXT3_BLOCKS_PER_GROUP(sb))
--			last_block = first_block + len;
--		len -= last_block - first_block;
-+		if (group == last_group)
-+			end = last_block;
- 
- 		ret = ext3_trim_all_free(sb, group, first_block,
--					last_block, minlen);
-+					 end, minlen);
- 		if (ret < 0)
- 			break;
+Whether it is a bad idea or not, people do move filesystems around and
+have existing systems formatted before mke2fs would issue discards, so
+it is a good idea to discard unused areas regardless of whether or not
+they are uninitialized.
+
+My understanding of uninitialized is that it was added as an
+optimization meaning "there's nothing here, so you can skip/ignore
+this" rather than "this has _never_ been used, so you can rely on it
+containing all zeros and being discarded".
+
+Indeed, a quick test filling a block device with random data and
+running mke2fs on it leaves the random data in the uninitialized block
+bitmaps rather than writing all zeros.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iQEcBAEBAgAGBQJPR79fAAoJEJrBOlT6nu75K8QH/RJoNQPm+rGtmv1cmWPusuNb
+pb/6hRmOhsIUClaMn2diinGgH7HQbZ9FqsSx0mZmWq52T/21korGk3fyVe/nfL9m
+h4xFYJLNEdsSCJE7mcpUu5BMxCwlYEcybHu7xobVtqHlF671zjszj/xCGBgQIEwD
+3tRu8JXc/grnrya0CxDXd5kenM6oQviEmkproYUjG21XW+2DKjgHD1w6lbcHZHw5
+5fvWVwFOMy9OgagcBzAxo43E7oZoPCD6o54HT8As7FoBfUSt9Z4GLMe3ULH4SbpP
+KKuRiumOnBW9fz7I3jRDkVpJ+9MxWqpUL4SA79sDreYfOBAa6m7cOaR+PHr8sTM=
+=8u4o
+-----END PGP SIGNATURE-----
