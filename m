@@ -1,45 +1,39 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: cleanup in ext4_discard_allocated_blocks()
-Date: Sun, 26 Feb 2012 23:54:37 +0800
-Message-ID: <1330271677-10200-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH] ext4: fix format flag in ext4_ext_binsearch_idx()
+Date: Sun, 26 Feb 2012 23:55:55 +0800
+Message-ID: <1330271755-10239-1-git-send-email-wenqing.lz@taobao.com>
 Cc: tytso@mit.edu, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:51965 "EHLO
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:35309 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750818Ab2BZPtx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Feb 2012 10:49:53 -0500
-Received: by iazz13 with SMTP id z13so2204288iaz.19
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Feb 2012 07:49:52 -0800 (PST)
+	with ESMTP id S1750818Ab2BZPvC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Feb 2012 10:51:02 -0500
+Received: by iazz13 with SMTP id z13so2205023iaz.19
+        for <linux-ext4@vger.kernel.org>; Sun, 26 Feb 2012 07:51:02 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-remove 'len' variable in ext4_discard_allocated_blocks() because it is useless.
+fix ext_debug format flag in ext4_ext_binsearch_idx().
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/mballoc.c |    7 ++-----
- 1 files changed, 2 insertions(+), 5 deletions(-)
+ fs/ext4/extents.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index cb990b2..8f8889f 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3123,12 +3123,9 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
- static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- {
- 	struct ext4_prealloc_space *pa = ac->ac_pa;
--	int len;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 74f23c2..2722533 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -519,7 +519,7 @@ ext4_ext_binsearch_idx(struct inode *inode,
+ 	}
  
--	if (pa && pa->pa_type == MB_INODE_PA) {
--		len = ac->ac_b_ex.fe_len;
--		pa->pa_free += len;
--	}
-+	if (pa && pa->pa_type == MB_INODE_PA)
-+		pa->pa_free += ac->ac_b_ex.fe_len;
+ 	path->p_idx = l - 1;
+-	ext_debug("  -> %d->%lld ", le32_to_cpu(path->p_idx->ei_block),
++	ext_debug("  -> %u->%lld ", le32_to_cpu(path->p_idx->ei_block),
+ 		  ext4_idx_pblock(path->p_idx));
  
- }
- 
+ #ifdef CHECK_BINSEARCH
 -- 
 1.7.4.1
 
