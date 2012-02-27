@@ -1,39 +1,37 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: fix format flag in ext4_ext_binsearch_idx()
-Date: Sun, 26 Feb 2012 23:55:55 +0800
-Message-ID: <1330271755-10239-1-git-send-email-wenqing.lz@taobao.com>
-Cc: tytso@mit.edu, Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:35309 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750818Ab2BZPvC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Feb 2012 10:51:02 -0500
-Received: by iazz13 with SMTP id z13so2205023iaz.19
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Feb 2012 07:51:02 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 66/73] ext2: Split ext2_add_entry() from
+ ext2_add_link() [ver #2]
+Date: Sun, 26 Feb 2012 19:04:28 -0500
+Message-ID: <20120227000428.GA8044@thunk.org>
+References: <20120221175721.25235.8901.stgit@warthog.procyon.org.uk>
+ <20120221180546.25235.50961.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, viro@ZenIV.linux.org.uk,
+	valerie.aurora@gmail.com, linux-kernel@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, linux-ext4@kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120221180546.25235.50961.stgit@warthog.procyon.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-fix ext_debug format flag in ext4_ext_binsearch_idx().
+On Tue, Feb 21, 2012 at 06:05:46PM +0000, David Howells wrote:
+> From: Valerie Aurora <vaurora@redhat.com>
+> 
+> Allow future code to use the guts of ext2_add_link().
+> 
+> Original-author: Valerie Aurora <vaurora@redhat.com>
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: linux-ext4@kernel.org
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/extents.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+I'd suggest folding this in with the following patch (67/73).  It's
+not clear from this patch why renaming ext2_add_link to
+ext2_add_entry() makes sense and then adding a new ext2_add_link()
+which calls ext_add_entry().   It doesn't seem to clarify much....
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74f23c2..2722533 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -519,7 +519,7 @@ ext4_ext_binsearch_idx(struct inode *inode,
- 	}
- 
- 	path->p_idx = l - 1;
--	ext_debug("  -> %d->%lld ", le32_to_cpu(path->p_idx->ei_block),
-+	ext_debug("  -> %u->%lld ", le32_to_cpu(path->p_idx->ei_block),
- 		  ext4_idx_pblock(path->p_idx));
- 
- #ifdef CHECK_BINSEARCH
--- 
-1.7.4.1
+I won't insist on it, but this seems to be unnecessary complication.
 
+      	    		       	  	       - Ted
