@@ -1,177 +1,550 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC] ext4: block reservation allocation
-Date: Mon, 27 Feb 2012 14:16:58 -0700
-Message-ID: <1800806E-76EE-4B1A-86AE-E6352FC96E00@dilger.ca>
-References: <20120227090901.GA13953@gmail.com> <alpine.LFD.2.00.1202271234250.5597@dhcp-27-109.brq.redhat.com> <20120227131829.GA14666@gmail.com> <alpine.LFD.2.00.1202271417350.5597@dhcp-27-109.brq.redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:62658 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754067Ab2B0VRA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2012 16:17:00 -0500
-In-Reply-To: <alpine.LFD.2.00.1202271417350.5597@dhcp-27-109.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: [RFC PATCH 20/22] ext4: add support for read_iter, write_iter, and direct_IO_bvec
+Date: Mon, 27 Feb 2012 15:19:34 -0600
+Message-ID: <1330377576-3659-21-git-send-email-dave.kleikamp@oracle.com>
+References: <1330377576-3659-1-git-send-email-dave.kleikamp@oracle.com>
+Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
+	Dave Kleikamp <dave.kleikamp@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1330377576-3659-1-git-send-email-dave.kleikamp@oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012-02-27, at 6:33 AM, Lukas Czerner wrote:
-> On Mon, 27 Feb 2012, Zheng Liu wrote:
->> On Mon, Feb 27, 2012 at 01:00:07PM +0100, Lukas Czerner wrote:
->>> On Mon, 27 Feb 2012, Zheng Liu wrote:
->>> 
->>>> Hi list,
->>>> 
->>>> Now, in ext4, we have multi-block allocation and delay allocation. They work
->>>> well for most scenarios. However, in some specific scenarios, they cannot
->>>> help us to optimize block allocation. For example, the user may want to
->>>> indicate some file set to be allocated at the beginning of the disk because
->>>> its speed in this position is faster than its speed at the end of disk.
->>>> 
->>>> I have done the following experiment. The experiment is on my own server, which has 16 Intel(R) Xeon(R) CPU E5620 @ 2.40GHz, 48G memory and a 1T SAS
->>>> disk. I split this disk into two partitions, one has 900G, and another has
->>>> 100G. Then I use dd to get the speed of read/write. The result is as
->>>> following.
->>>> 
->>>> [READ]
->>>> # dd if=/dev/sdk1 of=/dev/null bs=128k count=10000 iflag=direct
->>>> 1310720000 bytes (1.3 GB) copied, 9.41151 s, 139 MB/s
->>>> 
->>>> # dd if=/dev/sdk2 of=/dev/null bs=128k count=10000 iflag=direct
->>>> 1310720000 bytes (1.3 GB) copied, 17.952 s, 73.0 MB/s
->>>> 
->>>> [WRITE]
->>>> # dd if=/dev/zero of=/dev/sdk1 bs=128k count=10000 oflag=direct
->>>> 1310720000 bytes (1.3 GB) copied, 8.46005 s, 155 MB/s
->>>> 
->>>> # dd if=/dev/zero of=/dev/sdk2 bs=128k count=10000 oflag=direct
->>>> 1310720000 bytes (1.3 GB) copied, 15.8493 s, 82.7 MB/s
->>>> 
->>>> So filesystem can provide a new feature to let the user to indicate a value
->>>> for reserving some blocks from the beginning of the disk. When the user needs to allocate some blocks for an important file that needs to be
->>>> read/write as quick as possible, the user can use ioctl(2) and/or other
->>>> ways to notify filesystem to allocate these blocks in the reservation area.
->>>> Thereby, the user can obtain the higher performance for manipulating this
->>>> file set.
->>>> 
->>>> This idea is very trivial. So any comments or suggestions are appreciated.
->>> 
->>> Hi Zheng,
->>> 
->>> I have to admit I do not like it :). I think that this kind of
->>> optimization is useless in the long run. There are several reasons for
->>> this:
->> 
->> Hi Lukas,
->> 
->> Thank you for your opinion. ;-)
->> 
->>> 
->>> - the test you've done is purely fabricated and does not respond to
->>>   real workload at all. Especially because it is done on a huge files.
->>>   I can imagine this approach improving boot speed, but you will
->>>   usually have to load just small files, so for single file it does not
->>>   make much sense. Moreover with small files more seeks would have to
->>>   be done hugely reducing the advantage you can see with dd.
->> 
->> I will describe the problem that we encounter. the problem shows that
->> even if files are small, the performance can be improved in some
->> specific scenarios using this block allocation.
->> 
->>> - HDD might have more platters than just one
->>> - Your file system might span across several drives
->>> - On thinly provisioned storage this does not make sense at all
->>> - SSD's are more and more common and this optimization is useless for
->>>   them.
->>> 
->>> Is there any 'real' problem you would want to solve with this ? Or is it
->>> just something that came to you mind ? I agree that we want to improve
->>> our allocators, but IMHO especially for better scalability, not to cover
->>> this disputable niche.
->> 
->> We encounter a problem in our product system. In a 2TB sata disk, the
->> file can be divided into two categories. One is index file, and another
->> is block file. The average size of index files is about 128k and will
->> increase as time goes on. The size of block files is 70M and they are
->> created by fallocate(2). Thus, index file is allocated at the end of the
->> disk. When application starts up, it needs to load all of index files
->> into memory. So it costs too much time. If we can allocate index files
->> at the beginning of the disk, we will cut down the startup time and
->> increase the service time of this application.
->> 
->> Therefore, I think that it might be as a generic mechanism to provide
->> other users that have the similar requirement.
-> 
-> Ok, so this seems like a valid use case. However I think that this is
-> exactly something that can be quite easily solved without having to
-> modify file system code, right ?
-> 
-> You can simply use separate drive for the index files, or even raid. Or
-> you can actually use an SSD for this, which I believe will give you *a
-> lot* better performance improvements and you wont be bothered by the
-> size/price ratio for SSD as you would only store indexes there, right ?
-> 
-> Or, if you really do not want to, or can not, but a new hardware for
-> some reason, you can always partition a 2TB disk and put all your index
-> files on the smaller, close to the disk center partition. I really do
-> not see a reason to modify the code.
+Some helpers were broken out of ext4_ind_direct_IO() and
+ext4_ext_direct_IO() in order to avoid code duplication in new
+bio_vec-based functions.
 
-This introduces more administration complexity, and is one of the reasons
-why desktop systems install with a single huge partition instead of many
-separate partitions.  Having a slightly slower index is much less harmful
-to an application than the index partition becoming full while the data
-partition has free space.
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Zach Brown <zab@zabbo.net>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext4/ext4.h     |    3 +
+ fs/ext4/file.c     |    2 +
+ fs/ext4/indirect.c |  169 +++++++++++++++++++++++++++++++-----------
+ fs/ext4/inode.c    |  206 +++++++++++++++++++++++++++++++++++-----------------
+ 4 files changed, 268 insertions(+), 112 deletions(-)
 
-This also introduces gratuitous overhead due to separate journals, multiple
-cache flush commands for the same disk, etc.
-
-Cheers, Andreas
-
-> What might be even more interesting is, that you might generally benefit
-> from splitting the index/data file systems. The reason is that your data
-> file and your index file filesystem might benefit from bigalloc if you
-> split them, because you can set different cluster sizes on both file
-> system depending on the file sizes you would actually store there, since
-> as I understand the index and data files differs in size significantly.
-> 
-> How much of the performance boost do you expect by doing this your way -
-> modifying the file system? Note that dd will not tell you that, as I
-> explained earlier. I surely would not match using SSD for index files by
-> far.
-> 
-> What do you think?
-> 
-> Thanks!
-> -Lukas
-> 
-> 
-> 
->> 
->> Regards,
->> Zheng
->> 
->>> 
->>> Anyway, you may try to come up with better experiment. Something which
->>> would actually show how much can we get from the more realistic workload
->>> rather than showing that contiguous serial writes are faster closely to
->>> the center of the disk platter, we know that.
->>> 
->>> Thanks!
->>> -Lukas
->> 
-> 
-> -- 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..6426d43 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1905,6 +1905,9 @@ extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 				const struct iovec *iov, loff_t offset,
+ 				unsigned long nr_segs);
++extern ssize_t ext4_ind_direct_IO_bvec(int rw, struct kiocb *iocb,
++				struct bio_vec *bvec, loff_t offset,
++				unsigned long bvec_len);
+ extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
+ extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
+ extern void ext4_ind_truncate(struct inode *inode);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb70f18..ce76745 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -234,6 +234,8 @@ const struct file_operations ext4_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= ext4_file_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl = ext4_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext4_compat_ioctl,
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 830e1b2..e8ca3b9 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -760,6 +760,72 @@ out:
+ 	return err;
+ }
+ 
++static ssize_t ext4_journal_orphan_add(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	handle_t *handle;
++	ssize_t ret;
++
++	/* Credits for sb + inode write */
++	handle = ext4_journal_start(inode, 2);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out;
++	}
++	ret = ext4_orphan_add(handle, inode);
++	if (ret) {
++		ext4_journal_stop(handle);
++		goto out;
++	}
++	ei->i_disksize = inode->i_size;
++	ext4_journal_stop(handle);
++out:
++	return ret;
++}
++
++static ssize_t ext4_journal_orphan_del(struct inode *inode, ssize_t ret,
++				       loff_t offset)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	handle_t *handle;
++	int err;
++
++	/* Credits for sb + inode write */
++	handle = ext4_journal_start(inode, 2);
++	if (IS_ERR(handle)) {
++		/* This is really bad luck. We've written the data
++		 * but cannot extend i_size. Bail out and pretend
++		 * the write failed... */
++		ret = PTR_ERR(handle);
++		if (inode->i_nlink)
++			ext4_orphan_del(NULL, inode);
++
++		goto out;
++	}
++	if (inode->i_nlink)
++		ext4_orphan_del(handle, inode);
++	if (ret > 0) {
++		loff_t end = offset + ret;
++		if (end > inode->i_size) {
++			ei->i_disksize = end;
++			i_size_write(inode, end);
++			/*
++			 * We're going to return a positive `ret'
++			 * here due to non-zero-length I/O, so there's
++			 * no way of reporting error returns from
++			 * ext4_mark_inode_dirty() to userspace.  So
++			 * ignore it.
++			 */
++			ext4_mark_inode_dirty(handle, inode);
++		}
++	}
++	err = ext4_journal_stop(handle);
++	if (ret == 0)
++		ret = err;
++out:
++	return ret;
++}
++
+ /*
+  * O_DIRECT for ext3 (or indirect map) based files
+  *
+@@ -778,7 +844,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 	struct file *file = iocb->ki_filp;
+ 	struct inode *inode = file->f_mapping->host;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+-	handle_t *handle;
+ 	ssize_t ret;
+ 	int orphan = 0;
+ 	size_t count = iov_length(iov, nr_segs);
+@@ -788,20 +853,10 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 		loff_t final_size = offset + count;
+ 
+ 		if (final_size > inode->i_size) {
+-			/* Credits for sb + inode write */
+-			handle = ext4_journal_start(inode, 2);
+-			if (IS_ERR(handle)) {
+-				ret = PTR_ERR(handle);
+-				goto out;
+-			}
+-			ret = ext4_orphan_add(handle, inode);
+-			if (ret) {
+-				ext4_journal_stop(handle);
++			ret =  ext4_journal_orphan_add(inode);
++			if (ret)
+ 				goto out;
+-			}
+ 			orphan = 1;
+-			ei->i_disksize = inode->i_size;
+-			ext4_journal_stop(handle);
+ 		}
+ 	}
+ 
+@@ -831,42 +886,68 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ 
+-	if (orphan) {
+-		int err;
++	if (orphan)
++		ret = ext4_journal_orphan_del(inode, ret, offset);
++out:
++	return ret;
++}
+ 
+-		/* Credits for sb + inode write */
+-		handle = ext4_journal_start(inode, 2);
+-		if (IS_ERR(handle)) {
+-			/* This is really bad luck. We've written the data
+-			 * but cannot extend i_size. Bail out and pretend
+-			 * the write failed... */
+-			ret = PTR_ERR(handle);
+-			if (inode->i_nlink)
+-				ext4_orphan_del(NULL, inode);
++/*
++ * Like ext4_ind_direct_IO, but operates on bio_vec instead of iovec
++ */
++ssize_t ext4_ind_direct_IO_bvec(int rw, struct kiocb *iocb,
++				struct bio_vec *bvec, loff_t offset,
++				unsigned long bvec_len)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	ssize_t ret;
++	int orphan = 0;
++	size_t count = bvec_length(bvec, bvec_len);
++	int retries = 0;
++
++	if (rw == WRITE) {
++		loff_t final_size = offset + count;
+ 
+-			goto out;
++		if (final_size > inode->i_size) {
++			ret =  ext4_journal_orphan_add(inode);
++			if (ret)
++				goto out;
++			orphan = 1;
+ 		}
+-		if (inode->i_nlink)
+-			ext4_orphan_del(handle, inode);
+-		if (ret > 0) {
+-			loff_t end = offset + ret;
+-			if (end > inode->i_size) {
+-				ei->i_disksize = end;
+-				i_size_write(inode, end);
+-				/*
+-				 * We're going to return a positive `ret'
+-				 * here due to non-zero-length I/O, so there's
+-				 * no way of reporting error returns from
+-				 * ext4_mark_inode_dirty() to userspace.  So
+-				 * ignore it.
+-				 */
+-				ext4_mark_inode_dirty(handle, inode);
+-			}
++	}
++
++retry:
++	if (rw == READ && ext4_should_dioread_nolock(inode)) {
++		if (unlikely(!list_empty(&ei->i_completed_io_list))) {
++			mutex_lock(&inode->i_mutex);
++			ext4_flush_completed_IO(inode);
++			mutex_unlock(&inode->i_mutex);
++		}
++		ret = __blockdev_direct_IO_bvec(rw, iocb, inode,
++				 inode->i_sb->s_bdev, bvec,
++				 offset, bvec_len,
++				 ext4_get_block, NULL, NULL, 0);
++	} else {
++		ret = blockdev_direct_IO_bvec(rw, iocb, inode,
++				 inode->i_sb->s_bdev, bvec,
++				 offset, bvec_len,
++				 ext4_get_block, NULL);
++
++		if (unlikely((rw & WRITE) && ret < 0)) {
++			loff_t isize = i_size_read(inode);
++			loff_t end = offset + bvec_length(bvec, bvec_len);
++
++			if (end > isize)
++				ext4_truncate_failed_write(inode);
+ 		}
+-		err = ext4_journal_stop(handle);
+-		if (ret == 0)
+-			ret = err;
+ 	}
++	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++		goto retry;
++
++	if (orphan)
++		ret = ext4_journal_orphan_del(inode, ret, offset);
+ out:
+ 	return ret;
+ }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..922b26f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2764,7 +2764,7 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 
+ 	ext_debug("ext4_end_io_dio(): io_end 0x%p "
+ 		  "for inode %lu, iocb 0x%p, offset %llu, size %llu\n",
+- 		  iocb->private, io_end->inode->i_ino, iocb, offset,
++		  iocb->private, io_end->inode->i_ino, iocb, offset,
+ 		  size);
+ 
+ 	iocb->private = NULL;
+@@ -2868,6 +2868,85 @@ retry:
+ 	return 0;
+ }
+ 
++static ssize_t ext4_ext_direct_IO_pre_write(struct kiocb *iocb,
++					    struct inode *inode)
++{
++	/*
++	 * We could direct write to holes and fallocate.
++	 *
++	 * Allocated blocks to fill the hole are marked as uninitialized
++	 * to prevent parallel buffered read to expose the stale data
++	 * before DIO complete the data IO.
++	 *
++	 * As to previously fallocated extents, ext4 get_block
++	 * will just simply mark the buffer mapped but still
++	 * keep the extents uninitialized.
++	 *
++	 * for non AIO case, we will convert those unwritten extents
++	 * to written after return back from blockdev_direct_IO.
++	 *
++	 * for async DIO, the conversion needs to be defered when
++	 * the IO is completed. The ext4 end_io callback function
++	 * will be called to take care of the conversion work.
++	 * Here for async case, we allocate an io_end structure to
++	 * hook to the iocb.
++	 */
++	iocb->private = NULL;
++	EXT4_I(inode)->cur_aio_dio = NULL;
++	if (!is_sync_kiocb(iocb)) {
++		iocb->private = ext4_init_io_end(inode, GFP_NOFS);
++		if (!iocb->private)
++			return -ENOMEM;
++		/*
++		 * we save the io structure for current async
++		 * direct IO, so that later ext4_map_blocks()
++		 * could flag the io structure whether there
++		 * is a unwritten extents needs to be converted
++		 * when IO is completed.
++		 */
++		EXT4_I(inode)->cur_aio_dio = iocb->private;
++	}
++	return 0;
++}
++
++static ssize_t ext4_ext_direct_IO_post_write(struct kiocb *iocb,
++					     struct inode *inode,
++					     loff_t offset, ssize_t ret)
++{
++	if (iocb->private)
++			EXT4_I(inode)->cur_aio_dio = NULL;
++	/*
++	 * The io_end structure takes a reference to the inode,
++	 * that structure needs to be destroyed and the
++	 * reference to the inode need to be dropped, when IO is
++	 * complete, even with 0 byte write, or failed.
++	 *
++	 * In the successful AIO DIO case, the io_end structure will be
++	 * desctroyed and the reference to the inode will be dropped
++	 * after the end_io call back function is called.
++	 *
++	 * In the case there is 0 byte write, or error case, since
++	 * VFS direct IO won't invoke the end_io call back function,
++	 * we need to free the end_io structure here.
++	 */
++	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
++		ext4_free_io_end(iocb->private);
++		iocb->private = NULL;
++	} else if (ret > 0 &&
++		   ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN)) {
++		int err;
++		/*
++		 * for non AIO case, since the IO is already
++		 * completed, we could do the conversion right here
++		 */
++		err = ext4_convert_unwritten_extents(inode, offset, ret);
++		if (err < 0)
++			ret = err;
++		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
++	}
++	return ret;
++}
++
+ /*
+  * For ext4 extent files, ext4 will do direct-io write to holes,
+  * preallocated extents, and those write extend the file, no need to
+@@ -2898,41 +2977,9 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 
+ 	loff_t final_size = offset + count;
+ 	if (rw == WRITE && final_size <= inode->i_size) {
+-		/*
+- 		 * We could direct write to holes and fallocate.
+-		 *
+- 		 * Allocated blocks to fill the hole are marked as uninitialized
+- 		 * to prevent parallel buffered read to expose the stale data
+- 		 * before DIO complete the data IO.
+-		 *
+- 		 * As to previously fallocated extents, ext4 get_block
+- 		 * will just simply mark the buffer mapped but still
+- 		 * keep the extents uninitialized.
+- 		 *
+-		 * for non AIO case, we will convert those unwritten extents
+-		 * to written after return back from blockdev_direct_IO.
+-		 *
+-		 * for async DIO, the conversion needs to be defered when
+-		 * the IO is completed. The ext4 end_io callback function
+-		 * will be called to take care of the conversion work.
+-		 * Here for async case, we allocate an io_end structure to
+-		 * hook to the iocb.
+- 		 */
+-		iocb->private = NULL;
+-		EXT4_I(inode)->cur_aio_dio = NULL;
+-		if (!is_sync_kiocb(iocb)) {
+-			iocb->private = ext4_init_io_end(inode, GFP_NOFS);
+-			if (!iocb->private)
+-				return -ENOMEM;
+-			/*
+-			 * we save the io structure for current async
+-			 * direct IO, so that later ext4_map_blocks()
+-			 * could flag the io structure whether there
+-			 * is a unwritten extents needs to be converted
+-			 * when IO is completed.
+-			 */
+-			EXT4_I(inode)->cur_aio_dio = iocb->private;
+-		}
++		ret = ext4_ext_direct_IO_pre_write(iocb, inode);
++		if (ret)
++			return ret;
+ 
+ 		ret = __blockdev_direct_IO(rw, iocb, inode,
+ 					 inode->i_sb->s_bdev, iov,
+@@ -2941,38 +2988,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 					 ext4_end_io_dio,
+ 					 NULL,
+ 					 DIO_LOCKING | DIO_SKIP_HOLES);
+-		if (iocb->private)
+-			EXT4_I(inode)->cur_aio_dio = NULL;
+-		/*
+-		 * The io_end structure takes a reference to the inode,
+-		 * that structure needs to be destroyed and the
+-		 * reference to the inode need to be dropped, when IO is
+-		 * complete, even with 0 byte write, or failed.
+-		 *
+-		 * In the successful AIO DIO case, the io_end structure will be
+-		 * desctroyed and the reference to the inode will be dropped
+-		 * after the end_io call back function is called.
+-		 *
+-		 * In the case there is 0 byte write, or error case, since
+-		 * VFS direct IO won't invoke the end_io call back function,
+-		 * we need to free the end_io structure here.
+-		 */
+-		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+-			ext4_free_io_end(iocb->private);
+-			iocb->private = NULL;
+-		} else if (ret > 0 && ext4_test_inode_state(inode,
+-						EXT4_STATE_DIO_UNWRITTEN)) {
+-			int err;
+-			/*
+-			 * for non AIO case, since the IO is already
+-			 * completed, we could do the conversion right here
+-			 */
+-			err = ext4_convert_unwritten_extents(inode,
+-							     offset, ret);
+-			if (err < 0)
+-				ret = err;
+-			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+-		}
++		ret = ext4_ext_direct_IO_post_write(iocb, inode, offset, ret);
+ 		return ret;
+ 	}
+ 
+@@ -2980,6 +2996,37 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+ }
+ 
++/*
++ * Like ext4_ext_direct_IO, but operates on a bio_vec rather than iovec.
++ */
++static ssize_t ext4_ext_direct_IO_bvec(int rw, struct kiocb *iocb,
++			      struct bio_vec *bvec, loff_t offset,
++			      unsigned long bvec_len)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++	ssize_t ret;
++	size_t count = bvec_length(bvec, bvec_len);
++
++	loff_t final_size = offset + count;
++	if (rw == WRITE && final_size <= inode->i_size) {
++		ret = ext4_ext_direct_IO_pre_write(iocb, inode);
++		if (ret)
++			return ret;
++
++		ret = blockdev_direct_IO_bvec(rw, iocb, inode,
++					 inode->i_sb->s_bdev, bvec,
++					 offset, bvec_len,
++					 ext4_get_block_write,
++					 ext4_end_io_dio);
++		ret = ext4_ext_direct_IO_post_write(iocb, inode, offset, ret);
++		return ret;
++	}
++
++	/* for write the the end of file case, we fall back to old way */
++	return ext4_ind_direct_IO_bvec(rw, iocb, bvec, offset, bvec_len);
++}
++
+ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 			      const struct iovec *iov, loff_t offset,
+ 			      unsigned long nr_segs)
+@@ -3004,6 +3051,25 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 	return ret;
+ }
+ 
++static ssize_t ext4_direct_IO_bvec(int rw, struct kiocb *iocb,
++			      struct bio_vec *bvec, loff_t offset,
++			      unsigned long bvec_len)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++	ssize_t ret;
++
++	trace_ext4_direct_IO_enter(inode, offset, bvec_length(bvec, bvec_len),
++				   rw);
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++		ret = ext4_ext_direct_IO_bvec(rw, iocb, bvec, offset, bvec_len);
++	else
++		ret = ext4_ind_direct_IO_bvec(rw, iocb, bvec, offset, bvec_len);
++	trace_ext4_direct_IO_exit(inode, offset, bvec_length(bvec, bvec_len),
++				  rw, ret);
++	return ret;
++}
++
+ /*
+  * Pages can be marked dirty completely asynchronously from ext4's journalling
+  * activity.  By filemap_sync_pte(), try_to_unmap_one(), etc.  We cannot do
+@@ -3033,6 +3099,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
++	.direct_IO_bvec		= ext4_direct_IO_bvec,
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+@@ -3048,6 +3115,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
++	.direct_IO_bvec		= ext4_direct_IO_bvec,
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+@@ -3064,6 +3132,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
++	.direct_IO_bvec		= ext4_direct_IO_bvec,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+ };
+@@ -3079,6 +3148,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.invalidatepage		= ext4_da_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
++	.direct_IO_bvec		= ext4_direct_IO_bvec,
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+-- 
+1.7.9.2
 
