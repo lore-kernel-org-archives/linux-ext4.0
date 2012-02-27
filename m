@@ -1,67 +1,45 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [RESEND] [PATCH 2/2 v2] e2fsck: Do not forget to discard last
- block group
-Date: Mon, 27 Feb 2012 19:33:19 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1202271922520.5540@dhcp-27-109.brq.redhat.com>
-References: <1330072490-26833-1-git-send-email-lczerner@redhat.com> <1330072490-26833-2-git-send-email-lczerner@redhat.com> <20120227170011.GB1651@thunk.org> <alpine.LFD.2.00.1202271838330.5540@dhcp-27-109.brq.redhat.com> <20120227180529.GE1651@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 66/73] ext2: Split ext2_add_entry() from
+ ext2_add_link() [ver #2]
+Date: Mon, 27 Feb 2012 14:09:16 -0500
+Message-ID: <20120227190916.GH1651@thunk.org>
+References: <20120221175721.25235.8901.stgit@warthog.procyon.org.uk>
+ <20120221180546.25235.50961.stgit@warthog.procyon.org.uk>
+ <20120227000428.GA8044@thunk.org>
+ <B5DCCBD9-F032-44E1-8368-146137487B83@dilger.ca>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	psusi@ubuntu.com, sandeen@redhat.com
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60083 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753654Ab2B0SdZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Feb 2012 13:33:25 -0500
-In-Reply-To: <20120227180529.GE1651@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: David Howells <dhowells@redhat.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+	"valerie.aurora@gmail.com" <valerie.aurora@gmail.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	"linux-ext4@kernel.org" <linux-ext4@kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <B5DCCBD9-F032-44E1-8368-146137487B83@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 27 Feb 2012, Ted Ts'o wrote:
-
-> On Mon, Feb 27, 2012 at 06:57:48PM +0100, Lukas Czerner wrote:
-> > 
-> > exactly. I am trying to benefit from the same optimization e2fsck does.
-> > If the BLOCK_UNINIT is set then we can easily leave that group be and
-> > save some time. Even though that might not be a huge problem with small
-> > file systems, or some *really* fast SSD's, you'll certainly notice it on
-> > huge thin-provisioned storage, or generally any bigger discard capable
-> > device.
+On Sun, Feb 26, 2012 at 08:30:34PM -0700, Andreas Dilger wrote:
+> > I'd suggest folding this in with the following patch (67/73).  It's
+> > not clear from this patch why renaming ext2_add_link to
+> > ext2_add_entry() makes sense and then adding a new ext2_add_link()
+> > which calls ext_add_entry().   It doesn't seem to clarify much....
 > 
-> Well, maybe then the right answer is that we make it an option.  There
-> *are* times when you might want to issue a discard for every single
-> unused block, even if you think it may have already been discarded.
+> Also, why is this being done in ext2, when it should only be done in ext4?
 
-I would really like to avoid another option if we can avoid it.
+I believe Val used ext2 as a proof-of-concept, because the codebase
+was stable (and Union Mounts has been in the oven a loooong time, so
+that was probably a good choice).  I agree that if union mounts is
+finally going to make it upstream, this would be a good time to
+support implemented for ext4, and to get the support into e2fsprogs.
 
-> 
-> For example, there are some brain-damaged thin-provisioned storage
-> boxes that ignore discards that are smaller than 4 megabytes, and then
-> only discard on 4 megabyte aligned boundaries.  So even though the
-> space might have been previously discarded, one of the reasons why you
-> might want e2fsck -E discard to force a discard of the entire block
-> group is because the space might not have been released if the
-> previous TRIM commands (perhaps issued as various 1mb files were
-> deleted) didn't obey whatever arbitrary restrictions that are imposed
-> by the storage device.
+BTW, one thing that I think would be a good thing to do while we're
+making this change is to mask off the low 4 bits when looking at the
+filetype field so eventually we can use the high 4 bits for some
+future extension.
 
-I have to admit I do not really understand the example. If the block
-group is flagged with BLOCK_UNINIT there was never any file allocated
-from that group right ? Also, mke2fs issues initial full device discard
-before the file system creation. So if you have this brain-damaged
-thin-provisioned storage, discarding BLOCK_UNINIT groups would not
-actually bring you anything.
-
-> 
-> I'll agree that as a default, the optimization might make sense.  But
-> it would be good if there's a way to really to bypass the optimization
-> and issue the discard for every single unused block.
-
-Well, if the user really want to discard everything which is free in the
-file system, then there is still wiper.sh which is not fs specific.
-However it would have some unneeded consequences.
-
-> 
->     	      	      	  	       - Ted
-> 
+						- Ted
