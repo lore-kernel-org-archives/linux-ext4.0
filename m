@@ -1,43 +1,32 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 66/73] ext2: Split ext2_add_entry() from ext2_add_link() [ver #2]
-Date: Sun, 26 Feb 2012 20:30:34 -0700
-Message-ID: <B5DCCBD9-F032-44E1-8368-146137487B83@dilger.ca>
-References: <20120221175721.25235.8901.stgit@warthog.procyon.org.uk> <20120221180546.25235.50961.stgit@warthog.procyon.org.uk> <20120227000428.GA8044@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: David Howells <dhowells@redhat.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-	"valerie.aurora@gmail.com" <valerie.aurora@gmail.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	"linux-ext4@kernel.org" <linux-ext4@kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120227000428.GA8044@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2 v2] e2fsck: Discard only unused parts of inode table
+Date: Mon, 27 Feb 2012 00:42:27 -0500
+Message-ID: <20120227054227.GB9881@thunk.org>
+References: <1330014566-2020-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, psusi@ubuntu.com, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39742 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751218Ab2B0Fmo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Feb 2012 00:42:44 -0500
+Content-Disposition: inline
+In-Reply-To: <1330014566-2020-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-26, at 17:04, Ted Ts'o <tytso@mit.edu> wrote:
-> On Tue, Feb 21, 2012 at 06:05:46PM +0000, David Howells wrote:
->> From: Valerie Aurora <vaurora@redhat.com>
->> 
->> Allow future code to use the guts of ext2_add_link().
->> 
->> Original-author: Valerie Aurora <vaurora@redhat.com>
->> Signed-off-by: David Howells <dhowells@redhat.com>
->> Cc: Jan Kara <jack@suse.cz>
->> Cc: linux-ext4@kernel.org
-> 
-> I'd suggest folding this in with the following patch (67/73).  It's
-> not clear from this patch why renaming ext2_add_link to
-> ext2_add_entry() makes sense and then adding a new ext2_add_link()
-> which calls ext_add_entry().   It doesn't seem to clarify much....
+On Thu, Feb 23, 2012 at 05:29:25PM +0100, Lukas Czerner wrote:
+> When calling e2fsck with '-E discard' option it might happen that
+> valid inodes are discarded accidentally. This is because we just
+> discard the part of inode table which lies past the highest used
+> inode. This is terribly wrong (sorry!).
 
-Also, why is this being done in ext2, when it should only be done in ext4?
+Is this description accurate?  We *do* want to discard the part of the
+inode table past the highest used inode number.  By definition
+everything past that to the end of the bg's inode table is unsued,
+right?  The problem was before we were using the free inode count as I
+understand things.
 
-Fedora is already using ext4 for ext2- and ext3-formatted filesystems, to allow us to finally deprecate and then delete both of those trees and their ongoing duplicate maintenance.  Adding new features to ext2 doesn't help that goal at all.
-
-Cheers, Andreas
+						- Ted
