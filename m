@@ -1,353 +1,131 @@
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-Subject: [RFC PATCH 18/22] ext3: add support for .read_iter and .write_iter
-Date: Mon, 27 Feb 2012 15:19:32 -0600
-Message-ID: <1330377576-3659-19-git-send-email-dave.kleikamp@oracle.com>
-References: <1330377576-3659-1-git-send-email-dave.kleikamp@oracle.com>
-Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
-	Dave Kleikamp <dave.kleikamp@oracle.com>,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1330377576-3659-1-git-send-email-dave.kleikamp@oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [RFC] ext4: block reservation allocation
+Date: Mon, 27 Feb 2012 15:00:12 -0700
+Message-ID: <E74F7AC0-20B9-4F5C-835B-79C9C9233F4A@dilger.ca>
+References: <20120227090901.GA13953@gmail.com> <4F4BA33C.1050303@redhat.com> <20120227174441.GC1651@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out-04.shaw.ca ([64.59.134.12]:51870 "EHLO
+	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753794Ab2B0WAO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2012 17:00:14 -0500
+In-Reply-To: <20120227174441.GC1651@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zach Brown <zab@zabbo.net>
+On 2012-02-27, at 10:44 AM, Ted Ts'o wrote:
+> On Mon, Feb 27, 2012 at 09:37:32AM -0600, Eric Sandeen wrote:
+>> 
+>> Essentially this would move allocation decisions to userspace, and I don't
+>> think that sounds like a good idea.  If nothing else, the application shouldn't
+>> assume that it "knows" anything at all about which regions of a filesystem may
+>> be faster or slower...
+> 
+> What I *can* imagine is passing hints to the file system:
+> 
+> 	* This file will be accessed a lot --- vs --- this file will
+> 	  be written once and then will be mostly cold storage
+> 
+> 	* This file won't be extended once originally written --- vs
+>          --- this file will be extended often (i.e., it is a log file
+>          or a unix mail directory file)
+> 
+> 	* This file is mostly emphemeral --- vs --- this file will be
+>          sticking around for a long time.
+> 
+> 	* This file will be read mostly sequentially --- vs --- this
+>          file will be read mostly via random access.
 
-ext3 uses the generic .read_iter and .write_iter functions.
+I definitely think that this is Zheng's real goal - to be able to give
+application-level hints to the underlying filesystem.  While Lukas and
+Eric may disagree with the _mechanism_ that Zheng proposed, I definitely
+think the _goal_ is useful.
 
-ext3_direct_IO() is refactored in to helpers which are called by the
-.direct_IO{,bvec}() methods which call __blockdev_direct_IO{,_bvec}().
+Often when working at the filesystem level the kernel has to try and
+guess the intent of the application instead of being told what the
+application actually wants.  A prime example is delalloc vs. fallocate(),
+where the kernel is guessing (via delalloc) that the application may be
+writing more data to the filesystem so it should delay flushing that
+data to disk in the hope of making a better decision, while fallocate()
+allows the application to specify exactly what file data will be written
+and the kernel can make a good allocation decision immediately.
 
-Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc: Zach Brown <zab@zabbo.net>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
- drivers/block/loop.c |   55 ++++++++++++++++++-
- fs/ext3/file.c       |    2 +
- fs/ext3/inode.c      |  149 ++++++++++++++++++++++++++++++++++----------------
- include/linux/loop.h |    1 +
- 4 files changed, 160 insertions(+), 47 deletions(-)
+> Obviously, these can be combined in various interesting ways; consider
+> for example an application journal file which is rarely read (except
+> in recovery circumstances, after a system crash, where speed might not
+> be the most important thing), and so even though the file is being
+> appended to regularly, contiguous block allocations might not matter
+> that much --- especially if the file is also being regularly fsync'ed,
+> so it would be more important if the blocks are located close to the
+> inode table.  This isn't a hypothetical situation, by the way; I once
+> saw a performance regression of ext4 vs. ext2 that was traced down to
+> the fact that ext2 would greedily allocate the block closest to the
+> inode table, whereas ext4 would optimize for reading the file later,
+> and so allocating a large contiguous block far, far away from the
+> inode table was what ext4 choose to do.  However, in this particular
+> case, optimizing for the frequent small write/fsync case would have
+> been a better choice.
+> 
+> 
+> In some cases the file system can infer some of these characteristics
+> (e.g. if the file was opened O_APPEND, it's probably a file that will
+> be extended often).
+> 
+> In other cases it makes sense for this sort of thing to be declared
+> via an fcntl or fadvise when the file is first opened.  Indeed we have
+> some of this already via fadvise's FADV_RANDOM vs. FADV_SEQUENTIAL,
+> although currently the expectation of this interface is that it's
+> mostly used for applications declare how they plan to read a
+> particular file from the perspective of enabling or disabling
+> readahead, and not from the perspective of influencing how the file
+> system should handle its allocation policy.
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index cd50435..cdc34e1 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -76,6 +76,7 @@
- #include <linux/sysfs.h>
- #include <linux/miscdevice.h>
- #include <linux/falloc.h>
-+#include <linux/aio.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -213,6 +214,46 @@ lo_do_transfer(struct loop_device *lo, int cmd,
- 	return lo->transfer(lo, cmd, rpage, roffs, lpage, loffs, size, rblock);
- }
- 
-+void lo_rw_aio_complete(u64 data, long res)
-+{
-+	struct bio *bio = (struct bio *)data;
-+
-+	if (res > 0)
-+		res = 0;
-+	else if (res < 0)
-+		res = -EIO;
-+
-+	bio_endio(bio, res);
-+}
-+
-+static int lo_rw_aio(struct loop_device *lo, struct bio *bio)
-+{
-+	struct file *file = lo->lo_backing_file;
-+	struct kiocb *iocb;
-+	unsigned short op;
-+	struct iov_iter iter;
-+	struct bio_vec *bvec;
-+	size_t nr_segs;
-+	loff_t pos = ((loff_t) bio->bi_sector << 9) + lo->lo_offset;
-+
-+	iocb = aio_kernel_alloc(GFP_NOIO);
-+	if (!iocb)
-+		return -ENOMEM;
-+
-+	if (bio_rw(bio) & WRITE)
-+		op = IOCB_CMD_WRITE_ITER;
-+	else
-+		op = IOCB_CMD_READ_ITER;
-+
-+	bvec = bio_iovec_idx(bio, bio->bi_idx);
-+	nr_segs = bio_segments(bio);
-+	iov_iter_init_bvec(&iter, bvec, nr_segs, bvec_length(bvec, nr_segs), 0);
-+	aio_kernel_init_iter(iocb, file, op, &iter, pos);
-+	aio_kernel_init_callback(iocb, lo_rw_aio_complete, (u64)bio);
-+
-+	return aio_kernel_submit(iocb);
-+}
-+
- /**
-  * __do_lo_send_write - helper for writing data to a loop device
-  *
-@@ -512,7 +553,14 @@ static inline void loop_handle_bio(struct loop_device *lo, struct bio *bio)
- 		do_loop_switch(lo, bio->bi_private);
- 		bio_put(bio);
- 	} else {
--		int ret = do_bio_filebacked(lo, bio);
-+		int ret;
-+		if (lo->lo_flags & LO_FLAGS_USE_AIO &&
-+		    lo->transfer == transfer_none) {
-+			ret = lo_rw_aio(lo, bio);
-+			if (ret == 0)
-+				return;
-+		} else
-+			ret = do_bio_filebacked(lo, bio);
- 		bio_endio(bio, ret);
- 	}
- }
-@@ -854,6 +902,11 @@ static int loop_set_fd(struct loop_device *lo, fmode_t mode,
- 	    !file->f_op->write)
- 		lo_flags |= LO_FLAGS_READ_ONLY;
- 
-+	if (file->f_op->write_iter && file->f_op->read_iter) {
-+		file->f_flags |= O_DIRECT;
-+		lo_flags |= LO_FLAGS_USE_AIO;
-+	}
-+
- 	lo_blocksize = S_ISBLK(inode->i_mode) ?
- 		inode->i_bdev->bd_block_size : PAGE_SIZE;
- 
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index 724df69..30447a5 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -58,6 +58,8 @@ const struct file_operations ext3_file_operations = {
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
- 	.aio_write	= generic_file_aio_write,
-+	.read_iter	= generic_file_read_iter,
-+	.write_iter	= generic_file_write_iter,
- 	.unlocked_ioctl	= ext3_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext3_compat_ioctl,
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 2d0afec..ea414f0 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1853,6 +1853,70 @@ static int ext3_releasepage(struct page *page, gfp_t wait)
- 	return journal_try_to_free_buffers(journal, page, wait);
- }
- 
-+static ssize_t ext3_journal_orphan_add(struct inode *inode)
-+{
-+	struct ext3_inode_info *ei = EXT3_I(inode);
-+	handle_t *handle;
-+	ssize_t ret;
-+
-+	/* Credits for sb + inode write */
-+	handle = ext3_journal_start(inode, 2);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out;
-+	}
-+	ret = ext3_orphan_add(handle, inode);
-+	if (ret) {
-+		ext3_journal_stop(handle);
-+		goto out;
-+	}
-+	ei->i_disksize = inode->i_size;
-+	ext3_journal_stop(handle);
-+out:
-+	return ret;
-+}
-+
-+static ssize_t ext3_journal_orphan_del(struct inode *inode, ssize_t ret,
-+				       loff_t offset)
-+{
-+	struct ext3_inode_info *ei = EXT3_I(inode);
-+	handle_t *handle;
-+	int err;
-+
-+	/* Credits for sb + inode write */
-+	handle = ext3_journal_start(inode, 2);
-+	if (IS_ERR(handle)) {
-+		/* This is really bad luck. We've written the data
-+		 * but cannot extend i_size. Truncate allocated blocks
-+		 * and pretend the write failed... */
-+		ext3_truncate_failed_direct_write(inode);
-+		ret = PTR_ERR(handle);
-+		goto out;
-+	}
-+	if (inode->i_nlink)
-+		ext3_orphan_del(handle, inode);
-+	if (ret > 0) {
-+		loff_t end = offset + ret;
-+		if (end > inode->i_size) {
-+			ei->i_disksize = end;
-+			i_size_write(inode, end);
-+			/*
-+			 * We're going to return a positive `ret'
-+			 * here due to non-zero-length I/O, so there's
-+			 * no way of reporting error returns from
-+			 * ext3_mark_inode_dirty() to userspace.  So
-+			 * ignore it.
-+			 */
-+			ext3_mark_inode_dirty(handle, inode);
-+		}
-+	}
-+	err = ext3_journal_stop(handle);
-+	if (ret == 0)
-+		ret = err;
-+out:
-+	return ret;
-+}
-+
- /*
-  * If the O_DIRECT write will extend the file then add this inode to the
-  * orphan list.  So recovery will truncate it back to the original size
-@@ -1868,8 +1932,6 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
--	struct ext3_inode_info *ei = EXT3_I(inode);
--	handle_t *handle;
- 	ssize_t ret;
- 	int orphan = 0;
- 	size_t count = iov_length(iov, nr_segs);
-@@ -1881,20 +1943,10 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- 		loff_t final_size = offset + count;
- 
- 		if (final_size > inode->i_size) {
--			/* Credits for sb + inode write */
--			handle = ext3_journal_start(inode, 2);
--			if (IS_ERR(handle)) {
--				ret = PTR_ERR(handle);
-+			ret = ext3_journal_orphan_add(inode);
-+			if (ret)
- 				goto out;
--			}
--			ret = ext3_orphan_add(handle, inode);
--			if (ret) {
--				ext3_journal_stop(handle);
--				goto out;
--			}
- 			orphan = 1;
--			ei->i_disksize = inode->i_size;
--			ext3_journal_stop(handle);
- 		}
- 	}
- 
-@@ -1915,43 +1967,46 @@ retry:
- 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
- 
--	if (orphan) {
--		int err;
-+	if (orphan)
-+		ret = ext3_journal_orphan_del(inode, ret, offset);
-+out:
-+	return ret;
-+}
- 
--		/* Credits for sb + inode write */
--		handle = ext3_journal_start(inode, 2);
--		if (IS_ERR(handle)) {
--			/* This is really bad luck. We've written the data
--			 * but cannot extend i_size. Truncate allocated blocks
--			 * and pretend the write failed... */
--			ext3_truncate_failed_direct_write(inode);
--			ret = PTR_ERR(handle);
--			goto out;
--		}
--		if (inode->i_nlink)
--			ext3_orphan_del(handle, inode);
--		if (ret > 0) {
--			loff_t end = offset + ret;
--			if (end > inode->i_size) {
--				ei->i_disksize = end;
--				i_size_write(inode, end);
--				/*
--				 * We're going to return a positive `ret'
--				 * here due to non-zero-length I/O, so there's
--				 * no way of reporting error returns from
--				 * ext3_mark_inode_dirty() to userspace.  So
--				 * ignore it.
--				 */
--				ext3_mark_inode_dirty(handle, inode);
--			}
-+static ssize_t ext3_direct_IO_bvec(int rw, struct kiocb *iocb,
-+				   struct bio_vec *bvec, loff_t offset,
-+				   unsigned long bvec_len)
-+{
-+	struct file *file = iocb->ki_filp;
-+	struct inode *inode = file->f_mapping->host;
-+	ssize_t ret;
-+	int orphan = 0;
-+	size_t count = bvec_length(bvec, bvec_len);
-+	int retries = 0;
-+
-+	if (rw == WRITE) {
-+		loff_t final_size = offset + count;
-+
-+		if (final_size > inode->i_size) {
-+			ret = ext3_journal_orphan_add(inode);
-+			if (ret)
-+				goto out;
-+			orphan = 1;
- 		}
--		err = ext3_journal_stop(handle);
--		if (ret == 0)
--			ret = err;
- 	}
-+
-+retry:
-+	ret = blockdev_direct_IO_bvec(rw, iocb, inode, inode->i_sb->s_bdev,
-+				      bvec, offset, bvec_len, ext3_get_block,
-+				      NULL);
-+	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+
-+	if (orphan)
-+		ret = ext3_journal_orphan_del(inode, ret, offset);
- out:
- 	trace_ext3_direct_IO_exit(inode, offset,
--				iov_length(iov, nr_segs), rw, ret);
-+				bvec_length(bvec, bvec_len), rw, ret);
- 	return ret;
- }
- 
-@@ -1984,6 +2039,7 @@ static const struct address_space_operations ext3_ordered_aops = {
- 	.invalidatepage		= ext3_invalidatepage,
- 	.releasepage		= ext3_releasepage,
- 	.direct_IO		= ext3_direct_IO,
-+	.direct_IO_bvec		= ext3_direct_IO_bvec,
- 	.migratepage		= buffer_migrate_page,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-@@ -1999,6 +2055,7 @@ static const struct address_space_operations ext3_writeback_aops = {
- 	.invalidatepage		= ext3_invalidatepage,
- 	.releasepage		= ext3_releasepage,
- 	.direct_IO		= ext3_direct_IO,
-+	.direct_IO_bvec		= ext3_direct_IO_bvec,
- 	.migratepage		= buffer_migrate_page,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-diff --git a/include/linux/loop.h b/include/linux/loop.h
-index 11a41a8..5163fd3 100644
---- a/include/linux/loop.h
-+++ b/include/linux/loop.h
-@@ -75,6 +75,7 @@ enum {
- 	LO_FLAGS_READ_ONLY	= 1,
- 	LO_FLAGS_AUTOCLEAR	= 4,
- 	LO_FLAGS_PARTSCAN	= 8,
-+	LO_FLAGS_USE_AIO	= 16,
- };
- 
- #include <asm/posix_types.h>	/* for __kernel_old_dev_t */
--- 
-1.7.9.2
+Yes, using FADV_* for files during write is exactly the kind of hint
+that the kernel could use.  I expect that the current FADV_* flags are
+not rich enough, but at least could form a starting point for this.
+
+> I definitely agree that we don't want to go down the path of having
+> applications try to directly decide where block should be placed on
+> the disk.  That way lies madness.  However, having some way of
+> specifying the behaviour of how the file is going to be used can be
+> very useful indeed.
+
+> 
+> There are still some interesting policy/security questions, though.
+> Do you trust any application or any user id to be able to declare that
+> "this file is going to be used a lot"?  After, all if everyone
+> declares that their file is accessed a lot, and thus deserving of
+> being in the beginning third of the HDD (which can be significantly
+> faster than the rest of the disk), then the whole scheme falls apart.
+
+In some sense, in the rare case where all applications are ill behaved
+then it is no worse than not having any interface in the first place.
+In general, however, I don't expect applications to abuse this any more
+than they abuse fallocate() to reserve huge amounts of space that they
+don't need to use.
+
+> Do we simply not care?  Do we reserve the ability to set certain file
+> usage declarations only to root, or via some cgroup?  The answers are
+> not obvious....  For some parameters it probably won't matter if we
+> let unprivileged users declare whether or not their file is mostly
+> accessed sequentially or random access.  But for others, it might
+> matter a lot if you have bad actors, or worse, bad application writers
+> who assume that their web browser or GUI file system navigator, or
+> chat program should have the very best and highest priority blocks for
+> their sqlite files.
+
+Sure, and the users can stop using badly-written applications, but that
+is no reason to deny the ability for well written applications from
+helping the kernel make better decisions.
+
+Cheers, Andreas
+
+
+
+
+
