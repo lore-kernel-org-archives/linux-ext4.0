@@ -1,41 +1,119 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [RESEND] [PATCH 2/2 v2] e2fsck: Do not forget to discard last
- block group
-Date: Mon, 27 Feb 2012 12:00:11 -0500
-Message-ID: <20120227170011.GB1651@thunk.org>
-References: <1330072490-26833-1-git-send-email-lczerner@redhat.com>
- <1330072490-26833-2-git-send-email-lczerner@redhat.com>
+Subject: Re: [RFC] ext4: block reservation allocation
+Date: Mon, 27 Feb 2012 12:44:41 -0500
+Message-ID: <20120227174441.GC1651@thunk.org>
+References: <20120227090901.GA13953@gmail.com>
+ <4F4BA33C.1050303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, psusi@ubuntu.com, sandeen@redhat.com
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>,
+	Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46680 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45897 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751621Ab2B0RAN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Feb 2012 12:00:13 -0500
+	id S1753767Ab2B0Ron (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Feb 2012 12:44:43 -0500
 Content-Disposition: inline
-In-Reply-To: <1330072490-26833-2-git-send-email-lczerner@redhat.com>
+In-Reply-To: <4F4BA33C.1050303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 24, 2012 at 09:34:50AM +0100, Lukas Czerner wrote:
-> Previously when running e2fsck with '-E discard' argument the end of
-> the last group has not been discarded. This patch fixes it so we
-> always discard the end of the last group if needed.
+On Mon, Feb 27, 2012 at 09:37:32AM -0600, Eric Sandeen wrote:
 > 
-> This commit also removes unneeded argument from the
-> e2fsck_discard_blocks(). Simultaneously the commit causes the block
-> groups with BLOCK_UNINIT flag not to be discarded, which makes
-> since because we do not need to reclaim the space since so far
-> there has not been written anything.
+> Essentially this would move allocation decisions to userspace, and I don't
+> think that sounds like a good idea.  If nothing else, the application shouldn't
+> assume that it "knows" anything at all about which regions of a filesystem may
+> be faster or slower...
 
-Let me ask the question Phillip is asking a different way.  What's the
-*benefit* in not issuing a discard for blocks in block groups where
-the block bitmap is marked as unitialized, as opposed to simply
-issuing discard for all blocks that are not marked as in use?  Are you
-trying to optimize the amount of time that the storage device spends
-processing the trim commands?  Do you think issuing discards on space
-that is already discarded will somehow cause more wear on SSD's?
+What I *can* imagine is passing hints to the file system:
 
-     			       	       	     	  - Ted
+	* This file will be accessed a lot --- vs --- this file will
+	  be written once and then will be mostly cold storage
+
+	* This file won't be extended once originally written --- vs
+          --- this file will be extended often (i.e., it is a log file
+          or a unix mail directory file)
+
+	* This file is mostly emphemeral --- vs --- this file will be
+          sticking around for a long time.
+
+	* This file will be read mostly sequentially --- vs --- this
+          file will be read mostly via random access.
+
+Obviously, these can be combined in various interesting ways; consider
+for example an application journal file which is rarely read (except
+in recovery circumstances, after a system crash, where speed might not
+be the most important thing), and so even though the file is being
+appended to regularly, contiguous block allocations might not matter
+that much --- especially if the file is also being regularly fsync'ed,
+so it would be more important if the blocks are located close to the
+inode table.  This isn't a hypothetical situation, by the way; I once
+saw a performance regression of ext4 vs. ext2 that was traced down to
+the fact that ext2 would greedily allocate the block closest to the
+inode table, whereas ext4 would optimize for reading the file later,
+and so allocating a large contiguous block far, far away from the
+inode table was what ext4 choose to do.  However, in this particular
+case, optimizing for the frequent small write/fsync case would have
+been a better choice.
+
+
+In some cases the file system can infer some of these characteristics
+(e.g. if the file was opened O_APPEND, it's probably a file that will
+be extended often).
+
+In other cases it makes sense for this sort of thing to be declared
+via an fcntl or fadvise when the file is first opened.  Indeed we have
+some of this already via fadvise's FADV_RANDOM vs. FADV_SEQUENTIAL,
+although currently the expectation of this interface is that it's
+mostly used for applications declare how they plan to read a
+particular file from the perspective of enabling or disabling
+readahead, and not from the perspective of influencing how the file
+system should handle its allocation policy.
+
+I definitely agree that we don't want to go down the path of having
+applications try to directly decide where block should be placed on
+the disk.  That way lies madness.  However, having some way of
+specifying the behaviour of how the file is going to be used can be
+very useful indeed.
+
+There are still some interesting policy/security questions, though.
+Do you trust any application or any user id to be able to declare that
+"this file is going to be used a lot"?  After, all if everyone
+declares that their file is accessed a lot, and thus deserving of
+being in the beginning third of the HDD (which can be significantly
+faster than the rest of the disk), then the whole scheme falls apart.
+
+	"That King, although no one denies
+	His heart was of abnormal size,
+	Yet he'd have acted otherwise
+	If he had been acuter.
+	The end is easily foretold,
+	When every blessed thing you hold
+	Is made of silver, or of gold,
+	You long for simple pewter.
+	When you have nothing else to wear
+	But cloth of gold and satins rare,
+	For cloth of gold you cease to care--
+	Up goes the price of shoddy.
+
+	In short, whoever you may be,
+	To this conclusion you'll agree,
+	When every one is somebodee,
+	Then no one's anybody!"
+
+	     	-- Gilbert and Sullivan, The Gondoliers
+		http://lyricsplayground.com/alpha/songs/t/therelivedaking.shtml
+
+Do we simply not care?  Do we reserve the ability to set certain file
+usage declarations only to root, or via some cgroup?  The answers are
+not obvious....  For some parameters it probably won't matter if we
+let unprivileged users declare whether or not their file is mostly
+accessed sequentially or random access.  But for others, it might
+matter a lot if you have bad actors, or worse, bad application writers
+who assume that their web browser or GUI file system navigator, or
+chat program should have the very best and highest priority blocks for
+their sqlite files.
+
+						- Ted
+
