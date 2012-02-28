@@ -1,44 +1,40 @@
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-Subject: Re: [RFC PATCH 18/22] ext3: add support for .read_iter and .write_iter
-Date: Mon, 27 Feb 2012 17:14:14 -0600
-Message-ID: <4F4C0E46.9090000@oracle.com>
-References: <1330377576-3659-1-git-send-email-dave.kleikamp@oracle.com> <1330377576-3659-19-git-send-email-dave.kleikamp@oracle.com> <4F4C04EE.7080306@zabbo.net>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC] ext4: block reservation allocation
+Date: Tue, 28 Feb 2012 11:34:16 +0800
+Message-ID: <20120228033416.GA17334@gmail.com>
+References: <20120227090901.GA13953@gmail.com>
+ <alpine.LFD.2.00.1202271234250.5597@dhcp-27-109.brq.redhat.com>
+ <20120227131829.GA14666@gmail.com>
+ <alpine.LFD.2.00.1202271417350.5597@dhcp-27-109.brq.redhat.com>
+ <20120227150908.GA15097@gmail.com>
+ <alpine.LFD.2.00.1202271611090.5597@dhcp-27-109.brq.redhat.com>
+ <alpine.LFD.2.00.1202271619100.5597@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Zach Brown <zab@zabbo.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F4C04EE.7080306@zabbo.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:58608 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754468Ab2B1D3R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2012 22:29:17 -0500
+Received: by pbcup15 with SMTP id up15so2790732pbc.19
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2012 19:29:16 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1202271619100.5597@dhcp-27-109.brq.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/27/2012 04:34 PM, Zach Brown wrote:
+On Mon, Feb 27, 2012 at 04:24:24PM +0100, Lukas Czerner wrote:
+[snip]
 > 
->>   drivers/block/loop.c |   55 ++++++++++++++++++-
->>   fs/ext3/file.c       |    2 +
->>   fs/ext3/inode.c      |  149
->> ++++++++++++++++++++++++++++++++++----------------
->>   include/linux/loop.h |    1 +
->>   4 files changed, 160 insertions(+), 47 deletions(-)
-> 
-> It looks like the patch that teaches loop to use the kernel aio
-> interface got combined with the patch that adds the _bvec entry points
-> to ext3.
+> You probably know all of that that already, but just in case... for the
+> sake of good performance make sure that you partitions are properly aligned,
+> because drive might very well have 4k sector size.
 
-Okay, looking back, your patchset had them separate. This was my error.
-I'll separate them again.
+Thank you for reminding me. :-)
 
->> +    if (file->f_op->write_iter&&  file->f_op->read_iter) {
->> +        file->f_flags |= O_DIRECT;
->> +        lo_flags |= LO_FLAGS_USE_AIO;
->> +    }
-> 
-> This manual setting of f_flags still looks very fishy to me.  I remember
-> finding that pattern somewhere else but that's not very comforting :).
-> 
-> - z
+Regards,
+Zheng
+
+[snip]
