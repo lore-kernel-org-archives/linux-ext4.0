@@ -1,74 +1,44 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: Re: what happened with dccaf33fa37 "ext4: flush any pending end_io
- requests before DIO" for 3.0?
-Date: Tue, 28 Feb 2012 15:42:25 +0400
-Message-ID: <4F4CBDA1.1080302@msgid.tls.msk.ru>
-References: <4ED6942F.7070006@msgid.tls.msk.ru>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/8 v3] Checkpointing fixes and cleanups
+Date: Wed, 29 Feb 2012 12:03:42 +0100
+Message-ID: <20120229110342.GC18846@quack.suse.cz>
+References: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: stable@kernel.org
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:54840 "EHLO isrv.corpit.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:40457 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753983Ab2B2JK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Feb 2012 04:10:27 -0500
-In-Reply-To: <4ED6942F.7070006@msgid.tls.msk.ru>
+	id S1757734Ab2B2LDp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Feb 2012 06:03:45 -0500
+Content-Disposition: inline
+In-Reply-To: <1329330854-14237-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Is there something wrong with my question?  I asked it 1.5 months ago...
+On Wed 15-02-12 19:34:06, Jan Kara wrote:
+>   Hello,
+> 
+>   this is a third round of my checkpointing fixes. The patch set is primarily
+> aimed at fixing filesystem corruption happening occasionally (rather rarely)
+> after power failure. First three patches should fix the issue. Patches 4-7 are
+> assorted checkpointing cleanups I've gathered when inspecting checkpointing
+> code. Finally patch 8 is a possible speedup of checkpoining - we can use cache
+> flushes happening during transaction commits for pushing the journal tail
+> safely. The observable speedup is disputable since jbd2_cleanup_journal_tail()
+> is called rather rarely (for metadata heavy load I saw about one
+> jbd2_cleanup_journal_tail() for about 200 commits) so the cost of additional
+> cache flush will be likely in the noise. But the patch is simple enough so I
+> send it for others to judge whether it makes sense or not.
+> 
+> Changes since v2:
+> Rewrote the code pushing log tail to fix race described by Ted.
+> Improved some comments
+  Ted, do you plan to have a look at this? It would be nice to get these
+fixes in for the next merge window...
 
-Meanwhile, we're using this patch on our database server since
-Aug-2011, and it appears to work correctly - direct and buffered
-I/O works together without surprizes.  Without this patch, I see
-unexpected results.
-
-Thanks,
-
-/mjt
-
-On 01.12.2011 00:38, Michael Tokarev wrote:
-> Hello.
-> 
-> Back in August 2011, a commit has been tagged to be included
-> into stable, this one:
-> 
-> commit dccaf33fa37a1bc5d651baeb3bfeb6becb86597b
-> Author: Jiaying Zhang <jiayingz@google.com>
-> Date:   Fri Aug 19 19:13:32 2011 -0400
-> 
->     ext4: flush any pending end_io requests before DIO reads w/dioread_nolock
-> 
->     There is a race between ext4 buffer write and direct_IO read with
->     dioread_nolock mount option enabled. The problem is that we clear
->     PageWriteback flag during end_io time but will do
->     uninitialized-to-initialized extent conversion later with dioread_nolock.
->     If an O_direct read request comes in during this period, ext4 will return
->     zero instead of the recently written data.
-> 
->     This patch checks whether there are any pending uninitialized-to-initialized
->     extent conversion requests before doing O_direct read to close the race.
->     Note that this is just a bandaid fix. The fundamental issue is that we
->     clear PageWriteback flag before we really complete an IO, which is
->     problem-prone. To fix the fundamental issue, we may need to implement an
->     extent tree cache that we can use to look up pending to-be-converted extents.
-> 
->     Signed-off-by: Jiaying Zhang <jiayingz@google.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->     Cc: stable@kernel.org
-> 
-> 
-> There was one more ext4 commit at that time, which made its way into
-> stable but this one did not.
-> 
-> I wonder if the reason for that was the fact that it needed a small
-> "backport" for 3.0, since in 3.1+ the code has been moved into another
-> file, and the context is slightly different.  In that case, attached
-> is the "backport" which we use with 3.0.x since that time.
-> 
-> Thanks!
-> 
-> /mjt
-
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
