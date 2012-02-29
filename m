@@ -1,82 +1,130 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
-Date: Wed, 29 Feb 2012 10:01:53 -0600
-Message-ID: <4F4E4BF1.1060503@redhat.com>
-References: <4F4D1020.5060204@redhat.com> <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [patch] ext4: fix race between sync and completed io work
+Date: Wed, 29 Feb 2012 16:29:28 -0500
+Message-ID: <x49mx81s4zr.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: stable@kernel.org
+To: linux-ext4@vger.kernel.org, "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49002 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56548 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758083Ab2B2QBz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Feb 2012 11:01:55 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q1TG1tWg008863
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Feb 2012 11:01:55 -0500
-In-Reply-To: <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com>
+	id S932086Ab2B2V3d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Feb 2012 16:29:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/29/12 1:12 AM, Lukas Czerner wrote:
-> On Tue, 28 Feb 2012, Eric Sandeen wrote:
-> 
->> I've been testing Lukas' last 2 patches for e2fsck discard, and noticed something a little odd.
->>
->> If I make a 512M file, loopback mount it, and mkfs.ext4 it with discard, it uses about 17M at that point.
->> If I then run fsstress on it with a known seed, then run e2fsck -E discard on it, it uses about 52M.
->>
->> If I repeat the above test telling mkfs.ext4 NOT to discard, I'm left with about 94M after the discarding e2fsck.
->>
->> So it seems that perhaps e2fsck is not discarding everything that it could; after a discarding fsck, we should be left with the same (minimal) nr. of blocks "in use" no?
-> 
-> The reason is (as I commented in the patch #2) that we will not discard
-> BLOCK_UNINIT groups. We use BLOCK_UNINIT as a optimization measure to
-> skip groups which are likely to be non-provisioned, because we have
-> never written there anything since the mkfs.
-> 
-> If you create file system without discard, then obviously nothing is
-> discarded, image is fully provisioned and e2fsck discard *only* initialized
-> groups. So you'll end up with the bigger image, in case that your image was
-> not sparse.
-> 
-> I hope that makes sense.
+Hi,
 
-It does, sorry, I had been focusing too much on patch #1 ;)
+The following command line will leave the aio-stress process unkillable
+on an ext4 file system (in my case, mounted on /mnt/test):
 
--Eric
+aio-stress -t 20 -s 10 -O -S -o 2 -I 1000 /mnt/test/aiostress.3561.4 /mnt/test/aiostress.3561.4.20 /mnt/test/aiostress.3561.4.19 /mnt/test/aiostress.3561.4.18 /mnt/test/aiostress.3561.4.17 /mnt/test/aiostress.3561.4.16 /mnt/test/aiostress.3561.4.15 /mnt/test/aiostress.3561.4.14 /mnt/test/aiostress.3561.4.13 /mnt/test/aiostress.3561.4.12 /mnt/test/aiostress.3561.4.11 /mnt/test/aiostress.3561.4.10 /mnt/test/aiostress.3561.4.9 /mnt/test/aiostress.3561.4.8 /mnt/test/aiostress.3561.4.7 /mnt/test/aiostress.3561.4.6 /mnt/test/aiostress.3561.4.5 /mnt/test/aiostress.3561.4.4 /mnt/test/aiostress.3561.4.3 /mnt/test/aiostress.3561.4.2
 
-> Actually I want to make the same optimization for fitrim. We discussed
-> it with Ted and Phillip (see the discussion under [RESEND] [PATCH 2/2
-> v2] e2fsck: Do not forget to discard last block group. They did seem to
-> be convinced by that, however I think it is right thing to do for the
-> reasons I gave in that thread.
-> 
-> Thanks!
-> -Lukas
-> 
->>
->> I guess that's better than discarding _more_ than it should though.  ;)
->>
->> (I suppose it is possible that this is the underlying filesytem being selective about which discards it accepts, but it behaves the same way on ext4 and xfs backing filesystems)
->>
->> -Eric
->>
->> FWIW, sequence of events here, tested with and without "-K" on mkfs.ext4:
->>
->> dd if=/dev/zero of=fsfile bs=1M count=512
->> losetup /dev/loop0 fsfile
->> mkfs.ext4 -F /dev/loop0&>/dev/null
->> mount /dev/loop0 mnt/
->> /root/git/xfstests/ltp/fsstress -s 1 -d mnt/ -n 2000 -p 4
->> umount mnt/
->> e2fsck/e2fsck.static -fy -E discard /dev/loop0> fsck1.out || exit
->> du -hc fsfile
->> losetup -d /dev/loop0
->>
->>
-> 
+Note that this is the aio-stress program from the xfstests-dev test
+suite.  That particular command line tells aio-stress to do random
+writes to 20 files from 20 threads (one thread per file).  The files
+are NOT preallocated, so you will get writes to random offsets within
+the file, thus creating holes and extending i_size.  It also opens the
+file with O_DIRECT and O_SYNC.
 
+On to the problem.  When an I/O requires unwritten extent conversion,
+it is queued onto the completed_io_list for the ext4 inode.  Two code
+paths will pull work items from this list.  The first is the
+ext4_end_io_work routine, and the second is ext4_flush_completed_IO,
+which is called via the fsync path (and O_SYNC handling, as well).
+There are two issues I've found in these code paths.  First, if the
+fsync path beats the work routine to a particular I/O, the work
+routine will free the io_end structure!  It does not take into
+account the fact that the io_end may still be in use by the fsync
+path.  I've fixed this issue by adding yet another IO_END flag,
+indicating that the io_end is being processed by the fsync path.
+
+The second problem is that the work routine will make an assignment to
+io->flag outside of the lock.  I have witnessed this result in a hang
+at umount.  Moving the flag setting inside the lock resolved that problem.
+
+The problem was introduced by the following commit, which first appeared
+in 3.2:
+
+commit b82e384c7bb9a19036b4daf58fa216df7cd48aa0
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Mon Oct 31 10:56:32 2011 -0400
+
+    ext4: optimize locking for end_io extent conversion
+
+As such, the fix should be backported to that release (probably along
+with the unwritten extent conversion race fix I posted a little while
+back).
+
+I will submit the test case above to xfstests in the near future.
+
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+CC: stable@kernel.org
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2d55d7c..3ce6a0c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -185,6 +185,7 @@ struct mpage_da_data {
+ #define EXT4_IO_END_ERROR	0x0002
+ #define EXT4_IO_END_QUEUED	0x0004
+ #define EXT4_IO_END_DIRECT	0x0008
++#define EXT4_IO_END_IN_FSYNC	0x0010
+ 
+ struct ext4_io_page {
+ 	struct page	*p_page;
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 00a2cb7..bb6c7d8 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -89,6 +89,7 @@ int ext4_flush_completed_IO(struct inode *inode)
+ 		io = list_entry(ei->i_completed_io_list.next,
+ 				ext4_io_end_t, list);
+ 		list_del_init(&io->list);
++		io->flag |= EXT4_IO_END_IN_FSYNC;
+ 		/*
+ 		 * Calling ext4_end_io_nolock() to convert completed
+ 		 * IO to written.
+@@ -108,6 +109,7 @@ int ext4_flush_completed_IO(struct inode *inode)
+ 		if (ret < 0)
+ 			ret2 = ret;
+ 		spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++		io->flag &= ~EXT4_IO_END_IN_FSYNC;
+ 	}
+ 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+ 	return (ret2 < 0) ? ret2 : 0;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 9e1b8eb..dcdeef1 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -129,12 +129,18 @@ static void ext4_end_io_work(struct work_struct *work)
+ 	unsigned long		flags;
+ 
+ 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	if (io->flag & EXT4_IO_END_IN_FSYNC)
++		goto requeue;
+ 	if (list_empty(&io->list)) {
+ 		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+ 		goto free;
+ 	}
+ 
+ 	if (!mutex_trylock(&inode->i_mutex)) {
++		bool was_queued;
++requeue:
++		was_queued = !!(io->flag & EXT4_IO_END_QUEUED);
++		io->flag |= EXT4_IO_END_QUEUED;
+ 		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+ 		/*
+ 		 * Requeue the work instead of waiting so that the work
+@@ -147,9 +153,8 @@ static void ext4_end_io_work(struct work_struct *work)
+ 		 * yield the cpu if it sees an end_io request that has already
+ 		 * been requeued.
+ 		 */
+-		if (io->flag & EXT4_IO_END_QUEUED)
++		if (was_queued)
+ 			yield();
+-		io->flag |= EXT4_IO_END_QUEUED;
+ 		return;
+ 	}
+ 	list_del_init(&io->list);
