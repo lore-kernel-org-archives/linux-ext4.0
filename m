@@ -1,44 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/8 v3] Checkpointing fixes and cleanups
-Date: Wed, 29 Feb 2012 12:03:42 +0100
-Message-ID: <20120229110342.GC18846@quack.suse.cz>
-References: <1329330854-14237-1-git-send-email-jack@suse.cz>
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: getdents - ext4 vs btrfs performance
+Date: Wed, 29 Feb 2012 14:31:03 +0100
+Message-ID: <CADDYkjRnRKPMW53F=oELhwkSt5EQB9v0JkC=inNvZQPKu94Xtw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: chris.mason@oracle.com, Al Viro <viro@zeniv.linux.org.uk>,
+	"Ted Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40457 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757734Ab2B2LDp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Feb 2012 06:03:45 -0500
-Content-Disposition: inline
-In-Reply-To: <1329330854-14237-1-git-send-email-jack@suse.cz>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40481 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757987Ab2B2NbF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Feb 2012 08:31:05 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 15-02-12 19:34:06, Jan Kara wrote:
->   Hello,
-> 
->   this is a third round of my checkpointing fixes. The patch set is primarily
-> aimed at fixing filesystem corruption happening occasionally (rather rarely)
-> after power failure. First three patches should fix the issue. Patches 4-7 are
-> assorted checkpointing cleanups I've gathered when inspecting checkpointing
-> code. Finally patch 8 is a possible speedup of checkpoining - we can use cache
-> flushes happening during transaction commits for pushing the journal tail
-> safely. The observable speedup is disputable since jbd2_cleanup_journal_tail()
-> is called rather rarely (for metadata heavy load I saw about one
-> jbd2_cleanup_journal_tail() for about 200 commits) so the cost of additional
-> cache flush will be likely in the noise. But the patch is simple enough so I
-> send it for others to judge whether it makes sense or not.
-> 
-> Changes since v2:
-> Rewrote the code pushing log tail to fix race described by Ted.
-> Improved some comments
-  Ted, do you plan to have a look at this? It would be nice to get these
-fixes in for the next merge window...
+Hi All,
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Long story short: We've found that operations on a directory structure
+holding many dirs takes ages on ext4.
+
+The Question: Why there's that huge difference in ext4 and btrfs? See
+below test results for real values.
+
+Background: I had to backup a Jenkins directory holding workspace for
+few projects which were co from svn (implies lot of extra .svn dirs).
+The copy takes lot of time (at least more than I've expected) and
+process was mostly in D (disk sleep). I've dig more and done some
+extra test to see if this is not a regression on block/fs site. To
+isolate the issue I've also performed same tests on btrfs.
+
+Test environment configuration:
+1) HW: HP ProLiant BL460 G6, 48 GB of memory, 2x 6 core Intel X5670 HT
+enabled, Smart Array P410i, RAID 1 on top of 2x 10K RPM SAS HDDs.
+2) Kernels: All tests were done on following kernels:
+ - 2.6.39.4-3 -- the build ID (3) is used here for internal tacking of
+config changes mostly. In -3 we've introduced ,,fix readahead pipeline
+break caused by block plug'' patch. Otherwise it's pure 2.6.39.4.
+ - 3.2.7 -- latest kernel at the time of testing (3.2.8 has been
+release recently).
+3) A subject of tests, directory holding:
+ - 54GB of data (measured on ext4)
+ - 1978149 files
+ - 844008 directories
+4) Mount options:
+ - ext4 -- errors=remount-ro,noatime,data=writeback
+ - btrfs -- noatime,nodatacow and for later investigation on
+copression effect: noatime,nodatacow,compress=lzo
+
+In all tests I've been measuring time of execution. Following tests
+were performed:
+- find . -type d
+- find . -type f
+- cp -a
+- rm -rf
+
+Ext4 results:
+| Type     | 2.6.39.4-3   | 3.2.7
+| Dir cnt  | 17m 40sec  | 11m 20sec
+| File cnt |  17m 36sec | 11m 22sec
+| Copy    | 1h 28m        | 1h 27m
+| Remove| 3m 43sec
