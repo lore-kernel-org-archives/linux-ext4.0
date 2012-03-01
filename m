@@ -1,59 +1,76 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
-Date: Thu, 1 Mar 2012 15:54:37 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203011540180.6491@dhcp-27-109.brq.redhat.com>
-References: <4F4D1020.5060204@redhat.com> <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com> <34CA4C93-194F-45F3-9A94-E181A7DFEBCE@mit.edu> <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com> <20120301143834.GA30578@thunk.org>
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Thu, 1 Mar 2012 15:57:50 +0100
+Message-ID: <CADDYkjQn-2-XjAZYe6AZeVcNa_A3Jc_qYcOUd3bExBDNWxDMUw@mail.gmail.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+	<CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
+	<CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
+	<20120229144244.GF5054@shiny>
+	<CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
+	<CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
+	<CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
+	<CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
+	<20120301141823.GV5054@shiny>
+	<CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
+	<20120301145155.GY5054@shiny>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Chris Mason <chris.mason@oracle.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
+	lczerner@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46155 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752442Ab2CAOyn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Mar 2012 09:54:43 -0500
-In-Reply-To: <20120301143834.GA30578@thunk.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:34360 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754808Ab2CAO5w convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 09:57:52 -0500
+In-Reply-To: <20120301145155.GY5054@shiny>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 1 Mar 2012, Ted Ts'o wrote:
+2012/3/1 Chris Mason <chris.mason@oracle.com>:
+> On Thu, Mar 01, 2012 at 03:43:41PM +0100, Jacek Luczak wrote:
+>> 2012/3/1 Chris Mason <chris.mason@oracle.com>:
+>> > XFS will probably beat btrfs in this test. =A0Their directory inde=
+xes
+>> > reflect on disk layout very well.
+>>
+>> True, but not that fast on small files.
+>>
+>> Except the question I've raised in first mail there's a point in all
+>> those action. We are maintaining host that are used for building
+>> software: random access, lot of small files and dirs (always a co),
+>> heavy parallel IO. We were testing XFS vs ext4 a year ago and XFS wa=
+s
+>> around 10% slower on build times. We did not - yet - done same on
+>> btrfs. Now we're looking for replacement for ext4 as we suffer from
+>> those issue - but we were not aware of that until stepped into this
+>> issue.
+>>
+>> If you would like me to do some specific tests around ext4 and btrfs=
+,
+>> let me know.
+>
+> I'm always curious to see comparisons in real world workloads. =A0You
+> should definitely consider testing XFS again, the big three filesyste=
+ms
+> are under pretty constant improvement. =A0For btrfs, please stick to =
+3.2
+> kernels and higher.
 
-> On Thu, Mar 01, 2012 at 08:12:44AM +0100, Lukas Czerner wrote:
-> > 
-> > actually mke2fs does discard block by default. It has been like that
-> > since the beginning. Back then we only had '-K' argument to 'keep'
-> > blocks and do not attempt to discard. Nowadays user can do '-E
-> > nodiscard', but it is users choice.
-> 
-> Ah, you're right.  The defaults had changed back and forth a couple of
-> times over time and I had lost track of how things had been settled
-> for mke2fs (which is different from e2fsck).  At least at one point it
-> was _not_ the default, and in fact the man page was out of sync with
-> the behavior of the mke2fs.
+That's the plan but I'm waiting for more of the briliant work that
+recently popped up in XFS. For btrfs, the 3.2 introduced changes led
+me to give here a try. I don't have nice pictures and digits in my
+hand now but first tests shown close to 40% of timing improvements
+between 2.6.39.4 and 3.2.7 - keep doing that great work guys (and
+girls if any)!
 
-I am really not sure about that, I know that there was a discussion
-whether to disable it by default, but I think that we never did that.
-But that's not important.
-
-> 
-> The point remains the same, though, if the file system was created
-> with mke2fs -E nodiscard, how do you undo that decision if there's no
-> way to force the discard of BLOCK_UNINIT blocks?
-> 
-> 						- Ted
-> 
-
-Well, it is not default right ? So the user should better know what is
-he doing. Moreover it is not like it is end of the world when we do not
-provide that option, since SSD's will handle over provisioning to some
-extent even without slowdown, and as for thin-provisioned devices you
-should know why you're overriding defaults and what it means for you.
-
-Anyway, if people really want this another option to discard all the
-block groups including those UNINIT ones, I guess I can not resist that
-:). '-E discard_all' maybe ?
-
-Thanks!
--Lukas
+-Jacek
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
