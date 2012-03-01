@@ -1,68 +1,122 @@
-From: Saugata Das <saugata.das@linaro.org>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] REQ_META set during meta data write
-Date: Fri, 2 Mar 2012 01:34:31 +0530
-Message-ID: <CAKLKtzdvdH9aAWRace4-qMgx8_ARMCuD0uSHmOKEniW=PsN7CQ@mail.gmail.com>
+Date: Thu, 01 Mar 2012 14:21:12 -0600
+Message-ID: <4F4FDA38.6060601@redhat.com>
 References: <1330625463-5683-1-git-send-email-saugata.das@stericsson.com>
-	<20120301183327.GA32588@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Saugata Das <saugata.das@stericsson.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	arnd.bergmann@linaro.org, adilger@whamcloud.com
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	saugata.das@linaro.org, arnd.bergmann@linaro.org, tytso@mit.edu,
+	adilger@whamcloud.com
+To: Saugata Das <saugata.das@stericsson.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:54581 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757243Ab2CAUEc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 15:04:32 -0500
-Received: by wibhm2 with SMTP id hm2so176461wib.19
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Mar 2012 12:04:31 -0800 (PST)
-In-Reply-To: <20120301183327.GA32588@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:28033 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754882Ab2CAUVV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2012 15:21:21 -0500
+In-Reply-To: <1330625463-5683-1-git-send-email-saugata.das@stericsson.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2 March 2012 00:03, Ted Ts'o <tytso@mit.edu> wrote:
-> On Thu, Mar 01, 2012 at 11:41:03PM +0530, Saugata Das wrote:
->> From: Saugata Das <saugata.das@linaro.org>
->>
->> Today, storage devices like eMMC has special features like data tagg=
-ing
->> (introduced in MMC-4.5 version) in order to improve performance of s=
-ome
->> specific writes. On MMC stack, data tagging is used for all writes w=
-hich has
->> REQ_META flag set. On EXT4, however, currently REQ_META is set only =
-for read.
->> This patch adds the capability to add REQ_META flag during meta data=
- write.
->> This patch adds new function set_buffer_meta, which is used to set a=
- bit
->> BH_Meta in the b_state field when meta data and super block is made =
-dirty.
->>
->> --- a/fs/buffer.c
->> +++ b/fs/buffer.c
->> @@ -2926,6 +2926,9 @@ int submit_bh(int rw, struct buffer_head * bh)
->> =A0 =A0 =A0 if (test_set_buffer_req(bh) && (rw & WRITE))
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 clear_buffer_write_io_error(bh);
->>
->> + =A0 =A0 if (buffer_meta(bh) && (rw & WRITE))
->> + =A0 =A0 =A0 =A0 =A0 =A0 rw |=3D REQ_META;
->> +
->
-> I know it's not necessary for your purposes as stated in the commit
-> description, but wouldn't it be better if buffer_meta() always caused
-> REQ_META to be set, regardless of whether we are doing a read or a
-> write?
+On 3/1/12 12:11 PM, Saugata Das wrote:
+> From: Saugata Das <saugata.das@linaro.org>
+> 
+> Today, storage devices like eMMC has special features like data tagging
+> (introduced in MMC-4.5 version) in order to improve performance of some
+> specific writes. On MMC stack, data tagging is used for all writes which has
+> REQ_META flag set. On EXT4, however, currently REQ_META is set only for read.
+> This patch adds the capability to add REQ_META flag during meta data write.
+> This patch adds new function set_buffer_meta, which is used to set a bit
+> BH_Meta in the b_state field when meta data and super block is made dirty.
+> 
+> Signed-off-by: Saugata Das <saugata.das@linaro.org>
+> Acked-by: Arnd Bergmann <arnd.bergmann@linaro.org>
 
-Sure, I will modify this in the next version.
+I like this idea too, partly because I've had a project in the back of my
+mind to teach seekwatcher to optionally distinguish between metadata &
+data IO on its charts, but I had noticed that ext4 didn't always tag
+things.
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
+
+> ---
+>  fs/buffer.c                 |    3 +++
+>  fs/ext4/ext4_jbd2.c         |    4 ++++
+>  fs/ext4/inode.c             |    4 +++-
+>  include/linux/buffer_head.h |    2 ++
+>  4 files changed, 12 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 19d8eb7..71c8c74 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -2926,6 +2926,9 @@ int submit_bh(int rw, struct buffer_head * bh)
+>  	if (test_set_buffer_req(bh) && (rw & WRITE))
+>  		clear_buffer_write_io_error(bh);
+>  
+> +	if (buffer_meta(bh) && (rw & WRITE))
+> +		rw |= REQ_META;
+> +
+>  	/*
+>  	 * from here on down, it's all bio -- do the initial mapping,
+>  	 * submit_bio -> generic_make_request may further map this bio around
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index aca1790..097c062 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -107,6 +107,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+>  {
+>  	int err = 0;
+>  
+> +	set_buffer_meta(bh);
+> +
+>  	if (ext4_handle_valid(handle)) {
+>  		err = jbd2_journal_dirty_metadata(handle, bh);
+>  		if (err) {
+> @@ -143,6 +145,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+>  	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+>  	int err = 0;
+>  
+> +	set_buffer_meta(bh);
+> +
+>  	if (ext4_handle_valid(handle)) {
+>  		err = jbd2_journal_dirty_metadata(handle, bh);
+>  		if (err)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 92655fd..105e1d0 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4144,8 +4144,10 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+>  		err = __ext4_get_inode_loc(inode, &iloc, 0);
+>  		if (err)
+>  			return err;
+> -		if (wbc->sync_mode == WB_SYNC_ALL)
+> +		if (wbc->sync_mode == WB_SYNC_ALL) {
+> +			set_buffer_meta(iloc.bh);
+>  			sync_dirty_buffer(iloc.bh);
+> +		}
+>  		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
+>  			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
+>  					 "IO error syncing inode");
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+> index 458f497..13bba17 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -34,6 +34,7 @@ enum bh_state_bits {
+>  	BH_Write_EIO,	/* I/O error on write */
+>  	BH_Unwritten,	/* Buffer is allocated on disk but not written */
+>  	BH_Quiet,	/* Buffer Error Prinks to be quiet */
+> +	BH_Meta,	/* Is meta */
+>  
+>  	BH_PrivateStart,/* not a state bit, but the first bit available
+>  			 * for private allocation by other entities
+> @@ -124,6 +125,7 @@ BUFFER_FNS(Delay, delay)
+>  BUFFER_FNS(Boundary, boundary)
+>  BUFFER_FNS(Write_EIO, write_io_error)
+>  BUFFER_FNS(Unwritten, unwritten)
+> +BUFFER_FNS(Meta, meta)
+>  
+>  #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
+>  #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
+
