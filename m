@@ -1,67 +1,59 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Thu, 1 Mar 2012 09:51:55 -0500
-Message-ID: <20120301145155.GY5054@shiny>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
- <CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
- <20120229144244.GF5054@shiny>
- <CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
- <CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
- <CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
- <CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
- <20120301141823.GV5054@shiny>
- <CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
+Date: Thu, 1 Mar 2012 15:54:37 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203011540180.6491@dhcp-27-109.brq.redhat.com>
+References: <4F4D1020.5060204@redhat.com> <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com> <34CA4C93-194F-45F3-9A94-E181A7DFEBCE@mit.edu> <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com> <20120301143834.GA30578@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
-	lczerner@redhat.com
-To: Jacek Luczak <difrost.kernel@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:23972 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754695Ab2CAOwB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 09:52:01 -0500
-Content-Disposition: inline
-In-Reply-To: <CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46155 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752442Ab2CAOyn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2012 09:54:43 -0500
+In-Reply-To: <20120301143834.GA30578@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 01, 2012 at 03:43:41PM +0100, Jacek Luczak wrote:
-> 2012/3/1 Chris Mason <chris.mason@oracle.com>:
-> > XFS will probably beat btrfs in this test. =A0Their directory index=
-es
-> > reflect on disk layout very well.
->=20
-> True, but not that fast on small files.
->=20
-> Except the question I've raised in first mail there's a point in all
-> those action. We are maintaining host that are used for building
-> software: random access, lot of small files and dirs (always a co),
-> heavy parallel IO. We were testing XFS vs ext4 a year ago and XFS was
-> around 10% slower on build times. We did not - yet - done same on
-> btrfs. Now we're looking for replacement for ext4 as we suffer from
-> those issue - but we were not aware of that until stepped into this
-> issue.
->=20
-> If you would like me to do some specific tests around ext4 and btrfs,
-> let me know.
+On Thu, 1 Mar 2012, Ted Ts'o wrote:
 
-I'm always curious to see comparisons in real world workloads.  You
-should definitely consider testing XFS again, the big three filesystems
-are under pretty constant improvement.  For btrfs, please stick to 3.2
-kernels and higher.
+> On Thu, Mar 01, 2012 at 08:12:44AM +0100, Lukas Czerner wrote:
+> > 
+> > actually mke2fs does discard block by default. It has been like that
+> > since the beginning. Back then we only had '-K' argument to 'keep'
+> > blocks and do not attempt to discard. Nowadays user can do '-E
+> > nodiscard', but it is users choice.
+> 
+> Ah, you're right.  The defaults had changed back and forth a couple of
+> times over time and I had lost track of how things had been settled
+> for mke2fs (which is different from e2fsck).  At least at one point it
+> was _not_ the default, and in fact the man page was out of sync with
+> the behavior of the mke2fs.
 
-This seeky backup performance is somewhat built into ext4, but as Ted
-said there are a few workarounds.
+I am really not sure about that, I know that there was a discussion
+whether to disable it by default, but I think that we never did that.
+But that's not important.
 
--chris
+> 
+> The point remains the same, though, if the file system was created
+> with mke2fs -E nodiscard, how do you undo that decision if there's no
+> way to force the discard of BLOCK_UNINIT blocks?
+> 
+> 						- Ted
+> 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Well, it is not default right ? So the user should better know what is
+he doing. Moreover it is not like it is end of the world when we do not
+provide that option, since SSD's will handle over provisioning to some
+extent even without slowdown, and as for thin-provisioned devices you
+should know why you're overriding defaults and what it means for you.
+
+Anyway, if people really want this another option to discard all the
+block groups including those UNINIT ones, I guess I can not resist that
+:). '-E discard_all' maybe ?
+
+Thanks!
+-Lukas
