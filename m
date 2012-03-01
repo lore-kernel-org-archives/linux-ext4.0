@@ -1,61 +1,41 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Thu, 1 Mar 2012 09:18:23 -0500
-Message-ID: <20120301141823.GV5054@shiny>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
- <CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
- <20120229144244.GF5054@shiny>
- <CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
- <CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
- <CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
- <CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
+Date: Thu, 1 Mar 2012 09:38:34 -0500
+Message-ID: <20120301143834.GA30578@thunk.org>
+References: <4F4D1020.5060204@redhat.com>
+ <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com>
+ <34CA4C93-194F-45F3-9A94-E181A7DFEBCE@mit.edu>
+ <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
-	lczerner@redhat.com
-To: Jacek Luczak <difrost.kernel@gmail.com>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:36172 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753896Ab2CAOSa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 09:18:30 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:40050 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750734Ab2CAOih (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2012 09:38:37 -0500
 Content-Disposition: inline
-In-Reply-To: <CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
+In-Reply-To: <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 01, 2012 at 03:03:53PM +0100, Jacek Luczak wrote:
-> 2012/3/1 Hillf Danton <dhillf@gmail.com>:
-> > On Thu, Mar 1, 2012 at 9:35 PM, Jacek Luczak <difrost.kernel@gmail.com> wrote:
-> >>
-> >> While I was about to grab acp I've noticed seekwatcher with made my day :)
-> >>
-> >> seekwatcher run of tar cf to eliminate writes (all done on 3.2.7):
-> >> 1) btrfs: http://dozzie.jarowit.net/~dozzie/luczajac/tar_btrfs.png
-> >> 2) ext4: http://dozzie.jarowit.net/~dozzie/luczajac/tar_ext4.png
-> >> 3) both merged: http://dozzie.jarowit.net/~dozzie/luczajac/tar_btrfs_ext4.png
-
-Whoa, seekwatcher makes it pretty clear.
-
-> >>
-> >> I will send acp results soon.
-> >>
-> > Would you please take reiserfs into account?
+On Thu, Mar 01, 2012 at 08:12:44AM +0100, Lukas Czerner wrote:
 > 
-> As of now not (lack of time) but I'm pretty close to consider XFS in
-> the game. Whenever I will have more time and there won't be a pressure
-> on giving host back to production I will redo same tests for reiserfs.
-> 
-> Now I'm focused on the userspace sorting results.
+> actually mke2fs does discard block by default. It has been like that
+> since the beginning. Back then we only had '-K' argument to 'keep'
+> blocks and do not attempt to discard. Nowadays user can do '-E
+> nodiscard', but it is users choice.
 
-reiserfs should have results very similar to ext4.  The directory
-hashing used by reiserfs is going to result in a very random read
-pattern.
+Ah, you're right.  The defaults had changed back and forth a couple of
+times over time and I had lost track of how things had been settled
+for mke2fs (which is different from e2fsck).  At least at one point it
+was _not_ the default, and in fact the man page was out of sync with
+the behavior of the mke2fs.
 
-XFS will probably beat btrfs in this test.  Their directory indexes
-reflect on disk layout very well.
+The point remains the same, though, if the file system was created
+with mke2fs -E nodiscard, how do you undo that decision if there's no
+way to force the discard of BLOCK_UNINIT blocks?
 
--chris
+						- Ted
