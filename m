@@ -1,67 +1,80 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 5/5] ext4: Do not discard group with BLOCK_UNINIT set
-Date: Thu,  1 Mar 2012 11:16:45 +0100
-Message-ID: <1330597005-751-5-git-send-email-lczerner@redhat.com>
-References: <1330597005-751-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Thu, 1 Mar 2012 14:35:57 +0100
+Message-ID: <CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+	<CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
+	<CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
+	<20120229144244.GF5054@shiny>
+	<CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: Chris Mason <chris.mason@oracle.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
+	lczerner@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8180 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965335Ab2CAKRA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Mar 2012 05:17:00 -0500
-In-Reply-To: <1330597005-751-1-git-send-email-lczerner@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:64204 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755042Ab2CANf7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 08:35:59 -0500
+In-Reply-To: <CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit is an optimization for FITRIM implementation. If the group
-has not been initialized yet (BLOCK_UNINIT flag set), we do not need to
-discard such group. This flag is set on mke2fs time to speed up
-subsequent file system checks, because it says to us that there is
-nothing there in the block group.
+2012/2/29 Jacek Luczak <difrost.kernel@gmail.com>:
+> 2012/2/29 Chris Mason <chris.mason@oracle.com>:
+>> On Wed, Feb 29, 2012 at 03:07:45PM +0100, Jacek Luczak wrote:
+>>
+>> [ btrfs faster than ext for find and cp -a ]
+>>
+>>> 2012/2/29 Jacek Luczak <difrost.kernel@gmail.com>:
+>>>
+>>> I will try to answer the question from the broken email I've sent.
+>>>
+>>> @Lukas, it was always a fresh FS on top of LVM logical volume. I've
+>>> been cleaning cache/remounting to sync all data before (re)doing
+>>> tests.
+>>
+>> The next step is to get cp -a out of the picture, in this case you're
+>> benchmarking both the read speed and the write speed (what are you
+>> copying to btw?).
+>
+> It's simple cp -a Jenkins{,.bak} so dir to dir copy on same volume.
+>
+>> Using tar cf /dev/zero <some_dir> is one way to get a consistent picture
+>> of the read speed.
+>
+> IMO the problem is not - only - in read speed. The directory order hit
+> here. There's a difference in the sequential tests that place btrfs as
+> the winner but still this should not have that huge influence on
+> getdents. I know a bit on the difference between ext4 and btrfs
+> directory handling and I would not expect that huge difference. On the
+> production system where the issue has been observed doing some real
+> work in the background copy takes up to 4h.
+>
+> For me btrfs looks perfect here, what could be worth checking is the
+> change of timing in syscall between 39.4 and 3.2.7. Before getdents
+> was not that high on the list while now it jumps to second position
+> but without huge impact on the timings.
+>
+>> You can confirm the theory that it is directory order causing problems
+>> by using acp to read the data.
+>>
+>> http://oss.oracle.com/~mason/acp/acp-0.6.tar.bz2
+>
+> Will check this still today and report back.
+>
 
-Because the BLOCK_UNINIT is only set on mke2fs time and cleared when
-allocation from that group takes palce we know that when set, there was
-not anything allocated from that group, hence there should not be anything
-to discard from the file system point of view. Of course there might be
-situations where even if BLOCK_UNINIT is set the underlying storage is
-provisioned. This might happen for example when the user disables discard
-on mke2fs, however I think that this niche is not enough to not take
-advantage of this optimization.
+While I was about to grab acp I've noticed seekwatcher with made my day :)
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/mballoc.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+seekwatcher run of tar cf to eliminate writes (all done on 3.2.7):
+1) btrfs: http://dozzie.jarowit.net/~dozzie/luczajac/tar_btrfs.png
+2) ext4: http://dozzie.jarowit.net/~dozzie/luczajac/tar_ext4.png
+3) both merged: http://dozzie.jarowit.net/~dozzie/luczajac/tar_btrfs_ext4.png
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8f817f2..9ea1065a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -5033,6 +5033,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 	ext4_fsblk_t first_data_blk =
- 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
- 	ext4_fsblk_t max_blks = ext4_blocks_count(EXT4_SB(sb)->s_es);
-+	struct ext4_group_desc *desc;
- 	int ret = 0;
- 
- 	start = range->start >> sb->s_blocksize_bits;
-@@ -5076,7 +5077,14 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		if (group == last_group)
- 			end = last_cluster;
- 
--		if (grp->bb_free >= minlen) {
-+		desc = ext4_get_group_desc(sb, group, NULL);
-+		if (!desc) {
-+			ret = -EIO;
-+			break;
-+		}
-+
-+		if (!(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) &&
-+		    (grp->bb_free >= minlen)) {
- 			cnt = ext4_trim_all_free(sb, group, first_cluster,
- 						end, minlen);
- 			if (cnt < 0) {
--- 
-1.7.4.4
+I will send acp results soon.
 
+-Jacek
