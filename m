@@ -1,76 +1,87 @@
-From: Jacek Luczak <difrost.kernel@gmail.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Thu, 1 Mar 2012 15:57:50 +0100
-Message-ID: <CADDYkjQn-2-XjAZYe6AZeVcNa_A3Jc_qYcOUd3bExBDNWxDMUw@mail.gmail.com>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
-	<CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
-	<CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
-	<20120229144244.GF5054@shiny>
-	<CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
-	<CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
-	<CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
-	<CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
-	<20120301141823.GV5054@shiny>
-	<CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
-	<20120301145155.GY5054@shiny>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2 v2] e2fsck: Discard only unused parts of inode table
+Date: Thu, 01 Mar 2012 11:35:59 -0600
+Message-ID: <4F4FB37F.60405@redhat.com>
+References: <1330014566-2020-1-git-send-email-lczerner@redhat.com> <4F4D0159.1090409@sandeen.net> <alpine.LFD.2.00.1202290812530.4926@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Chris Mason <chris.mason@oracle.com>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
-	lczerner@redhat.com
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, psusi@ubuntu.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:34360 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754808Ab2CAO5w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 09:57:52 -0500
-In-Reply-To: <20120301145155.GY5054@shiny>
+Received: from mx1.redhat.com ([209.132.183.28]:15942 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752573Ab2CAR4M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2012 12:56:12 -0500
+In-Reply-To: <alpine.LFD.2.00.1202290812530.4926@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/3/1 Chris Mason <chris.mason@oracle.com>:
-> On Thu, Mar 01, 2012 at 03:43:41PM +0100, Jacek Luczak wrote:
->> 2012/3/1 Chris Mason <chris.mason@oracle.com>:
->> > XFS will probably beat btrfs in this test. =A0Their directory inde=
-xes
->> > reflect on disk layout very well.
->>
->> True, but not that fast on small files.
->>
->> Except the question I've raised in first mail there's a point in all
->> those action. We are maintaining host that are used for building
->> software: random access, lot of small files and dirs (always a co),
->> heavy parallel IO. We were testing XFS vs ext4 a year ago and XFS wa=
-s
->> around 10% slower on build times. We did not - yet - done same on
->> btrfs. Now we're looking for replacement for ext4 as we suffer from
->> those issue - but we were not aware of that until stepped into this
->> issue.
->>
->> If you would like me to do some specific tests around ext4 and btrfs=
-,
->> let me know.
->
-> I'm always curious to see comparisons in real world workloads. =A0You
-> should definitely consider testing XFS again, the big three filesyste=
-ms
-> are under pretty constant improvement. =A0For btrfs, please stick to =
-3.2
-> kernels and higher.
+On 2/29/12 1:22 AM, Lukas Czerner wrote:
+> On Tue, 28 Feb 2012, Eric Sandeen wrote:
 
-That's the plan but I'm waiting for more of the briliant work that
-recently popped up in XFS. For btrfs, the 3.2 introduced changes led
-me to give here a try. I don't have nice pictures and digits in my
-hand now but first tests shown close to 40% of timing improvements
-between 2.6.39.4 and 3.2.7 - keep doing that great work guys (and
-girls if any)!
+...
 
--Jacek
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> +			/*
+>>> +			 * If the last inode is free, we can discard it as well.
+>>> +			 */
+>>> +			if (inodes >= first_free)
+>>> +				e2fsck_discard_inodes(ctx, group, first_free,
+>>> +						      inodes - first_free + 1);
+>>
+>> This is unrelated to the changelog
+>>
+>>>  			/*
+>>>  			 * If discard zeroes data and the group inode table
+>>>  			 * was not zeroed yet, set itable as zeroed
+>>>  			 */
+>>>  			if ((ctx->options & E2F_OPT_DISCARD) &&
+>>> -			    (io_channel_discard_zeroes_data(fs->io)) &&
+>>> +			    !(ctx->options & E2F_OPT_NO) &&
+>>
+>> This is unrelated as well...
+> 
+> So do you want me to separate those unrelated changes to a separate
+> patch ? Those are pretty small changes..
+
+They are, but they are completely separate fixes, and not described in the changelog.
+
+Ideally I'd say they should be a separate testable commit, but at least it
+should be mentioned in the changelog (and patch summary).
+
+Sorry, compound commits with unrelated changes are my pet peeve; they make bisecting
+harder, and make it harder to find fixes when looking back over git history.
+
+-Eric
+
+>>
+>> Rather than continuing to check _OPT_NO here and in e2fsck_discard_blocks(), it
+>> might be better (in a separate patch) ;) to simply turn off OPT_DISCARD right
+>> after options processing if -n was specified, and not worry about it down here.
+> 
+> Makes sense, I can change it.
+> 
+> Thanks!
+> -Lukas
+> 
+>>
+>>> +			    io_channel_discard_zeroes_data(fs->io) &&
+>>>  			    !(ext2fs_bg_flags_test(fs, group,
+>>> -						  EXT2_BG_INODE_ZEROED))) {
+>>> +						   EXT2_BG_INODE_ZEROED))) {
+>>>  				ext2fs_bg_flags_set(fs, group,
+>>>  						    EXT2_BG_INODE_ZEROED);
+>>>  				ext2fs_group_desc_csum_set(fs, group);
+>>>  			}
+>>>  
+>>> +			first_free = fs->super->s_inodes_per_group + 1;
+>>> +			free_array[group] = group_free;
+>>> +			dir_array[group] = dirs_count;
+>>>  			group ++;
+>>>  			inodes = 0;
+>>>  			skip_group = 0;
+>>
+>>
+> 
+
