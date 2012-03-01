@@ -1,24 +1,26 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/5] ext4: Fix trimmed block count computing
-Date: Thu,  1 Mar 2012 11:16:42 +0100
-Message-ID: <1330597005-751-2-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 4/5] ext4: Always set then trimmed blocks count into len
+Date: Thu,  1 Mar 2012 11:16:44 +0100
+Message-ID: <1330597005-751-4-git-send-email-lczerner@redhat.com>
 References: <1330597005-751-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14468 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5066 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965335Ab2CAKQ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Mar 2012 05:16:56 -0500
+	id S965335Ab2CAKQ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Mar 2012 05:16:59 -0500
 In-Reply-To: <1330597005-751-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently then if there is not enough free block in the block group to
-discard (grp->bb_free >= minlen) the 'trimmed' is bumped up anyway with
-the number of discarded blocks from the previous block group. Fix this
-by bumping up 'trimmed' only if the ext4_trim_all_free() was actually
-run.
+Currently if the range to trim is too small, for example on 1K fs
+the request to trim the first block, then the 'range->len' is not set
+reporting wrong number of discarded block to the caller.
+
+Fix this by always setting the 'range->len' before we return. Note that
+when there is a failure (-EINVAL) caller can not depend on 'range->len'
+being set.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
@@ -26,19 +28,22 @@ Signed-off-by: Lukas Czerner <lczerner@redhat.com>
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5798cf3..e907cf9 100644
+index f20688e..8f817f2 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -5083,8 +5083,8 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 				ret = cnt;
- 				break;
- 			}
-+			trimmed += cnt;
- 		}
--		trimmed += cnt;
+@@ -5092,11 +5092,11 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		 */
+ 		first_cluster = 0;
+ 	}
+-	range->len = trimmed * sb->s_blocksize;
  
- 		/*
- 		 * For every group except the first one, we are sure
+ 	if (!ret)
+ 		atomic_set(&EXT4_SB(sb)->s_last_trim_minblks, minlen);
+ 
+ out:
++	range->len = trimmed * sb->s_blocksize;
+ 	return ret;
+ }
 -- 
 1.7.4.4
 
