@@ -1,71 +1,83 @@
-From: Chris Mason <chris.mason@oracle.com>
+From: Jacek Luczak <difrost.kernel@gmail.com>
 Subject: Re: getdents - ext4 vs btrfs performance
-Date: Thu, 1 Mar 2012 09:38:59 -0500
-Message-ID: <20120301143859.GX5054@shiny>
+Date: Thu, 1 Mar 2012 15:43:41 +0100
+Message-ID: <CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
 References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
+	<CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
+	<CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
+	<20120229144244.GF5054@shiny>
+	<CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
+	<CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
+	<CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
+	<CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
+	<20120301141823.GV5054@shiny>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jacek Luczak <difrost.kernel@gmail.com>,
-	linux-ext4@vger.kernel.org,
+To: Chris Mason <chris.mason@oracle.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
+	lczerner@redhat.com
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
+In-Reply-To: <20120301141823.GV5054@shiny>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 29, 2012 at 11:44:31PM -0500, Theodore Tso wrote:
-> You might try sorting the entries returned by readdir by inode number=
- before you stat them.    This is a long-standing weakness in ext3/ext4=
-, and it has to do with how we added hashed tree indexes to directories=
- in (a) a backwards compatible way, that (b) was POSIX compliant with r=
-espect to adding and removing directory entries concurrently with readi=
-ng all of the directory entries using readdir.
->=20
-> You might try compiling spd_readdir from the e2fsprogs source tree (i=
-n the contrib directory):
->=20
-> http://git.kernel.org/?p=3Dfs/ext2/e2fsprogs.git;a=3Dblob;f=3Dcontrib=
-/spd_readdir.c;h=3Df89832cd7146a6f5313162255f057c5a754a4b84;hb=3Dd9a5d3=
-7535794842358e1cfe4faa4a89804ed209
->=20
-> =E2=80=A6 and then using that as a LD_PRELOAD, and see how that chang=
-es things.
->=20
-> The short version is that we can't easily do this in the kernel since=
- it's a problem that primarily shows up with very big directories, and =
-using non-swappable kernel memory to store all of the directory entries=
- and then sort them so they can be returned in inode number just isn't =
-practical.   It is something which can be easily done in userspace, tho=
-ugh, and a number of programs (including mutt for its Maildir support) =
-does do, and it helps greatly for workloads where you are calling readd=
-ir() followed by something that needs to access the inode (i.e., stat, =
-unlink, etc.)
->=20
+2012/3/1 Chris Mason <chris.mason@oracle.com>:
+> On Thu, Mar 01, 2012 at 03:03:53PM +0100, Jacek Luczak wrote:
+>> 2012/3/1 Hillf Danton <dhillf@gmail.com>:
+>> > On Thu, Mar 1, 2012 at 9:35 PM, Jacek Luczak <difrost.kernel@gmail=
+=2Ecom> wrote:
+>> >>
+>> >> While I was about to grab acp I've noticed seekwatcher with made =
+my day :)
+>> >>
+>> >> seekwatcher run of tar cf to eliminate writes (all done on 3.2.7)=
+:
+>> >> 1) btrfs: http://dozzie.jarowit.net/~dozzie/luczajac/tar_btrfs.pn=
+g
+>> >> 2) ext4: http://dozzie.jarowit.net/~dozzie/luczajac/tar_ext4.png
+>> >> 3) both merged: http://dozzie.jarowit.net/~dozzie/luczajac/tar_bt=
+rfs_ext4.png
+>
+> Whoa, seekwatcher makes it pretty clear.
 
-=46or reading the files, the acp program I sent him tries to do somethi=
-ng
-similar.  I had forgotten about spd_readdir though, we should consider
-hacking that into cp and tar.
+Yep, ext4 is close to my wife's closet.
 
-One interesting note is the page cache used to help here.  Picture two
-tests:
+>> >>
+>> >> I will send acp results soon.
+>> >>
+>> > Would you please take reiserfs into account?
+>>
+>> As of now not (lack of time) but I'm pretty close to consider XFS in
+>> the game. Whenever I will have more time and there won't be a pressu=
+re
+>> on giving host back to production I will redo same tests for reiserf=
+s.
+>>
+>> Now I'm focused on the userspace sorting results.
+>
+> reiserfs should have results very similar to ext4. =A0The directory
+> hashing used by reiserfs is going to result in a very random read
+> pattern.
+>
+> XFS will probably beat btrfs in this test. =A0Their directory indexes
+> reflect on disk layout very well.
 
-A) time tar cf /dev/zero /home
+True, but not that fast on small files.
 
-and
+Except the question I've raised in first mail there's a point in all
+those action. We are maintaining host that are used for building
+software: random access, lot of small files and dirs (always a co),
+heavy parallel IO. We were testing XFS vs ext4 a year ago and XFS was
+around 10% slower on build times. We did not - yet - done same on
+btrfs. Now we're looking for replacement for ext4 as we suffer from
+those issue - but we were not aware of that until stepped into this
+issue.
 
-cp -a /home /new_dir_in_new_fs
-unmount / flush caches
-B) time tar cf /dev/zero /new_dir_in_new_fs
+If you would like me to do some specific tests around ext4 and btrfs,
+let me know.
 
-On ext, The time for B used to be much faster than the time for A
-because the files would get written back to disk in roughly htree order=
-=2E
-Based on Jacek's data, that isn't true anymore.
-
--chris
+-Jacek
