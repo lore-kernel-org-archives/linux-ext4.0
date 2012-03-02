@@ -1,80 +1,62 @@
 From: Curt Wohlgemuth <curtw@google.com>
-Subject: [PATCH] ext4: Don't release page refs in ext4_end_bio()
-Date: Fri,  2 Mar 2012 08:19:59 -0800
-Message-ID: <1330705199-12512-1-git-send-email-curtw@google.com>
+Subject: [PATCH] ext4: Add comments to definition of ext4_io_end_t
+Date: Fri,  2 Mar 2012 08:43:45 -0800
+Message-ID: <1330706625-24701-1-git-send-email-curtw@google.com>
 Mime-Version: 1.0
 Cc: linux-ext4@vger.kernel.org, Curt Wohlgemuth <curtw@google.com>
 To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gy0-f202.google.com ([209.85.160.202]:59244 "EHLO
-	mail-gy0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758838Ab2CBQUj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2012 11:20:39 -0500
-Received: by ghbz15 with SMTP id z15so233226ghb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 02 Mar 2012 08:20:39 -0800 (PST)
+Received: from mail-fa0-f74.google.com ([209.85.161.74]:35897 "EHLO
+	mail-fa0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758860Ab2CBQtE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2012 11:49:04 -0500
+Received: by faaa19 with SMTP id a19so72217faa.1
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Mar 2012 08:49:02 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We can clear PageWriteback on each page when the IO
-completes, but we can't release the references on the page
-until we convert any uninitialized extents.
-
-Without this patch, the use of the dioread_nolock mount
-option can break buffered writes, because extents may
-not be converted by the time a subsequent buffered read
-comes in; if the page is not in the page cache, a read
-will return zeros if the extent is still uninitialized.
-
-I tested this with a (temporary) patch that adds a call
-to msleep(1000) at the start of ext4_end_io_work(), to delay
-processing of each DIO-unwritten work queue item.  With this
-msleep(), a simple workload of
-
-  fallocate
-  write
-  fadvise
-  read
-
-will fail without this patch, succeeds with it.
+This should make it more clear what this structure is used
+for, and how some of the (mutually exclusive) fields are
+used to keep page cache references.
 
 Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 ---
- fs/ext4/page-io.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h |   13 ++++++++++---
+ 1 files changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index e6271fe..0991c22 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -63,7 +63,6 @@ void ext4_ioend_wait(struct inode *inode)
- static void put_io_page(struct ext4_io_page *io_page)
- {
- 	if (atomic_dec_and_test(&io_page->p_count)) {
--		end_page_writeback(io_page->p_page);
- 		put_page(io_page->p_page);
- 		kmem_cache_free(io_page_cachep, io_page);
- 	}
-@@ -235,9 +234,9 @@ static void ext4_end_bio(struct bio *bio, int error)
- 			} while (bh != head);
- 		}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..4dc34ed 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -192,18 +192,25 @@ struct ext4_io_page {
  
--		put_io_page(io_end->pages[i]);
-+		if (atomic_read(&io_end->pages[i]->p_count) == 1)
-+			end_page_writeback(io_end->pages[i]->p_page);
- 	}
--	io_end->num_io_pages = 0;
- 	inode = io_end->inode;
+ #define MAX_IO_PAGES 128
  
- 	if (error) {
-@@ -429,6 +428,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	 * PageWriteback bit from the page to prevent the system from
- 	 * wedging later on.
- 	 */
-+	if (atomic_read(&io_page->p_count) == 1)
-+		end_page_writeback(page);
- 	put_io_page(io_page);
- 	return ret;
- }
++/*
++ * For converting uninitialized extents on a work queue.
++ *
++ * 'page' is only used from the writepage() path; 'pages' is only used for
++ * buffered writes; they are used to keep page references until conversion
++ * takes place.  For AIO/DIO, neither field is filled in.
++ */
+ typedef struct ext4_io_end {
+ 	struct list_head	list;		/* per-file finished IO list */
+ 	struct inode		*inode;		/* file being written to */
+ 	unsigned int		flag;		/* unwritten or not */
+-	struct page		*page;		/* page struct for buffer write */
++	struct page		*page;		/* for writepage() path */
+ 	loff_t			offset;		/* offset in the file */
+ 	ssize_t			size;		/* size of the extent */
+ 	struct work_struct	work;		/* data work queue */
+ 	struct kiocb		*iocb;		/* iocb struct for AIO */
+ 	int			result;		/* error value for AIO */
+-	int			num_io_pages;
+-	struct ext4_io_page	*pages[MAX_IO_PAGES];
++	int			num_io_pages;   /* for writepages() */
++	struct ext4_io_page	*pages[MAX_IO_PAGES]; /* for writepages() */
+ } ext4_io_end_t;
+ 
+ struct ext4_io_submit {
 -- 
 1.7.7.3
 
