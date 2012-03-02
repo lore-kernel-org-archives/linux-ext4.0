@@ -1,51 +1,69 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/4 v2] ext4: Always set then trimmed blocks count into len
-Date: Fri,  2 Mar 2012 13:11:57 +0100
-Message-ID: <1330690318-22627-3-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 4/4 v2] ext4: Do not discard group with BLOCK_UNINIT set
+Date: Fri,  2 Mar 2012 13:11:58 +0100
+Message-ID: <1330690318-22627-4-git-send-email-lczerner@redhat.com>
 References: <1330690318-22627-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12068 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44502 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757854Ab2CBMMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1758171Ab2CBMMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 2 Mar 2012 07:12:10 -0500
 In-Reply-To: <1330690318-22627-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently if the range to trim is too small, for example on 1K fs
-the request to trim the first block, then the 'range->len' is not set
-reporting wrong number of discarded block to the caller.
+This commit is an optimization for FITRIM implementation. If the group
+has not been initialized yet (BLOCK_UNINIT flag set), we do not need to
+discard such group. This flag is set on mke2fs time to speed up
+subsequent file system checks, because it says to us that there is
+nothing there in the block group.
 
-Fix this by always setting the 'range->len' before we return. Note that
-when there is a failure (-EINVAL) caller can not depend on 'range->len'
-being set properly.
+Because the BLOCK_UNINIT is only set on mke2fs time and cleared when
+allocation from that group takes place we know that when set, there was
+not anything allocated from that group, hence there should not be anything
+to discard from the file system point of view. Of course there might be
+situations where even if BLOCK_UNINIT is set the underlying storage is
+provisioned. This might happen for example when the user disables discard
+on mke2fs, however I think that this niche is not enough to not to take
+advantage of this optimization.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
 v2: nothing changed
 
- fs/ext4/mballoc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/ext4/mballoc.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index f20688e..8f817f2 100644
+index 8f817f2..9ea1065a 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -5092,11 +5092,11 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		 */
- 		first_cluster = 0;
- 	}
--	range->len = trimmed * sb->s_blocksize;
+@@ -5033,6 +5033,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 	ext4_fsblk_t first_data_blk =
+ 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+ 	ext4_fsblk_t max_blks = ext4_blocks_count(EXT4_SB(sb)->s_es);
++	struct ext4_group_desc *desc;
+ 	int ret = 0;
  
- 	if (!ret)
- 		atomic_set(&EXT4_SB(sb)->s_last_trim_minblks, minlen);
+ 	start = range->start >> sb->s_blocksize_bits;
+@@ -5076,7 +5077,14 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+ 		if (group == last_group)
+ 			end = last_cluster;
  
- out:
-+	range->len = trimmed * sb->s_blocksize;
- 	return ret;
- }
+-		if (grp->bb_free >= minlen) {
++		desc = ext4_get_group_desc(sb, group, NULL);
++		if (!desc) {
++			ret = -EIO;
++			break;
++		}
++
++		if (!(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) &&
++		    (grp->bb_free >= minlen)) {
+ 			cnt = ext4_trim_all_free(sb, group, first_cluster,
+ 						end, minlen);
+ 			if (cnt < 0) {
 -- 
 1.7.4.4
 
