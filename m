@@ -1,193 +1,166 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/3] ext4: Remove unused code from ext4_ext_map_blocks()
-Date: Fri,  2 Mar 2012 11:26:02 +0100
-Message-ID: <1330683963-15791-2-git-send-email-lczerner@redhat.com>
-References: <1330683963-15791-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, achender@linux.vnet.ibm.com,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext3: fix start and len arguments handling in
+ ext3_trim_fs()
+Date: Fri, 2 Mar 2012 11:39:12 +0100
+Message-ID: <20120302103912.GD1744@quack.suse.cz>
+References: <1330609207-11755-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13887 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:51517 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753046Ab2CBK0Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Mar 2012 05:26:16 -0500
-In-Reply-To: <1330683963-15791-1-git-send-email-lczerner@redhat.com>
+	id S1752768Ab2CBKjO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Mar 2012 05:39:14 -0500
+Content-Disposition: inline
+In-Reply-To: <1330609207-11755-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since the commit 'Rewrite punch hole to use ext4_ext_remove_space()'
-reworked the punch hole implementation to use ext4_ext_remove_space()
-instead of ext4_ext_map_blocks(), we can remove the code which is no
-longer needed from the ext4_ext_map_blocks().
+On Thu 01-03-12 14:40:06, Lukas Czerner wrote:
+> The overflow might happen when passing blocknr into
+> ext3_get_group_no_and_offset(), because it expects type ext3_fsblk_t
+> which might be smaller than uint64_t. This will most likely happen when
+> calling FITRIM with the default argument len = ULLONG_MAX.
+> 
+> Fix this by using "end" variable instead of "start+len" as it is easier
+> to get right and specifically check that the end is not beyond the end
+> of the file system, so we are sure that the result of
+> get_group_no_and_offset() will not overflow. Otherwise truncate it to
+> the size of the file system.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+  Please CC me on ext3 patches. Thanks.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/extents.c |  119 ++++++-----------------------------------------------
- 1 files changed, 13 insertions(+), 106 deletions(-)
+> ---
+>  fs/ext3/balloc.c |   73 +++++++++++++++++++++++++++--------------------------
+>  1 files changed, 37 insertions(+), 36 deletions(-)
+> 
+> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+> index a203892..e3a8d9e 100644
+> --- a/fs/ext3/balloc.c
+> +++ b/fs/ext3/balloc.c
+> @@ -2091,73 +2091,74 @@ err_out:
+>   */
+>  int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>  {
+> -	ext3_grpblk_t last_block, first_block, free_blocks;
+> -	unsigned long first_group, last_group;
+> -	unsigned long group, ngroups;
+> +	ext3_grpblk_t last_block, first_block;
+> +	unsigned long group, first_group, last_group;
+>  	struct ext3_group_desc *gdp;
+>  	struct ext3_super_block *es = EXT3_SB(sb)->s_es;
+> -	uint64_t start, len, minlen, trimmed;
+> +	uint64_t start, minlen, end, trimmed = 0;
+> +	ext3_fsblk_t first_data_blk =
+> +			le32_to_cpu(EXT3_SB(sb)->s_es->s_first_data_block);
+>  	ext3_fsblk_t max_blks = le32_to_cpu(es->s_blocks_count);
+>  	int ret = 0;
+>  
+> -	start = (range->start >> sb->s_blocksize_bits) +
+> -		le32_to_cpu(es->s_first_data_block);
+> -	len = range->len >> sb->s_blocksize_bits;
+> +	start = range->start >> sb->s_blocksize_bits;
+> +	end = start + (range->len >> sb->s_blocksize_bits) - 1;
+>  	minlen = range->minlen >> sb->s_blocksize_bits;
+> -	trimmed = 0;
+>  
+> -	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)))
+> +	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)) ||
+> +	    unlikely(start >= max_blks))
+>  		return -EINVAL;
+> -	if (start >= max_blks)
+> -		return -EINVAL;
+> -	if (start + len > max_blks)
+> -		len = max_blks - start;
+> +	if (end >= max_blks)
+> +		end = max_blks - 1;
+> +	if (end <= first_data_blk)
+> +		goto out;
+> +	if (start < first_data_blk)
+> +		start = first_data_blk;
+  Hmm, but this changed slighthly how trimming behaves with
+s_first_data_block > 0. Originally, if I submitted trim with start == 0,
+len == 1024, it would trim a single 1k block. Now it won't trim anything?
+I see ext4 does it this way as well and probably noone would notice but I
+want to have this clear...
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 04dd188..f773e5f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3778,8 +3778,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	int free_on_err = 0, err = 0, depth, ret;
- 	unsigned int allocated = 0, offset = 0;
- 	unsigned int allocated_clusters = 0;
--	unsigned int punched_out = 0;
--	unsigned int result = 0;
- 	struct ext4_allocation_request ar;
- 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
- 	ext4_lblk_t cluster_offset;
-@@ -3789,8 +3787,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
- 
- 	/* check in cache */
--	if (!(flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) &&
--		ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
-+	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
- 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
- 			if ((sbi->s_cluster_ratio > 1) &&
- 			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-@@ -3858,113 +3855,25 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 
- 		/* if found extent covers block, simply return it */
- 		if (in_range(map->m_lblk, ee_block, ee_len)) {
--			struct ext4_map_blocks punch_map;
--			ext4_fsblk_t partial_cluster = 0;
--
- 			newblock = map->m_lblk - ee_block + ee_start;
- 			/* number of remaining blocks in the extent */
- 			allocated = ee_len - (map->m_lblk - ee_block);
- 			ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
- 				  ee_block, ee_len, newblock);
- 
--			if ((flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) == 0) {
--				/*
--				 * Do not put uninitialized extent
--				 * in the cache
--				 */
--				if (!ext4_ext_is_uninitialized(ex)) {
--					ext4_ext_put_in_cache(inode, ee_block,
--						ee_len, ee_start);
--					goto out;
--				}
--				ret = ext4_ext_handle_uninitialized_extents(
--					handle, inode, map, path, flags,
--					allocated, newblock);
--				return ret;
--			}
--
--			/*
--			 * Punch out the map length, but only to the
--			 * end of the extent
--			 */
--			punched_out = allocated < map->m_len ?
--				allocated : map->m_len;
--
- 			/*
--			 * Sense extents need to be converted to
--			 * uninitialized, they must fit in an
--			 * uninitialized extent
-+			 * Do not put uninitialized extent
-+			 * in the cache
- 			 */
--			if (punched_out > EXT_UNINIT_MAX_LEN)
--				punched_out = EXT_UNINIT_MAX_LEN;
--
--			punch_map.m_lblk = map->m_lblk;
--			punch_map.m_pblk = newblock;
--			punch_map.m_len = punched_out;
--			punch_map.m_flags = 0;
--
--			/* Check to see if the extent needs to be split */
--			if (punch_map.m_len != ee_len ||
--				punch_map.m_lblk != ee_block) {
--
--				ret = ext4_split_extent(handle, inode,
--				path, &punch_map, 0,
--				EXT4_GET_BLOCKS_PUNCH_OUT_EXT |
--				EXT4_GET_BLOCKS_PRE_IO);
--
--				if (ret < 0) {
--					err = ret;
--					goto out2;
--				}
--				/*
--				 * find extent for the block at
--				 * the start of the hole
--				 */
--				ext4_ext_drop_refs(path);
--				kfree(path);
--
--				path = ext4_ext_find_extent(inode,
--				map->m_lblk, NULL);
--				if (IS_ERR(path)) {
--					err = PTR_ERR(path);
--					path = NULL;
--					goto out2;
--				}
--
--				depth = ext_depth(inode);
--				ex = path[depth].p_ext;
--				ee_len = ext4_ext_get_actual_len(ex);
--				ee_block = le32_to_cpu(ex->ee_block);
--				ee_start = ext4_ext_pblock(ex);
--
--			}
--
--			ext4_ext_mark_uninitialized(ex);
--
--			ext4_ext_invalidate_cache(inode);
--
--			err = ext4_ext_rm_leaf(handle, inode, path,
--					       &partial_cluster, map->m_lblk,
--					       map->m_lblk + punched_out);
--
--			if (!err && path->p_hdr->eh_entries == 0) {
--				/*
--				 * Punch hole freed all of this sub tree,
--				 * so we need to correct eh_depth
--				 */
--				err = ext4_ext_get_access(handle, inode, path);
--				if (err == 0) {
--					ext_inode_hdr(inode)->eh_depth = 0;
--					ext_inode_hdr(inode)->eh_max =
--					cpu_to_le16(ext4_ext_space_root(
--						inode, 0));
--
--					err = ext4_ext_dirty(
--						handle, inode, path);
--				}
-+			if (!ext4_ext_is_uninitialized(ex)) {
-+				ext4_ext_put_in_cache(inode, ee_block,
-+					ee_len, ee_start);
-+				goto out;
- 			}
--
--			goto out2;
-+			ret = ext4_ext_handle_uninitialized_extents(
-+				handle, inode, map, path, flags,
-+				allocated, newblock);
-+			return ret;
- 		}
- 	}
- 
-@@ -4233,13 +4142,11 @@ out2:
- 		ext4_ext_drop_refs(path);
- 		kfree(path);
- 	}
--	result = (flags & EXT4_GET_BLOCKS_PUNCH_OUT_EXT) ?
--			punched_out : allocated;
- 
- 	trace_ext4_ext_map_blocks_exit(inode, map->m_lblk,
--		newblock, map->m_len, err ? err : result);
-+		newblock, map->m_len, err ? err : allocated);
- 
--	return err ? err : result;
-+	return err ? err : allocated;
- }
- 
- void ext4_ext_truncate(struct inode *inode)
+> -	ngroups = EXT3_SB(sb)->s_groups_count;
+>  	smp_rmb();
+>  
+>  	/* Determine first and last group to examine based on start and len */
+>  	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) start,
+>  				     &first_group, &first_block);
+> -	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) (start + len),
+> +	ext3_get_group_no_and_offset(sb, (ext3_fsblk_t) end,
+>  				     &last_group, &last_block);
+> -	last_group = (last_group > ngroups - 1) ? ngroups - 1 : last_group;
+> -	last_block = EXT3_BLOCKS_PER_GROUP(sb);
+>  
+> -	if (first_group > last_group)
+> -		return -EINVAL;
+> +	/* end now represents the last block to discard in this group */
+> +	end = EXT3_BLOCKS_PER_GROUP(sb) - 1;
+>  
+>  	for (group = first_group; group <= last_group; group++) {
+>  		gdp = ext3_get_group_desc(sb, group, NULL);
+>  		if (!gdp)
+>  			break;
+>  
+> -		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+> -		if (free_blocks < minlen)
+> -			continue;
+> -
+>  		/*
+>  		 * For all the groups except the last one, last block will
+> -		 * always be EXT3_BLOCKS_PER_GROUP(sb), so we only need to
+> -		 * change it for the last group in which case first_block +
+> -		 * len < EXT3_BLOCKS_PER_GROUP(sb).
+> +		 * always be EXT3_BLOCKS_PER_GROUP(sb)-1, so we only need to
+> +		 * change it for the last group, note that last_block is
+> +		 * already computed earlier by ext3_get_group_no_and_offset()
+>  		 */
+> -		if (first_block + len < EXT3_BLOCKS_PER_GROUP(sb))
+> -			last_block = first_block + len;
+> -		len -= last_block - first_block;
+> +		if (group == last_group)
+> +			end = last_block;
+>  
+> -		ret = ext3_trim_all_free(sb, group, first_block,
+> -					last_block, minlen);
+> -		if (ret < 0)
+> -			break;
+> +		if (le16_to_cpu(gdp->bg_free_blocks_count) >= minlen) {
+> +			ret = ext3_trim_all_free(sb, group, first_block,
+> +						 end, minlen);
+> +			if (ret < 0)
+> +				break;
+> +			trimmed += ret;
+> +		}
+>  
+> -		trimmed += ret;
+> +		/*
+> +		 * For every group except the first one, we are sure
+> +		 * that the first block to discard will be block #0.
+> +		 */
+>  		first_block = 0;
+>  	}
+>  
+> -	if (ret >= 0)
+> +	if (ret > 0)
+>  		ret = 0;
+> -	range->len = trimmed * sb->s_blocksize;
+>  
+> +out:
+> +	range->len = trimmed * sb->s_blocksize;
+>  	return ret;
+>  }
+> -- 
+  Otherwise the patch looks OK.
+
+								Honza
 -- 
-1.7.4.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
