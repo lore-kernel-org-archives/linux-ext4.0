@@ -1,122 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] REQ_META set during meta data write
-Date: Thu, 01 Mar 2012 14:21:12 -0600
-Message-ID: <4F4FDA38.6060601@redhat.com>
-References: <1330625463-5683-1-git-send-email-saugata.das@stericsson.com>
+From: Xupeng Yun <xupeng@xupeng.me>
+Subject: Re: Bad performance of ext4 with kernel 3.0.17
+Date: Fri, 2 Mar 2012 08:50:55 +0800
+Message-ID: <CACaf2aacsH-hd9YmXff+DX8qiDjNGeUv6kNe9JamPH6OpaN1Sw@mail.gmail.com>
+References: <CACaf2aaqxM86DtdZMaaQZfrC+WbLwPjOVd=LmVjk+TvfObYUzQ@mail.gmail.com>
+ <20120301194735.GD32588@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	saugata.das@linaro.org, arnd.bergmann@linaro.org, tytso@mit.edu,
-	adilger@whamcloud.com
-To: Saugata Das <saugata.das@stericsson.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 development <linux-ext4@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28033 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754882Ab2CAUVV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 1 Mar 2012 15:21:21 -0500
-In-Reply-To: <1330625463-5683-1-git-send-email-saugata.das@stericsson.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:34347 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757447Ab2CBAvg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Mar 2012 19:51:36 -0500
+Received: by iagz16 with SMTP id z16so1570322iag.19
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Mar 2012 16:51:36 -0800 (PST)
+In-Reply-To: <20120301194735.GD32588@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/1/12 12:11 PM, Saugata Das wrote:
-> From: Saugata Das <saugata.das@linaro.org>
-> 
-> Today, storage devices like eMMC has special features like data tagging
-> (introduced in MMC-4.5 version) in order to improve performance of some
-> specific writes. On MMC stack, data tagging is used for all writes which has
-> REQ_META flag set. On EXT4, however, currently REQ_META is set only for read.
-> This patch adds the capability to add REQ_META flag during meta data write.
-> This patch adds new function set_buffer_meta, which is used to set a bit
-> BH_Meta in the b_state field when meta data and super block is made dirty.
-> 
-> Signed-off-by: Saugata Das <saugata.das@linaro.org>
-> Acked-by: Arnd Bergmann <arnd.bergmann@linaro.org>
+On Fri, Mar 2, 2012 at 03:47, Ted Ts'o <tytso@mit.edu> wrote:
+> Two things I'd try:
+>
+> #1) If this is a freshly created file system, the kernel may be
+> initializing the inode table in the background, and this could be
+> interfering with your benchmark workload. =C2=A0To address this, you =
+can
+> either (a) add the mount option noinititable, (b) add the mke2fs
+> option "-E lazy_itable_init=3D0" --- but this will cause the mke2fs t=
+o
+> take a lot longer, or (c) mount the file system and wait until
+> "dumpe2fs /dev/md3 | tail" shows that the last block group has the
+> ITABLE_ZEROED flag set. =C2=A0For benchmarking purposes on a scratch
+> workload, option (a) above is the fast thing to do.
+>
 
-I like this idea too, partly because I've had a project in the back of my
-mind to teach seekwatcher to optionally distinguish between metadata &
-data IO on its charts, but I had noticed that ext4 didn't always tag
-things.
+Thank you Ted, I followed this and got the same result (read IOPS ~950
+/ write IOPS ~100)
 
--Eric
+> #2) It could be that the file system is choosing blocks farther away
+> from the beginning of the disk, which is slower, whereas the fio on
+> the raw disk will use the blocks closest to the beginning of the disk=
+,
+> which are the fastest one. =C2=A0You could try creating the file syst=
+em so
+> it is only 10GB, and then try running fio on that small, truncated
+> file system, and see if that makes a difference.
 
-> ---
->  fs/buffer.c                 |    3 +++
->  fs/ext4/ext4_jbd2.c         |    4 ++++
->  fs/ext4/inode.c             |    4 +++-
->  include/linux/buffer_head.h |    2 ++
->  4 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 19d8eb7..71c8c74 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -2926,6 +2926,9 @@ int submit_bh(int rw, struct buffer_head * bh)
->  	if (test_set_buffer_req(bh) && (rw & WRITE))
->  		clear_buffer_write_io_error(bh);
->  
-> +	if (buffer_meta(bh) && (rw & WRITE))
-> +		rw |= REQ_META;
-> +
->  	/*
->  	 * from here on down, it's all bio -- do the initial mapping,
->  	 * submit_bio -> generic_make_request may further map this bio around
-> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> index aca1790..097c062 100644
-> --- a/fs/ext4/ext4_jbd2.c
-> +++ b/fs/ext4/ext4_jbd2.c
-> @@ -107,6 +107,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
->  {
->  	int err = 0;
->  
-> +	set_buffer_meta(bh);
-> +
->  	if (ext4_handle_valid(handle)) {
->  		err = jbd2_journal_dirty_metadata(handle, bh);
->  		if (err) {
-> @@ -143,6 +145,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
->  	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
->  	int err = 0;
->  
-> +	set_buffer_meta(bh);
-> +
->  	if (ext4_handle_valid(handle)) {
->  		err = jbd2_journal_dirty_metadata(handle, bh);
->  		if (err)
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 92655fd..105e1d0 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4144,8 +4144,10 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
->  		err = __ext4_get_inode_loc(inode, &iloc, 0);
->  		if (err)
->  			return err;
-> -		if (wbc->sync_mode == WB_SYNC_ALL)
-> +		if (wbc->sync_mode == WB_SYNC_ALL) {
-> +			set_buffer_meta(iloc.bh);
->  			sync_dirty_buffer(iloc.bh);
-> +		}
->  		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
->  			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
->  					 "IO error syncing inode");
-> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-> index 458f497..13bba17 100644
-> --- a/include/linux/buffer_head.h
-> +++ b/include/linux/buffer_head.h
-> @@ -34,6 +34,7 @@ enum bh_state_bits {
->  	BH_Write_EIO,	/* I/O error on write */
->  	BH_Unwritten,	/* Buffer is allocated on disk but not written */
->  	BH_Quiet,	/* Buffer Error Prinks to be quiet */
-> +	BH_Meta,	/* Is meta */
->  
->  	BH_PrivateStart,/* not a state bit, but the first bit available
->  			 * for private allocation by other entities
-> @@ -124,6 +125,7 @@ BUFFER_FNS(Delay, delay)
->  BUFFER_FNS(Boundary, boundary)
->  BUFFER_FNS(Write_EIO, write_io_error)
->  BUFFER_FNS(Unwritten, unwritten)
-> +BUFFER_FNS(Meta, meta)
->  
->  #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
->  #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
+I created LVM on top of the RAID10 device, and then created a smaller L=
+V(20GB),
+after that I took benchmarks against the very same LV with different
+filesystems, the
+results are interesting:
 
+xfs (read IOPS ~1700 / write IOPS ~200)
+ext4 (read IOPS ~950 / write IOPS ~100)
+ext3( read IOPS ~900 / write IOPS ~100)
+reisferfs (read IOPS ~930 / write IOPS ~100)
+btrfs (read IOPS ~1200 / write IOPS ~120)
+
+I got very bad performance from XFS
+(http://www.spinics.net/lists/xfs/msg08688.html) about
+two months ago, which was caused by known bugs of XFS, then I tried
+ext4 on some of
+my servers, it works very well until I got a new server set up with sof=
+t RAID10.
+
+What should I learn to understand what's happening? any suggestion is
+appreciated.
+
+--=20
+Xupeng Yun
+http://about.me/xupeng
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
