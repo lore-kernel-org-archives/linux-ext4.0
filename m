@@ -1,98 +1,93 @@
-From: Xupeng Yun <xupeng@xupeng.me>
-Subject: Re: Bad performance of ext4 with kernel 3.0.17
-Date: Fri, 2 Mar 2012 15:06:39 +0800
-Message-ID: <CACaf2aawmpX3bBz3r=K0YqUKPR7021kVPjCCi9o=1-FVce_C1Q@mail.gmail.com>
-References: <CACaf2aaqxM86DtdZMaaQZfrC+WbLwPjOVd=LmVjk+TvfObYUzQ@mail.gmail.com>
- <20120301194735.GD32588@thunk.org> <CACaf2aacsH-hd9YmXff+DX8qiDjNGeUv6kNe9JamPH6OpaN1Sw@mail.gmail.com>
- <20120302024531.GJ32588@thunk.org>
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Fri, 2 Mar 2012 10:51:55 +0100
+Message-ID: <CADDYkjRXP8jQXEGoDcfghRgtC-XvS40EZ6U4H1z67fCapz54MA@mail.gmail.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+	<CADDYkjRni4i3QvWo+hOn-Ct4mFoTpL1-ydmE7fbzYJmHFhS3_Q@mail.gmail.com>
+	<CADDYkjRYrKaBvTQ4Pe6bfemL7r5W=AU468uy0krFAEJD45syow@mail.gmail.com>
+	<20120229144244.GF5054@shiny>
+	<CADDYkjSEcktUYS+FzoEQ-FH1yMCvq4as5S2LoJyQBPM9=+CoTw@mail.gmail.com>
+	<CADDYkjQ-N2+2sJMb9=DZt1vr1=nWkCCdXB2xJAPgkhAuguEPyg@mail.gmail.com>
+	<CAJd=RBAs3KGVO8hdUY3peoG1JuxU7_SZ4Z=H0Uy43wLpUFkh7g@mail.gmail.com>
+	<CADDYkjR+d+pFYN-mQ91ZP4KcU4zzwC5jmxj1xxMDrp+X+Z8c6g@mail.gmail.com>
+	<20120301141823.GV5054@shiny>
+	<CADDYkjRs934T2D7DPCk_dcrazptWtLu70=A61R32p22Ee1iXsw@mail.gmail.com>
+	<20120301184248.GC32588@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 development <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:49460 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753709Ab2CBHHT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2012 02:07:19 -0500
-Received: by dajr28 with SMTP id r28so1678072daj.19
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Mar 2012 23:07:19 -0800 (PST)
-In-Reply-To: <20120302024531.GJ32588@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: "Ted Ts'o" <tytso@mit.edu>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Hillf Danton <dhillf@gmail.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org,
+	lczerner@redhat.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120301184248.GC32588@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 2, 2012 at 10:45, Ted Ts'o <tytso@mit.edu> wrote:
-> Hmm, it sounds like we're hitting some kind of scaling problem. =C2=A0=
-How
-> many CPU's/cores do you have on your server? =C2=A0And it would be
-> interesting to try varying the --numjobs parameter and see how the
-> various file systems behave with 1, 2, 4, 8, and 16 threads.
+2012/3/1 Ted Ts'o <tytso@mit.edu>:
+> On Thu, Mar 01, 2012 at 03:43:41PM +0100, Jacek Luczak wrote:
+>>
+>> Yep, ext4 is close to my wife's closet.
+>>
 >
+> Were all of the file systems freshly laid down, or was this an aged
+> ext4 file system?
 
-I did various benchmarks with 1, 2, 4, 8, 16 and 32 threads, here are
-the results:
-http://blog.xupeng.me/misc/4-15krpm-sas-raid10/
+Always fresh, recreated for each tests - that's why it takes quite
+much time as I had to copy the test dir back in places. Env is kept in
+all tests as much consistent as possible thus the values should have
+credibility.
 
-> The other thing that's worth checking is to try using filefrag -v on
-> the test file after the benchmark has finished, just to make sure the
-> file layout is sane. =C2=A0It should be, but I just want to double ch=
-eck...
+> Also you should beware that if you have a workload which is heavy
+> parallel I/O, with lots of random, read/write accesses to small files,
+> a benchmark using tar might not be representative of what you will see
+> in production --- different file systems have different strengths and
+> weaknesses --- and the fact that ext3/ext4's readdir() returns inodes
+> in a non-optimal order for stat(2) or unlink(2) or file copy in the
+> cold cache case may not matter as much as you think in a build server.
+> (i.e., the directories that do need to be searched will probably be
+> serviced out of the dentry cache, etc.)
 
-Output of `filefrag -v` after the benchmark has finished:
+The set of tests were chosen as is not to find best fs for build purposes.
 
-    # filefrag -v /mnt/ext4/test
-    Filesystem type is: ef53
-    File size of /mnt/ext4/test is 5368709120 (1310720 blocks, blocksiz=
-e 4096)
-     ext logical physical expected length flags
-       0       0  2424832           32758
-       1   32758  2457600  2457590  32758
-       2   65516  2490368  2490358  32758
-       3   98274  2523136  2523126  32758
-       4  131032  2555904  2555894  32758
-       5  163790  2588672  2588662  32758
-       6  196548  2719744  2621430  32758
-       7  229306  2752512  2752502  32758
-       8  262064  2785280  2785270  32758
-       9  294822  2818048  2818038  32758
-      10  327580  2850816  2850806  32758
-      11  360338  2883584  2883574  32758
-      12  393096  2916352  2916342  32758
-      13  425854  2949120  2949110  32758
-      14  458612  2981888  2981878  32758
-      15  491370  3014656  3014646  32758
-      16  524128  3047424  3047414  32758
-      17  556886  3080192  3080182  32758
-      18  589644  3112960  3112950  32758
-      19  622402  3178496  3145718  32758
-      20  655160  3211264  3211254  32758
-      21  687918  3244032  3244022  32758
-      22  720676  3276800  3276790  32758
-      23  753434  3309568  3309558  32758
-      24  786192  3342336  3342326  32758
-      25  818950  3375104  3375094  32758
-      26  851708  3407872  3407862  32758
-      27  884466  3440640  3440630  32758
-      28  917224  3473408  3473398  32758
-      29  949982  3506176  3506166  32758
-      30  982740  3538944  3538934  32758
-      31 1015498  3571712  3571702  32758
-      32 1048256  3604480  3604470  32758
-      33 1081014  3637248  3637238  32758
-      34 1113772  3702784  3670006  32758
-      35 1146530  3735552  3735542  32758
-      36 1179288  3768320  3768310  32758
-      37 1212046  3801088  3801078  32758
-      38 1244804  3833856  3833846  32758
-      39 1277562  3866624  3866614  32758
-      40 1310320  3899392  3899382    400 eof
-    /mnt/ext4/test: 41 extents found
+For a pure builds ext4 is as of now the best and most of the points
+you've put above are valid here. We've performed a real tests in a
+clone of production environment. Results are not that surprising as
+one can find same from e.g. Phoronix test. We've done test in XFS vs
+ext[34] and ext4 vs btrfs. Here if we are taking into account only a
+software compilation ext4 rocks. Btrfs is only few seconds slower (max
+5 in average). The choice then was to use ext4 due to more mature
+foundations and support in RHEL. Why we're looking for new one? Well,
+the build environment is not only based on software building. There
+are e.g. some strange tests running in parallel, code analysis, etc.
+Users are doing damn odd things there ... are using Java, you can
+imagine how bad bad bad bad zombie java can be. We've failed here and
+are not able to isolate each use cases and create profiled
+environment. Thus we need to find sth that will provide common sense
+for all use cases.
 
---=20
-Xupeng Yun
-http://about.me/xupeng
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The previous tests shown that ext[34] rocks on compilation timing, but
+all around not really. Also one need to remember that fs content
+changes often. The ext3 was ageing in 4-6 months of use. XFS on the
+other hand was great all around while not in compilation timings.
+Roughly 10% is not that much but if hosts is doing builds 24h/7 then
+after a few days we've been much behind ext[34] clone env. Btrfs was
+only tested against compilation timings, not in general use.
+
+We've created a simple test case for compilation. It's quite not same
+as what we got in real env but is good baseline (kernel build system
+is too perfect). Simply parallel kernel builds with randomly
+allyesconfig or allmodconfig. Below are the seekwatcher graphs of
+around 1h of tests running. There were 10 builds (kernels
+2.6.20-2.6.29) running with three parallel threads:
+1) ext4: http://91.234.146.107/~difrost/seekwatcher/kt_ext4.png
+2) btrfs: http://91.234.146.107/~difrost/seekwatcher/kt_btrfs.png
+3) both: http://91.234.146.107/~difrost/seekwatcher/kt_btrfs_ext4.png
+
+Above graphs prove that ext4 is ahead in this ,,competition''. I will
+try to setup there a real build env to see how those two compare.
+
+-Jacek
