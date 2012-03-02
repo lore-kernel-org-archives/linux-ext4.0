@@ -1,107 +1,302 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Fri, 2 Mar 2012 14:50:45 -0500
-Message-ID: <20120302195045.GA28296@shiny>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
- <20120301143859.GX5054@shiny>
- <CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
- <20120302140038.GD5054@shiny>
- <CADDYkjT8apYQpdZqr1gZKiHbm9xfTaLr=8GEJF0VKF9neHwgOg@mail.gmail.com>
- <20120302142651.GH5054@shiny>
- <20120302193215.GB22215@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: "Ted Ts'o" <tytso@mit.edu>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [PATCH 1/7] vfs: Handle O_SYNC AIO DIO in generic code properly
+Date: Fri,  2 Mar 2012 14:56:09 -0500
+Message-ID: <1330718175-21540-2-git-send-email-jmoyer@redhat.com>
+References: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
+Cc: jack@suse.cz, hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet15.oracle.com ([141.146.126.227]:45056 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752339Ab2CBTuu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2012 14:50:50 -0500
-Content-Disposition: inline
-In-Reply-To: <20120302193215.GB22215@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59727 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759230Ab2CBT5B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:57:01 -0500
+In-Reply-To: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 02, 2012 at 02:32:15PM -0500, Ted Ts'o wrote:
-> On Fri, Mar 02, 2012 at 09:26:51AM -0500, Chris Mason wrote:
-> > 
-> > filefrag will tell you how many extents each file has, any file with
-> > more than one extent is interesting.  (The ext4 crowd may have better
-> > suggestions on measuring fragmentation).
-> 
-> You can get a *huge* amount of information (probably more than you'll
-> want to analyze) by doing this:
-> 
->      e2fsck -nf -E fragcheck /dev/XXXX >& /tmp/fragcheck.out
-> 
-> I haven't had time to do this in a while, but a while back I used this
-> to debug the writeback code with an eye towards reducing
-> fragmentation.  At the time I was trying to optimize the case of
-> reducing fragmentation in the easist case possible, where you start
-> with an empty file system, and then copy all of the data from another
-> file system onto it using rsync -avH.
-> 
-> It would be worth while to see what happens with files written by the
-> compiler and linker.  Given that libelf tends to write .o files
-> non-sequentially, and without telling us how big the space is in
-> advance, I could well imagine that we're not doing the best job
-> avoiding free space fragmentation, which eventually leads to extra
-> file system aging.
+From: Jan Kara <jack@suse.cz>
 
-I just realized that I confused things.  He's doing a read on the
-results of a cp -a to a fresh FS, so there's no way the compiler/linker
-are causing trouble.
+Provide VFS helpers for handling O_SYNC AIO DIO writes. Filesystem wanting to
+use the helpers has to pass DIO_SYNC_WRITES to __blockdev_direct_IO. Then if
+they don't use direct IO end_io handler, generic code takes care of everything
+else. Otherwise their end_io handler is passed struct dio_sync_io_work pointer
+as 'private' argument and they have to call generic_dio_end_io() to finish
+their AIO DIO. Generic code then takes care to call generic_write_sync() from
+a workqueue context when AIO DIO is completed.
 
-> 
-> It would be interesting to have a project where someone added
-> fallocate() support into libelf, and then added some hueristics into
-> ext4 so that if a file is fallocated to a precise size, or if the file
-> is fully written and closed before writeback begins, that we use this
-> to more efficiently pack the space used by the files by the block
-> allocator.  This is a place where I would not be surprised that XFS
-> has some better code to avoid accelerated file system aging, and where
-> we could do better with ext4 with some development effort.
+Since all filesystems using blockdev_direct_IO() need O_SYNC aio dio handling
+and the generic one is enough for them, make blockdev_direct_IO() pass
+DIO_SYNC_WRITES flag.
 
-The part I don't think any of us have solved is writing back the files
-in a good order after we've fallocated the blocks.
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+---
+ fs/direct-io.c     |  128 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/super.c         |    2 +
+ include/linux/fs.h |   13 +++++-
+ 3 files changed, 138 insertions(+), 5 deletions(-)
 
-So this will probably be great for reads and not so good for writes.
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index d740ab6..da6ef1f 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -37,6 +37,8 @@
+ #include <linux/uio.h>
+ #include <linux/atomic.h>
+ 
++#include <asm/cmpxchg.h>
++
+ /*
+  * How many user pages to map in one call to get_user_pages().  This determines
+  * the size of a structure in the slab cache
+@@ -111,6 +113,15 @@ struct dio_submit {
+ 	unsigned tail;			/* last valid page + 1 */
+ };
+ 
++/* state needed for final sync and completion of O_SYNC AIO DIO */
++struct dio_sync_io_work {
++	struct kiocb *iocb;
++	loff_t offset;
++	ssize_t len;
++	int ret;
++	struct work_struct work;
++};
++
+ /* dio_state communicated between submission path and end_io */
+ struct dio {
+ 	int flags;			/* doesn't change */
+@@ -133,6 +144,7 @@ struct dio {
+ 	/* AIO related stuff */
+ 	struct kiocb *iocb;		/* kiocb */
+ 	ssize_t result;                 /* IO result */
++	struct dio_sync_io_work *sync_work;	/* work used for O_SYNC AIO */
+ 
+ 	/*
+ 	 * pages[] (and any fields placed after it) are not zeroed out at
+@@ -260,6 +272,45 @@ static inline struct page *dio_get_page(struct dio *dio,
+ }
+ 
+ /**
++ * generic_dio_end_io() - generic dio ->end_io handler
++ * @iocb: iocb of finishing DIO
++ * @offset: the byte offset in the file of the completed operation
++ * @bytes: length of the completed operation
++ * @work: work to queue for O_SYNC AIO DIO, NULL otherwise
++ * @ret: error code if IO failed
++ * @is_async: is this AIO?
++ *
++ * This is generic callback to be called when direct IO is finished. It
++ * handles update of number of outstanding DIOs for an inode, completion
++ * of async iocb and queueing of work if we need to call fsync() because
++ * io was O_SYNC.
++ */
++void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
++			struct dio_sync_io_work *work, int ret, bool is_async)
++{
++	struct inode *inode = iocb->ki_filp->f_dentry->d_inode;
++
++	if (!is_async) {
++		inode_dio_done(inode);
++		return;
++	}
++
++	/*
++	 * If we need to sync file, we offload completion to workqueue
++	 */
++	if (work) {
++		work->ret = ret;
++		work->offset = offset;
++		work->len = bytes;
++		queue_work(inode->i_sb->s_dio_flush_wq, &work->work);
++	} else {
++		aio_complete(iocb, ret, 0);
++		inode_dio_done(inode);
++	}
++}
++EXPORT_SYMBOL(generic_dio_end_io);
++
++/**
+  * dio_complete() - called when all DIO BIO I/O has been completed
+  * @offset: the byte offset in the file of the completed operation
+  *
+@@ -301,12 +352,22 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is
+ 		ret = transferred;
+ 
+ 	if (dio->end_io && dio->result) {
++		void *private;
++
++		if (dio->sync_work)
++			private = dio->sync_work;
++		else
++			private = dio->private;
+ 		dio->end_io(dio->iocb, offset, transferred,
+-			    dio->private, ret, is_async);
++			    private, ret, is_async);
+ 	} else {
+-		if (is_async)
+-			aio_complete(dio->iocb, ret, 0);
+-		inode_dio_done(dio->inode);
++		/* No IO submitted? Skip syncing... */
++		if (!dio->result && dio->sync_work) {
++			kfree(dio->sync_work);
++			dio->sync_work = NULL;
++		}
++		generic_dio_end_io(dio->iocb, offset, transferred,
++				   dio->sync_work, ret, is_async);
+ 	}
+ 
+ 	return ret;
+@@ -1066,6 +1127,41 @@ static inline int drop_refcount(struct dio *dio)
+ }
+ 
+ /*
++ * Work performed from workqueue when AIO DIO is finished.
++ */
++static void dio_aio_sync_work(struct work_struct *work)
++{
++	struct dio_sync_io_work *sync_work =
++			container_of(work, struct dio_sync_io_work, work);
++	struct kiocb *iocb = sync_work->iocb;
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
++	int err, ret = sync_work->ret;
++
++	err = generic_write_sync(iocb->ki_filp, sync_work->offset,
++				 sync_work->len);
++	if (err < 0 && ret > 0)
++		ret = err;
++	aio_complete(iocb, ret, 0);
++	inode_dio_done(inode);
++}
++
++static noinline int dio_create_flush_wq(struct super_block *sb)
++{
++	struct workqueue_struct *wq =
++				alloc_workqueue("dio-sync", WQ_UNBOUND, 1);
++
++	if (!wq)
++		return -ENOMEM;
++	/*
++	 * Atomically put workqueue in place. Release our one in case someone
++	 * else won the race and attached workqueue to superblock.
++	 */
++	if (cmpxchg(&sb->s_dio_flush_wq, NULL, wq))
++		destroy_workqueue(wq);
++	return 0;
++}
++
++/*
+  * This is a library function for use by filesystem drivers.
+  *
+  * The locking rules are governed by the flags parameter:
+@@ -1154,6 +1250,26 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 	memset(dio, 0, offsetof(struct dio, pages));
+ 
+ 	dio->flags = flags;
++	if (flags & DIO_SYNC_WRITES && rw & WRITE &&
++	    ((iocb->ki_filp->f_flags & O_DSYNC) || IS_SYNC(inode))) {
++		/* The first O_SYNC AIO DIO for this FS? Create workqueue... */
++		if (!inode->i_sb->s_dio_flush_wq) {
++			retval = dio_create_flush_wq(inode->i_sb);
++			if (retval) {
++				kmem_cache_free(dio_cache, dio);
++				goto out;
++			}
++		}
++		dio->sync_work = kmalloc(sizeof(struct dio_sync_io_work),
++					 GFP_KERNEL);
++		if (!dio->sync_work) {
++			retval = -ENOMEM;
++			kmem_cache_free(dio_cache, dio);
++			goto out;
++		}
++		INIT_WORK(&dio->sync_work->work, dio_aio_sync_work);
++		dio->sync_work->iocb = iocb;
++	}
+ 	if (dio->flags & DIO_LOCKING) {
+ 		if (rw == READ) {
+ 			struct address_space *mapping =
+@@ -1166,6 +1282,7 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 							      end - 1);
+ 			if (retval) {
+ 				mutex_unlock(&inode->i_mutex);
++				kfree(dio->sync_work);
+ 				kmem_cache_free(dio_cache, dio);
+ 				goto out;
+ 			}
+@@ -1309,6 +1426,9 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 
+ 	if (drop_refcount(dio) == 0) {
+ 		retval = dio_complete(dio, offset, retval, false);
++		/* Test for !NULL to save a call for common case */
++		if (dio->sync_work)
++			kfree(dio->sync_work);
+ 		kmem_cache_free(dio_cache, dio);
+ 	} else
+ 		BUG_ON(retval != -EIOCBQUEUED);
+diff --git a/fs/super.c b/fs/super.c
+index de41e1e..d739ec2 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -200,6 +200,8 @@ static inline void destroy_super(struct super_block *s)
+ #ifdef CONFIG_SMP
+ 	free_percpu(s->s_files);
+ #endif
++	if (s->s_dio_flush_wq)
++		destroy_workqueue(s->s_dio_flush_wq);
+ 	security_sb_free(s);
+ 	WARN_ON(!list_empty(&s->s_mounts));
+ 	kfree(s->s_subtype);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7aacf31..42d734d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -410,6 +410,7 @@ struct kstatfs;
+ struct vm_area_struct;
+ struct vfsmount;
+ struct cred;
++struct workqueue_struct;
+ 
+ extern void __init inode_init(void);
+ extern void __init inode_init_early(void);
+@@ -1488,6 +1489,9 @@ struct super_block {
+ 
+ 	/* Being remounted read-only */
+ 	int s_readonly_remount;
++
++	/* Pending fsync calls for completed AIO DIO with O_SYNC */
++	struct workqueue_struct	*s_dio_flush_wq;
+ };
+ 
+ /* superblock cache pruning functions */
+@@ -2420,11 +2424,18 @@ enum {
+ 
+ 	/* filesystem does not support filling holes */
+ 	DIO_SKIP_HOLES	= 0x02,
++
++	/* need generic handling of O_SYNC aio writes */
++	DIO_SYNC_WRITES = 0x04
+ };
+ 
++struct dio_sync_io_work;
++
+ void dio_end_io(struct bio *bio, int error);
+ void inode_dio_wait(struct inode *inode);
+ void inode_dio_done(struct inode *inode);
++void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
++                        struct dio_sync_io_work *work, int ret, bool is_async);
+ 
+ ssize_t __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 	struct block_device *bdev, const struct iovec *iov, loff_t offset,
+@@ -2437,7 +2448,7 @@ static inline ssize_t blockdev_direct_IO(int rw, struct kiocb *iocb,
+ {
+ 	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
+ 				    offset, nr_segs, get_block, NULL, NULL,
+-				    DIO_LOCKING | DIO_SKIP_HOLES);
++				    DIO_LOCKING | DIO_SKIP_HOLES | DIO_SYNC_WRITES);
+ }
+ #else
+ static inline void inode_dio_wait(struct inode *inode)
+-- 
+1.7.1
 
-> 
-> Of course, it might also be possible to hack around this by simply
-> using VPATH and dropping your build files in a separate place from
-> your source files, and periodically reformatting the file system where
-> your build tree lives.  (As a side note, something that works well for
-> me is to use an SSD for my source files, and a separate 5400rpm HDD
-> for my build tree.  That allows me to use a smaller and more
-> affordable SSD, and since the object files can be written
-> asynchronously by the writeback threads, but the compiler can't move
-> forward until it gets file data from the .c or .h file, it gets me the
-> best price/performance for a laptop build environment.)
-
-mkfs for defrag ;)  It's the only way to be sure.
-
-> 
-> BTW, I suspect we could make acp even more efficient by teaching it to
-> use FIEMAP ioctl to map out the data blocks for all of the files in
-> the source file system, and then copied the files (or perhaps even
-> parts of files) in a read order which reduced seeking on the source
-> drive.
-
-acp does have a -b mode where it fibmaps (I was either lazy or it is
-older than fiemap, I forget) the first block in the file, and uses that
-to sort.  It does help if the file blocks aren't ordered well wrt their
-inode numbers, but not if the files are fragmented.
-
-It's also worth mentioning that acp doesn't actually cp.  I never got
-that far.  It was supposed to be the perfect example of why everything
-should be done via aio, but it just ended up demonstrating that ordering
-by inode number and leveraging kernel/hardware reada were more
-important.
-
--chris
