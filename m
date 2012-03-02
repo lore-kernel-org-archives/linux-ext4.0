@@ -1,46 +1,40 @@
 From: Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH 7/7] filemap: don't call generic_write_sync for -EIOCBQUEUED
-Date: Fri,  2 Mar 2012 14:56:15 -0500
-Message-ID: <1330718175-21540-8-git-send-email-jmoyer@redhat.com>
-References: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
-Cc: jack@suse.cz, hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>
+Subject: [PATCH 0/7, v2] fs: fix up AIO+DIO+O_SYNC to actually do the sync part
+Date: Fri,  2 Mar 2012 14:56:08 -0500
+Message-ID: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
+Cc: jack@suse.cz, hch@infradead.org
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:53489 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759231Ab2CBT5B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:57:01 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
-As it stands, generic_file_aio_write will call into generic_write_sync
-when -EIOCBQUEUED is returned from __generic_file_aio_write.  EIOCBQUEUED
-indicates that an I/O was submitted but NOT completed.  Thus, we will
-flush the disk cache, potentially before the write(s) even make it to
-the disk!  Up until now, this has been the best we could do, as file
-systems didn't bother to flush the disk cache after an O_SYNC AIO+DIO
-write.  After applying the prior two patches to xfs and ext4, at least
-the major two file systems do the right thing.  So, let's go ahead and
-fix this backwards logic.
+Currently, AIO+DIO+O_SYNC writes are not actually sync'd (for xfs), or
+they are sync'd before the I/O is actually issued (everybody else).
+The following patch series fixes this in two parts.  First, for the
+file systems that use the generic routines, Jan has provided some
+generic infrastructure to perform the syncs after the I/O is completed.
+Second, for those file systems which require some endio processing of
+their own for O_DIRECT writes (xfs and ext4), I've implemented file
+system specific syncing.  This passes the updated xfs-tests 113 test
+I posted earlier, as well as all of the tests in the aio group.  I
+tested ext3, ext4, xfs, and btrfs only.
 
-Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
----
- mm/filemap.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Comments, as always, are appreciated.
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c4ee2e9..004442f 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2634,7 +2634,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0 || ret == -EIOCBQUEUED) {
-+	if (ret > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, ret);
--- 
-1.7.1
+Cheers,
+Jeff
 
+[PATCH 1/7] vfs: Handle O_SYNC AIO DIO in generic code properly
+[PATCH 2/7] ocfs2: Use generic handlers of O_SYNC AIO DIO
+[PATCH 3/7] gfs2: Use generic handlers of O_SYNC AIO DIO
+[PATCH 4/7] btrfs: Use generic handlers of O_SYNC AIO DIO
+[PATCH 5/7] xfs: honor the O_SYNC flag for aysnchronous direct I/O requests
+[PATCH 6/7] ext4: honor the O_SYNC flag for aysnchronous direct I/O requests
+[PATCH 7/7] filemap: don't call generic_write_sync for -EIOCBQUEUED
