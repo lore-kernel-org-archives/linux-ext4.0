@@ -1,93 +1,346 @@
-From: Jacek Luczak <difrost.kernel@gmail.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Fri, 2 Mar 2012 11:05:56 +0100
-Message-ID: <CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
-	<E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
-	<20120301143859.GX5054@shiny>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Chris Mason <chris.mason@oracle.com>, Theodore Tso <tytso@mit.edu>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/3] ext4: Rewrite punch hole to use ext4_ext_remove_space()
+Date: Fri,  2 Mar 2012 11:26:01 +0100
+Message-ID: <1330683963-15791-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, achender@linux.vnet.ibm.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:54829 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754613Ab2CBKF7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Mar 2012 05:05:59 -0500
-In-Reply-To: <20120301143859.GX5054@shiny>
+Received: from mx1.redhat.com ([209.132.183.28]:42662 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753046Ab2CBK0P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Mar 2012 05:26:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/3/1 Chris Mason <chris.mason@oracle.com>:
-> On Wed, Feb 29, 2012 at 11:44:31PM -0500, Theodore Tso wrote:
->> You might try sorting the entries returned by readdir by inode numbe=
-r before you stat them. =A0 =A0This is a long-standing weakness in ext3=
-/ext4, and it has to do with how we added hashed tree indexes to direct=
-ories in (a) a backwards compatible way, that (b) was POSIX compliant w=
-ith respect to adding and removing directory entries concurrently with =
-reading all of the directory entries using readdir.
->>
->> You might try compiling spd_readdir from the e2fsprogs source tree (=
-in the contrib directory):
->>
->> http://git.kernel.org/?p=3Dfs/ext2/e2fsprogs.git;a=3Dblob;f=3Dcontri=
-b/spd_readdir.c;h=3Df89832cd7146a6f5313162255f057c5a754a4b84;hb=3Dd9a5d=
-37535794842358e1cfe4faa4a89804ed209
->>
->> =85 and then using that as a LD_PRELOAD, and see how that changes th=
-ings.
->>
->> The short version is that we can't easily do this in the kernel sinc=
-e it's a problem that primarily shows up with very big directories, and=
- using non-swappable kernel memory to store all of the directory entrie=
-s and then sort them so they can be returned in inode number just isn't=
- practical. =A0 It is something which can be easily done in userspace, =
-though, and a number of programs (including mutt for its Maildir suppor=
-t) does do, and it helps greatly for workloads where you are calling re=
-addir() followed by something that needs to access the inode (i.e., sta=
-t, unlink, etc.)
->>
->
-> For reading the files, the acp program I sent him tries to do somethi=
-ng
-> similar. =A0I had forgotten about spd_readdir though, we should consi=
-der
-> hacking that into cp and tar.
->
-> One interesting note is the page cache used to help here. =A0Picture =
-two
-> tests:
->
-> A) time tar cf /dev/zero /home
->
-> and
->
-> cp -a /home /new_dir_in_new_fs
-> unmount / flush caches
-> B) time tar cf /dev/zero /new_dir_in_new_fs
->
-> On ext, The time for B used to be much faster than the time for A
-> because the files would get written back to disk in roughly htree ord=
-er.
-> Based on Jacek's data, that isn't true anymore.
+This commit rewrites ext4 punch hole implementation to use
+ext4_ext_remove_space() instead of its home gown way of doing this via
+ext4_ext_map_blocks(). There are several reasons for changing this.
 
-I've took both on tests. The subject is acp and spd_readdir used with
-tar, all on ext4:
-1) acp: http://91.234.146.107/~difrost/seekwatcher/acp_ext4.png
-2) spd_readdir: http://91.234.146.107/~difrost/seekwatcher/tar_ext4_rea=
-dir.png
-3) both: http://91.234.146.107/~difrost/seekwatcher/acp_vs_spd_ext4.png
+Firstly it is quite non obvious that punching hole needs to
+ext4_ext_map_blocks() to punch a hole, especially given that this
+function should map blocks, not unmap it. It also required a lot of new
+code in ext4_ext_map_blocks().
 
-The acp looks much better than spd_readdir but directory copy with
-spd_readdir decreased to 52m 39sec (30 min less).
+Secondly the design of it is not very effective. The reason is that we
+are trying to punch out blocks in ext4_ext_punch_hole() in opposite
+direction than in ext4_ext_rm_leaf() which causes the ext4_ext_rm_leaf()
+to iterate through the whole tree from the end to the start to find the
+requested extent for every extent we are going to punch out.
 
--Jacek
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+And finally the current implementation does not use the existing code,
+but bring a lot of new code, which is IMO unnecessary since there
+already is some infrastructure we can use. Specifically
+ext4_ext_remove_space().
+
+This commit changes ext4_ext_remove_space() to accept 'end' parameter so
+we can not only truncate to the end of file, but also remove the space
+in the middle of the file (punch a hole). Moreover, because the last
+block to punch out, might be in the middle of the extent, we have to
+split the extent at 'end + 1' so ext4_ext_rm_leaf() can easily either
+remove the whole fist part of split extent, or change its size.
+
+ext4_ext_remove_space() is then used to actually remove the space
+(extents) from within the hole, instead of ext4_ext_map_blocks().
+
+Note that this also fix the issue with punch hole, where we would forget
+to remove empty index blocks from the extent tree, resulting in double
+free block error and file system corruption. This is simply because we
+now use different code path, where this problem does not exist.
+
+This has been tested with fsx running for several days and xfstests,
+plus xfstest #251 with '-o discard' run on the loop image (which
+converts discard requestes into punch hole to the backing file). All of
+it on 1K and 4K file system block size.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |  174 ++++++++++++++++++++++++++++-------------------------
+ 1 files changed, 92 insertions(+), 82 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 74f23c2..04dd188 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -44,6 +44,14 @@
+ 
+ #include <trace/events/ext4.h>
+ 
++/*
++ * used by extent splitting.
++ */
++#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
++					due to ENOSPC */
++#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
++#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
++
+ static int ext4_split_extent(handle_t *handle,
+ 				struct inode *inode,
+ 				struct ext4_ext_path *path,
+@@ -51,6 +59,13 @@ static int ext4_split_extent(handle_t *handle,
+ 				int split_flag,
+ 				int flags);
+ 
++static int ext4_split_extent_at(handle_t *handle,
++			     struct inode *inode,
++			     struct ext4_ext_path *path,
++			     ext4_lblk_t split,
++			     int split_flag,
++			     int flags);
++
+ static int ext4_ext_truncate_extend_restart(handle_t *handle,
+ 					    struct inode *inode,
+ 					    int needed)
+@@ -2308,7 +2323,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	struct ext4_extent *ex;
+ 
+ 	/* the header must be checked already in ext4_ext_remove_space() */
+-	ext_debug("truncate since %u in leaf\n", start);
++	ext_debug("truncate since %u in leaf to %u\n", start, end);
+ 	if (!path[depth].p_hdr)
+ 		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
+ 	eh = path[depth].p_hdr;
+@@ -2343,7 +2358,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 		ext_debug("  border %u:%u\n", a, b);
+ 
+ 		/* If this extent is beyond the end of the hole, skip it */
+-		if (end <= ex_ee_block) {
++		if (end < ex_ee_block) {
+ 			ex--;
+ 			ex_ee_block = le32_to_cpu(ex->ee_block);
+ 			ex_ee_len = ext4_ext_get_actual_len(ex);
+@@ -2482,16 +2497,18 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ 	return 1;
+ }
+ 
+-static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
++static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
++				 ext4_lblk_t end)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+ 	struct ext4_ext_path *path;
+ 	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
++	ext4_lblk_t size;
+ 	int i, err;
+ 
+-	ext_debug("truncate since %u\n", start);
++	ext_debug("truncate since %u to %u\n", start, end);
+ 
+ 	/* probably first extent we're gonna free will be last in block */
+ 	handle = ext4_journal_start(inode, depth + 1);
+@@ -2503,6 +2520,64 @@ again:
+ 
+ 	trace_ext4_ext_remove_space(inode, start, depth);
+ 
++	size = (inode->i_size + sb->s_blocksize - 1)
++		>> EXT4_BLOCK_SIZE_BITS(sb);
++
++	/*
++	 * Check if we are removing extents inside the extent tree. If that
++	 * is the case, we are going to punch a hole inside the extent tree
++	 * so we have to check whether we need to split the extent covering
++	 * the last block to remove so we can easily remove the part of it
++	 * in ext4_ext_rm_leaf().
++	 */
++	if (size > end) {
++		struct ext4_extent *ex;
++		ext4_lblk_t ee_block;
++
++		/* find extent for this block */
++		path = ext4_ext_find_extent(inode, end, NULL);
++		if (IS_ERR(path)) {
++			ext4_journal_stop(handle);
++			return PTR_ERR(path);
++		}
++		depth = ext_depth(inode);
++		ex = path[depth].p_ext;
++		if (!ex)
++			goto cont;
++
++		ee_block = le32_to_cpu(ex->ee_block);
++
++		/*
++		 * See if the last block is inside the extent, if so split
++		 * the extent at 'end' block so we can easily remove the
++		 * tail of the first part of the split extent in
++		 * ext4_ext_rm_leaf().
++		 */
++		if (end >= ee_block &&
++		    end < ee_block + ext4_ext_get_actual_len(ex) - 1) {
++			int split_flag = 0;
++
++			if (ext4_ext_is_uninitialized(ex))
++				split_flag = EXT4_EXT_MARK_UNINIT1 |
++					     EXT4_EXT_MARK_UNINIT2;
++
++			/*
++			 * Split the extent in two so that 'end' is the last
++			 * block in the first new extent
++			 */
++			err = ext4_split_extent_at(handle, inode, path,
++						end + 1, split_flag,
++						EXT4_GET_BLOCKS_PRE_IO |
++						EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
++
++			if (err < 0)
++				goto out;
++		}
++		ext4_ext_drop_refs(path);
++		kfree(path);
++	}
++cont:
++
+ 	/*
+ 	 * We start scanning from right side, freeing all the blocks
+ 	 * after i_size and walking into the tree depth-wise.
+@@ -2515,6 +2590,7 @@ again:
+ 	}
+ 	path[0].p_depth = depth;
+ 	path[0].p_hdr = ext_inode_hdr(inode);
++
+ 	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+ 		err = -EIO;
+ 		goto out;
+@@ -2526,7 +2602,7 @@ again:
+ 			/* this is leaf block */
+ 			err = ext4_ext_rm_leaf(handle, inode, path,
+ 					       &partial_cluster, start,
+-					       EXT_MAX_BLOCKS - 1);
++					       end);
+ 			/* root level has p_bh == NULL, brelse() eats this */
+ 			brelse(path[i].p_bh);
+ 			path[i].p_bh = NULL;
+@@ -2709,14 +2785,6 @@ static int ext4_ext_zeroout(struct inode *inode, struct ext4_extent *ex)
+ }
+ 
+ /*
+- * used by extent splitting.
+- */
+-#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
+-					due to ENOSPC */
+-#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
+-#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
+-
+-/*
+  * ext4_split_extent_at() splits an extent at given block.
+  *
+  * @handle: the journal handle
+@@ -4228,7 +4296,7 @@ void ext4_ext_truncate(struct inode *inode)
+ 
+ 	last_block = (inode->i_size + sb->s_blocksize - 1)
+ 			>> EXT4_BLOCK_SIZE_BITS(sb);
+-	err = ext4_ext_remove_space(inode, last_block);
++	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
+ 
+ 	/* In a multi-transaction truncate, we only make the final
+ 	 * transaction synchronous.
+@@ -4705,14 +4773,12 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ {
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 	struct super_block *sb = inode->i_sb;
+-	struct ext4_ext_cache cache_ex;
+-	ext4_lblk_t first_block, last_block, num_blocks, iblock, max_blocks;
++	ext4_lblk_t first_block, stop_block;
+ 	struct address_space *mapping = inode->i_mapping;
+-	struct ext4_map_blocks map;
+ 	handle_t *handle;
+ 	loff_t first_page, last_page, page_len;
+ 	loff_t first_page_offset, last_page_offset;
+-	int ret, credits, blocks_released, err = 0;
++	int credits, err = 0;
+ 
+ 	/* No need to punch hole beyond i_size */
+ 	if (offset >= inode->i_size)
+@@ -4728,10 +4794,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		   offset;
+ 	}
+ 
+-	first_block = (offset + sb->s_blocksize - 1) >>
+-		EXT4_BLOCK_SIZE_BITS(sb);
+-	last_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
+-
+ 	first_page = (offset + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+ 	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
+ 
+@@ -4810,7 +4872,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		}
+ 	}
+ 
+-
+ 	/*
+ 	 * If i_size is contained in the last page, we need to
+ 	 * unmap and zero the partial page after i_size
+@@ -4830,73 +4891,22 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 		}
+ 	}
+ 
++	first_block = (offset + sb->s_blocksize - 1) >>
++		EXT4_BLOCK_SIZE_BITS(sb);
++	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
++
+ 	/* If there are no blocks to remove, return now */
+-	if (first_block >= last_block)
++	if (first_block >= stop_block)
+ 		goto out;
+ 
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	ext4_ext_invalidate_cache(inode);
+ 	ext4_discard_preallocations(inode);
+ 
+-	/*
+-	 * Loop over all the blocks and identify blocks
+-	 * that need to be punched out
+-	 */
+-	iblock = first_block;
+-	blocks_released = 0;
+-	while (iblock < last_block) {
+-		max_blocks = last_block - iblock;
+-		num_blocks = 1;
+-		memset(&map, 0, sizeof(map));
+-		map.m_lblk = iblock;
+-		map.m_len = max_blocks;
+-		ret = ext4_ext_map_blocks(handle, inode, &map,
+-			EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
+-
+-		if (ret > 0) {
+-			blocks_released += ret;
+-			num_blocks = ret;
+-		} else if (ret == 0) {
+-			/*
+-			 * If map blocks could not find the block,
+-			 * then it is in a hole.  If the hole was
+-			 * not already cached, then map blocks should
+-			 * put it in the cache.  So we can get the hole
+-			 * out of the cache
+-			 */
+-			memset(&cache_ex, 0, sizeof(cache_ex));
+-			if ((ext4_ext_check_cache(inode, iblock, &cache_ex)) &&
+-				!cache_ex.ec_start) {
++	err = ext4_ext_remove_space(inode, first_block, stop_block - 1);
+ 
+-				/* The hole is cached */
+-				num_blocks = cache_ex.ec_block +
+-				cache_ex.ec_len - iblock;
+-
+-			} else {
+-				/* The block could not be identified */
+-				err = -EIO;
+-				break;
+-			}
+-		} else {
+-			/* Map blocks error */
+-			err = ret;
+-			break;
+-		}
+-
+-		if (num_blocks == 0) {
+-			/* This condition should never happen */
+-			ext_debug("Block lookup failed");
+-			err = -EIO;
+-			break;
+-		}
+-
+-		iblock += num_blocks;
+-	}
