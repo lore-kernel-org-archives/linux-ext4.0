@@ -1,114 +1,107 @@
-From: Jacek Luczak <difrost.kernel@gmail.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Sun, 4 Mar 2012 11:25:08 +0100
-Message-ID: <CADDYkjSWpWAW0dxmMEWjHaRV=jS+U5obeau_GPEgwnJuPBLe3w@mail.gmail.com>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
-	<E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
-	<20120301143859.GX5054@shiny>
-	<CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
-	<20120302140038.GD5054@shiny>
-	<CADDYkjT8apYQpdZqr1gZKiHbm9xfTaLr=8GEJF0VKF9neHwgOg@mail.gmail.com>
-	<20120302142651.GH5054@shiny>
-	<CADDYkjRyQruZgFHDsyAgAV7J3yvunU5YuwmmbxK=1WXJLHw98Q@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Chris Mason <chris.mason@oracle.com>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CADDYkjRyQruZgFHDsyAgAV7J3yvunU5YuwmmbxK=1WXJLHw98Q@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [RESEND][PATCH] ext4: add error handling when discarding is fail in FITRIM ioctl.
+Date: Sun,  4 Mar 2012 07:25:46 -0500
+Message-ID: <1330863946-3136-1-git-send-email-linkinjeon@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Namjae Jeon <linkinjeon@gmail.com>,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f52.google.com ([209.85.210.52]:39193 "EHLO
+	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753284Ab2CDMZ6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Mar 2012 07:25:58 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2012/3/3 Jacek Luczak <difrost.kernel@gmail.com>:
-> 2012/3/2 Chris Mason <chris.mason@oracle.com>:
->> On Fri, Mar 02, 2012 at 03:16:12PM +0100, Jacek Luczak wrote:
->>> 2012/3/2 Chris Mason <chris.mason@oracle.com>:
->>> > On Fri, Mar 02, 2012 at 11:05:56AM +0100, Jacek Luczak wrote:
->>> >>
->>> >> I've took both on tests. The subject is acp and spd_readdir used=
- with
->>> >> tar, all on ext4:
->>> >> 1) acp: http://91.234.146.107/~difrost/seekwatcher/acp_ext4.png
->>> >> 2) spd_readdir: http://91.234.146.107/~difrost/seekwatcher/tar_e=
-xt4_readir.png
->>> >> 3) both: http://91.234.146.107/~difrost/seekwatcher/acp_vs_spd_e=
-xt4.png
->>> >>
->>> >> The acp looks much better than spd_readdir but directory copy wi=
-th
->>> >> spd_readdir decreased to 52m 39sec (30 min less).
->>> >
->>> > Do you have stats on how big these files are, and how fragmented =
-they
->>> > are? =A0For acp and spd to give us this, I think something has go=
-ne wrong
->>> > at writeback time (creating individual fragmented files).
->>>
->>> How big? Which files?
->>
->> All the files you're reading ;)
->>
->> filefrag will tell you how many extents each file has, any file with
->> more than one extent is interesting. =A0(The ext4 crowd may have bet=
-ter
->> suggestions on measuring fragmentation).
->>
->> Since you mention this is a compile farm, I'm guessing there are a b=
-unch
->> of .o files created by parallel builds. =A0There are a lot of chance=
-s for
->> delalloc and the kernel writeback code to do the wrong thing here.
->>
->
-[Most of files are B and K size]
->
-> All files scanned: 1978149
-> Files fragmented: 313 (0.015%) where 11 have 3+ extents
-> Total size of fragmented files: 7GB (~13% of dir size)
+Although free extents is proper not trimmed(mmc driver return error code while sending trim command), currently FITRIM ioctl return success.
+I tried to add exception routine to inform user error code.
 
-BTRFS: Non of files according to filefrag are fragmented - all fit
-into one extent.
+#> ./fitrim_test
+end_request: I/O error, dev mmcblk0, sector 27232
+EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857: Discard command returned error -5
+#>
 
-> tar cf on fragmented files:
-> 1) time: 7sec
-> 2) sw graph: http://91.234.146.107/~difrost/seekwatcher/tar_fragmente=
-d.png
-> 3) sw graph with spd_readdir:
-> http://91.234.146.107/~difrost/seekwatcher/tar_fragmented_spd.png
-> 4) both on one:
-> http://91.234.146.107/~difrost/seekwatcher/tar_fragmented_pure_spd.pn=
-g
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/mballoc.c |   24 ++++++++++++++++--------
+ 1 files changed, 16 insertions(+), 8 deletions(-)
 
-BTRFS: tar on ext4 fragmented files
-1) time: 6sec
-2) sw graph: http://91.234.146.107/~difrost/seekwatcher/tar_fragmented_=
-btrfs.png
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index cb990b2..94182d4 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4901,10 +4901,11 @@ error_return:
+  * one will allocate those blocks, mark it as used in buddy bitmap. This must
+  * be called with under the group lock.
+  */
+-static void ext4_trim_extent(struct super_block *sb, int start, int count,
++static int ext4_trim_extent(struct super_block *sb, int start, int count,
+ 			     ext4_group_t group, struct ext4_buddy *e4b)
+ {
+ 	struct ext4_free_extent ex;
++	int err;
+ 
+ 	trace_ext4_trim_extent(sb, group, start, count);
+ 
+@@ -4920,9 +4921,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
+ 	 */
+ 	mb_mark_used(e4b, &ex);
+ 	ext4_unlock_group(sb, group);
+-	ext4_issue_discard(sb, group, start, count);
++	err = ext4_issue_discard(sb, group, start, count);
+ 	ext4_lock_group(sb, group);
+ 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
++	return err;
+ }
+ 
+ /**
+@@ -4951,7 +4953,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 	void *bitmap;
+ 	ext4_grpblk_t next, count = 0, free_count = 0;
+ 	struct ext4_buddy e4b;
+-	int ret;
++	int ret = 0;
+ 
+ 	trace_ext4_trim_all_free(sb, group, start, max);
+ 
+@@ -4978,15 +4980,21 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 		next = mb_find_next_bit(bitmap, max, start);
+ 
+ 		if ((next - start) >= minblocks) {
+-			ext4_trim_extent(sb, start,
+-					 next - start, group, &e4b);
+-			count += next - start;
++			ret = ext4_trim_extent(sb, start,
++						next - start, group, &e4b);
++			if (ret < 0) {
++				if (ret != -EOPNOTSUPP)
++					ext4_warning(sb, "Discard command "
++						 "returned error %d\n", ret);
++				break;
++			} else
++				count += next - start;
+ 		}
+ 		free_count += next - start;
+ 		start = next + 1;
+ 
+ 		if (fatal_signal_pending(current)) {
+-			count = -ERESTARTSYS;
++			ret = -ERESTARTSYS;
+ 			break;
+ 		}
+ 
+@@ -5009,7 +5017,7 @@ out:
+ 	ext4_debug("trimmed %d blocks in the group %d\n",
+ 		count, group);
+ 
+-	return count;
++	return (ret < 0) ? ret : count;
+ }
+ 
+ /**
+-- 
+1.7.5.4
 
-> tar cf of fragmented files disturbed with [40,50) K files (in total
-> 4373 files). K files before fragmented M files:
-> 1) size: 7.2GB
-> 2) time: 1m 14sec
-> 3) sw graph: http://91.234.146.107/~difrost/seekwatcher/tar_disturbed=
-=2Epng
-> 4) sw graph with spd_readdir:
-> http://91.234.146.107/~difrost/seekwatcher/tar_disturbed_spd.png
-> 5) both on one:
-> http://91.234.146.107/~difrost/seekwatcher/tar_disturbed_pure_spd.png
-
-BTRFS: tar on [40,50) K and ext4 fragmented
-1) time: 56sec
-2) sw graph: http://91.234.146.107/~difrost/seekwatcher/tar_disturbed_b=
-trfs.png
-
-New test I've included - randomly selected files:
-- size 240MB
-1) ext4 (time: 34sec) sw graph:
-http://91.234.146.107/~difrost/seekwatcher/tar_random_ext4.png
-2) btrfs (time: 55sec) sw graph:
-http://91.234.146.107/~difrost/seekwatcher/tar_random_btrfs.png
-
--Jacek
