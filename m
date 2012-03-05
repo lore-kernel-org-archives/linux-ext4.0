@@ -1,176 +1,235 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/4] e2fsck: Discard only unused parts of inode table
-Date: Mon,  5 Mar 2012 08:49:33 +0100
-Message-ID: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, sandeen@redhat.com,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47417 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828Ab2CEHtm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 02:49:42 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 6/7] ext4: honor the O_SYNC flag for aysnchronous
+ direct I/O requests
+Date: Mon, 5 Mar 2012 11:09:33 +0100
+Message-ID: <20120305100933.GA6643@quack.suse.cz>
+References: <1330718175-21540-1-git-send-email-jmoyer@redhat.com>
+ <1330718175-21540-7-git-send-email-jmoyer@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, jack@suse.cz, hch@infradead.org
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1330718175-21540-7-git-send-email-jmoyer@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When calling e2fsck with '-E discard' option it might happen that
-valid inodes are discarded accidentally. This is because we just
-discard the part of inode table which lies past the free inode count.
-This is terribly wrong (sorry!).
+On Fri 02-03-12 14:56:14, Jeff Moyer wrote:
+> Hi,
+> 
+> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
+> flushed after the write completion.  Instead, it's flushed *before* the
+> I/O is sent to the disk (in __generic_file_aio_write).  This patch
+> attempts to fix that problem by marking an I/O as requiring a cache
+> flush in endio processing.  I'll send a follow-on patch to the
+> generic write code to get rid of the bogus generic_write_sync call
+> when EIOCBQUEUED is returned.
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-This patch fixes it so only the free parts of an inode table
-is discarded, leaving used inodes intact. This was tested with highly
-fragmented inode tables with block size 4k and 1k.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Phillip Susi <psusi@ubuntu.com>
----
- e2fsck/pass5.c |   90 +++++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 67 insertions(+), 23 deletions(-)
-
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 1e836e3..ee73dd5 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -94,6 +94,52 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
- 		ctx->options &= ~E2F_OPT_DISCARD;
- }
- 
-+/*
-+ * This will try to discard number 'count' inodes starting at
-+ * inode number 'start' within the 'group'. Note that 'start'
-+ * is 1-based, it means that we need to adjust it by -1 in this
-+ * function to compute right offset in the particular inode table.
-+ */
-+static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
-+				  int start, int count)
-+{
-+	ext2_filsys fs = ctx->fs;
-+	blk64_t blk, num;
-+	int orig = count;
-+
-+	/*
-+	 * Sanity check for 'start'
-+	 */
-+	if ((start < 1) || (start > EXT2_INODES_PER_GROUP(fs->super))) {
-+		printf("PROGRAMMING ERROR: Got start %d outside of group %d!"
-+		       " Disabling discard\n",
-+			start, group);
-+		ctx->options &= ~E2F_OPT_DISCARD;
-+	}
-+
-+	if ((ctx->options & E2F_OPT_NO) || !(ctx->options & E2F_OPT_DISCARD))
-+		return;
-+
-+	/*
-+	 * Start is inode number within the group which starts
-+	 * counting from 1, so we need to adjust it.
-+	 */
-+	start -= 1;
-+
-+	/*
-+	 * We can discard only blocks containing only unused
-+	 * inodes in the table.
-+	 */
-+	blk = DIV_ROUND_UP(start,
-+		EXT2_INODES_PER_BLOCK(fs->super));
-+	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
-+	blk += ext2fs_inode_table_loc(fs, group);
-+	num = count / EXT2_INODES_PER_BLOCK(fs->super);
-+
-+	if (num > 0)
-+		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
-+}
-+
- #define NO_BLK ((blk64_t) -1)
- 
- static void print_bitmap_problem(e2fsck_t ctx, int problem,
-@@ -435,6 +481,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 	int		skip_group = 0;
- 	int		redo_flag = 0;
- 	io_manager	manager = ctx->fs->io->manager;
-+	unsigned long long	first_free = fs->super->s_inodes_per_group + 1;
- 
- 	clear_problem_context(&pctx);
- 	free_array = (int *) e2fsck_allocate_memory(ctx,
-@@ -497,6 +544,7 @@ redo_counts:
- 				 * are 0, count the free inode,
- 				 * skip the current block group.
- 				 */
-+				first_free = 1;
- 				inodes = fs->super->s_inodes_per_group - 1;
- 				group_free = inodes;
- 				free_inodes += inodes;
-@@ -561,50 +609,46 @@ redo_counts:
- 		ctx->options &= ~E2F_OPT_DISCARD;
- 
- do_counts:
-+		inodes++;
- 		if (bitmap) {
- 			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
- 				dirs_count++;
-+			if (inodes > first_free) {
-+				e2fsck_discard_inodes(ctx, group, first_free,
-+						      inodes - first_free);
-+				first_free = fs->super->s_inodes_per_group + 1;
-+			}
- 		} else if (!skip_group || csum_flag) {
- 			group_free++;
- 			free_inodes++;
-+			if (first_free > inodes)
-+				first_free = inodes;
- 		}
- 
--		inodes++;
- 		if ((inodes == fs->super->s_inodes_per_group) ||
- 		    (i == fs->super->s_inodes_count)) {
--
--			free_array[group] = group_free;
--			dir_array[group] = dirs_count;
--
--			/* Discard inode table */
--			if (ctx->options & E2F_OPT_DISCARD) {
--				blk64_t used_blks, blk, num;
--
--				used_blks = DIV_ROUND_UP(
--					(EXT2_INODES_PER_GROUP(fs->super) -
--					group_free),
--					EXT2_INODES_PER_BLOCK(fs->super));
--
--				blk = ext2fs_inode_table_loc(fs, group) +
--				      used_blks;
--				num = fs->inode_blocks_per_group -
--				      used_blks;
--				e2fsck_discard_blocks(ctx, manager, blk, num);
--			}
--
-+			/*
-+			 * If the last inode is free, we can discard it as well.
-+			 */
-+			if (inodes >= first_free)
-+				e2fsck_discard_inodes(ctx, group, first_free,
-+						      inodes - first_free + 1);
- 			/*
- 			 * If discard zeroes data and the group inode table
- 			 * was not zeroed yet, set itable as zeroed
- 			 */
- 			if ((ctx->options & E2F_OPT_DISCARD) &&
--			    (io_channel_discard_zeroes_data(fs->io)) &&
-+			    io_channel_discard_zeroes_data(fs->io) &&
- 			    !(ext2fs_bg_flags_test(fs, group,
--						  EXT2_BG_INODE_ZEROED))) {
-+						   EXT2_BG_INODE_ZEROED))) {
- 				ext2fs_bg_flags_set(fs, group,
- 						    EXT2_BG_INODE_ZEROED);
- 				ext2fs_group_desc_csum_set(fs, group);
- 			}
- 
-+			first_free = fs->super->s_inodes_per_group + 1;
-+			free_array[group] = group_free;
-+			dir_array[group] = dirs_count;
- 			group ++;
- 			inodes = 0;
- 			skip_group = 0;
+								Honza
+> 
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> ---
+>  fs/ext4/ext4.h    |    4 +++
+>  fs/ext4/inode.c   |   11 ++++++-
+>  fs/ext4/page-io.c |   73 +++++++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/ext4/super.c   |   11 ++++++++
+>  4 files changed, 90 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3ce6a0c..e1478be 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -186,6 +186,7 @@ struct mpage_da_data {
+>  #define EXT4_IO_END_QUEUED	0x0004
+>  #define EXT4_IO_END_DIRECT	0x0008
+>  #define EXT4_IO_END_IN_FSYNC	0x0010
+> +#define EXT4_IO_END_NEEDS_SYNC	0x0020
+>  
+>  struct ext4_io_page {
+>  	struct page	*p_page;
+> @@ -1248,6 +1249,9 @@ struct ext4_sb_info {
+>  	/* workqueue for dio unwritten */
+>  	struct workqueue_struct *dio_unwritten_wq;
+>  
+> +	/* workqueue for aio+dio+o_sync disk cache flushing */
+> +	struct workqueue_struct *aio_dio_flush_wq;
+> +
+>  	/* timer for periodic error stats printing */
+>  	struct timer_list s_err_report;
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f6dc02b..13cdb4c 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2769,8 +2769,12 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+>  
+>  	iocb->private = NULL;
+>  
+> +	/* AIO+DIO+O_SYNC I/Os need a cache flush after completion */
+> +	if (is_async && (IS_SYNC(inode) || (iocb->ki_filp->f_flags & O_DSYNC)))
+> +		io_end->flag |= EXT4_IO_END_NEEDS_SYNC;
+> +
+>  	/* if not aio dio with unwritten extents, just free io and return */
+> -	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+> +	if (!(io_end->flag & (EXT4_IO_END_UNWRITTEN|EXT4_IO_END_NEEDS_SYNC))) {
+>  		ext4_free_io_end(io_end);
+>  out:
+>  		if (is_async)
+> @@ -2785,7 +2789,10 @@ out:
+>  		io_end->iocb = iocb;
+>  		io_end->result = ret;
+>  	}
+> -	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+> +	if (io_end->flag & EXT4_IO_END_UNWRITTEN)
+> +		wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+> +	else
+> +		wq = EXT4_SB(io_end->inode->i_sb)->aio_dio_flush_wq;
+>  
+>  	/* Add the io_end to per-inode completed aio dio list*/
+>  	ei = EXT4_I(io_end->inode);
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index dcdeef1..baa1b84 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -82,6 +82,50 @@ void ext4_free_io_end(ext4_io_end_t *io)
+>  }
+>  
+>  /*
+> + * This function is called in the completion path for AIO O_SYNC|O_DIRECT
+> + * writes, and also in the fsync path.  The purpose is to ensure that the
+> + * disk caches for the journal and data devices are flushed.
+> + */
+> +static int ext4_end_io_do_flush(ext4_io_end_t *io)
+> +{
+> +	struct inode *inode = io->inode;
+> +	tid_t commit_tid;
+> +	bool needs_barrier = false;
+> +	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+> +	int barriers_enabled = test_opt(inode->i_sb, BARRIER);
+> +	int ret = 0;
+> +
+> +	if (!barriers_enabled)
+> +		return 0;
+> +
+> +	/*
+> +	 * If we are running in nojournal mode, just flush the disk
+> +	 * cache and return.
+> +	 */
+> +	if (!journal)
+> +		return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+> +
+> +	if (ext4_should_journal_data(inode)) {
+> +		ret = ext4_force_commit(inode->i_sb);
+> +		goto out;
+> +	}
+> +
+> +	commit_tid = io->iocb->ki_filp->f_flags & __O_SYNC ?
+> +		EXT4_I(inode)->i_sync_tid : EXT4_I(inode)->i_datasync_tid;
+> +	if (!jbd2_trans_will_send_data_barrier(journal, commit_tid))
+> +		needs_barrier = true;
+> +
+> +	jbd2_log_start_commit(journal, commit_tid);
+> +	ret = jbd2_log_wait_commit(journal, commit_tid);
+> +
+> +	if (!ret && needs_barrier)
+> +		ret = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+> +
+> +out:
+> +	return ret;
+> +}
+> +
+> +/*
+>   * check a range of space and convert unwritten extents to written.
+>   *
+>   * Called with inode->i_mutex; we depend on this when we manipulate
+> @@ -98,15 +142,30 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+>  		   "list->prev 0x%p\n",
+>  		   io, inode->i_ino, io->list.next, io->list.prev);
+>  
+> -	ret = ext4_convert_unwritten_extents(inode, offset, size);
+> -	if (ret < 0) {
+> -		ext4_msg(inode->i_sb, KERN_EMERG,
+> -			 "failed to convert unwritten extents to written "
+> -			 "extents -- potential data loss!  "
+> -			 "(inode %lu, offset %llu, size %zd, error %d)",
+> -			 inode->i_ino, offset, size, ret);
+> +	if (io->flag & EXT4_IO_END_UNWRITTEN) {
+> +
+> +		ret = ext4_convert_unwritten_extents(inode, offset, size);
+> +		if (ret < 0) {
+> +			ext4_msg(inode->i_sb, KERN_EMERG,
+> +				 "failed to convert unwritten extents to "
+> +				 "written extents -- potential data loss!  "
+> +				 "(inode %lu, offset %llu, size %zd, error %d)",
+> +				 inode->i_ino, offset, size, ret);
+> +			goto endio;
+> +		}
+>  	}
+>  
+> +	/*
+> +	 * This function has two callers.  The first is the end_io_work
+> +	 * routine just below, which is an asynchronous completion context.
+> +	 * The second is in the fsync path.  For the latter path, we can't
+> +	 * return from here until the job is done.  Hence,
+> +	 * ext4_end_io_do_flush is blocking.
+> +	 */
+> +	if (io->flag & EXT4_IO_END_NEEDS_SYNC)
+> +		ret = ext4_end_io_do_flush(io);
+> +
+> +endio:
+>  	if (io->iocb)
+>  		aio_complete(io->iocb, io->result, 0);
+>  
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 502c61f..a24938e 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -805,6 +805,7 @@ static void ext4_put_super(struct super_block *sb)
+>  	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+>  
+>  	flush_workqueue(sbi->dio_unwritten_wq);
+> +	destroy_workqueue(sbi->aio_dio_flush_wq);
+>  	destroy_workqueue(sbi->dio_unwritten_wq);
+>  
+>  	lock_super(sb);
+> @@ -3718,6 +3719,13 @@ no_journal:
+>  		goto failed_mount_wq;
+>  	}
+>  
+> +	EXT4_SB(sb)->aio_dio_flush_wq =
+> +		alloc_workqueue("ext4-aio-dio-flush", WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
+> +	if (!EXT4_SB(sb)->aio_dio_flush_wq) {
+> +		printk(KERN_ERR "EXT4-fs: failed to create flush workqueue\n");
+> +		goto failed_flush_wq;
+> +	}
+> +
+>  	/*
+>  	 * The jbd2_journal_load will have done any necessary log recovery,
+>  	 * so we can safely mount the rest of the filesystem now.
+> @@ -3840,6 +3848,8 @@ failed_mount4a:
+>  	sb->s_root = NULL;
+>  failed_mount4:
+>  	ext4_msg(sb, KERN_ERR, "mount failed");
+> +	destroy_workqueue(EXT4_SB(sb)->aio_dio_flush_wq);
+> +failed_flush_wq:
+>  	destroy_workqueue(EXT4_SB(sb)->dio_unwritten_wq);
+>  failed_mount_wq:
+>  	if (sbi->s_journal) {
+> @@ -4303,6 +4313,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+>  
+>  	trace_ext4_sync_fs(sb, wait);
+>  	flush_workqueue(sbi->dio_unwritten_wq);
+> +	flush_workqueue(sbi->aio_dio_flush_wq);
+>  	if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+>  		if (wait)
+>  			jbd2_log_wait_commit(sbi->s_journal, target);
+> -- 
+> 1.7.1
+> 
 -- 
-1.7.4.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
