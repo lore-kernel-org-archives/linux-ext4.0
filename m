@@ -1,103 +1,97 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Some interesting input from a flash manufacturer
-Date: Mon, 5 Mar 2012 08:00:47 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203050739200.4797@dhcp-27-109.brq.redhat.com>
-References: <E1S3Za4-0005VW-W9@tytso-glaptop.cam.corp.google.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 2/4] e2fsck: Do not forget to discard last block group
+Date: Mon,  5 Mar 2012 08:49:34 +0100
+Message-ID: <1330933776-2696-2-git-send-email-lczerner@redhat.com>
+References: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, sandeen@redhat.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46436 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63670 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751508Ab2CEHAw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 02:00:52 -0500
-In-Reply-To: <E1S3Za4-0005VW-W9@tytso-glaptop.cam.corp.google.com>
+	id S1750828Ab2CEHtn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Mar 2012 02:49:43 -0500
+In-Reply-To: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2 Mar 2012, Theodore Ts'o wrote:
+Previously when running e2fsck with '-E discard' argument the end of
+the last group has not been discarded. This patch fixes it so we
+always discard the end of the last group if needed.
 
-> 
-> I spent an hour talking to architecture guy from a major flash
-> manufacturer, who makes everything from SSD's to SD cards to eMMC
-> devices, and he said a few things that were interesting.
-> 
-> One is that he would actually be very happy if we send lots of extra
-> trim commands; in particular, he would actually *like* us to send trims
-> at unlink/commit time, *and* trims periodically via FITRIM.  The reason
-> for that is because that way, if the disk is busy, it would be OK if he
-> dropped the TRIM on the floor, knowing that he would get another bite at
-> the apple later on.  But, if the disk has time to process the trim, he
-> he would be able to use that information as quickly as possible.
+This commit also removes unneeded argument from the
+e2fsck_discard_blocks(). Simultaneously the commit causes the block
+groups with BLOCK_UNINIT flag not to be discarded, which makes
+sense because we do not need to reclaim the space since so far
+there has not been written anything.
 
-Hi Ted,
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ e2fsck/pass5.c |   24 ++++++++++++++++--------
+ 1 files changed, 16 insertions(+), 8 deletions(-)
 
-yes, they can do a lot of things behind the curtain, and dropping the
-TRIM on the floor is clearly on of it. We do not actually care all that
-much, but they should export proper flags accordingly. So if the TRIMs
-can be droppend on the floor, of the unmapped regions can be read again
-after a power cycle they should not export the "discard zeroes data"
-thing. Of course we do not want them to drop every TRIM command as well
-:).
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index ee73dd5..37bbac2 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -74,8 +74,8 @@ void e2fsck_pass5(e2fsck_t ctx)
+ 	print_resource_track(ctx, _("Pass 5"), &rtrack, ctx->fs->io);
+ }
+ 
+-static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+-				  blk64_t start, blk64_t count)
++static void e2fsck_discard_blocks(e2fsck_t ctx, blk64_t start,
++				  blk64_t count)
+ {
+ 	ext2_filsys fs = ctx->fs;
+ 
+@@ -85,7 +85,7 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+ 	 * not enough to fix the problem, hence it is not safe to run discard
+ 	 * in this case.
+ 	 */
+-	if (ext2fs_test_changed(ctx->fs))
++	if (ext2fs_test_changed(fs))
+ 		ctx->options &= ~E2F_OPT_DISCARD;
+ 
+ 	if (!(ctx->options & E2F_OPT_NO) &&
+@@ -137,7 +137,7 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+ 	num = count / EXT2_INODES_PER_BLOCK(fs->super);
+ 
+ 	if (num > 0)
+-		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
++		e2fsck_discard_blocks(ctx, blk, num);
+ }
+ 
+ #define NO_BLK ((blk64_t) -1)
+@@ -377,16 +377,24 @@ redo_counts:
+ 			free_blocks++;
+ 			if (first_free > i)
+ 				first_free = i;
+-		} else {
+-			if (i > first_free)
+-				e2fsck_discard_blocks(ctx, manager, first_free,
+-						      (i - first_free));
++		} else if (i > first_free) {
++			e2fsck_discard_blocks(ctx, first_free,
++					      (i - first_free));
+ 			first_free = ext2fs_blocks_count(fs->super);
+ 		}
+ 		blocks ++;
+ 		if ((blocks == fs->super->s_clusters_per_group) ||
+ 		    (EXT2FS_B2C(fs, i) ==
+ 		     EXT2FS_B2C(fs, ext2fs_blocks_count(fs->super)-1))) {
++			/*
++			 * If the last block of this group is free, then we can
++			 * discard it as well.
++			 */
++			if (i >= first_free)
++				e2fsck_discard_blocks(ctx, first_free,
++						      (i - first_free) + 1);
++			first_free = ext2fs_blocks_count(fs->super);
++
+ 			free_array[group] = group_free;
+ 			group ++;
+ 			blocks = 0;
+-- 
+1.7.4.4
 
-I think that we would very much like to enable '-o discard' however it
-is still very slow due to the fact that it is nonqueable command and it
-take a while to process the command as well. Moreover I have noticed
-that some device become 'busy' after they get the TRIM command, hence
-the performance is lower for a short period of time after the TRIM.
-
-> 
-> One of the other things we talked about was it would be really nice if
-> we could send TRIM commands at journal checkpoint time, and perhaps send
-> checkpoints more aggressively (although the requirement to send a
-> SYNCHORNIZE CACHE command may make this be too expensive, unless we have
-> ways of reliably knowing when the disk is idle, since unlike the
-> enterprise server case, when ext4 is used in a mobile device, the fs
-> accesses patterns tend to have more gaps where this sort of maintenance
-> can take place).
-> 
-> We also talked about ways that we might right some application notes so
-> that handset OEM's understood how to use mke2fs parameters to optimize
-> their file systems for different types of flash systems, and perhaps
-> ways that the eMMC spec could be enhanced so that key parameters such as
-> erase block size, flash page size, and translation table granularity
-> could be passed back to the block layer, and made available to file
-> system and mkfs.
-
-Regarding the eMMC it would also be very nice from them if they stopped
-optimize their flashes for FAT, but rather take a more general approach
-and advertise which parts of the flash are faster than other :). Also
-from what I know, doing frequent discard on those flashes might make
-them wear off much faster, because the wear leveling involves copying
-data around the flash so they can free the whole erase blocks.
-
-> 
-> Anyway, going back to TRIM, I suspect that efforts to optimize out TRIM
-> requests may not make as much sense once we have devices with are SATA
-> 3.1 complaint, when we will have a queuable TRIM command.  Also,
-> presumably SATA 3.1 compliance devices are less likely to have
-> disastrous firmware bugs that make TRIM such a performance dog, and in
-> fact they may be devices that would very much like as much TRIM
-> information as we are willing to send to them.
-
-That is definitely very good news, however those optimization still
-makes sense. SSD's are not the only discard capable devices out there,
-nor will be the 3.1 compliant SSD's. So we still need some kind of
-optimization so that it does not hurt the performance on
-thin-provisioned storage, or today's SSD's, right ?
-
-But I definitely agree that we should start looking into enabling the
-new SSD's to be more effective and if the frequent discard can help
-then, then we could start to look how to enable -o discard for such
-device by default. Maybe /sys/block/sda/queue/discard_queuable or
-something.
-
-Thanks!
--Lukas
-
-> 
-> Regards,
-> 
-> 						- Ted
-> 
