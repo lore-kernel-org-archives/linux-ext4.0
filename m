@@ -1,53 +1,48 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC] fadvise: add more flags to provide a hint for block allocation
-Date: Mon, 5 Mar 2012 20:50:29 +0800
-Message-ID: <20120305125029.GA5121@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Mon, 5 Mar 2012 14:10:53 +0100
+Message-ID: <20120305131053.GH6643@quack.suse.cz>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+ <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
+ <20120301143859.GX5054@shiny>
+ <CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
+ <20120302140038.GD5054@shiny>
+ <CADDYkjT8apYQpdZqr1gZKiHbm9xfTaLr=8GEJF0VKF9neHwgOg@mail.gmail.com>
+ <20120302142651.GH5054@shiny>
+ <20120302193215.GB22215@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:44794 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756738Ab2CEMpS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2012 07:45:18 -0500
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120302193215.GB22215@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi list,
+On Fri 02-03-12 14:32:15, Ted Tso wrote:
+> On Fri, Mar 02, 2012 at 09:26:51AM -0500, Chris Mason wrote:
+> It would be interesting to have a project where someone added
+> fallocate() support into libelf, and then added some hueristics into
+> ext4 so that if a file is fallocated to a precise size, or if the file
+> is fully written and closed before writeback begins, that we use this
+> to more efficiently pack the space used by the files by the block
+> allocator.  This is a place where I would not be surprised that XFS
+> has some better code to avoid accelerated file system aging, and where
+> we could do better with ext4 with some development effort.
+  AFAIK XFS people actually prefer that applications let them do their work
+using delayed allocation and do not interfere with fallocate(2) calls. The
+problem they have with fallocate(2) is that it forces you to allocate
+blocks while with delayed allocation you can make the decision about
+allocation later. So for small files which completely fit into pagecache
+before they get pushed out by writeback, they can make better decisions
+from delayed allocation. Just dumping my memory from some other thread...
 
-Block allocation is a key component of file system.  Every file systems try to
-improve the performance with optimizing the block allocation of a file.  But no
-matter what file system does, it just guesses what the user expects.  Thus, it
-is not very accurate.  fadvise(2) provides a method to let the user to give a
-hint to file system.  However, until now, only few flags are provided.  So we
-can provide more flags to tell file system how to allocate the blocks for a
-file.
-
-For example:
-we can add these flags into fadvise(2):
-FADV_ALLOC_READ_SEQ
-FADV_ALLOC_READ_RANDOM
-FADV_ALLOC_WRITE_ONCE
-FADV_ALLOC_WRITE_APPEND
-
-FADV_ALLOC_READ_* are not similar with FADV_SEQUENTIAL and FADV_RANDOM.
-FADV_ALLOC_READ_SEQ tells file system that this file need to allocate some
-sequential blocks, and FADV_ALLOC_READ_RADOM tells file system that this file
-can endure the fragmentation.
-
-FADV_ALLOC_WRITE_ONCE indicates that this file just is written once.  So file
-system can allocate some sequential blocks for it to improve the read
-performance.  FADV_ALLOC_WRITE_APPEND flag is set to point out that data will be
-appended to the end of this file, and file system can reserve some blocks for it
-to guarantee the sequence as much as possible.
-
-File systems can support a subset of these flags according to its design.  These
-flags provide a rich interface that lets the user to control block allocation of
-files.  The user could precisely control the allocation of their files to
-improve the performance of appliatons.
-
-Any comments or suggestions are appreciated.  Thank you.
-
-Regards,
-Zheng
+							Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
