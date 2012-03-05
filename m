@@ -1,68 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 4/4] e2fsck: Do not discard itable if discard doen't zero
- data
-Date: Mon, 05 Mar 2012 13:46:50 -0600
-Message-ID: <4F55182A.20805@redhat.com>
-References: <1330933776-2696-1-git-send-email-lczerner@redhat.com> <1330933776-2696-4-git-send-email-lczerner@redhat.com>
+From: Sunil Mushran <sunil.mushran@oracle.com>
+Subject: Re: [RFC] fadvise: add more flags to provide a hint for block allocation
+Date: Mon, 05 Mar 2012 11:48:43 -0800
+Message-ID: <4F55189B.4080507@oracle.com>
+References: <20120305125029.GA5121@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5785 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754238Ab2CETqx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 14:46:53 -0500
-In-Reply-To: <1330933776-2696-4-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120305125029.GA5121@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 03/05/2012 01:49 AM, Lukas Czerner wrote:
-> We do not want to discard inode table if the underlying device does not
-> return zeros when reading non-provisioned blocks. The reason is that if
-> the inode table is not zeroed yet, then discard would not help us since
-> we would have to zero it anyway. In the case that inode table was
-> already zeroed, then the discard would cause subsequent reads to contain
-> non-deterministic data so we would not be able to assume that the inode
-> table was zeroed and we would need to zero it again, which does not
-> really make sense.
-> 
-> This commit adds check to prevent inode table from being discarded if
-> the discard does not zero data.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+On 03/05/2012 04:50 AM, Zheng Liu wrote:
+> Hi list,
+>
+> Block allocation is a key component of file system.  Every file systems try to
+> improve the performance with optimizing the block allocation of a file.  But no
+> matter what file system does, it just guesses what the user expects.  Thus, it
+> is not very accurate.  fadvise(2) provides a method to let the user to give a
+> hint to file system.  However, until now, only few flags are provided.  So we
+> can provide more flags to tell file system how to allocate the blocks for a
+> file.
+>
+> For example:
+> we can add these flags into fadvise(2):
+> FADV_ALLOC_READ_SEQ
+> FADV_ALLOC_READ_RANDOM
+> FADV_ALLOC_WRITE_ONCE
+> FADV_ALLOC_WRITE_APPEND
+>
+> FADV_ALLOC_READ_* are not similar with FADV_SEQUENTIAL and FADV_RANDOM.
+> FADV_ALLOC_READ_SEQ tells file system that this file need to allocate some
+> sequential blocks, and FADV_ALLOC_READ_RADOM tells file system that this file
+> can endure the fragmentation.
 
-seems fine
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+File systems typically allocate the best layout they can for a file
+at the time of write. Does _RANDOM mean do not do that. Find single
+bits scattered around the disk. If so, why will people use it. I mean, 
+random IOs are slow. What you are proposing it is a further slowdown.
+Hardly a feature that will be attractive to users.
 
-> ---
->  e2fsck/pass5.c |   13 ++++++++++++-
->  1 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-> index 741e6dd..9e63037 100644
-> --- a/e2fsck/pass5.c
-> +++ b/e2fsck/pass5.c
-> @@ -116,7 +116,18 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
->  		ctx->options &= ~E2F_OPT_DISCARD;
->  	}
->  
-> -	if (!(ctx->options & E2F_OPT_DISCARD))
-> +	/*
-> +	 * Do not attempt to discard if E2F_OPT_DISCARD is not set. And also
-> +	 * skip the discard on this group if discard does not zero data.
-> +	 * The reason is that if the inode table is not zeroed discard would
-> +	 * no help us since we need to zero it anyway, or if the inode table
-> +	 * is zeroed then the read after discard would not be deterministic
-> +	 * anyway and we would not be able to assume that this inode table
-> +	 * was zeroed anymore so we would have to zero it again, which does
-> +	 * not really make sense.
-> +	 */
-> +	if (!(ctx->options & E2F_OPT_DISCARD) ||
-> +	    !io_channel_discard_zeroes_data(fs->io))
->  		return;
->  
->  	/*
 
+> FADV_ALLOC_WRITE_ONCE indicates that this file just is written once.  So file
+> system can allocate some sequential blocks for it to improve the read
+> performance.  FADV_ALLOC_WRITE_APPEND flag is set to point out that data will be
+> appended to the end of this file, and file system can reserve some blocks for it
+> to guarantee the sequence as much as possible.
+
+
+Define ONCE. Is it one write(2)? I guess not. You probably mean
+that once the file descriptor is closed, it will not be written
+to. But we have no way of knowing how many writes there will be.
+So it will be treated the same as APPEND. And file systems already
+provide allocation reservation and/or delayed allocation to handle
+APPEND write loads. So this flag does not offer much to the user
+or the fs.
