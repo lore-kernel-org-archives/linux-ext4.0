@@ -1,48 +1,117 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Mon, 5 Mar 2012 14:10:53 +0100
-Message-ID: <20120305131053.GH6643@quack.suse.cz>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
- <20120301143859.GX5054@shiny>
- <CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
- <20120302140038.GD5054@shiny>
- <CADDYkjT8apYQpdZqr1gZKiHbm9xfTaLr=8GEJF0VKF9neHwgOg@mail.gmail.com>
- <20120302142651.GH5054@shiny>
- <20120302193215.GB22215@thunk.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 4/4 v2] ext4: Do not discard group with BLOCK_UNINIT
+ set
+Date: Mon, 5 Mar 2012 14:12:48 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203051359290.4797@dhcp-27-109.brq.redhat.com>
+References: <1330690318-22627-1-git-send-email-lczerner@redhat.com> <1330690318-22627-4-git-send-email-lczerner@redhat.com> <20120305124154.GG6643@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120302193215.GB22215@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9766 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932161Ab2CENNR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Mar 2012 08:13:17 -0500
+In-Reply-To: <20120305124154.GG6643@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 02-03-12 14:32:15, Ted Tso wrote:
-> On Fri, Mar 02, 2012 at 09:26:51AM -0500, Chris Mason wrote:
-> It would be interesting to have a project where someone added
-> fallocate() support into libelf, and then added some hueristics into
-> ext4 so that if a file is fallocated to a precise size, or if the file
-> is fully written and closed before writeback begins, that we use this
-> to more efficiently pack the space used by the files by the block
-> allocator.  This is a place where I would not be surprised that XFS
-> has some better code to avoid accelerated file system aging, and where
-> we could do better with ext4 with some development effort.
-  AFAIK XFS people actually prefer that applications let them do their work
-using delayed allocation and do not interfere with fallocate(2) calls. The
-problem they have with fallocate(2) is that it forces you to allocate
-blocks while with delayed allocation you can make the decision about
-allocation later. So for small files which completely fit into pagecache
-before they get pushed out by writeback, they can make better decisions
-from delayed allocation. Just dumping my memory from some other thread...
+On Mon, 5 Mar 2012, Jan Kara wrote:
 
-							Honza
+> On Fri 02-03-12 13:11:58, Lukas Czerner wrote:
+> > This commit is an optimization for FITRIM implementation. If the group
+> > has not been initialized yet (BLOCK_UNINIT flag set), we do not need to
+> > discard such group. This flag is set on mke2fs time to speed up
+> > subsequent file system checks, because it says to us that there is
+> > nothing there in the block group.
+> > 
+> > Because the BLOCK_UNINIT is only set on mke2fs time and cleared when
+> > allocation from that group takes place we know that when set, there was
+> > not anything allocated from that group, hence there should not be anything
+> > to discard from the file system point of view. Of course there might be
+> > situations where even if BLOCK_UNINIT is set the underlying storage is
+> > provisioned. This might happen for example when the user disables discard
+> > on mke2fs, however I think that this niche is not enough to not to take
+> > advantage of this optimization.
+>   This patch is correct but I'm undecided whether we really want to do this
+> optimization or not. It might be unexpected we didn't truncate block group
+> which was completely free (from user's POV). I don't consider FITRIM too
+> performance critical and I also don't think this will be such a massive
+> speedup...
+> 
+> 								Honza
+
+Hi Honzo,
+
+on small SSD's it certainly does not bring any significant speedup. But
+consider huge thin-provisioned storage and you'll immediately notice the
+change, but not only because of the storage size, but also because (from
+my experience) those thing are really slow with discard.
+
+Moreover ext4 would not be the only one not discarding the whole file
+system on FITRIM. See btrfs which does not map the whole storage to the
+file system at creation time, but rather allocate smaller chunks as the
+demand for space grows. It also means that they will not discard the
+whole file system, but only mapped chunks.
+
+And lastly, FITRIM is supposed to be a way to notify the underlying
+storage about the space which is no longer used. In conjunction with
+full device discard on mke2fs (which is the default), we can skip UNINIT
+groups just because from the fs point of view we are sure enough that
+this space is not mapped. Note that the only case where this is not
+true is if someone overrides the default mke2fs behaviour, or move their
+file system with dd.
+
+But I am certainly open for discussions about that.
+
+Thanks!
+-Lukas
+
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> > v2: nothing changed
+> > 
+> >  fs/ext4/mballoc.c |   10 +++++++++-
+> >  1 files changed, 9 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index 8f817f2..9ea1065a 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -5033,6 +5033,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+> >  	ext4_fsblk_t first_data_blk =
+> >  			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+> >  	ext4_fsblk_t max_blks = ext4_blocks_count(EXT4_SB(sb)->s_es);
+> > +	struct ext4_group_desc *desc;
+> >  	int ret = 0;
+> >  
+> >  	start = range->start >> sb->s_blocksize_bits;
+> > @@ -5076,7 +5077,14 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+> >  		if (group == last_group)
+> >  			end = last_cluster;
+> >  
+> > -		if (grp->bb_free >= minlen) {
+> > +		desc = ext4_get_group_desc(sb, group, NULL);
+> > +		if (!desc) {
+> > +			ret = -EIO;
+> > +			break;
+> > +		}
+> > +
+> > +		if (!(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) &&
+> > +		    (grp->bb_free >= minlen)) {
+> >  			cnt = ext4_trim_all_free(sb, group, first_cluster,
+> >  						end, minlen);
+> >  			if (cnt < 0) {
+> > -- 
+> > 1.7.4.4
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
