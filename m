@@ -1,127 +1,210 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/19] ext4: Convert to new freezing mechanism
-Date: Mon,  5 Mar 2012 17:01:08 +0100
-Message-ID: <1330963277-26336-11-git-send-email-jack@suse.cz>
-References: <1330963277-26336-1-git-send-email-jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>, dchinner@redhat.com,
-	sandeen@redhat.com, Kamal Mostafa <kamal@canonical.com>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: LKML <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1330963277-26336-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/4] e2fsck: Discard only unused parts of inode table
+Date: Mon, 05 Mar 2012 11:45:34 -0600
+Message-ID: <4F54FBBE.8060303@redhat.com>
+References: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:61131 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932241Ab2CERpi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Mar 2012 12:45:38 -0500
+In-Reply-To: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We remove most of frozen checks since upper layer takes care
-of blocking all writes. We only have to handle protection in
-ext4_page_mkwrite() in a special way because we cannot use
-generic block_page_mkwrite().
+On 03/05/2012 01:49 AM, Lukas Czerner wrote:
+> When calling e2fsck with '-E discard' option it might happen that
+> valid inodes are discarded accidentally. This is because we just
+> discard the part of inode table which lies past the free inode count.
+> This is terribly wrong (sorry!).
+> 
+> This patch fixes it so only the free parts of an inode table
+> is discarded, leaving used inodes intact. This was tested with highly
+> fragmented inode tables with block size 4k and 1k.
 
-CC: linux-ext4@vger.kernel.org
-CC: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |    7 ++-----
- fs/ext4/super.c |   29 +++++------------------------
- 2 files changed, 7 insertions(+), 29 deletions(-)
+Every time I look at this I have new comments.  The surrounding code
+is confusing to read, IMHO, so don't take it too hard. ;)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..c65baf9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4593,11 +4593,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	get_block_t *get_block;
- 	int retries = 0;
- 
--	/*
--	 * This check is racy but catches the common case. We rely on
--	 * __block_page_mkwrite() to do a reliable check.
--	 */
--	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-+	sb_start_pagefault(inode->i_sb);
- 	/* Delalloc case is easy... */
- 	if (test_opt(inode->i_sb, DELALLOC) &&
- 	    !ext4_should_journal_data(inode) &&
-@@ -4665,5 +4661,6 @@ retry_alloc:
- out_ret:
- 	ret = block_page_mkwrite_return(ret);
- out:
-+	sb_end_pagefault(inode->i_sb);
- 	return ret;
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502c61f..0f1024a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -289,33 +289,17 @@ static void ext4_put_nojournal(handle_t *handle)
-  * journal_end calls result in the superblock being marked dirty, so
-  * that sync() will call the filesystem's write_super callback if
-  * appropriate.
-- *
-- * To avoid j_barrier hold in userspace when a user calls freeze(),
-- * ext4 prevents a new handle from being started by s_frozen, which
-- * is in an upper layer.
-  */
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- {
- 	journal_t *journal;
--	handle_t  *handle;
- 
- 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
-+	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
- 	journal = EXT4_SB(sb)->s_journal;
--	handle = ext4_journal_current_handle();
--
--	/*
--	 * If a handle has been started, it should be allowed to
--	 * finish, otherwise deadlock could happen between freeze
--	 * and others(e.g. truncate) due to the restart of the
--	 * journal handle if the filesystem is forzen and active
--	 * handles are not stopped.
--	 */
--	if (!handle)
--		vfs_check_frozen(sb, SB_FREEZE_TRANS);
--
- 	if (!journal)
- 		return ext4_get_nojournal();
- 	/*
-@@ -4280,10 +4264,8 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
- 
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal) {
--		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-+	if (journal)
- 		ret = ext4_journal_force_commit(journal);
--	}
- 
- 	return ret;
- }
-@@ -4315,9 +4297,8 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
-  * gives us a chance to flush the journal completely and mark the fs clean.
-  *
-  * Note that only this function cannot bring a filesystem to be in a clean
-- * state independently, because ext4 prevents a new handle from being started
-- * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-- * the upper layer.
-+ * state independently. It relies on upper layer to stop all data & metadata
-+ * modifications.
-  */
- static int ext4_freeze(struct super_block *sb)
- {
-@@ -4344,7 +4325,7 @@ static int ext4_freeze(struct super_block *sb)
- 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
- out:
--	/* we rely on s_frozen to stop further updates */
-+	/* we rely on upper layer to stop further updates */
- 	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	return error;
- }
--- 
-1.7.1
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reported-by: Phillip Susi <psusi@ubuntu.com>
+
+I'll go ahead and:
+
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+so hopefully we can get this in & fix the bug.
+
+but I have one more suggestion, which could be done as a cleanup later
+on (I think the check_*_bitmaps could use a fair bit of cleanup for
+clarity):
+
+/*
+ * If the last inode is free, we can discard it as well.
+ */
+if (inodes >= first_free)
+	e2fsck_discard_inodes(ctx, group, first_free,
+					inodes - first_free + 1);
+
+could/should probably be something like:
+
+if (inodes == first_free)
+	e2fsck_discard_inodes(ctx, group, inodes, 1);
+
+I _think_ this case should only, ever, handle the last inode in the
+group, right?
+
+-Eric
+
+> ---
+>  e2fsck/pass5.c |   90 +++++++++++++++++++++++++++++++++++++++++--------------
+>  1 files changed, 67 insertions(+), 23 deletions(-)
+> 
+> diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+> index 1e836e3..ee73dd5 100644
+> --- a/e2fsck/pass5.c
+> +++ b/e2fsck/pass5.c
+> @@ -94,6 +94,52 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+>  		ctx->options &= ~E2F_OPT_DISCARD;
+>  }
+>  
+> +/*
+> + * This will try to discard number 'count' inodes starting at
+> + * inode number 'start' within the 'group'. Note that 'start'
+> + * is 1-based, it means that we need to adjust it by -1 in this
+> + * function to compute right offset in the particular inode table.
+> + */
+> +static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+> +				  int start, int count)
+> +{
+> +	ext2_filsys fs = ctx->fs;
+> +	blk64_t blk, num;
+> +	int orig = count;
+> +
+> +	/*
+> +	 * Sanity check for 'start'
+> +	 */
+> +	if ((start < 1) || (start > EXT2_INODES_PER_GROUP(fs->super))) {
+> +		printf("PROGRAMMING ERROR: Got start %d outside of group %d!"
+> +		       " Disabling discard\n",
+> +			start, group);
+> +		ctx->options &= ~E2F_OPT_DISCARD;
+> +	}
+> +
+> +	if ((ctx->options & E2F_OPT_NO) || !(ctx->options & E2F_OPT_DISCARD))
+> +		return;
+> +
+> +	/*
+> +	 * Start is inode number within the group which starts
+> +	 * counting from 1, so we need to adjust it.
+> +	 */
+> +	start -= 1;
+> +
+> +	/*
+> +	 * We can discard only blocks containing only unused
+> +	 * inodes in the table.
+> +	 */
+> +	blk = DIV_ROUND_UP(start,
+> +		EXT2_INODES_PER_BLOCK(fs->super));
+> +	count -= (blk * EXT2_INODES_PER_BLOCK(fs->super) - start);
+> +	blk += ext2fs_inode_table_loc(fs, group);
+> +	num = count / EXT2_INODES_PER_BLOCK(fs->super);
+> +
+> +	if (num > 0)
+> +		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
+> +}
+> +
+>  #define NO_BLK ((blk64_t) -1)
+>  
+>  static void print_bitmap_problem(e2fsck_t ctx, int problem,
+> @@ -435,6 +481,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
+>  	int		skip_group = 0;
+>  	int		redo_flag = 0;
+>  	io_manager	manager = ctx->fs->io->manager;
+> +	unsigned long long	first_free = fs->super->s_inodes_per_group + 1;
+>  
+>  	clear_problem_context(&pctx);
+>  	free_array = (int *) e2fsck_allocate_memory(ctx,
+> @@ -497,6 +544,7 @@ redo_counts:
+>  				 * are 0, count the free inode,
+>  				 * skip the current block group.
+>  				 */
+> +				first_free = 1;
+>  				inodes = fs->super->s_inodes_per_group - 1;
+>  				group_free = inodes;
+>  				free_inodes += inodes;
+> @@ -561,50 +609,46 @@ redo_counts:
+>  		ctx->options &= ~E2F_OPT_DISCARD;
+>  
+>  do_counts:
+> +		inodes++;
+>  		if (bitmap) {
+>  			if (ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i))
+>  				dirs_count++;
+> +			if (inodes > first_free) {
+> +				e2fsck_discard_inodes(ctx, group, first_free,
+> +						      inodes - first_free);
+> +				first_free = fs->super->s_inodes_per_group + 1;
+> +			}
+>  		} else if (!skip_group || csum_flag) {
+>  			group_free++;
+>  			free_inodes++;
+> +			if (first_free > inodes)
+> +				first_free = inodes;
+>  		}
+>  
+> -		inodes++;
+>  		if ((inodes == fs->super->s_inodes_per_group) ||
+>  		    (i == fs->super->s_inodes_count)) {
+> -
+> -			free_array[group] = group_free;
+> -			dir_array[group] = dirs_count;
+> -
+> -			/* Discard inode table */
+> -			if (ctx->options & E2F_OPT_DISCARD) {
+> -				blk64_t used_blks, blk, num;
+> -
+> -				used_blks = DIV_ROUND_UP(
+> -					(EXT2_INODES_PER_GROUP(fs->super) -
+> -					group_free),
+> -					EXT2_INODES_PER_BLOCK(fs->super));
+> -
+> -				blk = ext2fs_inode_table_loc(fs, group) +
+> -				      used_blks;
+> -				num = fs->inode_blocks_per_group -
+> -				      used_blks;
+> -				e2fsck_discard_blocks(ctx, manager, blk, num);
+> -			}
+> -
+> +			/*
+> +			 * If the last inode is free, we can discard it as well.
+> +			 */
+> +			if (inodes >= first_free)
+> +				e2fsck_discard_inodes(ctx, group, first_free,
+> +						      inodes - first_free + 1);
+>  			/*
+>  			 * If discard zeroes data and the group inode table
+>  			 * was not zeroed yet, set itable as zeroed
+>  			 */
+>  			if ((ctx->options & E2F_OPT_DISCARD) &&
+> -			    (io_channel_discard_zeroes_data(fs->io)) &&
+> +			    io_channel_discard_zeroes_data(fs->io) &&
+>  			    !(ext2fs_bg_flags_test(fs, group,
+> -						  EXT2_BG_INODE_ZEROED))) {
+> +						   EXT2_BG_INODE_ZEROED))) {
+>  				ext2fs_bg_flags_set(fs, group,
+>  						    EXT2_BG_INODE_ZEROED);
+>  				ext2fs_group_desc_csum_set(fs, group);
+>  			}
+>  
+> +			first_free = fs->super->s_inodes_per_group + 1;
+> +			free_array[group] = group_free;
+> +			dir_array[group] = dirs_count;
+>  			group ++;
+>  			inodes = 0;
+>  			skip_group = 0;
+
