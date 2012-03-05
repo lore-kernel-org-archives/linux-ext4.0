@@ -1,68 +1,37 @@
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-Subject: Re: [linux-pm] [Patch] JBD and JBD2 missing set_freezable()
-Date: Sun, 4 Mar 2012 23:51:07 +0100
-Message-ID: <201203042351.07405.rjw@sisk.pl>
-References: <4F2BA1FD.3030302@tuxonice.net>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [Bug 42859] New: kernel BUG at fs/ext4/extents.c:1953
+Date: Sun, 4 Mar 2012 20:51:21 -0500
+Message-ID: <20120305015121.GB9087@thunk.org>
+References: <bug-42859-13602@https.bugzilla.kernel.org/>
+ <20120304202708.GA9087@thunk.org>
+ <4F53E874.5050201@web.de>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Nigel Cunningham <nigel@tuxonice.net>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: linux-pm@lists.linux-foundation.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, bugzilla-daemon@bugzilla.kernel.org
+To: Matthias Erll <merll@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ogre.sisk.pl ([217.79.144.158]:54809 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753179Ab2CDWrB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Mar 2012 17:47:01 -0500
-In-Reply-To: <4F2BA1FD.3030302@tuxonice.net>
+Received: from li9-11.members.linode.com ([67.18.176.11]:35818 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755314Ab2CEBvX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Mar 2012 20:51:23 -0500
+Content-Disposition: inline
+In-Reply-To: <4F53E874.5050201@web.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Friday, February 03, 2012, Nigel Cunningham wrote:
-> Hi all.
+On Sun, Mar 04, 2012 at 11:11:00PM +0100, Matthias Erll wrote:
 > 
-> With the latest and greatest changes to the freezer, I started seeing
-> panics that were caused by jbd2 running post-process freezing and
-> hitting the canary BUG_ON for non-TuxOnIce I/O submission. I've traced
-> this back to a lack of set_freezable calls in both jbd and jbd2. Since
-> they're clearly meant to be frozen (there are tests for freezing()), I
-> submit the following patch to add the missing calls.
-> 
-> Signed-off-by: Nigel Cunningham <nigel@tuxonice.net>
+> In the three cases I can reproduce, the inode number has been identical.
+> Please find the debugfs output below.
 
-Well, I wonder what the filesystems people think about that.
+Thanks, this is helpful.  It is indeed a bug in e2fsck; it's not
+noticing the case where the extent length is zero (but the extent
+header was still valid).  The workaround is to run the following
+commands with the file system unmounted:
 
-Thanks,
-Rafael
+# debugfs -w -R "clri <1312385>" /dev/sda2
+# e2fsck -f /dev/sda2
 
+I'll get this fixed in the next maintenance release of e2fsprogs.
 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 59c09f9..89cd985 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -129,6 +129,8 @@ static int kjournald(void *arg)
->  	setup_timer(&journal->j_commit_timer, commit_timeout,
->  			(unsigned long)current);
-> 
-> +	set_freezable();
-> +
->  	/* Record that the journal thread is running */
->  	journal->j_task = current;
->  	wake_up(&journal->j_wait_done_commit);
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index c0a5f9f..663e47c 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -139,6 +139,8 @@ static int kjournald2(void *arg)
->  	setup_timer(&journal->j_commit_timer, commit_timeout,
->  			(unsigned long)current);
-> 
-> +	set_freezable();
-> +
->  	/* Record that the journal thread is running */
->  	journal->j_task = current;
->  	wake_up(&journal->j_wait_done_commit);
-> 
-
+     	      	       	   	- Ted
