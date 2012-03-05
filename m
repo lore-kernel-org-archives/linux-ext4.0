@@ -1,48 +1,111 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to
- usage type
-Date: Mon, 5 Mar 2012 10:59:39 -0500
-Message-ID: <20120305155939.GE21356@thunk.org>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
- <20120109132148.2616029.68798.stgit@localhost.localdomain>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 00/19] Fix filesystem freezing deadlocks
+Date: Mon,  5 Mar 2012 17:00:58 +0100
+Message-ID: <1330963277-26336-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-	bfields@redhat.com, sandeen@redhat.com,
-	Andreas Dilger <adilger@whamcloud.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58590 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752797Ab2CEP7n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 10:59:43 -0500
-Content-Disposition: inline
-In-Reply-To: <20120109132148.2616029.68798.stgit@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
+	KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
+	OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>, Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
+	dchinner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, Kamal Mostafa <kamal-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>,
+	Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	"D
+To: LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Return-path: <fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=fuse-devel>
+List-Post: <mailto:fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
+List-Help: <mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/fuse-devel>,
+	<mailto:fuse-devel-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
+Errors-To: fuse-devel-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 09, 2012 at 02:21:48PM +0100, Bernd Schubert wrote:
-> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-> index ac8f168..fa8e491 100644
-> --- a/fs/ext4/hash.c
-> +++ b/fs/ext4/hash.c
-> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
->  		return -1;
->  	}
->  	hash = hash & ~1;
-> -	if (hash == (EXT4_HTREE_EOF << 1))
-> -		hash = (EXT4_HTREE_EOF-1) << 1;
-> +	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-> +		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
->  	hinfo->hash = hash;
->  	hinfo->minor_hash = minor_hash;
->  	return 0;
+  Hallelujah,
 
-Is there a reason why we don't need to avoid the collsion with the
-64-bit EOF value as well?  i.e., I think we also need to add:
+  after a couple of weeks and several rewrites, here comes the third iteration
+of my patches to improve filesystem freezing.  Filesystem freezing is currently
+racy and thus we can end up with dirty data on frozen filesystem (see changelog
+patch 06 for detailed race description). This patch series aims at fixing this.
 
-	if (hash == (EXT4_HTREE_EOF_64BIT << 1))
-		hash = (EXT4_HTREE_EOF_64BIT - 1) << 1;
+To be able to block all places where inodes get dirtied, I've moved filesystem
+freeze handling in mnt_want_write() / mnt_drop_write(). This however required
+some code shuffling and changes to kern_path_create() (see patches 02-05). I
+think the result is OK but opinions may differ ;). The advantage of this change
+also is that all filesystems get freeze protection almost for free - even ext2
+can handle freezing well now.
 
-		       			       	  - Ted
+Another potential contention point might be patch 19. In that patch we make
+freeze_super() refuse to freeze the filesystem when there are open but unlinked
+files which may be impractical in some cases. The main reason for this is the
+problem with handling of file deletion from fput() called with mmap_sem held
+(e.g. from munmap(2)), and then there's the fact that we cannot really force
+such filesystem into a consistent state... But if people think that freezing
+with open but unlinked files should happen, then I have some possible
+solutions in mind (maybe as a separate patchset since this is large enough).
+
+I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
+filesystem despite beating it with fsstress and bash-shared-mapping while
+freezing and unfreezing for several hours (using ext4 and xfs) so I'm
+reasonably confident this could finally be the right solution.
+
+And for people wanting to test - this patchset is based on patch series
+"Push file_update_time() into .page_mkwrite" so you'll need to pull that one
+in as well.
+
+Changes since v2:
+  * completely rewritten
+  * freezing is now blocked at VFS entry points
+  * two stage freezing to handle both mmapped writes and other IO
+
+The biggest changes since v1:
+  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
+    and SB_FREEZE_TRANS states
+  * use percpu counters instead of own percpu structure
+  * added documentation fixes from the old fs freezing series
+  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
+    m_active_trans counter
+
+								Honza
+
+CC: Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+CC: Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>
+CC: Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>
+CC: Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+CC: cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+CC: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
+CC: fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+CC: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+CC: Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>
+CC: KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>
+CC: linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+CC: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
+CC: Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>
+CC: ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+CC: OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>
+CC: Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+CC: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+CC: xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+
+------------------------------------------------------------------------------
+Try before you buy = See our experts in action!
+The most comprehensive online learning library for Microsoft developers
+is just $99.99! Visual Studio, SharePoint, SQL - plus HTML5, CSS3, MVC3,
+Metro Style Apps, more. Free future releases when you subscribe now!
+http://p.sf.net/sfu/learndevnow-dev2
