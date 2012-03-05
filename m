@@ -1,61 +1,75 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 4/4] e2fsck: Do not discard itable if discard doen't zero data
-Date: Mon,  5 Mar 2012 08:49:36 +0100
-Message-ID: <1330933776-2696-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 3/4] e2fsck: Do not discard when in read only mode
+Date: Mon,  5 Mar 2012 08:49:35 +0100
+Message-ID: <1330933776-2696-3-git-send-email-lczerner@redhat.com>
 References: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
 Cc: tytso@mit.edu, sandeen@redhat.com,
 	Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9842 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46737 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755485Ab2CEHtq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 02:49:46 -0500
+	id S1750828Ab2CEHto (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Mar 2012 02:49:44 -0500
 In-Reply-To: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We do not want to discard inode table if the underlying device does not
-return zeros when reading non-provisioned blocks. The reason is that if
-the inode table is not zeroed yet, then discard would not help us since
-we would have to zero it anyway. In the case that inode table was
-already zeroed, then the discard would cause subsequent reads to contain
-non-deterministic data so we would not be able to assume that the inode
-table was zeroed and we would need to zero it again, which does not
-really make sense.
+When argument '-n' was specified and should run in read-only mode, we
+should not attempt to discard anything. In order to do that we have to
+check for E2F_OPT_NO flag and clear E2F_OPT_DISCARD flag if E2F_OPT_NO
+is set.
 
-This commit adds check to prevent inode table from being discarded if
-the discard does not zero data.
+This commit fixes the problem when we would mark inode tables as zeroed
+(EXT2_BG_INODE_ZEROED) even when e2fsck is running in read-only mode. We
+also move the check for E2F_OPT_NO so we can clear E2F_OPT_DISCARD as
+early as possible.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- e2fsck/pass5.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+ e2fsck/pass5.c |    5 ++---
+ e2fsck/unix.c  |    5 +++++
+ 2 files changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 741e6dd..9e63037 100644
+index 37bbac2..741e6dd 100644
 --- a/e2fsck/pass5.c
 +++ b/e2fsck/pass5.c
-@@ -116,7 +116,18 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+@@ -88,8 +88,7 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, blk64_t start,
+ 	if (ext2fs_test_changed(fs))
+ 		ctx->options &= ~E2F_OPT_DISCARD;
+ 
+-	if (!(ctx->options & E2F_OPT_NO) &&
+-	    (ctx->options & E2F_OPT_DISCARD) &&
++	if ((ctx->options & E2F_OPT_DISCARD) &&
+ 	    (io_channel_discard(fs->io, start, count)))
+ 		ctx->options &= ~E2F_OPT_DISCARD;
+ }
+@@ -117,7 +116,7 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
  		ctx->options &= ~E2F_OPT_DISCARD;
  	}
  
--	if (!(ctx->options & E2F_OPT_DISCARD))
-+	/*
-+	 * Do not attempt to discard if E2F_OPT_DISCARD is not set. And also
-+	 * skip the discard on this group if discard does not zero data.
-+	 * The reason is that if the inode table is not zeroed discard would
-+	 * no help us since we need to zero it anyway, or if the inode table
-+	 * is zeroed then the read after discard would not be deterministic
-+	 * anyway and we would not be able to assume that this inode table
-+	 * was zeroed anymore so we would have to zero it again, which does
-+	 * not really make sense.
-+	 */
-+	if (!(ctx->options & E2F_OPT_DISCARD) ||
-+	    !io_channel_discard_zeroes_data(fs->io))
+-	if ((ctx->options & E2F_OPT_NO) || !(ctx->options & E2F_OPT_DISCARD))
++	if (!(ctx->options & E2F_OPT_DISCARD))
  		return;
  
  	/*
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 6f97b0f..b31a1e3 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -903,6 +903,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 	profile_set_syntax_err_cb(syntax_err_report);
+ 	profile_init(config_fn, &ctx->profile);
+ 
++	/* Turn off discard in read-only mode */
++	if ((ctx->options & E2F_OPT_NO) &&
++	    (ctx->options & E2F_OPT_DISCARD))
++		ctx->options &= ~E2F_OPT_DISCARD;
++
+ 	if (flush) {
+ 		fd = open(ctx->filesystem_name, O_RDONLY, 0);
+ 		if (fd < 0) {
 -- 
 1.7.4.4
 
