@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 21/23] jbd2: Checksum commit blocks
-Date: Tue, 06 Mar 2012 12:50:28 -0800
-Message-ID: <20120306205028.1663.34780.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 22/23] jbd2: Checksum data blocks that are stored in the
+ journal
+Date: Tue, 06 Mar 2012 12:50:34 -0800
+Message-ID: <20120306205034.1663.16895.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,105 +20,130 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum of commit blocks.  In checksum v2, deprecate
-most of the checksum v1 commit block checksum fields, since each block has its
-own checksum.
+Calculate and verify checksums of each data block being stored in the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/commit.c   |   19 +++++++++++++++++++
- fs/jbd2/recovery.c |   31 +++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+), 0 deletions(-)
+ fs/jbd2/commit.c   |   22 ++++++++++++++++++++++
+ fs/jbd2/journal.c  |   10 ++++++++--
+ fs/jbd2/recovery.c |   30 ++++++++++++++++++++++++++++++
+ 3 files changed, 60 insertions(+), 2 deletions(-)
 
 
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 7acc318..fce7c53 100644
+index fce7c53..b683e83 100644
 --- a/fs/jbd2/commit.c
 +++ b/fs/jbd2/commit.c
-@@ -86,6 +86,24 @@ nope:
- 	__brelse(bh);
+@@ -339,6 +339,26 @@ static void jbd2_descr_block_csum_set(journal_t *j,
+ 	tail->t_checksum = cpu_to_be32(csum);
  }
  
-+static void jbd2_commit_block_csum_set(journal_t *j,
-+				       struct journal_head *descriptor)
++static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
++				    struct buffer_head *bh, __u32 sequence)
 +{
-+	struct commit_header *h;
++	struct page *page = bh->b_page;
++	__u8 *addr;
 +	__u32 csum;
 +
 +	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return;
 +
-+	h = (struct commit_header *)(jh2bh(descriptor)->b_data);
-+	h->h_chksum_type = 0;
-+	h->h_chksum_size = 0;
-+	h->h_chksum[0] = 0;
-+	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
-+			   j->j_blocksize);
-+	h->h_chksum[0] = cpu_to_be32(csum);
-+}
++	sequence = cpu_to_be32(sequence);
++	addr = kmap_atomic(page, KM_USER0);
++	csum = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
++			  sizeof(sequence));
++	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
++			  bh->b_size);
++	kunmap_atomic(addr, KM_USER0);
 +
++	tag->t_checksum = cpu_to_be32(csum);
++}
  /*
-  * Done it all: now submit the commit record.  We should have
-  * cleaned up our previous buffers by now, so if we are in abort
-@@ -129,6 +147,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
- 		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
- 	}
-+	jbd2_commit_block_csum_set(journal, descriptor);
+  * jbd2_journal_commit_transaction
+  *
+@@ -655,6 +675,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		tag = (journal_block_tag_t *) tagp;
+ 		write_tag_block(tag_bytes, tag, jh2bh(jh)->b_blocknr);
+ 		tag->t_flags = cpu_to_be32(tag_flag);
++		jbd2_block_tag_csum_set(journal, tag, jh2bh(new_jh),
++					commit_transaction->t_tid);
+ 		tagp += tag_bytes;
+ 		space_left -= tag_bytes;
  
- 	JBUFFER_TRACE(descriptor, "submit commit block");
- 	lock_buffer(bh);
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 513006b..a757d8d 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -372,6 +372,24 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
- 	return 0;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 808654a..a5c6ebe 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2005,10 +2005,16 @@ int jbd2_journal_blocks_per_page(struct inode *inode)
+  */
+ size_t journal_tag_bytes(journal_t *journal)
+ {
++	journal_block_tag_t tag;
++	size_t x = 0;
++
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		x += sizeof(tag.t_checksum);
++
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+-		return JBD2_TAG_SIZE64;
++		return x + JBD2_TAG_SIZE64;
+ 	else
+-		return JBD2_TAG_SIZE32;
++		return x + JBD2_TAG_SIZE32;
  }
  
-+static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+ /*
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index a757d8d..3dd8544 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -390,6 +390,23 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+ 	return provided == calculated;
+ }
+ 
++static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
++				      void *buf, __u32 sequence)
 +{
-+	struct commit_header *h;
 +	__u32 provided, calculated;
 +
 +	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return 1;
 +
-+	h = buf;
-+	provided = h->h_chksum[0];
-+	h->h_chksum[0] = 0;
-+	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
-+	h->h_chksum[0] = provided;
++	sequence = cpu_to_be32(sequence);
++	calculated = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
++				 sizeof(sequence));
++	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
++	provided = be32_to_cpu(tag->t_checksum);
 +
-+	provided = be32_to_cpu(provided);
-+	return provided == calculated;
++	return provided == cpu_to_be32(calculated);
 +}
 +
  static int do_one_pass(journal_t *journal,
  			struct recovery_info *info, enum passtype pass)
  {
-@@ -682,6 +700,19 @@ static int do_one_pass(journal_t *journal,
- 				}
- 				crc32_sum = ~0;
- 			}
-+			if (pass == PASS_SCAN &&
-+			    !jbd2_commit_block_csum_verify(journal,
-+							   bh->b_data)) {
-+				info->end_transaction = next_commit_ID;
+@@ -566,6 +583,19 @@ static int do_one_pass(journal_t *journal,
+ 						goto skip_write;
+ 					}
+ 
++					/* Look for block corruption */
++					if (!jbd2_block_tag_csum_verify(
++						journal, tag, obh->b_data,
++						be32_to_cpu(tmp->h_sequence))) {
++						brelse(obh);
++						success = -EIO;
++						printk(KERN_ERR "JBD: Invalid "
++						       "checksum recovering "
++						       "block %llu in log\n",
++						       blocknr);
++						continue;
++					}
 +
-+				if (!JBD2_HAS_INCOMPAT_FEATURE(journal,
-+				     JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
-+					journal->j_failed_commit =
-+						next_commit_ID;
-+					brelse(bh);
-+					break;
-+				}
-+			}
- 			brelse(bh);
- 			next_commit_ID++;
- 			continue;
+ 					/* Find a buffer for the new
+ 					 * data being restored */
+ 					nbh = __getblk(journal->j_fs_dev,
+
