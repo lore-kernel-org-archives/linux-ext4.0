@@ -1,9 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/23] ext4: Verify and calculate checksums for extent tree
- blocks
-Date: Tue, 06 Mar 2012 12:48:55 -0800
-Message-ID: <20120306204855.1663.16686.stgit@elm3b70.beaverton.ibm.com>
-References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH v3 00/23] ext4: Add metadata checksumming
+Date: Tue, 06 Mar 2012 12:47:50 -0800
+Message-ID: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -21,136 +19,90 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Calculate and verify the checksum for each extent tree block.  The checksum is
-located in the space immediately after the last possible ext4_extent in the
-block.  The space is is typically the last 4-8 bytes in the block.
+Hi all,
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
- fs/ext4/ext4_extents.h |   11 +++++++++++
- fs/ext4/extents.c      |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 61 insertions(+), 0 deletions(-)
+This patchset adds crc32c checksums to most of the ext4 metadata objects.  A
+full design document is on the ext4 wiki[1] but I will summarize that document here.
 
+As much as we wish our storage hardware was totally reliable, it is still
+quite possible for data to be corrupted on disk, corrupted during transfer over
+a wire, or written to the wrong places.  To protect against this sort of
+non-hostile corruption, it is desirable to store checksums of metadata objects
+on the filesystem to prevent broken metadata from shredding the filesystem.
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 5c7fbade..7514176 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -114,6 +114,17 @@ struct ext4_extent_header {
- 
- #define EXT4_EXT_MAGIC		cpu_to_le16(0xf30a)
- 
-+#define EXT4_EXTENT_TAIL_OFFSET(hdr) \
-+	(sizeof(struct ext4_extent_header) + \
-+	 (sizeof(struct ext4_extent) * le16_to_cpu((hdr)->eh_max)))
-+
-+static inline struct ext4_extent_tail *
-+find_ext4_extent_tail(struct ext4_extent_header *eh)
-+{
-+	return (struct ext4_extent_tail *)(((void *)eh) +
-+					   EXT4_EXTENT_TAIL_OFFSET(eh));
-+}
-+
- /*
-  * Array of ext4_ext_path contains path to some extent.
-  * Creation/lookup routines use it for traversal/splitting/etc.
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 546279f..db4a748 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -44,6 +44,46 @@
- 
- #include <trace/events/ext4.h>
- 
-+static __le32 ext4_extent_block_csum(struct inode *inode,
-+				     struct ext4_extent_header *eh)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	__u32 csum;
-+
-+	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)eh,
-+			   EXT4_EXTENT_TAIL_OFFSET(eh));
-+	return cpu_to_le32(csum);
-+}
-+
-+static int ext4_extent_block_csum_verify(struct inode *inode,
-+					 struct ext4_extent_header *eh)
-+{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	et = find_ext4_extent_tail(eh);
-+	if (et->et_checksum != ext4_extent_block_csum(inode, eh))
-+		return 0;
-+	return 1;
-+}
-+
-+static void ext4_extent_block_csum_set(struct inode *inode,
-+				       struct ext4_extent_header *eh)
-+{
-+	struct ext4_extent_tail *et;
-+
-+	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	et = find_ext4_extent_tail(eh);
-+	et->et_checksum = ext4_extent_block_csum(inode, eh);
-+}
-+
- static int ext4_split_extent(handle_t *handle,
- 				struct inode *inode,
- 				struct ext4_ext_path *path,
-@@ -102,6 +142,7 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
- {
- 	int err;
- 	if (path->p_bh) {
-+		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
- 		/* path points to block */
- 		err = __ext4_handle_dirty_metadata(where, line, handle,
- 						   inode, path->p_bh);
-@@ -374,6 +415,12 @@ static int __ext4_ext_check(const char *function, unsigned int line,
- 		error_msg = "invalid extent entries";
- 		goto corrupted;
- 	}
-+	/* Verify checksum on non-root extent tree nodes */
-+	if (ext_depth(inode) != depth &&
-+	    !ext4_extent_block_csum_verify(inode, eh)) {
-+		error_msg = "extent tree corrupted";
-+		goto corrupted;
-+	}
- 	return 0;
- 
- corrupted:
-@@ -913,6 +960,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 		le16_add_cpu(&neh->eh_entries, m);
- 	}
- 
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
-@@ -991,6 +1039,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
- 				sizeof(struct ext4_extent_idx) * m);
- 			le16_add_cpu(&neh->eh_entries, m);
- 		}
-+		ext4_extent_block_csum_set(inode, neh);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
- 
-@@ -1088,6 +1137,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 	else
- 		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
- 	neh->eh_magic = EXT4_EXT_MAGIC;
-+	ext4_extent_block_csum_set(inode, neh);
- 	set_buffer_uptodate(bh);
- 	unlock_buffer(bh);
- 
+The crc32c polynomial was chosen for its improved error detection capabilities
+over crc32 and crc16, and because of its hardware acceleration on current and
+upcoming Intel and Sparc chips.
+
+Each type of metadata object has been retrofitted to store a checksum as follows:
+
+- The superblock stores a crc32c of itself.
+- Each inode stores crc32c(fs_uuid + inode_num + inode_gen + inode +
+  slack_space_after_inode)
+- Block and inode bitmaps each get their own crc32c(fs_uuid + group_num +
+  bitmap), stored in the block group descriptor.
+- Each extent tree block stores a crc32c(fs_uuid + inode_num + inode_gen +
+  extent_entries) in unused space at the end of the block.
+- Each directory leaf block has an unused-looking directory entry big enough to
+  store a crc32c(fs_uuid + inode_num + inode_gen + block) at the end of the
+  block.
+- Each directory htree block is shortened to contain a crc32c(fs_uuid +
+  inode_num + inode_gen + block) at the end of the block.
+- Extended attribute blocks store crc32c(fs_uuid + id + ea_block) in the
+  header, where id is, depending on the refcount, either the inode_num and
+  inode_gen; or the block number.
+- MMP blocks store crc32c(fs_uuid + mmpblock) at the end of the MMP block.
+- Block groups can now use crc32c instead of crc16.
+- The journal now has a v2 checksum feature flag.
+- crc32c(j_uuid + block) checksums have been inserted into descriptor blocks,
+  commit blocks, revoke blocks, and the journal superblock.
+- Each block tag in a descriptor block has a checksum of the related data block.
+
+The patchset for e2fsprogs will be sent under separate cover only to linux-ext4
+as it is quite lengthy (~51 patches).
+
+As far as performance impact goes, I see nearly no change with a standard mail
+server ffsb simulation.  On a test that involves only file creation and
+deletion and extent tree modifications, I see a drop of about 50 percent with
+the current kernel crc32c implementation; this improves to a drop of about 20
+percent with the enclosed crc32c implementation.  However, given that metadata
+is usually a small fraction of total IO, it doesn't seem like the cost of
+enabling this feature is unreasonable.
+
+There are a few unresolved issues:
+
+- I haven't fixed it up to checksum the exclude bitmap yet.  I'll probably
+  submit that as an add-on to the snapshot patchset.
+
+- Using the journal commit hooks to delay crc32c calculation until dirty
+  buffers are actually being written to disk.
+
+Please have a look at the design document and patches, and please feel free to
+suggest any changes.
+
+v2: Checksum the MMP block, store the checksum type in the superblock, include
+the inode generation in file checksums, and finally solve the problem of limited
+space in block groups by splitting the checksum into two halves.
+
+v2.1: Checksum the reserved parts of the htree tail structure.  Fix some flag
+handling bugs with the mb cache init routine wherein bitmaps could fail to be
+checksummed at read time.
+
+v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
+disk layout changes to the front and the feature flag enablement to the end of
+the patch set.  Fail journal recovery if revoke block fails checksum.
+
+v2.3: Update the design document URL, and various minor naming cleanups.
+
+v3: Eliminate the bg_use_meta_csum feature flag and make metadata_csum
+supersede uninit_bg.  Minor fixes to support the new online resize code.
+
+This patchset has been tested on 3.3.0-rc6 on x64 and i386.  The patches seems
+to work fine on both platforms.
+
+--D
+
+[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Metadata_Checksums_4d24.html
