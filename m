@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 03/54] debugfs: Optionally ignore bad checksums
-Date: Tue, 06 Mar 2012 15:57:40 -0800
-Message-ID: <20120306235740.11945.81087.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 02/54] libext2fs: Change ext4 on-disk layout to support
+ metadata checksumming
+Date: Tue, 06 Mar 2012 15:57:34 -0800
+Message-ID: <20120306235734.11945.46038.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,87 +17,200 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:45321 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932717Ab2CFX5v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:57:51 -0500
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:53772 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932670Ab2CFX5u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 18:57:50 -0500
 Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 16:57:50 -0700
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 906DFC9005E
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:57:45 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26Nvjnr227544
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:57:45 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvirE009526
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:57:45 -0300
+	Tue, 6 Mar 2012 18:57:50 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 67C7C6E804B
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:57:40 -0500 (EST)
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26Nvd6Y239546
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:57:40 -0500
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvchO009697
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:39 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If someone is debugging a badly damaged filesystem, it might be useful to
-disable the checksum verifications that will otherwise prevent the filesystem
-from loading.
+Define flags and extend ext4 structure definitions to support metadata
+checksumming.  Ted T'so covered many of these fields in an earlier patch, but
+there are more required changes to the disk layout.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- debugfs/debugfs.8.in |    7 ++++++-
- debugfs/debugfs.c    |    7 +++++--
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ lib/blkid/probe.h          |    1 +
+ lib/ext2fs/ext2_ext_attr.h |    4 +++-
+ lib/ext2fs/ext2_fs.h       |   40 ++++++++++++++++++++++++++++++++++++++--
+ lib/ext2fs/ext2fs.h        |    1 +
+ lib/ext2fs/ext3_extents.h  |   11 +++++++++++
+ 5 files changed, 54 insertions(+), 3 deletions(-)
 
 
-diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
-index 08d9068..157c667 100644
---- a/debugfs/debugfs.8.in
-+++ b/debugfs/debugfs.8.in
-@@ -8,7 +8,7 @@ debugfs \- ext2/ext3/ext4 file system debugger
- .SH SYNOPSIS
- .B debugfs
- [
--.B \-DVwci
-+.B \-DVwcin
- ]
- [
- .B \-b
-@@ -48,6 +48,11 @@ file system (e.g /dev/hdXX).
- Specifies that the file system should be opened in read-write mode.
- Without this option, the file system is opened in read-only mode.
- .TP
-+.I \-n
-+Disables metadata checksum verification.  This should only be used if
-+you believe the metadata to be correct despite the complaints of
-+e2fsprogs.
-+.TP
- .I \-c
- Specifies that the file system should be opened in catastrophic mode, in
- which the inode and group bitmaps are not read initially.  This can be
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 04d5139..4ff23ef 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -2271,9 +2271,9 @@ int main(int argc, char **argv)
- 	int		catastrophic = 0;
- 	char		*data_filename = 0;
- #ifdef READ_ONLY
--	const char	*opt_string = "icR:f:b:s:Vd:D";
-+	const char	*opt_string = "nicR:f:b:s:Vd:D";
+diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
+index 37e80ef..d6809e1 100644
+--- a/lib/blkid/probe.h
++++ b/lib/blkid/probe.h
+@@ -110,6 +110,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
++#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+ 
+ /* for s_feature_incompat */
+ #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
+diff --git a/lib/ext2fs/ext2_ext_attr.h b/lib/ext2fs/ext2_ext_attr.h
+index ed548d1..bbb0aaa 100644
+--- a/lib/ext2fs/ext2_ext_attr.h
++++ b/lib/ext2fs/ext2_ext_attr.h
+@@ -20,7 +20,9 @@ struct ext2_ext_attr_header {
+ 	__u32	h_refcount;	/* reference count */
+ 	__u32	h_blocks;	/* number of disk blocks used */
+ 	__u32	h_hash;		/* hash value of all attributes */
+-	__u32	h_reserved[4];	/* zero right now */
++	__u32	h_checksum;	/* crc32c(uuid+id+xattrs) */
++				/* id = inum if refcount = 1, else blknum */
++	__u32	h_reserved[3];	/* zero right now */
+ };
+ 
+ struct ext2_ext_attr_entry {
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 3b01285..b0b798b 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -235,6 +235,13 @@ struct ext2_dx_countlimit {
+ 	__u16 count;
+ };
+ 
++/*
++ * This goes at the end of each htree block.
++ */
++struct ext2_dx_tail {
++	__u32 dt_reserved;
++	__u32 dt_checksum;	/* crc32c(uuid+inum+dxblock) */
++};
+ 
+ /*
+  * Macro-instructions used to manage group descriptors
+@@ -463,6 +470,7 @@ struct ext2_inode_large {
+ #define i_gid_low	i_gid
+ #define i_uid_high	osd2.linux2.l_i_uid_high
+ #define i_gid_high	osd2.linux2.l_i_gid_high
++#define i_checksum_lo	osd2.linux2.l_i_checksum_lo
  #else
--	const char	*opt_string = "iwcR:f:b:s:Vd:D";
-+	const char	*opt_string = "niwcR:f:b:s:Vd:D";
+ #if defined(__GNU__)
+ 
+@@ -534,6 +542,9 @@ struct ext2_inode_large {
+ #define ext4_offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
  #endif
  
- 	if (debug_prog_name == 0)
-@@ -2300,6 +2300,9 @@ int main(int argc, char **argv)
- 		case 'i':
- 			open_flags |= EXT2_FLAG_IMAGE_FILE;
- 			break;
-+		case 'n':
-+			open_flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+			break;
- #ifndef READ_ONLY
- 		case 'w':
- 			open_flags |= EXT2_FLAG_RW;
++/* Metadata checksum algorithms */
++#define EXT2_CRC32C_CHKSUM		1
++
+ /*
+  * Structure of the super block
+  */
+@@ -619,7 +630,7 @@ struct ext2_super_block {
+ 	__u64   s_mmp_block;            /* Block for multi-mount protection */
+ 	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+ 	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
+-	__u8    s_reserved_char_pad;
++	__u8    s_checksum_type;	/* metadata checksum algorithm */
+ 	__u16	s_reserved_pad;		/* Padding to next 32bits */
+ 	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
+ 	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
+@@ -707,6 +718,11 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
+ #define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
++/*
++ * METADATA_CSUM implies GDT_CSUM.  When METADATA_CSUM is set, group
++ * descriptor checksums use the same algorithm as all other data
++ * structures' checksums.
++ */
+ #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+ #define EXT4_FEATURE_RO_COMPAT_REPLICA		0x0800
+ 
+@@ -780,6 +796,17 @@ struct ext2_dir_entry_2 {
+ };
+ 
+ /*
++ * This is a bogus directory entry at the end of each leaf block that
++ * records checksums.
++ */
++struct ext2_dir_entry_tail {
++	__u32	det_reserved_zero1;	/* Pretend to be unused */
++	__u16	det_rec_len;		/* 12 */
++	__u16	det_reserved_name_len;	/* 0xDE00, fake namelen/filetype */
++	__u32	det_checksum;		/* crc32c(uuid+inode+dirent) */
++};
++
++/*
+  * Ext2 directory file types.  Only the low 3 bits are used.  The
+  * other bits are reserved for now.
+  */
+@@ -795,6 +822,14 @@ struct ext2_dir_entry_2 {
+ #define EXT2_FT_MAX		8
+ 
+ /*
++ * Annoyingly, e2fsprogs always swab16s ext2_dir_entry.name_len, so we
++ * have to build ext2_dir_entry_tail with that assumption too.  This
++ * constant helps to build the dir_entry_tail to look like it has an
++ * "invalid" file type.
++ */
++#define EXT2_DIR_NAME_LEN_CSUM	0xDE00
++
++/*
+  * EXT2_DIR_PAD defines the directory entries boundaries
+  *
+  * NOTE: It must be a multiple of 4
+@@ -835,7 +870,8 @@ struct mmp_struct {
+ 	char	mmp_bdevname[32];	/* Bdev which last updated MMP block */
+ 	__u16	mmp_check_interval;	/* Changed mmp_check_interval */
+ 	__u16	mmp_pad1;
+-	__u32	mmp_pad2[227];
++	__u32	mmp_pad2[226];
++	__u32	mmp_checksum;		/* crc32c(uuid+mmp_block) */
+ };
+ 
+ /*
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 682f0cd..bde22b6 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -199,6 +199,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_PRINT_PROGRESS	0x40000
+ #define EXT2_FLAG_DIRECT_IO		0x80000
+ #define EXT2_FLAG_SKIP_MMP		0x100000
++#define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
+ 
+ /*
+  * Special flag in the ext2 inode i_flag field that means that this is
+diff --git a/lib/ext2fs/ext3_extents.h b/lib/ext2fs/ext3_extents.h
+index 88fabc9..4163436 100644
+--- a/lib/ext2fs/ext3_extents.h
++++ b/lib/ext2fs/ext3_extents.h
+@@ -19,6 +19,17 @@
+  */
+ 
+ /*
++ * This is extent tail on-disk structure.
++ * All other extent structures are 12 bytes long.  It turns out that
++ * block_size % 12 >= 4 for at least all powers of 2 greater than 512, which
++ * covers all valid ext4 block sizes.  Therefore, this tail structure can be
++ * crammed into the end of the block without having to rebalance the tree.
++ */
++struct ext3_extent_tail {
++	__u32	et_checksum;	/* crc32c(uuid+inum+extent_block) */
++};
++
++/*
+  * this is extent on-disk structure
+  * it's used at the bottom of the tree
+  */
 
