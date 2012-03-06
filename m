@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 15/23] jbd2: Change disk layout for metadata checksumming
-Date: Tue, 06 Mar 2012 12:49:41 -0800
-Message-ID: <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 14/23] ext4: Add checksums to the MMP block
+Date: Tue, 06 Mar 2012 12:49:30 -0800
+Message-ID: <20120306204930.1663.41920.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -24,90 +24,114 @@ In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Define flags and allocate space in on-disk journal structures to support
-checksumming of journal metadata.
+Compute and verify a checksum for the MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- include/linux/jbd2.h |   28 +++++++++++++++++++++++++++-
- 1 files changed, 27 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h |    3 +++
+ fs/ext4/mmp.c  |   44 +++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 42 insertions(+), 5 deletions(-)
 
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 5557bae..c286153 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -147,12 +147,24 @@ typedef struct journal_header_s
- #define JBD2_CRC32_CHKSUM   1
- #define JBD2_MD5_CHKSUM     2
- #define JBD2_SHA1_CHKSUM    3
-+#define JBD2_CRC32C_CHKSUM  4
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ee7bac7..900d5c4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2394,6 +2394,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
  
- #define JBD2_CRC32_CHKSUM_SIZE 4
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
++extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
++extern int ext4_mmp_csum_verify(struct super_block *sb,
++				struct mmp_struct *mmp);
  
- #define JBD2_CHECKSUM_BYTES (32 / sizeof(u32))
- /*
-  * Commit block header for storing transactional checksums:
-+ *
-+ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
-+ * fields are used to store a checksum of the descriptor and data blocks.
-+ *
-+ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
-+ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
-+ * block gets its own checksum, and data block checksums are stored in
-+ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
-+ * not used.
-+ *
-+ * Checksum v1 and v2 are mutually exclusive features.
-  */
- struct commit_header {
- 	__be32		h_magic;
-@@ -177,11 +189,17 @@ typedef struct journal_block_tag_s
- 	__be32		t_blocknr;	/* The on-disk block number */
- 	__be32		t_flags;	/* See below */
- 	__be32		t_blocknr_high; /* most-significant high 32bits. */
-+	__be32		t_checksum;	/* crc32c(uuid+seq+block) */
- } journal_block_tag_t;
+ /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+ enum ext4_state_bits {
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ea4ba4..142e9d7 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -6,12 +6,45 @@
  
- #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
- #define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
+ #include "ext4.h"
  
-+/* Tail of descriptor block, for checksumming */
-+struct jbd2_journal_block_tail {
-+	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
-+};
++/* Checksumming functions */
++static __u32 ext4_mmp_csum(struct super_block *sb, struct mmp_struct *mmp)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int offset = offsetof(struct mmp_struct, mmp_checksum);
++	__u32 csum;
++
++	csum = ext4_chksum(sbi, sbi->s_csum_seed, (char *)mmp, offset);
++
++	return cpu_to_le32(csum);
++}
++
++int ext4_mmp_csum_verify(struct super_block *sb, struct mmp_struct *mmp)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	return mmp->mmp_checksum == ext4_mmp_csum(sb, mmp);
++}
++
++void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
++{
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return;
++
++	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
++}
 +
  /*
-  * The revoke descriptor: used on disk to describe a series of blocks to
-  * be revoked from the log
-@@ -192,6 +210,10 @@ typedef struct jbd2_journal_revoke_header_s
- 	__be32		 r_count;	/* Count of bytes used in the block */
- } jbd2_journal_revoke_header_t;
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
+  */
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ {
++	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
++
++	ext4_mmp_csum_set(sb, mmp);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+@@ -59,7 +92,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+ 	}
  
-+/* Tail of revoke block, for checksumming */
-+struct jbd2_journal_revoke_tail {
-+	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
-+};
+ 	mmp = (struct mmp_struct *)((*bh)->b_data);
+-	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC ||
++	    !ext4_mmp_csum_verify(sb, mmp))
+ 		return -EINVAL;
  
- /* Definitions for the journal tag flags word: */
- #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
-@@ -241,7 +263,10 @@ typedef struct journal_superblock_s
- 	__be32	s_max_trans_data;	/* Limit of data blocks per trans. */
+ 	return 0;
+@@ -120,7 +154,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
  
- /* 0x0050 */
--	__u32	s_padding[44];
-+	__u8	s_checksum_type;	/* checksum type */
-+	__u8	s_padding2[3];
-+	__u32	s_padding[42];
-+	__be32	s_checksum;		/* crc32c(superblock) */
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +234,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
  
- /* 0x0100 */
- 	__u8	s_users[16*48];		/* ids of all fs'es sharing the log */
-@@ -263,6 +288,7 @@ typedef struct journal_superblock_s
- #define JBD2_FEATURE_INCOMPAT_REVOKE		0x00000001
- #define JBD2_FEATURE_INCOMPAT_64BIT		0x00000002
- #define JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
-+#define JBD2_FEATURE_INCOMPAT_CSUM_V2		0x00000008
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
  
- /* Features known to this kernel version: */
- #define JBD2_KNOWN_COMPAT_FEATURES	JBD2_FEATURE_COMPAT_CHECKSUM
+ failed:
+ 	kfree(data);
+@@ -299,7 +333,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
+ 
