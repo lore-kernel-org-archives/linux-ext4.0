@@ -1,108 +1,37 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v3 00/23] ext4: Add metadata checksumming
-Date: Tue, 06 Mar 2012 12:47:50 -0800
-Message-ID: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 4/4 v2] ext4: Do not discard group with BLOCK_UNINIT set
+Date: Tue, 6 Mar 2012 17:18:15 -0500
+Message-ID: <20120306221815.GA5472@thunk.org>
+References: <1330690318-22627-1-git-send-email-lczerner@redhat.com>
+ <1330690318-22627-4-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Tso <tytso@mit.edu>,
-	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58695 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030811Ab2CFWSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 17:18:18 -0500
+Content-Disposition: inline
+In-Reply-To: <1330690318-22627-4-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+On Fri, Mar 02, 2012 at 01:11:58PM +0100, Lukas Czerner wrote:
+> Because the BLOCK_UNINIT is only set on mke2fs time and cleared when
+> allocation from that group takes place we know that when set, there was
+> not anything allocated from that group, hence there should not be anything
+> to discard from the file system point of view.
 
-This patchset adds crc32c checksums to most of the ext4 metadata objects.  A
-full design document is on the ext4 wiki[1] but I will summarize that document here.
+There's a really good reason to set BLOCK_UNINIT once we have noticed
+that all of the blocks in the block group have been released....
 
-As much as we wish our storage hardware was totally reliable, it is still
-quite possible for data to be corrupted on disk, corrupted during transfer over
-a wire, or written to the wrong places.  To protect against this sort of
-non-hostile corruption, it is desirable to store checksums of metadata objects
-on the filesystem to prevent broken metadata from shredding the filesystem.
+If you have a 3TB HDD, running e2fsck takes 4 times as long if all of
+the block groups have BLOCK_UNINIT cleared, compared to a freshly
+mkfs'ed file system.  As a result of my getting really annoyed at how
+long it took in this case, I'm planning on making e2fsck clear
+BLOCK_UNINIT if possible, so that subsequent e2fsck's (and dumpe2fs
+and debugfs invocations) can also be fast.
 
-The crc32c polynomial was chosen for its improved error detection capabilities
-over crc32 and crc16, and because of its hardware acceleration on current and
-upcoming Intel and Sparc chips.
-
-Each type of metadata object has been retrofitted to store a checksum as follows:
-
-- The superblock stores a crc32c of itself.
-- Each inode stores crc32c(fs_uuid + inode_num + inode_gen + inode +
-  slack_space_after_inode)
-- Block and inode bitmaps each get their own crc32c(fs_uuid + group_num +
-  bitmap), stored in the block group descriptor.
-- Each extent tree block stores a crc32c(fs_uuid + inode_num + inode_gen +
-  extent_entries) in unused space at the end of the block.
-- Each directory leaf block has an unused-looking directory entry big enough to
-  store a crc32c(fs_uuid + inode_num + inode_gen + block) at the end of the
-  block.
-- Each directory htree block is shortened to contain a crc32c(fs_uuid +
-  inode_num + inode_gen + block) at the end of the block.
-- Extended attribute blocks store crc32c(fs_uuid + id + ea_block) in the
-  header, where id is, depending on the refcount, either the inode_num and
-  inode_gen; or the block number.
-- MMP blocks store crc32c(fs_uuid + mmpblock) at the end of the MMP block.
-- Block groups can now use crc32c instead of crc16.
-- The journal now has a v2 checksum feature flag.
-- crc32c(j_uuid + block) checksums have been inserted into descriptor blocks,
-  commit blocks, revoke blocks, and the journal superblock.
-- Each block tag in a descriptor block has a checksum of the related data block.
-
-The patchset for e2fsprogs will be sent under separate cover only to linux-ext4
-as it is quite lengthy (~51 patches).
-
-As far as performance impact goes, I see nearly no change with a standard mail
-server ffsb simulation.  On a test that involves only file creation and
-deletion and extent tree modifications, I see a drop of about 50 percent with
-the current kernel crc32c implementation; this improves to a drop of about 20
-percent with the enclosed crc32c implementation.  However, given that metadata
-is usually a small fraction of total IO, it doesn't seem like the cost of
-enabling this feature is unreasonable.
-
-There are a few unresolved issues:
-
-- I haven't fixed it up to checksum the exclude bitmap yet.  I'll probably
-  submit that as an add-on to the snapshot patchset.
-
-- Using the journal commit hooks to delay crc32c calculation until dirty
-  buffers are actually being written to disk.
-
-Please have a look at the design document and patches, and please feel free to
-suggest any changes.
-
-v2: Checksum the MMP block, store the checksum type in the superblock, include
-the inode generation in file checksums, and finally solve the problem of limited
-space in block groups by splitting the checksum into two halves.
-
-v2.1: Checksum the reserved parts of the htree tail structure.  Fix some flag
-handling bugs with the mb cache init routine wherein bitmaps could fail to be
-checksummed at read time.
-
-v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
-disk layout changes to the front and the feature flag enablement to the end of
-the patch set.  Fail journal recovery if revoke block fails checksum.
-
-v2.3: Update the design document URL, and various minor naming cleanups.
-
-v3: Eliminate the bg_use_meta_csum feature flag and make metadata_csum
-supersede uninit_bg.  Minor fixes to support the new online resize code.
-
-This patchset has been tested on 3.3.0-rc6 on x64 and i386.  The patches seems
-to work fine on both platforms.
-
---D
-
-[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Metadata_Checksums_4d24.html
+					- Ted
