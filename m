@@ -1,55 +1,41 @@
-From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to
- usage type
-Date: Tue, 6 Mar 2012 10:15:43 -0500
-Message-ID: <20120306151543.GA32282@thunk.org>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
- <20120109132148.2616029.68798.stgit@localhost.localdomain>
- <20120305155939.GE21356@thunk.org>
- <4F555CE5.7050401@itwm.fraunhofer.de>
- <20120306022838.GA24323@thunk.org>
- <4F55E01B.3060105@itwm.fraunhofer.de>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Date: Tue, 6 Mar 2012 10:18:16 -0500
+Message-ID: <20120306151816.GB32282@thunk.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
+ <20120306020819.GH31388@pad.fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
-	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
-To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+	sandeen@redhat.com, adilger@whamcloud.com
+To: "J. Bruce Fields" <bfields@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56688 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030453Ab2CFPSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 10:18:18 -0500
 Content-Disposition: inline
-In-Reply-To: <4F55E01B.3060105-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120306020819.GH31388@pad.fieldses.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 10:59:55AM +0100, Bernd Schubert wrote:
-> Arg, my bad, I introduced this issue when I converted from f_flags
-> to f_mode, seems I forgot all of those above :(
-> Hrm, I thought I had tested sufficiently, but obviously I did not :(
-> Here's the test tool.
-> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
+On Mon, Mar 05, 2012 at 09:08:19PM -0500, J. Bruce Fields wrote:
+> Yes, that would be fine.
 > 
-> While quickly looking, I think it only affects NFSv2, which I think
-> I indeed didn't test. I only run tests for 32 bit and 64-bit user
-> space and NFSv3. But yes, NFSv2 is an important test too. Not sure
-> if I will find time for that today.
+> (There may well be some conflict: simplest might be if you can get that
+> pushed out to a stable public branch somewhere, hopefully before the
+> merge window opens, and that'll give me a chance to pull it and handle
+> any merge conflicts.
 
-I think the problem case to worry about would have been on a 32-bit
-NFS server (think embedded/bookshelf NAS servers) and NFSv3, since
-that's where the inconsistency would have meant that hash2pos would
-use the 32-bit codepath, but pos2maj_hash would use the 64-bit
-codepath, and so then...  kablooey.
+Are the commits you're worried about on the NFS side already in
+linux-next?  If so, I'll do a quick test merge and see if there are
+any conflicts.  If so, I'll segregate out these patches into a
+separate pre-merge branch --- and then if you like you could pull them
+into your branch and we can deal with it that way.
 
-> Will send an updated version later on.
-
-If it's just those changes, no worries, as I've already fixed up the
-f_flags vs. f_mode issue in my copy of the patches.
-
-Let me know if there are any other changes that you'd like to make or
-issues that you've spotted.
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     	  	     	    	      	 - Ted
