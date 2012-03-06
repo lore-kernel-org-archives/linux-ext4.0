@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 08/54] e2fsck: Verify and correct inode checksums
-Date: Tue, 06 Mar 2012 15:58:12 -0800
-Message-ID: <20120306235812.11945.3055.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 12/54] dumpe2fs: Display inode bitmap checksum
+Date: Tue, 06 Mar 2012 15:58:38 -0800
+Message-ID: <20120306235838.11945.94420.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,175 +16,48 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:50757 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030557Ab2CFX6a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:30 -0500
+Received: from e37.co.us.ibm.com ([32.97.110.158]:53637 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030895Ab2CFX6w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:52 -0500
 Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 16:58:30 -0700
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id EFCD2C9005C
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:58:17 -0500 (EST)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwIWl3248294
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:58:18 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NwG5D017042
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:58:17 -0300
+	Tue, 6 Mar 2012 16:58:51 -0700
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id D68171FF004A
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:58:46 -0700 (MST)
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwkQQ181336
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:46 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NwifT013536
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:46 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Detect mismatches of the inode and checksum, and prompt the user to fix the
-situation.
+Display the inode bitmap checksum for each block group.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- e2fsck/problem.c |   10 +++++++++
- e2fsck/problem.h |    6 +++++
- 3 files changed, 75 insertions(+), 1 deletions(-)
+ misc/dumpe2fs.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c31e073..471e3e0 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -540,6 +540,40 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
- 		*ret = 0;
- }
- 
-+static errcode_t recheck_bad_inode_checksum(ext2_filsys fs, ext2_ino_t ino,
-+					    e2fsck_t ctx,
-+					    struct problem_context *pctx)
-+{
-+	errcode_t retval;
-+	struct ext2_inode_large inode;
-+
-+	/*
-+	 * Reread inode.  If we don't see checksum error, then this inode
-+	 * has been fixed elsewhere.
-+	 */
-+	retval = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
-+					sizeof(inode));
-+	if (retval && retval != EXT2_ET_INODE_CSUM_INVALID)
-+		return retval;
-+	if (!retval)
-+		return 0;
-+
-+	/*
-+	 * Checksum still doesn't match.  That implies that the inode passes
-+	 * all the sanity checks, so maybe the checksum is simply corrupt.
-+	 * See if the user will go for fixing that.
-+	 */
-+	if (!fix_problem(ctx, PR_1_INODE_ONLY_CSUM_INVALID, pctx))
-+		return 0;
-+
-+	retval = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&inode,
-+					 sizeof(inode));
-+	if (retval)
-+		return retval;
-+
-+	return 0;
-+}
-+
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	int	i;
-@@ -561,6 +595,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	int		imagic_fs, extent_fs;
- 	int		busted_fs_time = 0;
- 	int		inode_size;
-+	int		failed_csum = 0;
- 
- 	init_resource_track(&rtrack, ctx->fs->io);
- 	clear_problem_context(&pctx);
-@@ -740,7 +775,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
- 			continue;
- 		}
--		if (pctx.errcode) {
-+		if (pctx.errcode &&
-+		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID) {
- 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return;
-@@ -750,6 +786,14 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		pctx.ino = ino;
- 		pctx.inode = inode;
- 		ctx->stashed_ino = ino;
-+
-+		/* Clear corrupt inode? */
-+		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID) {
-+			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
-+				goto clear_inode;
-+			failed_csum = 1;
-+		}
-+
- 		if (inode->i_links_count) {
- 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
- 					   ino, inode->i_links_count);
-@@ -1146,6 +1190,20 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		} else
- 			check_blocks(ctx, &pctx, block_buf);
- 
-+		/*
-+		 * If the inode failed the checksum and the user didn't
-+		 * clear the inode, test the checksum again -- if it still
-+		 * fails, ask the user if the checksum should be corrected.
-+		 */
-+		if (failed_csum) {
-+			pctx.errcode = recheck_bad_inode_checksum(fs, ino, ctx,
-+								  &pctx);
-+			if (pctx.errcode) {
-+				ctx->flags |= E2F_FLAG_ABORT;
-+				return;
-+			}
-+		}
-+
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 			return;
- 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 579c838..a6dd88a 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -929,8 +929,18 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Quota inode is user visible */
- 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
- 	  N_("@q @i is visible to the user.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	/* inode checksum does not match inode */
-+	{ PR_1_INODE_CSUM_INVALID,
-+	  N_("@i %i checksum does not match @i.  "),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
-+	/* inode passes checks, but checksum does not match inode */
-+	{ PR_1_INODE_ONLY_CSUM_INVALID,
-+	  N_("@i %i passes checks, but checksum does not match @i.  "),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
- 	/* Invalid bad inode */
- 	{ PR_1_INVALID_BAD_INODE,
- 	  N_("The bad @b @i looks @n.  "),
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 3fabc90..5797fe2 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -550,6 +550,12 @@ struct problem_context {
- /* Invalid bad inode */
- #define PR_1_INVALID_BAD_INODE		0x010065
- 
-+/* inode checksum does not match inode */
-+#define PR_1_INODE_CSUM_INVALID		0x010066
-+
-+/* inode passes checks, but checksum does not match inode */
-+#define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
-+
- /*
-  * Pass 1b errors
-  */
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 5b114e9..ec4f0e9 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -226,6 +226,10 @@ static void list_desc (ext2_filsys fs)
+ 		print_number(ext2fs_inode_bitmap_loc(fs, i));
+ 		print_bg_rel_offset(fs, ext2fs_inode_bitmap_loc(fs, i), 0,
+ 				    first_block, last_block);
++		if (fs->super->s_feature_ro_compat &
++		    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++			printf(_(", csum 0x%08x"),
++			       ext2fs_inode_bitmap_checksum(fs, i));
+ 		fputs(_("\n  Inode table at "), stdout);
+ 		print_range(ext2fs_inode_table_loc(fs, i),
+ 			    ext2fs_inode_table_loc(fs, i) +
 
