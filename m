@@ -1,36 +1,73 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 v2] e2fsck: Discard only unused parts of inode table
-Date: Tue, 6 Mar 2012 17:22:34 -0500
-Message-ID: <20120306222234.GB5472@thunk.org>
-References: <1330014566-2020-1-git-send-email-lczerner@redhat.com>
- <4F4D0159.1090409@sandeen.net>
- <alpine.LFD.2.00.1202290812530.4926@dhcp-27-109.brq.redhat.com>
- <4F4FB37F.60405@redhat.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: [PATCH v3 00/54] e2fsprogs: Add metadata checksumming
+Date: Tue, 06 Mar 2012 15:57:21 -0800
+Message-ID: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@sandeen.net>, linux-ext4@vger.kernel.org,
-	psusi@ubuntu.com
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Tso <tytso@mit.edu>,
+	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58703 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758895Ab2CFWWg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 17:22:36 -0500
-Content-Disposition: inline
-In-Reply-To: <4F4FB37F.60405@redhat.com>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:52852 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932670Ab2CFX5d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:57:33 -0500
+Received: from /spool/local
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 6 Mar 2012 16:57:33 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 357C91FF0049
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:57:31 -0700 (MST)
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NvTQQ078144
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:29 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvPLn009100
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:29 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 01, 2012 at 11:35:59AM -0600, Eric Sandeen wrote:
-> > 
-> > So do you want me to separate those unrelated changes to a separate
-> > patch ? Those are pretty small changes..
-> 
-> They are, but they are completely separate fixes, and not described in the changelog.
+Hi all,
 
-I agree with Eric; it's a lot better both for me as a maintainer, and
-for people who are perusing the git logs / history in the future, to
-have things completely separated out.
+This patchset adds support in e2fsprogs for attaching crc32c checksums to most
+of the ext4 metadata objects.  A full design document is on the ext4 wiki[1].
+Please see the cover letter for the kernel patches for a more thorough summary
+of this work.
 
-						- Ted
+Please have a look at the design document and patches, and please feel free to
+suggest any changes.
+
+v2: Checksum the MMP block, store the checksum type in the superblock, include
+the inode generation in file checksums, and finally solve the problem of limited
+space in block groups by splitting the checksum into two halves.
+
+v2.1: Checksum the reserved parts of the htree tail structure.
+
+v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
+disk layout changes to the front and the feature flag enablement to the end of
+the patch set.  Fail journal recovery if revoke block fails checksum.
+
+v2.3: Change fsck handling of checksum errors: First ask to clear the item; if
+the user declines, run the regular checks; if no corrective actions result, ask
+to reset the checksum.  Also, precompute the UUID checksum seed, refactor the
+inode generation patch into respective patches, and clean up structure member
+declarations.
+
+v3: Eliminate the bg_use_meta_csum feature flag and make metadata_csum
+supersede uninit_bg.  Enable metadata_csum by default on ext4dev filesystems.
+
+This patchset has been tested on 3.3.0-rc6 on x64 and i386.  The patches seems
+to work fine on both platforms.  The patchset is based atop the 1.42.1 release.
+
+--D
+
+[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Disk_Layout_aecb.html
+
