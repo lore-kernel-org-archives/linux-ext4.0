@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 05/54] libext2fs: Add inode checksum support
-Date: Tue, 06 Mar 2012 15:57:53 -0800
-Message-ID: <20120306235753.11945.90862.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 09/54] mke2fs: Allow metadata checksums to be turned on at
+ mkfs time
+Date: Tue, 06 Mar 2012 15:58:18 -0800
+Message-ID: <20120306235818.11945.39199.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,306 +17,87 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:59595 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932720Ab2CFX6Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 18:58:24 -0500
+Received: from e36.co.us.ibm.com ([32.97.110.154]:54988 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932700Ab2CFX62 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:28 -0500
 Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 18:58:23 -0500
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id BA9006E804B
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:57:58 -0500 (EST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NvwV0275922
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:57:58 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q275SnOl030890
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Mar 2012 00:28:50 -0500
+	Tue, 6 Mar 2012 16:58:28 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 7A36D19D804A
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:58:19 -0700 (MST)
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwOeN083746
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:24 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NwMSa011847
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:24 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds the ability for the libext2fs functions to read and write the
-inode checksum.
+Write out reserved inodes with full checksums when writing out a zeroed table.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/csum.c         |   82 +++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_err.et.in |    3 ++
- lib/ext2fs/ext2_fs.h      |    4 ++
- lib/ext2fs/ext2fs.h       |    4 ++
- lib/ext2fs/inode.c        |   40 ++++++++++++++++++----
- lib/ext2fs/mkdir.c        |    8 +++-
- 6 files changed, 131 insertions(+), 10 deletions(-)
+ misc/mke2fs.c |   29 ++++++++++++++++++++++++++++-
+ 1 files changed, 28 insertions(+), 1 deletions(-)
 
 
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 596923e..5091a00 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,88 @@
- #define STATIC static
- #endif
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index d80c0b2..28485e3 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -306,6 +306,27 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
+ 	ext2fs_badblocks_list_iterate_end(bb_iter);
+ }
  
-+static errcode_t ext2fs_inode_csum(ext2_filsys fs, ext2_ino_t inum,
-+			       struct ext2_inode_large *inode,
-+			       __u32 *crc, int has_hi)
++static void write_reserved_inodes(ext2_filsys fs)
 +{
-+	__u32 gen;
-+	struct ext2_inode_large *desc = inode;
-+	size_t size = fs->super->s_inode_size;
-+	__u16 old_lo;
-+	__u16 old_hi = 0;
++	errcode_t	retval;
++	ext2_ino_t	ino;
++	struct ext2_inode *inode;
 +
-+	old_lo = inode->i_checksum_lo;
-+	inode->i_checksum_lo = 0;
-+	if (has_hi) {
-+		old_hi = inode->i_checksum_hi;
-+		inode->i_checksum_hi = 0;
++	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	if (retval) {
++		com_err("inode_init", retval,
++			"while allocating memory");
++		exit(1);
 +	}
++	bzero(inode, EXT2_INODE_SIZE(fs->super));
 +
-+	inum = ext2fs_cpu_to_le32(inum);
-+	gen = inode->i_generation;
-+	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
-+				sizeof(inum));
-+	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen, sizeof(gen));
-+	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)desc, size);
++	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
++		ext2fs_write_inode_full(fs, ino, inode,
++					EXT2_INODE_SIZE(fs->super));
 +
-+	inode->i_checksum_lo = old_lo;
-+	if (has_hi)
-+		inode->i_checksum_hi = old_hi;
-+	return 0;
++	ext2fs_free_mem(&inode);
 +}
 +
-+int ext2fs_inode_csum_verify(ext2_filsys fs, ext2_ino_t inum,
-+			     struct ext2_inode_large *inode)
-+{
-+	errcode_t retval;
-+	__u32 provided, calculated;
-+	int has_hi;
-+
-+	if (fs->super->s_creator_os != EXT2_OS_LINUX ||
-+	    !EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	has_hi = (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE &&
-+		  inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END);
-+
-+	provided = ext2fs_le16_to_cpu(inode->i_checksum_lo);
-+	retval = ext2fs_inode_csum(fs, inum, inode, &calculated, has_hi);
-+	if (retval)
-+		return 0;
-+	if (has_hi) {
-+		__u32 hi = ext2fs_le16_to_cpu(inode->i_checksum_hi);
-+		provided |= hi << 16;
-+	} else
-+		calculated &= 0xFFFF;
-+
-+	return provided == calculated;
-+}
-+
-+errcode_t ext2fs_inode_csum_set(ext2_filsys fs, ext2_ino_t inum,
-+			   struct ext2_inode_large *inode)
-+{
-+	errcode_t retval;
-+	__u32 crc;
-+	int has_hi;
-+
-+	if (fs->super->s_creator_os != EXT2_OS_LINUX ||
-+	    !EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 0;
-+
-+	has_hi = (EXT2_INODE_SIZE(fs->super) > EXT2_GOOD_OLD_INODE_SIZE &&
-+		  inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END);
-+
-+	retval = ext2fs_inode_csum(fs, inum, inode, &crc, has_hi);
-+	if (retval)
-+		return retval;
-+	inode->i_checksum_lo = ext2fs_cpu_to_le16(crc & 0xFFFF);
-+	if (has_hi)
-+		inode->i_checksum_hi = ext2fs_cpu_to_le16(crc >> 16);
-+	return 0;
-+}
-+
- STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
  {
- 	__u16 crc = 0;
-diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index ccf1894..d4a5b10 100644
---- a/lib/ext2fs/ext2_err.et.in
-+++ b/lib/ext2fs/ext2_err.et.in
-@@ -443,4 +443,7 @@ ec	EXT2_ET_MMP_CHANGE_ABORT,
- ec	EXT2_ET_MMP_OPEN_DIRECT,
- 	"MMP: open with O_DIRECT failed"
- 
-+ec	EXT2_ET_INODE_CSUM_INVALID,
-+	"Inode checksum does not match inode"
+ 	errcode_t	retval;
+@@ -351,6 +372,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+ 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
+ 	ext2fs_numeric_progress_close(fs, &progress,
+ 				      _("done                            \n"));
 +
- 	end
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index b0b798b..3ec48a2 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -460,6 +460,10 @@ struct ext2_inode_large {
- 	__u32	i_version_hi;	/* high 32 bits for 64-bit version */
++	/* Reserved inodes must always have correct checksums */
++	if (fs->super->s_creator_os == EXT2_OS_LINUX &&
++	    fs->super->s_feature_ro_compat &
++	    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++		write_reserved_inodes(fs);
+ }
+ 
+ static void create_root_dir(ext2_filsys fs)
+@@ -870,7 +897,7 @@ static __u32 ok_features[3] = {
+ #ifdef CONFIG_QUOTA
+ 		EXT4_FEATURE_RO_COMPAT_QUOTA|
+ #endif
+-		0
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
  };
  
-+#define EXT4_INODE_CSUM_HI_EXTRA_END	\
-+	(offsetof(struct ext2_inode_large, i_checksum_hi) + sizeof(__u16) - \
-+	 EXT2_GOOD_OLD_INODE_SIZE)
-+
- #define i_dir_acl	i_size_high
- 
- #if defined(__KERNEL__) || defined(__linux__)
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index f7a73e5..1728599 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -948,6 +948,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-+extern errcode_t ext2fs_inode_csum_set(ext2_filsys fs, ext2_ino_t inum,
-+				       struct ext2_inode_large *inode);
-+extern int ext2fs_inode_csum_verify(ext2_filsys fs, ext2_ino_t inum,
-+				    struct ext2_inode_large *inode);
- extern void ext2fs_group_desc_csum_set(ext2_filsys fs, dgrp_t group);
- extern int ext2fs_group_desc_csum_verify(ext2_filsys fs, dgrp_t group);
- extern errcode_t ext2fs_set_gdt_csum(ext2_filsys fs);
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index a4f6670..74703c5 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -417,7 +417,7 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 	errcode_t	retval;
- 	int		extra_bytes = 0;
- 	const int	length = EXT2_INODE_SIZE(scan->fs->super);
--	struct ext2_inode	*iptr = inode;
-+	struct ext2_inode_large	*iptr = (struct ext2_inode_large *)inode;
- 
- 	EXT2_CHECK_MAGIC(scan, EXT2_ET_MAGIC_INODE_SCAN);
- 
-@@ -493,6 +493,12 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 		scan->ptr += scan->inode_size - extra_bytes;
- 		scan->bytes_left -= scan->inode_size - extra_bytes;
- 
-+		/* Verify the inode checksum. */
-+		if (!(scan->fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-+		    !ext2fs_inode_csum_verify(scan->fs, scan->current_inode + 1,
-+				(struct ext2_inode_large *)scan->temp_buffer))
-+			retval = EXT2_ET_INODE_CSUM_INVALID;
-+
- #ifdef WORDS_BIGENDIAN
- 		memset(iptr, 0, length);
- 		ext2fs_swap_inode_full(scan->fs,
-@@ -506,6 +512,12 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 			retval = EXT2_ET_BAD_BLOCK_IN_INODE_TABLE;
- 		scan->scan_flags &= ~EXT2_SF_BAD_EXTRA_BYTES;
- 	} else {
-+		/* Verify the inode checksum. */
-+		if (!(scan->fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-+		    !ext2fs_inode_csum_verify(scan->fs, scan->current_inode + 1,
-+				(struct ext2_inode_large *)scan->ptr))
-+			retval = EXT2_ET_INODE_CSUM_INVALID;
-+
- #ifdef WORDS_BIGENDIAN
- 		memset(iptr, 0, length);
- 		ext2fs_swap_inode_full(scan->fs,
-@@ -524,7 +536,7 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
- 	scan->inodes_left--;
- 	scan->current_inode++;
- 	*ino = scan->current_inode;
--	if (inode != iptr) {
-+	if (iptr != (struct ext2_inode_large *)inode) {
- 		memcpy(inode, iptr, bufsize);
- 		ext2fs_free_mem(&iptr);
- 	}
-@@ -551,7 +563,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	int		clen, i, inodes_per_block;
- 	io_channel	io;
- 	int		length = EXT2_INODE_SIZE(fs->super);
--	struct ext2_inode	*iptr;
-+	struct ext2_inode_large	*iptr;
- 	int		cache_slot;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-@@ -600,7 +612,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
- 
- 	cache_slot = (fs->icache->cache_last + 1) % fs->icache->cache_size;
--	iptr = fs->icache->cache[cache_slot].inode;
-+	iptr = (struct ext2_inode_large *)fs->icache->cache[cache_slot].inode;
- 
- 	ptr = (char *) iptr;
- 	while (length) {
-@@ -626,6 +638,11 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 	length = EXT2_INODE_SIZE(fs->super);
- 
-+	/* Verify the inode checksum. */
-+	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-+	    !ext2fs_inode_csum_verify(fs, ino, iptr))
-+		return EXT2_ET_INODE_CSUM_INVALID;
-+
- #ifdef WORDS_BIGENDIAN
- 	ext2fs_swap_inode_full(fs, (struct ext2_inode_large *) iptr,
- 			       (struct ext2_inode_large *) iptr,
-@@ -674,12 +691,17 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	retval = ext2fs_get_mem(length, &w_inode);
- 	if (retval)
- 		return retval;
--	if (bufsize < length)
-+
-+	if (bufsize < length) {
-+		int old_flags = fs->flags;
-+		fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		retval = ext2fs_read_inode_full(fs, ino,
- 						(struct ext2_inode *)w_inode,
- 						length);
--	if (retval)
--		goto errout;
-+		fs->flags = old_flags;
-+		if (retval)
-+			goto errout;
-+	}
- 
- 	/* Check to see if the inode cache needs to be updated */
- 	if (fs->icache) {
-@@ -706,6 +728,10 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
- 	ext2fs_swap_inode_full(fs, w_inode, w_inode, 1, length);
- #endif
- 
-+	retval = ext2fs_inode_csum_set(fs, ino, w_inode);
-+	if (retval)
-+		goto errout;
-+
- 	group = (ino - 1) / EXT2_INODES_PER_GROUP(fs->super);
- 	offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
- 		EXT2_INODE_SIZE(fs->super);
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index b12bf2d..861ddab 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -93,12 +93,14 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	inode.i_size = fs->blocksize;
- 
- 	/*
--	 * Write out the inode and inode data block
-+	 * Write out the inode and inode data block.  The inode generation
-+	 * number is assigned by write_new_inode, which means that the call
-+	 * to write_dir_block must come after that.
- 	 */
--	retval = ext2fs_write_dir_block(fs, blk, block);
-+	retval = ext2fs_write_new_inode(fs, ino, &inode);
- 	if (retval)
- 		goto cleanup;
--	retval = ext2fs_write_new_inode(fs, ino, &inode);
-+	retval = ext2fs_write_dir_block(fs, blk, block);
- 	if (retval)
- 		goto cleanup;
  
 
