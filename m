@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 09/54] mke2fs: Allow metadata checksums to be turned on at
- mkfs time
-Date: Tue, 06 Mar 2012 15:58:18 -0800
-Message-ID: <20120306235818.11945.39199.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 08/54] e2fsck: Verify and correct inode checksums
+Date: Tue, 06 Mar 2012 15:58:12 -0800
+Message-ID: <20120306235812.11945.3055.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,87 +16,175 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:54988 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932700Ab2CFX62 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:28 -0500
+Received: from e38.co.us.ibm.com ([32.97.110.159]:50757 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030557Ab2CFX6a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:30 -0500
 Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 16:58:28 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 7A36D19D804A
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:58:19 -0700 (MST)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwOeN083746
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:24 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NwMSa011847
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:58:24 -0700
+	Tue, 6 Mar 2012 16:58:30 -0700
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id EFCD2C9005C
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:58:17 -0500 (EST)
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwIWl3248294
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:58:18 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NwG5D017042
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:58:17 -0300
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Write out reserved inodes with full checksums when writing out a zeroed table.
+Detect mismatches of the inode and checksum, and prompt the user to fix the
+situation.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/mke2fs.c |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
+ e2fsck/pass1.c   |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ e2fsck/problem.c |   10 +++++++++
+ e2fsck/problem.h |    6 +++++
+ 3 files changed, 75 insertions(+), 1 deletions(-)
 
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index d80c0b2..28485e3 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -306,6 +306,27 @@ _("Warning: the backup superblock/group descriptors at block %u contain\n"
- 	ext2fs_badblocks_list_iterate_end(bb_iter);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index c31e073..471e3e0 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -540,6 +540,40 @@ extern void e2fsck_setup_tdb_icount(e2fsck_t ctx, int flags,
+ 		*ret = 0;
  }
  
-+static void write_reserved_inodes(ext2_filsys fs)
++static errcode_t recheck_bad_inode_checksum(ext2_filsys fs, ext2_ino_t ino,
++					    e2fsck_t ctx,
++					    struct problem_context *pctx)
 +{
-+	errcode_t	retval;
-+	ext2_ino_t	ino;
-+	struct ext2_inode *inode;
++	errcode_t retval;
++	struct ext2_inode_large inode;
 +
-+	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	if (retval) {
-+		com_err("inode_init", retval,
-+			"while allocating memory");
-+		exit(1);
-+	}
-+	bzero(inode, EXT2_INODE_SIZE(fs->super));
++	/*
++	 * Reread inode.  If we don't see checksum error, then this inode
++	 * has been fixed elsewhere.
++	 */
++	retval = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
++					sizeof(inode));
++	if (retval && retval != EXT2_ET_INODE_CSUM_INVALID)
++		return retval;
++	if (!retval)
++		return 0;
 +
-+	for (ino = 1; ino < EXT2_FIRST_INO(fs->super); ino++)
-+		ext2fs_write_inode_full(fs, ino, inode,
-+					EXT2_INODE_SIZE(fs->super));
++	/*
++	 * Checksum still doesn't match.  That implies that the inode passes
++	 * all the sanity checks, so maybe the checksum is simply corrupt.
++	 * See if the user will go for fixing that.
++	 */
++	if (!fix_problem(ctx, PR_1_INODE_ONLY_CSUM_INVALID, pctx))
++		return 0;
 +
-+	ext2fs_free_mem(&inode);
++	retval = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&inode,
++					 sizeof(inode));
++	if (retval)
++		return retval;
++
++	return 0;
 +}
 +
- static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
+ void e2fsck_pass1(e2fsck_t ctx)
  {
- 	errcode_t	retval;
-@@ -351,6 +372,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
- 	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
- 	ext2fs_numeric_progress_close(fs, &progress,
- 				      _("done                            \n"));
+ 	int	i;
+@@ -561,6 +595,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	int		imagic_fs, extent_fs;
+ 	int		busted_fs_time = 0;
+ 	int		inode_size;
++	int		failed_csum = 0;
+ 
+ 	init_resource_track(&rtrack, ctx->fs->io);
+ 	clear_problem_context(&pctx);
+@@ -740,7 +775,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
+ 			continue;
+ 		}
+-		if (pctx.errcode) {
++		if (pctx.errcode &&
++		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID) {
+ 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
+ 			ctx->flags |= E2F_FLAG_ABORT;
+ 			return;
+@@ -750,6 +786,14 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		pctx.ino = ino;
+ 		pctx.inode = inode;
+ 		ctx->stashed_ino = ino;
 +
-+	/* Reserved inodes must always have correct checksums */
-+	if (fs->super->s_creator_os == EXT2_OS_LINUX &&
-+	    fs->super->s_feature_ro_compat &
-+	    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-+		write_reserved_inodes(fs);
- }
++		/* Clear corrupt inode? */
++		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID) {
++			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
++				goto clear_inode;
++			failed_csum = 1;
++		}
++
+ 		if (inode->i_links_count) {
+ 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
+ 					   ino, inode->i_links_count);
+@@ -1146,6 +1190,20 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		} else
+ 			check_blocks(ctx, &pctx, block_buf);
  
- static void create_root_dir(ext2_filsys fs)
-@@ -870,7 +897,7 @@ static __u32 ok_features[3] = {
- #ifdef CONFIG_QUOTA
- 		EXT4_FEATURE_RO_COMPAT_QUOTA|
- #endif
--		0
-+		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
- };
++		/*
++		 * If the inode failed the checksum and the user didn't
++		 * clear the inode, test the checksum again -- if it still
++		 * fails, ask the user if the checksum should be corrected.
++		 */
++		if (failed_csum) {
++			pctx.errcode = recheck_bad_inode_checksum(fs, ino, ctx,
++								  &pctx);
++			if (pctx.errcode) {
++				ctx->flags |= E2F_FLAG_ABORT;
++				return;
++			}
++		}
++
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			return;
  
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 579c838..a6dd88a 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -929,8 +929,18 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Quota inode is user visible */
+ 	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
+ 	  N_("@q @i is visible to the user.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* inode checksum does not match inode */
++	{ PR_1_INODE_CSUM_INVALID,
++	  N_("@i %i checksum does not match @i.  "),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
  
++	/* inode passes checks, but checksum does not match inode */
++	{ PR_1_INODE_ONLY_CSUM_INVALID,
++	  N_("@i %i passes checks, but checksum does not match @i.  "),
++	  PROMPT_FIX, PR_PREEN_OK },
++
+ 	/* Invalid bad inode */
+ 	{ PR_1_INVALID_BAD_INODE,
+ 	  N_("The bad @b @i looks @n.  "),
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 3fabc90..5797fe2 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -550,6 +550,12 @@ struct problem_context {
+ /* Invalid bad inode */
+ #define PR_1_INVALID_BAD_INODE		0x010065
+ 
++/* inode checksum does not match inode */
++#define PR_1_INODE_CSUM_INVALID		0x010066
++
++/* inode passes checks, but checksum does not match inode */
++#define PR_1_INODE_ONLY_CSUM_INVALID	0x010067
++
+ /*
+  * Pass 1b errors
+  */
 
