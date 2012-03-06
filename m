@@ -1,73 +1,43 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-Date: Tue, 06 Mar 2012 01:40:05 +0100
-Message-ID: <4F555CE5.7050401@itwm.fraunhofer.de>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <20120305155939.GE21356@thunk.org>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: Some interesting input from a flash manufacturer
+Date: Mon, 5 Mar 2012 20:12:26 -0500
+Message-ID: <CAGpXXZ+SsUQZUVi4zFqpV6P3SfcTDKzW9t1aVY3iBH_-0VOwcg@mail.gmail.com>
+References: <E1S3Za4-0005VW-W9@tytso-glaptop.cam.corp.google.com>
+ <4F5135F0.6090100@redhat.com> <20120302231131.GE22215@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
-	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
-To: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120305155939.GE21356-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:37110 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758099Ab2CFBM5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2012 20:12:57 -0500
+Received: by iagz16 with SMTP id z16so6305274iag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Mar 2012 17:12:56 -0800 (PST)
+In-Reply-To: <20120302231131.GE22215@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/05/2012 04:59 PM, Ted Ts'o wrote:
-> On Mon, Jan 09, 2012 at 02:21:48PM +0100, Bernd Schubert wrote:
->> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
->> index ac8f168..fa8e491 100644
->> --- a/fs/ext4/hash.c
->> +++ b/fs/ext4/hash.c
->> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
->>   		return -1;
->>   	}
->>   	hash = hash&  ~1;
->> -	if (hash == (EXT4_HTREE_EOF<<  1))
->> -		hash = (EXT4_HTREE_EOF-1)<<  1;
->> +	if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
->> +		hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
->>   	hinfo->hash = hash;
->>   	hinfo->minor_hash = minor_hash;
->>   	return 0;
+On Fri, Mar 2, 2012 at 6:11 PM, Ted Ts'o <tytso@mit.edu> wrote:
+> I'm even aware of one implementation which remembers the trim
+> request while the system is powered on, but since it doesn't
+> (necessarily) write the trim information to stable store, you could
+> trim the block, read the block and get zeros, then take a power
+> failure, and afterwards, read the block and get the previous contents.
 >
-> Is there a reason why we don't need to avoid the collsion with the
-> 64-bit EOF value as well?  i.e., I think we also need to add:
->
-> 	if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
-> 		hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
->
-> 		       			       	  - Ted
+> As far as I know, the Trim spec allows all of this.
 
+It's been a while since I read the spec, but the read operation above
+changes the rules I believe.
 
-Thanks for looking into it, really appreciated!
+That is if the SSD advertizes itself as having deterministic reads
+after a trim, that read should lock in the values, and a power cycle
+should not change that as I understood the spec.
 
-Yeah, you are right, we also should check for 64-bit EOF. But wouldn't 
-be something like this be better?
+Otherwise what you describe would be a non-deterministic read.  That
+is also allowed, but the drive would need to advertise itself as
+non-deterministic after trim.
 
-	/* check for hash collision */
-	if(is_32bit_api() ) {
-		if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
-			hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
-	} else {
-		if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
-			hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
-	}
-
-
-
-Or am I over engineering?
-
-
-Thanks,
-Bernd
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Greg
