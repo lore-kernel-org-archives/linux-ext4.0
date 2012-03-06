@@ -1,76 +1,95 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to
- usage type
-Date: Mon, 5 Mar 2012 21:28:38 -0500
-Message-ID: <20120306022838.GA24323@thunk.org>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
- <20120109132148.2616029.68798.stgit@localhost.localdomain>
- <20120305155939.GE21356@thunk.org>
- <4F555CE5.7050401@itwm.fraunhofer.de>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC] fadvise: add more flags to provide a hint for block
+ allocation
+Date: Tue, 6 Mar 2012 10:35:05 +0800
+Message-ID: <20120306023505.GA7728@gmail.com>
+References: <20120305125029.GA5121@gmail.com>
+ <4F55189B.4080507@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-	bfields@redhat.com, sandeen@redhat.com,
-	Andreas Dilger <adilger@whamcloud.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Sunil Mushran <sunil.mushran@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52342 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932461Ab2CFC2n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 21:28:43 -0500
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:52151 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932655Ab2CFC35 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Mar 2012 21:29:57 -0500
 Content-Disposition: inline
-In-Reply-To: <4F555CE5.7050401@itwm.fraunhofer.de>
+In-Reply-To: <4F55189B.4080507@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 01:40:05AM +0100, Bernd Schubert wrote:
+On Mon, Mar 05, 2012 at 11:48:43AM -0800, Sunil Mushran wrote:
+> On 03/05/2012 04:50 AM, Zheng Liu wrote:
+> >Hi list,
+> >
+> >Block allocation is a key component of file system.  Every file systems try to
+> >improve the performance with optimizing the block allocation of a file.  But no
+> >matter what file system does, it just guesses what the user expects.  Thus, it
+> >is not very accurate.  fadvise(2) provides a method to let the user to give a
+> >hint to file system.  However, until now, only few flags are provided.  So we
+> >can provide more flags to tell file system how to allocate the blocks for a
+> >file.
+> >
+> >For example:
+> >we can add these flags into fadvise(2):
+> >FADV_ALLOC_READ_SEQ
+> >FADV_ALLOC_READ_RANDOM
+> >FADV_ALLOC_WRITE_ONCE
+> >FADV_ALLOC_WRITE_APPEND
+> >
+> >FADV_ALLOC_READ_* are not similar with FADV_SEQUENTIAL and FADV_RANDOM.
+> >FADV_ALLOC_READ_SEQ tells file system that this file need to allocate some
+> >sequential blocks, and FADV_ALLOC_READ_RADOM tells file system that this file
+> >can endure the fragmentation.
+
+Hi Sunil,
+
+Thank you for your feedback.
+
 > 
-> Yeah, you are right, we also should check for 64-bit EOF. But
-> wouldn't be something like this be better?
 > 
-> 	/* check for hash collision */
-> 	if(is_32bit_api() ) {
-> 		if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
-> 			hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
-> 	} else {
-> 		if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
-> 			hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
-> 	}
+> File systems typically allocate the best layout they can for a file
+> at the time of write. Does _RANDOM mean do not do that. Find single
+> bits scattered around the disk. If so, why will people use it. I
+> mean, random IOs are slow. What you are proposing it is a further
+> slowdown.
+> Hardly a feature that will be attractive to users.
 
-Actually, neither change is needed, now that I look at things more
-closely.  hash is a __u32, so it could never been
-EXT4_HTREE_EOF_64BIT.  But given that we won't let major hash become
-larger than 0xfffffffc, that means the largest possible position value
-is 0x7ffffffeffffffff.  So using an EOF value of 0x0x7fffffffffffffff
-will work fine.
+No, _RANDOM means that file system doesn't need to try its best to find
+a proper position to allocate some blocks for this file.  Furthermore,
+currently random IOs seem that they are not obviously slower than
+sequential IOs in Flash/SSD device.  For example, when users know a file
+that is accessed infrequently, they can put this file in a corner, such
+as in some discontinuously blocks.  Then sequential blocks are reserved
+for the file that needs to be accessed frequently and users can obtain
+the better performance.
 
-The bigger problem that I found when I looked more closely at the
-patch is that the patch uses f_flags in places where f_mode needs to
-be used:
+> 
+> 
+> >FADV_ALLOC_WRITE_ONCE indicates that this file just is written once.  So file
+> >system can allocate some sequential blocks for it to improve the read
+> >performance.  FADV_ALLOC_WRITE_APPEND flag is set to point out that data will be
+> >appended to the end of this file, and file system can reserve some blocks for it
+> >to guarantee the sequence as much as possible.
+> 
+> 
+> Define ONCE. Is it one write(2)? I guess not. You probably mean
+> that once the file descriptor is closed, it will not be written
+> to. But we have no way of knowing how many writes there will be.
+> So it will be treated the same as APPEND. And file systems already
+> provide allocation reservation and/or delayed allocation to handle
+> APPEND write loads. So this flag does not offer much to the user
+> or the fs.
 
-static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
-{
-	if ((filp->f_flags & FMODE_32BITHASH) ||
-                   ^^^^^^^
-	    (!(filp->f_flags & FMODE_64BITHASH) && is_32bit_api()))
-                     ^^^^^^^
-		return major >> 1;
-	else
-		return ((__u64)(major >> 1) << 32) | (__u64)minor;
-}
+Sorry, I don't express clearly. _ONCE means that the size of a file
+doesn't be chagned after it has been created. Certainly, you are right.
+We can use fallocate(2) to obtain the same result. ;-)
 
-static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
-{
-	if ((filp->f_flags & FMODE_32BITHASH) ||
-                   ^^^^^^
-	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
-                     ^^^^^^
-		return (pos << 1) & 0xffffffff;
-	else
-		return ((pos >> 32) << 1) & 0xffffffff;
-}
+Regards,
+Zheng
 
-Which makes me wonder how much this has been tested?
-
-      	       	      	       	    	     - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
