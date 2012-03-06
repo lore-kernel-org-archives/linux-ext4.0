@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v3 00/54] e2fsprogs: Add metadata checksumming
-Date: Tue, 06 Mar 2012 15:57:21 -0800
-Message-ID: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 04/54] libext2fs: Precompute FS UUID checksum seed
+Date: Tue, 06 Mar 2012 15:57:47 -0800
+Message-ID: <20120306235747.11945.56817.stgit@elm3b70.beaverton.ibm.com>
+References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -15,59 +16,113 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:52852 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932670Ab2CFX5d (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:57:33 -0500
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:53798 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932718Ab2CFX5z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 18:57:55 -0500
 Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 16:57:33 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 357C91FF0049
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:57:31 -0700 (MST)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NvTQQ078144
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:29 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvPLn009100
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:29 -0700
+	Tue, 6 Mar 2012 18:57:55 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4699E38C805A
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:57:53 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NvqX2128826
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:57:52 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvoAa009999
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:57:52 -0300
+In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Precompute the FS UUID checksum seed that is used for all metadata checksumming
+operations and store it in ext2_filsys.
 
-This patchset adds support in e2fsprogs for attaching crc32c checksums to most
-of the ext4 metadata objects.  A full design document is on the ext4 wiki[1].
-Please see the cover letter for the kernel patches for a more thorough summary
-of this work.
+Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+ e2fsck/super.c      |    1 +
+ lib/ext2fs/ext2fs.h |   14 ++++++++++++++
+ lib/ext2fs/openfs.c |    2 ++
+ misc/mke2fs.c       |    1 +
+ 4 files changed, 18 insertions(+), 0 deletions(-)
 
-Please have a look at the design document and patches, and please feel free to
-suggest any changes.
 
-v2: Checksum the MMP block, store the checksum type in the superblock, include
-the inode generation in file checksums, and finally solve the problem of limited
-space in block groups by splitting the checksum into two halves.
-
-v2.1: Checksum the reserved parts of the htree tail structure.
-
-v2.2: Reincorporate the FS UUID in the bitmap checksum calcuations.  Move all
-disk layout changes to the front and the feature flag enablement to the end of
-the patch set.  Fail journal recovery if revoke block fails checksum.
-
-v2.3: Change fsck handling of checksum errors: First ask to clear the item; if
-the user declines, run the regular checks; if no corrective actions result, ask
-to reset the checksum.  Also, precompute the UUID checksum seed, refactor the
-inode generation patch into respective patches, and clean up structure member
-declarations.
-
-v3: Eliminate the bg_use_meta_csum feature flag and make metadata_csum
-supersede uninit_bg.  Enable metadata_csum by default on ext4dev filesystems.
-
-This patchset has been tested on 3.3.0-rc6 on x64 and i386.  The patches seems
-to work fine on both platforms.  The patchset is based atop the 1.42.1 release.
-
---D
-
-[1] https://ext4.wiki.kernel.org/articles/e/x/t/Ext4_Disk_Layout_aecb.html
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 3397d77..94648c3 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -710,6 +710,7 @@ void check_super_block(e2fsck_t ctx)
+ 	if (!(ctx->options & E2F_OPT_READONLY) && uuid_is_null(sb->s_uuid)) {
+ 		if (fix_problem(ctx, PR_0_ADD_UUID, &pctx)) {
+ 			uuid_generate(sb->s_uuid);
++			ext2fs_init_csum_seed(fs);
+ 			fs->flags |= EXT2_FLAG_DIRTY;
+ 			fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
+ 		}
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index bde22b6..f7a73e5 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -281,6 +281,9 @@ struct struct_ext2_filsys {
+ 	 * Time at which e2fsck last updated the MMP block.
+ 	 */
+ 	long mmp_last_written;
++
++	/* Precomputed FS UUID checksum for seeding other checksums */
++	__u32 csum_seed;
+ };
+ 
+ #if EXT2_FLAT_INCLUDES
+@@ -1438,6 +1441,7 @@ extern errcode_t ext2fs_write_bb_FILE(ext2_badblocks_list bb_list,
+ 
+ 
+ /* inline functions */
++extern void ext2fs_init_csum_seed(ext2_filsys fs);
+ extern errcode_t ext2fs_get_mem(unsigned long size, void *ptr);
+ extern errcode_t ext2fs_get_memalign(unsigned long size,
+ 				     unsigned long align, void *ptr);
+@@ -1490,6 +1494,16 @@ extern int ext2fs_fstat(int fd, ext2fs_struct_stat *buf);
+ 
+ #ifndef EXT2_CUSTOM_MEMORY_ROUTINES
+ #include <string.h>
++_INLINE_ void ext2fs_init_csum_seed(ext2_filsys fs)
++{
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return;
++
++	fs->csum_seed = ext2fs_crc32c_le(~0, fs->super->s_uuid,
++					 sizeof(fs->super->s_uuid));
++}
++
+ /*
+  *  Allocate memory
+  */
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 32e068c..10beb06 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -298,6 +298,8 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
+ 		goto cleanup;
+ 	}
++	/* Precompute the FS UUID to seed other checksums */
++	ext2fs_init_csum_seed(fs);
+ 
+ 	/*
+ 	 * Read group descriptors
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index c70c1b4..d80c0b2 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2318,6 +2318,7 @@ int main (int argc, char *argv[])
+ 		}
+ 	} else
+ 		uuid_generate(fs->super->s_uuid);
++	ext2fs_init_csum_seed(fs);
+ 
+ 	/*
+ 	 * Initialize the directory index variables
 
