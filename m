@@ -1,58 +1,45 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH] ext4: Update s_free_{inodes,blocks}_count during online
-	resize
-Date: Tue, 6 Mar 2012 11:40:20 -0800
-Message-ID: <20120306194020.GI15164@tux1.beaverton.ibm.com>
-Reply-To: djwong@us.ibm.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42872] fstat()/ext3_iget() sometime takes over 2 minutes...
+Date: Tue, 6 Mar 2012 20:29:01 GMT
+Message-ID: <201203062029.q26KT1u8024537@bugzilla.kernel.org>
+References: <bug-42872-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:56028 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754648Ab2CFTkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 14:40:46 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 14:40:45 -0500
-Content-Disposition: inline
+Received: from bugzilla.kernel.org ([198.145.19.204]:33324 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965234Ab2CFU3C (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 15:29:02 -0500
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q26KT1uf024538
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:29:01 GMT
+In-Reply-To: <bug-42872-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we're doing an online resize of an ext4 filesystem, we need to update the
-free inode and block counts in the superblock so that fsck doesn't complain.
+https://bugzilla.kernel.org/show_bug.cgi?id=42872
 
-Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
----
 
- fs/ext4/resize.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+Jan Kara <jack@suse.cz> changed:
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index f9d948f..a97ede4 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1163,8 +1163,11 @@ static void ext4_update_super(struct super_block *sb,
- 	do_div(reserved_blocks, 100);
- 
- 	ext4_blocks_count_set(es, ext4_blocks_count(es) + blocks_count);
-+	ext4_free_blocks_count_set(es, ext4_free_blocks_count(es) + free_blocks);
- 	le32_add_cpu(&es->s_inodes_count, EXT4_INODES_PER_GROUP(sb) *
- 		     flex_gd->count);
-+	le32_add_cpu(&es->s_free_inodes_count, EXT4_INODES_PER_GROUP(sb) *
-+		     flex_gd->count);
- 
- 	/*
- 	 * We need to protect s_groups_count against other CPUs seeing
-@@ -1465,6 +1468,7 @@ static int ext4_group_extend_no_check(struct super_block *sb,
- 	}
- 
- 	ext4_blocks_count_set(es, o_blocks_count + add);
-+	ext4_free_blocks_count_set(es, ext4_free_blocks_count(es) + add);
- 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
- 		   o_blocks_count + add);
- 	/* We add the blocks to the bitmap and set the group need init bit */
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
+
+
+
+--- Comment #1 from Jan Kara <jack@suse.cz>  2012-03-06 20:29:00 ---
+Hmm, we are waiting for buffer lock so likely someone is writing that inode
+out. It would be good to have stack traces of all hanging processes at that
+moment to tell what they are doing.
+
+So can you please do one more run and when things like suspiciously long fstat
+happen, run as fast as possible "echo w >/proc/sysrq-trigger" and attach here
+the output? Thanks
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
