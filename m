@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 04/23] ext4: Only call out to crc32c if necessary
-Date: Tue, 06 Mar 2012 12:48:21 -0800
-Message-ID: <20120306204821.1663.61312.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 09/23] ext4: Verify and calculate checksums for extent tree
+ blocks
+Date: Tue, 06 Mar 2012 12:48:55 -0800
+Message-ID: <20120306204855.1663.16686.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -24,116 +25,132 @@ In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Only obtain a reference to the cryptoapi and crc32c if we happen to mount a
-filesystem with metadata checksumming enabled.
+Calculate and verify the checksum for each extent tree block.  The checksum is
+located in the space immediately after the last possible ext4_extent in the
+block.  The space is is typically the last 4-8 bytes in the block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/Kconfig |    2 ++
- fs/ext4/ext4.h  |   23 +++++++++++++++++++++++
- fs/ext4/super.c |   16 ++++++++++++++++
- 3 files changed, 41 insertions(+), 0 deletions(-)
+ fs/ext4/ext4_extents.h |   11 +++++++++++
+ fs/ext4/extents.c      |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 61 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 9ed1bb1..c22f170 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -2,6 +2,8 @@ config EXT4_FS
- 	tristate "The Extended 4 (ext4) filesystem"
- 	select JBD2
- 	select CRC16
-+	select CRYPTO
-+	select CRYPTO_CRC32C
- 	help
- 	  This is the next generation of the ext3 filesystem.
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 5c7fbade..7514176 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -114,6 +114,17 @@ struct ext4_extent_header {
  
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0f0b0d5..a4b2689 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -29,6 +29,7 @@
- #include <linux/wait.h>
- #include <linux/blockgroup_lock.h>
- #include <linux/percpu_counter.h>
-+#include <crypto/hash.h>
- #ifdef __KERNEL__
- #include <linux/compat.h>
- #endif
-@@ -1269,6 +1270,9 @@ struct ext4_sb_info {
+ #define EXT4_EXT_MAGIC		cpu_to_le16(0xf30a)
  
- 	/* record the last minlen when FITRIM is called. */
- 	atomic_t s_last_trim_minblks;
++#define EXT4_EXTENT_TAIL_OFFSET(hdr) \
++	(sizeof(struct ext4_extent_header) + \
++	 (sizeof(struct ext4_extent) * le16_to_cpu((hdr)->eh_max)))
 +
-+	/* Reference to checksum algorithm driver via cryptoapi */
-+	struct crypto_shash *s_chksum_driver;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-@@ -1631,6 +1635,25 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
- #define DX_HASH_HALF_MD4_UNSIGNED	4
- #define DX_HASH_TEA_UNSIGNED		5
- 
-+static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
-+			      const void *address, unsigned int length)
++static inline struct ext4_extent_tail *
++find_ext4_extent_tail(struct ext4_extent_header *eh)
 +{
-+	struct {
-+		struct shash_desc shash;
-+		char ctx[crypto_shash_descsize(sbi->s_chksum_driver)];
-+	} desc;
-+	int err;
-+
-+	desc.shash.tfm = sbi->s_chksum_driver;
-+	desc.shash.flags = 0;
-+	*(u32 *)desc.ctx = crc;
-+
-+	err = crypto_shash_update(&desc.shash, address, length);
-+	BUG_ON(err);
-+
-+	return *(u32 *)desc.ctx;
++	return (struct ext4_extent_tail *)(((void *)eh) +
++					   EXT4_EXTENT_TAIL_OFFSET(eh));
 +}
 +
- #ifdef __KERNEL__
+ /*
+  * Array of ext4_ext_path contains path to some extent.
+  * Creation/lookup routines use it for traversal/splitting/etc.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 546279f..db4a748 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -44,6 +44,46 @@
  
- /* hash info structure used by the directory hash */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 38de050..cfd8aa3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -887,6 +887,8 @@ static void ext4_put_super(struct super_block *sb)
- 	unlock_super(sb);
- 	kobject_put(&sbi->s_kobj);
- 	wait_for_completion(&sbi->s_kobj_unregister);
-+	if (sbi->s_chksum_driver)
-+		crypto_free_shash(sbi->s_chksum_driver);
- 	kfree(sbi->s_blockgroup_lock);
- 	kfree(sbi);
- }
-@@ -3196,6 +3198,18 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto cantfind_ext4;
- 	}
+ #include <trace/events/ext4.h>
  
-+	/* Load the checksum driver */
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+		if (IS_ERR(sbi->s_chksum_driver)) {
-+			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
-+			ret = PTR_ERR(sbi->s_chksum_driver);
-+			sbi->s_chksum_driver = NULL;
-+			goto failed_mount;
-+		}
-+	}
++static __le32 ext4_extent_block_csum(struct inode *inode,
++				     struct ext4_extent_header *eh)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	__u32 csum;
 +
- 	/* Set defaults before we parse the mount options */
- 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
- 	set_opt(sb, INIT_INODE_TABLE);
-@@ -3879,6 +3893,8 @@ failed_mount2:
- 		brelse(sbi->s_group_desc[i]);
- 	ext4_kvfree(sbi->s_group_desc);
- failed_mount:
-+	if (sbi->s_chksum_driver)
-+		crypto_free_shash(sbi->s_chksum_driver);
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
++	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)eh,
++			   EXT4_EXTENT_TAIL_OFFSET(eh));
++	return cpu_to_le32(csum);
++}
++
++static int ext4_extent_block_csum_verify(struct inode *inode,
++					 struct ext4_extent_header *eh)
++{
++	struct ext4_extent_tail *et;
++
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	et = find_ext4_extent_tail(eh);
++	if (et->et_checksum != ext4_extent_block_csum(inode, eh))
++		return 0;
++	return 1;
++}
++
++static void ext4_extent_block_csum_set(struct inode *inode,
++				       struct ext4_extent_header *eh)
++{
++	struct ext4_extent_tail *et;
++
++	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return;
++
++	et = find_ext4_extent_tail(eh);
++	et->et_checksum = ext4_extent_block_csum(inode, eh);
++}
++
+ static int ext4_split_extent(handle_t *handle,
+ 				struct inode *inode,
+ 				struct ext4_ext_path *path,
+@@ -102,6 +142,7 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
+ {
+ 	int err;
+ 	if (path->p_bh) {
++		ext4_extent_block_csum_set(inode, ext_block_hdr(path->p_bh));
+ 		/* path points to block */
+ 		err = __ext4_handle_dirty_metadata(where, line, handle,
+ 						   inode, path->p_bh);
+@@ -374,6 +415,12 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+ 		error_msg = "invalid extent entries";
+ 		goto corrupted;
  	}
++	/* Verify checksum on non-root extent tree nodes */
++	if (ext_depth(inode) != depth &&
++	    !ext4_extent_block_csum_verify(inode, eh)) {
++		error_msg = "extent tree corrupted";
++		goto corrupted;
++	}
+ 	return 0;
+ 
+ corrupted:
+@@ -913,6 +960,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		le16_add_cpu(&neh->eh_entries, m);
+ 	}
+ 
++	ext4_extent_block_csum_set(inode, neh);
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
+ 
+@@ -991,6 +1039,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 				sizeof(struct ext4_extent_idx) * m);
+ 			le16_add_cpu(&neh->eh_entries, m);
+ 		}
++		ext4_extent_block_csum_set(inode, neh);
+ 		set_buffer_uptodate(bh);
+ 		unlock_buffer(bh);
+ 
+@@ -1088,6 +1137,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	else
+ 		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
+ 	neh->eh_magic = EXT4_EXT_MAGIC;
++	ext4_extent_block_csum_set(inode, neh);
+ 	set_buffer_uptodate(bh);
+ 	unlock_buffer(bh);
+ 
