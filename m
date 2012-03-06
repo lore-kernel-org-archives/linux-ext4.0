@@ -1,100 +1,73 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Mon, 5 Mar 2012 19:37:16 -0500
-Message-ID: <20120306003716.GD4191@shiny>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
- <20120301143859.GX5054@shiny>
- <CADDYkjQ8jgWUo7=eAeMjve0iRmVZMcrjjbqnvPq0SchE5W9Fqg@mail.gmail.com>
- <20120302140038.GD5054@shiny>
- <CADDYkjT8apYQpdZqr1gZKiHbm9xfTaLr=8GEJF0VKF9neHwgOg@mail.gmail.com>
- <20120302142651.GH5054@shiny>
- <CADDYkjRyQruZgFHDsyAgAV7J3yvunU5YuwmmbxK=1WXJLHw98Q@mail.gmail.com>
- <CADDYkjSWpWAW0dxmMEWjHaRV=jS+U5obeau_GPEgwnJuPBLe3w@mail.gmail.com>
- <CADDYkjQ+N1O0x=_JUdCAdNgrp6mQM44VBzZf6V8e2B5OK6fp1A@mail.gmail.com>
+From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
+ type
+Date: Tue, 06 Mar 2012 01:40:05 +0100
+Message-ID: <4F555CE5.7050401@itwm.fraunhofer.de>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <20120305155939.GE21356@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
-To: Jacek Luczak <difrost.kernel@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CADDYkjQ+N1O0x=_JUdCAdNgrp6mQM44VBzZf6V8e2B5OK6fp1A@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
+	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
+To: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20120305155939.GE21356-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 05, 2012 at 12:32:45PM +0100, Jacek Luczak wrote:
-> 2012/3/4 Jacek Luczak <difrost.kernel@gmail.com>:
-> > 2012/3/3 Jacek Luczak <difrost.kernel@gmail.com>:
-> >> 2012/3/2 Chris Mason <chris.mason@oracle.com>:
-> >>> On Fri, Mar 02, 2012 at 03:16:12PM +0100, Jacek Luczak wrote:
-> >>>> 2012/3/2 Chris Mason <chris.mason@oracle.com>:
-> >>>> > On Fri, Mar 02, 2012 at 11:05:56AM +0100, Jacek Luczak wrote:
-> >>>> >>
-> >>>> >> I've took both on tests. The subject is acp and spd_readdir u=
-sed with
-> >>>> >> tar, all on ext4:
-> >>>> >> 1) acp: http://91.234.146.107/~difrost/seekwatcher/acp_ext4.p=
-ng
-> >>>> >> 2) spd_readdir: http://91.234.146.107/~difrost/seekwatcher/ta=
-r_ext4_readir.png
-> >>>> >> 3) both: http://91.234.146.107/~difrost/seekwatcher/acp_vs_sp=
-d_ext4.png
-> >>>> >>
-> >>>> >> The acp looks much better than spd_readdir but directory copy=
- with
-> >>>> >> spd_readdir decreased to 52m 39sec (30 min less).
-> >>>> >
-> >>>> > Do you have stats on how big these files are, and how fragment=
-ed they
-> >>>> > are? =A0For acp and spd to give us this, I think something has=
- gone wrong
-> >>>> > at writeback time (creating individual fragmented files).
-> >>>>
-> >>>> How big? Which files?
-> >>>
-> >>> All the files you're reading ;)
-> >>>
-> >>> filefrag will tell you how many extents each file has, any file w=
-ith
-> >>> more than one extent is interesting. =A0(The ext4 crowd may have =
-better
-> >>> suggestions on measuring fragmentation).
-> >>>
-> >>> Since you mention this is a compile farm, I'm guessing there are =
-a bunch
-> >>> of .o files created by parallel builds. =A0There are a lot of cha=
-nces for
-> >>> delalloc and the kernel writeback code to do the wrong thing here=
-=2E
-> >>>
-> >>
-> > [Most of files are B and K size]
-> >>
-> >> All files scanned: 1978149
-> >> Files fragmented: 313 (0.015%) where 11 have 3+ extents
-> >> Total size of fragmented files: 7GB (~13% of dir size)
+On 03/05/2012 04:59 PM, Ted Ts'o wrote:
+> On Mon, Jan 09, 2012 at 02:21:48PM +0100, Bernd Schubert wrote:
+>> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+>> index ac8f168..fa8e491 100644
+>> --- a/fs/ext4/hash.c
+>> +++ b/fs/ext4/hash.c
+>> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+>>   		return -1;
+>>   	}
+>>   	hash = hash&  ~1;
+>> -	if (hash == (EXT4_HTREE_EOF<<  1))
+>> -		hash = (EXT4_HTREE_EOF-1)<<  1;
+>> +	if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
+>> +		hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
+>>   	hinfo->hash = hash;
+>>   	hinfo->minor_hash = minor_hash;
+>>   	return 0;
+>
+> Is there a reason why we don't need to avoid the collsion with the
+> 64-bit EOF value as well?  i.e., I think we also need to add:
+>
+> 	if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
+> 		hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
+>
+> 		       			       	  - Ted
 
-Ok, so I don't have a lot of great new ideas.  My guess is that inode
-order and disk order for the blocks aren't matching up.  You can confir=
-m
-this with:
 
-acp -b some_dir
+Thanks for looking into it, really appreciated!
 
-You can also try telling acp to make a bigger read ahead window:
+Yeah, you are right, we also should check for 64-bit EOF. But wouldn't 
+be something like this be better?
 
-acp -s 4096 -r 128 some_dir
+	/* check for hash collision */
+	if(is_32bit_api() ) {
+		if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
+			hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
+	} else {
+		if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
+			hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
+	}
 
-You can tell acp to scan all the files in the directory tree first
-(warning, this might use a good chunk of ram)
 
-acp -w some_dir
 
-and you can combine all of these together  None of the above
-will actually help in your workload, but it'll help narrow down what is
-actually seeky on disk.
+Or am I over engineering?
 
--chris
+
+Thanks,
+Bernd
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
