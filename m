@@ -1,39 +1,59 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1] ext4: Remove empty index blocks when punching holes
-Date: Mon, 5 Mar 2012 18:54:30 -0500
-Message-ID: <20120305235430.GA12796@thunk.org>
-References: <1330501048-14109-1-git-send-email-achender@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1202290841310.4926@dhcp-27-109.brq.redhat.com>
- <4F4DDE8D.6020203@linux.vnet.ibm.com>
- <alpine.LFD.2.00.1202290916590.4926@dhcp-27-109.brq.redhat.com>
+From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Date: Mon, 5 Mar 2012 19:08:37 -0500
+Message-ID: <20120306000837.GA17164@thunk.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40332 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757949Ab2CEXyh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:54:37 -0500
+Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
+	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
+To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1202290916590.4926@dhcp-27-109.brq.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120109132158.2616029.30467.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+ <20120109132153.2616029.26302.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 29, 2012 at 09:18:54AM +0100, Lukas Czerner wrote:
-> > 
-> > Alrighty then, sounds good.  This patch seemed to correct the loop discard bug
-> > we saw earlier for me.  So please make sure you have some similar fix in your
-> > new patch.  Basically we had some extra index blocks hanging around when the
-> > depth was greater than one, so the patch just adds some code to free up those
-> > index blocks in the path if they are empty.  Hope this helps!  Thx!  :)
+On Mon, Jan 09, 2012 at 02:21:53PM +0100, Bernd Schubert wrote:
+> Just rename this variable, as the next patch will add a flag and
+> 'access' as variable name would not be correct any more.
 > 
-> Actually I started to modifying the punch hole code in order to find
-> that bug and this problem does go away with my pathes. I'll CC
-> you on the patches when I send them out.
+> Signed-off-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+> Acked-by: J. Bruce Fields<bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> ---
+>  fs/nfsd/vfs.c |   18 ++++++++++--------
+>  1 files changed, 10 insertions(+), 8 deletions(-)
 
-OK, so my understanding is that Lukas's patches solve the same problem
-as Allison's, and those are the patches I should review and integrate?
+On Mon, Jan 09, 2012 at 02:21:58PM +0100, Bernd Schubert wrote:
+> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+> the NFS version. NFSv2 gets 32-bit hashes only.
+> 
+> NOTE: This patch got rather complex as Christoph asked to set the
+> filp->f_mode flag in the open call or immediatly after dentry_open()
+> in nfsd_open() to avoid races.
+> Personally I still do not see a reason for that and in my opinion
+> FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+> follows directly after nfsd_open() without a chance of races.
+> 
+> Signed-off-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+> Acked-by: J. Bruce Fields<bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> ---
+>  fs/nfsd/vfs.c |   15 +++++++++++++--
+>  fs/nfsd/vfs.h |    2 ++
+>  2 files changed, 15 insertions(+), 2 deletions(-)
 
-   	      	  	    		- Ted
+NFS folks,
+
+Since Bruce has ack'ed these patches I assume it will be OK if I carry
+them in the ext4 tree for merging?  (They depend on changes in ext4
+found in the first two patches of these patch series.)
+
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
