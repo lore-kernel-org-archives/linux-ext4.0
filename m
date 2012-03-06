@@ -1,50 +1,39 @@
-From: "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Date: Tue, 6 Mar 2012 10:28:43 -0500
-Message-ID: <20120306152842.GA8339@pad.fieldses.org>
-References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
- <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
- <20120306151816.GB32282@thunk.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/1] ext4: Remove empty index blocks when punching holes
+Date: Tue, 6 Mar 2012 11:44:12 -0500
+Message-ID: <20120306164412.GD32282@thunk.org>
+References: <1330501048-14109-1-git-send-email-achender@linux.vnet.ibm.com>
+ <alpine.LFD.2.00.1202290841310.4926@dhcp-27-109.brq.redhat.com>
+ <4F4DDE8D.6020203@linux.vnet.ibm.com>
+ <alpine.LFD.2.00.1202290916590.4926@dhcp-27-109.brq.redhat.com>
+ <20120305235430.GA12796@thunk.org>
+ <alpine.LFD.2.00.1203060810430.5085@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-	sandeen@redhat.com, adilger@whamcloud.com
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60003 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752598Ab2CFP2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 10:28:48 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:48239 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751264Ab2CFQoR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 11:44:17 -0500
 Content-Disposition: inline
-In-Reply-To: <20120306151816.GB32282@thunk.org>
+In-Reply-To: <alpine.LFD.2.00.1203060810430.5085@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 10:18:16AM -0500, Ted Ts'o wrote:
-> On Mon, Mar 05, 2012 at 09:08:19PM -0500, J. Bruce Fields wrote:
-> > Yes, that would be fine.
-> > 
-> > (There may well be some conflict: simplest might be if you can get that
-> > pushed out to a stable public branch somewhere, hopefully before the
-> > merge window opens, and that'll give me a chance to pull it and handle
-> > any merge conflicts.
+On Tue, Mar 06, 2012 at 08:11:37AM +0100, Lukas Czerner wrote:
 > 
-> Are the commits you're worried about on the NFS side already in
-> linux-next?
+> you're right my patches solves this problem (as I wrote in the commit
+> description) just because we now use a different code paths, which do
+> not have this problem.
 
-No (though there might be some other conflicts there I haven't thought
-of).
+Ok, thanks.  I'll look at them before the end of this week.
 
-> If so, I'll do a quick test merge and see if there are
-> any conflicts.  If so, I'll segregate out these patches into a
-> separate pre-merge branch --- and then if you like you could pull them
-> into your branch and we can deal with it that way.
+Just to be clear, have the problematic code paths been removed in your
+patches, or are they not just being used in the problem scenario?
+Basically, is there any other time where we might need the additional
+logic which Allison added?
 
-That sounds like a good way to do it regardless?
-
---b.
+					- Ted
