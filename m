@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 18/23] jbd2: Checksum journal superblock
-Date: Tue, 06 Mar 2012 12:50:07 -0800
-Message-ID: <20120306205007.1663.15336.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 19/23] jbd2: Checksum revocation blocks
+Date: Tue, 06 Mar 2012 12:50:14 -0800
+Message-ID: <20120306205013.1663.40234.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,134 +19,127 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:53577 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031309Ab2CFUvk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 15:51:40 -0500
+Received: from /spool/local
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 6 Mar 2012 13:51:39 -0700
 In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Calculate and verify a checksum covering the journal superblock.
+Compute and verify revoke blocks inside the journal.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/jbd2/journal.c    |   50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h |    3 +++
- 2 files changed, 53 insertions(+), 0 deletions(-)
+ fs/jbd2/recovery.c |   22 ++++++++++++++++++++++
+ fs/jbd2/revoke.c   |   27 ++++++++++++++++++++++++++-
+ 2 files changed, 48 insertions(+), 1 deletions(-)
 
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 554f899..808654a 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -109,6 +109,34 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
- 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index da6d7ba..bfc52cd 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -703,6 +703,25 @@ static int do_one_pass(journal_t *journal,
+ 	return err;
  }
  
-+static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
++static int jbd2_revoke_block_csum_verify(journal_t *j,
++					 void *buf)
 +{
-+	__u32 csum, old_csum;
++	struct jbd2_journal_revoke_tail *tail;
++	__u32 provided, calculated;
 +
-+	old_csum = sb->s_checksum;
-+	sb->s_checksum = 0;
-+	csum = jbd2_chksum(j, ~0, (char *)sb, sizeof(journal_superblock_t));
-+	sb->s_checksum = old_csum;
-+
-+	return cpu_to_be32(csum);
-+}
-+
-+int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb)
-+{
 +	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return 1;
 +
-+	return sb->s_checksum == jbd2_superblock_csum(j, sb);
-+}
++	tail = (struct jbd2_journal_revoke_tail *)(buf + j->j_blocksize -
++			sizeof(struct jbd2_journal_revoke_tail));
++	provided = tail->r_checksum;
++	tail->r_checksum = 0;
++	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
++	tail->r_checksum = provided;
 +
-+void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++	provided = be32_to_cpu(provided);
++	return provided == calculated;
++}
+ 
+ /* Scan a revoke record, marking all blocks mentioned as revoked. */
+ 
+@@ -717,6 +736,9 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ 	offset = sizeof(jbd2_journal_revoke_header_t);
+ 	max = be32_to_cpu(header->r_count);
+ 
++	if (!jbd2_revoke_block_csum_verify(journal, header))
++		return -EINVAL;
++
+ 	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_64BIT))
+ 		record_len = 8;
+ 
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 30b2867..53a7544 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -582,6 +582,7 @@ static void write_one_revoke_record(journal_t *journal,
+ 				    struct jbd2_revoke_record_s *record,
+ 				    int write_op)
+ {
++	int csum_size = 0;
+ 	struct journal_head *descriptor;
+ 	int offset;
+ 	journal_header_t *header;
+@@ -596,9 +597,13 @@ static void write_one_revoke_record(journal_t *journal,
+ 	descriptor = *descriptorp;
+ 	offset = *offsetp;
+ 
++	/* Do we need to leave space at the end for a checksum? */
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		csum_size = sizeof(struct jbd2_journal_revoke_tail);
++
+ 	/* Make sure we have a descriptor with space left for the record */
+ 	if (descriptor) {
+-		if (offset == journal->j_blocksize) {
++		if (offset >= journal->j_blocksize - csum_size) {
+ 			flush_descriptor(journal, descriptor, offset, write_op);
+ 			descriptor = NULL;
+ 		}
+@@ -635,6 +640,24 @@ static void write_one_revoke_record(journal_t *journal,
+ 	*offsetp = offset;
+ }
+ 
++static void jbd2_revoke_csum_set(journal_t *j,
++				 struct journal_head *descriptor)
 +{
++	struct jbd2_journal_revoke_tail *tail;
++	__u32 csum;
++
 +	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 +		return;
 +
-+	sb->s_checksum = jbd2_superblock_csum(j, sb);
++	tail = (struct jbd2_journal_revoke_tail *)
++			(jh2bh(descriptor)->b_data + j->j_blocksize -
++			sizeof(struct jbd2_journal_revoke_tail));
++	tail->r_checksum = 0;
++	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
++			   j->j_blocksize);
++	tail->r_checksum = cpu_to_be32(csum);
 +}
 +
  /*
-  * Helper function used to manage commit timeouts
-  */
-@@ -1178,6 +1206,7 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
- 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    = cpu_to_be32(journal->j_tail);
- 	sb->s_errno    = cpu_to_be32(journal->j_errno);
-+	jbd2_superblock_csum_set(journal, sb);
- 	read_unlock(&journal->j_state_lock);
+  * Flush a revoke descriptor out to the journal.  If we are aborting,
+  * this is a noop; otherwise we are generating a buffer which needs to
+@@ -656,6 +679,8 @@ static void flush_descriptor(journal_t *journal,
  
- 	BUFFER_TRACE(bh, "marking dirty");
-@@ -1295,6 +1324,17 @@ static int journal_get_superblock(journal_t *journal)
- 		}
- 	}
- 
-+	/* Check superblock checksum */
-+	if (!jbd2_superblock_csum_verify(journal, sb)) {
-+		printk(KERN_ERR "JBD: journal checksum error\n");
-+		goto out;
-+	}
+ 	header = (jbd2_journal_revoke_header_t *) jh2bh(descriptor)->b_data;
+ 	header->r_count = cpu_to_be32(offset);
++	jbd2_revoke_csum_set(journal, descriptor);
 +
-+	/* Precompute checksum seed for all metadata */
-+	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		journal->j_csum_seed = jbd2_chksum(journal, ~0, sb->s_uuid,
-+						   sizeof(sb->s_uuid));
-+
- 	set_buffer_verified(bh);
- 
- 	return 0;
-@@ -1581,6 +1621,13 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 				return 0;
- 			}
- 		}
-+
-+		/* Precompute checksum seed for all metadata */
-+		if (JBD2_HAS_INCOMPAT_FEATURE(journal,
-+					      JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+			journal->j_csum_seed = jbd2_chksum(journal, ~0,
-+							   sb->s_uuid,
-+							   sizeof(sb->s_uuid));
- 	}
- 
- 	/* If enabling v1 checksums, downgrade superblock */
-@@ -1591,6 +1638,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    |= cpu_to_be32(compat);
- 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
- 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
- 
- 	return 1;
- #undef COMPAT_FEATURE_ON
-@@ -1621,6 +1669,7 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
- 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
- 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
- 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
-+	jbd2_journal_update_superblock(journal, 0);
- }
- EXPORT_SYMBOL(jbd2_journal_clear_features);
- 
-@@ -1669,6 +1718,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
- 
- 	sb->s_nr_users = cpu_to_be32(1);
- 	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
-+	jbd2_superblock_csum_set(journal, sb);
- 	journal->j_format_version = 2;
- 
- 	bh = journal->j_sb_buffer;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 320de7d..f321226 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -969,6 +969,9 @@ struct journal_s
- 
- 	/* Reference to checksum algorithm driver via cryptoapi */
- 	struct crypto_shash *j_chksum_driver;
-+
-+	/* Precomputed journal UUID checksum for seeding other checksums */
-+	__u32 j_csum_seed;
- };
- 
- /*
+ 	set_buffer_jwrite(bh);
+ 	BUFFER_TRACE(bh, "write");
+ 	set_buffer_dirty(bh);
+
