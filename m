@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 16/23] jbd2: Enable journal clients to enable v2 checksumming
-Date: Tue, 06 Mar 2012 12:49:48 -0800
-Message-ID: <20120306204948.1663.90271.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 04/23] ext4: Only call out to crc32c if necessary
+Date: Tue, 06 Mar 2012 12:48:21 -0800
+Message-ID: <20120306204821.1663.61312.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -24,185 +24,116 @@ In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add in the necessary code so that journal clients can enable the new journal
-checksumming features.
+Only obtain a reference to the cryptoapi and crc32c if we happen to mount a
+filesystem with metadata checksumming enabled.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/super.c   |   55 ++++++++++++++++++++++++++++++++++++++++-------------
- fs/jbd2/journal.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 92 insertions(+), 13 deletions(-)
+ fs/ext4/Kconfig |    2 ++
+ fs/ext4/ext4.h  |   23 +++++++++++++++++++++++
+ fs/ext4/super.c |   16 ++++++++++++++++
+ 3 files changed, 41 insertions(+), 0 deletions(-)
 
 
+diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+index 9ed1bb1..c22f170 100644
+--- a/fs/ext4/Kconfig
++++ b/fs/ext4/Kconfig
+@@ -2,6 +2,8 @@ config EXT4_FS
+ 	tristate "The Extended 4 (ext4) filesystem"
+ 	select JBD2
+ 	select CRC16
++	select CRYPTO
++	select CRYPTO_CRC32C
+ 	help
+ 	  This is the next generation of the ext3 filesystem.
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0f0b0d5..a4b2689 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -29,6 +29,7 @@
+ #include <linux/wait.h>
+ #include <linux/blockgroup_lock.h>
+ #include <linux/percpu_counter.h>
++#include <crypto/hash.h>
+ #ifdef __KERNEL__
+ #include <linux/compat.h>
+ #endif
+@@ -1269,6 +1270,9 @@ struct ext4_sb_info {
+ 
+ 	/* record the last minlen when FITRIM is called. */
+ 	atomic_t s_last_trim_minblks;
++
++	/* Reference to checksum algorithm driver via cryptoapi */
++	struct crypto_shash *s_chksum_driver;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+@@ -1631,6 +1635,25 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ #define DX_HASH_HALF_MD4_UNSIGNED	4
+ #define DX_HASH_TEA_UNSIGNED		5
+ 
++static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
++			      const void *address, unsigned int length)
++{
++	struct {
++		struct shash_desc shash;
++		char ctx[crypto_shash_descsize(sbi->s_chksum_driver)];
++	} desc;
++	int err;
++
++	desc.shash.tfm = sbi->s_chksum_driver;
++	desc.shash.flags = 0;
++	*(u32 *)desc.ctx = crc;
++
++	err = crypto_shash_update(&desc.shash, address, length);
++	BUG_ON(err);
++
++	return *(u32 *)desc.ctx;
++}
++
+ #ifdef __KERNEL__
+ 
+ /* hash info structure used by the directory hash */
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a8e379e..e9b01e4 100644
+index 38de050..cfd8aa3 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3166,6 +3166,44 @@ static void ext4_destroy_lazyinit_thread(void)
- 	kthread_stop(ext4_lazyinit_task);
+@@ -887,6 +887,8 @@ static void ext4_put_super(struct super_block *sb)
+ 	unlock_super(sb);
+ 	kobject_put(&sbi->s_kobj);
+ 	wait_for_completion(&sbi->s_kobj_unregister);
++	if (sbi->s_chksum_driver)
++		crypto_free_shash(sbi->s_chksum_driver);
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
  }
+@@ -3196,6 +3198,18 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto cantfind_ext4;
+ 	}
  
-+static int set_journal_csum_feature_set(struct super_block *sb)
-+{
-+	int ret = 1;
-+	int compat, incompat;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
++	/* Load the checksum driver */
 +	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
 +				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
-+		/* journal checksum v2 */
-+		compat = 0;
-+		incompat = JBD2_FEATURE_INCOMPAT_CSUM_V2;
-+	} else {
-+		/* journal checksum v1 */
-+		compat = JBD2_FEATURE_COMPAT_CHECKSUM;
-+		incompat = 0;
++		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
++		if (IS_ERR(sbi->s_chksum_driver)) {
++			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
++			ret = PTR_ERR(sbi->s_chksum_driver);
++			sbi->s_chksum_driver = NULL;
++			goto failed_mount;
++		}
 +	}
 +
-+	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
-+		ret = jbd2_journal_set_features(sbi->s_journal,
-+				compat, 0,
-+				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
-+				incompat);
-+	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
-+		ret = jbd2_journal_set_features(sbi->s_journal,
-+				compat, 0,
-+				incompat);
-+		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
-+				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
-+	} else {
-+		jbd2_journal_clear_features(sbi->s_journal,
-+				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
-+				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
-+				JBD2_FEATURE_INCOMPAT_CSUM_V2);
-+	}
-+
-+	return ret;
-+}
-+
- static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	char *orig_data = kstrdup(data, GFP_KERNEL);
-@@ -3762,19 +3800,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount_wq;
+ 	/* Set defaults before we parse the mount options */
+ 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
+ 	set_opt(sb, INIT_INODE_TABLE);
+@@ -3879,6 +3893,8 @@ failed_mount2:
+ 		brelse(sbi->s_group_desc[i]);
+ 	ext4_kvfree(sbi->s_group_desc);
+ failed_mount:
++	if (sbi->s_chksum_driver)
++		crypto_free_shash(sbi->s_chksum_driver);
+ 	if (sbi->s_proc) {
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
  	}
- 
--	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
--		jbd2_journal_set_features(sbi->s_journal,
--				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
--				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
--	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
--		jbd2_journal_set_features(sbi->s_journal,
--				JBD2_FEATURE_COMPAT_CHECKSUM, 0, 0);
--		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
--				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
--	} else {
--		jbd2_journal_clear_features(sbi->s_journal,
--				JBD2_FEATURE_COMPAT_CHECKSUM, 0,
--				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
-+	if (!set_journal_csum_feature_set(sb)) {
-+		ext4_msg(sb, KERN_ERR, "Failed to set journal checksum "
-+			 "feature set");
-+		goto failed_mount_wq;
- 	}
- 
- 	/* We have now updated the journal if required, so we can
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index c0a5f9f..ac276b0 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -100,6 +100,15 @@ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
- static void __journal_abort_soft (journal_t *journal, int errno);
- static int jbd2_journal_create_slab(size_t slab_size);
- 
-+/* Checksumming functions */
-+int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
-+{
-+	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
-+		return 1;
-+
-+	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
-+}
-+
- /*
-  * Helper function used to manage commit timeouts
-  */
-@@ -1222,6 +1231,9 @@ static int journal_get_superblock(journal_t *journal)
- 		}
- 	}
- 
-+	if (buffer_verified(bh))
-+		return 0;
-+
- 	sb = journal->j_superblock;
- 
- 	err = -EINVAL;
-@@ -1259,6 +1271,21 @@ static int journal_get_superblock(journal_t *journal)
- 		goto out;
- 	}
- 
-+	if (JBD2_HAS_COMPAT_FEATURE(journal, JBD2_FEATURE_COMPAT_CHECKSUM) &&
-+	    JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
-+		/* Can't have checksum v1 and v2 on at the same time! */
-+		printk(KERN_ERR "JBD: Can't enable checksumming v1 and v2 "
-+		       "at the same time!\n");
-+		goto out;
-+	}
-+
-+	if (!jbd2_verify_csum_type(journal, sb)) {
-+		printk(KERN_ERR "JBD: Unknown checksum type\n");
-+		goto out;
-+	}
-+
-+	set_buffer_verified(bh);
-+
- 	return 0;
- 
- out:
-@@ -1502,6 +1529,10 @@ int jbd2_journal_check_available_features (journal_t *journal, unsigned long com
- int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 			  unsigned long ro, unsigned long incompat)
- {
-+#define INCOMPAT_FEATURE_ON(f) \
-+		((incompat & (f)) && !(sb->s_feature_incompat & cpu_to_be32(f)))
-+#define COMPAT_FEATURE_ON(f) \
-+		((compat & (f)) && !(sb->s_feature_compat & cpu_to_be32(f)))
- 	journal_superblock_t *sb;
- 
- 	if (jbd2_journal_check_used_features(journal, compat, ro, incompat))
-@@ -1510,16 +1541,35 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
- 	if (!jbd2_journal_check_available_features(journal, compat, ro, incompat))
- 		return 0;
- 
-+	/* Asking for checksumming v2 and v1?  Only give them v2. */
-+	if (incompat & JBD2_FEATURE_INCOMPAT_CSUM_V2 &&
-+	    compat & JBD2_FEATURE_COMPAT_CHECKSUM)
-+		compat &= ~JBD2_FEATURE_COMPAT_CHECKSUM;
-+
- 	jbd_debug(1, "Setting new features 0x%lx/0x%lx/0x%lx\n",
- 		  compat, ro, incompat);
- 
- 	sb = journal->j_superblock;
- 
-+	/* If enabling v2 checksums, update superblock */
-+	if (INCOMPAT_FEATURE_ON(JBD2_FEATURE_INCOMPAT_CSUM_V2)) {
-+		sb->s_checksum_type = JBD2_CRC32C_CHKSUM;
-+		sb->s_feature_compat &=
-+			~cpu_to_be32(JBD2_FEATURE_COMPAT_CHECKSUM);
-+	}
-+
-+	/* If enabling v1 checksums, downgrade superblock */
-+	if (COMPAT_FEATURE_ON(JBD2_FEATURE_COMPAT_CHECKSUM))
-+		sb->s_feature_incompat &=
-+			~cpu_to_be32(JBD2_FEATURE_INCOMPAT_CSUM_V2);
-+
- 	sb->s_feature_compat    |= cpu_to_be32(compat);
- 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
- 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
- 
- 	return 1;
-+#undef COMPAT_FEATURE_ON
-+#undef INCOMPAT_FEATURE_ON
- }
- 
- /*
