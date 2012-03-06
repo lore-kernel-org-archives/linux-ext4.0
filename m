@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 23/23] ext4/jbd2: Add metadata checksumming to the list of
- supported features
-Date: Tue, 06 Mar 2012 12:50:42 -0800
-Message-ID: <20120306205041.1663.70894.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 18/23] jbd2: Checksum journal superblock
+Date: Tue, 06 Mar 2012 12:50:07 -0800
+Message-ID: <20120306205007.1663.15336.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -25,41 +24,129 @@ In-Reply-To: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Activate the metadata checksumming feature by adding it to ext4 and jbd2's
-lists of supported features.
+Calculate and verify a checksum covering the journal superblock.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- fs/ext4/ext4.h       |    3 ++-
- include/linux/jbd2.h |    3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ fs/jbd2/journal.c    |   50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |    3 +++
+ 2 files changed, 53 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 900d5c4..dd75078 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1486,7 +1486,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
- 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR |\
- 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE |\
--					 EXT4_FEATURE_RO_COMPAT_BIGALLOC)
-+					 EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
-+					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 554f899..808654a 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -109,6 +109,34 @@ int jbd2_verify_csum_type(journal_t *j, journal_superblock_t *sb)
+ 	return sb->s_checksum_type == JBD2_CRC32C_CHKSUM;
+ }
  
++static __u32 jbd2_superblock_csum(journal_t *j, journal_superblock_t *sb)
++{
++	__u32 csum, old_csum;
++
++	old_csum = sb->s_checksum;
++	sb->s_checksum = 0;
++	csum = jbd2_chksum(j, ~0, (char *)sb, sizeof(journal_superblock_t));
++	sb->s_checksum = old_csum;
++
++	return cpu_to_be32(csum);
++}
++
++int jbd2_superblock_csum_verify(journal_t *j, journal_superblock_t *sb)
++{
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	return sb->s_checksum == jbd2_superblock_csum(j, sb);
++}
++
++void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
++{
++	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		return;
++
++	sb->s_checksum = jbd2_superblock_csum(j, sb);
++}
++
  /*
-  * Default values for user and/or group using reserved blocks
+  * Helper function used to manage commit timeouts
+  */
+@@ -1178,6 +1206,7 @@ void jbd2_journal_update_superblock(journal_t *journal, int wait)
+ 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
+ 	sb->s_start    = cpu_to_be32(journal->j_tail);
+ 	sb->s_errno    = cpu_to_be32(journal->j_errno);
++	jbd2_superblock_csum_set(journal, sb);
+ 	read_unlock(&journal->j_state_lock);
+ 
+ 	BUFFER_TRACE(bh, "marking dirty");
+@@ -1295,6 +1324,17 @@ static int journal_get_superblock(journal_t *journal)
+ 		}
+ 	}
+ 
++	/* Check superblock checksum */
++	if (!jbd2_superblock_csum_verify(journal, sb)) {
++		printk(KERN_ERR "JBD: journal checksum error\n");
++		goto out;
++	}
++
++	/* Precompute checksum seed for all metadata */
++	if (JBD2_HAS_INCOMPAT_FEATURE(journal, JBD2_FEATURE_INCOMPAT_CSUM_V2))
++		journal->j_csum_seed = jbd2_chksum(journal, ~0, sb->s_uuid,
++						   sizeof(sb->s_uuid));
++
+ 	set_buffer_verified(bh);
+ 
+ 	return 0;
+@@ -1581,6 +1621,13 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 				return 0;
+ 			}
+ 		}
++
++		/* Precompute checksum seed for all metadata */
++		if (JBD2_HAS_INCOMPAT_FEATURE(journal,
++					      JBD2_FEATURE_INCOMPAT_CSUM_V2))
++			journal->j_csum_seed = jbd2_chksum(journal, ~0,
++							   sb->s_uuid,
++							   sizeof(sb->s_uuid));
+ 	}
+ 
+ 	/* If enabling v1 checksums, downgrade superblock */
+@@ -1591,6 +1638,7 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 	sb->s_feature_compat    |= cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+ 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
++	jbd2_journal_update_superblock(journal, 0);
+ 
+ 	return 1;
+ #undef COMPAT_FEATURE_ON
+@@ -1621,6 +1669,7 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
+ 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
+ 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
++	jbd2_journal_update_superblock(journal, 0);
+ }
+ EXPORT_SYMBOL(jbd2_journal_clear_features);
+ 
+@@ -1669,6 +1718,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
+ 
+ 	sb->s_nr_users = cpu_to_be32(1);
+ 	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
++	jbd2_superblock_csum_set(journal, sb);
+ 	journal->j_format_version = 2;
+ 
+ 	bh = journal->j_sb_buffer;
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index f321226..40ceeff 100644
+index 320de7d..f321226 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -296,7 +296,8 @@ typedef struct journal_superblock_s
- #define JBD2_KNOWN_ROCOMPAT_FEATURES	0
- #define JBD2_KNOWN_INCOMPAT_FEATURES	(JBD2_FEATURE_INCOMPAT_REVOKE | \
- 					JBD2_FEATURE_INCOMPAT_64BIT | \
--					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)
-+					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
-+					JBD2_FEATURE_INCOMPAT_CSUM_V2)
+@@ -969,6 +969,9 @@ struct journal_s
  
- #ifdef __KERNEL__
+ 	/* Reference to checksum algorithm driver via cryptoapi */
+ 	struct crypto_shash *j_chksum_driver;
++
++	/* Precomputed journal UUID checksum for seeding other checksums */
++	__u32 j_csum_seed;
+ };
  
+ /*
