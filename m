@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 16/54] e2fsck: Verify block bitmap checksum
-Date: Tue, 06 Mar 2012 15:59:04 -0800
-Message-ID: <20120306235904.11945.97460.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 19/54] libext2fs: Verify and calculate extent tree block
+ checksums
+Date: Tue, 06 Mar 2012 15:59:24 -0800
+Message-ID: <20120306235924.11945.69822.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,156 +17,208 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:56461 "EHLO e9.ny.us.ibm.com"
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:47643 "EHLO e2.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031282Ab2CFX7N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 18:59:13 -0500
+	id S1031282Ab2CFX7d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 18:59:33 -0500
 Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 18:59:12 -0500
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 9A14238C8059
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:59:10 -0500 (EST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NxAvI253322
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:59:10 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q275U0TQ002154
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Mar 2012 00:30:02 -0500
+	Tue, 6 Mar 2012 18:59:32 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id B09716E8049
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:59:30 -0500 (EST)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NxU8h324546
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:59:30 -0500
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NxS4G017222
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:59:29 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check block bitmap checksum and write a new checksum if the verification fails.
-This is ok because e2fsck has already computed the correct block bitmap.
+Verify and calculate extent tree block checksums when processing filesystems.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass5.c   |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- e2fsck/problem.c |    5 ++++
- e2fsck/problem.h |    3 ++
- 3 files changed, 73 insertions(+), 0 deletions(-)
+ lib/ext2fs/csum.c         |   79 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 ++
+ lib/ext2fs/ext2fs.h       |    6 +++
+ lib/ext2fs/extent.c       |   21 ++++++++++++
+ 4 files changed, 109 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 72c4936..f1ce6d7 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -28,6 +28,7 @@ static void check_inode_bitmaps(e2fsck_t ctx);
- static void check_inode_end(e2fsck_t ctx);
- static void check_block_end(e2fsck_t ctx);
- static void check_inode_bitmap_checksum(e2fsck_t ctx);
-+static void check_block_bitmap_checksum(e2fsck_t ctx);
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 5c5b7fb..8a0543c 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,85 @@
+ #define STATIC static
+ #endif
  
- void e2fsck_pass5(e2fsck_t ctx)
- {
-@@ -66,6 +67,7 @@ void e2fsck_pass5(e2fsck_t ctx)
- 		return;
- 
- 	check_inode_bitmap_checksum(ctx);
-+	check_block_bitmap_checksum(ctx);
- 
- 	ext2fs_free_inode_bitmap(ctx->inode_used_map);
- 	ctx->inode_used_map = 0;
-@@ -138,6 +140,69 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- 	ext2fs_free_mem(&buf);
- }
- 
-+static void check_block_bitmap_checksum(e2fsck_t ctx)
++#define EXT3_EXTENT_TAIL_OFFSET(hdr)	(sizeof(struct ext3_extent_header) + \
++	(sizeof(struct ext3_extent) * ext2fs_le16_to_cpu((hdr)->eh_max)))
++
++static struct ext3_extent_tail *get_extent_tail(struct ext3_extent_header *h)
 +{
-+	struct problem_context	pctx;
-+	struct ext4_group_desc	*gdp;
-+	char		*buf;
-+	dgrp_t		i;
-+	int		nbytes;
-+	blk64_t		blk_itr;
-+	errcode_t	retval;
-+	int		csum_flag = 0;
-+
-+	/* If bitmap is dirty from being fixed, checksum will be corrected */
-+	if (ext2fs_test_bb_dirty(ctx->fs))
-+		return;
-+
-+	nbytes = (size_t)(EXT2_BLOCKS_PER_GROUP(ctx->fs->super) / 8);
-+	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
-+				     &buf);
-+	if (retval) {
-+		com_err(ctx->program_name, 0,
-+		    _("check_block_bitmap_checksum: Memory allocation error"));
-+		fatal_error(ctx, 0);
-+	}
-+
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-+		csum_flag = 1;
-+
-+	clear_problem_context(&pctx);
-+	for (i = 0; i < ctx->fs->group_desc_count; i++) {
-+		if (csum_flag && ext2fs_bg_flags_test(ctx->fs, i,
-+						      EXT2_BG_BLOCK_UNINIT))
-+			continue;
-+
-+		blk_itr = EXT2FS_B2C(ctx->fs,
-+				     ctx->fs->super->s_first_data_block) +
-+			  (i * (nbytes << 3));
-+		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
-+				ctx->fs->group_desc, i);
-+		retval = ext2fs_get_block_bitmap_range2(ctx->fs->block_map,
-+							blk_itr, nbytes << 3,
-+							buf);
-+		if (retval)
-+			break;
-+
-+		if (ext2fs_block_bitmap_csum_verify(ctx->fs, i, buf, nbytes))
-+			continue;
-+		pctx.group = i;
-+		if (!fix_problem(ctx, PR_5_BLOCK_BITMAP_CSUM_INVALID, &pctx))
-+			continue;
-+
-+		/*
-+		 * Fixing one checksum will rewrite all of them.  The bitmap
-+		 * will be checked against the one we made during pass1 for
-+		 * discrepancies, and fixed if need be.
-+		 */
-+		ext2fs_mark_bb_dirty(ctx->fs);
-+		break;
-+	}
-+
-+	ext2fs_free_mem(&buf);
++	return (struct ext3_extent_tail *)(((void *)h) +
++					   EXT3_EXTENT_TAIL_OFFSET(h));
 +}
 +
- static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
- 				  blk64_t start, blk64_t count)
++static errcode_t ext2fs_extent_block_csum(ext2_filsys fs, ext2_ino_t inum,
++					  struct ext3_extent_header *eh,
++					  __u32 *crc)
++{
++	int size;
++	__u32 gen;
++	errcode_t retval;
++	struct ext2_inode inode;
++
++	size = EXT3_EXTENT_TAIL_OFFSET(eh) + offsetof(struct ext3_extent_tail,
++						      et_checksum);
++
++	retval = ext2fs_read_inode(fs, inum, &inode);
++	if (retval)
++		return retval;
++	inum = ext2fs_cpu_to_le32(inum);
++	gen = ext2fs_cpu_to_le32(inode.i_generation);
++	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
++				sizeof(inum));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen, sizeof(gen));
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)eh, size);
++
++	return 0;
++}
++
++int ext2fs_extent_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++				    struct ext3_extent_header *eh)
++{
++	errcode_t retval;
++	__u32 provided, calculated;
++	struct ext3_extent_tail *t = get_extent_tail(eh);
++
++	/*
++	 * The extent tree structures are accessed in LE order, so we must
++	 * swap the checksum bytes here.
++	 */
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	provided = ext2fs_le32_to_cpu(t->et_checksum);
++	retval = ext2fs_extent_block_csum(fs, inum, eh, &calculated);
++	if (retval)
++		return 0;
++
++	return provided == calculated;
++}
++
++errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs, ext2_ino_t inum,
++				       struct ext3_extent_header *eh)
++{
++	errcode_t retval;
++	__u32 crc;
++	struct ext3_extent_tail *t = get_extent_tail(eh);
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	/*
++	 * The extent tree structures are accessed in LE order, so we must
++	 * swap the checksum bytes here.
++	 */
++	retval = ext2fs_extent_block_csum(fs, inum, eh, &crc);
++	if (retval)
++		return retval;
++	t->et_checksum = ext2fs_cpu_to_le32(crc);
++	return retval;
++}
++
+ int ext2fs_inode_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
+ 				    char *bitmap, int size)
  {
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 2954d73..7dc4c39 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1689,6 +1689,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@g %g @i bitmap does not match checksum\n"),
- 	  PROMPT_FIX, PR_LATCH_IBITMAP | PR_PREEN_OK },
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 3f5d08f..9019026 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -449,4 +449,7 @@ ec	EXT2_ET_INODE_CSUM_INVALID,
+ ec	EXT2_ET_INODE_BITMAP_CSUM_INVALID,
+ 	"Inode bitmap checksum does not match bitmap"
  
-+	/* Group N block bitmap does not match checksum */
-+	{ PR_5_BLOCK_BITMAP_CSUM_INVALID,
-+	  N_("@g %g @b bitmap does not match checksum\n"),
-+	  PROMPT_FIX, PR_LATCH_BBITMAP | PR_PREEN_OK },
++ec	EXT2_ET_EXTENT_CSUM_INVALID,
++	"Extent block checksum does not match extent block"
 +
- 	/* Post-Pass 5 errors */
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 9d3e8c9..8dd038a 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -952,6 +952,12 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
  
- 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 0adc7ea..39e6dba 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -1022,6 +1022,9 @@ struct problem_context {
- /* Inode bitmap checksum does not match */
- #define PR_5_INODE_BITMAP_CSUM_INVALID	0x05001A
+ /* csum.c */
++extern errcode_t ext2fs_extent_block_csum_set(ext2_filsys fs,
++					      ext2_ino_t inum,
++					      struct ext3_extent_header *eh);
++extern int ext2fs_extent_block_csum_verify(ext2_filsys fs,
++					   ext2_ino_t inum,
++					   struct ext3_extent_header *eh);
+ extern errcode_t ext2fs_block_bitmap_csum_set(ext2_filsys fs, dgrp_t group,
+ 					      char *bitmap, int size);
+ extern int ext2fs_block_bitmap_csum_verify(ext2_filsys fs, dgrp_t group,
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index eb096d6..7d456ef 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -455,6 +455,13 @@ retry:
+ 			return retval;
+ 		}
  
-+/* Block bitmap checksum does not match */
-+#define PR_5_BLOCK_BITMAP_CSUM_INVALID	0x05001B
++		if (!(handle->fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
++		    !ext2fs_extent_block_csum_verify(handle->fs, handle->ino,
++						     eh)) {
++			handle->level--;
++			return EXT2_ET_EXTENT_CSUM_INVALID;
++		}
 +
- /*
-  * Post-Pass 5 errors
-  */
+ 		newpath->left = newpath->entries =
+ 			ext2fs_le16_to_cpu(eh->eh_entries);
+ 		newpath->max_entries = ext2fs_le16_to_cpu(eh->eh_max);
+@@ -541,6 +548,7 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 	blk64_t				blk;
+ 	errcode_t			retval;
+ 	struct ext3_extent_idx		*ix;
++	struct ext3_extent_header	*eh;
+ 
+ 	if (handle->level == 0) {
+ 		retval = ext2fs_write_inode(handle->fs, handle->ino,
+@@ -550,6 +558,14 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
+ 			((__u64) ext2fs_le16_to_cpu(ix->ei_leaf_hi) << 32);
+ 
++		/* then update the checksum */
++		eh = (struct ext3_extent_header *)
++				handle->path[handle->level].buf;
++		retval = ext2fs_extent_block_csum_set(handle->fs, handle->ino,
++						      eh);
++		if (retval)
++			return retval;
++
+ 		retval = io_channel_write_blk64(handle->fs->io,
+ 				      blk, 1, handle->path[handle->level].buf);
+ 	}
+@@ -958,6 +974,11 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
+ 
+ 	new_node_start = ext2fs_le32_to_cpu(EXT_FIRST_INDEX(neweh)->ei_block);
+ 
++	/* then update the checksum */
++	retval = ext2fs_extent_block_csum_set(handle->fs, handle->ino, neweh);
++	if (retval)
++		goto done;
++
+ 	/* ...and write the new node block out to disk. */
+ 	retval = io_channel_write_blk64(handle->fs->io, new_node_pblk, 1,
+ 					block_buf);
 
