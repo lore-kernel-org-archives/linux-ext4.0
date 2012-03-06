@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 17/54] e2fsck: Don't verify bitmap checksums
-Date: Tue, 06 Mar 2012 15:59:11 -0800
-Message-ID: <20120306235911.11945.59048.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 18/54] tune2fs: Rewrite block bitmap checksums
+Date: Tue, 06 Mar 2012 15:59:17 -0800
+Message-ID: <20120306235917.11945.88160.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,49 +16,46 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:57556 "EHLO
+Received: from e31.co.us.ibm.com ([32.97.110.149]:57582 "EHLO
 	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031468Ab2CFX7z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:59:55 -0500
+	with ESMTP id S1031468Ab2CFX74 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:59:56 -0500
 Received: from /spool/local
 	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 16:59:53 -0700
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 0D01CC9005E
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:59:17 -0500 (EST)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NxH6X3248326
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:59:17 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NxFiQ021262
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:59:16 -0300
+	Tue, 6 Mar 2012 16:59:55 -0700
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id BA17F19D804A
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 16:59:19 -0700 (MST)
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NxPfk161226
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:59:25 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NxM8n016275
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:59:24 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since the correct inode and block bitmaps are calculated in pass 5, don't fail
-the bitmap read operation in prior passes since (a) incorrect results won't
-kill us and (b) if we fail early, we'll never _get_ to pass 5.
+When toggling metadata_csum, mark the block bitmap dirty so that it gets
+written with new checksums.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/util.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ misc/tune2fs.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index 6e3a1dc..af483fa 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -249,7 +249,9 @@ void e2fsck_read_bitmaps(e2fsck_t ctx)
- 	old_op = ehandler_operation(_("reading inode and block bitmaps"));
- 	e2fsck_set_bitmap_type(fs, EXT2FS_BMAP64_RBTREE, "fs_bitmaps",
- 			       &save_type);
-+	ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	retval = ext2fs_read_bitmaps(fs);
-+	ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	fs->default_bitmap_type = save_type;
- 	ehandler_operation(old_op);
- 	if (retval) {
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 478b651..a5ff5ce 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -429,6 +429,7 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
+ 	rewrite_inodes(fs);
+ 	ext2fs_read_bitmaps(fs);
+ 	ext2fs_mark_ib_dirty(fs);
++	ext2fs_mark_bb_dirty(fs);
+ 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ }
 
