@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 02/54] libext2fs: Change ext4 on-disk layout to support
- metadata checksumming
-Date: Tue, 06 Mar 2012 15:57:34 -0800
-Message-ID: <20120306235734.11945.46038.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 07/54] tune2fs: Add inode checksum support
+Date: Tue, 06 Mar 2012 15:58:05 -0800
+Message-ID: <20120306235805.11945.49889.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,200 +16,211 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:53772 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932670Ab2CFX5u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 18:57:50 -0500
+Received: from e39.co.us.ibm.com ([32.97.110.160]:34557 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932720Ab2CFX6O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 18:58:14 -0500
 Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 18:57:50 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 67C7C6E804B
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:57:40 -0500 (EST)
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26Nvd6Y239546
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:57:40 -0500
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26NvchO009697
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 16:57:39 -0700
+	Tue, 6 Mar 2012 16:58:14 -0700
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 08452C90058
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 18:58:11 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q26NwBQX207284
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 18:58:11 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q26Nw9OT010378
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 20:58:11 -0300
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Define flags and extend ext4 structure definitions to support metadata
-checksumming.  Ted T'so covered many of these fields in an earlier patch, but
-there are more required changes to the disk layout.
+This patch adds to tune2fs the ability to toggle the metadata checksum rocompat
+feature flag, which will rewrite the inode table with checksums.  Disallow
+changing the UUID while the fs is mounted, because rewriting the metadata
+objects is racy.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/blkid/probe.h          |    1 +
- lib/ext2fs/ext2_ext_attr.h |    4 +++-
- lib/ext2fs/ext2_fs.h       |   40 ++++++++++++++++++++++++++++++++++++++--
- lib/ext2fs/ext2fs.h        |    1 +
- lib/ext2fs/ext3_extents.h  |   11 +++++++++++
- 5 files changed, 54 insertions(+), 3 deletions(-)
+ misc/tune2fs.c |  108 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 106 insertions(+), 2 deletions(-)
 
 
-diff --git a/lib/blkid/probe.h b/lib/blkid/probe.h
-index 37e80ef..d6809e1 100644
---- a/lib/blkid/probe.h
-+++ b/lib/blkid/probe.h
-@@ -110,6 +110,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
- #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
-+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 74a0489..cb1aff3 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -91,6 +91,7 @@ static char *extended_cmd;
+ static unsigned long new_inode_size;
+ static char *ext_mount_opts;
+ static int usrquota, grpquota;
++static int rewrite_checksums;
  
- /* for s_feature_incompat */
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-diff --git a/lib/ext2fs/ext2_ext_attr.h b/lib/ext2fs/ext2_ext_attr.h
-index ed548d1..bbb0aaa 100644
---- a/lib/ext2fs/ext2_ext_attr.h
-+++ b/lib/ext2fs/ext2_ext_attr.h
-@@ -20,7 +20,9 @@ struct ext2_ext_attr_header {
- 	__u32	h_refcount;	/* reference count */
- 	__u32	h_blocks;	/* number of disk blocks used */
- 	__u32	h_hash;		/* hash value of all attributes */
--	__u32	h_reserved[4];	/* zero right now */
-+	__u32	h_checksum;	/* crc32c(uuid+id+xattrs) */
-+				/* id = inum if refcount = 1, else blknum */
-+	__u32	h_reserved[3];	/* zero right now */
+ int journal_size, journal_flags;
+ char *journal_device;
+@@ -142,7 +143,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER |
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
  };
  
- struct ext2_ext_attr_entry {
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 3b01285..b0b798b 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -235,6 +235,13 @@ struct ext2_dx_countlimit {
- 	__u16 count;
- };
- 
-+/*
-+ * This goes at the end of each htree block.
-+ */
-+struct ext2_dx_tail {
-+	__u32 dt_reserved;
-+	__u32 dt_checksum;	/* crc32c(uuid+inum+dxblock) */
-+};
- 
- /*
-  * Macro-instructions used to manage group descriptors
-@@ -463,6 +470,7 @@ struct ext2_inode_large {
- #define i_gid_low	i_gid
- #define i_uid_high	osd2.linux2.l_i_uid_high
- #define i_gid_high	osd2.linux2.l_i_gid_high
-+#define i_checksum_lo	osd2.linux2.l_i_checksum_lo
- #else
- #if defined(__GNU__)
- 
-@@ -534,6 +542,9 @@ struct ext2_inode_large {
- #define ext4_offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
- #endif
- 
-+/* Metadata checksum algorithms */
-+#define EXT2_CRC32C_CHKSUM		1
-+
- /*
-  * Structure of the super block
-  */
-@@ -619,7 +630,7 @@ struct ext2_super_block {
- 	__u64   s_mmp_block;            /* Block for multi-mount protection */
- 	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
- 	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
--	__u8    s_reserved_char_pad;
-+	__u8    s_checksum_type;	/* metadata checksum algorithm */
- 	__u16	s_reserved_pad;		/* Padding to next 32bits */
- 	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
- 	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
-@@ -707,6 +718,11 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
- #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
- #define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
-+/*
-+ * METADATA_CSUM implies GDT_CSUM.  When METADATA_CSUM is set, group
-+ * descriptor checksums use the same algorithm as all other data
-+ * structures' checksums.
-+ */
- #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
- #define EXT4_FEATURE_RO_COMPAT_REPLICA		0x0800
- 
-@@ -780,6 +796,17 @@ struct ext2_dir_entry_2 {
+ static __u32 clear_ok_features[3] = {
+@@ -160,7 +162,8 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+-		EXT4_FEATURE_RO_COMPAT_QUOTA
++		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM
  };
  
  /*
-+ * This is a bogus directory entry at the end of each leaf block that
-+ * records checksums.
+@@ -351,6 +354,16 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
+ 	return 0;
+ }
+ 
++static int check_fsck_needed(ext2_filsys fs)
++{
++	if (fs->super->s_state & EXT2_VALID_FS)
++		return 0;
++	printf("\n%s\n", _(please_fsck));
++	if (mount_flags & EXT2_MF_READONLY)
++		printf(_("(and reboot afterwards!)\n"));
++	return 1;
++}
++
+ static void request_fsck_afterwards(ext2_filsys fs)
+ {
+ 	static int requested = 0;
+@@ -364,6 +377,60 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ }
+ 
+ /*
++ * Forcibly set checksums in all inodes.
 + */
-+struct ext2_dir_entry_tail {
-+	__u32	det_reserved_zero1;	/* Pretend to be unused */
-+	__u16	det_rec_len;		/* 12 */
-+	__u16	det_reserved_name_len;	/* 0xDE00, fake namelen/filetype */
-+	__u32	det_checksum;		/* crc32c(uuid+inode+dirent) */
-+};
++static void rewrite_inodes(ext2_filsys fs)
++{
++	int length = EXT2_INODE_SIZE(fs->super);
++	struct ext2_inode *inode;
++	ext2_inode_scan	scan;
++	errcode_t	retval;
++	ext2_ino_t	ino;
++
++	if (fs->super->s_creator_os != EXT2_OS_LINUX)
++		return;
++
++	retval = ext2fs_open_inode_scan(fs, 0, &scan);
++	if (retval) {
++		com_err("set_csum", retval, "while opening inode scan");
++		exit(1);
++	}
++
++	retval = ext2fs_get_mem(length, &inode);
++	if (retval) {
++		com_err("set_csum", retval, "while allocating memory");
++		exit(1);
++	}
++
++	do {
++		retval = ext2fs_get_next_inode_full(scan, &ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while getting next inode");
++			exit(1);
++		}
++		if (!ino)
++			break;
++
++		retval = ext2fs_write_inode_full(fs, ino, inode, length);
++		if (retval) {
++			com_err("set_csum", retval, "while writing inode");
++			exit(1);
++		}
++	} while (ino);
++
++	ext2fs_free_mem(&inode);
++	ext2fs_close_inode_scan(scan);
++}
++
++static void rewrite_metadata_checksums(ext2_filsys fs)
++{
++	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
++	ext2fs_init_csum_seed(fs);
++	rewrite_inodes(fs);
++	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
++}
 +
 +/*
-  * Ext2 directory file types.  Only the low 3 bits are used.  The
-  * other bits are reserved for now.
+  * Update the feature set as provided by the user.
   */
-@@ -795,6 +822,14 @@ struct ext2_dir_entry_2 {
- #define EXT2_FT_MAX		8
+ static int update_feature_set(ext2_filsys fs, char *features)
+@@ -536,6 +603,20 @@ mmp_error:
+ 	}
  
- /*
-+ * Annoyingly, e2fsprogs always swab16s ext2_dir_entry.name_len, so we
-+ * have to build ext2_dir_entry_tail with that assumption too.  This
-+ * constant helps to build the dir_entry_tail to look like it has an
-+ * "invalid" file type.
-+ */
-+#define EXT2_DIR_NAME_LEN_CSUM	0xDE00
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
++		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
 +
-+/*
-  * EXT2_DIR_PAD defines the directory entries boundaries
-  *
-  * NOTE: It must be a multiple of 4
-@@ -835,7 +870,8 @@ struct mmp_struct {
- 	char	mmp_bdevname[32];	/* Bdev which last updated MMP block */
- 	__u16	mmp_check_interval;	/* Changed mmp_check_interval */
- 	__u16	mmp_pad1;
--	__u32	mmp_pad2[227];
-+	__u32	mmp_pad2[226];
-+	__u32	mmp_checksum;		/* crc32c(uuid+mmp_block) */
- };
- 
- /*
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 682f0cd..bde22b6 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -199,6 +199,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_PRINT_PROGRESS	0x40000
- #define EXT2_FLAG_DIRECT_IO		0x80000
- #define EXT2_FLAG_SKIP_MMP		0x100000
-+#define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
- 
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-diff --git a/lib/ext2fs/ext3_extents.h b/lib/ext2fs/ext3_extents.h
-index 88fabc9..4163436 100644
---- a/lib/ext2fs/ext3_extents.h
-+++ b/lib/ext2fs/ext3_extents.h
-@@ -19,6 +19,17 @@
-  */
- 
- /*
-+ * This is extent tail on-disk structure.
-+ * All other extent structures are 12 bytes long.  It turns out that
-+ * block_size % 12 >= 4 for at least all powers of 2 greater than 512, which
-+ * covers all valid ext4 block sizes.  Therefore, this tail structure can be
-+ * crammed into the end of the block without having to rebalance the tree.
-+ */
-+struct ext3_extent_tail {
-+	__u32	et_checksum;	/* crc32c(uuid+inum+extent_block) */
-+};
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (check_fsck_needed(fs))
++			exit(1);
++		rewrite_checksums = 1;
++	}
 +
-+/*
-  * this is extent on-disk structure
-  * it's used at the bottom of the tree
-  */
++	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+ 		for (i = 0; i < fs->group_desc_count; i++) {
+ 			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+@@ -2128,6 +2209,23 @@ retry_open:
+ 		int set_csum = 0;
+ 		dgrp_t i;
+ 
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++			/*
++			 * Changing the UUID requires rewriting all metadata,
++			 * which can race with a mounted fs.  Don't allow that.
++			 */
++			if (mount_flags & EXT2_MF_MOUNTED) {
++				fputs(_("The UUID may only be "
++					"changed when the filesystem is "
++					"unmounted.\n"), stderr);
++				exit(1);
++			}
++
++			if (check_fsck_needed(fs))
++				exit(1);
++		}
++
+ 		if (sb->s_feature_ro_compat &
+ 		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+ 			/*
+@@ -2153,13 +2251,19 @@ retry_open:
+ 			rc = 1;
+ 			goto closefs;
+ 		}
++		ext2fs_init_csum_seed(fs);
+ 		if (set_csum) {
+ 			for (i = 0; i < fs->group_desc_count; i++)
+ 				ext2fs_group_desc_csum_set(fs, i);
+ 			fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+ 		}
+ 		ext2fs_mark_super_dirty(fs);
++		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++			rewrite_checksums = 1;
+ 	}
++	if (rewrite_checksums)
++		rewrite_metadata_checksums(fs);
+ 	if (I_flag) {
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("The inode size may only be "
 
