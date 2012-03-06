@@ -1,484 +1,77 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3] ext4: Rewrite punch hole to use
- ext4_ext_remove_space()
-Date: Tue, 6 Mar 2012 08:29:14 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203060818530.5085@dhcp-27-109.brq.redhat.com>
-References: <1330683963-15791-1-git-send-email-lczerner@redhat.com> <4F559823.5030004@linux.vnet.ibm.com>
+Subject: Re: [RFC] fadvise: add more flags to provide a hint for block
+ allocation
+Date: Tue, 6 Mar 2012 09:27:16 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203060912170.5085@dhcp-27-109.brq.redhat.com>
+References: <20120305125029.GA5121@gmail.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, Mingming Cao <cmm@linux.vnet.ibm.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10709 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757741Ab2CFH3X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 02:29:23 -0500
-In-Reply-To: <4F559823.5030004@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120305125029.GA5121@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 5 Mar 2012, Allison Henderson wrote:
+On Mon, 5 Mar 2012, Zheng Liu wrote:
 
-> On 03/02/2012 03:26 AM, Lukas Czerner wrote:
-> > This commit rewrites ext4 punch hole implementation to use
-> > ext4_ext_remove_space() instead of its home gown way of doing this via
-> > ext4_ext_map_blocks(). There are several reasons for changing this.
-> > 
-> > Firstly it is quite non obvious that punching hole needs to
-> > ext4_ext_map_blocks() to punch a hole, especially given that this
-> > function should map blocks, not unmap it. It also required a lot of new
-> > code in ext4_ext_map_blocks().
-> > 
-> > Secondly the design of it is not very effective. The reason is that we
-> > are trying to punch out blocks in ext4_ext_punch_hole() in opposite
-> > direction than in ext4_ext_rm_leaf() which causes the ext4_ext_rm_leaf()
-> > to iterate through the whole tree from the end to the start to find the
-> > requested extent for every extent we are going to punch out.
-> > 
-> > And finally the current implementation does not use the existing code,
-> > but bring a lot of new code, which is IMO unnecessary since there
-> > already is some infrastructure we can use. Specifically
-> > ext4_ext_remove_space().
-> > 
-> > This commit changes ext4_ext_remove_space() to accept 'end' parameter so
-> > we can not only truncate to the end of file, but also remove the space
-> > in the middle of the file (punch a hole). Moreover, because the last
-> > block to punch out, might be in the middle of the extent, we have to
-> > split the extent at 'end + 1' so ext4_ext_rm_leaf() can easily either
-> > remove the whole fist part of split extent, or change its size.
-> > 
-> > ext4_ext_remove_space() is then used to actually remove the space
-> > (extents) from within the hole, instead of ext4_ext_map_blocks().
-> > 
-> > Note that this also fix the issue with punch hole, where we would forget
-> > to remove empty index blocks from the extent tree, resulting in double
-> > free block error and file system corruption. This is simply because we
-> > now use different code path, where this problem does not exist.
-> > 
-> > This has been tested with fsx running for several days and xfstests,
-> > plus xfstest #251 with '-o discard' run on the loop image (which
-> > converts discard requestes into punch hole to the backing file). All of
-> > it on 1K and 4K file system block size.
-> > 
-> > Signed-off-by: Lukas Czerner<lczerner@redhat.com>
+> Hi list,
 > 
-> Hi Lukas,
+> Block allocation is a key component of file system.  Every file systems try to
+> improve the performance with optimizing the block allocation of a file.  But no
+> matter what file system does, it just guesses what the user expects.  Thus, it
+> is not very accurate.  fadvise(2) provides a method to let the user to give a
+> hint to file system.  However, until now, only few flags are provided.  So we
+> can provide more flags to tell file system how to allocate the blocks for a
+> file.
 > 
-> Thank you for taking the time to go back over the punch hole code, I do like
-> the new set up, and I think it looks cleaner :).  There are some things though
-> that are in the current solution that I do not see in this new solution, but I
-> am hoping that maybe we dont need them since you seem to be getting through
-> the tests ok.  But I thought that I should point out they are there just in
-> case something happens, we are aware of them. Also xfstests 255 and 256 are
-> good punch hole tests to run through, if you havent tried them out yet.
-
-Hi Allison,
-
-thank you for the review. I did run a lot of xfstests including the two
-you mentioned.
-
+> For example:
+> we can add these flags into fadvise(2):
+> FADV_ALLOC_READ_SEQ
+> FADV_ALLOC_READ_RANDOM
+> FADV_ALLOC_WRITE_ONCE
+> FADV_ALLOC_WRITE_APPEND
 > 
-> Also, there's another unmerged patch out there that I will need to rebase on
-> top of this one.  It's not a big change, but there is one thing in this patch
-> that will need to change to make it work.  I go over that too in the comments
-> below.
-
-I'll try to see what it is all about, but since I just realized that
-indeed we do not hold imutex, then we should definitely handle end >
-isize case. We would probably need a xfstest for that :). Thanks!
-
+> FADV_ALLOC_READ_* are not similar with FADV_SEQUENTIAL and FADV_RANDOM.
+> FADV_ALLOC_READ_SEQ tells file system that this file need to allocate some
+> sequential blocks, and FADV_ALLOC_READ_RADOM tells file system that this file
+> can endure the fragmentation.
 > 
-> 
-> > ---
-> >   fs/ext4/extents.c |  174
-> > ++++++++++++++++++++++++++++-------------------------
-> >   1 files changed, 92 insertions(+), 82 deletions(-)
-> > 
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 74f23c2..04dd188 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -44,6 +44,14 @@
-> > 
-> >   #include<trace/events/ext4.h>
-> > 
-> > +/*
-> > + * used by extent splitting.
-> > + */
-> > +#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
-> > +					due to ENOSPC */
-> > +#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized
-> > */
-> > +#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized
-> > */
-> > +
-> >   static int ext4_split_extent(handle_t *handle,
-> >   				struct inode *inode,
-> >   				struct ext4_ext_path *path,
-> > @@ -51,6 +59,13 @@ static int ext4_split_extent(handle_t *handle,
-> >   				int split_flag,
-> >   				int flags);
-> > 
-> > +static int ext4_split_extent_at(handle_t *handle,
-> > +			     struct inode *inode,
-> > +			     struct ext4_ext_path *path,
-> > +			     ext4_lblk_t split,
-> > +			     int split_flag,
-> > +			     int flags);
-> > +
-> >   static int ext4_ext_truncate_extend_restart(handle_t *handle,
-> >   					    struct inode *inode,
-> >   					    int needed)
-> > @@ -2308,7 +2323,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode
-> > *inode,
-> >   	struct ext4_extent *ex;
-> > 
-> >   	/* the header must be checked already in ext4_ext_remove_space() */
-> > -	ext_debug("truncate since %u in leaf\n", start);
-> > +	ext_debug("truncate since %u in leaf to %u\n", start, end);
-> >   	if (!path[depth].p_hdr)
-> >   		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
-> >   	eh = path[depth].p_hdr;
-> > @@ -2343,7 +2358,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode
-> > *inode,
-> >   		ext_debug("  border %u:%u\n", a, b);
-> > 
-> >   		/* If this extent is beyond the end of the hole, skip it */
-> > -		if (end<= ex_ee_block) {
-> > +		if (end<  ex_ee_block) {
-> >   			ex--;
-> >   			ex_ee_block = le32_to_cpu(ex->ee_block);
-> >   			ex_ee_len = ext4_ext_get_actual_len(ex);
-> > @@ -2482,16 +2497,18 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
-> >   	return 1;
-> >   }
-> > 
-> > -static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
-> > +static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
-> > +				 ext4_lblk_t end)
-> >   {
-> >   	struct super_block *sb = inode->i_sb;
-> >   	int depth = ext_depth(inode);
-> >   	struct ext4_ext_path *path;
-> >   	ext4_fsblk_t partial_cluster = 0;
-> >   	handle_t *handle;
-> > +	ext4_lblk_t size;
-> >   	int i, err;
-> > 
-> > -	ext_debug("truncate since %u\n", start);
-> > +	ext_debug("truncate since %u to %u\n", start, end);
-> > 
-> >   	/* probably first extent we're gonna free will be last in block */
-> >   	handle = ext4_journal_start(inode, depth + 1);
-> > @@ -2503,6 +2520,64 @@ again:
-> > 
-> >   	trace_ext4_ext_remove_space(inode, start, depth);
-> > 
-> 
-> So in this snippet below it looks like you do the splitting only if the hole
-> is contained with in i_size.  I think though that we need to allow punching
-> beyond i_size.  A while ago Hugh found this bug (this email: "punch-hole
-> should go beyond i_size" sent  around 1/11/2012).  So, I sent out a patch for
-> it ("[PATCH 0/3] ext4: punch hole beyond i_size" sent around 1/14/2012 ), but
-> I think it just got lost in the traffic, because I dont think it got merged.
-> I've been meaning to resend but have just been tied up.  I try as much as I
-> can to keep up with ext4 on my own time, but I do not get much time allotted
-> to it anymore :( .  The set actually changes code up in ext4_ext_punch_hole,
-> and I dont think your patch touches the same code, so I should be able to
-> rebase it on top of your patch fairly easily.
-> I will send an update based on your new set, but it looks like the line below
-> will need to change too.  In this case, I think what what you're meaning to do
-> is split extents if we are punching holes (right?).  Maybe instead of using
-> i_size, we could just check "if (end != EXT_MAX_BLOCKS - 1)", since truncate
-> will always use "EXT_MAX_BLOCKS - 1"
+> FADV_ALLOC_WRITE_ONCE indicates that this file just is written once.  So file
+> system can allocate some sequential blocks for it to improve the read
+> performance.  FADV_ALLOC_WRITE_APPEND flag is set to point out that data will be
+> appended to the end of this file, and file system can reserve some blocks for it
+> to guarantee the sequence as much as possible.
 
-Yes, in that case "if (end != EXT_MAX_BLOCKS - 1)" would probably make
-more sense. I'll try to come up with the test case to trigger the
-problem. Thanks for pointing it out.
+Hi Zheng,
 
-> 
-> > +	size = (inode->i_size + sb->s_blocksize - 1)
-> > +		>>  EXT4_BLOCK_SIZE_BITS(sb);
-> > +
-> > +	/*
-> > +	 * Check if we are removing extents inside the extent tree. If that
-> > +	 * is the case, we are going to punch a hole inside the extent tree
-> > +	 * so we have to check whether we need to split the extent covering
-> > +	 * the last block to remove so we can easily remove the part of it
-> > +	 * in ext4_ext_rm_leaf().
-> > +	 */
-> > +	if (size>  end) {
-> > +		struct ext4_extent *ex;
-> > +		ext4_lblk_t ee_block;
-> > +
-> > +		/* find extent for this block */
-> > +		path = ext4_ext_find_extent(inode, end, NULL);
-> > +		if (IS_ERR(path)) {
-> > +			ext4_journal_stop(handle);
-> > +			return PTR_ERR(path);
-> > +		}
-> > +		depth = ext_depth(inode);
-> > +		ex = path[depth].p_ext;
-> > +		if (!ex)
-> > +			goto cont;
-> > +
-> > +		ee_block = le32_to_cpu(ex->ee_block);
-> > +
-> 
-> Some comments on the split logic here:  When my earlier versions of the punch
-> hole patches were getting reviewed, I remember one of the things that came up
-> was that the extents need to be marked uninitialized before being removed.  In
-> this code, it looks like you mark them only if they are already uninitialized,
-> and at the end of the hole.
-> 
-> The reason this changes the split logic is because initialized extents can be
-> larger than uninitialized extents.  So you cant just mark it uninitialized
-> with out splitting.  Even if it's in the middle of the hole, you may have to
-> split it anyway to make it fit in an uninitialized extent.
-> 
-> In the previous solution, this worked because the split logic, being inside
-> map_blocks, was in the body of the loop (called from ext4_ext_punch_hole), and
-> the search started from the beginning each time we looked up an extent.  In
-> this case though, it might get tricky because this loop is trying to walk the
-> extent tree.
-> 
-> As I recall I think the reason we were marking them uninitialized was because
-> we wanted them to read back zeros while the punch hole was in progress.  Punch
-> hole does not take i_mutex in fallocate, and since I was moved, I havnt been
-> able to get much time in on extent locks.  I suppose i_mutex would be a quick
-> fix, but I realize Ted wanted to avoid further use of i_mutex since we really
-> shouldn't be using it at all. Maybe we can get some more folks in on this
-> discussion here, because if we really dont need them to be uninitialized, this
-> solution is really simple and clean.  :)
+those two flags does not make sense to me. The FADV_ALLOC_WRITE_ONCE is
+actually the same as fallocate, and we certainly do not need more ways
+to do fallocate, one is more than enough.
 
-Hmm, I have not realized that we actually need to read zeroes from the
-punched out extents before they are actually punched out. I need to take
-a closer look at this but, in this case we'll have to use imutex anyway
-to make marking the extents as uninitialized atomic operation. If it is
-the case, then I am not sure what we gain here as opposed to just remove
-the extents under imutex. But I guess I need to look at this problem
-more closely. Thanks for pointing it out.
-
-Anyway, the extent locks might be a help here, maybe we can cooperate on
-this to come up with something sooner rather than later ?
-
-
-Thanks for review Allison.
+FADV_ALLOC_WRITE_APPEND seems weird. File systems already do some
+preallocations for the files, so we do not fragment them as much. So
+what might be more interesting is to be able to set how much space we
+want to keep preallocated for the particular file, however strictly
+speaking it is not something we would not achieve with fallocate, but it
+would certainly be more convenient.
 
 -Lukas
 
 > 
-> > +		/*
-> > +		 * See if the last block is inside the extent, if so split
-> > +		 * the extent at 'end' block so we can easily remove the
-> > +		 * tail of the first part of the split extent in
-> > +		 * ext4_ext_rm_leaf().
-> > +		 */
-> > +		if (end>= ee_block&&
-> > +		    end<  ee_block + ext4_ext_get_actual_len(ex) - 1) {
-> > +			int split_flag = 0;
-> > +
-> > +			if (ext4_ext_is_uninitialized(ex))
-> > +				split_flag = EXT4_EXT_MARK_UNINIT1 |
-> > +					     EXT4_EXT_MARK_UNINIT2;
-> > +
-> > +			/*
-> > +			 * Split the extent in two so that 'end' is the last
-> > +			 * block in the first new extent
-> > +			 */
-> > +			err = ext4_split_extent_at(handle, inode, path,
-> > +						end + 1, split_flag,
-> > +						EXT4_GET_BLOCKS_PRE_IO |
-> > +
-> > EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-> > +
-> > +			if (err<  0)
-> > +				goto out;
-> > +		}
-> > +		ext4_ext_drop_refs(path);
-> > +		kfree(path);
-> > +	}
-> > +cont:
-> > +
-> >   	/*
-> >   	 * We start scanning from right side, freeing all the blocks
-> >   	 * after i_size and walking into the tree depth-wise.
-> > @@ -2515,6 +2590,7 @@ again:
-> >   	}
-> >   	path[0].p_depth = depth;
-> >   	path[0].p_hdr = ext_inode_hdr(inode);
-> > +
-> >   	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
-> >   		err = -EIO;
-> >   		goto out;
-> > @@ -2526,7 +2602,7 @@ again:
-> >   			/* this is leaf block */
-> >   			err = ext4_ext_rm_leaf(handle, inode, path,
-> >   					&partial_cluster, start,
-> > -					       EXT_MAX_BLOCKS - 1);
-> > +					       end);
-> >   			/* root level has p_bh == NULL, brelse() eats this */
-> >   			brelse(path[i].p_bh);
-> >   			path[i].p_bh = NULL;
-> > @@ -2709,14 +2785,6 @@ static int ext4_ext_zeroout(struct inode *inode,
-> > struct ext4_extent *ex)
-> >   }
-> > 
-> >   /*
-> > - * used by extent splitting.
-> > - */
-> > -#define EXT4_EXT_MAY_ZEROOUT	0x1  /* safe to zeroout if split fails \
-> > -					due to ENOSPC */
-> > -#define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized
-> > */
-> > -#define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized
-> > */
-> > -
-> > -/*
-> >    * ext4_split_extent_at() splits an extent at given block.
-> >    *
-> >    * @handle: the journal handle
-> > @@ -4228,7 +4296,7 @@ void ext4_ext_truncate(struct inode *inode)
-> > 
-> >   	last_block = (inode->i_size + sb->s_blocksize - 1)
-> >   			>>  EXT4_BLOCK_SIZE_BITS(sb);
-> > -	err = ext4_ext_remove_space(inode, last_block);
-> > +	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
-> > 
-> >   	/* In a multi-transaction truncate, we only make the final
-> >   	 * transaction synchronous.
-> > @@ -4705,14 +4773,12 @@ int ext4_ext_punch_hole(struct file *file, loff_t
-> > offset, loff_t length)
-> >   {
-> >   	struct inode *inode = file->f_path.dentry->d_inode;
-> >   	struct super_block *sb = inode->i_sb;
-> > -	struct ext4_ext_cache cache_ex;
-> > -	ext4_lblk_t first_block, last_block, num_blocks, iblock, max_blocks;
-> > +	ext4_lblk_t first_block, stop_block;
-> >   	struct address_space *mapping = inode->i_mapping;
-> > -	struct ext4_map_blocks map;
-> >   	handle_t *handle;
-> >   	loff_t first_page, last_page, page_len;
-> >   	loff_t first_page_offset, last_page_offset;
-> > -	int ret, credits, blocks_released, err = 0;
-> > +	int credits, err = 0;
-> > 
+> File systems can support a subset of these flags according to its design.  These
+> flags provide a rich interface that lets the user to control block allocation of
+> files.  The user could precisely control the allocation of their files to
+> improve the performance of appliatons.
 > 
-> This thing right here disappears with that other unmerged patch.  It looks
-> like you hop over it though, so hopefully it wont be a problem
-> >   	/* No need to punch hole beyond i_size */
-> >   	if (offset>= inode->i_size)
-> > @@ -4728,10 +4794,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t
-> > offset, loff_t length)
-> >   		   offset;
-> >   	}
-> > 
-> > -	first_block = (offset + sb->s_blocksize - 1)>>
-> > -		EXT4_BLOCK_SIZE_BITS(sb);
-> > -	last_block = (offset + length)>>  EXT4_BLOCK_SIZE_BITS(sb);
-> > -
-> >   	first_page = (offset + PAGE_CACHE_SIZE - 1)>>  PAGE_CACHE_SHIFT;
-> >   	last_page = (offset + length)>>  PAGE_CACHE_SHIFT;
-> > 
-> > @@ -4810,7 +4872,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t
-> > offset, loff_t length)
-> >   		}
-> >   	}
-> > 
-> > -
-> >   	/*
-> >   	 * If i_size is contained in the last page, we need to
-> >   	 * unmap and zero the partial page after i_size
-> > @@ -4830,73 +4891,22 @@ int ext4_ext_punch_hole(struct file *file, loff_t
-> > offset, loff_t length)
-> >   		}
-> >   	}
-> > 
-> > +	first_block = (offset + sb->s_blocksize - 1)>>
-> > +		EXT4_BLOCK_SIZE_BITS(sb);
-> > +	stop_block = (offset + length)>>  EXT4_BLOCK_SIZE_BITS(sb);
-> > +
-> >   	/* If there are no blocks to remove, return now */
-> > -	if (first_block>= last_block)
-> > +	if (first_block>= stop_block)
-> >   		goto out;
-> > 
-> >   	down_write(&EXT4_I(inode)->i_data_sem);
-> >   	ext4_ext_invalidate_cache(inode);
-> >   	ext4_discard_preallocations(inode);
-> > 
-> > -	/*
-> > -	 * Loop over all the blocks and identify blocks
-> > -	 * that need to be punched out
-> > -	 */
-> > -	iblock = first_block;
-> > -	blocks_released = 0;
-> > -	while (iblock<  last_block) {
-> > -		max_blocks = last_block - iblock;
-> > -		num_blocks = 1;
-> > -		memset(&map, 0, sizeof(map));
-> > -		map.m_lblk = iblock;
-> > -		map.m_len = max_blocks;
-> > -		ret = ext4_ext_map_blocks(handle, inode,&map,
-> > -			EXT4_GET_BLOCKS_PUNCH_OUT_EXT);
-> > -
-> > -		if (ret>  0) {
-> > -			blocks_released += ret;
-> > -			num_blocks = ret;
-> > -		} else if (ret == 0) {
-> > -			/*
-> > -			 * If map blocks could not find the block,
-> > -			 * then it is in a hole.  If the hole was
-> > -			 * not already cached, then map blocks should
-> > -			 * put it in the cache.  So we can get the hole
-> > -			 * out of the cache
-> > -			 */
-> > -			memset(&cache_ex, 0, sizeof(cache_ex));
-> > -			if ((ext4_ext_check_cache(inode, iblock,&cache_ex))&&
-> > -				!cache_ex.ec_start) {
-> > +	err = ext4_ext_remove_space(inode, first_block, stop_block - 1);
-> > 
-> > -				/* The hole is cached */
-> > -				num_blocks = cache_ex.ec_block +
-> > -				cache_ex.ec_len - iblock;
-> > -
-> > -			} else {
-> > -				/* The block could not be identified */
-> > -				err = -EIO;
-> > -				break;
-> > -			}
-> > -		} else {
-> > -			/* Map blocks error */
-> > -			err = ret;
-> > -			break;
-> > -		}
-> > -
-> > -		if (num_blocks == 0) {
-> > -			/* This condition should never happen */
-> > -			ext_debug("Block lookup failed");
-> > -			err = -EIO;
-> > -			break;
-> > -		}
-> > -
-> > -		iblock += num_blocks;
-> > -	}
-> > -
-> > -	if (blocks_released>  0) {
-> > -		ext4_ext_invalidate_cache(inode);
-> > -		ext4_discard_preallocations(inode);
-> > -	}
-> > +	ext4_ext_invalidate_cache(inode);
-> > +	ext4_discard_preallocations(inode);
-> > 
-> >   	if (IS_SYNC(inode))
-> >   		ext4_handle_sync(handle);
+> Any comments or suggestions are appreciated.  Thank you.
 > 
-> That's all my comments for now, the rest of it looks really nice.  Thank you
-> for taking the time to go through it!
-> 
-> Allison Henderson
-> 
+> Regards,
+> Zheng
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
 -- 
