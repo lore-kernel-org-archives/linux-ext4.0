@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 37/54] e2fsck: Ensure block group checksum uses metadata_csum
- algorithm
-Date: Tue, 06 Mar 2012 16:01:45 -0800
-Message-ID: <20120307000144.11945.30934.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 41/54] libext2fs: Add checksum to MMP block
+Date: Tue, 06 Mar 2012 16:02:15 -0800
+Message-ID: <20120307000215.11945.76187.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,185 +16,208 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:56703 "EHLO e9.ny.us.ibm.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:56780 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965279Ab2CGACH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:02:07 -0500
+	id S1754592Ab2CGAC0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 19:02:26 -0500
 Received: from /spool/local
 	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 19:02:07 -0500
+	Tue, 6 Mar 2012 19:02:25 -0500
 Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 1CE996E804A
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:02:05 -0500 (EST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q270244p3731650
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:04 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q275WqSs016676
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Mar 2012 00:32:56 -0500
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 5A72338C8056
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:02:22 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2702LJg3645452
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:21 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2702Jrh007202
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:21 -0500
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the helper function to determine if group descriptors have a checksum.
-Ensure that metadata_csum and uninit_bg flags are not set simultaneously, as
-part of pass 0.
+Calculate and verify a checksum of the MMP block.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass5.c   |   18 ++++++------------
- e2fsck/problem.c |    9 +++++++++
- e2fsck/problem.h |    5 +++++
- e2fsck/super.c   |   16 ++++++++++++++--
- e2fsck/unix.c    |    2 +-
- 5 files changed, 35 insertions(+), 15 deletions(-)
+ debugfs/debugfs.c         |    1 +
+ debugfs/set_fields.c      |    1 +
+ lib/ext2fs/csum.c         |   34 ++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 +++
+ lib/ext2fs/ext2fs.h       |    3 +++
+ lib/ext2fs/mmp.c          |   19 +++++++++++++++++--
+ lib/ext2fs/swapfs.c       |    1 +
+ 7 files changed, 60 insertions(+), 2 deletions(-)
 
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index f1ce6d7..c5dba0b 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -88,7 +88,7 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- 	int		nbytes;
- 	ext2_ino_t	ino_itr;
- 	errcode_t	retval;
--	int		csum_flag = 0;
-+	int		csum_flag;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 2e46cd5..9c8e48e 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -2218,6 +2218,7 @@ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
+ 	fprintf(stdout, "node_name: %s\n", mmp_s->mmp_nodename);
+ 	fprintf(stdout, "device_name: %s\n", mmp_s->mmp_bdevname);
+ 	fprintf(stdout, "magic: 0x%x\n", mmp_s->mmp_magic);
++	fprintf(stdout, "checksum: 0x%08x\n", mmp_s->mmp_checksum);
+ }
  
- 	/* If bitmap is dirty from being fixed, checksum will be corrected */
- 	if (ext2fs_test_ib_dirty(ctx->fs))
-@@ -103,9 +103,7 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- 		fatal_error(ctx, 0);
- 	}
+ static int source_file(const char *cmd_file, int sci_idx)
+diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+index 871bf20..986e404 100644
+--- a/debugfs/set_fields.c
++++ b/debugfs/set_fields.c
+@@ -256,6 +256,7 @@ static struct field_set_info mmp_fields[] = {
+ 	{ "bdevname", &set_mmp.mmp_bdevname, NULL, sizeof(set_mmp.mmp_bdevname),
+ 		parse_string },
+ 	{ "check_interval", &set_mmp.mmp_check_interval, NULL, 2, parse_uint },
++	{ "checksum", &set_mmp.mmp_checksum, NULL, 4, parse_uint },
+ };
  
--	if (EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
--				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
--		csum_flag = 1;
-+	csum_flag = ext2fs_has_group_desc_csum(ctx->fs);
+ static int check_suffix(const char *field)
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index d4f98e0..425f736 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -30,6 +30,40 @@
+ #define STATIC static
+ #endif
  
- 	clear_problem_context(&pctx);
- 	for (i = 0; i < ctx->fs->group_desc_count; i++) {
-@@ -149,7 +147,7 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
- 	int		nbytes;
- 	blk64_t		blk_itr;
- 	errcode_t	retval;
--	int		csum_flag = 0;
-+	int		csum_flag;
- 
- 	/* If bitmap is dirty from being fixed, checksum will be corrected */
- 	if (ext2fs_test_bb_dirty(ctx->fs))
-@@ -164,9 +162,7 @@ static void check_block_bitmap_checksum(e2fsck_t ctx)
- 		fatal_error(ctx, 0);
- 	}
- 
--	if (EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
--				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
--		csum_flag = 1;
-+	csum_flag = ext2fs_has_group_desc_csum(ctx->fs);
- 
- 	clear_problem_context(&pctx);
- 	for (i = 0; i < ctx->fs->group_desc_count; i++) {
-@@ -322,8 +318,7 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 		goto errout;
- 	}
- 
--	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
--					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-+	csum_flag = ext2fs_has_group_desc_csum(fs);
- redo_counts:
- 	had_problem = 0;
- 	save_problem = 0;
-@@ -599,8 +594,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 		goto errout;
- 	}
- 
--	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
--					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-+	csum_flag = ext2fs_has_group_desc_csum(fs);
- redo_counts:
- 	had_problem = 0;
- 	save_problem = 0;
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index ad6887e..8c55721 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -423,6 +423,15 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@S has invalid MMP magic.  "),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
- 
-+	/*
-+	 * metadata_csum implies uninit_bg; both feature bits cannot
-+	 * be set simultaneously.
-+	 */
-+	{ PR_0_META_AND_GDT_CSUM_SET,
-+	  N_("@S metadata_csum supersedes uninit_bg; both feature "
-+	     "bits cannot be set simultaneously."),
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
++static __u32 ext2fs_mmp_csum(ext2_filsys fs, struct mmp_struct *mmp)
++{
++	int offset = offsetof(struct mmp_struct, mmp_checksum);
 +
- 	/* Pass 1 errors */
++	return ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)mmp, offset);
++}
++
++int ext2fs_mmp_csum_verify(ext2_filsys fs, struct mmp_struct *mmp)
++{
++	__u32 calculated;
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 1;
++
++	calculated = ext2fs_mmp_csum(fs, mmp);
++
++	return ext2fs_le32_to_cpu(mmp->mmp_checksum) == calculated;
++}
++
++errcode_t ext2fs_mmp_csum_set(ext2_filsys fs, struct mmp_struct *mmp)
++{
++	__u32 crc;
++
++	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		return 0;
++
++	crc = ext2fs_mmp_csum(fs, mmp);
++	mmp->mmp_checksum = ext2fs_cpu_to_le32(crc);
++
++	return 0;
++}
++
+ int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb)
+ {
+ 	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 01f9f7b..a42ed9a 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -467,4 +467,7 @@ ec	EXT2_ET_SB_CSUM_INVALID,
+ ec	EXT2_ET_UNKNOWN_CSUM,
+ 	"Unknown checksum algorithm"
  
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index b8a7548..e47984c 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -242,6 +242,11 @@ struct problem_context {
- /* Superblock has invalid MMP magic. */
- #define PR_0_MMP_INVALID_MAGIC			0x000043
++ec	EXT2_ET_MMP_CSUM_INVALID,
++	"MMP block checksum does not match MMP block"
++
+ 	end
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index eeac04d..49d9271 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -958,6 +958,8 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+ extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
  
-+/*
-+ * metadata_csum supersedes uninit_bg; both feature bits cannot be set
-+ * simultaneously.
-+ */
-+#define PR_0_META_AND_GDT_CSUM_SET		0x000044
+ /* csum.c */
++extern errcode_t ext2fs_mmp_csum_set(ext2_filsys fs, struct mmp_struct *mmp);
++extern int ext2fs_mmp_csum_verify(ext2_filsys, struct mmp_struct *mmp);
+ extern int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb);
+ extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
+ 					    struct ext2_super_block *sb);
+@@ -1451,6 +1453,7 @@ errcode_t ext2fs_mmp_clear(ext2_filsys fs);
+ errcode_t ext2fs_mmp_init(ext2_filsys fs);
+ errcode_t ext2fs_mmp_start(ext2_filsys fs);
+ errcode_t ext2fs_mmp_update(ext2_filsys fs);
++errcode_t ext2fs_mmp_update2(ext2_filsys fs, int immediately);
+ errcode_t ext2fs_mmp_stop(ext2_filsys fs);
+ unsigned ext2fs_mmp_new_seq(void);
  
+diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
+index b27d9a4..20a98f5 100644
+--- a/lib/ext2fs/mmp.c
++++ b/lib/ext2fs/mmp.c
+@@ -91,6 +91,11 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ 	}
+ 
+ 	mmp_cmp = fs->mmp_cmp;
++
++	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
++	    !ext2fs_mmp_csum_verify(fs, mmp_cmp))
++		retval = EXT2_ET_MMP_CSUM_INVALID;
++
+ #ifdef WORDS_BIGENDIAN
+ 	ext2fs_swap_mmp(mmp_cmp);
+ #endif
+@@ -125,6 +130,10 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ 	ext2fs_swap_mmp(mmp_s);
+ #endif
+ 
++	retval = ext2fs_mmp_csum_set(fs, mmp_s);
++	if (retval)
++		return retval;
++
+ 	/* I was tempted to make this use O_DIRECT and the mmp_fd, but
+ 	 * this caused no end of grief, while leaving it as-is works. */
+ 	retval = io_channel_write_blk64(fs->io, mmp_blk, -(int)sizeof(struct mmp_struct), buf);
+@@ -381,7 +390,7 @@ mmp_error:
  /*
-  * Pass 1 errors
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index dbd337c..939a71e 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -577,14 +577,26 @@ void check_super_block(e2fsck_t ctx)
- 		}
- 	}
+  * Update the on-disk mmp buffer, after checking that it hasn't been changed.
+  */
+-errcode_t ext2fs_mmp_update(ext2_filsys fs)
++errcode_t ext2fs_mmp_update2(ext2_filsys fs, int immediately)
+ {
+ 	struct mmp_struct *mmp, *mmp_cmp;
+ 	struct timeval tv;
+@@ -392,7 +401,8 @@ errcode_t ext2fs_mmp_update(ext2_filsys fs)
+ 		return 0;
  
-+	/* Are metadata_csum and uninit_bg both set? */
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
-+	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-+	    fix_problem(ctx, PR_0_META_AND_GDT_CSUM_SET, &pctx)) {
-+		fs->super->s_feature_ro_compat &=
-+			~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
-+		ext2fs_mark_super_dirty(fs);
-+		for (i = 0; i < fs->group_desc_count; i++)
-+			ext2fs_group_desc_csum_set(fs, i);
-+	}
+ 	gettimeofday(&tv, 0);
+-	if (tv.tv_sec - fs->mmp_last_written < EXT2_MIN_MMP_UPDATE_INTERVAL)
++	if (!immediately &&
++	    tv.tv_sec - fs->mmp_last_written < EXT2_MIN_MMP_UPDATE_INTERVAL)
+ 		return 0;
+ 
+ 	retval = ext2fs_mmp_read(fs, fs->super->s_mmp_block, NULL);
+@@ -412,3 +422,8 @@ errcode_t ext2fs_mmp_update(ext2_filsys fs)
+ mmp_error:
+ 	return retval;
+ }
 +
- 	/*
- 	 * Verify the group descriptors....
- 	 */
- 	first_block = sb->s_first_data_block;
- 	last_block = ext2fs_blocks_count(sb)-1;
++errcode_t ext2fs_mmp_update(ext2_filsys fs)
++{
++	return ext2fs_mmp_update2(fs, 0);
++}
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index de178a4..1295e81 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -349,6 +349,7 @@ void ext2fs_swap_mmp(struct mmp_struct *mmp)
+ 	mmp->mmp_seq = ext2fs_swab32(mmp->mmp_seq);
+ 	mmp->mmp_time = ext2fs_swab64(mmp->mmp_time);
+ 	mmp->mmp_check_interval = ext2fs_swab16(mmp->mmp_check_interval);
++	mmp->mmp_checksum = ext2fs_swab32(mmp->mmp_checksum);
+ }
  
--	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
--					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-+	csum_flag = ext2fs_has_group_desc_csum(fs);
- 	for (i = 0; i < fs->group_desc_count; i++) {
- 		pctx.group = i;
- 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index a8e3775..678ce9b 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1653,7 +1653,7 @@ no_journal:
- 	}
- 
- 	if ((run_result & E2F_FLAG_CANCEL) == 0 &&
--	    sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM &&
-+	    ext2fs_has_group_desc_csum(ctx->fs) &&
- 	    !(ctx->options & E2F_OPT_READONLY)) {
- 		retval = ext2fs_set_gdt_csum(ctx->fs);
- 		if (retval) {
+ errcode_t ext2fs_dirent_swab_in(ext2_filsys fs, char *buf, int flags)
 
