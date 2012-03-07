@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 31/54] libext2fs: Calculate and verify superblock checksums
-Date: Tue, 06 Mar 2012 16:00:49 -0800
-Message-ID: <20120307000049.11945.88017.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 28/54] libext2fs: Verify and calculate extended attribute
+ block checksums
+Date: Tue, 06 Mar 2012 16:00:26 -0800
+Message-ID: <20120307000025.11945.77967.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,186 +17,408 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:45897 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031282Ab2CGABK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:01:10 -0500
+Received: from e38.co.us.ibm.com ([32.97.110.159]:48155 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756654Ab2CGABN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:01:13 -0500
 Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 19:01:09 -0500
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id BFE296E804A
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:01:00 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q270103a263220
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:00 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2700va2023908
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:01:00 -0300
+	Tue, 6 Mar 2012 17:01:13 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 6171F3E40048
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 17:00:59 -0700 (MST)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2700dul061594
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:00:39 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2700UPQ021979
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:00:35 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Calculate and verify the superblock checksums.  Each copy of the superblock
-records the number of the group it's in and the FS UUID, so we can simply
-checksum the whole block.
+Calculate and verify the checksum for separate (i.e. not in the inode) extended
+attribute blocks; the checksum lives in the header.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/closefs.c      |   19 ++++++++++++-------
- lib/ext2fs/csum.c         |   35 +++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_err.et.in |    3 +++
- lib/ext2fs/ext2fs.h       |    4 ++++
- lib/ext2fs/openfs.c       |    6 ++++++
- 5 files changed, 60 insertions(+), 7 deletions(-)
+ e2fsck/pass1.c            |   10 ++++---
+ e2fsck/pass1b.c           |    4 +--
+ e2fsck/pass2.c            |    6 ++--
+ e2fsck/super.c            |    6 ++--
+ lib/ext2fs/csum.c         |   68 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_err.et.in |    3 ++
+ lib/ext2fs/ext2fs.h       |   14 +++++++++
+ lib/ext2fs/ext_attr.c     |   59 ++++++++++++++++++++++++++++++---------
+ lib/ext2fs/swapfs.c       |    3 +-
+ 9 files changed, 146 insertions(+), 27 deletions(-)
 
 
-diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-index 1867be3..a0e28ba 100644
---- a/lib/ext2fs/closefs.c
-+++ b/lib/ext2fs/closefs.c
-@@ -246,15 +246,19 @@ static errcode_t write_backup_super(ext2_filsys fs, dgrp_t group,
- 				    blk_t group_block,
- 				    struct ext2_super_block *super_shadow)
- {
-+	errcode_t retval;
- 	dgrp_t	sgrp = group;
- 
- 	if (sgrp > ((1 << 16) - 1))
- 		sgrp = (1 << 16) - 1;
-+
-+	super_shadow->s_block_group_nr = sgrp;
- #ifdef WORDS_BIGENDIAN
--	super_shadow->s_block_group_nr = ext2fs_swab16(sgrp);
--#else
--	fs->super->s_block_group_nr = sgrp;
-+	ext2fs_swap_super(super_shadow);
- #endif
-+	retval = ext2fs_superblock_csum_set(fs, super_shadow);
-+	if (retval)
-+		return retval;
- 
- 	return io_channel_write_blk64(fs->io, group_block, -SUPERBLOCK_SIZE,
- 				    super_shadow);
-@@ -314,6 +318,7 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
- 				  &group_shadow);
- 	if (retval)
- 		goto errout;
-+	memcpy(super_shadow, fs->super, sizeof(struct ext2_super_block));
- 	memcpy(group_shadow, fs->group_desc, (size_t) fs->blocksize *
- 	       fs->desc_blocks);
- 
-@@ -334,10 +339,6 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 42fca3e..ce03e46 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1514,7 +1514,8 @@ static void adjust_extattr_refcount(e2fsck_t ctx, ext2_refcount_t refcount,
+ 		if ((blk = ea_refcount_intr_next(refcount, &count)) == 0)
+ 			break;
+ 		pctx.blk = blk;
+-		pctx.errcode = ext2fs_read_ext_attr2(fs, blk, block_buf);
++		pctx.errcode = ext2fs_read_ext_attr3(fs, blk, block_buf,
++						     pctx.ino);
+ 		if (pctx.errcode) {
+ 			fix_problem(ctx, PR_1_EXTATTR_READ_ABORT, &pctx);
+ 			return;
+@@ -1525,8 +1526,9 @@ static void adjust_extattr_refcount(e2fsck_t ctx, ext2_refcount_t refcount,
+ 		pctx.num = should_be;
+ 		if (fix_problem(ctx, PR_1_EXTATTR_REFCOUNT, &pctx)) {
+ 			header->h_refcount = should_be;
+-			pctx.errcode = ext2fs_write_ext_attr2(fs, blk,
+-							     block_buf);
++			pctx.errcode = ext2fs_write_ext_attr3(fs, blk,
++							     block_buf,
++							     pctx.ino);
+ 			if (pctx.errcode) {
+ 				fix_problem(ctx, PR_1_EXTATTR_WRITE_ABORT,
+ 					    &pctx);
+@@ -1624,7 +1626,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 	 * validate it
  	 */
- 	fs->super->s_state &= ~EXT2_VALID_FS;
- 	fs->super->s_feature_incompat &= ~EXT3_FEATURE_INCOMPAT_RECOVER;
--#ifdef WORDS_BIGENDIAN
--	*super_shadow = *fs->super;
--	ext2fs_swap_super(super_shadow);
--#endif
+ 	pctx->blk = blk;
+-	pctx->errcode = ext2fs_read_ext_attr2(fs, blk, block_buf);
++	pctx->errcode = ext2fs_read_ext_attr3(fs, blk, block_buf, pctx->ino);
+ 	if (pctx->errcode && fix_problem(ctx, PR_1_READ_EA_BLOCK, pctx))
+ 		goto clear_extattr;
+ 	header = (struct ext2_ext_attr_header *) block_buf;
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 93fb630..05cbd10 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -653,9 +653,9 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
+ 	if (ext2fs_file_acl_block(fs, &inode) &&
+ 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
+ 		count = 1;
+-		pctx.errcode = ext2fs_adjust_ea_refcount2(fs,
++		pctx.errcode = ext2fs_adjust_ea_refcount3(fs,
+ 					ext2fs_file_acl_block(fs, &inode),
+-						   block_buf, -1, &count);
++					block_buf, -1, &count, ino);
+ 		if (pctx.errcode == EXT2_ET_BAD_EA_BLOCK_NUM) {
+ 			pctx.errcode = 0;
+ 			count = 1;
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index be950de..e28af61 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1290,9 +1290,9 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
  
- 	/*
- 	 * If this is an external journal device, don't write out the
-@@ -412,6 +413,10 @@ write_primary_superblock_only:
- 	ext2fs_swap_super(super_shadow);
- #endif
+ 	if (ext2fs_file_acl_block(fs, &inode) &&
+ 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
+-		pctx.errcode = ext2fs_adjust_ea_refcount2(fs,
+-					ext2fs_file_acl_block(fs, &inode),
+-					block_buf, -1, &count);
++		pctx.errcode = ext2fs_adjust_ea_refcount3(fs,
++				ext2fs_file_acl_block(fs, &inode),
++				block_buf, -1, &count, ino);
+ 		if (pctx.errcode == EXT2_ET_BAD_EA_BLOCK_NUM) {
+ 			pctx.errcode = 0;
+ 			count = 1;
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 94648c3..dbd337c 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -198,9 +198,9 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 		ext2fs_iblk_sub_blocks(fs, inode, pb.truncated_blocks);
  
-+	retval = ext2fs_superblock_csum_set(fs, super_shadow);
-+	if (retval)
-+		return retval;
-+
- 	if (!(flags & EXT2_FLAG_FLUSH_NO_SYNC))
- 		retval = io_channel_flush(fs->io);
- 	retval = write_primary_superblock(fs, super_shadow);
+ 	if (ext2fs_file_acl_block(fs, inode)) {
+-		retval = ext2fs_adjust_ea_refcount2(fs,
+-					ext2fs_file_acl_block(fs, inode),
+-					block_buf, -1, &count);
++		retval = ext2fs_adjust_ea_refcount3(fs,
++				ext2fs_file_acl_block(fs, inode),
++				block_buf, -1, &count, ino);
+ 		if (retval == EXT2_ET_BAD_EA_BLOCK_NUM) {
+ 			retval = 0;
+ 			count = 1;
 diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 46f0cb5..4d01bcd 100644
+index 1c06f5e..46f0cb5 100644
 --- a/lib/ext2fs/csum.c
 +++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,41 @@
+@@ -30,6 +30,74 @@
  #define STATIC static
  #endif
  
-+static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
++static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
++					    blk64_t block,
++					    struct ext2_ext_attr_header *hdr,
++					    __u32 *crc)
 +{
-+	int offset = offsetof(struct ext2_super_block, s_checksum);
++	errcode_t retval;
++	char *buf = (char *)hdr;
++	__u32 gen, old_crc = hdr->h_checksum;
++	struct ext2_inode inode;
 +
-+	return ext2fs_crc32c_le(~0, (unsigned char *)sb, offset);
++	hdr->h_checksum = 0;
++	if (ext2fs_le32_to_cpu(hdr->h_refcount) != 1) {
++		block = ext2fs_cpu_to_le64(block);
++		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
++					sizeof(block));
++	} else {
++		retval = ext2fs_read_inode(fs, inum, &inode);
++		if (retval)
++			return retval;
++		inum = ext2fs_cpu_to_le32(inum);
++		gen = ext2fs_cpu_to_le32(inode.i_generation);
++		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
++					sizeof(inum));
++		*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen,
++					sizeof(gen));
++	}
++	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, fs->blocksize);
++	hdr->h_checksum = old_crc;
++
++	return 0;
 +}
 +
-+int ext2fs_superblock_csum_verify(ext2_filsys fs, struct ext2_super_block *sb)
++int ext2fs_ext_attr_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++				      blk64_t block,
++				      struct ext2_ext_attr_header *hdr)
 +{
 +	__u32 calculated;
++	errcode_t retval;
 +
 +	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 +					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 1;
 +
-+	calculated = ext2fs_superblock_csum(fs, sb);
++	retval = ext2fs_ext_attr_block_csum(fs, inum, block, hdr, &calculated);
++	if (retval)
++		return 0;
 +
-+	return ext2fs_le32_to_cpu(sb->s_checksum) == calculated;
++	return ext2fs_le32_to_cpu(hdr->h_checksum) == calculated;
 +}
 +
-+errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
-+				     struct ext2_super_block *sb)
++errcode_t ext2fs_ext_attr_block_csum_set(ext2_filsys fs, ext2_ino_t inum,
++					 blk64_t block,
++					 struct ext2_ext_attr_header *hdr)
 +{
++	errcode_t retval;
 +	__u32 crc;
 +
 +	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 +		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
 +		return 0;
 +
-+	crc = ext2fs_superblock_csum(fs, sb);
-+	sb->s_checksum = ext2fs_cpu_to_le32(crc);
-+
++	retval = ext2fs_ext_attr_block_csum(fs, inum, block, hdr, &crc);
++	if (retval)
++		return retval;
++	hdr->h_checksum = ext2fs_cpu_to_le32(crc);
 +	return 0;
 +}
 +
- static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
- 					    blk64_t block,
- 					    struct ext2_ext_attr_header *hdr,
+ static __u16 do_nothing16(__u16 x)
+ {
+ 	return x;
 diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index 177a97f..0fab4e0 100644
+index ad0cb7a..177a97f 100644
 --- a/lib/ext2fs/ext2_err.et.in
 +++ b/lib/ext2fs/ext2_err.et.in
-@@ -461,4 +461,7 @@ ec	EXT2_ET_DIR_CSUM_INVALID,
- ec	EXT2_ET_EXT_ATTR_CSUM_INVALID,
- 	"Extended attribute block checksum does not match block"
+@@ -458,4 +458,7 @@ ec	EXT2_ET_DIR_NO_SPACE_FOR_CSUM,
+ ec	EXT2_ET_DIR_CSUM_INVALID,
+ 	"Directory block checksum does not match directory block"
  
-+ec	EXT2_ET_SB_CSUM_INVALID,
-+	"Superblock checksum does not match superblock"
++ec	EXT2_ET_EXT_ATTR_CSUM_INVALID,
++	"Extended attribute block checksum does not match block"
 +
  	end
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 5684df5..3c52f4b 100644
+index b75c712..5684df5 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -952,6 +952,10 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
+@@ -952,6 +952,12 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
  extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
  
  /* csum.c */
-+extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
-+					    struct ext2_super_block *sb);
-+extern int ext2fs_superblock_csum_verify(ext2_filsys fs,
-+					 struct ext2_super_block *sb);
- extern errcode_t ext2fs_ext_attr_block_csum_set(ext2_filsys fs,
- 					ext2_ino_t inum, blk64_t block,
- 					struct ext2_ext_attr_header *hdr);
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 10beb06..8b7e750 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -193,6 +193,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	if (fs->orig_super)
- 		memcpy(fs->orig_super, fs->super, SUPERBLOCK_SIZE);
++extern errcode_t ext2fs_ext_attr_block_csum_set(ext2_filsys fs,
++					ext2_ino_t inum, blk64_t block,
++					struct ext2_ext_attr_header *hdr);
++extern int ext2fs_ext_attr_block_csum_verify(ext2_filsys fs, ext2_ino_t inum,
++					     blk64_t block,
++					     struct ext2_ext_attr_header *hdr);
+ #define EXT2_DIRENT_TAIL(block, blocksize) \
+ 	((struct ext2_dir_entry_tail *)(((void *)(block)) + \
+ 	(blocksize) - sizeof(struct ext2_dir_entry_tail)))
+@@ -1107,16 +1113,24 @@ extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
+ extern errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf);
+ extern errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block,
+ 				       void *buf);
++extern errcode_t ext2fs_read_ext_attr3(ext2_filsys fs, blk64_t block,
++				       void *buf, ext2_ino_t inum);
+ extern errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block,
+ 				       void *buf);
+ extern errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block,
+ 				       void *buf);
++extern errcode_t ext2fs_write_ext_attr3(ext2_filsys fs, blk64_t block,
++				       void *buf, ext2_ino_t inum);
+ extern errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 					   char *block_buf,
+ 					   int adjust, __u32 *newcount);
+ extern errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
+ 					   char *block_buf,
+ 					   int adjust, __u32 *newcount);
++extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
++					   char *block_buf,
++					   int adjust, __u32 *newcount,
++					   ext2_ino_t inum);
  
+ /* extent.c */
+ extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 1889824..9649a14 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -61,17 +61,29 @@ __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry, void *data)
+ #undef NAME_HASH_SHIFT
+ #undef VALUE_HASH_SHIFT
+ 
+-errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block, void *buf)
++errcode_t ext2fs_read_ext_attr3(ext2_filsys fs, blk64_t block, void *buf,
++				ext2_ino_t inum)
+ {
+ 	errcode_t	retval;
+ 
+ 	retval = io_channel_read_blk64(fs->io, block, 1, buf);
+ 	if (retval)
+ 		return retval;
++
 +	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-+	    !ext2fs_superblock_csum_verify(fs, fs->super)) {
-+		retval = EXT2_ET_SB_CSUM_INVALID;
-+		goto cleanup;
-+	}
++	    !ext2fs_ext_attr_block_csum_verify(fs, inum, block, buf))
++		retval = EXT2_ET_EXT_ATTR_CSUM_INVALID;
 +
  #ifdef WORDS_BIGENDIAN
- 	fs->flags |= EXT2_FLAG_SWAP_BYTES;
- 	ext2fs_swap_super(fs->super);
+ 	ext2fs_swap_ext_attr(buf, buf, fs->blocksize, 1);
+ #endif
+-	return 0;
++
++	return retval;
++}
++
++errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block, void *buf)
++{
++	return ext2fs_read_ext_attr3(fs, block, buf, 0);
+ }
+ 
+ errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
+@@ -79,30 +91,40 @@ errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
+ 	return ext2fs_read_ext_attr2(fs, block, buf);
+ }
+ 
+-errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block, void *inbuf)
++errcode_t ext2fs_write_ext_attr3(ext2_filsys fs, blk64_t block, void *inbuf,
++				 ext2_ino_t inum)
+ {
+ 	errcode_t	retval;
+ 	char		*write_buf;
+-#ifdef WORDS_BIGENDIAN
+-	char		*buf = NULL;
+ 
+-	retval = ext2fs_get_mem(fs->blocksize, &buf);
++#ifdef WORDS_BIGENDIAN
++	retval = ext2fs_get_mem(fs->blocksize, &write_buf);
+ 	if (retval)
+ 		return retval;
+-	write_buf = buf;
+-	ext2fs_swap_ext_attr(buf, inbuf, fs->blocksize, 1);
++	ext2fs_swap_ext_attr(write_buf, inbuf, fs->blocksize, 1);
+ #else
+ 	write_buf = (char *) inbuf;
+ #endif
++
++	retval = ext2fs_ext_attr_block_csum_set(fs, inum, block,
++			(struct ext2_ext_attr_header *)write_buf);
++	if (retval)
++		return retval;
++
+ 	retval = io_channel_write_blk64(fs->io, block, 1, write_buf);
+ #ifdef WORDS_BIGENDIAN
+-	ext2fs_free_mem(&buf);
++	ext2fs_free_mem(&write_buf);
+ #endif
+ 	if (!retval)
+ 		ext2fs_mark_changed(fs);
+ 	return retval;
+ }
+ 
++errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block, void *inbuf)
++{
++	return ext2fs_write_ext_attr3(fs, block, inbuf, 0);
++}
++
+ errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
+ {
+ 	return ext2fs_write_ext_attr2(fs, block, inbuf);
+@@ -111,9 +133,9 @@ errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
+ /*
+  * This function adjusts the reference count of the EA block.
+  */
+-errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
++errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
+ 				    char *block_buf, int adjust,
+-				    __u32 *newcount)
++				    __u32 *newcount, ext2_ino_t inum)
+ {
+ 	errcode_t	retval;
+ 	struct ext2_ext_attr_header *header;
+@@ -130,7 +152,7 @@ errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
+ 		block_buf = buf;
+ 	}
+ 
+-	retval = ext2fs_read_ext_attr2(fs, blk, block_buf);
++	retval = ext2fs_read_ext_attr3(fs, blk, block_buf, inum);
+ 	if (retval)
+ 		goto errout;
+ 
+@@ -139,7 +161,7 @@ errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
+ 	if (newcount)
+ 		*newcount = header->h_refcount;
+ 
+-	retval = ext2fs_write_ext_attr2(fs, blk, block_buf);
++	retval = ext2fs_write_ext_attr3(fs, blk, block_buf, inum);
+ 	if (retval)
+ 		goto errout;
+ 
+@@ -149,9 +171,18 @@ errout:
+ 	return retval;
+ }
+ 
++errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
++				    char *block_buf, int adjust,
++				    __u32 *newcount)
++{
++	return ext2fs_adjust_ea_refcount3(fs, blk, block_buf, adjust,
++					  newcount, 0);
++}
++
+ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 					char *block_buf, int adjust,
+ 					__u32 *newcount)
+ {
+-	return ext2fs_adjust_ea_refcount(fs, blk, block_buf, adjust, newcount);
++	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
++					  newcount);
+ }
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index 69916e5..de178a4 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -157,7 +157,8 @@ void ext2fs_swap_ext_attr_header(struct ext2_ext_attr_header *to_header,
+ 	to_header->h_blocks   = ext2fs_swab32(from_header->h_blocks);
+ 	to_header->h_refcount = ext2fs_swab32(from_header->h_refcount);
+ 	to_header->h_hash     = ext2fs_swab32(from_header->h_hash);
+-	for (n = 0; n < 4; n++)
++	to_header->h_checksum = ext2fs_swab32(from_header->h_checksum);
++	for (n = 0; n < 3; n++)
+ 		to_header->h_reserved[n] =
+ 			ext2fs_swab32(from_header->h_reserved[n]);
+ }
 
