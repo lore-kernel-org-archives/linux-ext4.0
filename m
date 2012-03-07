@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 24/54] e2fsck: Verify htree root/node checksums
-Date: Tue, 06 Mar 2012 15:59:58 -0800
-Message-ID: <20120306235958.11945.55905.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 32/54] e2fsck: Handle superblock checksum errors gracefully
+Date: Tue, 06 Mar 2012 16:00:57 -0800
+Message-ID: <20120307000057.11945.48853.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,283 +16,45 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:36191 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031282Ab2CGABX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:01:23 -0500
+Received: from e34.co.us.ibm.com ([32.97.110.152]:57524 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031282Ab2CGABe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:01:34 -0500
 Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 19:01:22 -0500
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 5223A6E804B
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:00:07 -0500 (EST)
+	Tue, 6 Mar 2012 17:01:32 -0700
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id E4C40C90050
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:01:04 -0500 (EST)
 Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q27004X13076322
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:00:05 -0500
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q27015Q2327770
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:05 -0500
 Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q270028E016797
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:00:03 -0300
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q27011Tq024369
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:01:04 -0300
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check htree internal node checksums.  If broken, ask user to clear the htree
-index and recreate it later.
+If e2fsck finds a superblock with an invalid checksum, try the backups.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/e2fsck.h  |    2 ++
- e2fsck/pass2.c   |   34 +++++++++++++++++++++++++++++-----
- e2fsck/problem.c |   10 ++++++++++
- e2fsck/problem.h |    6 ++++++
- e2fsck/rehash.c  |   41 +++++++++++++++++++++++++++++++++++++++--
- 5 files changed, 86 insertions(+), 7 deletions(-)
+ e2fsck/unix.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index ed8b0c7..c6dab54 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -483,6 +483,8 @@ extern void region_free(region_t region);
- extern int region_allocate(region_t region, region_addr_t start, int n);
- 
- /* rehash.c */
-+void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino);
-+int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino);
- errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino);
- void e2fsck_rehash_directories(e2fsck_t ctx);
- 
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 882950d..e4a06f3 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -527,7 +527,7 @@ static void parse_int_node(ext2_filsys fs,
- 			   struct ext2_db_entry2 *db,
- 			   struct check_dir_struct *cd,
- 			   struct dx_dir_info	*dx_dir,
--			   char *block_buf)
-+			   char *block_buf, int failed_csum)
- {
- 	struct 		ext2_dx_root_info  *root;
- 	struct 		ext2_dx_entry *ent;
-@@ -538,6 +538,7 @@ static void parse_int_node(ext2_filsys fs,
- 	ext2_dirhash_t	min_hash = 0xffffffff;
- 	ext2_dirhash_t	max_hash = 0;
- 	ext2_dirhash_t	hash = 0, prev_hash;
-+	int		csum_size = 0;
- 
- 	if (db->blockcnt == 0) {
- 		root = (struct ext2_dx_root_info *) (block_buf + 24);
-@@ -552,9 +553,22 @@ static void parse_int_node(ext2_filsys fs,
- #endif
- 
- 		ent = (struct ext2_dx_entry *) (block_buf + 24 + root->info_length);
-+
-+		if (failed_csum &&
-+		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
-+		     fix_problem(cd->ctx, PR_2_HTREE_ROOT_CSUM_INVALID,
-+				&cd->pctx)))
-+			goto clear_and_exit;
- 	} else {
- 		ent = (struct ext2_dx_entry *) (block_buf+8);
-+
-+		if (failed_csum &&
-+		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
-+		     fix_problem(cd->ctx, PR_2_HTREE_NODE_CSUM_INVALID,
-+				&cd->pctx)))
-+			goto clear_and_exit;
- 	}
-+
- 	limit = (struct ext2_dx_countlimit *) ent;
- 
- #ifdef DX_DEBUG
-@@ -565,8 +579,12 @@ static void parse_int_node(ext2_filsys fs,
- #endif
- 
- 	count = ext2fs_le16_to_cpu(limit->count);
--	expect_limit = (fs->blocksize - ((char *) ent - block_buf)) /
--		sizeof(struct ext2_dx_entry);
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext2_dx_tail);
-+	expect_limit = (fs->blocksize -
-+			(csum_size + ((char *) ent - block_buf))) /
-+		       sizeof(struct ext2_dx_entry);
- 	if (ext2fs_le16_to_cpu(limit->limit) != expect_limit) {
- 		cd->pctx.num = ext2fs_le16_to_cpu(limit->limit);
- 		if (fix_problem(cd->ctx, PR_2_HTREE_BAD_LIMIT, &cd->pctx))
-@@ -632,6 +650,7 @@ static void parse_int_node(ext2_filsys fs,
- clear_and_exit:
- 	clear_htree(cd->ctx, cd->pctx.ino);
- 	dx_dir->numblocks = 0;
-+	e2fsck_rehash_dir_later(cd->ctx, cd->pctx.ino);
- }
- #endif /* ENABLE_HTREE */
- 
-@@ -734,6 +753,7 @@ static int check_dir_block(ext2_filsys fs,
- 	struct problem_context	pctx;
- 	int	dups_found = 0;
- 	int	ret;
-+	int	dx_csum_size = 0;
- 
- 	cd = (struct check_dir_struct *) priv_data;
- 	buf = cd->buf;
-@@ -745,6 +765,10 @@ static int check_dir_block(ext2_filsys fs,
- 	if (ctx->progress && (ctx->progress)(ctx, 2, cd->count++, cd->max))
- 		return DIRENT_ABORT;
- 
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		dx_csum_size = sizeof(struct ext2_dx_tail);
-+
- 	/*
- 	 * Make sure the inode is still in use (could have been
- 	 * deleted in the duplicate/bad blocks pass.
-@@ -834,7 +858,7 @@ static int check_dir_block(ext2_filsys fs,
- 			   (rec_len == fs->blocksize) &&
- 			   (dirent->name_len == 0) &&
- 			   (ext2fs_le16_to_cpu(limit->limit) ==
--			    ((fs->blocksize-8) /
-+			    ((fs->blocksize - (8 + dx_csum_size)) /
- 			     sizeof(struct ext2_dx_entry))))
- 			dx_db->type = DX_DIRBLOCK_NODE;
- 	}
-@@ -1121,7 +1145,7 @@ out_htree:
- 		cd->pctx.dir = cd->pctx.ino;
- 		if ((dx_db->type == DX_DIRBLOCK_ROOT) ||
- 		    (dx_db->type == DX_DIRBLOCK_NODE))
--			parse_int_node(fs, db, cd, dx_dir, buf);
-+			parse_int_node(fs, db, cd, dx_dir, buf, 0);
- 	}
- #endif /* ENABLE_HTREE */
- 	if (offset != fs->blocksize) {
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 6ceee11..25db675 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1383,6 +1383,16 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("i_file_acl_hi @F %N, @s zero.\n"),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
-+	/* htree root node fails checksum */
-+	{ PR_2_HTREE_ROOT_CSUM_INVALID,
-+	  N_("@p @h %d: root node fails checksum\n"),
-+	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
-+
-+	/* htree internal node fails checksum */
-+	{ PR_2_HTREE_NODE_CSUM_INVALID,
-+	  N_("@p @h %d: internal node fails checksum\n"),
-+	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
-+
- 	/* Pass 3 errors */
- 
- 	/* Pass 3: Checking directory connectivity */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 2adb4b9..5cf80fb 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -827,6 +827,12 @@ struct problem_context {
- /* i_file_acl_hi should be zero */
- #define PR_2_I_FILE_ACL_HI_ZERO		0x020048
- 
-+/* htree root node fails checksum */
-+#define PR_2_HTREE_ROOT_CSUM_INVALID	0x020049
-+
-+/* htree node fails checksum */
-+#define PR_2_HTREE_NODE_CSUM_INVALID	0x02004A
-+
- /*
-  * Pass 3 errors
-  */
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 15993b3..610b3bf 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -52,6 +52,25 @@
- #include "e2fsck.h"
- #include "problem.h"
- 
-+/* Schedule a dir to be rebuilt during pass 3A. */
-+void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino)
-+{
-+	if (!ctx->dirs_to_hash)
-+		ext2fs_u32_list_create(&ctx->dirs_to_hash, 50);
-+	if (ctx->dirs_to_hash)
-+		ext2fs_u32_list_add(ctx->dirs_to_hash, ino);
-+}
-+
-+/* Ask if a dir will be rebuilt during pass 3A. */
-+int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino)
-+{
-+	if (ctx->options & E2F_OPT_COMPRESS_DIRS)
-+		return 1;
-+	if (!ctx->dirs_to_hash)
-+		return 0;
-+	return ext2fs_u32_list_test(ctx->dirs_to_hash, ino);
-+}
-+
- struct fill_dir_struct {
- 	char *buf;
- 	struct ext2_inode *inode;
-@@ -495,6 +514,7 @@ static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
- 	struct ext2_dx_root_info  	*root;
- 	struct ext2_dx_countlimit	*limits;
- 	int				filetype = 0;
-+	int				csum_size = 0;
- 
- 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_FILETYPE)
- 		filetype = EXT2_FT_DIR << 8;
-@@ -519,8 +539,13 @@ static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
- 	root->indirect_levels = 0;
- 	root->unused_flags = 0;
- 
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext2_dx_tail);
-+
- 	limits = (struct ext2_dx_countlimit *) (buf+32);
--	limits->limit = (fs->blocksize - 32) / sizeof(struct ext2_dx_entry);
-+	limits->limit = (fs->blocksize - (32 + csum_size)) /
-+			sizeof(struct ext2_dx_entry);
- 	limits->count = 0;
- 
- 	return root;
-@@ -531,14 +556,20 @@ static struct ext2_dx_entry *set_int_node(ext2_filsys fs, char *buf)
- {
- 	struct ext2_dir_entry 		*dir;
- 	struct ext2_dx_countlimit	*limits;
-+	int				csum_size = 0;
- 
- 	memset(buf, 0, fs->blocksize);
- 	dir = (struct ext2_dir_entry *) buf;
- 	dir->inode = 0;
- 	(void) ext2fs_set_rec_len(fs, fs->blocksize, dir);
- 
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext2_dx_tail);
-+
- 	limits = (struct ext2_dx_countlimit *) (buf+8);
--	limits->limit = (fs->blocksize - 8) / sizeof(struct ext2_dx_entry);
-+	limits->limit = (fs->blocksize - (8 + csum_size)) /
-+			sizeof(struct ext2_dx_entry);
- 	limits->count = 0;
- 
- 	return (struct ext2_dx_entry *) limits;
-@@ -865,8 +896,14 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
- 			if (!ext2fs_u32_list_iterate(iter, &ino))
- 				break;
- 		}
-+#if 0
-+		/*
-+		 * lost+found must not be excluded from cleanups or else
-+		 * checksum errors won't get fixed.
-+		 */
- 		if (ino == ctx->lost_and_found)
- 			continue;
-+#endif
- 		pctx.dir = ino;
- 		if (first) {
- 			fix_problem(ctx, PR_3A_PASS_HEADER, &pctx);
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 6f97b0f..a8e3775 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1198,6 +1198,7 @@ restart:
+ 	if (!ctx->superblock && !(ctx->options & E2F_OPT_PREEN) &&
+ 	    !(ctx->flags & E2F_FLAG_SB_SPECIFIED) &&
+ 	    ((retval == EXT2_ET_BAD_MAGIC) ||
++	     (retval == EXT2_ET_SB_CSUM_INVALID) ||
+ 	     (retval == EXT2_ET_CORRUPT_SUPERBLOCK) ||
+ 	     ((retval == 0) && (retval2 = ext2fs_check_desc(fs))))) {
+ 		if (retval2 == ENOMEM) {
 
