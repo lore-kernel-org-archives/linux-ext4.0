@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 44/54] libext2fs: Change on-disk journal layout to support
- metadata checksumming
-Date: Tue, 06 Mar 2012 16:02:35 -0800
-Message-ID: <20120307000235.11945.19876.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 40/54] mke2fs: Warn if not enabling all the features that
+ metadata_csum wants
+Date: Tue, 06 Mar 2012 16:02:07 -0800
+Message-ID: <20120307000207.11945.9180.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,108 +17,67 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:57406 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031608Ab2CGADL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:03:11 -0500
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:36341 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031610Ab2CGADR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 19:03:17 -0500
 Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 17:03:10 -0700
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 9CD7419D804C
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 17:02:48 -0700 (MST)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2702ieD025042
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:45 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2702dge020224
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:41 -0700
+	Tue, 6 Mar 2012 19:03:16 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id F016F6E8049
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:02:16 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2702GRd339330
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:16 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2702Dv2006706
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:15 -0500
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Define flags and change journal structure definitions to support v2 journal
-checksumming.
+The metadata_csum feature works best when two features are enabled.  These
+features are "extents" (because the block map has no space for checksums) and
+"64bit" (this enables storage of full 32-bit checksums in certain fields).
+Print a warning if the user tries to create a filesystem without those
+features.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- lib/ext2fs/kernel-jbd.h |   30 +++++++++++++++++++++++++++---
- 1 files changed, 27 insertions(+), 3 deletions(-)
+ misc/mke2fs.c |   19 +++++++++++++++++++
+ 1 files changed, 19 insertions(+), 0 deletions(-)
 
 
-diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
-index 066c031..570bfa6 100644
---- a/lib/ext2fs/kernel-jbd.h
-+++ b/lib/ext2fs/kernel-jbd.h
-@@ -114,12 +114,24 @@ typedef struct journal_header_s
- #define JBD2_CRC32_CHKSUM   1
- #define JBD2_MD5_CHKSUM     2
- #define JBD2_SHA1_CHKSUM    3
-+#define JBD2_CRC32C_CHKSUM  4
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 61b332a..e8c60ca 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2309,6 +2309,25 @@ int main (int argc, char *argv[])
+ 		exit(1);
+ 	}
  
- #define JBD2_CRC32_CHKSUM_SIZE 4
- 
- #define JBD2_CHECKSUM_BYTES (32 / sizeof(__u32))
- /*
-  * Commit block header for storing transactional checksums:
-+ *
-+ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
-+ * fields are used to store a checksum of the descriptor and data blocks.
-+ *
-+ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
-+ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
-+ * block gets its own checksum, and data block checksums are stored in
-+ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
-+ * not used.
-+ *
-+ * Checksum v1 and v2 are mutually exclusive features.
-  */
- struct commit_header {
- 	__u32		h_magic;
-@@ -141,11 +153,17 @@ typedef struct journal_block_tag_s
- 	__u32		t_blocknr;	/* The on-disk block number */
- 	__u32		t_flags;	/* See below */
- 	__u32		t_blocknr_high; /* most-significant high 32bits. */
-+	__u32		t_checksum;	/* crc32c(uuid+seq+block) */
- } journal_block_tag_t;
- 
- #define JBD_TAG_SIZE64 (sizeof(journal_block_tag_t))
- #define JBD_TAG_SIZE32 (8)
- 
-+/* Tail of descriptor block, for checksumming */
-+struct journal_block_tail {
-+	__u32		t_checksum;
-+};
++	/* Check the user's mkfs options for metadata checksumming */
++	if (!quiet &&
++	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT3_FEATURE_INCOMPAT_EXTENTS))
++			printf(_("Extents are not enabled.  The file extent "
++				 "tree can be checksummed, whereas block maps "
++				 "cannot.  Not enabling extents reduces the "
++				 "coverage of metadata checksumming.  "
++				 "Pass -O extents to rectify.\n"));
++		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				EXT4_FEATURE_INCOMPAT_64BIT))
++			printf(_("64-bit filesystem support is not "
++				 "enabled.  The larger fields afforded by "
++				 "this feature enable full-strength "
++				 "checksumming.  Pass -O 64bit to rectify.\n"));
++	}
 +
- /*
-  * The revoke descriptor: used on disk to describe a series of blocks to
-  * be revoked from the log
-@@ -156,6 +174,10 @@ typedef struct journal_revoke_header_s
- 	int		 r_count;	/* Count of bytes used in the block */
- } journal_revoke_header_t;
- 
-+/* Tail of revoke block, for checksumming */
-+struct journal_revoke_tail {
-+	__u32		r_checksum;
-+};
- 
- /* Definitions for the journal tag flags word: */
- #define JFS_FLAG_ESCAPE		1	/* on-disk block is escaped */
-@@ -205,7 +227,10 @@ typedef struct journal_superblock_s
- 	__u32	s_max_trans_data;	/* Limit of data blocks per trans. */
- 
- /* 0x0050 */
--	__u32	s_padding[44];
-+	__u8	s_checksum_type;	/* checksum type */
-+	__u8	s_padding2[3];
-+	__u32	s_padding[42];
-+	__u32	s_checksum;		/* crc32c(superblock) */
- 
- /* 0x0100 */
- 	__u8	s_users[16*48];		/* ids of all fs'es sharing the log */
-@@ -224,11 +249,10 @@ typedef struct journal_superblock_s
- 
- #define JFS_FEATURE_COMPAT_CHECKSUM	0x00000001
- 
--#define JFS_FEATURE_INCOMPAT_REVOKE	0x00000001
+ 	/* Can't undo discard ... */
+ 	if (!noaction && discard && (io_ptr != undo_io_manager)) {
+ 		retval = mke2fs_discard_device(fs);
+
