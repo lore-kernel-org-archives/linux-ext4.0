@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 29/54] e2fsck: Check extended attribute block checksums
-Date: Tue, 06 Mar 2012 16:00:32 -0800
-Message-ID: <20120307000032.11945.89164.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 36/54] libext2fs: Block group checksum should use
+ metadata_csum algorithm
+Date: Tue, 06 Mar 2012 16:01:36 -0800
+Message-ID: <20120307000136.11945.24146.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,122 +17,390 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:57558 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031593Ab2CGABf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:01:35 -0500
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:48629 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964894Ab2CGABs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 19:01:48 -0500
 Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 17:01:34 -0700
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 2A95CC90050
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:00:45 -0500 (EST)
+	Tue, 6 Mar 2012 19:01:48 -0500
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 72DA26E804F
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:01:46 -0500 (EST)
 Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2700jEh299818
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:00:45 -0500
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2701k3D173674
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:46 -0500
 Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2700eFv021201
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:00:45 -0300
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2701gIc029141
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:01:45 -0300
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Verify the checksums of separate extended attribute blocks and offer to clear
-it if there is a mismatch.
+Change the block group algorithm to use the same algorithm as the rest of the
+metadata_csum.  This mostly involves providing a helper function to tell if
+group descriptors should have checksums set or verified, and modifying the gdt
+checksum code to use the correct algorithm.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/pass1.c   |   18 ++++++++++++++++++
- e2fsck/problem.c |   15 +++++++++++++++
- e2fsck/problem.h |    6 ++++++
- 3 files changed, 39 insertions(+), 0 deletions(-)
+ debugfs/debugfs.c        |    3 +-
+ lib/ext2fs/alloc.c       |    6 +---
+ lib/ext2fs/alloc_stats.c |    3 +-
+ lib/ext2fs/csum.c        |   67 ++++++++++++++++++++++++++++------------------
+ lib/ext2fs/ext2fs.h      |    6 ++++
+ lib/ext2fs/initialize.c  |    3 +-
+ lib/ext2fs/inode.c       |    9 ++----
+ lib/ext2fs/openfs.c      |    3 +-
+ lib/ext2fs/rw_bitmaps.c  |   12 +++-----
+ misc/dumpe2fs.c          |    4 +--
+ resize/resize2fs.c       |   12 +++-----
+ 11 files changed, 66 insertions(+), 62 deletions(-)
 
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index ce03e46..debc365 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1553,6 +1553,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	struct ext2_ext_attr_entry *entry;
- 	int		count;
- 	region_t	region = 0;
-+	int		failed_csum = 0;
- 
- 	blk = ext2fs_file_acl_block(fs, inode);
- 	if (blk == 0)
-@@ -1627,6 +1628,11 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	 */
- 	pctx->blk = blk;
- 	pctx->errcode = ext2fs_read_ext_attr3(fs, blk, block_buf, pctx->ino);
-+	if (pctx->errcode == EXT2_ET_EXT_ATTR_CSUM_INVALID) {
-+		if (fix_problem(ctx, PR_1_EA_BLOCK_CSUM_INVALID, pctx))
-+			goto clear_extattr;
-+		failed_csum = 1;
-+	}
- 	if (pctx->errcode && fix_problem(ctx, PR_1_READ_EA_BLOCK, pctx))
- 		goto clear_extattr;
- 	header = (struct ext2_ext_attr_header *) block_buf;
-@@ -1708,6 +1714,18 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 36dd730..2e46cd5 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -357,8 +357,7 @@ void do_show_super_stats(int argc, char *argv[])
+ 		return;
  	}
- 	region_free(region);
  
-+	/*
-+	 * We only get here if there was no other errors that were fixed.
-+	 * If there was a checksum fail, ask to correct it.
-+	 */
-+	if (failed_csum &&
-+	    fix_problem(ctx, PR_1_EA_BLOCK_ONLY_CSUM_INVALID, pctx)) {
-+		pctx->errcode = ext2fs_write_ext_attr3(fs, blk, block_buf,
-+						       pctx->ino);
-+		if (pctx->errcode)
-+			return 0;
+-	gdt_csum = EXT2_HAS_RO_COMPAT_FEATURE(current_fs->super,
+-					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	gdt_csum = ext2fs_has_group_desc_csum(current_fs);
+ 	for (i = 0; i < current_fs->group_desc_count; i++) {
+ 		fprintf(out, " Group %2d: block bitmap at %llu, "
+ 		        "inode bitmap at %llu, "
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 948a0ec..e62ed68 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -36,8 +36,7 @@ static void check_block_uninit(ext2_filsys fs, ext2fs_block_bitmap map,
+ 	blk64_t		blk, super_blk, old_desc_blk, new_desc_blk;
+ 	int		old_desc_blocks;
+ 
+-	if (!(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) ||
++	if (!ext2fs_has_group_desc_csum(fs) ||
+ 	    !(ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
+ 		return;
+ 
+@@ -83,8 +82,7 @@ static void check_inode_uninit(ext2_filsys fs, ext2fs_inode_bitmap map,
+ {
+ 	ext2_ino_t	i, ino;
+ 
+-	if (!(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) ||
++	if (!ext2fs_has_group_desc_csum(fs) ||
+ 	    !(ext2fs_bg_flags_test(fs, group, EXT2_BG_INODE_UNINIT)))
+ 		return;
+ 
+diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
+index adec363..4229084 100644
+--- a/lib/ext2fs/alloc_stats.c
++++ b/lib/ext2fs/alloc_stats.c
+@@ -38,8 +38,7 @@ void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
+ 	/* We don't strictly need to be clearing the uninit flag if inuse < 0
+ 	 * (i.e. freeing inodes) but it also means something is bad. */
+ 	ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++	if (ext2fs_has_group_desc_csum(fs)) {
+ 		ext2_ino_t first_unused_inode =	fs->super->s_inodes_per_group -
+ 			ext2fs_bg_itable_unused(fs, group) +
+ 			group * fs->super->s_inodes_per_group + 1;
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 11a24f0..d4f98e0 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -696,39 +696,56 @@ STATIC __u16 ext2fs_group_desc_csum(ext2_filsys fs, dgrp_t group)
+ 
+ 	desc = ext2fs_group_desc(fs, fs->group_desc, group);
+ 
+-	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
+-		size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
+-
+ #ifdef WORDS_BIGENDIAN
+-		struct ext4_group_desc swabdesc;
++	struct ext4_group_desc swabdesc;
+ 
+-		/* Have to swab back to little-endian to do the checksum */
+-		memcpy(&swabdesc, desc, size);
+-		ext2fs_swap_group_desc2(fs,
+-					(struct ext2_group_desc *) &swabdesc);
+-		desc = (struct ext2_group_desc *) &swabdesc;
++	/* Have to swab back to little-endian to do the checksum */
++	memcpy(&swabdesc, desc, size);
++	ext2fs_swap_group_desc2(fs,
++				(struct ext2_group_desc *) &swabdesc);
++	desc = (struct ext2_group_desc *) &swabdesc;
+ 
+-		group = ext2fs_swab32(group);
++	group = ext2fs_swab32(group);
+ #endif
+-		crc = ext2fs_crc16(~0, fs->super->s_uuid,
+-				   sizeof(fs->super->s_uuid));
+-		crc = ext2fs_crc16(crc, &group, sizeof(group));
+-		crc = ext2fs_crc16(crc, desc, offset);
+-		offset += sizeof(desc->bg_checksum); /* skip checksum */
+-		/* for checksum of struct ext4_group_desc do the rest...*/
+-		if (offset < size) {
+-			crc = ext2fs_crc16(crc, (char *)desc + offset,
+-					   size - offset);
+-		}
++
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
++		/* new metadata csum code */
++		__u16 old_crc;
++		__u32 crc32;
++
++		old_crc = desc->bg_checksum;
++		desc->bg_checksum = 0;
++		crc32 = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&group,
++					 sizeof(group));
++		crc32 = ext2fs_crc32c_le(crc32, (unsigned char *)desc,
++					 size);
++		desc->bg_checksum = old_crc;
++
++		crc = crc32 & 0xFFFF;
++		goto out;
+ 	}
+ 
++	/* old crc16 code */
++	size_t offset = offsetof(struct ext2_group_desc, bg_checksum);
++	crc = ext2fs_crc16(~0, fs->super->s_uuid,
++			   sizeof(fs->super->s_uuid));
++	crc = ext2fs_crc16(crc, &group, sizeof(group));
++	crc = ext2fs_crc16(crc, desc, offset);
++	offset += sizeof(desc->bg_checksum); /* skip checksum */
++	/* for checksum of struct ext4_group_desc do the rest...*/
++	if (offset < size) {
++		crc = ext2fs_crc16(crc, (char *)desc + offset,
++				   size - offset);
 +	}
 +
- 	count = header->h_refcount - 1;
- 	if (count)
- 		ea_refcount_store(ctx->refcount, blk, count);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index d910629..ad6887e 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -961,6 +961,21 @@ static struct e2fsck_problem problem_table[] = {
- 	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
- 	  PROMPT_FIX, 0 },
++out:
+ 	return crc;
+ }
  
-+	/* Extended attribute block checksum for inode does not match. */
-+	{ PR_1_EA_BLOCK_CSUM_INVALID,
-+	  N_("Extended attribute @a @b %b checksum for @i %i does not "
-+	     "match.  "),
-+	  PROMPT_CLEAR, 0 },
-+
-+	/*
-+	 * Extended attribute block passes checks, but checksum for inode does
-+	 * not match.
-+	 */
-+	{ PR_1_EA_BLOCK_CSUM_INVALID,
-+	  N_("Extended attribute @a @b %b passes checks, but checksum for "
-+	     "@i %i does not match.  "),
-+	  PROMPT_FIX, 0 },
-+
- 	/* Pass 1b errors */
+ int ext2fs_group_desc_csum_verify(ext2_filsys fs, dgrp_t group)
+ {
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
++	if (ext2fs_has_group_desc_csum(fs) &&
+ 	    (ext2fs_bg_checksum(fs, group) !=
+ 	     ext2fs_group_desc_csum(fs, group)))
+ 		return 0;
+@@ -738,8 +755,7 @@ int ext2fs_group_desc_csum_verify(ext2_filsys fs, dgrp_t group)
  
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index eb70d61..b8a7548 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -562,6 +562,12 @@ struct problem_context {
- /* extent block passes checks, but checksum does not match extent block */
- #define PR_1_EXTENT_ONLY_CSUM_INVALID	0x010069
+ void ext2fs_group_desc_csum_set(ext2_filsys fs, dgrp_t group)
+ {
+-	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++	if (!ext2fs_has_group_desc_csum(fs))
+ 		return;
  
-+/* ea block checksum invalid */
-+#define PR_1_EA_BLOCK_CSUM_INVALID	0x01006A
-+
-+/* ea block passes checks, but checksum invalid */
-+#define PR_1_EA_BLOCK_ONLY_CSUM_INVALID	0x01006B
-+
+ 	/* ext2fs_bg_checksum_set() sets the actual checksum field but
+@@ -773,8 +789,7 @@ errcode_t ext2fs_set_gdt_csum(ext2_filsys fs)
+ 	if (!fs->inode_map)
+ 		return EXT2_ET_NO_INODE_BITMAP;
+ 
+-	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++	if (!ext2fs_has_group_desc_csum(fs))
+ 		return 0;
+ 
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 9574525..eeac04d 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -642,6 +642,12 @@ typedef struct stat ext2fs_struct_stat;
  /*
-  * Pass 1b errors
+  * function prototypes
   */
++static inline int ext2fs_has_group_desc_csum(ext2_filsys fs)
++{
++	return EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
++			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
++}
+ 
+ /* alloc.c */
+ extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index a63ea18..a22cab4 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -435,8 +435,7 @@ ipg_retry:
+ 	 * bitmaps will be accounted for when allocated).
+ 	 */
+ 	free_blocks = 0;
+-	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	csum_flag = ext2fs_has_group_desc_csum(fs);
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+ 		/*
+ 		 * Don't set the BLOCK_UNINIT group for the last group
+diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+index 74703c5..3e6d853 100644
+--- a/lib/ext2fs/inode.c
++++ b/lib/ext2fs/inode.c
+@@ -157,8 +157,7 @@ errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
+ 						     scan->current_group);
+ 	scan->inodes_left = EXT2_INODES_PER_GROUP(scan->fs->super);
+ 	scan->blocks_left = scan->fs->inode_blocks_per_group;
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++	if (ext2fs_has_group_desc_csum(fs)) {
+ 		scan->inodes_left -=
+ 			ext2fs_bg_itable_unused(fs, scan->current_group);
+ 		scan->blocks_left =
+@@ -183,8 +182,7 @@ errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
+ 	}
+ 	if (scan->fs->badblocks && scan->fs->badblocks->num)
+ 		scan->scan_flags |= EXT2_SF_CHK_BADBLOCKS;
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++	if (ext2fs_has_group_desc_csum(fs))
+ 		scan->scan_flags |= EXT2_SF_DO_LAZY;
+ 	*ret_scan = scan;
+ 	return 0;
+@@ -250,8 +248,7 @@ static errcode_t get_next_blockgroup(ext2_inode_scan scan)
+ 	scan->bytes_left = 0;
+ 	scan->inodes_left = EXT2_INODES_PER_GROUP(fs->super);
+ 	scan->blocks_left = fs->inode_blocks_per_group;
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++	if (ext2fs_has_group_desc_csum(fs)) {
+ 		scan->inodes_left -=
+ 			ext2fs_bg_itable_unused(fs, scan->current_group);
+ 		scan->blocks_left =
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index d2b64f4..2dc9b94 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -382,8 +382,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	 * If recovery is from backup superblock, Clear _UNININT flags &
+ 	 * reset bg_itable_unused to zero
+ 	 */
+-	if (superblock > 1 && EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
+ 		dgrp_t group;
+ 
+ 		for (group = 0; group < fs->group_desc_count; group++) {
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index a5097c1..18e18aa 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -36,7 +36,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 	unsigned int	nbits;
+ 	errcode_t	retval;
+ 	char		*block_buf = NULL, *inode_buf = NULL;
+-	int		csum_flag = 0;
++	int		csum_flag;
+ 	blk64_t		blk;
+ 	blk64_t		blk_itr = EXT2FS_B2C(fs, fs->super->s_first_data_block);
+ 	ext2_ino_t	ino_itr = 1;
+@@ -46,9 +46,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 	if (!(fs->flags & EXT2_FLAG_RW))
+ 		return EXT2_ET_RO_FILSYS;
+ 
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+-		csum_flag = 1;
++	csum_flag = ext2fs_has_group_desc_csum(fs);
+ 
+ 	inode_nbytes = block_nbytes = 0;
+ 	if (do_block) {
+@@ -168,7 +166,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 	errcode_t retval;
+ 	int block_nbytes = EXT2_CLUSTERS_PER_GROUP(fs->super) / 8;
+ 	int inode_nbytes = EXT2_INODES_PER_GROUP(fs->super) / 8;
+-	int csum_flag = 0;
++	int csum_flag;
+ 	int do_image = fs->flags & EXT2_FLAG_IMAGE_FILE;
+ 	unsigned int	cnt;
+ 	blk64_t	blk;
+@@ -181,9 +179,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 
+ 	fs->write_bitmaps = ext2fs_write_bitmaps;
+ 
+-	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+-		csum_flag = 1;
++	csum_flag = ext2fs_has_group_desc_csum(fs);
+ 
+ 	retval = ext2fs_get_mem(strlen(fs->device_name) + 80, &buf);
+ 	if (retval)
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 23dec30..40398a7 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -114,7 +114,7 @@ static void print_bg_opts(ext2_filsys fs, dgrp_t i)
+ {
+ 	int first = 1, bg_flags = 0;
+ 
+-	if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
++	if (ext2fs_has_group_desc_csum(fs))
+ 		bg_flags = ext2fs_bg_flags(fs, i);
+ 
+ 	print_bg_opt(bg_flags, EXT2_BG_INODE_UNINIT, "INODE_UNINIT",
+@@ -190,7 +190,7 @@ static void list_desc (ext2_filsys fs)
+ 		print_range(first_block, last_block);
+ 		fputs(")", stdout);
+ 		print_bg_opts(fs, i);
+-		if (fs->super->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
++		if (ext2fs_has_group_desc_csum(fs))
+ 			printf(_("  Checksum 0x%04x, unused inodes %u\n"),
+ 			       ext2fs_bg_checksum(fs, i),
+ 			       ext2fs_bg_itable_unused(fs, i));
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index dc2805d..8a02ff4 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -191,8 +191,7 @@ static void fix_uninit_block_bitmaps(ext2_filsys fs)
+ 	int		old_desc_blocks;
+ 	dgrp_t		g;
+ 
+-	if (!(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)))
++	if (!ext2fs_has_group_desc_csum(fs))
+ 		return;
+ 
+ 	for (g=0; g < fs->group_desc_count; g++) {
+@@ -482,8 +481,7 @@ retry:
+ 	group_block = fs->super->s_first_data_block +
+ 		old_fs->group_desc_count * fs->super->s_blocks_per_group;
+ 
+-	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++	csum_flag = ext2fs_has_group_desc_csum(fs);
+ 	adj = old_fs->group_desc_count;
+ 	max_group = fs->group_desc_count - adj;
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+@@ -743,8 +741,7 @@ static void mark_fs_metablock(ext2_resize_t rfs,
+ 	} else if (IS_INODE_TB(fs, group, blk)) {
+ 		ext2fs_inode_table_loc_set(fs, group, 0);
+ 		rfs->needed_blocks++;
+-	} else if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
++	} else if (ext2fs_has_group_desc_csum(fs) &&
+ 		   (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT))) {
+ 		/*
+ 		 * If the block bitmap is uninitialized, which means
+@@ -804,8 +801,7 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
+ 	for (blk = ext2fs_blocks_count(fs->super);
+ 	     blk < ext2fs_blocks_count(old_fs->super); blk++) {
+ 		g = ext2fs_group_of_blk2(fs, blk);
+-		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+-					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
++		if (ext2fs_has_group_desc_csum(fs) &&
+ 		    ext2fs_bg_flags_test(old_fs, g, EXT2_BG_BLOCK_UNINIT)) {
+ 			/*
+ 			 * The block bitmap is uninitialized, so skip
 
