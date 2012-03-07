@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 33/54] libext2fs: Record the checksum algorithm in use in the
- superblock
-Date: Tue, 06 Mar 2012 16:01:04 -0800
-Message-ID: <20120307000104.11945.49959.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 39/54] mke2fs: Write new group descriptors with the
+ appropriate checksum
+Date: Tue, 06 Mar 2012 16:02:01 -0800
+Message-ID: <20120307000200.11945.59962.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,153 +17,82 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:43206 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964947Ab2CGABt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:01:49 -0500
+Received: from e37.co.us.ibm.com ([32.97.110.158]:55133 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031593Ab2CGACN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:02:13 -0500
 Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 19:01:47 -0500
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id F01386E804D
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:01:21 -0500 (EST)
+	Tue, 6 Mar 2012 17:02:12 -0700
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id D12BDC90050
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:02:09 -0500 (EST)
 Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2701Ljc263316
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:21 -0500
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q27027oe3358960
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:02:08 -0500
 Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q275W9ij013041
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Mar 2012 00:32:13 -0500
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q275WvWi017145
+	for <linux-ext4@vger.kernel.org>; Wed, 7 Mar 2012 00:33:00 -0500
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Record the type of checksum algorithm we're using for metadata in the
-superblock, in case we ever want/need to change the algorithm.
+Update mke2fs to use the helper function to determine if group descriptors
+should have checksums calculated.  Since metadata_csum supersedes uninit_bg,
+quietly drop uninit_bg if metadata_csum is set, so that older kernels don't
+get confused.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- debugfs/set_fields.c      |    1 +
- lib/e2p/ls.c              |   15 ++++++++++++++-
- lib/ext2fs/csum.c         |    9 +++++++++
- lib/ext2fs/ext2_err.et.in |    3 +++
- lib/ext2fs/ext2fs.h       |    1 +
- lib/ext2fs/openfs.c       |   12 ++++++++----
- 6 files changed, 36 insertions(+), 5 deletions(-)
+ misc/mke2fs.c |   14 +++++++++++---
+ 1 files changed, 11 insertions(+), 3 deletions(-)
 
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 08bfd8d..871bf20 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -151,6 +151,7 @@ static struct field_set_info super_fields[] = {
- 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, parse_uint },
- 	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, parse_uint },
- 	{ "checksum", &set_sb.s_checksum, NULL, 4, parse_uint },
-+	{ "checksum_type", &set_sb.s_checksum_type, NULL, 1, parse_uint },
- 	{ 0, 0, 0, 0 }
- };
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 92b80e9..61b332a 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1936,6 +1936,13 @@ profile_error:
+ 	if (extended_opts)
+ 		parse_extended_opts(&fs_param, extended_opts);
  
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index f05e16d..d2e84eb 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -196,6 +196,16 @@ static __u64 e2p_free_blocks_count(struct ext2_super_block *super)
- #define EXT2_GOOD_OLD_REV 0
- #endif
- 
-+static const char *checksum_type(__u8 type)
-+{
-+	switch (type) {
-+	case EXT2_CRC32C_CHKSUM:
-+		return "crc32c";
-+	default:
-+		return "unknown";
-+	}
-+}
++	/* Don't allow user to set both metadata_csum and uninit_bg bits. */
++	if ((fs_param.s_feature_ro_compat &
++	     EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++	    (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++		fs_param.s_feature_ro_compat &=
++				~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
 +
- void list_super2(struct ext2_super_block * sb, FILE *f)
- {
- 	int inode_blocks_per_group;
-@@ -421,9 +431,12 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 		fprintf(f, "Group quota inode:        %u\n",
- 			sb->s_grp_quota_inum);
+ 	/* Since sparse_super is the default, we would only have a problem
+ 	 * here if it was explicitly disabled.
+ 	 */
+@@ -2048,7 +2055,8 @@ static int should_do_undo(const char *name)
+ 	int csum_flag, force_undo;
  
--	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
-+	if (sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
-+		fprintf(f, "Checksum type:            %s\n",
-+			checksum_type(sb->s_checksum_type));
- 		fprintf(f, "Checksum:                 0x%08x\n",
- 			sb->s_checksum);
-+	}
- }
+ 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(&fs_param,
+-					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
++				EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+ 	force_undo = get_int_from_profile(fs_types, "force_undo", 0);
+ 	if (!force_undo && (!csum_flag || !lazy_itable_init))
+ 		return 0;
+@@ -2325,6 +2333,7 @@ int main (int argc, char *argv[])
+ 	    (fs_param.s_feature_ro_compat &
+ 	     (EXT4_FEATURE_RO_COMPAT_HUGE_FILE|EXT4_FEATURE_RO_COMPAT_GDT_CSUM|
+ 	      EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
++	      EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|
+ 	      EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE)))
+ 		fs->super->s_kbytes_written = 1;
  
- void list_super (struct ext2_super_block * s)
-diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-index 4d01bcd..11a24f0 100644
---- a/lib/ext2fs/csum.c
-+++ b/lib/ext2fs/csum.c
-@@ -30,6 +30,15 @@
- #define STATIC static
- #endif
- 
-+int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb)
-+{
-+	if (!EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return 1;
-+
-+	return sb->s_checksum_type == EXT2_CRC32C_CHKSUM;
-+}
-+
- static __u32 ext2fs_superblock_csum(ext2_filsys fs, struct ext2_super_block *sb)
- {
- 	int offset = offsetof(struct ext2_super_block, s_checksum);
-diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index 0fab4e0..01f9f7b 100644
---- a/lib/ext2fs/ext2_err.et.in
-+++ b/lib/ext2fs/ext2_err.et.in
-@@ -464,4 +464,7 @@ ec	EXT2_ET_EXT_ATTR_CSUM_INVALID,
- ec	EXT2_ET_SB_CSUM_INVALID,
- 	"Superblock checksum does not match superblock"
- 
-+ec	EXT2_ET_UNKNOWN_CSUM,
-+	"Unknown checksum algorithm"
-+
- 	end
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 3c52f4b..9574525 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -952,6 +952,7 @@ extern __u32 ext2fs_crc32c_be(__u32 crc, unsigned char const *p, size_t len);
- extern __u32 ext2fs_crc32c_le(__u32 crc, unsigned char const *p, size_t len);
- 
- /* csum.c */
-+extern int ext2fs_verify_csum_type(ext2_filsys fs, struct ext2_super_block *sb);
- extern errcode_t ext2fs_superblock_csum_set(ext2_filsys fs,
- 					    struct ext2_super_block *sb);
- extern int ext2fs_superblock_csum_verify(ext2_filsys fs,
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 8b7e750..d2b64f4 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -193,10 +193,14 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	if (fs->orig_super)
- 		memcpy(fs->orig_super, fs->super, SUPERBLOCK_SIZE);
- 
--	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
--	    !ext2fs_superblock_csum_verify(fs, fs->super)) {
--		retval = EXT2_ET_SB_CSUM_INVALID;
--		goto cleanup;
-+	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS)) {
-+		retval = 0;
-+		if (!ext2fs_verify_csum_type(fs, fs->super))
-+			retval = EXT2_ET_UNKNOWN_CSUM;
-+		if (!ext2fs_superblock_csum_verify(fs, fs->super))
-+			retval = EXT2_ET_SB_CSUM_INVALID;
-+		if (retval)
-+			goto cleanup;
- 	}
- 
- #ifdef WORDS_BIGENDIAN
+@@ -2472,8 +2481,7 @@ int main (int argc, char *argv[])
+ 		 * inodes as unused; we want e2fsck to consider all
+ 		 * inodes as potentially containing recoverable data.
+ 		 */
+-		if (fs->super->s_feature_ro_compat &
+-		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
++		if (ext2fs_has_group_desc_csum(fs)) {
+ 			for (i = 1; i < fs->group_desc_count; i++)
+ 				ext2fs_bg_itable_unused_set(fs, i, 0);
+ 		}
 
