@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 34/54] tune2fs: Store checksum algorithm type in superblock
-Date: Tue, 06 Mar 2012 16:01:15 -0800
-Message-ID: <20120307000115.11945.9751.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 38/54] tune2fs: Rewrite block group checksums when changing
+ checksumming feature flags
+Date: Tue, 06 Mar 2012 16:01:53 -0800
+Message-ID: <20120307000153.11945.22919.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,51 +17,198 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:35705 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031593Ab2CGACm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:02:42 -0500
+Received: from e38.co.us.ibm.com ([32.97.110.159]:48621 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031593Ab2CGACq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:02:46 -0500
 Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 19:02:42 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id ACA986E8049
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:02:10 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2701W8a226650
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:38 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2701Tln004409
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:01:31 -0500
+	Tue, 6 Mar 2012 17:02:45 -0700
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 79987C40004
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 17:02:14 -0700 (MST)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q27023li168050
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:04 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2701wtp016702
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:03 -0700
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Actually records the checksum algorithm type in the superblock when enabling
-checksumming.
+When toggling the metadata_csum and uninit_bg feature flags, we should rewrite
+the block groups with the desired checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- misc/tune2fs.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+ misc/tune2fs.c |  116 +++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 90 insertions(+), 26 deletions(-)
 
 
 diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 2ae436e..ac5e945 100644
+index ac5e945..79b49d9 100644
 --- a/misc/tune2fs.c
 +++ b/misc/tune2fs.c
-@@ -701,6 +701,12 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
- 	ext2fs_mark_bb_dirty(fs);
- 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
- 	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		fs->super->s_checksum_type = EXT2_CRC32C_CHKSUM;
-+	else
-+		fs->super->s_checksum_type = 0;
-+	ext2fs_mark_super_dirty(fs);
+@@ -693,8 +693,12 @@ static void rewrite_inodes(ext2_filsys fs)
+ 
+ static void rewrite_metadata_checksums(ext2_filsys fs)
+ {
++	int i;
++
+ 	fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 	ext2fs_init_csum_seed(fs);
++	for (i = 0; i < fs->group_desc_count; i++)
++		ext2fs_group_desc_csum_set(fs, i);
+ 	rewrite_inodes(fs);
+ 	ext2fs_read_bitmaps(fs);
+ 	ext2fs_mark_ib_dirty(fs);
+@@ -709,6 +713,49 @@ static void rewrite_metadata_checksums(ext2_filsys fs)
+ 	ext2fs_mark_super_dirty(fs);
  }
  
++static void enable_uninit_bg(ext2_filsys fs)
++{
++	struct ext2_group_desc *gd;
++	int i;
++
++	for (i = 0; i < fs->group_desc_count; i++) {
++		gd = ext2fs_group_desc(fs, fs->group_desc, i);
++		gd->bg_itable_unused = 0;
++		gd->bg_flags = EXT2_BG_INODE_ZEROED;
++		ext2fs_group_desc_csum_set(fs, i);
++	}
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++}
++
++static void disable_uninit_bg(ext2_filsys fs, __u32 csum_feature_flag)
++{
++	struct ext2_group_desc *gd;
++	int i;
++
++	/* Load bitmaps to ensure that the uninit ones get written out */
++	fs->super->s_feature_ro_compat |= csum_feature_flag;
++	ext2fs_read_bitmaps(fs);
++	ext2fs_mark_ib_dirty(fs);
++	ext2fs_mark_bb_dirty(fs);
++	fs->super->s_feature_ro_compat &= ~csum_feature_flag;
++
++	for (i = 0; i < fs->group_desc_count; i++) {
++		gd = ext2fs_group_desc(fs, fs->group_desc, i);
++		if ((gd->bg_flags & EXT2_BG_INODE_ZEROED) == 0) {
++			/*
++			 * XXX what we really should do is zap
++			 * uninitialized inode tables instead.
++			 */
++			request_fsck_afterwards(fs);
++			break;
++		}
++		gd->bg_itable_unused = 0;
++		gd->bg_flags = 0;
++		ext2fs_group_desc_csum_set(fs, i);
++	}
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++}
++
  /*
+  * Update the feature set as provided by the user.
+  */
+@@ -886,6 +933,21 @@ mmp_error:
+ 		if (check_fsck_needed(fs))
+ 			exit(1);
+ 		rewrite_checksums = 1;
++		/* metadata_csum supersedes uninit_bg */
++		fs->super->s_feature_ro_compat &=
++			~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
++
++		/* if uninit_bg was previously off, rewrite group desc */
++		if (!(old_features[E2P_FEATURE_RO_INCOMPAT] &
++		      EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++			enable_uninit_bg(fs);
++
++		/*
++		 * Since metadata_csum supersedes uninit_bg, pretend like
++		 * uninit_bg has been off all along.
++		 */
++		old_features[E2P_FEATURE_RO_INCOMPAT] &=
++			~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
+ 	}
+ 
+ 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
+@@ -893,37 +955,40 @@ mmp_error:
+ 		if (check_fsck_needed(fs))
+ 			exit(1);
+ 		rewrite_checksums = 1;
++		/*
++		 * If we're turning off metadata_csum and not turning on
++		 * uninit_bg, rewrite group desc.
++		 */
++		if (!(fs->super->s_feature_ro_compat &
++		      EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++			disable_uninit_bg(fs,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
++		else
++			/*
++			 * metadata_csum previously provided uninit_bg, so if
++			 * we're also setting the uninit_bg feature bit,
++			 * pretend like it was previously enabled.  Checksums
++			 * will be rewritten with crc16 later.
++			 */
++			old_features[E2P_FEATURE_RO_INCOMPAT] |=
++				EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
+ 	}
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-		for (i = 0; i < fs->group_desc_count; i++) {
+-			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+-			gd->bg_itable_unused = 0;
+-			gd->bg_flags = EXT2_BG_INODE_ZEROED;
+-			ext2fs_group_desc_csum_set(fs, i);
+-		}
+-		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++		/* Do not enable uninit_bg when metadata_csum enabled */
++		if (fs->super->s_feature_ro_compat &
++		    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)
++			fs->super->s_feature_ro_compat &=
++				~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
++		else
++			enable_uninit_bg(fs);
+ 	}
+ 
+ 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
+-			EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-		for (i = 0; i < fs->group_desc_count; i++) {
+-			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+-			if ((gd->bg_flags & EXT2_BG_INODE_ZEROED) == 0) {
+-				/* 
+-				 * XXX what we really should do is zap
+-				 * uninitialized inode tables instead.
+-				 */
+-				request_fsck_afterwards(fs);
+-				break;
+-			}
+-			gd->bg_itable_unused = 0;
+-			gd->bg_flags = 0;
+-			gd->bg_checksum = 0;
+-		}
+-		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+-	}
++			EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++		disable_uninit_bg(fs,
++				EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+@@ -2505,8 +2570,7 @@ retry_open:
+ 				exit(1);
+ 		}
+ 
+-		if (sb->s_feature_ro_compat &
+-		    EXT4_FEATURE_RO_COMPAT_GDT_CSUM) {
++		if (ext2fs_has_group_desc_csum(fs)) {
+ 			/*
+ 			 * Determine if the block group checksums are
+ 			 * correct so we know whether or not to set
 
