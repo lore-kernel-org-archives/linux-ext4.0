@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH 42/54] e2fsck: Verify and correct MMP checksum problems
-Date: Tue, 06 Mar 2012 16:02:22 -0800
-Message-ID: <20120307000222.11945.34243.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH 49/54] e2fsck: Check commit block checksum during recovery
+Date: Tue, 06 Mar 2012 16:03:10 -0800
+Message-ID: <20120307000310.11945.1092.stgit@elm3b70.beaverton.ibm.com>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,81 +16,84 @@ To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>,
 	"Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:42632 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031608Ab2CGADN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Mar 2012 19:03:13 -0500
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:48759 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031610Ab2CGADf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Mar 2012 19:03:35 -0500
 Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 6 Mar 2012 17:03:11 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 063583E4004F
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 17:03:07 -0700 (MST)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2702UWC100110
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:32 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2702Qks019115
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 17:02:27 -0700
+	Tue, 6 Mar 2012 19:03:33 -0500
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 2A57E38C805A
+	for <linux-ext4@vger.kernel.org>; Tue,  6 Mar 2012 19:03:16 -0500 (EST)
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2703FGF298094
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 19:03:15 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2703EY4009318
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Mar 2012 21:03:15 -0300
 In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check and handle MMP checksum problems by resetting the block.
+When recovering a journal with checksum v2, verify the commit block checksum.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
- e2fsck/problem.c |    5 +++++
- e2fsck/problem.h |    3 +++
- e2fsck/unix.c    |    5 +++++
- 3 files changed, 13 insertions(+), 0 deletions(-)
+ e2fsck/recovery.c |   33 +++++++++++++++++++++++++++++++++
+ 1 files changed, 33 insertions(+), 0 deletions(-)
 
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 8c55721..91617bc 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -432,6 +432,11 @@ static struct e2fsck_problem problem_table[] = {
- 	     "bits cannot be set simultaneously."),
- 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
- 
-+	/* Superblock has invalid MMP checksum. */
-+	{ PR_0_MMP_CSUM_INVALID,
-+	  N_("@S MMP block checksum does not match MMP block.  "),
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK},
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index e47984c..f6f1eee 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -248,6 +248,9 @@ struct problem_context {
-  */
- #define PR_0_META_AND_GDT_CSUM_SET		0x000044
- 
-+/* Superblock has invalid MMP checksum. */
-+#define PR_0_MMP_CSUM_INVALID			0x000045
-+
- /*
-  * Pass 1 errors
-  */
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 678ce9b..d3fb8f8 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1098,6 +1098,11 @@ check_error:
- 			ext2fs_mmp_clear(fs);
- 			retval = 0;
- 		}
-+	} else if (retval == EXT2_ET_MMP_CSUM_INVALID) {
-+		if (fix_problem(ctx, PR_0_MMP_CSUM_INVALID, &pctx)) {
-+			ext2fs_mmp_clear(fs);
-+			retval = 0;
-+		}
- 	}
- 	return retval;
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index f76e7d8..8f55411 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -375,6 +375,26 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+ 	return 0;
  }
+ 
++static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
++{
++	struct commit_header *h;
++	__u32 provided, calculated;
++
++	if (!JFS_HAS_INCOMPAT_FEATURE(j, JFS_FEATURE_INCOMPAT_CSUM_V2))
++		return 1;
++
++	h = buf;
++	provided = h->h_chksum[0];
++	h->h_chksum[0] = 0;
++	calculated = ext2fs_crc32c_le(~0, j->j_superblock->s_uuid,
++				      sizeof(j->j_superblock->s_uuid));
++	calculated = ext2fs_crc32c_le(calculated, buf, j->j_blocksize);
++	h->h_chksum[0] = provided;
++
++	provided = ext2fs_be32_to_cpu(provided);
++	return provided == calculated;
++}
++
+ static int do_one_pass(journal_t *journal,
+ 			struct recovery_info *info, enum passtype pass)
+ {
+@@ -696,6 +716,19 @@ static int do_one_pass(journal_t *journal,
+ 				}
+ 				crc32_sum = ~0;
+ 			}
++			if (pass == PASS_SCAN &&
++			    !jbd2_commit_block_csum_verify(journal,
++							   bh->b_data)) {
++				info->end_transaction = next_commit_ID;
++
++				if (!JFS_HAS_INCOMPAT_FEATURE(journal,
++				     JFS_FEATURE_INCOMPAT_ASYNC_COMMIT)) {
++					journal->j_failed_commit =
++						next_commit_ID;
++					brelse(bh);
++					break;
++				}
++			}
+ 			brelse(bh);
+ 			next_commit_ID++;
+ 			continue;
 
