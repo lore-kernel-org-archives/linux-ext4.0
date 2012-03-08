@@ -1,216 +1,181 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/19] ext4: Convert to new freezing mechanism
-Date: Thu, 8 Mar 2012 10:05:21 +0100
-Message-ID: <20120308090521.GA6681@quack.suse.cz>
-References: <1330963277-26336-1-git-send-email-jack@suse.cz>
- <1330963277-26336-11-git-send-email-jack@suse.cz>
- <1331159533.12984.73.camel@fourier>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] Don't do page stablization if
+ !CONFIG_BLKDEV_INTEGRITY
+Date: Thu, 8 Mar 2012 10:43:26 -0500
+Message-ID: <20120308154326.GA6777@thunk.org>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
+ <4F57FC14.5090207@panasas.com>
+ <yq1zkbrhi2l.fsf@sermon.lab.mkp.net>
+ <4F5837A2.8000306@panasas.com>
+ <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="fUYQa+Pmc3FrFX/N"
-Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>, dchinner@redhat.com,
-	sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>
-To: Kamal Mostafa <kamal@canonical.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41166 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753968Ab2CHJFY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Mar 2012 04:05:24 -0500
-Content-Disposition: inline
-In-Reply-To: <1331159533.12984.73.camel@fourier>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---fUYQa+Pmc3FrFX/N
 Content-Type: text/plain; charset=us-ascii
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Sage Weil <sage@newdream.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 07-03-12 14:32:13, Kamal Mostafa wrote:
-> Re: the patch set:
->     [PATCH 00/19] Fix filesystem freezing deadlocks
+On Wed, Mar 07, 2012 at 10:27:43PM -0800, Sage Weil wrote:
 > 
-> In my initial smoke testing of this, I find that if I freeze a newly
-> created ext4 filesystem immediately after mounting it for the very first
-> time, then I get the new SB_FREEZE_COMPLETE warning from
-> ext4_journal_start_sb() every 0.4 seconds from ext4lazyinit...
-> 
->         # mkfs -t ext4 /dev/sdaX
->         # mount /dev/sdaX /mnt
->         # fsfreeze -f /mnt
-> 
->          WARNING:
->         at /home/kamal/src/linux/ubuntu-precise/fs/ext4/super.c:301
->         ext4_journal_start_sb+0x159/0x160()
->         
->          Pid: 3252, comm: ext4lazyinit Tainted: G        W
->         3.2.0-18-generic #28+kamal1+jankara1
->         
->          Call Trace:
->           [<ffffffff8106724f>] warn_slowpath_common+0x7f/0xc0
->           [<ffffffff810672aa>] warn_slowpath_null+0x1a/0x20
->           [<ffffffff812352c9>] ext4_journal_start_sb+0x159/0x160
->           [<ffffffff8121326b>] ? ext4_init_inode_table+0xab/0x370
->           [<ffffffff8121326b>] ext4_init_inode_table+0xab/0x370
->           [<ffffffff81659cb5>] ? schedule_timeout+0x175/0x320
->           [<ffffffff81226905>] ext4_run_li_request+0x85/0xe0
->           [<ffffffff812269fc>] ext4_lazyinit_thread+0x9c/0x1c0
->           [<ffffffff81226960>] ? ext4_run_li_request+0xe0/0xe0
->           [<ffffffff8108a39c>] kthread+0x8c/0xa0
->           [<ffffffff81665e34>] kernel_thread_helper+0x4/0x10
->           [<ffffffff8108a310>] ? flush_kthread_worker+0xa0/0xa0
->           [<ffffffff81665e30>] ? gs_change+0x13/0x13
-  Ah, good point. Thanks for spotting this. I forgot about the lazyinit
-thread. Attached patch fixes the problem (I've folded it into ext4
-conversion patch in my series).
+> This avoids the problem for devices that don't need stable pages, but 
+> doesn't help for those that do (btrfs, raid, iscsi, dif/dix, etc.).  It 
+> seems to me like a more elegant solution would be to COW the page in the 
+> address_space so that you get stable writeback pages without blocking.  
+> That's clearly more complex, and I'm sure there are a range of issues 
+> involved in making that work, but I would hope that it would be doable 
+> with generic MM infrastructure so that everyone would benefit.
 
-								Honza
+Well, even doing a COW (or anything that involves messing with page
+tables) is not free.  So even if we can make the cost of stable
+writeback pages cheaper, if we can completely avoid the cost, this
+would be good.  I'd also rather fix the performance regression sooner
+rather than later, and I suspect the COW solution is not something
+that could be prepared in time for the upcoming merge window.
+
+Martin, would you be willing to try to get your patch submitted for
+the upcoming merge window?  Or I'd be willing to carry your patch and
+then rework Darrick's to use the exported flag, and carry it in my
+tree, maybe that would be better.
+
+> I would love to talk to some MM people at LSF about what it would take to 
+> make this work...
+
+Sure, long term, I'm much more sympathetic to iSCSI than I am about
+DIF/DIX (which due to drive manufacturer's pricing strategies I don't
+think it will ever become mainstream --- which was my main concern;
+why should we be inflicting pretty severe performance regressions for
+the common case, just to improve things for obscure high-end hardware?
+It's similar to how Solaris trashed 1 and 2 processor performance,
+because they were optimizing things for their high margin SunFires).
+So getting something which makes page stablization not suck so much in
+the long term seems like a fine goal.  But even though we've worked on
+improve SMP scalability in a way that didn't sacrifice 2 and 4-way
+processors, we've still supported compiling with !CONFIG_SMP....
+
+     		       	   	      - Ted
+
 > 
->  -Kamal
+> sage
 > 
 > 
-> On Mon, 2012-03-05 at 17:01 +0100, Jan Kara wrote:
-> > We remove most of frozen checks since upper layer takes care
-> > of blocking all writes. We only have to handle protection in
-> > ext4_page_mkwrite() in a special way because we cannot use
-> > generic block_page_mkwrite().
+> 
 > > 
-> > CC: linux-ext4@vger.kernel.org
-> > CC: "Theodore Ts'o" <tytso@mit.edu>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/inode.c |    7 ++-----
-> >  fs/ext4/super.c |   29 +++++------------------------
-> >  2 files changed, 7 insertions(+), 29 deletions(-)
+> > When submitted I will also send a patch to set .needs_stable_pages in 
+> > iscsi when needed.
 > > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index feaa82f..c65baf9 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -4593,11 +4593,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> >  	get_block_t *get_block;
-> >  	int retries = 0;
-> >  
-> > -	/*
-> > -	 * This check is racy but catches the common case. We rely on
-> > -	 * __block_page_mkwrite() to do a reliable check.
-> > -	 */
-> > -	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-> > +	sb_start_pagefault(inode->i_sb);
-> >  	/* Delalloc case is easy... */
-> >  	if (test_opt(inode->i_sb, DELALLOC) &&
-> >  	    !ext4_should_journal_data(inode) &&
-> > @@ -4665,5 +4661,6 @@ retry_alloc:
-> >  out_ret:
-> >  	ret = block_page_mkwrite_return(ret);
-> >  out:
-> > +	sb_end_pagefault(inode->i_sb);
-> >  	return ret;
-> >  }
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 502c61f..0f1024a 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -289,33 +289,17 @@ static void ext4_put_nojournal(handle_t *handle)
-> >   * journal_end calls result in the superblock being marked dirty, so
-> >   * that sync() will call the filesystem's write_super callback if
-> >   * appropriate.
-> > - *
-> > - * To avoid j_barrier hold in userspace when a user calls freeze(),
-> > - * ext4 prevents a new handle from being started by s_frozen, which
-> > - * is in an upper layer.
-> >   */
-> >  handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-> >  {
-> >  	journal_t *journal;
-> > -	handle_t  *handle;
-> >  
-> >  	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
-> >  	if (sb->s_flags & MS_RDONLY)
-> >  		return ERR_PTR(-EROFS);
-> >  
-> > +	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> >  	journal = EXT4_SB(sb)->s_journal;
-> > -	handle = ext4_journal_current_handle();
-> > -
-> > -	/*
-> > -	 * If a handle has been started, it should be allowed to
-> > -	 * finish, otherwise deadlock could happen between freeze
-> > -	 * and others(e.g. truncate) due to the restart of the
-> > -	 * journal handle if the filesystem is forzen and active
-> > -	 * handles are not stopped.
-> > -	 */
-> > -	if (!handle)
-> > -		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-> > -
-> >  	if (!journal)
-> >  		return ext4_get_nojournal();
-> >  	/*
-> > @@ -4280,10 +4264,8 @@ int ext4_force_commit(struct super_block *sb)
-> >  		return 0;
-> >  
-> >  	journal = EXT4_SB(sb)->s_journal;
-> > -	if (journal) {
-> > -		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-> > +	if (journal)
-> >  		ret = ext4_journal_force_commit(journal);
-> > -	}
-> >  
-> >  	return ret;
-> >  }
-> > @@ -4315,9 +4297,8 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
-> >   * gives us a chance to flush the journal completely and mark the fs clean.
-> >   *
-> >   * Note that only this function cannot bring a filesystem to be in a clean
-> > - * state independently, because ext4 prevents a new handle from being started
-> > - * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-> > - * the upper layer.
-> > + * state independently. It relies on upper layer to stop all data & metadata
-> > + * modifications.
-> >   */
-> >  static int ext4_freeze(struct super_block *sb)
-> >  {
-> > @@ -4344,7 +4325,7 @@ static int ext4_freeze(struct super_block *sb)
-> >  	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-> >  	error = ext4_commit_super(sb, 1);
-> >  out:
-> > -	/* we rely on s_frozen to stop further updates */
-> > +	/* we rely on upper layer to stop further updates */
-> >  	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-> >  	return error;
-> >  }
-> 
-
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---fUYQa+Pmc3FrFX/N
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="ext4_lazyinit_freeze_fix.diff"
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0f1024a..039b1e0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2756,6 +2756,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 	sb = elr->lr_super;
- 	ngroups = EXT4_SB(sb)->s_groups_count;
- 
-+	sb_start_write(sb);
- 	for (group = elr->lr_next_group; group < ngroups; group++) {
- 		gdp = ext4_get_group_desc(sb, group, NULL);
- 		if (!gdp) {
-@@ -2782,6 +2783,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 		elr->lr_next_sched = jiffies + elr->lr_timeout;
- 		elr->lr_next_group = group + 1;
- 	}
-+	sb_end_write(sb);
- 
- 	return ret;
- }
-
---fUYQa+Pmc3FrFX/N--
+> > Thanks, Martin
+> > Boaz
+> > 
+> > > diff --git a/block/blk-settings.c b/block/blk-settings.c
+> > > index 5680b91..442a0df 100644
+> > > --- a/block/blk-settings.c
+> > > +++ b/block/blk-settings.c
+> > > @@ -125,6 +125,7 @@ void blk_set_default_limits(struct queue_limits *lim)
+> > >  	lim->io_opt = 0;
+> > >  	lim->misaligned = 0;
+> > >  	lim->cluster = 1;
+> > > +	lim->needs_stable_pages = false;
+> > >  }
+> > >  EXPORT_SYMBOL(blk_set_default_limits);
+> > >  
+> > > @@ -571,6 +572,8 @@ int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
+> > >  	t->cluster &= b->cluster;
+> > >  	t->discard_zeroes_data &= b->discard_zeroes_data;
+> > >  
+> > > +	t->needs_stable_pages &= b->needs_stable_pages;
+> > > +
+> > >  	/* Physical block size a multiple of the logical block size? */
+> > >  	if (t->physical_block_size & (t->logical_block_size - 1)) {
+> > >  		t->physical_block_size = t->logical_block_size;
+> > > diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
+> > > index 5b85d91..d464aca 100644
+> > > --- a/block/blk-sysfs.c
+> > > +++ b/block/blk-sysfs.c
+> > > @@ -161,6 +161,11 @@ static ssize_t queue_discard_zeroes_data_show(struct request_queue *q, char *pag
+> > >  	return queue_var_show(queue_discard_zeroes_data(q), page);
+> > >  }
+> > >  
+> > > +static ssize_t queue_needs_stable_pages_show(struct request_queue *q, char *page)
+> > > +{
+> > > +	return queue_var_show(q->limits.needs_stable_pages, page);
+> > > +}
+> > > +
+> > >  static ssize_t queue_write_same_max_show(struct request_queue *q, char *page)
+> > >  {
+> > >  	return sprintf(page, "%llu\n",
+> > > @@ -364,6 +369,11 @@ static struct queue_sysfs_entry queue_discard_zeroes_data_entry = {
+> > >  	.show = queue_discard_zeroes_data_show,
+> > >  };
+> > >  
+> > > +static struct queue_sysfs_entry queue_needs_stable_pages_entry = {
+> > > +	.attr = {.name = "needs_stable_pages", .mode = S_IRUGO },
+> > > +	.show = queue_needs_stable_pages_show,
+> > > +};
+> > > +
+> > >  static struct queue_sysfs_entry queue_write_same_max_entry = {
+> > >  	.attr = {.name = "write_same_max_bytes", .mode = S_IRUGO },
+> > >  	.show = queue_write_same_max_show,
+> > > @@ -416,6 +426,7 @@ static struct attribute *default_attrs[] = {
+> > >  	&queue_discard_granularity_entry.attr,
+> > >  	&queue_discard_max_entry.attr,
+> > >  	&queue_discard_zeroes_data_entry.attr,
+> > > +	&queue_needs_stable_pages_entry.attr,
+> > >  	&queue_write_same_max_entry.attr,
+> > >  	&queue_nonrot_entry.attr,
+> > >  	&queue_nomerges_entry.attr,
+> > > diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+> > > index 26eff46..146bed4 100644
+> > > --- a/drivers/scsi/sd.c
+> > > +++ b/drivers/scsi/sd.c
+> > > @@ -1752,10 +1752,11 @@ static void sd_read_protection_type(struct scsi_disk *sdkp, unsigned char *buffe
+> > >  		return;
+> > >  	}
+> > >  
+> > > -	if (scsi_host_dif_capable(sdp->host, type))
+> > > +	if (scsi_host_dif_capable(sdp->host, type)) {
+> > >  		sd_printk(KERN_NOTICE, sdkp,
+> > >  			  "Enabling DIF Type %u protection\n", type);
+> > > -	else
+> > > +		sdkp->disk->queue->limits.needs_stable_pages = true;
+> > > +	} else
+> > >  		sd_printk(KERN_NOTICE, sdkp,
+> > >  			  "Disabling DIF Type %u protection\n", type);
+> > >  }
+> > > diff --git a/drivers/scsi/sd_dif.c b/drivers/scsi/sd_dif.c
+> > > index 0cb39ff..9dc330c 100644
+> > > --- a/drivers/scsi/sd_dif.c
+> > > +++ b/drivers/scsi/sd_dif.c
+> > > @@ -338,6 +338,8 @@ void sd_dif_config_host(struct scsi_disk *sdkp)
+> > >  	sd_printk(KERN_NOTICE, sdkp,
+> > >  		  "Enabling DIX %s protection\n", disk->integrity->name);
+> > >  
+> > > +	disk->queue->limits.needs_stable_pages = true;
+> > > +
+> > >  	/* Signal to block layer that we support sector tagging */
+> > >  	if (dif && type && sdkp->ATO) {
+> > >  		if (type == SD_DIF_TYPE3_PROTECTION)
+> > > diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> > > index 92956b7..a5a33db 100644
+> > > --- a/include/linux/blkdev.h
+> > > +++ b/include/linux/blkdev.h
+> > > @@ -266,6 +266,8 @@ struct queue_limits {
+> > >  	unsigned char		discard_misaligned;
+> > >  	unsigned char		cluster;
+> > >  	unsigned char		discard_zeroes_data;
+> > > +
+> > > +	bool			needs_stable_pages;
+> > >  };
+> > >  
+> > >  struct request_queue {
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
