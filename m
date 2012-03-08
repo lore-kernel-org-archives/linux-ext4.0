@@ -1,178 +1,103 @@
-From: Sage Weil <sage@newdream.net>
-Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
-Date: Wed, 7 Mar 2012 22:27:43 -0800 (PST)
-Message-ID: <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
- <4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net>
- <4F5837A2.8000306@panasas.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC] fadvise: add more flags to provide a hint for block
+ allocation
+Date: Thu, 8 Mar 2012 18:07:20 +1100
+Message-ID: <20120308070720.GP3592@dastard>
+References: <20120305125029.GA5121@gmail.com>
+ <20120307005130.GH3592@dastard>
+ <A2E616B7-79A5-4ECF-872F-A62ACA338C54@dilger.ca>
+ <yq1k42xhulg.fsf@sermon.lab.mkp.net>
+ <20120307121138.GK3592@dastard>
+ <yq1vcmfhga2.fsf@sermon.lab.mkp.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <aedilger@gmail.com>, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F5837A2.8000306@panasas.com>
+Content-Disposition: inline
+In-Reply-To: <yq1vcmfhga2.fsf@sermon.lab.mkp.net>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Boaz, Martin, Ted,
+On Wed, Mar 07, 2012 at 11:23:49PM -0500, Martin K. Petersen wrote:
+> >>>>> "Dave" == Dave Chinner <david@fromorbit.com> writes:
+> 
+> Dave> From what I've seen of the proposed SMR device standards, we're
+> Dave> going to have to redesign filesystem allocation policies
+> 
+> [...]
+> 
+> The initial proposal involved SMR disks having a sparse LBA map carved
+> into 2GB chunks.
 
-On Wed, 7 Mar 2012, Boaz Harrosh wrote:
-> On 03/07/2012 07:45 PM, Martin K. Petersen wrote:
-> >>>>>> "Boaz" == Boaz Harrosh <bharrosh@panasas.com> writes:
-> > 
-> > Boaz> As I stated many times before, the device should have a property
-> > Boaz> that says if it needs stable pages or not. The candidates for
-> > Boaz> stable pages are:
-> > 
-> > Boaz> 	- DIF/DIX enabled devices
-> > Boaz> 	- RAID-1/4/5/6 devices
-> > Boaz> 	- iscsi devices with data digest signature
-> > Boaz> 	- Any other checksum enabled block device.
-> > 
-> > Boaz> A fedora distro will have CONFIG_BLKDEV_INTEGRITY set then you are
-> > Boaz> always out of luck, even with devices that can care less.
-> > 
-> > Boaz> Please submit a proper patch, even a temporary mount option. But
-> > Boaz> this is ABI. The best is to find where to export it as part of the
-> > Boaz> device's properties sysfs dir.
-> > 
-> > We could do something like this:
-> > 
-> 
-> Yes, this one is perfect.
-> 
-> Combined with Darrick's patch to actually inspect the flag at the 
-> filesystem level is the solution I want.
+2TB chunks, IIRC - the lower 32 bits of the 48bit LBA was intended
+to be the relative offset into the region (RBA), with the upper 16
+bits being the region number.
 
-This avoids the problem for devices that don't need stable pages, but 
-doesn't help for those that do (btrfs, raid, iscsi, dif/dix, etc.).  It 
-seems to me like a more elegant solution would be to COW the page in the 
-address_space so that you get stable writeback pages without blocking.  
-That's clearly more complex, and I'm sure there are a range of issues 
-involved in making that work, but I would hope that it would be doable 
-with generic MM infrastructure so that everyone would benefit.
+> However, that was shot down pretty hard.
 
-I would love to talk to some MM people at LSF about what it would take to 
-make this work...
+That's unfortunate - it maps really well to how XFS uses allocation
+groups. XFS already uses sparse regions for breaking up allocation
+to enable parallelism. XFS could map to this sort of layout pretty
+easily by placing an allocation group per region. That immediately
+separates the SMR regions into discrete regions in the filesystem,
+and just requires some tweaking to make use of the different
+characteristics of the regions.
 
-sage
+For example, use of the standard btree freespace allocator for the
+random write regions, and use of the bitmap allocator (used by the
+realtime device) for regions that are sequential write because it's
+metadata is held externally to the region it is tracking. i.e. it
+can be located in the random write regions. This could all be
+handled by mkfs.xfs, including setting up the regions on the SMR
+drives....
 
+IOWs, XFS already has most of the allocation infrastructure to
+handle the proposed region based SMR devices, and would only need a
+bit of modification and extension to fully support sequential write
+regions along with random write regions.  The allocation policy
+stuff (deciding what sort of region to allocate from and aggregating
+writes appropriately) is where all the new complexity lies, but that
+we have to do that anyway to handle all the different sorts of
+access hints we are likely to see.
 
+> The approach currently being worked uses either dynamic (flash, tiered
+> storage) or static hints (SMR) to put things in an appropriate area
+> given the nature of the I/O.
+> This puts the burden of virtual to physical LBA management on the device
+> rather than in the filesystem allocators. And gives us the benefit of
+> having a single interface that can be used for many different device
+> types.
 
-> 
-> When submitted I will also send a patch to set .needs_stable_pages in 
-> iscsi when needed.
-> 
-> Thanks, Martin
-> Boaz
-> 
-> > diff --git a/block/blk-settings.c b/block/blk-settings.c
-> > index 5680b91..442a0df 100644
-> > --- a/block/blk-settings.c
-> > +++ b/block/blk-settings.c
-> > @@ -125,6 +125,7 @@ void blk_set_default_limits(struct queue_limits *lim)
-> >  	lim->io_opt = 0;
-> >  	lim->misaligned = 0;
-> >  	lim->cluster = 1;
-> > +	lim->needs_stable_pages = false;
-> >  }
-> >  EXPORT_SYMBOL(blk_set_default_limits);
-> >  
-> > @@ -571,6 +572,8 @@ int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
-> >  	t->cluster &= b->cluster;
-> >  	t->discard_zeroes_data &= b->discard_zeroes_data;
-> >  
-> > +	t->needs_stable_pages &= b->needs_stable_pages;
-> > +
-> >  	/* Physical block size a multiple of the logical block size? */
-> >  	if (t->physical_block_size & (t->logical_block_size - 1)) {
-> >  		t->physical_block_size = t->logical_block_size;
-> > diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
-> > index 5b85d91..d464aca 100644
-> > --- a/block/blk-sysfs.c
-> > +++ b/block/blk-sysfs.c
-> > @@ -161,6 +161,11 @@ static ssize_t queue_discard_zeroes_data_show(struct request_queue *q, char *pag
-> >  	return queue_var_show(queue_discard_zeroes_data(q), page);
-> >  }
-> >  
-> > +static ssize_t queue_needs_stable_pages_show(struct request_queue *q, char *page)
-> > +{
-> > +	return queue_var_show(q->limits.needs_stable_pages, page);
-> > +}
-> > +
-> >  static ssize_t queue_write_same_max_show(struct request_queue *q, char *page)
-> >  {
-> >  	return sprintf(page, "%llu\n",
-> > @@ -364,6 +369,11 @@ static struct queue_sysfs_entry queue_discard_zeroes_data_entry = {
-> >  	.show = queue_discard_zeroes_data_show,
-> >  };
-> >  
-> > +static struct queue_sysfs_entry queue_needs_stable_pages_entry = {
-> > +	.attr = {.name = "needs_stable_pages", .mode = S_IRUGO },
-> > +	.show = queue_needs_stable_pages_show,
-> > +};
-> > +
-> >  static struct queue_sysfs_entry queue_write_same_max_entry = {
-> >  	.attr = {.name = "write_same_max_bytes", .mode = S_IRUGO },
-> >  	.show = queue_write_same_max_show,
-> > @@ -416,6 +426,7 @@ static struct attribute *default_attrs[] = {
-> >  	&queue_discard_granularity_entry.attr,
-> >  	&queue_discard_max_entry.attr,
-> >  	&queue_discard_zeroes_data_entry.attr,
-> > +	&queue_needs_stable_pages_entry.attr,
-> >  	&queue_write_same_max_entry.attr,
-> >  	&queue_nonrot_entry.attr,
-> >  	&queue_nomerges_entry.attr,
-> > diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
-> > index 26eff46..146bed4 100644
-> > --- a/drivers/scsi/sd.c
-> > +++ b/drivers/scsi/sd.c
-> > @@ -1752,10 +1752,11 @@ static void sd_read_protection_type(struct scsi_disk *sdkp, unsigned char *buffe
-> >  		return;
-> >  	}
-> >  
-> > -	if (scsi_host_dif_capable(sdp->host, type))
-> > +	if (scsi_host_dif_capable(sdp->host, type)) {
-> >  		sd_printk(KERN_NOTICE, sdkp,
-> >  			  "Enabling DIF Type %u protection\n", type);
-> > -	else
-> > +		sdkp->disk->queue->limits.needs_stable_pages = true;
-> > +	} else
-> >  		sd_printk(KERN_NOTICE, sdkp,
-> >  			  "Disabling DIF Type %u protection\n", type);
-> >  }
-> > diff --git a/drivers/scsi/sd_dif.c b/drivers/scsi/sd_dif.c
-> > index 0cb39ff..9dc330c 100644
-> > --- a/drivers/scsi/sd_dif.c
-> > +++ b/drivers/scsi/sd_dif.c
-> > @@ -338,6 +338,8 @@ void sd_dif_config_host(struct scsi_disk *sdkp)
-> >  	sd_printk(KERN_NOTICE, sdkp,
-> >  		  "Enabling DIX %s protection\n", disk->integrity->name);
-> >  
-> > +	disk->queue->limits.needs_stable_pages = true;
-> > +
-> >  	/* Signal to block layer that we support sector tagging */
-> >  	if (dif && type && sdkp->ATO) {
-> >  		if (type == SD_DIF_TYPE3_PROTECTION)
-> > diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-> > index 92956b7..a5a33db 100644
-> > --- a/include/linux/blkdev.h
-> > +++ b/include/linux/blkdev.h
-> > @@ -266,6 +266,8 @@ struct queue_limits {
-> >  	unsigned char		discard_misaligned;
-> >  	unsigned char		cluster;
-> >  	unsigned char		discard_zeroes_data;
-> > +
-> > +	bool			needs_stable_pages;
-> >  };
-> >  
-> >  struct request_queue {
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+So the current proposal hides all the physical characteristics of
+the devices from the file system and remaps the LBA internally based
+on the IO hint? But that is the opposite direction to what we've
+been taking over the past couple of years - we want more visibility
+of device characteristics at the filesystem level so we can optimise
+the filesystem better, not less.
+
+> That said, the current proposal is crazy complex and clearly written
+> with Windows in mind. They are creating different access profiles for
+> .DLLs, .INI files, apps in the startup folder, and so on.
+
+I'll pass judgement when I see it. 
+
+To tell the truth, I'd much prefer that we have direct control of
+physical layout in the filesystem rather than have the storage
+device virtualise it with some unknown algorithm. Every device will
+have different algorithms, so we won't get relatively conistent
+behaviour across devices from different manufacturers like we have
+now.  If that is all hidden in the drive firmware and is different
+for each different device we see, then we've got no hope of being
+able to diagnose why two files with identical filesystem layouts at
+adjacent LBAs have vastly different performance for the same access
+pattern....
+
+Cheers,
+
+Dave.
+
+-- 
+Dave Chinner
+david@fromorbit.com
