@@ -1,63 +1,101 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [RFC] fadvise: add more flags to provide a hint for block allocation
-Date: Thu, 08 Mar 2012 12:01:50 -0500
-Message-ID: <yq1linbf2m9.fsf@sermon.lab.mkp.net>
-References: <20120305125029.GA5121@gmail.com> <20120307005130.GH3592@dastard>
-	<A2E616B7-79A5-4ECF-872F-A62ACA338C54@dilger.ca>
-	<yq1k42xhulg.fsf@sermon.lab.mkp.net> <20120307121138.GK3592@dastard>
-	<yq1vcmfhga2.fsf@sermon.lab.mkp.net> <20120308070720.GP3592@dastard>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Thu, 08 Mar 2012 12:02:07 -0500
+Message-ID: <4F58E60F.1030503@ubuntu.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	Andreas Dilger <aedilger@gmail.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: multipart/mixed;
+ boundary="------------030501040107040408020009"
+Cc: Jacek Luczak <difrost.kernel@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120308070720.GP3592@dastard> (Dave Chinner's message of "Thu,
-	8 Mar 2012 18:07:20 +1100")
+In-Reply-To: <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>>>> "Dave" == Dave Chinner <david@fromorbit.com> writes:
+This is a multi-part message in MIME format.
+--------------030501040107040408020009
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Dave> 2TB chunks, IIRC - the lower 32 bits of the 48bit LBA was intended
-Dave> to be the relative offset into the region (RBA), with the upper 16
-Dave> bits being the region number.
+On 2/29/2012 11:44 PM, Theodore Tso wrote:
+> You might try sorting the entries returned by readdir by inode number
+> before you stat them.    This is a long-standing weakness in
+> ext3/ext4, and it has to do with how we added hashed tree indexes to
+> directories in (a) a backwards compatible way, that (b) was POSIX
+> compliant with respect to adding and removing directory entries
+> concurrently with reading all of the directory entries using
+> readdir.
 
-Correct.
-
-
->> However, that was shot down pretty hard.
-
-Dave> That's unfortunate - it maps really well to how XFS uses
-Dave> allocation groups.
-
-The proposal met a lot of resistance. To the extent that the SMR folks
-were asked to develop a new command set instead of using the standard
-SCSI Block Commands.
-
-I still think we can get most of what you want out of the static access
-hints, however.
+When I ran into this a while back, I cobbled together this python script 
+to measure the correlation from name to inode, inode to first data 
+block, and name to first data block for all of the small files in a 
+large directory, and found that ext4 gives a very poor correlation due 
+to that directory hashing.  This is one of the reasons I prefer using 
+dump instead of tar for backups, since it rips through my Maildir more 
+than 10 times faster than tar, since it reads the files in inode order.
 
 
-Dave> So the current proposal hides all the physical characteristics of
-Dave> the devices from the file system and remaps the LBA internally
-Dave> based on the IO hint? But that is the opposite direction to what
-Dave> we've been taking over the past couple of years - we want more
-Dave> visibility of device characteristics at the filesystem level so we
-Dave> can optimise the filesystem better, not less.
+--------------030501040107040408020009
+Content-Type: text/plain;
+ name="correlation.py"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="correlation.py"
 
-The standards bodies are trying to avoid having to special-case handling
-of shingled drives since they are only a transitional technology with a
-short life expectancy.
+#!/usr/bin/python
 
-We're getting close to the 8-year mark for 4K logical block size
-transition and it hasn't happened yet. And at this stage it looks like
-it might not happen at all (in the consumer space at least).
+import os
+from stat import *
+import fcntl
+import array
 
-So I am not entirely convinced that SMR drives will still be relevant
-when the standards have been ratified and the filesystems of the world
-adapted to work with them.
+names = os.listdir('.')
+lastino = 0
+name_to_ino_in = 0
+name_to_ino_out = 0
+lastblock = 0
+name_to_block_in = 0
+name_to_block_out = 0
+iblocks = list()
+inode_to_block_in = 0
+inode_to_block_out = 0
 
--- 
-Martin K. Petersen	Oracle Linux Engineering
+for file in names :
+    try :
+        st = os.stat(file)
+    except OSError:
+        continue
+    if not S_ISREG(st.st_mode) :
+        continue
+    if st.st_ino > lastino :
+        name_to_ino_in += 1
+    else : name_to_ino_out += 1
+    lastino = st.st_ino    
+    f = open(file)
+    buf = array.array('I', [0])
+    err = fcntl.ioctl(f.fileno(), 1, buf)
+    if err != 0 :
+        print "ioctl failed on " + f
+    block = buf[0]
+    if block != 0 :
+        if block > lastblock :
+            name_to_block_in += 1
+        else : name_to_block_out += 1
+        lastblock = block
+        iblocks.append((st.st_ino,block))
+print "Name to inode correlation: " + str(float(name_to_ino_in) / float((name_to_ino_in + name_to_ino_out)))
+print "Name to block correlation: " + str(float(name_to_block_in) / float((name_to_block_in + name_to_block_out)))
+iblocks.sort()
+lastblock = 0
+for i in iblocks:
+    if i[1] > lastblock:
+        inode_to_block_in += 1
+    else: inode_to_block_out += 1
+    lastblock = i[1]
+print "Inode to block correlation: " + str(float(inode_to_block_in) / float((inode_to_block_in + inode_to_block_out)))
+
+--------------030501040107040408020009--
