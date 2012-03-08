@@ -1,80 +1,145 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
-Date: Thu, 8 Mar 2012 13:52:08 -0800
-Message-ID: <4F592A08.7020806@panasas.com>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com> <4F57F523.3020703@redhat.com> <4F581BF6.8000305@zabbo.net> <20120308155419.GB6777@thunk.org> <20120308180951.GB29510@shiny> <4F59148A.4070001@panasas.com> <20120308212412.GC11861@thunk.org>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH V2] xfstests: several 274 fixups
+Date: Thu, 08 Mar 2012 16:23:03 -0600
+Message-ID: <4F593147.8050603@sandeen.net>
+References: <4F271967.10308@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>, Zach Brown <zab@zabbo.net>,
-	Eric Sandeen <sandeen@redhat.com>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: xfs-oss <xfs@oss.sgi.com>, WuBo <wu.bo@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:44356 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757682Ab2CHVwY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2012 16:52:24 -0500
-In-Reply-To: <20120308212412.GC11861@thunk.org>
+Received: from sandeen.net ([63.231.237.45]:53601 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758862Ab2CHWXG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Mar 2012 17:23:06 -0500
+In-Reply-To: <4F271967.10308@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/08/2012 01:24 PM, Ted Ts'o wrote:
-> On Thu, Mar 08, 2012 at 12:20:26PM -0800, Boaz Harrosh wrote:
->>
->> I have a theory of how we can fix that 2-sec wait, by avoiding writeback of
->> the last n pages of an inode who's mtime is less then 2-sec. This would
->> solve any sequential writer wait penalty, which is Ted's case
-> 
-> That won't work in general, *unless* 2 seconds is enough time that the
-> appending writer is done writing to that particular 4k page and moved
-> on to the next 4k block, so nothing touches that page and potentially
-> blocks for however long it takes for the queues to drain.
-> 
+This changes quite a few things about 274 to make it more robust
+and useful.
 
-Exactly. Is that not the case for a sequential writer. It modifies
-the top page for a while inode time keeps incrementing, then eventually
-it advances to the next page, now the before the last page is never
-touched again. and can be submitted for writeout.
+* More comments
+* Use xfs_io for falloc (not all systems have /usr/bin/fallocate)
+* use _require_xfs_io_falloc to be sure system & fs support preallocation
+* Do not remove all of the files in $SCRATCH_MNT/ post-mkfs
+* Do not remove all of the files in $SCRATCH_MNT/ on completion
+  (this breaks e2fsck when lost+found/ goes missing)
+* Don't cd into $SCRATCH_MNT
+* Try harder to completely fill the fs
+* Use a larger preallocated space, and write into all of it (hopefully
+  avoid just accidentally succeeding by writing into fs reserved
+  space that may be there)
+* Save more output in $seq.full instead of /dev/null
+* Fill preallocated space diabolically
 
-> Let's take another example, suppose you have a file-backed mmap
-> region, and you modify the page, and now let's suppose the process is
-> under enough memory pressure that the page cleaner decides to initiate
-> writeback of the page.  Now suppose you get unlucky (this is the 1% or
-> 0.1% case; remember, 99th or 99.9 percentile latencies matter), and
-> you try to modify the page in question again.  ***THUNK*** your
-> process takes a page fault, and is frozen solid in amber for
-> potentially seconds until the I/O queues drain.
-> 
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-As I said, if the IO is random you are in though luck, and BTW mmap
-is not a must, just simple write() call will behave just the same
-since it sits in the same mkwrite().
+V2: Several fixes suggested by Dave.
+Also fills prealloc space diabolically.  This fails on ext4.
 
-But that was not your case. Your case was an appending logger.
+diff --git a/274 b/274
+index b658004..bba5eb4 100755
+--- a/274
++++ b/274
+@@ -1,7 +1,9 @@
+ #! /bin/bash
+ # FS QA Test No. 274
+ #
+-# preallocation test
++# preallocation test:
++# Preallocate space to a file, and fill the rest of the fs to 100%.
++# Then test a write into that preallocated space, which should succeed.
+ #
+ #-----------------------------------------------------------------------
+ # Copyright (c) 2011-2012 Fujitsu, Inc.  All Rights Reserved.
+@@ -35,7 +37,7 @@ trap "_cleanup; exit \$status" 0 1 2 3 15
+ _cleanup()
+ {
+ 	cd /
+-	rm -f $SCRATCH_MNT/* $tmp.*
++	rm -f $tmp.*
+ 	_scratch_unmount
+ }
+ 
+@@ -46,6 +48,7 @@ _cleanup()
+ _supported_fs generic
+ _supported_os IRIX Linux
+ _require_scratch
++_require_xfs_io_falloc
+ 
+ echo "------------------------------"
+ echo "preallocation test"
+@@ -57,35 +60,42 @@ umount $SCRATCH_DEV 2>/dev/null
+ _scratch_mkfs_sized $((1 * 1024 * 1024 * 1024)) >>$seq.full 2>&1
+ _scratch_mount
+ 
+-rm -rf $SCRATCH_MNT/*
+-cd $SCRATCH_MNT
+-dd if=/dev/zero of=test bs=4K count=1 >/dev/null 2>&1
+-if [ $? -ne 0 ]
+-then
+-	echo "create file err"
+-	status=1
+-	exit
+-fi
++# Create a 4k file and Allocate 4M past EOF on that file
++xfs_io -F -f -c "pwrite 0 4k" -c "falloc -k 4k 4m" $SCRATCH_MNT/test \
++	>>$seq.full 2>&1 || _fail "failed to create test file"
+ 
+-fallocate -n -o 4K -l 1M test >/dev/null 2>&1
+-if [ $? -ne 0 ]
+-then
+-	echo "fallocate file err"
+-	status=1
+-	exit
+-fi
+-
+-dd if=/dev/zero of=tmp1 bs=1M >/dev/null 2>&1
+-dd if=/dev/zero of=tmp2 bs=4K >/dev/null 2>&1
++# Fill the rest of the fs completely
++# Note, this will show ENOSPC errors in $seq.full, that's ok.
++echo "Fill fs with 1M IOs; EIO expected" >> $seq.full
++dd if=/dev/zero of=$SCRATCH_MNT/tmp1 bs=1M >>$seq.full 2>&1
++echo "Fill fs with 4K IOs; EIO expected" >> $seq.full
++dd if=/dev/zero of=$SCRATCH_MNT/tmp2 bs=4K >>$seq.full 2>&1
+ sync
++# Last effort, use O_SYNC
++echo "Fill fs with 4K DIOs; EIO expected" >> $seq.full
++dd if=/dev/zero of=$SCRATCH_MNT/tmp3 bs=4K oflag=sync >>$seq.full 2>&1
++# Save space usage info
++echo "Post-fill space:" >> $seq.full
++df $SCRATCH_MNT >>$seq.full 2>&1
+ 
+-dd if=/dev/zero of=test seek=1 bs=4K count=2 conv=notrunc >/dev/null 2>&1
+-if [ $? -ne 0 ]
+-then
+-	echo "fill prealloc range err"
+-	status=1
+-	exit
+-fi
++# Now attempt a write into all of the preallocated space -
++# in a very nasty way, badly fragmenting it and then filling it in.
++echo "Fill in prealloc space; fragment at offsets:" >> $seq.full
++for i in `seq 1 2 1023`; do
++	echo -n "$i " >> $seq.full
++	dd if=/dev/zero of=$SCRATCH_MNT/test seek=$i bs=4K count=1 conv=notrunc \
++		>>$seq.full 2>/dev/null || _fail "failed to write to test file"
++done
++sync
++echo >> $seq.full
++echo "Fill in prealloc space; fill holes at offsets:" >> $seq.full
++for i in `seq 2 2 1023`; do
++	echo -n "$i " >> $seq.full
++	dd if=/dev/zero of=$SCRATCH_MNT/test seek=$i bs=4K count=1 conv=notrunc \
++		>>$seq.full 2>/dev/null || _fail "failed to fill test file"
++done
++sync
++echo >> $seq.full
+ 
+ echo "done"
+ exit
 
-But my new theory is that your case is not the "writeback" to
-app-write collision, but the app-write to sync() collision which
-is a different case.
 
-> Hmm.... let's turn this around.  If the issue is checksum calculation,
-> how about trying to solve this problem in some cases by deferring the
-> checksum calculation until right before the block I/O layer is going
-> to schedule the write (i.e., have the I/O submitter provide a callback
-> function which calculates the checksum, which gets called by the BIO
-> layer at the very last moment)?
-> 
-
-iscsi is that case, but the problem is not when "calculates the checksum"
-but: when "changing page state" your schema can work but you will need to
-add a new page state, dirty => writeback => stable (new state).
-
-> This won't work in all cases (I can see this getting really messy in
-> the software RAID-5/6 case if you don't want to memory copies) but it
-> might solve the problem in at least some of the cases where people
-> care about this.
-> 
-> 					- Ted
-
-Thanks
-Boaz
