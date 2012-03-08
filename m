@@ -1,101 +1,69 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Thu, 08 Mar 2012 12:02:07 -0500
-Message-ID: <4F58E60F.1030503@ubuntu.com>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH, RFC] Don't do page stablization if
+ !CONFIG_BLKDEV_INTEGRITY
+Date: Thu, 8 Mar 2012 13:09:51 -0500
+Message-ID: <20120308180951.GB29510@shiny>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
+ <4F57F523.3020703@redhat.com>
+ <4F581BF6.8000305@zabbo.net>
+ <20120308155419.GB6777@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------030501040107040408020009"
-Cc: Jacek Luczak <difrost.kernel@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <E15A491F-62E2-4518-939F-07B3AB4C3E65@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Zach Brown <zab@zabbo.net>, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from acsinet15.oracle.com ([141.146.126.227]:49040 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754318Ab2CHSJ5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2012 13:09:57 -0500
+Content-Disposition: inline
+In-Reply-To: <20120308155419.GB6777@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------030501040107040408020009
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
+On Thu, Mar 08, 2012 at 10:54:19AM -0500, Ted Ts'o wrote:
+> On Wed, Mar 07, 2012 at 09:39:50PM -0500, Zach Brown wrote:
+> > 
+> > >Can you devise a non-secret testcase that demonstrates this?
+> > 
+> > Hmm.  I bet you could get fio to do it.  Giant file, random mmap()
+> > writes, spin until the CPU overwhelms writeback?
+> 
+> Kick off a bunch of fio processes, each in separate I/O cgroups set up
+> so that each of the processes get a "fair" amount of the I/O
+> bandwidth.  (This is quite common in cloud deployments where you are
+> packing a huge number of tasks onto a single box; whether the tasks
+> are inside virtual machines or containers don't really matter for the
+> purpose of this exercise.  We basically need to simulate a system
+> where the disks are busy.)
+> 
+> Then in one of those cgroups, create a process which is constantly
+> appending to a file using buffered I/O; this could be a log file, or
+> an application-level journal file; and measure the latency of that
+> write system call.  Every so often, writeback will push the dirty
+> pages corresponding to the log/journal file to disk.  When that
+> happens, and page stablization is enabled, the latency of that write
+> system call will spike.
+> 
+> And any time you have a distributed system where you are depending on
+> a large number of RPC/SOAP/Service Oriented Architecture Enterpise
+> Service Bus calls (I don't really care which buzzword you use, but IBM
+> and Oracle really like the last one :-), long-tail latencies are what
+> kill your responsiveness and predictability.  Especially when a thread
+> goes away for a second or more...
 
-On 2/29/2012 11:44 PM, Theodore Tso wrote:
-> You might try sorting the entries returned by readdir by inode number
-> before you stat them.    This is a long-standing weakness in
-> ext3/ext4, and it has to do with how we added hashed tree indexes to
-> directories in (a) a backwards compatible way, that (b) was POSIX
-> compliant with respect to adding and removing directory entries
-> concurrently with reading all of the directory entries using
-> readdir.
+But, why are we writeback for a second or more?  Aren't there other
+parts of this we would want to fix as well?
 
-When I ran into this a while back, I cobbled together this python script 
-to measure the correlation from name to inode, inode to first data 
-block, and name to first data block for all of the small files in a 
-large directory, and found that ext4 gives a very poor correlation due 
-to that directory hashing.  This is one of the reasons I prefer using 
-dump instead of tar for backups, since it rips through my Maildir more 
-than 10 times faster than tar, since it reads the files in inode order.
+I'm not against only turning on stable pages when they are needed, but
+the code that isn't the default tends to be somewhat less used.  So it
+does increase testing burden when we do want stable pages, and it tends
+to make for awkward bugs that are hard to reproduce because someone
+neglects to mention it.
 
+IMHO it's much more important to nail down the 2 second writeback
+latency. That's not good.
 
---------------030501040107040408020009
-Content-Type: text/plain;
- name="correlation.py"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="correlation.py"
+-chris
 
-#!/usr/bin/python
-
-import os
-from stat import *
-import fcntl
-import array
-
-names = os.listdir('.')
-lastino = 0
-name_to_ino_in = 0
-name_to_ino_out = 0
-lastblock = 0
-name_to_block_in = 0
-name_to_block_out = 0
-iblocks = list()
-inode_to_block_in = 0
-inode_to_block_out = 0
-
-for file in names :
-    try :
-        st = os.stat(file)
-    except OSError:
-        continue
-    if not S_ISREG(st.st_mode) :
-        continue
-    if st.st_ino > lastino :
-        name_to_ino_in += 1
-    else : name_to_ino_out += 1
-    lastino = st.st_ino    
-    f = open(file)
-    buf = array.array('I', [0])
-    err = fcntl.ioctl(f.fileno(), 1, buf)
-    if err != 0 :
-        print "ioctl failed on " + f
-    block = buf[0]
-    if block != 0 :
-        if block > lastblock :
-            name_to_block_in += 1
-        else : name_to_block_out += 1
-        lastblock = block
-        iblocks.append((st.st_ino,block))
-print "Name to inode correlation: " + str(float(name_to_ino_in) / float((name_to_ino_in + name_to_ino_out)))
-print "Name to block correlation: " + str(float(name_to_block_in) / float((name_to_block_in + name_to_block_out)))
-iblocks.sort()
-lastblock = 0
-for i in iblocks:
-    if i[1] > lastblock:
-        inode_to_block_in += 1
-    else: inode_to_block_out += 1
-    lastblock = i[1]
-print "Inode to block correlation: " + str(float(inode_to_block_in) / float((inode_to_block_in + inode_to_block_out)))
-
---------------030501040107040408020009--
