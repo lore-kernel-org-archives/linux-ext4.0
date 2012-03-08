@@ -1,54 +1,47 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH, RFC] Don't do page stablization if
- !CONFIG_BLKDEV_INTEGRITY
-Date: Thu, 8 Mar 2012 10:54:19 -0500
-Message-ID: <20120308155419.GB6777@thunk.org>
+From: "Martin K. Petersen" <martin.petersen@oracle.com>
+Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
+Date: Thu, 08 Mar 2012 11:36:30 -0500
+Message-ID: <yq1pqcnf3sh.fsf@sermon.lab.mkp.net>
 References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
- <4F57F523.3020703@redhat.com>
- <4F581BF6.8000305@zabbo.net>
+	<4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net>
+	<4F5837A2.8000306@panasas.com>
+	<Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
+	<20120308154326.GA6777@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Zach Brown <zab@zabbo.net>
+Content-Type: text/plain
+Cc: Sage Weil <sage@newdream.net>, Boaz Harrosh <bharrosh@panasas.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55066 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757258Ab2CHPyY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Mar 2012 10:54:24 -0500
-Content-Disposition: inline
-In-Reply-To: <4F581BF6.8000305@zabbo.net>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:38610 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758025Ab2CHQgi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2012 11:36:38 -0500
+In-Reply-To: <20120308154326.GA6777@thunk.org> (Ted Ts'o's message of "Thu, 8
+	Mar 2012 10:43:26 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 07, 2012 at 09:39:50PM -0500, Zach Brown wrote:
-> 
-> >Can you devise a non-secret testcase that demonstrates this?
-> 
-> Hmm.  I bet you could get fio to do it.  Giant file, random mmap()
-> writes, spin until the CPU overwhelms writeback?
+>>>>> "Ted" == Ted Ts'o <tytso@mit.edu> writes:
 
-Kick off a bunch of fio processes, each in separate I/O cgroups set up
-so that each of the processes get a "fair" amount of the I/O
-bandwidth.  (This is quite common in cloud deployments where you are
-packing a huge number of tasks onto a single box; whether the tasks
-are inside virtual machines or containers don't really matter for the
-purpose of this exercise.  We basically need to simulate a system
-where the disks are busy.)
+Ted> Martin, would you be willing to try to get your patch submitted for
+Ted> the upcoming merge window?  Or I'd be willing to carry your patch
+Ted> and then rework Darrick's to use the exported flag, and carry it in
+Ted> my tree, maybe that would be better.
 
-Then in one of those cgroups, create a process which is constantly
-appending to a file using buffered I/O; this could be a log file, or
-an application-level journal file; and measure the latency of that
-write system call.  Every so often, writeback will push the dirty
-pages corresponding to the log/journal file to disk.  When that
-happens, and page stablization is enabled, the latency of that write
-system call will spike.
+There's probably going to be some conflicts due to both topology updates
+and the write same changes I have pending. So it's probably best that I
+submit this patch as part of my kits for Jens and James. Should go out
+today.
 
-And any time you have a distributed system where you are depending on
-a large number of RPC/SOAP/Service Oriented Architecture Enterpise
-Service Bus calls (I don't really care which buzzword you use, but IBM
-and Oracle really like the last one :-), long-tail latencies are what
-kill your responsiveness and predictability.  Especially when a thread
-goes away for a second or more...
 
-						- Ted
+Ted> why should we be inflicting pretty severe performance regressions
+Ted> for the common case, just to improve things for obscure high-end
+Ted> hardware?
+
+I'm perfectly ok with that now that we have established that there are
+real world workloads that do suffer with the wait in place.
+
+-- 
+Martin K. Petersen	Oracle Linux Engineering
