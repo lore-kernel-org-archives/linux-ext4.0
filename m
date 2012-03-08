@@ -1,63 +1,59 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
-Date: Thu, 8 Mar 2012 12:50:42 -0800
-Message-ID: <4F591BA2.2080803@panasas.com>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com> <4F57F523.3020703@redhat.com> <4F581BF6.8000305@zabbo.net> <20120308155419.GB6777@thunk.org> <20120308180951.GB29510@shiny> <4F59148A.4070001@panasas.com> <20120308203741.GE29510@shiny>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH, RFC] Don't do page stablization if
+ !CONFIG_BLKDEV_INTEGRITY
+Date: Thu, 8 Mar 2012 15:55:48 -0500
+Message-ID: <20120308205548.GF29510@shiny>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
+ <4F57F523.3020703@redhat.com>
+ <4F581BF6.8000305@zabbo.net>
+ <20120308155419.GB6777@thunk.org>
+ <20120308180951.GB29510@shiny>
+ <4F59148A.4070001@panasas.com>
+ <20120308203741.GE29510@shiny>
+ <x49linaj037.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: Chris Mason <chris.mason@oracle.com>, "Ted Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Boaz Harrosh <bharrosh@panasas.com>, "Ted Ts'o" <tytso@mit.edu>,
 	Zach Brown <zab@zabbo.net>, Eric Sandeen <sandeen@redhat.com>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:42948 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751840Ab2CHUvE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2012 15:51:04 -0500
-In-Reply-To: <20120308203741.GE29510@shiny>
+Received: from acsinet15.oracle.com ([141.146.126.227]:23239 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751370Ab2CHUz6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Mar 2012 15:55:58 -0500
+Content-Disposition: inline
+In-Reply-To: <x49linaj037.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/08/2012 12:37 PM, Chris Mason wrote:
-> On Thu, Mar 08, 2012 at 12:20:26PM -0800, Boaz Harrosh wrote:
->> On 03/08/2012 10:09 AM, Chris Mason wrote:
->>>
->>> But, why are we writeback for a second or more?  Aren't there other
->>> parts of this we would want to fix as well?
->>>
->>> I'm not against only turning on stable pages when they are needed, but
->>> the code that isn't the default tends to be somewhat less used.  So it
->>> does increase testing burden when we do want stable pages, and it tends
->>> to make for awkward bugs that are hard to reproduce because someone
->>> neglects to mention it.
->>>
->>> IMHO it's much more important to nail down the 2 second writeback
->>> latency. That's not good.
->>>
->>
->> I think I understand this one. It's do to the sync nature introduced
->> by page_waiting in mkwrite.
+On Thu, Mar 08, 2012 at 03:42:52PM -0500, Jeff Moyer wrote:
+> Chris Mason <chris.mason@oracle.com> writes:
 > 
-> Pages go from dirty to writeback for a few reasons.  Background
-> writeout, or O_DIRECT or someone running sync
+> > On Thu, Mar 08, 2012 at 12:20:26PM -0800, Boaz Harrosh wrote:
+> >> I think I understand this one. It's do to the sync nature introduced
+> >> by page_waiting in mkwrite.
+> >
+> > Pages go from dirty to writeback for a few reasons.  Background
+> > writeout, or O_DIRECT or someone running sync
+> >
+> > background writeout shouldn't be queueing up so much work that
+> > synchronous writeout has a 2 second delay.
 > 
-> background writeout shouldn't be queueing up so much work that
-> synchronous writeout has a 2 second delay.
-> 
-> If the latencies are coming from something that was run through
-> fsync...well there's not too much we can do about that.  The problem is
-> that our page_mkwrite call isn't starting the IO it is just waiting on
-> it, so we can't bump the priority on it.
-> 
+> So now we're back to figuring out how to tell how long I/O will take?
+> If writeback is issuing random access I/Os to spinning media, you can
+> bet it might be a while.  Today, you could lower nr_requests to some
+> obscenely small number to improve worst-case latency.  I thought there
+> was some talk about improving the intelligence of writeback in this
+> regard, but it's a tough problem, especially given that writeback isn't
+> the only cook in the kitchen.
 
-I agree. I think the logger model is: write, than sync
 
-Before they used to be waiting on the sync phase now their waiting
-on write, when concurrent with sync. I would like to inspect this situation.
-I agree with you that it's just shifting heaviness that is now hiding somewhere
-else.
+I'm not against Ted's original idea, but I'd hate to miss the chance to
+blame Jens for the block layer making filesystems slow.
 
-> -chris
+Since there is a reliable way to reproduce, it makes sense to track it
+down a little more instead of papering over the wait_on_page_writeback
+call.
 
-Thanks
-Boaz
+-chris
