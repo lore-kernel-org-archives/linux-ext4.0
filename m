@@ -1,41 +1,45 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
-Date: Fri, 09 Mar 2012 10:14:18 -0500
-Message-ID: <4F5A1E4A.9060804@ubuntu.com>
-References: <4F4D1020.5060204@redhat.com> <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com> <34CA4C93-194F-45F3-9A94-E181A7DFEBCE@mit.edu> <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com> <20120301143834.GA30578@thunk.org> <alpine.LFD.2.00.1203011540180.6491@dhcp-27-109.brq.redhat.com> <4F58E2D7.205@ubuntu.com> <alpine.LFD.2.00.1203090957190.4487@dhcp-27-109.brq.redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] Don't do page stablization if
+ !CONFIG_BLKDEV_INTEGRITY
+Date: Fri, 9 Mar 2012 11:20:05 -0500
+Message-ID: <20120309162005.GA18489@thunk.org>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
+ <4F57F523.3020703@redhat.com>
+ <4F581BF6.8000305@zabbo.net>
+ <20120308155419.GB6777@thunk.org>
+ <20120308180951.GB29510@shiny>
+ <4F59148A.4070001@panasas.com>
+ <20120308212412.GC11861@thunk.org>
+ <20120308213808.GK29510@shiny>
+ <20120308214148.GD11861@thunk.org>
+ <20120309010207.GM29510@shiny>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+To: Chris Mason <chris.mason@oracle.com>,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	Zach Brown <zab@zabbo.net>, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:4337 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754380Ab2CIPOV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Mar 2012 10:14:21 -0500
-In-Reply-To: <alpine.LFD.2.00.1203090957190.4487@dhcp-27-109.brq.redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43772 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757137Ab2CIQUS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Mar 2012 11:20:18 -0500
+Content-Disposition: inline
+In-Reply-To: <20120309010207.GM29510@shiny>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/9/2012 3:59 AM, Lukas Czerner wrote:
-> Why would we try to check UNINIT groups with valid descriptor checksums
-> ? I think that this problem will be solved with BLOCK_DISCARDED flag as
-> we discussed with Ted in another thread. No need to have yet another
-> option so it is win-win :)
+On Thu, Mar 08, 2012 at 08:02:07PM -0500, Chris Mason wrote:
+> > Right before submission to the bio layer?  Or right before the device
+> > driver sends the request to the host bus adapter?  I was thinking of
+> > the latter....
+> 
+> blktrace can probably give us numbers for how big that wait is, but
+> hopefully it is very small.  If it is too big, you can always bump
+> nr_requests.
 
-Because not skipping a specific action on an uninitialized group ( 
-discard ) is a specific case of the more general form of not skipping 
-uninitialized groups.  I thought that it might sometimes be useful to 
-actually verify the group is correct instead of trusting the uninit 
-flag, especially if you are about to discard it.  Also any other things 
-that are added in the future and skipped for uninit groups would not 
-need yet another flag to specifically not skip that action, since it 
-will be covered by the more general flag already.
+Not necessarily; things can get stalled for quite a while due to
+ionice or io rate throttling.  There's quite a lot that can happen
+after submit_bio, at the cfq layer, for example.
 
-Also the way the code was structured it looked like it would be much 
-simpler to bypass the skip and do the full check of the uninit group 
-than to modify it to discard the group even though checking it was skipped.
-
-
-
+						- Ted
