@@ -1,41 +1,66 @@
-From: Andor Daam <andor.daam@googlemail.com>
-Subject: ext3/4, btrfs, ocfs2: How to assure that cleancache_invalidate_fs is
- called on every superblock free
-Date: Fri, 9 Mar 2012 14:40:22 +0100
-Message-ID: <CACQs63L2wfXKaD5sH6OOV+Bm_+37F3QOdt1QMFbWnB9AE4iCpA@mail.gmail.com>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Fri, 9 Mar 2012 09:34:46 -0500
+Message-ID: <20120309143446.GO29510@shiny>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+ <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: dan.magenheimer@oracle.com, fschmaus@gmail.com, linux-mm@kvack.org,
-	ilendir@googlemail.com, sjenning@linux.vnet.ibm.com,
-	konrad.wilk@oracle.com, i4passt@lists.informatik.uni-erlangen.de,
-	ngupta@vflare.org
-To: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:34285 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932250Ab2CINsB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Mar 2012 08:48:01 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jacek Luczak <difrost.kernel@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Fri, Mar 09, 2012 at 12:29:29PM +0100, Lukas Czerner wrote:
+> Hi,
+> 
+> I have created a simple script which creates a bunch of files with
+> random names in the directory and then performs operation like list,
+> tar, find, copy and remove. I have run it for ext4, xfs and btrfs with
+> the 4k size files. And the result is that ext4 pretty much dominates the
+> create times, tar times and find times. However copy times is a whole
+> different story unfortunately - is sucks badly.
+> 
+> Once we cross the mark of 320000 files in the directory (on my system) the
+> ext4 is becoming significantly worse in copy times. And that is where
+> the hash tree order in the directory entry really hit in.
+> 
+> Here is a simple graph:
+> 
+> http://people.redhat.com/lczerner/files/copy_benchmark.pdf
+> 
+> Here is a data where you can play with it:
+> 
+> https://www.google.com/fusiontables/DataSource?snapid=S425803zyTE
+> 
+> and here is the txt file for convenience:
+> 
+> http://people.redhat.com/lczerner/files/copy_data.txt
+> 
+> I have also run the correlation.py from Phillip Susi on directory with
+> 100000 4k files and indeed the name to block correlation in ext4 is pretty
+> much random :)
+> 
+> _ext4_
+> Name to inode correlation: 0.50002499975
+> Name to block correlation: 0.50002499975
+> Inode to block correlation: 0.9999900001
+> 
+> _xfs_
+> Name to inode correlation: 0.969660303397
+> Name to block correlation: 0.969660303397
+> Inode to block correlation: 1.0
+> 
+> 
+> So there definitely is a huge space for improvements in ext4.
 
-Is it ever possible for a superblock for a mounted filesystem to be
-free'd without a previous call to unmount the filesystem?
-I need to be certain that the function cleancache_invalidate_fs, which
-is at the moment called by deactivate_locked_super (fs/super.c) [1],
-is called before every free on a superblock of cleancache-enabled
-filesystems.
-Is this already the case or are there situations in which this does not happen?
+Thanks Lukas, this is great data.  There is definitely room for btrfs to
+speed up in the other phases as well.
 
-It would be interesting to know this, as we are planning to have
-cleancache save pointers to superblocks of every mounted
-cleancache-enabled filesystem [2] and it would be fatal if a
-superblock is free'd without cleancache being notified.
-
-Regards
-Andor
-
-[1] commit c515e1fd361c2a08a9c2eb139396ec30a4f477dc
-[2] http://marc.info/?l=linux-mm&m=133122649732669&w=2
+-chris
