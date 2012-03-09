@@ -1,76 +1,49 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH, RFC] Don't do page stablization if
- !CONFIG_BLKDEV_INTEGRITY
-Date: Fri, 9 Mar 2012 19:11:13 +1100
-Message-ID: <20120309081113.GU5091@dastard>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
- <4F57F523.3020703@redhat.com>
- <4F581BF6.8000305@zabbo.net>
- <20120308155419.GB6777@thunk.org>
- <20120308180951.GB29510@shiny>
- <4F59148A.4070001@panasas.com>
- <20120308203741.GE29510@shiny>
- <x49linaj037.fsf@segfault.boston.devel.redhat.com>
- <20120308211221.GB11861@thunk.org>
- <20120308212054.GI29510@shiny>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: mkfs.ext4 vs. e2fsck discard oddities
+Date: Fri, 9 Mar 2012 09:59:37 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203090957190.4487@dhcp-27-109.brq.redhat.com>
+References: <4F4D1020.5060204@redhat.com> <alpine.LFD.2.00.1202290801510.4926@dhcp-27-109.brq.redhat.com> <34CA4C93-194F-45F3-9A94-E181A7DFEBCE@mit.edu> <alpine.LFD.2.00.1203010804410.6491@dhcp-27-109.brq.redhat.com> <20120301143834.GA30578@thunk.org>
+ <alpine.LFD.2.00.1203011540180.6491@dhcp-27-109.brq.redhat.com> <4F58E2D7.205@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Chris Mason <chris.mason@oracle.com>, Ted Ts'o <tytso@mit.edu>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Boaz Harrosh <bharrosh@panasas.com>,
-	Zach Brown <zab@zabbo.net>, Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120308212054.GI29510@shiny>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Phillip Susi <psusi@ubuntu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:25258 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750746Ab2CII7o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Mar 2012 03:59:44 -0500
+In-Reply-To: <4F58E2D7.205@ubuntu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 08, 2012 at 04:20:54PM -0500, Chris Mason wrote:
-> On Thu, Mar 08, 2012 at 04:12:21PM -0500, Ted Ts'o wrote:
-> > On Thu, Mar 08, 2012 at 03:42:52PM -0500, Jeff Moyer wrote:
-> > > 
-> > > So now we're back to figuring out how to tell how long I/O will take?
-> > > If writeback is issuing random access I/Os to spinning media, you can
-> > > bet it might be a while.  Today, you could lower nr_requests to some
-> > > obscenely small number to improve worst-case latency.  I thought there
-> > > was some talk about improving the intelligence of writeback in this
-> > > regard, but it's a tough problem, especially given that writeback isn't
-> > > the only cook in the kitchen.
+On Thu, 8 Mar 2012, Phillip Susi wrote:
+
+> On 3/1/2012 9:54 AM, Lukas Czerner wrote:
+> > Well, it is not default right ? So the user should better know what is
+> > he doing. Moreover it is not like it is end of the world when we do not
+> > provide that option, since SSD's will handle over provisioning to some
+> > extent even without slowdown, and as for thin-provisioned devices you
+> > should know why you're overriding defaults and what it means for you.
 > > 
-> > ... and it gets worse if there is any kind of I/O prioritization going
-> > on via ionice(), or (as was the case in our example) I/O cgroups were
-> > being used to provide proportional I/O rate controls.  I don't think
-> > it's realistic to assume the writeback code can predict how long I/O
-> > will take when it does a submission.
+> > Anyway, if people really want this another option to discard all the
+> > block groups including those UNINIT ones, I guess I can not resist that
+> > :). '-E discard_all' maybe ?
 > 
-> cgroups do make it much harder because it could be a simple IO priority
-> inversion.  The latencies are just going to be a fact of life for now
-> and the best choice is to skip the stable pages.
+> I think the option is a little more generic than discard.  The uninit groups
+> are not discarded because they are not checked in the first place.  A bad
+> group descriptor checksum will force the group to be checked, and thus
+> discarded as well.  I think what is needed is an option to trigger the same
+> thing: force all groups to be checked, even if they are uninit and have good
+> descriptor checksums.  Maybe -E thorough?
+> 
 
-They have always been a fact of life - just ask anyone that has to
-deal with deterministic or "real-time" IO applications.
+Why would we try to check UNINIT groups with valid descriptor checksums
+? I think that this problem will be solved with BLOCK_DISCARDED flag as
+we discussed with Ted in another thread. No need to have yet another
+option so it is win-win :)
 
-Unpredictable IO path latencies are not a new problem, and it
-doesn't take stable pages to cause sigificant holdoffs in the
-writing to a file.  For example: writeback triggers triggers delayed
-allocation, which locks the extent map and then blocks behind an
-allocation already in progress or has to do IO to read in freespace
-metadata. The next write comes along from another thread/process and
-it has to map a new page and that now blocks on the extent map lock
-and won't progress until the delayed allocation in progress
-completes....
-
-IO latencies are pretty much unavoidable, so the best thing to do is
-to write applications that care about latency to minimise it's
-impact as much as possible. Simple techniques like double buffering
-and async IO dispatch techniques to decouple the IO stream from the
-process/threads that are doing real work are the usual ways of
-dealing with this problem.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks!
+-Lukas
