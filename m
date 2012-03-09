@@ -1,10 +1,8 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 02/54] libext2fs: Change ext4 on-disk layout to support
- metadata checksumming
-Date: Fri, 9 Mar 2012 17:04:35 -0500
-Message-ID: <20120309220435.GC5635@thunk.org>
+Subject: Re: [PATCH v3 00/54] e2fsprogs: Add metadata checksumming
+Date: Fri, 9 Mar 2012 17:37:28 -0500
+Message-ID: <20120309223728.GD5635@thunk.org>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
- <20120306235734.11945.46038.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -16,38 +14,46 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Coly Li <colyli@gmail.com>
 To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48637 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47446 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753042Ab2CIWEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Mar 2012 17:04:47 -0500
+	id S1030207Ab2CIWhj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Mar 2012 17:37:39 -0500
 Content-Disposition: inline
-In-Reply-To: <20120306235734.11945.46038.stgit@elm3b70.beaverton.ibm.com>
+In-Reply-To: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 03:57:34PM -0800, Darrick J. Wong wrote:
-> Define flags and extend ext4 structure definitions to support metadata
-> checksumming.  Ted T'so covered many of these fields in an earlier patch, but
-> there are more required changes to the disk layout.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+I've imported this patch set into a guilt patch series, which makes it
+easier for me to work on the patch series and make minor tweaks so
+that I can get interim e2fsprogs support up and going (and at least
+building and passing the regression test suite) so I can test and play
+with the kernel side patches.
 
-> @@ -619,7 +630,7 @@ struct ext2_super_block {
->  	__u64   s_mmp_block;            /* Block for multi-mount protection */
->  	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
->  	__u8	s_log_groups_per_flex;	/* FLEX_BG group size */
-> -	__u8    s_reserved_char_pad;
-> +	__u8    s_checksum_type;	/* metadata checksum algorithm */
->  	__u16	s_reserved_pad;		/* Padding to next 32bits */
->  	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
->  	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
+People who want to follow along can look here:
 
-Note: when you change the superblock definition, you *must* also
-update the test in lib/ext2fs/tst_super_size.c.
+	https://github.com/tytso/e2fsprogs-cksum-patch-queue
 
-If you don't then running "make check" from the top-level of the build
-tree will likely bomb out.  And you will also reveal to me that you
-haven't run the full set of regression tests before submitting your
-patch series.  :-)
+... or at the read-only git tree which you can find here:
 
-					- Ted
+	git://github.com/tytso/e2fsprogs-cksum-patch-queue.git
+
+With these large patch series it's easier for me to make blanket
+changes to fix minor annoyances (such as commit descriptions which are
+too wide and make "git log" displays hard to follow) or to merge
+patches that are too fine grained[1] together.
+
+Open source project management theory says that it's better to ask the
+submitter to do all of this work, but given certain special
+circumstances in this particular case, I decided to make the cleanup
+work that I do publicly visible, as a compromise.  I'll also make some
+comments about some of the issues I find (and fix) by replying to the
+emails on this mail thread.
+
+This patch series will be maintained so that it can be applied to the
+top-most "maint" branch of e2fsprogs.
+
+Darrick, if you have time and would like to make further changes, ping
+me off-line and I would be happy to give you write access to the
+github tree.
+
+						- Ted
