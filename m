@@ -1,9 +1,9 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 08/54] e2fsck: Verify and correct inode checksums
-Date: Sat, 10 Mar 2012 00:09:28 -0500
-Message-ID: <20120310050928.GC5652@thunk.org>
+Subject: Re: [PATCH 29/54] e2fsck: Check extended attribute block checksums
+Date: Sat, 10 Mar 2012 00:22:31 -0500
+Message-ID: <20120310052231.GD5652@thunk.org>
 References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
- <20120306235812.11945.3055.stgit@elm3b70.beaverton.ibm.com>
+ <20120307000032.11945.89164.stgit@elm3b70.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -15,42 +15,45 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Coly Li <colyli@gmail.com>
 To: "Darrick J. Wong" <djwong@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45420 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:59455 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750718Ab2CJFJh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 10 Mar 2012 00:09:37 -0500
+	id S1750909Ab2CJFWi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 10 Mar 2012 00:22:38 -0500
 Content-Disposition: inline
-In-Reply-To: <20120306235812.11945.3055.stgit@elm3b70.beaverton.ibm.com>
+In-Reply-To: <20120307000032.11945.89164.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 03:58:12PM -0800, Darrick J. Wong wrote:
-> Detect mismatches of the inode and checksum, and prompt the user to fix the
-> situation.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+On Tue, Mar 06, 2012 at 04:00:32PM -0800, Darrick J. Wong wrote:
+> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> index d910629..ad6887e 100644
+> --- a/e2fsck/problem.c
+> +++ b/e2fsck/problem.c
+> @@ -961,6 +961,21 @@ static struct e2fsck_problem problem_table[] = {
+>  	     "extent\n\t(logical @b %c, @n physical @b %b, len %N)\n"),
+>  	  PROMPT_FIX, 0 },
+>  
+> +	/* Extended attribute block checksum for inode does not match. */
+> +	{ PR_1_EA_BLOCK_CSUM_INVALID,
+> +	  N_("Extended attribute @a @b %b checksum for @i %i does not "
+> +	     "match.  "),
+> +	  PROMPT_CLEAR, 0 },
+> +
+> +	/*
+> +	 * Extended attribute block passes checks, but checksum for inode does
+> +	 * not match.
+> +	 */
+> +	{ PR_1_EA_BLOCK_CSUM_INVALID,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The new problem definitions were inserted into the wrong place in
-problem.c.  This is something that was picked up by a unit test in the
-e2fsck directory:
+This should be PR_1_EA_BLOCK_ONLY_CSUM_INVALID.  This was discovered
+again via the tst_problem unit test in the e2fsprogs regression test
+suite:
 
 LD_LIBRARY_PATH=../lib DYLD_LIBRARY_PATH=../lib ./tst_problem
-*** Unordered problem table:
-curr code = 0x00010065: The bad @b @i looks @n.  
-*** prev code = 0x00010067: @i %i passes checks, but checksum does not match @i.  
-*** This is a programming error in e2fsck
-make[1]: *** [check] Error 1
+*** Duplicate in problem table:
+curr code = 0x0001006a: Extended attribute @a @b %b passes checks, but checksum for @i %i does not match.  
+*** prev code = 0x0001006a: Extended attribute @a @b %b checksum for @i %i does not match.  
+*** This is a fatal programming error in e2fsck
 
-The fix was simple; just move the new lines in problem.c down two lines.
-
->  	/* Quota inode is user visible */
->  	{ PR_1_QUOTA_INODE_NOT_HIDDEN,
->  	  N_("@q @i is visible to the user.  "),
-> - 	  PROMPT_CLEAR, PR_PREEN_OK },
-> +	  PROMPT_FIX, PR_PREEN_OK },
-
-PR1_QUOTA_INODE_NOT_HIDDEN isn't currently used, so there's no point
-changing it now.  Depending on how this bit of the first class quota
-patch gets implemented, the message might change completely.
-
-      	   		    	    	  	 - Ted
+    	      	    		      	 - Ted
