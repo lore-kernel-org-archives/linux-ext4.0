@@ -1,71 +1,93 @@
 From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: [PATCH 0/6] Rename delayed extents to status extents
-Date: Fri,  9 Mar 2012 21:41:19 -0700
-Message-ID: <1331354485-18515-1-git-send-email-achender@linux.vnet.ibm.com>
+Subject: [PATCH 5/6] Rename de patch5 from de to se scheme
+Date: Fri,  9 Mar 2012 21:41:24 -0700
+Message-ID: <1331354485-18515-6-git-send-email-achender@linux.vnet.ibm.com>
+References: <1331354485-18515-1-git-send-email-achender@linux.vnet.ibm.com>
 Cc: Allison Henderson <achender@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org, xiaoqiangnk@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e39.co.us.ibm.com ([32.97.110.160]:42526 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753960Ab2CJEkx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Mar 2012 23:40:53 -0500
+Received: from e37.co.us.ibm.com ([32.97.110.158]:55457 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755574Ab2CJEkz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Mar 2012 23:40:55 -0500
 Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Fri, 9 Mar 2012 21:40:52 -0700
+	Fri, 9 Mar 2012 21:40:55 -0700
 Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 0757419D804A
-	for <linux-ext4@vger.kernel.org>; Fri,  9 Mar 2012 21:40:44 -0700 (MST)
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id DC73619D804A
+	for <linux-ext4@vger.kernel.org>; Fri,  9 Mar 2012 21:40:46 -0700 (MST)
 Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2A4enEh180564
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Mar 2012 21:40:49 -0700
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2A4eqZQ170000
+	for <linux-ext4@vger.kernel.org>; Fri, 9 Mar 2012 21:40:52 -0700
 Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2A4emFA030453
-	for <linux-ext4@vger.kernel.org>; Fri, 9 Mar 2012 21:40:49 -0700
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2A4epaV030579
+	for <linux-ext4@vger.kernel.org>; Fri, 9 Mar 2012 21:40:52 -0700
+In-Reply-To: <1331354485-18515-1-git-send-email-achender@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This set is based on Yongqiang's 
-"[PATCH V3 0/6] ext4: add delayed extent tree for ext4".  
-This patch set renames the changes introduced by the delayed
-extent set to follow a "status extent" naming scheme.  This
-set does not yet introduce any functional changes other than renaming.
-The purpose of the rename it to prepare the set for supporting
-allocated extents as well as delayed extents.  Then once we have
-it tracking allocated extents, we can implement extent locks.
-Merging the solutions will eliminate the need to maintain yet
-another tree, sense both solutions are an rbtree of extents.
+This patch renames changes introduced by patch
+"[PATCH_V3_5_6\]_ext4_reimplement_fiemap_on_delayed_extent_tree"
 
-Sense delayed extents have not yet been merged, the plan is
-to merge this set with the existing delayed extent set, and
-the new "status extent" set will be the foundation for extent
-locks.
+All code referencing "delayed extents" or "de" are changed to
+"status extents" or "se"
 
-Yongqiang, if this all looks good to you, I will merge
-our sets and include it as part of the extent lock set,
-once I get the rest of it finished up.  Thx!
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+---
+:100644 100644 a8b382e... 3f76625... M	fs/ext4/extents.c
+ fs/ext4/extents.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
 
-Allison Henderson (6):
-  Rename de patch1 from de to se scheme
-  Rename de patch2 from de to se scheme
-  Rename de patch3 from de to se scheme
-  Rename de patch4 from de to se scheme
-  Rename de patch5 from de to se scheme
-  Rename de patch6 from de to se scheme
-
- fs/ext4/Makefile          |    2 +-
- fs/ext4/delayed_extents.c |  415 --------------------------------------------
- fs/ext4/delayed_extents.h |   40 -----
- fs/ext4/ext4.h            |    4 +-
- fs/ext4/extents.c         |   24 ++--
- fs/ext4/indirect.c        |    2 +-
- fs/ext4/inode.c           |    4 +-
- fs/ext4/status_extents.c  |  417 +++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/status_extents.h  |   40 +++++
- fs/ext4/super.c           |    8 +-
- 10 files changed, 479 insertions(+), 477 deletions(-)
- delete mode 100644 fs/ext4/delayed_extents.c
- delete mode 100644 fs/ext4/delayed_extents.h
- create mode 100644 fs/ext4/status_extents.c
- create mode 100644 fs/ext4/status_extents.h
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a8b382e..3f76625 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4363,7 +4363,7 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
+ 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
+ 		       void *data)
+ {
+-	struct delayed_extent de;
++	struct status_extent se;
+ 	__u64	logical;
+ 	__u64	physical;
+ 	__u64	length;
+@@ -4373,9 +4373,9 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
+ 	struct fiemap_extent_info *fieinfo = data;
+ 	unsigned char blksize_bits;
+ 
+-	de.start = newex->ec_block;
++	se.start = newex->ec_block;
+ 	down_read(&EXT4_I(inode)->i_data_sem);
+-	next_del = ext4_de_find_extent(inode, &de);
++	next_del = ext4_se_find_extent(inode, &se);
+ 	up_read(&EXT4_I(inode)->i_data_sem);
+ 
+ 	next = min(next_del, next);
+@@ -4384,19 +4384,19 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
+ 		 * No extent in extent-tree contains block @newex->ec_start,
+ 		 * then the block may stay in 1)a hole or 2)delayed-extent.
+ 		 */
+-		if (de.len == 0)
++		if (se.len == 0)
+ 			/* A hole found. */
+ 			return EXT_CONTINUE;
+ 
+-		if (de.start > newex->ec_block) {
++		if (se.start > newex->ec_block) {
+ 			/* A hole found. */
+-			newex->ec_len = min(de.start - newex->ec_block,
++			newex->ec_len = min(se.start - newex->ec_block,
+ 					    newex->ec_len);
+ 			return EXT_CONTINUE;
+ 		}
+ 
+ 		flags |= FIEMAP_EXTENT_DELALLOC;
+-		newex->ec_len = de.start + de.len - newex->ec_block;
++		newex->ec_len = se.start + se.len - newex->ec_block;
+ 	}
+ 
+ 	if (ex && ext4_ext_is_uninitialized(ex))
+-- 
+1.7.1
 
