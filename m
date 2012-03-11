@@ -1,48 +1,68 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [RFC] ext4: block reservation allocation
-Date: Sun, 11 Mar 2012 13:32:34 -0400
-Message-ID: <4F5CE1B2.80501@ubuntu.com>
-References: <20120227090901.GA13953@gmail.com> <4F58E0AF.3010207@ubuntu.com> <CAGpXXZ+z-HVECg+EAe4-d20BkjhX7bjxaHOs2_KBbgQaJwpCHQ@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/4] e2fsck: Do not forget to discard last block group
+Date: Sun, 11 Mar 2012 15:18:36 -0400
+Message-ID: <20120311191836.GD1048@thunk.org>
+References: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
+ <1330933776-2696-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:17605 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753310Ab2CKRcg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Mar 2012 13:32:36 -0400
-In-Reply-To: <CAGpXXZ+z-HVECg+EAe4-d20BkjhX7bjxaHOs2_KBbgQaJwpCHQ@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49788 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751642Ab2CKTSk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Mar 2012 15:18:40 -0400
+Content-Disposition: inline
+In-Reply-To: <1330933776-2696-2-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-On 03/10/2012 07:26 PM, Greg Freemyer wrote:
->> I thought this could be done with the new defrag api.  I thought it had a
->> way to allocate a new donor file in a specific location so you could then
->> migrate the target file to those specific donor blocks.
->>
->>
-> I'm not aware of that ability in the defrag api.
+On Mon, Mar 05, 2012 at 08:49:34AM +0100, Lukas Czerner wrote:
+> Previously when running e2fsck with '-E discard' argument the end of
+> the last group has not been discarded. This patch fixes it so we
+> always discard the end of the last group if needed.
 > 
-> There are ohsm patches to do things along those lines, but they haven't
-> been updated since 2.6.30 days as far as I know.
+> This commit also removes unneeded argument from the
+> e2fsck_discard_blocks(). Simultaneously the commit causes the block
+> groups with BLOCK_UNINIT flag not to be discarded, which makes
+> sense because we do not need to reclaim the space since so far
+> there has not been written anything.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-It seems this ability would be vital to e4defrag.  Without it, it would end up being no better than filesystem agnostic defragmenters like shake.  I'm almost certain there was some discussion in this direction a few years ago when e4defrag started being talked about, was it really not implemented?
+I split this into 3 patches, just to make it easier to reivew, and to
+demonstrate the patch granularity I prefer.  The code paths in
+check_block_bitmaps() and check_inode_bitmaps() *are* somewhat hard to
+understand, partially because they are performance-critical.  So it's
+especially important to separate out clean up patches from things that
+actually change things.
 
+>  		if ((blocks == fs->super->s_clusters_per_group) ||
+>  		    (EXT2FS_B2C(fs, i) ==
+>  		     EXT2FS_B2C(fs, ext2fs_blocks_count(fs->super)-1))) {
+> +			/*
+> +			 * If the last block of this group is free, then we can
+> +			 * discard it as well.
+> +			 */
+> +			if (i >= first_free)
+> +				e2fsck_discard_blocks(ctx, first_free,
+> +						      (i - first_free) + 1);
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+This is buggy, because you're assuming the last block in the group is
+free.  It might not be so, and if so, we would end up discarding valid
+data.  The conditional needs to read:
 
-iQEcBAEBAgAGBQJPXOGuAAoJEJrBOlT6nu75n5kIANngR3o+ZQ6vij+jJ7nj1/S1
-nTmWUA70328xZD/Ht2G/ue3oTqOnQmxDIFOhM8AuUoZ0fHondSRXRFpPsXyUU7LO
-uc/ZranjqGCAH7IP3FzduqvOcQSJS8Vo4CI9bjrH0fnB7uV+vYbB0mVkVh7X2AHi
-T/1h0KIbtna8T7n1ISb3xqvKDY1zUM5qR9a7qo5fHkZpgLBDQNDxu1Q1qMEiytet
-HPksKZcPPvkA8oOuHvika1zj2FiidWWcmPsv20P80BtTaRUBmAHbc3s3Wox3THWh
-SP0tI0260LiMEyVVSpdsx76NoV9lFpu0ezNOtFHjFL99lnCV2K/fsHpTaICDBiA=
-=E6n5
------END PGP SIGNATURE-----
+			if (!bitmap && i >= first_free)
+> +				e2fsck_discard_blocks(ctx, first_free,
+> +						      (i - first_free) + 1);
+
+In the case where bitmap is set, then any discards (if necessary) will
+have been done already.
+
+> +			first_free = ext2fs_blocks_count(fs->super);
+
+I don't believe this is necessary, since we're not going to refer to
+first_free again, are we?
+
+			   	       	 - Ted
