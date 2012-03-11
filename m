@@ -1,36 +1,39 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/4] e2fsck: Do not discard when in read only mode
-Date: Sun, 11 Mar 2012 15:35:30 -0400
-Message-ID: <20120311193530.GF1048@thunk.org>
+Subject: Re: [PATCH 4/4] e2fsck: Do not discard itable if discard doen't
+ zero data
+Date: Sun, 11 Mar 2012 15:39:30 -0400
+Message-ID: <20120311193930.GG1048@thunk.org>
 References: <1330933776-2696-1-git-send-email-lczerner@redhat.com>
- <1330933776-2696-3-git-send-email-lczerner@redhat.com>
+ <1330933776-2696-4-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36482 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48160 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751347Ab2CKTfc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Mar 2012 15:35:32 -0400
+	id S1751583Ab2CKTjc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Mar 2012 15:39:32 -0400
 Content-Disposition: inline
-In-Reply-To: <1330933776-2696-3-git-send-email-lczerner@redhat.com>
+In-Reply-To: <1330933776-2696-4-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 05, 2012 at 08:49:35AM +0100, Lukas Czerner wrote:
-> When argument '-n' was specified and should run in read-only mode, we
-> should not attempt to discard anything. In order to do that we have to
-> check for E2F_OPT_NO flag and clear E2F_OPT_DISCARD flag if E2F_OPT_NO
-> is set.
+On Mon, Mar 05, 2012 at 08:49:36AM +0100, Lukas Czerner wrote:
+> We do not want to discard inode table if the underlying device does not
+> return zeros when reading non-provisioned blocks. The reason is that if
+> the inode table is not zeroed yet, then discard would not help us since
+> we would have to zero it anyway. In the case that inode table was
+> already zeroed, then the discard would cause subsequent reads to contain
+> non-deterministic data so we would not be able to assume that the inode
+> table was zeroed and we would need to zero it again, which does not
+> really make sense.
 > 
-> This commit fixes the problem when we would mark inode tables as zeroed
-> (EXT2_BG_INODE_ZEROED) even when e2fsck is running in read-only mode. We
-> also move the check for E2F_OPT_NO so we can clear E2F_OPT_DISCARD as
-> early as possible.
+> This commit adds check to prevent inode table from being discarded if
+> the discard does not zero data.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
 Applied, thanks.
 
-						- Ted
+				- Ted
