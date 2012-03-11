@@ -1,46 +1,80 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 13/54] e2fsck: Verify inode bitmap checksum
-Date: Sat, 10 Mar 2012 21:11:50 -0500
-Message-ID: <20120311021150.GB1048@thunk.org>
-References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com>
- <20120306235844.11945.9126.stgit@elm3b70.beaverton.ibm.com>
- <20120310054657.GA1048@thunk.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/5] libext2fs: Move a modulo operation out of a hot loop.
+Date: Sun, 11 Mar 2012 03:50:59 -0600
+Message-ID: <80227B8A-A826-4342-8B6B-2307C906F449@dilger.ca>
+References: <20120310213321.GK6961@sli.dy.fi> <20120310213456.GL6961@sli.dy.fi>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
-	Coly Li <colyli@gmail.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Sami Liedes <sami.liedes@iki.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55312 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752247Ab2CKCMA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 10 Mar 2012 21:12:00 -0500
-Content-Disposition: inline
-In-Reply-To: <20120310054657.GA1048@thunk.org>
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:23612 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752108Ab2CKJus convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Mar 2012 05:50:48 -0400
+In-Reply-To: <20120310213456.GL6961@sli.dy.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 10, 2012 at 12:46:57AM -0500, Ted Ts'o wrote:
+On 2012-03-10, at 2:34 PM, Sami Liedes wrote:
+> From 8d712d4e49cdc8a0b82f27b5b62a7691fafcacbf Mon Sep 17 00:00:00 2001
+> From: Sami Liedes <sami.liedes@iki.fi>
+> Date: Sat, 10 Mar 2012 22:13:12 +0200
+> Subject: [PATCH] libext2fs: Move a modulo operation out of a hot loop.
 > 
-> This patch just looks wrong.  RO_COMPAT_GDT_CSUM is the old feature,
-> and doesn't imply that there will be a checksum in the inode bitmap
-> block.  Shouldn't this be RO_COMPAT_METADATA_CSUM?
+> Filesystem shrinking in particular is a heavy user of this loop in
+> ext2fs_new_inode(). This change makes resize2fs use 24% less CPU time
+> for shrinking a 100G filesystem.
+> 
+> Signed-off-by: Sami Liedes <sami.liedes@iki.fi>
+> 
+> diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+> index 948a0ec..eb4e0f5 100644
+> --- a/lib/ext2fs/alloc.c
+> +++ b/lib/ext2fs/alloc.c
+> @@ -109,6 +109,7 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
+> 	ext2_ino_t	dir_group = 0;
+> 	ext2_ino_t	i;
+> 	ext2_ino_t	start_inode;
+> +	ext2_ino_t	modulo;
 
-Correction; the big problem here is that check_inode_bitmap_checksum()
-(and in the next e2fsck page, check_block_bitmap_checksum()) are are
-doing their thing without actually checking for
-RO_COMPAT_METADATA_CSUM).  These code paths shouldn't be getting
-activated at all for non-METADATA_CSUM file systems.  But they are.
+Good to see someone working on optimizing this code.  One comment on this patch -
+"modulo" isn't a very good name for this variable.  Sure it is a modulus, but it
+doesn't really say _what_ it is.  Better would be something like "inode_in_group".
 
-(And the check_block_bitmap_checksum() function is using
-EXT2_BLOCKS_PER_GROUP where it needs to use EXT2_CLUSTERS_PER_GROUP or
-it will end up corrupting memory which will cause the bigalloc-related
-test f_dup_ba blow up.  But again, this code path shouldn't have been
-getting activated in the first place.)
+> 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+> 
+> @@ -126,17 +127,21 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
+> 	if (start_inode > fs->super->s_inodes_count)
+> 		return EXT2_ET_INODE_ALLOC_FAIL;
+> 	i = start_inode;
+> +	modulo = (i - 1) % EXT2_INODES_PER_GROUP(fs->super);
+> 
+> 	do {
+> -		if (((i - 1) % EXT2_INODES_PER_GROUP(fs->super)) == 0)
+> +		if (modulo == 0)
+> 			check_inode_uninit(fs, map, (i - 1) /
+> 					   EXT2_INODES_PER_GROUP(fs->super));
+> 
+> 		if (!ext2fs_fast_test_inode_bitmap2(map, i))
+> 			break;
+> -		i++;
+> -		if (i > fs->super->s_inodes_count)
+> +		if (++modulo == EXT2_INODES_PER_GROUP(fs->super))
+> +			modulo = 0;
+> +		if (++i > fs->super->s_inodes_count) {
+> 			i = EXT2_FIRST_INODE(fs->super);
+> +			modulo = (i - 1) % EXT2_INODES_PER_GROUP(fs->super);
+> +		}
+> 	} while (i != start_inode);
+> 
+> 	if (ext2fs_test_inode_bitmap2(map, i))
 
-					- Ted
+
+Cheers, Andreas
+
+
+
+
+
