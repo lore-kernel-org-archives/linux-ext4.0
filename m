@@ -1,185 +1,146 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 4/5] libext2fs: Implement ext2fs_find_first_zero_generic_bmap().
-Date: Sun, 11 Mar 2012 03:51:05 -0600
-Message-ID: <5E845FD5-30E4-47A1-AF8E-70A288E3442D@dilger.ca>
-References: <20120310213321.GK6961@sli.dy.fi> <20120310213740.GO6961@sli.dy.fi>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Sun, 11 Mar 2012 04:30:37 -0600
+Message-ID: <9709DE62-CE25-41C4-A33C-63336B51DC5E@whamcloud.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com> <BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com> <20120310044804.GB5652@thunk.org>
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Sami Liedes <sami.liedes@iki.fi>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:60767 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752181Ab2CKJuy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Mar 2012 05:50:54 -0400
-In-Reply-To: <20120310213740.GO6961@sli.dy.fi>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120310044804.GB5652@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012-03-10, at 2:37 PM, Sami Liedes wrote:
-> From a58c07c019e4a7e6181f021ae022ebcdc5cce4e2 Mon Sep 17 00:00:00 2001
-> From: Sami Liedes <sami.liedes@iki.fi>
-> Date: Sat, 10 Mar 2012 22:36:12 +0200
-> Subject: [PATCH] libext2fs: Implement ext2fs_find_first_zero_generic_bmap().
+On 2012-03-09, at 9:48 PM, Ted Ts'o wrote:
+> On Fri, Mar 09, 2012 at 04:09:43PM -0800, Andreas Dilger wrote:
+>> 
+>> Just reading this on the plane, so I can't find the exact reference
+>> that I want, but a solution to this problem with htree was discussed
+>> a few years ago between myself and Coly Li.
+>> 
+>> The basic idea is that for large directories the inode allocator
+>> starts by selecting a range of (relatively) free inodes based on the
+>> current directory size, and then piecewise maps the hash value for
+>> the filename into this inode range and uses that as the goal inode.
 > 
-> This function searches a bitmap for the first zero bit within a range.
-> It checks if there is a bitmap backend specific implementation
-> available (if the relevant field in bitmap_ops is non-NULL). If not,
-> it uses a generic and slow method by repeatedly calling test_bmap() in
-> a loop. Also change ext2fs_new_inode() to use this new function.
-> 
-> This change in itself does not result in a large speedup, rather it
-> refactors the code in preparation for the introduction of a faster
-> find_first_zero() for bitarray based bitmaps.
+> I've heard you sketch out this idea before, but it's not been clean to
+> me how well it would work in practice.  The potential downside is that
+> it fragments the inode table, such that a single inode table block
+> might not have as many inodes stored in it as we might otherwise
+> would.  (Ideally, with 256 byte inodes, there would 16 of them in each
+> 4k block.)  This is something I'd definitely recommend modelling in
+> simulation to see how well it works first.
 
-Rather than making the bitmap searching loop more efficient, I've always thought
-it would be better to have an interface that iterates over the bitmap and returns
-the next set bit.  It is similar to what you implemented with ->find_first_zero(),
-but it would be better to have (IMHO) ->find_next_zero() and ->find_next_set().
+Very true, I was thinking this as I wrote the email.
 
-This allows the internal bitmap implementation to do efficient walking of the
-bitmap/tree/list and in cases where the bitmap is very sparse it can avoid a
-lot of scanning.
+> I'd observe that if we knew in advance how many files would be in a
+> particular directory (i.e., via a hint from userspace at mkdir time),
+> then it would be possible to optimize this case much more easily.  In
+> fact, if we had perfect knowledge --- if the userspace process could
+> feed us the exact set of filenames that will be used in the directory,
+> plus the exact file sizes for each of the file names --- then it would
+> be possible to allocate inode numbers and starting block numbers such
+> that when the files are read in readdir() order, the inode numbers and
+> block numbers would line up perfectly into sequential writes.  
 
-> Signed-off-by: Sami Liedes <sami.liedes@iki.fi>
-> 
-> diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-> index eb4e0f5..1da9532 100644
-> --- a/lib/ext2fs/alloc.c
-> +++ b/lib/ext2fs/alloc.c
-> @@ -109,7 +109,8 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
-> 	ext2_ino_t	dir_group = 0;
-> 	ext2_ino_t	i;
-> 	ext2_ino_t	start_inode;
-> -	ext2_ino_t	modulo;
-> +	ext2_ino_t	modulo, upto, first_zero;
-> +	errcode_t	err;
-> 
-> 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-> 
-> @@ -128,16 +129,27 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
-> 		return EXT2_ET_INODE_ALLOC_FAIL;
-> 	i = start_inode;
-> 	modulo = (i - 1) % EXT2_INODES_PER_GROUP(fs->super);
-> -
-> 	do {
-> 		if (modulo == 0)
-> 			check_inode_uninit(fs, map, (i - 1) /
-> 					   EXT2_INODES_PER_GROUP(fs->super));
-> 
-> -		if (!ext2fs_fast_test_inode_bitmap2(map, i))
-> +		upto = i + (EXT2_INODES_PER_GROUP(fs->super) - modulo);
-> +		if (i < start_inode && upto >= start_inode)
-> +			upto = start_inode - 1;
-> +		if (upto > fs->super->s_inodes_count)
-> +			upto = fs->super->s_inodes_count;
-> +
-> +		err = ext2fs_find_first_zero_inode_bitmap2(map, i, upto, &first_zero);
-> +		if (!err) {
-> +			i = first_zero;
-> 			break;
-> -		if (++modulo == EXT2_INODES_PER_GROUP(fs->super))
-> -			modulo = 0;
-> +		} else {
-> +			if (err != ENOENT)
-> +				return EXT2_ET_INODE_ALLOC_FAIL;
-> +			i = upto;
-> +		}
-> +
-> 		if (++i > fs->super->s_inodes_count) {
-> 			i = EXT2_FIRST_INODE(fs->super);
-> 			modulo = (i - 1) % EXT2_INODES_PER_GROUP(fs->super);
-> diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-> index 83a01e4..70caa86 100644
-> --- a/lib/ext2fs/bitops.h
-> +++ b/lib/ext2fs/bitops.h
-> @@ -188,6 +188,9 @@ extern void ext2fs_mark_block_bitmap_range2(ext2fs_block_bitmap bitmap,
-> 					    blk64_t block, unsigned int num);
-> extern void ext2fs_unmark_block_bitmap_range2(ext2fs_block_bitmap bitmap,
-> 					      blk64_t block, unsigned int num);
-> +extern errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
-> +						     __u64 start, __u64 end,
-> +						     __u64 *out);
-> 
-> /*
->  * The inline routines themselves...
-> @@ -593,6 +596,19 @@ _INLINE_ int ext2fs_fast_test_inode_bitmap2(ext2fs_inode_bitmap bitmap,
-> 					inode);
-> }
-> 
-> +_INLINE_ errcode_t ext2fs_find_first_zero_inode_bitmap2(ext2fs_inode_bitmap bitmap,
-> +							ext2_ino_t start,
-> +							ext2_ino_t end,
-> +							ext2_ino_t *out)
-> +{
-> +	__u64 o;
-> +	errcode_t rv = ext2fs_find_first_zero_generic_bmap((ext2fs_generic_bitmap) bitmap,
-> +							   start, end, &o);
-> +	if (!rv)
-> +		*out = o;
-> +	return rv;
-> +}
-> +
-> _INLINE_ blk64_t ext2fs_get_block_bitmap_start2(ext2fs_block_bitmap bitmap)
-> {
-> 	return ext2fs_get_generic_bmap_start((ext2fs_generic_bitmap) bitmap);
-> diff --git a/lib/ext2fs/bmap64.h b/lib/ext2fs/bmap64.h
-> index 288e1b6..f44d379 100644
-> --- a/lib/ext2fs/bmap64.h
-> +++ b/lib/ext2fs/bmap64.h
-> @@ -89,6 +89,11 @@ struct ext2_bitmap_ops {
-> 				    __u64 start, size_t num, void *out);
-> 	void (*clear_bmap)(ext2fs_generic_bitmap bitmap);
-> 	void (*print_stats)(ext2fs_generic_bitmap);
-> +
-> +	/* Find the first zero bit between start and end, inclusive.
-> +	 * May be NULL, in which case a generic function is used. */
-> +	errcode_t (*find_first_zero)(ext2fs_generic_bitmap bitmap,
-> +				     __u64 start, __u64 end, __u64 *out);
-> };
-> 
-> extern struct ext2_bitmap_ops ext2fs_blkmap64_bitarray;
-> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-> index fa8d7b7..b57df54 100644
-> --- a/lib/ext2fs/gen_bitmap64.c
-> +++ b/lib/ext2fs/gen_bitmap64.c
-> @@ -762,3 +762,31 @@ errcode_t ext2fs_convert_subcluster_bitmap(ext2_filsys fs,
-> 	*bitmap = cmap;
-> 	return 0;
-> }
-> +
-> +errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
-> +					      __u64 start, __u64 end, __u64 *out)
-> +{
-> +	int b;
-> +
-> +	if (bitmap->bitmap_ops->find_first_zero)
-> +		return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
-> +
-> +	if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
-> +		return EINVAL;
-> +
-> +	if (start < bitmap->start || end > bitmap->end || start > end) {
-> +		warn_bitmap(bitmap, EXT2FS_TEST_ERROR, start);
-> +		return EINVAL;
-> +	}
-> +
-> +	while (start <= end) {
-> +		b = bitmap->bitmap_ops->test_bmap(bitmap, start);
-> +		if (!b) {
-> +			*out = start;
-> +			return 0;
-> +		}
-> +		start++;
-> +	}
-> +
-> +	return ENOENT;
-> +}
+Except POSIX doesn't allow anything close to this at all.  Something like
+fallocate() for directories would at least give the kernel a hint about
+how large the directory is, but fewer userspace tools have this information
+than the file size (e.g. tar doesn't really store a "directory", just a
+bunch of pathnames that happen to have largely the same components).
 
+In the cases where size IS known in advance, or at least if the directory
+is going to be large, an allocation policy like mine would essentially
+"predict" where a uniformly distributed hash function will allocate the
+inodes for better reading order.
+
+> Of course, the trade off is that by optimizing for read order, the
+> write order will tend to get painful as well!  So there's a tension
+> here; making the read part of the benchmark faster will make the
+> process of writing the directory hierarchy require more seeks --- and
+> this assuming that you know file names and sizes ahead of time.
+> 
+> (Unless, of course, you play the same game that Hans Reiser did when
+> he cooked his "tar" benchmark by constructing a kernel source tarball
+> where the file order in the tarball was perfectly ordered to guarantee
+> the desired result given Reiser4's hash!  :-)
+
+No, I definitely don't want to go down that path...  Optimization for the
+sake of benchmarks is broken.
+
+> I suspect the best optimization for now is probably something like
+> this:
+> 
+> 1) Since the vast majority of directories are less than (say) 256k
+> (this would be a tunable value),
+
+Yes, this would be reasonable, and I suspect could be a lot larger than
+256kB.  Probably variable based on the amount of RAM is reasonable.
+Looking at http://www.pdsi-scidac.org/fsstats/ (which is listed as HPC,
+but is a bit old and the filesystems aren't much larger than large SATA
+drives today :-) having a 1MB cache would handle virtually every directory
+in that survey (99.999%).
+
+The unfortunate part is that this will help small directories, where the
+problem is already largely hidden by readahead and the page cache, but it
+doesn't help at all for huge directories that do not fit into cache.  That
+is where my approach would do well, but the difficulty is in knowing at
+create time how large the directory will be.
+
+> for directories which are less than
+> this threshold size, the entire directory is sucked in after the first
+> readdir() after an opendir() or rewinddir().  The directory contents
+> are then sorted by inode number (or loaded into an rbtree ordered by
+> inode number), and returned back to userspace in the inode order via
+> readdir().  The directory contents will be released on a closedir() or
+> rewinddir().
+
+What would the telldir() cookie be in this case?  The inode number, or
+the file descriptor?  What happens if the directory size crosses the
+threshold while the cache is in use?  I guess in that case the cache
+could still be used (according to POSIX) because readdir() doesn't need
+to report entries added after it started.
+
+> 2) For files larger than this size, we don't want to hold that much
+> kernel memory during an opendir(), so fall back to ext4's current
+> scheme.   
+> 
+> 3) If we want do to better than that, we could create new flag
+> O_NOTELLDIR, which can be set via fcntl.  (This way programs can use
+> do something like "dir = opendir(..); fd = dirfd(dir); fcntl(fd,
+> SETFL, O_NOTELLDIR);").  For files who know they don't need to use
+> telldir/seekdir, they can set this flag, which will allow the above
+> optimization to be used on large files.
+
+Probably a bit messy.  Since telldir() is rarely used outside NFS (AFAIK,
+though I recall something dumb happening in GNU libc at one point that
+was doing a telldir() and seekdir() for every entry) we could assume no
+telldir() users until it actually was used on the filesystem, and that
+could set a hint in the superblock EXT2_FLAGS section.  The only userspace
+programs I could find that call telldir() are smbd and nmbd (and related
+tools) and perl (not sure when or why).
+
+> The other thing we could potentially do, if we really cared about this
+> issue in ext3/4, would be to define whole new (incompatible) storing
+> the directory indexing format which avoided this problem.  It would be
+> an INCOMPAT feature, so it would be a while before it could get used
+> in practice, which is why I'm not entirely convinced it's worth it ---
+> especially since I suspect just doing (1) would solve the problem for
+> the vast majority of ext4's users.
+
+Agreed.  I don't know that we need to go to these extremes.
 
 Cheers, Andreas
-
+--
+Andreas Dilger                       Whamcloud, Inc.
+Principal Lustre Engineer            http://www.whamcloud.com/
 
 
 
