@@ -1,147 +1,137 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: getdents - ext4 vs btrfs performance
-Date: Sun, 11 Mar 2012 04:30:37 -0600
-Message-ID: <9709DE62-CE25-41C4-A33C-63336B51DC5E@whamcloud.com>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com> <BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com> <20120310044804.GB5652@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Jacek Luczak <difrost.kernel@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120310044804.GB5652@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: delayed extent tree test cases
+Date: Sun, 11 Mar 2012 22:12:08 +0800
+Message-ID: <CAGBYx2aQKPWCu5tNzDxQM5Jy5bO-hgvE7Vsnd3kCYzr=MeOJFQ@mail.gmail.com>
+References: <4F5992B6.7070105@linux.vnet.ibm.com>
+	<CAGBYx2Y8mJJ05=XcTYUVK07deS2GFUCrTVJoZy9Jaj7958OsEA@mail.gmail.com>
+	<4F59A599.4050400@linux.vnet.ibm.com>
+	<CAGBYx2binmZZnOsEva0e_vxWhzFSv6gVnU35yRVyWTSXGXKp=A@mail.gmail.com>
+	<4F5A3277.40506@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>,
+	"Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@linux.vnet.ibm.com>
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:47412 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752743Ab2CKOMJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Mar 2012 10:12:09 -0400
+Received: by iagz16 with SMTP id z16so5367506iag.19
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Mar 2012 07:12:08 -0700 (PDT)
+In-Reply-To: <4F5A3277.40506@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-03-09, at 9:48 PM, Ted Ts'o wrote:
-> On Fri, Mar 09, 2012 at 04:09:43PM -0800, Andreas Dilger wrote:
->> 
->> Just reading this on the plane, so I can't find the exact reference
->> that I want, but a solution to this problem with htree was discussed
->> a few years ago between myself and Coly Li.
->> 
->> The basic idea is that for large directories the inode allocator
->> starts by selecting a range of (relatively) free inodes based on the
->> current directory size, and then piecewise maps the hash value for
->> the filename into this inode range and uses that as the goal inode.
-> 
-> I've heard you sketch out this idea before, but it's not been clean to
-> me how well it would work in practice.  The potential downside is that
-> it fragments the inode table, such that a single inode table block
-> might not have as many inodes stored in it as we might otherwise
-> would.  (Ideally, with 256 byte inodes, there would 16 of them in each
-> 4k block.)  This is something I'd definitely recommend modelling in
-> simulation to see how well it works first.
+>>> get it to mirror the existing extents. =A0That way we will know wha=
+t
+>>> extents
+>>> there are to lock before we start doing things with the current ext=
+ent
+>>> tree.
+>>>
+>>> When I think about all the ins and outs of trying to keep the trees=
+ in
+>>> sync,
+>>
+>> Actually, delayed extents is also synced. =A0This can be easily achi=
+eved
+>> by protecting operations on extent tree by i_data_sem.
+>
+> Ah, sorry I could have phrased that better. =A0What I meant was tryin=
+g to keep
+> the new status tree in sync with the on disk tree so that the status =
+tree
+> mirrors the same allocated extents in the on disk tree.
+>
+>>
+>> I am a little confused by partial extent here. =A0I am guessing you
+>> meant extent rb-tree in memory is the mirror of extent tree in inode
+>> which is stored on disk. =A0Am I right?
+>>
+>> In my head, the extent tree used by extent lock traces logical
+>> extents, for example, a process locks a range of a file and it does
+>> not care the physical blocks. =A0 =A0So we just need to record logic=
+al
+>> extent without physical blocks infos. =A0Then locking on an extent m=
+ay
+>> trigger splitting on an extent while unlocking may trigger merging o=
+n
+>> extents. =A0Am I right?
+>>
+>> Yongqiang.
+>>
+>
+> Well initially I was doing something similar to that, where we only l=
+ock
+> logical ranges that may or may not be "extent aligned" with the on di=
+sk
+> extents. =A0But the concern that I have though is that we may end up =
+with
+> processes that have the same on disk extent locked. =A0For example, s=
+ay
+> process A locks a logical range of blocks, 1-5 and process B locks a =
+logical
+> range of blocks 6-10. =A0But if the on disk extents are actually 1-2,=
+ 3-7 and
+> 8-10, we have a situation where both processes own a piece of the 3-7
+> extent, but they wont know it until they get down into the on disk ex=
+tents.
+> =A0And it seems to me they should really have the whole on disk exten=
+t locked
+> before they do any on disk splitting. =A0And now we have a deadlock c=
+ondition
+> since one of them is going to have to give up their lock before the o=
+ther
+> can proceed. =A0So that's when I started thinking maybe we need to ma=
+ke sure
+> that the locked ranges are extent aligned. =A0Does that make sense?
+Extent lock is provided to user space process not to kernel, right?
+An process acquires extent lock, so that other processes can not
+access the locked extent.  In other words, extent lock is used to
+protect data in file, not internal data structure of filesystem.  What
+we need to guarantee is that data in the locked extent is not changed,
+while extent tree on disk can be changed.
 
-Very true, I was thinking this as I wrote the email.
+So maybe we just need to wait lock freed before truncate and puch
+hole.  Are there any other operations changing data of a file?
 
-> I'd observe that if we knew in advance how many files would be in a
-> particular directory (i.e., via a hint from userspace at mkdir time),
-> then it would be possible to optimize this case much more easily.  In
-> fact, if we had perfect knowledge --- if the userspace process could
-> feed us the exact set of filenames that will be used in the directory,
-> plus the exact file sizes for each of the file names --- then it would
-> be possible to allocate inode numbers and starting block numbers such
-> that when the files are read in readdir() order, the inode numbers and
-> block numbers would line up perfectly into sequential writes.  
 
-Except POSIX doesn't allow anything close to this at all.  Something like
-fallocate() for directories would at least give the kernel a hint about
-how large the directory is, but fewer userspace tools have this information
-than the file size (e.g. tar doesn't really store a "directory", just a
-bunch of pathnames that happen to have largely the same components).
+=A0Maybe
+> there is something I am overlooking that would help simplify.
+Ok.  Now we have two extent trees - the first one is used to implement
+extent locking while the second one is used to map logical blocks to
+physical blocks.  If we protect operations on the two trees by
+i_data_sem, then two trees are synced.  For example, given that a
+process wants to modify a tree, it has to acquire i_data_sem, then no
+other processes can access any tree.
 
-In the cases where size IS known in advance, or at least if the directory
-is going to be large, an allocation policy like mine would essentially
-"predict" where a uniformly distributed hash function will allocate the
-inodes for better reading order.
 
-> Of course, the trade off is that by optimizing for read order, the
-> write order will tend to get painful as well!  So there's a tension
-> here; making the read part of the benchmark faster will make the
-> process of writing the directory hierarchy require more seeks --- and
-> this assuming that you know file names and sizes ahead of time.
-> 
-> (Unless, of course, you play the same game that Hans Reiser did when
-> he cooked his "tar" benchmark by constructing a kernel source tarball
-> where the file order in the tarball was perfectly ordered to guarantee
-> the desired result given Reiser4's hash!  :-)
+Maybe I am overlooking something.:-)
 
-No, I definitely don't want to go down that path...  Optimization for the
-sake of benchmarks is broken.
+Yongqiang.
+>
+> Allison Henderson
+>
+>>
+>>>
+>>> Thx!
+>>> Allison Henderson
+>>>
+>>
+>>
+>>
+>
 
-> I suspect the best optimization for now is probably something like
-> this:
-> 
-> 1) Since the vast majority of directories are less than (say) 256k
-> (this would be a tunable value),
 
-Yes, this would be reasonable, and I suspect could be a lot larger than
-256kB.  Probably variable based on the amount of RAM is reasonable.
-Looking at http://www.pdsi-scidac.org/fsstats/ (which is listed as HPC,
-but is a bit old and the filesystems aren't much larger than large SATA
-drives today :-) having a 1MB cache would handle virtually every directory
-in that survey (99.999%).
 
-The unfortunate part is that this will help small directories, where the
-problem is already largely hidden by readahead and the page cache, but it
-doesn't help at all for huge directories that do not fit into cache.  That
-is where my approach would do well, but the difficulty is in knowing at
-create time how large the directory will be.
-
-> for directories which are less than
-> this threshold size, the entire directory is sucked in after the first
-> readdir() after an opendir() or rewinddir().  The directory contents
-> are then sorted by inode number (or loaded into an rbtree ordered by
-> inode number), and returned back to userspace in the inode order via
-> readdir().  The directory contents will be released on a closedir() or
-> rewinddir().
-
-What would the telldir() cookie be in this case?  The inode number, or
-the file descriptor?  What happens if the directory size crosses the
-threshold while the cache is in use?  I guess in that case the cache
-could still be used (according to POSIX) because readdir() doesn't need
-to report entries added after it started.
-
-> 2) For files larger than this size, we don't want to hold that much
-> kernel memory during an opendir(), so fall back to ext4's current
-> scheme.   
-> 
-> 3) If we want do to better than that, we could create new flag
-> O_NOTELLDIR, which can be set via fcntl.  (This way programs can use
-> do something like "dir = opendir(..); fd = dirfd(dir); fcntl(fd,
-> SETFL, O_NOTELLDIR);").  For files who know they don't need to use
-> telldir/seekdir, they can set this flag, which will allow the above
-> optimization to be used on large files.
-
-Probably a bit messy.  Since telldir() is rarely used outside NFS (AFAIK,
-though I recall something dumb happening in GNU libc at one point that
-was doing a telldir() and seekdir() for every entry) we could assume no
-telldir() users until it actually was used on the filesystem, and that
-could set a hint in the superblock EXT2_FLAGS section.  The only userspace
-programs I could find that call telldir() are smbd and nmbd (and related
-tools) and perl (not sure when or why).
-
-> The other thing we could potentially do, if we really cared about this
-> issue in ext3/4, would be to define whole new (incompatible) storing
-> the directory indexing format which avoided this problem.  It would be
-> an INCOMPAT feature, so it would be a while before it could get used
-> in practice, which is why I'm not entirely convinced it's worth it ---
-> especially since I suspect just doing (1) would solve the problem for
-> the vast majority of ext4's users.
-
-Agreed.  I don't know that we need to go to these extremes.
-
-Cheers, Andreas
+--=20
+Best Wishes
+Yongqiang Yang
 --
-Andreas Dilger                       Whamcloud, Inc.
-Principal Lustre Engineer            http://www.whamcloud.com/
-
-
-
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
