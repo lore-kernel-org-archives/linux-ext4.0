@@ -1,101 +1,71 @@
-From: Sami Liedes <sami.liedes@iki.fi>
-Subject: Re: [PATCH 4/5] libext2fs: Implement
- ext2fs_find_first_zero_generic_bmap().
-Date: Mon, 12 Mar 2012 21:15:14 +0200
-Message-ID: <20120312191514.GS6961@sli.dy.fi>
-References: <20120310213321.GK6961@sli.dy.fi>
- <20120310213740.GO6961@sli.dy.fi>
- <5E845FD5-30E4-47A1-AF8E-70A288E3442D@dilger.ca>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH 13/54] e2fsck: Verify inode bitmap checksum
+Date: Mon, 12 Mar 2012 14:25:37 -0700
+Message-ID: <20120312212537.GL15164@tux1.beaverton.ibm.com>
+References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com> <20120306235844.11945.9126.stgit@elm3b70.beaverton.ibm.com> <20120310054657.GA1048@thunk.org> <20120311021150.GB1048@thunk.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="+d/sD+4Memv8CeGA"
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+	Coly Li <colyli@gmail.com>
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-2.hut.fi ([130.233.228.92]:51379 "EHLO smtp-2.hut.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755279Ab2CLTPW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2012 15:15:22 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:59849 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932115Ab2CLV12 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2012 17:27:28 -0400
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Mon, 12 Mar 2012 15:27:22 -0600
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 28E97C40002
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 15:26:18 -0600 (MDT)
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2CLPvGX243490
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 15:26:02 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2CLPhVG027251
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 15:25:47 -0600
 Content-Disposition: inline
-In-Reply-To: <5E845FD5-30E4-47A1-AF8E-70A288E3442D@dilger.ca>
+In-Reply-To: <20120311021150.GB1048@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Mar 10, 2012 at 09:11:50PM -0500, Ted Ts'o wrote:
+> On Sat, Mar 10, 2012 at 12:46:57AM -0500, Ted Ts'o wrote:
+> > 
+> > This patch just looks wrong.  RO_COMPAT_GDT_CSUM is the old feature,
+> > and doesn't imply that there will be a checksum in the inode bitmap
+> > block.  Shouldn't this be RO_COMPAT_METADATA_CSUM?
+> 
+> Correction; the big problem here is that check_inode_bitmap_checksum()
+> (and in the next e2fsck page, check_block_bitmap_checksum()) are are
+> doing their thing without actually checking for
+> RO_COMPAT_METADATA_CSUM).  These code paths shouldn't be getting
+> activated at all for non-METADATA_CSUM file systems.  But they are.
 
---+d/sD+4Memv8CeGA
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+You're right, the function could be optimized to exit early if metadata_csum
+isn't set.  The bitmap verify function won't flag errors when metadata_csum is
+unset, at least, but I suppose it is unecessary looping and IO.
 
-On Sun, Mar 11, 2012 at 03:51:05AM -0600, Andreas Dilger wrote:
-> Rather than making the bitmap searching loop more efficient, I've always =
-thought
-> it would be better to have an interface that iterates over the bitmap and=
- returns
-> the next set bit.  It is similar to what you implemented with ->find_firs=
-t_zero(),
-> but it would be better to have (IMHO) ->find_next_zero() and ->find_next_=
-set().
+--D
 
-I've been thinking about this. Such an interface might be a good idea,
-and I could implement it and a corresponding backend implementation
-for the bit array backend, but I don't think ext2fs_new_inode() could
-properly exercise it and I'm hesitant to submit code that isn't tested
-by being actually properly used somewhere. I will still do it if
-there's a general consensus that it's a good idea.
+> (And the check_block_bitmap_checksum() function is using
+> EXT2_BLOCKS_PER_GROUP where it needs to use EXT2_CLUSTERS_PER_GROUP or
+> it will end up corrupting memory which will cause the bigalloc-related
+> test f_dup_ba blow up.  But again, this code path shouldn't have been
+> getting activated in the first place.)
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-It could be something along the lines of
-
-* type ext2fs_bitmap_iterator, opaque to calling code, mainly a magic
-  number and backend-specific private data. In the bitarray case it
-  could just be the number of the bit pointed to and the end of the
-  range to iterate.
-
-* bool bitmap_ops->deref_iterator(ext2fs_generic_bitmap, ext2fs_bitmap_iter=
-ator)
-
-* ext2fs_bitmap_iterator ops->create_iterator()
-                            ->create_ranged_iterator(__u64 start, __u64 end)
-                            ->free_iterator(ext2fs_bitmap_iterator)=20
-
-* __u64 bitmap_ops->iterator_position(...)
-
-* errcode_t ops->find_next_zero(..., __u64 *pos),
-               ->find_next_set(..., __u64 *pos)
-  * These would both increment the iterator and, if pos !=3D NULL, set
-    *pos to the new bit position
-
-* Modifying a bitmap invalidates all its iterators in such a way that
-  the only legal operation for them afterwards is ->free_iterator()
-
-In the case of ext2fs_new_inode(), the function does not actually
-iterate through all zero bits; it really only wants to find the first
-zero in a certain range, after which it returns. So for simplicity of
-use (and efficiency) I think it still makes sense to have
-->find_first_zero() too.
-
-	Sami
-
---+d/sD+4Memv8CeGA
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBCgAGBQJPXktCAAoJEKLT589SE0a08HEQAMjMFYI2+9bzLM+RTrm7E7m2
-FIeeMUU+TeC9v1ZOTh4OWle78YxfuKP8HAet69R5IHuW+rtI4adNMaERmRVY1kR3
-DKjvQywbYI/yyxwnwW2Olcfy/TYpqwL9+9EO/kE7IvVC/xvFupDSDBx2Sd0xhxKh
-670ZlwIB1b/TKJwCXGnawrr9S8o2DoJ7gZmYiuDtHzTWM5Qj3SEkokk4ulWwDLx9
-nlSZHW941cxY0ZrckV18R7Qqzprtln6TyiFB4+AIlVJC4iyvyZ4icm6S4965xL8C
-zQyi7ue1ay0dBc9vMRsFBFwiSmqGMvFx4k+2/aIY0gX8VixlHDFHkIbIL+mEvMp6
-bkhivXhNb2nKv1lQjTplo1RttB9bYjL+jx7z104wF7xKjAA/V+9zbXwwHslnHD2d
-zBwUIBSO5AfsgpWUTM3UPVGrlUr7IHpKmd48qPaFo5ksoASKwFSfcTLvcRCgZ0ty
-LLCZ8u8j2N7FTn36Pr+2ZPOu1myL+uhtYJHIUXO7NWBv9p6GJ8BsHHSz+3yMyLzV
-RCSJvIS1eP/s8ypwQmCAZOIqlwdF4hFJpuX4W/lgLCtbg6Uidoqnai6IKBjGO945
-pdwYf6PVjnHrcxGhHDbiioDp/9w3lk54KXnkNcqHPULC78msx3gWUxnElGVxfdPe
-mF5OAMmxBcHDicMNPKHd
-=8yAE
------END PGP SIGNATURE-----
-
---+d/sD+4Memv8CeGA--
