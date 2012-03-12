@@ -1,63 +1,80 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/4] e2fsck: Discard only unused parts of inode table
-Date: Mon, 12 Mar 2012 08:26:50 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203120821290.5543@dhcp-27-109.brq.redhat.com>
-References: <1330933776-2696-1-git-send-email-lczerner@redhat.com> <20120311192705.GE1048@thunk.org>
+Subject: Re: [PATCH 1/3] e2fsck: remove last argument from
+ e2fsck_discard_blocks()
+Date: Mon, 12 Mar 2012 08:30:37 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203120829470.5543@dhcp-27-109.brq.redhat.com>
+References: <20120311191836.GD1048@thunk.org> <1331494393-21577-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	lczerner@redhat.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48783 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9149 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751928Ab2CLH0z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2012 03:26:55 -0400
-In-Reply-To: <20120311192705.GE1048@thunk.org>
+	id S1751928Ab2CLHam (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Mar 2012 03:30:42 -0400
+In-Reply-To: <1331494393-21577-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 11 Mar 2012, Ted Ts'o wrote:
+On Sun, 11 Mar 2012, Theodore Ts'o wrote:
 
-> On Mon, Mar 05, 2012 at 08:49:33AM +0100, Lukas Czerner wrote:
-> > @@ -435,6 +481,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
-> >  	int		skip_group = 0;
-> >  	int		redo_flag = 0;
-> >  	io_manager	manager = ctx->fs->io->manager;
-> > +	unsigned long long	first_free = fs->super->s_inodes_per_group + 1;
+> From: Lukas Czerner <lczerner@redhat.com>
 > 
-> This doesn't need to be an unsigned long long; an "int" will do just
-> as well.
+> Simple code cleanup.
 > 
-> > +			/*
-> > +			 * If the last inode is free, we can discard it as well.
-> > +			 */
-> > +			if (inodes >= first_free)
-> > +				e2fsck_discard_inodes(ctx, group, first_free,
-> > +						      inodes - first_free + 1);
-> 
-> There's no guarantee the last inode is free here.  This needs to read:
-> 
-> 			if (!bitmap && inodes >= first_free)
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Hi Ted,
-
-if the last inode is not free then:
-
-	first_free = fs->super->s_inodes_per_group + 1;
-
-so the condition
-
-	if (inodes >= first_free)
-
-would be false. Otherwise it is guaranteed that the last inode is free. But
-I agree that your change makes it more obvious.
-
-Thanks!
+Looks good. Thanks!
 -Lukas
 
+> ---
+>  e2fsck/pass5.c |   10 +++++-----
+>  1 files changed, 5 insertions(+), 5 deletions(-)
 > 
-> I'll fix this up in my version of the patches.
+> diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+> index 9a6a4b0..ca438cb 100644
+> --- a/e2fsck/pass5.c
+> +++ b/e2fsck/pass5.c
+> @@ -74,8 +74,8 @@ void e2fsck_pass5(e2fsck_t ctx)
+>  	print_resource_track(ctx, _("Pass 5"), &rtrack, ctx->fs->io);
+>  }
+>  
+> -static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+> -				  blk64_t start, blk64_t count)
+> +static void e2fsck_discard_blocks(e2fsck_t ctx, blk64_t start,
+> +				  blk64_t count)
+>  {
+>  	ext2_filsys fs = ctx->fs;
+>  
+> @@ -85,7 +85,7 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
+>  	 * not enough to fix the problem, hence it is not safe to run discard
+>  	 * in this case.
+>  	 */
+> -	if (ext2fs_test_changed(ctx->fs))
+> +	if (ext2fs_test_changed(fs))
+>  		ctx->options &= ~E2F_OPT_DISCARD;
+>  
+>  	if (!(ctx->options & E2F_OPT_NO) &&
+> @@ -137,7 +137,7 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
+>  	num = count / EXT2_INODES_PER_BLOCK(fs->super);
+>  
+>  	if (num > 0)
+> -		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
+> +		e2fsck_discard_blocks(ctx, blk, num);
+>  }
+>  
+>  #define NO_BLK ((blk64_t) -1)
+> @@ -379,7 +379,7 @@ redo_counts:
+>  				first_free = i;
+>  		} else {
+>  			if (i > first_free)
+> -				e2fsck_discard_blocks(ctx, manager, first_free,
+> +				e2fsck_discard_blocks(ctx, first_free,
+>  						      (i - first_free));
+>  			first_free = ext2fs_blocks_count(fs->super);
+>  		}
 > 
-> 					- Ted
-> 
+
+-- 
