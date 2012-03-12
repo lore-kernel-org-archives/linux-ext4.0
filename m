@@ -1,75 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 3/3] e2fsck: optimize CPU usage in
- check_{block,inode}_bitmaps()
-Date: Mon, 12 Mar 2012 08:44:45 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203120844340.5543@dhcp-27-109.brq.redhat.com>
-References: <20120311191836.GD1048@thunk.org> <1331494393-21577-1-git-send-email-tytso@mit.edu> <1331494393-21577-3-git-send-email-tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext3/4, btrfs, ocfs2: How to assure that
+ cleancache_invalidate_fs is called on every superblock free
+Date: Mon, 12 Mar 2012 14:38:25 +0100
+Message-ID: <20120312133825.GF5998@quack.suse.cz>
+References: <CACQs63L2wfXKaD5sH6OOV+Bm_+37F3QOdt1QMFbWnB9AE4iCpA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	lczerner@redhat.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	dan.magenheimer@oracle.com, fschmaus@gmail.com, linux-mm@kvack.org,
+	ilendir@googlemail.com, sjenning@linux.vnet.ibm.com,
+	konrad.wilk@oracle.com, i4passt@lists.informatik.uni-erlangen.de,
+	ngupta@vflare.org
+To: Andor Daam <andor.daam@googlemail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4322 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34667 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752231Ab2CLHou (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2012 03:44:50 -0400
-In-Reply-To: <1331494393-21577-3-git-send-email-tytso@mit.edu>
+	id S1755395Ab2CLNi2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Mar 2012 09:38:28 -0400
+Content-Disposition: inline
+In-Reply-To: <CACQs63L2wfXKaD5sH6OOV+Bm_+37F3QOdt1QMFbWnB9AE4iCpA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 11 Mar 2012, Theodore Ts'o wrote:
+  Hello,
 
-> The boolean expression (!skip_group || csum_flag) is always true,
-> since if csum_flag is FALSE, skip_group must also be FALSE.  Hence, we
-> can just remove the expression from the conditional altogether, thus
-> simplifying the code and making it easier to read/understand.
-> 
-> Also, in the case where the bit is set in the bitmap, there's no point
-> repeatedly setting first_free to be ext2fs_block_count(fs->super).
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+On Fri 09-03-12 14:40:22, Andor Daam wrote:
+> Is it ever possible for a superblock for a mounted filesystem to be
+> free'd without a previous call to unmount the filesystem?
+  No, I don't think so (well, except for cases where we do not manage to
+fully setup the superblock). But be aware that mount/umount need not be
+really the entry points you are looking for since filesystem can be mounted
+several times. Rather deactivate_locked_supers() is the place you are
+looking for...
 
-Looks good, thanks!
--Lukas
-
-> ---
->  e2fsck/pass5.c |   11 +++++------
->  1 files changed, 5 insertions(+), 6 deletions(-)
+> I need to be certain that the function cleancache_invalidate_fs, which is
+> at the moment called by deactivate_locked_super (fs/super.c) [1], is
+> called before every free on a superblock of cleancache-enabled
+> filesystems.  Is this already the case or are there situations in which
+> this does not happen?
 > 
-> diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-> index e25f080..c121d92 100644
-> --- a/e2fsck/pass5.c
-> +++ b/e2fsck/pass5.c
-> @@ -372,15 +372,14 @@ redo_counts:
->  		ctx->options &= ~E2F_OPT_DISCARD;
->  
->  	do_counts:
-> -		if (!bitmap && (!skip_group || csum_flag)) {
-> +		if (!bitmap) {
->  			group_free++;
->  			free_blocks++;
->  			if (first_free > i)
->  				first_free = i;
-> -		} else {
-> -			if (i > first_free)
-> -				e2fsck_discard_blocks(ctx, first_free,
-> -						      (i - first_free));
-> +		} else if (i > first_free) {
-> +			e2fsck_discard_blocks(ctx, first_free,
-> +					      (i - first_free));
->  			first_free = ext2fs_blocks_count(fs->super);
->  		}
->  		blocks ++;
-> @@ -627,7 +626,7 @@ do_counts:
->  						      inodes - first_free);
->  				first_free = fs->super->s_inodes_per_group + 1;
->  			}
-> -		} else if (!skip_group || csum_flag) {
-> +		} else {
->  			group_free++;
->  			free_inodes++;
->  			if (first_free > inodes)
-> 
+> It would be interesting to know this, as we are planning to have
+> cleancache save pointers to superblocks of every mounted
+> cleancache-enabled filesystem [2] and it would be fatal if a
+> superblock is free'd without cleancache being notified.
 
+								Honza
 -- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
