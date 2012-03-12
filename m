@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 01/54] libext2fs: Read and write full size inodes
-Date: Mon, 12 Mar 2012 15:23:25 -0700
-Message-ID: <20120312222325.GM15164@tux1.beaverton.ibm.com>
-References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com> <20120306235727.11945.11066.stgit@elm3b70.beaverton.ibm.com> <20120309233631.GE5635@thunk.org>
+Subject: Re: [PATCH 13/54] e2fsck: Verify inode bitmap checksum
+Date: Mon, 12 Mar 2012 15:30:10 -0700
+Message-ID: <20120312223010.GO15164@tux1.beaverton.ibm.com>
+References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com> <20120306235844.11945.9126.stgit@elm3b70.beaverton.ibm.com> <20120310054657.GA1048@thunk.org> <20120311021150.GB1048@thunk.org> <20120312212537.GL15164@tux1.beaverton.ibm.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,83 +15,69 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Coly Li <colyli@gmail.com>
 To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:58120 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757548Ab2CLWYY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2012 18:24:24 -0400
+Received: from e32.co.us.ibm.com ([32.97.110.150]:59535 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753135Ab2CLWaU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2012 18:30:20 -0400
 Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 12 Mar 2012 16:24:23 -0600
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 5FF08C90058
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:23:28 -0400 (EDT)
+	Mon, 12 Mar 2012 16:30:20 -0600
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 18B46C9005A
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:30:16 -0400 (EDT)
 Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2CMNSF5254190
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:23:28 -0400
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2CMUFQA1908904
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:30:15 -0400
 Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2CMNQxC002326
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 19:23:28 -0300
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2CMUBno027407
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 19:30:14 -0300
 Content-Disposition: inline
-In-Reply-To: <20120309233631.GE5635@thunk.org>
+In-Reply-To: <20120312212537.GL15164@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 09, 2012 at 06:36:31PM -0500, Ted Ts'o wrote:
-> On Tue, Mar 06, 2012 at 03:57:27PM -0800, Darrick J. Wong wrote:
-> > Change libext2fs to read and write full-size inodes in preparation for the
-> > metadata checksumming patchset, which will require this.  Due to ABI
-> > compatibility requirements, this change must be hidden from client programs.
+On Mon, Mar 12, 2012 at 02:25:37PM -0700, Darrick J. Wong wrote:
+> On Sat, Mar 10, 2012 at 09:11:50PM -0500, Ted Ts'o wrote:
+> > On Sat, Mar 10, 2012 at 12:46:57AM -0500, Ted Ts'o wrote:
+> > > 
+> > > This patch just looks wrong.  RO_COMPAT_GDT_CSUM is the old feature,
+> > > and doesn't imply that there will be a checksum in the inode bitmap
+> > > block.  Shouldn't this be RO_COMPAT_METADATA_CSUM?
 > > 
-> > Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+> > Correction; the big problem here is that check_inode_bitmap_checksum()
+> > (and in the next e2fsck page, check_block_bitmap_checksum()) are are
+> > doing their thing without actually checking for
+> > RO_COMPAT_METADATA_CSUM).  These code paths shouldn't be getting
+> > activated at all for non-METADATA_CSUM file systems.  But they are.
 > 
-> After applying this first patch, the e2fsprogs regression test suite
-> blew up spectacularly caused by the malloc-managed free lists pointers
-> getting corrupted:
+> You're right, the function could be optimized to exit early if metadata_csum
+> isn't set.  The bitmap verify function won't flag errors when metadata_csum is
+> unset, at least, but I suppose it is unecessary looping and IO.
 > 
-> *** glibc detected *** /usr/projects/e2fsprogs/e2fsprogs/build/debugfs/debugfs: free(): invalid next size (fast): 0x000000000063f9d0 ***
-> ======= Backtrace: =========
-> /lib/libc.so.6(+0x77806)[0x7ffff6e4a806]
-> /lib/libc.so.6(cfree+0x73)[0x7ffff6e510d3]
-> /usr/projects/e2fsprogs/e2fsprogs/build/lib/libext2fs.so.2(ext2fs_free_mem+0x30)[0x7ffff7bb562f]
+> --D
 > 
-> 
-> Interestingly, valgrind was *not* useful in finding the problem;
-> apparently it was getting confused by the ext2fs_get_mem()
-> abstraction, which is unfortunate.  I'll have to look into that at
-> some point.
-> 
-> Anyway, the problem was in ext2fs_write_inode_full(), and it could be
-> replicated by simply writing to an inode, i.e.
-> 
->    mke2fs  -F -O resize_inode -o Linux -b 1024 /tmp/image  16384
->    debugfs -w -R "set_inode_field <7> mtime now" /tmp/image
-> 
-> is enough to trigger it.  The problem is with a 128 byte ext2 file
-> system, ext2fs_write_inode_full() is passed a large inode and so
-> bufsize is 156, but EXT2_INODE_SIZE(fs->super) is 128.  So at
-> lib/ext2fs/inode.c:698:
-> 
-> 	memcpy(w_inode, inode, bufsize);
-> 
-> you end up writing 156 bytes into a memory buffer that was allocated
-> to a size of 128 bytes.  Hilarity ensues.
-> 
-> The fix is relatively simple:
-> 
-> 	memcpy(w_inode, inode, (bufsize > length) ? length : bufsize);
-> 
-> Anyway, this is *why* running the regression tests are important.
-> (And why projects which don't have regression test suites are just
-> asking for trouble.)
-> 
-> They catch all sorts of interesting oversights like this....
+> > (And the check_block_bitmap_checksum() function is using
+> > EXT2_BLOCKS_PER_GROUP where it needs to use EXT2_CLUSTERS_PER_GROUP or
+> > it will end up corrupting memory which will cause the bigalloc-related
+> > test f_dup_ba blow up.  But again, this code path shouldn't have been
+> > getting activated in the first place.)
 
-Hmm, good catch.  To be honest I wasn't aware that there /was/ a make check.
-I'll contribute my checksum tests when I figure out how to integrate them.
-
-I'll send out patches to fix the other 45 failures this afternoon; I traced
-most of them to a mistake I made in e2fsck/rehash.c.
+As for this bit -- I should have paid closer attention when bigalloc went in.
+I'll send out a corrected patch.
 
 --D
+> > 
+> > 					- Ted
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
