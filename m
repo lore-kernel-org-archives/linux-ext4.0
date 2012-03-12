@@ -1,20 +1,19 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/3] e2fsck: remove last argument from
- e2fsck_discard_blocks()
-Date: Mon, 12 Mar 2012 08:30:37 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203120829470.5543@dhcp-27-109.brq.redhat.com>
-References: <20120311191836.GD1048@thunk.org> <1331494393-21577-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 2/3] e2fsck: do not forget to discard last block group
+Date: Mon, 12 Mar 2012 08:31:43 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203120830480.5543@dhcp-27-109.brq.redhat.com>
+References: <20120311191836.GD1048@thunk.org> <1331494393-21577-1-git-send-email-tytso@mit.edu> <1331494393-21577-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	lczerner@redhat.com
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9149 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11572 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751928Ab2CLHam (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Mar 2012 03:30:42 -0400
-In-Reply-To: <1331494393-21577-1-git-send-email-tytso@mit.edu>
+	id S1753614Ab2CLHbr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Mar 2012 03:31:47 -0400
+In-Reply-To: <1331494393-21577-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -22,59 +21,41 @@ On Sun, 11 Mar 2012, Theodore Ts'o wrote:
 
 > From: Lukas Czerner <lczerner@redhat.com>
 > 
-> Simple code cleanup.
+> Previously when running e2fsck with '-E discard' argument the end of
+> the last group has not been discarded. This patch fixes it so we
+> always discard the end of the last group if needed.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Looks good. Thanks!
+Looks good. Thanks for splitting the patch, it makes sense.
+
 -Lukas
 
 > ---
->  e2fsck/pass5.c |   10 +++++-----
->  1 files changed, 5 insertions(+), 5 deletions(-)
+>  e2fsck/pass5.c |    9 +++++++++
+>  1 files changed, 9 insertions(+), 0 deletions(-)
 > 
 > diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-> index 9a6a4b0..ca438cb 100644
+> index ca438cb..e25f080 100644
 > --- a/e2fsck/pass5.c
 > +++ b/e2fsck/pass5.c
-> @@ -74,8 +74,8 @@ void e2fsck_pass5(e2fsck_t ctx)
->  	print_resource_track(ctx, _("Pass 5"), &rtrack, ctx->fs->io);
->  }
->  
-> -static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
-> -				  blk64_t start, blk64_t count)
-> +static void e2fsck_discard_blocks(e2fsck_t ctx, blk64_t start,
-> +				  blk64_t count)
->  {
->  	ext2_filsys fs = ctx->fs;
->  
-> @@ -85,7 +85,7 @@ static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
->  	 * not enough to fix the problem, hence it is not safe to run discard
->  	 * in this case.
->  	 */
-> -	if (ext2fs_test_changed(ctx->fs))
-> +	if (ext2fs_test_changed(fs))
->  		ctx->options &= ~E2F_OPT_DISCARD;
->  
->  	if (!(ctx->options & E2F_OPT_NO) &&
-> @@ -137,7 +137,7 @@ static void e2fsck_discard_inodes(e2fsck_t ctx, int group,
->  	num = count / EXT2_INODES_PER_BLOCK(fs->super);
->  
->  	if (num > 0)
-> -		e2fsck_discard_blocks(ctx, fs->io->manager, blk, num);
-> +		e2fsck_discard_blocks(ctx, blk, num);
->  }
->  
->  #define NO_BLK ((blk64_t) -1)
-> @@ -379,7 +379,7 @@ redo_counts:
->  				first_free = i;
->  		} else {
->  			if (i > first_free)
-> -				e2fsck_discard_blocks(ctx, manager, first_free,
+> @@ -387,6 +387,15 @@ redo_counts:
+>  		if ((blocks == fs->super->s_clusters_per_group) ||
+>  		    (EXT2FS_B2C(fs, i) ==
+>  		     EXT2FS_B2C(fs, ext2fs_blocks_count(fs->super)-1))) {
+> +			/*
+> +			 * If the last block of this group is free, then we can
+> +			 * discard it as well.
+> +			 */
+> +			if (!bitmap && i >= first_free)
 > +				e2fsck_discard_blocks(ctx, first_free,
->  						      (i - first_free));
->  			first_free = ext2fs_blocks_count(fs->super);
->  		}
+> +						      (i - first_free) + 1);
+> +			first_free = ext2fs_blocks_count(fs->super);
+> +
+>  			free_array[group] = group_free;
+>  			group ++;
+>  			blocks = 0;
 > 
 
 -- 
