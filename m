@@ -1,126 +1,170 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 4/5] libext2fs: Implement ext2fs_find_first_zero_generic_bmap().
-Date: Mon, 12 Mar 2012 17:09:50 -0600
-Message-ID: <5D9B4A3A-D5F9-4F94-ADA7-2E2CE88FAEE5@dilger.ca>
-References: <20120310213321.GK6961@sli.dy.fi> <20120310213740.GO6961@sli.dy.fi> <5E845FD5-30E4-47A1-AF8E-70A288E3442D@dilger.ca> <20120312191514.GS6961@sli.dy.fi>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: multipart/signed; protocol="application/pgp-signature"; micalg=pgp-sha1; boundary="Apple-Mail-3--1048211484"
+From: Allison Henderson <achender@linux.vnet.ibm.com>
+Subject: Re: delayed extent tree test cases
+Date: Mon, 12 Mar 2012 17:04:37 -0700
+Message-ID: <4F5E8F15.9090602@linux.vnet.ibm.com>
+References: <4F5992B6.7070105@linux.vnet.ibm.com> <CAGBYx2Y8mJJ05=XcTYUVK07deS2GFUCrTVJoZy9Jaj7958OsEA@mail.gmail.com> <4F59A599.4050400@linux.vnet.ibm.com> <CAGBYx2binmZZnOsEva0e_vxWhzFSv6gVnU35yRVyWTSXGXKp=A@mail.gmail.com> <4F5A3277.40506@linux.vnet.ibm.com> <CAGBYx2aQKPWCu5tNzDxQM5Jy5bO-hgvE7Vsnd3kCYzr=MeOJFQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Sami Liedes <sami.liedes@iki.fi>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Lukas Czerner <lczerner@redhat.com>,
+	"Ted Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@linux.vnet.ibm.com>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:14098 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752942Ab2CLXJd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2012 19:09:33 -0400
-In-Reply-To: <20120312191514.GS6961@sli.dy.fi>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:60082 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753559Ab2CMAFa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Mar 2012 20:05:30 -0400
+Received: from /spool/local
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
+	Mon, 12 Mar 2012 20:05:29 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id DB8F738C805A
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 20:04:40 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2D04ejo203814
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 20:04:40 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2D5ZWc9012046
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Mar 2012 01:35:33 -0400
+In-Reply-To: <CAGBYx2aQKPWCu5tNzDxQM5Jy5bO-hgvE7Vsnd3kCYzr=MeOJFQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---Apple-Mail-3--1048211484
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=us-ascii
+On 03/11/2012 07:12 AM, Yongqiang Yang wrote:
+>>>> get it to mirror the existing extents.  That way we will know what
+>>>> extents
+>>>> there are to lock before we start doing things with the current extent
+>>>> tree.
+>>>>
+>>>> When I think about all the ins and outs of trying to keep the trees in
+>>>> sync,
+>>>
+>>> Actually, delayed extents is also synced.  This can be easily achieved
+>>> by protecting operations on extent tree by i_data_sem.
+>>
+>> Ah, sorry I could have phrased that better.  What I meant was trying to keep
+>> the new status tree in sync with the on disk tree so that the status tree
+>> mirrors the same allocated extents in the on disk tree.
+>>
+>>>
+>>> I am a little confused by partial extent here.  I am guessing you
+>>> meant extent rb-tree in memory is the mirror of extent tree in inode
+>>> which is stored on disk.  Am I right?
+>>>
+>>> In my head, the extent tree used by extent lock traces logical
+>>> extents, for example, a process locks a range of a file and it does
+>>> not care the physical blocks.    So we just need to record logical
+>>> extent without physical blocks infos.  Then locking on an extent may
+>>> trigger splitting on an extent while unlocking may trigger merging on
+>>> extents.  Am I right?
+>>>
+>>> Yongqiang.
+>>>
+>>
+>> Well initially I was doing something similar to that, where we only lock
+>> logical ranges that may or may not be "extent aligned" with the on disk
+>> extents.  But the concern that I have though is that we may end up with
+>> processes that have the same on disk extent locked.  For example, say
+>> process A locks a logical range of blocks, 1-5 and process B locks a logical
+>> range of blocks 6-10.  But if the on disk extents are actually 1-2, 3-7 and
+>> 8-10, we have a situation where both processes own a piece of the 3-7
+>> extent, but they wont know it until they get down into the on disk extents.
+>>   And it seems to me they should really have the whole on disk extent locked
+>> before they do any on disk splitting.  And now we have a deadlock condition
+>> since one of them is going to have to give up their lock before the other
+>> can proceed.  So that's when I started thinking maybe we need to make sure
+>> that the locked ranges are extent aligned.  Does that make sense?
+> Extent lock is provided to user space process not to kernel, right?
+> An process acquires extent lock, so that other processes can not
+> access the locked extent.  In other words, extent lock is used to
+> protect data in file, not internal data structure of filesystem.  What
+> we need to guarantee is that data in the locked extent is not changed,
+> while extent tree on disk can be changed.
 
-On 2012-03-12, at 1:15 PM, Sami Liedes wrote:
-> On Sun, Mar 11, 2012 at 03:51:05AM -0600, Andreas Dilger wrote:
->> Rather than making the bitmap searching loop more efficient, I've =
-always thought
->> it would be better to have an interface that iterates over the bitmap =
-and returns
->> the next set bit.  It is similar to what you implemented with =
-->find_first_zero(),
->> but it would be better to have (IMHO) ->find_next_zero() and =
-->find_next_set().
->=20
-> I've been thinking about this. Such an interface might be a good idea,
-> and I could implement it and a corresponding backend implementation
-> for the bit array backend, but I don't think ext2fs_new_inode() could
-> properly exercise it and I'm hesitant to submit code that isn't tested
-> by being actually properly used somewhere.
+Well, it was my impression that the purpose of extent locks it to 
+replace i_mutex.  Maybe I dont quite understand what you mean by user 
+space?  But I think I understand what you are saying about i_data_sem 
+protecting the internal structures, and extent locks protecting the 
+read/write of data. :) i_data_sem should protect us from the concern I 
+pointed out earlier, so that will certainly simplify things.
 
-It is actually common practise in e2fsprogs to embed test programs in =
-the
-code being modified.  See tst_bitmaps.c, for example.  That can give you
-better test coverage for rarely executed code, and the tests should be =
-run
-by anyone modifying the e2fsprogs code and for every RPM build.
+>
+> So maybe we just need to wait lock freed before truncate and puch
+> hole.  Are there any other operations changing data of a file?
 
-The ext2fs_new_block2() function could be improved in a similar manner, =
-and
-in fact benefits even more than the inode allocator, because far more =
-blocks
-are allocated under normal usage.
+So, definitely punch hole and truncate will need to be locking the space 
+they are removing, but there are a lot of other places where i_mutex 
+will need to be replaced too.  I had a list a while ago of all the 
+i_mutex occurrences in ext4.  I can repost here so we can talk about 
+though.  Replacing all these will probably be the last part of the 
+extent lock project, after i get the tree tracking allocated extents, 
+and then the locking logic on top of that.
 
-> I will still do it if there's a general consensus that it's a good =
-idea.
+Ext4 functions that lock i_mutex:
+ext4_sync_file
+ext4_fallocate
+ext4_move_extents via two helper routines:
+     mext_inode_double_lock and mext_inode_double_unlock
+ext4_ioctl (for the EXT4_IOC_SETFLAGS ioctl)
+ext4_quota_write
+ext4_llseek
+ext4_end_io_work
+ext4_ind_direct_IO (only while calling ext4_flush_completed_IO)
 
-Let's hear back from Ted first.  He will probably have some good =
-feedback on
-the API design that he would like.
+Functions called by vfs with i_mutex locked:
+ext4_setattr
+ext4_da_writepages
+ext4_rmdir
+ext4_unlink
+ext4_symlink
+ext4_link
+ext4_rename
+ext4_get_block
 
-> It could be something along the lines of
->=20
-> * type ext2fs_bitmap_iterator, opaque to calling code, mainly a magic
->  number and backend-specific private data. In the bitarray case it
->  could just be the number of the bit pointed to and the end of the
->  range to iterate.
->=20
-> * bool bitmap_ops->deref_iterator(ext2fs_generic_bitmap, =
-ext2fs_bitmap_iterator)
->=20
-> * ext2fs_bitmap_iterator ops->create_iterator()
->                            ->create_ranged_iterator(__u64 start, __u64 =
-end)
->                            ->free_iterator(ext2fs_bitmap_iterator)=20
->=20
-> * __u64 bitmap_ops->iterator_position(...)
->=20
-> * errcode_t ops->find_next_zero(..., __u64 *pos),
->               ->find_next_set(..., __u64 *pos)
->  * These would both increment the iterator and, if pos !=3D NULL, set
->    *pos to the new bit position
->=20
-> * Modifying a bitmap invalidates all its iterators in such a way that
->  the only legal operation for them afterwards is ->free_iterator()
-
-Note that there is already the rbtree bitmap implementation, which is =
-needed
-for huge filesystems in order to be able to run e2fsck without needing =
-huge
-amounts of RAM, so it should also have a backend iterator =
-implementation.
-
-> In the case of ext2fs_new_inode(), the function does not actually
-> iterate through all zero bits; it really only wants to find the first
-> zero in a certain range, after which it returns. So for simplicity of
-> use (and efficiency) I think it still makes sense to have
-> ->find_first_zero() too.
->=20
-> 	Sami
+For these functions called by the vfs, I dont plan to go change vfs 
+code, but we will need to be locking them ourselves in the ext4 code if 
+we want them to by synchronous with the functions in the first list as 
+they are today.  Let me know if you see any thing missing or incorrect 
+though.
 
 
-Cheers, Andreas
+>
+>
+>   Maybe
+>> there is something I am overlooking that would help simplify.
+> Ok.  Now we have two extent trees - the first one is used to implement
+> extent locking while the second one is used to map logical blocks to
+> physical blocks.  If we protect operations on the two trees by
+> i_data_sem, then two trees are synced.  For example, given that a
+> process wants to modify a tree, it has to acquire i_data_sem, then no
+> other processes can access any tree.
+>
+>
+> Maybe I am overlooking something.:-)
+>
+> Yongqiang.
 
+Ok, got it :) I probably should have seen i_data_sem would solve this. 
+Thank you for pointing it out though, it does simplify things a lot. 
+Thx for all the advice :)
 
+Allison Henderson
 
+>>
+>> Allison Henderson
+>>
+>>>
+>>>>
+>>>> Thx!
+>>>> Allison Henderson
+>>>>
+>>>
+>>>
+>>>
+>>
+>
+>
+>
 
-
-
---Apple-Mail-3--1048211484
-content-type: application/pgp-signature; x-mac-type=70674453;
-	name=PGP.sig
-content-description: This is a digitally signed message part
-content-disposition: inline; filename=PGP.sig
-content-transfer-encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFPXoI+pIg59Q01vtYRAp8YAJ9gG55meh/O/f8LMGomLiJZxmx9UACfTrMy
-yASOBJ6CGPMjYGSQjbR8ym8=
-=BTiA
------END PGP SIGNATURE-----
-
---Apple-Mail-3--1048211484--
