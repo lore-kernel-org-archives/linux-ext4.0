@@ -1,10 +1,9 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
 Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
  may_flags' in nfsd_open()
-Date: Tue, 13 Mar 2012 16:34:46 -0400
-Message-ID: <20120313203446.GB21991@fieldses.org>
-References: <20120306000837.GA17164@thunk.org>
- <20120306020819.GH31388@pad.fieldses.org>
+Date: Tue, 13 Mar 2012 17:10:09 -0400
+Message-ID: <20120313211009.GA11969@thunk.org>
+References: <20120306020819.GH31388@pad.fieldses.org>
  <20120306151816.GB32282@thunk.org>
  <20120306152842.GA8339@pad.fieldses.org>
  <20120309205148.GB5635@thunk.org>
@@ -13,82 +12,43 @@ References: <20120306000837.GA17164@thunk.org>
  <20120312222250.GD8991@fieldses.org>
  <20120313200117.GA21991@fieldses.org>
  <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Cc: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
 Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <4F5FA827.8020606-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+In-Reply-To: <20120313203446.GB21991-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
 Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 13, 2012 at 09:03:51PM +0100, Bernd Schubert wrote:
-> On 03/13/2012 09:01 PM, J. Bruce Fields wrote:
-> >On Mon, Mar 12, 2012 at 06:22:50PM -0400, bfields wrote:
-> >>On Mon, Mar 12, 2012 at 11:49:21AM -0400, J. Bruce Fields wrote:
-> >>>On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
-> >>>>On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
-> >>>>>
-> >>>>>Linus in general doesn't like cross tree merges (or any extraneous
-> >>>>>merges) unless they are absolutely necessary; but then, he trusts git
-> >>>>>merges more than many of us do.  :-)
-> >>>>>
-> >>>>>I've put the the patch series on a separate patch, with a signed tag, at:
-> >>>>>
-> >>>>>      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
-> >>>>>
-> >>>>>Can you confirm that you've pulled it into your tree and it's landed
-> >>>>>in linux-next?  I probably won't bother pulling it in mine unless
-> >>>>>there is definitely a merge conflict that I need to resolve.  (I've
-> >>>>>checked and there do not appear to be any against linux-next as of
-> >>>>>last night.)
-> >>>>
-> >>>>Ping?
-> >>>
-> >>>Whoops, sorry.
-> >>>
-> >>>Looks perfect, thanks for handling these!
-> >>>
-> >>>I'm running them through my usual regression tests
-> >>
-> >>Urgh, I'm seeing a failure on the telldir test (part of the "special"
-> >>connectathon tests).  I haven't looked at what it's trying to do yet.
-> >>Reproduceable even just on a local filesystem without NFS involved.  If
-> >>someone wants to look at it, you can just do:
-> >>
-> >>	git clone git://linux-nfs.org/~bfields/cthon04.git
-> >>	cd cthon04
-> >>	make
-> >>	NFS_TESTDIR=/somewhere_on_an_ext4_fs/TMP ./runtests -s
-> >>
-> >>(Or after running that, more specifically,
-> >>
-> >>	cd /somewhere_on_an_ext4_fs/TMP/
-> >>	./telldir
-> >>
-> >>)
-> >>
-> >>I'll look at it tomorrow.
-> >
-> >Looks like seekdir is just not accepting an offset returned from
-> >getdents:
-> >
-> >	openat(AT_FDCWD, "telldir-test", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
-> >	getdents(3, {...{d_ino=20386, d_off=5728083968307607285, d_reclen=24, d_name="192"}...} = 4848
-> >	lseek(3, 5728083968307607285, SEEK_SET) = -1 EINVAL (Invalid argument)
-> >
-> >Still investigating.
-> 
-> Thanks! I'm also just going to work on it (just noticed your mail
-> while on vacation ...).
+On Tue, Mar 13, 2012 at 04:34:46PM -0400, J. Bruce Fields wrote:
+> > 
+> > Thanks! I'm also just going to work on it (just noticed your mail
+> > while on vacation ...).
 
-OK, good.  You can probably figure this out faster than me....
+Brend, thanks!!
 
---b.
+Bruce, random question --- do you know what the copyright and
+licensing terms are for the connectathon test suite?  It occurs to me
+that it might be good to get some of these tests into xfstests, given
+that you mentioned that the telldir test was failing even when run on
+a local file system.  That says to me this is a good file system level
+test that we should try to get into xfstests if possible.
+
+Getting it into xfstests would also tend to reduce the chance of
+regressions, since I always run xfstests before I submit patches (and
+in fact I did run xfstests before sending you a pull request Bernd's
+patches --- and I'm glad your testing caught the problem when mine
+didn't!)
+
+Thanks,
+
+     	       	      	       		- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
