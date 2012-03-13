@@ -1,8 +1,8 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: [PATCH v3.1 16/54] e2fsck: Verify block bitmap checksum
-Date: Mon, 12 Mar 2012 17:33:34 -0700
-Message-ID: <20120313003334.GS15164@tux1.beaverton.ibm.com>
-References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com> <20120306235904.11945.97460.stgit@elm3b70.beaverton.ibm.com>
+Subject: [PATCH v3.1 24/54] e2fsck: Verify htree root/node checksums
+Date: Mon, 12 Mar 2012 17:35:46 -0700
+Message-ID: <20120313003546.GT15164@tux1.beaverton.ibm.com>
+References: <20120306235720.11945.30629.stgit@elm3b70.beaverton.ibm.com> <20120306235958.11945.55905.stgit@elm3b70.beaverton.ibm.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -15,156 +15,292 @@ Cc: Sunil Mushran <sunil.mushran@oracle.com>,
 To: Andreas Dilger <adilger.kernel@dilger.ca>,
 	Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:59268 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965132Ab2CMAdn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Mar 2012 20:33:43 -0400
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:52294 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932154Ab2CMAfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Mar 2012 20:35:51 -0400
 Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 12 Mar 2012 18:33:42 -0600
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id DDEA11FF0038
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:33:39 -0600 (MDT)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2D0XcET131916
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:33:38 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2D0XZ5R028393
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 18:33:38 -0600
+	Mon, 12 Mar 2012 20:35:51 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 724096E8049
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 20:35:49 -0400 (EDT)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2D0ZnX8254782
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 20:35:49 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2D0Zl81016944
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Mar 2012 20:35:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20120306235904.11945.97460.stgit@elm3b70.beaverton.ibm.com>
+In-Reply-To: <20120306235958.11945.55905.stgit@elm3b70.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check block bitmap checksum and write a new checksum if the
-verification fails.  This is ok because e2fsck has already computed
-the correct block bitmap.
+Check htree internal node checksums.  If broken, ask user to clear
+the htree index and recreate it later.
+
+v3.1: Only allow lost+found to be rebuilt if metadata_csum is set --
+this is how checksum errors in directories are fixed.  This fixes a
+large number of regressions.
 
 Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
 ---
 
- e2fsck/pass5.c   |   63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- e2fsck/problem.c |    5 ++++
- e2fsck/problem.h |    3 +++
- 3 files changed, 71 insertions(+), 0 deletions(-)
+ e2fsck/e2fsck.h  |    2 ++
+ e2fsck/pass2.c   |   34 +++++++++++++++++++++++++++++-----
+ e2fsck/problem.c |   10 ++++++++++
+ e2fsck/problem.h |    6 ++++++
+ e2fsck/rehash.c  |   46 +++++++++++++++++++++++++++++++++++++++++++---
+ 5 files changed, 90 insertions(+), 8 deletions(-)
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index bfcf384..64a751d 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -28,6 +28,7 @@ static void check_inode_bitmaps(e2fsck_t ctx);
- static void check_inode_end(e2fsck_t ctx);
- static void check_block_end(e2fsck_t ctx);
- static void check_inode_bitmap_checksum(e2fsck_t ctx);
-+static void check_block_bitmap_checksum(e2fsck_t ctx);
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index ed8b0c7..c6dab54 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -483,6 +483,8 @@ extern void region_free(region_t region);
+ extern int region_allocate(region_t region, region_addr_t start, int n);
  
- void e2fsck_pass5(e2fsck_t ctx)
+ /* rehash.c */
++void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino);
++int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino);
+ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino);
+ void e2fsck_rehash_directories(e2fsck_t ctx);
+ 
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 882950d..e4a06f3 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -527,7 +527,7 @@ static void parse_int_node(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *db,
+ 			   struct check_dir_struct *cd,
+ 			   struct dx_dir_info	*dx_dir,
+-			   char *block_buf)
++			   char *block_buf, int failed_csum)
  {
-@@ -66,6 +67,7 @@ void e2fsck_pass5(e2fsck_t ctx)
- 		return;
+ 	struct 		ext2_dx_root_info  *root;
+ 	struct 		ext2_dx_entry *ent;
+@@ -538,6 +538,7 @@ static void parse_int_node(ext2_filsys fs,
+ 	ext2_dirhash_t	min_hash = 0xffffffff;
+ 	ext2_dirhash_t	max_hash = 0;
+ 	ext2_dirhash_t	hash = 0, prev_hash;
++	int		csum_size = 0;
  
- 	check_inode_bitmap_checksum(ctx);
-+	check_block_bitmap_checksum(ctx);
+ 	if (db->blockcnt == 0) {
+ 		root = (struct ext2_dx_root_info *) (block_buf + 24);
+@@ -552,9 +553,22 @@ static void parse_int_node(ext2_filsys fs,
+ #endif
  
- 	ext2fs_free_inode_bitmap(ctx->inode_used_map);
- 	ctx->inode_used_map = 0;
-@@ -136,6 +138,67 @@ static void check_inode_bitmap_checksum(e2fsck_t ctx)
- 	ext2fs_free_mem(&buf);
+ 		ent = (struct ext2_dx_entry *) (block_buf + 24 + root->info_length);
++
++		if (failed_csum &&
++		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
++		     fix_problem(cd->ctx, PR_2_HTREE_ROOT_CSUM_INVALID,
++				&cd->pctx)))
++			goto clear_and_exit;
+ 	} else {
+ 		ent = (struct ext2_dx_entry *) (block_buf+8);
++
++		if (failed_csum &&
++		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
++		     fix_problem(cd->ctx, PR_2_HTREE_NODE_CSUM_INVALID,
++				&cd->pctx)))
++			goto clear_and_exit;
+ 	}
++
+ 	limit = (struct ext2_dx_countlimit *) ent;
+ 
+ #ifdef DX_DEBUG
+@@ -565,8 +579,12 @@ static void parse_int_node(ext2_filsys fs,
+ #endif
+ 
+ 	count = ext2fs_le16_to_cpu(limit->count);
+-	expect_limit = (fs->blocksize - ((char *) ent - block_buf)) /
+-		sizeof(struct ext2_dx_entry);
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		csum_size = sizeof(struct ext2_dx_tail);
++	expect_limit = (fs->blocksize -
++			(csum_size + ((char *) ent - block_buf))) /
++		       sizeof(struct ext2_dx_entry);
+ 	if (ext2fs_le16_to_cpu(limit->limit) != expect_limit) {
+ 		cd->pctx.num = ext2fs_le16_to_cpu(limit->limit);
+ 		if (fix_problem(cd->ctx, PR_2_HTREE_BAD_LIMIT, &cd->pctx))
+@@ -632,6 +650,7 @@ static void parse_int_node(ext2_filsys fs,
+ clear_and_exit:
+ 	clear_htree(cd->ctx, cd->pctx.ino);
+ 	dx_dir->numblocks = 0;
++	e2fsck_rehash_dir_later(cd->ctx, cd->pctx.ino);
  }
+ #endif /* ENABLE_HTREE */
  
-+static void check_block_bitmap_checksum(e2fsck_t ctx)
-+{
-+	struct problem_context	pctx;
-+	struct ext4_group_desc	*gdp;
-+	char		*buf;
-+	dgrp_t		i;
-+	int		nbytes;
-+	blk64_t		blk_itr;
-+	errcode_t	retval;
+@@ -734,6 +753,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	struct problem_context	pctx;
+ 	int	dups_found = 0;
+ 	int	ret;
++	int	dx_csum_size = 0;
+ 
+ 	cd = (struct check_dir_struct *) priv_data;
+ 	buf = cd->buf;
+@@ -745,6 +765,10 @@ static int check_dir_block(ext2_filsys fs,
+ 	if (ctx->progress && (ctx->progress)(ctx, 2, cd->count++, cd->max))
+ 		return DIRENT_ABORT;
+ 
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		dx_csum_size = sizeof(struct ext2_dx_tail);
 +
-+	if (!EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
-+					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		return;
-+
-+	/* If bitmap is dirty from being fixed, checksum will be corrected */
-+	if (ext2fs_test_bb_dirty(ctx->fs))
-+		return;
-+
-+	nbytes = (size_t)(EXT2_CLUSTERS_PER_GROUP(ctx->fs->super) / 8);
-+	retval = ext2fs_get_memalign(ctx->fs->blocksize, ctx->fs->blocksize,
-+				     &buf);
-+	if (retval) {
-+		com_err(ctx->program_name, 0,
-+		    _("check_block_bitmap_checksum: Memory allocation error"));
-+		fatal_error(ctx, 0);
-+	}
-+
-+	clear_problem_context(&pctx);
-+	for (i = 0; i < ctx->fs->group_desc_count; i++) {
-+		if (ext2fs_bg_flags_test(ctx->fs, i, EXT2_BG_BLOCK_UNINIT))
-+			continue;
-+
-+		blk_itr = EXT2FS_B2C(ctx->fs,
-+				     ctx->fs->super->s_first_data_block) +
-+			  (i * (nbytes << 3));
-+		gdp = (struct ext4_group_desc *)ext2fs_group_desc(ctx->fs,
-+				ctx->fs->group_desc, i);
-+		retval = ext2fs_get_block_bitmap_range2(ctx->fs->block_map,
-+							blk_itr, nbytes << 3,
-+							buf);
-+		if (retval)
-+			break;
-+
-+		if (ext2fs_block_bitmap_csum_verify(ctx->fs, i, buf, nbytes))
-+			continue;
-+		pctx.group = i;
-+		if (!fix_problem(ctx, PR_5_BLOCK_BITMAP_CSUM_INVALID, &pctx))
-+			continue;
-+
-+		/*
-+		 * Fixing one checksum will rewrite all of them.  The bitmap
-+		 * will be checked against the one we made during pass1 for
-+		 * discrepancies, and fixed if need be.
-+		 */
-+		ext2fs_mark_bb_dirty(ctx->fs);
-+		break;
-+	}
-+
-+	ext2fs_free_mem(&buf);
-+}
-+
- static void e2fsck_discard_blocks(e2fsck_t ctx, io_manager manager,
- 				  blk64_t start, blk64_t count)
- {
+ 	/*
+ 	 * Make sure the inode is still in use (could have been
+ 	 * deleted in the duplicate/bad blocks pass.
+@@ -834,7 +858,7 @@ static int check_dir_block(ext2_filsys fs,
+ 			   (rec_len == fs->blocksize) &&
+ 			   (dirent->name_len == 0) &&
+ 			   (ext2fs_le16_to_cpu(limit->limit) ==
+-			    ((fs->blocksize-8) /
++			    ((fs->blocksize - (8 + dx_csum_size)) /
+ 			     sizeof(struct ext2_dx_entry))))
+ 			dx_db->type = DX_DIRBLOCK_NODE;
+ 	}
+@@ -1121,7 +1145,7 @@ out_htree:
+ 		cd->pctx.dir = cd->pctx.ino;
+ 		if ((dx_db->type == DX_DIRBLOCK_ROOT) ||
+ 		    (dx_db->type == DX_DIRBLOCK_NODE))
+-			parse_int_node(fs, db, cd, dx_dir, buf);
++			parse_int_node(fs, db, cd, dx_dir, buf, 0);
+ 	}
+ #endif /* ENABLE_HTREE */
+ 	if (offset != fs->blocksize) {
 diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 79ad34d..8476bc2 100644
+index 0520010..d0f024a 100644
 --- a/e2fsck/problem.c
 +++ b/e2fsck/problem.c
-@@ -1689,6 +1689,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@g %g @i bitmap does not match checksum\n"),
- 	  PROMPT_FIX, PR_LATCH_IBITMAP | PR_PREEN_OK },
+@@ -1383,6 +1383,16 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("i_file_acl_hi @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, PR_PREEN_OK },
  
-+	/* Group N block bitmap does not match checksum */
-+	{ PR_5_BLOCK_BITMAP_CSUM_INVALID,
-+	  N_("@g %g @b bitmap does not match checksum\n"),
-+	  PROMPT_FIX, PR_LATCH_BBITMAP | PR_PREEN_OK },
++	/* htree root node fails checksum */
++	{ PR_2_HTREE_ROOT_CSUM_INVALID,
++	  N_("@p @h %d: root node fails checksum\n"),
++	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
 +
- 	/* Post-Pass 5 errors */
++	/* htree internal node fails checksum */
++	{ PR_2_HTREE_NODE_CSUM_INVALID,
++	  N_("@p @h %d: internal node fails checksum\n"),
++	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
++
+ 	/* Pass 3 errors */
  
- 	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
+ 	/* Pass 3: Checking directory connectivity */
 diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 0adc7ea..39e6dba 100644
+index 2adb4b9..5cf80fb 100644
 --- a/e2fsck/problem.h
 +++ b/e2fsck/problem.h
-@@ -1022,6 +1022,9 @@ struct problem_context {
- /* Inode bitmap checksum does not match */
- #define PR_5_INODE_BITMAP_CSUM_INVALID	0x05001A
+@@ -827,6 +827,12 @@ struct problem_context {
+ /* i_file_acl_hi should be zero */
+ #define PR_2_I_FILE_ACL_HI_ZERO		0x020048
  
-+/* Block bitmap checksum does not match */
-+#define PR_5_BLOCK_BITMAP_CSUM_INVALID	0x05001B
++/* htree root node fails checksum */
++#define PR_2_HTREE_ROOT_CSUM_INVALID	0x020049
++
++/* htree node fails checksum */
++#define PR_2_HTREE_NODE_CSUM_INVALID	0x02004A
 +
  /*
-  * Post-Pass 5 errors
+  * Pass 3 errors
   */
+diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+index 15993b3..338a432 100644
+--- a/e2fsck/rehash.c
++++ b/e2fsck/rehash.c
+@@ -52,6 +52,25 @@
+ #include "e2fsck.h"
+ #include "problem.h"
+ 
++/* Schedule a dir to be rebuilt during pass 3A. */
++void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino)
++{
++	if (!ctx->dirs_to_hash)
++		ext2fs_u32_list_create(&ctx->dirs_to_hash, 50);
++	if (ctx->dirs_to_hash)
++		ext2fs_u32_list_add(ctx->dirs_to_hash, ino);
++}
++
++/* Ask if a dir will be rebuilt during pass 3A. */
++int e2fsck_dir_will_be_rehashed(e2fsck_t ctx, ext2_ino_t ino)
++{
++	if (ctx->options & E2F_OPT_COMPRESS_DIRS)
++		return 1;
++	if (!ctx->dirs_to_hash)
++		return 0;
++	return ext2fs_u32_list_test(ctx->dirs_to_hash, ino);
++}
++
+ struct fill_dir_struct {
+ 	char *buf;
+ 	struct ext2_inode *inode;
+@@ -495,6 +514,7 @@ static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
+ 	struct ext2_dx_root_info  	*root;
+ 	struct ext2_dx_countlimit	*limits;
+ 	int				filetype = 0;
++	int				csum_size = 0;
+ 
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_FILETYPE)
+ 		filetype = EXT2_FT_DIR << 8;
+@@ -519,8 +539,13 @@ static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
+ 	root->indirect_levels = 0;
+ 	root->unused_flags = 0;
+ 
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		csum_size = sizeof(struct ext2_dx_tail);
++
+ 	limits = (struct ext2_dx_countlimit *) (buf+32);
+-	limits->limit = (fs->blocksize - 32) / sizeof(struct ext2_dx_entry);
++	limits->limit = (fs->blocksize - (32 + csum_size)) /
++			sizeof(struct ext2_dx_entry);
+ 	limits->count = 0;
+ 
+ 	return root;
+@@ -531,14 +556,20 @@ static struct ext2_dx_entry *set_int_node(ext2_filsys fs, char *buf)
+ {
+ 	struct ext2_dir_entry 		*dir;
+ 	struct ext2_dx_countlimit	*limits;
++	int				csum_size = 0;
+ 
+ 	memset(buf, 0, fs->blocksize);
+ 	dir = (struct ext2_dir_entry *) buf;
+ 	dir->inode = 0;
+ 	(void) ext2fs_set_rec_len(fs, fs->blocksize, dir);
+ 
++	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		csum_size = sizeof(struct ext2_dx_tail);
++
+ 	limits = (struct ext2_dx_countlimit *) (buf+8);
+-	limits->limit = (fs->blocksize - 8) / sizeof(struct ext2_dx_entry);
++	limits->limit = (fs->blocksize - (8 + csum_size)) /
++			sizeof(struct ext2_dx_entry);
+ 	limits->count = 0;
+ 
+ 	return (struct ext2_dx_entry *) limits;
+@@ -865,8 +896,17 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
+ 			if (!ext2fs_u32_list_iterate(iter, &ino))
+ 				break;
+ 		}
+-		if (ino == ctx->lost_and_found)
++
++		/*
++		 * If metadata_csum is enabled, then lost+found must not be
++		 * excluded from cleanups or else checksum errors won't get
++		 * fixed.
++		 */
++		if (!EXT2_HAS_RO_COMPAT_FEATURE(ctx->fs->super,
++				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
++		    ino == ctx->lost_and_found)
+ 			continue;
++
+ 		pctx.dir = ino;
+ 		if (first) {
+ 			fix_problem(ctx, PR_3A_PASS_HEADER, &pctx);
 
