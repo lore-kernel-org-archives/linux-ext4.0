@@ -1,8 +1,8 @@
-From: "J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+From: "J. Bruce Fields" <bfields@redhat.com>
 Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
  may_flags' in nfsd_open()
-Date: Tue, 13 Mar 2012 17:27:40 -0400
-Message-ID: <20120313212740.GJ31995@pad.fieldses.org>
+Date: Tue, 13 Mar 2012 17:29:48 -0400
+Message-ID: <20120313212947.GK31995@pad.fieldses.org>
 References: <20120306151816.GB32282@thunk.org>
  <20120306152842.GA8339@pad.fieldses.org>
  <20120309205148.GB5635@thunk.org>
@@ -12,61 +12,42 @@ References: <20120306151816.GB32282@thunk.org>
  <20120313200117.GA21991@fieldses.org>
  <4F5FA827.8020606@itwm.fraunhofer.de>
  <20120313203446.GB21991@fieldses.org>
- <20120313211009.GA11969@thunk.org>
+ <4F5FB771.9010805@fastmail.fm>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: "Ted Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	"Ted Ts'o" <tytso@mit.edu>, linux-nfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43933 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757635Ab2CMV3z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Mar 2012 17:29:55 -0400
 Content-Disposition: inline
-In-Reply-To: <20120313211009.GA11969-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4F5FB771.9010805@fastmail.fm>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 13, 2012 at 05:10:09PM -0400, Ted Ts'o wrote:
-> On Tue, Mar 13, 2012 at 04:34:46PM -0400, J. Bruce Fields wrote:
-> > > 
-> > > Thanks! I'm also just going to work on it (just noticed your mail
-> > > while on vacation ...).
+On Tue, Mar 13, 2012 at 10:09:05PM +0100, Bernd Schubert wrote:
+> Hmm, there must have gone something wrong on merging,
+
+In that case one approach would be to rebase your last-sent patches on
+to the same base as Ted's versions, confirm that one still works and the
+other doesn't, and do a diff....
+
+> my own test
+> also fails
 > 
-> Brend, thanks!!
+> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
 > 
-> Bruce, random question --- do you know what the copyright and
-> licensing terms are for the connectathon test suite?
+> (Sorry, it does not say 'failure', but one needs to compare the file
+> names and telldir-offset numbers)
+> 
+> I think I will continue in the morning as its already 1 a.m. here.
 
-Alas.  Nobody does!
-
-I'ts unlikely there's any owner who would care enough to make a fuss--so
-we keep using the tests, but they don't really get any love.
-
-It's one of those annoyances we argue about once a year or so, and then
-forget till next time.
-
-So, maybe one way forward would be to reimplement the connectathon tests
-for xfstests?
+OK, thanks for following up!
 
 --b.
-
-> It occurs to me
-> that it might be good to get some of these tests into xfstests, given
-> that you mentioned that the telldir test was failing even when run on
-> a local file system.  That says to me this is a good file system level
-> test that we should try to get into xfstests if possible.
-> 
-> Getting it into xfstests would also tend to reduce the chance of
-> regressions, since I always run xfstests before I submit patches (and
-> in fact I did run xfstests before sending you a pull request Bernd's
-> patches --- and I'm glad your testing caught the problem when mine
-> didn't!)
-> 
-> Thanks,
-> 
->      	       	      	       		- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
