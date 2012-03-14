@@ -1,137 +1,104 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int may_flags'
- in nfsd_open()
-Date: Wed, 14 Mar 2012 15:32:45 +0100
-Message-ID: <4F60AC0D.9020204@itwm.fraunhofer.de>
-References: <20120306151816.GB32282@thunk.org> <20120306152842.GA8339@pad.fieldses.org> <20120309205148.GB5635@thunk.org> <20120312150912.GB12440@thunk.org> <20120312154921.GB17153@pad.fieldses.org> <20120312222250.GD8991@fieldses.org> <20120313200117.GA21991@fieldses.org> <4F5FA827.8020606@itwm.fraunhofer.de> <20120313203446.GB21991@fieldses.org> <4F5FB771.9010805@fastmail.fm> <20120313212947.GK31995@pad.fieldses.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Wed, 14 Mar 2012 15:34:13 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203141507220.14894@dhcp-27-109.brq.redhat.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com> <BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com> <20120310044804.GB5652@thunk.org> <4F5F9A97.5060404@ubuntu.com>
+ <20120313195339.GA24124@thunk.org> <4F5FAC9C.9070607@gmail.com> <20120313213304.GB11969@thunk.org> <alpine.LFD.2.00.1203140825090.5379@dhcp-27-109.brq.redhat.com> <20120314125002.GH15379@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Bernd Schubert <bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: "J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120313212947.GK31995-spRCxval1Z7TsXDwO4sDpg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>,
+	Phillip Susi <phillsusi@gmail.com>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120314125002.GH15379@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 03/13/2012 10:29 PM, J. Bruce Fields wrote:
-> On Tue, Mar 13, 2012 at 10:09:05PM +0100, Bernd Schubert wrote:
->> Hmm, there must have gone something wrong on merging,
->
-> In that case one approach would be to rebase your last-sent patches on
-> to the same base as Ted's versions, confirm that one still works and the
-> other doesn't, and do a diff....
->
->> my own test
->> also fails
->>
->> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
->>
->> (Sorry, it does not say 'failure', but one needs to compare the file
->> names and telldir-offset numbers)
->>
->> I think I will continue in the morning as its already 1 a.m. here.
->
-> OK, thanks for following up!
+On Wed, 14 Mar 2012, Ted Ts'o wrote:
 
-Took me some time to figure out what is going on and in the end I previously forgot 
-another test case - I always tested directories being sufficiently large, so that 
-they got the EXT4_INODE_INDEX flag. However, the cython tests failed on a small 
-directory, which doesn't have that flag. But then ext4_readdir() always uses the 
-dx version, I guess in order to always return the same offset values 
-(in the sense of converting a non-dx dir to dx). In ext4_dir_llseek() I only 
-tested for the EXT4_INODE_INDEX flag, which is not correct in any case.
-So here is the patch, shall I sent an updated version of the previous ext4 patch 
-or is this patch sufficient?
+> On Wed, Mar 14, 2012 at 09:12:02AM +0100, Lukas Czerner wrote:
+> > I kind of like the idea about having the separate btree with inode
+> > numbers for the directory reading, just because it does not affect
+> > allocation policy nor the write performance which is a good thing. Also
+> > it has been done before in btrfs and it works very well for them. The
+> > only downside (aside from format change) is the extra step when removing
+> > the directory entry, but the positives outperform the negatives.
+> 
+> Well, there will be extra (journaled!) block reads and writes involved
+> when adding or removing directory entries.  So the performance on
+> workloads that do a large number of directory adds and removed will
+> have to be impacted.  By how much is not obvious, but it will be
+> something which is measurable.
 
-Signed-off-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Yes, it would have to be measured in various workloads.
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 71a66ff..6a19a35 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -44,6 +44,24 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
- 	return (ext4_filetype_table[filetype]);
- }
- 
-+/**
-+ * Check if the given dir-inode refers to an htree indexed directory
-+ *
-+ * Return 1 if it is a dx dir, 0 if not
-+ */
-+static int is_dx_dir(struct inode *inode)
-+{
-+	struct super_block *sb = inode->i_sb;
-+
-+	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
-+		     EXT4_FEATURE_COMPAT_DIR_INDEX) &&
-+	    ((ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) ||
-+	     ((inode->i_size >> sb->s_blocksize_bits) == 1)))
-+		return 1;
-+
-+	return 0;
-+}
-+
- /*
-  * Return 0 if the directory entry is OK, and 1 if there is a problem
-  *
-@@ -99,18 +117,13 @@ static int ext4_readdir(struct file *filp,
- 	unsigned int offset;
- 	int i, stored;
- 	struct ext4_dir_entry_2 *de;
--	struct super_block *sb;
- 	int err;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
- 	int ret = 0;
- 	int dir_has_error = 0;
- 
--	sb = inode->i_sb;
--
--	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
--				    EXT4_FEATURE_COMPAT_DIR_INDEX) &&
--	    ((ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) ||
--	     ((inode->i_size >> sb->s_blocksize_bits) == 1))) {
-+	if (is_dx_dir(inode)) {
- 		err = ext4_dx_readdir(filp, dirent, filldir);
- 		if (err != ERR_BAD_DX_DIR) {
- 			ret = err;
-@@ -308,7 +321,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
- {
- 	struct inode *inode = file->f_mapping->host;
- 	loff_t ret = -EINVAL;
--	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
-+	int dx_dir = is_dx_dir(inode);
- 
- 	mutex_lock(&inode->i_mutex);
- 
-@@ -323,7 +336,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
- 
- 		/* so only negative offsets are left, does that have a
- 		 * meaning for directories at all? */
--		if (is_dx_dir)
-+		if (dx_dir)
- 			offset += ext4_get_htree_eof(file);
- 		else
- 			offset += inode->i_size;
-@@ -347,7 +360,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
- 	if (unlikely(offset < 0))
- 		goto out_err;
- 
--	if (!is_dx_dir) {
-+	if (!dx_dir) {
- 		if (offset > inode->i_sb->s_maxbytes)
- 			goto out_err;
- 	} else if (offset > ext4_get_htree_eof(file))
+> 
+> > Maybe this might be even done in a way which does not require format
+> > change. We can have new inode flag (say EXT4_INUM_INDEX_FL) which will
+> > tell us that there is a inode number btree to use on directory reads.
+> > Then the pointer to the root of that tree would be stored at the end of
+> > the root block of the hree (of course if there is still some space for
+> > it) and the rest is easy.
+> 
+> You can make it be a RO_COMPAT change instead of an INCOMPAT change,
+> yes.
 
+Does it have to be RO_COMPAT change though ? Since this would be both
+forward and backward compatible.
 
+> 
+> And if you want to do it as simply as possible, we could just recycle
+> the current htree approach for the second tree, and simply store the
+> root in another set of directory blocks.  But by putting the index
+> nodes in the directory blocks, masquerading as deleted directories, it
+> means that readdir() has to cycle through them and ignore the index
+> blocks.
+> 
+> The alternate approach is to use physical block numbers instead of
+> logical block numbers for the index blocks, and to store it separately
+> from the blocks containing actual directory entries.  But if we do
+> that for the inumber tree, the next question that arise is maybe we
+> should do that for the hash tree as well --- and then once you upon
+> that can of worms, it gets a lot more complicated.
+> 
+> So the question that really arises here is how wide open do we want to
+> leave the design space, and whether we are optimizing for the best
+> possible layout change ignoring the amount of implementation work it
+> might require, or whether we keep things as simple as possible from a
+> code change perspective.
 
+What do you expect to gain by storing the index nodes outside the
+directory entries ? Only to avoid reading the index nodes of both trees
+when walking just one of it ? If I understand it correctly directory
+blocks are laid out sequentially so reading it in cold cache state would
+not pose much troubles I think. Nor the iteration through all of the
+index nodes. However it would have to be measured first.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> There are good arguments that can be made either way, and a lot
+> depends on the quality of the students you can recruit, the amount of
+> time they have, and how much review time it will take out of the core
+> team during the design and implementation phase.
+
+I am always hoping for the best :). We have had a good expedience with
+the students here, but you'll never know that in advance. They'll have
+the whole year to get through this, which is plenty of thine, but the
+question of course is whether they'll use that time wisely :). But
+anyway, I think it is definitely worth a try.
+
+Thanks!
+-Lukas
+
+> 
+> Regards,
+> 
+> 						- Ted
+> 
+
+-- 
