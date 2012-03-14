@@ -1,85 +1,48 @@
-From: Ted Ts'o <tytso@mit.edu>
+From: Zach Brown <zab@zabbo.net>
 Subject: Re: getdents - ext4 vs btrfs performance
-Date: Wed, 14 Mar 2012 08:50:02 -0400
-Message-ID: <20120314125002.GH15379@thunk.org>
-References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
- <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com>
- <BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com>
- <20120310044804.GB5652@thunk.org>
- <4F5F9A97.5060404@ubuntu.com>
- <20120313195339.GA24124@thunk.org>
- <4F5FAC9C.9070607@gmail.com>
- <20120313213304.GB11969@thunk.org>
- <alpine.LFD.2.00.1203140825090.5379@dhcp-27-109.brq.redhat.com>
+Date: Wed, 14 Mar 2012 10:17:37 -0400
+Message-ID: <4F60A881.3070607@zabbo.net>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com> <alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com> <BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com> <20120310044804.GB5652@thunk.org> <4F5F9A97.5060404@ubuntu.com> <20120313195339.GA24124@thunk.org> <4F5FAC9C.9070607@gmail.com> <20120313213304.GB11969@thunk.org> <CAGBYx2ZQk+kobPj5ff0NKEfK_-kD0NK4WiNUruF=d443PV-NSw@mail.gmail.com> <20120314025108.GF15379@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Phillip Susi <phillsusi@gmail.com>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Ted Ts'o <tytso@mit.edu>, Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Phillip Susi <phillsusi@gmail.com>,
 	Andreas Dilger <adilger@whamcloud.com>,
+	Lukas Czerner <lczerner@redhat.com>,
 	Jacek Luczak <difrost.kernel@gmail.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	LKML <linux-kernel@vger.kernel.org>,
 	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
-To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36108 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761039Ab2CNMuG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Mar 2012 08:50:06 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1203140825090.5379@dhcp-27-109.brq.redhat.com>
+Received: from lulu.zabbo.net ([69.168.54.52]:54495 "EHLO lulu.zabbo.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752318Ab2CNORl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Mar 2012 10:17:41 -0400
+In-Reply-To: <20120314025108.GF15379@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 14, 2012 at 09:12:02AM +0100, Lukas Czerner wrote:
-> I kind of like the idea about having the separate btree with inode
-> numbers for the directory reading, just because it does not affect
-> allocation policy nor the write performance which is a good thing. Also
-> it has been done before in btrfs and it works very well for them. The
-> only downside (aside from format change) is the extra step when removing
-> the directory entry, but the positives outperform the negatives.
 
-Well, there will be extra (journaled!) block reads and writes involved
-when adding or removing directory entries.  So the performance on
-workloads that do a large number of directory adds and removed will
-have to be impacted.  By how much is not obvious, but it will be
-something which is measurable.
+> We could do this if we have two b-trees, one indexed by filename and
+> one indexed by inode number, which is what JFS (and I believe btrfs)
+> does.
 
-> Maybe this might be even done in a way which does not require format
-> change. We can have new inode flag (say EXT4_INUM_INDEX_FL) which will
-> tell us that there is a inode number btree to use on directory reads.
-> Then the pointer to the root of that tree would be stored at the end of
-> the root block of the hree (of course if there is still some space for
-> it) and the rest is easy.
+Typically the inode number of the destination inode isn't used to index
+entries for a readdir tree because of (wait for it) hard links.  You end
+up right back where you started with multiple entries per key.
 
-You can make it be a RO_COMPAT change instead of an INCOMPAT change,
-yes.
+A painful solution is to have the key in the readdir tree allocated by
+the tree itself -- count key populations in subtrees per child pointer
+and use that to find free keys.  You still have the problem of
+correlating entry keys and the location of inodes, but at least now you
+have a structure to navigate to try and do that.  You can also trivially
+re-use freed keys and have densely packed readdir keys that won't break
+32bit f_pos so quickly.
 
-And if you want to do it as simply as possible, we could just recycle
-the current htree approach for the second tree, and simply store the
-root in another set of directory blocks.  But by putting the index
-nodes in the directory blocks, masquerading as deleted directories, it
-means that readdir() has to cycle through them and ignore the index
-blocks.
+btrfs just punts and has an incrementing 64bit counter per directory
+that determines a new entry's position in readdir.  Accompanied by the
+obligatory "will be smarter some day" comment :).
 
-The alternate approach is to use physical block numbers instead of
-logical block numbers for the index blocks, and to store it separately
-from the blocks containing actual directory entries.  But if we do
-that for the inumber tree, the next question that arise is maybe we
-should do that for the hash tree as well --- and then once you upon
-that can of worms, it gets a lot more complicated.
-
-So the question that really arises here is how wide open do we want to
-leave the design space, and whether we are optimizing for the best
-possible layout change ignoring the amount of implementation work it
-might require, or whether we keep things as simple as possible from a
-code change perspective.
-
-There are good arguments that can be made either way, and a lot
-depends on the quality of the students you can recruit, the amount of
-time they have, and how much review time it will take out of the core
-team during the design and implementation phase.
-
-Regards,
-
-						- Ted
+- z
