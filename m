@@ -1,80 +1,83 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Andy Lutomirski <luto@amacapital.net>
 Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
-Date: Wed, 14 Mar 2012 21:46:00 -0700
-Message-ID: <4F617408.7050801@panasas.com>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com> <4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net> <4F5837A2.8000306@panasas.com> <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net> <20120308154326.GA6777@thunk.org> <Pine.LNX.4.64.1203080829300.23757@cobra.newdream.net> <4F614F8D.5010702@amacapital.net>
+Date: Wed, 14 Mar 2012 22:02:02 -0700
+Message-ID: <CALCETrUd4cTaFiHVAD+5ezoKEy2G-x6rYhC7N0FgLdboR4yQwA@mail.gmail.com>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
+ <4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net>
+ <4F5837A2.8000306@panasas.com> <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
+ <20120308154326.GA6777@thunk.org> <Pine.LNX.4.64.1203080829300.23757@cobra.newdream.net>
+ <4F614F8D.5010702@amacapital.net> <4F617408.7050801@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: Sage Weil <sage@newdream.net>, "Ted Ts'o" <tytso@mit.edu>,
 	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-To: Andy Lutomirski <luto@amacapital.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:58705 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750827Ab2COEqU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Mar 2012 00:46:20 -0400
-In-Reply-To: <4F614F8D.5010702@amacapital.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Boaz Harrosh <bharrosh@panasas.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4F617408.7050801@panasas.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 03/14/2012 07:10 PM, Andy Lutomirski wrote:
-> On 03/08/2012 08:43 AM, Sage Weil wrote:
->> On Thu, 8 Mar 2012, Ted Ts'o wrote:
->>> On Wed, Mar 07, 2012 at 10:27:43PM -0800, Sage Weil wrote:
->>>>
->>>> This avoids the problem for devices that don't need stable pages, but 
->>>> doesn't help for those that do (btrfs, raid, iscsi, dif/dix, etc.).  It 
->>>> seems to me like a more elegant solution would be to COW the page in the 
->>>> address_space so that you get stable writeback pages without blocking.  
->>>> That's clearly more complex, and I'm sure there are a range of issues 
->>>> involved in making that work, but I would hope that it would be doable 
->>>> with generic MM infrastructure so that everyone would benefit.
->>>
->>> Well, even doing a COW (or anything that involves messing with page
->>> tables) is not free.  So even if we can make the cost of stable
->>> writeback pages cheaper, if we can completely avoid the cost, this
->>> would be good.  I'd also rather fix the performance regression sooner
->>> rather than later, and I suspect the COW solution is not something
->>> that could be prepared in time for the upcoming merge window.
+On Wed, Mar 14, 2012 at 9:46 PM, Boaz Harrosh <bharrosh@panasas.com> wr=
+ote:
+> On 03/14/2012 07:10 PM, Andy Lutomirski wrote:
+>> On 03/08/2012 08:43 AM, Sage Weil wrote:
+>> I'll add a simple workload. =A0I have a soft real-time program that =
+has
+>> two threads. =A0One of them fallocates some files, mmaps them, mlock=
+s
+>> them, and touches all the pages to prefault them. =A0(This thread ha=
+s no
+>> real-time constraints -- it just needs to keep up.) =A0The other thr=
+ead
+>> writes to the files.
 >>
->> Definitely.  This patch looks like a fine approach for your situation. I 
->> just don't want the subject to come up without talking about a general 
->> solution.  And it's very interesting to hear about a (simple) workload 
->> that is affected by the wait_on_page_writeback().
-> 
-> I'll add a simple workload.  I have a soft real-time program that has
-> two threads.  One of them fallocates some files, mmaps them, mlocks
-> them, and touches all the pages to prefault them.  (This thread has no
-> real-time constraints -- it just needs to keep up.)  The other thread
-> writes to the files.
-> 
-> On Windows, this works very well.  On Linux without stable pages, it
-> almost works.  With stable pages, it's a complete disaster.  No amount
-> of minimizing the amount of time that pages under writeback can cause
-> writers to sleep will help -- writers *must not wait for io* when
-> writing mlocked, prefaulted pages for my code to work.
-> 
+>> On Windows, this works very well. =A0On Linux without stable pages, =
+it
+>> almost works. =A0With stable pages, it's a complete disaster. =A0No =
+amount
+>> of minimizing the amount of time that pages under writeback can caus=
+e
+>> writers to sleep will help -- writers *must not wait for io* when
+>> writing mlocked, prefaulted pages for my code to work.
+>>
+>
+> Right, this is Windows shit. If your goal is to never wait, IO
+> as fast as possible, and use the least amount of CPU time
+> then it's exactly the opposite of what you want to do.
+> You want to do async Direct IO.
 
-Right, this is Windows shit. If your goal is to never wait, IO
-as fast as possible, and use the least amount of CPU time
-then it's exactly the opposite of what you want to do.
-You want to do async Direct IO.
+I don't care if the io is as fast as possible and I don't care about
+cpu time (that's what multicore is for).  I care about real-time
+threads not waiting.  And I'm not sure why the superior performance on
+Windows is "shit".
 
-Also as Dave Chinner said "Double/ring buffering with async
-IO dispatch"
+In any case, there's no possible way that async direct I/O is as
+low-latency as memcpy for short writes.
 
-BTW Even On windows there are much better ways to do this. Also
-there ring buffering with async direct IO.
+>
+> Also as Dave Chinner said "Double/ring buffering with async
+> IO dispatch"
 
-> (The other issue involves file_update_time.  I'll send a fix eventually.)
-> 
-> FWIW, it would be really nice if there was a way to lock a mapping so
-> hard that accesses are guaranteed to not even cause soft faults.  We're
-> far from being able to do that now, though.
-> 
-> --Andy
+That's certainly an option.  In fact, any program that has issues with
+write latency due to stable pages or any other cause can do this.  But
+it's more code, it's more likely to lose data on an application crash,
+and it's annoying since the kernel *already* has a perfectly good page
+cache and mmap mechanism that ought to work.
 
-Cheers
-Boaz
+Also, double buffering is kind of a PITA when other threads might be
+trying to real the same file at the same time.  That means I have to
+get them all to find the same mapping, which can't live on an ext4
+filesystem, requiring a daemon.
+
+So I still claim my use case is valid, and I think Linux should handle
+it better than it does now.  The proposed fix of getting rid of stable
+pages when they're not needed is good enough for me.
+
+--Andy
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
