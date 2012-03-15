@@ -1,83 +1,75 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
-Date: Wed, 14 Mar 2012 22:02:02 -0700
-Message-ID: <CALCETrUd4cTaFiHVAD+5ezoKEy2G-x6rYhC7N0FgLdboR4yQwA@mail.gmail.com>
-References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com>
- <4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net>
- <4F5837A2.8000306@panasas.com> <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net>
- <20120308154326.GA6777@thunk.org> <Pine.LNX.4.64.1203080829300.23757@cobra.newdream.net>
- <4F614F8D.5010702@amacapital.net> <4F617408.7050801@panasas.com>
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Thu, 15 Mar 2012 08:59:38 +0100
+Message-ID: <CADDYkjRv=ASgzJV25beyN3t=7=djRcRAxy0tEqcZ9NX300boBg@mail.gmail.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+	<20120310035202.GA5652@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Sage Weil <sage@newdream.net>, "Ted Ts'o" <tytso@mit.edu>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F617408.7050801@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, linux-btrfs@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:34209 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755124Ab2COH7j convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Mar 2012 03:59:39 -0400
+In-Reply-To: <20120310035202.GA5652@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 14, 2012 at 9:46 PM, Boaz Harrosh <bharrosh@panasas.com> wr=
-ote:
-> On 03/14/2012 07:10 PM, Andy Lutomirski wrote:
->> On 03/08/2012 08:43 AM, Sage Weil wrote:
->> I'll add a simple workload. =A0I have a soft real-time program that =
-has
->> two threads. =A0One of them fallocates some files, mmaps them, mlock=
-s
->> them, and touches all the pages to prefault them. =A0(This thread ha=
-s no
->> real-time constraints -- it just needs to keep up.) =A0The other thr=
-ead
->> writes to the files.
->>
->> On Windows, this works very well. =A0On Linux without stable pages, =
-it
->> almost works. =A0With stable pages, it's a complete disaster. =A0No =
-amount
->> of minimizing the amount of time that pages under writeback can caus=
-e
->> writers to sleep will help -- writers *must not wait for io* when
->> writing mlocked, prefaulted pages for my code to work.
->>
+2012/3/10 Ted Ts'o <tytso@mit.edu>:
+> Hey Jacek,
 >
-> Right, this is Windows shit. If your goal is to never wait, IO
-> as fast as possible, and use the least amount of CPU time
-> then it's exactly the opposite of what you want to do.
-> You want to do async Direct IO.
-
-I don't care if the io is as fast as possible and I don't care about
-cpu time (that's what multicore is for).  I care about real-time
-threads not waiting.  And I'm not sure why the superior performance on
-Windows is "shit".
-
-In any case, there's no possible way that async direct I/O is as
-low-latency as memcpy for short writes.
-
+> I'm curious parameters of the set of directories on your production
+> server. =A0On an ext4 file system, assuming you've copied the
+> directories over, what are the result of this command pipeline when
+> you are cd'ed into the top of the directory hierarchy of interest
+> (your svn tree, as I recall)?
 >
-> Also as Dave Chinner said "Double/ring buffering with async
-> IO dispatch"
+> find . -type d -ls | awk '{print $7}' | sort -n | uniq -c
+>
+> I'm just curious what the distribution of directories sizes are in
+> practice for your use case...
+>
 
-That's certainly an option.  In fact, any program that has issues with
-write latency due to stable pages or any other cause can do this.  But
-it's more code, it's more likely to lose data on an application crash,
-and it's annoying since the kernel *already* has a perfectly good page
-cache and mmap mechanism that ought to work.
+Hi Ted,
 
-Also, double buffering is kind of a PITA when other threads might be
-trying to real the same file at the same time.  That means I have to
-get them all to find the same mapping, which can't live on an ext4
-filesystem, requiring a daemon.
+below is from the latest upstream on ext4:
 
-So I still claim my use case is valid, and I think Linux should handle
-it better than it does now.  The proposed fix of getting rid of stable
-pages when they're not needed is good enough for me.
+ 843341 4096
+    165 12288
+     29 16384
+    164 20480
+     26 24576
+     22 28672
+     24 32768
+    118 36864
+     12 40960
+     19 45056
+      3 49152
+     12 53248
+     37 57344
+     10 61440
+      2 65536
+     13 69632
+      1 131072
+      1 139264
+      1 143360
+      1 221184
+      1 249856
+      1 258048
+      1 262144
+      1 319488
+      2 335872
+      1 339968
 
---Andy
+-Jacek
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
