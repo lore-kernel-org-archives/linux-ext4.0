@@ -1,449 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/8] jbd2: Issue cache flush after checkpointing even
- with internal journal
-Date: Thu, 15 Mar 2012 09:59:35 +0100
-Message-ID: <20120315085935.GA32209@quack.suse.cz>
-References: <1329330854-14237-1-git-send-email-jack@suse.cz>
- <1329330854-14237-4-git-send-email-jack@suse.cz>
- <20120314021745.GC15379@thunk.org>
+From: Jacek Luczak <difrost.kernel@gmail.com>
+Subject: Re: getdents - ext4 vs btrfs performance
+Date: Thu, 15 Mar 2012 11:42:24 +0100
+Message-ID: <CADDYkjRSd-Dv2jECwKt=3Q95hceVhiA+StZj1fvwywZHWaEgfw@mail.gmail.com>
+References: <CADDYkjS5VJeYyHzqumazQ0qKg+HwA6GO+zYSJj7rkHNZFwjcoQ@mail.gmail.com>
+	<alpine.LFD.2.00.1203091158430.4487@dhcp-27-109.brq.redhat.com>
+	<BCAD47C1-B95A-4EDB-8EFB-3D4E325DE57D@whamcloud.com>
+	<20120310044804.GB5652@thunk.org>
+	<9709DE62-CE25-41C4-A33C-63336B51DC5E@whamcloud.com>
+	<20120311161320.GC1048@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "Ted Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@whamcloud.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Jacek Luczak <difrost.kernel@gmail.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59492 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756888Ab2COI7h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Mar 2012 04:59:37 -0400
-Content-Disposition: inline
-In-Reply-To: <20120314021745.GC15379@thunk.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:47384 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753010Ab2COKm0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Mar 2012 06:42:26 -0400
+In-Reply-To: <20120311161320.GC1048@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 13-03-12 22:17:45, Ted Tso wrote:
-> I'm not sure why you pulled out the code for
-> jbd2_journal_get_log_tail(), since there's no other usage of the
-> function, but it did make this commit harder to review.  It's good for
-> code movement patches to be segregated to their own commit, just to
-> make it easier to review....
-  I pulled the code out because the last patch in the series uses it from
-commit code. So it was not a deliberate code movement. But I agree it might
-have been easier to review if the code movement was a separate patch.
-Should I do that or have you already coped with the patch as is?
+2012/3/11 Ted Ts'o <tytso@mit.edu>:
 
-								Honza
+>
+> Well, my goal in proposing this optimization is that helps for the
+> "medium size" directories in the cold cache case. =A0The ext4 user wh=
+o
+> first kicked off this thread was using his file system for an SVN
+> server, as I recall. =A0I could easily believe that he has thousands =
+of
+> files; maybe even tens of thousands of files in a directory. =A0But t=
+hat
+> probably still fits in 256k, or at best 512k worth of directory block=
+s.
+>
 
-> On Wed, Feb 15, 2012 at 07:34:09PM +0100, Jan Kara wrote:
-> > When we reach jbd2_cleanup_journal_tail(), there is no guarantee that
-> > checkpointed buffers are on a stable storage - especially if buffers were
-> > written out by jbd2_log_do_checkpoint(), they are likely to be only in disk's
-> > caches. Thus when we update journal superblock effectively removing old
-> > transaction from journal, this write of superblock can get to stable storage
-> > before those checkpointed buffers which can result in filesystem corruption
-> > after a crash. Thus we must unconditionally issue a cache flush before we
-> > update journal superblock in these cases.
-> > 
-> > A similar problem can also occur if journal superblock is written only in
-> > disk's caches, other transaction starts reusing space of the transaction
-> > cleaned from the log and power failure happens. Subsequent journal replay would
-> > still try to replay the old transaction but some of it's blocks may be already
-> > overwritten by the new transaction. For this reason we must use WRITE_FUA when
-> > updating log tail and we must first write new log tail to disk and update
-> > in-memory information only after that.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/jbd2/checkpoint.c        |   75 ++++--------------------
-> >  fs/jbd2/commit.c            |   11 +++-
-> >  fs/jbd2/journal.c           |  136 ++++++++++++++++++++++++++++++++++++------
-> >  fs/jbd2/recovery.c          |    5 +-
-> >  include/linux/jbd2.h        |    6 ++-
-> >  include/trace/events/jbd2.h |    2 +-
-> >  6 files changed, 148 insertions(+), 87 deletions(-)
-> > 
-> > diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> > index aa09868..de76f1f 100644
-> > --- a/fs/jbd2/checkpoint.c
-> > +++ b/fs/jbd2/checkpoint.c
-> > @@ -478,79 +478,28 @@ out:
-> >  
-> >  int jbd2_cleanup_journal_tail(journal_t *journal)
-> >  {
-> > -	transaction_t * transaction;
-> >  	tid_t		first_tid;
-> > -	unsigned long	blocknr, freed;
-> > +	unsigned long	blocknr;
-> >  
-> >  	if (is_journal_aborted(journal))
-> >  		return 1;
-> >  
-> > -	/* OK, work out the oldest transaction remaining in the log, and
-> > -	 * the log block it starts at.
-> > -	 *
-> > -	 * If the log is now empty, we need to work out which is the
-> > -	 * next transaction ID we will write, and where it will
-> > -	 * start. */
-> > -
-> > -	write_lock(&journal->j_state_lock);
-> > -	spin_lock(&journal->j_list_lock);
-> > -	transaction = journal->j_checkpoint_transactions;
-> > -	if (transaction) {
-> > -		first_tid = transaction->t_tid;
-> > -		blocknr = transaction->t_log_start;
-> > -	} else if ((transaction = journal->j_committing_transaction) != NULL) {
-> > -		first_tid = transaction->t_tid;
-> > -		blocknr = transaction->t_log_start;
-> > -	} else if ((transaction = journal->j_running_transaction) != NULL) {
-> > -		first_tid = transaction->t_tid;
-> > -		blocknr = journal->j_head;
-> > -	} else {
-> > -		first_tid = journal->j_transaction_sequence;
-> > -		blocknr = journal->j_head;
-> > -	}
-> > -	spin_unlock(&journal->j_list_lock);
-> > -	J_ASSERT(blocknr != 0);
-> > -
-> > -	/* If the oldest pinned transaction is at the tail of the log
-> > -           already then there's not much we can do right now. */
-> > -	if (journal->j_tail_sequence == first_tid) {
-> > -		write_unlock(&journal->j_state_lock);
-> > +	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
-> >  		return 1;
-> > -	}
-> > -
-> > -	/* OK, update the superblock to recover the freed space.
-> > -	 * Physical blocks come first: have we wrapped beyond the end of
-> > -	 * the log?  */
-> > -	freed = blocknr - journal->j_tail;
-> > -	if (blocknr < journal->j_tail)
-> > -		freed = freed + journal->j_last - journal->j_first;
-> > -
-> > -	trace_jbd2_cleanup_journal_tail(journal, first_tid, blocknr, freed);
-> > -	jbd_debug(1,
-> > -		  "Cleaning journal tail from %d to %d (offset %lu), "
-> > -		  "freeing %lu\n",
-> > -		  journal->j_tail_sequence, first_tid, blocknr, freed);
-> > -
-> > -	journal->j_free += freed;
-> > -	journal->j_tail_sequence = first_tid;
-> > -	journal->j_tail = blocknr;
-> > -	write_unlock(&journal->j_state_lock);
-> > +	J_ASSERT(blocknr != 0);
-> >  
-> >  	/*
-> > -	 * If there is an external journal, we need to make sure that
-> > -	 * any data blocks that were recently written out --- perhaps
-> > -	 * by jbd2_log_do_checkpoint() --- are flushed out before we
-> > -	 * drop the transactions from the external journal.  It's
-> > -	 * unlikely this will be necessary, especially with a
-> > -	 * appropriately sized journal, but we need this to guarantee
-> > -	 * correctness.  Fortunately jbd2_cleanup_journal_tail()
-> > -	 * doesn't get called all that often.
-> > +	 * We need to make sure that any blocks that were recently written out
-> > +	 * --- perhaps by jbd2_log_do_checkpoint() --- are flushed out before
-> > +	 * we drop the transactions from the journal. It's unlikely this will
-> > +	 * be necessary, especially with an appropriately sized journal, but we
-> > +	 * need this to guarantee correctness.  Fortunately
-> > +	 * jbd2_cleanup_journal_tail() doesn't get called all that often.
-> >  	 */
-> > -	if ((journal->j_fs_dev != journal->j_dev) &&
-> > -	    (journal->j_flags & JBD2_BARRIER))
-> > +	if (journal->j_flags & JBD2_BARRIER)
-> >  		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
-> > -	if (!(journal->j_flags & JBD2_ABORT))
-> > -		jbd2_journal_update_sb_log_tail(journal);
-> > +
-> > +	__jbd2_update_log_tail(journal, first_tid, blocknr);
-> >  	return 0;
-> >  }
-> >  
-> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> > index 39978c1..f37b783 100644
-> > --- a/fs/jbd2/commit.c
-> > +++ b/fs/jbd2/commit.c
-> > @@ -341,7 +341,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> >  	if (journal->j_flags & JBD2_FLUSHED) {
-> >  		jbd_debug(3, "super block updated\n");
-> >  		mutex_lock(&journal->j_checkpoint_mutex);
-> > -		jbd2_journal_update_sb_log_tail(journal);
-> > +		/*
-> > +		 * We hold j_checkpoint_mutex so tail cannot change under us.
-> > +		 * We don't need any special data guarantees for writing sb
-> > +		 * since journal is empty and it is ok for write to be
-> > +		 * flushed only with transaction commit.
-> > +		 */
-> > +		jbd2_journal_update_sb_log_tail(journal,
-> > +						journal->j_tail_sequence,
-> > +						journal->j_tail,
-> > +						WRITE_SYNC);
-> >  		mutex_unlock(&journal->j_checkpoint_mutex);
-> >  	} else {
-> >  		jbd_debug(3, "superblock not updated\n");
-> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> > index 183a099..192558f 100644
-> > --- a/fs/jbd2/journal.c
-> > +++ b/fs/jbd2/journal.c
-> > @@ -744,6 +744,85 @@ struct journal_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
-> >  	return jbd2_journal_add_journal_head(bh);
-> >  }
-> >  
-> > +/*
-> > + * Return tid of the oldest transaction in the journal and block in the journal
-> > + * where the transaction starts.
-> > + *
-> > + * If the journal is now empty, return which will be the next transaction ID
-> > + * we will write and where will that transaction start.
-> > + *
-> > + * The return value is 0 if journal tail cannot be pushed any further, 1 if
-> > + * it can.
-> > + */
-> > +int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
-> > +			      unsigned long *block)
-> > +{
-> > +	transaction_t *transaction;
-> > +	int ret;
-> > +
-> > +	read_lock(&journal->j_state_lock);
-> > +	spin_lock(&journal->j_list_lock);
-> > +	transaction = journal->j_checkpoint_transactions;
-> > +	if (transaction) {
-> > +		*tid = transaction->t_tid;
-> > +		*block = transaction->t_log_start;
-> > +	} else if ((transaction = journal->j_committing_transaction) != NULL) {
-> > +		*tid = transaction->t_tid;
-> > +		*block = transaction->t_log_start;
-> > +	} else if ((transaction = journal->j_running_transaction) != NULL) {
-> > +		*tid = transaction->t_tid;
-> > +		*block = journal->j_head;
-> > +	} else {
-> > +		*tid = journal->j_transaction_sequence;
-> > +		*block = journal->j_head;
-> > +	}
-> > +	ret = tid_gt(*tid, journal->j_tail_sequence);
-> > +	spin_unlock(&journal->j_list_lock);
-> > +	read_unlock(&journal->j_state_lock);
-> > +
-> > +	return ret;
-> > +}
-> > +
-> > +/*
-> > + * Update information in journal structure and in on disk journal superblock
-> > + * about log tail. This function does not check whether information passed in
-> > + * really pushes log tail further. It's responsibility of the caller to make
-> > + * sure provided log tail information is valid (e.g. by holding
-> > + * j_checkpoint_mutex all the time between computing log tail and calling this
-> > + * function as is the case with jbd2_cleanup_journal_tail()).
-> > + *
-> > + * Requires j_checkpoint_mutex
-> > + */
-> > +void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
-> > +{
-> > +	unsigned long freed;
-> > +
-> > +	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
-> > +
-> > +	/*
-> > +	 * We cannot afford for write to remain in drive's caches since as
-> > +	 * soon as we update j_tail, next transaction can start reusing journal
-> > +	 * space and if we lose sb update during power failure we'd replay
-> > +	 * old transaction with possibly newly overwritten data.
-> > +	 */
-> > +	jbd2_journal_update_sb_log_tail(journal, tid, block, WRITE_FUA);
-> > +	write_lock(&journal->j_state_lock);
-> > +	freed = block - journal->j_tail;
-> > +	if (block < journal->j_tail)
-> > +		freed += journal->j_last - journal->j_first;
-> > +
-> > +	trace_jbd2_update_log_tail(journal, tid, block, freed);
-> > +	jbd_debug(1,
-> > +		  "Cleaning journal tail from %d to %d (offset %lu), "
-> > +		  "freeing %lu\n",
-> > +		  journal->j_tail_sequence, tid, block, freed);
-> > +
-> > +	journal->j_free += freed;
-> > +	journal->j_tail_sequence = tid;
-> > +	journal->j_tail = block;
-> > +	write_unlock(&journal->j_state_lock);
-> > +}
-> > +
-> >  struct jbd2_stats_proc_session {
-> >  	journal_t *journal;
-> >  	struct transaction_stats_s *stats;
-> > @@ -1127,17 +1206,29 @@ static int journal_reset(journal_t *journal)
-> >  	} else {
-> >  		/* Lock here to make assertions happy... */
-> >  		mutex_lock(&journal->j_checkpoint_mutex);
-> > -		/* Add the dynamic fields and write it to disk. */
-> > -		jbd2_journal_update_sb_log_tail(journal);
-> > +		/*
-> > +		 * Update log tail information. We use WRITE_FUA since new
-> > +		 * transaction will start reusing journal space and so we
-> > +		 * must make sure information about current log tail is on
-> > +		 * disk before that.
-> > +		 */
-> > +		jbd2_journal_update_sb_log_tail(journal,
-> > +						journal->j_tail_sequence,
-> > +						journal->j_tail,
-> > +						WRITE_FUA);
-> >  		mutex_unlock(&journal->j_checkpoint_mutex);
-> >  	}
-> >  	return jbd2_journal_start_thread(journal);
-> >  }
-> >  
-> > -static void jbd2_write_superblock(journal_t *journal)
-> > +static void jbd2_write_superblock(journal_t *journal, int write_op)
-> >  {
-> >  	struct buffer_head *bh = journal->j_sb_buffer;
-> > +	int ret;
-> >  
-> > +	if (!(journal->j_flags & JBD2_BARRIER))
-> > +		write_op &= ~(REQ_FUA | REQ_FLUSH);
-> > +	lock_buffer(bh);
-> >  	if (buffer_write_io_error(bh)) {
-> >  		/*
-> >  		 * Oh, dear.  A previous attempt to write the journal
-> > @@ -1153,40 +1244,45 @@ static void jbd2_write_superblock(journal_t *journal)
-> >  		clear_buffer_write_io_error(bh);
-> >  		set_buffer_uptodate(bh);
-> >  	}
-> > -
-> > -	BUFFER_TRACE(bh, "marking dirty");
-> > -	mark_buffer_dirty(bh);
-> > -	sync_dirty_buffer(bh);
-> > +	get_bh(bh);
-> > +	bh->b_end_io = end_buffer_write_sync;
-> > +	ret = submit_bh(write_op, bh);
-> > +	wait_on_buffer(bh);
-> >  	if (buffer_write_io_error(bh)) {
-> > -		printk(KERN_ERR "JBD2: I/O error detected "
-> > -		       "when updating journal superblock for %s.\n",
-> > -		       journal->j_devname);
-> >  		clear_buffer_write_io_error(bh);
-> >  		set_buffer_uptodate(bh);
-> > +		ret = -EIO;
-> > +	}
-> > +	if (ret) {
-> > +		printk(KERN_ERR "JBD2: Error %d detected when updating "
-> > +		       "journal superblock for %s.\n", ret,
-> > +		       journal->j_devname);
-> >  	}
-> >  }
-> >  
-> >  /**
-> >   * jbd2_journal_update_sb_log_tail() - Update log tail in journal sb on disk.
-> >   * @journal: The journal to update.
-> > + * @tail_tid: TID of the new transaction at the tail of the log
-> > + * @tail_block: The first block of the transaction at the tail of the log
-> > + * @write_op: With which operation should we write the journal sb
-> >   *
-> >   * Update a journal's superblock information about log tail and write it to
-> >   * disk, waiting for the IO to complete.
-> >   */
-> > -void jbd2_journal_update_sb_log_tail(journal_t *journal)
-> > +void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
-> > +				     unsigned long tail_block, int write_op)
-> >  {
-> >  	journal_superblock_t *sb = journal->j_superblock;
-> >  
-> >  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
-> > -	read_lock(&journal->j_state_lock);
-> > -	jbd_debug(1, "JBD2: updating superblock (start %ld, seq %d)\n",
-> > -		  journal->j_tail, journal->j_tail_sequence);
-> > +	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
-> > +		  tail_block, tail_tid);
-> >  
-> > -	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
-> > -	sb->s_start    = cpu_to_be32(journal->j_tail);
-> > -	read_unlock(&journal->j_state_lock);
-> > +	sb->s_sequence = cpu_to_be32(tail_tid);
-> > +	sb->s_start    = cpu_to_be32(tail_block);
-> >  
-> > -	jbd2_write_superblock(journal);
-> > +	jbd2_write_superblock(journal, write_op);
-> >  
-> >  	/* Log is no longer empty */
-> >  	write_lock(&journal->j_state_lock);
-> > @@ -1215,7 +1311,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
-> >  	sb->s_start    = cpu_to_be32(0);
-> >  	read_unlock(&journal->j_state_lock);
-> >  
-> > -	jbd2_write_superblock(journal);
-> > +	jbd2_write_superblock(journal, WRITE_FUA);
-> >  
-> >  	/* Log is no longer empty */
-> >  	write_lock(&journal->j_state_lock);
-> > @@ -1241,7 +1337,7 @@ static void jbd2_journal_update_sb_errno(journal_t *journal)
-> >  	sb->s_errno    = cpu_to_be32(journal->j_errno);
-> >  	read_unlock(&journal->j_state_lock);
-> >  
-> > -	jbd2_write_superblock(journal);
-> > +	jbd2_write_superblock(journal, WRITE_SYNC);
-> >  }
-> >  
-> >  /*
-> > diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> > index da6d7ba..c1a0335 100644
-> > --- a/fs/jbd2/recovery.c
-> > +++ b/fs/jbd2/recovery.c
-> > @@ -21,6 +21,7 @@
-> >  #include <linux/jbd2.h>
-> >  #include <linux/errno.h>
-> >  #include <linux/crc32.h>
-> > +#include <linux/blkdev.h>
-> >  #endif
-> >  
-> >  /*
-> > @@ -265,7 +266,9 @@ int jbd2_journal_recover(journal_t *journal)
-> >  	err2 = sync_blockdev(journal->j_fs_dev);
-> >  	if (!err)
-> >  		err = err2;
-> > -
-> > +	/* Make sure all replayed data is on permanent storage */
-> > +	if (journal->j_flags & JBD2_BARRIER)
-> > +		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
-> >  	return err;
-> >  }
-> >  
-> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> > index 78da912..1b10c2a 100644
-> > --- a/include/linux/jbd2.h
-> > +++ b/include/linux/jbd2.h
-> > @@ -971,6 +971,9 @@ extern void __journal_clean_data_list(transaction_t *transaction);
-> >  /* Log buffer allocation */
-> >  extern struct journal_head * jbd2_journal_get_descriptor_buffer(journal_t *);
-> >  int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
-> > +int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
-> > +			      unsigned long *block);
-> > +void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
-> >  
-> >  /* Commit management */
-> >  extern void jbd2_journal_commit_transaction(journal_t *);
-> > @@ -1082,7 +1085,8 @@ extern int	   jbd2_journal_destroy    (journal_t *);
-> >  extern int	   jbd2_journal_recover    (journal_t *journal);
-> >  extern int	   jbd2_journal_wipe       (journal_t *, int);
-> >  extern int	   jbd2_journal_skip_recovery	(journal_t *);
-> > -extern void	   jbd2_journal_update_sb_log_tail	(journal_t *);
-> > +extern void	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
-> > +				unsigned long, int);
-> >  extern void	   __jbd2_journal_abort_hard	(journal_t *);
-> >  extern void	   jbd2_journal_abort      (journal_t *, int);
-> >  extern int	   jbd2_journal_errno      (journal_t *);
-> > diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-> > index 7596441..5c74007 100644
-> > --- a/include/trace/events/jbd2.h
-> > +++ b/include/trace/events/jbd2.h
-> > @@ -200,7 +200,7 @@ TRACE_EVENT(jbd2_checkpoint_stats,
-> >  		  __entry->forced_to_close, __entry->written, __entry->dropped)
-> >  );
-> >  
-> > -TRACE_EVENT(jbd2_cleanup_journal_tail,
-> > +TRACE_EVENT(jbd2_update_log_tail,
-> >  
-> >  	TP_PROTO(journal_t *journal, tid_t first_tid,
-> >  		 unsigned long block_nr, unsigned long freed),
-> > -- 
-> > 1.7.1
-> > 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+That was not a SVN server. It was a build host having checkouts of SVN
+projects.
+
+The many files/dirs case is common for VCS and the SVN is not the only
+that would be affected here. AFAIR git.kernel.org was also suffering
+from the getdents(). Same applies to commercial products that are
+heavily stuffed with many files/dirs, e.g. ClearCase or Synergy. In
+the second one case we are running on XFS for a longer while and I
+must say that this was a huge improvement mostly on backup times
+(where a dump of Informix and the whole filesystem is ordinary
+compressed in tarball).
+
+A medium size you are referring would most probably fit into 256k and
+this could be enough for 90% of cases. Large production system running
+on ext4 need backups thus those would benefit the most here.
+
+-Jacek
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
