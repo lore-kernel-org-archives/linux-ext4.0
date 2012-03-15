@@ -1,84 +1,80 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [RFC] enable ext4 allocate blocks across group boundary
-Date: Thu, 15 Mar 2012 12:15:22 +0800
-Message-ID: <CAGBYx2aCtiy+ALRHMBh4sbUCBChWpwUH6wdBRVeZ1ENEJue6LA@mail.gmail.com>
-References: <CAGBYx2aETBVb2hMyEBC91meRwr_Z+cnMNwF+ZBU4nk1PdedygA@mail.gmail.com>
-	<B931D1EA-1D19-4054-9427-F1212D2837A7@dilger.ca>
-	<CAGBYx2b9nKmzm6kAestOJdoA2Ufwjkbk2za=0FL7smh_Bq0yPA@mail.gmail.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH, RFC] Don't do page stablization if !CONFIG_BLKDEV_INTEGRITY
+Date: Wed, 14 Mar 2012 21:46:00 -0700
+Message-ID: <4F617408.7050801@panasas.com>
+References: <E1S5QTU-0005Cc-Kl@tytso-glaptop.cam.corp.google.com> <4F57FC14.5090207@panasas.com> <yq1zkbrhi2l.fsf@sermon.lab.mkp.net> <4F5837A2.8000306@panasas.com> <Pine.LNX.4.64.1203072207050.24564@cobra.newdream.net> <20120308154326.GA6777@thunk.org> <Pine.LNX.4.64.1203080829300.23757@cobra.newdream.net> <4F614F8D.5010702@amacapital.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Sage Weil <sage@newdream.net>, "Ted Ts'o" <tytso@mit.edu>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+To: Andy Lutomirski <luto@amacapital.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:42258 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750717Ab2COEPW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Mar 2012 00:15:22 -0400
-Received: by yenl12 with SMTP id l12so2619685yen.19
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Mar 2012 21:15:22 -0700 (PDT)
-In-Reply-To: <CAGBYx2b9nKmzm6kAestOJdoA2Ufwjkbk2za=0FL7smh_Bq0yPA@mail.gmail.com>
+Received: from natasha.panasas.com ([67.152.220.90]:58705 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750827Ab2COEqU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Mar 2012 00:46:20 -0400
+In-Reply-To: <4F614F8D.5010702@amacapital.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 15, 2012 at 10:49 AM, Yongqiang Yang <xiaoqiangnk@gmail.com=
-> wrote:
-> On Thu, Mar 15, 2012 at 10:34 AM, Andreas Dilger <adilger@dilger.ca> =
-wrote:
->> On 2012-03-14, at 6:52 PM, Yongqiang Yang wrote:
->>> Here is a proposal to enable ext4 allocate blocks across group boun=
-dary.
+On 03/14/2012 07:10 PM, Andy Lutomirski wrote:
+> On 03/08/2012 08:43 AM, Sage Weil wrote:
+>> On Thu, 8 Mar 2012, Ted Ts'o wrote:
+>>> On Wed, Mar 07, 2012 at 10:27:43PM -0800, Sage Weil wrote:
+>>>>
+>>>> This avoids the problem for devices that don't need stable pages, but 
+>>>> doesn't help for those that do (btrfs, raid, iscsi, dif/dix, etc.).  It 
+>>>> seems to me like a more elegant solution would be to COW the page in the 
+>>>> address_space so that you get stable writeback pages without blocking.  
+>>>> That's clearly more complex, and I'm sure there are a range of issues 
+>>>> involved in making that work, but I would hope that it would be doable 
+>>>> with generic MM infrastructure so that everyone would benefit.
 >>>
->>> Now ext4 allocates blocks within a single block group by locking a
->>> group. =A0 Flex_bg puts metadata blocks together, as a result,it
->>> enlarges contiguous blocks. =A0So we can enable ext4 allocate block=
-s
->>> within a flex block group. Inode allocation takes group lock as blo=
-ck
->>> allocation, =A0I am not sure if we should allocate inode within sin=
-gle
->>> group as before.
->>>
->>> If we do this, then the new group boundary will be flex block group
->>> boundary. =A0I am not sure if it is worth doing.
+>>> Well, even doing a COW (or anything that involves messing with page
+>>> tables) is not free.  So even if we can make the cost of stable
+>>> writeback pages cheaper, if we can completely avoid the cost, this
+>>> would be good.  I'd also rather fix the performance regression sooner
+>>> rather than later, and I suspect the COW solution is not something
+>>> that could be prepared in time for the upcoming merge window.
 >>
->> The maximum extent size is the same as a single block group, so ther=
-e
->> is relatively little value in doing this, IMHO.
-> nope. =A0The value comes from 2 aspects: 1. the preallocation can
-> preallocate much more space , 2. if =A0tail blocks of a group and hea=
-d
-> blocks of the next group is free, then they can be treated as
-> contiguous blocks.
-Here I meant they can be seen in buddy allocator.
+>> Definitely.  This patch looks like a fine approach for your situation. I 
+>> just don't want the subject to come up without talking about a general 
+>> solution.  And it's very interesting to hear about a (simple) workload 
+>> that is affected by the wait_on_page_writeback().
+> 
+> I'll add a simple workload.  I have a soft real-time program that has
+> two threads.  One of them fallocates some files, mmaps them, mlocks
+> them, and touches all the pages to prefault them.  (This thread has no
+> real-time constraints -- it just needs to keep up.)  The other thread
+> writes to the files.
+> 
+> On Windows, this works very well.  On Linux without stable pages, it
+> almost works.  With stable pages, it's a complete disaster.  No amount
+> of minimizing the amount of time that pages under writeback can cause
+> writers to sleep will help -- writers *must not wait for io* when
+> writing mlocked, prefaulted pages for my code to work.
+> 
 
-Yongqiang.
->
-> =A0I had a rough look at the code, current code does not handle the s=
-ituation.
->
-> Yongqiang.
->>
->> Cheers, Andreas
->>
->>
->>
->>
->>
->
->
->
-> --
-> Best Wishes
-> Yongqiang Yang
+Right, this is Windows shit. If your goal is to never wait, IO
+as fast as possible, and use the least amount of CPU time
+then it's exactly the opposite of what you want to do.
+You want to do async Direct IO.
 
+Also as Dave Chinner said "Double/ring buffering with async
+IO dispatch"
 
+BTW Even On windows there are much better ways to do this. Also
+there ring buffering with async direct IO.
 
---=20
-Best Wishes
-Yongqiang Yang
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> (The other issue involves file_update_time.  I'll send a fix eventually.)
+> 
+> FWIW, it would be really nice if there was a way to lock a mapping so
+> hard that accesses are guaranteed to not even cause soft faults.  We're
+> far from being able to do that now, though.
+> 
+> --Andy
+
+Cheers
+Boaz
