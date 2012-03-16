@@ -1,29 +1,49 @@
-From: "George Spelvin" <linux@horizon.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: Oops in ext3_block_to_path.isra.40+0x26/0x11b
-Date: 16 Mar 2012 17:04:46 -0400
-Message-ID: <20120316210446.2198.qmail@science.horizon.com>
-References: <alpine.LNX.2.00.1203161623130.18356@pobox.suse.cz>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, torvalds@linux-foundation.org
-To: jkosina@suse.cz, linux@horizon.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LNX.2.00.1203161623130.18356@pobox.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Date: Fri, 16 Mar 2012 14:09:32 -0700
+Message-ID: <CA+55aFwDrh_ODr_3+zEL8f=yJV4_D1sKTStpi8R+fZaxB78VYQ@mail.gmail.com>
+References: <alpine.LNX.2.00.1203161623130.18356@pobox.suse.cz> <20120316210446.2198.qmail@science.horizon.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: jkosina@suse.cz, jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:44872 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753360Ab2CPVJy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Mar 2012 17:09:54 -0400
+In-Reply-To: <20120316210446.2198.qmail@science.horizon.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> So it might be the culprit. As the reason of the corruption is not yet 
-> understood, it might be that suspend/resume cycle is not necessary 
-> pre-requisite for this to trigger, it might just make it more likely.
+On Fri, Mar 16, 2012 at 2:04 PM, George Spelvin <linux@horizon.com> wro=
+te:
+>
+> Unfortunately, this is the only time it's happened to me with kernel
+> modesetting *on*. =A0Would repeated checksums of a kernel tree be a g=
+ood
+> way to detect random memory stomping?
 
-It might just be virtual console switching.  Normally I live in X,
-but I might have switched to a text console for some reason (I don't
-specifically remember doing this, but it's very plausible for me).
+Yes, doing filesystem checksums tends to be a good way to find memory
+corruption, since a lot of memory tends to be caches.
 
-> And the corruption is observed to be indeed several writes of 0x00000000, 
-> so it could easily lead to null pointer dereferences all over the place.
-> 
-> Are you able to reproduce the problem if you turn kernel modesetting off?
+Another approach is to have a stupid program that allocates an array
+of say about half the physical memory, and writes some nicely
+recognizable pattern to it. Then, every minute or two, re-check the
+pattern.
 
-Unfortunately, this is the only time it's happened to me with kernel
-modesetting *on*.  Would repeated checksums of a kernel tree be a good
-way to detect random memory stomping?
+The advantage of the pattern approach is that it makes it possible to
+show things like "these X bytes at offset Y in the page changed",
+which can give hints about the source of corruption. The full virtual
+address is obviously useless, but the "offset within page" can be
+quite useful for figuring out corruption patterns even if you can't
+necessarily see which physical page it actually is.
+
+                     Linus
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
