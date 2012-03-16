@@ -1,52 +1,36 @@
 From: Joe Perches <joe@perches.com>
-Subject: [PATCH 0/9] ext4: Message logging corrections and neatening
-Date: Thu, 15 Mar 2012 17:07:28 -0700
-Message-ID: <cover.1331856299.git.joe@perches.com>
-Cc: linux-kernel@vger.kernel.org
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:53242 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751750Ab2CPAHx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 15 Mar 2012 20:07:53 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH 1/9] ext4: Add -DDEBUG to Makefile
+Date: Thu, 15 Mar 2012 17:07:29 -0700
+Message-ID: <7ee60f3b750f4500f9bdcb64f358acbf17987036.1331856300.git.joe@perches.com>
+References: <cover.1331856299.git.joe@perches.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <cover.1331856299.git.joe@perches.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Joe Perches (9):
-  ext4: Add -DDEBUG to Makefile
-  ext4: Use pr_fmt and pr_<level>
-  ext4: Fix indentation
-  ext4: Add no_printk argument validation, fix fallout
-  ext4: Avoid output message interleaving in ext4_error_<foo>
-  ext4: Remove redundant "EXT4-fs: " from uses of ext4_msg
-  ext4: Format neatening for easier grep
-  ext4: Neaten ext4_error uses
-  ext4: Rename ext4_warning to ext4_warn and ext4_error to ext4_err
+Add -DDEBUG to enable future use of pr_debug.
+No changes to objects as no DEBUG uses currently exist.
 
- fs/ext4/Makefile         |    2 +
- fs/ext4/balloc.c         |   38 ++--
- fs/ext4/block_validity.c |   11 +-
- fs/ext4/dir.c            |    5 +-
- fs/ext4/ext4.h           |   31 ++--
- fs/ext4/ext4_extents.h   |    4 +-
- fs/ext4/ext4_jbd2.c      |    3 +-
- fs/ext4/extents.c        |  140 +++++++--------
- fs/ext4/file.c           |    3 +-
- fs/ext4/fsync.c          |    2 +-
- fs/ext4/ialloc.c         |   75 ++++----
- fs/ext4/indirect.c       |   12 +-
- fs/ext4/inode.c          |   95 +++++-----
- fs/ext4/mballoc.c        |  163 ++++++++---------
- fs/ext4/mballoc.h        |   18 +-
- fs/ext4/mmp.c            |   39 ++---
- fs/ext4/move_extent.c    |   94 ++++------
- fs/ext4/namei.c          |  140 +++++++-------
- fs/ext4/page-io.c        |   29 ++--
- fs/ext4/resize.c         |  202 ++++++++++-----------
- fs/ext4/super.c          |  465 ++++++++++++++++++++++------------------------
- fs/ext4/xattr.c          |   37 ++--
- 22 files changed, 766 insertions(+), 842 deletions(-)
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/ext4/Makefile |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 56fd8f86..617a5d8 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -2,6 +2,8 @@
+ # Makefile for the linux ext4-filesystem routines.
+ #
+ 
++ccflags-$(CONFIG_EXT4_FS) := -DDEBUG
++
+ obj-$(CONFIG_EXT4_FS) += ext4.o
+ 
+ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
 -- 
 1.7.8.111.gad25c.dirty
-
