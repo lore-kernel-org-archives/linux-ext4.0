@@ -1,45 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Required help for understanding ext4 block allocation
-Date: Fri, 16 Mar 2012 10:18:10 +0100
-Message-ID: <20120316091810.GB24821@quack.suse.cz>
-References: <CA+tw96DSaJH50o1F4sW9XMnmPD8dFO9VCyvK4tbsLFqfgK9CWQ@mail.gmail.com>
+From: Jiri Kosina <jkosina@suse.cz>
+Subject: Re: Oops in ext3_block_to_path.isra.40+0x26/0x11b
+Date: Fri, 16 Mar 2012 10:29:56 +0100 (CET)
+Message-ID: <alpine.LNX.2.00.1203161028420.18356@pobox.suse.cz>
+References: <20120313133945.4642.qmail@science.horizon.com> <20120316085231.GA24821@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Akshay Nehe <akshaynehe785@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: George Spelvin <linux@horizon.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59836 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60142 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754791Ab2CPJSL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Mar 2012 05:18:11 -0400
-Content-Disposition: inline
-In-Reply-To: <CA+tw96DSaJH50o1F4sW9XMnmPD8dFO9VCyvK4tbsLFqfgK9CWQ@mail.gmail.com>
+	id S1759361Ab2CPJ36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Mar 2012 05:29:58 -0400
+In-Reply-To: <20120316085231.GA24821@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Fri, 16 Mar 2012, Jan Kara wrote:
 
-On Thu 15-03-12 18:48:56, Akshay Nehe wrote:
-> I am trying to understand the block allocation in ext4 file sytem, I
-> have gone through all basic theory and browsing code to do it.
+> > CPU is a Core i3 530, on a Gigabyte motherbord, 4 GB RAM.  No ECC,
+> > unfortunately, so I can't rule out hardware bit rot.  Distribution is
+> > a fairly stock Debian/unstable.
+>   Hmm, is any mounting & unmounting happening during your backup? Because
+> the oops happened because sb->s_fs_info was NULL. Dissassembly shows:
+>   16:	48 8b 47 18          	mov    0x18(%rdi),%rax
+> store sb->s_blocksize into RAX
+>   1a:	48 8b 8f b0 02 00 00 	mov    0x2b0(%rdi),%rcx
+> store sb->s_fs_info into RCX
+>   21:	48 c1 e8 02          	shr    $0x2,%rax
+> This is division from EXT3_ADDR_PER_BLOCK() - RAX carries 1024 after
+> division so that looks correct.
 > 
-> I am writing a module in which i got ext4 on disk inode, now according
-> to theory first 12 bytes of i_block points to ext4_extent_header, so
-> can i use this array of i_block[EXT4_N_BLOCKS].
+>   25:	48 85 db             	test   %rbx,%rbx
+> Now check passed i_block argument.
 > 
-> Means how to fill objects of  struct ext4_extent_header (using first
-> 12 byte of i_block) and  struct ext4_extent (using reminder bytes of
-> i_block).
-  struct ext4_extent_header is just directly stored in the space occupied
-by i_block[EXT4_N_BLOCKS]. So for example ext_inode_hdr() does:
-  (struct ext4_extent_header *)EXT4_I(inode)->i_data
-(where i_data is just one-to-one copy of i_blocks from on disk inode).
+>   28:	41 89 c4             	mov    %eax,%r12d
+>   2b:*	8b b1 94 00 00 00    	mov    0x94(%rcx),%esi     <-- trapping ins
+> Try to get RCX->s_addr_per_block_bits...
+> 
+>  sb->s_fs_info is set when a superblock is mounted and cleared when
+> superblock gets unmounted and otherwise it is never changed. So most likely
+> it was some memory corruption clearing that pointer (I wouldn't really
+> suspect HW here).
+> 
+> It somewhat looks like the issue described here:
+> http://lkml.indiana.edu/hypermail/linux/kernel/1202.3/00132.html
+> 
+> Although there we had f_path.dentry (completely different structure) being
+> NULL. But similarity here is that something stomped NULL over our existing
+> structure.
+> 
+> Linus, Jiri, that bug didn't get resolved, did it?
 
-And it's the same with struct ext4_extent. See for example macro
-EXT_FIRST_EXTENT.
-
-								Honza
+I am not aware of anything, but I have a question -- George, did the 
+machine get suspended/resumed before this happened?
 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Jiri Kosina
+SUSE Labs
