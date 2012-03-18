@@ -1,121 +1,165 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] e2fsck: print the current and expected block group checksums
-Date: Sun, 18 Mar 2012 15:52:45 -0400
-Message-ID: <1332100368-2683-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/5] e2fsck: add support for field widths in messages using %-expansion
+Date: Sun, 18 Mar 2012 15:52:44 -0400
+Message-ID: <1332100368-2683-2-git-send-email-tytso@mit.edu>
 References: <1332100368-2683-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40346 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:40342 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756192Ab2CRTwr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1756150Ab2CRTwr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sun, 18 Mar 2012 15:52:47 -0400
 In-Reply-To: <1332100368-2683-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This will come in handy when printing checksums, some of which are
+32-bit and some of which are 16-bit.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/message.c                  |   10 ++++++++--
- e2fsck/problem.c                  |    2 +-
- e2fsck/problem.h                  |    1 +
- e2fsck/super.c                    |    2 ++
- tests/f_illitable_flexbg/expect.1 |    2 +-
- tests/f_unused_itable/expect.1    |    4 ++--
- 6 files changed, 15 insertions(+), 6 deletions(-)
+ e2fsck/message.c |   60 ++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 34 insertions(+), 26 deletions(-)
 
 diff --git a/e2fsck/message.c b/e2fsck/message.c
-index 1a91044..6274824 100644
+index 4dab1a4..1a91044 100644
 --- a/e2fsck/message.c
 +++ b/e2fsck/message.c
-@@ -500,13 +500,19 @@ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
- 	case 'T':
- 		print_time(e2fsck_ctx ? e2fsck_ctx->now : time(0));
+@@ -397,7 +397,7 @@ static _INLINE_ void expand_dirent_expression(ext2_filsys fs, char ch,
+ }
+ 
+ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
+-					       int *first,
++					       int width, int *first,
+ 					       struct problem_context *ctx)
+ {
+ 	e2fsck_t e2fsck_ctx = fs ? (e2fsck_t) fs->priv_data : NULL;
+@@ -412,9 +412,9 @@ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
  		break;
-+	case 'x':
-+		printf("0x%0*x", width, ctx->csum1);
-+		break;
- 	case 'X':
+ 	case 'b':
  #ifdef EXT2_NO_64_TYPE
--		printf("0x%*x", width, ctx->num);
-+		printf("0x%0*x", width, ctx->num);
+-		printf("%u", (unsigned long) ctx->blk);
++		printf("%*u", width, (unsigned long) ctx->blk);
  #else
--		printf("0x%*llx", width, (long long)ctx->num);
-+		printf("0x%0*llx", width, (long long)ctx->num);
+-		printf("%llu", (unsigned long long) ctx->blk);
++		printf("%*llu", width, (unsigned long long) ctx->blk);
  #endif
  		break;
-+	case 'y':
-+		printf("0x%0*x", width, ctx->csum2);
-+		break;
+ 	case 'B':
+@@ -441,31 +441,31 @@ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
+ 		break;
+ 	case 'c':
+ #ifdef EXT2_NO_64_TYPE
+-		printf("%u", (unsigned long) ctx->blk2);
++		printf("%*u", width, (unsigned long) ctx->blk2);
+ #else
+-		printf("%llu", (unsigned long long) ctx->blk2);
++		printf("%*llu", width, (unsigned long long) ctx->blk2);
+ #endif
+ 		break;
+ 	case 'd':
+-		printf("%u", ctx->dir);
++		printf("%*u", width, ctx->dir);
+ 		break;
+ 	case 'g':
+-		printf("%d", ctx->group);
++		printf("%*d", width, ctx->group);
+ 		break;
+ 	case 'i':
+-		printf("%u", ctx->ino);
++		printf("%*u", width, ctx->ino);
+ 		break;
+ 	case 'j':
+-		printf("%u", ctx->ino2);
++		printf("%*u", width, ctx->ino2);
+ 		break;
+ 	case 'm':
+-		printf("%s", error_message(ctx->errcode));
++		printf("%*s", width, error_message(ctx->errcode));
+ 		break;
+ 	case 'N':
+ #ifdef EXT2_NO_64_TYPE
+-		printf("%u", ctx->num);
++		printf("%*u", width, ctx->num);
+ #else
+-		printf("%llu", (long long)ctx->num);
++		printf("%*llu", width, (long long)ctx->num);
+ #endif
+ 		break;
+ 	case 'p':
+@@ -483,16 +483,16 @@ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
+ 		break;
+ 	case 'r':
+ #ifdef EXT2_NO_64_TYPE
+-		printf("%d", ctx->blkcount);
++		printf("%*d", width, ctx->blkcount);
+ #else
+-		printf("%lld", (long long) ctx->blkcount);
++		printf("%*lld", width, (long long) ctx->blkcount);
+ #endif
+ 		break;
+ 	case 'S':
+ 		printf("%u", get_backup_sb(NULL, fs, NULL, NULL));
+ 		break;
+ 	case 's':
+-		printf("%s", ctx->str ? ctx->str : "NULL");
++		printf("%*s", width, ctx->str ? ctx->str : "NULL");
+ 		break;
+ 	case 't':
+ 		print_time((time_t) ctx->num);
+@@ -502,9 +502,9 @@ static _INLINE_ void expand_percent_expression(ext2_filsys fs, char ch,
+ 		break;
+ 	case 'X':
+ #ifdef EXT2_NO_64_TYPE
+-		printf("0x%x", ctx->num);
++		printf("0x%*x", width, ctx->num);
+ #else
+-		printf("0x%llx", (long long)ctx->num);
++		printf("0x%*llx", width, (long long)ctx->num);
+ #endif
+ 		break;
  	default:
- 	no_context:
- 		printf("%%%c", ch);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index c66c6be..53e8e11 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -354,7 +354,7 @@ static struct e2fsck_problem problem_table[] = {
+@@ -520,22 +520,30 @@ void print_e2fsck_message(e2fsck_t ctx, const char *msg,
+ {
+ 	ext2_filsys fs = ctx->fs;
+ 	const char *	cp;
+-	int		i;
++	int		i, width;
  
- 	/* group descriptor N checksum is invalid. */
- 	{ PR_0_GDT_CSUM,
--	  N_("@g descriptor %g checksum is invalid.  "),
-+	  N_("@g descriptor %g checksum is %04x, should be %04y.  "),
- 	     PROMPT_FIX, PR_LATCH_BG_CHECKSUM },
- 
- 	/* group descriptor N marked uninitialized without feature set. */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index f2bd414..5c1579d 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -19,6 +19,7 @@ struct problem_context {
- 	blk64_t	blk, blk2;
- 	e2_blkcnt_t	blkcount;
- 	int		group;
-+	__u32		csum1, csum2;
- 	__u64	num;
- 	const char *str;
- };
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 3397d77..6c18d0e 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -635,6 +635,8 @@ void check_super_block(e2fsck_t ctx)
- 
- 		should_be = 0;
- 		if (!ext2fs_group_desc_csum_verify(fs, i)) {
-+			pctx.csum1 = ext2fs_bg_checksum(fs, i);
-+			pctx.csum2 = ext2fs_group_desc_csum(fs, i);
- 			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
- 				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
- 				ext2fs_bg_flags_clear(fs, i, EXT2_BG_INODE_UNINIT);
-diff --git a/tests/f_illitable_flexbg/expect.1 b/tests/f_illitable_flexbg/expect.1
-index af30bd4..2d54728 100644
---- a/tests/f_illitable_flexbg/expect.1
-+++ b/tests/f_illitable_flexbg/expect.1
-@@ -8,7 +8,7 @@ Relocating group 1's inode table to 142...
- Restarting e2fsck from the beginning...
- One or more block group descriptor checksums are invalid.  Fix? yes
- 
--Group descriptor 1 checksum is invalid.  FIXED.
-+Group descriptor 1 checksum is 0x1cee, should be 0xf809.  FIXED.
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/f_unused_itable/expect.1 b/tests/f_unused_itable/expect.1
-index 08a9700..a4da987 100644
---- a/tests/f_unused_itable/expect.1
-+++ b/tests/f_unused_itable/expect.1
-@@ -9,8 +9,8 @@ Fix? yes
- Restarting e2fsck from the beginning...
- One or more block group descriptor checksums are invalid.  Fix? yes
- 
--Group descriptor 0 checksum is invalid.  FIXED.
--Group descriptor 1 checksum is invalid.  FIXED.
-+Group descriptor 0 checksum is 0x289d, should be 0x788a.  FIXED.
-+Group descriptor 1 checksum is 0xfaab, should be 0x3a9a.  FIXED.
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
+ 	e2fsck_clear_progbar(ctx);
+ 	for (cp = msg; *cp; cp++) {
+ 		if (cp[0] == '@') {
+ 			cp++;
+ 			expand_at_expression(ctx, *cp, pctx, &first, recurse);
+-		} else if (cp[0] == '%' && cp[1] == 'I') {
+-			cp += 2;
+-			expand_inode_expression(fs, *cp, pctx);
+-		} else if (cp[0] == '%' && cp[1] == 'D') {
+-			cp += 2;
+-			expand_dirent_expression(fs, *cp, pctx);
+-		} else if ((cp[0] == '%')) {
++		} else if (cp[0] == '%') {
+ 			cp++;
+-			expand_percent_expression(fs, *cp, &first, pctx);
++			width = 0;
++			while (isdigit(cp[0])) {
++				width = (width * 10) + cp[0] - '0';
++				cp++;
++			}
++			if (cp[0] == 'I') {
++				cp++;
++				expand_inode_expression(fs, *cp, pctx);
++			} else if (cp[0] == 'D') {
++				cp++;
++				expand_dirent_expression(fs, *cp, pctx);
++			} else {
++				expand_percent_expression(fs, *cp, width,
++							  &first, pctx);
++			}
+ 		} else {
+ 			for (i=0; cp[i]; i++)
+ 				if ((cp[i] == '@') || cp[i] == '%')
 -- 
 1.7.9.107.g97f9a
 
