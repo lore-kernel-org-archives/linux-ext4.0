@@ -1,43 +1,72 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 3/5] e2fsck: print a notice when we've started suppressing a problem code
-Date: Mon, 19 Mar 2012 16:43:10 -0600
-Message-ID: <2A65740A-4C62-4817-8C96-728C5EB75FA3@dilger.ca>
-References: <1332100368-2683-1-git-send-email-tytso@mit.edu> <1332100368-2683-4-git-send-email-tytso@mit.edu> <1D4F4E78-7F63-406D-9D35-09F716E04C43@dilger.ca> <20120319002504.GC31682@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
+From: Tony Hoyle <tony@hoyle.me.uk>
+Subject: Re: [dm-devel] can't recover ext4 on lvm from ext4_mb_generate_buddy:739:
+ group 1687, 32254 clusters in bitmap, 32258 in gd
+Date: Mon, 19 Mar 2012 23:06:50 +0000
+Message-ID: <4F67BC0A.5000706@hoyle.me.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-04.shaw.ca ([64.59.134.12]:23877 "EHLO
-	smtp-out-04.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964799Ab2CSWmT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Mar 2012 18:42:19 -0400
-In-Reply-To: <20120319002504.GC31682@thunk.org>
+Received: from medusa.nodomain.org ([81.187.6.161]:56778 "EHLO
+	daniel.nodomain.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758607Ab2CSXQt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Mar 2012 19:16:49 -0400
+Received: from daniel.nodomain.org (localhost [127.0.0.1])
+	by daniel.nodomain.org (Postfix) with ESMTP id 4E9D4426E0
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Mar 2012 23:06:24 +0000 (GMT)
+Received: from banana.nodomain.org (banana.nodomain.org [IPv6:2001:8b0:178:1:21e:52ff:fe75:1d4f])
+	by daniel.nodomain.org (Postfix) with ESMTPS id 3B4804187D
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Mar 2012 23:06:24 +0000 (GMT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-03-18, at 6:25 PM, Ted Ts'o wrote:
-> On Sun, Mar 18, 2012 at 05:17:20PM -0600, Andreas Dilger wrote:
->> 
->> Did a patch ever land to allow an interactive e2fsck run to set
->> a sticky answer (y/n) for a particular problem?  I know it has
->> been proposed several times.
+I looked at the changelogs for 3.2.x and couldn't see anything that
+obviously related to this issue - hence posting on this (slightly old)
+thread, since I can't find any followup.  I've downgraded to 2.6.32
+(last debian kernel available, since they don't seem to keep historical
+kernels around) for now, which is running solidly.
+
+WIMPy <wimpy <at> yeti.dk> writes:
+
+> written to (extended) while the rsync was running, which seems to be 
+> a situation, where rsync causes a lot of stress. It certainly takes a
+> hell of a lot of time.
+
+I get it when I'm writing large files over nfs - exactly the same
+symptoms as mentioned elsewhere in the thread, followed by nfsd going
+into D state and things generally going downhill from there.
+
+Started when I upgraded to 3.1.0 and continued up to 3.2.0.  fsck shows
+no errors on the disk, but the logs fill up with
+ext4_mb_generate_buddy:739 errors anyway.
+
+> And a short repeat: I'm using an md, but no lvm.
 > 
-> It's been proposed but I don't think anyone has ever coded it.
+Same setup here - md, but no lvm.  Another non-raid drive doesn't show
+the same symptoms, if it's any help.
 
-There was the patch at: http://marc.info/?t=118597336000002&r=1&w=2
-but I think the objection was that the "yes-to-all" and "no-to-all"
-answers "A" and "O" were confusing for non-english speakers ("Oui",
-for example).
+Tony
 
-However, I agree with the approach, and forcing a longer answer for
-such a case like "yes-to-all" or "no-to-all" (or foreign equivalents)
-is probably OK.
+nb:  Some logs, FWIW.  As mentioned above, fsck says there are no errors
+on the drive:
 
-Cheers, Andreas
-
-
-
-
-
+Mar 19 20:50:52 goliath kernel: [ 1721.686880] EXT4-fs error (device
+md0): ext4_mb_generate_buddy:739: group 21345, 32254 clusters in bitmap,
+32258 in gd
+Mar 19 20:50:52 goliath kernel: [ 1721.703397] JBD2: Spotted dirty
+metadata buffer (dev = md0, blocknr = 0). There's a risk of filesystem
+corruption in case of system crash.
+Mar 19 20:51:38 goliath kernel: [ 1767.622399] EXT4-fs error (device
+md0): ext4_mb_generate_buddy:739: group 21346, 32254 clusters in bitmap,
+32258 in gd
+Mar 19 20:52:18 goliath kernel: [ 1808.268856] EXT4-fs error (device
+md0): ext4_mb_generate_buddy:739: group 21347, 32254 clusters in bitmap,
+32258 in gd
+Mar 19 20:53:29 goliath kernel: [ 1879.257332] EXT4-fs error (device
+md0): ext4_mb_generate_buddy:739: group 21348, 32254 clusters in bitmap,
+32258 in gd
+Mar 19 20:54:45 goliath kernel: [ 1955.083019] EXT4-fs error (device
+md0): ext4_mb_generate_buddy:739: group 21349, 32254 clusters in bitmap,
+32258 in gd
+..etc.  They don't vary much.  A few thousand of these in rapid succession.
