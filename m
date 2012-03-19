@@ -1,47 +1,40 @@
-From: Joe Perches <joe@perches.com>
+From: David Miller <davem@davemloft.net>
 Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Mon, 19 Mar 2012 10:44:10 -0700
-Message-ID: <1332179050.3341.7.camel@joe2Laptop>
-References: <cover.1331856299.git.joe@perches.com>
-	 <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
-	 <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>
-	 <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>
-	 <171703.1332178579@turing-police.cc.vt.edu>
+Date: Mon, 19 Mar 2012 13:53:42 -0400 (EDT)
+Message-ID: <20120319.135342.859237474072712585.davem@davemloft.net>
+References: <20120319043420.GL31682@thunk.org>
+	<20120319.011211.89954160788757412.davem@davemloft.net>
+	<20120319153133.GA2502@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: Text/Plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: Jiri Slaby <jirislaby@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
+Cc: joe@perches.com, adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Valdis.Kletnieks@vt.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <171703.1332178579@turing-police.cc.vt.edu>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from shards.monkeyblade.net ([198.137.202.13]:36703 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964832Ab2CSRxy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Mar 2012 13:53:54 -0400
+In-Reply-To: <20120319153133.GA2502@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2012-03-19 at 13:36 -0400, Valdis.Kletnieks@vt.edu wrote:
-> On Mon, 19 Mar 2012 10:09:03 PDT, Joe Perches said:
-> > On Mon, 2012-03-19 at 17:46 +0100, Jiri Slaby wrote:
-> > > Please stop repeating that shit. I already explained you the reasons. A
-> > > couple of weeks ago.
-> > I don't quite understand your comment on this
-> > subject as git log -i --grep=slaby fs/ext4
-> > doesn't show your name.
-> > do that currently.  There are no patches from
-> > you for ext4 between the patch I sent and now.
-> Oh, give us a *break* Joe.  JIri's not allowed to comment on the situation merely
-> because he doesn't have an in-flight patch at the moment?
+From: "Ted Ts'o" <tytso@mit.edu>
+Date: Mon, 19 Mar 2012 11:31:34 -0400
 
-Of course he's allowed to comment.
+> And in the past we've always allowed for local variations of style;
+> it's never been a strict style nazism.  Linus has always given
+> maintainers latitude and has frowned on patch churn for churn's sake.
 
-I just don't understand his comment as anything
-other than general grumpiness.
+The variations in opinion and taste are why it's important for
+us to discuss the interfaces and tweak them so that most people
+are happy with them and then everyone uses them.
 
-His "explanation" to me was he as far as I can
-tell was he didn't like whitespace only changes.
+Your story about get_fs() still being around isn't a victory,
+or an accomplishment, it's just a small failure that we've been
+too lazy to fix.  But it's one that if someone did post a patch
+for it, would be accepted.
 
-https://lkml.org/lkml/2012/2/27/266
+And the thing you call churn, I call development and progress.
 
-This stuff ain't whitespace.
-
-cheers, Joe
