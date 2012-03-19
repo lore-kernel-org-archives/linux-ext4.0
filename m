@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCH] ext4: write superblock only once on unmount
-Date: Mon, 19 Mar 2012 14:50:34 +0200
-Message-ID: <1332161434-1301-1-git-send-email-dedekind1@gmail.com>
+Subject: [PATCH] ext4: remove useless s_dirt assignment
+Date: Mon, 19 Mar 2012 14:50:48 +0200
+Message-ID: <1332161448-1355-1-git-send-email-dedekind1@gmail.com>
 Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>
 To: Ted Tso <tytso@mit.edu>
@@ -11,41 +11,30 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-In some rather rare cases it is possible that ext4 may the superblock to the
-media twice. This patch makes sure this does not happen. This should speed up
-unmounting in those cases.
+Clean-up ext4 a tiny bit by removing useless s_dirt assignment in
+'ext4_fill_super()' because a bit later we anyway call 'ext4_setup_super()'
+which writes the superblock to the media unconditionally.
+
+I would not bother removing the assignment, but I am prepare the code for
+further s_dirt clean-ups.
 
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/super.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
+ fs/ext4/super.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502c61f..c1f5111 100644
+index c1f5111..d280bb6 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -808,9 +808,6 @@ static void ext4_put_super(struct super_block *sb)
- 	destroy_workqueue(sbi->dio_unwritten_wq);
+@@ -3415,7 +3415,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #else
+ 		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
+ #endif
+-		sb->s_dirt = 1;
+ 	}
  
- 	lock_super(sb);
--	if (sb->s_dirt)
--		ext4_commit_super(sb, 1);
--
- 	if (sbi->s_journal) {
- 		err = jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
-@@ -827,8 +824,10 @@ static void ext4_put_super(struct super_block *sb)
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
--		ext4_commit_super(sb, 1);
- 	}
-+	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
-+		ext4_commit_super(sb, 1);
-+
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
- 	}
+ 	/* Handle clustersize */
 -- 
 1.7.7.6
 
