@@ -1,39 +1,49 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/8] jbd2: Issue cache flush after checkpointing even
- with internal journal
-Date: Sun, 18 Mar 2012 23:45:07 -0400
-Message-ID: <20120319034507.GE31682@thunk.org>
-References: <1329330854-14237-1-git-send-email-jack@suse.cz>
- <1329330854-14237-4-git-send-email-jack@suse.cz>
- <20120314021745.GC15379@thunk.org>
- <20120315085935.GA32209@quack.suse.cz>
+Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
+Date: Mon, 19 Mar 2012 00:09:50 -0400
+Message-ID: <20120319040950.GG31682@thunk.org>
+References: <cover.1331856299.git.joe@perches.com>
+ <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55810 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753101Ab2CSDpI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Mar 2012 23:45:08 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120315085935.GA32209@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 15, 2012 at 09:59:35AM +0100, Jan Kara wrote:
-> On Tue 13-03-12 22:17:45, Ted Tso wrote:
-> > I'm not sure why you pulled out the code for
-> > jbd2_journal_get_log_tail(), since there's no other usage of the
-> > function, but it did make this commit harder to review.  It's good for
-> > code movement patches to be segregated to their own commit, just to
-> > make it easier to review....
->   I pulled the code out because the last patch in the series uses it from
-> commit code. So it was not a deliberate code movement. But I agree it might
-> have been easier to review if the code movement was a separate patch.
-> Should I do that or have you already coped with the patch as is?
+On Thu, Mar 15, 2012 at 05:07:30PM -0700, Joe Perches wrote:
+> Use a more current logging style.
+> 
+> Add pr_fmt to consistently prefix with "EXT4-fs: "
+> Convert printks with KERN_<LEVEL> to pr_<level>.
+> Convert bare printks to pr_info and pr_cont where appropriate.
+> Remove embedded function names from formats, use "%s: ", __func__.
+> Coalesce formats.
+> Neaten macros that contain printks/pr_<level>.
+> Use ##__VA_ARGS__ in those macros.
 
-No, it's fine as it is.  I've merged your patches into the ext4 tree
-for the upcoming merge window.  Thanks!!
+Still too much in a single patch.
 
-							 Ted
+Changing printk's to pr_info and pr_cont is patch noise as far as I'm
+concerned.  Adds no value, and just breaks other patches.  Ditto using
+__func__ and and coalesing formats (much of which was broekn up back
+when checkpatch flamed developers about 80 column lines, and I patch
+noises from trivial patch monkeys offering to fix it, sigh).
+
+And I really don't care about adding EXT4-fs to debugging messages,
+especially messages which can't be enabled except when developers have
+to explicitly add #define's...
+
+One evidence that this patch is noise is that it doesn't apply cleanly
+just on top of my current patch set that I plan to send to Linus.  And
+I consider it a waste of time to sort through and figure out what if
+any of this 1200 line patch is really worthwhile.  (A quick scan
+didn't find anything, although if there are some places where I'm
+missing a pr_cont / KERN_CONT in a commonly used --- non debug ---
+codepath I'd be willing to fix it.)
+
+						- Ted
