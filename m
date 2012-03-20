@@ -1,45 +1,64 @@
-From: Jiri Slaby <jslaby@suse.cz>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
 Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Tue, 20 Mar 2012 10:25:20 +0100
-Message-ID: <4F684D00.4040102@suse.cz>
-References: <cover.1331856299.git.joe@perches.com>  <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>  <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>  <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>  <4F684673.1050309@suse.cz> <1332235315.7847.63.camel@joe2Laptop>
+Date: Tue, 20 Mar 2012 10:27:38 +0100
+Message-ID: <CAMuHMdWwP8CYQ2JaeFgyErfvCqKO9VThcq1_-RV1sNb3smtL5Q@mail.gmail.com>
+References: <20120320025835.GE14363@thunk.org>
+	<1332212574.7847.49.camel@joe2Laptop>
+	<216818.1332222366@turing-police.cc.vt.edu>
+	<20120320.031001.1532841232287663716.davem@davemloft.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Jiri Slaby <jirislaby@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Valdis.Kletnieks@vt.edu, joe@perches.com, tytso@mit.edu,
+	anca.emanuel@gmail.com, adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Joe Perches <joe@perches.com>
+To: David Miller <davem@davemloft.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:48946 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753306Ab2CTJZY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Mar 2012 05:25:24 -0400
-In-Reply-To: <1332235315.7847.63.camel@joe2Laptop>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:41480 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753306Ab2CTJ1j convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Mar 2012 05:27:39 -0400
+In-Reply-To: <20120320.031001.1532841232287663716.davem@davemloft.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/20/2012 10:21 AM, Joe Perches wrote:
-> On Tue, 2012-03-20 at 09:57 +0100, Jiri Slaby wrote:
->> And BTW setting the argument that it is a newer interface (that is what
->> ath5k pr_* conversion patches commit log says) is not a good
->> justification at all.
-> 
-> No again, the ath5k pr_ conversion patches are to
-> standardize prefixes and to reduce code size by
-> centralizing tests.
+On Tue, Mar 20, 2012 at 08:10, David Miller <davem@davemloft.net> wrote=
+:
+> From: Valdis.Kletnieks@vt.edu
+> Date: Tue, 20 Mar 2012 01:46:06 -0400
+>
+>> OK. Say I'm a scraper. =C2=A0How do I distinguish between:
+>>
+>> pr_info("foo");
+>> printk(KERN_INFO "foo");
+>>
+>> Oh my. seems that both result in exactly the same thing ending up in=
+ the
+>> dmesg buffer
+>
+> No it doesn't result in the same output, read the definitions again.
+>
+> pr_info can be influenced by pr_fmt, plain printk cannot
 
-What is the "standard" prefix?
+And for pr_debug(), there's even more, cfr. CONFIG_DYNAMIC_DEBUG.
 
-> https://lkml.org/lkml/2012/3/18/121
-> https://lkml.org/lkml/2012/3/18/123
-> https://lkml.org/lkml/2012/3/18/124
-> 
-> I happen to like 30K/10+% code size reductions.
+Gr{oetje,eeting}s,
 
-Obvious question: what speed reduction does this bring?
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 Geert
 
-thanks,
--- 
-js
-suse labs
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-=
+m68k.org
+
+In personal conversations with technical people, I call myself a hacker=
+=2E But
+when I'm talking to journalists I just say "programmer" or something li=
+ke that.
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 =C2=A0=C2=A0 -- Linus Torvalds
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
