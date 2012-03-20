@@ -1,48 +1,38 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Tue, 20 Mar 2012 02:46:43 -0700
-Message-ID: <1332236803.7847.85.camel@joe2Laptop>
-References: <cover.1331856299.git.joe@perches.com>
-	 <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
-	 <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>
-	 <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>
-	 <4F684673.1050309@suse.cz> <1332235315.7847.63.camel@joe2Laptop>
-	 <4F684D00.4040102@suse.cz>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: umode_t breakage in exported kernel headers
+Date: Tue, 20 Mar 2012 10:05:10 +0000
+Message-ID: <20120320100510.GK6589@ZenIV.linux.org.uk>
+References: <201203191601.55668.vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Jiri Slaby <jirislaby@gmail.com>, Ted Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jiri Slaby <jslaby@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Duane Griffin <duaneg@dghda.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:58186 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755325Ab2CTJqo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Mar 2012 05:46:44 -0400
-In-Reply-To: <4F684D00.4040102@suse.cz>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:59511 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751910Ab2CTKFM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Mar 2012 06:05:12 -0400
+Content-Disposition: inline
+In-Reply-To: <201203191601.55668.vapier@gentoo.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2012-03-20 at 10:25 +0100, Jiri Slaby wrote:
-> On 03/20/2012 10:21 AM, Joe Perches wrote:
-> > the ath5k pr_ conversion patches are to
-> > standardize prefixes and to reduce code size by
-> > centralizing tests.
+On Mon, Mar 19, 2012 at 04:01:53PM -0400, Mike Frysinger wrote:
+> commit 0583fcc96bb117763c0fa74c123573c0112dec65 moved umode_t out of the 
+> exported headers space (via the arches' asm/types.h) and into __KERNEL__ 
+> specific linux/types.h.  this breaks the exported linux/ext2_fs.h 
+> ext2_mask_flags function which uses that type.  that func appears to be the 
+> only one exported that utilizes umode_t.
 > 
-> What is the "standard" prefix?
+> should ext2_mask_flags be updated to take a __kernel_mode_t as its first arg ?
+> -mike
 
-KBUILD_MODNAME
+ITYM "unsigned short".  __kernel_mode_t is wrong kernel-side and pointless
+everywhere.  It should *only* be used in layout of structs shared with
+userland and misdefined back then.  Anything new should use explicitly-sized
+types (and u16 is enough for mode).
 
-> > https://lkml.org/lkml/2012/3/18/121
-> > https://lkml.org/lkml/2012/3/18/123
-> > https://lkml.org/lkml/2012/3/18/124
-> > I happen to like 30K/10+% code size reductions.
-> Obvious question: what speed reduction does this bring?
-
-Anyone looking for speed impacts in logging
-messages is looking in the wrong place.
-
-btw: it's effectively 0.
-
-
+It's nearly entirely about ncp_mount_data - ipc_perm, ipc64_perm and in
+several cases st_mode of stat* are arch-dependent anyway and could bloody
+well use explicitly-sized types.
