@@ -1,56 +1,160 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCH v1 5/9] VFS: remove unused superblock helpers
-Date: Tue, 20 Mar 2012 16:41:25 +0200
-Message-ID: <1332254489-2300-6-git-send-email-dedekind1@gmail.com>
+Subject: [PATCH v1 7/9] ext4: stop using VFS for dirty superblock management
+Date: Tue, 20 Mar 2012 16:41:27 +0200
+Message-ID: <1332254489-2300-8-git-send-email-dedekind1@gmail.com>
 References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
 Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
 To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:29409 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760198Ab2CTOln (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Mar 2012 10:41:43 -0400
 In-Reply-To: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-Remove the 'sb_mark_dirty()', 'sb_mark_clean()' and 'sb_is_dirty()' helpers
-which are not used. I introduced them 2 years and the intention was to make
-all file-systems use them in order to be able to optimize 'sync_supers()'.
-However, Al Viro vetoed my patches at the end and asked me to push superblock
-management down to file-systems and get rid of the 's_dirt' flag completely,
-as well as kill 'sync_supers()' altogether. Thus, remove the helpers.
+Do not use VFS for managing dirty superblock but do it inside ext4. Remove the
+'ext4_write_super()' VFS callback and instead, schedule a delayed work when the
+superblock is marked as dirty. Use the 'dio_unwritten_wq' which we already have
+for these purposes.
+
+We add memory barriers to make sure the 's_dirt' flag changes are visible to
+other CPUs as soon as possible to avoid queuing unnecessary works.
+
+The big changes comparing to the previous behavior:
+1. We use 'dio_unwritten' queue, so the superblock will be written by
+   per-filesystem 'ext4-dio-unwrit' thread, instead of 'sync_supers' thread.
+2. We allocate memory in 'ext4_mark_super_dirty()'.
+
+Note: the final goal is to get rid of the 'sync_supers()' kernel thread which
+wakes up every 5 seconds and even if there is nothing to do. Thus, we are
+pushing superblock management from VFS down to file-systems.
 
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>
 ---
- include/linux/fs.h |   13 -------------
- 1 files changed, 0 insertions(+), 13 deletions(-)
+ fs/ext4/super.c |   73 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 63 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 69cd5bb..68387e9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1870,19 +1870,6 @@ extern struct dentry *mount_pseudo(struct file_system_type *, char *,
- 	const struct dentry_operations *dops,
- 	unsigned long);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d9543f3..7d453f7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -73,7 +73,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+-static void ext4_write_super(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+ 		       const char *dev_name, void *data);
+@@ -1294,7 +1293,6 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
+-	.write_super	= ext4_write_super,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4140,6 +4138,14 @@ static int ext4_commit_super(struct super_block *sb, int sync)
  
--static inline void sb_mark_dirty(struct super_block *sb)
--{
--	sb->s_dirt = 1;
--}
--static inline void sb_mark_clean(struct super_block *sb)
--{
+ 	if (!sbh || block_device_ejected(sb))
+ 		return error;
++
++	sb->s_dirt = 0;
++	/*
++	 * Make sure we first mark the superblock as clean and then start
++	 * writing it out.
++	 */
++	smp_wmb();
++
+ 	if (buffer_write_io_error(sbh)) {
+ 		/*
+ 		 * Oh, dear.  A previous attempt to write the
+@@ -4180,7 +4186,6 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
 -	sb->s_dirt = 0;
--}
--static inline int sb_is_dirty(struct super_block *sb)
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+ 	if (sync) {
+@@ -4199,9 +4204,64 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	return error;
+ }
+ 
++struct sb_delayed_work {
++	struct delayed_work dwork;
++	struct super_block *sb;
++};
++
++static struct sb_delayed_work *work_to_sbwork(struct work_struct *work)
++{
++	struct delayed_work *dwork;
++
++	dwork = container_of(work, struct delayed_work, work);
++	return container_of(dwork, struct sb_delayed_work, dwork);
++}
++
++static void write_super(struct work_struct *work)
++{
++	struct sb_delayed_work *sbwork = work_to_sbwork(work);
++	struct super_block *sb = sbwork->sb;
++
++	kfree(sbwork);
++
++	smp_rmb();
++	if (!sb->s_dirt)
++		return;
++
++	lock_super(sb);
++	ext4_commit_super(sb, 1);
++	unlock_super(sb);
++}
++
+ void __ext4_mark_super_dirty(struct super_block *sb)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct sb_delayed_work *sbwork;
++	unsigned long delay;
++
++	/* Make sure we see 's_dirt' changes ASAP */
++	smp_rmb();
++	if (sb->s_dirt == 1)
++		return;
+ 	sb->s_dirt = 1;
++	/* Make other CPUs see the 's_dirt' change as soon as possible */
++	smp_wmb();
++
++	sbwork = kmalloc(sizeof(struct sb_delayed_work), GFP_NOFS);
++	if (!sbwork) {
++		/*
++		 * Well, should not be a big deal - the system must be in
++		 * trouble anyway, and the SB will be written out on unmount or
++		 * we may be luckier next time it is marked as dirty.
++		 */
++		sb->s_dirt = 2;
++		return;
++	}
++
++	INIT_DELAYED_WORK(&sbwork->dwork, write_super);
++	sbwork->sb = sb;
++	delay = msecs_to_jiffies(dirty_writeback_interval * 10);
++	queue_delayed_work(sbi->dio_unwritten_wq, &sbwork->dwork, delay);
+ }
+ 
+ /*
+@@ -4291,13 +4351,6 @@ int ext4_force_commit(struct super_block *sb)
+ 	return ret;
+ }
+ 
+-static void ext4_write_super(struct super_block *sb)
 -{
--	return sb->s_dirt;
+-	lock_super(sb);
+-	ext4_commit_super(sb, 1);
+-	unlock_super(sb);
 -}
--
- /* Alas, no aliases. Too much hassle with bringing module.h everywhere */
- #define fops_get(fops) \
- 	(((fops) && try_module_get((fops)->owner) ? (fops) : NULL))
--- 
-1.7.7.6
