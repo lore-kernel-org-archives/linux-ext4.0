@@ -1,72 +1,45 @@
-From: Tony Hoyle <tony@hoyle.me.uk>
-Subject: Re: [dm-devel] can't recover ext4 on lvm from ext4_mb_generate_buddy:739:
- group 1687, 32254 clusters in bitmap, 32258 in gd
-Date: Mon, 19 Mar 2012 23:06:50 +0000
-Message-ID: <4F67BC0A.5000706@hoyle.me.uk>
+From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Date: Mon, 19 Mar 2012 20:10:28 -0400
+Message-ID: <20120320001028.GA11958@thunk.org>
+References: <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <4F5FB771.9010805@fastmail.fm>
+ <20120313212947.GK31995@pad.fieldses.org>
+ <4F60AC0D.9020204@itwm.fraunhofer.de>
+ <20120314160529.GB31194@fieldses.org>
+ <4F63AF2B.5080307@fastmail.fm>
+ <20120319025455.GD31682@thunk.org>
+ <20120319200041.GA25161@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from medusa.nodomain.org ([81.187.6.161]:56778 "EHLO
-	daniel.nodomain.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758607Ab2CSXQt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Mar 2012 19:16:49 -0400
-Received: from daniel.nodomain.org (localhost [127.0.0.1])
-	by daniel.nodomain.org (Postfix) with ESMTP id 4E9D4426E0
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Mar 2012 23:06:24 +0000 (GMT)
-Received: from banana.nodomain.org (banana.nodomain.org [IPv6:2001:8b0:178:1:21e:52ff:fe75:1d4f])
-	by daniel.nodomain.org (Postfix) with ESMTPS id 3B4804187D
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Mar 2012 23:06:24 +0000 (GMT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Bernd Schubert <bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20120319200041.GA25161-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-I looked at the changelogs for 3.2.x and couldn't see anything that
-obviously related to this issue - hence posting on this (slightly old)
-thread, since I can't find any followup.  I've downgraded to 2.6.32
-(last debian kernel available, since they don't seem to keep historical
-kernels around) for now, which is running solidly.
+On Mon, Mar 19, 2012 at 04:00:41PM -0400, J. Bruce Fields wrote:
+> Sorry that was more of a hassle than it could have been....  It would be
+> nice to try rewriting the cthon tests for xfstests, if that would help
+> catch nfs-related bugs sooner.  I don't have the time for now, though.
 
-WIMPy <wimpy <at> yeti.dk> writes:
+No problem.  I'd love to look at adapting the connectathon tests for
+xfstests as well, but I don't have the time either.
 
-> written to (extended) while the rsync was running, which seems to be 
-> a situation, where rsync causes a lot of stress. It certainly takes a
-> hell of a lot of time.
+I'll put it on an ext4 todo list; maybe someone who is looking to get
+into ext4 programming will take this on as a task.
 
-I get it when I'm writing large files over nfs - exactly the same
-symptoms as mentioned elsewhere in the thread, followed by nfsd going
-into D state and things generally going downhill from there.
-
-Started when I upgraded to 3.1.0 and continued up to 3.2.0.  fsck shows
-no errors on the disk, but the logs fill up with
-ext4_mb_generate_buddy:739 errors anyway.
-
-> And a short repeat: I'm using an md, but no lvm.
-> 
-Same setup here - md, but no lvm.  Another non-raid drive doesn't show
-the same symptoms, if it's any help.
-
-Tony
-
-nb:  Some logs, FWIW.  As mentioned above, fsck says there are no errors
-on the drive:
-
-Mar 19 20:50:52 goliath kernel: [ 1721.686880] EXT4-fs error (device
-md0): ext4_mb_generate_buddy:739: group 21345, 32254 clusters in bitmap,
-32258 in gd
-Mar 19 20:50:52 goliath kernel: [ 1721.703397] JBD2: Spotted dirty
-metadata buffer (dev = md0, blocknr = 0). There's a risk of filesystem
-corruption in case of system crash.
-Mar 19 20:51:38 goliath kernel: [ 1767.622399] EXT4-fs error (device
-md0): ext4_mb_generate_buddy:739: group 21346, 32254 clusters in bitmap,
-32258 in gd
-Mar 19 20:52:18 goliath kernel: [ 1808.268856] EXT4-fs error (device
-md0): ext4_mb_generate_buddy:739: group 21347, 32254 clusters in bitmap,
-32258 in gd
-Mar 19 20:53:29 goliath kernel: [ 1879.257332] EXT4-fs error (device
-md0): ext4_mb_generate_buddy:739: group 21348, 32254 clusters in bitmap,
-32258 in gd
-Mar 19 20:54:45 goliath kernel: [ 1955.083019] EXT4-fs error (device
-md0): ext4_mb_generate_buddy:739: group 21349, 32254 clusters in bitmap,
-32258 in gd
-..etc.  They don't vary much.  A few thousand of these in rapid succession.
+     	  	      	   	     	   - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
