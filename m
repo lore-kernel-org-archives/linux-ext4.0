@@ -1,47 +1,54 @@
 From: Jiri Slaby <jslaby@suse.cz>
 Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Tue, 20 Mar 2012 09:47:03 +0100
-Message-ID: <4F684407.1040807@suse.cz>
-References: <20120320025835.GE14363@thunk.org> <1332212574.7847.49.camel@joe2Laptop> <216818.1332222366@turing-police.cc.vt.edu> <20120320.031001.1532841232287663716.davem@davemloft.net>
+Date: Tue, 20 Mar 2012 09:57:23 +0100
+Message-ID: <4F684673.1050309@suse.cz>
+References: <cover.1331856299.git.joe@perches.com>  <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>  <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>  <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Valdis.Kletnieks@vt.edu, joe@perches.com, tytso@mit.edu,
-	anca.emanuel@gmail.com, adilger.kernel@dilger.ca,
+Cc: Jiri Slaby <jirislaby@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Miller <davem@davemloft.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f174.google.com ([74.125.82.174]:42890 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755853Ab2CTIrH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Mar 2012 04:47:07 -0400
-In-Reply-To: <20120320.031001.1532841232287663716.davem@davemloft.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1332176943.1983.28.camel@joe2Laptop>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 03/20/2012 08:10 AM, David Miller wrote:
-> From: Valdis.Kletnieks@vt.edu
-> Date: Tue, 20 Mar 2012 01:46:06 -0400
-> 
->> OK. Say I'm a scraper.  How do I distinguish between:
->>
->> pr_info("foo");
->> printk(KERN_INFO "foo");
->>
->> Oh my. seems that both result in exactly the same thing ending up in the
->> dmesg buffer
-> 
-> No it doesn't result in the same output, read the definitions again.
-> 
-> pr_info can be influenced by pr_fmt, plain printk cannot
+On 03/19/2012 06:09 PM, Joe Perches wrote:
+> On Mon, 2012-03-19 at 17:46 +0100, Jiri Slaby wrote:
+>> On 03/19/2012 05:25 AM, Joe Perches wrote:
+>>> On Mon, 2012-03-19 at 00:09 -0400, Ted Ts'o wrote:
+>>>> One evidence that this patch is noise is that it doesn't apply cleanly
+>>>> just on top of my current patch set that I plan to send to Linus.
+>>> It's more evident that you don't make
+>>> public your own internal patch queue
+>>> quickly enough than anything else.
+>> Please stop repeating that shit. I already explained you the reasons. A
+>> couple of weeks ago.
+...
+> As far as I can tell, your "reasons" as you
+> explained it is that you just do not like
+> whitespace or style changes.
 
-Ok, but how exactly does one select per-subsystem messages relying only
-on pr_fmt?
+No, sorry, you misunderstand me. Here, I meant your complain that we are
+not fast enough with pushing patches. Some of us simply do not push
+patches as soon as they are written. I personally prefer deferring
+patches for some time (weeks) to actually give some testing to the
+changes. Simply because I have bad experiences with patches emerging in
+the (-next) tree immediately. (And I mean not only my patches.)
 
-Joe writes: "notify a particular set of per subsystem messages that
-pr_<level> could easily provide"
+While you are pointing to whitespace cleanup of whole subtrees. Yes, I
+wrote about _whitespace_ cleanup in the thread you are referring to. But
+this can be generalized to an arbitrary cleanup. I.e. changes which do
+not change functionality in no way. And that is doubtful with pr_*
+changes. But as you can see in my post a couple of minutes ago, maybe I
+am just missing the point of the new interface. (And I hate naming of
+the pr_* functions.)
 
-Maybe the concept is not explained well enough that we do not follow?
+And BTW setting the argument that it is a newer interface (that is what
+ath5k pr_* conversion patches commit log says) is not a good
+justification at all.
 
 thanks,
 -- 
