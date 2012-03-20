@@ -1,77 +1,77 @@
 From: Joe Perches <joe@perches.com>
 Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Mon, 19 Mar 2012 18:51:12 -0700
-Message-ID: <1332208272.7847.39.camel@joe2Laptop>
-References: <cover.1331856299.git.joe@perches.com>
-	 <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
-	 <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>
-	 <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>
-	 <171703.1332178579@turing-police.cc.vt.edu>
-	 <1332179050.3341.7.camel@joe2Laptop> <20120320010606.GC14363@thunk.org>
-	 <alpine.DEB.2.02.1203191826100.22704@asgard.lang.hm>
+Date: Mon, 19 Mar 2012 18:59:01 -0700
+Message-ID: <1332208741.7847.46.camel@joe2Laptop>
+References: <20120319153133.GA2502@thunk.org>
+	 <CAJL_dMtC9fnOsY=4uDVJD=-h5u-qW=xjaf64gtDcgnKX2brhPw@mail.gmail.com>
+	 <20120319161425.GB2502@thunk.org>
+	 <20120319.141402.934377752041508724.davem@davemloft.net>
+	 <20120319183126.GA6031@thunk.org> <1332182773.3908.11.camel@joe2Laptop>
+	 <20120320010401.GA14363@thunk.org> <1332207202.7847.23.camel@joe2Laptop>
+	 <20120320014707.GD14363@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Ted Ts'o <tytso@mit.edu>, Valdis.Kletnieks@vt.edu,
-	Jiri Slaby <jirislaby@gmail.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: david@lang.hm
+Cc: David Miller <davem@davemloft.net>, anca.emanuel@gmail.com,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:50141 "EHLO
+Received: from perches-mx.perches.com ([206.117.179.246]:42143 "EHLO
 	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754215Ab2CTBvO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Mar 2012 21:51:14 -0400
-In-Reply-To: <alpine.DEB.2.02.1203191826100.22704@asgard.lang.hm>
+	id S1756745Ab2CTB7C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Mar 2012 21:59:02 -0400
+In-Reply-To: <20120320014707.GD14363@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2012-03-19 at 18:28 -0700, david@lang.hm wrote:
-> On Mon, 19 Mar 2012, Ted Ts'o wrote:
-> > On Mon, Mar 19, 2012 at 10:44:10AM -0700, Joe Perches wrote:
-> >> This stuff ain't whitespace.
-> >>> I'll have to respectfully disagree with you.  For ext4, as far as I am
-> > concerned, changing printk(KERN_INFO, ...) to pr_info(...) is *purely*
-> > a whitespace-level change.
-> Joe, if everything did change, what difference would it make?
+On Mon, 2012-03-19 at 21:47 -0400, Ted Ts'o wrote:
+> On Mon, Mar 19, 2012 at 06:33:22PM -0700, Joe Perches wrote:
+> > They _were_ doubly prefixed.
+> > from ext4#dev
+> > commit 2504a4a9c0c096e11bcc24691b85bf6d942df9fe
+> > Author: Joe Perches <joe@perches.com>
+> > Date:   Mon Mar 19 00:12:00 2012 -0400
+> >     ext4: remove redundant "EXT4-fs: " from uses of ext4_msg
+> >     ext4_msg adds "EXT4-fs: " to the messsage output.
+> Yes, and I accepted that patch.  I was referring to your complaints of
+> printk's such as this:
+> #ifdef EXT4FS_DEBUG
+> 			WARN_ON(ret <= 0);
+> 			printk(KERN_ERR "%s: ext4_ext_map_blocks "
+> 				    "returned error inode#%lu, block=%u, "
+> 				    "max_blocks=%u", __func__,
+> 				    inode->i_ino, map.m_lblk, max_blocks);
+> #endif
 
-Hi David.
+and I was not.  Doubly prefixed was as I said, doubly prefixed.
+ext4_msg wasn't a consistently used interface.
 
-> just being a consistant style doesn't matter much,
+> Changing to pr_err() is pointless, because it doesn't do anything
+> functional.  You *have* to have an interface like ext4_msg(sb, ...) if
+> you're going to send a semi-structured notification, or include
+> relevant information about which ext4 file system was responsible for
+> issuing the warning.
 
-Perhaps we disagree on the value of consistency.
-I believe it's a small but measurable effect and it
-can reduce overall ongoing defect rates.
+Umm, ext4_msg does call printk.
 
-Is it DoublePlus_important_?  No, definitely not.
+> If you're going to change huge numbers of lines of code, you might as
+> well do it in a way that significantly improves things.  The change to
+> pr_foo() is just syntactic sugar, and that's a whitespace-level change
+> in my book.  Adding a struct super * or or a struct block device *,
+> which gets passed to the notification functions?  That's ***far***
+> more interesting.
 
-To me using pr_<level> is a bit like using const
-or marking sections devinitconst.
+It's hard to say that's true.
+Look at the the trace_<foo> mechanisms.
+Very useful stuff but once set, there's
+been a strong desire to set the output
+as an unchangeable ABI.
 
-It hardly matters, but it's good form and it can
-free up some working memory in ram limited systems.
+So I think defining the output correctly
+_first_ is the most important element of
+any notification mechanism.  TLV use in
+the output generally isn't human parsable
+and there's value in that readability.
 
-> but if there is some 
-> functionality that would be possible with pr_info(...) that would not be 
-> possible with printk(KERN_INFO, ...), there may be more reason to change.
-
-Right now, it's just macros over printk so it's pretty
-trivial.  I do intend to convert pr_<level> macros to
-functions eventually to reduce code size ~.5% overall.
-That reduction does depend on quantity of CONFIG_<FOO>
-options enabled of course.  Enable everything, I think
-it's ~.01%.  I haven't done it in quite awhile though
-so that's a guess.
-
-It matters a tiny bit more for flash or ram limited
-systems.
-
-Some driver optimizations like the rtlwifi reduction
-in -next commit 481b9606ec might have more of an
-impact though for those systems.
-
-So, it depends...
-
-cheers, Joe
 
