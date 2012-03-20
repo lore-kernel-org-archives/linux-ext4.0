@@ -1,45 +1,51 @@
-From: Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Date: Mon, 19 Mar 2012 20:10:28 -0400
-Message-ID: <20120320001028.GA11958@thunk.org>
-References: <20120313200117.GA21991@fieldses.org>
- <4F5FA827.8020606@itwm.fraunhofer.de>
- <20120313203446.GB21991@fieldses.org>
- <4F5FB771.9010805@fastmail.fm>
- <20120313212947.GK31995@pad.fieldses.org>
- <4F60AC0D.9020204@itwm.fraunhofer.de>
- <20120314160529.GB31194@fieldses.org>
- <4F63AF2B.5080307@fastmail.fm>
- <20120319025455.GD31682@thunk.org>
- <20120319200041.GA25161@fieldses.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
+Date: Mon, 19 Mar 2012 21:04:01 -0400
+Message-ID: <20120320010401.GA14363@thunk.org>
+References: <20120319153133.GA2502@thunk.org>
+ <CAJL_dMtC9fnOsY=4uDVJD=-h5u-qW=xjaf64gtDcgnKX2brhPw@mail.gmail.com>
+ <20120319161425.GB2502@thunk.org>
+ <20120319.141402.934377752041508724.davem@davemloft.net>
+ <20120319183126.GA6031@thunk.org>
+ <1332182773.3908.11.camel@joe2Laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Bernd Schubert <bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	"J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: David Miller <davem@davemloft.net>, anca.emanuel@gmail.com,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46939 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754485Ab2CTBEI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Mar 2012 21:04:08 -0400
 Content-Disposition: inline
-In-Reply-To: <20120319200041.GA25161-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1332182773.3908.11.camel@joe2Laptop>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 19, 2012 at 04:00:41PM -0400, J. Bruce Fields wrote:
-> Sorry that was more of a hassle than it could have been....  It would be
-> nice to try rewriting the cthon tests for xfstests, if that would help
-> catch nfs-related bugs sooner.  I don't have the time for now, though.
+On Mon, Mar 19, 2012 at 11:46:13AM -0700, Joe Perches wrote:
+> On Mon, 2012-03-19 at 14:31 -0400, Ted Ts'o wrote:
+> > On Mon, Mar 19, 2012 at 02:14:02PM -0400, David Miller wrote:
+> > I've *already* gone far beyond the pr_fmt standardization, with the
+> > ext4_msg() and ext4_error() system
+> 
+> Please note the defects that were recently corrected there
+> which occurred because of a lack of standardization both
+> in prefix and termination style.
 
-No problem.  I'd love to look at adapting the connectathon tests for
-xfstests as well, but I don't have the time either.
+For debugging printk's that are #ifdef'ed for anyone other than ext4
+developers and can't be enabled via CONFIG_*.  Yawn.
 
-I'll put it on an ext4 todo list; maybe someone who is looking to get
-into ext4 programming will take this on as a task.
+> Any logging system, with or without an external notification
+> mechanism, will be painful.  pr_<foo> is at least a small
+> start.  I'd like to see a notification mechanism, perhaps ala
+> netlink/ethtool to extend pr_<foo> or another call.  A lot of
+> these printk/pr_<level> uses really could generate notifications.
 
-     	  	      	   	     	   - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, but we can't do structured notifications with the current
+pr_<foo>.  So why change literally tens of thousands of callsites when
+in order to really realize the full promise of structured
+notifications, we'll have to change them *again*?
+
+	       	     	     	    	 - Ted
