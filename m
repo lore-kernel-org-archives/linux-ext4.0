@@ -1,35 +1,38 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/9] ext4: Add -DDEBUG to Makefile
-Date: Mon, 19 Mar 2012 21:05:02 -0400
-Message-ID: <20120320010502.GB14363@thunk.org>
+Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
+Date: Mon, 19 Mar 2012 21:06:06 -0400
+Message-ID: <20120320010606.GC14363@thunk.org>
 References: <cover.1331856299.git.joe@perches.com>
- <7ee60f3b750f4500f9bdcb64f358acbf17987036.1331856300.git.joe@perches.com>
- <4F63646D.1040700@cavium.com>
- <20120319043937.GN31682@thunk.org>
- <4F677F6C.8030902@gmail.com>
+ <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
+ <20120319040950.GG31682@thunk.org>
+ <1332131137.23125.44.camel@joe2Laptop>
+ <4F6762F1.7050902@gmail.com>
+ <1332176943.1983.28.camel@joe2Laptop>
+ <171703.1332178579@turing-police.cc.vt.edu>
+ <1332179050.3341.7.camel@joe2Laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: David Daney <david.daney@cavium.com>,
-	Joe Perches <joe@perches.com>,
+Cc: Valdis.Kletnieks@vt.edu, Jiri Slaby <jirislaby@gmail.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Daney <ddaney.cavm@gmail.com>
+To: Joe Perches <joe@perches.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46945 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46953 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754485Ab2CTBFG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Mar 2012 21:05:06 -0400
+	id S1755404Ab2CTBGL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Mar 2012 21:06:11 -0400
 Content-Disposition: inline
-In-Reply-To: <4F677F6C.8030902@gmail.com>
+In-Reply-To: <1332179050.3341.7.camel@joe2Laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 19, 2012 at 11:48:12AM -0700, David Daney wrote:
+On Mon, Mar 19, 2012 at 10:44:10AM -0700, Joe Perches wrote:
 > 
-> If you want to unconditionally define DEBUG for all of ext4, that is
-> fine with me.
+> This stuff ain't whitespace.
+> 
 
-Since I don't see the value of pr_debug, and don't plan to use it, I
-don't plan to unconditionally define DEBUG.  :-)
+I'll have to respectfully disagree with you.  For ext4, as far as I am
+concerned, changing printk(KERN_INFO, ...) to pr_info(...) is *purely*
+a whitespace-level change.
 
-					- Ted
+						- Ted
