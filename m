@@ -1,43 +1,49 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCH v1 0/9] do not use s_dirt in ext4
-Date: Tue, 20 Mar 2012 16:41:20 +0200
-Message-ID: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
+Subject: [PATCH v1 1/9] ext4: do not mark superblock as dirty unnecessarily
+Date: Tue, 20 Mar 2012 16:41:21 +0200
+Message-ID: <1332254489-2300-2-git-send-email-dedekind1@gmail.com>
+References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
 Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:33276 "EHLO mga01.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:13019 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756015Ab2CTOlK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Mar 2012 10:41:10 -0400
+	id S1759160Ab2CTOle (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Mar 2012 10:41:34 -0400
+In-Reply-To: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch-set makes ext4 independent of the VFS superblock management
-services. Namely, ext4 does not require to register the 'write_super()' VFS
-call-back.
+From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-The reason of this exercises is to get rid of the 'sync_supers()' kernel thread
-which wakes up every 5 seconds (by default) even if all superblocks are clean.
-This is wasteful from power management POW (unnecessary wake-ups).
+Commit a0375156ca1041574b5d47cc7e32f10b891151b0 cleaned up superblock dirtying
+handling, but missed one place. This patch does what was intended: if we have
+the journal, then we update the superblock through the journal rather than
+doing this directly.
 
-Note, I tried to optimize 'sync_supers()' instead in 2010, but Al wanted me
-to get rid of it instead. See https://lkml.org/lkml/2010/6/6/87
-And I think this is right because many file-systems do not need this, for
-example btrfs does not use VFS superblock management services at all, so on a
-btrfs-based system we currently end-up useless periodic wake-ups source.
+Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+---
+ fs/ext4/inode.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-Changes for other file-systems are coming later.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..e040403 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3924,10 +3924,8 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			ext4_update_dynamic_rev(sb);
+ 			EXT4_SET_RO_COMPAT_FEATURE(sb,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+-			sb->s_dirt = 1;
+ 			ext4_handle_sync(handle);
+-			err = ext4_handle_dirty_metadata(handle, NULL,
+-					EXT4_SB(sb)->s_sbh);
++			err = ext4_handle_dirty_super(handle, sb);
+ 		}
+ 	}
+ 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+-- 
+1.7.7.6
 
-The patch-set structure.
-1. patches 1,2,3 are independent ext4 cleanups and I ask Ted to merge them as
-   soon/long as they are OK. I sent them also independently in order to get
-   early comments, but did not get so far, so re-sending.
-2. patch 4 exports 'dirty_writeback_interval' and it would be very useful to
-   have it merged ASAP to simplify further work
-3. patch 5 is also and independent VFS clean-up
-4. patches 6-9 actually make ext4 independent on the 'sync_supers()' thread.
-
-Thanks,
-Artem.
