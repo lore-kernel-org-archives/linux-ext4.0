@@ -1,38 +1,43 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: umode_t breakage in exported kernel headers
-Date: Tue, 20 Mar 2012 10:05:10 +0000
-Message-ID: <20120320100510.GK6589@ZenIV.linux.org.uk>
-References: <201203191601.55668.vapier@gentoo.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
+Date: Tue, 20 Mar 2012 09:03:25 -0400
+Message-ID: <20120320130325.GG14363@thunk.org>
+References: <20120320025835.GE14363@thunk.org>
+ <1332212574.7847.49.camel@joe2Laptop>
+ <216818.1332222366@turing-police.cc.vt.edu>
+ <20120320.031001.1532841232287663716.davem@davemloft.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Duane Griffin <duaneg@dghda.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:59511 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751910Ab2CTKFM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Mar 2012 06:05:12 -0400
+Cc: Valdis.Kletnieks@vt.edu, joe@perches.com, anca.emanuel@gmail.com,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <201203191601.55668.vapier@gentoo.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120320.031001.1532841232287663716.davem@davemloft.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 19, 2012 at 04:01:53PM -0400, Mike Frysinger wrote:
-> commit 0583fcc96bb117763c0fa74c123573c0112dec65 moved umode_t out of the 
-> exported headers space (via the arches' asm/types.h) and into __KERNEL__ 
-> specific linux/types.h.  this breaks the exported linux/ext2_fs.h 
-> ext2_mask_flags function which uses that type.  that func appears to be the 
-> only one exported that utilizes umode_t.
+On Tue, Mar 20, 2012 at 03:10:01AM -0400, David Miller wrote:
+> > OK. Say I'm a scraper.  How do I distinguish between:
+> > 
+> > pr_info("foo");
+> > printk(KERN_INFO "foo");
+> > 
+> > Oh my. seems that both result in exactly the same thing ending up in the
+> > dmesg buffer
 > 
-> should ext2_mask_flags be updated to take a __kernel_mode_t as its first arg ?
-> -mike
+> No it doesn't result in the same output, read the definitions again.
+> 
+> pr_info can be influenced by pr_fmt, plain printk cannot
 
-ITYM "unsigned short".  __kernel_mode_t is wrong kernel-side and pointless
-everywhere.  It should *only* be used in layout of structs shared with
-userland and misdefined back then.  Anything new should use explicitly-sized
-types (and u16 is enough for mode).
+But if you don't use pr_fmt, it's the same.  And even if you do, then
+pr_info() is the same as printk(KERN_INFO pr_fmt ...).  For a device
+driver where cut and paste reuse happens, sure, it's handy.  But for
+the rest of the kernel, it doesn't really buy you anything.  
 
-It's nearly entirely about ncp_mount_data - ipc_perm, ipc64_perm and in
-several cases st_mode of stat* are arch-dependent anyway and could bloody
-well use explicitly-sized types.
+And as I've said, something like ext4_msg(sb, ...) is **far** more
+useful.  I don't need a 1200-line patch that messes with debug
+printk's that are #ifdef'ed out.
+
+     	   	     	  	       	       - Ted
