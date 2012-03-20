@@ -1,37 +1,38 @@
-From: Joe Perches <joe@perches.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
 Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
-Date: Mon, 19 Mar 2012 18:33:49 -0700
-Message-ID: <1332207229.7847.24.camel@joe2Laptop>
-References: <cover.1331856299.git.joe@perches.com>
-	 <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>
-	 <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>
-	 <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>
-	 <171703.1332178579@turing-police.cc.vt.edu>
-	 <1332179050.3341.7.camel@joe2Laptop> <20120320010606.GC14363@thunk.org>
+Date: Tue, 20 Mar 2012 01:46:33 +0000
+Message-ID: <20120320014633.GJ6589@ZenIV.linux.org.uk>
+References: <20120319153133.GA2502@thunk.org>
+ <CAJL_dMtC9fnOsY=4uDVJD=-h5u-qW=xjaf64gtDcgnKX2brhPw@mail.gmail.com>
+ <20120319161425.GB2502@thunk.org>
+ <20120319.141402.934377752041508724.davem@davemloft.net>
+ <20120319183126.GA6031@thunk.org>
+ <1332182773.3908.11.camel@joe2Laptop>
+ <20120320010401.GA14363@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Valdis.Kletnieks@vt.edu, Jiri Slaby <jirislaby@gmail.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Ted Ts'o <tytso@mit.edu>, Joe Perches <joe@perches.com>,
+	David Miller <davem@davemloft.net>, anca.emanuel@gmail.com,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from perches-mx.perches.com ([206.117.179.246]:49055 "EHLO
-	labridge.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755914Ab2CTBdu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Mar 2012 21:33:50 -0400
-In-Reply-To: <20120320010606.GC14363@thunk.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:40745 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752616Ab2CTBqm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Mar 2012 21:46:42 -0400
+Content-Disposition: inline
+In-Reply-To: <20120320010401.GA14363@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2012-03-19 at 21:06 -0400, Ted Ts'o wrote:
-> On Mon, Mar 19, 2012 at 10:44:10AM -0700, Joe Perches wrote:
-> > This stuff ain't whitespace.
-> I'll have to respectfully disagree with you.  For ext4, as far as I am
-> concerned, changing printk(KERN_INFO, ...) to pr_info(...) is *purely*
-> a whitespace-level change.
+On Mon, Mar 19, 2012 at 09:04:01PM -0400, Ted Ts'o wrote:
 
-You've a non-standard definition of whitespace.
+> Yes, but we can't do structured notifications with the current
+> pr_<foo>.  So why change literally tens of thousands of callsites when
+> in order to really realize the full promise of structured
+> notifications, we'll have to change them *again*?
 
-cheers, Joe
+Two words: commit count.
 
+Al, expecting a rant from mingo about inexcusable hostility to new
+duhvelopers any time now...
