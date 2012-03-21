@@ -1,40 +1,56 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCH 1/8] mm: export dirty_writeback_interval
-Date: Wed, 21 Mar 2012 18:14:28 +0200
-Message-ID: <1332346475-1441-2-git-send-email-dedekind1@gmail.com>
-References: <1332346475-1441-1-git-send-email-dedekind1@gmail.com>
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Thierry Reding <thierry.reding@avionic-design.de>
+Subject: [PATCH] ext2: Don't export ext2_mask_flags() to user space
+Date: Wed, 21 Mar 2012 22:50:07 +0100
+Message-ID: <1332366608-2695-1-git-send-email-thierry.reding@avionic-design.de>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1332346475-1441-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Using the exported linux/ext2_fs.h header from user space is broken
+since commit 0583fcc because the umode_t type is no longer exported.
+This happens for example when compiling busybox' tune2fs applet. The
+e2fsprogs package does not have this problem because it ships with
+its own header and doesn't use the one exported by the Linux kernel.
 
-Export 'dirty_writeback_interval' to make it visible to file-systems. We are
-going to push superblock management down to file-systems and get rid of the
-'sync_supers' kernel thread completly.
+However, since busybox doesn't use the ext2_mask_flags() function the
+easiest fix is to just not export it and as a result the umode_t type
+definition is longer needed.
 
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Signed-off-by: Thierry Reding <thierry.reding@avionic-design.de>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+Cc: stable@vger.kernel.org
 ---
- mm/page-writeback.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ include/linux/ext2_fs.h |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 363ba70..5e39858 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -95,6 +95,8 @@ unsigned long vm_dirty_bytes;
-  */
- unsigned int dirty_writeback_interval = 5 * 100; /* centiseconds */
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index 091ab48..20f8f33 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -209,10 +209,7 @@ struct ext2_group_desc
+ #define EXT2_OTHER_FLMASK (EXT2_NODUMP_FL | EXT2_NOATIME_FL)
  
-+EXPORT_SYMBOL_GPL(dirty_writeback_interval);
-+
+ /* Mask out flags that are inappropriate for the given type of inode. */
+-#ifndef __KERNEL__
+-typedef unsigned short umode_t;
+-#endif
+-
++#ifdef __KERNEL__
+ static inline __u32 ext2_mask_flags(umode_t mode, __u32 flags)
+ {
+ 	if (S_ISDIR(mode))
+@@ -222,6 +219,7 @@ static inline __u32 ext2_mask_flags(umode_t mode, __u32 flags)
+ 	else
+ 		return flags & EXT2_OTHER_FLMASK;
+ }
++#endif
+ 
  /*
-  * The longest time for which data is allowed to remain dirty
-  */
+  * ioctl commands
 -- 
-1.7.7.6
+1.7.9.4
