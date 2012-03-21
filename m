@@ -1,29 +1,82 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Update s_free_{inodes,blocks}_count during
- online resize
-Date: Tue, 20 Mar 2012 15:54:42 -0400
-Message-ID: <20120320195442.GA23266@thunk.org>
-References: <20120306194020.GI15164@tux1.beaverton.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/5] ext4: Remove restrictive checks for EOFBLOCKS_FL
+Date: Wed, 21 Mar 2012 08:23:54 +0100
+Message-ID: <1332314639-22875-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, achender@linux.vnet.ibm.com,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54424 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755087Ab2CTTyq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Mar 2012 15:54:46 -0400
-Content-Disposition: inline
-In-Reply-To: <20120306194020.GI15164@tux1.beaverton.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:26116 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750976Ab2CUHYN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Mar 2012 03:24:13 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 11:40:20AM -0800, Darrick J. Wong wrote:
-> When we're doing an online resize of an ext4 filesystem, we need to update the
-> free inode and block counts in the superblock so that fsck doesn't complain.
-> 
-> Signed-off-by: Darrick J. Wong <djwong@us.ibm.com>
+We are going to remove the EOFBLOCKS_FL flag in the future, so this is
+the first part of the removal. We can not remove it entirely just now,
+since the e2fsck is still checking for it and it might cause headache to
+some people. Instead, remove the restrictive checks now and the rest
+later, when the new e2fsck code is out and common enough.
 
-Thanks, applied.
+This is also needed because punch hole already breaks the EOFBLOCKS_FL
+semantics, so it might cause the some troubles. So simply remove it.
 
-					- Ted
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |   13 ++++++++-----
+ fs/ext4/inode.c   |    6 ++----
+ 2 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9e10b82..06b0792 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3291,11 +3291,13 @@ static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
+ 	depth = ext_depth(inode);
+ 	eh = path[depth].p_hdr;
+ 
+-	if (unlikely(!eh->eh_entries)) {
+-		EXT4_ERROR_INODE(inode, "eh->eh_entries == 0 and "
+-				 "EOFBLOCKS_FL set");
+-		return -EIO;
+-	}
++	/*
++	 * We're going to remove EOFBLOCKS_FL entirely in future so we
++	 * do not care for this case anymore. Simply remove the flag
++	 * if there are no extents.
++	 */
++	if (unlikely(!eh->eh_entries))
++		goto out;
+ 	last_ex = EXT_LAST_EXTENT(eh);
+ 	/*
+ 	 * We should clear the EOFBLOCKS_FL flag if we are writing the
+@@ -3319,6 +3321,7 @@ static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
+ 	for (i = depth-1; i >= 0; i--)
+ 		if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
+ 			return 0;
++out:
+ 	ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
+ 	return ext4_mark_inode_dirty(handle, inode);
+ }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..55f5b91 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4152,11 +4152,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	}
+ 
+ 	if (attr->ia_valid & ATTR_SIZE) {
+-		if (attr->ia_size != i_size_read(inode)) {
++		if (attr->ia_size != i_size_read(inode))
+ 			truncate_setsize(inode, attr->ia_size);
+-			ext4_truncate(inode);
+-		} else if (ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))
+-			ext4_truncate(inode);
++		ext4_truncate(inode);
+ 	}
+ 
+ 	if (!rc) {
+-- 
+1.7.4.4
+
