@@ -1,49 +1,48 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/5] ext4: Correctly handle EOFBLOCKS flag in
- ext4_ext_punch_hole
-Date: Wed, 21 Mar 2012 22:13:05 -0400
-Message-ID: <20120322021305.GE11157@thunk.org>
-References: <1332314639-22875-1-git-send-email-lczerner@redhat.com>
- <1332314639-22875-2-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Lukas Czerner <lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: avoid unnecessary close/reopen for non-MMP filesystems
+Date: Wed, 21 Mar 2012 23:21:16 -0400
+Message-ID: <1332386476-25673-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@whamcloud.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33096 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:35788 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932075Ab2CVCNI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Mar 2012 22:13:08 -0400
-Content-Disposition: inline
-In-Reply-To: <1332314639-22875-2-git-send-email-lczerner@redhat.com>
+	id S1751900Ab2CVDVU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Mar 2012 23:21:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 08:23:55AM +0100, Lukas Czerner wrote:
-> +	/*
-> +	 * This is fugly, but even though we're going to get rid of the
-> +	 * EOFBLOCKS_LF in the future, we have to handle it correctly now
-> +	 * because there are still versions of e2fsck out there which
-> +	 * would scream otherwise. Once the new e2fsck code ignoring
-> +	 * this flag is common enough this can be removed entirely.
-> +	 */
-> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)) {
-> +		struct ext4_ext_path *path;
-> +		ext4_lblk_t last_block;
-> +
-> +		mutex_lock(&inode->i_mutex);
-> +		down_read(&EXT4_I(inode)->i_data_sem);
+For file systems that do not use MMP, there's no reason to close the
+file system and then re-open the file system a second time, since
+EXT2_FLAG_SKIP_MMP has no meaning for non-MMP file systems anyway.
 
-I was looking at this patch, and I was wondering why we weren't taking
-i_mutex earlier in ext4_ext_punch_hole().  The primary use of i_mutex
-is to protect writes racing with each other and with truncate.  Given
-that punch essentially works like truncate, and all of ext4_truncate()
-is run with i_mutex down, and currently ext4_ext_punch_hole() (before
-applying this patch) doesn't isn't taking i_mutex at all, I'm
-wondering if we can run into problems where punch is racing against a
-write --- if the pages are already in mapped, then the write might not
-even need to take i_data_sem.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@whamcloud.com>
+---
+ e2fsck/unix.c |    8 +++-----
+ 1 files changed, 3 insertions(+), 5 deletions(-)
 
-Lukas, Allison --- am I missing something here?
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 59c52ff..d0b10d4 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1398,12 +1398,10 @@ failure:
+ 	    (flags & EXT2_FLAG_SKIP_MMP)) {
+ 		if (e2fsck_check_mmp(fs, ctx))
+ 			fatal_error(ctx, 0);
+-	}
+ 
+-	 /*
+-	  * Restart in order to reopen fs but this time start mmp.
+-	  */
+-	if (flags & EXT2_FLAG_SKIP_MMP) {
++		/*
++		 * Restart in order to reopen fs but this time start mmp.
++		 */
+ 		ext2fs_close(fs);
+ 		ctx->fs = NULL;
+ 		flags &= ~EXT2_FLAG_SKIP_MMP;
+-- 
+1.7.9.107.g97f9a
 
-						- Ted
