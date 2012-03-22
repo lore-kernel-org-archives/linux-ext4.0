@@ -1,58 +1,114 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v1 3/9] ext4: remove useless s_dirt assignment
-Date: Thu, 22 Mar 2012 11:02:06 +0100
-Message-ID: <20120322100206.GF14485@quack.suse.cz>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
+Date: Thu, 22 Mar 2012 12:05:47 +0200
+Message-ID: <1332410747.18717.12.camel@sauron.fi.intel.com>
 References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
- <1332254489-2300-4-git-send-email-dedekind1@gmail.com>
+	 <20120322095342.GC14485@quack.suse.cz>
+Reply-To: dedekind1@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-hVBE7/oaZRTSff8XIQjX"
 Cc: Ted Tso <tytso@mit.edu>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Artem Bityutskiy <dedekind1@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52663 "EHLO mx2.suse.de"
+Received: from mga11.intel.com ([192.55.52.93]:26319 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754628Ab2CVKCI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Mar 2012 06:02:08 -0400
-Content-Disposition: inline
-In-Reply-To: <1332254489-2300-4-git-send-email-dedekind1@gmail.com>
+	id S932101Ab2CVKC7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Mar 2012 06:02:59 -0400
+In-Reply-To: <20120322095342.GC14485@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 20-03-12 16:41:23, Artem Bityutskiy wrote:
-> From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-> 
-> Clean-up ext4 a tiny bit by removing useless s_dirt assignment in
-> 'ext4_fill_super()' because a bit later we anyway call 'ext4_setup_super()'
-> which writes the superblock to the media unconditionally.
-> 
-> Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-  Looks good.
-Reviewed-by: Jan Kara <jack@suse.cz>
 
-								Honza
-> ---
->  fs/ext4/super.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c1f5111..d280bb6 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3415,7 +3415,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  #else
->  		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
->  #endif
-> -		sb->s_dirt = 1;
->  	}
->  
->  	/* Handle clustersize */
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=-hVBE7/oaZRTSff8XIQjX
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Thu, 2012-03-22 at 10:53 +0100, Jan Kara wrote:
+> On Tue 20-03-12 16:41:20, Artem Bityutskiy wrote:
+> > This patch-set makes ext4 independent of the VFS superblock management
+> > services. Namely, ext4 does not require to register the 'write_super()'=
+ VFS
+> > call-back.
+> >=20
+> > The reason of this exercises is to get rid of the 'sync_supers()' kerne=
+l thread
+> > which wakes up every 5 seconds (by default) even if all superblocks are=
+ clean.
+> > This is wasteful from power management POW (unnecessary wake-ups).
+> >=20
+> > Note, I tried to optimize 'sync_supers()' instead in 2010, but Al wante=
+d me
+> > to get rid of it instead. See https://lkml.org/lkml/2010/6/6/87
+> > And I think this is right because many file-systems do not need this, f=
+or
+> > example btrfs does not use VFS superblock management services at all, s=
+o on a
+> > btrfs-based system we currently end-up useless periodic wake-ups source=
+.
+> >=20
+> > Changes for other file-systems are coming later.
+> >=20
+> > The patch-set structure.
+> > 1. patches 1,2,3 are independent ext4 cleanups and I ask Ted to merge t=
+hem as
+> >    soon/long as they are OK. I sent them also independently in order to=
+ get
+> >    early comments, but did not get so far, so re-sending.
+> > 2. patch 4 exports 'dirty_writeback_interval' and it would be very usef=
+ul to
+> >    have it merged ASAP to simplify further work
+> > 3. patch 5 is also and independent VFS clean-up
+> > 4. patches 6-9 actually make ext4 independent on the 'sync_supers()' th=
+read.
+>   Artem, if you look at places where ext4 sets s_dirt you will notice the=
+y
+> are rather rare events and all of them actually take care of writing
+> superblock themselves (at least if my memory serves well). So ext4
+> shouldn't need sync_supers() at all...
+
+Hmm, if there is journal, then ext4 does not initialize the
+'->write_super()' VFS call-back and indeed takes care of the SB itself.
+Indeed. So 'sync_supers()' wakes up every 5 seconds for nothing.
+
+However, if there is _no_ journal, the 'write_super' is initialized, and
+in many places the 's_dirt' flag is set, and thus VFS services seem to
+be actively used.
+
+I do not ext4 well enough, but the SB dirtying looks a bit messy, and I
+am happy to do some clean-ups, just need a bit more of direction :-)
+
+Thanks!
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-hVBE7/oaZRTSff8XIQjX
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJPavl7AAoJECmIfjd9wqK0fgkP+wa6qxkm+qg6wYbdEuIi2+/g
+TPD8cERKUUvx82w4yS9Smh2bL55DWMzdcq5NsoVayTQJPZhKv8i5A7d5Mnfa9KDN
+9hx8mBTdzI0uGXDu9CbopE3BWvj7kA3ImxZxUhssyQ7mjtHuhXqbMiBf1hIvrSlo
+Ffo6GQTrLSCaLBqq9dRXjw7+s7Vma3ya3JZWkUJUyX4alFDRi/isdtC6md0Xsw+5
+f1TT3PXDu5rRIzuZbgYhlEW7D12crATUU/nUdra66ggSChswGWSN29tJZVQADZge
+PTh6pMZRyIHrmbAmdrPXGuSMcy7qMiKh3eIpLog5GNjwRYy+JnsdfTnQRlvj+y8D
+vHcoMC+WBt9JCRYsjHqhm2gXANx8sKV2jgGXQlhm8X1z4BeDQkbECu4cURteUDop
+oSSQUFuCBER6SyqCYA3KOuxkO2wRS1tc+juVG3QxcYHbWCnq1N3r2ewiWGKJTwxR
+lMcDuAAo4hD731H8xziz6QLruIUaW5Ay3+qZSmHHWXUtrKHNINfjT/V+n9Nn4egi
+cs3JIcOrKCtzlP664HQgqbIZxk9r1okC+0IUbI4x9kAnyoLwJl8V1TPg8AYQMvCi
+bNgy1Eiy4sV/8OS1iR924+8A2igzRFF3QhpVn16GgIQis5QXCpngZ9JXbR7gv83t
+1IxpDnpICH9mdltmL36L
+=UbCh
+-----END PGP SIGNATURE-----
+
+--=-hVBE7/oaZRTSff8XIQjX--
+
