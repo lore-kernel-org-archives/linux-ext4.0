@@ -1,56 +1,59 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
-Date: Thu, 22 Mar 2012 11:06:02 -0400
-Message-ID: <20120322150602.GD25897@thunk.org>
-References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
- <20120322133521.GA25897@thunk.org>
- <1332424585.18717.34.camel@sauron.fi.intel.com>
+From: Akshay Nehe <akshaynehe785@gmail.com>
+Subject: Re: Required help for understanding ext4 block allocation
+Date: Thu, 22 Mar 2012 20:52:31 +0530
+Message-ID: <CA+tw96CP=Psbmvn5zn5=SD0BteWjcxAwDYqg0Jfu1-dpTfSf0g@mail.gmail.com>
+References: <CA+tw96DSaJH50o1F4sW9XMnmPD8dFO9VCyvK4tbsLFqfgK9CWQ@mail.gmail.com>
+	<20120316091810.GB24821@quack.suse.cz>
+	<CA+tw96C9kRHYhiQoyRRH8U_gPtcXZimJL0=kHBX4m7dLrXwaPg@mail.gmail.com>
+	<20120322141155.GB19587@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Artem Bityutskiy <dedekind1@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1332424585.18717.34.camel@sauron.fi.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:54251 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753288Ab2CVPWd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Mar 2012 11:22:33 -0400
+Received: by wejx9 with SMTP id x9so1912594wej.19
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Mar 2012 08:22:31 -0700 (PDT)
+In-Reply-To: <20120322141155.GB19587@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 22, 2012 at 03:56:25PM +0200, Artem Bityutskiy wrote:
-> 
-> But I wonder, since this is cross-FS story, where I need to first do
-> small VFS change (export the variable), then change all file-systems,
-> and then remove whole 's_dirt'/'write_supers()' stuff from VFS, how this
-> would be handled?
+On 3/22/12, Jan Kara <jack@suse.cz> wrote:
+>   Hello,
+>
+> On Thu 22-03-12 18:54:26, Akshay Nehe wrote:
+>> Yes, i got extents as you have suggested, but one thing i found that
+>> each time modification occurs on any file from ext4 file system then
+>> kernel deallocates all current blocks and allocate new blocks and
+>> write modified data on newly allocated blocks.
+>   That is not true. Why do you think it is? Maybe you are modifying the
+> file with something like a text editor? That certainly truncates the old
+> file and writes a new one. But generally ext4 supports overwriting.
+>
+Yes, i m using vim editor to modify files. Actually due to this inode
+number of file is changing each time after modification.
+>> So by tracing kernel code i got some useful functions, for
+>> deallocation: ext4_free_blocks, for allocation: ext4_map_blocks, but
+>> found difficult to analyse each of them. Can anyone suggest correct
+>> functions which actually dose allocation and deallocation?
+>   Ext4 uses multiblock allocator which is in fs/ext4/mballoc.c. In
+> particular function allocating blocks in ext4_mb_new_blocks(), function
+> freeing blocks is ext4_free_blocks(). But you will need to understand most
+> of mballoc.c to understand how mballoc works. You can read comments in the
+> beginning of the file to understand some basics about mballoc. You can
+> also read some basics from by presentation about ext4 at Linux Kongress in
+> 2009 (http://www.linux-kongress.org/2009/slides/ext4+btrfs_jan_kara.pdf).
+>
+> 								Honza
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
+Thanks for help, I will go through both mballoc file and your presentation file.
 
-What I'm thinking about doing is pulling the first five patches into
-my tree, which includes the VFS change to export the
-dirty_writeback_interval variable.  Those patches should be very low
-risk, and acceptable at this point (although I'm still going to test
-them really hard).
-
-Assuming there are no objections with this, then you'd be able to send
-the rest of the patches for each file system to get rid of the super
-writeback thread separately; those really should go via each file
-system maintainer's separate trees, though.  Ext2 and ext3 changes I'm
-willing to carry in the ext4 tree (although Jan does have his own ext3
-tree).  However, it would really be inappropriate for me to carry
-patches against jfs, xfs, or other non-ext 2/3/4 file systems in my
-tree.  It will go much faster if you negotiate with each of the file
-system maintainers/development teams directly, instead of trying to
-use my tree and me as a middleman.
-
-The one thing that will require some coordination is the patch to
-completely remove the super writeback thread altogether, which
-obviously can't be applied until we know all of the file systems have
-removed their dependency on s_dirt.  That's a pretty trivial patch
-that could go in late in the next merge window, or even in -rc2 (with
-prior warning given to Linus), once you're sure all of the file
-systems have gotten their s_dirt removal patches merged in.
-
-Does that seem reasonable to you?
-
-Best regards,
-
-					- Ted
+-- 
+Regards,
+Akshay Nehe.
