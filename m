@@ -1,76 +1,152 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
-Date: Thu, 22 Mar 2012 15:59:32 +0200
-Message-ID: <1332424772.18717.37.camel@sauron.fi.intel.com>
-References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
-	 <20120322095342.GC14485@quack.suse.cz>
-	 <1332410747.18717.12.camel@sauron.fi.intel.com>
-	 <20120322103309.GA14484@quack.suse.cz>
-	 <1332415537.18717.21.camel@sauron.fi.intel.com>
-	 <20120322134253.GA19587@quack.suse.cz>
-Reply-To: dedekind1@gmail.com
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 2/5] ext4: Correctly handle EOFBLOCKS flag in
+ ext4_ext_punch_hole
+Date: Thu, 22 Mar 2012 15:05:15 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1203221454070.11285@dhcp-27-109.brq.redhat.com>
+References: <1332314639-22875-1-git-send-email-lczerner@redhat.com> <1332314639-22875-2-git-send-email-lczerner@redhat.com> <20120322021305.GE11157@thunk.org> <alpine.LFD.2.00.1203220826020.4904@dhcp-27-109.brq.redhat.com>
+ <20120322134745.GB25897@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-6BVtAb9E12r9zLIiv0Rq"
-Cc: Ted Tso <tytso@mit.edu>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	achender@linux.vnet.ibm.com
+To: "Ted Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:51126 "EHLO mga09.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5888 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964942Ab2CVN4l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Mar 2012 09:56:41 -0400
-In-Reply-To: <20120322134253.GA19587@quack.suse.cz>
+	id S1751096Ab2CVOFh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Mar 2012 10:05:37 -0400
+In-Reply-To: <20120322134745.GB25897@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, 22 Mar 2012, Ted Ts'o wrote:
 
---=-6BVtAb9E12r9zLIiv0Rq
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+> On Thu, Mar 22, 2012 at 09:25:15AM +0100, Lukas Czerner wrote:
+> > 
+> > The worse what can happen is that after a write spanning several block
+> > we'll have first part of the write punched out, but second part written
+> > correctly since in this case it might hit already punched block
+> > and need to wait for punch_hole to finish, after that the rest of the
+> > range is written. However the write should remain consistent on block
+> > granularity which is all we guarantee anyway, right ?
+> 
+> I need to look more closely at this, but thing that was worrying me
+> was the part of truncate/punch where we have to invalidate the parts
+> of the page cache where we've unmapped the blocks.  i.e., the call to
+> truncate_inode_pages_range() racing with the write.  I think we're ok,
+> since truncate_inode_pages_range() grabs the page spinlock and then
+> checks for PageWriteback, which ought to be sufficient, but truncate
+> does take that codepath with i_mutex down, and so my spidey sense is
+> tingling.  I may just being too paranoid, though.
+> 
+> Still, that's not a criticism of your patch.
+> 
+> More serious is the following lockdep warning that I got.  Grabbing
+> i_mutex after the transaction handle is started can lead to a circular
+> locking deadlock...
+> 
+> 						- Ted
 
-On Thu, 2012-03-22 at 14:42 +0100, Jan Kara wrote:
-> > But AFAIKC, the whole '__ext4_handle_dirty_super()' also falls-back to
-> > marking the superblock as dirty if the file-system has no journal for
-> > some reasons, right?
->   Yes. And I wrote that if you do sync_buffer(EXT4_SB(sb)->s_sbh) instead
-> of marking superblock dirty, it would be fine.
+Hrm, that's not very good. So we probably need to take the i_mutex for
+the whole transaction. It's not pretty solution, but I do not see other
+way around. Maybe we could clear the flag after the punch_hole in
+different transaction, but then the fallocate keep size and punch_hole
+race window would be much bigger.
 
-OK, sorry for not reading carefully, I will take a look at this and all
-the places where we use 's_dirt' and try to think how to just eliminate
-them. But since I have 0 experience with ext4, I'll probably need some
-help, but let's see.
+-Lukas
 
-Thanks for reviewing and the feed-back!
+> 
+> BEGIN TEST: Ext4 4k block Wed Mar 21 22:47:17 EDT 2012
+> Device: /dev/vdb
+> mke2fs options: -q
+> mount options: -o block_validity
+> 000 - unknown test, ignored
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/i686 candygram 3.3.0-rc2-00592-gc56a0b2
+> MKFS_OPTIONS  -- -q /dev/vdc
+> MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+> 075	[  808.872903] 
+> [  808.873567] ======================================================
+> [  808.875933] [ INFO: possible circular locking dependency detected ]
+> [  808.875933] 3.3.0-rc2-00592-gc56a0b2 #32 Not tainted
+> [  808.875933] -------------------------------------------------------
+> [  808.875933] fsx/13769 is trying to acquire lock:
+> [  808.875933]  (&sb->s_type->i_mutex_key#3){+.+.+.}, at: [<c028d900>] ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933] 
+> [  808.875933] but task is already holding lock:
+> [  808.875933]  (jbd2_handle){+.+...}, at: [<c02a5995>] start_this_handle+0x4e4/0x51a
+> [  808.875933] 
+> [  808.875933] which lock already depends on the new lock.
+> [  808.875933] 
+> [  808.875933] 
+> [  808.875933] the existing dependency chain (in reverse order) is:
+> [  808.875933] 
+> [  808.875933] -> #1 (jbd2_handle){+.+...}:
+> [  808.875933]        [<c019789d>] lock_acquire+0x99/0xbd
+> [  808.875933]        [<c02a59b7>] start_this_handle+0x506/0x51a
+> [  808.875933]        [<c02a5ba6>] jbd2__journal_start+0xae/0xda
+> [  808.875933]        [<c02a5be4>] jbd2_journal_start+0x12/0x14
+> [  808.875933]        [<c0284fb8>] ext4_journal_start_sb+0x11e/0x126
+> [  808.875933]        [<c0277661>] ext4_unlink+0x82/0x1e5
+> [  808.875933]        [<c02127e1>] vfs_unlink+0x61/0xaf
+> [  808.875933]        [<c02147b5>] do_unlinkat+0xa0/0x112
+> [  808.875933]        [<c0214946>] sys_unlinkat+0x30/0x37
+> [  808.875933]        [<c06d8c5d>] syscall_call+0x7/0xb
+> [  808.875933] 
+> [  808.875933] -> #0 (&sb->s_type->i_mutex_key#3){+.+.+.}:
+> [  808.875933]        [<c0197598>] __lock_acquire+0x989/0xbf5
+> [  808.875933]        [<c019789d>] lock_acquire+0x99/0xbd
+> [  808.875933]        [<c06d65f4>] __mutex_lock_common+0x30/0x316
+> [  808.875933]        [<c06d6988>] mutex_lock_nested+0x26/0x2f
+> [  808.875933]        [<c028d900>] ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933]        [<c026e316>] ext4_punch_hole+0x5f/0x70
+> [  808.875933]        [<c028fbce>] ext4_fallocate+0x63/0x469
+> [  808.875933]        [<c0208974>] do_fallocate+0xe7/0x105
+> [  808.875933]        [<c02089c3>] sys_fallocate+0x31/0x46
+> [  808.875933]        [<c06d8c5d>] syscall_call+0x7/0xb
+> [  808.875933] 
+> [  808.875933] other info that might help us debug this:
+> [  808.875933] 
+> [  808.875933]  Possible unsafe locking scenario:
+> [  808.875933] 
+> [  808.875933]        CPU0                    CPU1
+> [  808.875933]        ----                    ----
+> [  808.875933]   lock(jbd2_handle);
+> [  808.875933]                                lock(&sb->s_type->i_mutex_key#3);
+> [  808.875933]                                lock(jbd2_handle);
+> [  808.875933]   lock(&sb->s_type->i_mutex_key#3);
+> [  808.875933] 
+> [  808.875933]  *** DEADLOCK ***
+> [  808.875933] 
+> [  808.875933] 1 lock held by fsx/13769:
+> [  808.875933]  #0:  (jbd2_handle){+.+...}, at: [<c02a5995>] start_this_handle+0x4e4/0x51a
+> [  808.875933] 
+> [  808.875933] stack backtrace:
+> [  808.875933] Pid: 13769, comm: fsx Not tainted 3.3.0-rc2-00592-gc56a0b2 #32
+> [  808.875933] Call Trace:
+> [  808.875933]  [<c01954fb>] print_circular_bug+0x194/0x1a1
+> [  808.875933]  [<c0197598>] __lock_acquire+0x989/0xbf5
+> [  808.875933]  [<c019789d>] lock_acquire+0x99/0xbd
+> [  808.875933]  [<c028d900>] ? ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933]  [<c06d65f4>] __mutex_lock_common+0x30/0x316
+> [  808.875933]  [<c028d900>] ? ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933]  [<c017d53a>] ? local_clock+0x3d/0x55
+> [  808.875933]  [<c01942de>] ? lock_release_holdtime+0x2b/0xcd
+> [  808.875933]  [<c028d8d9>] ? ext4_ext_punch_hole+0x291/0x382
+> [  808.875933]  [<c06d6988>] mutex_lock_nested+0x26/0x2f
+> [  808.875933]  [<c028d900>] ? ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933]  [<c028d900>] ext4_ext_punch_hole+0x2b8/0x382
+> [  808.875933]  [<c026e316>] ext4_punch_hole+0x5f/0x70
+> [  808.875933]  [<c028fbce>] ext4_fallocate+0x63/0x469
+> [  808.875933]  [<c017d4ed>] ? sched_clock_cpu+0x134/0x144
+> [  808.875933]  [<c023473e>] ? fsnotify+0x1e8/0x202
+> [  808.875933]  [<c01940d5>] ? trace_hardirqs_off+0xb/0xd
+> [  808.875933]  [<c017d53a>] ? local_clock+0x3d/0x55
+> [  808.875933]  [<c020a873>] ? fget+0x57/0x71
+> [  808.875933]  [<c0208974>] do_fallocate+0xe7/0x105
+> [  808.875933]  [<c02089c3>] sys_fallocate+0x31/0x46
+> [  808.875933]  [<c06d8c5d>] syscall_call+0x7/0xb
+> [  808.875933]  [<c06d0000>] ? init_intel+0x1aa/0x370
+> 
 
---=20
-Best Regards,
-Artem Bityutskiy
-
---=-6BVtAb9E12r9zLIiv0Rq
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAABAgAGBQJPazBEAAoJECmIfjd9wqK0YXcP+wWZzC/pm9NSNez+KH2OncIU
-uXQvU0bfbCy01pPzmP+3CAzmyvtOms+x4pKlJ5A0Knvf6ddAg56Gk1+QO2WAngmP
-gdbUryti/7Zo7UflR4dJmkEM/zW5Ii0EixesJnYViTZZozi67cdM3YU6gp2TBceP
-3HVUfjivlkMyBeoADwUhwxU328AcZaGfcZt4Ma6TeeymGhE5Yn+vkMiYpSy21s04
-XHf4ZfsLTNzu7SsRZlEgwXJi3mq1GRjeSd1l90blGuSp8D0r0W79/Wb0kARHRvKS
-vvt1oWAwHrVeq4ZnVc8UqS8lfsKX4dyZNioBmMYS/HfetapivH+wCWwPdsmYOdnE
-aGCRS57Ba3oSsI08KdC7cZelSas/2cwpi0N7Fuhnq525MKMRh28M1C4Ti8fgxA7z
-tp545Z5oFbBoImDiTiXF6WIIo6Mj2QT7FP2NpDKkdDbe8NkQQJA0t3mcNcX/akQe
-Bwy00cLtYHAoUjXH2rVDXW81kKqPJUjnV+AHKBSGhx/6iJeqLaOm+hZfDb5le3wR
-FM/+aoOiFirphw6oe4ohoh3eniJiiPDkZgyJfNG9tex9YeJuPDc6oCAA2UaVmhKD
-YUVjT/L+lnfosoJ9aAGVNHBffjYcdVkEbuoJxHkMXg5ravP42fX6+6vYDPYJI0wi
-K5vW6ENPZqTWLCcD7pUt
-=MXFq
------END PGP SIGNATURE-----
-
---=-6BVtAb9E12r9zLIiv0Rq--
-
+-- 
