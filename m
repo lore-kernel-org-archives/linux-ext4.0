@@ -1,35 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42872] fstat()/ext3_iget() sometime takes over 2 minutes...
-Date: Thu, 22 Mar 2012 14:37:49 GMT
-Message-ID: <201203221437.q2MEbnRU019169@bugzilla.kernel.org>
-References: <bug-42872-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
+Date: Thu, 22 Mar 2012 11:06:02 -0400
+Message-ID: <20120322150602.GD25897@thunk.org>
+References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
+ <20120322133521.GA25897@thunk.org>
+ <1332424585.18717.34.camel@sauron.fi.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:54890 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752719Ab2CVOhu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Mar 2012 10:37:50 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q2MEbn4D019170
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Mar 2012 14:37:49 GMT
-In-Reply-To: <bug-42872-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1332424585.18717.34.camel@sauron.fi.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42872
+On Thu, Mar 22, 2012 at 03:56:25PM +0200, Artem Bityutskiy wrote:
+> 
+> But I wonder, since this is cross-FS story, where I need to first do
+> small VFS change (export the variable), then change all file-systems,
+> and then remove whole 's_dirt'/'write_supers()' stuff from VFS, how this
+> would be handled?
 
+What I'm thinking about doing is pulling the first five patches into
+my tree, which includes the VFS change to export the
+dirty_writeback_interval variable.  Those patches should be very low
+risk, and acceptable at this point (although I'm still going to test
+them really hard).
 
+Assuming there are no objections with this, then you'd be able to send
+the rest of the patches for each file system to get rid of the super
+writeback thread separately; those really should go via each file
+system maintainer's separate trees, though.  Ext2 and ext3 changes I'm
+willing to carry in the ext4 tree (although Jan does have his own ext3
+tree).  However, it would really be inappropriate for me to carry
+patches against jfs, xfs, or other non-ext 2/3/4 file systems in my
+tree.  It will go much faster if you negotiate with each of the file
+system maintainers/development teams directly, instead of trying to
+use my tree and me as a middleman.
 
+The one thing that will require some coordination is the patch to
+completely remove the super writeback thread altogether, which
+obviously can't be applied until we know all of the file systems have
+removed their dependency on s_dirt.  That's a pretty trivial patch
+that could go in late in the next merge window, or even in -rc2 (with
+prior warning given to Linus), once you're sure all of the file
+systems have gotten their s_dirt removal patches merged in.
 
+Does that seem reasonable to you?
 
---- Comment #3 from Jan Kara <jack@suse.cz>  2012-03-22 14:37:48 ---
-I did some testing of read latencies under heavy write load. Switching to
-data=writeback helped a lot (not that data=ordered shouldn't be fixed but it's
-not so simple). So can you try whether it helps also your case?
+Best regards,
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
