@@ -1,85 +1,69 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
-Date: Thu, 22 Mar 2012 13:25:37 +0200
-Message-ID: <1332415537.18717.21.camel@sauron.fi.intel.com>
-References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
-	 <20120322095342.GC14485@quack.suse.cz>
-	 <1332410747.18717.12.camel@sauron.fi.intel.com>
-	 <20120322103309.GA14484@quack.suse.cz>
-Reply-To: dedekind1@gmail.com
+From: Akshay Nehe <akshaynehe785@gmail.com>
+Subject: Re: Required help for understanding ext4 block allocation
+Date: Thu, 22 Mar 2012 18:54:26 +0530
+Message-ID: <CA+tw96C9kRHYhiQoyRRH8U_gPtcXZimJL0=kHBX4m7dLrXwaPg@mail.gmail.com>
+References: <CA+tw96DSaJH50o1F4sW9XMnmPD8dFO9VCyvK4tbsLFqfgK9CWQ@mail.gmail.com>
+	<20120316091810.GB24821@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-m7BzqZp205qfFoP0txw4"
-Cc: Ted Tso <tytso@mit.edu>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:33815 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751526Ab2CVLXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Mar 2012 07:23:09 -0400
-In-Reply-To: <20120322103309.GA14484@quack.suse.cz>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:36229 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751096Ab2CVNY3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Mar 2012 09:24:29 -0400
+Received: by lahj13 with SMTP id j13so1687257lah.19
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Mar 2012 06:24:27 -0700 (PDT)
+In-Reply-To: <20120316091810.GB24821@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Yes, i got extents as you have suggested, but one thing i found that
+each time modification occurs on any file from ext4 file system then
+kernel deallocates all current blocks and allocate new blocks and
+write modified data on newly allocated blocks.
 
---=-m7BzqZp205qfFoP0txw4
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Why kernel uses this policy? My main aim is to browse ext4 code and
+try to get and understand functions which dose the job of allocation
+and deallocation of blocks.
 
-On Thu, 2012-03-22 at 11:33 +0100, Jan Kara wrote:
-> > However, if there is _no_ journal, the 'write_super' is initialized, an=
-d
-> > in many places the 's_dirt' flag is set, and thus VFS services seem to
-> > be actively used.
->   Which many places are you speaking about? Grep shows 4 places with
-> sb->s_dirt =3D 1;
+So by tracing kernel code i got some useful functions, for
+deallocation: ext4_free_blocks, for allocation: ext4_map_blocks, but
+found difficult to analyse each of them. Can anyone suggest correct
+functions which actually dose allocation and deallocation?
 
-Well, with 'ext4_mark_super_dirty()' there are still 6 or something
-places.
+On 3/16/12, Jan Kara <jack@suse.cz> wrote:
+>   Hello,
+>
+> On Thu 15-03-12 18:48:56, Akshay Nehe wrote:
+>> I am trying to understand the block allocation in ext4 file sytem, I
+>> have gone through all basic theory and browsing code to do it.
+>>
+>> I am writing a module in which i got ext4 on disk inode, now according
+>> to theory first 12 bytes of i_block points to ext4_extent_header, so
+>> can i use this array of i_block[EXT4_N_BLOCKS].
+>>
+>> Means how to fill objects of  struct ext4_extent_header (using first
+>> 12 byte of i_block) and  struct ext4_extent (using reminder bytes of
+>> i_block).
+>   struct ext4_extent_header is just directly stored in the space occupied
+> by i_block[EXT4_N_BLOCKS]. So for example ext_inode_hdr() does:
+>   (struct ext4_extent_header *)EXT4_I(inode)->i_data
+> (where i_data is just one-to-one copy of i_blocks from on disk inode).
+>
+> And it's the same with struct ext4_extent. See for example macro
+> EXT_FIRST_EXTENT.
+>
+> 								Honza
+>
+> --
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+>
 
->   You remove two of those in your cleanups so only
-> __ext4_handle_dirty_super() remains. That is called from 3 (4 after your
-> cleanups) places and they happen so rarely (during filesystem resize or
-> when we start using some feature on the filesystem) that if you use
-> sync_buffer() from all of them, it should be fine.
 
-But AFAIKC, the whole '__ext4_handle_dirty_super()' also falls-back to
-marking the superblock as dirty if the file-system has no journal for
-some reasons, right?. But I do not really understand what
-'ext4_handle_valid()' does. If I grep for 'ext4_handle_dirty_super()' -
-there are many places places where it is used, and a few are obviously
-for the superblocks.
-
-
---=20
-Best Regards,
-Artem Bityutskiy
-
---=-m7BzqZp205qfFoP0txw4
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAABAgAGBQJPawwxAAoJECmIfjd9wqK0LJEP/1KCA9fBdQvnZuoRMKsCCEom
-rFsuWStPynTbB95PruUj3C7tJs4H3NrqPIZTfZ9p5F2mULSd+VVhHaAEJz/xOEy4
-4MLboIgRkJTtO73LbXW9x2UngP1yKohti3R9wYbHvMnwJFCgDA+HY54JHURd+6mG
-eJ2cWphuyZy6rTJbBkruXhvhb0qS/Iqmdp9aj2/tvf+23WSU9j41qejrqH7ZVxpg
-NiAtP4ErdzEfi9OBEEYHJkMvyuXZtBfeZatqKGGVnR0eA9WjGLWArAFCxXiZ7UXV
-EqYLKZjSIhA9m2RUWfM6IX9/ZEKyct3klXQPEvKwpDGJ1mZh23AQDWOEZC0b/HYo
-JH1r8GnZ2VXP7cgGh1xmjt78aH0nLGHaHrXZOA9eED+F22zB89EgbdLv0Kr3P0Tr
-Pye59QjhKH4n6ntJPlJWjLQx1XMSRnN7sToBxMu31HXH8ua8wc6pbTEOv6bRUSh8
-Yd8nyystKXV6+JQkcbz836sNQSKG1moljCGfOCO3u6WqaktkkpjMSUy5BEaTVNFM
-fm0GMmMTgTvtYM+NDehtFpMAH6WMASTRZQR8SwU/qwF91kyvRsOjIowUzZblsF5j
-SOBRDo8/C8Y2YtJ27dKWQpjJ/cv35se438fMeuoYJ78s9/a+S0qVFIyVDg5RrzsO
-ujYHLJhzm3PBqifaGRN0
-=FB1n
------END PGP SIGNATURE-----
-
---=-m7BzqZp205qfFoP0txw4--
-
+-- 
+Regards,
+Akshay Nehe.
