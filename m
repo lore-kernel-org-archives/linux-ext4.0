@@ -1,73 +1,49 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/5] ext4: Correctly handle EOFBLOCKS flag in
- ext4_ext_punch_hole
-Date: Thu, 22 Mar 2012 09:25:15 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203220826020.4904@dhcp-27-109.brq.redhat.com>
-References: <1332314639-22875-1-git-send-email-lczerner@redhat.com> <1332314639-22875-2-git-send-email-lczerner@redhat.com> <20120322021305.GE11157@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
+Date: Thu, 22 Mar 2012 10:53:42 +0100
+Message-ID: <20120322095342.GC14485@quack.suse.cz>
+References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	achender@linux.vnet.ibm.com
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41482 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932123Ab2CVIZW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Mar 2012 04:25:22 -0400
-In-Reply-To: <20120322021305.GE11157@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 21 Mar 2012, Ted Ts'o wrote:
-
-> On Wed, Mar 21, 2012 at 08:23:55AM +0100, Lukas Czerner wrote:
-> > +	/*
-> > +	 * This is fugly, but even though we're going to get rid of the
-> > +	 * EOFBLOCKS_LF in the future, we have to handle it correctly now
-> > +	 * because there are still versions of e2fsck out there which
-> > +	 * would scream otherwise. Once the new e2fsck code ignoring
-> > +	 * this flag is common enough this can be removed entirely.
-> > +	 */
-> > +	if (ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS)) {
-> > +		struct ext4_ext_path *path;
-> > +		ext4_lblk_t last_block;
-> > +
-> > +		mutex_lock(&inode->i_mutex);
-> > +		down_read(&EXT4_I(inode)->i_data_sem);
+On Tue 20-03-12 16:41:20, Artem Bityutskiy wrote:
+> This patch-set makes ext4 independent of the VFS superblock management
+> services. Namely, ext4 does not require to register the 'write_super()' VFS
+> call-back.
 > 
-> I was looking at this patch, and I was wondering why we weren't taking
-> i_mutex earlier in ext4_ext_punch_hole().  The primary use of i_mutex
-> is to protect writes racing with each other and with truncate.  Given
-> that punch essentially works like truncate, and all of ext4_truncate()
-> is run with i_mutex down, and currently ext4_ext_punch_hole() (before
-> applying this patch) doesn't isn't taking i_mutex at all, I'm
-> wondering if we can run into problems where punch is racing against a
-> write --- if the pages are already in mapped, then the write might not
-> even need to take i_data_sem.
+> The reason of this exercises is to get rid of the 'sync_supers()' kernel thread
+> which wakes up every 5 seconds (by default) even if all superblocks are clean.
+> This is wasteful from power management POW (unnecessary wake-ups).
 > 
-> Lukas, Allison --- am I missing something here?
+> Note, I tried to optimize 'sync_supers()' instead in 2010, but Al wanted me
+> to get rid of it instead. See https://lkml.org/lkml/2010/6/6/87
+> And I think this is right because many file-systems do not need this, for
+> example btrfs does not use VFS superblock management services at all, so on a
+> btrfs-based system we currently end-up useless periodic wake-ups source.
 > 
-> 						- Ted
+> Changes for other file-systems are coming later.
+> 
+> The patch-set structure.
+> 1. patches 1,2,3 are independent ext4 cleanups and I ask Ted to merge them as
+>    soon/long as they are OK. I sent them also independently in order to get
+>    early comments, but did not get so far, so re-sending.
+> 2. patch 4 exports 'dirty_writeback_interval' and it would be very useful to
+>    have it merged ASAP to simplify further work
+> 3. patch 5 is also and independent VFS clean-up
+> 4. patches 6-9 actually make ext4 independent on the 'sync_supers()' thread.
+  Artem, if you look at places where ext4 sets s_dirt you will notice they
+are rather rare events and all of them actually take care of writing
+superblock themselves (at least if my memory serves well). So ext4
+shouldn't need sync_supers() at all...
 
-Hmm, so we can not race with truncate since we do not touch i_size in
-punch_hole and the extent tree modification is done with i_data_sem
-locked.
-
-As far as write is concerned, I do not think that race is possible. If
-for example we're trying to write into the same range we're punching out
-the buffer we're trying to write into is either mapped, or not right ?
-
-If it's mapped then punch_hole did not get to this block yet, but it
-will eventually in the current transaction. If the buffer is unmapped,
-then we're going to get a new block, which means we're going to have to
-lock the i_data_sem, but since punch_hole is already holding it we have
-to wait before it finishes.
-
-The worse what can happen is that after a write spanning several block
-we'll have first part of the write punched out, but second part written
-correctly since in this case it might hit already punched block
-and need to wait for punch_hole to finish, after that the rest of the
-range is written. However the write should remain consistent on block
-granularity which is all we guarantee anyway, right ?
-
--Lukas
+								Honza
