@@ -1,76 +1,54 @@
-From: Thierry Reding <thierry.reding@avionic-design.de>
-Subject: Re: [PATCH] ext2: Don't export ext2_mask_flags() to user space
-Date: Thu, 22 Mar 2012 17:47:51 +0100
-Message-ID: <20120322164751.GA17885@avionic-0098.adnet.avionic-design.de>
-References: <1332366608-2695-1-git-send-email-thierry.reding@avionic-design.de>
- <20120321222357.GB24330@quack.suse.cz>
- <20120321231651.GC32041@thunk.org>
- <20120322055354.GA3942@avionic-0098.mockup.avionic-design.de>
- <1332396053.3058.2.camel@koala>
- <20120322162825.GA4028@thunk.org>
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: Re: [PATCH 2/9] ext4: Use pr_fmt and pr_<level>
+Date: Thu, 22 Mar 2012 18:02:22 +0100
+Message-ID: <4F6B5B1E.9090402@suse.cz>
+References: <cover.1331856299.git.joe@perches.com>  <ceb0e02f9f0c1548a654e8718fbadc147595f8ee.1331856300.git.joe@perches.com>  <20120319040950.GG31682@thunk.org> <1332131137.23125.44.camel@joe2Laptop>  <4F6762F1.7050902@gmail.com> <1332176943.1983.28.camel@joe2Laptop>  <4F684673.1050309@suse.cz> <1332235315.7847.63.camel@joe2Laptop>  <4F684D00.4040102@suse.cz> <1332236803.7847.85.camel@joe2Laptop>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="GvXjxJ+pjyke8COw"
-To: Ted Ts'o <tytso@mit.edu>, Artem Bityutskiy <dedekind1@gmail.com>,
-	Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org,
-	stable@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.171]:60571 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751199Ab2CVQsk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Mar 2012 12:48:40 -0400
-Content-Disposition: inline
-In-Reply-To: <20120322162825.GA4028@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Jiri Slaby <jirislaby@gmail.com>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1332236803.7847.85.camel@joe2Laptop>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On 03/20/2012 10:46 AM, Joe Perches wrote:
+> On Tue, 2012-03-20 at 10:25 +0100, Jiri Slaby wrote:
+>> On 03/20/2012 10:21 AM, Joe Perches wrote:
+>>> the ath5k pr_ conversion patches are to
+>>> standardize prefixes and to reduce code size by
+>>> centralizing tests.
+>>
+>> What is the "standard" prefix?
+> 
+> KBUILD_MODNAME
 
---GvXjxJ+pjyke8COw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Instead, we should switch as many printks to dev_* and similar as
+possible, right? They are standard and provide a good interface for
+extensions: one has a device to work with. This is something what pr_*
+does not offer. For that reason it's not worth it.
 
-* Ted Ts'o wrote:
-> On Thu, Mar 22, 2012 at 08:00:41AM +0200, Artem Bityutskiy wrote:
-> > On Thu, 2012-03-22 at 06:53 +0100, Thierry Reding wrote:
-> > > What's the recommended fix for packages that cannot or will not use
-> > > libext2fs, like busybox? Copy the required parts into a private header
-> > > and use that instead?
-> >=20
-> > The normal way is to just keep a private copy of the whole header file.
-> > Because the on-disk format stays compatible, those programs do not have
-> > to update the header very often - only rarely if they want to support
-> > some new feature.
->=20
-> Even if they're not iwlling to use libext2fs (for space reasons, I
-> would assume?  It can't be because of license compatibility issues
-> since they are both GPLv2), they could just simply grab the ext2_fs.h
-> from e2fsprogs.  That has all of the file system definitions for ext2,
-> ext3, and ext4.
+>>> https://lkml.org/lkml/2012/3/18/121
+>>> https://lkml.org/lkml/2012/3/18/123
+>>> https://lkml.org/lkml/2012/3/18/124
+>>> I happen to like 30K/10+% code size reductions.
+>> Obvious question: what speed reduction does this bring?
+> 
+> Anyone looking for speed impacts in logging
+> messages is looking in the wrong place.
 
-In fact there is already a file, e2fs_defs.h, that seems to be based on the
-contents of the ext2_fs.h from the kernel. I've posted two patches to the
-busybox mailing list that fix the build without using linux/ext2_fs.h. For
-reference, they can be found here:
+Ok, I finally found some time to look into the changes properly. I was
+confused by Adrian's note that you moved a debug check to an external
+function. But that is not true.
 
-	http://lists.busybox.net/pipermail/busybox/2012-March/077563.html
-	http://lists.busybox.net/pipermail/busybox/2012-March/077562.html
+> btw: it's effectively 0.
 
-Do you still want me to prepare a patch to unexport ext2_fs.h or will you
-take care of it?
+Frankly, moving the debug code to a separate function should make the
+code rather faster. By moving the unlikely code out of the instruction
+cache.
 
-Thierry
-
---GvXjxJ+pjyke8COw
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iEYEARECAAYFAk9rV7cACgkQZ+BJyKLjJp8ezACcDWZGEuBwWcNpoayziNPZeHt3
-l/sAn1n8pBb2zDyCfkhuRoq+4BdzZ5J7
-=teNS
------END PGP SIGNATURE-----
-
---GvXjxJ+pjyke8COw--
+thanks,
+-- js suse labs
