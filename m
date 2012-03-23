@@ -1,47 +1,34 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext2: No longer export ext2_fs.h to user space
-Date: Fri, 23 Mar 2012 09:13:31 -0400
-Message-ID: <20120323131331.GA29631@thunk.org>
-References: <20120322183135.GC4028@thunk.org>
- <1332494856-31943-1-git-send-email-thierry.reding@avionic-design.de>
+Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
+Date: Fri, 23 Mar 2012 10:23:22 -0400
+Message-ID: <20120323142322.GC29631@thunk.org>
+References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
+ <20120322133521.GA25897@thunk.org>
+ <1332424585.18717.34.camel@sauron.fi.intel.com>
+ <20120322150602.GD25897@thunk.org>
+ <1332492915.18717.44.camel@sauron.fi.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-	Jan Kara <jack@suse.cz>,
-	Artem Bityutskiy <dedekind1@gmail.com>,
-	Andreas Dilger <aedilger@gmail.com>, linux-ext4@vger.kernel.org
-To: Thierry Reding <thierry.reding@avionic-design.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1332494856-31943-1-git-send-email-thierry.reding@avionic-design.de>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <1332492915.18717.44.camel@sauron.fi.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 23, 2012 at 10:27:36AM +0100, Thierry Reding wrote:
-> Since the on-disk format has been stable for quite some time, users
-> should either use the headers provided by libext2fs or keep a private
-> copy of this header. For the full discussion, see this thread:
+On Fri, Mar 23, 2012 at 10:55:15AM +0200, Artem Bityutskiy wrote:
+> On Thu, 2012-03-22 at 11:06 -0400, Ted Ts'o wrote:
+> > Does that seem reasonable to you?
 > 
-> 	https://lkml.org/lkml/2012/3/21/516
-> 
-> While at it, this commit removes all __KERNEL__ guards, which are now
-> unnecessary.
-> 
-> Signed-off-by: Thierry Reding <thierry.reding@avionic-design.de>
-> Cc: Al Viro <viro@zeniv.linux.org.uk>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Ted Ts'o <tytso@mit.edu>
-> Cc: Artem Bityutskiy <dedekind1@gmail.com>
-> Cc: Andreas Dilger <aedilger@gmail.com>
-> Cc: linux-ext4@vger.kernel.org
+> Yes, thank you.
 
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Ok, i've included the first five patches in your patch series in the
+ext4 tree.
 
-Thanks!!
-
-Al, do you want to take this in the VFS tree, or do you want me to
-carry this in the ext4 tree?  Or Jan could carry it in the ext2 tree.
-I don't really have strong feelings about who picks it up.  I will if
-no one else wants to...
+We can deal with fixing up the rest of the patch series after the
+merge window.
 
 					- Ted
