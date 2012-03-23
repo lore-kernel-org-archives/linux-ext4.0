@@ -1,78 +1,82 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 2/2] e2fsprogs tests: fix f_bad_disconnected_inode e2fsck
- output
-Date: Fri, 23 Mar 2012 09:03:35 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1203230903120.8421@dhcp-27-109.brq.redhat.com>
-References: <1332333293-25028-1-git-send-email-lczerner@redhat.com> <1332333293-25028-2-git-send-email-lczerner@redhat.com> <20120323001849.GA5832@thunk.org>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
+Date: Fri, 23 Mar 2012 10:55:15 +0200
+Message-ID: <1332492915.18717.44.camel@sauron.fi.intel.com>
+References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
+	 <20120322133521.GA25897@thunk.org>
+	 <1332424585.18717.34.camel@sauron.fi.intel.com>
+	 <20120322150602.GD25897@thunk.org>
+Reply-To: dedekind1@gmail.com
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-czOoxqNsLD7+PygKmT9F"
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6544 "EHLO mx1.redhat.com"
+Received: from mga14.intel.com ([143.182.124.37]:21087 "EHLO mga14.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751054Ab2CWIEW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Mar 2012 04:04:22 -0400
-In-Reply-To: <20120323001849.GA5832@thunk.org>
+	id S1757089Ab2CWIwX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Mar 2012 04:52:23 -0400
+In-Reply-To: <20120322150602.GD25897@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 22 Mar 2012, Ted Ts'o wrote:
 
-> Thanks, I've applied these two patches as a single commit.  (In
-> general the regression tests should always pass after each commit, so
-> that git bisects work correctly.)
+--=-czOoxqNsLD7+PygKmT9F
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Right, it makes sense.
+On Thu, 2012-03-22 at 11:06 -0400, Ted Ts'o wrote:
+> Does that seem reasonable to you?
 
-Thanks
--Lukas
+Yes, thank you.
 
-> 
-> 					- Ted
-> 
-> On Wed, Mar 21, 2012 at 01:34:53PM +0100, Lukas Czerner wrote:
-> > Since we removed EOFBLOCKS_FL flag handling, we have to fix the
-> > f_bad_disconnected_inode test so that e2fsck output correspond with the
-> > new version of the code where we do not check for the EOFBLOCKS_FL flag
-> > at all.
-> > 
-> > Simply remove EOFBLOCKS_FL flag warnings from expect.1 e2fsck output.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > ---
-> >  tests/f_bad_disconnected_inode/expect.1 |    9 ---------
-> >  1 files changed, 0 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
-> > index d3920e3..11862f6 100644
-> > --- a/tests/f_bad_disconnected_inode/expect.1
-> > +++ b/tests/f_bad_disconnected_inode/expect.1
-> > @@ -2,21 +2,12 @@ Pass 1: Checking inodes, blocks, and sizes
-> >  Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
-> >  Clear? yes
-> >  
-> > -Inode 9 should not have EOFBLOCKS_FL set (size 0, lblk -1)
-> > -Clear? yes
-> > -
-> > -Inode 10 should not have EOFBLOCKS_FL set (size 0, lblk -1)
-> > -Clear? yes
-> > -
-> >  Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
-> >  Clear? yes
-> >  
-> >  Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
-> >  Clear? yes
-> >  
-> > -Inode 13 should not have EOFBLOCKS_FL set (size 0, lblk -1)
-> > -Clear? yes
-> > -
-> >  Pass 2: Checking directory structure
-> >  Pass 3: Checking directory connectivity
-> >  /lost+found not found.  Create? yes
-> > -- 
-> > 1.7.4.4
-> > 
-> 
+One note, just FYI, xfs and jfs do not use s_dirt. Here are the FSes
+which make use of it:
 
--- 
+fs/affs
+fs/exofs
+fs/ext4
+fs/fat
+fs/hfs
+fs/hfsplus
+fs/jffs2
+fs/reiserfs
+fs/sysv
+fs/udf
+fs/udf
+fs/ufs
+
+(mostly old citizens).
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-czOoxqNsLD7+PygKmT9F
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJPbDpzAAoJECmIfjd9wqK0A2sP/1rsQbg0W3BXBAwxyGh2dJPw
+vUSi8bBILsV7yBRVAXkF3VShf+bw0MsEPndopdOOEz+fn+wKnABEby1QyziHDG8z
+F1+UqXrsLfUtWlgf6OPOPa8Q6RueaeJgqnoEQO17XlpTRGHxjikCHXXxnQMnOlnq
+1EFKofhSZewE8wf7LUr5kBaT9FdXD6rwXv06wFfIlzbSNutyuJ9Woz+wouZSZPNu
+MWjN6a9c2v6FMIRNoZJSiOHgTjAQWRH3mEYDTkrv6vFNu6M5A9jxXuLx0B2xSHJc
+Dr7DCXc1XwXz70HAfAzwiJUGbj74AiIspDCt3L6oqwLskZQWBScSzWvlvy+kNfFr
+onaz3lRAs3aXDUQ9w7FZfp0zmUh5ndVn44oi89Wte2H10Zwn4cE9qd6uLPCsDZHz
+eDWUGG0D/eEZTarqHYbW1aevOuSH12pztV4bf3Ez5HFhIzSNjkQE9Hsq84dtLHS6
+XSuEn+5j7hE0VJOCaT2APzwpgwsoSGPz77xw1oObrqSnst7aQ2L4187nbvWhC08b
+XEqMUBmfHNlTtwRZc1+19ju4hnmO7j5oApEsiSFxoL88J8ekgd1n7RUYt+/pcRhf
+Ll3nxVn+Wr+pKADOXOyV5EMhEfgCKaJlKmNg+pPOFfHzzB7ugpZJITQ0LfakQ6fH
+lVBAGKiutfegb4+yFLo7
+=yH2o
+-----END PGP SIGNATURE-----
+
+--=-czOoxqNsLD7+PygKmT9F--
+
