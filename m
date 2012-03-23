@@ -1,65 +1,48 @@
-From: Andi Kleen <ak@linux.intel.com>
-Subject: [RFC, PATCH] Avoid hot statistics cache line in ext4 extent cache
-Date: Fri, 23 Mar 2012 15:17:15 -0700
-Message-ID: <20120323221715.GA6712@tassilo.jf.intel.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 4/5] libext2fs: Implement
+ ext2fs_find_first_zero_generic_bmap().
+Date: Fri, 23 Mar 2012 18:33:31 -0400
+Message-ID: <20120323223331.GA8554@thunk.org>
+References: <20120310213321.GK6961@sli.dy.fi>
+ <20120310213740.GO6961@sli.dy.fi>
+ <5E845FD5-30E4-47A1-AF8E-70A288E3442D@dilger.ca>
+ <20120312191514.GS6961@sli.dy.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	tim.c.chen@linux.intel.com
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Sami Liedes <sami.liedes@iki.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:26250 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752928Ab2CWWR3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Mar 2012 18:17:29 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:47054 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756387Ab2CWWdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Mar 2012 18:33:36 -0400
 Content-Disposition: inline
+In-Reply-To: <20120312191514.GS6961@sli.dy.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon, Mar 12, 2012 at 09:15:14PM +0200, Sami Liedes wrote:
+> In the case of ext2fs_new_inode(), the function does not actually
+> iterate through all zero bits; it really only wants to find the first
+> zero in a certain range, after which it returns. So for simplicity of
+> use (and efficiency) I think it still makes sense to have
+> ->find_first_zero() too.
 
-We found that the super block cache line containing the extent cache hit/miss 
-statistics counters is very hot in IO workloads.  
+I agree, a find_first_zero() and a find_first_set(), both of which
+taking a starting bit position for the search, and the best low-level
+primitives that would be implemented on for each backend bitmap
+implementation.
 
-Besides the counter seems racy anyways and can lose updates because it's not
-atomic.
+It would then be very easy to build iterators on *top* of
+find_first_zero() and find_first_set(), and in fact this could be used
+to replace some of the places where we are using a sorted list (i.e.,
+the badblocks list).  So that sounds like a good idea, and I can
+definitely think of some places where we could use that code today.
 
-Disabling the counter make a very measurable difference in some IO micro 
-benchmarks on a 4S system.
+So I plan to pull in your patch series and then we can further enhance
+this with iterator support afterwards.  Sami, if you'd be interested
+in implementing iterators, that would be great!
 
-I just disabled it for now because it doesn't seem very useful due to its
-racy nature. An alternative would be to turn it into a per cpu counter,
-if someone really needs it.
+Thanks,
 
-Simple patch to disable it appended.
-
--Andi
-
----
-
-Disable statistics counter in ext4
-
-This super bloc cache line is very hot and slows down high IO 
-workloads.
-
-Signed-off-by: Andi Kleen <ak@linux.intel.com>
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 74f23c2..7310b0e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2049,10 +2049,12 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
- 		ret = 1;
- 	}
- errout:
-+#if 0
- 	if (!ret)
- 		sbi->extent_cache_misses++;
- 	else
- 		sbi->extent_cache_hits++;
-+#endif
- 	trace_ext4_ext_in_cache(inode, block, ret);
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 	return ret;
-
--- 
-ak@linux.intel.com -- Speaking for myself only
+   			   	      	 - Ted
