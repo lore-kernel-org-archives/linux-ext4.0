@@ -1,58 +1,52 @@
-From: Mike Frysinger <vapier@gentoo.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
 Subject: Re: [PATCH] ext2: Don't export ext2_mask_flags() to user space
-Date: Sat, 24 Mar 2012 02:51:35 -0400
-Message-ID: <CAMjpGUcqSSSVy1MSRa_41UkKWc4VOn2yetxLOa=RbE0L7YGHYg@mail.gmail.com>
+Date: Sat, 24 Mar 2012 08:37:56 +0000
+Message-ID: <20120324083756.GJ6589@ZenIV.linux.org.uk>
 References: <1332366608-2695-1-git-send-email-thierry.reding@avionic-design.de>
- <20120321222357.GB24330@quack.suse.cz> <20120321231651.GC32041@thunk.org>
+ <20120321222357.GB24330@quack.suse.cz>
+ <20120321231651.GC32041@thunk.org>
  <20120322055354.GA3942@avionic-0098.mockup.avionic-design.de>
- <1332396053.3058.2.camel@koala> <20120322162825.GA4028@thunk.org>
- <20120322173150.GY6589@ZenIV.linux.org.uk> <43D088FE-7FB5-4C9F-A4FF-2B01DB392F43@gmail.com>
+ <1332396053.3058.2.camel@koala>
+ <20120322162825.GA4028@thunk.org>
+ <20120322173150.GY6589@ZenIV.linux.org.uk>
+ <CAMjpGUdnisfawUNThOu_+kbH54SWXCf6PhZwyWrV=B8SNjMRNg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Al Viro <viro@zeniv.linux.org.uk>, "Ted Ts'o" <tytso@mit.edu>,
-	Artem Bityutskiy <dedekind1@gmail.com>,
-	ThierryReding <thierry.reding@avionic-design.de>,
-	Jan Kara <jack@suse.cz>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"stable@vger.kernel.org" <stable@vger.kernel.org>
-To: Andreas Dilger <aedilger@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <43D088FE-7FB5-4C9F-A4FF-2B01DB392F43@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Artem Bityutskiy <dedekind1@gmail.com>,
+	Thierry Reding <thierry.reding@avionic-design.de>,
+	Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:48474 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753143Ab2CXIiH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Mar 2012 04:38:07 -0400
+Content-Disposition: inline
+In-Reply-To: <CAMjpGUdnisfawUNThOu_+kbH54SWXCf6PhZwyWrV=B8SNjMRNg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 22, 2012 at 20:25, Andreas Dilger wrote:
-> On 2012-03-22, at 11:31, Al Viro wrote:
->> On Thu, Mar 22, 2012 at 12:28:25PM -0400, Ted Ts'o wrote:
->>> Even if they're not iwlling to use libext2fs (for space reasons, I
->>> would assume? =C2=A0It can't be because of license compatibility is=
-sues
->>> since they are both GPLv2), they could just simply grab the ext2_fs=
-=2Eh
->>> from e2fsprogs. =C2=A0That has all of the file system definitions f=
-or ext2,
->>> ext3, and ext4.
->>
->> Ho-hum... =C2=A0Then we could kill a lot of lines in include/linux/e=
-xt2_fs.h.
->> I wonder how much of what remains has any business being outside of
->> fs/ext2, actually - AFAICS, there are very few places that might pos=
-sibly
->> care:
->>
->> arch/blackfin/kernel/setup.c:595: =C2=A0 =C2=A0 =C2=A0 if (*((unsign=
-ed short *)(mtd_phys + 0x438)) =3D=3D EXT2_SUPER_MAGIC)
->> fs/nfsd/nfs3proc.c:599: =C2=A0 =C2=A0 =C2=A0 =C2=A0 case EXT2_SUPER_=
-MAGIC:
->> fs/nfsd/nfs3proc.c:600: =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 resp->p_link_max =3D EXT2_LINK_MAX;
->> fs/nfsd/nfs3proc.c:601: =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 resp->p_name_max =3D EXT2_NAME_LEN;
->
-> These don't really make sense to be using ext2 constants.
+On Sat, Mar 24, 2012 at 02:50:38AM -0400, Mike Frysinger wrote:
 
-i'm guessing your quoting is over zealous and you're not actually
-talking about the Blackfin code here ... just the nfsd code
--mike
+> > and that's it. ??blackfin and do_mounts_rd are doing the same thing (blackfin -
+> > buggy, AFAICS).
+> 
+> buggy how ?  they're not exactly the same as the Blackfin code is
+> setting things up for the uClinux MTD map.  it isn't parsing the
+> filesystem itself (ignoring the size extraction from the superblock).
+
+Compare and you'll see...  Block size on ext2 may be bigger than 1Kb;
+->s_log_block_size gives the shift (1Kb -> 0, 2Kb -> 1, etc.)  Offset
+0x18 in superblock, __le32...
+
+Anyway, I've pushed that into vfs.git#master along with other minor stuff
+right now; the last 5 commits in there are handling of ext2 and ext3 headers,
+starting with "ext2: No longer export ext2_fs.h to user space" by
+Thierry Reding, with the next 3 after it doing the move and trimming...
+Should propagate to git.kernel.org in a few.
+
+I've left the nfsd mess alone for now; it's too ugly to live, but I don't
+want to trigger the bikeshedding from hell that happens every time somebody
+brings pathconf() up.  Not worth bothering with, just to move two macros to
+fs/ext2/ext2.h where they really belong...
