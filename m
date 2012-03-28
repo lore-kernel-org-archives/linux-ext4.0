@@ -1,66 +1,86 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: backup of the last group'descriptor when it is the 1st group of a meta_bg
-Date: Wed, 28 Mar 2012 10:08:39 -0600
-Message-ID: <BD0B2BAC-D0BF-44D6-AE26-988095078D3D@dilger.ca>
-References: <CAGBYx2bbucN5MN0MfRXK3=x74mY3-+foGuQc2Gd4oQzJAzPVKg@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Ted Ts'o" <tytso@mit.edu>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: [PATCH] ext4: Remove non scalable extent cache hit statistics
+Date: Wed, 28 Mar 2012 14:46:35 -0700
+Message-ID: <1332971195-1842-1-git-send-email-andi@firstfloor.org>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andi Kleen <ak@linux.intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:48500 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750845Ab2C1RH2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Mar 2012 13:07:28 -0400
-Received: by yenl12 with SMTP id l12so885258yen.19
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Mar 2012 10:07:27 -0700 (PDT)
-In-Reply-To: <CAGBYx2bbucN5MN0MfRXK3=x74mY3-+foGuQc2Gd4oQzJAzPVKg@mail.gmail.com>
+Received: from mga01.intel.com ([192.55.52.88]:15963 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752220Ab2C1VrH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Mar 2012 17:47:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-03-27, at 8:47 AM, Yongqiang Yang wrote:
-> Hi Ted, Andreas and List,
->=20
-> As Andreas pointed out last year, if the last group is the 1st group
-> in a meta bg, then its group desc has no backup.
-> With meta_bg resizing inode is useless,  I had a thought that we stor=
-e
-> a backup group descriptor of the last group in the resizing inode=EF=BC=
-=9F
-> What's your opinions?
+From: Andi Kleen <ak@linux.intel.com>
 
-The main difficulty of referencing a backup group descriptor from the
-resize inode is that it may confuse tools that are trying to modify
-the resize inode.  Also, it is more difficult to access the block from
-userspace, since it would need to read the inode and use an extent to
-reference the block beyond 16TB.
+We found that the cache line in the superblock that has the new extent
+cache hit/miss counters is extremly hot and causes significant slowdowns
+on larger systems.
 
-What about storing the 64-bit block number in the superblock?  This
-should be safe for older e2fsprogs that understand META_BG.  At worst
-the new backup group descriptor will not be updated on a resize by
-older e2fsprogs, which is no worse than not having a backup at all.
+The counter is also buggy: does not use atomics so there can be always
+lost updates.
 
-I would suggest to put the backup group descriptor in the last block
-of the filesystem.  This would be in the 0th group of the metagroup.
-If the metagroup grows to have a second group, then this block is not
-needed anymore, and if both the primary (at the beginning of the group)
-and the backup (at the end of the group) are corrupted, then there is
-little chance that the data in this last group is good either...
+Completely remove the two counters for now. If someone really needs them
+(which is dubious given the bad information they always gave) they would
+need to be implemented with per cpu counters.
 
-Actually, if the backup is always stored in the last block of the 0th
-group (which is itself the last group in the filesystem), there isn't
-even a need to store this location in the superblock.
+Signed-off-by: Andi Kleen <ak@linux.intel.com>
+---
+ fs/ext4/ext4.h    |    4 ----
+ fs/ext4/extents.c |    6 ------
+ fs/ext4/super.c   |   16 ----------------
+ 3 files changed, 0 insertions(+), 26 deletions(-)
 
-Cheers, Andreas
-
-
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..6161b26 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1193,10 +1193,6 @@ struct ext4_sb_info {
+ 	unsigned long s_ext_blocks;
+ 	unsigned long s_ext_extents;
+ #endif
+-	/* ext4 extent cache stats */
+-	unsigned long extent_cache_hits;
+-	unsigned long extent_cache_misses;
+-
+ 	/* for buddy allocator */
+ 	struct ext4_group_info ***s_group_info;
+ 	struct inode *s_buddy_cache;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7310b0e..f0a0270 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2049,12 +2049,6 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
+ 		ret = 1;
+ 	}
+ errout:
+-#if 0
+-	if (!ret)
+-		sbi->extent_cache_misses++;
+-	else
+-		sbi->extent_cache_hits++;
+-#endif
+ 	trace_ext4_ext_in_cache(inode, block, ret);
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	return ret;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..14dbc78 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2503,18 +2503,6 @@ static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
+ 			  EXT4_SB(sb)->s_sectors_written_start) >> 1)));
+ }
+ 
+-static ssize_t extent_cache_hits_show(struct ext4_attr *a,
+-				      struct ext4_sb_info *sbi, char *buf)
+-{
+-	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_hits);
+-}
+-
+-static ssize_t extent_cache_misses_show(struct ext4_attr *a,
+-					struct ext4_sb_info *sbi, char *buf)
+-{
+-	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_misses);
+-}
