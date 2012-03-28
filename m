@@ -1,86 +1,46 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: [PATCH] ext4: Remove non scalable extent cache hit statistics
-Date: Wed, 28 Mar 2012 14:46:35 -0700
-Message-ID: <1332971195-1842-1-git-send-email-andi@firstfloor.org>
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andi Kleen <ak@linux.intel.com>
-To: tytso@mit.edu
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: what happened with dccaf33fa37 "ext4: flush any pending end_io
+ requests before DIO" for 3.0?
+Date: Wed, 28 Mar 2012 15:22:14 -0700
+Message-ID: <20120328222214.GB9514@kroah.com>
+References: <4ED6942F.7070006@msgid.tls.msk.ru>
+ <4F4CBDA1.1080302@msgid.tls.msk.ru>
+ <4F6459F2.8010403@msgid.tls.msk.ru>
+ <20120319164256.GB10561@quack.suse.cz>
+ <CAFgt=MCXRzLx+s1mthr1oD=Pj=HQ5kxnOdbtX8Q9=wSeZ41u2w@mail.gmail.com>
+ <4F676B2F.8040209@msgid.tls.msk.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jiaying Zhang <jiayingz@google.com>,
+	Theodore Tso <tytso@google.com>, stable@kernel.org,
+	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+To: Michael Tokarev <mjt@tls.msk.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:15963 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752220Ab2C1VrH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Mar 2012 17:47:07 -0400
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45838 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758757Ab2C1WWS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Mar 2012 18:22:18 -0400
+Received: by pbcun15 with SMTP id un15so2367583pbc.19
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Mar 2012 15:22:18 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <4F676B2F.8040209@msgid.tls.msk.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andi Kleen <ak@linux.intel.com>
+On Mon, Mar 19, 2012 at 09:21:51PM +0400, Michael Tokarev wrote:
+> 19.03.2012 21:10, Jiaying Zhang wrote:
+> >On Mon, Mar 19, 2012 at 9:42 AM, Jan Kara<jack@suse.cz>  wrote:
+> >>On Sat 17-03-12 13:31:30, Michael Tokarev wrote:
+> >>>Ping?
+> >>>
+> >>>Maybe just a one-line reply isn't THAT difficult?
+> >Sorry for the slow response. I am not sure what happened to this patch.
+> >Ted, do you know what we need to do to get this patch to the
+> >stable release?
+> 
+> For reference, attached is the version I use locally since last August.
 
-We found that the cache line in the superblock that has the new extent
-cache hit/miss counters is extremly hot and causes significant slowdowns
-on larger systems.
+Wonderful, thanks for this, now queued up.
 
-The counter is also buggy: does not use atomics so there can be always
-lost updates.
-
-Completely remove the two counters for now. If someone really needs them
-(which is dubious given the bad information they always gave) they would
-need to be implemented with per cpu counters.
-
-Signed-off-by: Andi Kleen <ak@linux.intel.com>
----
- fs/ext4/ext4.h    |    4 ----
- fs/ext4/extents.c |    6 ------
- fs/ext4/super.c   |   16 ----------------
- 3 files changed, 0 insertions(+), 26 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 513004f..6161b26 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1193,10 +1193,6 @@ struct ext4_sb_info {
- 	unsigned long s_ext_blocks;
- 	unsigned long s_ext_extents;
- #endif
--	/* ext4 extent cache stats */
--	unsigned long extent_cache_hits;
--	unsigned long extent_cache_misses;
--
- 	/* for buddy allocator */
- 	struct ext4_group_info ***s_group_info;
- 	struct inode *s_buddy_cache;
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7310b0e..f0a0270 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2049,12 +2049,6 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
- 		ret = 1;
- 	}
- errout:
--#if 0
--	if (!ret)
--		sbi->extent_cache_misses++;
--	else
--		sbi->extent_cache_hits++;
--#endif
- 	trace_ext4_ext_in_cache(inode, block, ret);
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 	return ret;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502c61f..14dbc78 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2503,18 +2503,6 @@ static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
- 			  EXT4_SB(sb)->s_sectors_written_start) >> 1)));
- }
- 
--static ssize_t extent_cache_hits_show(struct ext4_attr *a,
--				      struct ext4_sb_info *sbi, char *buf)
--{
--	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_hits);
--}
--
--static ssize_t extent_cache_misses_show(struct ext4_attr *a,
--					struct ext4_sb_info *sbi, char *buf)
--{
--	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_misses);
--}
+greg k-h
