@@ -1,105 +1,206 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 00/19 v4] Fix filesystem freezing deadlocks
-Date: Thu, 29 Mar 2012 01:43:15 +0200
-Message-ID: <1332978214-15535-1-git-send-email-jack@suse.cz>
-Cc: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, dchinner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Kamal Mostafa <kamal-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>,
-	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
-	Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>, Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>,
-	Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	"David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
-	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
-	KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
-	linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
-	Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
-	OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>,
-	Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 10/19] ext4: Convert to new freezing mechanism
+Date: Thu, 29 Mar 2012 01:43:25 +0200
+Message-ID: <1332978214-15535-11-git-send-email-jack@suse.cz>
+References: <1332978214-15535-1-git-send-email-jack@suse.cz>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
+	sandeen@redhat.com, Kamal Mostafa <kamal@canonical.com>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58665 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933371Ab2C1XoO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Mar 2012 19:44:14 -0400
+In-Reply-To: <1332978214-15535-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+We remove most of frozen checks since upper layer takes care
+of blocking all writes. We only have to handle protection in
+ext4_page_mkwrite() in a special way because we cannot use
+generic block_page_mkwrite().
 
-  here is the fourth iteration of my patches to improve filesystem freezing.
-Filesystem freezing is currently racy and thus we can end up with dirty data on
-frozen filesystem (see changelog patch 06 for detailed race description). This
-patch series aims at fixing this.
+CC: linux-ext4@vger.kernel.org
+CC: "Theodore Ts'o" <tytso@mit.edu>
+BugLink: https://bugs.launchpad.net/bugs/897421
+Tested-by: Kamal Mostafa <kamal@canonical.com>
+Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+Tested-by: Dann Frazier <dann.frazier@canonical.com>
+Tested-by: Massimo Morana <massimo.morana@canonical.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |    7 ++-----
+ fs/ext4/mmp.c   |   14 ++++++++++----
+ fs/ext4/super.c |   31 +++++++------------------------
+ 3 files changed, 19 insertions(+), 33 deletions(-)
 
-To be able to block all places where inodes get dirtied, I've moved filesystem
-freeze handling in mnt_want_write() / mnt_drop_write(). This however required
-some code shuffling and changes to kern_path_create() (see patches 02-05). I
-think the result is OK but opinions may differ ;). The advantage of this change
-also is that all filesystems get freeze protection almost for free - even ext2
-can handle freezing well now.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index feaa82f..c65baf9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4593,11 +4593,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	get_block_t *get_block;
+ 	int retries = 0;
+ 
+-	/*
+-	 * This check is racy but catches the common case. We rely on
+-	 * __block_page_mkwrite() to do a reliable check.
+-	 */
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	sb_start_pagefault(inode->i_sb);
+ 	/* Delalloc case is easy... */
+ 	if (test_opt(inode->i_sb, DELALLOC) &&
+ 	    !ext4_should_journal_data(inode) &&
+@@ -4665,5 +4661,6 @@ retry_alloc:
+ out_ret:
+ 	ret = block_page_mkwrite_return(ret);
+ out:
++	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ea4ba4..9061bc7 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -10,14 +10,20 @@
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
+  */
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ {
++	/*
++	 * We protect against freezing so that we don't create dirty buffers
++	 * on frozen filesystem.
++	 */
++	sb_start_write(sb);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+ 	get_bh(bh);
+ 	submit_bh(WRITE_SYNC, bh);
+ 	wait_on_buffer(bh);
++	sb_end_write(sb);
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		return 1;
+ 
+@@ -120,7 +126,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
+ 
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +206,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 
+ failed:
+ 	kfree(data);
+@@ -299,7 +305,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..039b1e0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -289,33 +289,17 @@ static void ext4_put_nojournal(handle_t *handle)
+  * journal_end calls result in the superblock being marked dirty, so
+  * that sync() will call the filesystem's write_super callback if
+  * appropriate.
+- *
+- * To avoid j_barrier hold in userspace when a user calls freeze(),
+- * ext4 prevents a new handle from being started by s_frozen, which
+- * is in an upper layer.
+  */
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ {
+ 	journal_t *journal;
+-	handle_t  *handle;
+ 
+ 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+ 
++	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+ 	journal = EXT4_SB(sb)->s_journal;
+-	handle = ext4_journal_current_handle();
+-
+-	/*
+-	 * If a handle has been started, it should be allowed to
+-	 * finish, otherwise deadlock could happen between freeze
+-	 * and others(e.g. truncate) due to the restart of the
+-	 * journal handle if the filesystem is forzen and active
+-	 * handles are not stopped.
+-	 */
+-	if (!handle)
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
+-
+ 	if (!journal)
+ 		return ext4_get_nojournal();
+ 	/*
+@@ -2772,6 +2756,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 	sb = elr->lr_super;
+ 	ngroups = EXT4_SB(sb)->s_groups_count;
+ 
++	sb_start_write(sb);
+ 	for (group = elr->lr_next_group; group < ngroups; group++) {
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		if (!gdp) {
+@@ -2798,6 +2783,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+ 		elr->lr_next_group = group + 1;
+ 	}
++	sb_end_write(sb);
+ 
+ 	return ret;
+ }
+@@ -4280,10 +4266,8 @@ int ext4_force_commit(struct super_block *sb)
+ 		return 0;
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal) {
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
++	if (journal)
+ 		ret = ext4_journal_force_commit(journal);
+-	}
+ 
+ 	return ret;
+ }
+@@ -4315,9 +4299,8 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+  * gives us a chance to flush the journal completely and mark the fs clean.
+  *
+  * Note that only this function cannot bring a filesystem to be in a clean
+- * state independently, because ext4 prevents a new handle from being started
+- * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
+- * the upper layer.
++ * state independently. It relies on upper layer to stop all data & metadata
++ * modifications.
+  */
+ static int ext4_freeze(struct super_block *sb)
+ {
+@@ -4344,7 +4327,7 @@ static int ext4_freeze(struct super_block *sb)
+ 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	error = ext4_commit_super(sb, 1);
+ out:
+-	/* we rely on s_frozen to stop further updates */
++	/* we rely on upper layer to stop further updates */
+ 	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return error;
+ }
+-- 
+1.7.1
 
-Another potential contention point might be patch 19. In that patch we make
-freeze_super() refuse to freeze the filesystem when there are open but unlinked
-files which may be impractical in some cases. The main reason for this is the
-problem with handling of file deletion from fput() called with mmap_sem held
-(e.g. from munmap(2)), and then there's the fact that we cannot really force
-such filesystem into a consistent state... But if people think that freezing
-with open but unlinked files should happen, then I have some possible
-solutions in mind (maybe as a separate patchset since this is large enough).
-
-I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
-filesystem despite beating it with fsstress and bash-shared-mapping while
-freezing and unfreezing for several hours (using ext4 and xfs) so I'm
-reasonably confident this could finally be the right solution.
-
-And for people wanting to test - this patchset is based on patch series
-"Push file_update_time() into .page_mkwrite" so you'll need to pull that one
-in as well.
-
-Changes since v3:
-  * added third level of freezing for fs internal purposes - hooked some
-    filesystems to use it (XFS, nilfs2)
-  * removed racy i_size check from filemap_mkwrite()
-
-Changes since v2:
-  * completely rewritten
-  * freezing is now blocked at VFS entry points
-  * two stage freezing to handle both mmapped writes and other IO
-
-The biggest changes since v1:
-  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
-    and SB_FREEZE_TRANS states
-  * use percpu counters instead of own percpu structure
-  * added documentation fixes from the old fs freezing series
-  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
-    m_active_trans counter
-
-								Honza
-
-CC: Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-CC: Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>
-CC: Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>
-CC: Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-CC: cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-CC: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
-CC: fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-CC: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-CC: Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>
-CC: KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>
-CC: linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-CC: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-CC: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-CC: linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-CC: linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-CC: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
-CC: Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>
-CC: ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
-CC: OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>
-CC: Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-CC: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-CC: xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
