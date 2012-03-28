@@ -1,23 +1,23 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
 Subject: Re: Release of e2fsprogs 1.42.2
-Date: Tue, 27 Mar 2012 21:00:20 -0500
-Message-ID: <4F7270B4.5050503@redhat.com>
+Date: Wed, 28 Mar 2012 08:25:00 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1203280822420.4862@dhcp-27-109.brq.redhat.com>
 References: <E1SChTL-0003xz-90@tytso-glaptop.cam.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33988 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11134 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756437Ab2C1CA0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Mar 2012 22:00:26 -0400
+	id S1751781Ab2C1GZG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Mar 2012 02:25:06 -0400
 In-Reply-To: <E1SChTL-0003xz-90@tytso-glaptop.cam.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/27/12 8:14 PM, Theodore Ts'o wrote:
+On Tue, 27 Mar 2012, Theodore Ts'o wrote:
+
 > Hi all,
 > 
 > I've released e2fsprogs 1.42.2 in all of the usual places; it's tagged
@@ -31,12 +31,11 @@ On 3/27/12 8:14 PM, Theodore Ts'o wrote:
 > http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.42.2.tar.gz
 > 
 > Here are the release notes.
-
-FYI, this is built in Fedora Rawhide now.
-
--Eric
-
+> 
 > 						- Ted
+
+Thanks Ted, just one little note below...
+
 > 
 > E2fsprogs 1.42.2 (March 27, 2012)
 > =================================
@@ -48,6 +47,12 @@ FYI, this is built in Fedora Rawhide now.
 > argument to set and clear a contiguous range of inodes.
 > 
 > E2fsck will now make explicit checks for the EOFBLOCKS_FL, since we
+
+You probably meant to say that E2fsck will _not_ make explicit check for
+the EOFBLOCKS_FS anymore. Right ?
+
+-Lukas
+
 > plan to remove support for it from the kernel file system driver.  It
 > really wasn't very useful and was causing more problems than it
 > solves.  Since e2fsck will complain if inodes that should have
@@ -162,4 +167,6 @@ FYI, this is built in Fedora Rawhide now.
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
+-- 
