@@ -1,172 +1,42 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: Release of e2fsprogs 1.42.2
-Date: Wed, 28 Mar 2012 08:25:00 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1203280822420.4862@dhcp-27-109.brq.redhat.com>
-References: <E1SChTL-0003xz-90@tytso-glaptop.cam.corp.google.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11134 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751781Ab2C1GZG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Mar 2012 02:25:06 -0400
-In-Reply-To: <E1SChTL-0003xz-90@tytso-glaptop.cam.corp.google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Stefan Hajnoczi <stefanha@linux.vnet.ibm.com>
+Subject: [PATCH] ext3: update documentation with barrier=1 default
+Date: Wed, 28 Mar 2012 09:32:32 +0100
+Message-ID: <1332923552-9854-1-git-send-email-stefanha@linux.vnet.ibm.com>
+Cc: Randy Dunlap <rdunlap@xenotime.net>,
+	Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Stefan Hajnoczi <stefanha@linux.vnet.ibm.com>
+To: linux-doc@vger.kernel.org
+Return-path: <linux-doc-owner@vger.kernel.org>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 27 Mar 2012, Theodore Ts'o wrote:
+Commit 00eacd6 ("ext3: make ext3 mount default to barrier=1") changed
+the default barrier mount option for ext3.  The documentation needs to
+be updated, so this patch does that.
 
-> Hi all,
-> 
-> I've released e2fsprogs 1.42.2 in all of the usual places; it's tagged
-> in the git trees on git.kernel.org, github, and sourceforge, and
-> available for ftp at:
-> 
-> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.42.2
-> 
-> and
-> 
-> http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.42.2.tar.gz
-> 
-> Here are the release notes.
-> 
-> 						- Ted
+Signed-off-by: Stefan Hajnoczi <stefanha@linux.vnet.ibm.com>
+---
+ Documentation/filesystems/ext3.txt |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-Thanks Ted, just one little note below...
-
-> 
-> E2fsprogs 1.42.2 (March 27, 2012)
-> =================================
-> 
-> The resize2fs program uses much less CPU and is much faster for very
-> large file systems.  (Addresses Debian Bug: #663237)
-> 
-> The seti and freei commands in debugfs can now take an optional length
-> argument to set and clear a contiguous range of inodes.
-> 
-> E2fsck will now make explicit checks for the EOFBLOCKS_FL, since we
-
-You probably meant to say that E2fsck will _not_ make explicit check for
-the EOFBLOCKS_FS anymore. Right ?
-
--Lukas
-
-> plan to remove support for it from the kernel file system driver.  It
-> really wasn't very useful and was causing more problems than it
-> solves.  Since e2fsck will complain if inodes that should have
-> EOFBLOCKS_FL do not have the flag set, we are going to remove this
-> check from e2fsprogs first, and then only remove the flag from the
-> kernel much later.
-> 
-> The mke2fs program can now use direct I/O via "mke2fs -D".  This will
-> slow down the mke2fs, but it makes it more polite on a loaded server
-> by limiting the amount of memory that gets dirtied by mke2fs when it
-> is using buffered I/O.
-> 
-> E2fsck was needlessly closing and re-opening the file system as a side
-> effect of adding Multiple Mount Protection (MMP).  This isn't
-> necessary for non-MMP file systems, so drop it.
-> 
-> Print errors returned by ext2fs_open2() and ext2fs_check_desc() so we
-> can more easily diagnose memory allocation failures caused by
-> insufficient memory.  E2fsck will now abort if there are memory
-> allocation failures when the file system is initially opened and
-> during the block group descriptor checks.  (Addresses Google Bug:
-> #6208183)
-> 
-> If there are incorrect block group checks, e2fsck will now report the
-> incorrect and corrected checksum values.
-> 
-> The e2fsck progam can now write log files containing the details of
-> the problems that were found and fixed directly, via configuration
-> parameters in /etc/e2fsck.conf.
-> 
-> Added the ability to limit the number of messages reported by e2fsck
-> for a given problem type.  This avoids a potential bottleneck if there
-> is a serial console which can cause a boot sequence to take a long
-> time if e2fsck needs to report many, many file system errors.
-> 
-> The dumpe2fs, debugfs, and tune2fs now use rbtree bitmaps, which cause
-> them to use much less memory for large file systems.
-> 
-> The dumpe2fs program will now print the expected block group checksum
-> if it is incorrect.  This helps to diagnose problems caused by
-> incorrect block group checksums.
-> 
-> E2fsck now checks for extents with a zero length, since the kernel
-> will oops if it comes accross such a corrupted data structure.  (See
-> https://bugzilla.kernel.org/show_bug.cgi?id=42859)
-> 
-> E2fsck has a number of bugs relating to discard that have been fixed.
-> (1) Fixed a bug which could cause e2fsck to discard portions of the
-> inode table which were actually in use.  (2) E2fsck will now avoid
-> using discard if the block device doesn't zero data on discard, since
-> otherwise this could cause problems if the file system gets corrupted
-> in the future.  (3) E2fsck will now avoid using discard when it is run
-> in read-only mode.  (4) Fixed a bug which caused e2fsck to not issue
-> discards in the last block group.
-> 
-> E2fsck's CPU utilization in pass 5 has been optimized, which will
-> speed up e2fsck slightly.
-> 
-> E2image will now skip copying uninitialized bitmap and inode table
-> blocks.
-> 
-> Fixed mke2fs -S so it does not corrupt the first block group's
-> information.
-> 
-> E2fsck will now check the new sysfs interface to determine if we are
-> using the battery or AC mains.  (Addresses SourceForge Bug: #3439277)
-> 
-> Updated/fixed various man pages.  (Addresses Debian Bug: #665427)
-> 
-> Fixed various Debian Packaging issues.  (Addresses Debian Bug: #665885)
-> 
-> Programmer's Notes
-> ------------------
-> 
-> Fixed various portability issues for non-Linux systems, particularly
-> MacOS X, as well as Linux systems running with the just-released glibc
-> 2.15.
-> 
-> Fix file descriptor leak in ext2fs_close() if the file system with
-> uninit_bg is opened read/only with a backup superblock.  (Addresses
-> SourceForge Bug: #3444351)
-> 
-> Fixed an invalid return in a non-void function in the quota code.
-> (Addresses SourceForge Bug: #3468423)
-> 
-> Fixed the debian rules file so that the calls to dpkg-buildflags works
-> when the shell is dash.
-> 
-> The debian package build now uses V=1 so that there is more
-> information about potential build failures in debian buildd logs.
-> 
-> If the uninit flags get cleared by functions such as
-> ext2fs_new_inode() or ext2fs_new_block2(), we now make sure the
-> superblock is marked dirty and the block group descriptor checksum is
-> updated if necessary.
-> 
-> The debian rules file will now try to load debian/rules.custom of it
-> exists.  This flie can skip various builds for speed reasons if there
-> is no need for the e2fsck-static or udeb packages.  Available
-> customizations in the rules file includes SKIP_STATIC=yes,
-> SKIP_BF=yes, and SKIP_DIETLIBC=yes.
-> 
-> In addition, if the file misc/mke2fs.conf.custom.in exists in the
-> source tree, it will be used instead of the standard misc.conf file in
-> the upstream sources.  This makes it easier for Debian-derived systems
-> to distribute a custom mke2fs.conf file without having to worry about
-> merge issues if future versions of e2fsprogs makes changes in the
-> upstream default version of mke2fs.conf.
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/Documentation/filesystems/ext3.txt b/Documentation/filesystems/ext3.txt
+index b100adc..293855e 100644
+--- a/Documentation/filesystems/ext3.txt
++++ b/Documentation/filesystems/ext3.txt
+@@ -59,9 +59,9 @@ commit=nrsec	(*)	Ext3 can be told to sync all its data and metadata
+ 			Setting it to very large values will improve
+ 			performance.
+ 
+-barrier=<0(*)|1>	This enables/disables the use of write barriers in
+-barrier			the jbd code.  barrier=0 disables, barrier=1 enables.
+-nobarrier	(*)	This also requires an IO stack which can support
++barrier=<0|1(*)>	This enables/disables the use of write barriers in
++barrier	(*)		the jbd code.  barrier=0 disables, barrier=1 enables.
++nobarrier		This also requires an IO stack which can support
+ 			barriers, and if jbd gets an error on a barrier
+ 			write, it will disable again with a warning.
+ 			Write barriers enforce proper on-disk ordering
 -- 
+1.7.9.1
+
