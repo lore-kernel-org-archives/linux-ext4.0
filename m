@@ -1,53 +1,105 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: GIT PULL] ext4 updates for 3.4
-Date: Wed, 28 Mar 2012 16:36:23 -0700
-Message-ID: <CA+55aFwxWZ9-xLsZoi+iFMjkt-+V64q4jfMz=dampgJrMX5Ncw@mail.gmail.com>
-References: <E1SCEK7-0008CY-LJ@tytso-glaptop.cam.corp.google.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>, Fengguang Wu <fengguang.wu@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:48125 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758517Ab2C1Xgq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Mar 2012 19:36:46 -0400
-In-Reply-To: <E1SCEK7-0008CY-LJ@tytso-glaptop.cam.corp.google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 00/19 v4] Fix filesystem freezing deadlocks
+Date: Thu, 29 Mar 2012 01:43:15 +0200
+Message-ID: <1332978214-15535-1-git-send-email-jack@suse.cz>
+Cc: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, dchinner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Kamal Mostafa <kamal-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>,
+	Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>, Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>,
+	Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	"David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
+	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
+	KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
+	linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
+	Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
+	OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>,
+	Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 26, 2012 at 11:07 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> Ext4 commits for 3.3 merge window; mostly cleanups and bug fixes
+  Hello,
 
-Ted, is there any chance that the dirty handling (or something else)
-has some serious latency bug?
+  here is the fourth iteration of my patches to improve filesystem freezing.
+Filesystem freezing is currently racy and thus we can end up with dirty data on
+frozen filesystem (see changelog patch 06 for detailed race description). This
+patch series aims at fixing this.
 
-I'm compiling an allmodconfig kernel, and my mouse is (sometimes) very
-erratic with bad latency. And the biggest changes in the kernel I'm
-running on that machine now (HEAD=529b73fc0a97) and the previous boot
-of that machine (HEAD=e22057c85993) are the ext4 changes.
+To be able to block all places where inodes get dirtied, I've moved filesystem
+freeze handling in mnt_want_write() / mnt_drop_write(). This however required
+some code shuffling and changes to kern_path_create() (see patches 02-05). I
+think the result is OK but opinions may differ ;). The advantage of this change
+also is that all filesystems get freeze protection almost for free - even ext2
+can handle freezing well now.
 
-(Sure, there are tons of other changes in between, but they tend to be
-ARM changes or drivers that are irrelevant).
+Another potential contention point might be patch 19. In that patch we make
+freeze_super() refuse to freeze the filesystem when there are open but unlinked
+files which may be impractical in some cases. The main reason for this is the
+problem with handling of file deletion from fput() called with mmap_sem held
+(e.g. from munmap(2)), and then there's the fact that we cannot really force
+such filesystem into a consistent state... But if people think that freezing
+with open but unlinked files should happen, then I have some possible
+solutions in mind (maybe as a separate patchset since this is large enough).
 
-It may be that the bad interactive behavior started earlier, but I'd
-have expected to notice it - it really is pretty bad, and I've been
-doing allmodconfig builds pretty regularly.
+I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
+filesystem despite beating it with fsstress and bash-shared-mapping while
+freezing and unfreezing for several hours (using ext4 and xfs) so I'm
+reasonably confident this could finally be the right solution.
 
-(Adding Jan and Fengguang to the cc too, in case it's that
-inode_sync_wait() change that *should* be a no-op, but maybe somebody
-overlooked something)
+And for people wanting to test - this patchset is based on patch series
+"Push file_update_time() into .page_mkwrite" so you'll need to pull that one
+in as well.
 
-NOTE! Latency normally is perfectly fine. Then *occasionally*
-something bad happens, and it's horrible for a while. I have no idea
-what triggers it. It's a regular "make -j16" of an x86-64 allmodconfig
-build, and that should *not* be nearly enough to make this machine
-stutter noticeably enough for the mouse pointer to not move smoothly.
+Changes since v3:
+  * added third level of freezing for fs internal purposes - hooked some
+    filesystems to use it (XFS, nilfs2)
+  * removed racy i_size check from filemap_mkwrite()
 
-I have no real data for this, though - just a "mouse pointer
-occasionally freezing up". So I'm looking for a potential "hmm, that
-makes me wonder if..." kind of reaction.
+Changes since v2:
+  * completely rewritten
+  * freezing is now blocked at VFS entry points
+  * two stage freezing to handle both mmapped writes and other IO
 
-                                Linus
+The biggest changes since v1:
+  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
+    and SB_FREEZE_TRANS states
+  * use percpu counters instead of own percpu structure
+  * added documentation fixes from the old fs freezing series
+  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
+    m_active_trans counter
+
+								Honza
+
+CC: Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+CC: Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>
+CC: Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>
+CC: Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+CC: cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+CC: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
+CC: fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+CC: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+CC: Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>
+CC: KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>
+CC: linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+CC: linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
+CC: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
+CC: Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>
+CC: ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+CC: OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>
+CC: Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+CC: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+CC: xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
