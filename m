@@ -1,213 +1,302 @@
 From: Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH 5/7] xfs: honor the O_SYNC flag for aysnchronous direct I/O requests
-Date: Thu, 29 Mar 2012 18:05:03 -0400
-Message-ID: <1333058705-31512-6-git-send-email-jmoyer@redhat.com>
+Subject: [PATCH 1/7] vfs: Handle O_SYNC AIO DIO in generic code properly
+Date: Thu, 29 Mar 2012 18:04:59 -0400
+Message-ID: <1333058705-31512-2-git-send-email-jmoyer@redhat.com>
 References: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
 Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, jack@suse.cz,
 	hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28410 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37051 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759370Ab2C2WFm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Mar 2012 18:05:42 -0400
+	id S1759407Ab2C2WFn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Mar 2012 18:05:43 -0400
 In-Reply-To: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+From: Jan Kara <jack@suse.cz>
 
-If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
-flushed after the write completion for AIOs.  This patch attempts to fix
-that problem by marking an I/O as requiring a cache flush in endio
-processing, and then issuing the cache flush after any unwritten extent
-conversion is done.
+Provide VFS helpers for handling O_SYNC AIO DIO writes. Filesystem wanting to
+use the helpers has to pass DIO_SYNC_WRITES to __blockdev_direct_IO. Then if
+they don't use direct IO end_io handler, generic code takes care of everything
+else. Otherwise their end_io handler is passed struct dio_sync_io_work pointer
+as 'private' argument and they have to call generic_dio_end_io() to finish
+their AIO DIO. Generic code then takes care to call generic_write_sync() from
+a workqueue context when AIO DIO is completed.
 
+Since all filesystems using blockdev_direct_IO() need O_SYNC aio dio handling
+and the generic one is enough for them, make blockdev_direct_IO() pass
+DIO_SYNC_WRITES flag.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
 ---
- fs/xfs/xfs_aops.c  |  108 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/xfs/xfs_mount.h |    1 +
- fs/xfs/xfs_super.c |    8 ++++
- 3 files changed, 116 insertions(+), 1 deletions(-)
+ fs/direct-io.c     |  128 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/super.c         |    2 +
+ include/linux/fs.h |   13 +++++-
+ 3 files changed, 138 insertions(+), 5 deletions(-)
 
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 0dbb9e7..6ef8f7a 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -170,6 +170,58 @@ xfs_setfilesize(
- }
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index f4aadd1..15aa177 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -38,6 +38,8 @@
+ #include <linux/atomic.h>
+ #include <linux/prefetch.h>
  
++#include <asm/cmpxchg.h>
++
  /*
-+ * In the case of synchronous, AIO, O_DIRECT writes, we need to flush
-+ * the disk cache when the I/O is complete.
-+ */
-+STATIC bool
-+xfs_ioend_needs_cache_flush(
-+	struct xfs_ioend	*ioend)
-+{
-+	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-+	struct xfs_mount *mp = ip->i_mount;
+  * How many user pages to map in one call to get_user_pages().  This determines
+  * the size of a structure in the slab cache
+@@ -112,6 +114,15 @@ struct dio_submit {
+ 	unsigned tail;			/* last valid page + 1 */
+ };
+ 
++/* state needed for final sync and completion of O_SYNC AIO DIO */
++struct dio_sync_io_work {
++	struct kiocb *iocb;
++	loff_t offset;
++	ssize_t len;
++	int ret;
++	struct work_struct work;
++};
 +
-+	if (!ioend->io_isasync)
-+		return false;
-+
-+	if (!(mp->m_flags & XFS_MOUNT_BARRIER))
-+		return false;
-+
-+	return (IS_SYNC(ioend->io_inode) ||
-+		(ioend->io_iocb->ki_filp->f_flags & O_DSYNC));
-+}
-+
-+STATIC void
-+xfs_end_io_flush(
-+	struct bio	*bio,
-+	int		error)
-+{
-+	struct xfs_ioend *ioend = bio->bi_private;
-+
-+	if (error && ioend->io_result > 0)
-+		ioend->io_result = error;
-+
-+	xfs_destroy_ioend(ioend);
-+	bio_put(bio);
-+}
-+
-+/*
-+ * Issue a WRITE_FLUSH to the specified device.
-+ */
-+STATIC void
-+xfs_ioend_flush_cache(
-+	struct xfs_ioend	*ioend,
-+	xfs_buftarg_t		*targp)
-+{
-+	struct bio *bio;
-+
-+	bio = bio_alloc(GFP_KERNEL, 0);
-+	bio->bi_end_io = xfs_end_io_flush;
-+	bio->bi_bdev = targp->bt_bdev;
-+	bio->bi_private = ioend;
-+	submit_bio(WRITE_FLUSH, bio);
-+}
-+
-+/*
-  * Schedule IO completion handling on the final put of an ioend.
-  *
-  * If there is no work to do we might as well call it a day and free the
-@@ -186,11 +238,61 @@ xfs_finish_ioend(
- 			queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
- 		else if (ioend->io_append_trans)
- 			queue_work(mp->m_data_workqueue, &ioend->io_work);
-+		else if (xfs_ioend_needs_cache_flush(ioend))
-+			queue_work(mp->m_flush_workqueue, &ioend->io_work);
- 		else
- 			xfs_destroy_ioend(ioend);
- 	}
+ /* dio_state communicated between submission path and end_io */
+ struct dio {
+ 	int flags;			/* doesn't change */
+@@ -134,6 +145,7 @@ struct dio {
+ 	/* AIO related stuff */
+ 	struct kiocb *iocb;		/* kiocb */
+ 	ssize_t result;                 /* IO result */
++	struct dio_sync_io_work *sync_work;	/* work used for O_SYNC AIO */
+ 
+ 	/*
+ 	 * pages[] (and any fields placed after it) are not zeroed out at
+@@ -261,6 +273,45 @@ static inline struct page *dio_get_page(struct dio *dio,
  }
  
-+STATIC void
-+xfs_ioend_force_cache_flush(
-+	xfs_ioend_t	*ioend)
+ /**
++ * generic_dio_end_io() - generic dio ->end_io handler
++ * @iocb: iocb of finishing DIO
++ * @offset: the byte offset in the file of the completed operation
++ * @bytes: length of the completed operation
++ * @work: work to queue for O_SYNC AIO DIO, NULL otherwise
++ * @ret: error code if IO failed
++ * @is_async: is this AIO?
++ *
++ * This is generic callback to be called when direct IO is finished. It
++ * handles update of number of outstanding DIOs for an inode, completion
++ * of async iocb and queueing of work if we need to call fsync() because
++ * io was O_SYNC.
++ */
++void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
++			struct dio_sync_io_work *work, int ret, bool is_async)
 +{
-+	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-+	struct xfs_mount *mp = ip->i_mount;
-+	xfs_lsn_t	lsn = 0;
-+	int		err = 0;
-+	int		log_flushed = 0;
++	struct inode *inode = iocb->ki_filp->f_dentry->d_inode;
++
++	if (!is_async) {
++		inode_dio_done(inode);
++		return;
++	}
 +
 +	/*
-+	 * Check to see if we need to sync metadata.  If so,
-+	 * perform a log flush.  If not, just flush the disk
-+	 * write cache for the data disk.
++	 * If we need to sync file, we offload completion to workqueue
 +	 */
-+	if (IS_SYNC(ioend->io_inode) ||
-+	    (ioend->io_iocb->ki_filp->f_flags & __O_SYNC)) {
-+		/*
-+		 * TODO: xfs_blkdev_issue_flush and _xfs_log_force_lsn
-+		 * are synchronous, and so will block the I/O
-+		 * completion work queue.
-+		 */
-+		/*
-+		 * If the log device is different from the data device,
-+		 * be sure to flush the cache on the data device
-+		 * first.
-+		 */
-+		if (mp->m_logdev_targp != mp->m_ddev_targp)
-+			xfs_blkdev_issue_flush(mp->m_ddev_targp);
-+
-+		xfs_ilock(ip, XFS_ILOCK_SHARED);
-+		if (xfs_ipincount(ip))
-+			lsn = ip->i_itemp->ili_last_lsn;
-+		xfs_iunlock(ip, XFS_ILOCK_SHARED);
-+		if (lsn)
-+			err = _xfs_log_force_lsn(mp, lsn, XFS_LOG_SYNC,
-+						 &log_flushed);
-+		if (err && ioend->io_result > 0)
-+			ioend->io_result = err;
-+		if (err || log_flushed)
-+			xfs_destroy_ioend(ioend);
-+		else
-+			xfs_ioend_flush_cache(ioend, mp->m_logdev_targp);
-+	} else
-+		/* data sync only, flush the disk cache */
-+		xfs_ioend_flush_cache(ioend, mp->m_ddev_targp);
++	if (work) {
++		work->ret = ret;
++		work->offset = offset;
++		work->len = bytes;
++		queue_work(inode->i_sb->s_dio_flush_wq, &work->work);
++	} else {
++		aio_complete(iocb, ret, 0);
++		inode_dio_done(inode);
++	}
 +}
++EXPORT_SYMBOL(generic_dio_end_io);
 +
- /*
-  * IO write completion.
-  */
-@@ -243,7 +345,11 @@ xfs_end_io(
++/**
+  * dio_complete() - called when all DIO BIO I/O has been completed
+  * @offset: the byte offset in the file of the completed operation
+  *
+@@ -302,12 +353,22 @@ static ssize_t dio_complete(struct dio *dio, loff_t offset, ssize_t ret, bool is
+ 		ret = transferred;
+ 
+ 	if (dio->end_io && dio->result) {
++		void *private;
++
++		if (dio->sync_work)
++			private = dio->sync_work;
++		else
++			private = dio->private;
+ 		dio->end_io(dio->iocb, offset, transferred,
+-			    dio->private, ret, is_async);
++			    private, ret, is_async);
+ 	} else {
+-		if (is_async)
+-			aio_complete(dio->iocb, ret, 0);
+-		inode_dio_done(dio->inode);
++		/* No IO submitted? Skip syncing... */
++		if (!dio->result && dio->sync_work) {
++			kfree(dio->sync_work);
++			dio->sync_work = NULL;
++		}
++		generic_dio_end_io(dio->iocb, offset, transferred,
++				   dio->sync_work, ret, is_async);
  	}
  
- done:
--	xfs_destroy_ioend(ioend);
-+	/* the honoring of O_SYNC has to be done last */
-+	if (xfs_ioend_needs_cache_flush(ioend))
-+		xfs_ioend_force_cache_flush(ioend);
-+	else
-+		xfs_destroy_ioend(ioend);
+ 	return ret;
+@@ -1064,6 +1125,41 @@ static inline int drop_refcount(struct dio *dio)
  }
  
  /*
-diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-index 9eba738..e406204 100644
---- a/fs/xfs/xfs_mount.h
-+++ b/fs/xfs/xfs_mount.h
-@@ -214,6 +214,7 @@ typedef struct xfs_mount {
- 
- 	struct workqueue_struct	*m_data_workqueue;
- 	struct workqueue_struct	*m_unwritten_workqueue;
-+	struct workqueue_struct *m_flush_workqueue;
- } xfs_mount_t;
- 
- /*
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index dab9a5f..e32b309 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -773,8 +773,15 @@ xfs_init_mount_workqueues(
- 	if (!mp->m_unwritten_workqueue)
- 		goto out_destroy_data_iodone_queue;
- 
-+	mp->m_flush_workqueue = alloc_workqueue("xfs-flush/%s",
-+			WQ_MEM_RECLAIM, 0, mp->m_fsname);
-+	if (!mp->m_flush_workqueue)
-+		goto out_destroy_unwritten_queue;
++ * Work performed from workqueue when AIO DIO is finished.
++ */
++static void dio_aio_sync_work(struct work_struct *work)
++{
++	struct dio_sync_io_work *sync_work =
++			container_of(work, struct dio_sync_io_work, work);
++	struct kiocb *iocb = sync_work->iocb;
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
++	int err, ret = sync_work->ret;
 +
- 	return 0;
++	err = generic_write_sync(iocb->ki_filp, sync_work->offset,
++				 sync_work->len);
++	if (err < 0 && ret > 0)
++		ret = err;
++	aio_complete(iocb, ret, 0);
++	inode_dio_done(inode);
++}
++
++static noinline int dio_create_flush_wq(struct super_block *sb)
++{
++	struct workqueue_struct *wq =
++				alloc_workqueue("dio-sync", WQ_UNBOUND, 1);
++
++	if (!wq)
++		return -ENOMEM;
++	/*
++	 * Atomically put workqueue in place. Release our one in case someone
++	 * else won the race and attached workqueue to superblock.
++	 */
++	if (cmpxchg(&sb->s_dio_flush_wq, NULL, wq))
++		destroy_workqueue(wq);
++	return 0;
++}
++
++/*
+  * This is a library function for use by filesystem drivers.
+  *
+  * The locking rules are governed by the flags parameter:
+@@ -1155,6 +1251,26 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 	memset(dio, 0, offsetof(struct dio, pages));
  
-+out_destroy_unwritten_queue:
-+	destroy_workqueue(mp->m_unwritten_workqueue);
- out_destroy_data_iodone_queue:
- 	destroy_workqueue(mp->m_data_workqueue);
- out:
-@@ -785,6 +792,7 @@ STATIC void
- xfs_destroy_mount_workqueues(
- 	struct xfs_mount	*mp)
+ 	dio->flags = flags;
++	if (flags & DIO_SYNC_WRITES && rw & WRITE &&
++	    ((iocb->ki_filp->f_flags & O_DSYNC) || IS_SYNC(inode))) {
++		/* The first O_SYNC AIO DIO for this FS? Create workqueue... */
++		if (!inode->i_sb->s_dio_flush_wq) {
++			retval = dio_create_flush_wq(inode->i_sb);
++			if (retval) {
++				kmem_cache_free(dio_cache, dio);
++				goto out;
++			}
++		}
++		dio->sync_work = kmalloc(sizeof(struct dio_sync_io_work),
++					 GFP_KERNEL);
++		if (!dio->sync_work) {
++			retval = -ENOMEM;
++			kmem_cache_free(dio_cache, dio);
++			goto out;
++		}
++		INIT_WORK(&dio->sync_work->work, dio_aio_sync_work);
++		dio->sync_work->iocb = iocb;
++	}
+ 	if (dio->flags & DIO_LOCKING) {
+ 		if (rw == READ) {
+ 			struct address_space *mapping =
+@@ -1167,6 +1283,7 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 							      end - 1);
+ 			if (retval) {
+ 				mutex_unlock(&inode->i_mutex);
++				kfree(dio->sync_work);
+ 				kmem_cache_free(dio_cache, dio);
+ 				goto out;
+ 			}
+@@ -1310,6 +1427,9 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 
+ 	if (drop_refcount(dio) == 0) {
+ 		retval = dio_complete(dio, offset, retval, false);
++		/* Test for !NULL to save a call for common case */
++		if (dio->sync_work)
++			kfree(dio->sync_work);
+ 		kmem_cache_free(dio_cache, dio);
+ 	} else
+ 		BUG_ON(retval != -EIOCBQUEUED);
+diff --git a/fs/super.c b/fs/super.c
+index cf00177..56b3803 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -201,6 +201,8 @@ static inline void destroy_super(struct super_block *s)
+ #ifdef CONFIG_SMP
+ 	free_percpu(s->s_files);
+ #endif
++	if (s->s_dio_flush_wq)
++		destroy_workqueue(s->s_dio_flush_wq);
+ 	security_sb_free(s);
+ 	WARN_ON(!list_empty(&s->s_mounts));
+ 	kfree(s->s_subtype);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c437f91..7af9dd4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -413,6 +413,7 @@ struct kstatfs;
+ struct vm_area_struct;
+ struct vfsmount;
+ struct cred;
++struct workqueue_struct;
+ 
+ extern void __init inode_init(void);
+ extern void __init inode_init_early(void);
+@@ -1498,6 +1499,9 @@ struct super_block {
+ 
+ 	/* Being remounted read-only */
+ 	int s_readonly_remount;
++
++	/* Pending fsync calls for completed AIO DIO with O_SYNC */
++	struct workqueue_struct	*s_dio_flush_wq;
+ };
+ 
+ /* superblock cache pruning functions */
+@@ -2420,11 +2424,18 @@ enum {
+ 
+ 	/* filesystem does not support filling holes */
+ 	DIO_SKIP_HOLES	= 0x02,
++
++	/* need generic handling of O_SYNC aio writes */
++	DIO_SYNC_WRITES = 0x04
+ };
+ 
++struct dio_sync_io_work;
++
+ void dio_end_io(struct bio *bio, int error);
+ void inode_dio_wait(struct inode *inode);
+ void inode_dio_done(struct inode *inode);
++void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
++                        struct dio_sync_io_work *work, int ret, bool is_async);
+ 
+ ssize_t __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 	struct block_device *bdev, const struct iovec *iov, loff_t offset,
+@@ -2437,7 +2448,7 @@ static inline ssize_t blockdev_direct_IO(int rw, struct kiocb *iocb,
  {
-+	destroy_workqueue(mp->m_flush_workqueue);
- 	destroy_workqueue(mp->m_data_workqueue);
- 	destroy_workqueue(mp->m_unwritten_workqueue);
+ 	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
+ 				    offset, nr_segs, get_block, NULL, NULL,
+-				    DIO_LOCKING | DIO_SKIP_HOLES);
++				    DIO_LOCKING | DIO_SKIP_HOLES | DIO_SYNC_WRITES);
  }
+ #else
+ static inline void inode_dio_wait(struct inode *inode)
 -- 
 1.7.1
 
