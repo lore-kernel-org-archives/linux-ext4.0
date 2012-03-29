@@ -1,37 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: update documentation with barrier=1 default
-Date: Thu, 29 Mar 2012 17:29:26 +0200
-Message-ID: <20120329152926.GC19400@quack.suse.cz>
-References: <1332923552-9854-1-git-send-email-stefanha@linux.vnet.ibm.com>
- <20120328124932.GA16026@lst.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Stefan Hajnoczi <stefanha@linux.vnet.ibm.com>,
-	linux-doc@vger.kernel.org, Randy Dunlap <rdunlap@xenotime.net>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: [PATCH 7/7] filemap: don't call generic_write_sync for -EIOCBQUEUED
+Date: Thu, 29 Mar 2012 18:05:05 -0400
+Message-ID: <1333058705-31512-8-git-send-email-jmoyer@redhat.com>
+References: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
+Cc: linux-ext4@vger.kernel.org, xfs@oss.sgi.com, jack@suse.cz,
+	hch@infradead.org, Jeff Moyer <jmoyer@redhat.com>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44851 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:45758 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932609Ab2C2P3o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Mar 2012 11:29:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20120328124932.GA16026@lst.de>
+	id S1755888Ab2C2WFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Mar 2012 18:05:40 -0400
+In-Reply-To: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 28-03-12 14:49:32, Christoph Hellwig wrote:
-> On Wed, Mar 28, 2012 at 09:32:32AM +0100, Stefan Hajnoczi wrote:
-> > Commit 00eacd6 ("ext3: make ext3 mount default to barrier=1") changed
-> > the default barrier mount option for ext3.  The documentation needs to
-> > be updated, so this patch does that.
-> 
-> Looks good,
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-  Thanks. I've added the patch to my tree.
+Hi,
 
-								Honza
+As it stands, generic_file_aio_write will call into generic_write_sync
+when -EIOCBQUEUED is returned from __generic_file_aio_write.  EIOCBQUEUED
+indicates that an I/O was submitted but NOT completed.  Thus, we will
+flush the disk cache, potentially before the write(s) even make it to
+the disk!  Up until now, this has been the best we could do, as file
+systems didn't bother to flush the disk cache after an O_SYNC AIO+DIO
+write.  After applying the prior two patches to xfs and ext4, at least
+the major two file systems do the right thing.  So, let's go ahead and
+fix this backwards logic.
+
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+---
+ mm/filemap.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 79c4b2b..ef81dfb 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2614,7 +2614,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
+ 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+ 	mutex_unlock(&inode->i_mutex);
+ 
+-	if (ret > 0 || ret == -EIOCBQUEUED) {
++	if (ret > 0) {
+ 		ssize_t err;
+ 
+ 		err = generic_write_sync(file, pos, ret);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
+
