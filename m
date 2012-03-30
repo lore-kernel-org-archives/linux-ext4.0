@@ -1,99 +1,177 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH v1 0/9] do not use s_dirt in ext4
-Date: Fri, 30 Mar 2012 18:43:15 +0300
-Message-ID: <1333122195.5440.60.camel@sauron.fi.intel.com>
-References: <1332254489-2300-1-git-send-email-dedekind1@gmail.com>
-	 <20120322095342.GC14485@quack.suse.cz>
-	 <1332410747.18717.12.camel@sauron.fi.intel.com>
-	 <20120322103309.GA14484@quack.suse.cz>
-	 <1332854998.31549.40.camel@sauron.fi.intel.com>
-	 <20120327201401.GF5020@quack.suse.cz>
-	 <1333121035.5440.49.camel@sauron.fi.intel.com>
-	 <20120330153530.GH5587@quack.suse.cz>
-Reply-To: dedekind1@gmail.com
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: [RFC PATCH v2 21/21] fs: add read_iter and
+	write_iter to more file systems
+Date: Fri, 30 Mar 2012 10:43:48 -0500
+Message-ID: <1333122228-13633-22-git-send-email-dave.kleikamp@oracle.com>
+References: <1333122228-13633-1-git-send-email-dave.kleikamp@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-SUsM4MwbD4bL9dz+dA+g"
-Cc: Ted Tso <tytso@mit.edu>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:7069 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751393Ab2C3Pke (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Mar 2012 11:40:34 -0400
-In-Reply-To: <20120330153530.GH5587@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---=-SUsM4MwbD4bL9dz+dA+g
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, 2012-03-30 at 17:35 +0200, Jan Kara wrote:
-> > [23500.239442]  [<ffffffff811ab59d>] write_dirty_buffer+0x4d/0x80
-> > [23500.239442]  [<ffffffff8123be1d>] __flush_batch+0x4d/0xa0
-> > [23500.239442]  [<ffffffff8123c605>] jbd2_log_do_checkpoint+0xf5/0x4f0
-> > [23500.239442]  [<ffffffff8123ca89>] __jbd2_log_wait_for_space+0x89/0x1=
-90
-> > [23500.239442]  [<ffffffff81237a98>] start_this_handle+0x3a8/0x4e0
-> > [23500.239442]  [<ffffffff810799e0>] ? remove_wait_queue+0x50/0x50
-> > [23500.239442]  [<ffffffff81237c93>] jbd2__journal_start+0xc3/0x100
-> > [23500.239442]  [<ffffffff81237ce3>] jbd2_journal_start+0x13/0x20
-> > [23500.239442]  [<ffffffff8121743f>] ext4_journal_start_sb+0x7f/0x1d0
-> > [23500.239442]  [<ffffffff81224a24>] ? ext4_fallocate+0x1a4/0x530
-> > [23500.239442]  [<ffffffff811f64c5>] ? ext4_meta_trans_blocks+0xa5/0xb0
-> > [23500.239442]  [<ffffffff81224a24>] ext4_fallocate+0x1a4/0x530
-> > [23500.239442]  [<ffffffff8117a092>] do_fallocate+0xf2/0x160
-> > [23500.239442]  [<ffffffff8117a14b>] sys_fallocate+0x4b/0x70
-> > [23500.239442]  [<ffffffff815e6d69>] system_call_fastpath+0x16/0x1b
-> > [23500.239442] Code: ee 44 89 e7 e8 35 1f 0f 00 49 8b 5d 18 4c 89 ef e8=
- 19 4e 00 00 48 83 c4 08 c1 e3 18 c1 fb 1f 83 e3 a1 89 d8 5b 41 5c 41 5d 5d=
- c3 <0f> 0b 0f 0b 0f 0b 0f 0b 0f 0b 66 0f 1f 84 00 00 00 00 00 55 48=20
-> > [23500.239442] RIP  [<ffffffff811a9add>] submit_bh+0x10d/0x120
-> > [23500.239442]  RSP <ffff880273a41b58>
-> > [23500.261657] ---[ end trace 3db7a7a7ae953551 ]---
->   Hmm, looks like we tried to checkpoint BH_Unwritten buffer. That looks
-> like a bug in fallocate() support. Not really related but definitely wort=
-h
-> reporting.
-
-Well, I ran vanilla the tests in vanilla 3.3 overnight, they were fine.
-But may be I was lucky. I'll try to run the tests with vanilla kernel
-some more. I mean, it would make more sense to report something against
-vanilla 3.3, not a patched 3.3.
-
-Any hints how to properly report an ext4 bug?
-
---=20
-Best Regards,
-Artem Bityutskiy
-
---=-SUsM4MwbD4bL9dz+dA+g
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	linux-nilfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org,
+	v9fs-developer@lists.sourceforge.net, Zach Brown <zab@zabbo.net>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+In-Reply-To: <1333122228-13633-1-git-send-email-dave.kleikamp@oracle.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+File systems that use generic_file_aio_read() and generic_file_aio_write()
+can trivially support generic_file_read_iter() and generic_file_write_iter().
 
-iQIcBAABAgAGBQJPddSTAAoJECmIfjd9wqK0DrMP/0lAMmGzzu/GCNR7hcMdCnJ9
-pIO8HY+3LekQO44m0oZTKDcUY4iDewfO+NszE/4MQn7fA6pdWrvn6tutyIYdRMkm
-RW9QrlQSxWwFp0EUr4XAHbuiEQd+NMf/+aYh3tbKdznP1TsZUls+hXLXe805EpsI
-B6jgQli01+5oWo8+rBhRCnZU8kbyYlPgnnOUB+ebHce171Cf0ovjslw2rHxZF0Eh
-BbMfGv2P5E3vLcPm6zPWj5TWBIiV4qQnTwpJFVwuMsPNRPIntYOxBeKQXbrYYHFA
-wMhS0m8JWIsVt1iD57slrIKLV8+ytsEXd1H1eFdgKQcjt3rFwYBCfuqjyuGODTaK
-q8ci5kRjVeTJp3bKy7p2t1ALEf50D/RJhPIYFxg3EwqgkP6us+X4Hf9EFaMUq0CT
-mrg1FSWwbG+VU+5HDpc1DHo9ZV5KLIfmaj4VwB1w7WLqDmeFPjt5MkfvzHxO9fuQ
-Cy93RXvcqtUxcynYisYowqiS73o/fzsxhAZ+mUFLuWyxW8fJ8GySc/PPQI/dPlv+
-UcINTnzQWO1pW0XuxMfvIAnSyi07Hufj3lB3h5ZILtvjToZBosAyAKyKwIFNxuXt
-cNga7qKW6jTT+9By5PHmEc0ABUqdSaIIyYnEsQC7TJFg33/MFxqne8f/lxMDwOyl
-/wmt/Eg5YXBtlPQQrX2J
-=FgRr
------END PGP SIGNATURE-----
+This patch adds those file_operations for 9p, ext2, fat, hfs, hfsplus,
+jfs, nilfs2, and reiserfs.
 
---=-SUsM4MwbD4bL9dz+dA+g--
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Zach Brown <zab@zabbo.net>
+Cc: v9fs-developer@lists.sourceforge.net
+Cc: linux-ext4@vger.kernel.org
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: jfs-discussion@lists.sourceforge.net
+Cc: linux-nilfs@vger.kernel.org
+Cc: reiserfs-devel@vger.kernel.org
+---
+ fs/9p/vfs_file.c   |    4 ++++
+ fs/ext2/file.c     |    2 ++
+ fs/fat/file.c      |    2 ++
+ fs/hfs/inode.c     |    2 ++
+ fs/hfsplus/inode.c |    2 ++
+ fs/jfs/file.c      |    2 ++
+ fs/nilfs2/file.c   |    2 ++
+ fs/reiserfs/file.c |    2 ++
+ 8 files changed, 18 insertions(+)
 
+diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
+index fc06fd2..27a76d5 100644
+--- a/fs/9p/vfs_file.c
++++ b/fs/9p/vfs_file.c
+@@ -744,6 +744,8 @@ const struct file_operations v9fs_cached_file_operations = {
+ 	.write = v9fs_cached_file_write,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
+ 	.lock = v9fs_file_lock,
+@@ -757,6 +759,8 @@ const struct file_operations v9fs_cached_file_operations_dotl = {
+ 	.write = v9fs_cached_file_write,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
+ 	.lock = v9fs_file_lock_dotl,
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index a5b3a5d..eee8f86 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -66,6 +66,8 @@ const struct file_operations ext2_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl = ext2_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext2_compat_ioctl,
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index a71fe37..e602729 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -167,6 +167,8 @@ const struct file_operations fat_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.release	= fat_file_release,
+ 	.unlocked_ioctl	= fat_generic_ioctl,
+diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
+index 96650e7..42796b8 100644
+--- a/fs/hfs/inode.c
++++ b/fs/hfs/inode.c
+@@ -662,8 +662,10 @@ static const struct file_operations hfs_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
++	.read_iter	= generic_file_read_iter,
+ 	.write		= do_sync_write,
+ 	.aio_write	= generic_file_aio_write,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.fsync		= hfs_file_fsync,
+diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
+index 76e3f8e..b53d2bb 100644
+--- a/fs/hfsplus/inode.c
++++ b/fs/hfsplus/inode.c
+@@ -368,8 +368,10 @@ static const struct file_operations hfsplus_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
++	.read_iter	= generic_file_read_iter,
+ 	.write		= do_sync_write,
+ 	.aio_write	= generic_file_aio_write,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.fsync		= hfsplus_file_fsync,
+diff --git a/fs/jfs/file.c b/fs/jfs/file.c
+index 844f946..7a5af5e 100644
+--- a/fs/jfs/file.c
++++ b/fs/jfs/file.c
+@@ -151,6 +151,8 @@ const struct file_operations jfs_file_operations = {
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.splice_write	= generic_file_splice_write,
+diff --git a/fs/nilfs2/file.c b/fs/nilfs2/file.c
+index 2660152..c884ba5 100644
+--- a/fs/nilfs2/file.c
++++ b/fs/nilfs2/file.c
+@@ -146,6 +146,8 @@ const struct file_operations nilfs_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl	= nilfs_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= nilfs_compat_ioctl,
+diff --git a/fs/reiserfs/file.c b/fs/reiserfs/file.c
+index ace6350..686f0a3 100644
+--- a/fs/reiserfs/file.c
++++ b/fs/reiserfs/file.c
+@@ -306,6 +306,8 @@ const struct file_operations reiserfs_file_operations = {
+ 	.fsync = reiserfs_sync_file,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.splice_read = generic_file_splice_read,
+ 	.splice_write = generic_file_splice_write,
+ 	.llseek = generic_file_llseek,
+-- 
+1.7.9.5
+
+
+------------------------------------------------------------------------------
+This SF email is sponsosred by:
+Try Windows Azure free for 90 days Click Here 
+http://p.sf.net/sfu/sfd2d-msazure
