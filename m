@@ -1,41 +1,35 @@
-From: "Richard W.M. Jones" <rjones@redhat.com>
-Subject: Re: Commit c1a1e7fc24d6 causes segfault in ext2fs_new_inode
-Date: Fri, 30 Mar 2012 14:19:36 +0100
-Message-ID: <20120330131936.GB26221@amd.home.annexia.org>
-References: <20120330125726.GA26221@amd.home.annexia.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 5/7] xfs: honor the O_SYNC flag for aysnchronous direct I/O requests
+Date: Fri, 30 Mar 2012 10:50:30 -0400
+Message-ID: <x49y5qii1mx.fsf@segfault.boston.devel.redhat.com>
+References: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
+	<1333058705-31512-6-git-send-email-jmoyer@redhat.com>
+	<20120329225743.GC18323@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Sami Liedes <sami.liedes@iki.fi>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58091 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760839Ab2C3NTp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Mar 2012 09:19:45 -0400
-Content-Disposition: inline
-In-Reply-To: <20120330125726.GA26221@amd.home.annexia.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, jack@suse.cz, hch@infradead.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120329225743.GC18323@dastard> (Dave Chinner's message of "Fri,
+	30 Mar 2012 09:57:43 +1100")
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 30, 2012 at 01:57:26PM +0100, Richard W.M. Jones wrote:
-> [I'm tracking this issue here:
-> https://bugzilla.redhat.com/show_bug.cgi?id=808421]
+Hi, Dave,
 
-A bit of further investigation:
+Thanks for the review!
 
-I'm currently not passing EXT2_FLAG_64BITS when opening the
-filesystem.  Passing this flag fixes the issue, so I'm going to do
-that (are there any downsides?)
+> or better still, factor xfs_file_fsync() so that it calls a helper
+> that doesn't wait for data IO completion, and call that helper here
+> too. The semantics of fsync/fdatasync are too complex to have to
+> implement and maintain in multiple locations....
 
-It seems like a non-64-bit-compatible bitmap was being created, and
-that doesn't have the bitmap->bitmap_ops field initialized because
-gen_bitmap.c doesn't use this field.  Somehow, though, we end up
-calling a function in gen_bitmap64.c which requires that this field be
-defined.
+I definitely agree with consolidating things.  However, there are four
+blocking calls in xfs_file_fsync (filemap_write_and_wait_range,
+xfs_blkdev_issue_flush, _xfs_log_force_lsn, and another call to
+xfs_blkdev_issue_flush).  How would you propose to make that
+non-blocking given that those steps have to happen in sequence?
 
-Rich.
-
--- 
-Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
-libguestfs lets you edit virtual machines.  Supports shell scripting,
-bindings from many languages.  http://libguestfs.org
+Cheers,
+Jeff
