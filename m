@@ -1,35 +1,89 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: GIT PULL] ext4 updates for 3.4
-Date: Fri, 30 Mar 2012 13:54:17 -0700
-Message-ID: <m2y5qhyfly.fsf@firstfloor.org>
-References: <E1SCEK7-0008CY-LJ@tytso-glaptop.cam.corp.google.com>
-	<CA+55aFwxWZ9-xLsZoi+iFMjkt-+V64q4jfMz=dampgJrMX5Ncw@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Commit c1a1e7fc24d6 causes segfault in ext2fs_new_inode
+Date: Fri, 30 Mar 2012 17:25:08 -0500
+Message-ID: <4F7632C4.4010707@redhat.com>
+References: <20120330125726.GA26221@amd.home.annexia.org> <20120330131936.GB26221@amd.home.annexia.org> <4F760BC2.4070401@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Fengguang Wu <fengguang.wu@intel.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFwxWZ9-xLsZoi+iFMjkt-+V64q4jfMz=dampgJrMX5Ncw@mail.gmail.com>
-	(Linus Torvalds's message of "Wed, 28 Mar 2012 16:36:23 -0700")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Sami Liedes <sami.liedes@iki.fi>
+To: "Richard W.M. Jones" <rjones@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:36500 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935659Ab2C3WZS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Mar 2012 18:25:18 -0400
+In-Reply-To: <4F760BC2.4070401@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Linus Torvalds <torvalds@linux-foundation.org> writes:
-
-> On Mon, Mar 26, 2012 at 11:07 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+On 3/30/12 2:38 PM, Eric Sandeen wrote:
+> On 3/30/12 8:19 AM, Richard W.M. Jones wrote:
+>> On Fri, Mar 30, 2012 at 01:57:26PM +0100, Richard W.M. Jones wrote:
+>>> [I'm tracking this issue here:
+>>> https://bugzilla.redhat.com/show_bug.cgi?id=808421]
 >>
->> Ext4 commits for 3.3 merge window; mostly cleanups and bug fixes
->
-> Ted, is there any chance that the dirty handling (or something else)
-> has some serious latency bug?
+>> A bit of further investigation:
+>>
+>> I'm currently not passing EXT2_FLAG_64BITS when opening the
+>> filesystem.  Passing this flag fixes the issue, so I'm going to do
+>> that (are there any downsides?)
+>>
+>> It seems like a non-64-bit-compatible bitmap was being created, and
+>> that doesn't have the bitmap->bitmap_ops field initialized because
+>> gen_bitmap.c doesn't use this field.  Somehow, though, we end up
+>> calling a function in gen_bitmap64.c which requires that this field be
+>> defined.
+>>
+>> Rich.
+>>
+> 
+> Well here's what's busted:
+> 
+>         if (bitmap->bitmap_ops->find_first_zero)
+>                 return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
+> 
+>         if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
+>                 return EINVAL;
+> 
+> bitmap->bitmap_ops->find_first_zero only exists for a 64-bit bitmap, which
+> gets tested after we try to deref it :(
+> 
+> I wonder if this fixes it:
 
-There's at least a serious scalability bug. That new extent cache 
-statistic count in the super block is showing up badly on IO profiles
-on larger systems.
+I guess it doesn't.  Seems ext2fs_find_first_zero_generic_bmap needs
+a 32-bit-bitmap fallback.
 
--Andi
+-Eric
 
--- 
-ak@linux.intel.com -- Speaking for myself only
+> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+> index b57df54..ce6c23d 100644
+> --- a/lib/ext2fs/gen_bitmap64.c
+> +++ b/lib/ext2fs/gen_bitmap64.c
+> @@ -768,7 +768,7 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+>  {
+>  	int b;
+>  
+> -	if (bitmap->bitmap_ops->find_first_zero)
+> +	if (EXT2FS_IS_64_BITMAP(bitmap) && bitmap->bitmap_ops->find_first_zero)
+>  		return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
+>  
+>  	if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
+> 
+> 
+> But then the next conditional would give us EINVAL since !EXT2FS_IS_64_BITMAP,
+> and I don't think things would go well after that either.
+> 
+> I am a little confused by the existence of two different
+> struct ext2fs_struct_generic_bitmap's in the code.  But treating one as the
+> other looks doomed to failure ;)
+> 
+> I haven't wrapped my head around this yet.
+> 
+> -Eric
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
