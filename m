@@ -1,89 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Commit c1a1e7fc24d6 causes segfault in ext2fs_new_inode
-Date: Fri, 30 Mar 2012 17:25:08 -0500
-Message-ID: <4F7632C4.4010707@redhat.com>
-References: <20120330125726.GA26221@amd.home.annexia.org> <20120330131936.GB26221@amd.home.annexia.org> <4F760BC2.4070401@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Sami Liedes <sami.liedes@iki.fi>
-To: "Richard W.M. Jones" <rjones@redhat.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: [PATCH] ext4: Remove non scalable extent cache hit statistics v2
+Date: Fri, 30 Mar 2012 16:15:15 -0700
+Message-ID: <1333149315-15868-1-git-send-email-andi@firstfloor.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Andi Kleen <ak@linux.intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36500 "EHLO mx1.redhat.com"
+Received: from mga09.intel.com ([134.134.136.24]:20870 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935659Ab2C3WZS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Mar 2012 18:25:18 -0400
-In-Reply-To: <4F760BC2.4070401@redhat.com>
+	id S1761361Ab2C3XPp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Mar 2012 19:15:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 3/30/12 2:38 PM, Eric Sandeen wrote:
-> On 3/30/12 8:19 AM, Richard W.M. Jones wrote:
->> On Fri, Mar 30, 2012 at 01:57:26PM +0100, Richard W.M. Jones wrote:
->>> [I'm tracking this issue here:
->>> https://bugzilla.redhat.com/show_bug.cgi?id=808421]
->>
->> A bit of further investigation:
->>
->> I'm currently not passing EXT2_FLAG_64BITS when opening the
->> filesystem.  Passing this flag fixes the issue, so I'm going to do
->> that (are there any downsides?)
->>
->> It seems like a non-64-bit-compatible bitmap was being created, and
->> that doesn't have the bitmap->bitmap_ops field initialized because
->> gen_bitmap.c doesn't use this field.  Somehow, though, we end up
->> calling a function in gen_bitmap64.c which requires that this field be
->> defined.
->>
->> Rich.
->>
-> 
-> Well here's what's busted:
-> 
->         if (bitmap->bitmap_ops->find_first_zero)
->                 return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
-> 
->         if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
->                 return EINVAL;
-> 
-> bitmap->bitmap_ops->find_first_zero only exists for a 64-bit bitmap, which
-> gets tested after we try to deref it :(
-> 
-> I wonder if this fixes it:
+From: Andi Kleen <ak@linux.intel.com>
 
-I guess it doesn't.  Seems ext2fs_find_first_zero_generic_bmap needs
-a 32-bit-bitmap fallback.
+We found that the cache line in the superblock that has the new extent
+cache hit/miss counters is extremly hot and causes significant slowdowns
+on larger systems.
 
--Eric
+The counter is also buggy: does not use atomics so there can be always
+lost updates.
 
-> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-> index b57df54..ce6c23d 100644
-> --- a/lib/ext2fs/gen_bitmap64.c
-> +++ b/lib/ext2fs/gen_bitmap64.c
-> @@ -768,7 +768,7 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
->  {
->  	int b;
->  
-> -	if (bitmap->bitmap_ops->find_first_zero)
-> +	if (EXT2FS_IS_64_BITMAP(bitmap) && bitmap->bitmap_ops->find_first_zero)
->  		return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
->  
->  	if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
-> 
-> 
-> But then the next conditional would give us EINVAL since !EXT2FS_IS_64_BITMAP,
-> and I don't think things would go well after that either.
-> 
-> I am a little confused by the existence of two different
-> struct ext2fs_struct_generic_bitmap's in the code.  But treating one as the
-> other looks doomed to failure ;)
-> 
-> I haven't wrapped my head around this yet.
-> 
-> -Eric
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Completely remove the two counters for now. If someone really needs them
+(which is dubious given the bad information they always gave) they would
+need to be implemented with per cpu counters.
 
+v2: Full patch this time
+
+Signed-off-by: Andi Kleen <ak@linux.intel.com>
+---
+ fs/ext4/ext4.h    |    4 ----
+ fs/ext4/extents.c |    4 ----
+ fs/ext4/super.c   |   16 ----------------
+ 3 files changed, 0 insertions(+), 24 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 513004f..6161b26 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1193,10 +1193,6 @@ struct ext4_sb_info {
+ 	unsigned long s_ext_blocks;
+ 	unsigned long s_ext_extents;
+ #endif
+-	/* ext4 extent cache stats */
+-	unsigned long extent_cache_hits;
+-	unsigned long extent_cache_misses;
+-
+ 	/* for buddy allocator */
+ 	struct ext4_group_info ***s_group_info;
+ 	struct inode *s_buddy_cache;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 74f23c2..f0a0270 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2049,10 +2049,6 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
+ 		ret = 1;
+ 	}
+ errout:
+-	if (!ret)
+-		sbi->extent_cache_misses++;
+-	else
+-		sbi->extent_cache_hits++;
+ 	trace_ext4_ext_in_cache(inode, block, ret);
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	return ret;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 502c61f..14dbc78 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2503,18 +2503,6 @@ static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
+ 			  EXT4_SB(sb)->s_sectors_written_start) >> 1)));
+ }
+ 
+-static ssize_t extent_cache_hits_show(struct ext4_attr *a,
+-				      struct ext4_sb_info *sbi, char *buf)
+-{
+-	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_hits);
+-}
+-
+-static ssize_t extent_cache_misses_show(struct ext4_attr *a,
+-					struct ext4_sb_info *sbi, char *buf)
+-{
+-	return snprintf(buf, PAGE_SIZE, "%lu\n", sbi->extent_cache_misses);
+-}
