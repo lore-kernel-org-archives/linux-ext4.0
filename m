@@ -1,55 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43023] New: Bad page map in process plugin-containe
-Date: Sun, 1 Apr 2012 19:06:55 GMT
-Message-ID: <bug-43023-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/8] ext2: write superblock only once on unmount
+Date: Sat, 31 Mar 2012 13:53:32 +0200
+Message-ID: <20120331115332.GB4569@quack.suse.cz>
+References: <1332346475-1441-1-git-send-email-dedekind1@gmail.com>
+ <1332346475-1441-4-git-send-email-dedekind1@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:35713 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751776Ab2DATG4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Apr 2012 15:06:56 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q31J6txN022273
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Apr 2012 19:06:55 GMT
+Received: from cantor2.suse.de ([195.135.220.15]:59242 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752653Ab2DATnB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Apr 2012 15:43:01 -0400
+Content-Disposition: inline
+In-Reply-To: <1332346475-1441-4-git-send-email-dedekind1@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43023
+On Wed 21-03-12 18:14:30, Artem Bityutskiy wrote:
+> From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> 
+> Currently on unmount if we are mounted R/W, we first write the superblock to
+> the media if it is dirty, and then write it again, which is not optimal. This
+> patch makes ext2 write the superblock on unmount less times.
+  Looks good. I've added the patch to my tree.
 
-           Summary: Bad page map in process plugin-containe
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.3.0
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: harri@afaics.de
-        Regression: No
-
-
-Created an attachment (id=72784)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=72784)
-log file
-
-I got an error in /var/log/kern.log about a "Bad page map in process
-plugin-containe". See attached log file.
-
-I am using autofs to mount /dev/sdg1 to /misc/data1 when needed. When I tried
-to rsync /misc/data1/somefile to another host I have got this error message.
-The copy went fine, though. A fsck didn't show any problems, either.
-
-Mount options (as shown in /proc/mounts):
-
-/dev/sdg1 /misc/data1 ext4 rw,noatime,user_xattr,barrier=1,data=ordered 0 0
-
+									Honza
+> 
+> Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> ---
+>  fs/ext2/super.c |    3 ---
+>  1 files changed, 0 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 0090595..d141758 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -130,9 +130,6 @@ static void ext2_put_super (struct super_block * sb)
+>  
+>  	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+>  
+> -	if (sb->s_dirt)
+> -		ext2_write_super(sb);
+> -
+>  	ext2_xattr_put_super(sb);
+>  	if (!(sb->s_flags & MS_RDONLY)) {
+>  		struct ext2_super_block *es = sbi->s_es;
+> -- 
+> 1.7.7.6
+> 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
