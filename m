@@ -1,100 +1,78 @@
-From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Subject: [PATCH v2 3/4] ext4: remove unnecessary superblock dirtying
-Date: Mon,  2 Apr 2012 14:45:39 +0300
-Message-ID: <1333367140-28370-5-git-send-email-artem.bityutskiy@linux.intel.com>
-References: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
-Cc: Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH 3/8] ext2: write superblock only once on unmount
+Date: Mon, 02 Apr 2012 16:44:09 +0300
+Message-ID: <1333374249.22146.2.camel@sauron.fi.intel.com>
+References: <1332346475-1441-1-git-send-email-dedekind1@gmail.com>
+	 <1332346475-1441-4-git-send-email-dedekind1@gmail.com>
+	 <20120331115332.GB4569@quack.suse.cz>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-jU81SvMyQCnDSK4700vl"
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:63196 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751550Ab2DBNk4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Apr 2012 09:40:56 -0400
+In-Reply-To: <20120331115332.GB4569@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-This patch changes the '__ext4_handle_dirty_super()' function which is used
-by ext4 to update the super-block via the journal in the following cases:
+--=-jU81SvMyQCnDSK4700vl
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-1. When creating the first large file on a file
-   system without EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
-2. When re-sizing the file-system
-3. When creating an xattr on a file-system without the
-   EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+On Sat, 2012-03-31 at 13:53 +0200, Jan Kara wrote:
+> On Wed 21-03-12 18:14:30, Artem Bityutskiy wrote:
+> > From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> >=20
+> > Currently on unmount if we are mounted R/W, we first write the superblo=
+ck to
+> > the media if it is dirty, and then write it again, which is not optimal=
+. This
+> > patch makes ext2 write the superblock on unmount less times.
+>   Looks good. I've added the patch to my tree.
 
-This function, however, falls back to just marking the superblock as dirty
-if the file-system has no journal. But it is user really rarely and it does not
-give any benefit to use the delayed superblock write (via the VFS's
-'sync_supers()' kernel thread) in these cases. We can just write out the
-superblock asynchronously instead.
+I would like to test v2 against your tree, I found this one:
 
-This patch also removes 's_dirt' condition on the unmount path because we never
-set it anymore, so we should not test it.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git
 
-Tested using xfstests for both journalled and non-journalled ext4.
+but I do not see this patch there - is that the right tree, or may be
+you did not push out? Which branch should I use?
 
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
----
- fs/ext4/ext4.h      |    1 +
- fs/ext4/ext4_jbd2.c |    2 +-
- fs/ext4/super.c     |    5 ++---
- 3 files changed, 4 insertions(+), 4 deletions(-)
+Thanks!
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index aba3749..ba2cf3f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1953,6 +1953,7 @@ extern int ext4_group_extend(struct super_block *sb,
- extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
- 
- /* super.c */
-+int ext4_commit_super(struct super_block *sb, int sync);
- extern void *ext4_kvmalloc(size_t size, gfp_t flags);
- extern void *ext4_kvzalloc(size_t size, gfp_t flags);
- extern void ext4_kvfree(void *ptr);
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index aca1790..a85f46f 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -149,6 +149,6 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 			ext4_journal_abort_handle(where, line, __func__,
- 						  bh, handle, err);
- 	} else
--		sb->s_dirt = 1;
-+		err = ext4_commit_super(sb, 0);
- 	return err;
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ceebaf8..6b45785 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -63,7 +63,6 @@ static struct ext4_features *ext4_feat;
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
- static int ext4_show_options(struct seq_file *seq, struct dentry *root);
--static int ext4_commit_super(struct super_block *sb, int sync);
- static void ext4_mark_recovery_complete(struct super_block *sb,
- 					struct ext4_super_block *es);
- static void ext4_clear_journal_err(struct super_block *sb,
-@@ -853,7 +852,7 @@ static void ext4_put_super(struct super_block *sb)
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
- 	}
--	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
-+	if (!(sb->s_flags & MS_RDONLY))
- 		ext4_commit_super(sb, 1);
- 
- 	if (sbi->s_proc) {
-@@ -3991,7 +3990,7 @@ static int ext4_load_journal(struct super_block *sb,
- 	return 0;
- }
- 
--static int ext4_commit_super(struct super_block *sb, int sync)
-+int ext4_commit_super(struct super_block *sb, int sync)
- {
- 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
- 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
--- 
-1.7.7.6
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-jU81SvMyQCnDSK4700vl
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJPea0pAAoJECmIfjd9wqK0TbYQAKEyoh4m9A6fNd/As+aqwsHv
+WKQdCdWC5h6BZbZPwB0XUJf6Umj41rUbYhySqIV2ucVCPszEMIk+ZBw20FHyPZxE
+06gL6qFKSKcWqeJF2p+azZWSVHjsjGkEJUKvveYg9+ugWctHFBuRiQUEHJjNH5cd
+EYHGW9ti+3s/4sSqPVAQZAyy2wtfoNP84qYvq3svkTv8O52RgYJWbajIkPSYOtZP
+ao4Ww9x0FUOSsHbZCQd42YOrhPAjmj/oieUCHEYqD9qetLc+koMRZASz5ZHAZT8Y
+QJIRItiFtBqyG6LbfB57As1hiiehmyhU0WA7Cyf2fbrG96swRHBGAa9v503egb9W
+STrfacEGcAtyYSOX4V56ZSGIB2UYl3IQU8RbegQYPmIEvakAlQLB8poeuEhHRstd
+pJpX7nkJtX3RlMzx/wJVdQxHmlf5rqCagJaDpcqsJjKvVbytw8m2GJnal0tqqUCd
+bwgO662pRD1mTsZHPnJDZsi2+3WtQd5IPeYt9aVFjxwO5i0pl4BfR7Qtw00Rfoez
+H5e6Euq36+F6U6PmYJapKKOJUE2WWgy1X23Jrfp7dPmT+KgkesfpquX7tzv0nE0A
+WJ9swkp74d/QjJc/HfYfcMSQ3eJG4SgaL8mU1tWzf/vu0fnatuY9BWZor2Oy4q2T
+DU2qL0cHroBe9hqDkYUZ
+=/lf3
+-----END PGP SIGNATURE-----
+
+--=-jU81SvMyQCnDSK4700vl--
+
