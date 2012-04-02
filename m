@@ -1,44 +1,114 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43023] Bad page map in process plugin-containe
-Date: Mon, 2 Apr 2012 18:54:29 GMT
-Message-ID: <201204021854.q32IsTms027453@bugzilla.kernel.org>
-References: <bug-43023-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 3/4] ext4: remove unnecessary superblock dirtying
+Date: Mon, 2 Apr 2012 23:49:51 +0200
+Message-ID: <20120402214951.GA5270@quack.suse.cz>
+References: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
+ <1333367140-28370-5-git-send-email-artem.bityutskiy@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:37144 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753307Ab2DBSya (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Apr 2012 14:54:30 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q32IsTrR027454
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Apr 2012 18:54:29 GMT
-In-Reply-To: <bug-43023-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1333367140-28370-5-git-send-email-artem.bityutskiy@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43023
+On Mon 02-04-12 14:45:39, Artem Bityutskiy wrote:
+> From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> 
+> This patch changes the '__ext4_handle_dirty_super()' function which is used
+> by ext4 to update the super-block via the journal in the following cases:
+> 
+> 1. When creating the first large file on a file
+>    system without EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
+> 2. When re-sizing the file-system
+> 3. When creating an xattr on a file-system without the
+>    EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+> 
+> This function, however, falls back to just marking the superblock as dirty
+> if the file-system has no journal. But it is user really rarely and it does not
+> give any benefit to use the delayed superblock write (via the VFS's
+> 'sync_supers()' kernel thread) in these cases. We can just write out the
+> superblock asynchronously instead.
+> 
+> This patch also removes 's_dirt' condition on the unmount path because we never
+> set it anymore, so we should not test it.
+> 
+> Tested using xfstests for both journalled and non-journalled ext4.
+> 
+> Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+  Looks good.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-
-Theodore Tso <tytso@mit.edu> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-          Component|ext4                        |Other
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |akpm@linux-foundation.org
-                   |g                           |
-            Product|File System                 |Memory Management
-
-
-
-
---- Comment #1 from Theodore Tso <tytso@mit.edu>  2012-04-02 18:54:27 ---
-This looks like a VM problem (a corrupted page table entry), not an ext4 file
-system issue.
-
+									Honza
+> ---
+>  fs/ext4/ext4.h      |    1 +
+>  fs/ext4/ext4_jbd2.c |    2 +-
+>  fs/ext4/super.c     |    5 ++---
+>  3 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index aba3749..ba2cf3f 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1953,6 +1953,7 @@ extern int ext4_group_extend(struct super_block *sb,
+>  extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
+>  
+>  /* super.c */
+> +int ext4_commit_super(struct super_block *sb, int sync);
+>  extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+>  extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+>  extern void ext4_kvfree(void *ptr);
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index aca1790..a85f46f 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -149,6 +149,6 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+>  			ext4_journal_abort_handle(where, line, __func__,
+>  						  bh, handle, err);
+>  	} else
+> -		sb->s_dirt = 1;
+> +		err = ext4_commit_super(sb, 0);
+>  	return err;
+>  }
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index ceebaf8..6b45785 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -63,7 +63,6 @@ static struct ext4_features *ext4_feat;
+>  static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+>  			     unsigned long journal_devnum);
+>  static int ext4_show_options(struct seq_file *seq, struct dentry *root);
+> -static int ext4_commit_super(struct super_block *sb, int sync);
+>  static void ext4_mark_recovery_complete(struct super_block *sb,
+>  					struct ext4_super_block *es);
+>  static void ext4_clear_journal_err(struct super_block *sb,
+> @@ -853,7 +852,7 @@ static void ext4_put_super(struct super_block *sb)
+>  		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+>  		es->s_state = cpu_to_le16(sbi->s_mount_state);
+>  	}
+> -	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
+> +	if (!(sb->s_flags & MS_RDONLY))
+>  		ext4_commit_super(sb, 1);
+>  
+>  	if (sbi->s_proc) {
+> @@ -3991,7 +3990,7 @@ static int ext4_load_journal(struct super_block *sb,
+>  	return 0;
+>  }
+>  
+> -static int ext4_commit_super(struct super_block *sb, int sync)
+> +int ext4_commit_super(struct super_block *sb, int sync)
+>  {
+>  	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+>  	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
+> -- 
+> 1.7.7.6
+> 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
