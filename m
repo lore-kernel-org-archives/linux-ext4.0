@@ -1,49 +1,36 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/8] ext2: write superblock only once on unmount
-Date: Tue, 3 Apr 2012 00:10:27 +0200
-Message-ID: <20120402221027.GD5270@quack.suse.cz>
-References: <1332346475-1441-1-git-send-email-dedekind1@gmail.com>
- <1332346475-1441-4-git-send-email-dedekind1@gmail.com>
- <20120331115332.GB4569@quack.suse.cz>
- <1333374249.22146.2.camel@sauron.fi.intel.com>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: Re: [RFC PATCH v2 18/21] ext4: add support for read_iter and write_iter
+Date: Mon, 02 Apr 2012 17:45:18 -0500
+Message-ID: <4F7A2BFE.8000609@oracle.com>
+References: <1333122228-13633-1-git-send-email-dave.kleikamp@oracle.com> <1333122228-13633-19-git-send-email-dave.kleikamp@oracle.com> <20120402184204.GE2880@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
-To: Artem Bityutskiy <dedekind1@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Ted Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60500 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751907Ab2DBWKa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Apr 2012 18:10:30 -0400
-Content-Disposition: inline
-In-Reply-To: <1333374249.22146.2.camel@sauron.fi.intel.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:50883 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751656Ab2DBWp0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Apr 2012 18:45:26 -0400
+In-Reply-To: <20120402184204.GE2880@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 02-04-12 16:44:09, Artem Bityutskiy wrote:
-> On Sat, 2012-03-31 at 13:53 +0200, Jan Kara wrote:
-> > On Wed 21-03-12 18:14:30, Artem Bityutskiy wrote:
-> > > From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-> > > 
-> > > Currently on unmount if we are mounted R/W, we first write the superblock to
-> > > the media if it is dirty, and then write it again, which is not optimal. This
-> > > patch makes ext2 write the superblock on unmount less times.
-> >   Looks good. I've added the patch to my tree.
+On 04/02/2012 01:42 PM, Ted Ts'o wrote:
+> On Fri, Mar 30, 2012 at 10:43:45AM -0500, Dave Kleikamp wrote:
+>> use the generic .read_iter and .write_iter functions
 > 
-> I would like to test v2 against your tree, I found this one:
-> 
-> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git
-> 
-> but I do not see this patch there - is that the right tree, or may be
-> you did not push out? Which branch should I use?
-  Yeah, I didn't push out the changes. Now they are out (for_next /
-for_testing) branch.
+> Potentially silly question --- why not use NULL pointer to mean
+> generic_file_read_iter and generic_file_write_iter?  Then you won't
+> have to patch a bunch of file systems to add the generic .read_iter
+> and .write_iter?
 
-								Honza
+I'm  not very confident that generic_file_read_iter and
+generic_file_write_iter will work for every filesystem that I haven't
+yet touched. It should work if they use generic_aio_read and _write, but
+some have their own versions of those.
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Shaggy
