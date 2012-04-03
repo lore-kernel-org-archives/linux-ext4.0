@@ -1,43 +1,50 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCH] ext2: do not register write_super within VFS
-Date: Tue,  3 Apr 2012 12:49:18 +0300
-Message-ID: <1333446558-28171-1-git-send-email-dedekind1@gmail.com>
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: ext4 online resize and robustness to interruption
+Date: Tue, 3 Apr 2012 18:58:29 +0800
+Message-ID: <CAGBYx2ZjrAXEvfEBSLz7CRsMDB3RSKWg1-8Y7yiJLaRSHSyixA@mail.gmail.com>
+References: <CAMLZHHSJG8a9Yco7c=Hzd_-HWdSXcHOqMqB5Tvh-U35DDGwMQw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Daniel Drake <dsd@laptop.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:49936 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751814Ab2DCJss (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Apr 2012 05:48:48 -0400
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:48532 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751458Ab2DCK6a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Apr 2012 06:58:30 -0400
+Received: by obbtb18 with SMTP id tb18so3404364obb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Apr 2012 03:58:29 -0700 (PDT)
+In-Reply-To: <CAMLZHHSJG8a9Yco7c=Hzd_-HWdSXcHOqMqB5Tvh-U35DDGwMQw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+On Mon, Apr 2, 2012 at 11:17 PM, Daniel Drake <dsd@laptop.org> wrote:
+> Hi,
+>
+> I think this question has been asked before, but I'd like to revisit
+> it given the recent rework of ext4 online resizing:
+>
+> How robust is ext4 online resize in the face of unexpected
+> interruption (i.e. sudden loss of power)?
+Yep!  It is only robust when journal is used.  In no journal mode, it is not.
 
-Jan Kara removed 'sb->s_dirt' VFS flag references, so we do not need to
-register the ext2 'ext2_write_super()' method in the VFS superblock operations,
-because 'sb->s_dirt' won't be ever set to 1 and VFS won't ever call
-'->write_super()' anyway. Thus, remove the method.
+Yongqiang.
+>
+> The context here is that OLPC will now performing an online resize
+> upon first boot of the system. Our laptops are frequently used in very
+> remote places with unreliable power, and given that we work in large
+> numbers, we're going to see some cases where the system lost power
+> during the resize operation. What is the expected effect here - will
+> the system boot up again just fine (perhaps with the original
+> partition size), and is then repeating the resize operation expected
+> to be safe and reliable?
+>
+> Thanks,
+> Daniel
 
-Tested using xfstests.
 
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
----
- fs/ext2/super.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index a43f9ad..e0e8f45 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -302,7 +302,6 @@ static const struct super_operations ext2_sops = {
- 	.write_inode	= ext2_write_inode,
- 	.evict_inode	= ext2_evict_inode,
- 	.put_super	= ext2_put_super,
--	.write_super	= ext2_write_super,
- 	.sync_fs	= ext2_sync_fs,
- 	.statfs		= ext2_statfs,
- 	.remount_fs	= ext2_remount,
 -- 
-1.7.7.6
-
+Best Wishes
+Yongqiang Yang
