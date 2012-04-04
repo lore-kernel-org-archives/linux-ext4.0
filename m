@@ -1,65 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd: clear b_modified before moving the jh to a
- different transaction
-Date: Wed, 4 Apr 2012 23:14:44 +0200
-Message-ID: <20120404211444.GA4214@quack.suse.cz>
-References: <1326219175-4529-1-git-send-email-josef@redhat.com>
- <20120404075520.GA5725@quack.suse.cz>
- <20120404164656.GA2097@localhost.localdomain>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42872] fstat()/ext3_iget() sometime takes over 2 minutes...
+Date: Wed, 4 Apr 2012 23:31:59 GMT
+Message-ID: <201204042331.q34NVxdL022415@bugzilla.kernel.org>
+References: <bug-42872-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Josef Bacik <josef@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120404164656.GA2097@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bugzilla.kernel.org ([198.145.19.204]:43102 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757286Ab2DDXb7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Apr 2012 19:31:59 -0400
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q34NVxL8022416
+	for <linux-ext4@vger.kernel.org>; Wed, 4 Apr 2012 23:31:59 GMT
+In-Reply-To: <bug-42872-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-04-12 12:46:57, Josef Bacik wrote:
-> On Wed, Apr 04, 2012 at 09:55:20AM +0200, Jan Kara wrote:
-> > On Tue 10-01-12 13:12:55, Josef Bacik wrote:
-> > > If we are journalling data (ie journal=data or big symlinks) we can discard
-> > > buffers and move them to different transactions to make sure they get cleaned up
-> > > properly.  The problem is b_modified could still be set from the last
-> > > transaction that touched it, so putting it on the currently running transaction
-> > > or setting it up to be put on the next transaction will run into problems if the
-> > > buffer gets reused in that transaction as the space accounting logic won't be
-> > > done, which will result in panics at commit time because t_nr_buffers will end
-> > > up being more than t_outstanding_credits.  Thanks to Jan Kara for pointing out
-> > > the other part of this problem a few months ago.  Thanks,
-> > > 
-> > > Signed-off-by: Josef Bacik <josef@redhat.com>
-> >   So I think I've nailed this down. Your feeling that the problem is with
-> > refiling buffer to BJ_Forget list of the running transaction was right. The
-> > missing piece to the puzzle was that journal_invalidatepage() can get
-> > called not only when underlying block is freed but also when someone
-> > flushes page cache. The traces I have suggest that someone has flushed page
-> > cache (likely of the block device), that moved buffer from the checkpoint
-> > list to BJ_Forget list of the running transaction and then the same running
-> > transaction tried to modify the buffer which triggered the accounting
-> > problem you spotted.
-> > 
-> > I have updated the changelog and pushed the patch to my tree (for JBD
-> > only). I'll duplicate the patch for JBD2 tomorrow.
-> > 
-> 
-> Ok now it's my turn to be unsure ;).  I thought invalidatepage could only be
-> called via truncate?  You say it happens when someone flushes pagecache, do you
-> mean like echo 3 > /proc/sys/vm/drop_caches?
-  Yup, or things like BLKFLSBUF ioctl. But yes, you are right they don't
-end up calling ext3_invalidatepage() I often get confused by the name of
-invalidate_mapping_pages()... Anyway ext3_invalidatepage() definitely gets
-called (I see that in my traces) and now I tend to thing it's from
-ext3_evict_inode(). The guy was using 2.6.37 kernel which doesn't have
-b22570d9abb3d844e65c15c8bc0d57a78129e3b4 so truncate_inode_pages() gets
-called from ext3_evict_inode() before the buffer is checkpointed and that
-causes the described scenario. But the guy claims he's seen the problem
-with 3.2 as well. So I guess I'll forward-port the buffer tracking patches
-and ask him to reproduce with 3.2.
+https://bugzilla.kernel.org/show_bug.cgi?id=42872
 
-								Honza
+
+
+
+
+--- Comment #4 from Petr Vandrovec <petr@vandrovec.name>  2012-04-04 23:31:57 ---
+I've looked at my box, and it says:
+
+[   9.329354] EXT3-fs (sda5): mounted filesystem with writeback data mode
+[  69.269122] EXT3-fs (sda1): mounted filesystem with writeback data mode
+[  69.606184] EXT3-fs (sdb2): mounted filesystem with writeback data mode
+[  69.641482] EXT3-fs (sdf1): mounted filesystem with writeback data mode
+[  69.677489] EXT3-fs (sdg1): mounted filesystem with writeback data mode
+[  69.792985] EXT3-fs (sdh1): mounted filesystem with writeback data mode
+[  69.883098] EXT3-fs (sdc1): mounted filesystem with writeback data mode
+
+So I'm already using writeback...
+
+But for unknown reason system did not reboot for last 6 days and 5 hours.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
