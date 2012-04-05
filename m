@@ -1,45 +1,69 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42872] fstat()/ext3_iget() sometime takes over 2 minutes...
-Date: Wed, 4 Apr 2012 23:31:59 GMT
-Message-ID: <201204042331.q34NVxdL022415@bugzilla.kernel.org>
-References: <bug-42872-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Commit c1a1e7fc24d6 causes segfault in ext2fs_new_inode
+Date: Wed, 04 Apr 2012 20:56:02 -0700
+Message-ID: <4F7D17D2.40009@redhat.com>
+References: <20120330125726.GA26221@amd.home.annexia.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Sami Liedes <sami.liedes@iki.fi>
+To: "Richard W.M. Jones" <rjones@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:43102 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757286Ab2DDXb7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Apr 2012 19:31:59 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q34NVxL8022416
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Apr 2012 23:31:59 GMT
-In-Reply-To: <bug-42872-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:17027 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752918Ab2DED4O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Apr 2012 23:56:14 -0400
+In-Reply-To: <20120330125726.GA26221@amd.home.annexia.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42872
+On 3/30/12 5:57 AM, Richard W.M. Jones wrote:
+> [I'm tracking this issue here:
+> https://bugzilla.redhat.com/show_bug.cgi?id=808421]
+> 
+> febootstrap uses the ext2fs library to construct an ext2 filesystem.
+> 
+> Since we updated to the latest version in git, febootstrap segfaults
+> in ext2fs_find_first_zero_generic_bmap (called from ext2fs_new_inode).
+> There's a complete stack trace in the bug above.
+> 
+> I'm not claiming that we are calling this library correctly, but,
+> you know, "it always worked until now".
 
+Sami, can you take a look at this one?  It seems that your commit does
+not handle 32-bit bitmaps.
 
+Thanks,
+-Eric
 
+> Here is the calling code:
+> 
+> https://github.com/libguestfs/febootstrap/blob/636a80b5a70382f21da47c44a0acd3efa2bc7fcf/helper/ext2.c#L142
+> 
+> git bisect points to this change being the one which causes the
+> problem:
+> 
+> c1a1e7fc24d6e37f931bbb8eeb29c90243f0a55d is the first bad commit
+> commit c1a1e7fc24d6e37f931bbb8eeb29c90243f0a55d
+> Author: Sami Liedes <sami.liedes@iki.fi>
+> Date:   Sat Mar 10 22:36:12 2012 +0200
+> 
+>     libext2fs: Implement ext2fs_find_first_zero_generic_bmap().
+>     
+>     This function searches a bitmap for the first zero bit within a range.
+>     It checks if there is a bitmap backend specific implementation
+>     available (if the relevant field in bitmap_ops is non-NULL). If not,
+>     it uses a generic and slow method by repeatedly calling test_bmap() in
+>     a loop. Also change ext2fs_new_inode() to use this new function.
+>     
+>     This change in itself does not result in a large speedup, rather it
+>     refactors the code in preparation for the introduction of a faster
+>     find_first_zero() for bitarray based bitmaps.
+>     
+>     Signed-off-by: Sami Liedes <sami.liedes@iki.fi>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> 
+> Rich.
+> 
 
-
---- Comment #4 from Petr Vandrovec <petr@vandrovec.name>  2012-04-04 23:31:57 ---
-I've looked at my box, and it says:
-
-[   9.329354] EXT3-fs (sda5): mounted filesystem with writeback data mode
-[  69.269122] EXT3-fs (sda1): mounted filesystem with writeback data mode
-[  69.606184] EXT3-fs (sdb2): mounted filesystem with writeback data mode
-[  69.641482] EXT3-fs (sdf1): mounted filesystem with writeback data mode
-[  69.677489] EXT3-fs (sdg1): mounted filesystem with writeback data mode
-[  69.792985] EXT3-fs (sdh1): mounted filesystem with writeback data mode
-[  69.883098] EXT3-fs (sdc1): mounted filesystem with writeback data mode
-
-So I'm already using writeback...
-
-But for unknown reason system did not reboot for last 6 days and 5 hours.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
