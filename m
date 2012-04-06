@@ -1,65 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Commit c1a1e7fc24d6 causes segfault in ext2fs_new_inode
-Date: Fri, 06 Apr 2012 12:49:22 -0700
-Message-ID: <4F7F48C2.9000703@redhat.com>
-References: <20120330125726.GA26221@amd.home.annexia.org> <20120330131936.GB26221@amd.home.annexia.org> <4F760BC2.4070401@redhat.com> <20120406191401.GA8816@sli.dy.fi> <4F7F41C1.9010208@redhat.com> <4F7F448D.5040808@redhat.com> <20120406194742.GB8816@sli.dy.fi>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Richard W.M. Jones" <rjones@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Sami Liedes <sami.liedes@iki.fi>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/3] libext2fs: use correct types in ext2fs_find_first_zero_block_bitmap2()
+Date: Fri,  6 Apr 2012 11:59:05 -0700
+Message-ID: <1333738746-5857-2-git-send-email-tytso@mit.edu>
+References: <20120406185759.GA5584@thunk.org>
+ <1333738746-5857-1-git-send-email-tytso@mit.edu>
+Cc: rjones@redhat.com, sami.liedes@iki.fi,
+	Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30881 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757671Ab2DFTtb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Apr 2012 15:49:31 -0400
-In-Reply-To: <20120406194742.GB8816@sli.dy.fi>
+Received: from li9-11.members.linode.com ([67.18.176.11]:60250 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757885Ab2DFTyN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Apr 2012 15:54:13 -0400
+In-Reply-To: <1333738746-5857-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Fortunately nothing was using this inline function, so we'll just fix
+the types in its function signature, which were nonsensical (this was
+caused by a cut-and-paste error).
 
-On 4/6/12 12:47 PM, Sami Liedes wrote:
-> On Fri, Apr 06, 2012 at 12:31:25PM -0700, Eric Sandeen wrote:
->> However, there seems to be some unstated (?) naming convention about foo_bmap
->> (for 64-bit bitmaps) vs. foo_bitmap (for 32-bit bitmaps), and "bitmap2"
->> functions which seem to take 64-bit args, etc.  I'm not sure if this new
->> function needs to follow similar conventions...
-> 
-> I guess... I thought I had figured those out when I sent the patch,
-> but I'm not so sure anymore :-)
-> 
->> My patch is probably overkill, so I won't bother to send it unless Ted
->> thinks something like that is necessary.  Documenting the api preservation
->> framework for 64-bit bitmaps would be really helpful, I think.
-> 
-> Yeah, I'm sorry it took me a while to look at this and for causing you
-> extra work.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/bitops.h |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-No worries, I could have waited, too ;)  Thanks!
-
-- -Eric
+diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
+index 9382790..ae2142c 100644
+--- a/lib/ext2fs/bitops.h
++++ b/lib/ext2fs/bitops.h
+@@ -153,9 +153,9 @@ extern void ext2fs_fast_unmark_inode_bitmap2(ext2fs_inode_bitmap bitmap,
+ extern int ext2fs_fast_test_inode_bitmap2(ext2fs_inode_bitmap bitmap,
+ 					  ext2_ino_t inode);
+ extern errcode_t ext2fs_find_first_zero_block_bitmap2(ext2fs_block_bitmap bitmap,
+-						      ext2_ino_t start,
+-						      ext2_ino_t end,
+-						      ext2_ino_t *out);
++						      blk64_t start,
++						      blk64_t end,
++						      blk64_t *out);
+ extern errcode_t ext2fs_find_first_zero_inode_bitmap2(ext2fs_inode_bitmap bitmap,
+ 						      ext2_ino_t start,
+ 						      ext2_ino_t end,
+@@ -605,9 +605,9 @@ _INLINE_ int ext2fs_fast_test_inode_bitmap2(ext2fs_inode_bitmap bitmap,
+ }
  
-> 	Sami
+ _INLINE_ errcode_t ext2fs_find_first_zero_block_bitmap2(ext2fs_block_bitmap bitmap,
+-							ext2_ino_t start,
+-							ext2_ino_t end,
+-							ext2_ino_t *out)
++							blk64_t start,
++							blk64_t end,
++							blk64_t *out)
+ {
+ 	__u64 o;
+ 	errcode_t rv;
+-- 
+1.7.10.rc3
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
-Comment: GPGTools - http://gpgtools.org
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iQIcBAEBAgAGBQJPf0jAAAoJECCuFpLhPd7g2V8P/Rdmakt3hb1mh0C7eu01Cpxw
-X16f5Axzhsn0c0bfZsKeEZLB6bM+5TYdlARXATxfnVEZ/upbyCsF6bqZ0I5JxHj5
-wTRuB7pwl8E+7vBANOu7aI7YT1Vb0eM2i3zIRONeqkYYYbRGllKeUPCdibnL2T5+
-ybiAp2tXLR665LYtt0xcHVQ63L0NfYiditmpoMpxWKNfbu4OGhnpTw6bouzzdg1f
-KeXQkMdd26oIl8myrp/zkuHCUtja9aSmv4KrcMcxOuFyCqCuyrQpwDx78fmKpnn8
-njy/dqI2QY9c/FmScYcXyAQ6/SJ2gkzjm60dkLT8DvPYLky0ytdQQ3JeFh/kBZX9
-iGnRSj+fPjujVtzG73x5d5Q8ayzr6jGR94Vm/krvBJ4Yz5GBJkcuR16/8Lmze8au
-oKbaKx4PrvuRqD4PEKzmfkUpVFK0GDbXkKgG0wycU/qaFa8hrTrjIo3web3wNbUc
-lZExrKB4Pazu65xrQHQih1uENzlJlC1vkhi99oqnrRDmc4/bvuprp//X9SxboGV+
-nglwMEEFL7djPM4GSUMWEFz3qTDLZIXqjPV9XfJJvk6G62BbOHn2Q5YfIsyjNQOx
-Wr26EkiGui5OXRAAJ9EYdqtSjip1CPyM05CibOQJeZLDZREmchgJKE0PMcLdWziV
-y0l4cQNDitg/8ruuBMKk
-=jMuN
------END PGP SIGNATURE-----
