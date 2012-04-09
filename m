@@ -1,176 +1,146 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V4 17/22] ext4: let empty_dir handle inline dir.
-Date: Fri, 6 Apr 2012 18:21:56 -0600
-Message-ID: <B656C5E6-2795-4355-ABE4-6D9334CB7AFB@dilger.ca>
-References: <4F41EF95.2000909@tao.ma> <1329721316-4955-1-git-send-email-tm@tao.ma> <1329721316-4955-17-git-send-email-tm@tao.ma>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/3] libext2fs: add 32-bit compat code for ext2fs_find_first_zero_generic_bmap()
+Date: Mon, 09 Apr 2012 09:14:41 -0700
+Message-ID: <4F830AF1.9090501@redhat.com>
+References: <20120406185759.GA5584@thunk.org> <1333738746-5857-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	rjones@redhat.com, sami.liedes@iki.fi
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:19829 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758431Ab2DGATh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Apr 2012 20:19:37 -0400
-In-Reply-To: <1329721316-4955-17-git-send-email-tm@tao.ma>
+Received: from mx1.redhat.com ([209.132.183.28]:36195 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932069Ab2DIQOw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Apr 2012 12:14:52 -0400
+In-Reply-To: <1333738746-5857-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-02-20, at 12:01 AM, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On 4/6/12 11:59 AM, Theodore Ts'o wrote:
+> The lack of 32-bit support was causing febootstrap to crash since it
+> wasn't passing EXT2_FLAG_64BITS when opening the file system, so we
+> were still using the legacy bitmaps.
+
+Thanks Ted, these look good (and similar to the patch path I was going down)
+
+-Eric
+
+> Addresses-Red-Hat-Bugzilla: #808421
 > 
-> empty_dir is used when deleting a dir. So it should handle
-> inline dir properly.
-> 
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
-> fs/ext4/inline.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> fs/ext4/namei.c  |    8 ++++++
-> fs/ext4/xattr.h  |    6 ++++
-> 3 files changed, 83 insertions(+), 0 deletions(-)
+>  lib/ext2fs/ext2fs.h       |    3 +++
+>  lib/ext2fs/gen_bitmap.c   |   25 +++++++++++++++++++++++++
+>  lib/ext2fs/gen_bitmap64.c |   32 ++++++++++++++++++++++++++++----
+>  3 files changed, 56 insertions(+), 4 deletions(-)
 > 
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index 3126ac3..6612ce1 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -1436,6 +1436,75 @@ out:
-> 	return err;
-> }
-> 
-> +int empty_inline_dir(struct inode *dir, int *has_inline_data)
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 68e94a3..fda6ade 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1169,6 +1169,9 @@ extern errcode_t ext2fs_set_generic_bitmap_range(ext2fs_generic_bitmap bmap,
+>  						 errcode_t magic,
+>  						 __u32 start, __u32 num,
+>  						 void *in);
+> +extern errcode_t ext2fs_find_first_zero_generic_bitmap(ext2fs_generic_bitmap bitmap,
+> +						       __u32 start, __u32 end,
+> +						       __u32 *out);
+>  
+>  /* gen_bitmap64.c */
+>  
+> diff --git a/lib/ext2fs/gen_bitmap.c b/lib/ext2fs/gen_bitmap.c
+> index 6679bff..0bff854 100644
+> --- a/lib/ext2fs/gen_bitmap.c
+> +++ b/lib/ext2fs/gen_bitmap.c
+> @@ -504,6 +504,30 @@ static int ext2fs_test_clear_generic_bitmap_range(ext2fs_generic_bitmap bitmap,
+>  	return ext2fs_mem_is_zero(ADDR + start_byte, len_byte);
+>  }
+>  
+> +errcode_t ext2fs_find_first_zero_generic_bitmap(ext2fs_generic_bitmap bitmap,
+> +						__u32 start, __u32 end,
+> +						__u32 *out)
 > +{
-> +	int err, inline_size;
-> +	struct ext4_iloc iloc;
-> +	void *inline_pos;
-> +	unsigned int offset;
-> +	struct ext4_dir_entry_2 *de, *de1;
-> +	int ret = 1;
+> +	blk_t b;
 > +
-> +	err = ext4_get_inode_loc(dir, &iloc);
-> +	if (err) {
-> +		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
-> +				 err, dir->i_ino);
-> +		return 1;
+> +	if (start < bitmap->start || end > bitmap->end || start > end) {
+> +		ext2fs_warn_bitmap2(bitmap, EXT2FS_TEST_ERROR, start);
+> +		return EINVAL;
 > +	}
 > +
-> +	down_read(&EXT4_I(dir)->xattr_sem);
-> +	if (!ext4_has_inline_data(dir)) {
-> +		*has_inline_data = 0;
-> +		goto out;
-> +	}
-> +
-> +	de = ext4_get_inline_entry(dir, &iloc, 0,
-> +				   &inline_pos, &inline_size);
-> +	de1 = ext4_get_inline_entry(dir, &iloc,
-> +			ext4_rec_len_from_disk(de->rec_len, inline_size),
-> +			&inline_pos, &inline_size);
-> +	if (le32_to_cpu(de->inode) != dir->i_ino ||
-> +			!le32_to_cpu(de1->inode) ||
-> +			strcmp(".", de->name) ||
-> +			strcmp("..", de1->name)) {
-> +		ext4_warning(dir->i_sb,
-> +			     "bad directory (dir #%lu) - no `.' or `..'",
-> +			     dir->i_ino);
-> +		ret = 1;
-> +		goto out;
-> +	}
-> +
-> +	offset = ext4_rec_len_from_disk(de->rec_len, inline_size) +
-> +		 ext4_rec_len_from_disk(de1->rec_len, inline_size);
-> +	while (offset < dir->i_size) {
-> +		de = ext4_get_inline_entry(dir, &iloc, offset,
-> +					   &inline_pos, &inline_size);
-> +		if (ext4_check_dir_entry(dir, NULL, de,
-> +					 iloc.bh, inline_pos,
-> +					 inline_size, offset)) {
-> +			ext4_warning(dir->i_sb,
-> +				     "bad inline directory (dir #%lu) - "
-> +				     "inode %u, rec_len %u, name_len %d"
-> +				     "inline size %d\n",
-> +				     dir->i_ino, le32_to_cpu(de->inode),
-> +				     le16_to_cpu(de->rec_len), de->name_len,
-> +				     inline_size);
-> +			ret = 1;
-> +			goto out;
+> +	while (start <= end) {
+> +		b = ext2fs_test_bit(start - bitmap->start, bitmap->bitmap);
+> +		if (!b) {
+> +			*out = start;
+> +			return 0;
 > +		}
-
-Most of the code in this function is duplicated with empty_dir().  Instead of
-duplicating everything here, it seems that it is possible to just use the code
-in empty_dir() with a few small changes:
-
-- a helper function which reads the first directory block instead of ext4_bread() 
-> +		if (le32_to_cpu(de->inode)) {
-> +			ret = 0;
-> +			goto out;
-> +		}
-> +		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
+> +		start++;
 > +	}
 > +
-> +out:
-> +	up_read(&EXT4_I(dir)->xattr_sem);
-> +	brelse(iloc.bh);
-> +	return ret;
+> +	return ENOENT;
 > +}
 > +
-> int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
-> {
-> 	int ret;
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 9f7002c..b6b718e 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -2015,6 +2015,14 @@ static int empty_dir(struct inode *inode)
-> 	struct super_block *sb;
-> 	int err = 0;
-> 
-> +	if (ext4_has_inline_data(inode)) {
-> +		int has_inline_data = 1;
 > +
-> +		err = empty_inline_dir(inode, &has_inline_data);
-> +		if (has_inline_data)
-> +			return err;
+>  int ext2fs_test_block_bitmap_range(ext2fs_block_bitmap bitmap,
+>  				   blk_t block, int num)
+>  {
+> @@ -558,3 +582,4 @@ void ext2fs_unmark_block_bitmap_range(ext2fs_block_bitmap bitmap,
+>  		ext2fs_fast_clear_bit(block + i - bitmap->start,
+>  				      bitmap->bitmap);
+>  }
+> +
+> diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+> index e765d2c..07d6d52 100644
+> --- a/lib/ext2fs/gen_bitmap64.c
+> +++ b/lib/ext2fs/gen_bitmap64.c
+> @@ -770,12 +770,36 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+>  {
+>  	int b;
+>  
+> -	if (bitmap->bitmap_ops->find_first_zero)
+> -		return bitmap->bitmap_ops->find_first_zero(bitmap, start, end, out);
+> +	if (!bitmap)
+> +		return EINVAL;
+>  
+> -	if (!bitmap || !EXT2FS_IS_64_BITMAP(bitmap) || bitmap->cluster_bits)
+> +	if (EXT2FS_IS_64_BITMAP(bitmap) && bitmap->bitmap_ops->find_first_zero)
+> +		return bitmap->bitmap_ops->find_first_zero(bitmap, start,
+> +							   end, out);
+> +
+> +	if (EXT2FS_IS_32_BITMAP(bitmap)) {
+> +		blk_t blk = 0;
+> +		errcode_t retval;
+> +
+> +		if (((start) & ~0xffffffffULL) ||
+> +		    ((end) & ~0xffffffffULL)) {
+> +			ext2fs_warn_bitmap2(bitmap, EXT2FS_TEST_ERROR, start);
+> +			return EINVAL;
+> +		}
+> +
+> +		retval = ext2fs_find_first_zero_generic_bitmap(bitmap, start,
+> +							       end, &blk);
+> +		if (retval == 0)
+> +			*out = blk;
+> +		return retval;
 > +	}
 > +
-> 	sb = inode->i_sb;
-> 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
-> 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index 9991143..6ccfa8d 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -176,6 +176,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
-> 				    struct inode *dir,
-> 				    struct ext4_dir_entry_2 *de_del,
-> 				    struct buffer_head *bh);
-> +extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
-> # else  /* CONFIG_EXT4_FS_XATTR */
-> 
-> static inline int
-> @@ -373,6 +374,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
-> {
-> 	return 0;
-> }
+> +	if (!EXT2FS_IS_64_BITMAP(bitmap))
+>  		return EINVAL;
+>  
+> +	start >>= bitmap->cluster_bits;
+> +	end >>= bitmap->cluster_bits;
 > +
-> +static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
-> +{
-> +	return 0;
-> +}
-> # endif  /* CONFIG_EXT4_FS_XATTR */
-> 
-> #ifdef CONFIG_EXT4_FS_SECURITY
-> -- 
-> 1.7.0.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
+>  	if (start < bitmap->start || end > bitmap->end || start > end) {
+>  		warn_bitmap(bitmap, EXT2FS_TEST_ERROR, start);
+>  		return EINVAL;
+> @@ -784,7 +808,7 @@ errcode_t ext2fs_find_first_zero_generic_bmap(ext2fs_generic_bitmap bitmap,
+>  	while (start <= end) {
+>  		b = bitmap->bitmap_ops->test_bmap(bitmap, start);
+>  		if (!b) {
+> -			*out = start;
+> +			*out = start << bitmap->cluster_bits;
+>  			return 0;
+>  		}
+>  		start++;
 
