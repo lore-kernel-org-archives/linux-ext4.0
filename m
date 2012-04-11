@@ -1,74 +1,72 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH] tests: add test for symlink extent
-Date: Tue, 10 Apr 2012 23:06:50 -0600
-Message-ID: <1AA51704-1130-44B6-A891-203FDCDBF83D@whamcloud.com>
-References: <1334093657-32559-1-git-send-email-adilger@whamcloud.com> <20120411034547.GD12044@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH] ext2: do not register write_super within VFS
+Date: Wed, 11 Apr 2012 14:24:34 +0300
+Message-ID: <1334143474.13842.0.camel@sauron.fi.intel.com>
+References: <1333446558-28171-1-git-send-email-dedekind1@gmail.com>
+	 <20120403223632.GA5288@quack.suse.cz>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-NymKE9nrLlawZPeWzkX1"
+Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:50688 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751910Ab2DKFET convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Apr 2012 01:04:19 -0400
-Received: by iagz16 with SMTP id z16so769717iag.19
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Apr 2012 22:04:18 -0700 (PDT)
-In-Reply-To: <20120411034547.GD12044@thunk.org>
+Received: from mga11.intel.com ([192.55.52.93]:12428 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754553Ab2DKLVu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Apr 2012 07:21:50 -0400
+In-Reply-To: <20120403223632.GA5288@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-04-10, at 9:45 PM, Ted Ts'o wrote:
-> On Tue, Apr 10, 2012 at 03:34:17PM -0600, Andreas Dilger wrote:
->> Long symlinks with the EXT4_EXTENTS_FL set may have been created at
->> one time due to the EXTENTS_FL being inherited from the parent dir.
->> While the original cause of such symlinks has been fixed in the
->> upstream kernel commit 2dc6b0d48ca0599837df21b14bb8393d0804af57,
->> such symlinks may still exist in the wild.
-> 
-> Huh?  We're still creating long symlinks with extents, and I'm not
-> sure why this would be a problem.  I don't mind a test for it, but it
-> seems strange that (a) you think e2fsprogs wouldn't be able to deal
-> with it, and (b) that we aren't doing it any more.  I just tested with
-> a 3.3 kernel with the patches from the ext4's 3.4 merge window, and it
-> created a symlink with an extent.
 
-My bad.  I had examined some symlinks on an ext4 filesystem to see if they had the EXT4_EXTENTS_FL set, but didn't think to check long symlinks, so I assumed this was an anachronism and rewrote the patch description while submitting it...  Originally it read:
+--=-NymKE9nrLlawZPeWzkX1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-    Long symlinks with the EXT4_EXTENTS_FL set should no longer be
-    considered as corrupt, since these are created by default with
-    new kernels using ext4 as the filesystem type.  This has not
-    impacted Lustre in the past because extents are only enabled on
-    the OST, while symlinks are only created on the MDT where extents
-    are never enabled.
-    
-    However, now that distros are using ext4 as the base filesystem
-    type, if the lustre-patched e2fsprogs RPM is installed it will
-    incorrectly consider all such long symlinks as bad and remove them.
+On Wed, 2012-04-04 at 00:36 +0200, Jan Kara wrote:
+> On Tue 03-04-12 12:49:18, Artem Bityutskiy wrote:
+> > From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> >=20
+> > Jan Kara removed 'sb->s_dirt' VFS flag references, so we do not need to
+> > register the ext2 'ext2_write_super()' method in the VFS superblock ope=
+rations,
+> > because 'sb->s_dirt' won't be ever set to 1 and VFS won't ever call
+> > '->write_super()' anyway. Thus, remove the method.
+> >=20
+> > Tested using xfstests.
+> >=20
+> > Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+>   Thanks. Added to my tree.
 
-We had previously hit problems with Lustre e2fsprogs because we originally flagged such symlinks as errors, and there was no existing test which had such a symlink.  The description clearly wasn't useful for upstream submission, but the test is still useful.
+Jan, I do not see this patch in 'for_next' of your tree.
 
-Cheers, Andreas
+--=20
+Best Regards,
+Artem Bityutskiy
 
-> See line 872 of fs/ext4/ialloc.c:
-> 
-> 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
-> 		/* set extent flag only for directory, file and normal symlink*/
-> 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
-> 			ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-> 			ext4_ext_tree_init(handle, inode);
-> 		}
-> 	}
-> 
-> 						- Ted
+--=-NymKE9nrLlawZPeWzkX1
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
 
-Cheers, Andreas
---
-Andreas Dilger                       Whamcloud, Inc.
-Principal Lustre Engineer            http://www.whamcloud.com/
+iQIcBAABAgAGBQJPhWnyAAoJECmIfjd9wqK0LuMP+gPmVxIEz0+8b2WsUrZEFOjR
+Hz6GCx6X/Ws4rdppgCmF/SM3hPuY+Y59E+7KGYUg36TZcF3tZp5/KTuGdU8DTHb/
+g98AbaNXjrE6uKLzZkCuzTy21k5mrA0YrkiRhhxhtKxiXa2dRmYvQgQVp0j6cdN5
+PomC/rAcC6VCHy7MXOUQXcEfV2pWe95rmXY70qFBGMAUwOLCfsCj9GD0SAxrKedW
+MLw8GnpwYKUDzrPxsgaeYEJPGXmZb3qU6+xLHPqoiYa4JmGeerj/K5e2Fkc5S0ab
+wdMS2rHLT6MS/xuFM3uE4UqEOQH0Zok5RA9Hqfa+Hg8njaRoJvJvvmpTirIJE3yB
+i7wR6bV+E24fNocFAhgRx6AyRfrkPoNUw5Ps6MiCfCqMKC7Ujj0r7PvQqlSecWVe
+SDYV122lAxCXaCwhFsggBXmoEMFqkxyXCLjCLOXtOHPVJbYSMA+PfDNBLgk9yueN
+83zdnKlp0vfTSz2lIxSl+hMwezKAl/i450k3KwUqDMxly+hSkKTARKtKpJQcldwq
+WXNXOaO1hWTEESx+vyaKnDhxoesfSA8171TUBgr6qmQYzSK3cvWGzXhFTDHWyiiE
+KCJi/mdjRRt+rek2uVMnHF9Dv+7w/fGTbm7hQbM3+ME5U8f+1cB46VVbWK2+CwfC
+Q2f6N56qRE3C6KHLEeeg
+=tqn1
+-----END PGP SIGNATURE-----
 
-
-
+--=-NymKE9nrLlawZPeWzkX1--
 
