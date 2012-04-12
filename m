@@ -1,66 +1,93 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH v2 1/4] ext4: Remove useless marking of superblock dirty
-Date: Thu, 12 Apr 2012 10:20:49 +0300
-Message-ID: <1334215249.13842.36.camel@sauron.fi.intel.com>
-References: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
-	 <1333367140-28370-2-git-send-email-artem.bityutskiy@linux.intel.com>
-Reply-To: dedekind1@gmail.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42986] ext2_fs.h requires undefined type umode_t
+Date: Thu, 12 Apr 2012 11:37:06 GMT
+Message-ID: <201204121137.q3CBb6Fp027166@bugzilla.kernel.org>
+References: <bug-42986-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-b6aZcQLpXvmyfOFnGI3N"
-Cc: Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1333367140-28370-2-git-send-email-artem.bityutskiy@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bugzilla.kernel.org ([198.145.19.204]:40222 "EHLO
+	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756759Ab2DLLhH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Apr 2012 07:37:07 -0400
+Received: from bugzilla.kernel.org (localhost [127.0.0.1])
+	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q3CBb6Wo027167
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Apr 2012 11:37:06 GMT
+In-Reply-To: <bug-42986-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+https://bugzilla.kernel.org/show_bug.cgi?id=3D42986
 
 
---=-b6aZcQLpXvmyfOFnGI3N
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Denys Vlasenko <vda.linux@googlemail.com> changed:
 
-On Mon, 2012-04-02 at 14:45 +0300, Artem Bityutskiy wrote:
-> From: Jan Kara <jack@suse.cz>
->=20
-> Commit a0375156 properly notes that superblock doesn't need to be marked
-> as dirty when only number of free inodes / blocks / number of directories
-> changes since that is recomputed on each mount anyway. However that comme=
-nt
-> leaves some unnecessary markings as dirty in place. Remove these.
->=20
-> Artem: tested using xfstests for both journalled and non-journalled ext4.
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+                 CC|                            |vda.linux@googlemail.c=
+om
 
-Hi Ted, what would be the fate of this patch-set?
+
+
+
+--- Comment #13 from Denys Vlasenko <vda.linux@googlemail.com>  2012-04=
+-12 11:37:05 ---
+=46or the record: busybox's mkfs_ext2.c uses linux/ext2_fs.h.
+If its include is commented out, the following errors pop out:
+
+error: =E2=80=98EXT2_DFL_MAX_MNT_COUNT=E2=80=99 undeclared (first use i=
+n this function)
+error: =E2=80=98EXT2_DYNAMIC_REV=E2=80=99 undeclared (first use in this=
+ function)
+error: =E2=80=98EXT2_ERRORS_DEFAULT=E2=80=99 undeclared (first use in t=
+his function)
+error: =E2=80=98EXT2_FEATURE_COMPAT_DIR_INDEX=E2=80=99 undeclared (firs=
+t use in this function)
+error: =E2=80=98EXT2_FEATURE_COMPAT_RESIZE_INO=E2=80=99 undeclared (fir=
+st use in this function)
+error: =E2=80=98EXT2_FEATURE_COMPAT_SUPP=E2=80=99 undeclared (first use=
+ in this function)
+error: =E2=80=98EXT2_FEATURE_INCOMPAT_FILETYPE=E2=80=99 undeclared (fir=
+st use in this function)
+error: =E2=80=98EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER=E2=80=99 undeclared=
+ (first use in this
+function)
+error: =E2=80=98EXT2_FT_DIR=E2=80=99 undeclared (first use in this func=
+tion)
+error: =E2=80=98EXT2_GOOD_OLD_FIRST_INO=E2=80=99 undeclared (first use =
+in this function)
+error: =E2=80=98EXT2_MAX_BLOCK_SIZE=E2=80=99 undeclared (first use in t=
+his function)
+error: =E2=80=98EXT2_MIN_BLOCK_LOG_SIZE=E2=80=99 undeclared (first use =
+in this function)
+error: =E2=80=98EXT2_MIN_BLOCK_SIZE=E2=80=99 undeclared (first use in t=
+his function)
+error: =E2=80=98EXT2_NDIR_BLOCKS=E2=80=99 undeclared (first use in this=
+ function)
+error: =E2=80=98EXT2_OS_LINUX=E2=80=99 undeclared (first use in this fu=
+nction)
+error: =E2=80=98EXT2_ROOT_INO=E2=80=99 undeclared (first use in this fu=
+nction)
+error: =E2=80=98EXT2_SUPER_MAGIC=E2=80=99 undeclared (first use in this=
+ function)
+error: invalid application of =E2=80=98sizeof=E2=80=99 to incomplete ty=
+pe =E2=80=98struct ext2_inode=E2=80=99
+error: invalid use of undefined type =E2=80=98struct ext2_group_desc=E2=
+=80=99
+
+struct ext2_inode is complex, I'd prefer to use system header than main=
+taining
+my own copy....
 
 --=20
-Best Regards,
-Artem Bityutskiy
-
---=-b6aZcQLpXvmyfOFnGI3N
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAABAgAGBQJPhoJRAAoJECmIfjd9wqK0n3EP/2/Xy/UuY3Eq5qssfgq4EUjD
-pMla7CFxOQq31iq89DXSjgJSd0CPyaYQrFr24szxE8Ts0VEAgkBmB5JfuOkG7KIp
-TV2ZvjG/FmYKgo0rN/U+lDWMNdgzLPOpvUK/3rfmWla/844uwacc6qPjZbgdA41m
-yQ44ZUjnL5RNxnnYXBtXqVa509stNr0c1gLYkAdRIt5oLWmQz/XR0RMswe904x/o
-PdJ9YNQk4qlR0oGWH5Bv5gmoFB2jYxrWDUDA3mCcQCQf67Uyk29EYVN+qZypUtq4
-hxP+VPXSlqrf5SitjMiYVfk2uyiKtgfALxc9mMC1NnzkZYlpy/2XWBUanHCd38AR
-M6D1dZ0u45QeSUpBFX245ld9q98MEHhFMf0cu3e7Xb2pyr6C+m+RkFwg0hSygwbu
-NUNuG02/1h6BXEwEYNihxEX/H3Z9/QrihyxspD5j7wu2y11pZdrMpL9Cgll2Lver
-kSMVFCXyGZBsL3C0qjg1zv5cbf4Wih4XZM6iHyBVxTG+oUR3L3gT4WhWhudu8aaS
-wTT+xiJa9pBLlC/zILNU8OxvEjjyXgsYBlI5gxV6hobf/iZca3lMDTRDtHMEEHwn
-gZGAyEIXmoTwCtp5YBmxE8jfMDjl5YRxBgOMpUppIo+bf3N70ZRmPB/PFy0QbKn9
-AxAIwSt0w8adTOOpppqb
-=rTWs
------END PGP SIGNATURE-----
-
---=-b6aZcQLpXvmyfOFnGI3N--
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=3Demai=
+l
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
