@@ -1,102 +1,153 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
- empty
-Date: Fri, 13 Apr 2012 00:06:59 +0800
-Message-ID: <20120412160658.GA9697@gmail.com>
-References: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Date: Thu, 12 Apr 2012 16:49:48 -0400
+Message-ID: <20120412204948.GE6667@fieldses.org>
+References: <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
+ <20120312154921.GB17153@pad.fieldses.org>
+ <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <4F5FB771.9010805@fastmail.fm>
+ <20120313212947.GK31995@pad.fieldses.org>
+ <4F60AC0D.9020204@itwm.fraunhofer.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jouni Siren <jouni.siren@iki.fi>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:56860 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932965Ab2DLQAi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Apr 2012 12:00:38 -0400
-Received: by dake40 with SMTP id e40so2675784dak.11
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Apr 2012 09:00:38 -0700 (PDT)
+Cc: "J. Bruce Fields" <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-97jfqw80gc6171pxa8y+qA@public.gmane.org>,
+	Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org
+To: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4F60AC0D.9020204-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 12, 2012 at 05:47:41PM +0300, Jouni Siren wrote:
-> Hi,
-> 
-> I recently ran into problems when writing large blocks of data (more than about 2 GB) with a single call, if there is already some data in the write buffer. The problem seems to be specific to ext4, or at least it does not happen when writing to nfs on the same system. Also, the problem does not happen, if the write buffer is flushed before the large write.
-> 
-> The following C++ program should write a total of 4294967304 bytes, but I end up with a file of size 2147483664.
-> 
-> #include <fstream>
-> 
-> int
-> main(int argc, char** argv)
-> {
->   std::streamsize data_size = (std::streamsize)1 << 31;
->   char* data = new char[data_size];
-> 
->   std::ofstream output("test.dat", std::ios_base::binary);
->   output.write(data, 8);
->   output.write(data, data_size);
->   output.write(data, data_size);
->   output.close();
-> 
->   delete[] data;
->   return 0;
-> }
-> 
-> 
-> The relevant part of strace is the following:
-> 
-> open("test.dat", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3
-> writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}], 2) = -2147483640
-> writev(3, [{0xffffffff80c6d258, 2147483648}, {"", 2147483648}], 2) = -1 EFAULT (Bad address)
-> write(3, "\0\0\0\0\0\0\0\0", 8)         = 8
-> close(3)                                = 0
-> 
-> 
-> The first two writes are combined into a single writev call that reports having written -2147483640 bytes. This is the same as 8 + 2147483648, when interpreted as a signed 32-bit integer. After the first call, everything more or less fails. This happens on a Linux system, where uname -a returns
-> 
-> Linux alm01 2.6.32-220.7.1.el6.x86_64 #1 SMP Tue Mar 6 15:45:33 CST 2012 x86_64 x86_64 x86_64 GNU/Linux
-> 
-> 
-> I believe that the bug can be found in file.c, function ext4_file_write, where variable ret has type int. Function generic_file_aio_write returns the number of bytes written as a ssize_t, and the returned value is stored in ret and eventually returned by ext4_file_write. If the number of bytes written is more than INT_MAX, the value returned by ext4_file_write will be incorrect.
-> 
-> If you need more information on the problem, I will be happy to provide it.
+On Wed, Mar 14, 2012 at 03:32:45PM +0100, Bernd Schubert wrote:
+> On 03/13/2012 10:29 PM, J. Bruce Fields wrote:
+> > On Tue, Mar 13, 2012 at 10:09:05PM +0100, Bernd Schubert wrote:
+> >> Hmm, there must have gone something wrong on merging,
+> >
+> > In that case one approach would be to rebase your last-sent patches on
+> > to the same base as Ted's versions, confirm that one still works and the
+> > other doesn't, and do a diff....
+> >
+> >> my own test
+> >> also fails
+> >>
+> >> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
+> >>
+> >> (Sorry, it does not say 'failure', but one needs to compare the file
+> >> names and telldir-offset numbers)
+> >>
+> >> I think I will continue in the morning as its already 1 a.m. here.
+> >
+> > OK, thanks for following up!
 
-Hi Jouni,
+Stupid question: is there any fundamental feature of ext4 this depends
+on, or would this fix work equally well for fs/ext3?
 
-Indeed, I think that it is a bug.  So the solution is straightforward.
-Could you please try this patch?  Thank you.
+--b.
 
-Regards,
-Zheng
-
-From: Zheng Liu <wenqing.lz@taobao.com>
-Subject: [PATCH] ext4: change return value from int to ssize_t in ext4_file_write
-
-in 32 bit platform, when we do a write operation with a huge number of data, it
-will cause that the ret variable overflows.  So it is replaced with ssize_t.
-
-Reported-by: Jouni Siren <jouni.siren@iki.fi>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/file.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index cb70f18..8c7642a 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -95,7 +95,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- {
- 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
- 	int unaligned_aio = 0;
--	int ret;
-+	ssize_t ret;
- 
- 	/*
- 	 * If we have encountered a bitmap-format file, the size limit
--- 
-1.7.4.1
-
+> 
+> Took me some time to figure out what is going on and in the end I previously forgot 
+> another test case - I always tested directories being sufficiently large, so that 
+> they got the EXT4_INODE_INDEX flag. However, the cython tests failed on a small 
+> directory, which doesn't have that flag. But then ext4_readdir() always uses the 
+> dx version, I guess in order to always return the same offset values 
+> (in the sense of converting a non-dx dir to dx). In ext4_dir_llseek() I only 
+> tested for the EXT4_INODE_INDEX flag, which is not correct in any case.
+> So here is the patch, shall I sent an updated version of the previous ext4 patch 
+> or is this patch sufficient?
+> 
+> Signed-off-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+> 
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 71a66ff..6a19a35 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -44,6 +44,24 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
+>  	return (ext4_filetype_table[filetype]);
+>  }
+>  
+> +/**
+> + * Check if the given dir-inode refers to an htree indexed directory
+> + *
+> + * Return 1 if it is a dx dir, 0 if not
+> + */
+> +static int is_dx_dir(struct inode *inode)
+> +{
+> +	struct super_block *sb = inode->i_sb;
+> +
+> +	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+> +		     EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+> +	    ((ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) ||
+> +	     ((inode->i_size >> sb->s_blocksize_bits) == 1)))
+> +		return 1;
+> +
+> +	return 0;
+> +}
+> +
+>  /*
+>   * Return 0 if the directory entry is OK, and 1 if there is a problem
+>   *
+> @@ -99,18 +117,13 @@ static int ext4_readdir(struct file *filp,
+>  	unsigned int offset;
+>  	int i, stored;
+>  	struct ext4_dir_entry_2 *de;
+> -	struct super_block *sb;
+>  	int err;
+>  	struct inode *inode = filp->f_path.dentry->d_inode;
+> +	struct super_block *sb = inode->i_sb;
+>  	int ret = 0;
+>  	int dir_has_error = 0;
+>  
+> -	sb = inode->i_sb;
+> -
+> -	if (EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
+> -				    EXT4_FEATURE_COMPAT_DIR_INDEX) &&
+> -	    ((ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) ||
+> -	     ((inode->i_size >> sb->s_blocksize_bits) == 1))) {
+> +	if (is_dx_dir(inode)) {
+>  		err = ext4_dx_readdir(filp, dirent, filldir);
+>  		if (err != ERR_BAD_DX_DIR) {
+>  			ret = err;
+> @@ -308,7 +321,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+>  {
+>  	struct inode *inode = file->f_mapping->host;
+>  	loff_t ret = -EINVAL;
+> -	int is_dx_dir = ext4_test_inode_flag(inode, EXT4_INODE_INDEX);
+> +	int dx_dir = is_dx_dir(inode);
+>  
+>  	mutex_lock(&inode->i_mutex);
+>  
+> @@ -323,7 +336,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+>  
+>  		/* so only negative offsets are left, does that have a
+>  		 * meaning for directories at all? */
+> -		if (is_dx_dir)
+> +		if (dx_dir)
+>  			offset += ext4_get_htree_eof(file);
+>  		else
+>  			offset += inode->i_size;
+> @@ -347,7 +360,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+>  	if (unlikely(offset < 0))
+>  		goto out_err;
+>  
+> -	if (!is_dx_dir) {
+> +	if (!dx_dir) {
+>  		if (offset > inode->i_sb->s_maxbytes)
+>  			goto out_err;
+>  	} else if (offset > ext4_get_htree_eof(file))
+> 
+> 
+> 
+> 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
