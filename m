@@ -1,51 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42986] ext2_fs.h requires undefined type umode_t
-Date: Fri, 13 Apr 2012 06:48:53 GMT
-Message-ID: <201204130648.q3D6mrb3007044@bugzilla.kernel.org>
-References: <bug-42986-13602@https.bugzilla.kernel.org/>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [RFC, PATCH] Avoid hot statistics cache line in ext4 extent cache
+Date: Fri, 13 Apr 2012 10:42:10 -0700
+Message-ID: <CA+55aFx8UsBEqK2KA_7D4YNGYrtcNaduvuEUcLfbRRjSXS_Xeg@mail.gmail.com>
+References: <20120323221715.GA6712@tassilo.jf.intel.com> <A3DE1F37-C0AB-4ACE-8D13-22DC8A21ED3C@dilger.ca>
+ <20120324031357.GA5690@tassilo.jf.intel.com> <CAMQXfUcH-0Krg811msFVbC25qY1mPTdrMi8Rg-qJST=6B-s_5w@mail.gmail.com>
+ <4F70F51F.8030405@linux.intel.com> <20120326235707.GC19489@thunk.org> <m2zkaiyzjl.fsf@firstfloor.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Ted Ts'o" <tytso@mit.edu>, Vivek Haldar <haldar@google.com>,
+	Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+	tim.c.chen@linux.intel.com
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:42777 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751516Ab2DMGsx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Apr 2012 02:48:53 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q3D6mrt9007045
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Apr 2012 06:48:53 GMT
-In-Reply-To: <bug-42986-13602@https.bugzilla.kernel.org/>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:61168 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752926Ab2DMRmc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Apr 2012 13:42:32 -0400
+Received: by wgbdr13 with SMTP id dr13so3270265wgb.1
+        for <linux-ext4@vger.kernel.org>; Fri, 13 Apr 2012 10:42:31 -0700 (PDT)
+In-Reply-To: <m2zkaiyzjl.fsf@firstfloor.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42986
+On Wed, Apr 11, 2012 at 9:59 AM, Andi Kleen <andi@firstfloor.org> wrote:
+>
+> Ping. This scalability problem is still in 3.4-rc* and causes
+> major slowdowns.
 
+Do you have numbers?
 
-Artem Bityutskiy <dedekind1@gmail.com> changed:
+> Can we please revert fix it or revert
+> 556b27abf73833923d5cd4be80006292e1b31662 before release.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |dedekind1@gmail.com
+That commit ID doesn't make any sense, and doesn't seem to have
+anything to do with any statistics counters that your email talks
+about. So regardless, you'd need to explain why that commit causes the
+problems you talk about, I'm not going to revert a random commit that
+doesn't even look what you describe.
 
+Ted?
 
-
-
---- Comment #15 from Artem Bityutskiy <dedekind1@gmail.com>  2012-04-13 06:48:52 ---
-(In reply to comment #13)
-> For the record: busybox's mkfs_ext2.c uses linux/ext2_fs.h.
-> If its include is commented out, the following errors pop out:
-
-The idea is that file-system on-disk layout is stable, so it should be easy for
-you to have a copy, and you do not need to ever update it unless you add
-support of a new feature in busybox which requeres an up-to-date header file,
-and this should be a rare event.
-
->From the FS'es POW - the on-disk layout is not kernel-userspace API so kernel
-should not export it to user-space. This will also make things easier for the
-kernel people - we can freely clean-up/rename/shuffle things in the header
-without being afraid of breaking busybox or any other tool.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+                Linus
