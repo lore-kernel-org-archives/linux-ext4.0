@@ -1,74 +1,69 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] e2fsck: quiet harmless inode/blocks errors
-Date: Thu, 12 Apr 2012 15:53:57 -0600
-Message-ID: <1334267637-25977-1-git-send-email-adilger@whamcloud.com>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
+ empty
+Date: Fri, 13 Apr 2012 10:10:22 +1000
+Message-ID: <20120413001022.GY18323@dastard>
+References: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jouni Siren <jouni.siren@iki.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:15464 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934815Ab2DLVx7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Apr 2012 17:53:59 -0400
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:47794 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751701Ab2DMAKZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Apr 2012 20:10:25 -0400
+Content-Disposition: inline
+In-Reply-To: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't consider only an error in the superblock summary as incorrect.
-The kernel does not update this field except at unmount time, so
-don't print errors during a "-n" run if there is nothing else wrong.
-Any other unfixed errors will themselves mark the filesystem invalid.
+On Thu, Apr 12, 2012 at 05:47:41PM +0300, Jouni Siren wrote:
+> Hi,
+> 
+> I recently ran into problems when writing large blocks of data (more than about 2 GB) with a single call, if there is already some data in the write buffer. The problem seems to be specific to ext4, or at least it does not happen when writing to nfs on the same system. Also, the problem does not happen, if the write buffer is flushed before the large write.
+> 
+> The following C++ program should write a total of 4294967304 bytes, but I end up with a file of size 2147483664.
+> 
+> #include <fstream>
+> 
+> int
+> main(int argc, char** argv)
+> {
+>   std::streamsize data_size = (std::streamsize)1 << 31;
+>   char* data = new char[data_size];
+> 
+>   std::ofstream output("test.dat", std::ios_base::binary);
+>   output.write(data, 8);
+>   output.write(data, data_size);
+>   output.write(data, data_size);
+>   output.close();
+> 
+>   delete[] data;
+>   return 0;
+> }
+> 
+> 
+> The relevant part of strace is the following:
+> 
+> open("test.dat", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3
+> writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}], 2) = -2147483640
+> writev(3, [{0xffffffff80c6d258, 2147483648}, {"", 2147483648}], 2) = -1 EFAULT (Bad address)
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
----
- e2fsck/pass5.c   |    6 ++----
- e2fsck/problem.c |    4 ++--
- 2 files changed, 4 insertions(+), 6 deletions(-)
+EFAULT - your user buffer is too large.
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 8ebddf8..8312fe0 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -471,8 +471,7 @@ redo_counts:
- 		if (fix_problem(ctx, PR_5_FREE_BLOCK_COUNT, &pctx)) {
- 			ext2fs_free_blocks_count_set(fs->super, free_blocks);
- 			ext2fs_mark_super_dirty(fs);
--		} else
--			ext2fs_unmark_valid(fs);
-+		}
- 	}
- errout:
- 	ext2fs_free_mem(&free_array);
-@@ -746,8 +745,7 @@ do_counts:
- 		if (fix_problem(ctx, PR_5_FREE_INODE_COUNT, &pctx)) {
- 			fs->super->s_free_inodes_count = free_inodes;
- 			ext2fs_mark_super_dirty(fs);
--		} else
--			ext2fs_unmark_valid(fs);
-+		}
- 	}
- errout:
- 	ext2fs_free_mem(&free_array);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index d51a408..b60cf79 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1621,7 +1621,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Free inodes count wrong */
- 	{ PR_5_FREE_INODE_COUNT,
- 	  N_("Free @is count wrong (%i, counted=%j).\n"),
--	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK | PR_PREEN_NOMSG },
- 
- 	/* Free blocks count for group wrong */
- 	{ PR_5_FREE_BLOCK_COUNT_GROUP,
-@@ -1631,7 +1631,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Free blocks count wrong */
- 	{ PR_5_FREE_BLOCK_COUNT,
- 	  N_("Free @bs count wrong (%b, counted=%c).\n"),
--	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK | PR_PREEN_NOMSG },
- 
- 	/* Programming error: bitmap endpoints don't match */
- 	{ PR_5_BMAP_ENDPOINTS,
+IOWs, you can't do IO in chunks of 2GB or greater in a single buffer
+or iovec. This limit is imposed by the VFS to prevent overflows in
+badly implemented filesystem code.
+
+Just do mulitple smaller IOs - it will be just as to do a single 2GB
+IO....
+
+Cheers,
+
+Dave.
+
 -- 
-1.7.3.4
-
+Dave Chinner
+david@fromorbit.com
