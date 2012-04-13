@@ -1,69 +1,52 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
- empty
-Date: Fri, 13 Apr 2012 10:10:22 +1000
-Message-ID: <20120413001022.GY18323@dastard>
-References: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jouni Siren <jouni.siren@iki.fi>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH RESEND] ext4: change return value from int to ssize_t in ext4_file_write
+Date: Fri, 13 Apr 2012 09:22:37 +0800
+Message-ID: <1334280157-11630-1-git-send-email-wenqing.lz@taobao.com>
+References: <20120412202029.GB19808@quack.suse.cz>
+Cc: jouni.siren@iki.fi, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:47794 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751701Ab2DMAKZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Apr 2012 20:10:25 -0400
-Content-Disposition: inline
-In-Reply-To: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:39659 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757205Ab2DMBQg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Apr 2012 21:16:36 -0400
+Received: by pbcun15 with SMTP id un15so3011855pbc.19
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Apr 2012 18:16:36 -0700 (PDT)
+In-Reply-To: <20120412202029.GB19808@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 12, 2012 at 05:47:41PM +0300, Jouni Siren wrote:
-> Hi,
-> 
-> I recently ran into problems when writing large blocks of data (more than about 2 GB) with a single call, if there is already some data in the write buffer. The problem seems to be specific to ext4, or at least it does not happen when writing to nfs on the same system. Also, the problem does not happen, if the write buffer is flushed before the large write.
-> 
-> The following C++ program should write a total of 4294967304 bytes, but I end up with a file of size 2147483664.
-> 
-> #include <fstream>
-> 
-> int
-> main(int argc, char** argv)
-> {
->   std::streamsize data_size = (std::streamsize)1 << 31;
->   char* data = new char[data_size];
-> 
->   std::ofstream output("test.dat", std::ios_base::binary);
->   output.write(data, 8);
->   output.write(data, data_size);
->   output.write(data, data_size);
->   output.close();
-> 
->   delete[] data;
->   return 0;
-> }
-> 
-> 
-> The relevant part of strace is the following:
-> 
-> open("test.dat", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3
-> writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}], 2) = -2147483640
-> writev(3, [{0xffffffff80c6d258, 2147483648}, {"", 2147483648}], 2) = -1 EFAULT (Bad address)
+On 64-platform, when we do a write operation with a huge number of data, it
+will cause that the ret variable overflows.  So it is replaced with ssize_t.
 
-EFAULT - your user buffer is too large.
+Reported-by: Jouni Siren <jouni.siren@iki.fi>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+Hi Jan,
 
-IOWs, you can't do IO in chunks of 2GB or greater in a single buffer
-or iovec. This limit is imposed by the VFS to prevent overflows in
-badly implemented filesystem code.
+You are right.  I have changed the commit log.  ;-)
 
-Just do mulitple smaller IOs - it will be just as to do a single 2GB
-IO....
+Regards,
+Zheng
 
-Cheers,
+ fs/ext4/file.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Dave.
-
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb70f18..8c7642a 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -95,7 +95,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ {
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+ 	int unaligned_aio = 0;
+-	int ret;
++	ssize_t ret;
+ 
+ 	/*
+ 	 * If we have encountered a bitmap-format file, the size limit
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.4.1
+
