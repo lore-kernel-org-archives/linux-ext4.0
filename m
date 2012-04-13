@@ -1,36 +1,120 @@
 From: Robin Dong <hao.bigrat@gmail.com>
-Subject: [PATCH 1/2] ext4: remove unused macro MB_DEFAULT_MAX_GROUPS_TO_SCAN
-Date: Fri, 13 Apr 2012 14:30:56 +0800
-Message-ID: <1334298657-20408-1-git-send-email-hao.bigrat@gmail.com>
+Subject: [PATCH 2/2] ext4: remove unused function argument 'order' in mb_find_extent()
+Date: Fri, 13 Apr 2012 14:30:57 +0800
+Message-ID: <1334298657-20408-2-git-send-email-hao.bigrat@gmail.com>
+References: <1334298657-20408-1-git-send-email-hao.bigrat@gmail.com>
 Cc: Robin Dong <sanbai@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:38066 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753628Ab2DMGbI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Apr 2012 02:31:08 -0400
-Received: by dake40 with SMTP id e40so3481925dak.11
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Apr 2012 23:31:08 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:64572 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754287Ab2DMGbM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Apr 2012 02:31:12 -0400
+Received: by pbcun15 with SMTP id un15so3261022pbc.19
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Apr 2012 23:31:11 -0700 (PDT)
+In-Reply-To: <1334298657-20408-1-git-send-email-hao.bigrat@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Robin Dong <sanbai@taobao.com>
 
-remove unused macro MB_DEFAULT_MAX_GROUPS_TO_SCAN
+All the routines call mb_find_extent are setting argument 'order' to 0 just like:
+
+	mb_find_extent(e4b, 0, ex.fe_start, ex.fe_len, &ex);
+
+therefore the useless argument should be removed.
 
 Signed-off-by: Robin Dong <sanbai@taobao.com>
 ---
- fs/ext4/mballoc.h |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+ fs/ext4/mballoc.c |   25 +++++++++++--------------
+ 1 files changed, 11 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index c070618..3ccd889 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -65,11 +65,6 @@ extern u8 mb_enable_debug;
- #define MB_DEFAULT_MIN_TO_SCAN		10
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 99ab428..e81f310 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1339,17 +1339,17 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 	mb_check_buddy(e4b);
+ }
  
- /*
-- * How many groups mballoc will scan looking for the best chunk
-- */
--#define MB_DEFAULT_MAX_GROUPS_TO_SCAN	5
+-static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
++static int mb_find_extent(struct ext4_buddy *e4b, int block,
+ 				int needed, struct ext4_free_extent *ex)
+ {
+ 	int next = block;
+-	int max;
++	int max, order;
+ 	void *buddy;
+ 
+ 	assert_spin_locked(ext4_group_lock_ptr(e4b->bd_sb, e4b->bd_group));
+ 	BUG_ON(ex == NULL);
+ 
+-	buddy = mb_find_buddy(e4b, order, &max);
++	buddy = mb_find_buddy(e4b, 0, &max);
+ 	BUG_ON(buddy == NULL);
+ 	BUG_ON(block >= max);
+ 	if (mb_test_bit(block, buddy)) {
+@@ -1359,12 +1359,9 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
+ 		return 0;
+ 	}
+ 
+-	/* FIXME dorp order completely ? */
+-	if (likely(order == 0)) {
+-		/* find actual order */
+-		order = mb_find_order_for_block(e4b, block);
+-		block = block >> order;
+-	}
++	/* find actual order */
++	order = mb_find_order_for_block(e4b, block);
++	block = block >> order;
+ 
+ 	ex->fe_len = 1 << order;
+ 	ex->fe_start = block << order;
+@@ -1550,7 +1547,7 @@ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
+ 		/* recheck chunk's availability - we don't know
+ 		 * when it was found (within this lock-unlock
+ 		 * period or not) */
+-		max = mb_find_extent(e4b, 0, bex->fe_start, gex->fe_len, &ex);
++		max = mb_find_extent(e4b, bex->fe_start, gex->fe_len, &ex);
+ 		if (max >= gex->fe_len) {
+ 			ext4_mb_use_best_found(ac, e4b);
+ 			return;
+@@ -1642,7 +1639,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
+ 		return err;
+ 
+ 	ext4_lock_group(ac->ac_sb, group);
+-	max = mb_find_extent(e4b, 0, ex.fe_start, ex.fe_len, &ex);
++	max = mb_find_extent(e4b, ex.fe_start, ex.fe_len, &ex);
+ 
+ 	if (max > 0) {
+ 		ac->ac_b_ex = ex;
+@@ -1673,7 +1670,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 		return err;
+ 
+ 	ext4_lock_group(ac->ac_sb, group);
+-	max = mb_find_extent(e4b, 0, ac->ac_g_ex.fe_start,
++	max = mb_find_extent(e4b, ac->ac_g_ex.fe_start,
+ 			     ac->ac_g_ex.fe_len, &ex);
+ 
+ 	if (max >= ac->ac_g_ex.fe_len && ac->ac_g_ex.fe_len == sbi->s_stripe) {
+@@ -1789,7 +1786,7 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 			break;
+ 		}
+ 
+-		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
++		mb_find_extent(e4b, i, ac->ac_g_ex.fe_len, &ex);
+ 		BUG_ON(ex.fe_len <= 0);
+ 		if (free < ex.fe_len) {
+ 			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
+@@ -1841,7 +1838,7 @@ void ext4_mb_scan_aligned(struct ext4_allocation_context *ac,
+ 
+ 	while (i < EXT4_CLUSTERS_PER_GROUP(sb)) {
+ 		if (!mb_test_bit(i, bitmap)) {
+-			max = mb_find_extent(e4b, 0, i, sbi->s_stripe, &ex);
++			max = mb_find_extent(e4b, i, sbi->s_stripe, &ex);
+ 			if (max >= sbi->s_stripe) {
+ 				ac->ac_found++;
+ 				ac->ac_b_ex = ex;
+-- 
+1.7.3.2
+
