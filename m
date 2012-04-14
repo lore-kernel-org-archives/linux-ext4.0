@@ -1,47 +1,38 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: [PATCH] tune2fs: fix man page indentation
-Date: Fri, 13 Apr 2012 13:12:07 -0700
-Message-ID: <1334347927-12749-1-git-send-email-adityakali@google.com>
-Cc: Aditya Kali <adityakali@google.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Anssi Hannula <anssi.hannula@iki.fi>
+Subject: Re: ext4: add meta_bg and bit64 support to online resizing
+Date: Sat, 14 Apr 2012 17:55:11 +0300
+Message-ID: <4F898FCF.7000305@iki.fi>
+References: <1327852866-4448-1-git-send-email-xiaoqiangnk@gmail.com> <4F6CBA98.2020204@iki.fi>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, adilger@gmail.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ee0-f74.google.com ([74.125.83.74]:48651 "EHLO
-	mail-ee0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932255Ab2DMUML (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Apr 2012 16:12:11 -0400
-Received: by eekc41 with SMTP id c41so155782eek.1
-        for <linux-ext4@vger.kernel.org>; Fri, 13 Apr 2012 13:12:10 -0700 (PDT)
+Received: from sirokuusama.dnainternet.net ([83.102.40.133]:48925 "EHLO
+	sirokuusama.dnainternet.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751477Ab2DNPGS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 Apr 2012 11:06:18 -0400
+In-Reply-To: <4F6CBA98.2020204@iki.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The indentation in tune2fs man page was wrong towards the
-end. Also, there was extra '[' in the SYNOPSIS section.
+23.03.2012 20:02, Anssi Hannula kirjoitti:
+> 29.01.2012 18:01, Yongqiang Yang kirjoitti:
+>> Hi List,
+> 
+> Hi!
+> 
+> I wonder how I missed this, as this is a feature I've been waiting for
+> for some time...
+> 
 
-Signed-off-by: Aditya Kali <adityakali@google.com>
----
- misc/tune2fs.8.in |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Actually, I didn't miss this, it is just that the emails have a Date
+header two months in the past. The same has happened with your other
+recent git-send-email patchsets, so you might want to fix the date so
+that the mails doesn't appear in the distant past for people sorting
+their mail according to Date :)
 
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index 32f73a9..e77dde7 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -81,7 +81,6 @@ tune2fs \- adjust tunable filesystem parameters on ext2/ext3/ext4 filesystems
- .I quota-options
- ]
- [
--[
- .B \-T
- .I time-last-checked
- ]
-@@ -599,6 +598,7 @@ Sets/clears user quota inode in the superblock.
- .TP
- .BR [^]grpquota
- Sets/clears group quota inode in the superblock.
-+.RE
- .TP
- .BI \-T " time-last-checked"
- Set the time the filesystem was last checked using
 -- 
-1.7.7.3
-
+Anssi Hannula
