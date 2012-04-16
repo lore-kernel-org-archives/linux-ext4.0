@@ -1,44 +1,58 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Extent tree status asking
-Date: Tue, 17 Apr 2012 01:55:34 +0800
-Message-ID: <20120416175534.GA5533@gmail.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
+Date: Mon, 16 Apr 2012 15:02:50 -0700
+Message-ID: <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
+References: <1334592845-22862-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:47321 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755102Ab2DPRtI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 13:49:08 -0400
-Received: by dake40 with SMTP id e40so7214486dak.11
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 10:49:08 -0700 (PDT)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 8BIT
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, Alex Elder <elder@kernel.org>,
+	Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
+	Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
+	"David S. Miller" <davem@davemloft.net>,
+	fuse-devel@lists.sourceforge.net,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Joel Becker <jlbec@evilplan.org>,
+	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	Mark Fasheh <mfasheh@suse.com>,
+	Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1334592845-22862-1-git-send-email-jack@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Allison,
+On 2012-04-16, at 9:13 AM, Jan Kara wrote:
+> Another potential contention point might be patch 19. In that patch
+> we make freeze_super() refuse to freeze the filesystem when there
+> are open but unlinked files which may be impractical in some cases.
+> The main reason for this is the problem with handling of file deletion
+> from fput() called with mmap_sem held (e.g. from munmap(2)), and
+> then there's the fact that we cannot really force such filesystem
+> into a consistent state... But if people think that freezing with
+> open but unlinked files should happen, then I have some possible
+> solutions in mind (maybe as a separate patchset since this is
+> large enough).
 
-Currently I am trying to reduce the lock contention of direct I/O in ext4
-because it is a bottleneck.  A trivial idea is that a new fucntion is
-defined to replace the generic_file_aio_write, which do some write
-operations with acquiring i_data_sem lock in inode.
+Looking at a desktop system, I think it is very typical that there
+are open-unlinked files present, so I don't know if this is really
+an acceptable solution.  It isn't clear from your comments whether
+this is a blanket refusal for all open-unlinked files, or only in
+some particular cases...
 
-I know that you are trying to implement extent tree, and I have seen your patch
-set '[PATCH] Rename delayed extents to status extents'.  After extent tree is
-made, the implementation of direct I/O without i_mutex and range lock is
-straightforward and it is better than my trivial idea.  I think that
-maybe I can borrow you works.  So could you please share me your schedule
-and/or other information?
+lsof | grep deleted
+nautilus  25393  adilger   19r      REG           253,0      340     253954 /home/adilger/.local/share/gvfs-metadata/home (deleted)
+nautilus  25393  adilger   20r      REG           253,0    32768     253964 /home/adilger/.local/share/gvfs-metadata/home-f332a8f3.log (deleted)
+gnome-ter 25623  adilger   22u      REG            0,18    17841    2717846 /tmp/vtePIRJCW (deleted)
+gnome-ter 25623  adilger   23u      REG            0,18     5568    2717847 /tmp/vteDCSJCW (deleted)
+gnome-ter 25623  adilger   29u      REG            0,18      480    2728484 /tmp/vte6C1TCW (deleted)
 
-Last month on ext4 workshop, we discuss the extent tree, range lock and I/O
-tree.  Obviously, I/O tree is used to store I/O operations, which can track
-delay allocation, do unwritten->written conversion and implement range lock.
-It is very useful for ext4 and I am interested in this proposal.  I know that
-you have begun to do some works.  So would you like to tell me the status of
-extent tree?  I don't know whether or not there has some things that I can be
-involved.  If you have some advices or there is something that I can help,
-please let me know.  Thank you and looking forward your reply.
-
-Regards,
-Zheng
+Cheers, Andreas
