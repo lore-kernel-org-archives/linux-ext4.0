@@ -1,163 +1,109 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH 00/32] e2fsprogs: make e2fsprogs support inline data
-Date: Mon, 16 Apr 2012 23:10:32 +0800
-Message-ID: <4F8C3668.1040907@tao.ma>
-References: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com> <729213E5-B7EB-493E-A92B-0BA56FC3BD7E@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:45675 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753677Ab2DPPKg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 11:10:36 -0400
-In-Reply-To: <729213E5-B7EB-493E-A92B-0BA56FC3BD7E@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
+Date: Mon, 16 Apr 2012 18:13:38 +0200
+Message-ID: <1334592845-22862-1-git-send-email-jack@suse.cz>
+Cc: dchinner@redhat.com, LKML <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	Alex Elder <elder@kernel.org>,
+	Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
+	Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
+	"David S. Miller" <davem@davemloft.net>,
+	fuse-devel@lists.sourceforge.net,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Joel Becker <jlbec@evilplan.org>,
+	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	Mark Fasheh <mfasheh@suse.com>,
+	Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 04/16/2012 11:08 PM, Andreas Dilger wrote:
-> On 2012-04-16, at 4:39 AM, Zheng Liu wrote:
->> Here is v2 for making e2fsprogs support inline data.  Now debugfs
->> supports inline data in read-write mode.  Meanwhile e2fsck has
->> been improved to support inline data feature.
->>
->> v1->v2:
->> * [mke2fs] automatically set EXT_ATTR feature when INLINE_DATA is set
->> * [debugfs] supports read-write mode
-> 
-> As with the previous patch series, there is a need to show some
-> benchmark data that indicates how much improvement this feature
-> provides.  Some examples would include percentage of directories
-> stored inline (e.g. in a typical distro installation), performance
-> improvement (e.g. cold-cache filesystem traversal).  It is likely
-> that these improvements will be more visible with bigalloc enabled
-> for a large cluster size (e.g. space savings).
-yeah, I am doing some benchmark test and collect the data. They will be
-available when I send out the new version.
-> 
-> Without a clear indication of performance improvement, the patch
-> cannot be included due to added complexity and unclear benefits.
-sure, please wait for the kernel patches. :)
-> 
->> In mke2fs, EXT4_FEATURE_INCOMPAT_INLINE_DATA is set to 0x2000 to
->> consist with kernel.  When making a new ext4 file system with
->> INLINE_DATA feature, mke2fs will check whether EXT_ATTR is set or
->> not.  If it is not set, mke2fs will mark it automatically because
->> INLINE_DATA depends on it.
->>
->> In debugfs, it can support inline data in read-write mode.  Now
->> there is two problems that need to be solved.  No matter whether
->> the size of data is fit into inline data or not, 'write' command
->> writes the data into disk blocks rather than inode itself.  'mkdir'
->> command will expand dir to a new disk block when inode->i_block
->> has full because Tao found a performance regression when a huge
->> number of dirs are added and removed in EA space.  It causes that
->> the code in kernel might be changed.  So now 'mkdir' cmd doesn't
->> add a new dir entry in EA space.
->>
->> TODO list:
->> * [mke2fs] initialize ROOT dir with inline data flag
->> * [mke2fs] initialize LOST+FOUND dir with inline data flag
-> 
-> Note that it does not make sense to store lost+found inline.  It
-> is purposely created with multiple leaf blocks so that blocks
-> do not need to be allocated during e2fsck runs.  Probably the
-> same is true for root - it will almost certainly immediately
-> be moved out of the inode due to file creations.
-fair enough.
+  Hello,
 
-Thanks
-Tao
-> 
-> Cheers, Andreas
-> 
->> * [debugfs] 'write' cmd writes the data into inode itself
->> * [debugfs] 'mkdir' cmd add dir entry into EA space
->>
->> Regards,
->> Zheng
->>
->> libext2fs: add EXT4_FEATURE_INCOMPAT_INLINE_DATA flag
->> mke2fs: make it support inline data feature
->> libext2fs: add inline_data feature
->> mke2fs: add inline_data feature in mke2fs's manpage
->> libext2fs: add ext2fs_find_entry_ext_attr function
->> libext2fs: add EXT4_INLINE_DATA_FL flag for inode
->> libext2fs: add data structures for inline data feature
->> libext2fs: add inline_data file
->> debugfs: make ncheck cmd support inline data
->> debugfs: make chroot and cd cmd support inline data
->> debugfs: make ls cmd support inline data
->> debugfs: make stat cmd support inline data
->> debufs: make blocks cmd support inline data
->> debugfs: make filefrag cmd support inline data
->> debugfs: make link cmd support inline data
->> debugfs: make unlink cmd support inline data
->> debugfs: make mkdir cmd support inline data
->> debugfs: make rmdir cmd support inline data
->> debugfs: make rm and kill_file cmd support inline data
->> debugfs: make pwd cmd support inline data
->> debugfs: make expand_dir cmd support inline data
->> debugfs: make lsdel cmd support inline data
->> debugfs: make undel cmd support inline data
->> debugfs: make dump and cat cmd support inline data
->> debugfs: make rdump cmd support inline data
->> debugfs: make dirsearch cmd support inline data
->> debugfs: make bma cmd support inline data
->> e2fsck: add three problem descriptions in pass1
->> e2fsck: check incorrect inline data flag
->> e2fsck: make pass1 support inline data
->> libext2fs: add read/write inline data functions
->> e2fsck: check inline data in pass2
->>
->> debugfs/debugfs.c          |   25 ++-
->> debugfs/dump.c             |   38 +++-
->> debugfs/filefrag.c         |   30 ++-
->> debugfs/htree.c            |    6 +
->> debugfs/ls.c               |    8 +-
->> debugfs/lsdel.c            |   19 +-
->> debugfs/ncheck.c           |    8 +-
->> e2fsck/pass1.c             |   70 ++++-
->> e2fsck/pass1b.c            |    5 +-
->> e2fsck/pass2.c             |   50 +++-
->> e2fsck/problem.c           |   15 +
->> e2fsck/problem.h           |    9 +
->> lib/e2p/feature.c          |    2 +
->> lib/ext2fs/Makefile.in     |    5 +
->> lib/ext2fs/Makefile.pq     |    1 +
->> lib/ext2fs/bmap.c          |   16 +
->> lib/ext2fs/dblist_dir.c    |    8 +-
->> lib/ext2fs/dirblock.c      |   62 ++++
->> lib/ext2fs/expanddir.c     |    8 +-
->> lib/ext2fs/ext2_ext_attr.h |    4 +
->> lib/ext2fs/ext2_fs.h       |    9 +
->> lib/ext2fs/ext2fs.h        |   69 ++++-
->> lib/ext2fs/ext_attr.c      |   26 ++
->> lib/ext2fs/get_pathname.c  |    7 +-
->> lib/ext2fs/inline_data.c   |  715 ++++++++++++++++++++++++++++++++++++++++++++
->> lib/ext2fs/link.c          |    9 +-
->> lib/ext2fs/lookup.c        |    6 +-
->> lib/ext2fs/mkdir.c         |    4 +
->> lib/ext2fs/unlink.c        |    9 +-
->> misc/mke2fs.8.in           |    3 +
->> misc/mke2fs.c              |   10 +-
->> 31 files changed, 1197 insertions(+), 59 deletions(-)
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  here is the fifth iteration of my patches to improve filesystem freezing.
+No serious changes since last time. Mostly I rebased patches and merged this
+series with series moving file_update_time() to ->page_mkwrite() to simplify
+testing and merging.
 
+Filesystem freezing is currently racy and thus we can end up with dirty data on
+frozen filesystem (see changelog patch 13 for detailed race description). This
+patch series aims at fixing this.
+
+To be able to block all places where inodes get dirtied, I've moved filesystem
+file_update_time() call to ->page_mkwrite callback (patches 01-07) and put
+freeze handling in mnt_want_write() / mnt_drop_write(). That however required
+some code shuffling and changes to kern_path_create() (see patches 09-12). I
+think the result is OK but opinions may differ ;). The advantage of this change
+also is that all filesystems get freeze protection almost for free - even ext2
+can handle freezing well now.
+
+Another potential contention point might be patch 19. In that patch we make
+freeze_super() refuse to freeze the filesystem when there are open but unlinked
+files which may be impractical in some cases. The main reason for this is the
+problem with handling of file deletion from fput() called with mmap_sem held
+(e.g. from munmap(2)), and then there's the fact that we cannot really force
+such filesystem into a consistent state... But if people think that freezing
+with open but unlinked files should happen, then I have some possible
+solutions in mind (maybe as a separate patchset since this is large enough).
+
+I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
+filesystem despite beating it with fsstress and bash-shared-mapping while
+freezing and unfreezing for several hours (using ext4 and xfs) so I'm
+reasonably confident this could finally be the right solution.
+
+Changes since v4:
+  * added a couple of Acked-by's
+  * added some comments & doc update
+  * added patches from series "Push file_update_time() into .page_mkwrite"
+    since it doesn't make much sense to keep them separate anymore
+  * rebased on top of 3.4-rc2
+
+Changes since v3:
+  * added third level of freezing for fs internal purposes - hooked some
+    filesystems to use it (XFS, nilfs2)
+  * removed racy i_size check from filemap_mkwrite()
+
+Changes since v2:
+  * completely rewritten
+  * freezing is now blocked at VFS entry points
+  * two stage freezing to handle both mmapped writes and other IO
+
+The biggest changes since v1:
+  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
+    and SB_FREEZE_TRANS states
+  * use percpu counters instead of own percpu structure
+  * added documentation fixes from the old fs freezing series
+  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
+    m_active_trans counter
+
+								Honza
+
+CC: Alex Elder <elder@kernel.org>
+CC: Anton Altaparmakov <anton@tuxera.com>
+CC: Ben Myers <bpm@sgi.com>
+CC: Chris Mason <chris.mason@oracle.com>
+CC: cluster-devel@redhat.com
+CC: "David S. Miller" <davem@davemloft.net>
+CC: fuse-devel@lists.sourceforge.net
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Joel Becker <jlbec@evilplan.org>
+CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
+CC: linux-btrfs@vger.kernel.org
+CC: linux-ext4@vger.kernel.org
+CC: linux-nfs@vger.kernel.org
+CC: linux-nilfs@vger.kernel.org
+CC: linux-ntfs-dev@lists.sourceforge.net
+CC: Mark Fasheh <mfasheh@suse.com>
+CC: Miklos Szeredi <miklos@szeredi.hu>
+CC: ocfs2-devel@oss.oracle.com
+CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+CC: Steven Whitehouse <swhiteho@redhat.com>
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: xfs@oss.sgi.com
