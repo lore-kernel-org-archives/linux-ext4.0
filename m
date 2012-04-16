@@ -1,46 +1,46 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 19/32] debugfs: make rm and kill_file cmd support inline data
-Date: Mon, 16 Apr 2012 19:39:54 +0800
-Message-ID: <1334576407-4007-20-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 20/32] debugfs: make pwd cmd support inline data
+Date: Mon, 16 Apr 2012 19:39:55 +0800
+Message-ID: <1334576407-4007-21-git-send-email-wenqing.lz@taobao.com>
 References: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pb0-f46.google.com ([209.85.160.46]:43674 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753325Ab2DPLe2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 07:34:28 -0400
+	with ESMTP id S1753325Ab2DPLe3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 07:34:29 -0400
 Received: by mail-pb0-f46.google.com with SMTP id un15so6233785pbc.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 04:34:28 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 04:34:29 -0700 (PDT)
 In-Reply-To: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-rm and kill_file command don't need to release blocks.
-
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/debugfs.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ lib/ext2fs/get_pathname.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 7a97c48..517751f 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -1841,8 +1841,9 @@ static void kill_file_by_inode(ext2_ino_t inode)
- 	if (!ext2fs_inode_has_valid_blocks2(current_fs, &inode_buf))
- 		return;
+diff --git a/lib/ext2fs/get_pathname.c b/lib/ext2fs/get_pathname.c
+index 52aea62..f92f17d 100644
+--- a/lib/ext2fs/get_pathname.c
++++ b/lib/ext2fs/get_pathname.c
+@@ -98,7 +98,12 @@ static errcode_t ext2fs_get_pathname_int(ext2_filsys fs, ext2_ino_t dir,
+ 	gp.name = 0;
+ 	gp.errcode = 0;
  
--	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
--			      release_blocks_proc, NULL);
-+	if (!ext2fs_has_inline_data(current_fs, inode))
-+		ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY,
-+				      NULL, release_blocks_proc, NULL);
- 	printf("\n");
- 	ext2fs_inode_alloc_stats2(current_fs, inode, -1,
- 				  LINUX_S_ISDIR(inode_buf.i_mode));
+-	retval = ext2fs_dir_iterate(fs, dir, 0, buf, get_pathname_proc, &gp);
++	if (ext2fs_has_inline_data(fs, dir))
++		retval = ext2fs_inline_data_iterate(fs, dir, 0, buf,
++						    get_pathname_proc, &gp);
++	else
++		retval = ext2fs_dir_iterate(fs, dir, 0, buf,
++					    get_pathname_proc, &gp);
+ 	if (retval == EXT2_ET_NO_DIRECTORY) {
+ 		char tmp[32];
+ 
 -- 
 1.7.4.1
 
