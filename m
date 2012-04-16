@@ -1,58 +1,149 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
-Date: Mon, 16 Apr 2012 15:02:50 -0700
-Message-ID: <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
-References: <1334592845-22862-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/4] ext4: Fix regression in mount option parsing and a
+ small cleanup
+Date: Tue, 17 Apr 2012 00:15:43 +0200
+Message-ID: <20120416221543.GA29258@quack.suse.cz>
+References: <1334579134-19885-1-git-send-email-jack@suse.cz>
+ <20120416170607.GC31129@thunk.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, Alex Elder <elder@kernel.org>,
-	Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
-	Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
-	"David S. Miller" <davem@davemloft.net>,
-	fuse-devel@lists.sourceforge.net,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Joel Becker <jlbec@evilplan.org>,
-	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	Mark Fasheh <mfasheh@suse.com>,
-	Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1334592845-22862-1-git-send-email-jack@suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:57142 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752828Ab2DPWPp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Apr 2012 18:15:45 -0400
+Content-Disposition: inline
+In-Reply-To: <20120416170607.GC31129@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-04-16, at 9:13 AM, Jan Kara wrote:
-> Another potential contention point might be patch 19. In that patch
-> we make freeze_super() refuse to freeze the filesystem when there
-> are open but unlinked files which may be impractical in some cases.
-> The main reason for this is the problem with handling of file deletion
-> from fput() called with mmap_sem held (e.g. from munmap(2)), and
-> then there's the fact that we cannot really force such filesystem
-> into a consistent state... But if people think that freezing with
-> open but unlinked files should happen, then I have some possible
-> solutions in mind (maybe as a separate patchset since this is
-> large enough).
+On Mon 16-04-12 13:06:07, Ted Tso wrote:
+> On Mon, Apr 16, 2012 at 02:25:30PM +0200, Jan Kara wrote:
+> > 
+> > 
+> >   this patch series aims at fixing a regression in parsing of
+> > journalled quota mount options introduced by Ted's mount option
+> > parsing rewrite. Patches 1 and 2 cleanup the code a bit and patch 3
+> > then fixes the regression. Patch 4 is a tiny cleanup.
+> 
+> Hi Jan,
+> 
+> Apologies for breaking the journalled mount options, and thank you for
+> this patch series.  I agree it's an improvement on what we currently
+> have.  My main concern with though, is I'd like to fix this for 3.4,
+> and the four patches together is a bit larger than what I feel
+> comfortable pushing to Linus at this point.  What do you think of this
+> patch now, and I'll we'll add your changes for the next merge window?
+  Yeah, I figured it might be a bit too big. I didn't think of the simple
+trick which makes the quick fix small :) The patch looks good (and I've
+also tested it) so you can add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
-Looking at a desktop system, I think it is very typical that there
-are open-unlinked files present, so I don't know if this is really
-an acceptable solution.  It isn't clear from your comments whether
-this is a blanket refusal for all open-unlinked files, or only in
-some particular cases...
+								Honza
 
-lsof | grep deleted
-nautilus  25393  adilger   19r      REG           253,0      340     253954 /home/adilger/.local/share/gvfs-metadata/home (deleted)
-nautilus  25393  adilger   20r      REG           253,0    32768     253964 /home/adilger/.local/share/gvfs-metadata/home-f332a8f3.log (deleted)
-gnome-ter 25623  adilger   22u      REG            0,18    17841    2717846 /tmp/vtePIRJCW (deleted)
-gnome-ter 25623  adilger   23u      REG            0,18     5568    2717847 /tmp/vteDCSJCW (deleted)
-gnome-ter 25623  adilger   29u      REG            0,18      480    2728484 /tmp/vte6C1TCW (deleted)
 
-Cheers, Andreas
+> From 816c710aa92cdf442e6fc722b74bb99bf8575a30 Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Mon, 16 Apr 2012 12:54:07 -0400
+> Subject: [PATCH] ext4: fix handling of journalled quota options
+> 
+> Commit 26092bf5 broke handling of journalled quota mount options by
+> trying to parse argument of every mount option as a number.  Fix this
+> by dealing with the quota options before we call match_int().
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/super.c |   32 +++++++++++++++-----------------
+>  1 file changed, 15 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index ef7db50..6da1935 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1305,20 +1305,20 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  		ext4_msg(sb, KERN_ERR,
+>  			"Cannot change journaled "
+>  			"quota options when quota turned on");
+> -		return 0;
+> +		return -1;
+>  	}
+>  	qname = match_strdup(args);
+>  	if (!qname) {
+>  		ext4_msg(sb, KERN_ERR,
+>  			"Not enough memory for storing quotafile name");
+> -		return 0;
+> +		return -1;
+>  	}
+>  	if (sbi->s_qf_names[qtype] &&
+>  		strcmp(sbi->s_qf_names[qtype], qname)) {
+>  		ext4_msg(sb, KERN_ERR,
+>  			"%s quota file already specified", QTYPE2NAME(qtype));
+>  		kfree(qname);
+> -		return 0;
+> +		return -1;
+>  	}
+>  	sbi->s_qf_names[qtype] = qname;
+>  	if (strchr(sbi->s_qf_names[qtype], '/')) {
+> @@ -1326,7 +1326,7 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  			"quotafile must be on filesystem root");
+>  		kfree(sbi->s_qf_names[qtype]);
+>  		sbi->s_qf_names[qtype] = NULL;
+> -		return 0;
+> +		return -1;
+>  	}
+>  	set_opt(sb, QUOTA);
+>  	return 1;
+> @@ -1341,7 +1341,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+>  		sbi->s_qf_names[qtype]) {
+>  		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
+>  			" when quota turned on");
+> -		return 0;
+> +		return -1;
+>  	}
+>  	/*
+>  	 * The space will be released later when all options are confirmed
+> @@ -1450,6 +1450,16 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  	const struct mount_opts *m;
+>  	int arg = 0;
+>  
+> +#ifdef CONFIG_QUOTA
+> +	if (token == Opt_usrjquota)
+> +		return set_qf_name(sb, USRQUOTA, &args[0]);
+> +	else if (token == Opt_grpjquota)
+> +		return set_qf_name(sb, GRPQUOTA, &args[0]);
+> +	else if (token == Opt_offusrjquota)
+> +		return clear_qf_name(sb, USRQUOTA);
+> +	else if (token == Opt_offgrpjquota)
+> +		return clear_qf_name(sb, GRPQUOTA);
+> +#endif
+>  	if (args->from && match_int(args, &arg))
+>  		return -1;
+>  	switch (token) {
+> @@ -1549,18 +1559,6 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  				sbi->s_mount_opt |= m->mount_opt;
+>  			}
+>  #ifdef CONFIG_QUOTA
+> -		} else if (token == Opt_usrjquota) {
+> -			if (!set_qf_name(sb, USRQUOTA, &args[0]))
+> -				return -1;
+> -		} else if (token == Opt_grpjquota) {
+> -			if (!set_qf_name(sb, GRPQUOTA, &args[0]))
+> -				return -1;
+> -		} else if (token == Opt_offusrjquota) {
+> -			if (!clear_qf_name(sb, USRQUOTA))
+> -				return -1;
+> -		} else if (token == Opt_offgrpjquota) {
+> -			if (!clear_qf_name(sb, GRPQUOTA))
+> -				return -1;
+>  		} else if (m->flags & MOPT_QFMT) {
+>  			if (sb_any_quota_loaded(sb) &&
+>  			    sbi->s_jquota_fmt != m->mount_opt) {
+> -- 
+> 1.7.10.rc3
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
