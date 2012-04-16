@@ -1,23 +1,34 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/4] ext4: Fix regression in mount option parsing and a small cleanup
-Date: Mon, 16 Apr 2012 14:25:30 +0200
-Message-ID: <1334579134-19885-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] debugfs: cleanup in do_show_debugfs_params
+Date: Mon, 16 Apr 2012 21:41:26 +0800
+Message-ID: <1334583686-4571-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48689 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754359Ab2DPMZj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Apr 2012 08:25:39 -0400
+Received: from mail-pz0-f52.google.com ([209.85.210.52]:54921 "EHLO
+	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753639Ab2DPNfD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 09:35:03 -0400
+Received: by dake40 with SMTP id e40so6930244dak.11
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 06:35:03 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-  Hello,
+Remove 'out' variable and replace fprintf with printf.
 
-  this patch series aims at fixing a regression in parsing of journalled quota
-mount options introduced by Ted's mount option parsing rewrite. Patches 1 and 2
-cleanup the code a bit and patch 3 then fixes the regression. Patch 4 is a tiny
-cleanup.
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ debugfs/debugfs.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-								Honza
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 590468d..99281ac 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -1973,12 +1973,10 @@ void do_rmdir(int argc, char *argv[])
+ void do_show_debugfs_params(int argc EXT2FS_ATTR((unused)),
+ 			    char *argv[] EXT2FS_ATTR((unused)))
+ {
+-	FILE *out = stdout;
