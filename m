@@ -1,131 +1,275 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 31/32] libext2fs: add read/write inline data functions
-Date: Mon, 16 Apr 2012 19:40:06 +0800
-Message-ID: <1334576407-4007-32-git-send-email-wenqing.lz@taobao.com>
-References: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/4] ext4: Make mount option parsing loop more logical
+Date: Mon, 16 Apr 2012 14:25:32 +0200
+Message-ID: <1334579134-19885-3-git-send-email-jack@suse.cz>
+References: <1334579134-19885-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:43674 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753411Ab2DPLet (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 07:34:49 -0400
-Received: by mail-pb0-f46.google.com with SMTP id un15so6233785pbc.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 04:34:48 -0700 (PDT)
-In-Reply-To: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com>
+Received: from cantor2.suse.de ([195.135.220.15]:48691 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754383Ab2DPMZk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Apr 2012 08:25:40 -0400
+In-Reply-To: <1334579134-19885-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+The loop looking for correct mount option entry is more logical if it is
+written rewritten as an empty loop looking for correct option entry and then
+code handling the option. It also saves one level of indentation for a lot of
+code so we can join a couple of split lines.
 
-Add read/write inline data functions for pass2.
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- lib/ext2fs/dirblock.c |   62 +++++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fs.h   |    6 ++++
- 2 files changed, 68 insertions(+), 0 deletions(-)
+ fs/ext4/super.c |  224 +++++++++++++++++++++++++++----------------------------
+ 1 files changed, 111 insertions(+), 113 deletions(-)
 
-diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
-index cb3a104..8fdffe5 100644
---- a/lib/ext2fs/dirblock.c
-+++ b/lib/ext2fs/dirblock.c
-@@ -71,6 +71,45 @@ errcode_t ext2fs_read_dir_block(ext2_filsys fs, blk_t block,
- 	return ext2fs_read_dir_block3(fs, block, buf, 0);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 30e26f1..167aaac 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1473,130 +1473,128 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		return 1;
+ 	}
+ 
+-	for (m = ext4_mount_opts; m->token != Opt_err; m++) {
+-		if (token != m->token)
+-			continue;
+-		if (args->from && match_int(args, &arg))
++	for (m = ext4_mount_opts; m->token != Opt_err && token != m->token;
++	     m++);
++	if (m->token == Opt_err) {
++		ext4_msg(sb, KERN_ERR, "Unrecognized mount option \"%s\" "
++			 "or missing value", opt);
++		return -1;
++	}
++	
++	if (args->from && match_int(args, &arg))
++		return -1;
++	if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
++		return -1;
++	if (m->flags & MOPT_EXPLICIT)
++		set_opt2(sb, EXPLICIT_DELALLOC);
++	if (m->flags & MOPT_CLEAR_ERR)
++		clear_opt(sb, ERRORS_MASK);
++	if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
++		ext4_msg(sb, KERN_ERR, "Cannot change quota "
++			 "options when quota turned on");
++		return -1;
++	}
++
++	if (m->flags & MOPT_NOSUPPORT) {
++		ext4_msg(sb, KERN_ERR, "%s option not supported", opt);
++	} else if (token == Opt_commit) {
++		if (arg == 0)
++			arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
++		sbi->s_commit_interval = HZ * arg;
++	} else if (token == Opt_max_batch_time) {
++		if (arg == 0)
++			arg = EXT4_DEF_MAX_BATCH_TIME;
++		sbi->s_max_batch_time = arg;
++	} else if (token == Opt_min_batch_time) {
++		sbi->s_min_batch_time = arg;
++	} else if (token == Opt_inode_readahead_blks) {
++		if (arg > (1 << 30))
+ 			return -1;
+-		if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
++		if (arg && !is_power_of_2(arg)) {
++			ext4_msg(sb, KERN_ERR,
++				 "EXT4-fs: inode_readahead_blks"
++				 " must be a power of 2");
+ 			return -1;
+-		if (m->flags & MOPT_EXPLICIT)
+-			set_opt2(sb, EXPLICIT_DELALLOC);
+-		if (m->flags & MOPT_CLEAR_ERR)
+-			clear_opt(sb, ERRORS_MASK);
+-		if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
+-			ext4_msg(sb, KERN_ERR, "Cannot change quota "
+-				 "options when quota turned on");
++		}
++		sbi->s_inode_readahead_blks = arg;
++	} else if (token == Opt_init_itable) {
++		set_opt(sb, INIT_INODE_TABLE);
++		if (!args->from)
++			arg = EXT4_DEF_LI_WAIT_MULT;
++		sbi->s_li_wait_mult = arg;
++	} else if (token == Opt_stripe) {
++		sbi->s_stripe = arg;
++	} else if (token == Opt_resuid) {
++		sbi->s_resuid = arg;
++	} else if (token == Opt_resgid) {
++		sbi->s_resgid = arg;
++	} else if (token == Opt_journal_dev) {
++		if (is_remount) {
++			ext4_msg(sb, KERN_ERR,
++				 "Cannot specify journal on remount");
+ 			return -1;
+ 		}
+-
+-		if (m->flags & MOPT_NOSUPPORT) {
+-			ext4_msg(sb, KERN_ERR, "%s option not supported", opt);
+-		} else if (token == Opt_commit) {
+-			if (arg == 0)
+-				arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
+-			sbi->s_commit_interval = HZ * arg;
+-		} else if (token == Opt_max_batch_time) {
+-			if (arg == 0)
+-				arg = EXT4_DEF_MAX_BATCH_TIME;
+-			sbi->s_max_batch_time = arg;
+-		} else if (token == Opt_min_batch_time) {
+-			sbi->s_min_batch_time = arg;
+-		} else if (token == Opt_inode_readahead_blks) {
+-			if (arg > (1 << 30))
+-				return -1;
+-			if (arg && !is_power_of_2(arg)) {
+-				ext4_msg(sb, KERN_ERR,
+-					 "EXT4-fs: inode_readahead_blks"
+-					 " must be a power of 2");
+-				return -1;
+-			}
+-			sbi->s_inode_readahead_blks = arg;
+-		} else if (token == Opt_init_itable) {
+-			set_opt(sb, INIT_INODE_TABLE);
+-			if (!args->from)
+-				arg = EXT4_DEF_LI_WAIT_MULT;
+-			sbi->s_li_wait_mult = arg;
+-		} else if (token == Opt_stripe) {
+-			sbi->s_stripe = arg;
+-		} else if (token == Opt_resuid) {
+-			sbi->s_resuid = arg;
+-		} else if (token == Opt_resgid) {
+-			sbi->s_resgid = arg;
+-		} else if (token == Opt_journal_dev) {
+-			if (is_remount) {
+-				ext4_msg(sb, KERN_ERR,
+-					 "Cannot specify journal on remount");
+-				return -1;
+-			}
+-			*journal_devnum = arg;
+-		} else if (token == Opt_journal_ioprio) {
+-			if (arg > 7) {
++		*journal_devnum = arg;
++	} else if (token == Opt_journal_ioprio) {
++		if (arg > 7) {
++			ext4_msg(sb, KERN_ERR,
++				 "Invalid journal IO priority (must be 0-7)");
++			return -1;
++		}
++		*journal_ioprio = IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
++	} else if (m->flags & MOPT_DATAJ) {
++		if (is_remount) {
++			if (!sbi->s_journal)
++				ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
++			else if (test_opt(sb, DATA_FLAGS) != m->mount_opt) {
+ 				ext4_msg(sb, KERN_ERR,
+-					 "Invalid journal IO priority"
+-					 " (must be 0-7)");
++				 "Cannot change data mode on remount");
+ 				return -1;
+ 			}
+-			*journal_ioprio =
+-				IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
+-		} else if (m->flags & MOPT_DATAJ) {
+-			if (is_remount) {
+-				if (!sbi->s_journal)
+-					ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
+-				else if (test_opt(sb, DATA_FLAGS) !=
+-					 m->mount_opt) {
+-					ext4_msg(sb, KERN_ERR,
+-					 "Cannot change data mode on remount");
+-					return -1;
+-				}
+-			} else {
+-				clear_opt(sb, DATA_FLAGS);
+-				sbi->s_mount_opt |= m->mount_opt;
+-			}
++		} else {
++			clear_opt(sb, DATA_FLAGS);
++			sbi->s_mount_opt |= m->mount_opt;
++		}
+ #ifdef CONFIG_QUOTA
+-		} else if (token == Opt_usrjquota) {
+-			if (!set_qf_name(sb, USRQUOTA, &args[0]))
+-				return -1;
+-		} else if (token == Opt_grpjquota) {
+-			if (!set_qf_name(sb, GRPQUOTA, &args[0]))
+-				return -1;
+-		} else if (token == Opt_offusrjquota) {
+-			if (!clear_qf_name(sb, USRQUOTA))
+-				return -1;
+-		} else if (token == Opt_offgrpjquota) {
+-			if (!clear_qf_name(sb, GRPQUOTA))
+-				return -1;
+-		} else if (m->flags & MOPT_QFMT) {
+-			if (sb_any_quota_loaded(sb) &&
+-			    sbi->s_jquota_fmt != m->mount_opt) {
+-				ext4_msg(sb, KERN_ERR, "Cannot "
+-					 "change journaled quota options "
+-					 "when quota turned on");
+-				return -1;
+-			}
+-			sbi->s_jquota_fmt = m->mount_opt;
++	} else if (token == Opt_usrjquota) {
++		if (!set_qf_name(sb, USRQUOTA, &args[0]))
++			return -1;
++	} else if (token == Opt_grpjquota) {
++		if (!set_qf_name(sb, GRPQUOTA, &args[0]))
++			return -1;
++	} else if (token == Opt_offusrjquota) {
++		if (!clear_qf_name(sb, USRQUOTA))
++			return -1;
++	} else if (token == Opt_offgrpjquota) {
++		if (!clear_qf_name(sb, GRPQUOTA))
++			return -1;
++	} else if (m->flags & MOPT_QFMT) {
++		if (sb_any_quota_loaded(sb) &&
++		    sbi->s_jquota_fmt != m->mount_opt) {
++			ext4_msg(sb, KERN_ERR, "Cannot "
++				 "change journaled quota options "
++				 "when quota turned on");
++			return -1;
++		}
++		sbi->s_jquota_fmt = m->mount_opt;
+ #endif
+-		} else {
+-			if (!args->from)
+-				arg = 1;
+-			if (m->flags & MOPT_CLEAR)
+-				arg = !arg;
+-			else if (unlikely(!(m->flags & MOPT_SET))) {
+-				ext4_msg(sb, KERN_WARNING,
+-					 "buggy handling of option %s", opt);
+-				WARN_ON(1);
+-				return -1;
+-			}
+-			if (arg != 0)
+-				sbi->s_mount_opt |= m->mount_opt;
+-			else
+-				sbi->s_mount_opt &= ~m->mount_opt;
++	} else {
++		if (!args->from)
++			arg = 1;
++		if (m->flags & MOPT_CLEAR)
++			arg = !arg;
++		else if (unlikely(!(m->flags & MOPT_SET))) {
++			ext4_msg(sb, KERN_WARNING,
++				 "buggy handling of option %s", opt);
++			WARN_ON(1);
++			return -1;
+ 		}
+-		return 1;
++		if (arg != 0)
++			sbi->s_mount_opt |= m->mount_opt;
++		else
++			sbi->s_mount_opt &= ~m->mount_opt;
+ 	}
+-	ext4_msg(sb, KERN_ERR, "Unrecognized mount option \"%s\" "
+-		 "or missing value", opt);
+-	return -1;
++	return 1;
  }
  
-+errcode_t ext2fs_read_dir_inline_data(ext2_filsys fs, ext2_ino_t ino, void *buf)
-+{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	if (!(inode->i_flags & EXT4_INLINE_DATA_FL))
-+		return -1;
-+
-+	memcpy(buf, inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_free_mem(&inode);
-+	return 0;
-+}
-+
-+errcode_t ext2fs_read_dir_inline_data_more(ext2_filsys fs, ext2_ino_t ino, void *buf)
-+{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	if (!(inode->i_flags & EXT4_INLINE_DATA_FL))
-+		return -1;
-+
-+	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	if (idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
-+		return 0;
-+
-+	memcpy(buf + EXT4_MIN_INLINE_DATA_SIZE,
-+	       ext2fs_get_inline_xattr_pos(inode, &idata),
-+	       idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_free_mem(&inode);
-+	return 0;
-+}
- 
- errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
- 				  void *inbuf, int flags EXT2FS_ATTR((unused)))
-@@ -125,3 +164,26 @@ errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
- 	return ext2fs_write_dir_block3(fs, block, inbuf, 0);
- }
- 
-+errcode_t ext2fs_write_dir_inline_data(ext2_filsys fs, ext2_ino_t ino, void *buf)
-+{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	memcpy(inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	if (idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
-+		goto out;
-+
-+	memcpy(ext2fs_get_inline_xattr_pos(inode, &idata),
-+	       buf + EXT4_MIN_INLINE_DATA_SIZE,
-+	       idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE);
-+
-+out:
-+	ext2fs_write_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+	ext2fs_free_mem(&inode);
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index cb1b58e..dcc9700 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1009,12 +1009,18 @@ extern errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
- 					void *buf, int flags);
- extern errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
- 					void *buf, int flags);
-+extern errcode_t ext2fs_read_dir_inline_data(ext2_filsys fs, ext2_ino_t ino,
-+					     void *buf);
-+extern errcode_t ext2fs_read_dir_inline_data_more(ext2_filsys fs, ext2_ino_t ino,
-+						  void *buf);
- extern errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
- 					void *buf);
- extern errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
- 					 void *buf, int flags);
- extern errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
- 					 void *buf, int flags);
-+extern errcode_t ext2fs_write_dir_inline_data(ext2_filsys fs, ext2_ino_t ino,
-+					      void *buf);
- 
- /* dirhash.c */
- extern errcode_t ext2fs_dirhash(int version, const char *name, int len,
+ static int parse_options(char *options, struct super_block *sb,
 -- 
-1.7.4.1
+1.7.1
 
