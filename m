@@ -1,102 +1,114 @@
-From: Robin Dong <hao.bigrat@gmail.com>
-Subject: Re: [PATCH 1/3] ext4: s_freeclusters_counter should not tranform to
- unit of block before assigning to "free_clusters" in ext4_has_free_cluste
-Date: Mon, 16 Apr 2012 11:35:44 +0800
-Message-ID: <CAFZ0FUWbYrB8mfM9oQYd1x4wTbLmk8kOHzmDpiCK-ZLhqajbVg@mail.gmail.com>
-References: <1331638698-14796-1-git-send-email-hao.bigrat@gmail.com>
-	<20120324210518.GB5883@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "Ted Ts'o" <tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 00/32] e2fsprogs: make e2fsprogs support inline data
+Date: Mon, 16 Apr 2012 19:39:35 +0800
+Message-ID: <1334576407-4007-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:37209 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751101Ab2DPDfp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Apr 2012 23:35:45 -0400
-Received: by obbta14 with SMTP id ta14so3082751obb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Apr 2012 20:35:44 -0700 (PDT)
-In-Reply-To: <20120324210518.GB5883@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:43674 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752752Ab2DPLdw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 07:33:52 -0400
+Received: by pbcun15 with SMTP id un15so6233785pbc.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Apr 2012 04:33:52 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=D4=DA 2012=C4=EA3=D4=C225=C8=D5 =C9=CF=CE=E75:05=A3=ACTed Ts'o <tytso@=
-mit.edu> =D0=B4=B5=C0=A3=BA
-> On Tue, Mar 13, 2012 at 07:38:16PM +0800, Robin Dong wrote:
->> Creating 4-byte files until ENOSPC in a delay-allocation and bigallo=
-c ext4 fs and then sync it, the dmseg will report like:
->>
->>       [  482.154538] EXT4-fs (sdb6): delayed block allocation failed=
- for inode 1664 at logical offset 0 with max blocks 1 with error -28
->>       [  482.154540] EXT4-fs (sdb6): This should not happen!! Data w=
-ill be lost
->>
->> The reason is ext4_has_free_clusters reporting wrong
->> result. Actually, the unit of sbi->s_dirtyclusters_counter is block,
->> so we should tranform it to cluster for argument "dirty_clusters",
->> just like "free_clusters".
->
-> We have a bigger problem here, which is that this is not the only
-> place where s_dirty_clusters_counter is being used in units of
-> clusters.  (See ext4_claim_free_clusters, which when called by mballo=
-c
-> is using units of clusters.)
->
-> We definitely have brokeness here, but this is not the whole story.
-> We need to take a step back here and decide whether the correct units
-> is clusters or blocks.  Ultimately I think it does need to be
-> clusters, because we can't just convert blocks and clusters by using
-> B2C; we could dirty 3 blocks, but if those 3 blocks span two 64-block
-> clusters, what's important is that we have to reserve space for 2
-> clusters.  We can't just calculate "3 >> 6" and assume that we can
-> reserve 0 clusters and be done with it!
+Hi list,
 
-Hi, Ted
+Here is v2 for making e2fsprogs support inline data.  Now debugfs supports
+inline data in read-write mode.  Meanwhile e2fsck has been improved to support
+inline data feature.
 
-Actually, I have complete this logic in my "[PATCH 2/3] ext4: modify
-the implementation of quota reservation in bigalloc-delay-allocation"
-(http://marc.info/?l=3Dlinux-ext4&m=3D133163876628132&w=3D2)  patch,
-when those 3 blocks span two clusters, the logic in
-ext4_ext_map_blocks() will check whether a block is already in a
-delay-allocated-cluster (or already be
-allocated in disk) and ultimately reserved 2 clusters for the 3 blocks.
+v1->v2:
+* [mke2fs] automatically set EXT_ATTR feature when INLINE_DATA is set
+* [debugfs] supports read-write mode
 
-Imaging block0 and block1 in cluster0, block2 in cluster1. When
-ext4_da_map_blocks() process block0, we will call
-ext4_da_reserve_space() (which will
-reserve a cluster) and bump s_dirtycluster_counter , but when process
-block1, ext4_ext_map_blocks will return flag with
-EXT4_MAP_FROM_CLUSTER
-and we will not bump s_dirtycluster_counter this time since block1 is
-belong to a already reserved cluster.
+In mke2fs, EXT4_FEATURE_INCOMPAT_INLINE_DATA is set to 0x2000 to consist with
+kernel.  When making a new ext4 file system with INLINE_DATA feature, mke2fs
+will check whether EXT_ATTR is set or not.  If it is not set, mke2fs will mark
+it automatically because INLINE_DATA depends on it.
 
-Maybe I misunderstanding your meaning, could you please point out my fa=
-ult?
+In debugfs, it can support inline data in read-write mode.  Now there is two
+problems that need to be solved.  No matter whether the size of data is fit
+into inline data or not, 'write' command writes the data into disk blocks
+rather than inode itself.  'mkdir' command will expand dir to a new disk block
+when inode->i_block has full because Tao found a performance regression when a
+huge number of dirs are added and removed in EA space.  It causes that the code
+in kernel might be changed.  So now 'mkdir' cmd doesn't add a new dir entry
+in EA space.
 
-Thanks.
+TODO list:
+* [mke2fs] initialize ROOT dir with inline data flag
+* [mke2fs] initialize LOST+FOUND dir with inline data flag
+* [debugfs] 'write' cmd writes the data into inode itself
+* [debugfs] 'mkdir' cmd add dir entry into EA space
 
->
-> This is one of the places where I think we need to solve things by
-> having a better data structure for tracking which pages have been
-> subject to delayed allocation, since if we touch another block in a
-> cluster where we've done a delayed allocation, we don't need to bump
-> s_dirtyclusters_counter.  However, if this is the first time we've
-> touched a block in a particular cluster, then we *do* need to bump
-> s_dirtyclusters_counter --- and if we need to search all of the pages
-> in the page cache to make this determination, it's going to be
-> painful....
->
->                                        - Ted
+Regards,
+Zheng
 
+libext2fs: add EXT4_FEATURE_INCOMPAT_INLINE_DATA flag
+mke2fs: make it support inline data feature
+libext2fs: add inline_data feature
+mke2fs: add inline_data feature in mke2fs's manpage
+libext2fs: add ext2fs_find_entry_ext_attr function
+libext2fs: add EXT4_INLINE_DATA_FL flag for inode
+libext2fs: add data structures for inline data feature
+libext2fs: add inline_data file
+debugfs: make ncheck cmd support inline data
+debugfs: make chroot and cd cmd support inline data
+debugfs: make ls cmd support inline data
+debugfs: make stat cmd support inline data
+debufs: make blocks cmd support inline data
+debugfs: make filefrag cmd support inline data
+debugfs: make link cmd support inline data
+debugfs: make unlink cmd support inline data
+debugfs: make mkdir cmd support inline data
+debugfs: make rmdir cmd support inline data
+debugfs: make rm and kill_file cmd support inline data
+debugfs: make pwd cmd support inline data
+debugfs: make expand_dir cmd support inline data
+debugfs: make lsdel cmd support inline data
+debugfs: make undel cmd support inline data
+debugfs: make dump and cat cmd support inline data
+debugfs: make rdump cmd support inline data
+debugfs: make dirsearch cmd support inline data
+debugfs: make bma cmd support inline data
+e2fsck: add three problem descriptions in pass1
+e2fsck: check incorrect inline data flag
+e2fsck: make pass1 support inline data
+libext2fs: add read/write inline data functions
+e2fsck: check inline data in pass2
 
-
---=20
---
-Best Regard
-Robin Dong
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ debugfs/debugfs.c          |   25 ++-
+ debugfs/dump.c             |   38 +++-
+ debugfs/filefrag.c         |   30 ++-
+ debugfs/htree.c            |    6 +
+ debugfs/ls.c               |    8 +-
+ debugfs/lsdel.c            |   19 +-
+ debugfs/ncheck.c           |    8 +-
+ e2fsck/pass1.c             |   70 ++++-
+ e2fsck/pass1b.c            |    5 +-
+ e2fsck/pass2.c             |   50 +++-
+ e2fsck/problem.c           |   15 +
+ e2fsck/problem.h           |    9 +
+ lib/e2p/feature.c          |    2 +
+ lib/ext2fs/Makefile.in     |    5 +
+ lib/ext2fs/Makefile.pq     |    1 +
+ lib/ext2fs/bmap.c          |   16 +
+ lib/ext2fs/dblist_dir.c    |    8 +-
+ lib/ext2fs/dirblock.c      |   62 ++++
+ lib/ext2fs/expanddir.c     |    8 +-
+ lib/ext2fs/ext2_ext_attr.h |    4 +
+ lib/ext2fs/ext2_fs.h       |    9 +
+ lib/ext2fs/ext2fs.h        |   69 ++++-
+ lib/ext2fs/ext_attr.c      |   26 ++
+ lib/ext2fs/get_pathname.c  |    7 +-
+ lib/ext2fs/inline_data.c   |  715 ++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/link.c          |    9 +-
+ lib/ext2fs/lookup.c        |    6 +-
+ lib/ext2fs/mkdir.c         |    4 +
+ lib/ext2fs/unlink.c        |    9 +-
+ misc/mke2fs.8.in           |    3 +
+ misc/mke2fs.c              |   10 +-
+ 31 files changed, 1197 insertions(+), 59 deletions(-)
