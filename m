@@ -1,83 +1,190 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 00/19 v5] Fix filesystem freezing deadlocks
-Date: Tue, 17 Apr 2012 10:43:29 +1000
-Message-ID: <20120417004329.GE6734@dastard>
-References: <1334592845-22862-1-git-send-email-jack@suse.cz>
- <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH V4 17/22] ext4: let empty_dir handle inline dir.
+Date: Tue, 17 Apr 2012 11:55:13 +0800
+Message-ID: <4F8CE9A1.3070609@tao.ma>
+References: <4F41EF95.2000909@tao.ma> <1329721316-4955-1-git-send-email-tm@tao.ma> <1329721316-4955-17-git-send-email-tm@tao.ma> <B656C5E6-2795-4355-ABE4-6D9334CB7AFB@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Al Viro <viro@ZenIV.linux.org.uk>,
-	dchinner@redhat.com, LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, Alex Elder <elder@kernel.org>,
-	Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
-	Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
-	"David S. Miller" <davem@davemloft.net>,
-	fuse-devel@lists.sourceforge.net,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Joel Becker <jlbec@evilplan.org>,
-	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	Mark Fasheh <mfasheh@suse.com>,
-	Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, xfs@os
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:5998 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754755Ab2DQAnf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Apr 2012 20:43:35 -0400
-Content-Disposition: inline
-In-Reply-To: <C9A0E2F0-ED57-40D6-9F75-5D72D45D21F0@dilger.ca>
+Received: from oproxy9.bluehost.com ([69.89.24.6]:57584 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752586Ab2DQDzQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Apr 2012 23:55:16 -0400
+In-Reply-To: <B656C5E6-2795-4355-ABE4-6D9334CB7AFB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 16, 2012 at 03:02:50PM -0700, Andreas Dilger wrote:
-> On 2012-04-16, at 9:13 AM, Jan Kara wrote:
-> > Another potential contention point might be patch 19. In that patch
-> > we make freeze_super() refuse to freeze the filesystem when there
-> > are open but unlinked files which may be impractical in some cases.
-> > The main reason for this is the problem with handling of file deletion
-> > from fput() called with mmap_sem held (e.g. from munmap(2)), and
-> > then there's the fact that we cannot really force such filesystem
-> > into a consistent state... But if people think that freezing with
-> > open but unlinked files should happen, then I have some possible
-> > solutions in mind (maybe as a separate patchset since this is
-> > large enough).
+Hi Andreas,
+On 04/07/2012 08:21 AM, Andreas Dilger wrote:
+> On 2012-02-20, at 12:01 AM, Tao Ma wrote:
+>> From: Tao Ma <boyu.mt@taobao.com>
+>>
+>> empty_dir is used when deleting a dir. So it should handle
+>> inline dir properly.
+>>
+>> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+>> ---
+>> fs/ext4/inline.c |   69 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> fs/ext4/namei.c  |    8 ++++++
+>> fs/ext4/xattr.h  |    6 ++++
+>> 3 files changed, 83 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+>> index 3126ac3..6612ce1 100644
+>> --- a/fs/ext4/inline.c
+>> +++ b/fs/ext4/inline.c
+>> @@ -1436,6 +1436,75 @@ out:
+>> 	return err;
+>> }
+>>
+>> +int empty_inline_dir(struct inode *dir, int *has_inline_data)
+>> +{
+>> +	int err, inline_size;
+>> +	struct ext4_iloc iloc;
+>> +	void *inline_pos;
+>> +	unsigned int offset;
+>> +	struct ext4_dir_entry_2 *de, *de1;
+>> +	int ret = 1;
+>> +
+>> +	err = ext4_get_inode_loc(dir, &iloc);
+>> +	if (err) {
+>> +		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
+>> +				 err, dir->i_ino);
+>> +		return 1;
+>> +	}
+>> +
+>> +	down_read(&EXT4_I(dir)->xattr_sem);
+>> +	if (!ext4_has_inline_data(dir)) {
+>> +		*has_inline_data = 0;
+>> +		goto out;
+>> +	}
+>> +
+>> +	de = ext4_get_inline_entry(dir, &iloc, 0,
+>> +				   &inline_pos, &inline_size);
+>> +	de1 = ext4_get_inline_entry(dir, &iloc,
+>> +			ext4_rec_len_from_disk(de->rec_len, inline_size),
+>> +			&inline_pos, &inline_size);
+>> +	if (le32_to_cpu(de->inode) != dir->i_ino ||
+>> +			!le32_to_cpu(de1->inode) ||
+>> +			strcmp(".", de->name) ||
+>> +			strcmp("..", de1->name)) {
+>> +		ext4_warning(dir->i_sb,
+>> +			     "bad directory (dir #%lu) - no `.' or `..'",
+>> +			     dir->i_ino);
+>> +		ret = 1;
+>> +		goto out;
+>> +	}
+>> +
+>> +	offset = ext4_rec_len_from_disk(de->rec_len, inline_size) +
+>> +		 ext4_rec_len_from_disk(de1->rec_len, inline_size);
+>> +	while (offset < dir->i_size) {
+>> +		de = ext4_get_inline_entry(dir, &iloc, offset,
+>> +					   &inline_pos, &inline_size);
+>> +		if (ext4_check_dir_entry(dir, NULL, de,
+>> +					 iloc.bh, inline_pos,
+>> +					 inline_size, offset)) {
+>> +			ext4_warning(dir->i_sb,
+>> +				     "bad inline directory (dir #%lu) - "
+>> +				     "inode %u, rec_len %u, name_len %d"
+>> +				     "inline size %d\n",
+>> +				     dir->i_ino, le32_to_cpu(de->inode),
+>> +				     le16_to_cpu(de->rec_len), de->name_len,
+>> +				     inline_size);
+>> +			ret = 1;
+>> +			goto out;
+>> +		}
 > 
-> Looking at a desktop system, I think it is very typical that there
-> are open-unlinked files present, so I don't know if this is really
-> an acceptable solution.  It isn't clear from your comments whether
-> this is a blanket refusal for all open-unlinked files, or only in
-> some particular cases...
+> Most of the code in this function is duplicated with empty_dir().  Instead of
+> duplicating everything here, it seems that it is possible to just use the code
+> in empty_dir() with a few small changes:
+I just checked the codes and it seems a little bit hard for the
+integration. the common codes are just the checker, but there are a lot
+of difference between the inline dentry and block dentry iteration. So I
+would prefer to leave it as-is.
+
+Thanks
+Tao
 > 
-> lsof | grep deleted
-> nautilus  25393  adilger   19r      REG           253,0      340     253954 /home/adilger/.local/share/gvfs-metadata/home (deleted)
-> nautilus  25393  adilger   20r      REG           253,0    32768     253964 /home/adilger/.local/share/gvfs-metadata/home-f332a8f3.log (deleted)
-> gnome-ter 25623  adilger   22u      REG            0,18    17841    2717846 /tmp/vtePIRJCW (deleted)
-> gnome-ter 25623  adilger   23u      REG            0,18     5568    2717847 /tmp/vteDCSJCW (deleted)
-> gnome-ter 25623  adilger   29u      REG            0,18      480    2728484 /tmp/vte6C1TCW (deleted)
+> - a helper function which reads the first directory block instead of ext4_bread() 
+>> +		if (le32_to_cpu(de->inode)) {
+>> +			ret = 0;
+>> +			goto out;
+>> +		}
+>> +		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
+>> +	}
+>> +
+>> +out:
+>> +	up_read(&EXT4_I(dir)->xattr_sem);
+>> +	brelse(iloc.bh);
+>> +	return ret;
+>> +}
+>> +
+>> int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+>> {
+>> 	int ret;
+>> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+>> index 9f7002c..b6b718e 100644
+>> --- a/fs/ext4/namei.c
+>> +++ b/fs/ext4/namei.c
+>> @@ -2015,6 +2015,14 @@ static int empty_dir(struct inode *inode)
+>> 	struct super_block *sb;
+>> 	int err = 0;
+>>
+>> +	if (ext4_has_inline_data(inode)) {
+>> +		int has_inline_data = 1;
+>> +
+>> +		err = empty_inline_dir(inode, &has_inline_data);
+>> +		if (has_inline_data)
+>> +			return err;
+>> +	}
+>> +
+>> 	sb = inode->i_sb;
+>> 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
+>> 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
+>> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+>> index 9991143..6ccfa8d 100644
+>> --- a/fs/ext4/xattr.h
+>> +++ b/fs/ext4/xattr.h
+>> @@ -176,6 +176,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
+>> 				    struct inode *dir,
+>> 				    struct ext4_dir_entry_2 *de_del,
+>> 				    struct buffer_head *bh);
+>> +extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+>> # else  /* CONFIG_EXT4_FS_XATTR */
+>>
+>> static inline int
+>> @@ -373,6 +374,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
+>> {
+>> 	return 0;
+>> }
+>> +
+>> +static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
+>> +{
+>> +	return 0;
+>> +}
+>> # endif  /* CONFIG_EXT4_FS_XATTR */
+>>
+>> #ifdef CONFIG_EXT4_FS_SECURITY
+>> -- 
+>> 1.7.0.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Unlinked-but-open files are the reason that XFS dirties the log
-after the freeze process is complete. This ensures that if the
-system crashes while the filesystem is frozen then log recovery
-during the next mount will process the unlinked (orphaned) inodes
-and free the correctly. i.e. you can still freeze a filesystem with
-inodes in this state successfully and have everythign behave as
-you'd expect.
-
-I'm not sure how other filesystems handle this problem, but perhaps
-pushing this check down into filesystem specific code or adding a
-superblock feature flag might be a way to allow filesystems to
-handle this case in the way they think is best...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
