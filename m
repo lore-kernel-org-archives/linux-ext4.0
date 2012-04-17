@@ -1,108 +1,63 @@
-From: Ric Wheeler <rwheeler@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [RFC][PATCH 0/3] add FALLOC_FL_NO_HIDE_STALE flag in fallocate
-Date: Tue, 17 Apr 2012 13:59:37 -0400
-Message-ID: <4F8DAF89.5070805@redhat.com>
+Date: Tue, 17 Apr 2012 14:43:06 -0400
+Message-ID: <20120417184306.GA5916@thunk.org>
 References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com>
+ <4F8DAF89.5070805@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19081 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753557Ab2DQR7m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Apr 2012 13:59:42 -0400
-In-Reply-To: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50116 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752583Ab2DQSnL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Apr 2012 14:43:11 -0400
+Content-Disposition: inline
+In-Reply-To: <4F8DAF89.5070805@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/17/2012 12:53 PM, Zheng Liu wrote:
-> Hi list,
->
-> fallocate is a useful system call because it can preallocate some disk blocks
-> for a file and keep blocks contiguous.  However, it has a defect that file
-> system will convert an uninitialized extent to be an initialized when the user
-> wants to write some data to this file, because file system create an
-> unititalized extent while it preallocates some blocks in fallocate (e.g. ext4).
-> Especially, it causes a severe degradation when the user tries to do some
-> random write operations, which frequently modifies the metadata of this file.
-> We meet this problem in our product system at Taobao.  Last month, in ext4
-> workshop, we discussed this problem and the Google faces the same problem.  So
-> a new flag, FALLOC_FL_NO_HIDE_STALE, is added in order to solve this problem.
-> When this flag is set, file system will create an inititalized extent for this
-> file.  So it avoids the conversion from uninitialized to initialized.  If users
-> want to use this flag, they must guarantee that file has been initialized by
-> themselves before it is read at the same offset.  This flag is added in vfs so
-> that other file systems can also support this flag to improve the performance.
+On Tue, Apr 17, 2012 at 01:59:37PM -0400, Ric Wheeler wrote:
+> 
+> You could get both security and avoid the run time hit by fully
+> writing the file or by having a variation that relied on "discard"
+> (i.e., no need to zero data if we can discard or track it as
+> unwritten).
 
-I really, really don't like exposing stale data to users and applications.
+It's certainly the case that if the device supports persistent
+discard, something which we definitely *should* do is to send the
+discard at fallocate time and then mark the space as initialized.
 
-This is something that no enterprise file system (or distribution) would be able 
-to support and it totally breaks one of the age old promises that file systems 
-have always given to applications (if you preallocate and don't write, you will 
-read back zeros).
+Unfortunately, not all devices, and in particular no HDD's for which I
+aware support persistent discard.  And, writing all zero's to the file
+is in fact what a number of programs for which I am aware (including
+an enterprise database) are doing, precisely because they tend to
+write into the fallocated space in a somewhat random order, and the
+extent conversion costs is in fact quite significant.  But writing all
+zero's to the file before you can use it is quite costly; at the very
+least it burns disk bandwidth --- one of the main motivations of
+fallocate was to avoid needing to do a "write all zero pass", and
+while it does solve the problem for some use cases (such as DVR's),
+it's not a complete solution.
 
-Sounds like we are proposing the introduction a huge security hole instead of 
-addressing the performance issue head on. Let's not punt on solving the design 
-challenge by relying on the inherent goodness of arbitrary users just yet please!
+Whether or not it is a security issue is debateable.  If using the
+fallocate flag requires CAP_SYS_RAWIO, and the process has to
+explicitly ask for the privilege, a process with those privileges can
+directly access memory and I/O ports directly, via the ioperm(2) and
+iopl(2) system calls.  So I think it's possible to be a bit nuanced
+over whether or not this is as horrible as you might think.
 
-You could get both security and avoid the run time hit by fully writing the file 
-or by having a variation that relied on "discard" (i.e., no need to zero data if 
-we can discard or track it as unwritten).
+Ultimately, if there are application programmers who are really
+desperate for that the last bit of performance, they can always use
+FIBMAP/FIEMAP and then read/write directly to the block device.  (And
+no, that's not a theoretical example.)  I think it is a worthwhile
+goal to provide file system interfaces that allow a trusted process
+which has the appropriate security capabilities to do things in a
+safer way than that.
 
-Ric
+Regards,
 
-
->
-> I try to make ext4 support this new flag, and run a simple test in my own
-> desktop to verify it.  The machine has a Intel(R) Core(TM)2 Duo CPU E8400, 4G
-> memory and a WDC WD1600AAJS-75M0A0 160G SATA disk.  I use the following script
-> to tset the performance.
->
-> #/bin/sh
-> mkfs.ext4 ${DEVICE}
-> mount -t ext4 ${DEVICE} ${TARGET}
-> fallocate -l 27262976 ${TARGET}/test # the size of the file is 256M (*)
-> time for((i=0;i<2000;i++)); do dd if=/dev/zero of=/mnt/sda1/test_256M \
-> 	conv=notrunc bs=4k count=1 seek=`expr $i \* 16` oflag=sync,direct \
-> 	2>/dev/null; done
->
-> * I write a wrapper program to call fallocate(2) with FALLOC_FL_NO_HIDE_STALE
->    flag because the userspace tool doesn't support the new flag.
->
-> The result:
-> 	w/o 		w/
-> real	1m16.043s	0m17.946s	-76.4%
-> user	0m0.195s	0m0.192s	-1.54%
-> sys	0m0.468s	0m0.462s	-1.28%
->
-> Obviously, this flag will bring an secure issue because the malicious user
-> could use this flag to get other user's data if (s)he doesn't do a
-> initialization before reading this file.  Thus, a sysctl parameter
-> 'fs.falloc_no_hide_stale' is defined in order to let administrator to determine
-> whether or not this flag is enabled.  Currently, this flag is disabled by
-> default.  I am not sure whether this is enough or not.  Another option is that
-> a new Kconfig entry is created to remove this flag during the kernel is
-> complied.  So any suggestions or comments are appreciated.
->
-> Regards,
-> Zheng
->
-> Zheng Liu (3):
->        vfs: add FALLOC_FL_NO_HIDE_STALE flag in fallocate
->        vfs: add security check for _NO_HIDE_STALE flag
->        ext4: add FALLOC_FL_NO_HIDE_STALE support
->
->   fs/ext4/extents.c      |    7 +++++--
->   fs/open.c              |   12 +++++++++++-
->   include/linux/falloc.h |    5 +++++
->   include/linux/sysctl.h |    1 +
->   kernel/sysctl.c        |   10 ++++++++++
->   5 files changed, 32 insertions(+), 3 deletions(-)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+						- Ted
