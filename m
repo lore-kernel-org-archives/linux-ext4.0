@@ -1,87 +1,73 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Andreas Dilger <adilger@whamcloud.com>
 Subject: Re: [RFC][PATCH 0/3] add FALLOC_FL_NO_HIDE_STALE flag in fallocate
-Date: Wed, 18 Apr 2012 12:08:42 +0800
-Message-ID: <20120418040842.GA11684@gmail.com>
-References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com>
- <4F8DAAFE.40500@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+Date: Tue, 17 Apr 2012 21:59:37 -0700
+Message-ID: <D225F088-A53F-4962-97AD-13C850BBA722@whamcloud.com>
+References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com> <4F8DAAFE.40500@redhat.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:46101 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750696Ab2DRECz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Apr 2012 00:02:55 -0400
-Content-Disposition: inline
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <4F8DAAFE.40500@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 17, 2012 at 12:40:14PM -0500, Eric Sandeen wrote:
+On 2012-04-17, at 10:40, Eric Sandeen <sandeen@redhat.com> wrote:
 > On 4/17/12 11:53 AM, Zheng Liu wrote:
-> > Hi list,
-> > 
-> > fallocate is a useful system call because it can preallocate some disk blocks
-> > for a file and keep blocks contiguous.  However, it has a defect that file
-> > system will convert an uninitialized extent to be an initialized when the user
-> > wants to write some data to this file, because file system create an
-> > unititalized extent while it preallocates some blocks in fallocate (e.g. ext4).
+>> 
+>> fallocate is a useful system call because it can preallocate some disk blocks
+>> for a file and keep blocks contiguous.  However, it has a defect that file
+>> system will convert an uninitialized extent to be an initialized when the user
+>> wants to write some data to this file, because file system create an
+>> unititalized extent while it preallocates some blocks in fallocate (e.g. ext4).
 > 
 > That's a security-driven design feature, not a defect.  :)
 > 
-> > Especially, it causes a severe degradation when the user tries to do some
-> > random write operations, which frequently modifies the metadata of this file.
-> > We meet this problem in our product system at Taobao.  Last month, in ext4
-> > workshop, we discussed this problem and the Google faces the same problem.  So
-> > a new flag, FALLOC_FL_NO_HIDE_STALE, is added in order to solve this problem.
-> 
-> Which then opens up severe security problems.
-> 
-> > When this flag is set, file system will create an inititalized extent for this
-> > file.  So it avoids the conversion from uninitialized to initialized.  If users
-> > want to use this flag, they must guarantee that file has been initialized by
-> > themselves before it is read at the same offset.  This flag is added in vfs so
-> > that other file systems can also support this flag to improve the performance.
-> > 
-> > I try to make ext4 support this new flag, and run a simple test in my own
-> > desktop to verify it.  The machine has a Intel(R) Core(TM)2 Duo CPU E8400, 4G
-> > memory and a WDC WD1600AAJS-75M0A0 160G SATA disk.  I use the following script
-> > to tset the performance.
-> > 
-> > #/bin/sh
-> > mkfs.ext4 ${DEVICE}
-> > mount -t ext4 ${DEVICE} ${TARGET}
-> > fallocate -l 27262976 ${TARGET}/test # the size of the file is 256M (*)
+>> I try to make ext4 support this new flag, and run a simple test in my own
+>> desktop to verify it.  The machine has a Intel(R) Core(TM)2 Duo CPU E8400, 4G
+>> memory and a WDC WD1600AAJS-75M0A0 160G SATA disk.  I use the following script
+>> to tset the performance.
+>> 
+>> #/bin/sh
+>> mkfs.ext4 ${DEVICE}
+>> mount -t ext4 ${DEVICE} ${TARGET}
+>> fallocate -l 27262976 ${TARGET}/test # the size of the file is 256M (*)
 > 
 > That's only 26MB, but the below loop writes to a max offset of around
 > 256M.
-
-Yes, you are right.  I preallocate a file that is 256MB.
-
 > 
-> > time for((i=0;i<2000;i++)); do dd if=/dev/zero of=/mnt/sda1/test_256M \
-> > 	conv=notrunc bs=4k count=1 seek=`expr $i \* 16` oflag=sync,direct \
-> > 	2>/dev/null; done
+>> time for((i=0;i<2000;i++)); do dd if=/dev/zero of=/mnt/sda1/test_256M \
+>>    conv=notrunc bs=4k count=1 seek=`expr $i \* 16` oflag=sync,direct \
+>>    2>/dev/null; done
 > 
 > You fallocate ${TARGET}/test but dd to /mnt/sda1/test_256M ?  I presume
 > those should be the same file.
-
-Yes, it is the same file.
-
 > 
 > So the testcase as shown above seems fairly wrong, no?  Is that what you
 > used for the numbers below?
-> 
-> > * I write a wrapper program to call fallocate(2) with FALLOC_FL_NO_HIDE_STALE
-> >   flag because the userspace tool doesn't support the new flag.
-> > 
-> > The result:
-> > 	w/o 		w/
-> > real	1m16.043s	0m17.946s	-76.4%
-> > user	0m0.195s	0m0.192s	-1.54%
-> > sys	0m0.468s	0m0.462s	-1.28%
+
+I auspect the real problem may be the lazy inode table zeroing being done in the kernel. If the test is run immediately after formatting the filesystem, then the kernel thread is busy writing to the disk in the background and interfering with your benchmark.
+
+Please format the filesystem with "-E lazy-itable-init=0", to avoid this behavior.  
+
+Secondly, your test program is not doing random writes to disk, but rather doing writes at 64kB intervals. There is logic in the uninitialized extent handling that will write zeros to an entire extent, rather than create many fragmented uninitialized extents.  It may be possible that you are zeroing out the entire file, and writing 16x as much data as you expect.
+
+Cheers, Andreas
+
+>> * I write a wrapper program to call fallocate(2) with FALLOC_FL_NO_HIDE_STALE
+>>  flag because the userspace tool doesn't support the new flag.
+>> 
+>> The result:
+>>    w/o        w/
+>> real    1m16.043s    0m17.946s    -76.4%
+>> user    0m0.195s    0m0.192s    -1.54%
+>> sys    0m0.468s    0m0.462s    -1.28%
 > 
 > I think that the missing information here is some profiling to show where
 > the time was spent in the "w/o" case.  What, exactly, in ext4 extent
@@ -104,8 +90,8 @@ Yes, it is the same file.
 > and then do your seeky dd test after each of the above:
 > 
 > # time for((i=0;i<2000;i++)); do dd if=/dev/zero of=/mnt/scratch/test \
-> 	conv=notrunc bs=4k count=1 seek=`expr $i \* 16` oflag=sync,direct \
-> 	2>/dev/null; done
+>    conv=notrunc bs=4k count=1 seek=`expr $i \* 16` oflag=sync,direct \
+>    2>/dev/null; done
 > 
 > On ext4, I get about 59.9 seconds in the pre-written case, 65.2 seconds in the fallocated case.
 > 
@@ -114,18 +100,6 @@ Yes, it is the same file.
 > I don't see anywhere near the slowdown you show above, certainly
 > nothing bad enough to warrant opening the big security hole.
 > Am I missing something?
-
-I will run more detailed benchmarks to trace this issue.  If I have a
-lastest result, I will send a new mail to let you know. :)
-
-I fully understand that this flag will bring a security hole, and I
-totally agree that we should dig *root cause* in ext4.  But, IMHO, a
-proper interface, which is limited by a proper capabilities, might be
-useful for the user.  
-
-Regards,
-Zheng
-
 > 
 > The ext4 delta is a bit larger, though, so it seems worth investigating
 > the *root cause* of the extra overhead if it's problematic in your
@@ -134,31 +108,35 @@ Zheng
 > -Eric
 > 
 > 
-> > Obviously, this flag will bring an secure issue because the malicious user
-> > could use this flag to get other user's data if (s)he doesn't do a
-> > initialization before reading this file.  Thus, a sysctl parameter
-> > 'fs.falloc_no_hide_stale' is defined in order to let administrator to determine
-> > whether or not this flag is enabled.  Currently, this flag is disabled by
-> > default.  I am not sure whether this is enough or not.  Another option is that
-> > a new Kconfig entry is created to remove this flag during the kernel is
-> > complied.  So any suggestions or comments are appreciated.
-> > 
-> > Regards,
-> > Zheng
-> > 
-> > Zheng Liu (3):
-> >       vfs: add FALLOC_FL_NO_HIDE_STALE flag in fallocate
-> >       vfs: add security check for _NO_HIDE_STALE flag
-> >       ext4: add FALLOC_FL_NO_HIDE_STALE support
-> > 
-> >  fs/ext4/extents.c      |    7 +++++--
-> >  fs/open.c              |   12 +++++++++++-
-> >  include/linux/falloc.h |    5 +++++
-> >  include/linux/sysctl.h |    1 +
-> >  kernel/sysctl.c        |   10 ++++++++++
-> >  5 files changed, 32 insertions(+), 3 deletions(-)
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Obviously, this flag will bring an secure issue because the malicious user
+>> could use this flag to get other user's data if (s)he doesn't do a
+>> initialization before reading this file.  Thus, a sysctl parameter
+>> 'fs.falloc_no_hide_stale' is defined in order to let administrator to determine
+>> whether or not this flag is enabled.  Currently, this flag is disabled by
+>> default.  I am not sure whether this is enough or not.  Another option is that
+>> a new Kconfig entry is created to remove this flag during the kernel is
+>> complied.  So any suggestions or comments are appreciated.
+>> 
+>> Regards,
+>> Zheng
+>> 
+>> Zheng Liu (3):
+>>      vfs: add FALLOC_FL_NO_HIDE_STALE flag in fallocate
+>>      vfs: add security check for _NO_HIDE_STALE flag
+>>      ext4: add FALLOC_FL_NO_HIDE_STALE support
+>> 
+>> fs/ext4/extents.c      |    7 +++++--
+>> fs/open.c              |   12 +++++++++++-
+>> include/linux/falloc.h |    5 +++++
+>> include/linux/sysctl.h |    1 +
+>> kernel/sysctl.c        |   10 ++++++++++
+>> 5 files changed, 32 insertions(+), 3 deletions(-)
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
