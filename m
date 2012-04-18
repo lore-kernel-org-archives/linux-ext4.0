@@ -1,28 +1,29 @@
-From: Lukas Czerner <lczerner@redhat.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: [RFC][PATCH 0/3] add FALLOC_FL_NO_HIDE_STALE flag in fallocate
-Date: Wed, 18 Apr 2012 10:19:08 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1204181015050.5310@dhcp-27-109.brq.redhat.com>
-References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com> <4F8DAAFE.40500@redhat.com> <D225F088-A53F-4962-97AD-13C850BBA722@whamcloud.com>
+Date: Wed, 18 Apr 2012 19:38:10 +0800
+Message-ID: <20120418113810.GA3447@gmail.com>
+References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com>
+ <4F8DAAFE.40500@redhat.com>
+ <D225F088-A53F-4962-97AD-13C850BBA722@whamcloud.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: Eric Sandeen <sandeen@redhat.com>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38304 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751657Ab2DRITQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Apr 2012 04:19:16 -0400
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:52541 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752480Ab2DRLbm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Apr 2012 07:31:42 -0400
+Content-Disposition: inline
 In-Reply-To: <D225F088-A53F-4962-97AD-13C850BBA722@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 17 Apr 2012, Andreas Dilger wrote:
-
+On Tue, Apr 17, 2012 at 09:59:37PM -0700, Andreas Dilger wrote:
 > On 2012-04-17, at 10:40, Eric Sandeen <sandeen@redhat.com> wrote:
 > > On 4/17/12 11:53 AM, Zheng Liu wrote:
 > >> 
@@ -61,15 +62,21 @@ On Tue, 17 Apr 2012, Andreas Dilger wrote:
 > 
 > Please format the filesystem with "-E lazy-itable-init=0", to avoid this behavior.  
 
-That's right. Or you can mount it with -o noinit_itable to prevent
-kernel from initializing the inode table. But I would expect that this
-will not have such a huge impact since it is done in both w/ and w/o
-case.
-
--Lukas
+I format the filesystem with this option, but it seems that it is
+useless.
 
 > 
 > Secondly, your test program is not doing random writes to disk, but rather doing writes at 64kB intervals. There is logic in the uninitialized extent handling that will write zeros to an entire extent, rather than create many fragmented uninitialized extents.  It may be possible that you are zeroing out the entire file, and writing 16x as much data as you expect.
+
+No, I don't see any entire extents that is written zeros.  The extent is
+splitted to many fragmented initialized and uninitialized extents.
+
+I have run a more detailed benchmark.  Later I will post it in mailing
+list.  IMHO, I guess that the journal might be the root cause.
+
+Regards,
+Zheng
+
 > 
 > Cheers, Andreas
 > 
@@ -153,10 +160,3 @@ case.
 > > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > > the body of a message to majordomo@vger.kernel.org
 > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
