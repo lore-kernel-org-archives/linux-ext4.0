@@ -1,54 +1,33 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 5/7] xfs: honor the O_SYNC flag for aysnchronous direct I/O requests
-Date: Thu, 19 Apr 2012 11:04:22 -0400
-Message-ID: <x49obqng3ux.fsf@segfault.boston.devel.redhat.com>
-References: <1333058705-31512-1-git-send-email-jmoyer@redhat.com>
-	<1333058705-31512-6-git-send-email-jmoyer@redhat.com>
-	<20120329225743.GC18323@dastard>
-	<x49y5qii1mx.fsf@segfault.boston.devel.redhat.com>
-	<x49d37tj2ji.fsf@segfault.boston.devel.redhat.com>
+From: Jouko Orava <jouko.orava@helsinki.fi>
+Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
+ empty
+Date: Thu, 19 Apr 2012 18:09:50 +0300 (EEST)
+Message-ID: <alpine.LRH.2.00.1204191803360.19837@ruuvi.it.helsinki.fi>
+References: <20120412160658.GA9697@gmail.com> <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi> <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi> <4F901E0C.3010008@redhat.com> <alpine.LRH.2.00.1204191731340.17249@ruuvi.it.helsinki.fi>
+ <4F9024F1.3000806@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, jack@suse.cz, hch@infradead.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57088 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754132Ab2DSPE5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 11:04:57 -0400
-In-Reply-To: <x49d37tj2ji.fsf@segfault.boston.devel.redhat.com> (Jeff Moyer's
-	message of "Fri, 30 Mar 2012 15:45:37 -0400")
+Received: from smtp-rs1-vallila2.fe.helsinki.fi ([128.214.173.75]:34664 "EHLO
+	smtp-rs1-vallila2.fe.helsinki.fi" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752605Ab2DSPJ7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Apr 2012 11:09:59 -0400
+In-Reply-To: <4F9024F1.3000806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jeff Moyer <jmoyer@redhat.com> writes:
+> No, RHEL kernels have the same limits.
 
-> Jeff Moyer <jmoyer@redhat.com> writes:
->
->> Hi, Dave,
->>
->> Thanks for the review!
->>
->>> or better still, factor xfs_file_fsync() so that it calls a helper
->>> that doesn't wait for data IO completion, and call that helper here
->>> too. The semantics of fsync/fdatasync are too complex to have to
->>> implement and maintain in multiple locations....
->>
->> I definitely agree with consolidating things.  However, there are four
->> blocking calls in xfs_file_fsync (filemap_write_and_wait_range,
->> xfs_blkdev_issue_flush, _xfs_log_force_lsn, and another call to
->> xfs_blkdev_issue_flush).  How would you propose to make that
->> non-blocking given that those steps have to happen in sequence?
->
-> OK, so re-reading your mail, I think you meant to just factor out
-> everything except the filemap_write_and_wait_range.  Here are a couple
-> of patches which do that.  Also, since we're not worried about blocking
-> in the endio processing, just making things synchronous makes the code a
-> lot simpler.  Let me know what you think of the attached two patches
-> (which I've already run through xfstests).
+That means at least 2.6.32.x stable series will suffer from the same bug.
+I'll see if I can test those mainline kernels too this weekend.
 
-Dave, ping?  Did you have a chance to take a look at these patches?
+> Whoops, I just filed one as well.  I'll dup yours to mine since I've already
+> started the process there.
 
-Cheers,
-Jeff
+That's excellent, thank you. Mine was unacceptably terse anyway :)
+
+Thanks,
+  Jouko
