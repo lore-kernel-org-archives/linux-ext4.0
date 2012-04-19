@@ -1,49 +1,87 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
- empty
-Date: Thu, 19 Apr 2012 09:45:05 -0500
-Message-ID: <4F9024F1.3000806@redhat.com>
-References: <20120412160658.GA9697@gmail.com> <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi> <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi> <4F901E0C.3010008@redhat.com> <alpine.LRH.2.00.1204191731340.17249@ruuvi.it.helsinki.fi>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not empty
+Date: Thu, 19 Apr 2012 22:56:24 +0800
+Message-ID: <CANWLp00gJ59tYCCsxxJ_C2WHjQw2CP8wv7YzqgKrxO6bwsD6ew@mail.gmail.com>
+References: <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
+	<20120412160658.GA9697@gmail.com>
+	<alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jouko Orava <jouko.orava@helsinki.fi>, linux-ext4@vger.kernel.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>
-To: Jouko Orava <jouko.orava@iki.fi>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Jouko Orava <jouko.orava@helsinki.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34657 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752273Ab2DSOpS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 10:45:18 -0400
-In-Reply-To: <alpine.LRH.2.00.1204191731340.17249@ruuvi.it.helsinki.fi>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:37612 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753737Ab2DSO4Z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2012 10:56:25 -0400
+Received: by pbcun15 with SMTP id un15so10334814pbc.19
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Apr 2012 07:56:24 -0700 (PDT)
+In-Reply-To: <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/19/12 9:38 AM, Jouko Orava wrote:
->> FWIW, we tried fairly hard to get the limit lifted in the vfs, to no avail.
-> 
-> I understand. The downsides from the limit are very small, after all.
-> 
-> Has anyone tested the older stable kernel releases?
-> When was the VFS limit added, or is it something RHEL kernels patch out?
+On Thu, Apr 19, 2012 at 9:10 PM, Jouko Orava <jouko.orava@helsinki.fi> =
+wrote:
+> Hi Zheng,
+>
+> I can confirm the bug exists on latest RHEL 6 x86_64 kernels (2.6.32-=
+220).
+>
+> On current mainline kernels all writes are limited to one page under =
+2GB,
+> which masks the problem. I have not checked if mainline 2.6.32 has th=
+is
+> limit or not. It does not matter: the limit is just a band-aid to pap=
+er
+> over filesystem bugs, and should not mean you don't fix filesystem bu=
+gs.
+>
+> I can confirm the one line patch to fs/ext4/file.c does fix the probl=
+em.
+> I have test kernels based on 2.6.32-220.7.1.el6.x86_64 with only
+> the patch applied, at
+> =A0 =A0 =A0 =A0http://www.helsinki.fi/~joorava/kernel/
+> if anyone else is interested in testing.
+>
+> I did some (limited) testing on ext4 with the patch. It fixes the pro=
+blem:
+> large writes work very well too. No problems popped up in testing.
+>
+> Tested-by: Jouko Orava <jouko.orava@helsinki.fi>
+>
+>
+> I'd also like to point at the real bug here, in Jouni's original stra=
+ce:
+>
+> =A0 =A0 =A0 =A0writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}],=
+ 2) =3D -2147483640
+>
+> The syscall returns a negative value, which is not the actual number =
+of
+> bytes written (since it is 32-bit wrapped), and errno has not been
+> changed. There is no way for userspace to handle this result correctl=
+y!
+>
+> There is no way anyone sane should just gloss over this saying
+> "programmer fault, you're doing it wrong".
+> This is a real bug, and deserves fixing sooner rather than later.
+>
+> Thanks,
+> =A0 Jouko Orava
 
-No, RHEL kernels have the same limits.
+Hi Jouko,
 
->> Agreed, I think Dave was a little to quick on the draw on his reply.
-> 
-> It is easy to miss, the EFAULT on the syscall that follows is so obvious.
-> 
-> I've filed a terse report to the Red Hat Bugzilla:
-> 	https://bugzilla.redhat.com/show_bug.cgi?id=814296
+Thanks for testing.  I don't test this bug in redhat kernel.  As Eric s=
+aid, he
+will fix it if it exists.  I think that it might be in stable kernel.
+So I will dig it
+in stable kernel.
 
-Whoops, I just filed one as well.  I'll dup yours to mine since I've already
-started the process there.
-
-Thanks,
--Eric
-
-> Let me know if you wish me to expand on that report.
-> 
-> Best regards,
->     Jouko Orava
-
+Regards,
+Zheng
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
