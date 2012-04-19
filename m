@@ -1,75 +1,83 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH 0/6] ext4: status extents
-Date: Wed, 18 Apr 2012 18:56:46 -0700
-Message-ID: <20120419015646.GW15164@tux1.beaverton.ibm.com>
-References: <1334732838-25102-1-git-send-email-achender@linux.vnet.ibm.com>
-Reply-To: djwong@us.ibm.com
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Extent tree status asking
+Date: Thu, 19 Apr 2012 17:38:30 +0800
+Message-ID: <20120419093829.GA4547@gmail.com>
+References: <20120416175534.GA5533@gmail.com>
+ <4F8E5CEE.9050607@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: Allison Henderson <achender@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:35147 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751180Ab2DSB5V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Apr 2012 21:57:21 -0400
-Received: from /spool/local
-	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Wed, 18 Apr 2012 19:57:20 -0600
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id B17543E40047
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Apr 2012 19:56:47 -0600 (MDT)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3J1ulpH066984
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Apr 2012 19:56:47 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3J1ulus024951
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Apr 2012 19:56:47 -0600
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:65042 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754591Ab2DSJb5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Apr 2012 05:31:57 -0400
+Received: by pbcun15 with SMTP id un15so10030306pbc.19
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Apr 2012 02:31:56 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1334732838-25102-1-git-send-email-achender@linux.vnet.ibm.com>
+In-Reply-To: <4F8E5CEE.9050607@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 18, 2012 at 12:07:12AM -0700, Allison Henderson wrote:
-> This set is based on the earlier delayed extent tree, but has
-> been renamed to a "status extent" scheme.  The plan is that the
-> tree will be expanded to track allocated extents and also
-> support extent locks.  Thus status extents seemed like a
-> more appropriate name.
-
-How about "extent status tree" ?
-
+On Tue, Apr 17, 2012 at 11:19:26PM -0700, Allison Henderson wrote:
+> On 04/16/2012 10:55 AM, Zheng Liu wrote:
+> >Hi Allison,
+> >
+> >Currently I am trying to reduce the lock contention of direct I/O in ext4
+> >because it is a bottleneck.  A trivial idea is that a new fucntion is
+> >defined to replace the generic_file_aio_write, which do some write
+> >operations with acquiring i_data_sem lock in inode.
+> >
+> >I know that you are trying to implement extent tree, and I have seen your patch
+> >set '[PATCH] Rename delayed extents to status extents'.  After extent tree is
+> >made, the implementation of direct I/O without i_mutex and range lock is
+> >straightforward and it is better than my trivial idea.  I think that
+> >maybe I can borrow you works.  So could you please share me your schedule
+> >and/or other information?
+> >
+> >Last month on ext4 workshop, we discuss the extent tree, range lock and I/O
+> >tree.  Obviously, I/O tree is used to store I/O operations, which can track
+> >delay allocation, do unwritten->written conversion and implement range lock.
+> >It is very useful for ext4 and I am interested in this proposal.  I know that
+> >you have begun to do some works.  So would you like to tell me the status of
+> >extent tree?  I don't know whether or not there has some things that I can be
+> >involved.  If you have some advices or there is something that I can help,
+> >please let me know.  Thank you and looking forward your reply.
+> >
+> >Regards,
+> >Zheng
 > 
-> Allison Henderson (6):
->   ext4: add two structures supporting status extent tree
->   ext4: add operations on status extent tree
->   ext4: initialize status extent tree
->   ext4: let ext4 maintian status extent trees
-
-"maintain".
-
---D
-
->   ext4: reimplement fiemap on status extent tree
->   ext4: reimplement ext4_find_delay_alloc_range on status extent tree
+> Hi Zheng,
 > 
->  fs/ext4/Makefile         |    2 +-
->  fs/ext4/ext4.h           |    9 +-
->  fs/ext4/ext4_extents.h   |    3 +-
->  fs/ext4/extents.c        |  297 ++++-----------------------------
->  fs/ext4/indirect.c       |    3 +
->  fs/ext4/inode.c          |   83 ++++------
->  fs/ext4/status_extents.c |  417 ++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/status_extents.h |   40 +++++
->  fs/ext4/super.c          |   13 ++-
->  9 files changed, 545 insertions(+), 322 deletions(-)
->  create mode 100644 fs/ext4/status_extents.c
->  create mode 100644 fs/ext4/status_extents.h
+> Well, I can share with you what I have done so far with Yongqiang's
+> delayed extent tree, but since I was moved to the ganesha project,
+> extent locks are no longer a business priority now.  I've done some
+> work on it on my own time, but I have not been able to keep up pace
+> with it.  If someone else has the hours to push it faster than I can
+> at this point, I would certainly be understanding of that.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> Basically though the plan was to modify Yongqiang's delayed extent
+> tree to track allocated extents as well as delayed extents.  And
+> then add the extent locks on top of that once that's working.  My
+> idea was to add a type member to the extents so that we have have
+> "delayed" "allocated" and "hole" extents.  I've renamed the delayed
+> extent scheme to "status extents" because it seemed more
+> appropriate.  That part I can send out, but I was still in the
+> middle of coding and debugging allocated extents and extent locks.
+> Because the tree was originally written to merge things as much as
+> possible, there is some rewrite that is needed.  I was working on
+> making the add and remove routines more like "type replace" routines
+> sense once the extent is locked, we can really only change the type,
+> and we cannot merge dissimilar types or extents locked by other
+> processes. I hope that makes sense, please let me know if you need
+> more clarification.  I will send out the status extent set, sense
+> that part is stable.
 
+Thank you for sharing with me.  I am willing to take this work because
+my employee provides me a full time to finish this work.  I see that you
+have sent the patch set to the mailing list.  I will pick it and go on
+working.  Thanks again. :)
+
+Regards,
+Zheng
