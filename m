@@ -1,73 +1,211 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 1/3] fs: add new open flags O_HOT and O_COLD
-Date: Thu, 19 Apr 2012 15:20:09 -0400
-Message-ID: <1334863211-19504-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC 3/3] ext4: use the O_HOT and O_COLD open flags to influence inode allocation
+Date: Thu, 19 Apr 2012 15:20:11 -0400
+Message-ID: <1334863211-19504-4-git-send-email-tytso@mit.edu>
 References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59399 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:59401 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756398Ab2DSTUO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 15:20:14 -0400
+	id S932213Ab2DSTUS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Apr 2012 15:20:18 -0400
 In-Reply-To: <1334863211-19504-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The O_HOT and O_COLD flag are hints to the file system that the file
-is going to be frequently accessed (a "hot" file) and or very
-infrequently accessed (a "cold" file).  It is up the file system to
-decide how these flags should be interpreted; in some cases, such as
-O_HOT, the file system may require appropriate privileges or implement
-check some kind of per-user quota before deciding to honor the flag.
+Wire up the use of the O_HOT and O_COLD open flags so that when an
+inode is being created, it can influence which part of the disk gets
+used on rotational storage devices.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/fcntl.c                  |    5 +++--
- include/asm-generic/fcntl.h |    7 +++++++
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h    |    8 +++++++-
+ fs/ext4/ialloc.c  |   33 +++++++++++++++++++++++++++------
+ fs/ext4/migrate.c |    2 +-
+ fs/ext4/namei.c   |   15 +++++++++++----
+ 4 files changed, 46 insertions(+), 12 deletions(-)
 
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 75e7c1f..463352d 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -835,14 +835,15 @@ static int __init fcntl_init(void)
- 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
- 	 * is defined as O_NONBLOCK on some platforms and not on others.
- 	 */
--	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
-+	BUILD_BUG_ON(21 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
- 		O_RDONLY	| O_WRONLY	| O_RDWR	|
- 		O_CREAT		| O_EXCL	| O_NOCTTY	|
- 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
- 		__O_SYNC	| O_DSYNC	| FASYNC	|
- 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
- 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
--		__FMODE_EXEC	| O_PATH
-+		__FMODE_EXEC	| O_PATH	| O_HOT		|
-+		O_COLD
- 		));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0e01e90..6539c9a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1553,6 +1553,12 @@ struct ext4_dir_entry_2 {
+ #define EXT4_MAX_REC_LEN		((1<<16)-1)
  
- 	fasync_cache = kmem_cache_create("fasync_cache",
-diff --git a/include/asm-generic/fcntl.h b/include/asm-generic/fcntl.h
-index 9e5b035..1fdcbb1 100644
---- a/include/asm-generic/fcntl.h
-+++ b/include/asm-generic/fcntl.h
-@@ -84,6 +84,13 @@
- #define O_PATH		010000000
- #endif
- 
-+#ifndef O_HOT
-+#define O_HOT		020000000	
-+#endif
-+#ifndef O_COLD
-+#define O_COLD		040000000	
-+#endif
+ /*
++ * Flags for ext4_new_inode()
++ */
++#define EXT4_NEWI_HOT	0x0001
++#define EXT4_NEWI_COLD	0x0002
 +
- #ifndef O_NDELAY
- #define O_NDELAY	O_NONBLOCK
- #endif
++/*
+  * If we ever get support for fs block sizes > page_size, we'll need
+  * to remove the #if statements in the next two functions...
+  */
+@@ -1850,7 +1856,7 @@ extern int ext4fs_dirhash(const char *name, int len, struct
+ /* ialloc.c */
+ extern struct inode *ext4_new_inode(handle_t *, struct inode *, umode_t,
+ 				    const struct qstr *qstr, __u32 goal,
+-				    uid_t *owner);
++				    uid_t *owner, int flags);
+ extern void ext4_free_inode(handle_t *, struct inode *);
+ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
+ extern unsigned long ext4_count_free_inodes(struct super_block *);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 409c2ee..3dcc8c8 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -363,7 +363,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
+ 
+ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 			    ext4_group_t *group, umode_t mode,
+-			    const struct qstr *qstr)
++			    const struct qstr *qstr, int flags)
+ {
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -508,13 +508,20 @@ fallback_retry:
+ }
+ 
+ static int find_group_other(struct super_block *sb, struct inode *parent,
+-			    ext4_group_t *group, umode_t mode)
++			    ext4_group_t *group, umode_t mode, int flags)
+ {
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	ext4_group_t i, last, ngroups = ext4_get_groups_count(sb);
+ 	struct ext4_group_desc *desc;
+ 	int flex_size = ext4_flex_bg_size(EXT4_SB(sb));
+ 
++	if ((flags & EXT4_NEWI_HOT) && (ngroups > 3) &&
++	    (parent_group > ngroups / 3))
++		parent_group = 0;
++	if ((flags & EXT4_NEWI_COLD) && (ngroups > 3) &&
++	    (parent_group < (2 * (ngroups / 3))))
++		parent_group = 2 * (ngroups / 3);
++
+ 	/*
+ 	 * Try to place the inode is the same flex group as its
+ 	 * parent.  If we can't find space, use the Orlov algorithm to
+@@ -550,7 +557,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 		*group = parent_group + flex_size;
+ 		if (*group > ngroups)
+ 			*group = 0;
+-		return find_group_orlov(sb, parent, group, mode, NULL);
++		return find_group_orlov(sb, parent, group, mode, NULL, flags);
+ 	}
+ 
+ 	/*
+@@ -614,7 +621,8 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+  * group to find a free inode.
+  */
+ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
+-			     const struct qstr *qstr, __u32 goal, uid_t *owner)
++			     const struct qstr *qstr, __u32 goal, uid_t *owner,
++			     int flags)
+ {
+ 	struct super_block *sb;
+ 	struct buffer_head *inode_bitmap_bh = NULL;
+@@ -643,6 +651,19 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
+ 	ei = EXT4_I(inode);
+ 	sbi = EXT4_SB(sb);
+ 
++	if (blk_queue_nonrot(bdev_get_queue(sb->s_bdev)))
++		flags &= ~(EXT4_NEWI_HOT | EXT4_NEWI_COLD);
++
++	/* 
++	 * We will only allow the HOT flag if the user passes the
++	 * reserved uid/gid check, or if she has CAP_SYS_RESOURCE
++	 */
++	if ((flags & EXT4_NEWI_HOT) && 
++	    !(sbi->s_resuid == current_fsuid() ||
++	      ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
++	      capable(CAP_SYS_RESOURCE)))
++		flags &= ~EXT4_NEWI_HOT;
++
+ 	if (!goal)
+ 		goal = sbi->s_inode_goal;
+ 
+@@ -654,9 +675,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
+ 	}
+ 
+ 	if (S_ISDIR(mode))
+-		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
++		ret2 = find_group_orlov(sb, dir, &group, mode, qstr, flags);
+ 	else
+-		ret2 = find_group_other(sb, dir, &group, mode);
++		ret2 = find_group_other(sb, dir, &group, mode, flags);
+ 
+ got_group:
+ 	EXT4_I(dir)->i_last_alloc_group = group;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index f39f80f..2b3d65c 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -469,7 +469,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	owner[0] = inode->i_uid;
+ 	owner[1] = inode->i_gid;
+ 	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
+-				   S_IFREG, NULL, goal, owner);
++				   S_IFREG, NULL, goal, owner, 0);
+ 	if (IS_ERR(tmp_inode)) {
+ 		retval = PTR_ERR(tmp_inode);
+ 		ext4_journal_stop(handle);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6f48ff8..222a419 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1742,6 +1742,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 	handle_t *handle;
+ 	struct inode *inode;
+ 	int err, retries = 0;
++	int flags = 0;
+ 
+ 	dquot_initialize(dir);
+ 
+@@ -1755,7 +1756,13 @@ retry:
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
++	if (op && op->open_flag & O_HOT)
++		flags |= EXT4_NEWI_HOT;
++	if (op && op->open_flag & O_COLD)
++		flags |= EXT4_NEWI_COLD;
++
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0,
++			       NULL, flags);
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+@@ -1791,7 +1798,7 @@ retry:
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL, 0);
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		init_special_inode(inode, inode->i_mode, rdev);
+@@ -1831,7 +1838,7 @@ retry:
+ 		ext4_handle_sync(handle);
+ 
+ 	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
+-			       &dentry->d_name, 0, NULL);
++			       &dentry->d_name, 0, NULL, 0);
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+@@ -2278,7 +2285,7 @@ retry:
+ 		ext4_handle_sync(handle);
+ 
+ 	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
+-			       &dentry->d_name, 0, NULL);
++			       &dentry->d_name, 0, NULL, 0);
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
 -- 
 1.7.10.rc3
 
