@@ -1,226 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH, RFC 3/3] ext4: use the O_HOT and O_COLD open flags to
  influence inode allocation
-Date: Thu, 19 Apr 2012 14:45:28 -0500
-Message-ID: <4F906B58.604@redhat.com>
-References: <1334863211-19504-1-git-send-email-tytso@mit.edu> <1334863211-19504-4-git-send-email-tytso@mit.edu>
+Date: Thu, 19 Apr 2012 15:59:09 -0400
+Message-ID: <20120419195909.GG6317@thunk.org>
+References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
+ <1334863211-19504-4-git-send-email-tytso@mit.edu>
+ <4F906B58.604@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18805 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756340Ab2DSTpc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 15:45:32 -0400
-In-Reply-To: <1334863211-19504-4-git-send-email-tytso@mit.edu>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45674 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751417Ab2DST7O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Apr 2012 15:59:14 -0400
+Content-Disposition: inline
+In-Reply-To: <4F906B58.604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/19/12 2:20 PM, Theodore Ts'o wrote:
-> Wire up the use of the O_HOT and O_COLD open flags so that when an
-> inode is being created, it can influence which part of the disk gets
-> used on rotational storage devices.
-
-I'm curious to know how this will work for example on a linear device
-make up of rotational devices (possibly a concat of raids, etc).
-
-At least for dm, it will be still marked as rotational,
-but the relative speed of regions of the linear device can't be inferred
-from the offset within the device.
-
-Do we really have enough information about the storage under us to
-know what parts are "fast" and what parts are "slow?"
-
--Eric
-
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h    |    8 +++++++-
->  fs/ext4/ialloc.c  |   33 +++++++++++++++++++++++++++------
->  fs/ext4/migrate.c |    2 +-
->  fs/ext4/namei.c   |   15 +++++++++++----
->  4 files changed, 46 insertions(+), 12 deletions(-)
+On Thu, Apr 19, 2012 at 02:45:28PM -0500, Eric Sandeen wrote:
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 0e01e90..6539c9a 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1553,6 +1553,12 @@ struct ext4_dir_entry_2 {
->  #define EXT4_MAX_REC_LEN		((1<<16)-1)
->  
->  /*
-> + * Flags for ext4_new_inode()
-> + */
-> +#define EXT4_NEWI_HOT	0x0001
-> +#define EXT4_NEWI_COLD	0x0002
-> +
-> +/*
->   * If we ever get support for fs block sizes > page_size, we'll need
->   * to remove the #if statements in the next two functions...
->   */
-> @@ -1850,7 +1856,7 @@ extern int ext4fs_dirhash(const char *name, int len, struct
->  /* ialloc.c */
->  extern struct inode *ext4_new_inode(handle_t *, struct inode *, umode_t,
->  				    const struct qstr *qstr, __u32 goal,
-> -				    uid_t *owner);
-> +				    uid_t *owner, int flags);
->  extern void ext4_free_inode(handle_t *, struct inode *);
->  extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
->  extern unsigned long ext4_count_free_inodes(struct super_block *);
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 409c2ee..3dcc8c8 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -363,7 +363,7 @@ static void get_orlov_stats(struct super_block *sb, ext4_group_t g,
->  
->  static int find_group_orlov(struct super_block *sb, struct inode *parent,
->  			    ext4_group_t *group, umode_t mode,
-> -			    const struct qstr *qstr)
-> +			    const struct qstr *qstr, int flags)
->  {
->  	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> @@ -508,13 +508,20 @@ fallback_retry:
->  }
->  
->  static int find_group_other(struct super_block *sb, struct inode *parent,
-> -			    ext4_group_t *group, umode_t mode)
-> +			    ext4_group_t *group, umode_t mode, int flags)
->  {
->  	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
->  	ext4_group_t i, last, ngroups = ext4_get_groups_count(sb);
->  	struct ext4_group_desc *desc;
->  	int flex_size = ext4_flex_bg_size(EXT4_SB(sb));
->  
-> +	if ((flags & EXT4_NEWI_HOT) && (ngroups > 3) &&
-> +	    (parent_group > ngroups / 3))
-> +		parent_group = 0;
-> +	if ((flags & EXT4_NEWI_COLD) && (ngroups > 3) &&
-> +	    (parent_group < (2 * (ngroups / 3))))
-> +		parent_group = 2 * (ngroups / 3);
-> +
->  	/*
->  	 * Try to place the inode is the same flex group as its
->  	 * parent.  If we can't find space, use the Orlov algorithm to
-> @@ -550,7 +557,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
->  		*group = parent_group + flex_size;
->  		if (*group > ngroups)
->  			*group = 0;
-> -		return find_group_orlov(sb, parent, group, mode, NULL);
-> +		return find_group_orlov(sb, parent, group, mode, NULL, flags);
->  	}
->  
->  	/*
-> @@ -614,7 +621,8 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
->   * group to find a free inode.
->   */
->  struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
-> -			     const struct qstr *qstr, __u32 goal, uid_t *owner)
-> +			     const struct qstr *qstr, __u32 goal, uid_t *owner,
-> +			     int flags)
->  {
->  	struct super_block *sb;
->  	struct buffer_head *inode_bitmap_bh = NULL;
-> @@ -643,6 +651,19 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
->  	ei = EXT4_I(inode);
->  	sbi = EXT4_SB(sb);
->  
-> +	if (blk_queue_nonrot(bdev_get_queue(sb->s_bdev)))
-> +		flags &= ~(EXT4_NEWI_HOT | EXT4_NEWI_COLD);
-> +
-> +	/* 
-> +	 * We will only allow the HOT flag if the user passes the
-> +	 * reserved uid/gid check, or if she has CAP_SYS_RESOURCE
-> +	 */
-> +	if ((flags & EXT4_NEWI_HOT) && 
-> +	    !(sbi->s_resuid == current_fsuid() ||
-> +	      ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
-> +	      capable(CAP_SYS_RESOURCE)))
-> +		flags &= ~EXT4_NEWI_HOT;
-> +
->  	if (!goal)
->  		goal = sbi->s_inode_goal;
->  
-> @@ -654,9 +675,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
->  	}
->  
->  	if (S_ISDIR(mode))
-> -		ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
-> +		ret2 = find_group_orlov(sb, dir, &group, mode, qstr, flags);
->  	else
-> -		ret2 = find_group_other(sb, dir, &group, mode);
-> +		ret2 = find_group_other(sb, dir, &group, mode, flags);
->  
->  got_group:
->  	EXT4_I(dir)->i_last_alloc_group = group;
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index f39f80f..2b3d65c 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-> @@ -469,7 +469,7 @@ int ext4_ext_migrate(struct inode *inode)
->  	owner[0] = inode->i_uid;
->  	owner[1] = inode->i_gid;
->  	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
-> -				   S_IFREG, NULL, goal, owner);
-> +				   S_IFREG, NULL, goal, owner, 0);
->  	if (IS_ERR(tmp_inode)) {
->  		retval = PTR_ERR(tmp_inode);
->  		ext4_journal_stop(handle);
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 6f48ff8..222a419 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1742,6 +1742,7 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
->  	handle_t *handle;
->  	struct inode *inode;
->  	int err, retries = 0;
-> +	int flags = 0;
->  
->  	dquot_initialize(dir);
->  
-> @@ -1755,7 +1756,13 @@ retry:
->  	if (IS_DIRSYNC(dir))
->  		ext4_handle_sync(handle);
->  
-> -	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
-> +	if (op && op->open_flag & O_HOT)
-> +		flags |= EXT4_NEWI_HOT;
-> +	if (op && op->open_flag & O_COLD)
-> +		flags |= EXT4_NEWI_COLD;
-> +
-> +	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0,
-> +			       NULL, flags);
->  	err = PTR_ERR(inode);
->  	if (!IS_ERR(inode)) {
->  		inode->i_op = &ext4_file_inode_operations;
-> @@ -1791,7 +1798,7 @@ retry:
->  	if (IS_DIRSYNC(dir))
->  		ext4_handle_sync(handle);
->  
-> -	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
-> +	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL, 0);
->  	err = PTR_ERR(inode);
->  	if (!IS_ERR(inode)) {
->  		init_special_inode(inode, inode->i_mode, rdev);
-> @@ -1831,7 +1838,7 @@ retry:
->  		ext4_handle_sync(handle);
->  
->  	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
-> -			       &dentry->d_name, 0, NULL);
-> +			       &dentry->d_name, 0, NULL, 0);
->  	err = PTR_ERR(inode);
->  	if (IS_ERR(inode))
->  		goto out_stop;
-> @@ -2278,7 +2285,7 @@ retry:
->  		ext4_handle_sync(handle);
->  
->  	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
-> -			       &dentry->d_name, 0, NULL);
-> +			       &dentry->d_name, 0, NULL, 0);
->  	err = PTR_ERR(inode);
->  	if (IS_ERR(inode))
->  		goto out_stop;
+> I'm curious to know how this will work for example on a linear device
+> make up of rotational devices (possibly a concat of raids, etc).
+> 
+> At least for dm, it will be still marked as rotational,
+> but the relative speed of regions of the linear device can't be inferred
+> from the offset within the device.
 
+Hmm, good point.  We need a way to determine whether this is some kind
+of glued-together dm thing versus a plain-old HDD.
+
+> Do we really have enough information about the storage under us to
+> know what parts are "fast" and what parts are "slow?"
+
+Well, plain and simple HDD's are still quite common; not everyone
+drops in an intermediate dm layer.  I view dm as being similar to
+enterprise storage arrays where we will need to pass down an explicit
+hint with block ranges down to the storage device.  However, it's
+going to be a long time before we get that part of the interface
+plumbed in.
+
+In the meantime, it would be nice if we had something that worked in
+the common case of plain old stupid HDD's --- we just need a way of
+determining that's what we are dealing with.
+
+					- Ted
