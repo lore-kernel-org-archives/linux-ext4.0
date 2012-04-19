@@ -1,61 +1,67 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH 6/6] xstat: eCryptFS: Return extended attributes
-Date: Thu, 19 Apr 2012 15:07:19 +0100
-Message-ID: <20120419140719.17272.39008.stgit@warthog.procyon.org.uk>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
+ empty
+Date: Thu, 19 Apr 2012 09:15:40 -0500
+Message-ID: <4F901E0C.3010008@redhat.com>
+References: <20120412160658.GA9697@gmail.com> <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi> <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org,
-	kfm-devel-RoXCvvDuEio@public.gmane.org, nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120419140558.17272.74360.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
+To: Jouko Orava <jouko.orava@helsinki.fi>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:10912 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755506Ab2DSOPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Apr 2012 10:15:48 -0400
+In-Reply-To: <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Return extended attributes from the eCryptFS filesystem, dredged up from the
-lower filesystem.  XSTAT_INFO_ENCRYPTED is set on the files whose cryptography
-is handled by eCryptFS.
+On 4/19/12 8:10 AM, Jouko Orava wrote:
+> Hi Zheng,
+> 
+> I can confirm the bug exists on latest RHEL 6 x86_64 kernels (2.6.32-220).
+> 
+> On current mainline kernels all writes are limited to one page under 2GB,
+> which masks the problem. I have not checked if mainline 2.6.32 has this
+> limit or not. It does not matter: the limit is just a band-aid to paper
+> over filesystem bugs, and should not mean you don't fix filesystem bugs.
 
-Possibly eCryptFS should also set FS_COMPR_FL on its compressed files.
+FWIW, we tried fairly hard to get the limit lifted in the vfs, to no avail.
 
-Signed-off-by: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
----
+> I can confirm the one line patch to fs/ext4/file.c does fix the problem.
+> I have test kernels based on 2.6.32-220.7.1.el6.x86_64 with only
+> the patch applied, at
+> 	http://www.helsinki.fi/~joorava/kernel/
+> if anyone else is interested in testing.
+> 
+> I did some (limited) testing on ext4 with the patch. It fixes the problem:
+> large writes work very well too. No problems popped up in testing.
+> 
+> Tested-by: Jouko Orava <jouko.orava@helsinki.fi>
+> 
+> 
+> I'd also like to point at the real bug here, in Jouni's original strace:
+> 
+> 	writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}], 2) = -2147483640
+> 
+> The syscall returns a negative value, which is not the actual number of
+> bytes written (since it is 32-bit wrapped), and errno has not been
+> changed. There is no way for userspace to handle this result correctly!
+> 
+> There is no way anyone sane should just gloss over this saying
+> "programmer fault, you're doing it wrong".
+> This is a real bug, and deserves fixing sooner rather than later.
 
- fs/ecryptfs/inode.c |   14 ++++++++++++--
- 1 files changed, 12 insertions(+), 2 deletions(-)
+Agreed, I think Dave was a little to quick on the draw on his reply.  :)
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index ab35b11..62865e9 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -1060,13 +1060,23 @@ int ecryptfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 	struct kstat lower_stat;
- 	int rc;
- 
--	rc = vfs_getattr(ecryptfs_dentry_to_lower_mnt(dentry),
--			 ecryptfs_dentry_to_lower(dentry), &lower_stat);
-+	lower_stat.query_flags = stat->query_flags;
-+	lower_stat.request_mask = stat->request_mask | XSTAT_BLOCKS;
-+	rc = vfs_xgetattr(ecryptfs_dentry_to_lower_mnt(dentry),
-+			  ecryptfs_dentry_to_lower(dentry), &lower_stat);
- 	if (!rc) {
- 		fsstack_copy_attr_all(dentry->d_inode,
- 				      ecryptfs_inode_to_lower(dentry->d_inode));
- 		generic_fillattr(dentry->d_inode, stat);
- 		stat->blocks = lower_stat.blocks;
-+		stat->result_mask = lower_stat.result_mask;
-+		stat->information = lower_stat.information;
-+		stat->information |= XSTAT_INFO_ENCRYPTED;
-+		stat->gen = lower_stat.gen;
-+		stat->version = lower_stat.version;
-+		stat->ioc_flags = lower_stat.ioc_flags;
-+		memcpy(&stat->volume_id, lower_stat.volume_id,
-+		       sizeof(stat->volume_id));
- 	}
- 	return rc;
- }
+-Eric
+
+> Thanks,
+>    Jouko Orava
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
