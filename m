@@ -1,55 +1,176 @@
-From: Jouko Orava <jouko.orava@helsinki.fi>
-Subject: Re: Bug: Large writes can fail on ext4 if the write buffer is not
- empty
-Date: Thu, 19 Apr 2012 16:10:03 +0300 (EEST)
-Message-ID: <alpine.LRH.2.00.1204191543570.13563@ruuvi.it.helsinki.fi>
-References: <20120412160658.GA9697@gmail.com> <793C2320-255A-4894-AA07-70EDBB1DDDA5@iki.fi>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH 0/6] Extended file stat system call
+Date: Thu, 19 Apr 2012 15:05:58 +0100
+Message-ID: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-rs1-vallila2.fe.helsinki.fi ([128.214.173.75]:39647 "EHLO
-	smtp-rs1-vallila2.fe.helsinki.fi" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752808Ab2DSNkU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 09:40:20 -0400
-In-Reply-To: <20120412160658.GA9697@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Hi Zheng,
-
-I can confirm the bug exists on latest RHEL 6 x86_64 kernels (2.6.32-220).
-
-On current mainline kernels all writes are limited to one page under 2GB,
-which masks the problem. I have not checked if mainline 2.6.32 has this
-limit or not. It does not matter: the limit is just a band-aid to paper
-over filesystem bugs, and should not mean you don't fix filesystem bugs.
-
-I can confirm the one line patch to fs/ext4/file.c does fix the problem.
-I have test kernels based on 2.6.32-220.7.1.el6.x86_64 with only
-the patch applied, at
-	http://www.helsinki.fi/~joorava/kernel/
-if anyone else is interested in testing.
-
-I did some (limited) testing on ext4 with the patch. It fixes the problem:
-large writes work very well too. No problems popped up in testing.
-
-Tested-by: Jouko Orava <jouko.orava@helsinki.fi>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org,
+	kfm-devel-RoXCvvDuEio@public.gmane.org, nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-I'd also like to point at the real bug here, in Jouni's original strace:
+Implement a pair of new system calls to provide extended and further extensible
+stat functions.
 
-	writev(3, [{"\0\0\0\0\0\0\0\0", 8}, {"", 2147483648}], 2) = -2147483640
+The second of the associated patches is the main patch that provides these new
+system calls:
 
-The syscall returns a negative value, which is not the actual number of
-bytes written (since it is 32-bit wrapped), and errno has not been
-changed. There is no way for userspace to handle this result correctly!
+	ssize_t ret = xstat(int dfd,
+			    const char *filename,
+			    unsigned atflag,
+			    unsigned mask,
+			    struct xstat *buffer);
 
-There is no way anyone sane should just gloss over this saying
-"programmer fault, you're doing it wrong".
-This is a real bug, and deserves fixing sooner rather than later.
+	ssize_t ret = fxstat(int fd,
+			     unsigned atflag,
+			     unsigned mask,
+			     struct xstat *buffer);
 
-Thanks,
-   Jouko Orava
+which are more fully documented in the first patch's description.
+
+These new stat functions provide a number of useful features, in summary:
+
+ (1) More information: creation time, inode generation number, data version
+     number, flags/attributes.  A subset of these is available through a number
+     of filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
+
+ (2) Lightweight stat: Ask for just those details of interest, and allow a
+     netfs (such as NFS) to approximate anything not of interest, possibly
+     without going to the server.
+
+ (3) Heavyweight stat: Force a netfs to go to the server, even if it thinks its
+     cached attributes are up to date.
+
+ (4) Allow the filesystem to indicate what it can/cannot provide: A filesystem
+     can now say it doesn't support a standard stat feature if that isn't
+     available.
+
+ (5) Make the fields a consistent size on all arches, and make them large.
+
+ (6) Can be extended by using more request flags and appending further data
+     after the end of the standard return data.
+
+Note that no lstat() equivalent is required as that can be implemented through
+xstat() with atflag == 0.
+
+
+=======
+PATCHES
+=======
+
+Patch 1 defines the xstat() and fxstat() system calls.
+
+Patches 2-6 implement extended stat facilities for Ext4, AFS, NFS and CIFS, and
+make eCryptFS go to the lower filesystem for such details.
+
+
+==============
+CONSIDERATIONS
+==============
+
+Should fxstat() be implemented as xstat() with a NULL filename, using dfd as
+fd?
+
+Should the default for a network fs be to do an unconditional (heavyweight)
+stat with a flag to suppress going to the server to update the locally held
+attributes and flushing pending writebacks?
+
+Should things like the Windows Archive, Hidden and System bits be handled
+through IOC flags, perhaps expanded to 64-bits?
+
+Are these things useful to userspace other than Samba and userspace NFS
+servers?
+
+Is it useful to pass the volume ID out?  Or is statfs() sufficient for this?
+
+Should I add a sixth argument to xstat(), mark it reserved and require that
+must be supplied as 0 to hedge against future use?
+
+Is there anything else I can usefully add at the moment?
+
+
+==========
+TO BE DONE
+==========
+
+Autofs, ntfs, btrfs, ...
+
+I should perhaps use u8/u32/u64 rather than uint8/32/64_t.
+
+Handle remote filesystems being offline and indicate this with
+XSTAT_INFO_OFFLINE.
+
+
+=======
+TESTING
+=======
+
+There's a test program attached to the description for the main patch.  It can
+be run as follows:
+[root@andromeda tmp]# ./xstat -R /mnt/foo
+
+	xstat(/mnt/foo) = 0
+	0000: 000081a40000ffef 0000000000000001 0000020000000000 0000100000080000
+	0020: 0000000000000000 0000000600000008 000000004f88499a 0000000136fd9208
+	0040: 000000004f88499a 0000000136fd9208 000000004f8849b9 0000000106daf187
+	0060: 000000004f8849b9 0000000106daf187 000000000000000c 000000000000000f
+	0080: 0000000000000008 00000000484ebbef 0000000000000025 5949ebd4711efd82
+	00a0: d3250b5c15d5e380 0000000000000000 0000000000000000 0000000000000000
+	00c0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+	00e0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+	results=ffef
+	  Size: 15              Blocks: 8          IO Block: 4096    regular file
+	Device: 08:06           Inode: 12          Links: 1    
+	Access: (0644/-rw-r--r--)  Uid: 0   
+	Gid: 0
+	Access: 2012-04-13 16:43:22.922587656+0100
+	Modify: 2012-04-13 16:43:53.115011975+0100
+	Change: 2012-04-13 16:43:53.115011975+0100
+	Create: 2012-04-13 16:43:22.922587656+0100
+	Inode version: 484ebbefh
+	Data version: 25h
+	Inode flags: 00080000 (-------- ----e--- -------- --------)
+	Information: 00000200 (-------- -------- ------a- --------)
+	Volume ID: 82fd1e71d4eb4959-80e3d5155c0b25d3
+
+David
+---
+David Howells (6):
+      xstat: eCryptFS: Return extended attributes
+      xstat: CIFS: Return extended attributes
+      xstat: NFS: Return extended attributes
+      xstat: AFS: Return extended attributes
+      xstat: Ext4: Return extended attributes
+      xstat: Add a pair of system calls to make extended file stats available
+
+
+ arch/x86/syscalls/syscall_32.tbl |    2 
+ arch/x86/syscalls/syscall_64.tbl |    2 
+ fs/afs/inode.c                   |   29 ++-
+ fs/afs/super.c                   |    7 +
+ fs/cifs/cifsfs.h                 |    4 
+ fs/cifs/cifsglob.h               |   16 +-
+ fs/cifs/dir.c                    |    2 
+ fs/cifs/inode.c                  |  120 +++++++++++--
+ fs/ecryptfs/inode.c              |   14 +-
+ fs/ext4/ext4.h                   |    2 
+ fs/ext4/file.c                   |    2 
+ fs/ext4/inode.c                  |   32 +++
+ fs/ext4/namei.c                  |    2 
+ fs/ext4/super.c                  |    1 
+ fs/ext4/symlink.c                |    2 
+ fs/nfs/inode.c                   |   49 ++++-
+ fs/nfs/super.c                   |    1 
+ fs/stat.c                        |  350 +++++++++++++++++++++++++++++++++++---
+ include/linux/fcntl.h            |    1 
+ include/linux/fs.h               |    4 
+ include/linux/stat.h             |  126 +++++++++++++-
+ include/linux/syscalls.h         |    7 +
+ 22 files changed, 694 insertions(+), 81 deletions(-)
