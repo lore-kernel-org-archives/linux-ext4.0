@@ -1,174 +1,136 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH, RFC 0/3] Introduce new O_HOT and O_COLD flags
-Date: Fri, 20 Apr 2012 11:45:19 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1204201120060.27750@dhcp-27-109.brq.redhat.com>
-References: <1334863211-19504-1-git-send-email-tytso@mit.edu> <4F912880.70708@panasas.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC][PATCH 0/3] add FALLOC_FL_NO_HIDE_STALE flag in fallocate
+Date: Fri, 20 Apr 2012 17:52:47 +0800
+Message-ID: <20120420095247.GA30070@gmail.com>
+References: <1334681618-9452-1-git-send-email-wenqing.lz@taobao.com>
+ <4F8DAAFE.40500@redhat.com>
+ <20120418040842.GA11684@gmail.com>
+ <alpine.LFD.2.00.1204180919500.5310@dhcp-27-109.brq.redhat.com>
+ <20120418120307.GB3447@gmail.com>
+ <alpine.LFD.2.00.1204181402550.5310@dhcp-27-109.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Ric Wheeler <rwheeler@redhat.com>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	Dave Chinner <david@fromorbit.com>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24119 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751969Ab2DTJp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Apr 2012 05:45:27 -0400
-In-Reply-To: <4F912880.70708@panasas.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:58022 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752453Ab2DTJqN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Apr 2012 05:46:13 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1204181402550.5310@dhcp-27-109.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 20 Apr 2012, Boaz Harrosh wrote:
+Hi all,
 
-> On 04/19/2012 10:20 PM, Theodore Ts'o wrote:
-> 
-> > As I had brought up during one of the lightning talks at the Linux
-> > Storage and Filesystem workshop, I am interested in introducing two new
-> > open flags, O_HOT and O_COLD.  These flags are passed down to the
-> > individual file system's inode operations' create function, and the file
-> > system can use these flags as a hint regarding whether the file is
-> > likely to be accessed frequently or not.
-> > 
-> > In the future I plan to do further work on how ext4 would use these
-> > flags, but I want to first get the ability to pass these flags plumbed
-> > into the VFS layer and the code points for O_HOT and O_COLD reserved.
-> > 
-> > 
-> > Theodore Ts'o (3):
-> >   fs: add new open flags O_HOT and O_COLD
-> >   fs: propagate the open_flags structure down to the low-level fs's
-> >     create()
-> >   ext4: use the O_HOT and O_COLD open flags to influence inode
-> >     allocation
-> > 
-> 
-> 
-> I would expect that the first, and most important patch to this
-> set would be the man page which would define the new API. 
-> What do you mean by cold/normal/hot? what is expected if supported?
-> how can we know if supported? ....
+These days I dig this slowdown and find that the *root cause* might be
+journal.  I use blktrace to grab a detailed behaviour and find the below
+phenonmenon.  I post the blktrace's result in here.
 
-Well, this is exactly my concern as well. There is no way anyone would
-know what it actually means a what users can expect form using it. The
-result of this is very simple, everyone will just use O_HOT for
-everything (if they will use it at all).
+[Test command]
+time for((i=0;i<2000;i++)); do \
+	dd if=/dev/zero of=/mnt/sda1/testfile conv=notrunc bs=4k count=1 \
+	seek=`expr $i \* 16` oflag=sync,direct 2>/dev/null; \
+	done
 
-Ted, as I've mentioned on LSF I think that the HOT/COLD name is really
-bad choice for exactly this reason. It means nothing. If you want to use
-this flag to place the inode on the faster part of the disk, then just
-say so and name the flag accordingly, this way everyone can use it.
-However for this to actually work we need some fs<->storage interface to
-query storage layout, which actually should not be that hard to do. I am
-afraid that in current form it will suit only Google and Taobao. I would
-really like to have interface to pass tags between user->fs and
-fs<->storage, but this one does not seem like a good start.
+[scripts]
+blktrace -d /dev/sda1
+blkparse -i sda1.* -o blktrace.log
+cat blktrace.log | grep 'D' | grep 'W' > result.log
 
-There was one flag you've mentioned on LSF which makes sense to me, but
-unfortunately I can not see it here. It is O_TEMP, which says exactly
-how user should use it, hence it will be useful.
+[result (ext4)]
+[cut]
+  8,1    0       14    49.969995286    10  D  WS 38011023 + 40 [kworker/0:1]
+  8,1    0       20    49.996170768     0  D  WS 38011063 + 8 [swapper/0]
+  8,1    0       29    50.006811878 10011  D  WS 278719 + 8 [dd] 
+  8,1    0       31    50.013996421    10  D  WS 38011071 + 24 [kworker/0:1]
+  8,1    0       37    50.029656811     0  D  WS 38011095 + 8 [swapper/0]
+  8,1    1       70    50.039768259 10013  D  WS 278847 + 8 [dd] 
+  8,1    0       41    50.046996403    10  D  WS 38011103 + 24 [kworker/0:1]
+  8,1    0       47    50.071458802     0  D  WS 38011127 + 8 [swapper/0]
+  8,1    1       89    50.081529060 10015  D  WS 278975 + 8 [dd] 
+  8,1    0       51    50.088996276    10  D  WS 38011135 + 24 [kworker/0:1]
+  8,1    0       57    50.113247880     0  D  WS 38011159 + 8 [swapper/0]
+  8,1    1      108    50.123329330 10017  D  WS 279103 + 8 [dd] 
+  8,1    0       61    50.130995672    10  D  WS 38011167 + 24 [kworker/0:1]
+  8,1    0       67    50.155052076     0  D  WS 38011191 + 8 [swapper/0]
+  8,1    1      126    50.165154127 10019  D  WS 279231 + 8 [dd] 
+  8,1    0       71    50.172995678    10  D  WS 38011199 + 24 [kworker/0:1]
+  8,1    0       77    50.196855020     0  D  WS 38011223 + 8 [swapper/0]
+  8,1    1      145    50.206945237 10021  D  WS 279359 + 8 [dd] 
+  8,1    0       81    50.214997236    10  D  WS 38011231 + 24 [kworker/0:1]
+  8,1    0       87    50.238643778     0  D  WS 38011255 + 8 [swapper/0]
+  8,1    1      164    50.248738960 10023  D  WS 279487 + 8 [dd] 
+  8,1    0       91    50.255996776    10  D  WS 38011263 + 24 [kworker/0:1]
+  8,1    0       97    50.280447549     0  D  WS 38011287 + 8 [swapper/0]
+  8,1    1      183    50.290550957 10025  D  WS 279615 + 8 [dd] 
+[cut]
 
-Also we have to think about the interface for passing tags from users,
-because clearly open flags does not scale. fnctl, or fadvise might be
-better choice, but I understand that in some cases we need to have this
-information on allocation and I am not sure if we can rely on delayed
-allocation (it seems really hacky). Or maybe it can be fadvise/fnctl
-flag for a directory, since files in one directory might have similar
-access pattern and it also have the advantage of forcing users to divide
-their files to the directories according to their use, which will be
-beneficial anyway.
+We can see that every one write operation needs to do two journal
+writes, one writes journal header and data, and another writes commit.
 
-I have to admit that I do not have any particularly strong feeling about
-any of those approaches (open/fnctl/fadvise/directory), but someone else
-might... But I definitely think that we need to define the interface
-well and also rather do it from bottom-up. There already is a need to have
-fs<->storage information exchange interface for variety of reasons, so
-why not start there first to see what can be provided ?
+Then I run the same benchmark in xfs to do a comparison.  This
+comparison just aims to explain why the slowdown occurs in ext4.
 
-Thanks!
--Lukas
+[result (xfs)]
+[cut]
+  8,1    0       70     0.256951000     0  D WSM 40162600 + 3 [swapper/0]
+  8,1    1       50     0.271551873 12575  D  WS 1311 + 8 [dd] 
+  8,1    0       78     0.282466586     0  D WSM 40162603 + 3 [swapper/0]
+  8,1    1       55     0.296547264 12577  D  WS 1439 + 8 [dd] 
+  8,1    0       86     0.307978442     0  D WSM 40162606 + 3 [swapper/0]
+  8,1    1       60     0.321578789 12579  D  WS 1567 + 8 [dd] 
+  8,1    0       94     0.333494988     0  D WSM 40162609 + 3 [swapper/0]
+  8,1    1       65     0.346582549 12581  D  WS 1695 + 8 [dd] 
+  8,1    0      102     0.359005937     0  D WSM 40162612 + 3 [swapper/0]
+  8,1    1       70     0.371613387 12583  D  WS 1823 + 8 [dd] 
+  8,1    0      110     0.384552158     0  D WSM 40162615 + 3 [swapper/0]
+  8,1    1       75     0.396604067 12585  D  WS 1951 + 8 [dd] 
+  8,1    0      118     0.410062404     0  D WSM 40162618 + 3 [swapper/0]
+  8,1    1       80     0.421614702 12587  D  WS 2079 + 8 [dd] 
+  8,1    0      126     0.436783655     0  D WSM 40162621 + 3 [swapper/0]
+  8,1    1       85     0.454989457 12589  D  WS 2207 + 8 [dd] 
+  8,1    0      134     0.470633321     0  D WSM 40162624 + 3 [swapper/0]
+  8,1    1       90     0.488311574 12591  D  WS 2335 + 8 [dd] 
+  8,1    0      142     0.504477295     0  D WSM 40162627 + 3 [swapper/0]
+  8,1    1       95     0.521675622 12593  D  WS 2463 + 8 [dd] 
+  8,1    0      150     0.538326978     0  D WSM 40162630 + 3 [swapper/0]
+  8,1    1      100     0.555016257 12595  D  WS 2591 + 8 [dd] 
+  8,1    0      158     0.563839349     0  D WSM 40162633 + 4 [swapper/0]
+  8,1    1      105     0.580049767 12597  D  WS 2719 + 8 [dd] 
+  8,1    0      166     0.589336947     0  D WSM 40162637 + 4 [swapper/0]
+  8,1    1      110     0.605037173 12599  D  WS 2847 + 8 [dd] 
+  8,1    0      174     0.614850369     0  D WSM 40162641 + 4 [swapper/0]
+  8,1    1      115     0.630078920 12601  D  WS 2975 + 8 [dd] 
+[cut]
 
-> 
-> I presume you mean 3 levels (not even 2 bits) of what T10 called
-> "read-frequency" or is that "write-frequency", or some other metrics
-> you defined?
-> 
-> Well in the patchset you supplied it means closer to outer-edge.
-> What ever that means? so in the case of ext4 on SSD or DM/MD or
-> loop or thin provisioned LUN. How do I stop it. The code is already
-> there in Kernel and the application is setting that flag at create,
-> how do I make the FS not do that stupid, for me, thing?
-> 
-> I wish you'd be transparent, call it O_OUTER_DISK and be honest
-> about it. The "undefined API" never ever worked in the past,
-> why would it work now?
-> 
-> And Yes an fctrl is a much better match, and with delayed allocation
-> that should not matter, right?
-> 
-> And one last thing. We would like to see numbers. Please show us where/how
-> it matters. Are there down sides?. If it's so good we'd like to implement
-> it too.
+The result shows that every one write in xfs only needs to do one
+journal write.  Meanwhile the size of journal write is smaller than the
+size of ext4.  Certainly, in modern disk, I believe that the disk writes
+64k as easily as 4k.  So, IMO, twice journal writes is the *root
+*cause*.  I use 'wc -l' to roughly count the number of I/Os.
 
+$ wc -l result.log
+ext4:	6018
+xfs:	4021
+ratio:	1.5:1
 
-> 
-> Thanks
-> Boaz
-> 
-> >  fs/9p/vfs_inode.c           |    2 +-
-> >  fs/affs/affs.h              |    2 +-
-> >  fs/affs/namei.c             |    3 ++-
-> >  fs/bfs/dir.c                |    2 +-
-> >  fs/btrfs/inode.c            |    3 ++-
-> >  fs/cachefiles/namei.c       |    3 ++-
-> >  fs/ceph/dir.c               |    2 +-
-> >  fs/cifs/dir.c               |    2 +-
-> >  fs/coda/dir.c               |    3 ++-
-> >  fs/ecryptfs/inode.c         |    5 +++--
-> >  fs/exofs/namei.c            |    2 +-
-> >  fs/ext2/namei.c             |    4 +++-
-> >  fs/ext3/namei.c             |    5 +++--
-> >  fs/ext4/ext4.h              |    8 +++++++-
-> >  fs/ext4/ialloc.c            |   33 +++++++++++++++++++++++++++------
-> >  fs/ext4/migrate.c           |    2 +-
-> >  fs/ext4/namei.c             |   17 ++++++++++++-----
-> >  fs/fat/namei_msdos.c        |    2 +-
-> >  fs/fat/namei_vfat.c         |    2 +-
-> >  fs/fcntl.c                  |    5 +++--
-> >  fs/fuse/dir.c               |    2 +-
-> >  fs/gfs2/inode.c             |    3 ++-
-> >  fs/hfs/dir.c                |    2 +-
-> >  fs/hfsplus/dir.c            |    5 +++--
-> >  fs/hostfs/hostfs_kern.c     |    2 +-
-> >  fs/hugetlbfs/inode.c        |    4 +++-
-> >  fs/internal.h               |    6 ------
-> >  fs/jffs2/dir.c              |    5 +++--
-> >  fs/jfs/namei.c              |    2 +-
-> >  fs/logfs/dir.c              |    2 +-
-> >  fs/minix/namei.c            |    2 +-
-> >  fs/namei.c                  |    9 +++++----
-> >  fs/ncpfs/dir.c              |    5 +++--
-> >  fs/nfs/dir.c                |    6 ++++--
-> >  fs/nfsd/vfs.c               |    4 ++--
-> >  fs/nilfs2/namei.c           |    2 +-
-> >  fs/ocfs2/namei.c            |    3 ++-
-> >  fs/omfs/dir.c               |    2 +-
-> >  fs/ramfs/inode.c            |    3 ++-
-> >  fs/reiserfs/namei.c         |    5 +++--
-> >  fs/sysv/namei.c             |    4 +++-
-> >  fs/ubifs/dir.c              |    2 +-
-> >  fs/udf/namei.c              |    2 +-
-> >  fs/ufs/namei.c              |    2 +-
-> >  fs/xfs/xfs_iops.c           |    3 ++-
-> >  include/asm-generic/fcntl.h |    7 +++++++
-> >  include/linux/fs.h          |   14 ++++++++++++--
-> >  ipc/mqueue.c                |    2 +-
-> >  48 files changed, 143 insertions(+), 74 deletions(-)
-> > 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+The benchmark result:
+ext4:	75.615s
+xfs:	54.395s
+ratio:	1.4:1
 
--- 
+Now, in JBD2, it at least needs to do two journal writes.  I have an
+idea to solve this problem, and I will send a new RFC to the mailing
+list.
+
+Please feel free to review it.  Any comments are welcome.  Thank you.
+
+Regards,
+Zheng
