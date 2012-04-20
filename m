@@ -1,55 +1,41 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH, RFC 0/3] Introduce new O_HOT and O_COLD flags
-Date: Fri, 20 Apr 2012 12:38:32 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1204201236230.27750@dhcp-27-109.brq.redhat.com>
-References: <1334863211-19504-1-git-send-email-tytso@mit.edu> <4F913776.5080603@itwm.fraunhofer.de>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC] jbd2: reduce the number of writes when commiting a transacation
+Date: Fri, 20 Apr 2012 19:06:27 +0800
+Message-ID: <20120420110627.GA30373@gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F913776.5080603@itwm.fraunhofer.de>
+Content-Disposition: inline
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 20 Apr 2012, Bernd Schubert wrote:
+Hi list,
 
-> On 04/19/2012 09:20 PM, Theodore Ts'o wrote:
-> > As I had brought up during one of the lightning talks at the Linux
-> > Storage and Filesystem workshop, I am interested in introducing two new
-> > open flags, O_HOT and O_COLD.  These flags are passed down to the
-> > individual file system's inode operations' create function, and the file
-> > system can use these flags as a hint regarding whether the file is
-> > likely to be accessed frequently or not.
-> > 
-> > In the future I plan to do further work on how ext4 would use these
-> > flags, but I want to first get the ability to pass these flags plumbed
-> > into the VFS layer and the code points for O_HOT and O_COLD reserved.
-> > 
-> 
-> Ted, you still remember the directory-block read-ahead patches I sent last
-> year for ext4 and which you declined, as it would add another mount parameter
-> for ext4?
-> 
-> http://www.digipedia.pl/usenet/thread/11916/24502/#post24502
-> 
-> 
-> If an application could use those flags to the file system (and then not only
-> ext4, but any file system) to indicate a certain directory is important and
-> frequently accessed, it would be simple to update those patches to work
-> without another mount option.
-> And while I updating our FhGFS meta data on disk layout to workaround the
-> general problem we, we (and for example Lustre) are still affected the
-> object-storage-side.
-> 
-> 
-> Thanks,
-> Bernd
+In this thread[1], I found a defect in jbd2 because it needs two wrties
+to finish a transacation because it writes journal header and data to
+disk and it will write commit to disk after above writes are done.
+AFAIK, in jbd2, it will call submit_bh twice at least to write the data
+because journal header, data and commit are stored in different
+buffer_heads.  If we don't call them separately, these calls might be
+out of order.  Obviously, it must ensure that journal header and data are
+written before commit.  But this brings a huge overhead in this
+benchmark[2].  So, IMHO, if we could use *bio* to store these data
+rather than buffer_head, we could avoid this overhead because we can
+call submit_bio only once to write all of data, which contains journal
+header, data and commit.  Here is an issue that I don't determine.  If
+we use submit_bio to write journal data, it will make all of data with
+WRITE_FLUSH_FUA flag.  But now there is only commit data with this flag.
+I am not sure whether or not it brings some other unpridictable
+problems. :(
 
-Nice, there are probably lots of flags we can think of, so we
-definitely need good interface for it as we certainly do not want to use
-O_HOT open flags here :)
+Please feel free to comment this RFC.  Thank you.
 
-Thanks!
--Lukas
+1. http://www.spinics.net/lists/linux-ext4/msg31637.html
+2. benchmark: time for((i=0;i<2000;i++)); do \
+		dd if=/dev/zero of=/mnt/sda1/testfile conv=notrunc bs=4k \
+		count=1 seek=`expr $i \* 16` oflag=sync,direct 2>/dev/null; \
+		done
+
+Regards,
+Zheng
