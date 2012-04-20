@@ -1,67 +1,84 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH, RFC 3/3] ext4: use the O_HOT and O_COLD open flags to
- influence inode allocation
-Date: Thu, 19 Apr 2012 22:26:06 -0400
-Message-ID: <20120420022606.GA24486@thunk.org>
+Subject: Re: [PATCH, RFC 0/3] Introduce new O_HOT and O_COLD flags
+Date: Thu, 19 Apr 2012 22:45:11 -0400
+Message-ID: <20120420024511.GB24486@thunk.org>
 References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
- <1334863211-19504-4-git-send-email-tytso@mit.edu>
- <20120419232757.GC9541@dastard>
+ <4F90AD29.9030501@dreamhost.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42438 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751417Ab2DTC0M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Apr 2012 22:26:12 -0400
+To: Alex Elder <elder@dreamhost.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120419232757.GC9541@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4F90AD29.9030501@dreamhost.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 20, 2012 at 09:27:57AM +1000, Dave Chinner wrote:
-> So you're assuming that locating the inodes somewhere "hot" is going
-> to improve performance. So say an application has a "hot" file (say
-> an index file) but still has a lot of other files it creates and
-> reads, and they are all in the same directory.
+On Thu, Apr 19, 2012 at 07:26:17PM -0500, Alex Elder wrote:
 > 
-> If the index file is created "hot", then it is going to be placed a
-> long way away from all the other files that applciation is using,
-> and every time you access the hot file you now seek away to a
-> different location on disk. The net result: the application goes
-> slower because average seek times have increased.
+> The scenario I'm thinking about is that users could easily request
+> hot files repeatedly, and could thereby quickly exhaust all available
+> speedy-quick media designated to serve this purpose--and that will
+> be especially bad for those filesystems which base initial allocation
+> decisions on this.
 
-Well, let's assume the application is using all or most of the disk,
-so the objects it is fetching from the 2T disk are randomly
-distributed throughout the disk.  Short seeks are faster, yes, but the
-seek time as a function of the seek distance is decidedly non-linear,
-with a sharp "knee" in the curve at around 10-15% of a full-stroke
-seek.  (Ref:
-http://static.usenix.org/event/fast05/tech/schlosser/schlosser.pdf)
+Sure, there will need to be some controls about this.  In the sample
+implementation, it required CAP_SYS_RESOURCE or the uid or guid had to
+match the res_uid/res_gid stored in the ext 2/3/4 superblock (this was
+there already to allow certain users or groups access to the reserved
+free space on the file system).  I could imagine other implementations
+using a full-fleged quota system.
 
-So most of the time, as you seek back and forth fetching data objects,
-most of the time you will be incurring 75-85% of the cost of a
-worst-case seek anyway.  So seeking *is* going to be a fact of life
-that we can't run away from that.
+> I would prefer to see something like this communicated via fcntl().
+> It already passes information down to the underlying filesystem in
+> some cases so you avoid touching all these create interfaces.
 
-Given that, the question then is whether we are better off (a) putting
-the index files in the exact middle of the disk, trying to minimize
-seeks, (b) scattering the index files all over the disk randomly, or
-(c) concentrating the index files near the beginning of the disk?
-Given the non-linear seek times, it seems to suggest that (c) would
-probably be the best case for this use case.
+Well, programs could also set or clear these flags via fcntl's
+SETFL/GETFL.  The reason why I'm interested in having this flexibility
+is so that it's possible for applications to pass in these flags at
+open time or via fcntl.
 
-Note that when we short-stroke, it's not just a matter of minimizing
-seek distances; if it were, then it wouldn't matter if we used the
-first third of the disk closest to the outer edge, or the last third
-of the disk closer to the inner part of the disk.
+> The second problem is that "hot/cold" is a lot like "performance."
+> What is meant by "hot" really depends on what you want.  I think it
+> most closely aligns with frequent access, but someone might want
+> it to mean "very write-y" or "needing exceptionally low latency"
+> or "hammering on it from lots of concurrent threads" or "notably
+> good looking."  In any case, there are lots of possible hints
+> that a filesystem could benefit from, but if we're going to start
+> down that path I suggest "hot/cold" is not the right kind of
+> naming scheme we ought to be using.
 
-Granted this may be a relatively small effect compared to the huge
-wins of placing your data according to its usage frequency on tiered
-storage.  But the effect should still be there.
+There are two ways we could go with this.  One is to try to define
+what the semantics of the performance flags that the application
+program might want to request, very precisely.  Going down that path
+leads to something like what the T10 folks have done, with multiple
+4-bit slider specifying write-frequency, read-frequency, retention
+levels, etc. in great exhaustive detail.
 
-Cheers,
+The other approach is to leave things roughly undefined, and accept
+the fact that applications which use this will probably be specialized
+applications that are very much aware of what file system they are
+using, and just need to pass minimal hints to the application in a
+general way, and that's the approach I went with in this O_HOT/O_COLD proposal.
 
-						- Ted
+I suspect that HOT/COLD is enough to go quite far even for tiered
+storage; maybe at some point we will want some other, more
+fine-grained interface where an application program can very precisely
+dial in their requirements in a T10-like fashion.  Perhaps.  But I
+don't think having a simple O_HOT/O_COLD interface precludes the
+other, or vice versa.  In fact, one advantage with sticking with
+HOT/COLD is that there's much less chance of bike-shedding, with
+people arguing over what a more fine-grained interface might look like.
+
+So why not start with this, and if we need to use something more
+complex later, we can cross that bridge if and when we get to it?  In
+the meantime, I think there are valid uses of this simple, minimal
+interface in the case of a local disk file system supporting a cluster
+file system such as Hadoopfs or TFS.  One of the useful things that
+came out of the ext4 workshop where we got to talk to developers from
+Taobao was finding out how much their interests matched with some of
+the things we've talked about doing at Google to support our internal
+customers.
+
+	       	      	    	 	   - Ted
