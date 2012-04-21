@@ -1,103 +1,84 @@
-From: Allison Henderson <achender@linux.vnet.ibm.com>
-Subject: Re: Extent tree status asking
-Date: Fri, 20 Apr 2012 17:12:44 -0700
-Message-ID: <4F91FB7C.1050109@linux.vnet.ibm.com>
-References: <20120416175534.GA5533@gmail.com> <4F8E5CEE.9050607@linux.vnet.ibm.com> <20120419093829.GA4547@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH, RFC 3/3] ext4: use the O_HOT and O_COLD open flags to
+ influence inode allocation
+Date: Sat, 21 Apr 2012 10:57:15 +1000
+Message-ID: <20120421005715.GJ9541@dastard>
+References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
+ <1334863211-19504-4-git-send-email-tytso@mit.edu>
+ <20120419232757.GC9541@dastard>
+ <20120420022606.GA24486@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:44026 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753833Ab2DUAMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Apr 2012 20:12:49 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <achender@linux.vnet.ibm.com>;
-	Fri, 20 Apr 2012 20:12:48 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 201096E8049
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Apr 2012 20:12:46 -0400 (EDT)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3L0Cj1r306138
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Apr 2012 20:12:45 -0400
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3L0CjKl002266
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Apr 2012 18:12:45 -0600
-Received: from lc4eb0185863151.ibm.com (dhcp-9-11-169-221.tucson.ibm.com [9.11.169.221])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q3L0CiBd002263
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Apr 2012 18:12:45 -0600
-In-Reply-To: <20120419093829.GA4547@gmail.com>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:54667 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751375Ab2DUA5T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Apr 2012 20:57:19 -0400
+Content-Disposition: inline
+In-Reply-To: <20120420022606.GA24486@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/19/2012 02:38 AM, Zheng Liu wrote:
-> On Tue, Apr 17, 2012 at 11:19:26PM -0700, Allison Henderson wrote:
->> On 04/16/2012 10:55 AM, Zheng Liu wrote:
->>> Hi Allison,
->>>
->>> Currently I am trying to reduce the lock contention of direct I/O in ext4
->>> because it is a bottleneck.  A trivial idea is that a new fucntion is
->>> defined to replace the generic_file_aio_write, which do some write
->>> operations with acquiring i_data_sem lock in inode.
->>>
->>> I know that you are trying to implement extent tree, and I have seen your patch
->>> set '[PATCH] Rename delayed extents to status extents'.  After extent tree is
->>> made, the implementation of direct I/O without i_mutex and range lock is
->>> straightforward and it is better than my trivial idea.  I think that
->>> maybe I can borrow you works.  So could you please share me your schedule
->>> and/or other information?
->>>
->>> Last month on ext4 workshop, we discuss the extent tree, range lock and I/O
->>> tree.  Obviously, I/O tree is used to store I/O operations, which can track
->>> delay allocation, do unwritten->written conversion and implement range lock.
->>> It is very useful for ext4 and I am interested in this proposal.  I know that
->>> you have begun to do some works.  So would you like to tell me the status of
->>> extent tree?  I don't know whether or not there has some things that I can be
->>> involved.  If you have some advices or there is something that I can help,
->>> please let me know.  Thank you and looking forward your reply.
->>>
->>> Regards,
->>> Zheng
->>
->> Hi Zheng,
->>
->> Well, I can share with you what I have done so far with Yongqiang's
->> delayed extent tree, but since I was moved to the ganesha project,
->> extent locks are no longer a business priority now.  I've done some
->> work on it on my own time, but I have not been able to keep up pace
->> with it.  If someone else has the hours to push it faster than I can
->> at this point, I would certainly be understanding of that.
->>
->> Basically though the plan was to modify Yongqiang's delayed extent
->> tree to track allocated extents as well as delayed extents.  And
->> then add the extent locks on top of that once that's working.  My
->> idea was to add a type member to the extents so that we have have
->> "delayed" "allocated" and "hole" extents.  I've renamed the delayed
->> extent scheme to "status extents" because it seemed more
->> appropriate.  That part I can send out, but I was still in the
->> middle of coding and debugging allocated extents and extent locks.
->> Because the tree was originally written to merge things as much as
->> possible, there is some rewrite that is needed.  I was working on
->> making the add and remove routines more like "type replace" routines
->> sense once the extent is locked, we can really only change the type,
->> and we cannot merge dissimilar types or extents locked by other
->> processes. I hope that makes sense, please let me know if you need
->> more clarification.  I will send out the status extent set, sense
->> that part is stable.
->
-> Thank you for sharing with me.  I am willing to take this work because
-> my employee provides me a full time to finish this work.  I see that you
-> have sent the patch set to the mailing list.  I will pick it and go on
-> working.  Thanks again. :)
->
-> Regards,
-> Zheng
->
+On Thu, Apr 19, 2012 at 10:26:06PM -0400, Ted Ts'o wrote:
+> On Fri, Apr 20, 2012 at 09:27:57AM +1000, Dave Chinner wrote:
+> > So you're assuming that locating the inodes somewhere "hot" is going
+> > to improve performance. So say an application has a "hot" file (say
+> > an index file) but still has a lot of other files it creates and
+> > reads, and they are all in the same directory.
+> > 
+> > If the index file is created "hot", then it is going to be placed a
+> > long way away from all the other files that applciation is using,
+> > and every time you access the hot file you now seek away to a
+> > different location on disk. The net result: the application goes
+> > slower because average seek times have increased.
+> 
+> Well, let's assume the application is using all or most of the disk,
+> so the objects it is fetching from the 2T disk are randomly
+> distributed throughout the disk.
 
-Alrighty then, thx Zheng for continuing this work item.  Let me know if 
-you have any questions or need any help. :)
+Which is so far from most people's reality that it is not worth
+considering. 
 
-Allison Henderson
+> Short seeks are faster, yes, but the
+> seek time as a function of the seek distance is decidedly non-linear,
+> with a sharp "knee" in the curve at around 10-15% of a full-stroke
+> seek.  (Ref:
+> http://static.usenix.org/event/fast05/tech/schlosser/schlosser.pdf)
+> 
+> So most of the time, as you seek back and forth fetching data objects,
+> most of the time you will be incurring 75-85% of the cost of a
+> worst-case seek anyway.  So seeking *is* going to be a fact of life
+> that we can't run away from that.
+> 
+> Given that, the question then is whether we are better off (a) putting
+> the index files in the exact middle of the disk, trying to minimize
+> seeks, (b) scattering the index files all over the disk randomly, or
+> (c) concentrating the index files near the beginning of the disk?
+> Given the non-linear seek times, it seems to suggest that (c) would
+> probably be the best case for this use case.
 
+I disagree - based on that paper, you're better off putting all the
+related application data in the same place, and hoping it all fits
+in that 10-15% minimal seek time region....
+
+Besides, you missed my point - that it is trivial to come up with
+examples of what application writers think are their hot/cold/normal
+data whose optimal layout bears no resemblence to your proposed
+hot/cold/normal inode layout.  That's the fundamental problem here,
+there is no obvious definition of HOT/COLD, and that the best
+implementation depends on how the application uses those flags
+combined with the characteristics of the underlying storage. IOws,
+however you optimise it for a single spindle, a large percentage of
+the time it is going to be detrimental to performance, not improve
+it....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
