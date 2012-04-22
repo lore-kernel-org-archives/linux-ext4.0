@@ -1,71 +1,43 @@
-From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-Date: Sun, 22 Apr 2012 14:51:34 +0200
-Message-ID: <4F93FED6.6090505@itwm.fraunhofer.de>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com>
+From: Eldad Zack <eldad@fogrefinery.com>
+Subject: [PATCH] [EXT4] super.c: unused variable warning without CONFIG_QUOTA
+Date: Sun, 22 Apr 2012 17:50:52 +0200
+Message-ID: <1335109852-17829-1-git-send-email-eldad@fogrefinery.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
-	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
-To: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <4F91C15B.6070200-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eldad Zack <eldad@fogrefinery.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 04/20/2012 10:04 PM, Eric Sandeen wrote:
-> On 1/9/12 7:21 AM, Bernd Schubert wrote:
->> From: Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
->>
->> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
->> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
->> and telldir().  However, this causes problems if there are 32-bit hash
->> collisions, since the NFSv2 server can get stuck resending the same
->> entries from the directory repeatedly.
->>
->> Allow ext4 to return a full 64-bit hash (both major and minor) for
->> telldir to decrease the chance of hash collisions.  This still needs
->> integration on the NFS side.
->>
->> Patch-updated-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
->> (blame me if something is not correct)
-> 
-> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
-> on the same.  Should I send mine?
+sb info is only checked with quota support.
 
-That is perfectly fine with me.
+fs/ext4/super.c: In function =E2=80=98parse_options=E2=80=99:
+fs/ext4/super.c:1600:23: warning: unused variable =E2=80=98sbi=E2=80=99=
+ [-Wunused-variable]
 
-> 
-> Also...
-> 
->> +/*
->> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
->> + * non-htree and htree directories, where the "offset" is in terms
->> + * of the filename hash value instead of the byte offset.
->> + *
->> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
->> + *       will be invalid once the directory was converted into a dx directory
->> + */
->> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
-> 
-> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
-> files.  Do we need to worry about the same thing in this function?
+Signed-off-by: Eldad Zack <eldad@fogrefinery.com>
+---
+ fs/ext4/super.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-Hrmm, I just checked it and I think either is wrong. We only have to
-care about non-dx directories, so ext4_readdir() applies, which limits
-filp->f_pos < inode->i_size.
-Going to send a patch tomorrow. Thanks for spotting this!
-
-
-Cheers,
-Bernd
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6da1935..e1fb1d5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1597,7 +1597,9 @@ static int parse_options(char *options, struct su=
+per_block *sb,
+ 			 unsigned int *journal_ioprio,
+ 			 int is_remount)
+ {
++#ifdef CONFIG_QUOTA
+ 	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
++#endif
+ 	char *p;
+ 	substring_t args[MAX_OPT_ARGS];
+ 	int token;
+--=20
+1.7.10
