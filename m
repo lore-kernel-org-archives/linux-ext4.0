@@ -1,80 +1,71 @@
-From: Nick Piggin <npiggin@gmail.com>
-Subject: Re: [PATCH, RFC 0/3] Introduce new O_HOT and O_COLD flags
-Date: Sun, 22 Apr 2012 16:30:30 +1000
-Message-ID: <CAPa8GCDkP_53VGAeQPeYgf3GW3KZ09BvnqduArQE7svf2mMj4A@mail.gmail.com>
-References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
-	<4F912880.70708@panasas.com>
-	<alpine.LFD.2.00.1204201120060.27750@dhcp-27-109.brq.redhat.com>
-	<1334919662.5879.23.camel@dabdike>
-	<alpine.LFD.2.00.1204201313231.27750@dhcp-27-109.brq.redhat.com>
-	<1334932928.13001.11.camel@dabdike>
-	<20120420145856.GC24486@thunk.org>
-	<CAHGf_=oWtpgRfqaZ1YDXgZoQHcFY0=DYVcwXYbFtZt2v+K532w@mail.gmail.com>
+From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
+ type
+Date: Sun, 22 Apr 2012 14:51:34 +0200
+Message-ID: <4F93FED6.6090505@itwm.fraunhofer.de>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: "Ted Ts'o" <tytso@mit.edu>, James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Lukas Czerner <lczerner@redhat.com>, Boaz Harrosh <bharrosh@panasas.com>,
-	linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>, linux-mm@kvack.org
-To: KOSAKI Motohiro <kosaki.motohiro@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <CAHGf_=oWtpgRfqaZ1YDXgZoQHcFY0=DYVcwXYbFtZt2v+K532w@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
+	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
+To: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <4F91C15B.6070200-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 22 April 2012 09:56, KOSAKI Motohiro <kosaki.motohiro@gmail.com> wrote:
-> On Fri, Apr 20, 2012 at 10:58 AM, Ted Ts'o <tytso@mit.edu> wrote:
->> On Fri, Apr 20, 2012 at 06:42:08PM +0400, James Bottomley wrote:
->>>
->>> I'm not at all wedded to O_HOT and O_COLD; I think if we establish a
->>> hint hierarchy file->page cache->device then we should, of course,
->>> choose the best API and naming scheme for file->page cache. =A0The only
->>> real point I was making is that we should tie in the page cache, and
->>> currently it only knows about "hot" and "cold" pages.
+On 04/20/2012 10:04 PM, Eric Sandeen wrote:
+> On 1/9/12 7:21 AM, Bernd Schubert wrote:
+>> From: Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
 >>
->> The problem is that "hot" and "cold" will have different meanings from
->> the perspective of the file system versus the page cache. =A0The file
->> system may consider a file "hot" if it is accessed frequently ---
->> compared to the other 2 TB of data on that HDD. =A0The memory subsystem
->> will consider a page "hot" compared to what has been recently accessed
->> in the 8GB of memory that you might have your system. =A0Now consider
->> that you might have a dozen or so 2TB disks that each have their "hot"
->> areas, and it's not at all obvious that just because a file, or even
->> part of a file is marked "hot", that it deserves to be in memory at
->> any particular point in time.
->
-> So, this have intentionally different meanings I have no seen a reason wh=
-y
-> fs uses hot/cold words. It seems to bring a confusion.
+>> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+>> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+>> and telldir().  However, this causes problems if there are 32-bit hash
+>> collisions, since the NFSv2 server can get stuck resending the same
+>> entries from the directory repeatedly.
+>>
+>> Allow ext4 to return a full 64-bit hash (both major and minor) for
+>> telldir to decrease the chance of hash collisions.  This still needs
+>> integration on the NFS side.
+>>
+>> Patch-updated-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+>> (blame me if something is not correct)
+> 
+> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
+> on the same.  Should I send mine?
 
-Right. It has nothing to do with hot/cold usage in the page allocator,
-which is about how many lines of that page are in CPU cache.
+That is perfectly fine with me.
 
-However it could be propagated up to page reclaim level, at least.
-Perhaps readahead/writeback too. But IMO it would be better to nail down
-the semantics for block and filesystem before getting worried about that.
+> 
+> Also...
+> 
+>> +/*
+>> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
+>> + * non-htree and htree directories, where the "offset" is in terms
+>> + * of the filename hash value instead of the byte offset.
+>> + *
+>> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
+>> + *       will be invalid once the directory was converted into a dx directory
+>> + */
+>> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+> 
+> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
+> files.  Do we need to worry about the same thing in this function?
+
+Hrmm, I just checked it and I think either is wrong. We only have to
+care about non-dx directories, so ext4_readdir() applies, which limits
+filp->f_pos < inode->i_size.
+Going to send a patch tomorrow. Thanks for spotting this!
 
 
->
-> But I don't know full story of this feature and I might be overlooking
-> something.
+Cheers,
+Bernd
 
-Also, "hot" and "cold" (as others have noted) is a big hammer that perhaps
-catches a tiny subset of useful work (probably more likely: benchmarks).
 
-Is it read often? Written often? Both? Are reads and writes random or linea=
-r?
-Is it latency bound, or throughput bound? (i.e., are queue depths high or
-low?)
-
-A filesystem and storage device might care about all of these things.
-Particularly if you have something more advanced than a single disk.
-Caches, tiers of storage, etc.
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
