@@ -1,142 +1,179 @@
-From: Nick Piggin <npiggin@gmail.com>
-Subject: Re: [PATCH, RFC 0/3] Introduce new O_HOT and O_COLD flags
-Date: Mon, 23 Apr 2012 21:47:50 +1000
-Message-ID: <CAPa8GCCE7x=ox0K=QoFR8+bTNrUqfFO+ooRKDLNROnd7xsF4Pw@mail.gmail.com>
-References: <1334863211-19504-1-git-send-email-tytso@mit.edu>
-	<4F912880.70708@panasas.com>
-	<alpine.LFD.2.00.1204201120060.27750@dhcp-27-109.brq.redhat.com>
-	<1334919662.5879.23.camel@dabdike>
-	<alpine.LFD.2.00.1204201313231.27750@dhcp-27-109.brq.redhat.com>
-	<1334932928.13001.11.camel@dabdike>
-	<20120420145856.GC24486@thunk.org>
-	<CAHGf_=oWtpgRfqaZ1YDXgZoQHcFY0=DYVcwXYbFtZt2v+K532w@mail.gmail.com>
-	<CAPa8GCDkP_53VGAeQPeYgf3GW3KZ09BvnqduArQE7svf2mMj4A@mail.gmail.com>
-	<1335169383.4191.9.camel@dabdike.lan>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: KOSAKI Motohiro <kosaki.motohiro@gmail.com>, "Ted Ts'o" <tytso@mit.edu>,
-	Lukas Czerner <lczerner@redhat.com>, Boaz Harrosh <bharrosh@panasas.com>,
-	linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>, linux-mm@kvack.org
-To: James Bottomley <James.Bottomley@hansenpartnership.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1335169383.4191.9.camel@dabdike.lan>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
-
-On 23 April 2012 18:23, James Bottomley
-<James.Bottomley@hansenpartnership.com> wrote:
-> On Sun, 2012-04-22 at 16:30 +1000, Nick Piggin wrote:
->> On 22 April 2012 09:56, KOSAKI Motohiro <kosaki.motohiro@gmail.com> wrot=
-e:
->> > On Fri, Apr 20, 2012 at 10:58 AM, Ted Ts'o <tytso@mit.edu> wrote:
->> >> On Fri, Apr 20, 2012 at 06:42:08PM +0400, James Bottomley wrote:
->> >>>
->> >>> I'm not at all wedded to O_HOT and O_COLD; I think if we establish a
->> >>> hint hierarchy file->page cache->device then we should, of course,
->> >>> choose the best API and naming scheme for file->page cache. =A0The o=
-nly
->> >>> real point I was making is that we should tie in the page cache, and
->> >>> currently it only knows about "hot" and "cold" pages.
->> >>
->> >> The problem is that "hot" and "cold" will have different meanings fro=
-m
->> >> the perspective of the file system versus the page cache. =A0The file
->> >> system may consider a file "hot" if it is accessed frequently ---
->> >> compared to the other 2 TB of data on that HDD. =A0The memory subsyst=
-em
->> >> will consider a page "hot" compared to what has been recently accesse=
-d
->> >> in the 8GB of memory that you might have your system. =A0Now consider
->> >> that you might have a dozen or so 2TB disks that each have their "hot=
-"
->> >> areas, and it's not at all obvious that just because a file, or even
->> >> part of a file is marked "hot", that it deserves to be in memory at
->> >> any particular point in time.
->> >
->> > So, this have intentionally different meanings I have no seen a reason=
- why
->> > fs uses hot/cold words. It seems to bring a confusion.
->>
->> Right. It has nothing to do with hot/cold usage in the page allocator,
->> which is about how many lines of that page are in CPU cache.
->
-> Well, no it's a similar concept: =A0we have no idea whether the page is
-> cached or not.
->
-> =A0What we do is estimate that by elapsed time since we
-> last touched the page. =A0In some sense, this is similar to the fs
-> definition: a hot page hint would mean we expect to touch the page
-> frequently and a cold page means we wouldn't. =A0i.e. for a hot page, the
-> elapsed time between touches would be short and for a cold page it would
-> be long. =A0Now I still think there's a mismatch in the time scales: a
-> long elapsed time for mm making the page cold isn't necessarily the same
-> long elapsed time for the file, because the mm idea is conditioned by
-> local events (like memory pressure).
-
-I suspect the mismatch would make it have virtually no correlation.
-Experiments could surely be made, though.
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Ext4 Workshop Draft Minutes
+Date: Mon, 23 Apr 2012 11:02:45 -0400
+Message-ID: <E1SMKmr-0002jQ-4N@tytso-glaptop.cam.corp.google.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39363 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753631Ab2DWPCt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Apr 2012 11:02:49 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
->> However it could be propagated up to page reclaim level, at least.
->> Perhaps readahead/writeback too. But IMO it would be better to nail down
->> the semantics for block and filesystem before getting worried about that=
-.
->
-> Sure ... I just forwarded the email in case mm people had an interest.
-> If you want FS and storage to develop the hints first and then figure
-> out if we can involve the page cache, that's more or less what was
-> happening anyway.
+Please comment.  Thanks!!
 
-OK, good. mm layers can always look up any such flags quite easily, so
-I think there is no problem of mechanism, only policy.
+					- Ted
 
 
->> > But I don't know full story of this feature and I might be overlooking
->> > something.
->>
->> Also, "hot" and "cold" (as others have noted) is a big hammer that perha=
-ps
->> catches a tiny subset of useful work (probably more likely: benchmarks).
->>
->> Is it read often? Written often? Both? Are reads and writes random or li=
-near?
->> Is it latency bound, or throughput bound? (i.e., are queue depths high o=
-r
->> low?)
->>
->> A filesystem and storage device might care about all of these things.
->> Particularly if you have something more advanced than a single disk.
->> Caches, tiers of storage, etc.
->
-> Experience has taught me to be wary of fine grained hints: they tend to
-> be more trouble than they're worth (the definitions are either
-> inaccurate or so tediously precise that no-one can be bothered to read
-> them). =A0A small set of broad hints is usually more useable than a huge
-> set of fine grained ones, so from that point of view, I like the
-> O_HOT/O_COLD ones.
+		     Ext4 Workshop -- Draft Minutes
+			     March 30, 2012
 
-So long as the implementations can be sufficiently general that large major=
-ity
-of "reasonable" application of the flags does not result in a slowdown, per=
-haps.
+Introduction
+============
 
-But while defining the API, you have to think about these things and not
-just dismiss them completely.
+The 2012 Ext4 Workshop was held at Google Building 1400 on March 30,
+2012.  Although a number of ext4 developers were not able to attend,
+we had a very good discussion and we found it to be very valuable.  In
+particular, we welcomed Tao Ma and Zheng Liu from Tao Bao and were
+able to get a much better understanding of their use cases of
+interest.
 
-Read vs write can be very important for caches and tiers, same for
-random/linear,
-latency constraints, etc. These things aren't exactly a huge unwieldy matri=
-x. We
-already have similar concepts in fadvise and such.
+Tao Bao is using ext4 in many different ways --- including back ends
+for cluster file systems (Hadoopfs and an internally developed cluster
+file system), content delivery networks, and for databases.  (This is
+not that different from the uses of ext4 at Google, and so it was nice
+to compare notes regarding technical challenges and approaches to
+address those challenges.)
 
-Thanks,
-Nick
+Development Process Issues
+==========================
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Patch sets ready for review
+---------------------------
+
+The following new patch sets should be ready for review for the next
+(for v3.5) merge window:
+
+1) 64-bit on-line resize using meta_bg from Yongqiang Yang
+2) metadata checksums from Darrick Wong
+	- requires e2fsprogs changes
+3) inline data from Tao Ma
+	- requires e2fsprogs changes
+
+Code review
+-----------
+
+Ted reiterate a plea for help for in reviewing patches.  One
+suggestion which we wil try implementing is to send announcements for
+a particular patch set: "this week we will review the metadata
+checksum e2fsprogs changes".  This will help focus people on a
+particular features.  This will also give more visibility to people
+who are following ext4 development about upcoming features.
+
+Conference call
+---------------
+
+We discussed with the current time of the ext4 conference call (8am
+US/Pacific); the folks from Tao Bao assured us that 11pm in China
+wasn't too late, and that in the future, they would be joining the
+conference call.  (If there are other folks who are interested in
+joining the weekly ext4 call, please contact tytso@mit.edu or
+cmm@us.ibm.com.)
+
+Technical Issues
+================
+
+Big Extents cache
+-----------------
+
+Nauman Rafique has implemented a in-memory btree extent cache which
+can collapse multiple physical extent entries which are contiguous in
+physical and logical block number space into a single in-memory
+extents.  For this reason, it is called "big extents".  This work was
+originally motivated by very fast flash devices (where the cost of
+cache misses when doing binary search on the extent leaf block can be
+measurable).  However, this would solve a number of other problems,
+including async I/O being really asynchronous, and it would also
+address why Tao Bao is interested in changing the extent format to
+break the 2**15 block extent length limitation.  (There are other
+advantages that would accrue to creating a V2 extent tree format, such
+as breaking the 2**32 logical block limitation, but that isn't
+currently a strong motivation for any of the current ext4 developers.)
+
+I/O Tree
+--------
+
+One of the other things that was discussed at the workshop was
+something that has been loosely called the I/O tree.  This would be an
+in-memory data structure to track the status of delayed allocation
+writers, required uninit->init extent conversions, etc.  There is a
+proof-of-concept implementation which Yongqiang Yang fielded that
+tracked delayed allocation writes, and which Allison Henderson had
+started looking at.  Tao Bao indicated an interest to pick up this
+work.
+
+The I/O tree would allow us to significantly simplify our delayed
+allocation support, and it is a prerequisite to solving the
+bigalloc/delalloc bug where we have trouble tracking when we write to
+a previously unallocated 4k block, whether it is the first 4k block in
+a bigalloc cluster which has been subject to delayed allocation
+accounting or not.
+
+One open question is whether the I/O tree should be implement as
+something independent to the big extent tree cache, or in parallel
+with the big extent tree cache.  The primary arguments in favor of
+combining the functionality of these two trees into a single data
+structure are (a) that it will save memory since a large part of the
+overhead of a in-memory tree structure is the pointers and (b) there
+will be code duplication in maintaining the two in-memory trees.
+
+The argument for keeping these two trees separate is (a) we have
+proof-of-concept implementation for both of these trees already, and
+working on them in parallel might be more efficient, and (b) the I/O
+tree only needs to be kept for inodes that are opened, or still has
+dirty pages that haven't been flushed out or has I/O still in flight.
+The inodes that are not opened, but just in the inode cache, will stay
+in memory on a much longer term.  Combining the two trees could add
+fields to the extent cache that would not be needed in for
+closed/inactive files, thus bloating them.  In addition, fs code that
+needs to assure the I/O tree is empty would have to search through all
+of the extent cache nodes to support things like fsync() or during the
+writeback code.
+
+At least initially, we'll proceed with an implementation with two
+separate trees, and then we can investigate whether or not it makes
+sense to unify the code handling the two in-memory trees.
+
+[ Note: since the workshop, Allison Headerson has sent out a
+  proof-of-concept patchset for "status extents" which are essentially
+  the I/O tree idea concept discussed at the workshop.  Zheng Liu will
+  be taking over work on this patch set. ]
+
+Future of Snapshot Patches
+--------------------------
+
+At the workshop we discussed the future of the snapshot patches.
+There is still a large concern over the complexity and maintainability
+of those patches.  One of the things which we are looking very closely
+at are the dm-thin snapshot work.  There are some downsides, including
+the fact that you need to have a separate partitions for the dm-thin
+snapshot storage, and there were some questions over the performance
+of the dm-thin snapshot code.  However, the combination of dm-thin
+plus discard patches is worth a closer look.
+
+Controlling Feature and mount flag combinatorics
+------------------------------------------------
+
+(This was discussed at a informal ext4 meetup during the Collaboration
+Sommit, which took place after the ext4 workshop; we had this meeting
+primarily because folks from Red Hat, such as Eric Sandeen, Lukas, and
+Ric Wheeler were not able to attend the ext4 workshop on Friday.0
+
+Eric and Ric expressed some continuing concern over the complexity
+caused by the large number of feature flags and mount flags, both from
+a distribution support perspective and from a testing perspective.
+They would prefer that we give more guidance to users over what has
+been fully tested and supported both by the upstream community and
+then by the distributions.
+
+After some discussion, Eric will look at implementing a framework
+where for upstream kernels, if the user specifies a "non-standard"
+combination of feature flags and mount options, the kernel will issue
+a warning message indicating that this is not a configuration which is
+tested regularly by ext4 developers, and requesting the user to
+contact the ext4 mailing list if they feel they have a use case such
+that this particular combination should be supported.  Distributions
+could use the same framework to issue a message regarding support
+status, including possibly setting a taint flag.
