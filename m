@@ -1,82 +1,101 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
 Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
  type
-Date: Mon, 23 Apr 2012 15:37:06 -0500
-Message-ID: <4F95BD72.6090200@redhat.com>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de>
+Date: Mon, 23 Apr 2012 22:52:25 +0200
+Message-ID: <4F95C109.1030401@itwm.fraunhofer.de>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <4F91C15B.6070200@redhat.com> <4F93FED6.6090505@itwm.fraunhofer.de> <4F95BD72.6090200@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-	bfields@redhat.com, Andreas Dilger <adilger@whamcloud.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F93FED6.6090505@itwm.fraunhofer.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>,
+	bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Andreas Dilger <adilger-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
+To: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <4F95BD72.6090200-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 4/22/12 7:51 AM, Bernd Schubert wrote:
-> On 04/20/2012 10:04 PM, Eric Sandeen wrote:
->> On 1/9/12 7:21 AM, Bernd Schubert wrote:
->>> From: Fan Yong <yong.fan@whamcloud.com>
+On 04/23/2012 10:37 PM, Eric Sandeen wrote:
+> On 4/22/12 7:51 AM, Bernd Schubert wrote:
+>> On 04/20/2012 10:04 PM, Eric Sandeen wrote:
+>>> On 1/9/12 7:21 AM, Bernd Schubert wrote:
+>>>> From: Fan Yong <yong.fan-KloliPT79xf2eFz/2MeuCQ@public.gmane.org>
+>>>>
+>>>> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+>>>> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+>>>> and telldir().  However, this causes problems if there are 32-bit hash
+>>>> collisions, since the NFSv2 server can get stuck resending the same
+>>>> entries from the directory repeatedly.
+>>>>
+>>>> Allow ext4 to return a full 64-bit hash (both major and minor) for
+>>>> telldir to decrease the chance of hash collisions.  This still needs
+>>>> integration on the NFS side.
+>>>>
+>>>> Patch-updated-by: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>
+>>>> (blame me if something is not correct)
 >>>
->>> Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
->>> to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
->>> and telldir().  However, this causes problems if there are 32-bit hash
->>> collisions, since the NFSv2 server can get stuck resending the same
->>> entries from the directory repeatedly.
+>>> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
+>>> on the same.  Should I send mine?
+>>
+>> That is perfectly fine with me.
+>>
 >>>
->>> Allow ext4 to return a full 64-bit hash (both major and minor) for
->>> telldir to decrease the chance of hash collisions.  This still needs
->>> integration on the NFS side.
+>>> Also...
 >>>
->>> Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
->>> (blame me if something is not correct)
+>>>> +/*
+>>>> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
+>>>> + * non-htree and htree directories, where the "offset" is in terms
+>>>> + * of the filename hash value instead of the byte offset.
+>>>> + *
+>>>> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
+>>>> + *       will be invalid once the directory was converted into a dx directory
+>>>> + */
+>>>> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
+>>>
+>>> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
+>>> files.  Do we need to worry about the same thing in this function?
 >>
->> Bernd, I've merged this to ext3.  Bruce thought maybe you were working
->> on the same.  Should I send mine?
+>> Hrmm, I just checked it and I think either is wrong. We only have to
+>> care about non-dx directories, so ext4_readdir() applies, which limits
+>> filp->f_pos < inode->i_size.
+>> Going to send a patch tomorrow. Thanks for spotting this!
 > 
-> That is perfectly fine with me.
+> The other thing I'm wondering is whether, in light of
 > 
->>
->> Also...
->>
->>> +/*
->>> + * ext4_dir_llseek() based on generic_file_llseek() to handle both
->>> + * non-htree and htree directories, where the "offset" is in terms
->>> + * of the filename hash value instead of the byte offset.
->>> + *
->>> + * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
->>> + *       will be invalid once the directory was converted into a dx directory
->>> + */
->>> +loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
->>
->> ext4_llseek() worries about max offset for direct/indirect vs. extent-mapped
->> files.  Do we need to worry about the same thing in this function?
+> ef3d0fd27e90f67e35da516dafc1482c82939a60 vfs: do (nearly) lockless generic_file_llseek
 > 
-> Hrmm, I just checked it and I think either is wrong. We only have to
-> care about non-dx directories, so ext4_readdir() applies, which limits
-> filp->f_pos < inode->i_size.
-> Going to send a patch tomorrow. Thanks for spotting this!
-
-The other thing I'm wondering is whether, in light of
-
-ef3d0fd27e90f67e35da516dafc1482c82939a60 vfs: do (nearly) lockless generic_file_llseek
-
-taking the i_mutex in ext4_dir_llseek could be a perf regression vs what was there before?  Is there anything about the new function which requires stronger locking?
-
-I may be missing something obvious about the nfs interaction, not sure.
-
--Eric
-
-> Cheers,
-> Bernd
+> taking the i_mutex in ext4_dir_llseek could be a perf regression vs what was there before?  Is there anything about the new function which requires stronger locking?
 > 
+> I may be missing something obvious about the nfs interaction, not sure.
 > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Oh, good point. I was just about to send a small patch, but reading
+through the lockless commit will take some time - its already too late
+for me for today. Will work on that tomorrow. Thanks again for your review!
+
+Cheers,
+Bernd
+
+
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index b867862..3a4988e2 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -363,7 +363,7 @@ loff_t ext4_dir_llseek(struct file *file, loff_t
+offset, int origin)
+ 		goto out_err;
+
+ 	if (!dx_dir) {
+-		if (offset > inode->i_sb->s_maxbytes)
++		if (offset > i_size_read(inode))
+ 			goto out_err;
+ 	} else if (offset > ext4_get_htree_eof(file))
+ 		goto out_err;
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
