@@ -1,28 +1,29 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] tune2fs: fix man page indentation
-Date: Tue, 24 Apr 2012 14:26:30 -0400
-Message-ID: <20120424182630.GE18865@thunk.org>
-References: <1334347927-12749-1-git-send-email-adityakali@google.com>
+Subject: Re: [PATCH] debugfs: cleanup in do_show_debugfs_params
+Date: Tue, 24 Apr 2012 14:33:23 -0400
+Message-ID: <20120424183323.GF18865@thunk.org>
+References: <1334583686-4571-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35725 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33783 "EHLO
 	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756077Ab2DXS0e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Apr 2012 14:26:34 -0400
+	id S1755825Ab2DXSd1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Apr 2012 14:33:27 -0400
 Content-Disposition: inline
-In-Reply-To: <1334347927-12749-1-git-send-email-adityakali@google.com>
+In-Reply-To: <1334583686-4571-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 13, 2012 at 01:12:07PM -0700, Aditya Kali wrote:
-> The indentation in tune2fs man page was wrong towards the
-> end. Also, there was extra '[' in the SYNOPSIS section.
+On Mon, Apr 16, 2012 at 09:41:26PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> Signed-off-by: Aditya Kali <adityakali@google.com>
+> Remove 'out' variable and replace fprintf with printf.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
