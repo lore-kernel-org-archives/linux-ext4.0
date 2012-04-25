@@ -1,49 +1,51 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [RFC] jbd2: reduce the number of writes when commiting a
- transacation
-Date: Tue, 24 Apr 2012 21:27:07 -0400
-Message-ID: <20120425012707.GK18865@thunk.org>
-References: <20120420110627.GA30373@gmail.com>
- <E5D2F131-A01C-4CB2-8A7C-88CACBBC450B@dilger.ca>
- <20120423022505.GA7855@gmail.com>
- <67060CC0-9F64-40ED-9467-572996ECF21F@whamcloud.com>
- <20120424215709.GA7636@quack.suse.cz>
+From: Ludwig Nussel <ludwig.nussel@suse.de>
+Subject: Re: [PATCH] implement uid and gid mount options for ext2, ext3 and
+ ext4
+Date: Wed, 25 Apr 2012 13:54:26 +0200
+Message-ID: <4F97E5F2.50501@suse.de>
+References: <1335281356-2943-1-git-send-email-ludwig.nussel@suse.de> <4F971936.6070809@landley.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@whamcloud.com>,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56425 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757808Ab2DYB1N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Apr 2012 21:27:13 -0400
-Content-Disposition: inline
-In-Reply-To: <20120424215709.GA7636@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org,
+	"Jan Kara (maintainer:EXT2 FILE SYSTEM)" <jack@suse.cz>,
+	"Andrew Morton (maintainer:EXT3 FILE SYSTEM)"
+	<akpm@linux-foundation.org>,
+	"Andreas Dilger (maintainer:EXT3 FILE SYSTEM)"
+	<adilger.kernel@dilger.ca>,
+	"\"Theodore Ts'o\" (maintainer:EXT4 FILE SYSTEM)" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org
+To: Rob Landley <rob@landley.net>
+Return-path: <linux-doc-owner@vger.kernel.org>
+In-Reply-To: <4F971936.6070809@landley.net>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 24, 2012 at 11:57:09PM +0200, Jan Kara wrote:
->   Also currently the async commit code has essentially unfixable bugs in
-> handling of cache flushes as I wrote in
-> http://www.spinics.net/lists/linux-ext4/msg30452.html. Because data blocks
-> are not part of journal checksum, it can happen with async commit code that
-> data is not safely on disk although transaction is completely committed. So
-> async commit code isn't really safe to use unless you are fine with
-> exposure of uninitialized data...
+Rob Landley wrote:
+> On 04/24/2012 10:29 AM, Ludwig Nussel wrote:
+>> Further development of a patch I sent years ago. I didn't find the
+>> time to address the concerns raised back then and forgot about the
+>> patch. Now here it is again.
+>=20
+> The doc bits look fine:
+>=20
+> Acked-by: Rob Landley <rob@landley.net>
+>=20
+> As for the design: why isn't this in the VFS instead of in ext234? It
+> seems like VFAT is more likely to need this, and I vaguely recall vir=
+tfs
+> (I.E. 9pfs) doing something similar...?
 
-With the old journal checksum, the data blocks *are* part of the
-journal checksum.  That's not the reason I haven't enabled it as a
-default (even though it would close to double fs_mark benchmarks).
-The main issue is that e2fsck doesn't deal intelligently if some
-commit *other* than the last one has a bad intelligent.
+Yes, file systems like FAT that do not store ownership information
+themselves have a uid option. I agree that handling that in vfs itself
+would be the more generic solution. It would require more work though.
 
-With the new journal checksum patches, each individual data block has
-its own checksum, so we don't need to discard the entire commit;
-instead we can just drop the individual block(s) that have a bad
-checksum, and then force a full fsck run afterwards.
+cu
+Ludwig
 
-						- Ted
+--=20
+ (o_   Ludwig Nussel
+ //\
+ V_/_  http://www.suse.de/
+SUSE LINUX Products GmbH, GF: Jeff Hawn, Jennifer Guild, Felix Imend=F6=
+rffer, HRB 16746 (AG N=FCrnberg)=20
