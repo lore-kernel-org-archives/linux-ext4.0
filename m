@@ -1,49 +1,54 @@
-From: Rob Landley <rob@landley.net>
-Subject: Re: [PATCH] implement uid and gid mount options for ext2, ext3 and
- ext4
-Date: Wed, 25 Apr 2012 15:10:33 -0500
-Message-ID: <4F985A39.4060804@landley.net>
-References: <1335281356-2943-1-git-send-email-ludwig.nussel@suse.de> <4F971936.6070809@landley.net> <4F97E5F2.50501@suse.de>
+From: djwong <djwong@us.ibm.com>
+Subject: Re: [RFC] jbd2: reduce the number of writes when commiting a
+ transacation
+Date: Wed, 25 Apr 2012 13:34:34 -0700
+Message-ID: <20120425203434.GB6938@tux1.beaverton.ibm.com>
+References: <20120420110627.GA30373@gmail.com>
+ <E5D2F131-A01C-4CB2-8A7C-88CACBBC450B@dilger.ca>
+ <20120423022505.GA7855@gmail.com>
+ <67060CC0-9F64-40ED-9467-572996ECF21F@whamcloud.com>
+ <20120423221948.GA6938@tux1.beaverton.ibm.com>
+ <20120424194108.GI18865@thunk.org>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org,
-	"Jan Kara (maintainer:EXT2 FILE SYSTEM)" <jack@suse.cz>,
-	"Andrew Morton (maintainer:EXT3 FILE SYSTEM)"
-	<akpm@linux-foundation.org>,
-	"Andreas Dilger (maintainer:EXT3 FILE SYSTEM)"
-	<adilger.kernel@dilger.ca>,
-	"\"Theodore Ts'o\" (maintainer:EXT4 FILE SYSTEM)" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org
-To: Ludwig Nussel <ludwig.nussel@suse.de>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <4F97E5F2.50501@suse.de>
-Sender: linux-doc-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@whamcloud.com>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120424194108.GI18865@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 04/25/2012 06:54 AM, Ludwig Nussel wrote:
-> Rob Landley wrote:
->> On 04/24/2012 10:29 AM, Ludwig Nussel wrote:
->>> Further development of a patch I sent years ago. I didn't find the
->>> time to address the concerns raised back then and forgot about the
->>> patch. Now here it is again.
->>
->> The doc bits look fine:
->>
->> Acked-by: Rob Landley <rob@landley.net>
->>
->> As for the design: why isn't this in the VFS instead of in ext234? It
->> seems like VFAT is more likely to need this, and I vaguely recall virtfs
->> (I.E. 9pfs) doing something similar...?
+On Tue, Apr 24, 2012 at 03:41:08PM -0400, Ted Ts'o wrote:
+> On Mon, Apr 23, 2012 at 10:19:48PM +0000, djwong wrote:
+> > 
+> > My huge checksum patchset _does_ include checksums for data blocks; see the
+> > t_checksum field in struct journal_block_tag_s.  iirc the corresponding journal
+> > replay modifications will skip over corrupt data blocks and keep going.
 > 
-> Yes, file systems like FAT that do not store ownership information
-> themselves have a uid option. I agree that handling that in vfs itself
-> would be the more generic solution. It would require more work though.
+> I need to check for this in the patches (and you may be doing this
+> already), but in the kernel failed checksums should result in an
+> ext4_error() call which will set the file system as corrupt and
+> needing to be checked.  And in e2fsck it should force a full check of
+> the file system.
 
-The right thing to do is often more work.  If it allows us to remove
-existing duplicate code, even better...
+I'm fairly sure the kernel patch doesn't do that, I think it just skips the
+block and moves on.
 
-Rob
--- 
-GNU/Linux isn't: Linux=GPLv2, GNU=GPLv3+, they can't share code.
-Either it's "mere aggregation", or a license violation.  Pick one.
+As for e2fsck... what does one do inside e2fsck to force a full check?  Is that
+just the equivalent of passing -f?
+
+--D
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
