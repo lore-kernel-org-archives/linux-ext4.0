@@ -1,42 +1,56 @@
-From: Xie Miao <miaoxie1984@gmail.com>
-Subject: Re: [PATCH 1/4] vfs: introduce try_to_writeback_inodes_sb(_nr)
-Date: Thu, 26 Apr 2012 15:55:52 +0800
-Message-ID: <CAAW_DMg9VLEtV40=qAbT3WZ4tN+ejZxToFHO0AiqDmjvV=V4eA@mail.gmail.com>
-References: <4F98B9A7.8060209@gmail.com>
-	<20120426031156.GY9541@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Linux FSDevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	miaox@cn.fujitsu.com, Kamal Mostafa <kamal@canonical.com>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120426031156.GY9541@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended file stats available
+Date: Thu, 26 Apr 2012 14:32:36 +0100
+Message-ID: <18195.1335447156@redhat.com>
+References: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140612.17272.57774.stgit@warthog.procyon.org.uk>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <libc-alpha-return-27979-glibc-alpha=m.gmane.org@sourceware.org>
+In-Reply-To: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca>
+List-Unsubscribe: <mailto:libc-alpha-unsubscribe-glibc-alpha=m.gmane.org@sourceware.org>
+List-Subscribe: <mailto:libc-alpha-subscribe@sourceware.org>
+List-Archive: <http://sourceware.org/ml/libc-alpha/>
+List-Post: <mailto:libc-alpha@sourceware.org>
+List-Help: <mailto:libc-alpha-help@sourceware.org>, <http://sourceware.org/ml/#faqs>
+Sender: libc-alpha-owner@sourceware.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 26, 2012 at 11:11 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > writeback_inodes_sb(_nr) grabs s_umount lock when it want to start
-> > writeback,
-> > it may bring us deadlock problem when doing umount. So we introduce new
-> > functions -- try_to_writeback_inodes_sb(_nr) -- which use
-> > down_read_trylock()
-> > instead of down_read() to avoid that deadlock problem.
-> >
-> > This idea came from Christoph Hellwig.
-> > Some code is from the patch of Kamal Mostafa.
->
-> This just re-implements writeback_inodes_[nr]_sb_if_idle() with a
-> trylock instead of a blocking lock.
->
-> Just replace the blocking lock in writeback_inodes_[nr]_sb_if_idle()
-> with a trylock and use that.
+Andreas Dilger <adilger@dilger.ca> wrote:
 
-The change of these two functions is relative to three modules,  so I think
-the patch set now is easy to be reviewed by the developers of each module.
+> > The idea was initially proposed as a set of xattrs that could be
+> > retrieved with getxattr(), but the general preferance proved to be
+> > for new syscalls with an extended stat structure.
+> 
+> I would comment that it was the opposite.  It was originally a
+> stat()-like extension that degraded into a messy getxattr() mess.
 
-Thanks
-Miao
+Ummm...  No, my first attempt was definitely through getxattr().  You even
+commented on it.
+
+> > The fields in struct xstat come in a number of classes:
+> > 
+> > (0) st_dev, st_blksize, st_information.
+> > 
+> >     These are local data and are always available.
+> 
+> For the extra two bits it would cost us, I don't think st_blksize
+> and st_information should always be returned.
+
+Fair enough.
+
+> st_blksize may be variable for a distributed filesystem,
+
+I wonder if there's a way to make this explicit - or is it something that if
+the bit isn't set, you can't use the value in st_blksize.  I wonder if this
+value always has to be non-zero to make sure existing stat() doesn't explode.
+
+> and some of the fields in st_information (offline) may not be free to access
+> either.
+
+True.
+
+David
