@@ -1,137 +1,51 @@
-From: Steve French <smfrench@gmail.com>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 09:54:26 -0500
-Message-ID: <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	<20656.1335450358@redhat.com>
+From: Josef Bacik <josef@redhat.com>
+Subject: Re: [PATCH 1/4] vfs: introduce try_to_writeback_inodes_sb(_nr)
+Date: Thu, 26 Apr 2012 11:12:00 -0400
+Message-ID: <20120426151159.GB25603@dhcp231-144.rdu.redhat.com>
+References: <4F98B9A7.8060209@gmail.com>
+ <20120426031156.GY9541@dastard>
+ <CAAW_DMg9VLEtV40=qAbT3WZ4tN+ejZxToFHO0AiqDmjvV=V4eA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-	nautilus-list@gnome.org, linux-api@vger.kernel.org, libc-alpha@sourceware.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <libc-alpha-return-27996-glibc-alpha=m.gmane.org@sourceware.org>
-In-Reply-To: <20656.1335450358@redhat.com>
-List-Unsubscribe: <mailto:libc-alpha-unsubscribe-glibc-alpha=m.gmane.org@sourceware.org>
-List-Subscribe: <mailto:libc-alpha-subscribe@sourceware.org>
-List-Archive: <http://sourceware.org/ml/libc-alpha/>
-List-Post: <mailto:libc-alpha@sourceware.org>
-List-Help: <mailto:libc-alpha-help@sourceware.org>, <http://sourceware.org/ml/#faqs>
-Sender: libc-alpha-owner@sourceware.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Chinner <david@fromorbit.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	Linux FSDevel <linux-fsdevel@vger.kernel.org>,
+	Linux Btrfs <linux-btrfs@vger.kernel.org>,
+	miaox@cn.fujitsu.com, Kamal Mostafa <kamal@canonical.com>,
+	Linux Ext4 <linux-ext4@vger.kernel.org>
+To: Xie Miao <miaoxie1984@gmail.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAAW_DMg9VLEtV40=qAbT3WZ4tN+ejZxToFHO0AiqDmjvV=V4eA@mail.gmail.com>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redhat.com> wrote:
-> Steve French <smfrench@gmail.com> wrote:
->
->> Would it be better to make the stable vs volatile inode number an attrib=
-ute
->> of the volume =A0or something returned by the proposed xstat?
->
-> I'm not sure what you mean by a stable vs a volatile inode number.
+On Thu, Apr 26, 2012 at 03:55:52PM +0800, Xie Miao wrote:
+> On Thu, Apr 26, 2012 at 11:11 AM, Dave Chinner <david@fromorbit.com> wrote:
+> > > writeback_inodes_sb(_nr) grabs s_umount lock when it want to start
+> > > writeback,
+> > > it may bring us deadlock problem when doing umount. So we introduce new
+> > > functions -- try_to_writeback_inodes_sb(_nr) -- which use
+> > > down_read_trylock()
+> > > instead of down_read() to avoid that deadlock problem.
+> > >
+> > > This idea came from Christoph Hellwig.
+> > > Some code is from the patch of Kamal Mostafa.
+> >
+> > This just re-implements writeback_inodes_[nr]_sb_if_idle() with a
+> > trylock instead of a blocking lock.
+> >
+> > Just replace the blocking lock in writeback_inodes_[nr]_sb_if_idle()
+> > with a trylock and use that.
+> 
+> The change of these two functions is relative to three modules,  so I think
+> the patch set now is easy to be reviewed by the developers of each module.
+> 
 
-Both NFS and CIFS (and SMB2) can return inode numbers or equivalent
-unique identifier, but in the case of CIFS some old servers don't support t=
-he
-calls which return inode numbers (or don't return them for all file system
-types, Windows FAT?) so in these cases cifs has to create inode
-numbers on the fly
-on the client.   inode numbers created on the client are not "stable" they
-can change on unmount/remount (which can cause problems for backup
-applications).
+I agree with David, there's no sense in making something completely seperate,
+this function was introduced soley to kick off background writeout if we could
+with no garuntees, if the other users suddenly don't like the behavior they can
+creating something different for themselves.  Thanks,
 
-Similarly NFSv4 does not require that servers always return stable inode nu=
-mbers
-(that will never change) and introduced a concept of "volatile file handle.=
-"
-We have run into this in two cases (there are probably more) -
-Specialized NFS servers
-for HPC which deal with lots of transient inodes, and second those for serv=
-ers
-which base there inode number on path (Windows NFS?).  See
-http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/index.html
-or the NFSv4 RFC.
-
-Basically the question is whether it is worth reporting a flag on the
-call which returns
-the inode number to indicate that the inode number is "stable" (would not c=
-hange
-on reboot or reconnection) or "volatile."    Since the majority of NFS
-and SMB2 servers
-can return stable inode numbers, I don't feel strongly about the need
-for an indicator
-of "stable" vs. "volatile" but I mention it because backup and
-migration applications
-mention this (if inode numbers are volatile, they may have to check
-for hardlinks differently
-for example)
-
-
->> > Should things like the Windows Archive, Hidden and System bits be hand=
-led
->> > through IOC flags, perhaps expanded to 64-bits?
->>
->> Today I export these through an psuedo-xattr in cifs.ko, I am curious ho=
-w
->> NTFS and FAT export these on linux.
->
-> NTFS: Not at all.
->
-> FAT: The hidden bit causes the filename to get a dot prepended (and nothi=
-ng
-> else is noted).
->
->> > Autofs, ntfs, btrfs, ...
->>
->> Given the overlap in optional attributes between the network
->> protocol and local NTFS (and ReFS and to a lesser extent FAT)
->> I would expect cifs.ko and the ntfs implementations
->> info to map pretty closely.
->
-> Yep. =A0I wasn't going to do more filesystems till we'd finished arguing =
-about
-> the basic arrangement of things in struct xstat.
-
-makes sense
-
-
->> > Handle remote filesystems being offline and indicate this with
->> > XSTAT_INFO_OFFLINE.
->>
->> You already have support for an indicator for offline files (HSM),
->
-> HSM
-
-HSM is the more general case of two tiered data (disk vs. tape)
-
-en.wikipedia.org/wiki/Hierarchical_storage_management
-
-in the simplest case on "disk" (fast) vs. moved to tape (slow to retrieve)
-
-
->> would XSTAT_INFO_OFFLINE be intended for the case
->> where the network session to the server is disconnected
->> (and in which you case the application does not want to reconnect)?
->
-> Hmmm... =A0Interesting question. =A0Both NTFS and CIFS have an offline at=
-tribute
-> (which is where I originally got this from) - but should I have a separat=
-e
-> indicator to indicate the client can't access a server over a network
-> (ie. we've gone to disconnected operation on this file)? =A0E.g. should t=
-here be
-> a XSTAT_INFO_DISCONNECTED too?
-
-my reaction is no, since it adds complexity.  If you do a stat on a disconn=
-ected
-volume (where the network is temporarily down) reconnection will be attempt=
-ed.
-If reconnection fails then the xstat will either fail or be retried forever
-depending on the value of "hard" vs. "soft" mount flag.
-
---=20
-Thanks,
-
-Steve
+Josef
