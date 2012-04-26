@@ -1,56 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH, RFC] ext4: remove ext4_dir_llseek
-Date: Thu, 26 Apr 2012 13:13:35 -0500
-Message-ID: <4F99904F.3040000@redhat.com>
-References: <4F984F22.10203@redhat.com>
+From: Roland McGrath <roland-/Z5OmTQCD9xF6kxbq+BtvQ@public.gmane.org>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Thu, 26 Apr 2012 11:22:02 -0700 (PDT)
+Message-ID: <20120426182202.9B2442C0EA@topped-with-meat.com>
+References: <20120419230556.A80392C0AF@topped-with-meat.com>
+	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+	<20120419163238.61D382C0DF@topped-with-meat.com>
+	<4F9088D6.9020203@cs.ucla.edu>
+	<20173.1335449760@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32526 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757942Ab2DZSNg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Apr 2012 14:13:36 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q3QIDa9t016821
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Apr 2012 14:13:36 -0400
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q3QIDZf3013937
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Apr 2012 14:13:36 -0400
-In-Reply-To: <4F984F22.10203@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Paul Eggert <eggert-764C0pRuGfqVc3sceRu5cw@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org, kfm-devel-RoXCvvDuEio@public.gmane.org, nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: David Howells's message of  Thursday, 26 April 2012 15:16:00 +0100 <20173.1335449760-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 4/25/12 2:23 PM, Eric Sandeen wrote:
-> ext4_dir_llseek() was recently added as part of a patch to allow
-> returning 64-bit name hashes.  However, reworking _llseek() is not
-> necessary to achieve that goal.  One unfortunate side effect of the
-> change is that it cut&pasted VFS code back into ext4, after Andi
-> had just removed other _llseek cut&paste in ext4 by extending the
-> VFS functionality.
+> Roland McGrath <roland-/Z5OmTQCD9xF6kxbq+BtvQ@public.gmane.org> wrote:
 > 
-> It also re-introduced i_mutex locking in the dir llseek paths,
-> un-doing the upstream (mostly) lockless llseek changes from Andi
-> in this case.
+> > statx seems like a better family of names.  I also think it's worthwhile to
+> > see if the interface can be made to more closely match the AIX precedent.
 > 
-> Because of the above reasons, and because it introduces new
-> EINVAL returns which were not there before, and because SEEK_END+offset
-> behaves differently from SEEK_SET w.r.t. offset limits, and because
-> it's not clear what problem this is solving, remove it for now.
-> 
-> (NFS only uses SEEK_SET and SEEK_CUR, so changes to SEEK_END shouldn't
-> affect it.)
-> 
-> If & when a problematic and testable real-world use case is described,
-> this can be re-fixed properly, possibly by expanding the VFS _llseek()
-> functions to handle custom EOF offsets for cases such as this.
+> I'm not sure we can make Linux xstat (or whatever) match AIX statxat() very
+> closely, at least from a syscall interface point of view.  
 
-Self-NAK.  Realized this won't work for non-extent dirs, because the
-generic llseek will EINVAL for hash "offsets" larger than the max_bitmap_bytes
-value.  Will send something a little less drastic.
+OK.  It was just worth a look.
 
--Eric
 
+Thanks,
+Roland
