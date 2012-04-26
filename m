@@ -1,166 +1,351 @@
-From: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 26 Apr 2012 12:10:50 -0500
-Message-ID: <CAH2r5mu6i6aKLqt2EagBECSEU7jxsy-muAwcXThKJ51cd+CHpQ@mail.gmail.com>
-References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com>
-	<20656.1335450358@redhat.com>
-	<CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com>
-	<1335453958.9701.10.camel@lade.trondhjem.org>
-	<CAH2r5mt5af-_hxBRKK72iD5Gr99bo91ec78Rov8EGVEx8=21mA@mail.gmail.com>
-	<1335459642.9701.27.camel@lade.trondhjem.org>
-	<CAH2r5mvmCfLrxRHje6Wx5X84zxPEHwRMUJGsjvWBujMu7w841w@mail.gmail.com>
-	<1335460011.9701.30.camel@lade.trondhjem.org>
-	<CAH2r5muXk+frkFz9X523Ny=RMwJGeqOPH75G1ToNa5QoMo5SkQ@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: ext3: return 32/64-bit dir name hash according to usage type
+Date: Thu, 26 Apr 2012 13:10:39 -0500
+Message-ID: <4F998F9F.6020802@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org" <samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org" <wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org>,
-	"kfm-devel-RoXCvvDuEio@public.gmane.org" <kfm-devel-RoXCvvDuEio@public.gmane.org>,
-	"nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org" <nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org>,
-	"linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org" <libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org>
-To: "Myklebust, Trond" <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <CAH2r5muXk+frkFz9X523Ny=RMwJGeqOPH75G1ToNa5QoMo5SkQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Bruce Fields <bfields@redhat.com>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:19650 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757947Ab2DZSLJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Apr 2012 14:11:09 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 26, 2012 at 12:09 PM, Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wro=
-te:
-> On Thu, Apr 26, 2012 at 12:06 PM, Myklebust, Trond
-> <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org> wrote:
->> On Thu, 2012-04-26 at 12:03 -0500, Steve French wrote:
->>> On Thu, Apr 26, 2012 at 12:00 PM, Myklebust, Trond
->>> <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org> wrote:
->>> > On Thu, 2012-04-26 at 11:56 -0500, Steve French wrote:
->>> >> On Thu, Apr 26, 2012 at 10:25 AM, Myklebust, Trond
->>> >> <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org> wrote:
->>> >> > On Thu, 2012-04-26 at 09:54 -0500, Steve French wrote:
->>> >> >> On Thu, Apr 26, 2012 at 9:25 AM, David Howells <dhowells@redh=
-at.com> wrote:
->>> >> >> > Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
->>> >> >> >
->>> >> >> >> Would it be better to make the stable vs volatile inode nu=
-mber an attribute
->>> >> >> >> of the volume =A0or something returned by the proposed xst=
-at?
->>> >> >> >
->>> >> >> > I'm not sure what you mean by a stable vs a volatile inode =
-number.
->>> >> >>
->>> >> >> Both NFS and CIFS (and SMB2) can return inode numbers or equi=
-valent
->>> >> >> unique identifier, but in the case of CIFS some old servers d=
-on't support the
->>> >> >> calls which return inode numbers (or don't return them for al=
-l file system
->>> >> >> types, Windows FAT?) so in these cases cifs has to create ino=
-de
->>> >> >> numbers on the fly
->>> >> >> on the client. =A0 inode numbers created on the client are no=
-t "stable" they
->>> >> >> can change on unmount/remount (which can cause problems for b=
-ackup
->>> >> >> applications).
->>> >> >>
->>> >> >> Similarly NFSv4 does not require that servers always return s=
-table inode numbers
->>> >> >> (that will never change) and introduced a concept of "volatil=
-e file handle."
->>> >> >> We have run into this in two cases (there are probably more) =
+This is based on commit d1f5273e9adb40724a85272f248f210dc4ce919a
+ext4: return 32/64-bit dir name hash according to usage type
+by Fan Yong <yong.fan@whamcloud.com>
+
+Traditionally ext2/3/4 has returned a 32-bit hash value from llseek()
+to appease NFSv2, which can only handle a 32-bit cookie for seekdir()
+and telldir().  However, this causes problems if there are 32-bit hash
+collisions, since the NFSv2 server can get stuck resending the same
+entries from the directory repeatedly.
+    
+Allow ext3 to return a full 64-bit hash (both major and minor) for
+telldir to decrease the chance of hash collisions.
+
+This patch does implement a new ext3_dir_llseek op, because with 64-bit
+hashes, nfs will attempt to seek to a hash "offset" which is much
+larger than ext3's s_maxbytes.  So for dx dirs, we call
+generic_file_llseek_size() with the appropriate max hash value as the
+maximum seekable size.  Otherwise we just pass through to
+generic_file_llseek().
+    
+Patch-updated-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Patch-updated-by: Eric Sandeen <sandeen@redhat.com>
+(blame us if something is not correct)
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index cc761ad..92490e9 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -21,30 +21,15 @@
+  *
+  */
+ 
++#include <linux/compat.h>
+ #include "ext3.h"
+ 
+ static unsigned char ext3_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
+ 
+-static int ext3_readdir(struct file *, void *, filldir_t);
+ static int ext3_dx_readdir(struct file * filp,
+ 			   void * dirent, filldir_t filldir);
+-static int ext3_release_dir (struct inode * inode,
+-				struct file * filp);
 -
->>> >> >> Specialized NFS servers
->>> >> >> for HPC which deal with lots of transient inodes, and second =
-those for servers
->>> >> >> which base there inode number on path (Windows NFS?). =A0See
->>> >> >> http://docs.oracle.com/cd/E19082-01/819-1634/rfsrefer-137/ind=
-ex.html
->>> >> >> or the NFSv4 RFC.
->>> >> >>
->>> >> >> Basically the question is whether it is worth reporting a fla=
-g on the
->>> >> >> call which returns
->>> >> >> the inode number to indicate that the inode number is "stable=
-" (would not change
->>> >> >> on reboot or reconnection) or "volatile." =A0 =A0Since the ma=
-jority of NFS
->>> >> >> and SMB2 servers
->>> >> >> can return stable inode numbers, I don't feel strongly about =
-the need
->>> >> >> for an indicator
->>> >> >> of "stable" vs. "volatile" but I mention it because backup an=
-d
->>> >> >> migration applications
->>> >> >> mention this (if inode numbers are volatile, they may have to=
- check
->>> >> >> for hardlinks differently
->>> >> >> for example)
->>> >> >
->>> >> > I don't understand. If the filesystem doesn't support real ino=
-de
->>> >> > numbers, then why report them at all? What use would an applic=
-ation have
->>> >> > for an inode number that can't be used to identify hard linked=
- files?
->>> >>
->>> >> Well ... you have to have an inode number on the Linux client si=
-de even if
->>> >> the server doesn't report them (or has a bug and reports duplica=
-tes).
->>> >> If you can't tell hardlinked files apart fix the server (but in =
-the
->>> >> cases where the file systems has this problem the server doesn't=
- usually
->>> >> support hardlinks either).
->>> >>
->>> >> If the server's file system internal structures don't support re=
-al inode
->>> >> numbers (such as FAT or a ramdisk) then it either has to make th=
-em
->>> >> up based on something like path name or some other attribute of =
-the
->>> >> file on disk.
->>> >>
->>> >> Servers like NetApp is where this gets interesting - for cifs e.=
-g. level 1009
->>> >> query file info is used to query_file_internal_info (the inode n=
-umber) but
->>> >> what if the server can not report inode numbers (due to a bug) i=
-n
->>> >> all cases.
->>> >
->>> > Right, but none of this explains why we need to report these bogu=
-s inode
->>> > numbers to the application in the xstat() reply.
->>>
->>> the question is whether the application (backup) would need to know
->>> that the inode numbers are bogus and from my conversations with
->>> guys writing backup software it seems that such data is useful to t=
-hem.
->>
->> You are still not explaining why they need to know the values at all=
-? If
->> the values are bogus, then don't return them, and don't set the flag
->> that says they are being returned.
->
-> I don't know, but assumed it was because it was an easy way
-> to index them since the inode numbers even if they "change"
-> on remount, are still unique.
+-const struct file_operations ext3_dir_operations = {
+-	.llseek		= generic_file_llseek,
+-	.read		= generic_read_dir,
+-	.readdir	= ext3_readdir,		/* we take BKL. needed?*/
+-	.unlocked_ioctl	= ext3_ioctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_ioctl	= ext3_compat_ioctl,
+-#endif
+-	.fsync		= ext3_sync_file,	/* BKL held */
+-	.release	= ext3_release_dir,
+-};
+-
+ 
+ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+@@ -55,6 +40,25 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
+ 	return (ext3_filetype_table[filetype]);
+ }
+ 
++/**
++ * Check if the given dir-inode refers to an htree-indexed directory
++ * (or a directory which chould potentially get coverted to use htree
++ * indexing).
++ *
++ * Return 1 if it is a dx dir, 0 if not
++ */
++static int is_dx_dir(struct inode *inode)
++{
++	struct super_block *sb = inode->i_sb;
++
++	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
++		     EXT3_FEATURE_COMPAT_DIR_INDEX) &&
++	    ((EXT3_I(inode)->i_flags & EXT3_INDEX_FL) ||
++	     ((inode->i_size >> sb->s_blocksize_bits) == 1)))
++		return 1;
++
++	return 0;
++}
+ 
+ int ext3_check_dir_entry (const char * function, struct inode * dir,
+ 			  struct ext3_dir_entry_2 * de,
+@@ -94,18 +98,13 @@ static int ext3_readdir(struct file * filp,
+ 	unsigned long offset;
+ 	int i, stored;
+ 	struct ext3_dir_entry_2 *de;
+-	struct super_block *sb;
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct super_block *sb = inode->i_sb;
+ 	int ret = 0;
+ 	int dir_has_error = 0;
+ 
+-	sb = inode->i_sb;
+-
+-	if (EXT3_HAS_COMPAT_FEATURE(inode->i_sb,
+-				    EXT3_FEATURE_COMPAT_DIR_INDEX) &&
+-	    ((EXT3_I(inode)->i_flags & EXT3_INDEX_FL) ||
+-	     ((inode->i_size >> sb->s_blocksize_bits) == 1))) {
++	if (is_dx_dir(inode)) {
+ 		err = ext3_dx_readdir(filp, dirent, filldir);
+ 		if (err != ERR_BAD_DX_DIR) {
+ 			ret = err;
+@@ -227,22 +226,87 @@ out:
+ 	return ret;
+ }
+ 
++static inline int is_32bit_api(void)
++{
++#ifdef CONFIG_COMPAT
++	return is_compat_task();
++#else
++	return (BITS_PER_LONG == 32);
++#endif
++}
++
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+- * value.
++ * value for dx directories
+  *
+- * Currently we only use major hash numer.  This is unfortunate, but
+- * on 32-bit machines, the same VFS interface is used for lseek and
+- * llseek, so if we use the 64 bit offset, then the 32-bit versions of
+- * lseek/telldir/seekdir will blow out spectacularly, and from within
+- * the ext2 low-level routine, we don't know if we're being called by
+- * a 64-bit version of the system call or the 32-bit version of the
+- * system call.  Worse yet, NFSv2 only allows for a 32-bit readdir
+- * cookie.  Sigh.
++ * Upper layer (for example NFS) should specify FMODE_32BITHASH or
++ * FMODE_64BITHASH explicitly. On the other hand, we allow ext3 to be mounted
++ * directly on both 32-bit and 64-bit nodes, under such case, neither
++ * FMODE_32BITHASH nor FMODE_64BITHASH is specified.
+  */
+-#define hash2pos(major, minor)	(major >> 1)
+-#define pos2maj_hash(pos)	((pos << 1) & 0xffffffff)
+-#define pos2min_hash(pos)	(0)
++static inline loff_t hash2pos(struct file *filp, __u32 major, __u32 minor)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return major >> 1;
++	else
++		return ((__u64)(major >> 1) << 32) | (__u64)minor;
++}
++
++static inline __u32 pos2maj_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return (pos << 1) & 0xffffffff;
++	else
++		return ((pos >> 32) << 1) & 0xffffffff;
++}
++
++static inline __u32 pos2min_hash(struct file *filp, loff_t pos)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return 0;
++	else
++		return pos & 0xffffffff;
++}
++
++/*
++ * Return 32- or 64-bit end-of-file for dx directories
++ */
++static inline loff_t ext3_get_htree_eof(struct file *filp)
++{
++	if ((filp->f_mode & FMODE_32BITHASH) ||
++	    (!(filp->f_mode & FMODE_64BITHASH) && is_32bit_api()))
++		return EXT3_HTREE_EOF_32BIT;
++	else
++		return EXT3_HTREE_EOF_64BIT;
++}
++
++
++/*
++ * ext3_dir_llseek() calls generic_file_llseek[_size]() to handle both
++ * non-htree and htree directories, where the "offset" is in terms
++ * of the filename hash value instead of the byte offset.
++ *
++ * Because we may return a 64-bit hash that is well beyond s_maxbytes,
++ * we need to pass the max hash as the maximum allowable offset in
++ * the htree directory case.
++ *
++ * NOTE: offsets obtained *before* ext3_set_inode_flag(dir, EXT3_INODE_INDEX)
++ *       will be invalid once the directory was converted into a dx directory
++ */
++loff_t ext3_dir_llseek(struct file *file, loff_t offset, int origin)
++{
++	struct inode *inode = file->f_mapping->host;
++	int dx_dir = is_dx_dir(inode);
++
++	if (likely(dx_dir))
++		return generic_file_llseek_size(file, offset, origin,
++					        ext3_get_htree_eof(file));
++	else
++		return generic_file_llseek(file, offset, origin);
++}
+ 
+ /*
+  * This structure holds the nodes of the red-black tree used to store
+@@ -303,15 +367,16 @@ static void free_rb_tree_fname(struct rb_root *root)
+ }
+ 
+ 
+-static struct dir_private_info *ext3_htree_create_dir_info(loff_t pos)
++static struct dir_private_info *ext3_htree_create_dir_info(struct file *filp,
++							   loff_t pos)
+ {
+ 	struct dir_private_info *p;
+ 
+ 	p = kzalloc(sizeof(struct dir_private_info), GFP_KERNEL);
+ 	if (!p)
+ 		return NULL;
+-	p->curr_hash = pos2maj_hash(pos);
+-	p->curr_minor_hash = pos2min_hash(pos);
++	p->curr_hash = pos2maj_hash(filp, pos);
++	p->curr_minor_hash = pos2min_hash(filp, pos);
+ 	return p;
+ }
+ 
+@@ -401,7 +466,7 @@ static int call_filldir(struct file * filp, void * dirent,
+ 		printk("call_filldir: called with null fname?!?\n");
+ 		return 0;
+ 	}
+-	curr_pos = hash2pos(fname->hash, fname->minor_hash);
++	curr_pos = hash2pos(filp, fname->hash, fname->minor_hash);
+ 	while (fname) {
+ 		error = filldir(dirent, fname->name,
+ 				fname->name_len, curr_pos,
+@@ -426,13 +491,13 @@ static int ext3_dx_readdir(struct file * filp,
+ 	int	ret;
+ 
+ 	if (!info) {
+-		info = ext3_htree_create_dir_info(filp->f_pos);
++		info = ext3_htree_create_dir_info(filp, filp->f_pos);
+ 		if (!info)
+ 			return -ENOMEM;
+ 		filp->private_data = info;
+ 	}
+ 
+-	if (filp->f_pos == EXT3_HTREE_EOF)
++	if (filp->f_pos == ext3_get_htree_eof(filp))
+ 		return 0;	/* EOF */
+ 
+ 	/* Some one has messed with f_pos; reset the world */
+@@ -440,8 +505,8 @@ static int ext3_dx_readdir(struct file * filp,
+ 		free_rb_tree_fname(&info->root);
+ 		info->curr_node = NULL;
+ 		info->extra_fname = NULL;
+-		info->curr_hash = pos2maj_hash(filp->f_pos);
+-		info->curr_minor_hash = pos2min_hash(filp->f_pos);
++		info->curr_hash = pos2maj_hash(filp, filp->f_pos);
++		info->curr_minor_hash = pos2min_hash(filp, filp->f_pos);
+ 	}
+ 
+ 	/*
+@@ -473,7 +538,7 @@ static int ext3_dx_readdir(struct file * filp,
+ 			if (ret < 0)
+ 				return ret;
+ 			if (ret == 0) {
+-				filp->f_pos = EXT3_HTREE_EOF;
++				filp->f_pos = ext3_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_node = rb_first(&info->root);
+@@ -493,7 +558,7 @@ static int ext3_dx_readdir(struct file * filp,
+ 			info->curr_minor_hash = fname->minor_hash;
+ 		} else {
+ 			if (info->next_hash == ~0) {
+-				filp->f_pos = EXT3_HTREE_EOF;
++				filp->f_pos = ext3_get_htree_eof(filp);
+ 				break;
+ 			}
+ 			info->curr_hash = info->next_hash;
+@@ -512,3 +577,15 @@ static int ext3_release_dir (struct inode * inode, struct file * filp)
+ 
+ 	return 0;
+ }
++
++const struct file_operations ext3_dir_operations = {
++	.llseek		= ext3_dir_llseek,
++	.read		= generic_read_dir,
++	.readdir	= ext3_readdir,
++	.unlocked_ioctl = ext3_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl	= ext3_compat_ioctl,
++#endif
++	.fsync		= ext3_sync_file,
++	.release	= ext3_release_dir,
++};
+diff --git a/fs/ext3/ext3.h b/fs/ext3/ext3.h
+index b6515fd..fe5bef7 100644
+--- a/fs/ext3/ext3.h
++++ b/fs/ext3/ext3.h
+@@ -920,7 +920,11 @@ struct dx_hash_info
+ 	u32		*seed;
+ };
+ 
+-#define EXT3_HTREE_EOF	0x7fffffff
++
++/* 32 and 64 bit signed EOF for dx directories */
++#define EXT3_HTREE_EOF_32BIT   ((1UL  << (32 - 1)) - 1)
++#define EXT3_HTREE_EOF_64BIT   ((1ULL << (64 - 1)) - 1)
++
+ 
+ /*
+  * Control parameters used by ext3_htree_next_block
+diff --git a/fs/ext3/hash.c b/fs/ext3/hash.c
+index d10231d..ede315c 100644
+--- a/fs/ext3/hash.c
++++ b/fs/ext3/hash.c
+@@ -198,8 +198,8 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		return -1;
+ 	}
+ 	hash = hash & ~1;
+-	if (hash == (EXT3_HTREE_EOF << 1))
+-		hash = (EXT3_HTREE_EOF-1) << 1;
++	if (hash == (EXT3_HTREE_EOF_32BIT << 1))
++		hash = (EXT3_HTREE_EOF_32BIT - 1) << 1;
+ 	hinfo->hash = hash;
+ 	hinfo->minor_hash = minor_hash;
+ 	return 0;
 
-if the call allows the inode number not to be returned, that
-is probably ok (they can always use the posix stat to get
-the client generated one)
-
-
-
---=20
-Thanks,
-
-Steve
