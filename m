@@ -1,56 +1,102 @@
-From: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+From: Andreas Dilger <adilger@whamcloud.com>
 Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Fri, 27 Apr 2012 11:32:46 -0500
-Message-ID: <CAH2r5msJVo6Li__QWavggzpz5G3A=-qPqzqSYC9vkzG5_dXc7w@mail.gmail.com>
-References: <20120427010610.GE9541@dastard>
-	<20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
-	<4111.1335519545@redhat.com>
-	<20120427131306.GG9541@dastard>
-	<20120427151057.GA16580@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120427151057.GA16580-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Date: Thu, 26 Apr 2012 21:22:04 -0600
+Message-ID: <ED5B8F1B-6C99-4516-85FA-A767E94B635F@dilger.ca>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120427010610.GE9541@dastard>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+	wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+	linux-api@vger.kernel.org, libc-alpha@sourceware.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:33214 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761182Ab2D0Sn5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 14:43:57 -0400
+Received: by pbbrp8 with SMTP id rp8so861193pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 11:43:57 -0700 (PDT)
+In-Reply-To: <20120427010610.GE9541@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 27, 2012 at 10:10 AM, J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org=
-> wrote:
-> On Fri, Apr 27, 2012 at 11:13:06PM +1000, Dave Chinner wrote:
->> Right now it is, but there's ben patches in the past to introduce
->> project quotas to ext4. That didn't go far because it was done in a
->> way that was semantically different to XFS (for no reason that I
->> could understand) and nobody wanted two different sets of semantics
->> for the "same" feature. =A0The most common use of project quotas is =
-to
->> implement sub-tree quotas,
->
-> (Though it's also useful as a way to do safe subtree NFS exports).
+On 2012-04-26, at 7:06 PM, Dave Chinner wrote:
+> On Thu, Apr 19, 2012 at 03:05:58PM +0100, David Howells wrote:
+>> 
+>> Implement a pair of new system calls to provide extended and further extensible stat functions.
+>> 
+>> The second of the associated patches is the main patch that provides these new system calls:
+>> 
+>> 	ssize_t ret = xstat(int dfd,
+>> 			    const char *filename,
+>> 			    unsigned atflag,
+>> 			    unsigned mask,
+>> 			    struct xstat *buffer);
+>> 
+>> 	ssize_t ret = fxstat(int fd,
+>> 			     unsigned atflag,
+>> 			     unsigned mask,
+>> 			     struct xstat *buffer);
+>> 
+>> which are more fully documented in the first patch's description.
+>> 
+>> These new stat functions provide a number of useful features, in summary:
+>> 
+>> (1) More information: creation time, inode generation number, data
+>>     version number, flags/attributes.  A subset of these is available
+>>     through a number of filesystems (CIFS, NFS, AFS, Ext4 and BTRFS).
+> 
+> If we are adding per-inode flags, then what do we do with filesystem
+> specific flags? e.g. XFS has quite a number of per-inode flags that
+> don't align with any other filesystem (e.g. filestream allocator,
+> real time file, behaviour inheritence flags, etc), but may be useful
+> to retrieve in such a call. We currently have an ioctl to get that
+> information from each inode. Have you thought about how to handle
+> such flags?
 
-Quotas are very important to Samba (and Windows) admins.
+I'm sympathetic to your cause, but I don't want this to degrade into
+the same morass that it did last time when every attribute under the
+sun was added to the call.  The intent is to replace the stat() call
+with something that can avoid overhead on filesystems for which some
+attributes are expensive, and that applications may not need.  Some
+common attributes were added that are used by multiple filesystems.
 
-See e.g.
-http://www.samba.org/samba/docs/man/manpages-3/smbcquotas.1.html
+If it is too filesystem-specific, and there is little possibility
+that these attributes will be usable on other filesystems, then it
+should remain a filesystem specific ioctl() call.  If you can make
+a case that these attributes have value on a few other filesystems,
+and applications are reasonably likely to be able to use them, and
+their addition does not make the API overly complex, then suggest
+away.
 
-But I would defer to Metze and others on the server side to see
-whether XFS or the proposed ext4 quotas match the protocol
-requirements which Samba has to support.
+> Along the same lines, filesytsems can have different allocation
+> constraints to IO the filesystem block size - ext4 with it's
+> bigalloc hack, XFS with it's per-inode extent size hints and the
+> realtime device, etc. Then there's optimal IO characteristics
+> (e.g. geometery hints like stripe unit/stripe width for the
+> allocation policy of that given file) that applications could use
+> if they were present rather than having to expose them through
+> ioctls that nobody even knows about...
 
-Does anyone know whether Samba can handle all of the remote quota
-admin operations on Linux/XFS today (and local enforcement)?
+There is already "optimal IO size" that the application can use,
+how do the geometry hints differ?  Userspace is able to handle
+st_blksize of several MB in size without problems, and any sane
+application will do the IO sized + aligned on multiples of this.
 
---=20
-Thanks,
+> Perhaps also exposing the project ID for quota purposes, like we do
+> UID and GID. That way we wouldn't need a filesystem specific ioctl
+> to read it....
 
-Steve
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This seems reasonable and generic and simple.  This is similar to
+directory quotas in other filesystems.
+
+
+Cheers, Andreas
+
+
+
+
+
