@@ -1,41 +1,75 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: [PATCH 1/6] xstat: Add a pair of system calls to make extended file stats available
-Date: Thu, 26 Apr 2012 21:11:21 -0600
-Message-ID: <066E4E15-FE60-4D1C-9616-4679EE700CF6@dilger.ca>
-References: <5D4BF4AB-47E9-4E25-B2A3-F895C98BDAA3@dilger.ca> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <20120419140612.17272.57774.stgit@warthog.procyon.org.uk> <18195.1335447156@redhat.com> <20120427005121.GD9541@dastard>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org, kfm-devel-RoXCvvDuEio@public.gmane.org, nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org,
-	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120427005121.GD9541@dastard>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Miao Xie <miaoxie1984@gmail.com>
+Subject: Re: [PATCH 1/4] vfs: introduce try_to_writeback_inodes_sb(_nr)
+Date: Fri, 27 Apr 2012 16:06:00 +0800
+Message-ID: <4F9A5368.5000904@gmail.com>
+References: <4F98B9A7.8060209@gmail.com> <20120426031156.GY9541@dastard> <CAAW_DMg9VLEtV40=qAbT3WZ4tN+ejZxToFHO0AiqDmjvV=V4eA@mail.gmail.com> <20120426151159.GB25603@dhcp231-144.rdu.redhat.com>
+Reply-To: miaoxie1984@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Xie Miao <miaoxie1984@gmail.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	Linux FSDevel <linux-fsdevel@vger.kernel.org>,
+	Linux Btrfs <linux-btrfs@vger.kernel.org>,
+	miaox@cn.fujitsu.com, Kamal Mostafa <kamal@canonical.com>,
+	Linux Ext4 <linux-ext4@vger.kernel.org>
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f51.google.com ([209.85.210.51]:56486 "EHLO
+	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757952Ab2D0IGL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 04:06:11 -0400
+In-Reply-To: <20120426151159.GB25603@dhcp231-144.rdu.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-04-26, at 6:51 PM, Dave Chinner wrote:
-> On Thu, Apr 26, 2012 at 02:32:36PM +0100, David Howells wrote:
->> I wonder if there's a way to make this explicit - or is it something that if the bit isn't set, you can't use the value in st_blksize.
->> I wonder if this value always has to be non-zero to make sure existing
->> stat() doesn't explode.
-> 
-> More likely it probably needs to be non-zero to prevent applications
-> doing division by block size from exploding... ;)
+=E4=BA=8E 2012=E5=B9=B404=E6=9C=8826=E6=97=A5 23:12, Josef Bacik =E5=86=
+=99=E9=81=93:
 
-Right, and any application which knows it needs the blocksize should
-also be requesting it when using the statxat() (or whatever) syscall.
+> On Thu, Apr 26, 2012 at 03:55:52PM +0800, Xie Miao wrote:
+>> On Thu, Apr 26, 2012 at 11:11 AM, Dave Chinner <david@fromorbit.com>=
+ wrote:
+>>>> writeback_inodes_sb(_nr) grabs s_umount lock when it want to start
+>>>> writeback,
+>>>> it may bring us deadlock problem when doing umount. So we introduc=
+e new
+>>>> functions -- try_to_writeback_inodes_sb(_nr) -- which use
+>>>> down_read_trylock()
+>>>> instead of down_read() to avoid that deadlock problem.
+>>>>
+>>>> This idea came from Christoph Hellwig.
+>>>> Some code is from the patch of Kamal Mostafa.
+>>>
+>>> This just re-implements writeback_inodes_[nr]_sb_if_idle() with a
+>>> trylock instead of a blocking lock.
+>>>
+>>> Just replace the blocking lock in writeback_inodes_[nr]_sb_if_idle(=
+)
+>>> with a trylock and use that.
+>>
+>> The change of these two functions is relative to three modules,  so =
+I think
+>> the patch set now is easy to be reviewed by the developers of each m=
+odule.
+>>
+>=20
+> I agree with David, there's no sense in making something completely s=
+eperate,
+> this function was introduced soley to kick off background writeout if=
+ we could
+> with no garuntees, if the other users suddenly don't like the behavio=
+r they can
+> creating something different for themselves.  Thanks,
 
-Cheers, Andreas
 
+OK, I'll make them together.
 
-
-
-
+Thanks
+Miao
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
