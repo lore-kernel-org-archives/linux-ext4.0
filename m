@@ -1,62 +1,173 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 05/23] ext4: Calculate and verify superblock checksum
-Date: Fri, 27 Apr 2012 16:05:00 -0400
-Message-ID: <20120427200500.GA29481@thunk.org>
-References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
- <20120306204828.1663.39312.stgit@elm3b70.beaverton.ibm.com>
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Subject: Re: [PATCH] vfs: allow custom EOF in generic_file_llseek code
+Date: Sat, 28 Apr 2012 00:47:53 +0200
+Message-ID: <4F9B2219.6090302@itwm.fraunhofer.de>
+References: <4F9AC770.8080004@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-To: "Darrick J. Wong" <djwong@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120306204828.1663.39312.stgit@elm3b70.beaverton.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:39332 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752643Ab2D0Wr4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Apr 2012 18:47:56 -0400
+In-Reply-To: <4F9AC770.8080004@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 06, 2012 at 12:48:28PM -0800, Darrick J. Wong wrote:
-> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> index aca1790..90f7c2e 100644
-> --- a/fs/ext4/ext4_jbd2.c
-> +++ b/fs/ext4/ext4_jbd2.c
-> @@ -138,16 +138,23 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+On 04/27/2012 06:21 PM, Eric Sandeen wrote:
+> For ext3/4 htree directories, using the vfs llseek function with
+> SEEK_END goes to i_size like for any other file, but in reality
+> we want the maximum possible hash value.  Recent changes
+> in ext4 have cut & pasted generic_file_llseek() back into fs/ext4/dir.c,
+> but replicating this core code seems like a bad idea, especially
+> since the copy has already diverged from the vfs.
+> 
+> This patch implements a version of generic_file_llseek which can accept
+> both a custom maximum offset, and a custom EOF position.  With this
+> in place, ext4_dir_llseek can pass in the appropriate maximum hash
+> position for both maxsize and eof, and get what it wants.
+> 
+> As far as I know, this does not fix any bugs - nfs in the kernel
+> doesn't use SEEK_END, and I don't know of any user who does.  But
+> some ext4 folks seem keen on doing the right thing here, and I can't
+> really argue.
+> 
+> (Patch also fixes up some comments slightly)
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> 
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index ffc99d2..ecd1828 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -51,14 +51,15 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
 >  }
 >  
->  int __ext4_handle_dirty_super(const char *where, unsigned int line,
-> -			      handle_t *handle, struct super_block *sb)
-> +			      handle_t *handle, struct super_block *sb,
-> +			      int now)
+>  /**
+> - * generic_file_llseek_size - generic llseek implementation for regular files
+> + * generic_file_llseek_size_eof - generic llseek implementation for regular files
+>   * @file:	file structure to seek on
+>   * @offset:	file offset to seek to
+>   * @origin:	type of seek
+> - * @size:	max size of file system
+> + * @size:	max size of this file in file system
+> + * @eof:	offset used for SEEK_END position
+>   *
+>   * This is a variant of generic_file_llseek that allows passing in a custom
+> - * file size.
+> + * maximum file size and a custom EOF position, for e.g. hashed directories
+>   *
+>   * Synchronization:
+>   * SEEK_SET and SEEK_END are unsynchronized (but atomic on 64bit platforms)
+> @@ -66,14 +67,14 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
+>   * read/writes behave like SEEK_SET against seeks.
+>   */
+>  loff_t
+> -generic_file_llseek_size(struct file *file, loff_t offset, int origin,
+> -		loff_t maxsize)
+> +generic_file_llseek_size_eof(struct file *file, loff_t offset, int origin,
+> +		loff_t maxsize, loff_t eof)
 >  {
->  	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
->  	int err = 0;
+>  	struct inode *inode = file->f_mapping->host;
 >  
->  	if (ext4_handle_valid(handle)) {
-> +		ext4_superblock_csum_set(sb,
-> +				(struct ext4_super_block *)bh->b_data);
->  		err = jbd2_journal_dirty_metadata(handle, bh);
->  		if (err)
->  			ext4_journal_abort_handle(where, line, __func__,
->  						  bh, handle, err);
-> +	} else if (now) {
-> +		ext4_superblock_csum_set(sb,
-> +				(struct ext4_super_block *)bh->b_data);
-> +		mark_buffer_dirty(bh);
->  	} else
->  		sb->s_dirt = 1;
->  	return err;
+>  	switch (origin) {
+>  	case SEEK_END:
+> -		offset += i_size_read(inode);
+> +		offset += eof;
+>  		break;
 
-What's the point of having the ext4_handle_dirty_super_now() variant?
+Here is the only glitch I can see. As Andreas already said before, it
+might overflow here. Do we need do care about that? As you already said,
+SEEK_END is unlikely to be ever called for directories. But then we also
+cannot keep user space from doing weird calls...
 
-I don't see the point of having this?
 
-						- Ted
+>  	case SEEK_CUR:
+>  		/*
+> @@ -99,7 +100,7 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
+>  		 * In the generic case the entire file is data, so as long as
+>  		 * offset isn't at the end of the file then the offset is data.
+>  		 */
+> -		if (offset >= i_size_read(inode))
+> +		if (offset >= eof)
+>  			return -ENXIO;
+>  		break;
+>  	case SEEK_HOLE:
+> @@ -107,14 +108,35 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
+>  		 * There is a virtual hole at the end of the file, so as long as
+>  		 * offset isn't i_size or larger, return i_size.
+>  		 */
+> -		if (offset >= i_size_read(inode))
+> +		if (offset >= eof)
+>  			return -ENXIO;
+> -		offset = i_size_read(inode);
+> +		offset = eof;
+>  		break;
+>  	}
+>  
+>  	return lseek_execute(file, inode, offset, maxsize);
+>  }
+> +EXPORT_SYMBOL(generic_file_llseek_size_eof);
+> +
+> +/**
+> + * generic_file_llseek_size - generic llseek implementation for regular files
+> + * @file:	file structure to seek on
+> + * @offset:	file offset to seek to
+> + * @origin:	type of seek
+> + * @size:	max size of this file in file system
+> + *
+> + * This is a variant of generic_file_llseek that allows passing in a custom
+> + * maximum file size.
+> + */
+> +loff_t
+> +generic_file_llseek_size(struct file *file, loff_t offset, int origin,
+> +		loff_t maxsize)
+> +{
+> +	struct inode *inode = file->f_mapping->host;
+> +
+> +	return generic_file_llseek_size_eof(file, offset, origin, maxsize,
+> +					i_size_read(inode));
+> +}
+>  EXPORT_SYMBOL(generic_file_llseek_size);
+>  
+>  /**
+> @@ -131,8 +153,9 @@ loff_t generic_file_llseek(struct file *file, loff_t offset, int origin)
+>  {
+>  	struct inode *inode = file->f_mapping->host;
+>  
+> -	return generic_file_llseek_size(file, offset, origin,
+> -					inode->i_sb->s_maxbytes);
+> +	return generic_file_llseek_size_eof(file, offset, origin,
+> +					inode->i_sb->s_maxbytes,
+> +					i_size_read(inode));
+>  }
+>  EXPORT_SYMBOL(generic_file_llseek);
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 8de6755..a6ae7a4 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2402,6 +2402,8 @@ extern loff_t no_llseek(struct file *file, loff_t offset, int origin);
+>  extern loff_t generic_file_llseek(struct file *file, loff_t offset, int origin);
+>  extern loff_t generic_file_llseek_size(struct file *file, loff_t offset,
+>  		int origin, loff_t maxsize);
+> +extern loff_t generic_file_llseek_size_eof(struct file *file, loff_t offset,
+> +		int origin, loff_t maxsize, loff_t eof);
+>  extern int generic_file_open(struct inode * inode, struct file * filp);
+>  extern int nonseekable_open(struct inode * inode, struct file * filp);
+
+Another question, wouldn't it be better to entirely move
+generic_file_llseek_size() and generic_file_llseek() into fs.h to make
+sure it gets inlined?
+
+
+Cheers,
+Bernd
