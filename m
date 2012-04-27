@@ -1,75 +1,44 @@
-From: Miao Xie <miaoxie1984@gmail.com>
-Subject: Re: [PATCH 1/4] vfs: introduce try_to_writeback_inodes_sb(_nr)
-Date: Fri, 27 Apr 2012 16:06:00 +0800
-Message-ID: <4F9A5368.5000904@gmail.com>
-References: <4F98B9A7.8060209@gmail.com> <20120426031156.GY9541@dastard> <CAAW_DMg9VLEtV40=qAbT3WZ4tN+ejZxToFHO0AiqDmjvV=V4eA@mail.gmail.com> <20120426151159.GB25603@dhcp231-144.rdu.redhat.com>
-Reply-To: miaoxie1984@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Xie Miao <miaoxie1984@gmail.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Linux FSDevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	miaox@cn.fujitsu.com, Kamal Mostafa <kamal@canonical.com>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>
-To: Josef Bacik <josef@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f51.google.com ([209.85.210.51]:56486 "EHLO
-	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757952Ab2D0IGL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 04:06:11 -0400
-In-Reply-To: <20120426151159.GB25603@dhcp231-144.rdu.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Fri, 27 Apr 2012 10:19:09 +0100
+Message-ID: <3279.1335518349@redhat.com>
+References: <3F302713-B675-4BAA-B2B7-235E03C5975F@dilger.ca> <CAH2r5mv1Lijdwk5zsQwYJr4Etb6fhrRyNXm-iFCQX+HecboGrQ@mail.gmail.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <CAH2r5ms4WQV3DnTvqNN=2N71Cj8UHwj8Z6+RHXgrAOv6mSoyQg@mail.gmail.com> <20656.1335450358@redhat.com> <24787.1335455535@redhat.com>
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org" <samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org" <wine-devel-5vRYHf7vrtgdnm+yROfE0A@public.gmane.org>,
+	"kfm-devel-RoXCvvDuEio@public.gmane.org" <kfm-devel-RoXCvvDuEio@public.gmane.org>,
+	"nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org" <nautilus-list-rDKQcyrBJuzYtjvyW6yDsg@public.gmane.org>,
+	"linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org" <libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org>
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <3F302713-B675-4BAA-B2B7-235E03C5975F-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-=E4=BA=8E 2012=E5=B9=B404=E6=9C=8826=E6=97=A5 23:12, Josef Bacik =E5=86=
-=99=E9=81=93:
+Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
 
-> On Thu, Apr 26, 2012 at 03:55:52PM +0800, Xie Miao wrote:
->> On Thu, Apr 26, 2012 at 11:11 AM, Dave Chinner <david@fromorbit.com>=
- wrote:
->>>> writeback_inodes_sb(_nr) grabs s_umount lock when it want to start
->>>> writeback,
->>>> it may bring us deadlock problem when doing umount. So we introduc=
-e new
->>>> functions -- try_to_writeback_inodes_sb(_nr) -- which use
->>>> down_read_trylock()
->>>> instead of down_read() to avoid that deadlock problem.
->>>>
->>>> This idea came from Christoph Hellwig.
->>>> Some code is from the patch of Kamal Mostafa.
->>>
->>> This just re-implements writeback_inodes_[nr]_sb_if_idle() with a
->>> trylock instead of a blocking lock.
->>>
->>> Just replace the blocking lock in writeback_inodes_[nr]_sb_if_idle(=
-)
->>> with a trylock and use that.
->>
->> The change of these two functions is relative to three modules,  so =
-I think
->> the patch set now is easy to be reviewed by the developers of each m=
-odule.
->>
->=20
-> I agree with David, there's no sense in making something completely s=
-eperate,
-> this function was introduced soley to kick off background writeout if=
- we could
-> with no garuntees, if the other users suddenly don't like the behavio=
-r they can
-> creating something different for themselves.  Thanks,
+> > However, since there is a remote file ID, we could add an
+> > XSTAT_INFO_FILE_ID flag to indicate there's a standard xattr holding this.
+> 
+> It is a bit strange that the kernel would return a flag that was not
+> requested, but not fatal.
 
+On the other hand, if it costs the kernel nothing to generate this indicator...
 
-OK, I'll make them together.
+For network filesystems, for instance, you might know that there is some other
+file ID because of the way the fs is specified.
 
-Thanks
-Miao
+I was thinking that many of the fields will be given values, even if you don't
+ask for them, because the values (or approximations thereof) are present in
+memory already.
+
+David
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
