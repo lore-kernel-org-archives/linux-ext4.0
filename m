@@ -1,71 +1,35 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH] vfs: allow custom EOF in generic_file_llseek code
-Date: Fri, 27 Apr 2012 18:01:38 -0500
-Message-ID: <4F9B2552.9010803@sandeen.net>
-References: <4F9AC770.8080004@redhat.com> <4F9B2219.6090302@itwm.fraunhofer.de>
+From: Paul Eggert <eggert@cs.ucla.edu>
+Subject: Re: [PATCH 0/6] Extended file stat system call
+Date: Fri, 27 Apr 2012 16:54:41 -0700
+Message-ID: <4F9B31C1.3010701@cs.ucla.edu>
+References: <20120419163238.61D382C0DF@topped-with-meat.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <19184.1335448455@redhat.com> <20120426182524.E5ADF2C0EC@topped-with-meat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Andreas Dilger <adilger@dilger.ca>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+	wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
+	linux-api@vger.kernel.org, libc-alpha@sourceware.org
+To: Roland McGrath <roland@hack.frob.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4F9B2219.6090302@itwm.fraunhofer.de>
+In-Reply-To: <20120426182524.E5ADF2C0EC@topped-with-meat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 4/27/12 5:47 PM, Bernd Schubert wrote:
-> On 04/27/2012 06:21 PM, Eric Sandeen wrote:
+On 04/26/2012 11:25 AM, Roland McGrath wrote:
+> What I'd really prefer is a name that is less meaninglessly arcane,
 
-...
+Since people are used to the string "stat", and since this is
+about getting related attributes, how about using the string "statr"?
+Thus "statrat" could be the syscall that acts like fstatat, but gets
+related attributes too.
 
->> +generic_file_llseek_size_eof(struct file *file, loff_t offset, int origin,
->> +		loff_t maxsize, loff_t eof)
->>  {
->>  	struct inode *inode = file->f_mapping->host;
->>  
->>  	switch (origin) {
->>  	case SEEK_END:
->> -		offset += i_size_read(inode);
->> +		offset += eof;
->>  		break;
-> 
-> Here is the only glitch I can see. As Andreas already said before, it
-> might overflow here. Do we need do care about that? As you already said,
-> SEEK_END is unlikely to be ever called for directories. But then we also
-> cannot keep user space from doing weird calls...
+A bonus of this name is that a "stat rat" is slang
+for someone who loves looking at statistics, often
+sports statistics.  Billy Beane is a stat rat.
+Someone who cares about files' statistics is also
+a stat rat.
 
-It can happen already today, for a sufficiently large file offset.
-
-# ls -l reallybigfile 
--rw-r--r--. 1 root root 9223372036854775807 Apr 27 18:02 reallybigfile
-
-(that's 2^63 - 1)
-
-so overflow protection may be warranted in here, but I think it's a separate problem.
-
-...
-
->> diff --git a/include/linux/fs.h b/include/linux/fs.h
->> index 8de6755..a6ae7a4 100644
->> --- a/include/linux/fs.h
->> +++ b/include/linux/fs.h
->> @@ -2402,6 +2402,8 @@ extern loff_t no_llseek(struct file *file, loff_t offset, int origin);
->>  extern loff_t generic_file_llseek(struct file *file, loff_t offset, int origin);
->>  extern loff_t generic_file_llseek_size(struct file *file, loff_t offset,
->>  		int origin, loff_t maxsize);
->> +extern loff_t generic_file_llseek_size_eof(struct file *file, loff_t offset,
->> +		int origin, loff_t maxsize, loff_t eof);
->>  extern int generic_file_open(struct inode * inode, struct file * filp);
->>  extern int nonseekable_open(struct inode * inode, struct file * filp);
-> 
-> Another question, wouldn't it be better to entirely move
-> generic_file_llseek_size() and generic_file_llseek() into fs.h to make
-> sure it gets inlined?
-
-Hm, perhaps.  It wasn't done for generic_file_llseek_size() so I just followed
-that example, for now.
-
--Eric
+The "r" in "statrat" could stand for "related", or
+for "relevant", or for whatever you like.
