@@ -1,107 +1,107 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Sat, 28 Apr 2012 10:58:56 +1000
-Message-ID: <20120428005856.GI9541@dastard>
-References: <20120427010610.GE9541@dastard>
- <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
- <4111.1335519545@redhat.com>
- <20120427131306.GG9541@dastard>
- <F2018580-9ACC-4A63-A8D1-155FA371749A@dilger.ca>
+From: Sami Liedes <sami.liedes@iki.fi>
+Subject: Announcing the Berserker toolkit for (semi-)automated fs fuzz testing
+Date: Sat, 28 Apr 2012 04:39:04 +0300
+Message-ID: <20120428013904.GE20648@sli.dy.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-	wine-devel@winehq.org, kfm-devel@kde.org, nautilus-list@gnome.org,
-	linux-api@vger.kernel.org, libc-alpha@sourceware.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="d9ADC0YsG2v16Js0"
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-2.hut.fi ([130.233.228.92]:45858 "EHLO smtp-2.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758337Ab2D1BjK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Apr 2012 21:39:10 -0400
 Content-Disposition: inline
-In-Reply-To: <F2018580-9ACC-4A63-A8D1-155FA371749A@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 27, 2012 at 01:31:07PM -0600, Andreas Dilger wrote:
-> On 2012-04-27, at 7:13 AM, Dave Chinner wrote:
-> > Have a look at fs/xfs/xfs_dinode.h. There's a bunch of flags defined
-> > at the bottom of the file.
-> > 
-> > Stuff like the "nodefrag", "nodump", and "prealloc" bits seem fairly
-> > generic - they are for indicating that files are to be avoided for
-> > defrag or backup purposes, the prealloc bit indicates that fallocate
-> > has been used to reserve space on the inode (finding files that space
-> > can be punched out of safely), and so on.
-> 
-> There is already the FS_NODUMP_FL in the standard FS_IOC_GETFLAGS ioctl
-> and I expect this to be in statxat() also.
 
-I forgot that was one of the generic flags :/
+--d9ADC0YsG2v16Js0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> In ext4 there was also an
-> EXT4_EOFBLOCKS_FL added for inodes with fallocate'd data beyond EOF,
-> but Eric thought it was a pain to maintain and it has been deprecated
-> in ext4 and e2fsprogs recently.
+This is an announcement of the first release of the Berserker toolkit
+for (semi-)automated fuzz testing and testcase minimization of Linux
+kernel filesystem implementations.
 
-I'd think that flag is more of a "filesystem implementation
-specific" flag than a general "this file contained persistent
-preallocation" flag, which is essentially what the XFS flag says.
-XFS uses in various ways to optimise extent management on the file
-(e.g. don't truncate extents past EOF when closing the file), but it
-is not specific to one particular aspect of the preallocation
-implementation.
+The toolkit consists of the following components and their
+documentation:
 
-> >> OTOH, there's plenty of uncommitted space, so if we can condense
-> >> the hints down to something small, we could perhaps add it later -
-> >> but from your paragraph above, it doesn't sound like it'll be small.
-> > 
-> > Allocation block size, minimum sane IO size (to avoid page cache RMW
-> > cycles or DIO zeroing), minimum prefered IO size (e.g. stripe unit),
-> > optimal IO size for bandwidth (e.g. stripe width). I don't think
-> > there's much more than that which will be really usable by
-> > applications.
-> 
-> I think this is a minimal set that makes sense, and is manageable for
-> both the interface and for users.  Even if it isn't 100% correct for
-> every file of every filesystem, it still makes sense for many systems.
+* Debian sid (unstable) based root filesystem image with scripts
+  inside and set to run automatically that will test filesystems based
+  on kernel commandline parameters, intended to be run inside a
+  virtual machine (KVM); a 32-bit x86 system
 
-That's the aim, isn't it? To expose what is useful to the majority
-in a simple manner?
+* berserker-testfs.py, a script to automate running fuzz tests inside
+  KVM on a filesystem image (simply give as parameters the filesystem
+  type, a working filesystem image and a kernel bzImage - see --help).
+  This script takes care of running KVM and interpreting the output.
+  Its return values make it suitable for using in "git bisect run". By
+  default the VM will fuzz and run until it has produced a crash.
 
-> I'd suggest st_frsize (like BSD statvfs() f_frsize) would be the
-> minimum fragment or page size, st_iosize (BSD f_iosize) could be
-> the optimal IO size, and "st_stripesize" for the minimum preferred RAID/chunk size.
+* berserker-minimize.sh (and fuzz-minimize used by it), a program to
+  derive a crash-inducing test case with minimal differences to a
+  pristine filesystem image by repeatedly automatically running
+  berserker-testfs.py on different images. Takes as input the kernel
+  image to use, a pristine filesystem image and a fuzzed filesystem
+  image that causes the kernel to crash.
 
-Personally, I think those names are, well, terribly lacking in
-obviousness. Something more along the lines of:
+To get the source:
 
-	st_blksize		- file block size
-	st_alloc_blksize	- allocation block size/alignment
-	st_small_io_size	- IO size/alignment that avoids
-				  filesystem/page cache RMW
-	st_preferred_io_size	- preferred IO size for general
-				  usage.
-	st_large_io_size	- IO size/alignment for high
-				  bandwidth sequential IO
+   git clone http://www.niksula.hut.fi/~sliedes/berserker/berserker.git
 
-With the aim that applications tend to use st_preferred_io_size for
-all general IO (i.e. the default), st_small_io_size for small IO,
-IOPS intensive workloads, and st_large_io_size for writing large
-chunks of sequential data.
+The repository contains a script (download-binaries.sh) that downloads
+some files (*at least until my university gets unhappy with the
+bandwidth used):
 
-> One could argue that "st_blksize" is used for the "optimal IO size"
-> on Linux today, but this is an overloaded term.  It _appears_ to
-> represent the filesystem blocksize, which it usually is not, and on
-> BSD st_bsize means the minimum blocksize and has a confusingly
-> similar name.  Since any application using this API needs to do some
-> extra coding already, we may as well give the structure members good
-> names that are not ambiguous.
+* the root filesystem (hda.autotest; 112 MiB compressed, 501 MiB
+  uncompressed); and for quick start
 
-Well said - I couldn't have stated the case better myself. ;)
+* a vanilla 3.3.4 bzImage for amd64 suitable for use with the system
+  (config file included in the git repository)
 
-Cheers,
+* testimg.ext4, a 10 MiB ext4 filesystem with the required layout
+  (described in more detail in the README file)
 
-Dave.
+The actual fuzzer used is zzuf (Debian package zzuf) by Sam Hocevar. I
+believe it is similar in spirit to fsfuzzer which appears to be more
+familiar to the kernel community; zzuf was chosen because I was more
+familiar with it and because it was packaged for Debian.
 
--- 
-Dave Chinner
-david@fromorbit.com
+Two examples of (what appears to be) ext4 bugs found with this
+toolkit, both reproducible with a 1-bit difference to a pristine
+filesystem:
+
+  http://www.spinics.net/lists/linux-ext4/msg31850.html
+     (sorry, by mistake the subject doesn't quite reflect the bug...)
+
+  http://www.spinics.net/lists/linux-ext4/msg31853.html
+
+See the included README file for a very quick introduction and some
+more detailed documentation.
+
+	Sami Liedes
+
+--d9ADC0YsG2v16Js0
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAEBCgAGBQJPm0o4AAoJEKLT589SE0a0VO8P/2MeeLXUalK7KBs0W8CPhtmQ
+9Js+Uv8r5EMb++mhUIoAFm2EWD950qsPkC/QWOrxhcCvic+FC/09Sp0oXlDHTRAB
+NX85p9FDmeHOwMIk3gqNZKUWlooVaJXo/ibFFB4PEIIRJ1kn0KfAfhyTKxLzKK1O
+E2rtgU3nGGGISphLb5ntxyu+gpY5jZYRy/r6qtNGRUzwAocCXfsv8uTPbTMTLvie
+20jTO/daRqcOvfKmD15CZPRY2gHo8i/i/gUCfrYd1a8STw4s9gIHNwkStyQbJzpE
+c71ebJ2h24JtE+gt0nv2ibCwPSgDDO88yawCRz2K90nYDaGGGIT7CUFd7MQpVRFA
+ll0ZikzhoVkggg74/ikeUGhrz6AhMcVOgp8CLx/awJz0cAhmJYWvV3n0ZVyB2wCG
+JQtib1S2LcTlJc/bm/AH68EDpcqPQBTOACMScY0kHIkfAd56eBSR9bIL//rJKZc9
+dtsNzm+QSUc2IQmJK6h5Yq6aqYdX9DNl0WGx2Ti0nrDZKfIftfL0w2U6xytfdeNy
+1RYZffYfmTrM9gK+ISyixvj2y/+Q/9boL1KxOZHu/Dd7bf/uID/w0KcvYxgQ5IWR
+rD/g6uCcgTMeS3rWbQ24/4MrmDhdUlpsoUwhfQ6LpmaXCUejO8mKTSZXiFsJbX7J
+Ze5s2Ie58BwPsrHOyOPl
+=XLN9
+-----END PGP SIGNATURE-----
+
+--d9ADC0YsG2v16Js0--
