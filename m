@@ -1,117 +1,109 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 0/3] ext4: dio overwrite nolock
-Date: Sat, 28 Apr 2012 11:39:03 +0800
-Message-ID: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 1/3] ext4: split ext4_file_write into buffered IO and direct IO
+Date: Sat, 28 Apr 2012 11:39:04 +0800
+Message-ID: <1335584346-8070-2-git-send-email-wenqing.lz@taobao.com>
+References: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pb0-f46.google.com ([209.85.160.46]:40095 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752046Ab2D1DcZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:25 -0400
-Received: by pbbrp8 with SMTP id rp8so1232888pbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:24 -0700 (PDT)
+	with ESMTP id S1752350Ab2D1Dc0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:26 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so1232888pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:26 -0700 (PDT)
+In-Reply-To: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi list,
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Currently, in ext4, write dio is serialized because i_mutex is locked in
-generic_file_aio_write.  But, when we overwrite some data without changing
-metadata, these dios can be parallelized.  So this patch set aims to make
-overwrite dio paralleled.
+ext4_file_buffered/direct_write are defined in order to split buffered IO and
+direct IO in ext4.  This patch just refactor some stuff in write path.
 
-When we overwrite some data, the metadata of this file doesn't need to be
-modified.  Thus, we can try to lock i_data_sem directly to synchronized all
-dio write operations.  First of all, a new wrapper function is defined instead
-of genereic_file_aio_write in order to avoid to lock i_mutex.  Then we need to
-define a new get_block function and a new flag for dio overwrite nolock feature
-so that we can avoid nested lock and deadlock.  In ext4_map_blocks, i_data_sem
-is acquired to do a lookup.  But after adding this new feature, this lock will
-be acquired in high level.  Obviouslyi, here is a nested lock and we need to
-avoid it.  Now, in ext4, we always start a new journal firstly, and then try to
-acquire i_data_sem.  When we do a overwrite dio, journal doesn't need to be
-created in order to avoid a deadlock.
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ fs/ext4/file.c |   66 +++++++++++++++++++++++++++++++++++++------------------
+ 1 files changed, 44 insertions(+), 22 deletions(-)
 
-In new wrapper function, called ext4_file_dio_write, it checks whether
-conditions are satisfied or not.  If these are met, we lock i_data_sem directly
-and parallelize all write operations.
-
-In first patch, two functions are defined in order to split into buffered IO and
-direct IO because we can keep buffered IO that still uses vfs path, and add new
-feature into dio path.
-
-In second patch, we add a new flag and a new function for get_block.  This
-get_block function only does a lookup without any locks.
-
-In last patch, dio overwrite nolock is added.  This feature also need to use
-dioread_nolock option.  When a filesystem is mounted with dioread_nolock, this
-feature is enabled.
-
-I have run some benchmarks in my desktop to test this feature.  In my desktop,
-it has a Intel(R) Core(TM)2 Duo CPU E8400 @ 3.00GHz, 4G memory and a Intel X-25
-160G SSD.  I use fio to run my benchmarks and I compare dio overwrite nolock
-with w/o dioread_nolock and w/ dioread_nolock.
-
-= case 1 =
-== config file ==
-[global]
-ioengine=psync
-direct=1
-bs=4k
-size=32G
-runtime=60
-directory=/mnt/ext4/
-filename=testfile
-group_reporting
-thread
-
-[file1]
-numjobs=1 # 4 8 16
-rw=randwrite
-
-== result (iops) ==
-write			1	4	8	16
-lock			7233	8612	9102	9165
-dioread_nolock		8217	8228	8673	8755
-diooverwrite_nolock	7740	15446	14563	17749
-
-= case 2 =
-== config file ==
-[global]
-ioengine=sync
-direct=1
-bs=4k
-size=32G
-runtime=60
-directory=/mnt/ext4/
-filename=testfile
-group_reporting
-thread
-
-[file1]
-numjobs=1 # 2 4 8
-rw=randread
-
-[file2]
-numjobs=1 # 2 4 8
-rw=randwrite
-
-== result (iops) ==
-read/write		2		4		8		16
-lock			614/4343	1346/3124	1271/3930 	1386/3904
-dioread_nolock		1040/1963	2162/1243	3980/1479 	13716/924
-diooverwrite_nolock	1006/1913	1973/2602	3683/4515 	6966/7260
-
-Regards,
-Zheng
-
-Zheng Liu (3):
-      ext4: split ext4_file_write into buffered IO and direct IO
-      ext4: add a new flag for ext4_map_blocks
-      ext4: add dio overwrite nolock
-
- fs/ext4/ext4.h  |    2 +
- fs/ext4/file.c  |  200 +++++++++++++++++++++++++++++++++++++++++++++++++------
- fs/ext4/inode.c |   46 ++++++++++---
- 3 files changed, 215 insertions(+), 33 deletions(-)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb70f18..e5d6be3 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -89,12 +89,51 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+ 	return 0;
+ }
+ 
++static inline ssize_t
++ext4_file_buffered_write(struct kiocb *iocb, const struct iovec *iov,
++			 unsigned long nr_segs, loff_t pos)
++{
++	return generic_file_aio_write(iocb, iov, nr_segs, pos);
++}
++
++static ssize_t
++ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
++		    unsigned long nr_segs, loff_t pos)
++{
++	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
++	int unaligned_aio = 0;
++	ssize_t ret;
++
++	if (!is_sync_kiocb(iocb))
++		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
++
++	/* Unaligned direct AIO must be serialized; see comment above */
++	if (unaligned_aio) {
++		static unsigned long unaligned_warn_time;
++
++		/* Warn about this once per day */
++		if (printk_timed_ratelimit(&unaligned_warn_time, 60*60*24*HZ))
++			ext4_msg(inode->i_sb, KERN_WARNING,
++				 "Unaligned AIO/DIO on inode %ld by %s; "
++				 "performance will be poor.",
++				 inode->i_ino, current->comm);
++		mutex_lock(ext4_aio_mutex(inode));
++		ext4_aiodio_wait(inode);
++	}
++
++	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
++
++	if (unaligned_aio)
++		mutex_unlock(ext4_aio_mutex(inode));
++
++	return ret;
++}
++
+ static ssize_t
+ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 		unsigned long nr_segs, loff_t pos)
+ {
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+-	int unaligned_aio = 0;
+ 	int ret;
+ 
+ 	/*
+@@ -114,29 +153,12 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
+ 					      sbi->s_bitmap_maxbytes - pos);
+ 		}
+-	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
+-		   !is_sync_kiocb(iocb))) {
+-		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
+-	}
+-
+-	/* Unaligned direct AIO must be serialized; see comment above */
+-	if (unaligned_aio) {
+-		static unsigned long unaligned_warn_time;
+-
+-		/* Warn about this once per day */
+-		if (printk_timed_ratelimit(&unaligned_warn_time, 60*60*24*HZ))
+-			ext4_msg(inode->i_sb, KERN_WARNING,
+-				 "Unaligned AIO/DIO on inode %ld by %s; "
+-				 "performance will be poor.",
+-				 inode->i_ino, current->comm);
+-		mutex_lock(ext4_aio_mutex(inode));
+-		ext4_aiodio_wait(inode);
+ 	}
+ 
+-	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
