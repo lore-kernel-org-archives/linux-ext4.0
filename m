@@ -1,157 +1,57 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 2/3] ext4: add a new flag for ext4_map_blocks
-Date: Sat, 28 Apr 2012 11:39:05 +0800
-Message-ID: <1335584346-8070-3-git-send-email-wenqing.lz@taobao.com>
-References: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f51.google.com ([209.85.210.51]:40268 "EHLO
-	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752393Ab2D1Dc2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:28 -0400
-Received: by dadz8 with SMTP id z8so1733244dad.10
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:28 -0700 (PDT)
-In-Reply-To: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 15/23] jbd2: Change disk layout for metadata
+ checksumming
+Date: Sat, 28 Apr 2012 10:19:33 -0400
+Message-ID: <20120428141933.GB29481@thunk.org>
+References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
+ <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Sunil Mushran <sunil.mushran@oracle.com>,
+	Martin K Petersen <martin.petersen@oracle.com>,
+	Greg Freemyer <greg.freemyer@gmail.com>,
+	Amir Goldstein <amir73il@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Andi Kleen <andi@firstfloor.org>,
+	Mingming Cao <cmm@us.ibm.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
+To: "Darrick J. Wong" <djwong@us.ibm.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Mar 06, 2012 at 12:49:41PM -0800, Darrick J. Wong wrote:
+> @@ -177,11 +189,17 @@ typedef struct journal_block_tag_s
+>  	__be32		t_blocknr;	/* The on-disk block number */
+>  	__be32		t_flags;	/* See below */
+>  	__be32		t_blocknr_high; /* most-significant high 32bits. */
+> +	__be32		t_checksum;	/* crc32c(uuid+seq+block) */
+>  } journal_block_tag_t;
+>  
+>  #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
+>  #define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
 
-EXT4_GET_BLOCKS_NO_LOCK flag is added to indicate that we don't need to acquire
-i_data_sem lock in ext4_map_blocks.  Meanwhile, it lets _ext4_get_block do not
-start a new journal because when we do a overwrite dio, there is no any
-metadata that needs to be modified.
+There's a problem with this patch here --- we are changing the size of
+journal_block_tag_t, which is an on-disk data structure.  So for
+64-bit journals, this represents a format change.  This means that if
+you have a 64-bit file system that needs to have its journal
+recovered, if the journal was written with an older kernel, and then
+we try to recover it with a new kernel, things won't be good.
+Similarly, for e2fsck's recovery code, it's not going to be able to
+recover 64-bit file systems using current coding, since this patch
+series changes the size of JBD2_TAG_SIZE64.
 
-We define a new function called ext4_get_block_write_nolock, which is used in
-dio overwrite nolock.  In this function, it doesn't try to acquire i_data_sem
-lock and doesn't start a new journal as it does a lookup.
+What we need to do is something like this:
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/inode.c |   46 +++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 37 insertions(+), 11 deletions(-)
+#define JBD2_TAG_SIZE64 (offsetof(journal_block_tag_t, t_checksum))
+#define JBD2_TAG_SIZE_CSUM (sizeof(journal_block_tag_t))
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0e01e90..748fda5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -558,6 +558,8 @@ enum {
- #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
- 	/* Request will not result in inode size update (user for fallocate) */
- #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
-+	/* Do not acquire i_data_sem lock */
-+#define EXT4_GET_BLOCKS_NO_LOCK			0x0100
- 
- /*
-  * Flags used by ext4_free_blocks
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c77b0bd..c762d4f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -477,7 +477,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	 * Try to see if we can get the block without requesting a new
- 	 * file system block.
- 	 */
--	down_read((&EXT4_I(inode)->i_data_sem));
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		down_read((&EXT4_I(inode)->i_data_sem));
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
-@@ -485,7 +486,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
- 	}
--	up_read((&EXT4_I(inode)->i_data_sem));
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
- 		int ret = check_block_validity(inode, map);
-@@ -597,7 +599,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 	map.m_lblk = iblock;
- 	map.m_len = bh->b_size >> inode->i_blkbits;
- 
--	if (flags && !handle) {
-+	if (flags && !handle && !(flags & EXT4_GET_BLOCKS_NO_LOCK)) {
- 		/* Direct IO write... */
- 		if (map.m_len > DIO_MAX_BLOCKS)
- 			map.m_len = DIO_MAX_BLOCKS;
-@@ -2751,6 +2753,15 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
- }
- 
-+static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-+		   struct buffer_head *bh_result, int create)
-+{
-+	ext4_debug("ext4_get_block_write: inode %lu, create flag %d\n",
-+		   inode->i_ino, create);
-+	return _ext4_get_block(inode, iblock, bh_result,
-+			       EXT4_GET_BLOCKS_NO_LOCK);
-+}
-+
- static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 			    ssize_t size, void *private, int ret,
- 			    bool is_async)
-@@ -2899,6 +2910,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 
- 	loff_t final_size = offset + count;
- 	if (rw == WRITE && final_size <= inode->i_size) {
-+		int overwrite = 0;
-+
- 		/*
-  		 * We could direct write to holes and fallocate.
- 		 *
-@@ -2919,6 +2932,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		 * Here for async case, we allocate an io_end structure to
- 		 * hook to the iocb.
-  		 */
-+		if (iocb->private)
-+			overwrite = *((int *)iocb->private);
- 		iocb->private = NULL;
- 		EXT4_I(inode)->cur_aio_dio = NULL;
- 		if (!is_sync_kiocb(iocb)) {
-@@ -2938,13 +2953,22 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 			EXT4_I(inode)->cur_aio_dio = iocb->private;
- 		}
- 
--		ret = __blockdev_direct_IO(rw, iocb, inode,
--					 inode->i_sb->s_bdev, iov,
--					 offset, nr_segs,
--					 ext4_get_block_write,
--					 ext4_end_io_dio,
--					 NULL,
--					 DIO_LOCKING);
-+		if (overwrite)
-+			ret = __blockdev_direct_IO(rw, iocb, inode,
-+						 inode->i_sb->s_bdev, iov,
-+						 offset, nr_segs,
-+						 ext4_get_block_write_nolock,
-+						 ext4_end_io_dio,
-+						 NULL,
-+						 0);
-+		else
-+			ret = __blockdev_direct_IO(rw, iocb, inode,
-+						 inode->i_sb->s_bdev, iov,
-+						 offset, nr_segs,
-+						 ext4_get_block_write,
-+						 ext4_end_io_dio,
-+						 NULL,
-+						 DIO_LOCKING);
- 		if (iocb->private)
- 			EXT4_I(inode)->cur_aio_dio = NULL;
- 		/*
-@@ -2964,7 +2988,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
- 			ext4_free_io_end(iocb->private);
- 			iocb->private = NULL;
--		} else if (ret > 0 && ext4_test_inode_state(inode,
-+		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
- 						EXT4_STATE_DIO_UNWRITTEN)) {
- 			int err;
- 			/*
--- 
-1.7.1
+And then change the code appropriately in e2fsprogs and in the kernel
+to use the correct tag size depending on the journal options.
 
+       	   	       	    	      	     - Ted
