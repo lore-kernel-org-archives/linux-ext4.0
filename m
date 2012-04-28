@@ -1,193 +1,157 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 3/3] ext4: add dio overwrite nolock
-Date: Sat, 28 Apr 2012 11:39:06 +0800
-Message-ID: <1335584346-8070-4-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 2/3] ext4: add a new flag for ext4_map_blocks
+Date: Sat, 28 Apr 2012 11:39:05 +0800
+Message-ID: <1335584346-8070-3-git-send-email-wenqing.lz@taobao.com>
 References: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f51.google.com ([209.85.210.51]:40268 "EHLO
 	mail-pz0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752780Ab2D1Dca (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:30 -0400
-Received: by mail-pz0-f51.google.com with SMTP id z8so1733244dad.10
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:29 -0700 (PDT)
+	with ESMTP id S1752393Ab2D1Dc2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:28 -0400
+Received: by dadz8 with SMTP id z8so1733244dad.10
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:28 -0700 (PDT)
 In-Reply-To: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Aligned and overwrite direct IO can be parallelized.  In ext4_file_dio_write,
-we first check whether these conditions are satisfied or not.  If so, we unlock
-the i_mutex and acquire i_data_sem directly.  Meanwhile iocb->private is set to
-indicate that this is a overwrite dio, and it will be processed in
-ext4_ext_direct_IO.
+EXT4_GET_BLOCKS_NO_LOCK flag is added to indicate that we don't need to acquire
+i_data_sem lock in ext4_map_blocks.  Meanwhile, it lets _ext4_get_block do not
+start a new journal because when we do a overwrite dio, there is no any
+metadata that needs to be modified.
+
+We define a new function called ext4_get_block_write_nolock, which is used in
+dio overwrite nolock.  In this function, it doesn't try to acquire i_data_sem
+lock and doesn't start a new journal as it does a lookup.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/file.c |  140 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 137 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/inode.c |   46 +++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 37 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index e5d6be3..8a5f713 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -100,9 +100,21 @@ static ssize_t
- ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 		    unsigned long nr_segs, loff_t pos)
- {
--	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
--	int unaligned_aio = 0;
-+	struct file *file = iocb->ki_filp;
-+	struct address_space * mapping = file->f_mapping;
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	struct blk_plug plug;
- 	ssize_t ret;
-+	ssize_t written, written_buffered;
-+	size_t length = iov_length(iov, nr_segs);
-+	size_t ocount;		/* original count */
-+	size_t count;		/* after file limit checks */
-+	int unaligned_aio = 0;
-+	int overwrite = 0;
-+	loff_t *ppos = &iocb->ki_pos;
-+	loff_t endbyte;
-+
-+	BUG_ON(iocb->ki_pos != pos);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0e01e90..748fda5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -558,6 +558,8 @@ enum {
+ #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
+ 	/* Request will not result in inode size update (user for fallocate) */
+ #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
++	/* Do not acquire i_data_sem lock */
++#define EXT4_GET_BLOCKS_NO_LOCK			0x0100
  
- 	if (!is_sync_kiocb(iocb))
- 		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
-@@ -121,7 +133,129 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 		ext4_aiodio_wait(inode);
+ /*
+  * Flags used by ext4_free_blocks
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c77b0bd..c762d4f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -477,7 +477,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * Try to see if we can get the block without requesting a new
+ 	 * file system block.
+ 	 */
+-	down_read((&EXT4_I(inode)->i_data_sem));
++	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
++		down_read((&EXT4_I(inode)->i_data_sem));
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+ 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
+@@ -485,7 +486,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
  	}
+-	up_read((&EXT4_I(inode)->i_data_sem));
++	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
++		up_read((&EXT4_I(inode)->i_data_sem));
  
--	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
-+	mutex_lock(&inode->i_mutex);
-+	blk_start_plug(&plug);
-+
-+	ocount = 0;
-+	ret = generic_segment_checks(iov, &nr_segs, &ocount, VERIFY_READ);
-+	if (ret)
-+		goto unlock_out;
-+
-+	count = ocount;
-+	pos = *ppos;
-+
-+	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-+
-+	/* We can write back this queue in page reclaim */
-+	current->backing_dev_info = mapping->backing_dev_info;
-+	written = 0;
-+
-+	ret = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode));
-+	if (ret)
-+		goto out;
-+
-+	if (count == 0)
-+		goto out;
-+
-+	ret = file_remove_suid(file);
-+	if (ret)
-+		goto out;
-+
-+	file_update_time(file);
-+
-+	iocb->private = NULL;
-+
-+	if (!unaligned_aio && !file->f_mapping->nrpages &&
-+	    pos + length < i_size_read(inode) &&
-+	    ext4_should_dioread_nolock(inode)) {
-+		struct ext4_map_blocks map;
-+		unsigned int blkbits = inode->i_blkbits;
-+		int err;
-+		int len;
-+
-+		map.m_lblk = pos >> blkbits;
-+		map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
-+			- map.m_lblk;
-+		len = map.m_len;
-+
-+		err = ext4_map_blocks(NULL, inode, &map, 0);
-+		if (err == len && (!map.m_flags ||
-+		    map.m_flags & EXT4_MAP_MAPPED)) {
-+			overwrite = 1;
-+			iocb->private = &overwrite;
-+			mutex_unlock(&inode->i_mutex);
-+			down_read(&EXT4_I(inode)->i_data_sem);
-+		}
-+	}
-+
-+	if (file->f_mapping->nrpages && overwrite) {
-+		overwrite = 0;
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+		mutex_lock(&inode->i_mutex);
-+	}
-+
-+	written = generic_file_direct_write(iocb, iov, &nr_segs, pos,
-+						ppos, count, ocount);
-+	if (written < 0 || written == count)
-+		goto out;
-+	/*
-+	 * direct-io write to a hole: fall through to buffered I/O
-+	 * for completing the rest of the request.
-+	 */
-+	pos += written;
-+	count -= written;
-+	written_buffered = generic_file_buffered_write(iocb, iov,
-+					nr_segs, pos, ppos, count,
-+					written);
-+	/*
-+	 * If generic_file_buffered_write() retuned a synchronous error
-+	 * then we want to return the number of bytes which were
-+	 * direct-written, or the error code if that was zero.  Note
-+	 * that this differs from normal direct-io semantics, which
-+	 * will return -EFOO even if some bytes were written.
-+	 */
-+	if (written_buffered < 0) {
-+		ret = written_buffered;
-+		goto out;
-+	}
-+
-+	/*
-+	 * We need to ensure that the page cache pages are written to
-+	 * disk and invalidated to preserve the expected O_DIRECT
-+	 * semantics.
-+	 */
-+	endbyte = pos + written_buffered - written - 1;
-+	ret = filemap_write_and_wait_range(file->f_mapping, pos, endbyte);
-+	if (ret == 0) {
-+		written = written_buffered;
-+		invalidate_mapping_pages(mapping,
-+					 pos >> PAGE_CACHE_SHIFT,
-+					 endbyte >> PAGE_CACHE_SHIFT);
-+	} else {
-+		/*
-+		 * We don't know how much we wrote, so just return
-+		 * the number of bytes which were direct-written
-+		 */
-+	}
-+
-+out:
-+	current->backing_dev_info = NULL;
-+	ret = written ? written : ret;
-+
-+unlock_out:
-+	if (overwrite)
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+	else
-+		mutex_unlock(&inode->i_mutex);
-+
-+	if (ret > 0 || ret == -EIOCBQUEUED) {
-+		ssize_t err;
-+
-+		err = generic_write_sync(file, pos, ret);
-+		if (err < 0 && ret > 0)
-+			ret = err;
-+	}
-+	blk_finish_plug(&plug);
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+ 		int ret = check_block_validity(inode, map);
+@@ -597,7 +599,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 	map.m_lblk = iblock;
+ 	map.m_len = bh->b_size >> inode->i_blkbits;
  
- 	if (unaligned_aio)
- 		mutex_unlock(ext4_aio_mutex(inode));
+-	if (flags && !handle) {
++	if (flags && !handle && !(flags & EXT4_GET_BLOCKS_NO_LOCK)) {
+ 		/* Direct IO write... */
+ 		if (map.m_len > DIO_MAX_BLOCKS)
+ 			map.m_len = DIO_MAX_BLOCKS;
+@@ -2751,6 +2753,15 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
+ }
+ 
++static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
++		   struct buffer_head *bh_result, int create)
++{
++	ext4_debug("ext4_get_block_write: inode %lu, create flag %d\n",
++		   inode->i_ino, create);
++	return _ext4_get_block(inode, iblock, bh_result,
++			       EXT4_GET_BLOCKS_NO_LOCK);
++}
++
+ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 			    ssize_t size, void *private, int ret,
+ 			    bool is_async)
+@@ -2899,6 +2910,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 
+ 	loff_t final_size = offset + count;
+ 	if (rw == WRITE && final_size <= inode->i_size) {
++		int overwrite = 0;
++
+ 		/*
+  		 * We could direct write to holes and fallocate.
+ 		 *
+@@ -2919,6 +2932,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		 * Here for async case, we allocate an io_end structure to
+ 		 * hook to the iocb.
+  		 */
++		if (iocb->private)
++			overwrite = *((int *)iocb->private);
+ 		iocb->private = NULL;
+ 		EXT4_I(inode)->cur_aio_dio = NULL;
+ 		if (!is_sync_kiocb(iocb)) {
+@@ -2938,13 +2953,22 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 			EXT4_I(inode)->cur_aio_dio = iocb->private;
+ 		}
+ 
+-		ret = __blockdev_direct_IO(rw, iocb, inode,
+-					 inode->i_sb->s_bdev, iov,
+-					 offset, nr_segs,
+-					 ext4_get_block_write,
+-					 ext4_end_io_dio,
+-					 NULL,
+-					 DIO_LOCKING);
++		if (overwrite)
++			ret = __blockdev_direct_IO(rw, iocb, inode,
++						 inode->i_sb->s_bdev, iov,
++						 offset, nr_segs,
++						 ext4_get_block_write_nolock,
++						 ext4_end_io_dio,
++						 NULL,
++						 0);
++		else
++			ret = __blockdev_direct_IO(rw, iocb, inode,
++						 inode->i_sb->s_bdev, iov,
++						 offset, nr_segs,
++						 ext4_get_block_write,
++						 ext4_end_io_dio,
++						 NULL,
++						 DIO_LOCKING);
+ 		if (iocb->private)
+ 			EXT4_I(inode)->cur_aio_dio = NULL;
+ 		/*
+@@ -2964,7 +2988,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+ 			ext4_free_io_end(iocb->private);
+ 			iocb->private = NULL;
+-		} else if (ret > 0 && ext4_test_inode_state(inode,
++		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+ 						EXT4_STATE_DIO_UNWRITTEN)) {
+ 			int err;
+ 			/*
 -- 
 1.7.1
 
