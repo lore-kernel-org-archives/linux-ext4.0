@@ -1,83 +1,117 @@
-From: Sami Liedes <sami.liedes@iki.fi>
-Subject: Re: Intentionally corrupted fs: [this times really] "kernel BUG at
- fs/jbd2/transaction.c:161!"
-Date: Sat, 28 Apr 2012 04:56:00 +0300
-Message-ID: <20120428015600.GF20648@sli.dy.fi>
-References: <20120428004522.GC20648@sli.dy.fi>
- <4F9B4B16.4090903@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="MIdTMoZhcV1D07fI"
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC][PATCH 0/3] ext4: dio overwrite nolock
+Date: Sat, 28 Apr 2012 11:39:03 +0800
+Message-ID: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-4.hut.fi ([130.233.228.94]:58825 "EHLO smtp-4.hut.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758345Ab2D1B4F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Apr 2012 21:56:05 -0400
-Received: from localhost (katosiko.hut.fi [130.233.228.115])
-	by smtp-4.hut.fi (8.13.6/8.12.10) with ESMTP id q3S1u3JG025386
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Apr 2012 04:56:03 +0300
-Received: from smtp-4.hut.fi ([130.233.228.94])
- by localhost (katosiko.hut.fi [130.233.228.115]) (amavisd-new, port 10024)
- with LMTP id 28995-563 for <linux-ext4@vger.kernel.org>;
- Sat, 28 Apr 2012 04:56:03 +0300 (EEST)
-Received: from kosh.localdomain (kosh.hut.fi [130.233.228.12])
-	by smtp-4.hut.fi (8.13.6/8.12.10) with ESMTP id q3S1u0pl025376
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Apr 2012 04:56:00 +0300
-Content-Disposition: inline
-In-Reply-To: <4F9B4B16.4090903@redhat.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:40095 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752046Ab2D1DcZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Apr 2012 23:32:25 -0400
+Received: by pbbrp8 with SMTP id rp8so1232888pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Apr 2012 20:32:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi list,
 
---MIdTMoZhcV1D07fI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Currently, in ext4, write dio is serialized because i_mutex is locked in
+generic_file_aio_write.  But, when we overwrite some data without changing
+metadata, these dios can be parallelized.  So this patch set aims to make
+overwrite dio paralleled.
 
-On Fri, Apr 27, 2012 at 08:42:46PM -0500, Eric Sandeen wrote:
-> > (This bug report serves also as a preview of the Berserker toolkit
-> > that automates finding such bugs and minimizing the differences to
-> > pristine filesystems. I plan on making the announcement and making the
-> > toolkit available within the next few hours.)
->=20
-> sounds a bit like fsfuzzer, how is it different?
+When we overwrite some data, the metadata of this file doesn't need to be
+modified.  Thus, we can try to lock i_data_sem directly to synchronized all
+dio write operations.  First of all, a new wrapper function is defined instead
+of genereic_file_aio_write in order to avoid to lock i_mutex.  Then we need to
+define a new get_block function and a new flag for dio overwrite nolock feature
+so that we can avoid nested lock and deadlock.  In ext4_map_blocks, i_data_sem
+is acquired to do a lookup.  But after adding this new feature, this lock will
+be acquired in high level.  Obviouslyi, here is a nested lock and we need to
+avoid it.  Now, in ext4, we always start a new journal firstly, and then try to
+acquire i_data_sem.  When we do a overwrite dio, journal doesn't need to be
+created in order to avoid a deadlock.
 
-I hope the announcement I just sent responded to this; but basically,
-the toolkit works on a somewhat higher level (it uses zzuf, which I
-believe to be similar to fsfuzzer but actually only fuzzes the
-filesystem image and does not itself run tests on it; zzuf is not
-written by me). Mostly the toolkit is about managing a virtual machine
-to run tests automatically and about minimizing the differences to
-pristine filesystems.
+In new wrapper function, called ext4_file_dio_write, it checks whether
+conditions are satisfied or not.  If these are met, we lock i_data_sem directly
+and parallelize all write operations.
 
-I confess I'm not intimately familiar with fsfuzzer (I should be!),
-but I believe one of the advantages of berserker is that it automates
-the virtual machine stuff and provides convenient scripts that can be
-used with e.g. git bisect run.
+In first patch, two functions are defined in order to split into buffered IO and
+direct IO because we can keep buffered IO that still uses vfs path, and add new
+feature into dio path.
 
-	Sami
+In second patch, we add a new flag and a new function for get_block.  This
+get_block function only does a lookup without any locks.
 
---MIdTMoZhcV1D07fI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+In last patch, dio overwrite nolock is added.  This feature also need to use
+dioread_nolock option.  When a filesystem is mounted with dioread_nolock, this
+feature is enabled.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+I have run some benchmarks in my desktop to test this feature.  In my desktop,
+it has a Intel(R) Core(TM)2 Duo CPU E8400 @ 3.00GHz, 4G memory and a Intel X-25
+160G SSD.  I use fio to run my benchmarks and I compare dio overwrite nolock
+with w/o dioread_nolock and w/ dioread_nolock.
 
-iQIcBAEBCgAGBQJPm04wAAoJEKLT589SE0a0JcAP+gPiF864Jn2GV2dVpZ8c2Po/
-qHuPgpoo3woFClXzxt3i/oHteMFp8uu016/Ibye5oMmDiBAtaMhE0MNx4yxJdvZ9
-VF0Zja6qKit5Ot0456X5dzU8gwc8lqVl/wFKy22IML7TXdn9Bjq/wBwf5eQLoA7e
-PuQiQyx74oLI6jtgrHw9cH9RTUGidgjrQu8vZ/WjMJ8gf9OIRMsH5ZxN3poQ8pFh
-hXBMuOYKfek0cxylIgvBW4r8BdNEmmefLEIBGxX1XmP9b+ULb8+uzARl+rldRoIm
-cbhE1B2gE6QJTo2Qtv2yDDFzqXqPE4u5F3OLUNxL38ZvYQr5N1ruGMBd0y6ENZxa
-Dczh0SOyXnMkLQ/HeudZDgZSGcLkJ+jaR3AH5sU9rlaXHxmKLnzfrA3DFYtAg3Ww
-A//in8eDmxV7eLIhLeQb5OfIL8qyCbqxqHtcMchcmVOKtjPKO9AJ8j/0donKardH
-ZUtc8tcBnAjcFlmp1ziVd5NTv18JmLJBhm/qmDlFA8zqFxe3mT79QI0xlz9iW93W
-+CQQIlmiwjauL8UQrTOx+gZ6hUNDfBH1Z8ibsWwNo8WfhZhF2SMtSqJISmV+NUot
-Dbe+qEhGOuix0RqPpkgBeuXTAmJvTP8Rgoh63QROHLZpdtO6fzG2Nf3mqSgX7Wbb
-Ez1aMHUgMO70TvYOUdMN
-=Uuds
------END PGP SIGNATURE-----
+= case 1 =
+== config file ==
+[global]
+ioengine=psync
+direct=1
+bs=4k
+size=32G
+runtime=60
+directory=/mnt/ext4/
+filename=testfile
+group_reporting
+thread
 
---MIdTMoZhcV1D07fI--
+[file1]
+numjobs=1 # 4 8 16
+rw=randwrite
+
+== result (iops) ==
+write			1	4	8	16
+lock			7233	8612	9102	9165
+dioread_nolock		8217	8228	8673	8755
+diooverwrite_nolock	7740	15446	14563	17749
+
+= case 2 =
+== config file ==
+[global]
+ioengine=sync
+direct=1
+bs=4k
+size=32G
+runtime=60
+directory=/mnt/ext4/
+filename=testfile
+group_reporting
+thread
+
+[file1]
+numjobs=1 # 2 4 8
+rw=randread
+
+[file2]
+numjobs=1 # 2 4 8
+rw=randwrite
+
+== result (iops) ==
+read/write		2		4		8		16
+lock			614/4343	1346/3124	1271/3930 	1386/3904
+dioread_nolock		1040/1963	2162/1243	3980/1479 	13716/924
+diooverwrite_nolock	1006/1913	1973/2602	3683/4515 	6966/7260
+
+Regards,
+Zheng
+
+Zheng Liu (3):
+      ext4: split ext4_file_write into buffered IO and direct IO
+      ext4: add a new flag for ext4_map_blocks
+      ext4: add dio overwrite nolock
+
+ fs/ext4/ext4.h  |    2 +
+ fs/ext4/file.c  |  200 +++++++++++++++++++++++++++++++++++++++++++++++++------
+ fs/ext4/inode.c |   46 ++++++++++---
+ 3 files changed, 215 insertions(+), 33 deletions(-)
