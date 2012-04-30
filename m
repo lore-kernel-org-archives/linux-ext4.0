@@ -1,82 +1,74 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 15/23] jbd2: Change disk layout for metadata checksumming
-Date: Sun, 29 Apr 2012 22:08:22 -0600
-Message-ID: <2AF02E66-B6A1-499D-B4AD-C45C915F7005@dilger.ca>
-References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com> <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com> <20120428141933.GB29481@thunk.org> <FCF93AD5-A078-4855-BC8D-B7B046884411@dilger.ca> <20120429193921.GA7342@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH v2 1/4] ext4: Remove useless marking of superblock dirty
+Date: Mon, 30 Apr 2012 11:37:25 +0300
+Message-ID: <1335775045.2584.3.camel@sauron.fi.intel.com>
+References: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
+	 <1333367140-28370-2-git-send-email-artem.bityutskiy@linux.intel.com>
+	 <1334215249.13842.36.camel@sauron.fi.intel.com>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-XX/qQRnw927UyK8DsHrt"
+Cc: Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1334215249.13842.36.camel@sauron.fi.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+
+--=-XX/qQRnw927UyK8DsHrt
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Thu, 2012-04-12 at 10:20 +0300, Artem Bityutskiy wrote:
+> On Mon, 2012-04-02 at 14:45 +0300, Artem Bityutskiy wrote:
+> > From: Jan Kara <jack@suse.cz>
+> >=20
+> > Commit a0375156 properly notes that superblock doesn't need to be marke=
+d
+> > as dirty when only number of free inodes / blocks / number of directori=
+es
+> > changes since that is recomputed on each mount anyway. However that com=
+ment
+> > leaves some unnecessary markings as dirty in place. Remove these.
+> >=20
+> > Artem: tested using xfstests for both journalled and non-journalled ext=
+4.
+>=20
+> Hi Ted, what would be the fate of this patch-set?
+
+Hi Ted, I am sorry for being annoying, but what do you think about these
+patches?
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-XX/qQRnw927UyK8DsHrt
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:28061 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751696Ab2D3EIY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Apr 2012 00:08:24 -0400
-In-Reply-To: <20120429193921.GA7342@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-04-29, at 1:39 PM, Ted Ts'o wrote:
-> On Sat, Apr 28, 2012 at 04:58:12PM -0600, Andreas Dilger wrote:
->> 
->> I thought we originally discussed using the high 16 bits of the
->> t_flags field to store the checksum?  This would avoid the need to
->> change the disk format.
-> 
-> I don't recall that suggestion, but I like it.  One thing that will
-> get subtle about this is that t_flags is stored big-endian (jbd/jbd2
-> data structures are stored be, but the data structures in ext4 proper
-> are stored le; sigh).   So we'd have to do something like this:
-> 
-> typedef struct journal_block_tag_s
-> {
-> 	__u32		t_blocknr;	/* The on-disk block number */
-> 	__u16		t_checksum;	/* 16-bit checksum */
-> 	__u16		t_flags;	/* See below */
-> 	__u32		t_blocknr_high; /* most-significant high 32bits. */
-> } journal_block_tag_t;
-> 
-> ... and then make sure we change all of the places that access t_flags
-> using cpu_to_be32() and be32_to_cpu() get changed to the 16-bit
-> variant.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
 
-Sigh...
+iQIcBAABAgAGBQJPnk9FAAoJECmIfjd9wqK0B+EP/1B0aQpqUNtewM3b9uQhWpIY
+pS2F7SJBkF2lXyldBEuxTbFe4Q/lucIJlSZ503vdwF+y/dlmMtxNLWhLuBf8Wsk/
+jJFYY5V9iFu8qFPjJVTCFu2PZoWbncrYrW9QRMRol36TDhFKGdAHXj1Iz4FSSXVy
+t69wRiV7u4TzD26+76RpO5HFyXAhEXnv0A/54ReK6S3D3PpOsuijt49GYG41q/HU
+DSsG2kWgqV/rtQc7ZkjUU+6ZMB40gnDMP3771V+nqJhPoPwVyX04ybPAF6bivT3t
+ZE4reQpfPGrIES4KmHt3pMGVR3penwkKyVYynD1JLmFsfOcavyOHmeQhzDz+pX0h
+C+xjYn3J7NsIjZhMte+4XSvBTbubdUDeOnMBfeyKXvXEyLL3iUovDxzP8gF63Qyq
+bPRzyFXdwrYopuKSMYo4hRmSOmtUMWFlZTC+Qb/FwkfTxkz9nr+EL1h4uoS1exr7
+H+Mmku6S1Wrf7FY2Au3YJh6T0AJBVYbR4rHsNRwLMbNAknlkX3qeTh2tpYZNI3Ad
+wldOgI3xAFh+n9Dap49G80RqSYweIcGGTcT7fKnCj+tpobV8b0jj8mjGk+V6zoRH
+mboqGU20pWyMChiuVMbhXFTlDLZ/hf3XMYwIqFCR/ZkbUBYjNQzhGFVQOpz3vKdO
+UT+bJYE52+bGJyaD+lMU
+=PoBH
+-----END PGP SIGNATURE-----
 
->> Since there is still a whole transaction checksum, it isn't so
->> critical that the per-block checksum be strong.
->> 
->> One idea is to do the crc32c for each block, then store the high 16
->> bits into t_flags, and checksum the full 32-bit per-block checksums
->> to make the commit block checksum, to avoid having to do the block
->> checksums twice.
-> 
-> It's not critical because the hard drive is doing its own ECC.  So I'm
-> not that worried about detecting a large burst of bit errors, which is
-> the main advantage of using a larger CRC.  I'm more worried about a
-> disk block getting written to the wrong place, or not getting written
-> at all.  So whether the chance of detecting a wrong block is 99.9985%
-> at all (w/ a 16-bit checksum) or 99.9999% (with a 32-bit checksum),
-> at all, either is fine.
-> 
-> I'm not even sure I would worry combining the per-block checksums into
-> the commit block checksum.  In the rare case where there is an error
-> not detected by the 16-bit checksum which is detected in the commit
-> checksum, what are we supposed to do?  Throw away the entire commit
-> again?  Just simply testing to see what we do in this rare case is
-> going to be interesting / painful.
-
-The main reason to create the commit block checksum out of the
-per-block checksums is to avoid having to checksum the data blocks
-themselves twice.  That would be a significant overhead to compute,
-say, 4096 * 4kB = 16MB of block data, while computing the commit
-block checksum out of 4096 * 2 bytes = 8kB of the 16-bit checksums
-is relatively minor.
-
-Cheers, Andreas
-
-
-
-
-
+--=-XX/qQRnw927UyK8DsHrt--
