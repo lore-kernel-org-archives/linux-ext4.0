@@ -1,11 +1,10 @@
 From: djwong <djwong@us.ibm.com>
-Subject: Re: [PATCH 15/23] jbd2: Change disk layout for metadata
- checksumming
-Date: Mon, 30 Apr 2012 08:53:41 -0700
-Message-ID: <20120430155341.GC6938@tux1.beaverton.ibm.com>
+Subject: Re: [PATCH 05/23] ext4: Calculate and verify superblock checksum
+Date: Mon, 30 Apr 2012 09:19:37 -0700
+Message-ID: <20120430161937.GD6938@tux1.beaverton.ibm.com>
 References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
- <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com>
- <20120428141933.GB29481@thunk.org>
+ <20120306204828.1663.39312.stgit@elm3b70.beaverton.ibm.com>
+ <20120427200500.GA29481@thunk.org>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -21,88 +20,65 @@ To: "Ted Ts'o" <tytso@mit.edu>,
 	Joel Becker <jlbec@evilplan.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:35246 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753049Ab2D3Pyi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Apr 2012 11:54:38 -0400
-Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Mon, 30 Apr 2012 09:54:33 -0600
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120428141933.GB29481@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120427200500.GA29481@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Apr 28, 2012 at 10:19:33AM -0400, Ted Ts'o wrote:
-> On Tue, Mar 06, 2012 at 12:49:41PM -0800, Darrick J. Wong wrote:
-> > @@ -177,11 +189,17 @@ typedef struct journal_block_tag_s
-> >  	__be32		t_blocknr;	/* The on-disk block number */
-> >  	__be32		t_flags;	/* See below */
-> >  	__be32		t_blocknr_high; /* most-significant high 32bits. */
-> > +	__be32		t_checksum;	/* crc32c(uuid+seq+block) */
-> >  } journal_block_tag_t;
+On Fri, Apr 27, 2012 at 04:05:00PM -0400, Ted Ts'o wrote:
+> On Tue, Mar 06, 2012 at 12:48:28PM -0800, Darrick J. Wong wrote:
+> > diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> > index aca1790..90f7c2e 100644
+> > --- a/fs/ext4/ext4_jbd2.c
+> > +++ b/fs/ext4/ext4_jbd2.c
+> > @@ -138,16 +138,23 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+> >  }
 > >  
-> >  #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
-> >  #define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
+> >  int __ext4_handle_dirty_super(const char *where, unsigned int line,
+> > -			      handle_t *handle, struct super_block *sb)
+> > +			      handle_t *handle, struct super_block *sb,
+> > +			      int now)
+> >  {
+> >  	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+> >  	int err = 0;
+> >  
+> >  	if (ext4_handle_valid(handle)) {
+> > +		ext4_superblock_csum_set(sb,
+> > +				(struct ext4_super_block *)bh->b_data);
+> >  		err = jbd2_journal_dirty_metadata(handle, bh);
+> >  		if (err)
+> >  			ext4_journal_abort_handle(where, line, __func__,
+> >  						  bh, handle, err);
+> > +	} else if (now) {
+> > +		ext4_superblock_csum_set(sb,
+> > +				(struct ext4_super_block *)bh->b_data);
+> > +		mark_buffer_dirty(bh);
+> >  	} else
+> >  		sb->s_dirt = 1;
+> >  	return err;
 > 
-> There's a problem with this patch here --- we are changing the size of
-> journal_block_tag_t, which is an on-disk data structure.  So for
-> 64-bit journals, this represents a format change.  This means that if
-> you have a 64-bit file system that needs to have its journal
-> recovered, if the journal was written with an older kernel, and then
-> we try to recover it with a new kernel, things won't be good.
-> Similarly, for e2fsck's recovery code, it's not going to be able to
-> recover 64-bit file systems using current coding, since this patch
-> series changes the size of JBD2_TAG_SIZE64.
+> What's the point of having the ext4_handle_dirty_super_now() variant?
 > 
-> What we need to do is something like this:
-> 
-> #define JBD2_TAG_SIZE64 (offsetof(journal_block_tag_t, t_checksum))
-> #define JBD2_TAG_SIZE_CSUM (sizeof(journal_block_tag_t))
-> 
-> And then change the code appropriately in e2fsprogs and in the kernel
-> to use the correct tag size depending on the journal options.
+> I don't see the point of having this?
 
-Oops.  I forgot to update JBD2_TAG_SIZE64.
+I believe I was trying to get rid of the open-coded mark_buffer_dirty(sb)
+calls.  There isn't much of reason to have the now=0 path, though; if a caller
+really wants to mark s_dirt and nothing else, there's ext4_mark_super_dirty()
+for that.  That said, I wonder about that -- is it desirable to be able to say
+"I've changed the superblock, now update the checksum but don't do anything to
+write it out to disk right now"?
 
-I have a question, though -- it looks as though the code that handles reading
-and writing tags from raw disk blocks calls journal_tag_bytes() to determine
-the tag size, and manually increments a pointer "tagp" to step through the
-block.  This construction seems to be be sufficient to deal with possible
-differences between sizeof(journal_block_tag_t) and the on-disk tag size, and
-both increases over the 32bit tag size are gated on INCOMPAT_64BIT and
-INCOMPAT_CSUM_V2.
-
-Had I defined JBD2_TAG_SIZE64 with offsetof() as Ted did above, I think that
-journal_tag_bytes() would return the correct on-disk tag size, which should fix
-the scenario Ted outlined above.  The tag checksum set/verify functions would
-also need to be taught where t_checksum is (in the space occupied by
-t_blocknr_high) on a 32bit journal.  Could those two suggestions fix the
-problem without causing us to discard half the checksum bits?
-
-
-
-Well, not quite -- the calculation of tags per block in journal.c below the
-comment "journal descriptor can store up to n blocks -bzzz" probably ought to
-be using journal_tag_bytes(), not sizeof(journal_block_tag_t) to figure out how
-many tags can be crammed into a disk block, since right now I think it
-underreports the number of tags per block on a 32bit journal.
-journal_tag_disk_size() is a more descriptive name for journal_tag_bytes().
-
-As for putting half the checksum into the upper 16 bits of the flags field --
-is journal space at such a premium that we need to overload the field and
-reduce the strength of the checksum?  Enabling journal checksums on a 4k block
-filesystem causes tags_per_block to decrease from 512 to 341 on a 32bit journal
-and from 341 to 256 on a 64bit journal.  Do transactions typically have that
-many blocks?  I didn't think most transactions had 1-2MB of dirty data.
+After a few months' break, it seems clear to me that we could make the "else if
+(now)" clause the "else" clause and get rid of the now parameter.  Anything
+that really wants to set s_dirt=1 with no further action can call
+ext4_mark_super_dirty().
 
 --D
 > 
->        	   	       	    	      	     - Ted
+> 						- Ted
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
