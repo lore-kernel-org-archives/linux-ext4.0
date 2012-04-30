@@ -1,7 +1,7 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/3 V2] vfs: allow custom EOF in generic_file_llseek code
-Date: Mon, 30 Apr 2012 13:11:29 -0500
-Message-ID: <4F9ED5D1.2080707@redhat.com>
+Subject: [PATCH 2/3] ext4: use core vfs llseek code for dir seeks
+Date: Mon, 30 Apr 2012 13:14:03 -0500
+Message-ID: <4F9ED66B.7080304@redhat.com>
 References: <4F9AC770.8080004@redhat.com> <20120428183315.GA28349@parisc-linux.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -16,108 +16,133 @@ In-Reply-To: <20120428183315.GA28349@parisc-linux.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-For ext3/4 htree directories, using the vfs llseek function with
-SEEK_END goes to i_size like for any other file, but in reality
-we want the maximum possible hash value.  Recent changes
-in ext4 have cut & pasted generic_file_llseek() back into fs/ext4/dir.c,
-but replicating this core code seems like a bad idea, especially
-since the copy has already diverged from the vfs.
+Use the new functionality in generic_file_llseek_size() to
+accept a custom EOF position, and un-cut-and-paste all the
+vfs llseek code from ext4.
 
-This patch updates generic_file_llseek_size to accept
-both a custom maximum offset, and a custom EOF position.  With this
-in place, ext4_dir_llseek can pass in the appropriate maximum hash
-position for both maxsize and eof, and get what it wants.
+Also fix up comments on ext4_llseek() to reflect reality.
 
-As far as I know, this does not fix any bugs - nfs in the kernel
-doesn't use SEEK_END, and I don't know of any user who does.  But
-some ext4 folks seem keen on doing the right thing here, and I can't
-really argue.
-
-(Patch also fixes up some comments slightly)
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Eric Sandeen <sandeen@redaht.com>
 ---
 
-V2: Just add a new argument to the existing generic_file_llseek_size()
-function, per Matthew Wilcox's suggestion.
-
-diff --git a/fs/read_write.c b/fs/read_write.c
-index ffc99d2..e840d01 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -55,10 +55,11 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
-  * @file:	file structure to seek on
-  * @offset:	file offset to seek to
-  * @origin:	type of seek
-- * @size:	max size of file system
-+ * @size:	max size of this file in file system
-+ * @eof:	offset used for SEEK_END position
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index b867862..84161c9 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -312,74 +312,27 @@ static inline loff_t ext4_get_htree_eof(struct file *filp)
+ 
+ 
+ /*
+- * ext4_dir_llseek() based on generic_file_llseek() to handle both
+- * non-htree and htree directories, where the "offset" is in terms
+- * of the filename hash value instead of the byte offset.
++ * ext4_dir_llseek() calls generic_file_llseek_size to handle htree
++ * directories, where the "offset" is in terms of the filename hash
++ * value instead of the byte offset.
   *
-  * This is a variant of generic_file_llseek that allows passing in a custom
-- * file size.
-+ * maximum file size and a custom EOF position, for e.g. hashed directories
-  *
-  * Synchronization:
-  * SEEK_SET and SEEK_END are unsynchronized (but atomic on 64bit platforms)
-@@ -67,13 +68,13 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
+- * NOTE: offsets obtained *before* ext4_set_inode_flag(dir, EXT4_INODE_INDEX)
+- *       will be invalid once the directory was converted into a dx directory
++ * Because we may return a 64-bit hash that is well beyond offset limits,
++ * we need to pass the max hash as the maximum allowable offset in
++ * the htree directory case.
++ *
++ * For non-htree, ext4_llseek already chooses the proper max offset.
   */
- loff_t
- generic_file_llseek_size(struct file *file, loff_t offset, int origin,
--		loff_t maxsize)
-+		loff_t maxsize, loff_t eof)
+ loff_t ext4_dir_llseek(struct file *file, loff_t offset, int origin)
  {
  	struct inode *inode = file->f_mapping->host;
+-	loff_t ret = -EINVAL;
+ 	int dx_dir = is_dx_dir(inode);
++	loff_t htree_max = ext4_get_htree_eof(file);
  
- 	switch (origin) {
- 	case SEEK_END:
--		offset += i_size_read(inode);
-+		offset += eof;
- 		break;
- 	case SEEK_CUR:
- 		/*
-@@ -99,7 +100,7 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
- 		 * In the generic case the entire file is data, so as long as
- 		 * offset isn't at the end of the file then the offset is data.
- 		 */
--		if (offset >= i_size_read(inode))
-+		if (offset >= eof)
- 			return -ENXIO;
- 		break;
- 	case SEEK_HOLE:
-@@ -107,9 +108,9 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
- 		 * There is a virtual hole at the end of the file, so as long as
- 		 * offset isn't i_size or larger, return i_size.
- 		 */
--		if (offset >= i_size_read(inode))
-+		if (offset >= eof)
- 			return -ENXIO;
--		offset = i_size_read(inode);
-+		offset = eof;
- 		break;
- 	}
- 
-@@ -132,7 +133,8 @@ loff_t generic_file_llseek(struct file *file, loff_t offset, int origin)
- 	struct inode *inode = file->f_mapping->host;
- 
- 	return generic_file_llseek_size(file, offset, origin,
--					inode->i_sb->s_maxbytes);
-+					inode->i_sb->s_maxbytes,
-+					i_size_read(inode));
+-	mutex_lock(&inode->i_mutex);
+-
+-	/* NOTE: relative offsets with dx directories might not work
+-	 *       as expected, as it is difficult to figure out the
+-	 *       correct offset between dx hashes */
+-
+-	switch (origin) {
+-	case SEEK_END:
+-		if (unlikely(offset > 0))
+-			goto out_err; /* not supported for directories */
+-
+-		/* so only negative offsets are left, does that have a
+-		 * meaning for directories at all? */
+-		if (dx_dir)
+-			offset += ext4_get_htree_eof(file);
+-		else
+-			offset += inode->i_size;
+-		break;
+-	case SEEK_CUR:
+-		/*
+-		 * Here we special-case the lseek(fd, 0, SEEK_CUR)
+-		 * position-querying operation.  Avoid rewriting the "same"
+-		 * f_pos value back to the file because a concurrent read(),
+-		 * write() or lseek() might have altered it
+-		 */
+-		if (offset == 0) {
+-			offset = file->f_pos;
+-			goto out_ok;
+-		}
+-
+-		offset += file->f_pos;
+-		break;
+-	}
+-
+-	if (unlikely(offset < 0))
+-		goto out_err;
+-
+-	if (!dx_dir) {
+-		if (offset > inode->i_sb->s_maxbytes)
+-			goto out_err;
+-	} else if (offset > ext4_get_htree_eof(file))
+-		goto out_err;
+-
+-	/* Special lock needed here? */
+-	if (offset != file->f_pos) {
+-		file->f_pos = offset;
+-		file->f_version = 0;
+-	}
+-
+-out_ok:
+-	ret = offset;
+-out_err:
+-	mutex_unlock(&inode->i_mutex);
+-
+-	return ret;
++	if (likely(dx_dir))
++		return generic_file_llseek_size(file, offset, origin,
++						    htree_max, htree_max);
++	else
++		return ext4_llseek(file, offset, origin);
  }
- EXPORT_SYMBOL(generic_file_llseek);
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8de6755..4ba8215 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2401,7 +2401,7 @@ extern loff_t noop_llseek(struct file *file, loff_t offset, int origin);
- extern loff_t no_llseek(struct file *file, loff_t offset, int origin);
- extern loff_t generic_file_llseek(struct file *file, loff_t offset, int origin);
- extern loff_t generic_file_llseek_size(struct file *file, loff_t offset,
--		int origin, loff_t maxsize);
-+		int origin, loff_t maxsize, loff_t eof);
- extern int generic_file_open(struct inode * inode, struct file * filp);
- extern int nonseekable_open(struct inode * inode, struct file * filp);
+ /*
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb70f18..2f0bf2a 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -211,9 +211,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ }
  
-
+ /*
+- * ext4_llseek() copied from generic_file_llseek() to handle both
+- * block-mapped and extent-mapped maxbytes values. This should
+- * otherwise be identical with generic_file_llseek().
++ * ext4_llseek() handles both block-mapped and extent-mapped maxbytes values
++ * by calling generic_file_llseek_size() with the appropriate maxbytes
++ * value for each.
+  */
+ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+ {
+@@ -225,7 +225,8 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+ 	else
+ 		maxbytes = inode->i_sb->s_maxbytes;
+ 
+-	return generic_file_llseek_size(file, offset, origin, maxbytes);
++	return generic_file_llseek_size(file, offset, origin,
++					maxbytes, i_size_read(inode));
+ }
+ 
+ const struct file_operations ext4_file_operations = {
 
