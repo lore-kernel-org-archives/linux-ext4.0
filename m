@@ -1,85 +1,106 @@
 From: djwong <djwong@us.ibm.com>
-Subject: Re: [PATCH 05/23] ext4: Calculate and verify superblock checksum
-Date: Mon, 30 Apr 2012 09:19:37 -0700
-Message-ID: <20120430161937.GD6938@tux1.beaverton.ibm.com>
-References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
- <20120306204828.1663.39312.stgit@elm3b70.beaverton.ibm.com>
- <20120427200500.GA29481@thunk.org>
+Subject: Re: Update of e2fsprogs pu branch and ext4 dev branch
+Date: Mon, 30 Apr 2012 09:40:07 -0700
+Message-ID: <20120430164007.GE6938@tux1.beaverton.ibm.com>
+References: <E1SObU7-0004xb-KU@tytso-glaptop.cam.corp.google.com>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: "Ted Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Sunil Mushran <sunil.mushran@oracle.com>,
-	Martin K Petersen <martin.petersen@oracle.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Coly Li <colyli@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <gnehzuil.liu@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:42481 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752073Ab2D3QnA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Apr 2012 12:43:00 -0400
+Received: from /spool/local
+	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Mon, 30 Apr 2012 12:42:59 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id D192438C805C
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Apr 2012 12:40:12 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q3UGeCRc107262
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Apr 2012 12:40:12 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q3UMB0ir017056
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Apr 2012 18:11:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20120427200500.GA29481@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <E1SObU7-0004xb-KU@tytso-glaptop.cam.corp.google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 27, 2012 at 04:05:00PM -0400, Ted Ts'o wrote:
-> On Tue, Mar 06, 2012 at 12:48:28PM -0800, Darrick J. Wong wrote:
-> > diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> > index aca1790..90f7c2e 100644
-> > --- a/fs/ext4/ext4_jbd2.c
-> > +++ b/fs/ext4/ext4_jbd2.c
-> > @@ -138,16 +138,23 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
-> >  }
-> >  
-> >  int __ext4_handle_dirty_super(const char *where, unsigned int line,
-> > -			      handle_t *handle, struct super_block *sb)
-> > +			      handle_t *handle, struct super_block *sb,
-> > +			      int now)
-> >  {
-> >  	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
-> >  	int err = 0;
-> >  
-> >  	if (ext4_handle_valid(handle)) {
-> > +		ext4_superblock_csum_set(sb,
-> > +				(struct ext4_super_block *)bh->b_data);
-> >  		err = jbd2_journal_dirty_metadata(handle, bh);
-> >  		if (err)
-> >  			ext4_journal_abort_handle(where, line, __func__,
-> >  						  bh, handle, err);
-> > +	} else if (now) {
-> > +		ext4_superblock_csum_set(sb,
-> > +				(struct ext4_super_block *)bh->b_data);
-> > +		mark_buffer_dirty(bh);
-> >  	} else
-> >  		sb->s_dirt = 1;
-> >  	return err;
+On Sun, Apr 29, 2012 at 05:16:47PM -0400, Theodore Ts'o wrote:
 > 
-> What's the point of having the ext4_handle_dirty_super_now() variant?
+> I have updated the pu ("proposed updates") branch of e2fsprogs to
+> include the metadata checksum and inline data patches rebased against
+> the lastest changes in the e2fsprogs repository.  Note that these
+> patches have not been fully reviewed yet, and are still subject to
+> change!  In particular, the metadata checksum patches still have the
+> issue with the jbd2 checksuming code breaking 64-bit block numbers, and
+> inline data branches are causing a regression test failure.  I've
+> integrated them into the pu branch to make it easier for me to review
+> and test these changes, and so that other developers can see what is
+> going on.
 > 
-> I don't see the point of having this?
+> I also had to make some changes to the last inline data patch so that it
+> would apply given the changes which the metadata checksum patch series
+> had made to e2fsck/pass2.c.  I am not sure I did all off those changes
+> correctly, and I'd invite Darrick and Zheng to take a look at them to
+> make sure I didn't really screw something up.
 
-I believe I was trying to get rid of the open-coded mark_buffer_dirty(sb)
-calls.  There isn't much of reason to have the now=0 path, though; if a caller
-really wants to mark s_dirt and nothing else, there's ext4_mark_super_dirty()
-for that.  That said, I wonder about that -- is it desirable to be able to say
-"I've changed the superblock, now update the checksum but don't do anything to
-write it out to disk right now"?
-
-After a few months' break, it seems clear to me that we could make the "else if
-(now)" clause the "else" clause and get rid of the now parameter.  Anything
-that really wants to set s_dirt=1 with no further action can call
-ext4_mark_super_dirty().
+I didn't see anything obviously wrong...
 
 --D
 > 
+> As I've mentioned, the regression tests mostly pass, but critically
+> missing from both patch series are any kind of regression tests.  I
+> would really appreciate it if you would consider creating some of
+> those.  We may find some interesting bugs as part of the test creation
+> and validation process.
+> 
+> The pu branch is a **rewinding** branch; that is to say, I will be
+> periodically rebasing the patches on the pu branch to take into account
+> movement in the e2fsprogs master branch.  If you want to make any
+> changes to the patches at this point, please fork the following patch
+> queue on github, make the changes, and then (a) send the updated patch
+> to the mailing list, and (b) push it to github and ask me to pull it
+> from your tree.  That will save me a lot of time.  The github repo is
+> at:
+> 
+> 	git://github.com/tytso/e2fsprogs-cksum-patch-queue.git
+> 
+> and the github page can be found at:
+> 
+> 	https://github.com/tytso/e2fsprogs-cksum-patch-queue
+> 
+> I have been using the "guilt" package to manipulate the patch tree, but
+> you can also you quilt for the same purpose.
+> 
+> 
+> I have also added the first half of the metadata checksum patches to the
+> ext4 development tree.  Again, I've not fully finished reviewing the
+> patches, but they pass the regression test in the standard ext4 modes.
+> I haven't had a chance to enable metadata checksuming yet, and the jbd2
+> patches clearly need some revision (which is why they aren't in the ext4
+> patch queue yet).
+> 
+> The ext4 patch queue is also on github:
+> 
+> 	git://github.com/tytso/ext4-patch-queue.git
+> 	https://github.com/tytso/ext4-patch-queue/commits/master
+> 
+> The same comment applies for updating the patches that are on the
+> ext4-patch-queue.  Please start with the version of the patches in this
+> git tree, since I have had to make some changes so they would apply
+> cleanly against the latest kernel release.
+> 
+> There is a comment in the series file which indicates the commit ID of
+> e2fsprogs/ext4 the patchsets are currently based upon.  When I rebase
+> the patches to take into account newer commits, I will update the commit
+> ID in the series file.
+> 
 > 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
