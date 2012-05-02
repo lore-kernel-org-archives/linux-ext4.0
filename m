@@ -1,47 +1,203 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42895] jbd2 makes all system unresponsive
-Date: Wed, 2 May 2012 12:10:51 GMT
-Message-ID: <201205021210.q42CAp3S026655@bugzilla.kernel.org>
-References: <bug-42895-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC][PATCH 3/3] ext4: add dio overwrite nolock
+Date: Wed, 02 May 2012 10:05:33 -0500
+Message-ID: <4FA14D3D.40903@redhat.com>
+References: <1335584346-8070-1-git-send-email-wenqing.lz@taobao.com> <1335584346-8070-4-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bugzilla.kernel.org ([198.145.19.204]:51302 "EHLO
-	bugzilla.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755178Ab2EBMKv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 May 2012 08:10:51 -0400
-Received: from bugzilla.kernel.org (localhost [127.0.0.1])
-	by bugzilla.kernel.org (8.14.5/8.14.5) with ESMTP id q42CApK4026656
-	for <linux-ext4@vger.kernel.org>; Wed, 2 May 2012 12:10:51 GMT
-In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([209.132.183.28]:64488 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753405Ab2EBPFh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 May 2012 11:05:37 -0400
+In-Reply-To: <1335584346-8070-4-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42895
+On 4/27/12 10:39 PM, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> Aligned and overwrite direct IO can be parallelized.  In ext4_file_dio_write,
+> we first check whether these conditions are satisfied or not.  If so, we unlock
+> the i_mutex and acquire i_data_sem directly.  Meanwhile iocb->private is set to
+> indicate that this is a overwrite dio, and it will be processed in
+> ext4_ext_direct_IO.
 
+This copies almost 100 lines of generic_file_aio_write() back into
+ext4.  Do we really need to do this?  Copying core code into the
+fs can be a maintenance nightmare...
 
-Hugues Tranli <huguelectro@hotmail.fr> changed:
+I'll have to think more about the big picture and whether or not it's
+possible, but my first reaction is to find a way to leverage or modify
+existing IO code rather than pasting it all into ext4 with changes...
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |huguelectro@hotmail.fr
+-Eric
 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+>  fs/ext4/file.c |  140 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  1 files changed, 137 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index e5d6be3..8a5f713 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -100,9 +100,21 @@ static ssize_t
+>  ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+>  		    unsigned long nr_segs, loff_t pos)
+>  {
+> -	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+> -	int unaligned_aio = 0;
+> +	struct file *file = iocb->ki_filp;
+> +	struct address_space * mapping = file->f_mapping;
+> +	struct inode *inode = file->f_path.dentry->d_inode;
+> +	struct blk_plug plug;
+>  	ssize_t ret;
+> +	ssize_t written, written_buffered;
+> +	size_t length = iov_length(iov, nr_segs);
+> +	size_t ocount;		/* original count */
+> +	size_t count;		/* after file limit checks */
+> +	int unaligned_aio = 0;
+> +	int overwrite = 0;
+> +	loff_t *ppos = &iocb->ki_pos;
+> +	loff_t endbyte;
+> +
+> +	BUG_ON(iocb->ki_pos != pos);
+>  
+>  	if (!is_sync_kiocb(iocb))
+>  		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
+> @@ -121,7 +133,129 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+>  		ext4_aiodio_wait(inode);
+>  	}
+>  
+> -	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
+> +	mutex_lock(&inode->i_mutex);
+> +	blk_start_plug(&plug);
+> +
+> +	ocount = 0;
+> +	ret = generic_segment_checks(iov, &nr_segs, &ocount, VERIFY_READ);
+> +	if (ret)
+> +		goto unlock_out;
+> +
+> +	count = ocount;
+> +	pos = *ppos;
+> +
+> +	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
+> +
+> +	/* We can write back this queue in page reclaim */
+> +	current->backing_dev_info = mapping->backing_dev_info;
+> +	written = 0;
+> +
+> +	ret = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode));
+> +	if (ret)
+> +		goto out;
+> +
+> +	if (count == 0)
+> +		goto out;
+> +
+> +	ret = file_remove_suid(file);
+> +	if (ret)
+> +		goto out;
+> +
+> +	file_update_time(file);
+> +
+> +	iocb->private = NULL;
+> +
+> +	if (!unaligned_aio && !file->f_mapping->nrpages &&
+> +	    pos + length < i_size_read(inode) &&
+> +	    ext4_should_dioread_nolock(inode)) {
+> +		struct ext4_map_blocks map;
+> +		unsigned int blkbits = inode->i_blkbits;
+> +		int err;
+> +		int len;
+> +
+> +		map.m_lblk = pos >> blkbits;
+> +		map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
+> +			- map.m_lblk;
+> +		len = map.m_len;
+> +
+> +		err = ext4_map_blocks(NULL, inode, &map, 0);
+> +		if (err == len && (!map.m_flags ||
+> +		    map.m_flags & EXT4_MAP_MAPPED)) {
+> +			overwrite = 1;
+> +			iocb->private = &overwrite;
+> +			mutex_unlock(&inode->i_mutex);
+> +			down_read(&EXT4_I(inode)->i_data_sem);
+> +		}
+> +	}
+> +
+> +	if (file->f_mapping->nrpages && overwrite) {
+> +		overwrite = 0;
+> +		up_read(&EXT4_I(inode)->i_data_sem);
+> +		mutex_lock(&inode->i_mutex);
+> +	}
+> +
+> +	written = generic_file_direct_write(iocb, iov, &nr_segs, pos,
+> +						ppos, count, ocount);
+> +	if (written < 0 || written == count)
+> +		goto out;
+> +	/*
+> +	 * direct-io write to a hole: fall through to buffered I/O
+> +	 * for completing the rest of the request.
+> +	 */
+> +	pos += written;
+> +	count -= written;
+> +	written_buffered = generic_file_buffered_write(iocb, iov,
+> +					nr_segs, pos, ppos, count,
+> +					written);
+> +	/*
+> +	 * If generic_file_buffered_write() retuned a synchronous error
+> +	 * then we want to return the number of bytes which were
+> +	 * direct-written, or the error code if that was zero.  Note
+> +	 * that this differs from normal direct-io semantics, which
+> +	 * will return -EFOO even if some bytes were written.
+> +	 */
+> +	if (written_buffered < 0) {
+> +		ret = written_buffered;
+> +		goto out;
+> +	}
+> +
+> +	/*
+> +	 * We need to ensure that the page cache pages are written to
+> +	 * disk and invalidated to preserve the expected O_DIRECT
+> +	 * semantics.
+> +	 */
+> +	endbyte = pos + written_buffered - written - 1;
+> +	ret = filemap_write_and_wait_range(file->f_mapping, pos, endbyte);
+> +	if (ret == 0) {
+> +		written = written_buffered;
+> +		invalidate_mapping_pages(mapping,
+> +					 pos >> PAGE_CACHE_SHIFT,
+> +					 endbyte >> PAGE_CACHE_SHIFT);
+> +	} else {
+> +		/*
+> +		 * We don't know how much we wrote, so just return
+> +		 * the number of bytes which were direct-written
+> +		 */
+> +	}
+> +
+> +out:
+> +	current->backing_dev_info = NULL;
+> +	ret = written ? written : ret;
+> +
+> +unlock_out:
+> +	if (overwrite)
+> +		up_read(&EXT4_I(inode)->i_data_sem);
+> +	else
+> +		mutex_unlock(&inode->i_mutex);
+> +
+> +	if (ret > 0 || ret == -EIOCBQUEUED) {
+> +		ssize_t err;
+> +
+> +		err = generic_write_sync(file, pos, ret);
+> +		if (err < 0 && ret > 0)
+> +			ret = err;
+> +	}
+> +	blk_finish_plug(&plug);
+>  
+>  	if (unaligned_aio)
+>  		mutex_unlock(ext4_aio_mutex(inode));
 
-
-
---- Comment #2 from Hugues Tranli <huguelectro@hotmail.fr>  2012-05-02 12:10:49 ---
-Same issue on my computer using ext4 with Archlinux. I can hear my HDD writing
-every 3 seconds.
-Checked with iotop, it's jbd2 related. I don't remember having this in 3.2.
-Running 3.3.3 kernel was just painful. Switched to 3.3.4, it's a bit better but
-I can still hear my HDD very often. Especially when I use Chromium in spite of
-the cache is on tmpfs.
-Even I verify HDD S.M.A.R.T. sometimes, I hope this will be fixed soon.
-
-Here mount output: http://pastebin.archlinux.fr/441560
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
