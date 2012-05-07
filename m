@@ -1,222 +1,39 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [RFC][PATCH v2] ext4: add expose_stale_data flag in fallocate
-Date: Mon, 07 May 2012 05:39:20 -0400
-Message-ID: <4FA79848.2030308@redhat.com>
-References: <1336018469-6421-1-git-send-email-wenqing.lz@taobao.com> <4FA2596C.7050509@redhat.com> <20120507034420.GA3247@gmail.com>
+From: Daniel Pocock <daniel@pocock.com.au>
+Subject: ext4 barrier on SCSI vs SATA?
+Date: Mon, 07 May 2012 10:35:48 +0000
+Message-ID: <4FA7A584.5060902@pocock.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Eric Sandeen <sandeen@redhat.com>, Ted.Ts'o.tytso@mit.edu,
-	Dave Chinner <david@fromorbit.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Andreas Dilger <adilger@whamcloud.com>,
-	Szabolcs Szakacsits <szaka@tuxera.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120507034420.GA3247@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail1.trendhosting.net ([195.8.117.5]:54672 "EHLO
+	mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751757Ab2EGKnH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 May 2012 06:43:07 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail1.trendhosting.net (Postfix) with ESMTP id 271E01586F
+	for <linux-ext4@vger.kernel.org>; Mon,  7 May 2012 11:36:04 +0100 (BST)
+Received: from mail1.trendhosting.net ([127.0.0.1])
+	by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id 7YakPeREU5+p for <linux-ext4@vger.kernel.org>;
+	Mon,  7 May 2012 11:35:49 +0100 (BST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/06/2012 11:44 PM, Zheng Liu wrote:
-> On Thu, May 03, 2012 at 06:09:48AM -0400, Ric Wheeler wrote:
->> On 05/03/2012 12:14 AM, Zheng Liu wrote:
->>> Hi all,
->>>
->>> Here is the v2 of FALLOC_FL_NO_HIDE_STALE in fallocate.  Now no new flag is
->>> added into vfs in order to reduce the impacts and avoid a huge security hole.
->>> The application cannot call fallocate with a new flag to create an unwritten
->>> extent.  It needs to call ioctl to enable/disable this feature.  Meanwhile, in
->>> ioctl, filesystem will check CAP_SYS_RAWIO to ensure that the user has a
->>> privilege to switch on/off it.  Currently, I only implement it in ext4.
->> Hi Zheng,
->>
->> I thought that we had pretty much decided to try and fix the ext4
->> performance impact, not pursue this?
-> Hi Ric,
->
-> Sorry for the delay reply.  I fully agree with you about trying to improve the
-> ext4 performance.  But maybe it is useful for someone who quite needs to
-> avoid this overhead and can afford this huge security hole.  Just leave
-> this patch in the mailing list. :-)
->
-> Regards,
-> Zheng
 
-The problem is that when you put out a glaring security hole and label it a 
-"performance" patch, people will use it who don't understand.
 
-I strongly disagree with the patch, we need to fix the performance issue first 
-*before* looking at exposing stale data to users.
+I understand that for barriers to work, the fs needs to be able to tell
+the drive when to move data from hardware cache to the platter.
 
-Thanks,
+I notice various pages mention the SYNCHRONIZE CACHE command (SCSI) and
+the FLUSH_CACHE_EXT command (ATA) as if they are equivalent.
 
-Ric
+Looking more closely, I found the SYNCHRONIZE CACHE supports a block
+range, whereas it appears that FLUSH_CACHE_EXT always flushes the entire
+cache (maybe 32MB or 64MB on a SATA drive)
 
->
->>> Even though I try to reduce its impact, this feature still brings a security
->>> hole.  So the application must ensure that it initializes an unwritten extent
->>> by itself before reading it, and it is used in a limited environment.
->>>
->>> v1 ->   v2:
->>> * remove FALLOC_FL_NO_HIDE_STALE flag in vfs
->>> * add 'i_expose_stale_data' in ext4 to enable/disable it
->>>
->>> Regards,
->>> Zheng
->>>
->>>  From 530045b4a1f75df5afd40c0e20c89917f97d7d5a Mon Sep 17 00:00:00 2001
->>> From: Zheng Liu<wenqing.lz@taobao.com>
->>> Date: Thu, 3 May 2012 11:21:44 +0800
->>> Subject: [RFC][PATCH v2] ext4: add expose_stale_data flag in fallocate
->>>
->>> We can use fallocate to preallocate sequential blocks.  But these extents are
->>> uninitialized.  So when the application does a write, filesystem will
->>> initialized these unwritten extents and it brings a huge overhead in some
->>> cases.
->>>
->>> This patch adds a new flag in inode to indicate whether initialize an unwritten
->>> extent or not.  This flag is enable/disable within ioctl that switch on/off this
->>> feature.  The application must call ioctl to enable this feature before it tries
->>> to preallocate some blocks.
->>>
->>> Obviously, this feature brings a huge security hole.  The application must
->>> guarantee to initialize this file by itself before reading it at the same
->>> offset.  So the application *MUST* use it carefully.
->>>
->>> CC: Ric Wheeler<rwheeler@redhat.com>
->>> CC: Eric Sandeen<sandeen@redhat.com>
->>> CC: Ted Ts'o tytso@mit.edu>
->>> CC: Dave Chinner<david@fromorbit.com>
->>> CC: Lukas Czerner<lczerner@redhat.com>
->>> CC: Andreas Dilger<adilger@whamcloud.com>
->>> CC: Szabolcs Szakacsits<szaka@tuxera.com>
->>> Signed-off-by: Zheng Liu<wenqing.lz@taobao.com>
->>> ---
->>>   fs/ext4/ext4.h    |    5 +++++
->>>   fs/ext4/extents.c |    6 +++++-
->>>   fs/ext4/ioctl.c   |   43 +++++++++++++++++++++++++++++++++++++++++++
->>>   fs/ext4/super.c   |    1 +
->>>   4 files changed, 54 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->>> index 0e01e90..f56caf0 100644
->>> --- a/fs/ext4/ext4.h
->>> +++ b/fs/ext4/ext4.h
->>> @@ -593,6 +593,8 @@ enum {
->>>   #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
->>>   #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
->>>   #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
->>> +#define EXT4_IOC_GET_EXPOSE_STALE	_IOR('f', 17, int)
->>> +#define EXT4_IOC_SET_EXPOSE_STALE	_IOW('f', 18, int)
->>>
->>>   #if defined(__KERNEL__)&&   defined(CONFIG_COMPAT)
->>>   /*
->>> @@ -908,6 +910,9 @@ struct ext4_inode_info {
->>>   	 */
->>>   	tid_t i_sync_tid;
->>>   	tid_t i_datasync_tid;
->>> +
->>> +	/* expose stale data in creating a new extent */
->>> +	int i_expose_stale_data;
->>>   };
->>>
->>>   /*
->>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>> index abcdeab..14f54f1 100644
->>> --- a/fs/ext4/extents.c
->>> +++ b/fs/ext4/extents.c
->>> @@ -4269,6 +4269,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->>>   long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>>   {
->>>   	struct inode *inode = file->f_path.dentry->d_inode;
->>> +	struct ext4_inode_info *ei = EXT4_I(inode);
->>>   	handle_t *handle;
->>>   	loff_t new_size;
->>>   	unsigned int max_blocks;
->>> @@ -4312,7 +4313,10 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>>   		trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
->>>   		return ret;
->>>   	}
->>> -	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
->>> +	if (ei->i_expose_stale_data)
->>> +		flags = EXT4_GET_BLOCKS_CREATE;
->>> +	else
->>> +		flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
->>>   	if (mode&   FALLOC_FL_KEEP_SIZE)
->>>   		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
->>>   	/*
->>> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
->>> index 6eee255..a37db8e 100644
->>> --- a/fs/ext4/ioctl.c
->>> +++ b/fs/ext4/ioctl.c
->>> @@ -432,6 +432,47 @@ resizefs_out:
->>>   		return 0;
->>>   	}
->>>
->>> +	case EXT4_IOC_GET_EXPOSE_STALE: {
->>> +		int enable;
->>> +
->>> +		/* security check */
->>> +		if (!capable(CAP_SYS_RAWIO))
->>> +			return -EPERM;
->>> +
->>> +		/*
->>> +		 * currently only extent-based files support (pre)allocate with
->>> +		 * EXPOSE_STALE_DATA flag
->>> +		 */
->>> +		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
->>> +			return -EOPNOTSUPP;
->>> +
->>> +		enable = ei->i_expose_stale_data;
->>> +
->>> +		return put_user(enable, (int __user *) arg);
->>> +	}
->>> +
->>> +	case EXT4_IOC_SET_EXPOSE_STALE: {
->>> +		int enable;
->>> +
->>> +		/* security check */
->>> +		if (!capable(CAP_SYS_RAWIO))
->>> +			return -EPERM;
->>> +
->>> +		/*
->>> +		 * currently only extent-based files support (pre)allocate with
->>> +		 * EXPOSE_STALE_DATA flag
->>> +		 */
->>> +		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
->>> +			return -EOPNOTSUPP;
->>> +
->>> +		if (get_user(enable, (int __user *) arg))
->>> +			return -EFAULT;
->>> +
->>> +		ei->i_expose_stale_data = enable;
->>> +
->>> +		return 0;
->>> +	}
->>> +
->>>   	default:
->>>   		return -ENOTTY;
->>>   	}
->>> @@ -495,6 +536,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
->>>   	case EXT4_IOC_MOVE_EXT:
->>>   	case FITRIM:
->>>   	case EXT4_IOC_RESIZE_FS:
->>> +	case EXT4_IOC_GET_EXPOSE_STALE:
->>> +	case EXT4_IOC_SET_EXPOSE_STALE:
->>>   		break;
->>>   	default:
->>>   		return -ENOIOCTLCMD;
->>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> index e1fb1d5..6de2db0 100644
->>> --- a/fs/ext4/super.c
->>> +++ b/fs/ext4/super.c
->>> @@ -943,6 +943,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->>>   	ei->i_datasync_tid = 0;
->>>   	atomic_set(&ei->i_ioend_count, 0);
->>>   	atomic_set(&ei->i_aiodio_unwritten, 0);
->>> +	ei->i_expose_stale_data = 0;
->>>
->>>   	return&ei->vfs_inode;
->>>   }
+Does ext4 always flush all of the cache contents?  Or if the system is
+SCSI, does it only selectively flush the blocks that must be flushed to
+maintain coherency?
 
