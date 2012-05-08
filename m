@@ -1,82 +1,142 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: ext4, barrier, md/RAID1 and write cache
-Date: Tue, 8 May 2012 11:02:19 -0600
-Message-ID: <3FF04DCD-7CE4-486A-92F5-2337BC64AE50@dilger.ca>
-References: <4FA7A83E.6010801@pocock.com.au> <201205080024.54183.Martin@lichtvoll.de> <4FA85960.6040703@pocock.com.au> <201205081655.38146.ms@teamix.de> <4FA93BB2.9050509@pocock.com.au>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Martin Steigerwald <ms@teamix.de>,
-	Martin Steigerwald <Martin@lichtvoll.de>,
-	linux-ext4@vger.kernel.org
-To: Daniel Pocock <daniel@pocock.com.au>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:23317 "EHLO
-	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756772Ab2EHRCW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 8 May 2012 13:02:22 -0400
-In-Reply-To: <4FA93BB2.9050509@pocock.com.au>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On 2012-05-08, at 9:28 AM, Daniel Pocock wrote:
-> My impression is that the faster performance of the USB disk was a red
-> herring, and the problem really is just the nature of the NFS protocol
-> and the way it is stricter about server-side caching (when sync is
-> enabled) and consequently it needs more iops.
-> 
-> I've turned two more machines (a HP Z800 with SATA disk and a Lenovo
-> X220 with SSD disk) into NFSv3 servers, repeated the same tests, and
-> found similar performance on the Z800, but 20x faster on the SSD (which
-> can support more IOPS)
-
-Another possible option is to try "-o data=journal" for the ext4
-filesystem.  This will, in theory, turn your random IO workload to
-the filesystem into a streaming IO workload to the journal.  This
-is only useful if the filesystem is not continually busy, and needs
-a large enough journal (and enough RAM to match) to handle the burst
-IO loads.
-
-For example, if you are writing 1GB of data you need a 4GB journal
-size and 4GB of RAM to allow all of the data to burst into the journal
-and write into the filesystem asynchronously.  It it would also be
-interesting to see if there is a benefit from running with an external
-journal (possibly on a separate disk or an SSD), because then the
-synchronous part of the IO does not seek, and then the small IOs can
-be safely written to the filesystem asynchronously (they will be
-rewritten from the journal if the server crashes).
-
-Typically, data=journal mode will decrease I/O performance by 1/2,
-since all data is written twice, but in your case NFS is hurting the
-performance far more than this, so the extra "overhead" may still
-give better performance visible to the clients.
-
->>> All the iostat output is typically like this:
->>> Device:         rrqm/s   wrqm/s     r/s     w/s    rMB/s    wMB/s
->>> avgrq-sz avgqu-sz   await  svctm  %util
->>> dm-23             0.00     0.00    0.20  187.60     0.00     0.81
->>> 8.89     2.02   10.79   5.07  95.20
->>> dm-23             0.00     0.00    0.20  189.80     0.00     0.91
->>> 9.84     1.95   10.29   4.97  94.48
->>> dm-23             0.00     0.00    0.20  228.60     0.00     1.00
->>> 8.92     1.97    8.58   4.10  93.92
->>> dm-23             0.00     0.00    0.20  231.80     0.00     0.98
->>> 8.70     1.96    8.49   4.06  94.16
->>> dm-23             0.00     0.00    0.20  229.20     0.00     0.94
->>> 8.40     1.92    8.39   4.10  94.08
->> 
->> Hmmm, disk looks quite utilitzed. Are there other I/O workloads on the 
->> machine?
-> 
-> No, just me testing it
-
-Looking at these results, the average IO size is very small.  Looking
-at the writes/second of around 210w/s and the write bandwidth of 1MB/s,
-this is only an average write size of only 4.5kB.
-
-Cheers, Andreas
+From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Extended file stat: Splitting file- and fs-specific info?
+Date: Tue, 08 May 2012 21:19:42 +0100
+Message-ID: <16281.1336508382@redhat.com>
+References: <20120419140558.17272.74360.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, libc-alpha-9JcytcrH/bA+uJoB2kUjGw@public.gmane.org
+To: adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org,
+	smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, ben-/+tVBieCtBitmTQ+vhA3Yw@public.gmane.org,
+	Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, roland-/Z5OmTQCD9xF6kxbq+BtvQ@public.gmane.org
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20120419140558.17272.74360.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
 
+Should I split the file-specific info and the fs-specific info and make=
+ the
+second optional?  What I'm thinking of is something like this:
+
+Have a file information structure:
+
+struct statx {
+	/* 0x00 */
+	uint32_t	st_mask;	/* What results were written */
+	uint32_t	st_information;	/* Information about the file */
+	uint16_t	st_mode;	/* File mode */
+	uint16_t	__spare0[3];
+	/* 0x10 */
+	uint32_t	st_uid;		/* User ID of owner */
+	uint32_t	st_gid;		/* Group ID of owner */
+	uint32_t	st_nlink;	/* Number of hard links */
+	uint32_t	st_blksize;	/* Optimal size for filesystem I/O */
+	/* 0x20 */
+	struct statx_dev st_rdev;	/* Device ID of special file */
+	struct statx_dev st_dev;	/* ID of device containing file */
+	/* 0x30 */
+	int32_t		st_atime_ns;	/* Last access time (ns part) */
+	int32_t		st_btime_ns;	/* File creation time (ns part) */
+	int32_t		st_ctime_ns;	/* Last attribute change time (ns part) */
+	int32_t		st_mtime_ns;	/* Last data modification time (ns part) */
+	/* 0x40 */
+	int64_t		st_atime;	/* Last access time */
+	int64_t		st_btime;	/* File creation time */
+	int64_t		st_ctime;	/* Last attribute change time */
+	int64_t		st_mtime;	/* Last data modification time */
+	/* 0x60 */
+	uint64_t	st_ino;		/* Inode number */
+	uint64_t	st_size;	/* File size */
+	uint64_t	st_blocks;	/* Number of 512-byte blocks allocated */
+	uint64_t	st_gen;		/* Inode generation number */
+	uint64_t	st_version;	/* Data version number */
+	uint64_t	st_ioc_flags;	/* As FS_IOC_GETFLAGS */
+	/* 0x90 */
+	uint64_t	__spare1[13];	/* Spare space for future expansion */
+	/* 0x100 */
+};
+
+And an fs information structure for less commonly needed data:
+
+struct statx_fsinfo {
+	/* 0x00 - General info */
+	uint32_t	st_mask;	/* What optional fields are filled in */
+	uint32_t	st_type;	/* Filesystem type from linux/magic.h */
+
+	/* 0x08 - file timestamp granularity info */
+	uint16_t	st_atime_gran_mantissa;	/* gran(secs) =3D mant * 10^exp */
+	uint16_t	st_btime_gran_mantissa;
+	uint16_t	st_ctime_gran_mantissa;
+	uint16_t	st_mtime_gran_mantissa;
+	/* 0x10 */
+	int8_t		st_atime_gran_exponent;
+	int8_t		st_btime_gran_exponent;
+	int8_t		st_ctime_gran_exponent;
+	int8_t		st_mtime_gran_exponent;
+
+	/* 0x14 - I/O parameters */
+	uint32_t	st_blksize;	  /* File block size */
+	uint32_t	st_alloc_blksize; /* Allocation block size/alignment */
+	uint32_t	st_small_io_size; /* IO size/alignment that avoids fs/page ca=
+che RMW */
+	uint32_t	st_pref_io_size;  /* Preferred IO size for general usage */
+	uint32_t	st_large_io_size; /* IO size/alignment for high bandwidth seq=
+uential IO */
+
+	/* 0x28 - Restrictions on struct statx contents */
+	uint64_t	st_supported_ioc_flags; /* FS_IOC_GETFLAGS flags supported  *=
+/
+
+	/* 0x30 - Volume/filesystem information */
+	uint64_t	st_fsid;	/* Short 64-bit Filesystem ID (as statfs) */
+	uint64_t	__spare0[3];
+	/* 0x50 */
+	uint8_t		st_volume_id[16]; /* Volume/fs identifier */
+	uint8_t		st_volume_uuid[16]; /* Volume/fs UUID */
+	/* 0x80 */
+	uint64_t	__spare1[8];
+	/* 0xc0 */
+	uint8_t		st_volume_name[64]; /* Volume name (up to 64 chars) */
+	/* 0x100 */
+	uint8_t		st_domain_name[256]; /* Domain/cell/workgroup name (up to 256=
+ chars) */
+	/* 0x200 */
+};
+
+One could argue a bit over what goes in which, should we go for this.  =
+This
+may be better split between multiple syscalls though (with the race tha=
+t that
+implies) and potentially merging with statfs.
 
 
+The statxat() syscall [n=C3=A9e xstat] could then use the 6th parameter=
+ thusly:
 
+asmlinkage long sys_statxat(int dfd, const char __user *path, unsigned =
+flags,
+			    unsigned mask, struct statx __user *buffer,
+			    struct statx_fsinfo __user *fsinfo);
+
+
+letting fsinfo be NULL to indicate a lack of interest.  I'm not sure we=
+ want
+to do that, though.
+
+
+Also, do Dave Chinner's ideas for indicating five I/O parameters want t=
+o be
+32-bit numbers?  Larger?  Smaller?  Can they be log2?
+
+Note also, that I've suggested that we represent the timestamp granular=
+ity
+information as a decimal float (which requires 3 bytes per timestamp) a=
+nd that
+we provide separate granularities for each timestamp.
+
+David
