@@ -1,51 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
-Date: Wed,  9 May 2012 18:03:56 +0000 (UTC)
-Message-ID: <20120509180356.F1BBA11FCCF@bugzilla.kernel.org>
-References: <bug-42723-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 barrier on SCSI vs SATA?
+Date: Wed, 9 May 2012 21:50:56 +0200
+Message-ID: <20120509195056.GH5092@quack.suse.cz>
+References: <4FA7A584.5060902@pocock.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Daniel Pocock <daniel@pocock.com.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:60719 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48110 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751494Ab2EISD7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 May 2012 14:03:59 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 57B772023C
-	for <linux-ext4@vger.kernel.org>; Wed,  9 May 2012 18:03:58 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 69DFC20239
-	for <linux-ext4@vger.kernel.org>; Wed,  9 May 2012 18:03:57 +0000 (UTC)
-In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
+	id S1754439Ab2EITvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 May 2012 15:51:00 -0400
+Content-Disposition: inline
+In-Reply-To: <4FA7A584.5060902@pocock.com.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42723
+On Mon 07-05-12 10:35:48, Daniel Pocock wrote:
+> 
+> 
+> I understand that for barriers to work, the fs needs to be able to tell
+> the drive when to move data from hardware cache to the platter.
+> 
+> I notice various pages mention the SYNCHRONIZE CACHE command (SCSI) and
+> the FLUSH_CACHE_EXT command (ATA) as if they are equivalent.
+> 
+> Looking more closely, I found the SYNCHRONIZE CACHE supports a block
+> range, whereas it appears that FLUSH_CACHE_EXT always flushes the entire
+> cache (maybe 32MB or 64MB on a SATA drive)
+> 
+> Does ext4 always flush all of the cache contents?  Or if the system is
+> SCSI, does it only selectively flush the blocks that must be flushed to
+> maintain coherency?
+  We always flush the complete cache. Actually, there's no interface for
+filesystem to tell lower layers that only some blocks should be flushed
+AFAIK. And even if we could, journaling is designed so that we need to
+flush caches for most of blocks because usually data blocks need to be on
+stable storage when transaction commits.
 
-
-Peter Meier <peter.meier+kernel@immerda.ch> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |peter.meier+kernel@immerda.
-                   |                            |ch
-
-
-
-
---- Comment #4 from Peter Meier <peter.meier+kernel@immerda.ch>  2012-05-09 18:03:56 ---
-I encounter the same problems with an Intel SSD and ext4 using the latest
-kernel of Ubuntu 12.04 (3.2.0.24.26) or even a 3.4.0-030400rc4 version.
-
-Going back to the Kernel release 3.0.0-19 of Ubuntu 11.10 makes the problems
-going away.
-
-More information https://bugs.launchpad.net/ubuntu/+source/linux/+bug/992424
-
-If you need any more information please let me know.
-
+								Honza
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
