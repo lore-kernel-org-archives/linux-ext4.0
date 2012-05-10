@@ -1,40 +1,69 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 0/6] Extended file stat system call
-Date: Thu, 10 May 2012 10:51:38 +0100
-Message-ID: <10044.1336643498@redhat.com>
-References: <20120428005856.GI9541@dastard> <20120427010610.GE9541@dastard> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <4111.1335519545@redhat.com> <20120427131306.GG9541@dastard> <F2018580-9ACC-4A63-A8D1-155FA371749A@dilger.ca>
-Cc: dhowells@redhat.com, Andreas Dilger <adilger@dilger.ca>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, wine-devel@winehq.org, kfm-devel@kde.org,
-        nautilus-list@gnome.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <libc-alpha-return-28761-glibc-alpha=m.gmane.org@sourceware.org>
-In-Reply-To: <20120428005856.GI9541@dastard>
-List-Unsubscribe: <mailto:libc-alpha-unsubscribe-glibc-alpha=m.gmane.org@sourceware.org>
-List-Subscribe: <mailto:libc-alpha-subscribe@sourceware.org>
-List-Archive: <http://sourceware.org/ml/libc-alpha/>
-List-Post: <mailto:libc-alpha@sourceware.org>
-List-Help: <mailto:libc-alpha-help@sourceware.org>, <http://sourceware.org/ml/#faqs>
-Sender: libc-alpha-owner@sourceware.org
-List-Id: linux-ext4.vger.kernel.org
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH 1/2] ext4: teach resize report old blocks count correctly
+Date: Thu, 10 May 2012 21:15:41 +0800
+Message-ID: <CAGBYx2ZzJqcWHRoN1mhHAK+8K2v20ojULBRfmv3w26=mHSVb1w@mail.gmail.com>
+References: <1328065291-13607-1-git-send-email-xiaoqiangnk@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org, dsd@laptop.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:46123 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752299Ab2EJNPm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 May 2012 09:15:42 -0400
+Received: by qadb17 with SMTP id b17so289596qad.19
+        for <linux-ext4@vger.kernel.org>; Thu, 10 May 2012 06:15:41 -0700 (PDT)
+In-Reply-To: <1328065291-13607-1-git-send-email-xiaoqiangnk@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> wrote:
+ping?
 
-> 	st_blksize		- file block size
-> 	st_alloc_blksize	- allocation block size/alignment
-> 	st_small_io_size	- IO size/alignment that avoids
-> 				  filesystem/page cache RMW
-> 	st_preferred_io_size	- preferred IO size for general
-> 				  usage.
-> 	st_large_io_size	- IO size/alignment for high
-> 				  bandwidth sequential IO
+The 2nd patch of the series fixes a bug which I meet again when
+testing 64bit feature.
 
-What is st_blksize here?  Is it directly comparable (if such a thing is
-possible) to st_blksize in struct stat?  Or does st_preferred_io_size map to
-the current st_blksize and your st_blksize map to actual media block size (and
-if so, is that the same as st_alloc_blksize?  - I presume st_alloc_blksize
-must be a multiple of the media block size).
 
-David
+Yongqiang.
+
+On Wed, Feb 1, 2012 at 11:01 AM, Yongqiang Yang <xiaoqiangnk@gmail.com>=
+ wrote:
+> o_blocks_count should not be changed, becasuse it is used later when
+> reporting old blocks count in debug mode.
+>
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> ---
+> =A0fs/ext4/resize.c | =A0 =A03 +--
+> =A01 files changed, 1 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 59fa0be..601fea1 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -1654,8 +1654,7 @@ int ext4_resize_fs(struct super_block *sb, ext4=
+_fsblk_t n_blocks_count)
+> =A0 =A0 =A0 =A0 =A0 =A0es->s_log_groups_per_flex)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0flexbg_size =3D 1 << es->s_log_groups_=
+per_flex;
+>
+> - =A0 =A0 =A0 o_blocks_count =3D ext4_blocks_count(es);
+> - =A0 =A0 =A0 if (o_blocks_count =3D=3D n_blocks_count)
+> + =A0 =A0 =A0 if (ext4_blocks_count(es) =3D=3D n_blocks_count)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
+>
+> =A0 =A0 =A0 =A0flex_gd =3D alloc_flex_gd(flexbg_size);
+> --
+> 1.7.5.1
+>
+
+
+
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
