@@ -1,46 +1,52 @@
-From: Asdo <asdo@shiftmail.org>
-Subject: Re: ext4 barrier on SCSI vs SATA?
-Date: Fri, 11 May 2012 07:08:20 +0200
-Message-ID: <4FAC9EC4.1000906@shiftmail.org>
-References: <4FA7A584.5060902@pocock.com.au>
- <20120509195056.GH5092@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blade3.isti.cnr.it ([194.119.192.19]:1025 "EHLO
-	blade3.isti.cnr.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752006Ab2EKHTe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 May 2012 03:19:34 -0400
-Received: from [109.52.96.21] by mx.isti.cnr.it (PMDF V6.5-x6 #31988)
- with ESMTPSA id <01OFCJB4MHKCMAUZTA@mx.isti.cnr.it> for
- linux-ext4@vger.kernel.org; Fri, 11 May 2012 07:08:29 +0200 (MEST)
-In-reply-to: <20120509195056.GH5092@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Extended file stat: Splitting file- and fs-specific info?
+Date: Fri, 11 May 2012 02:54:13 -0600
+Message-ID: <258C4ED4-2FB3-4E3F-A99E-842D231BA869@dilger.ca>
+References: <73759631-F1E4-4352-9FE6-E9F576F793FB@gmail.com> <20120419140558.17272.74360.stgit@warthog.procyon.org.uk> <16281.1336508382@redhat.com> <20120509002420.GL5091@dastard> <14477.1336641794@redhat.com> <20120510171016.B45BA2C096@topped-with-meat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: David Howells <dhowells@redhat.com>,
+ Dave Chinner <david@fromorbit.com>,
+ "bfields@fieldses.org Fields" <bfields@fieldses.org>,
+ "smfrench@gmail.com French" <smfrench@gmail.com>,
+ "ben@decadent.org.uk Hutchings" <ben@decadent.org.uk>,
+ "Trond.Myklebust@netapp.com Myklebust" <Trond.Myklebust@netapp.com>,
+ "linux-fsdevel@vger.kernel.org Devel" <linux-fsdevel@vger.kernel.org>,
+ linux-nfs@vger.kernel.org,
+ linux-cifs@vger.kernel.org,
+ samba-technical@lists.samba.org,
+ "linux-ext4@vger.kernel.org List" <linux-ext4@vger.kernel.org>,
+ linux-api@vger.kernel.org,
+ libc-alpha@sourceware.org
+To: Roland McGrath <roland@hack.frob.com>
+Return-path: <libc-alpha-return-28830-glibc-alpha=m.gmane.org@sourceware.org>
+In-Reply-To: <20120510171016.B45BA2C096@topped-with-meat.com>
+List-Unsubscribe: <mailto:libc-alpha-unsubscribe-glibc-alpha=m.gmane.org@sourceware.org>
+List-Subscribe: <mailto:libc-alpha-subscribe@sourceware.org>
+List-Archive: <http://sourceware.org/ml/libc-alpha/>
+List-Post: <mailto:libc-alpha@sourceware.org>
+List-Help: <mailto:libc-alpha-help@sourceware.org>, <http://sourceware.org/ml/#faqs>
+Sender: libc-alpha-owner@sourceware.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/09/12 21:50, Jan Kara wrote:
-> []
+On 2012-05-10, at 11:10 AM, Roland McGrath wrote:
+> POSIX specifies st_blksize thusly: "A file system-specific preferred
+> I/O block size for this object. In some file system types, this may
+> vary from file to file."
+>=20
+> Since there is only one available to POSIX applications, it should map
+> to the one that's described as "preferred IO size for general usage".
 
-I have some troubles understanding the barriers thing, can you help me?
+Sure, but statxat() isn't a POSIX API.
 
+While I agree with the idea that there should be enough information =
+about the underlying layout for applications to be able to submit good =
+IO, it doesn't help if we have a bunch of extra fields that have vague =
+meanings.=20
 
-In the past some blockdevices would not provide / propagate the 
-barriers, e.g. MD raid 5 would not.  So filesystems during mount would 
-try the barrier operation and see that it wouldn't work, so they would 
-disable barrier option and mount as nobarrier.
+They will get filled in by the filesystem in a haphazard way, and will =
+not be used by application developers that don't understand what they =
+mean.
 
-However the flush was always available (I think), in fact databases 
-would not corrupt (not even above ext4 nobarrier, above a raid5 without 
-barriers) if fsync was called at proper times.
-
-So first question is : why filesystems were not using the flush as a 
-barrier like databases did?
-
-Second question is : was a nobarrier mount (ext4) more risky in terms of 
-data or metadata lost on sudden power loss?
-
-Thank you
-Asdo
+Cheers, Andreas
