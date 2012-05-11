@@ -1,7 +1,7 @@
 From: Ludwig Nussel <ludwig.nussel@suse.de>
-Subject: [PATCH 3/3] implement uid and gid mount options for ext4
-Date: Fri, 11 May 2012 13:10:08 +0200
-Message-ID: <1336734608-15157-4-git-send-email-ludwig.nussel@suse.de>
+Subject: [PATCH 1/3] implement uid and gid mount options for ext2
+Date: Fri, 11 May 2012 13:10:06 +0200
+Message-ID: <1336734608-15157-2-git-send-email-ludwig.nussel@suse.de>
 References: <1336660924-9598-1-git-send-email-ludwig.nussel@suse.d>
  <1336734608-15157-1-git-send-email-ludwig.nussel@suse.de>
 Cc: Ludwig Nussel <ludwig.nussel@suse.de>,
@@ -16,45 +16,49 @@ Cc: Ludwig Nussel <ludwig.nussel@suse.de>,
 	linux-ext4@vger.kernel.org (open list:EXT2 FILE SYSTEM),
 	linux-doc@vger.kernel.org (open list:DOCUMENTATION)
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:53106 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759419Ab2EKLKT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 May 2012 07:10:19 -0400
 In-Reply-To: <1336734608-15157-1-git-send-email-ludwig.nussel@suse.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Ludwig Nussel <ludwig.nussel@suse.de>
 ---
- Documentation/filesystems/ext4.txt |    9 ++++++
- fs/ext4/ext4.h                     |    4 +++
- fs/ext4/inode.c                    |   50 ++++++++++++++++++++++++++----------
- fs/ext4/super.c                    |   49 ++++++++++++++++++++++++++++++++++-
- 4 files changed, 97 insertions(+), 15 deletions(-)
+ Documentation/filesystems/ext2.txt |    9 ++++++
+ fs/ext2/ext2.h                     |    8 +++++
+ fs/ext2/inode.c                    |   42 ++++++++++++++++++++------
+ fs/ext2/super.c                    |   57 +++++++++++++++++++++++++++++++++++-
+ 4 files changed, 105 insertions(+), 11 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 1b7f9ac..b388ab5 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -245,6 +245,15 @@ resgid=n		The group ID which may use the reserved blocks.
+diff --git a/Documentation/filesystems/ext2.txt b/Documentation/filesystems/ext2.txt
+index 67639f9..fcc1002 100644
+--- a/Documentation/filesystems/ext2.txt
++++ b/Documentation/filesystems/ext2.txt
+@@ -42,6 +42,15 @@ orlov			(*)	Use the Orlov block allocator.
+ resuid=n			The user ID which may use the reserved blocks.
+ resgid=n			The group ID which may use the reserved blocks.
  
- resuid=n		The user ID which may use the reserved blocks.
- 
-+uid=n[:m]		Make all files appear to belong to uid n.
-+			Useful for e.g. removable media with fstab
-+			options 'user,uid=useruid'. The optional second
-+			uid m is actually written to the file system.
++uid=n[:m]			Make all files appear to belong to uid n.
++				Useful for e.g. removable media with fstab
++				options 'user,uid=useruid'. The optional second
++				uid m is actually written to the file system.
 +
-+gid=n[:m]		Make all files appear to belong to gid n.
-+			The optional second gid m is actually written to
-+			the file system.
++gid=n[:m]			Make all files appear to belong to gid n.
++				The optional second gid m is actually written to
++				the file system.
 +
- sb=n			Use alternate superblock at this location.
+ sb=n				Use alternate superblock at this location.
  
- quota			These options are ignored by the filesystem. They
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0e01e90..7155b2d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1155,6 +1155,10 @@ struct ext4_sb_info {
- 	ext4_fsblk_t s_sb_block;
+ user_xattr			Enable "user." POSIX Extended Attributes
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 0b2b4db..b584e45 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -84,6 +84,10 @@ struct ext2_sb_info {
+ 	unsigned long s_sb_block;
  	uid_t s_resuid;
  	gid_t s_resgid;
 +	uid_t s_uid;          /* make all files appear to belong to this uid */
@@ -64,47 +68,54 @@ index 0e01e90..7155b2d 100644
  	unsigned short s_mount_state;
  	unsigned short s_pad;
  	int s_addr_per_block_bits;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c77b0bd..86ce928 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3651,6 +3651,10 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+@@ -639,6 +643,10 @@ struct ext2_mount_options {
+ 	unsigned long s_mount_opt;
+ 	uid_t s_resuid;
+ 	gid_t s_resgid;
++	uid_t s_uid;
++	uid_t s_diskuid;
++	gid_t s_gid;
++	gid_t s_diskgid;
+ };
+ 
+ /*
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 740cad8..aabcb38 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1316,6 +1316,10 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
  		inode->i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
  		inode->i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
  	}
-+	if (EXT4_SB(sb)->s_uid)
-+		inode->i_uid = EXT4_SB(sb)->s_uid;
-+	if (EXT4_SB(sb)->s_gid)
-+		inode->i_gid = EXT4_SB(sb)->s_gid;
++	if (EXT2_SB(sb)->s_uid)
++		inode->i_uid = EXT2_SB(sb)->s_uid;
++	if (EXT2_SB(sb)->s_gid)
++		inode->i_gid = EXT2_SB(sb)->s_gid;
  	set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
- 
- 	ext4_clear_state_flags(ei);	/* Only relevant on 32-bit archs */
-@@ -3868,8 +3872,14 @@ static int ext4_do_update_inode(handle_t *handle,
- {
- 	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-+	uid_t uid = inode->i_uid;
-+	gid_t gid = inode->i_gid;
- 	struct buffer_head *bh = iloc->bh;
- 	int err = 0, rc, block;
+ 	inode->i_size = le32_to_cpu(raw_inode->i_size);
+ 	inode->i_atime.tv_sec = (signed)le32_to_cpu(raw_inode->i_atime);
+@@ -1419,6 +1423,10 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
+ 	struct ext2_inode * raw_inode = ext2_get_inode(sb, ino, &bh);
+ 	int n;
+ 	int err = 0;
 +	__le16 uid_low;
 +	__le16 gid_low;
 +	__le16 uid_high;
 +	__le16 gid_high;
  
- 	/* For fields not not tracking in the in-memory inode,
- 	 * initialise them to zero for new inodes. */
-@@ -3878,30 +3888,42 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	if (IS_ERR(raw_inode))
+  		return -EIO;
+@@ -1430,26 +1438,40 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
  
- 	ext4_get_inode_flags(ei);
+ 	ext2_get_inode_flags(ei);
  	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
-+	if (EXT4_SB(inode->i_sb)->s_uid)
-+		uid = EXT4_SB(inode->i_sb)->s_diskuid;
-+	if (EXT4_SB(inode->i_sb)->s_gid)
-+		gid = EXT4_SB(inode->i_sb)->s_diskgid;
- 	if (!(test_opt(inode->i_sb, NO_UID32))) {
--		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
--		raw_inode->i_gid_low = cpu_to_le16(low_16_bits(inode->i_gid));
++	if (EXT2_SB(sb)->s_uid)
++		uid = EXT2_SB(sb)->s_diskuid;
++	if (EXT2_SB(sb)->s_gid)
++		gid = EXT2_SB(sb)->s_diskgid;
+ 	if (!(test_opt(sb, NO_UID32))) {
+-		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(uid));
+-		raw_inode->i_gid_low = cpu_to_le16(low_16_bits(gid));
 +		uid_low = cpu_to_le16(low_16_bits(uid));
 +		gid_low = cpu_to_le16(low_16_bits(gid));
  /*
@@ -112,10 +123,8 @@ index c77b0bd..86ce928 100644
   * re-used with the upper 16 bits of the uid/gid intact
   */
  		if (!ei->i_dtime) {
--			raw_inode->i_uid_high =
--				cpu_to_le16(high_16_bits(inode->i_uid));
--			raw_inode->i_gid_high =
--				cpu_to_le16(high_16_bits(inode->i_gid));
+-			raw_inode->i_uid_high = cpu_to_le16(high_16_bits(uid));
+-			raw_inode->i_gid_high = cpu_to_le16(high_16_bits(gid));
 +			uid_high = cpu_to_le16(high_16_bits(uid));
 +			gid_high = cpu_to_le16(high_16_bits(gid));
  		} else {
@@ -125,10 +134,8 @@ index c77b0bd..86ce928 100644
 +			gid_high = 0;
  		}
  	} else {
--		raw_inode->i_uid_low =
--			cpu_to_le16(fs_high2lowuid(inode->i_uid));
--		raw_inode->i_gid_low =
--			cpu_to_le16(fs_high2lowgid(inode->i_gid));
+-		raw_inode->i_uid_low = cpu_to_le16(fs_high2lowuid(uid));
+-		raw_inode->i_gid_low = cpu_to_le16(fs_high2lowgid(gid));
 -		raw_inode->i_uid_high = 0;
 -		raw_inode->i_gid_high = 0;
 +		uid_low = cpu_to_le16(fs_high2lowuid(uid));
@@ -137,128 +144,121 @@ index c77b0bd..86ce928 100644
 +		gid_high = 0;
  	}
 +	/* don't mangle uid/gid of existing files if override is active */
-+	if (!EXT4_SB(inode->i_sb)->s_uid ||
-+			ext4_test_inode_state(inode, EXT4_STATE_NEW)) {
++	if (!EXT2_SB(sb)->s_uid || ei->i_state & EXT2_STATE_NEW) {
 +		raw_inode->i_uid_high = uid_high;
 +		raw_inode->i_uid_low = uid_low;
 +	}
-+	if (!EXT4_SB(inode->i_sb)->s_gid ||
-+			ext4_test_inode_state(inode, EXT4_STATE_NEW)) {
++	if (!EXT2_SB(sb)->s_gid || ei->i_state & EXT2_STATE_NEW) {
 +		raw_inode->i_gid_high = gid_high;
 +		raw_inode->i_gid_low = gid_low;
 +	}
 +
  	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
+ 	raw_inode->i_size = cpu_to_le32(inode->i_size);
+ 	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index e1025c7..0661574 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -236,6 +236,20 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
+ 	    le16_to_cpu(es->s_def_resgid) != EXT2_DEF_RESGID) {
+ 		seq_printf(seq, ",resgid=%u", sbi->s_resgid);
+ 	}
++	if (sbi->s_uid) {
++		if (sbi->s_uid != sbi->s_diskuid)
++			seq_printf(seq, ",uid=%u:%u",
++				sbi->s_uid, sbi->s_diskuid);
++		else
++			seq_printf(seq, ",uid=%u", sbi->s_uid);
++	}
++	if (sbi->s_gid) {
++		if (sbi->s_gid != sbi->s_diskgid)
++			seq_printf(seq, ",gid=%u:%u",
++				sbi->s_gid, sbi->s_diskgid);
++		else
++			seq_printf(seq, ",gid=%u", sbi->s_gid);
++	}
+ 	if (test_opt(sb, ERRORS_RO)) {
+ 		int def_errors = le16_to_cpu(es->s_errors);
  
- 	EXT4_INODE_SET_XTIME(i_ctime, inode, raw_inode);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e1fb1d5..5f121f3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1186,6 +1186,7 @@ enum {
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-+	Opt_uid, Opt_diskuid, Opt_gid, Opt_diskgid,
+@@ -393,7 +407,8 @@ enum {
+ 	Opt_err_ro, Opt_nouid32, Opt_nocheck, Opt_debug,
+ 	Opt_oldalloc, Opt_orlov, Opt_nobh, Opt_user_xattr, Opt_nouser_xattr,
+ 	Opt_acl, Opt_noacl, Opt_xip, Opt_ignore, Opt_err, Opt_quota,
+-	Opt_usrquota, Opt_grpquota, Opt_reservation, Opt_noreservation
++	Opt_usrquota, Opt_grpquota, Opt_reservation, Opt_noreservation,
++	Opt_uid, Opt_diskuid, Opt_gid, Opt_diskgid
  };
  
  static const match_table_t tokens = {
-@@ -1264,6 +1265,10 @@ static const match_table_t tokens = {
- 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
- 	{Opt_removed, "noreservation"}, /* mount option from ext2/3 */
- 	{Opt_removed, "journal=%u"},	/* mount option from ext2/3 */
+@@ -427,6 +442,10 @@ static const match_table_t tokens = {
+ 	{Opt_usrquota, "usrquota"},
+ 	{Opt_reservation, "reservation"},
+ 	{Opt_noreservation, "noreservation"},
 +	{Opt_uid, "uid=%u"},
 +	{Opt_diskuid, "uid=%u:%u"},
 +	{Opt_gid, "gid=%u"},
 +	{Opt_diskgid, "gid=%u:%u"},
- 	{Opt_err, NULL},
+ 	{Opt_err, NULL}
  };
  
-@@ -1498,6 +1503,24 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			return -1;
- 		*journal_ioprio = IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
- 		return 1;
-+	case Opt_uid:
-+		sbi->s_uid = sbi->s_diskuid = arg;
-+		return 1;
-+	case Opt_diskuid:
-+		sbi->s_uid = arg;
-+		if (match_int(&args[1], &arg))
-+			return -1;
-+		sbi->s_diskuid = arg;
-+		return 1;
-+	case Opt_gid:
-+		sbi->s_gid = sbi->s_diskgid = arg;
-+		return 1;
-+	case Opt_diskgid:
-+		sbi->s_gid = arg;
-+		if (match_int(&args[1], &arg))
-+			return -1;
-+		sbi->s_diskgid = arg;
-+		return 1;
- 	}
- 
- 	for (m = ext4_mount_opts; m->token != Opt_err; m++) {
-@@ -1713,7 +1736,7 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
- 	char sep = nodefs ? '\n' : ',';
- 
- #define SEQ_OPTS_PUTS(str) seq_printf(seq, "%c" str, sep)
--#define SEQ_OPTS_PRINT(str, arg) seq_printf(seq, "%c" str, sep, arg)
-+#define SEQ_OPTS_PRINT(str, args...) seq_printf(seq, "%c" str, sep, ##args)
- 
- 	if (sbi->s_sb_block != 1)
- 		SEQ_OPTS_PRINT("sb=%llu", sbi->s_sb_block);
-@@ -1738,6 +1761,18 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
- 	if (nodefs || sbi->s_resgid != EXT4_DEF_RESGID ||
- 	    le16_to_cpu(es->s_def_resgid) != EXT4_DEF_RESGID)
- 		SEQ_OPTS_PRINT("resgid=%u", sbi->s_resgid);
-+	if (sbi->s_uid) {
-+		if (sbi->s_uid != sbi->s_diskuid)
-+			SEQ_OPTS_PRINT("uid=%u:%u", sbi->s_uid, sbi->s_diskuid);
-+		else
-+			SEQ_OPTS_PRINT("uid=%u", sbi->s_uid);
-+	}
-+	if (sbi->s_gid) {
-+		if (sbi->s_gid != sbi->s_diskgid)
-+			SEQ_OPTS_PRINT("gid=%u:%u", sbi->s_gid, sbi->s_diskgid);
-+		else
-+			SEQ_OPTS_PRINT("gid=%u", sbi->s_gid);
-+	}
- 	def_errors = nodefs ? -1 : le16_to_cpu(es->s_errors);
- 	if (test_opt(sb, ERRORS_RO) && def_errors != EXT4_ERRORS_RO)
- 		SEQ_OPTS_PUTS("errors=remount-ro");
-@@ -4215,6 +4250,10 @@ struct ext4_mount_options {
- 	unsigned long s_mount_opt2;
- 	uid_t s_resuid;
- 	gid_t s_resgid;
-+	uid_t s_uid;
-+	uid_t s_diskuid;
-+	gid_t s_gid;
-+	gid_t s_diskgid;
- 	unsigned long s_commit_interval;
- 	u32 s_min_batch_time, s_max_batch_time;
- #ifdef CONFIG_QUOTA
-@@ -4245,6 +4284,10 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	old_opts.s_mount_opt2 = sbi->s_mount_opt2;
+@@ -568,6 +587,34 @@ static int parse_options(char *options, struct super_block *sb)
+ 			clear_opt(sbi->s_mount_opt, RESERVATION);
+ 			ext2_msg(sb, KERN_INFO, "reservations OFF");
+ 			break;
++		case Opt_uid:
++			if (match_int(&args[0], &option))
++				return 0;
++			sbi->s_uid = sbi->s_diskuid = option;
++			break;
++		case Opt_diskuid:
++			if (match_int(&args[0], &option))
++				return 0;
++			sbi->s_uid = option;
++
++			if (match_int(&args[1], &option))
++				return 0;
++			sbi->s_diskuid = option;
++			break;
++		case Opt_gid:
++			if (match_int(&args[0], &option))
++				return 0;
++			sbi->s_gid = sbi->s_diskgid = option;
++			break;
++		case Opt_diskgid:
++			if (match_int(&args[0], &option))
++				return 0;
++			sbi->s_gid = option;
++
++			if (match_int(&args[1], &option))
++				return 0;
++			sbi->s_diskgid = option;
++			break;
+ 		case Opt_ignore:
+ 			break;
+ 		default:
+@@ -1214,6 +1261,10 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
  	old_opts.s_resuid = sbi->s_resuid;
  	old_opts.s_resgid = sbi->s_resgid;
 +	old_opts.s_uid = sbi->s_uid;
 +	old_opts.s_diskuid = sbi->s_diskuid;
 +	old_opts.s_gid = sbi->s_gid;
 +	old_opts.s_diskgid = sbi->s_diskgid;
- 	old_opts.s_commit_interval = sbi->s_commit_interval;
- 	old_opts.s_min_batch_time = sbi->s_min_batch_time;
- 	old_opts.s_max_batch_time = sbi->s_max_batch_time;
-@@ -4402,6 +4445,10 @@ restore_opts:
- 	sbi->s_mount_opt2 = old_opts.s_mount_opt2;
+ 
+ 	/*
+ 	 * Allow the "check" option to be passed as a remount option.
+@@ -1300,6 +1351,10 @@ restore_opts:
+ 	sbi->s_mount_opt = old_opts.s_mount_opt;
  	sbi->s_resuid = old_opts.s_resuid;
  	sbi->s_resgid = old_opts.s_resgid;
 +	sbi->s_uid = old_opts.s_uid;
 +	sbi->s_diskuid = old_opts.s_diskuid;
 +	sbi->s_gid = old_opts.s_gid;
 +	sbi->s_diskgid = old_opts.s_diskgid;
- 	sbi->s_commit_interval = old_opts.s_commit_interval;
- 	sbi->s_min_batch_time = old_opts.s_min_batch_time;
- 	sbi->s_max_batch_time = old_opts.s_max_batch_time;
+ 	sb->s_flags = old_sb_flags;
+ 	spin_unlock(&sbi->s_lock);
+ 	return err;
 -- 
 1.7.7
+
