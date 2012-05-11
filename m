@@ -1,84 +1,73 @@
 From: Saugata Das <saugata.das@stericsson.com>
-Subject: [PATCH 1/2] block: add BH_Meta flag
-Date: Fri, 11 May 2012 20:32:56 +0530
-Message-ID: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
+Subject: [PATCH 2/2] ext4: annotate all meta data requests
+Date: Fri, 11 May 2012 20:32:57 +0530
+Message-ID: <1336748577-9258-2-git-send-email-saugata.das@stericsson.com>
+References: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <tytso@mit.edu>, <adilger@whamcloud.com>, <hch@infradead.org>,
 	<arnd.bergmann@linaro.org>, <venkat@linaro.org>,
 	Saugata Das <saugata.das@linaro.org>
 To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eu1sys200aog104.obsmtp.com ([207.126.144.117]:47104 "EHLO
-	eu1sys200aog104.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752082Ab2EKPHP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 May 2012 11:07:15 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Saugata Das <saugata.das@linaro.org>
 
 Today, storage devices like eMMC has special features like data tagging
 (introduced in MMC-4.5 version) in order to improve performance of some
-specific writes. On MMC stack, data tagging is used for all writes which
-has REQ_META flag set. This patch adds the capability to add REQ_META flag
-during meta data write.
+specific writes. On MMC stack, data tagging is used for all writes which has
+REQ_META flag set. On EXT4, however, currently REQ_META is set only for read.
+This patch adds the capability mark a meta-data buffer with set_buffer_meta
+during meta data write. During submit_bh, this information is used to set
+REQ_META flag.
 
 Signed-off-by: Saugata Das <saugata.das@linaro.org>
 ---
- fs/buffer.c                 |   10 ++++++++--
- include/linux/buffer_head.h |    2 ++
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ fs/ext4/ext4_jbd2.c |    4 ++++
+ fs/ext4/inode.c     |    4 +++-
+ 2 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 36d6665..688b38b 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1685,7 +1685,10 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 	do {
- 		struct buffer_head *next = bh->b_this_page;
- 		if (buffer_async_write(bh)) {
--			submit_bh(write_op, bh);
-+			if (buffer_meta(bh))
-+				submit_bh(write_op | REQ_META, bh);
-+			else
-+				submit_bh(write_op, bh);
- 			nr_underway++;
- 		}
- 		bh = next;
-@@ -1739,7 +1742,10 @@ recover:
- 		struct buffer_head *next = bh->b_this_page;
- 		if (buffer_async_write(bh)) {
- 			clear_buffer_dirty(bh);
--			submit_bh(write_op, bh);
-+			if (buffer_meta(bh))
-+				submit_bh(write_op | REQ_META, bh);
-+			else
-+				submit_bh(write_op, bh);
- 			nr_underway++;
- 		}
- 		bh = next;
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index ef26043..0776564 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -34,6 +34,7 @@ enum bh_state_bits {
- 	BH_Write_EIO,	/* I/O error on write */
- 	BH_Unwritten,	/* Buffer is allocated on disk but not written */
- 	BH_Quiet,	/* Buffer Error Prinks to be quiet */
-+	BH_Meta,	/* Is meta */
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index aca1790..097c062 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -107,6 +107,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ {
+ 	int err = 0;
  
- 	BH_PrivateStart,/* not a state bit, but the first bit available
- 			 * for private allocation by other entities
-@@ -126,6 +127,7 @@ BUFFER_FNS(Delay, delay)
- BUFFER_FNS(Boundary, boundary)
- BUFFER_FNS(Write_EIO, write_io_error)
- BUFFER_FNS(Unwritten, unwritten)
-+BUFFER_FNS(Meta, meta)
++	set_buffer_meta(bh);
++
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err) {
+@@ -143,6 +145,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+ 	int err = 0;
  
- #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
- #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
++	set_buffer_meta(bh);
++
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_dirty_metadata(handle, bh);
+ 		if (err)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c77b0bd..754fe77 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4035,8 +4035,10 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 		err = __ext4_get_inode_loc(inode, &iloc, 0);
+ 		if (err)
+ 			return err;
+-		if (wbc->sync_mode == WB_SYNC_ALL)
++		if (wbc->sync_mode == WB_SYNC_ALL) {
++			set_buffer_meta(iloc.bh);
+ 			sync_dirty_buffer(iloc.bh);
++		}
+ 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
+ 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
+ 					 "IO error syncing inode");
 -- 
 1.7.4.3
 
