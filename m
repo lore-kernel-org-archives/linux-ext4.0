@@ -1,93 +1,47 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH RESEND] implement uid and gid mount options for ext2,
- ext3 and ext4
-Date: Sun, 13 May 2012 14:46:19 +0300
-Message-ID: <4FAF9F0B.4010305@panasas.com>
-References: <1336660924-9598-1-git-send-email-ludwig.nussel@suse.de> <20120511034945.GA15892@mobil.systemanalysen.net> <4FAD2161.3090108@landley.net> <20120511164605.GC6467@thunk.org> <4FAD49EB.5010804@panasas.com> <20120511192235.GE6467@thunk.org>
+From: Steven Liu <lingjiujianke@gmail.com>
+Subject: Re: [PATCH] ext4: fix the code style from printk to ext_debug in extents.c
+Date: Sun, 13 May 2012 22:38:23 +0800
+Message-ID: <CADxeRwnr-q433_nEqj9UCse57c=aJVwPWfBmkqVgWmM7BNhdDw@mail.gmail.com>
+References: <CADxeRwnv7quZbWn9xZ=KnEg_KyT65DApEt57zDdgeYsRgQKYQw@mail.gmail.com>
+	<20120513042006.GA31866@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: "Ted Ts'o" <tytso@mit.edu>, Rob Landley <rob@landley.net>,
-	Ludwig Nussel <ludwig.nussel@suse.de>,
-	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, open list:
-	EXT2 FILE SYSTEM <linux-ext4@vger.kernel.org>, ; open list:
-	DOCUMENTATION <linux-doc@vger.kernel.org>, ;
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20120511192235.GE6467@thunk.org>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:34097 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752417Ab2EMOiZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 May 2012 10:38:25 -0400
+Received: by bkcji2 with SMTP id ji2so3195125bkc.19
+        for <linux-ext4@vger.kernel.org>; Sun, 13 May 2012 07:38:23 -0700 (PDT)
+In-Reply-To: <20120513042006.GA31866@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/11/2012 10:22 PM, Ted Ts'o wrote:
+Hi ,
+  You mean ,if open the CHECK_BINSEARCH, it must output the message
+which I have changed code?
 
-> On Fri, May 11, 2012 at 08:18:35PM +0300, Boaz Harrosh wrote:
->> How is that ext* special? You said "Unix systems" there are lots more
->> FSs more common to "Unix" systems
-> 
-> Well, because FreeBSD, NetBSD, and Hurd do support ext2/3*.  So if you
-> want a file system which is higher performance than VFAT, and
-> supported on Unix-like systems beyond Linux, ext* is the best choice
-> in a number of cases.
-> 
+Thanks
 
-
-That was a rhetorical questions. I meant  ext* is not special. There
-are plenty of other FFs that are common to unix systems.
-
-> As far as NTFS is concerned, the *BSD's can only support NTFS via
-> FUSE, and I've been suspicious about the quality of our ntfs support
-> under Linux --- we don't have a full-featured fsck for it, for
-> example.  I'm at least not comfortable using NTFS on my personal
-> machines.  (Last I checked there were all sorts of asterisks about
-> data corruption if the system crashed before Linux mounted it, since
-> apparently NTFS's logging subsystem was never reverse-engineered.)
-> 
-
-
-No! on all modern Linux distro's ntfs (ntfs-3g) is supported with
-that infamous FUSE driver. The Kernel driver is long dead. The same
-FUSE driver is also used under *BSD and officially supported by
-Apple in OSX. Last benchmarks I saw where Faster then ext2 and in-par
-with ext3, MetaData faster, IO slower then ext3. Stability is very
-good and I never had an issue, on any of the above systems.
-
-There is also a very good fsck and a suit of other tools under the same
-ntfs-3g project. To date I have fixed 10s of friends/family Windows
-machines with a Linux rescue USB-stick, I mean machines that would even
-boot.
-
->> As a maintainer of ext4 filesystem which is the official system for
->> Linux in many distrows, still. Please resists any such crap.
->> User "convenience-vs-security was never a geol of Unix.
-> 
-> Did you look at the proposal I made?  By making it something where the
-> file system is explicitly marked as "for interchange", it avoids the
-> security problem (as much as you can when you put your unencrypted
-> data on removable, portable storage which could be lost or stolen).
-> 
-> Sure, if you don't need to operate on the data as a mounted file
-> system, tar or cpio or zip is a good choice for maximal portability.
-> But if you want to do something like rsync on a portable SSD, 
-
-
-Again, for the last time, you are the maintainer, you do what you
-understand, I hope Linus or someone can make it more clear than me.
-
-There is nothing special about USB sticks and ext* filesystems it
-is the same old "shared files" problem. If you are not under a single
-NIS domain, then these are different users. If files need to be shared
-they need to sit in the proper CHMODed directory and bits.
-
-I have at home a bittorent network directory for the all family, So the
-first time I set it up I had to ssh into the server and fix the permissions.
-That was easy enough listen to learn.
-
-For the last time and I'm off this for good:
-	"Shared files" problem is not solved by mount options.
-
-Been there done that
-
-
-<snip>
+2012/5/13 Ted Ts'o <tytso@mit.edu>:
+> On Sat, May 12, 2012 at 11:57:13PM +0800, Steven Liu wrote:
+>> Hi Ted,
+>>
+>> just fix the printk debug to ext_debug, if undefined the EXT_DEBUG
+>> it will not output the debug message
+>>
+>> Signed-off-by: LiuQi <liuqi@zecloud.cn>
+>
+> I'm not sure what's the point? =A0The code in question is all under a
+> CHECK_BINSEARCH, which is in itself a debugging option.
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
