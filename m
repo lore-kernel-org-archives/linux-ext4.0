@@ -1,47 +1,64 @@
 From: Hugh Dickins <hughd@google.com>
-Subject: [PATCH] ext4: hole-punch use truncate_pagecache_range
-Date: Sun, 13 May 2012 13:47:00 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1205131342420.1547@eggly.anvils>
+Subject: Re: punch-hole should go beyond i_size
+Date: Sun, 13 May 2012 14:13:31 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1205131404040.1547@eggly.anvils>
+References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
-    linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Allison Henderson <achender@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:46109 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752746Ab2EMVNq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 May 2012 17:13:46 -0400
+Received: by pbbrp8 with SMTP id rp8so5307335pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 13 May 2012 14:13:46 -0700 (PDT)
+In-Reply-To: <4F0F08F6.2000205@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When truncating a file, we unmap pages from userspace first, as that's
-usually more efficient than relying, page by page, on the fallback in
-truncate_inode_page() - particularly if the file is mapped many times.
+On Thu, 12 Jan 2012, Allison Henderson wrote:
+> On 01/11/2012 07:55 PM, Dave Chinner wrote:
+> > On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
+> > > Hi Allison,
+> > > 
+> > > In thinking about fallocate() on tmpfs, I cross-check with ext4
+> > > and find this bug in its implementation of FALLOC_FL_PUNCH_HOLE:
+> > > 
+> > > rm -f temp
+> > > fallocate    -l 4096 temp
+> > > du temp				# shows 4, right
+> > > fallocate -p -l 4096 temp
+> > > du temp				# shows 0, right
+> > > rm -f temp
+> > > fallocate -n -l 4096 temp
+> > > du temp				# shows 4, right
+> > > fallocate -p -l 4096 temp
+> > > du temp				# shows 4, wrong
+> > > rm temp
+> > > 
+> > > ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
+> > > early return, and trimming to i_size below, but forgets that the other
+> > > variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
+> > > blocks beyond i_size.  They can be removed with ftruncate(), but it is
+> > > unexpected for fallocate() not to undo its own work, and xfs does so.
+> > 
+> > I'm pretty sure that's a bug as XFS allows punching holes in extents
+> > beyond EOF.
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> 
+> Oh I see, I'll take a look at it, I think it will be ok to just take out the
+> early return.  Thx!
 
-Do the same when punching a hole: 3.4 added truncate_pagecache_range()
-to do the unmap and trunc, so use it in ext4_ext_punch_hole(), instead
-of calling truncate_inode_pages_range() directly.
+I see the -EOPNOTSUPPs have gone into 3.4's ext4_punch_hole() - thanks -
+but the i_size issue remains unfixed.  I wouldn't be surprised if it were
+more complicated than you had hoped - I had no intention of trying a patch
+myself!  It's not an actual problem for me, but I thought I'd just send a
+reminder, before I move out of the hole-punching business.
 
-Signed-off-by: Hugh Dickins <hughd@google.com>
----
-
- fs/ext4/extents.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
---- next-20120511/fs/ext4/extents.c	2012-05-11 00:22:26.011158147 -0700
-+++ linux/fs/ext4/extents.c	2012-05-12 18:01:14.988654723 -0700
-@@ -4789,8 +4789,8 @@ int ext4_ext_punch_hole(struct file *fil
- 
- 	/* Now release the pages */
- 	if (last_page_offset > first_page_offset) {
--		truncate_inode_pages_range(mapping, first_page_offset,
--					   last_page_offset-1);
-+		truncate_pagecache_range(inode, first_page_offset,
-+					 last_page_offset - 1);
- 	}
- 
- 	/* finish any pending end_io work */
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Hugh
