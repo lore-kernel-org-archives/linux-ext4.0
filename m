@@ -1,32 +1,46 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix the code style from printk to ext_debug in
- extents.c
-Date: Sun, 13 May 2012 00:20:06 -0400
-Message-ID: <20120513042006.GA31866@thunk.org>
-References: <CADxeRwnv7quZbWn9xZ=KnEg_KyT65DApEt57zDdgeYsRgQKYQw@mail.gmail.com>
+Subject: Re: [PATCH RESEND] implement uid and gid mount options for ext2,
+ ext3 and ext4
+Date: Sun, 13 May 2012 00:24:35 -0400
+Message-ID: <20120513042435.GB31866@thunk.org>
+References: <1336660924-9598-1-git-send-email-ludwig.nussel@suse.de>
+ <20120511034945.GA15892@mobil.systemanalysen.net>
+ <4FAD2161.3090108@landley.net>
+ <20120511164605.GC6467@thunk.org>
+ <4FADB860.2000009@landley.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Steven Liu <lingjiujianke@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56753 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750749Ab2EMEUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 May 2012 00:20:10 -0400
+Cc: Ludwig Nussel <ludwig.nussel@suse.de>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"open list:EXT2 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+	"open list:DOCUMENTATION" <linux-doc@vger.kernel.org>
+To: Rob Landley <rob@landley.net>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CADxeRwnv7quZbWn9xZ=KnEg_KyT65DApEt57zDdgeYsRgQKYQw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4FADB860.2000009@landley.net>
+Sender: linux-doc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, May 12, 2012 at 11:57:13PM +0800, Steven Liu wrote:
-> Hi Ted,
-> 
-> just fix the printk debug to ext_debug, if undefined the EXT_DEBUG
-> it will not output the debug message
-> 
-> Signed-off-by: LiuQi <liuqi@zecloud.cn>
+On Fri, May 11, 2012 at 08:09:52PM -0500, Rob Landley wrote:
+> However, 95% of this use case is already covered by FAT, considering
+> that most of these people are going to want to interchange with windows
+> and mac, neither of which are necessarily happy with an ext3 formatted
+> USB stick. (Sadly, that's what I normally do.  My usb keychain is fat
+> formatted, because otherwise I can't use it to give a PDF to the guy at
+> kinko's to print out. I suspect this is why it hasn't previously come up
+> much.)
 
-I'm not sure what's the point?  The code in question is all under a
-CHECK_BINSEARCH, which is in itself a debugging option.
+The other reason why I suspect it hasn't come up often is that USB
+sticks are so painfully slow that the file system really isn't a
+bottleneck.
 
-		       	     	      		- Ted
+I would expct this might be different if you were using a removable
+HDD (or even an SSD) with a USB 3.0 interface.  In that case you
+really might want a bette file system than VFAT, especially if you are
+interchanging with another Linux system with an incompatible uid/gid
+namespace.  That's not nearly as common a use case, though.
+
+	    	       	      	 	      - Ted
