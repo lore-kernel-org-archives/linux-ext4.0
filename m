@@ -1,55 +1,47 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: dereference before check in ext4_move_extents()
-Date: Sun, 13 May 2012 21:43:21 +0300
-Message-ID: <20120513184321.GA16541@elgon.mountain>
+From: Hugh Dickins <hughd@google.com>
+Subject: [PATCH] ext4: hole-punch use truncate_pagecache_range
+Date: Sun, 13 May 2012 13:47:00 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1205131342420.1547@eggly.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:33093 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752256Ab2EMSnh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 May 2012 14:43:37 -0400
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+    linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi, going through some static checker warnings and reporting bugs.
-These were introduced a long time ago.
+When truncating a file, we unmap pages from userspace first, as that's
+usually more efficient than relying, page by page, on the fallback in
+truncate_inode_page() - particularly if the file is mapped many times.
 
-The patch 748de6736c1e: "ext4: online defrag -- Add EXT4_IOC_MOVE_EXT 
-ioctl" from Jun 17, 2009, leads to the following Smatch complaint:
+Do the same when punching a hole: 3.4 added truncate_pagecache_range()
+to do the unmap and trunc, so use it in ext4_ext_punch_hole(), instead
+of calling truncate_inode_pages_range() directly.
 
-fs/ext4/move_extent.c:1381 ext4_move_extents()
-	 warn: variable dereferenced before check 'holecheck_path' (see line 1292)
+Signed-off-by: Hugh Dickins <hughd@google.com>
+---
 
-fs/ext4/move_extent.c
-  1291			ext_prev = ext_cur;
-  1292			last_extent = mext_next_extent(orig_inode, holecheck_path,
-                                                                   ^^^^^^^^^^^^^^
-Dereferenced unconditionally inside the mext_next_extent() function.
+ fs/ext4/extents.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-  1293							&ext_cur);
-  1294			if (last_extent < 0) {
-  1295				ret1 = last_extent;
-  1296				break;
-  1297			}
+--- next-20120511/fs/ext4/extents.c	2012-05-11 00:22:26.011158147 -0700
++++ linux/fs/ext4/extents.c	2012-05-12 18:01:14.988654723 -0700
+@@ -4789,8 +4789,8 @@ int ext4_ext_punch_hole(struct file *fil
+ 
+ 	/* Now release the pages */
+ 	if (last_page_offset > first_page_offset) {
+-		truncate_inode_pages_range(mapping, first_page_offset,
+-					   last_page_offset-1);
++		truncate_pagecache_range(inode, first_page_offset,
++					 last_page_offset - 1);
+ 	}
+ 
+ 	/* finish any pending end_io work */
 
-	[snip]
-
-  1376			double_down_write_data_sem(orig_inode, donor_inode);
-  1377			if (ret1 < 0)
-  1378				break;
-  1379	
-  1380			/* Decrease buffer counter */
-  1381			if (holecheck_path)
-                            ^^^^^^^^^^^^^^
-Checked here.
-
-  1382				ext4_ext_drop_refs(holecheck_path);
-  1383			ret1 = get_ext_path(orig_inode, seq_start, &holecheck_path);
-
-regards,
-dan carpenter
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
