@@ -1,79 +1,55 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42895] jbd2 makes all system unresponsive
-Date: Sun, 13 May 2012 15:30:31 +0000 (UTC)
-Message-ID: <20120513153031.7EB4111FCE2@bugzilla.kernel.org>
-References: <bug-42895-13602@https.bugzilla.kernel.org/>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: dereference before check in ext4_move_extents()
+Date: Sun, 13 May 2012 21:43:21 +0300
+Message-ID: <20120513184321.GA16541@elgon.mountain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:56289 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753457Ab2EMPag (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 May 2012 11:30:36 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4A44A203C2
-	for <linux-ext4@vger.kernel.org>; Sun, 13 May 2012 15:30:35 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 85692203CD
-	for <linux-ext4@vger.kernel.org>; Sun, 13 May 2012 15:30:31 +0000 (UTC)
-In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:33093 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752256Ab2EMSnh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 May 2012 14:43:37 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42895
+Hi, going through some static checker warnings and reporting bugs.
+These were introduced a long time ago.
 
+The patch 748de6736c1e: "ext4: online defrag -- Add EXT4_IOC_MOVE_EXT 
+ioctl" from Jun 17, 2009, leads to the following Smatch complaint:
 
+fs/ext4/move_extent.c:1381 ext4_move_extents()
+	 warn: variable dereferenced before check 'holecheck_path' (see line 1292)
 
+fs/ext4/move_extent.c
+  1291			ext_prev = ext_cur;
+  1292			last_extent = mext_next_extent(orig_inode, holecheck_path,
+                                                                   ^^^^^^^^^^^^^^
+Dereferenced unconditionally inside the mext_next_extent() function.
 
+  1293							&ext_cur);
+  1294			if (last_extent < 0) {
+  1295				ret1 = last_extent;
+  1296				break;
+  1297			}
 
---- Comment #8 from Eugene <ivanovstm2@zmail.ru>  2012-05-13 15:30:31 ---
-There's related jbd2 bug in Ubuntu:
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/607560 - ext4 jbd2 writing
-block every 5-10 seconds, preventing disk spin-down and making noise. Even when
-PC is idle.
-Bug report open 2010.08 and still active; includes newest Ubuntu 12.04.
-+ half a dozen of threads on Ubuntu and Archlinux forums including thread for
-this bug:
-https://bbs.archlinux.org/viewtopic.php?id=139087 - Intense disk IO (jbd2 and
-flush) blocks user interface.
+	[snip]
 
-I personally not sure that this is jbd2's fault. Something must be going on in
-the system. The problem is that nobody is able to point a finger at the cause
-except that jbd2 writes to disk.
+  1376			double_down_write_data_sem(orig_inode, donor_inode);
+  1377			if (ret1 < 0)
+  1378				break;
+  1379	
+  1380			/* Decrease buffer counter */
+  1381			if (holecheck_path)
+                            ^^^^^^^^^^^^^^
+Checked here.
 
+  1382				ext4_ext_drop_refs(holecheck_path);
+  1383			ret1 = get_ext_path(orig_inode, seq_start, &holecheck_path);
 
-Following instructions given by Theodore Ts'O, I don't see excessive usage of
-fsync:
-http://paste.ubuntu.com/981398
+regards,
+dan carpenter
 
-block_dump of my idle system doesn't shows something out of ordinary except
-much of flush/jbd2 activity:
-http://paste.ubuntu.com/983568/
-(sda3 /, sda6 /home. Network Manager writes every 5min, xfconfd - every 10min;
-open apps - terminal, gedit, xfce thunar and light screensaver; syslog
-disabled).
-
-When I watch /proc/meminfo "Dirty:" field, it shows that during and *following*
-any system activity - memory being dirtied ~every 3-15 seconds (accompanied
-with audible HDD clicks) and flushed to disk. This goes on for some time then
-all quietens.
-"iotop" shows jbd2 writes and writes of process which it can't properly
-recognize.
-
-
-Is there a way to find a cause of flush and jbd2 writes? Like apllication name
-or PID?
-Preferably without need to patch/compile new kernel, so that as many people as
-possible can use it.
-
-
-P.S. Subjective feeling is that any work done on system (and often idling too)
-no matter how light is accompanied by noticeable HDD clicks every ~5sec. And
-opening even relatively light apps like gedit leads to bursts of loud HDD
-usage.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
