@@ -1,41 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15231] kernel BUG at fs/ext4/inode.c:1852!
-Date: Mon, 14 May 2012 15:06:03 +0000 (UTC)
-Message-ID: <20120514150604.01AE211FCE1@bugzilla.kernel.org>
-References: <bug-15231-13602@https.bugzilla.kernel.org/>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Date: Mon, 14 May 2012 11:23:34 -0400
+Message-ID: <20120514152334.GB29902@fieldses.org>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:58198 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755880Ab2ENPGK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 May 2012 11:06:10 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C548D2043D
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 15:06:05 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 087632042A
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 15:06:04 +0000 (UTC)
-In-Reply-To: <bug-15231-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <9124E59E-2479-4C32-A528-3237B48DEC01-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15231
+On Mon, May 14, 2012 at 09:02:12AM -0600, Andreas Dilger wrote:
+> On 2012-05-14, at 8:06, "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org> wrote:
+> > knfsd needs i_version updates on, as will userspace nfs servers and
+> > probably others.
+> > 
+> > The only effects are that inode->i_version is bumped (under the i_lock)
+> > in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
+> > more frequently than once per jiffy on write (see file_update_time).
+> > However the latter appears to be mostly a no-op in that case.
+> 
+> I thought this can have noticeable performance impact, since ext4_mark_inode_dirty() is quite heavyweight?
 
+There's no reason it should be, should it, if we already just dirtied
+the inode a moment ago?
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+> This is one of the reasons that the i_version update is conditional.
+> If someone is exporting a filesystem from userspace the should be able
+> to turn this on as a mount option, and knfsd could do it from inside
+> the kernel. Why add overhead when it is not needed?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-         Resolution|                            |UNREPRODUCIBLE
+Any user of the change attribute also wants it to function correctly
+while they're away.
 
+And if it at all possible I'd rather have it be something that Just
+Works rather than something that requires extra configuration.
 
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+--b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
