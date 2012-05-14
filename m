@@ -1,59 +1,51 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 barrier on SCSI vs SATA?
-Date: Mon, 14 May 2012 11:02:30 +0200
-Message-ID: <20120514090230.GA5353@quack.suse.cz>
-References: <4FA7A584.5060902@pocock.com.au>
- <20120509195056.GH5092@quack.suse.cz>
- <4FAC9EC4.1000906@shiftmail.org>
+Subject: Re: [PATCH] ext2: cleanup the comment for ext2_export_ops
+Date: Mon, 14 May 2012 11:55:25 +0200
+Message-ID: <20120514095525.GD5353@quack.suse.cz>
+References: <4FB0B0F4.3060908@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Asdo <asdo@shiftmail.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Wang Sheng-Hui <shhuiw@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42684 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:45948 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754331Ab2ENJCr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 May 2012 05:02:47 -0400
+	id S1755434Ab2ENJ4M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 May 2012 05:56:12 -0400
 Content-Disposition: inline
-In-Reply-To: <4FAC9EC4.1000906@shiftmail.org>
+In-Reply-To: <4FB0B0F4.3060908@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 11-05-12 07:08:20, Asdo wrote:
-> On 05/09/12 21:50, Jan Kara wrote:
-> I have some troubles understanding the barriers thing, can you help me?
-> 
-> In the past some blockdevices would not provide / propagate the
-> barriers, e.g. MD raid 5 would not.  So filesystems during mount
-> would try the barrier operation and see that it wouldn't work, so
-> they would disable barrier option and mount as nobarrier.
-  Correct.
-
-> However the flush was always available (I think), in fact databases
-> would not corrupt (not even above ext4 nobarrier, above a raid5
-> without barriers) if fsync was called at proper times.
-  This is not true. Both cache flushes and barriers were implemented by
-the same mechanism in older kernels. Thus if the device did not properly
-propagate the barrier capability, then fsync did not provide any guarantees
-in case of power failure (if there are volalile write caches in the storage
-device).
-
-> So first question is : why filesystems were not using the flush as a
-> barrier like databases did?
-  The above explains that I guess.
-
-> Second question is : was a nobarrier mount (ext4) more risky in
-> terms of data or metadata lost on sudden power loss?
-  Sure, if you have volatile write caches (normal situation on all disk
-drives when you don't have UPS), then nobarrier can cause filesystem
-corruption on power failure. It was like that before and it is still true.
-Nobarrier is there for cases like - you are sure you won't have unexpected
-power failure (you have UPS or laptop with working battery and everything
-is setup to shutdown the system cleanly when the battery gets low), or you
-have disabled write caches on the device, or the device itself has battery
-backed caches (the case of higher grade storage cards or NAS).
+On Mon 14-05-12 15:15:00, Wang Sheng-Hui wrote:
+> ext2_export_ops gets more valued fields, not get_parent only.
+> Clean up the comment.
+  Um, I'd just remove the whole comment. It isn't particularly informative
+anyway - NULL meaning the default behavior is very common in kernel. And we
+really set about half of entries anyway...
 
 								Honza
+> 
+> Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+> ---
+>  fs/ext2/super.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index e1025c7..640b4c6 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -359,7 +359,6 @@ static struct dentry *ext2_fh_to_parent(struct super_block *sb, struct fid *fid,
+>  /* Yes, most of these are left as NULL!!
+>   * A NULL value implies the default, which works with ext2-like file
+>   * systems, but can be improved upon.
+> - * Currently only get_parent is required.
+>   */
+>  static const struct export_operations ext2_export_ops = {
+>  	.fh_to_dentry = ext2_fh_to_dentry,
+> -- 
+> 1.7.1
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
