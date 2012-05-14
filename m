@@ -1,42 +1,39 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
-Date: Mon, 14 May 2012 04:55:42 +0000 (UTC)
-Message-ID: <20120514045542.AE10A11FCE3@bugzilla.kernel.org>
-References: <bug-42723-13602@https.bugzilla.kernel.org/>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: [PATCH] ext2: cleanup the comment for ext2_export_ops
+Date: Mon, 14 May 2012 15:15:00 +0800
+Message-ID: <4FB0B0F4.3060908@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:41442 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752624Ab2ENEzu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 May 2012 00:55:50 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1B16120307
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 04:55:48 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id B3C2E2038C
-	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 04:55:42 +0000 (UTC)
-In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:55468 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754540Ab2ENHPX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 May 2012 03:15:23 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42723
+ext2_export_ops gets more valued fields, not get_parent only.
+Clean up the comment.
 
+Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+---
+ fs/ext2/super.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-Jim Bander <jim.bander@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jim.bander@gmail.com
-
-
-
-
---- Comment #5 from Jim Bander <jim.bander@gmail.com>  2012-05-14 04:55:42 ---
-It also started on Ubuntu maverick when I updated to 2.6.35.32.42
-
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index e1025c7..640b4c6 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -359,7 +359,6 @@ static struct dentry *ext2_fh_to_parent(struct super_block *sb, struct fid *fid,
+ /* Yes, most of these are left as NULL!!
+  * A NULL value implies the default, which works with ext2-like file
+  * systems, but can be improved upon.
+- * Currently only get_parent is required.
+  */
+ static const struct export_operations ext2_export_ops = {
+ 	.fh_to_dentry = ext2_fh_to_dentry,
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.1
