@@ -1,56 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] ext4: turn on i_version updates by default
-Date: Mon, 14 May 2012 10:06:18 -0400
-Message-ID: <20120514140618.GA29902@fieldses.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32122] Kernel BUG on accessing intentionally corrupted
+ filesystem
+Date: Mon, 14 May 2012 14:32:31 +0000 (UTC)
+Message-ID: <20120514143231.5913211FCE2@bugzilla.kernel.org>
+References: <bug-32122-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:56124 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756666Ab2ENOci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 May 2012 10:32:38 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5989920425
+	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 14:32:33 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id 5CB152041E
+	for <linux-ext4@vger.kernel.org>; Mon, 14 May 2012 14:32:31 +0000 (UTC)
+In-Reply-To: <bug-32122-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-knfsd needs i_version updates on, as will userspace nfs servers and
-probably others.
+https://bugzilla.kernel.org/show_bug.cgi?id=32122
 
-The only effects are that inode->i_version is bumped (under the i_lock)
-in more places, and that ->dirty_inode(I_DIRTY_DATASYNC) may be called
-more frequently than once per jiffy on write (see file_update_time).
-However the latter appears to be mostly a no-op in that case.
 
-So, simplify our life and just keep this feature turned on all the time.
+Alan <alan@lxorguk.ukuu.org.uk> changed:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/ext4/super.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+                 CC|                            |alan@lxorguk.ukuu.org.uk
+         Resolution|                            |CODE_FIX
 
-If people are worried that the performance impact isn't obvious, I'll
-find the time somehow to test this properly....
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e1fb1d5..a99f827 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1483,7 +1483,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
- 		return 1;
- 	case Opt_i_version:
--		sb->s_flags |= MS_I_VERSION;
-+		/* no-op; this is on by default now */
- 		return 1;
- 	case Opt_journal_dev:
- 		if (is_remount) {
-@@ -2979,6 +2979,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto out_free_orig;
- 	}
- 	sb->s_fs_info = sbi;
-+	sb->s_flags |= MS_I_VERSION;
- 	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT4_DEF_RESUID;
- 	sbi->s_resgid = EXT4_DEF_RESGID;
+
+
 -- 
-1.7.9.5
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
