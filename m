@@ -1,286 +1,49 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default
-Date: Tue, 15 May 2012 11:03:17 +0300
-Message-ID: <4FB20DC5.2040202@panasas.com>
-References: <1337021239-2790-1-git-send-email-josef@redhat.com> <20120514224427.GY5353@quack.suse.cz>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch v2] ext4: potential NULL dereference on error
+Date: Tue, 15 May 2012 11:46:40 +0300
+Message-ID: <20120515084640.GB30265@elgon.mountain>
+References: <20120514222535.GW5353@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Josef Bacik <josef@redhat.com>, <linux-ext4@vger.kernel.org>,
-	<linux-nfs@vger.kernel.org>, <bfields@fieldses.org>,
-	<adilger@dilger.ca>, <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:57857 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757279Ab2EOIKC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 May 2012 04:10:02 -0400
-In-Reply-To: <20120514224427.GY5353@quack.suse.cz>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:32999 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757898Ab2EOIr1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 May 2012 04:47:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20120514222535.GW5353@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/15/2012 01:44 AM, Jan Kara wrote:
+The ext4_get_group_desc() function returns NULL on error, and
+ext4_free_inodes_count() function dereferences it without checking.
+There is a check on the next line, but it's too late.
 
-> On Mon 14-05-12 14:47:19, Josef Bacik wrote:
->> This makes MS_I_VERSION be turned on by default.  Ext4 had been
->> unconditionally doing i_version++ in a few cases anway so the mount option
->> was kind of silly.  This patch also removes the update in mark_inode_dirty
->> and makes all of the cases where we update ctime also do inode_inc_iversion.
->> file_update_time takes care of the write case and all the places where we
->> update iversion are protected by the i_mutex so there should be no extra
->> i_lock overhead in the normal non-exported fs case.  Thanks,
->   Looks OK but it seems slightly fragile (forgetting to update i_version
-> when we add a place where we update i_ctime looks rather easy). So maybe we
-> should have a small helper like ext4_inode_update_time() which would update
-> c/mtime and i_version?
-> 
-> 								Honza
->  
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+v2: cleaned up the style
 
-
-Exactly my thought. And there is already an helper function - inode_inc_iversion()
-But I agree that a name change is appropriate.
-
-Cheers
-Boaz
-
->> Signed-off-by: Josef Bacik <josef@redhat.com>
->> ---
->>  fs/ext4/acl.c      |    1 +
->>  fs/ext4/extents.c  |    3 +++
->>  fs/ext4/indirect.c |    1 +
->>  fs/ext4/inode.c    |    3 ---
->>  fs/ext4/ioctl.c    |    2 ++
->>  fs/ext4/namei.c    |   14 ++++++++++----
->>  fs/ext4/super.c    |    5 +++--
->>  fs/ext4/xattr.c    |    1 +
->>  8 files changed, 21 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
->> index a5c29bb..fb3ff80 100644
->> --- a/fs/ext4/acl.c
->> +++ b/fs/ext4/acl.c
->> @@ -202,6 +202,7 @@ ext4_set_acl(handle_t *handle, struct inode *inode, int type,
->>  			if (error < 0)
->>  				return error;
->>  			else {
->> +				inode_inc_iversion(inode);
->>  				inode->i_ctime = ext4_current_time(inode);
->>  				ext4_mark_inode_dirty(handle, inode);
->>  				if (error == 0)
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 74f23c2..a9ac029 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -4249,6 +4249,7 @@ out_stop:
->>  	if (inode->i_nlink)
->>  		ext4_orphan_del(handle, inode);
->>  
->> +	inode_inc_iversion(inode);
->>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	ext4_journal_stop(handle);
->> @@ -4261,6 +4262,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->>  
->>  	if (update_ctime) {
->>  		now = current_fs_time(inode->i_sb);
->> +		inode_inc_iversion(inode);
->>  		if (!timespec_equal(&inode->i_ctime, &now))
->>  			inode->i_ctime = now;
->>  	}
->> @@ -4905,6 +4907,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->>  
->>  out:
->>  	ext4_orphan_del(handle, inode);
->> +	inode_inc_iversion(inode);
->>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	ext4_journal_stop(handle);
->> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
->> index 830e1b2..45ed6d4 100644
->> --- a/fs/ext4/indirect.c
->> +++ b/fs/ext4/indirect.c
->> @@ -1476,6 +1476,7 @@ do_indirects:
->>  
->>  out_unlock:
->>  	up_write(&ei->i_data_sem);
->> +	inode_inc_iversion(inode);
->>  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index feaa82f..d11b4e5 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -4314,9 +4314,6 @@ int ext4_mark_iloc_dirty(handle_t *handle,
->>  {
->>  	int err = 0;
->>  
->> -	if (test_opt(inode->i_sb, I_VERSION))
->> -		inode_inc_iversion(inode);
->> -
->>  	/* the do_update_inode consumes one bh->b_count */
->>  	get_bh(iloc->bh);
->>  
->> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
->> index 6eee255..c79b874 100644
->> --- a/fs/ext4/ioctl.c
->> +++ b/fs/ext4/ioctl.c
->> @@ -120,6 +120,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->>  		ei->i_flags = flags;
->>  
->>  		ext4_set_inode_flags(inode);
->> +		inode_inc_iversion(inode);
->>  		inode->i_ctime = ext4_current_time(inode);
->>  
->>  		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
->> @@ -168,6 +169,7 @@ flags_out:
->>  		}
->>  		err = ext4_reserve_inode_write(handle, inode, &iloc);
->>  		if (err == 0) {
->> +			inode_inc_iversion(inode);
->>  			inode->i_ctime = ext4_current_time(inode);
->>  			inode->i_generation = generation;
->>  			err = ext4_mark_iloc_dirty(handle, inode, &iloc);
->> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
->> index 2043f48..9bb533a 100644
->> --- a/fs/ext4/namei.c
->> +++ b/fs/ext4/namei.c
->> @@ -1316,9 +1316,9 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
->>  	 * happen is that the times are slightly out of date
->>  	 * and/or different from the directory change time.
->>  	 */
->> +	inode_inc_iversion(dir);
->>  	dir->i_mtime = dir->i_ctime = ext4_current_time(dir);
->>  	ext4_update_dx_flag(dir);
->> -	dir->i_version++;
->>  	ext4_mark_inode_dirty(handle, dir);
->>  	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->>  	err = ext4_handle_dirty_metadata(handle, dir, bh);
->> @@ -1668,7 +1668,6 @@ static int ext4_delete_entry(handle_t *handle,
->>  					blocksize);
->>  			else
->>  				de->inode = 0;
->> -			dir->i_version++;
->>  			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
->>  			err = ext4_handle_dirty_metadata(handle, dir, bh);
->>  			if (unlikely(err)) {
->> @@ -2158,13 +2157,14 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
->>  		ext4_warning(inode->i_sb,
->>  			     "empty directory has too many links (%d)",
->>  			     inode->i_nlink);
->> -	inode->i_version++;
->>  	clear_nlink(inode);
->>  	/* There's no need to set i_disksize: the fact that i_nlink is
->>  	 * zero will ensure that the right thing happens during any
->>  	 * recovery. */
->>  	inode->i_size = 0;
->>  	ext4_orphan_add(handle, inode);
->> +	inode_inc_iversion(inode);
->> +	inode_inc_iversion(dir);
->>  	inode->i_ctime = dir->i_ctime = dir->i_mtime = ext4_current_time(inode);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	ext4_dec_count(handle, dir);
->> @@ -2218,12 +2218,14 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
->>  	retval = ext4_delete_entry(handle, dir, de, bh);
->>  	if (retval)
->>  		goto end_unlink;
->> +	inode_inc_iversion(dir);
->>  	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
->>  	ext4_update_dx_flag(dir);
->>  	ext4_mark_inode_dirty(handle, dir);
->>  	drop_nlink(inode);
->>  	if (!inode->i_nlink)
->>  		ext4_orphan_add(handle, inode);
->> +	inode_inc_iversion(inode);
->>  	inode->i_ctime = ext4_current_time(inode);
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	retval = 0;
->> @@ -2363,6 +2365,7 @@ retry:
->>  	if (IS_DIRSYNC(dir))
->>  		ext4_handle_sync(handle);
->>  
->> +	inode_inc_iversion(inode);
->>  	inode->i_ctime = ext4_current_time(inode);
->>  	ext4_inc_count(handle, inode);
->>  	ihold(inode);
->> @@ -2470,7 +2473,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>  		if (EXT4_HAS_INCOMPAT_FEATURE(new_dir->i_sb,
->>  					      EXT4_FEATURE_INCOMPAT_FILETYPE))
->>  			new_de->file_type = old_de->file_type;
->> -		new_dir->i_version++;
->> +		inode_inc_iversion(new_dir);
->>  		new_dir->i_ctime = new_dir->i_mtime =
->>  					ext4_current_time(new_dir);
->>  		ext4_mark_inode_dirty(handle, new_dir);
->> @@ -2488,6 +2491,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>  	 * Like most other Unix systems, set the ctime for inodes on a
->>  	 * rename.
->>  	 */
->> +	inode_inc_iversion(old_inode);
->>  	old_inode->i_ctime = ext4_current_time(old_inode);
->>  	ext4_mark_inode_dirty(handle, old_inode);
->>  
->> @@ -2521,8 +2525,10 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->>  
->>  	if (new_inode) {
->>  		ext4_dec_count(handle, new_inode);
->> +		inode_inc_iversion(new_inode);
->>  		new_inode->i_ctime = ext4_current_time(new_inode);
->>  	}
->> +	inode_inc_iversion(old_dir);
->>  	old_dir->i_ctime = old_dir->i_mtime = ext4_current_time(old_dir);
->>  	ext4_update_dx_flag(old_dir);
->>  	if (dir_bh) {
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 502c61f..5866d38 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -1813,8 +1813,7 @@ set_qf_format:
->>  				 "Ignoring deprecated bh option");
->>  			break;
->>  		case Opt_i_version:
->> -			set_opt(sb, I_VERSION);
->> -			sb->s_flags |= MS_I_VERSION;
->> +			/* On by default now */
->>  			break;
->>  		case Opt_nodelalloc:
->>  			clear_opt(sb, DELALLOC);
->> @@ -3132,6 +3131,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->>  		goto out_free_orig;
->>  	}
->>  	sb->s_fs_info = sbi;
->> +	sb->s_flags |= MS_I_VERSION;
->>  	sbi->s_mount_opt = 0;
->>  	sbi->s_resuid = EXT4_DEF_RESUID;
->>  	sbi->s_resgid = EXT4_DEF_RESGID;
->> @@ -4831,6 +4831,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
->>  	handle = ext4_journal_start(inode, 1);
->>  	if (IS_ERR(handle))
->>  		goto out;
->> +	inode_inc_iversion(inode);
->>  	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
->>  	ext4_mark_inode_dirty(handle, inode);
->>  	ext4_journal_stop(handle);
->> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
->> index 93a00d8..48a3412 100644
->> --- a/fs/ext4/xattr.c
->> +++ b/fs/ext4/xattr.c
->> @@ -1048,6 +1048,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->>  	}
->>  	if (!error) {
->>  		ext4_xattr_update_super_block(handle, inode->i_sb);
->> +		inode_inc_iversion(inode);
->>  		inode->i_ctime = ext4_current_time(inode);
->>  		if (!value)
->>  			ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
->> -- 
->> 1.7.7.6
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index a044a9b..ea32d7e 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -508,10 +508,12 @@ fallback_retry:
+ 	for (i = 0; i < ngroups; i++) {
+ 		grp = (parent_group + i) % ngroups;
+ 		desc = ext4_get_group_desc(sb, grp, NULL);
+-		grp_free = ext4_free_inodes_count(sb, desc);
+-		if (desc && grp_free && grp_free >= avefreei) {
+-			*group = grp;
+-			return 0;
++		if (desc) {
++			grp_free = ext4_free_inodes_count(sb, desc);
++			if (grp_free && grp_free >= avefreei) {
++				*group = grp;
++				return 0;
++			}
+ 		}
+ 	}
+ 
