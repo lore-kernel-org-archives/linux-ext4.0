@@ -1,104 +1,61 @@
-From: Boaz Harrosh <bharrosh-C4P08NqkoRlBDgjK7y7TUQ@public.gmane.org>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
 Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
  default V2
-Date: Tue, 15 May 2012 23:24:48 +0300
-Message-ID: <4FB2BB90.30900@panasas.com>
-References: <1337092396-3272-1-git-send-email-josef@redhat.com> <20120515175308.GB1907@localhost.localdomain> <4FB29DAC.3020801@panasas.com> <20120515182914.GC1907@localhost.localdomain>
+Date: Tue, 15 May 2012 17:00:29 -0400
+Message-ID: <20120515210029.GA11932@fieldses.org>
+References: <1337092396-3272-1-git-send-email-josef@redhat.com>
+ <20120515175308.GB1907@localhost.localdomain>
+ <4FB29DAC.3020801@panasas.com>
+ <20120515182914.GC1907@localhost.localdomain>
+ <AB91C817-DFEE-415F-8769-78831D72C6B7@dilger.ca>
+ <20120515200533.GD1907@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	<bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>, <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, <tytso-3s7WtUTddSA@public.gmane.org>,
-	<jack-AlSwsSmVLrQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	Boaz Harrosh <bharrosh-C4P08NqkoRlBDgjK7y7TUQ@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	tytso-3s7WtUTddSA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org
 To: Josef Bacik <josef-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20120515182914.GC1907-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20120515200533.GD1907-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 05/15/2012 09:29 PM, Josef Bacik wrote:
+On Tue, May 15, 2012 at 04:05:34PM -0400, Josef Bacik wrote:
+> On Tue, May 15, 2012 at 01:55:33PM -0600, Andreas Dilger wrote:
+> > It should be fairly straight forward to have a flag set in the ext4
+> > superblock (s_state flag?) that indicates that the filesystem has
+> > been exported via NFS.  There might be other optimizations that can
+> > be done based on this (e.g. avoid some of the directory cookie
+> > hijinx that are only needed if NFS has exported the filesystem and
+> > needs to keep persistent cookies across reboots).
+> > 
+> > I think that the ext4_mark_inode_dirty() performance problem could
+> > be at least partially fixed by deferring the copy of in-core inode
+> > to on-disk inode to use a journal commit callback.  This is far more
+> > work than just setting a flag in the superblock, but it has the
+> > potential to _improve_ performance rather than make it worse.
 
-> On Tue, May 15, 2012 at 09:17:16PM +0300, Boaz Harrosh wrote:
+Could you give any more pointers for an ext4 ignoramus?  (Where *is* the
+journal commit code that would need the callback?  And where is the copy
+currently done?)
 
-<snip>
+> Yeah Btrfs doesn't have this sort of problem since we delay inode
+> updating sinc it is so costly, we simply let it hang around in the
+> in-core inode until we feel like updating it at some point down the
+> road.  I'll put together a feature flag or something to make it be
+> enabled for always if somebody turns it on.
 
->>
->> do you mean that the "with the patch" is 40% slower then "without the patch"
->> 	in the same "bs=1 count=10485760 test" ?
->>
->> Then count me clueless. Do you understand this difference?
->>
->> The way I read your patch the inode is copied and written to disk exactly the
->> same number of times, as before. Only that now i_version is also updated
->> together with ctime and/or mtime. What is the fundamental difference then?
->> Is it just that i_version++ in-memory operation?
->>
-> 
-> Yeah but for every write() call we have to do this in-memory operation (via
-> file_update_time()), so in the worst case where you are doing 1 byte writes
-> where you would notice this sort of overhead you get a 40% overhead just from
-> 
-> spin_lock(&inode->i_lock);
-> inode->i_version++;
-> spin_unlock(&inode->i_lock);
-> 
+Thanks for looking at this.
 
+A feature flag would be an improvement over a mount option.
 
-We should be optimizing this we can take the spin_lock once and change
-the i_version and ctime/mtime at the same locking cycle.
+If the flag makes a noticeable difference to performance, then it makes
+me nervous toggling it automatically.  And what will we do if statx
+starts returning i_version to userspace?
 
-> and then the subsequent mark_inode_dirty() call.  What is likely saving us here
-> is that the 1 byte writes are happening fast enough that the normal ctime/mtime
-> operations aren't triggering a mark_inode_dirty() since it appears to happen
-> wihtin the same time, 
-
-
-Ha, OK that Jiffy resolution of ctime. Hence the core problem BTW, changes come
-in and we can't differentiate them.
-
-So you are saying that there is somewhere in code that does
-if (old_ctime != cur_ctime)
-	mark_inode_dirty()
-
-Isn't the mark_inode_dirty() called every-time regardless of the value set
-at ctime ?
-
-> but now that we're doing the i_version++ we are calling
-> mark_inode_dirty() more than before.  
-
-
-Can we fix that. Can we mark the inode dirty at Jiffy resolution?
-
-In the case of a Server crash the nfs_changed attr is expected to reset
-back to old value until such time that some client did a COMMIT. Up to
-COMMIT it might happen that on disk version is older than runtime.
-
-But the Jiffy resolution is a real bummer believe me.
-
-> I'd have to profile it to verify that's
-> what is actually happening, but that means turning on ftrace and parsing a bunch
-> of output and man that sounds like more time than I want to waste on this.  The
-> question is do we care that the worst case is so awful since the worst case is
-> likely to not show up often if at all?  If we do then I guess the next step is
-> to add a fs flag for i_version so that people who are going to be exporting file
-> systems can get this without having to use a special option all the time.
-> Thanks,
-> 
-
-
-Lets just think about it a bit, Can we make it that disk updates happen just
-as often as today and no more. But in memory inquiry of i_version gives us
-a much higher resolution.
-
-What about that Al's proposal of incrementing only after an NFSD inquiry
-
-> Josef 
-
-
-Thanks for looking into this. We all hate this for a long time but never
-took the time to fix it.
-
-Boaz
+--b.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
