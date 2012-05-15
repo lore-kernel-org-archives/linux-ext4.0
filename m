@@ -1,46 +1,40 @@
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] ext4: turn on i_version updates by default
-Date: Tue, 15 May 2012 00:13:13 +0000
-Message-ID: <1337040811.2522.50.camel@lade.trondhjem.org>
-References: <20120514140618.GA29902@fieldses.org>
-	 <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
-	 <1337036918.2522.32.camel@lade.trondhjem.org>
-	 <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: dereference before check in ext4_move_extents()
+Date: Tue, 15 May 2012 11:01:55 +0900
+Message-ID: <4FB1B913.8070300@rs.jp.nec.com>
+References: <20120513184321.GA16541@elgon.mountain> <4FB0C29F.2080403@rs.jp.nec.com> <20120514085151.GC16999@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1162 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932774Ab2EOANe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 May 2012 20:13:34 -0400
-In-Reply-To: <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
-Content-Language: en-US
-Content-ID: <4FF3B24FF7E3DD46A3C3FA05D532F8F1@tahoe.netapp.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:49115 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932708Ab2EOCC3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 May 2012 22:02:29 -0400
+In-Reply-To: <20120514085151.GC16999@mwanda>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA1LTE0IGF0IDE3OjMzIC0wNjAwLCBBbmRyZWFzIERpbGdlciB3cm90ZToN
-Cj4gRXZlbiBiZXR0ZXIgdGhhbiBqdXN0IGJsaW5kbHkgYnVtcGluZyB0aGUgaV92ZXJzaW9uIG9u
-IGV2ZXJ5IGNoYW5nZSwNCj4gaXQgd291bGQgYmUgYmV0dGVyIHRvIGhhdmUgdXNlcnMgb2YgaV92
-ZXJzaW9uIChpLmUuIGtuZnNkKSBmbGFnIHRoZQ0KPiBpbm9kZSB3aXRoICJuZWVkcyBpX3ZlcnNp
-b24gdXBkYXRlIiB0aGVuIHJlYWQgdGhlIHZlcnNpb24uICBXaGVuIHRoZQ0KPiBmaWxlc3lzdGVt
-L1ZGUyBidW1wcyBpX3ZlcnNpb24gdGhlIG5leHQgdGltZSBpdCBjYW4gY2xlYXIgdGhpcyBmbGFn
-DQo+IGFuZCBub3QgdXBkYXRlIGlfdmVyc2lvbiBhZ2FpbiB1bnRpbCBhZnRlciB0aGUgbmV4dCB0
-aW1lIGlfdmVyc2lvbg0KPiBpcyBhY3R1YWxseSB1c2VkLg0KDQpUaGF0IGRvdWJseSBwZW5hbGlz
-ZXMgYWN0dWFsIHVzZXJzIG9mIGlfdmVyc2lvbjogbm90IG9ubHkgZG9lcyB0aGUNCmZpbGVzeXN0
-ZW0gaGF2ZSB0byBidW1wIGl0IG9uIGEgZmlsZSBjaGFuZ2UsIGJ1dCBpdCBub3cgaGFzIHRvIHNl
-dCBhbmQNCndyaXRlIHRoaXMgZmxhZyBvbiB0aGUgbmV4dCByZWFkIG9mIGlfdmVyc2lvbi4NCg0K
-SWYgdGhvc2UgcmVhZHMgb2YgaV92ZXJzaW9uIHdlcmUgcmVhbGx5IGZldyBhbmQgZmFyIGJldHdl
-ZW4sIHRoZW4gSQ0KYWdyZWUgdGhhdCBpdCBtaWdodCBiZSBhIHNvbHV0aW9uLCBidXQgbW9zdCBO
-RlMgY2xpZW50cyB3aWxsIGFzayBmb3IgdGhlDQp1cGRhdGVkIGlfdmVyc2lvbiBhZnRlciBldmVy
-eSBjaGFuZ2UgdGhhdCB0aGV5IG1ha2UgdG8gdGhlIGZpbGUgYmVjYXVzZQ0KdGhleSBuZWVkIHRv
-IHRyYWNrIHRoYXQgdmFsdWUgZm9yIGNhY2hlIGNvbnNpc3RlbmN5IG1hbmFnZW1lbnQgcHVycG9z
-ZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+> Sorry, I apologize for that.  It's some new Smatch stuff I'm working
+> on.  I haven't pushed it yet.
+
+Ok, I'll make a patch when new Smatch appears.
+
+Regards,
+Akira Fujita
+
+(2012/05/14 17:51), Dan Carpenter wrote:
+> On Mon, May 14, 2012 at 05:30:23PM +0900, Akira Fujita wrote:
+>> I'll fix above compile warning surely, but it's not the original
+>> you reported. Hmm, how can I reproduce yours?
+>>
+> 
+> Sorry, I apologize for that.  It's some new Smatch stuff I'm working
+> on.  I haven't pushed it yet.
+> 
+> regards,
+> dan carpenter
+> 
+> 
