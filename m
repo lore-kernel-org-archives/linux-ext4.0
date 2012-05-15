@@ -1,100 +1,46 @@
-From: Wang Sheng-Hui <shhuiw@gmail.com>
-Subject: Re: [PATCH] ext2: cleanup the comment for ext2_export_ops
-Date: Tue, 15 May 2012 07:56:06 +0800
-Message-ID: <4FB19B96.4010106@gmail.com>
-References: <4FB0B0F4.3060908@gmail.com> <20120514095525.GD5353@quack.suse.cz>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Date: Tue, 15 May 2012 00:13:13 +0000
+Message-ID: <1337040811.2522.50.camel@lade.trondhjem.org>
+References: <20120514140618.GA29902@fieldses.org>
+	 <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+	 <1337036918.2522.32.camel@lade.trondhjem.org>
+	 <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:44945 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756346Ab2ENX42 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 May 2012 19:56:28 -0400
-In-Reply-To: <20120514095525.GD5353@quack.suse.cz>
+Received: from mx2.netapp.com ([216.240.18.37]:1162 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932774Ab2EOANe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 May 2012 20:13:34 -0400
+In-Reply-To: <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+Content-Language: en-US
+Content-ID: <4FF3B24FF7E3DD46A3C3FA05D532F8F1@tahoe.netapp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012=E5=B9=B405=E6=9C=8814=E6=97=A5 17:55, Jan Kara wrote:
-> On Mon 14-05-12 15:15:00, Wang Sheng-Hui wrote:
->> ext2_export_ops gets more valued fields, not get_parent only.
->> Clean up the comment.
->   Um, I'd just remove the whole comment. It isn't particularly inform=
-ative
-> anyway - NULL meaning the default behavior is very common in kernel. =
-And we
-> really set about half of entries anyway...
->=20
-> 								Honza
-
-Thanks, Honza.
-
-Patch regenerated. Please check it.
-
->>
->> Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
->> ---
->>  fs/ext2/super.c |    1 -
->>  1 files changed, 0 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
->> index e1025c7..640b4c6 100644
->> --- a/fs/ext2/super.c
->> +++ b/fs/ext2/super.c
->> @@ -359,7 +359,6 @@ static struct dentry *ext2_fh_to_parent(struct s=
-uper_block *sb, struct fid *fid,
->>  /* Yes, most of these are left as NULL!!
->>   * A NULL value implies the default, which works with ext2-like fil=
-e
->>   * systems, but can be improved upon.
->> - * Currently only get_parent is required.
->>   */
->>  static const struct export_operations ext2_export_ops =3D {
->>  	.fh_to_dentry =3D ext2_fh_to_dentry,
->> --=20
->> 1.7.1
-
-=46rom 362925f80bdfb1c105e346f535c5e51c7359b550 Mon Sep 17 00:00:00 200=
-1
-=46rom: Wang Sheng-Hui <shhuiw@gmail.com>
-Date: Tue, 15 May 2012 07:53:46 +0800
-Subject: [PATCH] ext2: remove the redundant comment for ext2_export_ops
-
-Per Honza, It isn't particularly informative anyway - NULL
-meaning the default behavior is very common in kernel. And we
-really set about half of entries anyway.
-
-Remove the whole comment for ext2_export_ops.
-
-Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
----
- fs/ext2/super.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index e1025c7..f9b0f41 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -356,11 +356,6 @@ static struct dentry *ext2_fh_to_parent(struct sup=
-er_block *sb, struct fid *fid,
- 				    ext2_nfs_get_inode);
- }
-=20
--/* Yes, most of these are left as NULL!!
-- * A NULL value implies the default, which works with ext2-like file
-- * systems, but can be improved upon.
-- * Currently only get_parent is required.
-- */
- static const struct export_operations ext2_export_ops =3D {
- 	.fh_to_dentry =3D ext2_fh_to_dentry,
- 	.fh_to_parent =3D ext2_fh_to_parent,
---=20
-1.7.1
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gTW9uLCAyMDEyLTA1LTE0IGF0IDE3OjMzIC0wNjAwLCBBbmRyZWFzIERpbGdlciB3cm90ZToN
+Cj4gRXZlbiBiZXR0ZXIgdGhhbiBqdXN0IGJsaW5kbHkgYnVtcGluZyB0aGUgaV92ZXJzaW9uIG9u
+IGV2ZXJ5IGNoYW5nZSwNCj4gaXQgd291bGQgYmUgYmV0dGVyIHRvIGhhdmUgdXNlcnMgb2YgaV92
+ZXJzaW9uIChpLmUuIGtuZnNkKSBmbGFnIHRoZQ0KPiBpbm9kZSB3aXRoICJuZWVkcyBpX3ZlcnNp
+b24gdXBkYXRlIiB0aGVuIHJlYWQgdGhlIHZlcnNpb24uICBXaGVuIHRoZQ0KPiBmaWxlc3lzdGVt
+L1ZGUyBidW1wcyBpX3ZlcnNpb24gdGhlIG5leHQgdGltZSBpdCBjYW4gY2xlYXIgdGhpcyBmbGFn
+DQo+IGFuZCBub3QgdXBkYXRlIGlfdmVyc2lvbiBhZ2FpbiB1bnRpbCBhZnRlciB0aGUgbmV4dCB0
+aW1lIGlfdmVyc2lvbg0KPiBpcyBhY3R1YWxseSB1c2VkLg0KDQpUaGF0IGRvdWJseSBwZW5hbGlz
+ZXMgYWN0dWFsIHVzZXJzIG9mIGlfdmVyc2lvbjogbm90IG9ubHkgZG9lcyB0aGUNCmZpbGVzeXN0
+ZW0gaGF2ZSB0byBidW1wIGl0IG9uIGEgZmlsZSBjaGFuZ2UsIGJ1dCBpdCBub3cgaGFzIHRvIHNl
+dCBhbmQNCndyaXRlIHRoaXMgZmxhZyBvbiB0aGUgbmV4dCByZWFkIG9mIGlfdmVyc2lvbi4NCg0K
+SWYgdGhvc2UgcmVhZHMgb2YgaV92ZXJzaW9uIHdlcmUgcmVhbGx5IGZldyBhbmQgZmFyIGJldHdl
+ZW4sIHRoZW4gSQ0KYWdyZWUgdGhhdCBpdCBtaWdodCBiZSBhIHNvbHV0aW9uLCBidXQgbW9zdCBO
+RlMgY2xpZW50cyB3aWxsIGFzayBmb3IgdGhlDQp1cGRhdGVkIGlfdmVyc2lvbiBhZnRlciBldmVy
+eSBjaGFuZ2UgdGhhdCB0aGV5IG1ha2UgdG8gdGhlIGZpbGUgYmVjYXVzZQ0KdGhleSBuZWVkIHRv
+IHRyYWNrIHRoYXQgdmFsdWUgZm9yIGNhY2hlIGNvbnNpc3RlbmN5IG1hbmFnZW1lbnQgcHVycG9z
+ZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
