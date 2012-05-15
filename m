@@ -1,59 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch v2] ext4: potential NULL dereference on error
-Date: Tue, 15 May 2012 12:01:55 +0200
-Message-ID: <20120515100155.GB22359@quack.suse.cz>
-References: <20120514222535.GW5353@quack.suse.cz>
- <20120515084640.GB30265@elgon.mountain>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Date: Tue, 15 May 2012 12:30:21 +0200
+Message-ID: <20120515103021.GD22359@quack.suse.cz>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <1337036918.2522.32.camel@lade.trondhjem.org>
+ <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+ <20120514235432.GA3199@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59851 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751912Ab2EOKCJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 May 2012 06:02:09 -0400
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"Myklebust, Trond" <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20120515084640.GB30265@elgon.mountain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120514235432.GA3199-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 15-05-12 11:46:40, Dan Carpenter wrote:
-> The ext4_get_group_desc() function returns NULL on error, and
-> ext4_free_inodes_count() function dereferences it without checking.
-> There is a check on the next line, but it's too late.
+On Mon 14-05-12 19:54:32, J. Bruce Fields wrote:
+> On Mon, May 14, 2012 at 05:33:04PM -0600, Andreas Dilger wrote:
+> > I said as much in another reply - that once i_version is used on
+> > a filesystem, it should be made "sticky" (i.e. permanently enabled
+> > for that filesystem).  However, until that time it shouldn't be
+> > enabled just because it might one day be used.
+> > 
+> > Even better than just blindly bumping the i_version on every change,
+> > it would be better to have users of i_version (i.e. knfsd) flag the
+> > inode with "needs i_version update" then read the version.  When the
+> > filesystem/VFS bumps i_version the next time it can clear this flag
+> > and not update i_version again until after the next time i_version
+> > is actually used.
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-  Looks good. Thanks! You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+> I really don't want to do anything more complicated than necessary.
+> 
+> What would be the worst-case test for the extra inode dirtying, so we
+> can see what the numbers actually are?
+  Something like:
+
+  int fd, i;
+  struct timeval tv[2];
+
+  fd = open("file", O_CREAT | O_RDWR, 0644);
+  if (fd < 0)
+    return 1;
+  for (i = 0; i < 1000000; i++) {
+    gettimeofday(tv);
+    tv[1] = tv[0];
+    if (futimes(fd, tv) < 0)
+      return 1;
+  }
+  return 0;
+
+  And see how long does it take with and without i_version?
 
 								Honza
-> ---
-> v2: cleaned up the style
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index a044a9b..ea32d7e 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -508,10 +508,12 @@ fallback_retry:
->  	for (i = 0; i < ngroups; i++) {
->  		grp = (parent_group + i) % ngroups;
->  		desc = ext4_get_group_desc(sb, grp, NULL);
-> -		grp_free = ext4_free_inodes_count(sb, desc);
-> -		if (desc && grp_free && grp_free >= avefreei) {
-> -			*group = grp;
-> -			return 0;
-> +		if (desc) {
-> +			grp_free = ext4_free_inodes_count(sb, desc);
-> +			if (grp_free && grp_free >= avefreei) {
-> +				*group = grp;
-> +				return 0;
-> +			}
->  		}
->  	}
->  
 -- 
-Jan Kara <jack@suse.cz>
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
