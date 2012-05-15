@@ -1,74 +1,82 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42895] jbd2 makes all system unresponsive
-Date: Tue, 15 May 2012 14:40:06 +0000 (UTC)
-Message-ID: <20120515144006.400F011FCF2@bugzilla.kernel.org>
-References: <bug-42895-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: turn on i_version updates by default
+Date: Tue, 15 May 2012 16:43:34 +0200
+Message-ID: <20120515144334.GA26579@quack.suse.cz>
+References: <20120514140618.GA29902@fieldses.org>
+ <9124E59E-2479-4C32-A528-3237B48DEC01@dilger.ca>
+ <1337036918.2522.32.camel@lade.trondhjem.org>
+ <A0359961-B147-4343-BFA3-E82F38C6700B@dilger.ca>
+ <20120514235432.GA3199@fieldses.org>
+ <20120515103021.GD22359@quack.suse.cz>
+ <20120515123550.GA7053@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	"Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53002 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:53296 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758305Ab2EOOkN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 May 2012 10:40:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id CDD6B2054E
-	for <linux-ext4@vger.kernel.org>; Tue, 15 May 2012 14:40:07 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 459D920548
-	for <linux-ext4@vger.kernel.org>; Tue, 15 May 2012 14:40:06 +0000 (UTC)
-In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
+	id S932143Ab2EOOnr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 May 2012 10:43:47 -0400
+Content-Disposition: inline
+In-Reply-To: <20120515123550.GA7053@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42895
+On Tue 15-05-12 08:35:50, J. Bruce Fields wrote:
+> On Tue, May 15, 2012 at 12:30:21PM +0200, Jan Kara wrote:
+> > On Mon 14-05-12 19:54:32, J. Bruce Fields wrote:
+> > > On Mon, May 14, 2012 at 05:33:04PM -0600, Andreas Dilger wrote:
+> > > > I said as much in another reply - that once i_version is used on
+> > > > a filesystem, it should be made "sticky" (i.e. permanently enabled
+> > > > for that filesystem).  However, until that time it shouldn't be
+> > > > enabled just because it might one day be used.
+> > > > 
+> > > > Even better than just blindly bumping the i_version on every change,
+> > > > it would be better to have users of i_version (i.e. knfsd) flag the
+> > > > inode with "needs i_version update" then read the version.  When the
+> > > > filesystem/VFS bumps i_version the next time it can clear this flag
+> > > > and not update i_version again until after the next time i_version
+> > > > is actually used.
+> > > 
+> > > I really don't want to do anything more complicated than necessary.
+> > > 
+> > > What would be the worst-case test for the extra inode dirtying, so we
+> > > can see what the numbers actually are?
+> >   Something like:
+> > 
+> >   int fd, i;
+> >   struct timeval tv[2];
+> > 
+> >   fd = open("file", O_CREAT | O_RDWR, 0644);
+> >   if (fd < 0)
+> >     return 1;
+> >   for (i = 0; i < 1000000; i++) {
+> >     gettimeofday(tv);
+> >     tv[1] = tv[0];
+> >     if (futimes(fd, tv) < 0)
+> >       return 1;
+> >   }
+> >   return 0;
+> > 
+> >   And see how long does it take with and without i_version?
+> 
+> The complaint I hear from Andreas is that we'll cause file_update_time()
+> to call mark_inode_dirty() more often.
+> 
+> I don't believe futimes() calls file_update_time().
+  Yeah, right. I didn't check and I was wrong...
 
+> So maybe replace that futimes() by a one-byte write?
+  Yes, "pwrite(fd, "data", 1, 0);" should be then a proper test instead of
+futimes().
 
-Eugene <ivanovstm2@zmail.ru> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |ivanovstm2@zmail.ru
-
-
-
-
---- Comment #11 from Eugene <ivanovstm2@zmail.ru>  2012-05-15 14:40:05 ---
-Thanks for the answers guys.
-
-to Hugues Tranli:
-
->maybe it's related to a daemon/software running in the background.
-Well, that's pretty much what everybody want to find out. But seems it's not
-that easy.
-
-I'm on Xubuntu 11.10 on 3.0.0-17-generic #30-Ubuntu SMP Thu Mar 8 20:45:39 UTC
-2012 x86_64 x86_64 x86_64 GNU/Linux on AMD CPU.
-cat /etc/fstab and cat /proc/mounts give me usual default settings:
-/ ext4 rw,noatime,errors=remount-ro,user_xattr,barrier=1,data=ordered
-Except that I changed relatime to noatime. Though it's almost the same and on
-desktop it doesn't give noticeable change in disk usage.
-
-Block_dump:
-See message 73 in https://bugs.launchpad.net/ubuntu/+source/linux/+bug/607560
-but overall it's like this:
-echo 1 > /proc/sys/vm/block_dump
-Watch results in syslog (note that syslog will frequently write to disk) or by
-periodically running dmesg. To get more "clean" results - disable kernel
-logging in syslog, enable block_dump, wait some time or do something in the
-system, then reenable kernel logging - results of block_dump should appear in
-syslog.
-I'm not aware of convenient way to watch it in realtime.
-
-
-to Jan Kara:
-
-Enabling ext4_mark_inode_dirty gives me constant flood of events where
-xfce4-terminal dirties mostly two same inodes:
-http://paste.ubuntu.com/988896/
-Is it expected behavior? This is default terminal in Xubuntu.
-
+								Honza
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
