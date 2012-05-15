@@ -1,82 +1,55 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: punch-hole should go beyond i_size
-Date: Tue, 15 May 2012 15:38:33 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1205151529140.1571@eggly.anvils>
-References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com> <alpine.LSU.2.00.1205131404040.1547@eggly.anvils> <4FB2CC79.4020200@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Hole punching and mmap races
+Date: Wed, 16 May 2012 00:48:05 +0200
+Message-ID: <20120515224805.GA25577@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: Allison Henderson <achender@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:48620 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966244Ab2EOWi5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 May 2012 18:38:57 -0400
-Received: by dady13 with SMTP id y13so122584dad.19
-        for <linux-ext4@vger.kernel.org>; Tue, 15 May 2012 15:38:56 -0700 (PDT)
-In-Reply-To: <4FB2CC79.4020200@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 15 May 2012, Allison Henderson wrote:
-> On 05/13/2012 02:13 PM, Hugh Dickins wrote:
-> > On Thu, 12 Jan 2012, Allison Henderson wrote:
-> >> On 01/11/2012 07:55 PM, Dave Chinner wrote:
-> >>> On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
-> >>>> Hi Allison,
-> >>>>
-> >>>> In thinking about fallocate() on tmpfs, I cross-check with ext4
-> >>>> and find this bug in its implementation of FALLOC_FL_PUNCH_HOLE:
-> >>>>
-> >>>> rm -f temp
-> >>>> fallocate    -l 4096 temp
-> >>>> du temp				# shows 4, right
-> >>>> fallocate -p -l 4096 temp
-> >>>> du temp				# shows 0, right
-> >>>> rm -f temp
-> >>>> fallocate -n -l 4096 temp
-> >>>> du temp				# shows 4, right
-> >>>> fallocate -p -l 4096 temp
-> >>>> du temp				# shows 4, wrong
-> >>>> rm temp
-> >>>>
-> >>>> ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
-> >>>> early return, and trimming to i_size below, but forgets that the other
-> >>>> variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
-> >>>> blocks beyond i_size.  They can be removed with ftruncate(), but it is
-> >>>> unexpected for fallocate() not to undo its own work, and xfs does so.
-> >>>
-> >>> I'm pretty sure that's a bug as XFS allows punching holes in extents
-> >>> beyond EOF.
-> >>>
-> >>> Cheers,
-> >>>
-> >>> Dave.
-> >>
-> >> Oh I see, I'll take a look at it, I think it will be ok to just take out the
-> >> early return.  Thx!
-> > 
-> > I see the -EOPNOTSUPPs have gone into 3.4's ext4_punch_hole() - thanks -
-> > but the i_size issue remains unfixed.  I wouldn't be surprised if it were
-> > more complicated than you had hoped - I had no intention of trying a patch
-> > myself!  It's not an actual problem for me, but I thought I'd just send a
-> > reminder, before I move out of the hole-punching business.
-> 
-> Hi all,
-> 
-> I had a fix for this a while ago and I believe Lukas had rebased it
-> when he was working on some punch hole optimizations, but Im not sure
-> what happened to it after that.  I think Lukas might still be working
-> on that set?  If not, I can take a peek at it again and see if I can
-> get it updated and resent.  Thx!
-> 
-> Allison Henderson 
+  Hello,
 
-Thanks, Allison.  I just added Jan to the Cc list to make sure he sees,
-since we mentioned this in the inode_dio_wait thread (which I skilfully
-directed to an almost disjoint set of addressees - though I expect he
-already saw via linux-ext4).
+  Hugh pointed me to ext4 hole punching code which is clearly missing some
+locking. But looking at the code more deeply I realized I don't see
+anything preventing the following race in XFS or ext4:
 
-Hugh
+TASK1				TASK2
+				punch_hole(file, 0, 4096)
+				  filemap_write_and_wait()
+				  truncate_pagecache_range()
+addr = mmap(file);
+addr[0] = 1
+  ^^ writeably fault a page
+				  remove file blocks
+
+						FLUSHER
+						write out file
+						  ^^ interesting things can
+happen because we expect blocks under the first page to be allocated /
+reserved but they are not...
+
+I'm pretty sure ext4 has this problem, I'm not completely sure whether
+XFS has something to protect against such race but I don't see anything.
+
+It's not easy to protect against these races. For truncate, i_size protects
+us against similar races but for hole punching we don't have any such
+mechanism. One way to avoid the race would be to hold mmap_sem while we are
+invalidating the page cache and punching hole but that sounds a bit ugly.
+Alternatively we could just have some special lock (rwsem?) held during
+page_mkwrite() (for reading) and during whole hole punching (for writing)
+to serialize these two operations.
+
+Another alternative, which doesn't really look more appealing, is to go
+page-by-page and always free corresponding blocks under page lock.
+
+Any other ideas or thoughts?
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
