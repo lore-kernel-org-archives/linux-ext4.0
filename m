@@ -1,69 +1,124 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] e2fsck: Let end_blk to be the maximum value of u32.
-Date: Wed, 16 May 2012 16:50:25 +0800
-Message-ID: <1337158225-4627-1-git-send-email-tm@tao.ma>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:48011 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932298Ab2EPIuj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 May 2012 04:50:39 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Saugata Das <saugata.das@linaro.org>
+Subject: Re: [PATCH 1/2] block: add BH_Meta flag
+Date: Wed, 16 May 2012 17:27:29 +0530
+Message-ID: <CAKLKtzeQ6agVs1rDhfYa33+fgzW3A7BF6apYinaRqXjhcjGrVQ@mail.gmail.com>
+References: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: adilger@whamcloud.com, arnd.bergmann@linaro.org, venkat@linaro.org,
+	Deepak Saxena <dsaxena@linaro.org>,
+	Saugata Das PURKAYASTHA <saugata.das@stericsson.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: tytso@mit.edu, hch@infradead.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Tao Ma <boyu.mt@taobao.com>
+Hi Ted, Christoph
 
-Now we can use fallocate to create a large file while keep the size
-to be small. It will cause the e2fsck complain about it. The test
-script is simple and I have pasted it here.
+Will you please comment on the following patch set,
+[PATCH 1/2] block: add BH_Meta flag
+[PATCH 2/2] ext4: annotate all meta data requests
 
-DEVICE=/dev/sdb1
-mount -t ext4 $DEVICE /mnt/ext4
-for((i=0;i<10;i++))do fallocate -n -o $[$i*8192] -l 4096 /mnt/ext4/a;done
-umount $DEVICE
-e2fsck -fn $DEVICE
+If there is no remark, then will you please merge them to the next vers=
+ion.
 
-The error message will be like this:
-e2fsck 1.42.3 (14-May-2012)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 12 has zero length extent
-	(invalid logical block 0, physical block 32775)
-Clear? no
 
-Inode 12, i_blocks is 88, should be 0.  Fix? no
+Thanks,
+Saugata
 
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -(8231--8232) -(32770--32778)
-Fix? no
 
-Now actually the end_blk can be any value which is less than
-u32, so make end_blk be the maximum value of u32.
-
-Cc: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- lib/ext2fs/extent.c |    4 +---
- 1 files changed, 1 insertions(+), 3 deletions(-)
-
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index eb096d6..e2815c2 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -253,9 +253,7 @@ extern errcode_t ext2fs_extent_open2(ext2_filsys fs, ext2_ino_t ino,
- 		ext2fs_le16_to_cpu(eh->eh_entries);
- 	handle->path[0].max_entries = ext2fs_le16_to_cpu(eh->eh_max);
- 	handle->path[0].curr = 0;
--	handle->path[0].end_blk =
--		(EXT2_I_SIZE(handle->inode) + fs->blocksize - 1) >>
--		 EXT2_BLOCK_SIZE_BITS(fs->super);
-+	handle->path[0].end_blk = ((((unsigned long long) 1) << 32) - 1);
- 	handle->path[0].visit_num = 1;
- 	handle->level = 0;
- 	handle->magic = EXT2_ET_MAGIC_EXTENT_HANDLE;
--- 
-1.7.1
-
+On 11 May 2012 20:32, Saugata Das <saugata.das@stericsson.com> wrote:
+> From: Saugata Das <saugata.das@linaro.org>
+>
+> Today, storage devices like eMMC has special features like data taggi=
+ng
+> (introduced in MMC-4.5 version) in order to improve performance of so=
+me
+> specific writes. On MMC stack, data tagging is used for all writes wh=
+ich
+> has REQ_META flag set. This patch adds the capability to add REQ_META=
+ flag
+> during meta data write.
+>
+> Signed-off-by: Saugata Das <saugata.das@linaro.org>
+> ---
+> =A0fs/buffer.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 10 ++++++++--
+> =A0include/linux/buffer_head.h | =A0 =A02 ++
+> =A02 files changed, 10 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 36d6665..688b38b 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -1685,7 +1685,10 @@ static int __block_write_full_page(struct inod=
+e *inode, struct page *page,
+> =A0 =A0 =A0 =A0do {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
+s_page;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
+;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buffer_meta(bh))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_=
+bh(write_op | REQ_META, bh);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_=
+bh(write_op, bh);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
+> @@ -1739,7 +1742,10 @@ recover:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
+s_page;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_buffer_dirty(bh)=
+;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
+;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (buffer_meta(bh))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_=
+bh(write_op | REQ_META, bh);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_=
+bh(write_op, bh);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.=
+h
+> index ef26043..0776564 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -34,6 +34,7 @@ enum bh_state_bits {
+> =A0 =A0 =A0 =A0BH_Write_EIO, =A0 /* I/O error on write */
+> =A0 =A0 =A0 =A0BH_Unwritten, =A0 /* Buffer is allocated on disk but n=
+ot written */
+> =A0 =A0 =A0 =A0BH_Quiet, =A0 =A0 =A0 /* Buffer Error Prinks to be qui=
+et */
+> + =A0 =A0 =A0 BH_Meta, =A0 =A0 =A0 =A0/* Is meta */
+>
+> =A0 =A0 =A0 =A0BH_PrivateStart,/* not a state bit, but the first bit =
+available
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * for private allocat=
+ion by other entities
+> @@ -126,6 +127,7 @@ BUFFER_FNS(Delay, delay)
+> =A0BUFFER_FNS(Boundary, boundary)
+> =A0BUFFER_FNS(Write_EIO, write_io_error)
+> =A0BUFFER_FNS(Unwritten, unwritten)
+> +BUFFER_FNS(Meta, meta)
+>
+> =A0#define bh_offset(bh) =A0 =A0 =A0 =A0 =A0((unsigned long)(bh)->b_d=
+ata & ~PAGE_MASK)
+> =A0#define touch_buffer(bh) =A0 =A0 =A0 mark_page_accessed(bh->b_page=
+)
+> --
+> 1.7.4.3
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
