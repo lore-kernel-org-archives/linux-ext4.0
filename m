@@ -1,50 +1,87 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
- default V2
-Date: Tue, 15 May 2012 21:36:42 -0400
-Message-ID: <20120516013642.GB7360@thunk.org>
-References: <1337092396-3272-1-git-send-email-josef@redhat.com>
- <20120515175308.GB1907@localhost.localdomain>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Hole punching and mmap races
+Date: Wed, 16 May 2012 12:14:23 +1000
+Message-ID: <20120516021423.GO25351@dastard>
+References: <20120515224805.GA25577@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, adilger@dilger.ca, jack@suse.cz
-To: Josef Bacik <josef@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45429 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756767Ab2EPBgs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 May 2012 21:36:48 -0400
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
+	linux-mm@kvack.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20120515175308.GB1907@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120515224805.GA25577@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 15, 2012 at 01:53:08PM -0400, Josef Bacik wrote:
+On Wed, May 16, 2012 at 12:48:05AM +0200, Jan Kara wrote:
+>   Hello,
 > 
-> Ok did some basic benchmarking with dd, I ran
+>   Hugh pointed me to ext4 hole punching code which is clearly missing some
+> locking. But looking at the code more deeply I realized I don't see
+> anything preventing the following race in XFS or ext4:
 > 
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1 count=10485760
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=1000
-> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=5000
+> TASK1				TASK2
+> 				punch_hole(file, 0, 4096)
+> 				  filemap_write_and_wait()
+> 				  truncate_pagecache_range()
+> addr = mmap(file);
+> addr[0] = 1
+>   ^^ writeably fault a page
+> 				  remove file blocks
 > 
-> 3 times with the patch and without the patch.  With the worst case
-> scenario there is about a 40% longer run time, going from on average
-> 12 seconds to 17 seconds.  With the other two runs they are the same
-> runtime with the 1 megabyte blocks.  So the question is, do we care
-> about this worst case since any sane application developer isn't
-> going to do writes that small?  
+> 						FLUSHER
+> 						write out file
+> 						  ^^ interesting things can
+> happen because we expect blocks under the first page to be allocated /
+> reserved but they are not...
+> 
+> I'm pretty sure ext4 has this problem, I'm not completely sure whether
+> XFS has something to protect against such race but I don't see anything.
 
-Even if there's no runtime change, it's also useful to measure the CPU
-utilization.  If there's an increase in CPU utilization, then it can
-show up in workloads and benchmarks which are sensitive to CPU
-utilization as well as disk utilization, e.g., TPC-C/H.
+No, it doesn't. It's a known problem due to not being able to take a
+lock in .page_mkwrite() to serialise mmap() IO against truncation or
+other IO such as direct IO. This has been known for, well, long
+before we came up with page_mkwrite(). At the time page_mkwrite()
+was introduced, locking was discusses to solve this problem but was
+considered difficult on the VM side so it was ignored.
 
-But since it takes so long for performance teams to notice, they tend
-to get very cranky when they observe regressions.  So for changes like
-this it's really important to measure any changes in CPU utilization,
-especially on larger on SMP systems when there multiple processes
-writing to the same file at high rates --- you know, like what an
-Enterprise database might do to a table space file.  :-)
+> It's not easy to protect against these races. For truncate, i_size protects
+> us against similar races but for hole punching we don't have any such
+> mechanism. One way to avoid the race would be to hold mmap_sem while we are
+> invalidating the page cache and punching hole but that sounds a bit ugly.
+> Alternatively we could just have some special lock (rwsem?) held during
+> page_mkwrite() (for reading) and during whole hole punching (for writing)
+> to serialize these two operations.
 
-    		   	   		     	   - Ted
+What really needs to happen is that .page_mkwrite() can be made to
+fail with -EAGAIN and retry the entire page fault from the start an
+arbitrary number of times instead of just once as the current code
+does with VM_FAULT_RETRY. That would allow us to try to take the
+filesystem lock that provides IO exclusion for all other types of IO
+and fail with EAGAIN if we can't get it without blocking. For XFS,
+that is the i_iolock rwsem, for others it is the i_mutex, and some
+other filesystems might take other locks.
+
+FWIW, I've been running at "use the IO lock in page_mkwrite" patch
+for XFS for several months now, but I haven't posted it because
+without the VM side being able to handle such locking failures
+gracefully there's not much point in making the change. I did this
+patch to reduce the incidence of mmap vs direct IO races that are
+essentially identical in nature to rule them out of the cause of
+stray delalloc blocks in files that fsstress has been producing on
+XFS. FYI, this race condition hasn't been responsible for any of the
+problems I've found recently....
+
+> Another alternative, which doesn't really look more appealing, is to go
+> page-by-page and always free corresponding blocks under page lock.
+
+Doesn't work for regions with no pages in memory over them.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
