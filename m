@@ -1,87 +1,104 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Hole punching and mmap races
-Date: Wed, 16 May 2012 12:14:23 +1000
-Message-ID: <20120516021423.GO25351@dastard>
-References: <20120515224805.GA25577@quack.suse.cz>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: punch-hole should go beyond i_size
+Date: Wed, 16 May 2012 08:14:56 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1205160810580.3179@dhcp-1-248.brq.redhat.com>
+References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com> <alpine.LSU.2.00.1205131404040.1547@eggly.anvils> <4FB2CC79.4020200@linux.vnet.ibm.com>
+ <alpine.LSU.2.00.1205151529140.1571@eggly.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
-	linux-mm@kvack.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120515224805.GA25577@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>
+To: Hugh Dickins <hughd@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:20486 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751335Ab2EPGPm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 May 2012 02:15:42 -0400
+In-Reply-To: <alpine.LSU.2.00.1205151529140.1571@eggly.anvils>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 16, 2012 at 12:48:05AM +0200, Jan Kara wrote:
->   Hello,
+On Tue, 15 May 2012, Hugh Dickins wrote:
+
+> Date: Tue, 15 May 2012 15:38:33 -0700 (PDT)
+> From: Hugh Dickins <hughd@google.com>
+> To: Allison Henderson <achender@linux.vnet.ibm.com>
+> Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+>     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+>     Lukas Czerner <lczerner@redhat.com>
+> Subject: Re: punch-hole should go beyond i_size
 > 
->   Hugh pointed me to ext4 hole punching code which is clearly missing some
-> locking. But looking at the code more deeply I realized I don't see
-> anything preventing the following race in XFS or ext4:
+> On Tue, 15 May 2012, Allison Henderson wrote:
+> > On 05/13/2012 02:13 PM, Hugh Dickins wrote:
+> > > On Thu, 12 Jan 2012, Allison Henderson wrote:
+> > >> On 01/11/2012 07:55 PM, Dave Chinner wrote:
+> > >>> On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
+> > >>>> Hi Allison,
+> > >>>>
+> > >>>> In thinking about fallocate() on tmpfs, I cross-check with ext4
+> > >>>> and find this bug in its implementation of FALLOC_FL_PUNCH_HOLE:
+> > >>>>
+> > >>>> rm -f temp
+> > >>>> fallocate    -l 4096 temp
+> > >>>> du temp				# shows 4, right
+> > >>>> fallocate -p -l 4096 temp
+> > >>>> du temp				# shows 0, right
+> > >>>> rm -f temp
+> > >>>> fallocate -n -l 4096 temp
+> > >>>> du temp				# shows 4, right
+> > >>>> fallocate -p -l 4096 temp
+> > >>>> du temp				# shows 4, wrong
+> > >>>> rm temp
+> > >>>>
+> > >>>> ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
+> > >>>> early return, and trimming to i_size below, but forgets that the other
+> > >>>> variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
+> > >>>> blocks beyond i_size.  They can be removed with ftruncate(), but it is
+> > >>>> unexpected for fallocate() not to undo its own work, and xfs does so.
+> > >>>
+> > >>> I'm pretty sure that's a bug as XFS allows punching holes in extents
+> > >>> beyond EOF.
+> > >>>
+> > >>> Cheers,
+> > >>>
+> > >>> Dave.
+> > >>
+> > >> Oh I see, I'll take a look at it, I think it will be ok to just take out the
+> > >> early return.  Thx!
+> > > 
+> > > I see the -EOPNOTSUPPs have gone into 3.4's ext4_punch_hole() - thanks -
+> > > but the i_size issue remains unfixed.  I wouldn't be surprised if it were
+> > > more complicated than you had hoped - I had no intention of trying a patch
+> > > myself!  It's not an actual problem for me, but I thought I'd just send a
+> > > reminder, before I move out of the hole-punching business.
+> > 
+> > Hi all,
+> > 
+> > I had a fix for this a while ago and I believe Lukas had rebased it
+> > when he was working on some punch hole optimizations, but Im not sure
+> > what happened to it after that.  I think Lukas might still be working
+> > on that set?  If not, I can take a peek at it again and see if I can
+> > get it updated and resent.  Thx!
+> > 
+> > Allison Henderson 
 > 
-> TASK1				TASK2
-> 				punch_hole(file, 0, 4096)
-> 				  filemap_write_and_wait()
-> 				  truncate_pagecache_range()
-> addr = mmap(file);
-> addr[0] = 1
->   ^^ writeably fault a page
-> 				  remove file blocks
+> Thanks, Allison.  I just added Jan to the Cc list to make sure he sees,
+> since we mentioned this in the inode_dio_wait thread (which I skilfully
+> directed to an almost disjoint set of addressees - though I expect he
+> already saw via linux-ext4).
 > 
-> 						FLUSHER
-> 						write out file
-> 						  ^^ interesting things can
-> happen because we expect blocks under the first page to be allocated /
-> reserved but they are not...
-> 
-> I'm pretty sure ext4 has this problem, I'm not completely sure whether
-> XFS has something to protect against such race but I don't see anything.
+> Hugh
 
-No, it doesn't. It's a known problem due to not being able to take a
-lock in .page_mkwrite() to serialise mmap() IO against truncation or
-other IO such as direct IO. This has been known for, well, long
-before we came up with page_mkwrite(). At the time page_mkwrite()
-was introduced, locking was discusses to solve this problem but was
-considered difficult on the VM side so it was ignored.
+Yes, we've been talking about this issue on LSF with Ted and the
+conclusion is that we want to wait for the range locks to be ready.
+This way we can avoid taking imutex for the punch hole when punching
+beyond isize which we would have to do otherwise.
 
-> It's not easy to protect against these races. For truncate, i_size protects
-> us against similar races but for hole punching we don't have any such
-> mechanism. One way to avoid the race would be to hold mmap_sem while we are
-> invalidating the page cache and punching hole but that sounds a bit ugly.
-> Alternatively we could just have some special lock (rwsem?) held during
-> page_mkwrite() (for reading) and during whole hole punching (for writing)
-> to serialize these two operations.
+I am not sure how big of an issue this is, probably not so big. If
+we can not wait for the range locks, I can make a patch with imutex
+protection.
 
-What really needs to happen is that .page_mkwrite() can be made to
-fail with -EAGAIN and retry the entire page fault from the start an
-arbitrary number of times instead of just once as the current code
-does with VM_FAULT_RETRY. That would allow us to try to take the
-filesystem lock that provides IO exclusion for all other types of IO
-and fail with EAGAIN if we can't get it without blocking. For XFS,
-that is the i_iolock rwsem, for others it is the i_mutex, and some
-other filesystems might take other locks.
-
-FWIW, I've been running at "use the IO lock in page_mkwrite" patch
-for XFS for several months now, but I haven't posted it because
-without the VM side being able to handle such locking failures
-gracefully there's not much point in making the change. I did this
-patch to reduce the incidence of mmap vs direct IO races that are
-essentially identical in nature to rule them out of the cause of
-stray delalloc blocks in files that fsstress has been producing on
-XFS. FYI, this race condition hasn't been responsible for any of the
-problems I've found recently....
-
-> Another alternative, which doesn't really look more appealing, is to go
-> page-by-page and always free corresponding blocks under page lock.
-
-Doesn't work for regions with no pages in memory over them.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks!
+-Lukas
