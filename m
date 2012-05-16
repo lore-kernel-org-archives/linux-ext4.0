@@ -1,72 +1,74 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH RESEND] implement uid and gid mount options for ext2,
- ext3 and ext4
-Date: Wed, 16 May 2012 10:25:25 +0300
-Message-ID: <4FB35665.5090908@panasas.com>
-References: <1336660924-9598-1-git-send-email-ludwig.nussel@suse.de> <20120511034945.GA15892@mobil.systemanalysen.net> <4FAD30D7.3070208@panasas.com> <20120515091542.51f3dd78@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Ludwig Nussel <ludwig.nussel@suse.de>,
-	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	Rob Landley <rob@landley.net>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	EXT2 FILE SYSTEM <linux-ext4@vger.kernel.org>,
-	DOCUMENTATION <linux-doc@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>, Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120515091542.51f3dd78@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Protect group inode free counting with group lock.
+Date: Wed, 16 May 2012 16:49:52 +0800
+Message-ID: <1337158192-4591-1-git-send-email-tm@tao.ma>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:33192 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1759827Ab2EPIuJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 May 2012 04:50:09 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/15/2012 02:15 AM, NeilBrown wrote:
+From: Tao Ma <boyu.mt@taobao.com>
 
-> On Fri, 11 May 2012 18:31:35 +0300 Boaz Harrosh <bharrosh@panasas.com> wrote:
-> 
->> On 05/11/2012 06:49 AM, Roland Eggner wrote:
->>
+Now when we set the group inode free count, we don't have a proper
+group lock so that multiple threads may decrease the inode free
+count at the same time. And e2fsck will complain something like:
 
+Free inodes count wrong for group #1 (1, counted=0).
+Fix? no
 
-Neil && Jan.
+Free inodes count wrong for group #2 (3, counted=0).
+Fix? no
 
-As I  said in my last mail:
-	"Shared files" problem is not solved by mount options.
+Directories count wrong for group #2 (780, counted=779).
+Fix? no
 
-For me this is just a UNIX new-be 101 problem. You need to
-share files with friends you make the mistake once. Then
-you learn and you go on. It's a none problem.
+Free inodes count wrong for group #3 (2272, counted=2273).
+Fix? no
 
-Your removable media thing is just your "shared folder"
-on a UNIX system. Deal with it. Da
+So this patch try to protect it with the ext4_lock_group.
 
-Or go degrade your FS to vfat security. You are reluctant
-to chmod all files to be world/group writeable but you
-are doing just that with your mount option. Perhaps
-when the chmod -R will scroll through you'd realize
-that the passwords file you should remove. The POSIX
-permissions are just for that purpose. "I set access
-control at creation. Else slave to change them". The
-mount option they specifically left out, not because
-they were not clever, but because you don't want it.
+btw, it is found by xfstests test case 269 and I have run it 100
+times and the error in e2fsck doesn't show up again.
 
-BTW NTFS is like UNIX. If written in the right user-private
-permissions you can't read them. Even admin. You can only chown
-them.
+Cc: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/ialloc.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-BTW Neil with Kerberos auth in an NFS/CIFS shared device
-like you mentioned, then a uid/gid is already associated
-with the access automatically. It's a perfect IDEA for
-these device makers. They need develop nothing only set it
-up with the same NFS / SAMBA implementations they already
-use.
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 409c2ee..25595e2 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -772,7 +772,9 @@ got:
+ 			ext4_itable_unused_set(sb, gdp,
+ 					(EXT4_INODES_PER_GROUP(sb) - ino));
+ 		up_read(&grp->alloc_sem);
+-	}
++	} else
++		ext4_lock_group(sb, group);
++
+ 	ext4_free_inodes_set(sb, gdp, ext4_free_inodes_count(sb, gdp) - 1);
+ 	if (S_ISDIR(mode)) {
+ 		ext4_used_dirs_set(sb, gdp, ext4_used_dirs_count(sb, gdp) + 1);
+@@ -782,10 +784,9 @@ got:
+ 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
+ 		}
+ 	}
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+ 		gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+-		ext4_unlock_group(sb, group);
+-	}
++	ext4_unlock_group(sb, group);
+ 
+ 	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
+-- 
+1.7.1
 
-And one last thing Neil. Yes an rm is a perfect rope
-for an admin to hang itself, but it is not aimed at
-auto-mounter scripts
-
-I can't believe I got dragged into this again.
-
-:-(
-Boaz
