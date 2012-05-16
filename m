@@ -1,55 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Hole punching and mmap races
-Date: Wed, 16 May 2012 00:48:05 +0200
-Message-ID: <20120515224805.GA25577@quack.suse.cz>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix how i_version is modified and turn it on by
+ default V2
+Date: Tue, 15 May 2012 21:36:42 -0400
+Message-ID: <20120516013642.GB7360@thunk.org>
+References: <1337092396-3272-1-git-send-email-josef@redhat.com>
+ <20120515175308.GB1907@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+	bfields@fieldses.org, adilger@dilger.ca, jack@suse.cz
+To: Josef Bacik <josef@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45429 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756767Ab2EPBgs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 May 2012 21:36:48 -0400
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120515175308.GB1907@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Tue, May 15, 2012 at 01:53:08PM -0400, Josef Bacik wrote:
+> 
+> Ok did some basic benchmarking with dd, I ran
+> 
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1 count=10485760
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=1000
+> dd if=/dev/zero of=/mnt/btrfs-test/file bs=1M count=5000
+> 
+> 3 times with the patch and without the patch.  With the worst case
+> scenario there is about a 40% longer run time, going from on average
+> 12 seconds to 17 seconds.  With the other two runs they are the same
+> runtime with the 1 megabyte blocks.  So the question is, do we care
+> about this worst case since any sane application developer isn't
+> going to do writes that small?  
 
-  Hugh pointed me to ext4 hole punching code which is clearly missing some
-locking. But looking at the code more deeply I realized I don't see
-anything preventing the following race in XFS or ext4:
+Even if there's no runtime change, it's also useful to measure the CPU
+utilization.  If there's an increase in CPU utilization, then it can
+show up in workloads and benchmarks which are sensitive to CPU
+utilization as well as disk utilization, e.g., TPC-C/H.
 
-TASK1				TASK2
-				punch_hole(file, 0, 4096)
-				  filemap_write_and_wait()
-				  truncate_pagecache_range()
-addr = mmap(file);
-addr[0] = 1
-  ^^ writeably fault a page
-				  remove file blocks
+But since it takes so long for performance teams to notice, they tend
+to get very cranky when they observe regressions.  So for changes like
+this it's really important to measure any changes in CPU utilization,
+especially on larger on SMP systems when there multiple processes
+writing to the same file at high rates --- you know, like what an
+Enterprise database might do to a table space file.  :-)
 
-						FLUSHER
-						write out file
-						  ^^ interesting things can
-happen because we expect blocks under the first page to be allocated /
-reserved but they are not...
-
-I'm pretty sure ext4 has this problem, I'm not completely sure whether
-XFS has something to protect against such race but I don't see anything.
-
-It's not easy to protect against these races. For truncate, i_size protects
-us against similar races but for hole punching we don't have any such
-mechanism. One way to avoid the race would be to hold mmap_sem while we are
-invalidating the page cache and punching hole but that sounds a bit ugly.
-Alternatively we could just have some special lock (rwsem?) held during
-page_mkwrite() (for reading) and during whole hole punching (for writing)
-to serialize these two operations.
-
-Another alternative, which doesn't really look more appealing, is to go
-page-by-page and always free corresponding blocks under page lock.
-
-Any other ideas or thoughts?
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+    		   	   		     	   - Ted
