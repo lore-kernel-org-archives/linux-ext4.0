@@ -1,104 +1,72 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: punch-hole should go beyond i_size
-Date: Wed, 16 May 2012 08:14:56 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1205160810580.3179@dhcp-1-248.brq.redhat.com>
-References: <alpine.LSU.2.00.1201111639240.1833@eggly.anvils> <20120112025547.GC2806@dastard> <4F0F08F6.2000205@linux.vnet.ibm.com> <alpine.LSU.2.00.1205131404040.1547@eggly.anvils> <4FB2CC79.4020200@linux.vnet.ibm.com>
- <alpine.LSU.2.00.1205151529140.1571@eggly.anvils>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH RESEND] implement uid and gid mount options for ext2,
+ ext3 and ext4
+Date: Wed, 16 May 2012 10:25:25 +0300
+Message-ID: <4FB35665.5090908@panasas.com>
+References: <1336660924-9598-1-git-send-email-ludwig.nussel@suse.de> <20120511034945.GA15892@mobil.systemanalysen.net> <4FAD30D7.3070208@panasas.com> <20120515091542.51f3dd78@notabene.brown>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: Hugh Dickins <hughd@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20486 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751335Ab2EPGPm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 May 2012 02:15:42 -0400
-In-Reply-To: <alpine.LSU.2.00.1205151529140.1571@eggly.anvils>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Ludwig Nussel <ludwig.nussel@suse.de>,
+	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	Rob Landley <rob@landley.net>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	EXT2 FILE SYSTEM <linux-ext4@vger.kernel.org>,
+	DOCUMENTATION <linux-doc@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120515091542.51f3dd78@notabene.brown>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 15 May 2012, Hugh Dickins wrote:
+On 05/15/2012 02:15 AM, NeilBrown wrote:
 
-> Date: Tue, 15 May 2012 15:38:33 -0700 (PDT)
-> From: Hugh Dickins <hughd@google.com>
-> To: Allison Henderson <achender@linux.vnet.ibm.com>
-> Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
->     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
->     Lukas Czerner <lczerner@redhat.com>
-> Subject: Re: punch-hole should go beyond i_size
+> On Fri, 11 May 2012 18:31:35 +0300 Boaz Harrosh <bharrosh@panasas.com> wrote:
 > 
-> On Tue, 15 May 2012, Allison Henderson wrote:
-> > On 05/13/2012 02:13 PM, Hugh Dickins wrote:
-> > > On Thu, 12 Jan 2012, Allison Henderson wrote:
-> > >> On 01/11/2012 07:55 PM, Dave Chinner wrote:
-> > >>> On Wed, Jan 11, 2012 at 05:02:12PM -0800, Hugh Dickins wrote:
-> > >>>> Hi Allison,
-> > >>>>
-> > >>>> In thinking about fallocate() on tmpfs, I cross-check with ext4
-> > >>>> and find this bug in its implementation of FALLOC_FL_PUNCH_HOLE:
-> > >>>>
-> > >>>> rm -f temp
-> > >>>> fallocate    -l 4096 temp
-> > >>>> du temp				# shows 4, right
-> > >>>> fallocate -p -l 4096 temp
-> > >>>> du temp				# shows 0, right
-> > >>>> rm -f temp
-> > >>>> fallocate -n -l 4096 temp
-> > >>>> du temp				# shows 4, right
-> > >>>> fallocate -p -l 4096 temp
-> > >>>> du temp				# shows 4, wrong
-> > >>>> rm temp
-> > >>>>
-> > >>>> ext4_ext_punch_hole() contains /* No need to punch hole beyond i_size */
-> > >>>> early return, and trimming to i_size below, but forgets that the other
-> > >>>> variety of fallocate(), with FALLOC_FL_KEEP_SIZE set, may have allocated
-> > >>>> blocks beyond i_size.  They can be removed with ftruncate(), but it is
-> > >>>> unexpected for fallocate() not to undo its own work, and xfs does so.
-> > >>>
-> > >>> I'm pretty sure that's a bug as XFS allows punching holes in extents
-> > >>> beyond EOF.
-> > >>>
-> > >>> Cheers,
-> > >>>
-> > >>> Dave.
-> > >>
-> > >> Oh I see, I'll take a look at it, I think it will be ok to just take out the
-> > >> early return.  Thx!
-> > > 
-> > > I see the -EOPNOTSUPPs have gone into 3.4's ext4_punch_hole() - thanks -
-> > > but the i_size issue remains unfixed.  I wouldn't be surprised if it were
-> > > more complicated than you had hoped - I had no intention of trying a patch
-> > > myself!  It's not an actual problem for me, but I thought I'd just send a
-> > > reminder, before I move out of the hole-punching business.
-> > 
-> > Hi all,
-> > 
-> > I had a fix for this a while ago and I believe Lukas had rebased it
-> > when he was working on some punch hole optimizations, but Im not sure
-> > what happened to it after that.  I think Lukas might still be working
-> > on that set?  If not, I can take a peek at it again and see if I can
-> > get it updated and resent.  Thx!
-> > 
-> > Allison Henderson 
-> 
-> Thanks, Allison.  I just added Jan to the Cc list to make sure he sees,
-> since we mentioned this in the inode_dio_wait thread (which I skilfully
-> directed to an almost disjoint set of addressees - though I expect he
-> already saw via linux-ext4).
-> 
-> Hugh
+>> On 05/11/2012 06:49 AM, Roland Eggner wrote:
+>>
 
-Yes, we've been talking about this issue on LSF with Ted and the
-conclusion is that we want to wait for the range locks to be ready.
-This way we can avoid taking imutex for the punch hole when punching
-beyond isize which we would have to do otherwise.
 
-I am not sure how big of an issue this is, probably not so big. If
-we can not wait for the range locks, I can make a patch with imutex
-protection.
+Neil && Jan.
 
-Thanks!
--Lukas
+As I  said in my last mail:
+	"Shared files" problem is not solved by mount options.
+
+For me this is just a UNIX new-be 101 problem. You need to
+share files with friends you make the mistake once. Then
+you learn and you go on. It's a none problem.
+
+Your removable media thing is just your "shared folder"
+on a UNIX system. Deal with it. Da
+
+Or go degrade your FS to vfat security. You are reluctant
+to chmod all files to be world/group writeable but you
+are doing just that with your mount option. Perhaps
+when the chmod -R will scroll through you'd realize
+that the passwords file you should remove. The POSIX
+permissions are just for that purpose. "I set access
+control at creation. Else slave to change them". The
+mount option they specifically left out, not because
+they were not clever, but because you don't want it.
+
+BTW NTFS is like UNIX. If written in the right user-private
+permissions you can't read them. Even admin. You can only chown
+them.
+
+BTW Neil with Kerberos auth in an NFS/CIFS shared device
+like you mentioned, then a uid/gid is already associated
+with the access automatically. It's a perfect IDEA for
+these device makers. They need develop nothing only set it
+up with the same NFS / SAMBA implementations they already
+use.
+
+And one last thing Neil. Yes an rm is a perfect rope
+for an admin to hang itself, but it is not aimed at
+auto-mounter scripts
+
+I can't believe I got dragged into this again.
+
+:-(
+Boaz
