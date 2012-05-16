@@ -1,142 +1,150 @@
 From: Saugata Das <saugata.das@stericsson.com>
-Subject: [RFC 2/3] ext4: Context support
-Date: Wed, 16 May 2012 21:00:29 +0530
-Message-ID: <1337182230-11839-2-git-send-email-saugata.das@stericsson.com>
-References: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
+Subject: [RFC 1/3] block: Context support
+Date: Wed, 16 May 2012 21:00:28 +0530
+Message-ID: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <arnd.bergmann@linaro.org>, <venkat@linaro.org>,
 	<saugata.das@linaro.org>
 To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
 	<linux-mmc@vger.kernel.org>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-In-Reply-To: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from eu1sys200aog118.obsmtp.com ([207.126.144.145]:58664 "EHLO
+	eu1sys200aog118.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754367Ab2EPPbM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 May 2012 11:31:12 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Saugata Das <saugata.das@linaro.org>
 
-On eMMC and UFS devices there is a new feature of setting context with
-each read or write. The idea is to classify the data from different files
-and apply the realibility on the complete file instead of individual writes.
-On ext4 file system, the inode number of the file is passed as b_context
-in the bh structure during write and via the get_context callback function
-during read. Since number of MMC contexts is limited, multiple file system
+On eMMC and UFS devices there is a new feature of setting context with each
+read or write. The idea is to classify the data from different files and
+apply the realibility on the complete file instead of individual writes,
+which helps in performance. A new address space operation has been a added
+to get the context from file system and set up the bi_context field in bio.
+Then we need to ensure that bio from different contexts are not merged. The
+context is then passed to the underlying driver as part of the read or write
+request. Since the number of MMC contexts is limited, multiple file system
 contexts are mapped to single MMC context.
 
 Signed-off-by: Saugata Das <saugata.das@linaro.org>
 ---
- fs/ext4/inode.c   |   33 +++++++++++++++++++++++++++++++++
- fs/ext4/page-io.c |    1 +
- 2 files changed, 34 insertions(+), 0 deletions(-)
+ block/blk-core.c            |    1 +
+ block/blk-merge.c           |    3 +++
+ fs/mpage.c                  |   12 ++++++++++++
+ include/linux/blk_types.h   |    1 +
+ include/linux/blkdev.h      |    1 +
+ include/linux/buffer_head.h |    2 ++
+ include/linux/fs.h          |    1 +
+ 7 files changed, 21 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 754fe77..2667396 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -790,6 +790,21 @@ static int do_journal_get_write_access(handle_t *handle,
- 	return ret;
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 1f61b74..274e05d 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1309,6 +1309,7 @@ void init_request_from_bio(struct request *req, struct bio *bio)
+ 	req->errors = 0;
+ 	req->__sector = bio->bi_sector;
+ 	req->ioprio = bio_prio(bio);
++	req->context = bio->bi_context;
+ 	blk_rq_bio_prep(req->q, req, bio);
  }
  
-+/* Get the context of the buffer within the underlying storage device */
-+static int ext4_get_context(struct page *page)
-+{
-+	if (page && page->mapping && page->mapping->host)
-+		return page->mapping->host->i_ino;
-+	else
-+		return 0;
-+}
+diff --git a/block/blk-merge.c b/block/blk-merge.c
+index 160035f..ed70d56 100644
+--- a/block/blk-merge.c
++++ b/block/blk-merge.c
+@@ -497,6 +497,9 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
+ 	if (bio_integrity(bio) != blk_integrity_rq(rq))
+ 		return false;
+ 
++	if (bio->bi_context != rq->bio->bi_context)
++		return false;
 +
-+static int ext4_set_buffer_context(handle_t *handle, struct buffer_head *bh)
-+{
-+	bh->b_context = ext4_get_context(bh->b_page);
-+	return 0;
-+}
-+
- static int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create);
- static int ext4_write_begin(struct file *file, struct address_space *mapping,
-@@ -843,6 +858,11 @@ retry:
- 				from, to, NULL, do_journal_get_write_access);
+ 	return true;
+ }
+ 
+diff --git a/fs/mpage.c b/fs/mpage.c
+index 0face1c..4889842 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -293,6 +293,12 @@ alloc_new:
+ 			goto confused;
  	}
  
-+	if (!ret && walk_page_buffers(NULL, page_buffers(page),
-+				from, to, NULL, ext4_set_buffer_context)) {
-+		ext4_warning(inode->i_sb, "Couldn't set context\n");
-+	}
++	if (page && page->mapping && page->mapping->a_ops &&
++		page->mapping->a_ops->get_context)
++		bio->bi_context = page->mapping->a_ops->get_context(page);
++	else
++		bio->bi_context = 0;
 +
- 	if (ret) {
- 		unlock_page(page);
- 		page_cache_release(page);
-@@ -2394,8 +2414,11 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	pgoff_t index;
- 	struct inode *inode = mapping->host;
- 	handle_t *handle;
-+	unsigned from, to;
+ 	length = first_hole << blkbits;
+ 	if (bio_add_page(bio, page, length, 0) < length) {
+ 		bio = mpage_bio_submit(READ, bio);
+@@ -581,6 +587,12 @@ alloc_new:
+ 			goto confused;
+ 	}
  
- 	index = pos >> PAGE_CACHE_SHIFT;
-+	from = pos & (PAGE_CACHE_SIZE - 1);
-+	to = from + len;
- 
- 	if (ext4_nonda_switch(inode->i_sb)) {
- 		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
-@@ -2444,6 +2467,12 @@ retry:
- 
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
++	if (page && page->mapping && page->mapping->a_ops &&
++		page->mapping->a_ops->get_context)
++		bio->bi_context = page->mapping->a_ops->get_context(page);
++	else
++		bio->bi_context = 0;
 +
-+	if (walk_page_buffers(NULL, page_buffers(page),
-+			from, to, NULL, ext4_set_buffer_context)) {
-+		ext4_warning(inode->i_sb, "Couldn't set context\n");
-+	}
-+
- out:
- 	return ret;
- }
-@@ -3040,6 +3069,7 @@ static const struct address_space_operations ext4_ordered_aops = {
- 	.migratepage		= buffer_migrate_page,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-+	.get_context		= ext4_get_context,
+ 	/*
+ 	 * Must try to add the page before marking the buffer clean or
+ 	 * the confused fail path above (OOM) will be very confused when
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 4053cbd..f3ac448 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -42,6 +42,7 @@ struct bio {
+ 
+ 	unsigned short		bi_vcnt;	/* how many bio_vec's */
+ 	unsigned short		bi_idx;		/* current index into bvl_vec */
++	unsigned long		bi_context;	/* context of this bio */
+ 
+ 	/* Number of segments in this BIO after
+ 	 * physical address coalescing is performed.
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 2aa2466..0dd9a08 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -167,6 +167,7 @@ struct request {
+ 	struct list_head timeout_list;
+ 	unsigned int timeout;
+ 	int retries;
++	unsigned long context;	/* context of this request */
+ 
+ 	/*
+ 	 * completion callback.
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 13bba17..0776564 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -72,6 +72,8 @@ struct buffer_head {
+ 	struct list_head b_assoc_buffers; /* associated with another mapping */
+ 	struct address_space *b_assoc_map;	/* mapping this buffer is
+ 						   associated with */
++	unsigned long	b_context; /* context for this buffer within the
++							storage device */
+ 	atomic_t b_count;		/* users using this buffer_head */
  };
  
- static const struct address_space_operations ext4_writeback_aops = {
-@@ -3055,6 +3085,7 @@ static const struct address_space_operations ext4_writeback_aops = {
- 	.migratepage		= buffer_migrate_page,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-+	.get_context		= ext4_get_context,
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8de6755..4b379d8 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -626,6 +626,7 @@ struct address_space_operations {
+ 	int (*is_partially_uptodate) (struct page *, read_descriptor_t *,
+ 					unsigned long);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
++	int (*get_context)(struct page *);
  };
  
- static const struct address_space_operations ext4_journalled_aops = {
-@@ -3070,6 +3101,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.direct_IO		= ext4_direct_IO,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-+	.get_context		= ext4_get_context,
- };
- 
- static const struct address_space_operations ext4_da_aops = {
-@@ -3086,6 +3118,7 @@ static const struct address_space_operations ext4_da_aops = {
- 	.migratepage		= buffer_migrate_page,
- 	.is_partially_uptodate  = block_is_partially_uptodate,
- 	.error_remove_page	= generic_error_remove_page,
-+	.get_context		= ext4_get_context,
- };
- 
- void ext4_set_aops(struct inode *inode)
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index dcdeef1..bf1381e 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -296,6 +296,7 @@ static int io_submit_init(struct ext4_io_submit *io,
- 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
- 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
- 	bio->bi_bdev = bh->b_bdev;
-+	bio->bi_context = bh->b_context;
- 	bio->bi_private = io->io_end = io_end;
- 	bio->bi_end_io = ext4_end_bio;
- 
+ extern const struct address_space_operations empty_aops;
 -- 
 1.7.4.3
 
