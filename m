@@ -1,106 +1,99 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 1/2] block: add BH_Meta flag
-Date: Wed, 16 May 2012 15:32:39 +0300
-Message-ID: <4FB39E67.80109@panasas.com>
-References: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Hole punching and mmap races
+Date: Wed, 16 May 2012 15:04:45 +0200
+Message-ID: <20120516130445.GA27661@quack.suse.cz>
+References: <20120515224805.GA25577@quack.suse.cz>
+ <20120516021423.GO25351@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<tytso@mit.edu>, <adilger@whamcloud.com>, <hch@infradead.org>,
-	<arnd.bergmann@linaro.org>, <venkat@linaro.org>,
-	Saugata Das <saugata.das@linaro.org>
-To: Saugata Das <saugata.das@stericsson.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:43306 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757231Ab2EPMdF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 May 2012 08:33:05 -0400
-In-Reply-To: <1336748577-9258-1-git-send-email-saugata.das@stericsson.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120516021423.GO25351@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/11/2012 06:02 PM, Saugata Das wrote:
-
-> From: Saugata Das <saugata.das@linaro.org>
+On Wed 16-05-12 12:14:23, Dave Chinner wrote:
+> On Wed, May 16, 2012 at 12:48:05AM +0200, Jan Kara wrote:
+> >   Hello,
+> > 
+> >   Hugh pointed me to ext4 hole punching code which is clearly missing some
+> > locking. But looking at the code more deeply I realized I don't see
+> > anything preventing the following race in XFS or ext4:
+> > 
+> > TASK1				TASK2
+> > 				punch_hole(file, 0, 4096)
+> > 				  filemap_write_and_wait()
+> > 				  truncate_pagecache_range()
+> > addr = mmap(file);
+> > addr[0] = 1
+> >   ^^ writeably fault a page
+> > 				  remove file blocks
+> > 
+> > 						FLUSHER
+> > 						write out file
+> > 						  ^^ interesting things can
+> > happen because we expect blocks under the first page to be allocated /
+> > reserved but they are not...
+> > 
+> > I'm pretty sure ext4 has this problem, I'm not completely sure whether
+> > XFS has something to protect against such race but I don't see anything.
 > 
-> Today, storage devices like eMMC has special features like data tagging
-> (introduced in MMC-4.5 version) in order to improve performance of some
-> specific writes. On MMC stack, data tagging is used for all writes which
-> has REQ_META flag set. This patch adds the capability to add REQ_META flag
-> during meta data write.
+> No, it doesn't. It's a known problem due to not being able to take a
+> lock in .page_mkwrite() to serialise mmap() IO against truncation or
+> other IO such as direct IO. This has been known for, well, long
+> before we came up with page_mkwrite(). At the time page_mkwrite()
+> was introduced, locking was discusses to solve this problem but was
+> considered difficult on the VM side so it was ignored.
+  I thought someone must have noticed before since XFS has hole punching for
+a long time...
+
+> > It's not easy to protect against these races. For truncate, i_size protects
+> > us against similar races but for hole punching we don't have any such
+> > mechanism. One way to avoid the race would be to hold mmap_sem while we are
+> > invalidating the page cache and punching hole but that sounds a bit ugly.
+> > Alternatively we could just have some special lock (rwsem?) held during
+> > page_mkwrite() (for reading) and during whole hole punching (for writing)
+> > to serialize these two operations.
 > 
-> Signed-off-by: Saugata Das <saugata.das@linaro.org>
-> ---
->  fs/buffer.c                 |   10 ++++++++--
->  include/linux/buffer_head.h |    2 ++
->  2 files changed, 10 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 36d6665..688b38b 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -1685,7 +1685,10 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
->  	do {
->  		struct buffer_head *next = bh->b_this_page;
->  		if (buffer_async_write(bh)) {
-> -			submit_bh(write_op, bh);
-> +			if (buffer_meta(bh))
-> +				submit_bh(write_op | REQ_META, bh);
-> +			else
-> +				submit_bh(write_op, bh);
+> What really needs to happen is that .page_mkwrite() can be made to
+> fail with -EAGAIN and retry the entire page fault from the start an
+> arbitrary number of times instead of just once as the current code
+> does with VM_FAULT_RETRY. That would allow us to try to take the
+> filesystem lock that provides IO exclusion for all other types of IO
+> and fail with EAGAIN if we can't get it without blocking. For XFS,
+> that is the i_iolock rwsem, for others it is the i_mutex, and some
+> other filesystems might take other locks.
+  Actually, I've been playing with VM_FAULT_RETRY recently (for freezing
+patches) and it's completely unhandled for .page_mkwrite() callbacks. Also
+only x86 really tries to handle it at all. Other architectures just don't
+allow it at all. Also there's a ton of callers of things like
+get_user_pages() which would need to handle VM_FAULT_RETRY and for some of
+them it would be actually non-trivial.
 
+But in this particular case, I don't think VM_FAULT_RETRY is strictly
+necessary. We can have a lock, which ranks below mmap_sem (and thus
+i_mutex / i_iolock) and above i_mmap_mutex (thus page lock), transaction
+start, etc. Such lock could be taken in page_mkwrite() before taking page
+lock, in truncate() and punch_hold() just after i_mutex, and direct IO
+paths could be tweaked to use it as well I think.
 
-Its not nice to duplicate a call site for the parameter difference
-it's better to change the parameter and call the function in one
-place. (an assembler call site can get big)
+> FWIW, I've been running at "use the IO lock in page_mkwrite" patch
+> for XFS for several months now, but I haven't posted it because
+> without the VM side being able to handle such locking failures
+> gracefully there's not much point in making the change. I did this
+> patch to reduce the incidence of mmap vs direct IO races that are
+> essentially identical in nature to rule them out of the cause of
+> stray delalloc blocks in files that fsstress has been producing on
+> XFS. FYI, this race condition hasn't been responsible for any of the
+> problems I've found recently....
+  Yeah, I've been trying to hit the race window for a while and I failed as
+well...
 
-You can do:
-+				submit_bh(write_op | (buffer_meta(bh) << __REQ_META), bh);
-
-And also avoid a conditional inside a loop.
-
-
->  			nr_underway++;
->  		}
->  		bh = next;
-> @@ -1739,7 +1742,10 @@ recover:
->  		struct buffer_head *next = bh->b_this_page;
->  		if (buffer_async_write(bh)) {
->  			clear_buffer_dirty(bh);
-> -			submit_bh(write_op, bh);
-> +			if (buffer_meta(bh))
-> +				submit_bh(write_op | REQ_META, bh);
-> +			else
-> +				submit_bh(write_op, bh);
-
-
-Here too
-
-Boaz
-
->  			nr_underway++;
->  		}
->  		bh = next;
-> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-> index ef26043..0776564 100644
-> --- a/include/linux/buffer_head.h
-> +++ b/include/linux/buffer_head.h
-> @@ -34,6 +34,7 @@ enum bh_state_bits {
->  	BH_Write_EIO,	/* I/O error on write */
->  	BH_Unwritten,	/* Buffer is allocated on disk but not written */
->  	BH_Quiet,	/* Buffer Error Prinks to be quiet */
-> +	BH_Meta,	/* Is meta */
->  
->  	BH_PrivateStart,/* not a state bit, but the first bit available
->  			 * for private allocation by other entities
-> @@ -126,6 +127,7 @@ BUFFER_FNS(Delay, delay)
->  BUFFER_FNS(Boundary, boundary)
->  BUFFER_FNS(Write_EIO, write_io_error)
->  BUFFER_FNS(Unwritten, unwritten)
-> +BUFFER_FNS(Meta, meta)
->  
->  #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
->  #define touch_buffer(bh)	mark_page_accessed(bh->b_page)
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
