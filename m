@@ -1,40 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Protect group inode free counting with group lock.
-Date: Wed, 16 May 2012 10:49:32 -0500
-Message-ID: <4FB3CC8C.4030502@redhat.com>
-References: <1337158192-4591-1-git-send-email-tm@tao.ma> <4FB3AF00.9060704@redhat.com> <4FB3BFC9.20901@tao.ma>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42895] jbd2 makes all system unresponsive
+Date: Wed, 16 May 2012 16:34:39 +0000 (UTC)
+Message-ID: <20120516163439.916CD11FCF6@bugzilla.kernel.org>
+References: <bug-42895-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2981 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:38436 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755670Ab2EPPtg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 May 2012 11:49:36 -0400
-In-Reply-To: <4FB3BFC9.20901@tao.ma>
+	id S1754682Ab2EPQem (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 May 2012 12:34:42 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 335AB20586
+	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2012 16:34:41 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id A2AB520536
+	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2012 16:34:39 +0000 (UTC)
+In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/16/12 9:55 AM, Tao Ma wrote:
-> On 05/16/2012 09:43 PM, Eric Sandeen wrote:
->> On 5/16/12 3:49 AM, Tao Ma wrote:
->>> From: Tao Ma <boyu.mt@taobao.com>
->>>
->>> Now when we set the group inode free count, we don't have a proper
->>> group lock so that multiple threads may decrease the inode free
->>> count at the same time. And e2fsck will complain something like:
->>
->> This is only in the ! EXT4_FEATURE_RO_COMPAT_GDT_CSUM case I guess?
->> That would be worth mentioning in the summary & changelog.
-> sure, I will add it in v2.
->>
->> I guess you were testing without that for some reason?
-> See my comments below. I found it when running xfstests 269.
+https://bugzilla.kernel.org/show_bug.cgi?id=42895
 
-Still not sure how you got a filesystem w/o that feature though, unless
-I am forgetting something obvious.  Isn't it on by default?
 
--Eric
 
+
+
+--- Comment #13 from Eugene <ivanovstm2@zmail.ru>  2012-05-16 16:34:39 ---
+Thanks, now it works.
+Traced system for around 10mins and I don't see previously unseen processes.
+Just normal system activity. But there was a number of hdd writes (around 6 in
+10mins) which doesn't have corresponding entries in trace results and separated
+from entries by roughly 30sec (flush?) - that's not including 1-2 writes
+closely following (~3-5sec) almost each entry (jbd2?).
+http://paste.ubuntu.com/990927/
+
+Can I trace some function which gives output in trace results when actual write
+takes place but shows initial cause of the write (not just flush or jbd2)? Like
+block_dump but more informative?
+
+If it's not possible then for now I'm going to presume that it's just the way
+how system works. But still it's lots of flushes/jbd2 following writes of even
+small files:
+https://launchpadlibrarian.net/101378473/15mins_almost_idle.txt
+
+For example in above block_dump Network Manager's "timestamps" file is 4910
+bytes long and followed by ~20 writes by jbd2 and then by 10 flushes.
+Or xfconfd's "xfce4-panel.xml" is 9467 bytes long and followed by 8 writes by
+jbd2 and then by 20 flushes all around the disk.
+Is it normal?
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
