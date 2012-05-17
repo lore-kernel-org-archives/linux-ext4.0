@@ -1,61 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 42895] jbd2 makes all system unresponsive
-Date: Wed, 16 May 2012 20:24:41 +0000 (UTC)
-Message-ID: <20120516202442.0132C11FCF8@bugzilla.kernel.org>
-References: <bug-42895-13602@https.bugzilla.kernel.org/>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: Protect group inode free counting with group lock.
+Date: Thu, 17 May 2012 10:17:34 +0800
+Message-ID: <4FB45FBE.10004@tao.ma>
+References: <1337158192-4591-1-git-send-email-tm@tao.ma> <4FB3AF00.9060704@redhat.com> <4FB3BFC9.20901@tao.ma> <4FB3CC8C.4030502@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:45668 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965907Ab2EPUYo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 May 2012 16:24:44 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 1AAAC20584
-	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2012 20:24:43 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 0802120574
-	for <linux-ext4@vger.kernel.org>; Wed, 16 May 2012 20:24:42 +0000 (UTC)
-In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:38024 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1760826Ab2EQCRi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 May 2012 22:17:38 -0400
+In-Reply-To: <4FB3CC8C.4030502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=42895
+On 05/16/2012 11:49 PM, Eric Sandeen wrote:
+> On 5/16/12 9:55 AM, Tao Ma wrote:
+>> On 05/16/2012 09:43 PM, Eric Sandeen wrote:
+>>> On 5/16/12 3:49 AM, Tao Ma wrote:
+>>>> From: Tao Ma <boyu.mt@taobao.com>
+>>>>
+>>>> Now when we set the group inode free count, we don't have a proper
+>>>> group lock so that multiple threads may decrease the inode free
+>>>> count at the same time. And e2fsck will complain something like:
+>>>
+>>> This is only in the ! EXT4_FEATURE_RO_COMPAT_GDT_CSUM case I guess?
+>>> That would be worth mentioning in the summary & changelog.
+>> sure, I will add it in v2.
+>>>
+>>> I guess you were testing without that for some reason?
+>> See my comments below. I found it when running xfstests 269.
+> 
+> Still not sure how you got a filesystem w/o that feature though, unless
+> I am forgetting something obvious.  Isn't it on by default?
+oh, I see. Yes, we mkfs the system with the following configurations:
+mke2fs -O ^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,ext_attr
+Maybe that's the reason why it has never be met by others before. ;)
 
-
-
-
-
---- Comment #15 from Theodore Tso <tytso@mit.edu>  2012-05-16 20:24:41 ---
-Eugene, one thing which may not be obvious is that it's not the number of disk
-blocks that are written; it's how often the disk drive seeks, and more
-importantly, wakes up.  Once you wake up the hard drive, and the hard drive has
-positioned the hard drive heads to the right place on disk, whether you write
-8k or 32k or 128k doesn't make that much difference in terms of time and power
-requirements.
-
-So for example, if gedit writes a single file, it might cause multiple jbd2
-writes: for the block allocation bitmap, for the inode allocation bitmap, the
-inode table, the block group summary block, and then the data block itself. 
-But the jbd2 writes are contiguous, and happen all at once, during a journal
-commit (which is caused either by an explicit fsync or by the 5 second commit
-timer which starts a journal commit 5 seconds after metadata changes have been
-applied to the file system).   So you might see "lots of jbd2 writes", but it's
-misleading in terms of the power requirements or disk time fraction consumed by
-the journalling.   Of course, if you don't care about consistency after a
-crash, you can always disable journalling.  But then you might lose data files
-after a system crash.
-
-The bottom line is that if you want to keep the disk sleeping for longer, you
-have to be absolutely firm about not having programs write to the file system. 
- For things like gedit, it's caused by user activity, and that's fine and good.
- But if NetworkManager is dirtying the disk every few seconds or minutes,
-especially if it's something useless like some kind of timestamp file, it's a
-bug that should be filed with extreme prejudice against NetworkManager, since
-it's guaranteed to be constantly waking up the disk.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Thanks
+Tao
