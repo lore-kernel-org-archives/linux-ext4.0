@@ -1,77 +1,93 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V2] ext4: Protect group inode free counting with group lock.
-Date: Thu, 17 May 2012 15:35:39 +0800
-Message-ID: <1337240139-5005-1-git-send-email-tm@tao.ma>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Hole punching and mmap races
+Date: Thu, 17 May 2012 17:43:08 +1000
+Message-ID: <20120517074308.GQ25351@dastard>
+References: <20120515224805.GA25577@quack.suse.cz>
+ <20120516021423.GO25351@dastard>
+ <20120516130445.GA27661@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
+	linux-mm@kvack.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:36024 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1761292Ab2EQHfu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 May 2012 03:35:50 -0400
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:28943 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759477Ab2EQHnN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 May 2012 03:43:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20120516130445.GA27661@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Wed, May 16, 2012 at 03:04:45PM +0200, Jan Kara wrote:
+> On Wed 16-05-12 12:14:23, Dave Chinner wrote:
+> > On Wed, May 16, 2012 at 12:48:05AM +0200, Jan Kara wrote:
+> > > It's not easy to protect against these races. For truncate, i_size protects
+> > > us against similar races but for hole punching we don't have any such
+> > > mechanism. One way to avoid the race would be to hold mmap_sem while we are
+> > > invalidating the page cache and punching hole but that sounds a bit ugly.
+> > > Alternatively we could just have some special lock (rwsem?) held during
+> > > page_mkwrite() (for reading) and during whole hole punching (for writing)
+> > > to serialize these two operations.
+> > 
+> > What really needs to happen is that .page_mkwrite() can be made to
+> > fail with -EAGAIN and retry the entire page fault from the start an
+> > arbitrary number of times instead of just once as the current code
+> > does with VM_FAULT_RETRY. That would allow us to try to take the
+> > filesystem lock that provides IO exclusion for all other types of IO
+> > and fail with EAGAIN if we can't get it without blocking. For XFS,
+> > that is the i_iolock rwsem, for others it is the i_mutex, and some
+> > other filesystems might take other locks.
+>   Actually, I've been playing with VM_FAULT_RETRY recently (for freezing
+> patches) and it's completely unhandled for .page_mkwrite() callbacks.
 
-Now when we set the group inode free count, we don't have a proper
-group lock so that multiple threads may decrease the inode free
-count at the same time. And e2fsck will complain something like:
+Yeah, it's a mess.
 
-Free inodes count wrong for group #1 (1, counted=0).
-Fix? no
+> Also
+> only x86 really tries to handle it at all. Other architectures just don't
+> allow it at all. Also there's a ton of callers of things like
+> get_user_pages() which would need to handle VM_FAULT_RETRY and for some of
+> them it would be actually non-trivial.
 
-Free inodes count wrong for group #2 (3, counted=0).
-Fix? no
+Seems kind of silly to me to have a generic retry capability in the
+page fault handler and then not implement it in a useful manner for
+*anyone*.
 
-Directories count wrong for group #2 (780, counted=779).
-Fix? no
+> But in this particular case, I don't think VM_FAULT_RETRY is strictly
+> necessary. We can have a lock, which ranks below mmap_sem (and thus
+> i_mutex / i_iolock) and above i_mmap_mutex (thus page lock), transaction
+> start, etc. Such lock could be taken in page_mkwrite() before taking page
+> lock, in truncate() and punch_hold() just after i_mutex, and direct IO
+> paths could be tweaked to use it as well I think.
 
-Free inodes count wrong for group #3 (2272, counted=2273).
-Fix? no
+Which means we'd be adding another layer of mostly redundant locking
+just to avoid i_mutex/mmap_sem inversion. But I don't see how it
+solves the direct IO problem because we still need to grab the
+mmap_sem inside the IO during get_user_pages_fast() while holding
+i_mutex/i_iolock....
 
-So this patch try to protect it with the ext4_lock_group.
+> > FWIW, I've been running at "use the IO lock in page_mkwrite" patch
+> > for XFS for several months now, but I haven't posted it because
+> > without the VM side being able to handle such locking failures
+> > gracefully there's not much point in making the change. I did this
+> > patch to reduce the incidence of mmap vs direct IO races that are
+> > essentially identical in nature to rule them out of the cause of
+> > stray delalloc blocks in files that fsstress has been producing on
+> > XFS. FYI, this race condition hasn't been responsible for any of the
+> > problems I've found recently....
+>   Yeah, I've been trying to hit the race window for a while and I failed as
+> well...
 
-btw, it is found by xfstests test case 269 and the volume is
-mkfsed with the parameter
-"-O ^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,ext_attr"
-and I have run it 100 times and the error in e2fsck doesn't
-show up again.
+IIRC, it's a rare case (that I consider insane, BTW):  read from a
+file with into a buffer that is a mmap()d region of the same file
+that has not been faulted in yet.....
 
-Cc: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/ialloc.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+Cheers,
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 409c2ee..ca533d7 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -772,7 +772,10 @@ got:
- 			ext4_itable_unused_set(sb, gdp,
- 					(EXT4_INODES_PER_GROUP(sb) - ino));
- 		up_read(&grp->alloc_sem);
-+	} else {
-+		ext4_lock_group(sb, group);
- 	}
-+
- 	ext4_free_inodes_set(sb, gdp, ext4_free_inodes_count(sb, gdp) - 1);
- 	if (S_ISDIR(mode)) {
- 		ext4_used_dirs_set(sb, gdp, ext4_used_dirs_count(sb, gdp) + 1);
-@@ -782,10 +785,9 @@ got:
- 			atomic_inc(&sbi->s_flex_groups[f].used_dirs);
- 		}
- 	}
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
- 		gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
--		ext4_unlock_group(sb, group);
--	}
-+	ext4_unlock_group(sb, group);
- 
- 	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
- 	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
+Dave.
 -- 
-1.7.1
-
+Dave Chinner
+david@fromorbit.com
