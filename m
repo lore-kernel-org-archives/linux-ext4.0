@@ -1,80 +1,49 @@
-From: Saugata Das <saugata.das@stericsson.com>
-Subject: [PATCH v2 2/2] ext4: annotate all meta data requests
-Date: Thu, 17 May 2012 17:51:30 +0530
-Message-ID: <1337257290-28547-2-git-send-email-saugata.das@stericsson.com>
-References: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42895] jbd2 makes all system unresponsive
+Date: Thu, 17 May 2012 16:34:06 +0000 (UTC)
+Message-ID: <20120517163406.8645111FCF6@bugzilla.kernel.org>
+References: <bug-42895-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <arnd.bergmann@linaro.org>, <venkat@linaro.org>,
-	<lporzio@micron.com>, <tytso@mit.edu>, <adilger@dilger.ca>,
-	<hch@infradead.org>, <bharrosh@panasas.com>,
-	<deepak.saxena@linaro.org>, Saugata Das <saugata.das@linaro.org>
-To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<patches@linaro.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eu1sys200aog104.obsmtp.com ([207.126.144.117]:48096 "EHLO
-	eu1sys200aog104.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754437Ab2EQMWg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 May 2012 08:22:36 -0400
-In-Reply-To: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
+Received: from mail.kernel.org ([198.145.19.201]:54595 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966148Ab2EQQeL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 May 2012 12:34:11 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3E974205DF
+	for <linux-ext4@vger.kernel.org>; Thu, 17 May 2012 16:34:09 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id 90FA0205B6
+	for <linux-ext4@vger.kernel.org>; Thu, 17 May 2012 16:34:06 +0000 (UTC)
+In-Reply-To: <bug-42895-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Saugata Das <saugata.das@linaro.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=42895
 
-Today, storage devices like eMMC has special features like data tagging
-(introduced in MMC-4.5 version) in order to improve performance of some
-specific writes. On MMC stack, data tagging is used for all writes which has
-REQ_META flag set. On EXT4, however, currently REQ_META is set only for read.
-This patch adds the capability mark a meta-data buffer with set_buffer_meta
-during meta data write. During submit_bh, this information is used to set
-REQ_META flag.
 
-Signed-off-by: Saugata Das <saugata.das@linaro.org>
----
- fs/ext4/ext4_jbd2.c |    4 ++++
- fs/ext4/inode.c     |    4 +++-
- 2 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index aca1790..097c062 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -107,6 +107,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- {
- 	int err = 0;
- 
-+	set_buffer_meta(bh);
-+
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		if (err) {
-@@ -143,6 +145,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
- 	int err = 0;
- 
-+	set_buffer_meta(bh);
-+
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		if (err)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c77b0bd..754fe77 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4035,8 +4035,10 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		err = __ext4_get_inode_loc(inode, &iloc, 0);
- 		if (err)
- 			return err;
--		if (wbc->sync_mode == WB_SYNC_ALL)
-+		if (wbc->sync_mode == WB_SYNC_ALL) {
-+			set_buffer_meta(iloc.bh);
- 			sync_dirty_buffer(iloc.bh);
-+		}
- 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
- 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
- 					 "IO error syncing inode");
+
+
+--- Comment #16 from Eugene <ivanovstm2@zmail.ru>  2012-05-17 16:34:06 ---
+to Jan Kara, Theodore Ts'o:
+
+Seems there is some difference in how various systems work (maybe specifics of
+work of some hardware configurations and/or distro configuration choices). My
+older system on 2.6.28 with ext3 had overall less HDD activity. And seems many
+people are deceived by similar changes in system behavior into thinking that
+something isn't right with the system. Which in turn leads them to notice jbd2
+process and deduce that it's the main culprit in constant writes on disk since
+information on jbd2 is scarce.
+
+Thank you very much for your help and explanation.
+I will try to point here people in launchpad's bug thread.
+
+Eugene Ivanov
+
 -- 
-1.7.4.3
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
