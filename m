@@ -1,109 +1,130 @@
-From: djwong <djwong@us.ibm.com>
-Subject: Re: [PATCH 15/23] jbd2: Change disk layout for metadata
- checksumming
-Date: Fri, 18 May 2012 15:51:01 -0700
-Message-ID: <20120518225101.GH6938@tux1.beaverton.ibm.com>
-References: <20120306204750.1663.96751.stgit@elm3b70.beaverton.ibm.com>
- <20120306204941.1663.56283.stgit@elm3b70.beaverton.ibm.com>
- <20120428141933.GB29481@thunk.org>
- <FCF93AD5-A078-4855-BC8D-B7B046884411@dilger.ca>
- <20120429193921.GA7342@thunk.org>
-Reply-To: djwong@us.ibm.com
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Hole punching and mmap races
+Date: Sat, 19 May 2012 11:40:24 +1000
+Message-ID: <20120519014024.GZ25351@dastard>
+References: <20120515224805.GA25577@quack.suse.cz>
+ <20120516021423.GO25351@dastard>
+ <20120516130445.GA27661@quack.suse.cz>
+ <20120517074308.GQ25351@dastard>
+ <20120517232829.GA31028@quack.suse.cz>
+ <20120518101210.GX25351@dastard>
+ <20120518133250.GC5589@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-	Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>
-To: "Ted Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e37.co.us.ibm.com ([32.97.110.158]:57428 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030349Ab2ERWvs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 May 2012 18:51:48 -0400
-Received: from /spool/local
-	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Fri, 18 May 2012 16:51:47 -0600
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id A9D4BC90057
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2012 18:51:00 -0400 (EDT)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q4IMp3wQ26607664
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2012 18:51:03 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q4IMp246023719
-	for <linux-ext4@vger.kernel.org>; Fri, 18 May 2012 19:51:03 -0300
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
+	linux-mm@kvack.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20120429193921.GA7342@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20120518133250.GC5589@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Apr 29, 2012 at 03:39:21PM -0400, Ted Ts'o wrote:
-> [ I've trimmed the cc line to avoid spamming lots of folks who might not
->   care about the details of jbd2 checksumming. ]
-> 
-> On Sat, Apr 28, 2012 at 04:58:12PM -0600, Andreas Dilger wrote:
+On Fri, May 18, 2012 at 03:32:50PM +0200, Jan Kara wrote:
+> On Fri 18-05-12 20:12:10, Dave Chinner wrote:
+> > On Fri, May 18, 2012 at 01:28:29AM +0200, Jan Kara wrote:
+> > > On Thu 17-05-12 17:43:08, Dave Chinner wrote:
+> > > > On Wed, May 16, 2012 at 03:04:45PM +0200, Jan Kara wrote:
+> > > > > On Wed 16-05-12 12:14:23, Dave Chinner wrote:
+> > > > IIRC, it's a rare case (that I consider insane, BTW):  read from a
+> > > > file with into a buffer that is a mmap()d region of the same file
+> > > > that has not been faulted in yet.....
+> > >   With punch hole, the race is less insane - just punching hole in the area
+> > > which is accessed via mmap could race in a bad way AFAICS.
 > > 
-> > I thought we originally discussed using the high 16 bits of the
-> > t_flags field to store the checksum?  This would avoid the need to
-> > change the disk format.
-> 
-> I don't recall that suggestion, but I like it.  One thing that will
-> get subtle about this is that t_flags is stored big-endian (jbd/jbd2
-> data structures are stored be, but the data structures in ext4 proper
-> are stored le; sigh).   So we'd have to do something like this:
-> 
-> typedef struct journal_block_tag_s
-> {
-> 	__u32		t_blocknr;	/* The on-disk block number */
-> 	__u16		t_checksum;	/* 16-bit checksum */
-> 	__u16		t_flags;	/* See below */
-> 	__u32		t_blocknr_high; /* most-significant high 32bits. */
-> } journal_block_tag_t;
-> 
-> ... and then make sure we change all of the places that access t_flags
-> using cpu_to_be32() and be32_to_cpu() get changed to the 16-bit
-> variant.
-> 
-> > Since there is still a whole transaction checksum, it isn't so
-> > critical that the per-block checksum be strong.
-> >
-> > One idea is to do the crc32c for each block, then store the high 16
-> > bits into t_flags, and checksum the full 32-bit per-block checksums
-> > to make the commit block checksum, to avoid having to do the block
-> > checksums twice.
-> 
-> It's not critical because the hard drive is doing its own ECC.  So I'm
-> not that worried about detecting a large burst of bit errors, which is
-> the main advantage of using a larger CRC.  I'm more worried about a
-> disk block getting written to the wrong place, or not getting written
-> at all.  So whether the chance of detecting a wrong block is 99.9985%
-> at all (w/ a 16-bit checksum) or 99.9999% (with a 32-bit checksum),
-> at all, either is fine.
+> > Seems the simple answer to me is to prevent page faults while hole
+> > punching, then....
+>   Yes, that's what I was suggesting in the beginning :) And I was asking
+> whether people are OK with another lock in the page fault path (in
+> particular in ->page_mkwrite)
 
-Hmmm, what about 64k block filesystems?
+Right. I probably should have been clearer in what I said. We got
+back here from considering another IO level lock and all the
+complexity it adds to just solve the hole punch problem....
 
-Anyway, I revised two of the patches quite a while ago and apparently forgot to
-send them. :(  They simply enlarge the journal tag struct and adjust the code
-to use journal_tag_bytes() instead of the constants.
+> or whether someone has a better idea (e.g.
+> taking mmap_sem in the hole punching path seems possible but I'm not sure
+> whether that would be considered acceptable abuse).
 
-I was going to send them out, but I rebased off e2fsprogs head and 3.4-rc7 just
-today and saw new regressions about group descriptor checksums.  Oh well.
+That's for the VM guys to answer, but it seems wrong to me to have
+to treat hole punching differently to truncation....
 
---D
+The thing is, mmap IO is completely unlocked from an IO perspective,
+and that means we cannot guarantee exclusion from IO without using
+the IO exclusion lock. That's the simplest way we can make mmap
+serialise sanely against direct IO and hole punching. Hole punching
+is inherently a filesystem operation (just like truncation), and
+mmap operations must stall while it is in progress. It's just that
+we have the problem that we allow the mmap_sem to be taken inside
+the IO exclusion locks...
 
-> 
-> I'm not even sure I would worry combining the per-block checksums into
-> the commit block checksum.  In the rare case where there is an error
-> not detected by the 16-bit checksum which is detected in the commit
-> checksum, what are we supposed to do?  Throw away the entire commit
-> again?  Just simply testing to see what we do in this rare case is
-> going to be interesting / painful.
-> 
->    	     	     	      	 	     - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+So let's step back a moment and have a look at how we've got here.
+The problem is that we've optimised ourselves into a corner with the
+way we handle page cache truncation - we don't need mmap
+serialisation because of the combination of i_size and page locks
+mean we can detect truncated pages safely at page fault time. With
+hole punching, we don't have that i_size safety blanket, and so we
+need some other serialisation mechanism to safely detect whether a
+page is valid or not at any given point in time.
 
+Because it needs to serialise against IO operations, we need a
+sleeping lock of some kind, and it can't be the existing IO lock.
+And now we are looking at needing a new lock for hole punching, I'm
+really wondering if the i_size/page lock truncation optimisation
+should even continue to exist. i.e. replace it with a single
+mechanism that works for both hole punching, truncation and other
+functions that require exclusive access or exclusion against
+modifications to the mapping tree.
+
+But this is only one of the problems in this area.The way I see it
+is that we have many kludges in the area of page invalidation w.r.t.
+different types of IO, the page cache and mmap, especially when we
+take into account direct IO. What we are seeing here is we need
+some level of _mapping tree exclusion_ between:
+
+	1. mmap vs hole punch (broken)
+	2. mmap vs truncate (i_size/page lock)
+	3. mmap vs direct IO (non-existent)
+	4. mmap vs buffered IO (page lock)
+	5. writeback vs truncate (i_size/page lock)
+	6. writeback vs hole punch (page lock, possibly broken)
+	7. direct IO vs buffered IO (racy - flush cache before/after DIO)
+
+#1, #2, #5 and #6 could be solved by a rw-lock for the operations -
+read for mmap/writeback, exclusive for hole-punch and truncation.
+That, however, doesn't work for #3 and #4 as the exclusion is
+inverted - direct/buffered IO would require a shared mode lock and
+mmap requires the exclusive lock.  Similarly, #7 requires a shared
+lock for direct IO, and a shared lock for buffered IO, but exclusion
+between the two for overlapping ranges. But no one locking primitive
+that currently exists can give us this set of semantics....
+
+Right now we are talking about hacking in some solution to #1, while
+ignoring the wider range of related but ignored/papered over
+problems we also have. I don't have a magic bullet that solves all
+of these problems, but I think it is worth recognising and
+considering that this problem is much larger than just hole punching
+and that these problems have been there for a *long time*.
+
+To me the issue at hand is that we have no method of serialising
+multi-page operations on the mapping tree between the filesystem and
+the VM, and that seems to be the fundamental problem we face in this
+whole area of mmap/buffered/direct IO/truncate/holepunch coherency.
+Hence it might be better to try to work out how to fix this entire
+class of problems rather than just adding a complex kuldge that just
+papers over the current "hot" symptom....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Fight unfair telecom internet charges in Canada: sign http://stopthemeter.ca/
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
