@@ -1,78 +1,52 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43260] ftruncate locks up when used with direct IO on ext4
-Date: Mon, 21 May 2012 23:08:04 +0000 (UTC)
-Message-ID: <20120521230804.CA44911FD11@bugzilla.kernel.org>
-References: <bug-43260-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/1] ext4, dio: Remove overflow for size >2G in aio-dio
+ code.
+Date: Mon, 21 May 2012 19:31:33 -0400
+Message-ID: <20120521233133.GG12339@thunk.org>
+References: <F9014F50-D1F6-4B64-8535-7452CC64B18A@qualexsystems.com>
+ <1337500880.16053.YahooMailNeo@web192405.mail.sg3.yahoo.com>
+ <CA+55aFwTN_uFXnoLo=uJnA21FeUs_92c8FvMY6-aXk=UmF1zgQ@mail.gmail.com>
+ <1337570918.78986.YahooMailNeo@web192406.mail.sg3.yahoo.com>
+ <CA+55aFxA0Do37AxoM2MPH5nnMa2VAPHp1pKJ7CiafGGQL-b0wQ@mail.gmail.com>
+ <CA+55aFyGJTJh3jddXdapQiC4ou=sS9PFMcX_qVUGa5qBjUZjDg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: manish honap <manish_honap_vit@yahoo.co.in>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:38710 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751623Ab2EUXIJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 May 2012 19:08:09 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9464B204D2
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2012 23:08:07 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id D45D4204C8
-	for <linux-ext4@vger.kernel.org>; Mon, 21 May 2012 23:08:04 +0000 (UTC)
-In-Reply-To: <bug-43260-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56071 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752890Ab2EUXbi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 May 2012 19:31:38 -0400
+Content-Disposition: inline
+In-Reply-To: <CA+55aFyGJTJh3jddXdapQiC4ou=sS9PFMcX_qVUGa5qBjUZjDg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43260
+On Mon, May 21, 2012 at 03:22:28PM -0700, Linus Torvalds wrote:
+> 
+> So I'm pretty sure this patch is what we want, and rw_verify_area()
+> really is required to protect low-level filesystems from these kinds
+> of issues. Not just ext4.
+> 
+> At the same time, I would *really* want somebody who actually uses
+> anything AIO to test it out too. Because I want to not only commit it,
+> but also mark it for stable - and it would be nice to have some more
+> testing than me saying "ok, it passes the one test-case sent to me"
+> and "hey, the code looks sane".
 
+Hi Linus,
 
+We do use AIO at Google, and I primarily use fio (usually as part of
+xfstests) to test AIO functionality.
 
+If you like I can carry the patch in the ext4 tree and test it as part
+of the ext4 commits for the merge window.
 
+I probably won't be able to get to it until a bit later in the week,
+though.  Things have been really crazy for me this past two months...
 
---- Comment #2 from Ivan Tarasov <ivan@rethinkdb.com>  2012-05-21 23:08:04 ---
-Created an attachment (id=73345)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=73345)
-Output of SysRq-w at lock up
-
-Eric,
-
-You are correct that 3.2.10 does not exhibit the problem (both on
-RedHat-patched and vanilla kernel versions). That means that the bug was fixed
-between 8c0bec21 and v3.2.10 and then reappeared again between the v3.2.10 and
-v3.2.14.
-
-I repeated the bisect, this time between v3.2.10 and v3.2.14, and found this
-commit which exhibited the problem again:
-
-commit 8608fb78b2cbf9eb8794e592bf43a8b1884c5a85
-Author: Jeff Moyer <jmoyer@redhat.com>
-Date:   Mon Feb 20 17:59:24 2012 -0500
-
-    ext4: fix race between unwritten extent conversion and truncate
-
-    commit 266991b13890049ee1a6bb95b9817f06339ee3d7 upstream.
-
-    The following comment in ext4_end_io_dio caught my attention:
-
-        /* XXX: probably should move into the real I/O completion handler */
-            inode_dio_done(inode);
-
-    The truncate code takes i_mutex, then calls inode_dio_wait.  Because the
-    ext4 code path above will end up dropping the mutex before it is
-    reacquired by the worker thread that does the extent conversion, it
-    seems to me that the truncate can happen out of order.  Jan Kara
-    mentioned that this might result in error messages in the system logs,
-    but that should be the extent of the "damage."
-
-    The fix is pretty straight-forward: don't call inode_dio_done until the
-    extent conversion is complete.
-
-    Reviewed-by: Jan Kara <jack@suse.cz>
-    Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-
-The output of sysrq-w during the lock up on this commit is attached.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
