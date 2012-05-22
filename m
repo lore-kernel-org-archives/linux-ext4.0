@@ -1,50 +1,51 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: Re: [PATCH] e2fsck: fix precedence bug in built-in quota support
-Date: Tue, 22 May 2012 10:20:35 -0700
-Message-ID: <CAGr1F2E+87iBHZzn8zVjebzy4wYpYSThqe-qbQrZ-=y_pFv0sQ@mail.gmail.com>
-References: <1337652574-7132-1-git-send-email-tytso@mit.edu>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH 1/1] ext4, dio: Remove overflow for size >2G in aio-dio
+ code.
+Date: Tue, 22 May 2012 14:02:17 -0500
+Message-ID: <4FBBE2B9.6030304@sandeen.net>
+References: <F9014F50-D1F6-4B64-8535-7452CC64B18A@qualexsystems.com> <1337500880.16053.YahooMailNeo@web192405.mail.sg3.yahoo.com> <CA+55aFwTN_uFXnoLo=uJnA21FeUs_92c8FvMY6-aXk=UmF1zgQ@mail.gmail.com> <1337570918.78986.YahooMailNeo@web192406.mail.sg3.yahoo.com> <CA+55aFxA0Do37AxoM2MPH5nnMa2VAPHp1pKJ7CiafGGQL-b0wQ@mail.gmail.com> <CA+55aFyGJTJh3jddXdapQiC4ou=sS9PFMcX_qVUGa5qBjUZjDg@mail.gmail.com> <20120521233133.GG12339@thunk.org> <4FBBBA98.9090101@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ted Ts'o <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	manish honap <manish_honap_vit@yahoo.co.in>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:49819 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753751Ab2EVRU5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 May 2012 13:20:57 -0400
-Received: by lbbgm6 with SMTP id gm6so4444515lbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 22 May 2012 10:20:55 -0700 (PDT)
-In-Reply-To: <1337652574-7132-1-git-send-email-tytso@mit.edu>
+Received: from sandeen.net ([63.231.237.45]:53148 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760172Ab2EVTCS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 May 2012 15:02:18 -0400
+In-Reply-To: <4FBBBA98.9090101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T29wcy4gVGhhbmtzIGZvciB0aGUgcGF0Y2guCgoKT24gTW9uLCBNYXkgMjEsIDIwMTIgYXQgNzow
-OSBQTSwgVGhlb2RvcmUgVHMnbyA8dHl0c29AbWl0LmVkdT4gd3JvdGU6Cj4gVGhlIG9wZXJhdG9y
-IHByZWNlZGVuY2UgYnVnIG1lYW5zIHRoYXQgd2UgbWlnaHQgcGF5IGF0dGVpb24gdG8KPiBzX2dy
-cF9xdW90YV9pbnVtIGV2ZW4gaWYgdGhlIFJPX0NPTVBBVF9RVU9UQSBmZWF0dXJlIGZsYWcgaXMg
-Y2xlYXIuCj4gSG93ZXZlciwgZm9ydHVuYXRlbHksIHRoaXMgaXMgdW5saWtlbHkgdG8gaGFwcGVu
-IGluIHByYWN0aWNlLgo+Cj4gQ2M6IEFkaXR5YSBLYWxpIDxhZGl0eWFrYWxpQGdvb2dsZS5jb20+
-Cj4gU2lnbmVkLW9mZi1ieTogIlRoZW9kb3JlIFRzJ28iIDx0eXRzb0BtaXQuZWR1PgpSZXZpZXdl
-ZC1ieTogQWRpdHlhIEthbGkgPGFkaXR5YWthbGlAZ29vZ2xlLmNvbT4KPiAtLS0KPiDCoGUyZnNj
-ay9wYXNzMS5jIHwgwqAgwqA0ICsrLS0KPiDCoDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMo
-KyksIDIgZGVsZXRpb25zKC0pCj4KPiBkaWZmIC0tZ2l0IGEvZTJmc2NrL3Bhc3MxLmMgYi9lMmZz
-Y2svcGFzczEuYwo+IGluZGV4IGM3NjQ1ZDEuLmM2YWFlNmUgMTAwNjQ0Cj4gLS0tIGEvZTJmc2Nr
-L3Bhc3MxLmMKPiArKysgYi9lMmZzY2svcGFzczEuYwo+IEBAIC05MjgsOCArOTI4LDggQEAgdm9p
-ZCBlMmZzY2tfcGFzczEoZTJmc2NrX3QgY3R4KQo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgZXh0MmZzX21hcmtfaW5vZGVfYml0bWFwMihjdHgtPmlub2RlX3VzZWRfbWFwLCBp
-bm8pOwo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgaWYgKChmcy0+c3VwZXIt
-PnNfZmVhdHVyZV9yb19jb21wYXQgJgo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgRVhUNF9GRUFUVVJFX1JPX0NPTVBBVF9RVU9UQSkg
-JiYKPiAtIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIChmcy0+c3VwZXIt
-PnNfdXNyX3F1b3RhX2ludW0gPT0gaW5vKSB8fAo+IC0gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgKGZzLT5zdXBlci0+c19ncnBfcXVvdGFfaW51bSA9PSBpbm8pKSB7Cj4g
-KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCAoKGZzLT5zdXBlci0+c191
-c3JfcXVvdGFfaW51bSA9PSBpbm8pIHx8Cj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoChmcy0+c3VwZXItPnNfZ3JwX3F1b3RhX2ludW0gPT0gaW5vKSkpIHsKPiDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoGlmICghTElOVVhf
-U19JU1JFRyhpbm9kZS0+aV9tb2RlKSAmJgo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgZml4X3Byb2JsZW0oY3R4LCBQUl8xX1FVT1RBX0JBRF9N
-T0RFLAo+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgJnBjdHgpKSB7Cj4gLS0KPiAxLjcuMTAu
-cmMzCj4KCgoKLS0gCgpBZGl0eWEK
+On 5/22/12 11:11 AM, Eric Sandeen wrote:
+> On 5/21/12 6:31 PM, Ted Ts'o wrote:
+>> On Mon, May 21, 2012 at 03:22:28PM -0700, Linus Torvalds wrote:
+>>>
+>>> So I'm pretty sure this patch is what we want, and rw_verify_area()
+>>> really is required to protect low-level filesystems from these kinds
+>>> of issues. Not just ext4.
+>>>
+>>> At the same time, I would *really* want somebody who actually uses
+>>> anything AIO to test it out too. Because I want to not only commit it,
+>>> but also mark it for stable - and it would be nice to have some more
+>>> testing than me saying "ok, it passes the one test-case sent to me"
+>>> and "hey, the code looks sane".
+> 
+> Just FWIW, the ext4_file_write() part of this fix was sent by Zheng Liu on 4/12/12:
+> 
+> [PATCH RESEND] ext4: change return value from int to ssize_t in ext4_file_write
+
+Sorry, I was talking about Manish's original patch, not Linus's followup.
+
+-Eric
+
+> I'll see about writing an xfstest for this stuff too so it doesn't regress again.
+> 
+> -Eric
+> 
