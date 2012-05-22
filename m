@@ -1,42 +1,123 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: fix precedence bug in built-in quota support
-Date: Mon, 21 May 2012 22:09:34 -0400
-Message-ID: <1337652574-7132-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Aditya Kali <adityakali@google.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56094 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750896Ab2EVCJh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 May 2012 22:09:37 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Saugata Das <saugata.das@linaro.org>
+Subject: Re: [PATCH v2 1/2] block: add BH_Meta flag
+Date: Tue, 22 May 2012 09:48:24 +0530
+Message-ID: <CAKLKtzeRNLho7MTM_w2h2+P6gehC4PvkP9VohOJL0+7kAn9VTQ@mail.gmail.com>
+References: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	patches@linaro.org, arnd.bergmann@linaro.org, venkat@linaro.org,
+	lporzio@micron.com, adilger@dilger.ca, bharrosh@panasas.com,
+	deepak.saxena@linaro.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The operator precedence bug means that we might pay atteion to
-s_grp_quota_inum even if the RO_COMPAT_QUOTA feature flag is clear.
-However, fortunately, this is unlikely to happen in practice.
+Hi Ted, Christoph
 
-Cc: Aditya Kali <adityakali@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/pass1.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Will you please provide your feedback for these patch set,
+[PATCH v2 1/2] block: add BH_Meta flag
+[PATCH v2 2/2] ext4: annotate all meta data requests
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c7645d1..c6aae6e 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -928,8 +928,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
- 			if ((fs->super->s_feature_ro_compat &
- 					EXT4_FEATURE_RO_COMPAT_QUOTA) &&
--			    (fs->super->s_usr_quota_inum == ino) ||
--			    (fs->super->s_grp_quota_inum == ino)) {
-+			    ((fs->super->s_usr_quota_inum == ino) ||
-+			     (fs->super->s_grp_quota_inum == ino))) {
- 				if (!LINUX_S_ISREG(inode->i_mode) &&
- 				    fix_problem(ctx, PR_1_QUOTA_BAD_MODE,
- 							&pctx)) {
--- 
-1.7.10.rc3
+If there is no comment then will you please merge them.
 
+
+Regards
+Saugata
+
+
+On 17 May 2012 17:51, Saugata Das <saugata.das@stericsson.com> wrote:
+> From: Saugata Das <saugata.das@linaro.org>
+>
+> Today, storage devices like eMMC has special features like data taggi=
+ng
+> (introduced in MMC-4.5 version) in order to improve performance of so=
+me
+> specific writes. On MMC stack, data tagging is used for all writes wh=
+ich
+> has REQ_META flag set. This patch adds the capability to add REQ_META=
+ flag
+> during meta data write.
+>
+> Signed-off-by: Saugata Das <saugata.das@linaro.org>
+>
+> changes in v2:
+> =A0 =A0 =A0 =A0Replaced the conditionals around submit_bh as suggeste=
+d in the review
+> =A0 =A0 =A0 =A0comments from Boaz
+> ---
+> =A0fs/buffer.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 =A06 ++++--
+> =A0include/linux/buffer_head.h | =A0 =A02 ++
+> =A02 files changed, 6 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 36d6665..942c75b 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -1685,7 +1685,8 @@ static int __block_write_full_page(struct inode=
+ *inode, struct page *page,
+> =A0 =A0 =A0 =A0do {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
+s_page;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
+;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op |
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (buffer=
+_meta(bh) << __REQ_META), bh);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
+> @@ -1739,7 +1740,8 @@ recover:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
+s_page;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_buffer_dirty(bh)=
+;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
+;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op |
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (buffer=
+_meta(bh) << __REQ_META), bh);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.=
+h
+> index 458f497..13bba17 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -34,6 +34,7 @@ enum bh_state_bits {
+> =A0 =A0 =A0 =A0BH_Write_EIO, =A0 /* I/O error on write */
+> =A0 =A0 =A0 =A0BH_Unwritten, =A0 /* Buffer is allocated on disk but n=
+ot written */
+> =A0 =A0 =A0 =A0BH_Quiet, =A0 =A0 =A0 /* Buffer Error Prinks to be qui=
+et */
+> + =A0 =A0 =A0 BH_Meta, =A0 =A0 =A0 =A0/* Is meta */
+>
+> =A0 =A0 =A0 =A0BH_PrivateStart,/* not a state bit, but the first bit =
+available
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * for private allocat=
+ion by other entities
+> @@ -124,6 +125,7 @@ BUFFER_FNS(Delay, delay)
+> =A0BUFFER_FNS(Boundary, boundary)
+> =A0BUFFER_FNS(Write_EIO, write_io_error)
+> =A0BUFFER_FNS(Unwritten, unwritten)
+> +BUFFER_FNS(Meta, meta)
+>
+> =A0#define bh_offset(bh) =A0 =A0 =A0 =A0 =A0((unsigned long)(bh)->b_d=
+ata & ~PAGE_MASK)
+> =A0#define touch_buffer(bh) =A0 =A0 =A0 mark_page_accessed(bh->b_page=
+)
+> --
+> 1.7.4.3
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
