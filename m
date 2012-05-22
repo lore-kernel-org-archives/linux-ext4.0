@@ -1,39 +1,59 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: [PATCH] libquota: add missing time.h include
-Date: Tue, 22 May 2012 15:41:50 -0400
-Message-ID: <1337715710-9484-1-git-send-email-vapier@gentoo.org>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH RESEND] ext4: change return value from int to ssize_t
+ in ext4_file_write
+Date: Tue, 22 May 2012 14:44:03 -0500
+Message-ID: <4FBBEC83.8030604@redhat.com>
+References: <20120412202029.GB19808@quack.suse.cz> <1334280157-11630-1-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, jouni.siren@iki.fi, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:57696 "EHLO smtp.gentoo.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41085 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753253Ab2EVTkp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 May 2012 15:40:45 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 7796B1B400C
-	for <linux-ext4@vger.kernel.org>; Tue, 22 May 2012 19:40:44 +0000 (UTC)
+	id S1757901Ab2EVTok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 May 2012 15:44:40 -0400
+In-Reply-To: <1334280157-11630-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This code uses time() but doesn't include time.h leading to:
-quotaio.c:89:2: warning: implicit declaration of function 'time'
+On 4/12/12 8:22 PM, Zheng Liu wrote:
+> On 64-platform, when we do a write operation with a huge number of data, it
+> will cause that the ret variable overflows.  So it is replaced with ssize_t.
+> 
+> Reported-by: Jouni Siren <jouni.siren@iki.fi>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
----
- lib/quota/quotaio.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Ted, is this one queued anywhere?  Seems lost so far.
 
-diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
-index 481d5f5..6e917f0 100644
---- a/lib/quota/quotaio.c
-+++ b/lib/quota/quotaio.c
-@@ -11,6 +11,7 @@
- #include <string.h>
- #include <unistd.h>
- #include <stdlib.h>
-+#include <time.h>
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <sys/file.h>
--- 
-1.7.8.6
+Thanks,
+-Eric
+
+> ---
+> Hi Jan,
+> 
+> You are right.  I have changed the commit log.  ;-)
+> 
+> Regards,
+> Zheng
+> 
+>  fs/ext4/file.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index cb70f18..8c7642a 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -95,7 +95,7 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  {
+>  	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+>  	int unaligned_aio = 0;
+> -	int ret;
+> +	ssize_t ret;
+>  
+>  	/*
+>  	 * If we have encountered a bitmap-format file, the size limit
 
