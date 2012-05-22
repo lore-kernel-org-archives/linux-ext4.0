@@ -1,199 +1,278 @@
-From: Saugata Das <saugata.das@linaro.org>
-Subject: Re: [RFC 1/3] block: Context support
-Date: Tue, 22 May 2012 09:52:43 +0530
-Message-ID: <CAKLKtzeB4vP41FNxUk87KV_d7+KxpYwM33eWYrFspnFN+9TtZw@mail.gmail.com>
-References: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] e2fsck: fix 64-bit journal support
+Date: Tue, 22 May 2012 10:24:59 -0500
+Message-ID: <4FBBAFCB.2080106@redhat.com>
+References: <E1SWe75-0007rd-TQ@tytso-glaptop.cam.corp.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: arnd.bergmann@linaro.org, venkat@linaro.org,
-	Deepak Saxena <deepak.saxena@linaro.org>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:32841 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751921Ab2EVEWo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 May 2012 00:22:44 -0400
-Received: by qcro28 with SMTP id o28so3709749qcr.19
-        for <linux-ext4@vger.kernel.org>; Mon, 21 May 2012 21:22:43 -0700 (PDT)
-In-Reply-To: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
+Received: from mx1.redhat.com ([209.132.183.28]:9256 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759250Ab2EVPZC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 May 2012 11:25:02 -0400
+In-Reply-To: <E1SWe75-0007rd-TQ@tytso-glaptop.cam.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Group,
+On 5/21/12 8:42 PM, Theodore Ts'o wrote:
+> I just found what a somewhat disturbing bug which is still present in
+> 1.42.3 --- namely, that the journal replay code in e2fsck was not
+> properly handling 64-bit file systems correctly, by dropping the high
+> bits of the block number from the jbd2 descriptor blocks.
+> 
+> I have not had a chance to fully test to make sure we don't have other
+> bugs hiding in the 64-bit code, but it's clear no one else has had a lot
+> of time to test it either -- at least not to the extent of doing power
+> fail testing of > 16TB file systems!   :-(
 
-Will you please provide some feedback on the following RFC patches,
+Whoops.  :(
 
-[RFC 1/3] block: Context support
-[RFC 2/3] ext4: Context support
+How do you decide between using "unsigned long long" and "blk64_t" below?
 
+If they'd all been blk_t's they'd have been easier to spot, if anyone went
+looking, I suppose.
 
-Regards
-Saugata
+-Eric
 
-
-On 16 May 2012 21:00, Saugata Das <saugata.das@stericsson.com> wrote:
-> From: Saugata Das <saugata.das@linaro.org>
->
-> On eMMC and UFS devices there is a new feature of setting context wit=
-h each
-> read or write. The idea is to classify the data from different files =
-and
-> apply the realibility on the complete file instead of individual writ=
-es,
-> which helps in performance. A new address space operation has been a =
-added
-> to get the context from file system and set up the bi_context field i=
-n bio.
-> Then we need to ensure that bio from different contexts are not merge=
-d. The
-> context is then passed to the underlying driver as part of the read o=
-r write
-> request. Since the number of MMC contexts is limited, multiple file s=
-ystem
-> contexts are mapped to single MMC context.
->
-> Signed-off-by: Saugata Das <saugata.das@linaro.org>
+> 							- Ted
+> 
+> From 3b693d0b03569795d04920a04a0a21e5f64ffedc Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Mon, 21 May 2012 21:30:45 -0400
+> Subject: [PATCH] e2fsck: fix 64-bit journal support
+> 
+> 64-bit journal support was broken; we weren't using the high bits from
+> the journal descriptor blocks!  We were also using "unsigned long" for
+> the journal block numbers, which would be a problem on 32-bit systems.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
-> =A0block/blk-core.c =A0 =A0 =A0 =A0 =A0 =A0| =A0 =A01 +
-> =A0block/blk-merge.c =A0 =A0 =A0 =A0 =A0 | =A0 =A03 +++
-> =A0fs/mpage.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 12 +++++++++++=
-+
-> =A0include/linux/blk_types.h =A0 | =A0 =A01 +
-> =A0include/linux/blkdev.h =A0 =A0 =A0| =A0 =A01 +
-> =A0include/linux/buffer_head.h | =A0 =A02 ++
-> =A0include/linux/fs.h =A0 =A0 =A0 =A0 =A0| =A0 =A01 +
-> =A07 files changed, 21 insertions(+), 0 deletions(-)
->
-> diff --git a/block/blk-core.c b/block/blk-core.c
-> index 1f61b74..274e05d 100644
-> --- a/block/blk-core.c
-> +++ b/block/blk-core.c
-> @@ -1309,6 +1309,7 @@ void init_request_from_bio(struct request *req,=
- struct bio *bio)
-> =A0 =A0 =A0 =A0req->errors =3D 0;
-> =A0 =A0 =A0 =A0req->__sector =3D bio->bi_sector;
-> =A0 =A0 =A0 =A0req->ioprio =3D bio_prio(bio);
-> + =A0 =A0 =A0 req->context =3D bio->bi_context;
-> =A0 =A0 =A0 =A0blk_rq_bio_prep(req->q, req, bio);
-> =A0}
->
-> diff --git a/block/blk-merge.c b/block/blk-merge.c
-> index 160035f..ed70d56 100644
-> --- a/block/blk-merge.c
-> +++ b/block/blk-merge.c
-> @@ -497,6 +497,9 @@ bool blk_rq_merge_ok(struct request *rq, struct b=
-io *bio)
-> =A0 =A0 =A0 =A0if (bio_integrity(bio) !=3D blk_integrity_rq(rq))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return false;
->
-> + =A0 =A0 =A0 if (bio->bi_context !=3D rq->bio->bi_context)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return false;
-> +
-> =A0 =A0 =A0 =A0return true;
-> =A0}
->
-> diff --git a/fs/mpage.c b/fs/mpage.c
-> index 0face1c..4889842 100644
-> --- a/fs/mpage.c
-> +++ b/fs/mpage.c
-> @@ -293,6 +293,12 @@ alloc_new:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto confused;
-> =A0 =A0 =A0 =A0}
->
-> + =A0 =A0 =A0 if (page && page->mapping && page->mapping->a_ops &&
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 page->mapping->a_ops->get_context)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D page->mapping->a_op=
-s->get_context(page);
-> + =A0 =A0 =A0 else
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D 0;
-> +
-> =A0 =A0 =A0 =A0length =3D first_hole << blkbits;
-> =A0 =A0 =A0 =A0if (bio_add_page(bio, page, length, 0) < length) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bio =3D mpage_bio_submit(READ, bio);
-> @@ -581,6 +587,12 @@ alloc_new:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto confused;
-> =A0 =A0 =A0 =A0}
->
-> + =A0 =A0 =A0 if (page && page->mapping && page->mapping->a_ops &&
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 page->mapping->a_ops->get_context)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D page->mapping->a_op=
-s->get_context(page);
-> + =A0 =A0 =A0 else
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D 0;
-> +
-> =A0 =A0 =A0 =A0/*
-> =A0 =A0 =A0 =A0 * Must try to add the page before marking the buffer =
-clean or
-> =A0 =A0 =A0 =A0 * the confused fail path above (OOM) will be very con=
-fused when
-> diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-> index 4053cbd..f3ac448 100644
-> --- a/include/linux/blk_types.h
-> +++ b/include/linux/blk_types.h
-> @@ -42,6 +42,7 @@ struct bio {
->
-> =A0 =A0 =A0 =A0unsigned short =A0 =A0 =A0 =A0 =A0bi_vcnt; =A0 =A0 =A0=
- =A0/* how many bio_vec's */
-> =A0 =A0 =A0 =A0unsigned short =A0 =A0 =A0 =A0 =A0bi_idx; =A0 =A0 =A0 =
-=A0 /* current index into bvl_vec */
-> + =A0 =A0 =A0 unsigned long =A0 =A0 =A0 =A0 =A0 bi_context; =A0 =A0 /=
-* context of this bio */
->
-> =A0 =A0 =A0 =A0/* Number of segments in this BIO after
-> =A0 =A0 =A0 =A0 * physical address coalescing is performed.
-> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-> index 2aa2466..0dd9a08 100644
-> --- a/include/linux/blkdev.h
-> +++ b/include/linux/blkdev.h
-> @@ -167,6 +167,7 @@ struct request {
-> =A0 =A0 =A0 =A0struct list_head timeout_list;
-> =A0 =A0 =A0 =A0unsigned int timeout;
-> =A0 =A0 =A0 =A0int retries;
-> + =A0 =A0 =A0 unsigned long context; =A0/* context of this request */
->
-> =A0 =A0 =A0 =A0/*
-> =A0 =A0 =A0 =A0 * completion callback.
-> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.=
-h
-> index 13bba17..0776564 100644
-> --- a/include/linux/buffer_head.h
-> +++ b/include/linux/buffer_head.h
-> @@ -72,6 +72,8 @@ struct buffer_head {
-> =A0 =A0 =A0 =A0struct list_head b_assoc_buffers; /* associated with a=
-nother mapping */
-> =A0 =A0 =A0 =A0struct address_space *b_assoc_map; =A0 =A0 =A0/* mappi=
-ng this buffer is
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 associated with */
-> + =A0 =A0 =A0 unsigned long =A0 b_context; /* context for this buffer=
- within the
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 storage device */
-> =A0 =A0 =A0 =A0atomic_t b_count; =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* users=
- using this buffer_head */
-> =A0};
->
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 8de6755..4b379d8 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -626,6 +626,7 @@ struct address_space_operations {
-> =A0 =A0 =A0 =A0int (*is_partially_uptodate) (struct page *, read_desc=
-riptor_t *,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0unsigned long);
-> =A0 =A0 =A0 =A0int (*error_remove_page)(struct address_space *, struc=
-t page *);
-> + =A0 =A0 =A0 int (*get_context)(struct page *);
-> =A0};
->
-> =A0extern const struct address_space_operations empty_aops;
-> --
-> 1.7.4.3
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  e2fsck/jfs_user.h |    4 ++--
+>  e2fsck/journal.c  |   33 +++++++++++++++++----------------
+>  e2fsck/recovery.c |   25 ++++++++++++-------------
+>  3 files changed, 31 insertions(+), 31 deletions(-)
+> 
+> diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
+> index 9e33306..92f8ae2 100644
+> --- a/e2fsck/jfs_user.h
+> +++ b/e2fsck/jfs_user.h
+> @@ -18,7 +18,7 @@ struct buffer_head {
+>  	e2fsck_t	b_ctx;
+>  	io_channel 	b_io;
+>  	int	 	b_size;
+> -	blk_t	 	b_blocknr;
+> +	unsigned long long b_blocknr;
+>  	int	 	b_dirty;
+>  	int	 	b_uptodate;
+>  	int	 	b_err;
+> @@ -121,7 +121,7 @@ _INLINE_ size_t journal_tag_bytes(journal_t *journal)
+>  /*
+>   * Kernel compatibility functions are defined in journal.c
+>   */
+> -int journal_bmap(journal_t *journal, blk64_t block, unsigned long *phys);
+> +int journal_bmap(journal_t *journal, blk64_t block, unsigned long long *phys);
+>  struct buffer_head *getblk(kdev_t ctx, blk64_t blocknr, int blocksize);
+>  void sync_blockdev(kdev_t kdev);
+>  void ll_rw_block(int rw, int dummy, struct buffer_head *bh[]);
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index 915b8bb..bada028 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -44,7 +44,7 @@ static int bh_count = 0;
+>   * to use the recovery.c file virtually unchanged from the kernel, so we
+>   * don't have to do much to keep kernel and user recovery in sync.
+>   */
+> -int journal_bmap(journal_t *journal, blk64_t block, unsigned long *phys)
+> +int journal_bmap(journal_t *journal, blk64_t block, unsigned long long *phys)
+>  {
+>  #ifdef USE_INODE_IO
+>  	*phys = block;
+> @@ -80,8 +80,8 @@ struct buffer_head *getblk(kdev_t kdev, blk64_t blocknr, int blocksize)
+>  	if (journal_enable_debug >= 3)
+>  		bh_count++;
+>  #endif
+> -	jfs_debug(4, "getblk for block %lu (%d bytes)(total %d)\n",
+> -		  (unsigned long) blocknr, blocksize, bh_count);
+> +	jfs_debug(4, "getblk for block %llu (%d bytes)(total %d)\n",
+> +		  (unsigned long long) blocknr, blocksize, bh_count);
+>  
+>  	bh->b_ctx = kdev->k_ctx;
+>  	if (kdev->k_dev == K_DEV_FS)
+> @@ -114,38 +114,39 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
+>  	for (; nr > 0; --nr) {
+>  		bh = *bhp++;
+>  		if (rw == READ && !bh->b_uptodate) {
+> -			jfs_debug(3, "reading block %lu/%p\n",
+> -				  (unsigned long) bh->b_blocknr, (void *) bh);
+> +			jfs_debug(3, "reading block %llu/%p\n",
+> +				  bh->b_blocknr, (void *) bh);
+>  			retval = io_channel_read_blk64(bh->b_io,
+>  						     bh->b_blocknr,
+>  						     1, bh->b_data);
+>  			if (retval) {
+>  				com_err(bh->b_ctx->device_name, retval,
+> -					"while reading block %lu\n",
+> -					(unsigned long) bh->b_blocknr);
+> +					"while reading block %llu\n",
+> +					bh->b_blocknr);
+>  				bh->b_err = retval;
+>  				continue;
+>  			}
+>  			bh->b_uptodate = 1;
+>  		} else if (rw == WRITE && bh->b_dirty) {
+> -			jfs_debug(3, "writing block %lu/%p\n",
+> -				  (unsigned long) bh->b_blocknr, (void *) bh);
+> +			jfs_debug(3, "writing block %llu/%p\n",
+> +				  bh->b_blocknr,
+> +				  (void *) bh);
+>  			retval = io_channel_write_blk64(bh->b_io,
+>  						      bh->b_blocknr,
+>  						      1, bh->b_data);
+>  			if (retval) {
+>  				com_err(bh->b_ctx->device_name, retval,
+> -					"while writing block %lu\n",
+> -					(unsigned long) bh->b_blocknr);
+> +					"while writing block %llu\n",
+> +					bh->b_blocknr);
+>  				bh->b_err = retval;
+>  				continue;
+>  			}
+>  			bh->b_dirty = 0;
+>  			bh->b_uptodate = 1;
+>  		} else {
+> -			jfs_debug(3, "no-op %s for block %lu\n",
+> +			jfs_debug(3, "no-op %s for block %llu\n",
+>  				  rw == READ ? "read" : "write",
+> -				  (unsigned long) bh->b_blocknr);
+> +				  bh->b_blocknr);
+>  		}
+>  	}
+>  }
+> @@ -164,8 +165,8 @@ void brelse(struct buffer_head *bh)
+>  {
+>  	if (bh->b_dirty)
+>  		ll_rw_block(WRITE, 1, &bh);
+> -	jfs_debug(3, "freeing block %lu/%p (total %d)\n",
+> -		  (unsigned long) bh->b_blocknr, (void *) bh, --bh_count);
+> +	jfs_debug(3, "freeing block %llu/%p (total %d)\n",
+> +		  bh->b_blocknr, (void *) bh, --bh_count);
+>  	ext2fs_free_mem(&bh);
+>  }
+>  
+> @@ -237,7 +238,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+>  	journal_t		*journal = NULL;
+>  	errcode_t		retval = 0;
+>  	io_manager		io_ptr = 0;
+> -	unsigned long		start = 0;
+> +	unsigned long long	start = 0;
+>  	int			ext_journal = 0;
+>  	int			tried_backup_jnl = 0;
+>  
+> diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+> index b669941..e94ef4e 100644
+> --- a/e2fsck/recovery.c
+> +++ b/e2fsck/recovery.c
+> @@ -71,7 +71,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
+>  {
+>  	int err;
+>  	unsigned int max, nbufs, next;
+> -	unsigned long blocknr;
+> +	unsigned long long blocknr;
+>  	struct buffer_head *bh;
+>  
+>  	struct buffer_head * bufs[MAXBUF];
+> @@ -133,7 +133,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
+>  		 unsigned int offset)
+>  {
+>  	int err;
+> -	unsigned long blocknr;
+> +	unsigned long long blocknr;
+>  	struct buffer_head *bh;
+>  
+>  	*bhp = NULL;
+> @@ -309,7 +309,6 @@ int journal_skip_recovery(journal_t *journal)
+>  	return err;
+>  }
+>  
+> -#if 0
+>  static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag_t *tag)
+>  {
+>  	unsigned long long block = be32_to_cpu(tag->t_blocknr);
+> @@ -317,17 +316,16 @@ static inline unsigned long long read_tag_block(int tag_bytes, journal_block_tag
+>  		block |= (__u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+>  	return block;
+>  }
+> -#endif
+>  
+>  /*
+>   * calc_chksums calculates the checksums for the blocks described in the
+>   * descriptor block.
+>   */
+>  static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+> -			unsigned long *next_log_block, __u32 *crc32_sum)
+> +			unsigned long long *next_log_block, __u32 *crc32_sum)
+>  {
+>  	int i, num_blks, err;
+> -	unsigned long io_block;
+> +	unsigned long long io_block;
+>  	struct buffer_head *obh;
+>  
+>  	num_blks = count_tags(journal, bh);
+> @@ -340,7 +338,7 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
+>  		err = jread(&obh, journal, io_block);
+>  		if (err) {
+>  			printk(KERN_ERR "JBD: IO error %d recovering block "
+> -				"%lu in log\n", err, io_block);
+> +				"%llu in log\n", err, io_block);
+>  			return 1;
+>  		} else {
+>  			*crc32_sum = crc32_be(*crc32_sum, (void *)obh->b_data,
+> @@ -355,7 +353,7 @@ static int do_one_pass(journal_t *journal,
+>  			struct recovery_info *info, enum passtype pass)
+>  {
+>  	unsigned int		first_commit_ID, next_commit_ID;
+> -	unsigned long		next_log_block;
+> +	unsigned long long	next_log_block;
+>  	int			err, success = 0;
+>  	journal_superblock_t *	sb;
+>  	journal_header_t *	tmp;
+> @@ -485,7 +483,7 @@ static int do_one_pass(journal_t *journal,
+>  			tagp = &bh->b_data[sizeof(journal_header_t)];
+>  			while ((tagp - bh->b_data + tag_bytes)
+>  			       <= journal->j_blocksize) {
+> -				unsigned long io_block;
+> +				unsigned long long io_block;
+>  
+>  				tag = (journal_block_tag_t *) tagp;
+>  				flags = be32_to_cpu(tag->t_flags);
+> @@ -499,13 +497,14 @@ static int do_one_pass(journal_t *journal,
+>  					success = err;
+>  					printk (KERN_ERR
+>  						"JBD: IO error %d recovering "
+> -						"block %ld in log\n",
+> +						"block %llu in log\n",
+>  						err, io_block);
+>  				} else {
+> -					unsigned long blocknr;
+> +					unsigned long long blocknr;
+>  
+>  					J_ASSERT(obh != NULL);
+> -					blocknr = be32_to_cpu(tag->t_blocknr);
+> +					blocknr = read_tag_block(tag_bytes,
+> +								 tag);
+>  
+>  					/* If the block has been
+>  					 * revoked, then we're all done
+> @@ -733,7 +732,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+>  		record_len = 8;
+>  
+>  	while (offset < max) {
+> -		unsigned long blocknr;
+> +		unsigned long long blocknr;
+>  		int err;
+>  
+>  		if (record_len == 4)
+
