@@ -1,123 +1,199 @@
 From: Saugata Das <saugata.das@linaro.org>
-Subject: Re: [PATCH v2 1/2] block: add BH_Meta flag
-Date: Tue, 22 May 2012 09:48:24 +0530
-Message-ID: <CAKLKtzeRNLho7MTM_w2h2+P6gehC4PvkP9VohOJL0+7kAn9VTQ@mail.gmail.com>
-References: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
+Subject: Re: [RFC 1/3] block: Context support
+Date: Tue, 22 May 2012 09:52:43 +0530
+Message-ID: <CAKLKtzeB4vP41FNxUk87KV_d7+KxpYwM33eWYrFspnFN+9TtZw@mail.gmail.com>
+References: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	patches@linaro.org, arnd.bergmann@linaro.org, venkat@linaro.org,
-	lporzio@micron.com, adilger@dilger.ca, bharrosh@panasas.com,
-	deepak.saxena@linaro.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1337257290-28547-1-git-send-email-saugata.das@stericsson.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: arnd.bergmann@linaro.org, venkat@linaro.org,
+	Deepak Saxena <deepak.saxena@linaro.org>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:32841 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751921Ab2EVEWo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 May 2012 00:22:44 -0400
+Received: by qcro28 with SMTP id o28so3709749qcr.19
+        for <linux-ext4@vger.kernel.org>; Mon, 21 May 2012 21:22:43 -0700 (PDT)
+In-Reply-To: <1337182230-11839-1-git-send-email-saugata.das@stericsson.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, Christoph
+Hi Group,
 
-Will you please provide your feedback for these patch set,
-[PATCH v2 1/2] block: add BH_Meta flag
-[PATCH v2 2/2] ext4: annotate all meta data requests
+Will you please provide some feedback on the following RFC patches,
 
-If there is no comment then will you please merge them.
+[RFC 1/3] block: Context support
+[RFC 2/3] ext4: Context support
 
 
 Regards
 Saugata
 
 
-On 17 May 2012 17:51, Saugata Das <saugata.das@stericsson.com> wrote:
+On 16 May 2012 21:00, Saugata Das <saugata.das@stericsson.com> wrote:
 > From: Saugata Das <saugata.das@linaro.org>
 >
-> Today, storage devices like eMMC has special features like data taggi=
-ng
-> (introduced in MMC-4.5 version) in order to improve performance of so=
-me
-> specific writes. On MMC stack, data tagging is used for all writes wh=
-ich
-> has REQ_META flag set. This patch adds the capability to add REQ_META=
- flag
-> during meta data write.
+> On eMMC and UFS devices there is a new feature of setting context wit=
+h each
+> read or write. The idea is to classify the data from different files =
+and
+> apply the realibility on the complete file instead of individual writ=
+es,
+> which helps in performance. A new address space operation has been a =
+added
+> to get the context from file system and set up the bi_context field i=
+n bio.
+> Then we need to ensure that bio from different contexts are not merge=
+d. The
+> context is then passed to the underlying driver as part of the read o=
+r write
+> request. Since the number of MMC contexts is limited, multiple file s=
+ystem
+> contexts are mapped to single MMC context.
 >
 > Signed-off-by: Saugata Das <saugata.das@linaro.org>
->
-> changes in v2:
-> =A0 =A0 =A0 =A0Replaced the conditionals around submit_bh as suggeste=
-d in the review
-> =A0 =A0 =A0 =A0comments from Boaz
 > ---
-> =A0fs/buffer.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 | =A0 =A06 ++++--
+> =A0block/blk-core.c =A0 =A0 =A0 =A0 =A0 =A0| =A0 =A01 +
+> =A0block/blk-merge.c =A0 =A0 =A0 =A0 =A0 | =A0 =A03 +++
+> =A0fs/mpage.c =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0| =A0 12 +++++++++++=
++
+> =A0include/linux/blk_types.h =A0 | =A0 =A01 +
+> =A0include/linux/blkdev.h =A0 =A0 =A0| =A0 =A01 +
 > =A0include/linux/buffer_head.h | =A0 =A02 ++
-> =A02 files changed, 6 insertions(+), 2 deletions(-)
+> =A0include/linux/fs.h =A0 =A0 =A0 =A0 =A0| =A0 =A01 +
+> =A07 files changed, 21 insertions(+), 0 deletions(-)
 >
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 36d6665..942c75b 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -1685,7 +1685,8 @@ static int __block_write_full_page(struct inode=
- *inode, struct page *page,
-> =A0 =A0 =A0 =A0do {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
-s_page;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
-;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op |
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (buffer=
-_meta(bh) << __REQ_META), bh);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
-> @@ -1739,7 +1740,8 @@ recover:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct buffer_head *next =3D bh->b_thi=
-s_page;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (buffer_async_write(bh)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_buffer_dirty(bh)=
-;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op, bh)=
-;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 submit_bh(write_op |
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 (buffer=
-_meta(bh) << __REQ_META), bh);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nr_underway++;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bh =3D next;
+> diff --git a/block/blk-core.c b/block/blk-core.c
+> index 1f61b74..274e05d 100644
+> --- a/block/blk-core.c
+> +++ b/block/blk-core.c
+> @@ -1309,6 +1309,7 @@ void init_request_from_bio(struct request *req,=
+ struct bio *bio)
+> =A0 =A0 =A0 =A0req->errors =3D 0;
+> =A0 =A0 =A0 =A0req->__sector =3D bio->bi_sector;
+> =A0 =A0 =A0 =A0req->ioprio =3D bio_prio(bio);
+> + =A0 =A0 =A0 req->context =3D bio->bi_context;
+> =A0 =A0 =A0 =A0blk_rq_bio_prep(req->q, req, bio);
+> =A0}
+>
+> diff --git a/block/blk-merge.c b/block/blk-merge.c
+> index 160035f..ed70d56 100644
+> --- a/block/blk-merge.c
+> +++ b/block/blk-merge.c
+> @@ -497,6 +497,9 @@ bool blk_rq_merge_ok(struct request *rq, struct b=
+io *bio)
+> =A0 =A0 =A0 =A0if (bio_integrity(bio) !=3D blk_integrity_rq(rq))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return false;
+>
+> + =A0 =A0 =A0 if (bio->bi_context !=3D rq->bio->bi_context)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return false;
+> +
+> =A0 =A0 =A0 =A0return true;
+> =A0}
+>
+> diff --git a/fs/mpage.c b/fs/mpage.c
+> index 0face1c..4889842 100644
+> --- a/fs/mpage.c
+> +++ b/fs/mpage.c
+> @@ -293,6 +293,12 @@ alloc_new:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto confused;
+> =A0 =A0 =A0 =A0}
+>
+> + =A0 =A0 =A0 if (page && page->mapping && page->mapping->a_ops &&
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 page->mapping->a_ops->get_context)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D page->mapping->a_op=
+s->get_context(page);
+> + =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D 0;
+> +
+> =A0 =A0 =A0 =A0length =3D first_hole << blkbits;
+> =A0 =A0 =A0 =A0if (bio_add_page(bio, page, length, 0) < length) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bio =3D mpage_bio_submit(READ, bio);
+> @@ -581,6 +587,12 @@ alloc_new:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto confused;
+> =A0 =A0 =A0 =A0}
+>
+> + =A0 =A0 =A0 if (page && page->mapping && page->mapping->a_ops &&
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 page->mapping->a_ops->get_context)
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D page->mapping->a_op=
+s->get_context(page);
+> + =A0 =A0 =A0 else
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bio->bi_context =3D 0;
+> +
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * Must try to add the page before marking the buffer =
+clean or
+> =A0 =A0 =A0 =A0 * the confused fail path above (OOM) will be very con=
+fused when
+> diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+> index 4053cbd..f3ac448 100644
+> --- a/include/linux/blk_types.h
+> +++ b/include/linux/blk_types.h
+> @@ -42,6 +42,7 @@ struct bio {
+>
+> =A0 =A0 =A0 =A0unsigned short =A0 =A0 =A0 =A0 =A0bi_vcnt; =A0 =A0 =A0=
+ =A0/* how many bio_vec's */
+> =A0 =A0 =A0 =A0unsigned short =A0 =A0 =A0 =A0 =A0bi_idx; =A0 =A0 =A0 =
+=A0 /* current index into bvl_vec */
+> + =A0 =A0 =A0 unsigned long =A0 =A0 =A0 =A0 =A0 bi_context; =A0 =A0 /=
+* context of this bio */
+>
+> =A0 =A0 =A0 =A0/* Number of segments in this BIO after
+> =A0 =A0 =A0 =A0 * physical address coalescing is performed.
+> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> index 2aa2466..0dd9a08 100644
+> --- a/include/linux/blkdev.h
+> +++ b/include/linux/blkdev.h
+> @@ -167,6 +167,7 @@ struct request {
+> =A0 =A0 =A0 =A0struct list_head timeout_list;
+> =A0 =A0 =A0 =A0unsigned int timeout;
+> =A0 =A0 =A0 =A0int retries;
+> + =A0 =A0 =A0 unsigned long context; =A0/* context of this request */
+>
+> =A0 =A0 =A0 =A0/*
+> =A0 =A0 =A0 =A0 * completion callback.
 > diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.=
 h
-> index 458f497..13bba17 100644
+> index 13bba17..0776564 100644
 > --- a/include/linux/buffer_head.h
 > +++ b/include/linux/buffer_head.h
-> @@ -34,6 +34,7 @@ enum bh_state_bits {
-> =A0 =A0 =A0 =A0BH_Write_EIO, =A0 /* I/O error on write */
-> =A0 =A0 =A0 =A0BH_Unwritten, =A0 /* Buffer is allocated on disk but n=
-ot written */
-> =A0 =A0 =A0 =A0BH_Quiet, =A0 =A0 =A0 /* Buffer Error Prinks to be qui=
-et */
-> + =A0 =A0 =A0 BH_Meta, =A0 =A0 =A0 =A0/* Is meta */
+> @@ -72,6 +72,8 @@ struct buffer_head {
+> =A0 =A0 =A0 =A0struct list_head b_assoc_buffers; /* associated with a=
+nother mapping */
+> =A0 =A0 =A0 =A0struct address_space *b_assoc_map; =A0 =A0 =A0/* mappi=
+ng this buffer is
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 associated with */
+> + =A0 =A0 =A0 unsigned long =A0 b_context; /* context for this buffer=
+ within the
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 storage device */
+> =A0 =A0 =A0 =A0atomic_t b_count; =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* users=
+ using this buffer_head */
+> =A0};
 >
-> =A0 =A0 =A0 =A0BH_PrivateStart,/* not a state bit, but the first bit =
-available
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 * for private allocat=
-ion by other entities
-> @@ -124,6 +125,7 @@ BUFFER_FNS(Delay, delay)
-> =A0BUFFER_FNS(Boundary, boundary)
-> =A0BUFFER_FNS(Write_EIO, write_io_error)
-> =A0BUFFER_FNS(Unwritten, unwritten)
-> +BUFFER_FNS(Meta, meta)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 8de6755..4b379d8 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -626,6 +626,7 @@ struct address_space_operations {
+> =A0 =A0 =A0 =A0int (*is_partially_uptodate) (struct page *, read_desc=
+riptor_t *,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0unsigned long);
+> =A0 =A0 =A0 =A0int (*error_remove_page)(struct address_space *, struc=
+t page *);
+> + =A0 =A0 =A0 int (*get_context)(struct page *);
+> =A0};
 >
-> =A0#define bh_offset(bh) =A0 =A0 =A0 =A0 =A0((unsigned long)(bh)->b_d=
-ata & ~PAGE_MASK)
-> =A0#define touch_buffer(bh) =A0 =A0 =A0 mark_page_accessed(bh->b_page=
-)
+> =A0extern const struct address_space_operations empty_aops;
 > --
 > 1.7.4.3
 >
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
