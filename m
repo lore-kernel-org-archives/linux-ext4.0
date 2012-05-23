@@ -1,10 +1,12 @@
-From: Jan Kara <jack@suse.cz>
+From: Akinobu Mita <akinobu.mita@gmail.com>
 Subject: Re: [PATCH 01/10] string: introduce memweight
-Date: Wed, 23 May 2012 11:21:13 +0200
-Message-ID: <20120523092113.GG10452@quack.suse.cz>
+Date: Wed, 23 May 2012 21:12:18 +0900
+Message-ID: <CAC5umyi=ridqRZGGh0+_xw0-GCN+69B33Qz82-9x4dVODGGx6w@mail.gmail.com>
 References: <1337520203-29147-1-git-send-email-akinobu.mita@gmail.com>
+	<20120523092113.GG10452@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
 	Anders Larsen <al@alarsen.net>,
 	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
@@ -12,130 +14,119 @@ Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
 	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
 	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
 	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Akinobu Mita <akinobu.mita@gmail.com>
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50998 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750981Ab2EWJVe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 May 2012 05:21:34 -0400
-Content-Disposition: inline
-In-Reply-To: <1337520203-29147-1-git-send-email-akinobu.mita@gmail.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:43459 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751454Ab2EWMMT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 May 2012 08:12:19 -0400
+In-Reply-To: <20120523092113.GG10452@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 20-05-12 22:23:14, Akinobu Mita wrote:
-> memweight() is the function that counts the total number of bits set
-> in memory area.  The memory area doesn't need to be aligned to
-> long-word boundary unlike bitmap_weight().
-  Thanks for the patch. I have some comments below.
+2012/5/23 Jan Kara <jack@suse.cz>:
+> On Sun 20-05-12 22:23:14, Akinobu Mita wrote:
+>> memweight() is the function that counts the total number of bits set
+>> in memory area. =A0The memory area doesn't need to be aligned to
+>> long-word boundary unlike bitmap_weight().
+> =A0Thanks for the patch. I have some comments below.
 
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: Anders Larsen <al@alarsen.net>
-> Cc: Alasdair Kergon <agk@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-> Cc: linux-media@vger.kernel.org
-> Cc: Mark Fasheh <mfasheh@suse.com>
-> Cc: Joel Becker <jlbec@evilplan.org>
-> Cc: ocfs2-devel@oss.oracle.com
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Andrew Morton <akpm@linux-foundation.org>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  include/linux/string.h |    3 +++
->  lib/string.c           |   37 +++++++++++++++++++++++++++++++++++++
->  2 files changed, 40 insertions(+), 0 deletions(-)
-> 
-> diff --git a/include/linux/string.h b/include/linux/string.h
-> index e033564..ffe0442 100644
-> --- a/include/linux/string.h
-> +++ b/include/linux/string.h
-> @@ -145,4 +145,7 @@ static inline bool strstarts(const char *str, const char *prefix)
->  	return strncmp(str, prefix, strlen(prefix)) == 0;
->  }
->  #endif
-> +
-> +extern size_t memweight(const void *ptr, size_t bytes);
-> +
->  #endif /* _LINUX_STRING_H_ */
-> diff --git a/lib/string.c b/lib/string.c
-> index e5878de..c8b92a0 100644
-> --- a/lib/string.c
-> +++ b/lib/string.c
-> @@ -26,6 +26,7 @@
->  #include <linux/export.h>
->  #include <linux/bug.h>
->  #include <linux/errno.h>
-> +#include <linux/bitmap.h>
->  
->  #ifndef __HAVE_ARCH_STRNICMP
->  /**
-> @@ -824,3 +825,39 @@ void *memchr_inv(const void *start, int c, size_t bytes)
->  	return check_bytes8(start, value, bytes % 8);
->  }
->  EXPORT_SYMBOL(memchr_inv);
-> +
-> +/**
-> + * memweight - count the total number of bits set in memory area
-> + * @ptr: pointer to the start of the area
-> + * @bytes: the size of the area
-> + */
-> +size_t memweight(const void *ptr, size_t bytes)
-> +{
-> +	size_t w = 0;
-> +	size_t longs;
-> +	union {
-> +		const void *ptr;
-> +		const unsigned char *b;
-> +		unsigned long address;
-> +	} bitmap;
-  Ugh, this is ugly and mostly unnecessary. Just use "const unsigned char
-*bitmap".
+Thanks for the review.
 
-> +
-> +	for (bitmap.ptr = ptr; bytes > 0 && bitmap.address % sizeof(long);
-> +			bytes--, bitmap.address++)
-> +		w += hweight8(*bitmap.b);
-  This can be:
-	count = ((unsigned long)bitmap) % sizeof(long);
-	while (count--) {
-		w += hweight(*bitmap);
-		bitmap++;
-		bytes--;
-	}
-> +
-> +	for (longs = bytes / sizeof(long); longs > 0; ) {
-> +		size_t bits = min_t(size_t, INT_MAX & ~(BITS_PER_LONG - 1),
-> +					longs * BITS_PER_LONG);
-  I find it highly unlikely that someone would have such a large bitmap
-(256 MB or more on 32-bit). Also the condition as you wrote it can just
-overflow so it won't have the desired effect. Just do
-	BUG_ON(longs >= ULONG_MAX / BITS_PER_LONG);
-and remove the loop completely. If someone comes with such a huge bitmap,
-the code can be modified easily (after really closely inspecting whether
-such a huge bitmap is really well justified).
+>> @@ -824,3 +825,39 @@ void *memchr_inv(const void *start, int c, size=
+_t bytes)
+>> =A0 =A0 =A0 return check_bytes8(start, value, bytes % 8);
+>> =A0}
+>> =A0EXPORT_SYMBOL(memchr_inv);
+>> +
+>> +/**
+>> + * memweight - count the total number of bits set in memory area
+>> + * @ptr: pointer to the start of the area
+>> + * @bytes: the size of the area
+>> + */
+>> +size_t memweight(const void *ptr, size_t bytes)
+>> +{
+>> + =A0 =A0 size_t w =3D 0;
+>> + =A0 =A0 size_t longs;
+>> + =A0 =A0 union {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 const void *ptr;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 const unsigned char *b;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 unsigned long address;
+>> + =A0 =A0 } bitmap;
+> =A0Ugh, this is ugly and mostly unnecessary. Just use "const unsigned=
+ char
+> *bitmap".
+>
+>> +
+>> + =A0 =A0 for (bitmap.ptr =3D ptr; bytes > 0 && bitmap.address % siz=
+eof(long);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bytes--, bitmap.address++)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 w +=3D hweight8(*bitmap.b);
+> =A0This can be:
+> =A0 =A0 =A0 =A0count =3D ((unsigned long)bitmap) % sizeof(long);
 
-> +
-> +		w += bitmap_weight(bitmap.ptr, bits);
-> +		bytes -= bits / BITS_PER_BYTE;
-> +		bitmap.address += bits / BITS_PER_BYTE;
-> +		longs -= bits / BITS_PER_LONG;
-> +	}
-> +
-> +	for (; bytes > 0; bytes--, bitmap.address++)
-> +		w += hweight8(*bitmap.b);
-> +
-> +	return w;
-> +}
-> +EXPORT_SYMBOL(memweight);
+The count should be the size of unaligned area and it can be greater th=
+an
+bytes. So
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+        count =3D min(bytes,
+                    sizeof(long) - ((unsigned long)bitmap) % sizeof(lon=
+g));
+
+> =A0 =A0 =A0 =A0while (count--) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0w +=3D hweight(*bitmap);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bitmap++;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0bytes--;
+> =A0 =A0 =A0 =A0}
+>> +
+>> + =A0 =A0 for (longs =3D bytes / sizeof(long); longs > 0; ) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 size_t bits =3D min_t(size_t, INT_MAX & ~(=
+BITS_PER_LONG - 1),
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 longs * BITS_PER_LONG);
+> =A0I find it highly unlikely that someone would have such a large bit=
+map
+> (256 MB or more on 32-bit). Also the condition as you wrote it can ju=
+st
+> overflow so it won't have the desired effect. Just do
+> =A0 =A0 =A0 =A0BUG_ON(longs >=3D ULONG_MAX / BITS_PER_LONG);
+
+The bits argument of bitmap_weight() is int type. So this should be
+
+        BUG_ON(longs >=3D INT_MAX / BITS_PER_LONG);
+
+> and remove the loop completely. If someone comes with such a huge bit=
+map,
+> the code can be modified easily (after really closely inspecting whet=
+her
+> such a huge bitmap is really well justified).
+
+size_t memweight(const void *ptr, size_t bytes)
+{
+	size_t w =3D 0;
+	size_t longs;
+	const unsigned char *bitmap =3D ptr;
+
+	for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(long);
+			bytes--, bitmap++)
+		w +=3D hweight8(*bitmap);
+
+	longs =3D bytes / sizeof(long);
+	BUG_ON(longs >=3D INT_MAX / BITS_PER_LONG);
+	w +=3D bitmap_weight((unsigned long *)bitmap, longs * BITS_PER_LONG);
+	bytes -=3D longs * sizeof(long);
+	bitmap +=3D longs * sizeof(long);
+
+	for (; bytes > 0; bytes--, bitmap++)
+		w +=3D hweight8(*bitmap);
+
+	return w;
+}
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
