@@ -1,24 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: force ro mount if ext3_setup_super() fails
-Date: Thu, 24 May 2012 12:00:47 -0500
-Message-ID: <4FBE693F.6090705@redhat.com>
+Subject: [PATCH V2] ext4: force ro mount if ext4_setup_super() fails
+Date: Thu, 24 May 2012 12:01:43 -0500
+Message-ID: <4FBE6977.5040604@redhat.com>
+References: <4FBE693F.6090705@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22545 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23315 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757337Ab2EXRAs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 May 2012 13:00:48 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4OH0mM6027356
+	id S933474Ab2EXRBo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 May 2012 13:01:44 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4OH1iEJ008737
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:00:48 -0400
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:01:44 -0400
 Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4OH0lCm006842
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4OH1hrT009062
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:00:48 -0400
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:01:44 -0400
+In-Reply-To: <4FBE693F.6090705@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -39,6 +41,8 @@ Tested by:
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
+V2, fix subject C&P error, oops.
+
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
 index e1fb1d5..be67c0b 100644
 --- a/fs/ext4/super.c
@@ -53,4 +57,10 @@ index e1fb1d5..be67c0b 100644
  
  	/* determine the minimum size of new large inodes, if present */
  	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
