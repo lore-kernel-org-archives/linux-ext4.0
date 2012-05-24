@@ -1,70 +1,68 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 16583] ext4: delayed block allocation failed and application
- not respond any more
-Date: Thu, 24 May 2012 13:13:00 +0000 (UTC)
-Message-ID: <20120524131300.7E58611FD1B@bugzilla.kernel.org>
-References: <bug-16583-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 43292] New: jdb2 lockup with ext3 and nfs
+Date: Thu, 24 May 2012 15:54:30 +0000 (UTC)
+Message-ID: <bug-43292-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50371 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.19.201]:58176 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751632Ab2EXNND (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 May 2012 09:13:03 -0400
+	id S932167Ab2EXPyd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 May 2012 11:54:33 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2D293205AA
-	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:13:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8D3332058A
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 15:54:32 +0000 (UTC)
 Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 7FF9F205A7
-	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:13:00 +0000 (UTC)
-In-Reply-To: <bug-16583-13602@https.bugzilla.kernel.org/>
+	by mail.kernel.org (Postfix) with ESMTP id 345632057A
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 15:54:30 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=16583
+https://bugzilla.kernel.org/show_bug.cgi?id=43292
+
+           Summary: jdb2 lockup with ext3 and nfs
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: flo@xssn.at
+        Regression: Yes
 
 
-Loredan Stancu <salecss@gmail.com> changed:
+When using nfs and writing some files nfsd locks up in D state and I get the
+attached backtraces in dmesg. Once nfsd killed the request that triggered the
+lockup, the problem will not happen again until the system has been rebooted.
+(Tested over a period of 20 days)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |salecss@gmail.com
+I'm not yet sure if it happens on the first write request or only on some
+special ones, but I don't really want to reboot my file server and let it hang
+that often. However, if you can tell me what to look for or what debugging
+features I should use, I'll be happy to try them.
+
+I also didn't yet test if this can be reproduced when writing files directly
+(without nfs), but I think it would lock up during boot in that case since I'm
+running a mysqld slave on the system.
+
+This started happening around linux 3.2 or 3.3.
+
+I've attached the whole dmesg output (including bootup, in case this is related
+to the hardware).
+
+Arch Linux x86_64
+Linux 3.4 (config [1])
+nfs-utils 1.2.5
 
 
-
-
---- Comment #1 from Loredan Stancu <salecss@gmail.com>  2012-05-24 13:13:00 ---
-Hi guys,
-
-Any new on this? I just had the same problem with the ext4 file system after
-resizing it from a LVM.
-
-I'm using RHEL 6.3, kernel 2.6.32-262.el6.x86_64.
-
-What I did was to:
-
-1. Umount the LVM partion
-2. check it with fsck.ext4 tool (no errors reported)
-3. resize the file system using resize2fs tool (no errors reported)
-4. resize the LVM using lvresize tool (no error reported)
-5. run fsck.ext4 for the resulted file system and no errors was reported.
-
-I was able to mount the new file system but when trying to use db2 database
-from that partition I received the following file system error and db2 instance
-crashed suddenly:
-
-EXT4-fs error (device dm-2): ext4_ext_search_left: inode #716: (comm db2sysc)
-ix (3714852) != EXT_FIRST_INDEX
-
-A fix for me was to create a new LVM and rsync all the files from bad
-filesystem to the new one. And worked perfectly. A hadn't any problem to access
-the files from the bad file system.
-
-I this a well known problem? 
-
-Regards,
-Loredan
+[1]:
+https://projects.archlinux.org/svntogit/packages.git/plain/trunk/config.x86_64?h=packages/linux&id=f8c396e6ca1e29c3da83431f64074f8c127e1af3
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
