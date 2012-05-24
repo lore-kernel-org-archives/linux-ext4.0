@@ -1,142 +1,72 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Hole punching and mmap races
-Date: Thu, 24 May 2012 14:35:38 +0200
-Message-ID: <20120524123538.GA5632@quack.suse.cz>
-References: <20120515224805.GA25577@quack.suse.cz>
- <20120516021423.GO25351@dastard>
- <20120516130445.GA27661@quack.suse.cz>
- <20120517074308.GQ25351@dastard>
- <20120517232829.GA31028@quack.suse.cz>
- <20120518101210.GX25351@dastard>
- <20120518133250.GC5589@quack.suse.cz>
- <20120519014024.GZ25351@dastard>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16583] ext4: delayed block allocation failed and application
+ not respond any more
+Date: Thu, 24 May 2012 13:13:00 +0000 (UTC)
+Message-ID: <20120524131300.7E58611FD1B@bugzilla.kernel.org>
+References: <bug-16583-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120519014024.GZ25351@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:50371 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751632Ab2EXNND (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 May 2012 09:13:03 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 2D293205AA
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:13:02 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id 7FF9F205A7
+	for <linux-ext4@vger.kernel.org>; Thu, 24 May 2012 13:13:00 +0000 (UTC)
+In-Reply-To: <bug-16583-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 19-05-12 11:40:24, Dave Chinner wrote:
-> On Fri, May 18, 2012 at 03:32:50PM +0200, Jan Kara wrote:
-> > On Fri 18-05-12 20:12:10, Dave Chinner wrote:
-> > > On Fri, May 18, 2012 at 01:28:29AM +0200, Jan Kara wrote:
-> > > > On Thu 17-05-12 17:43:08, Dave Chinner wrote:
-> > > > > On Wed, May 16, 2012 at 03:04:45PM +0200, Jan Kara wrote:
-> > > > > > On Wed 16-05-12 12:14:23, Dave Chinner wrote:
-> > > > > IIRC, it's a rare case (that I consider insane, BTW):  read from a
-> > > > > file with into a buffer that is a mmap()d region of the same file
-> > > > > that has not been faulted in yet.....
-> > > >   With punch hole, the race is less insane - just punching hole in the area
-> > > > which is accessed via mmap could race in a bad way AFAICS.
-> > > 
-> > > Seems the simple answer to me is to prevent page faults while hole
-> > > punching, then....
-> >   Yes, that's what I was suggesting in the beginning :) And I was asking
-> > whether people are OK with another lock in the page fault path (in
-> > particular in ->page_mkwrite)
-> 
-> Right. I probably should have been clearer in what I said. We got
-> back here from considering another IO level lock and all the
-> complexity it adds to just solve the hole punch problem....
-> 
-> > or whether someone has a better idea (e.g.
-> > taking mmap_sem in the hole punching path seems possible but I'm not sure
-> > whether that would be considered acceptable abuse).
-> 
-> That's for the VM guys to answer, but it seems wrong to me to have
-> to treat hole punching differently to truncation....
-> 
-> The thing is, mmap IO is completely unlocked from an IO perspective,
-> and that means we cannot guarantee exclusion from IO without using
-> the IO exclusion lock. That's the simplest way we can make mmap
-> serialise sanely against direct IO and hole punching. Hole punching
-> is inherently a filesystem operation (just like truncation), and
-> mmap operations must stall while it is in progress. It's just that
-> we have the problem that we allow the mmap_sem to be taken inside
-> the IO exclusion locks...
-> 
-> So let's step back a moment and have a look at how we've got here.
-> The problem is that we've optimised ourselves into a corner with the
-> way we handle page cache truncation - we don't need mmap
-> serialisation because of the combination of i_size and page locks
-> mean we can detect truncated pages safely at page fault time. With
-> hole punching, we don't have that i_size safety blanket, and so we
-> need some other serialisation mechanism to safely detect whether a
-> page is valid or not at any given point in time.
-> 
-> Because it needs to serialise against IO operations, we need a
-> sleeping lock of some kind, and it can't be the existing IO lock.
-> And now we are looking at needing a new lock for hole punching, I'm
-> really wondering if the i_size/page lock truncation optimisation
-> should even continue to exist. i.e. replace it with a single
-> mechanism that works for both hole punching, truncation and other
-> functions that require exclusive access or exclusion against
-> modifications to the mapping tree.
-> 
-> But this is only one of the problems in this area.The way I see it
-> is that we have many kludges in the area of page invalidation w.r.t.
-> different types of IO, the page cache and mmap, especially when we
-> take into account direct IO. What we are seeing here is we need
-> some level of _mapping tree exclusion_ between:
-> 
-> 	1. mmap vs hole punch (broken)
-> 	2. mmap vs truncate (i_size/page lock)
-> 	3. mmap vs direct IO (non-existent)
-> 	4. mmap vs buffered IO (page lock)
-> 	5. writeback vs truncate (i_size/page lock)
-> 	6. writeback vs hole punch (page lock, possibly broken)
-> 	7. direct IO vs buffered IO (racy - flush cache before/after DIO)
-  Yes, this is a nice summary of the most interesting cases. For completeness,
-here are the remaining cases:
-  8. mmap vs writeback (page lock)
-  9. writeback vs direct IO (as direct IO vs buffered IO)
- 10. writeback vs buffered IO (page lock)
- 11. direct IO vs truncate (dio_wait)
- 12. direct IO vs hole punch (dio_wait)
- 13. buffered IO vs truncate (i_mutex for writes, i_size/page lock for reads)
- 14. buffered IO vs hole punch (fs dependent, broken for ext4)
- 15. truncate vs hole punch (fs dependent)
- 16. mmap vs mmap (page lock)
- 17. writeback vs writeback (page lock)
- 18. direct IO vs direct IO (i_mutex or fs dependent)
- 19. buffered IO vs buffered IO (i_mutex for writes, page lock for reads)
- 20. truncate vs truncate (i_mutex)
- 21. punch hole vs punch hole (fs dependent)
+https://bugzilla.kernel.org/show_bug.cgi?id=16583
 
-> #1, #2, #5 and #6 could be solved by a rw-lock for the operations -
-> read for mmap/writeback, exclusive for hole-punch and truncation.
-> That, however, doesn't work for #3 and #4 as the exclusion is
-> inverted - direct/buffered IO would require a shared mode lock and
-> mmap requires the exclusive lock.  Similarly, #7 requires a shared
-> lock for direct IO, and a shared lock for buffered IO, but exclusion
-> between the two for overlapping ranges. But no one locking primitive
-> that currently exists can give us this set of semantics....
-> 
-> Right now we are talking about hacking in some solution to #1, while
-> ignoring the wider range of related but ignored/papered over
-> problems we also have. I don't have a magic bullet that solves all
-> of these problems, but I think it is worth recognising and
-> considering that this problem is much larger than just hole punching
-> and that these problems have been there for a *long time*.
->
-> To me the issue at hand is that we have no method of serialising
-> multi-page operations on the mapping tree between the filesystem and
-> the VM, and that seems to be the fundamental problem we face in this
-> whole area of mmap/buffered/direct IO/truncate/holepunch coherency.
-> Hence it might be better to try to work out how to fix this entire
-> class of problems rather than just adding a complex kuldge that just
-> papers over the current "hot" symptom....
-  Yes, looking at the above table, the amount of different synchronization
-mechanisms is really striking. So probably we should look at some
-possibility of unifying at least some cases.
 
-								Honza
+Loredan Stancu <salecss@gmail.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |salecss@gmail.com
+
+
+
+
+--- Comment #1 from Loredan Stancu <salecss@gmail.com>  2012-05-24 13:13:00 ---
+Hi guys,
+
+Any new on this? I just had the same problem with the ext4 file system after
+resizing it from a LVM.
+
+I'm using RHEL 6.3, kernel 2.6.32-262.el6.x86_64.
+
+What I did was to:
+
+1. Umount the LVM partion
+2. check it with fsck.ext4 tool (no errors reported)
+3. resize the file system using resize2fs tool (no errors reported)
+4. resize the LVM using lvresize tool (no error reported)
+5. run fsck.ext4 for the resulted file system and no errors was reported.
+
+I was able to mount the new file system but when trying to use db2 database
+from that partition I received the following file system error and db2 instance
+crashed suddenly:
+
+EXT4-fs error (device dm-2): ext4_ext_search_left: inode #716: (comm db2sysc)
+ix (3714852) != EXT_FIRST_INDEX
+
+A fix for me was to create a new LVM and rsync all the files from bad
+filesystem to the new one. And worked perfectly. A hadn't any problem to access
+the files from the bad file system.
+
+I this a well known problem? 
+
+Regards,
+Loredan
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
