@@ -1,60 +1,79 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] libext2fs: Fix rbtree backend for extent lengths greater
- than 2^32
-Date: Fri, 25 May 2012 14:43:53 -0500
-Message-ID: <4FBFE0F9.8050509@redhat.com>
+Subject: Re: ext4 > 16T woes
+Date: Fri, 25 May 2012 16:01:55 -0500
+Message-ID: <4FBFF343.9000706@redhat.com>
+References: <4FBD3102.6050001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28785 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28306 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756793Ab2EYTnz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 May 2012 15:43:55 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PJhttq014616
+	id S1752766Ab2EYVB5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 May 2012 17:01:57 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4PL1u0A004791
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 25 May 2012 15:43:55 -0400
+	for <linux-ext4@vger.kernel.org>; Fri, 25 May 2012 17:01:57 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4PL1tPA004725
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 25 May 2012 17:01:56 -0400
+In-Reply-To: <4FBD3102.6050001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Well, this took way too long to find, in retrospect.
+On 5/23/12 1:48 PM, Eric Sandeen wrote:
+> I'll try to look into this but just wanted to put it out there.
+> 
+> After creating a 32T fs and filling it with 1T preallocated files,
+> I get quite a lot of corruption; this wasn't really the test
+> I wanted to do, I wanted to then remove a file with mostly
+> high blocks, run fsstress, and test recovery :(
 
-In short, for a completely full filesystem with more than 2^32
-blocks, the rbtree bitmap backend can assemble an extent of used
-blocks which is longer than 2^32.  If it does, it will overflow
-->count, and corrupt the rbtree for the bitmaps.
+FWIW I tracked this down to the rbtree bitmap backend and sent
+a patch,
 
-Discovered by completely filling a 32T filesystem using fallocate, and
-then observing debugfs, dumpe2fs, and e2fsck all behaving badly.
+[PATCH] libext2fs: Fix rbtree backend for extent lengths greater than 2^32
 
-(Note that filling with only 31 x 1T files did not show the problem,
-because freespace was fragmented enough that there was no sufficiently
-long range of used blocks.)
+-Eric
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-An alternative solution might be to limit the rb_extent to
-32-bit counts, and not merging beyond that.  For fragmented
-freespace, as normal, perhaps that would be a better memory
-savings?  But this fixes the immediate problem and seems worth
-merging to avoid bad situations such as e2fsck corrupting a
-perfectly good 32T filesystem...
-
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 7ab72f4..a83f8ac 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -33,7 +33,7 @@
- struct bmap_rb_extent {
- 	struct rb_node node;
- 	__u64 start;
--	__u32 count;
-+	__u64 count;
- };
- 
- struct ext2fs_rb_private {
+> # uname -r
+> 3.4.0-rc4+
+> # truncate --size 32t imagefile2
+> # mkfs.ext4 -F imagefile2
+> mke2fs 1.42.3 (14-May-2012)
+> ...
+> # mount -o loop imagefile2 /mnt/scratch
+> # for I in `seq 1 32`; do fallocate -l 1t /mnt/scratch/1tfile$I; done
+> # umount /mnt/scratch
+> # time e2fsck -fn imagefile2
+> e2fsck 1.42.3 (14-May-2012)
+> <many many many lines snipped>
+> Free blocks count wrong for group #131072 (0, counted=32768).
+> Fix? no
+> 
+> Free blocks count wrong for group #131073 (0, counted=32768).
+> Fix? no
+> 
+> Free blocks count wrong for group #131074 (0, counted=4164).
+> Fix? no
+> 
+> Free blocks count wrong (3, counted=4294967299).
+> Fix? no
+> 
+> 
+> imagefile2: ********** WARNING: Filesystem still has errors **********
+> 
+> imagefile2: 43/536870912 files (0.0% non-contiguous), 8589934589/8589934592 blocks
+> 
+> real	27m40.133s
+> user	27m12.886s
+> sys	0m6.238s
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
