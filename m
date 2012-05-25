@@ -1,168 +1,78 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] ext2fs: remove 64-bit wrappers from ext2fs.h
-Date: Fri, 25 May 2012 16:13:54 -0600
-Message-ID: <1337984034-14756-1-git-send-email-adilger@whamcloud.com>
-Cc: Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] libext2fs: Fix rbtree backend for extent lengths greater than 2^32
+Date: Fri, 25 May 2012 17:21:55 -0600
+Message-ID: <C17AD030-FE6E-4004-B8D6-16DE792989D5@dilger.ca>
+References: <4FBFE0F9.8050509@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	=?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:24546 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755141Ab2EYWN4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 May 2012 18:13:56 -0400
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:8450 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757389Ab2EYXV5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 May 2012 19:21:57 -0400
+In-Reply-To: <4FBFE0F9.8050509@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The creation of inline wrappers ext2fs_open() and ext2fs_stat()
-in commit c859cb1de0d624caa0779fb17d1a53766143136e in ext2fs.h
-caused difficulties with the use of headers, since the headers
-for open64() and stat64() may already be included (and skip the
-declaration of the 64-bit variants) before ext2fs.h is ever read.
-There is no real way to solve the missing prototypes and resulting
-compiler warnings inside ext2fs.h.
+On 2012-05-25, at 1:43 PM, Eric Sandeen wrote:
+> In short, for a completely full filesystem with more than 2^32
+> blocks, the rbtree bitmap backend can assemble an extent of used
+> blocks which is longer than 2^32.  If it does, it will overflow
+> ->count, and corrupt the rbtree for the bitmaps.
+> 
+> Discovered by completely filling a 32T filesystem using fallocate, and
+> then observing debugfs, dumpe2fs, and e2fsck all behaving badly.
+> 
+> (Note that filling with only 31 x 1T files did not show the problem,
+> because freespace was fragmented enough that there was no sufficiently
+> long range of used blocks.)
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> An alternative solution might be to limit the rb_extent to
+> 32-bit counts, and not merging beyond that.  For fragmented
+> freespace, as normal, perhaps that would be a better memory
+> savings?  But this fixes the immediate problem and seems worth
+> merging to avoid bad situations such as e2fsck corrupting a
+> perfectly good 32T filesystem...
 
-Since ext2fs_open() and ext2fs_stat() are not performance critical
-operations, they do not need to be inline functions at all, and
-the needed function headers can be handled properly in one file.
+That was my initial thought as well, but the bmap_rb_extent struct
+already has several 64-bit values in it on a 64-bit arch, so there
+would not be any space savings.  On a 32-bit arch, in theory we
+could save 8 bytes by locating a 32-bit count adjacent to rb_node
+instead of after __u64 start, but then 32-bit systems can't handle
+block devices over 16TB anyway, so the point is moot...
 
-Similarly, posix_memalloc() was having difficulties with headers,
-and was being defined in ext2fs.h, but it is now only being used
-by a single file, so move the required header there.
+Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
----
- lib/ext2fs/ext2fs.h  |   46 ----------------------------------------------
- lib/ext2fs/inline.c  |    3 +++
- lib/ext2fs/unix_io.c |   32 ++++++++++++++++++++++++++++++++
- 3 files changed, 35 insertions(+), 46 deletions(-)
+> diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+> index 7ab72f4..a83f8ac 100644
+> --- a/lib/ext2fs/blkmap64_rb.c
+> +++ b/lib/ext2fs/blkmap64_rb.c
+> @@ -33,7 +33,7 @@
+> struct bmap_rb_extent {
+> 	struct rb_node node;
+> 	__u64 start;
+> -	__u32 count;
+> +	__u64 count;
+> };
+> 
+> struct ext2fs_rb_private {
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 9a0e736..ff088bb 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -29,10 +29,6 @@ extern "C" {
- #define NO_INLINE_FUNCS
- #endif
- 
--#ifndef _XOPEN_SOURCE
--#define _XOPEN_SOURCE 600	/* for posix_memalign() */
--#endif
--
- /*
-  * Where the master copy of the superblock is located, and how big
-  * superblocks are supposed to be.  We define SUPERBLOCK_SIZE because
-@@ -57,16 +53,6 @@ extern "C" {
- #include <stdlib.h>
- #include <string.h>
- #include <errno.h>
--#include <sys/types.h>
--#include <sys/stat.h>
--#include <fcntl.h>
--
--#ifndef __USE_XOPEN2K
--/* If the "#define _XOPEN_SOURCE 600" didn't succeed in declaring
-- * posix_memalign(), maybe due to <features.h> or <stdlib.h> included beforej
-- * _XOPEN_SOURCE, declare it here to avoid compiler warnings. */
--extern int posix_memalign(void **__memptr, size_t __alignment, size_t __size);
--#endif
- 
- #if EXT2_FLAT_INCLUDES
- #include "e2_types.h"
-@@ -1709,38 +1695,6 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
- 	return ((a - 1) / b) + 1;
- }
- 
--_INLINE_ int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
--{
--	if (mode)
--#if defined(HAVE_OPEN64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
--		return open64(pathname, flags, mode);
--	else
--		return open64(pathname, flags);
--#else
--		return open(pathname, flags, mode);
--	else
--		return open(pathname, flags);
--#endif
--}
--
--_INLINE_ int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
--{
--#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
--	return stat64(path, buf);
--#else
--	return stat(path, buf);
--#endif
--}
--
--_INLINE_ int ext2fs_fstat(int fd, ext2fs_struct_stat *buf)
--{
--#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
--	return fstat64(fd, buf);
--#else
--	return fstat(fd, buf);
--#endif
--}
--
- #undef _INLINE_
- #endif
- 
-diff --git a/lib/ext2fs/inline.c b/lib/ext2fs/inline.c
-index 8e66846..eef3dda 100644
---- a/lib/ext2fs/inline.c
-+++ b/lib/ext2fs/inline.c
-@@ -11,6 +11,9 @@
-  * %End-Header%
-  */
- 
-+#ifndef _XOPEN_SOURCE
-+#define _XOPEN_SOURCE 600	/* for posix_memalign() */
-+#endif
- 
- #include "config.h"
- #include <stdio.h>
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index e66b5c8..02570f0 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -435,6 +435,38 @@ static errcode_t flush_cached_blocks(io_channel channel,
- #endif
- #endif
- 
-+int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
-+{
-+	if (mode)
-+#if defined(HAVE_OPEN64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+		return open64(pathname, flags, mode);
-+	else
-+		return open64(pathname, flags);
-+#else
-+		return open(pathname, flags, mode);
-+	else
-+		return open(pathname, flags);
-+#endif
-+}
-+
-+int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
-+{
-+#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+	return stat64(path, buf);
-+#else
-+	return stat(path, buf);
-+#endif
-+}
-+
-+int ext2fs_fstat(int fd, ext2fs_struct_stat *buf)
-+{
-+#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+	return fstat64(fd, buf);
-+#else
-+	return fstat(fd, buf);
-+#endif
-+}
-+
- static errcode_t unix_open(const char *name, int flags, io_channel *channel)
- {
- 	io_channel	io = NULL;
--- 
-1.7.3.4
+
+Cheers, Andreas
+
+
+
+
 
