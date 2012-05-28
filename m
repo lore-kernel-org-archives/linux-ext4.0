@@ -1,39 +1,46 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: libquota: add a quotactl prototype
-Date: Mon, 28 May 2012 09:31:42 -0600
-Message-ID: <9479769F-26BE-415D-804A-4766736ACEF5@whamcloud.com>
-References: <1337715689-7116-1-git-send-email-vapier@gentoo.org> <20120528142032.GA1578@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Mike Frysinger <vapier@gentoo.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext2 hang on (intentionally) corrupted filesystem
+Date: Mon, 28 May 2012 13:31:33 -0400
+Message-ID: <20120528173133.GA31109@thunk.org>
+References: <20120505013841.GD13332@sli.dy.fi>
+ <20120509211236.GI5092@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org,
+	linux-fsdev@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:57398 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751333Ab2E1Pbe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 May 2012 11:31:34 -0400
-Received: by dady13 with SMTP id y13so4269967dad.19
-        for <linux-ext4@vger.kernel.org>; Mon, 28 May 2012 08:31:34 -0700 (PDT)
-In-Reply-To: <20120528142032.GA1578@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46007 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751118Ab2E1Rbt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 May 2012 13:31:49 -0400
+Content-Disposition: inline
+In-Reply-To: <20120509211236.GI5092@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-05-28, at 8:20, Ted Ts'o <tytso@mit.edu> wrote:
+On Wed, May 09, 2012 at 11:12:36PM +0200, Jan Kara wrote:
+> > 1. wget http://sli.dy.fi/~sliedes/berserker/testcases/ext2.110.min.bz2
+> > 2. mount ... /mnt -t ext2 -o errors=continue
+> > 3. Do some operations; what I do (it's the rm that crashes):
+> >   timeout 30 rm -rf /mnt/* >&/dev/null
+> > 4. The rm task hangs
+> > 
+>   OK, you've changed '.' directory entry to a normal directory entry with a
+> name 0x6e. I guess that has some potential in confusing something. Actually
+> rm -rf does not reproduce the problem for me (it just complains about
+> cyclic directory hierarchy) but trying to rmdir bad entry hangs the system
+> - we try to grab i_mutex for the directory twice because the directory is
+> it's own parent... That would be kind of hard to fix in VFS since once our
+> directory structure contains a cycle, our locking protocol is no longer
+> deadlock free. I'll see what we could do...
 
-> On Tue, May 22, 2012 at 09:41:29AM -0000, Mike Frysinger wrote:
->> The commit 0df8a27bbaf51b55c0e8c3a533ef4c2ff9d79c9f removed the system
->> quota.h include, but in doing so, added the problem:
->> mkquota.c:55:2: warning: implicit declaration of function 'quotactl'
->> 
->> Since we're maintaining a copy of quota.h, add a proper func prototype.
->> 
->> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-> 
-> Thanks, applied.
+Just wanted to chime in that this crashes when the file system is
+mounted using ext4; not surprising, since it's clearly a VFS issue.
 
-This patch caused a compile failure on my FC 13 system, when I had no problem before, because caddr_t was not defined...
+The following proof-of-concept patch (see reply chained to this mail
+message) fixes the problem for your test file system.  Al, what do you
+think?  Is it worth it to define a new mechanism where we can pass
+VFS-detected corruption down to the low-level file system?
 
-Cheers, Andreas
+						- Ted
