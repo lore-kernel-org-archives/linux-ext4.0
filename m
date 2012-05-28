@@ -1,31 +1,39 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [patch v2] ext4: potential NULL dereference on error
-Date: Mon, 28 May 2012 11:01:43 -0400
-Message-ID: <20120528150143.GG19152@thunk.org>
-References: <20120514222535.GW5353@quack.suse.cz>
- <20120515084640.GB30265@elgon.mountain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: libquota: add a quotactl prototype
+Date: Mon, 28 May 2012 09:31:42 -0600
+Message-ID: <9479769F-26BE-415D-804A-4766736ACEF5@whamcloud.com>
+References: <1337715689-7116-1-git-send-email-vapier@gentoo.org> <20120528142032.GA1578@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Mike Frysinger <vapier@gentoo.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45981 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751899Ab2E1PBu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 May 2012 11:01:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20120515084640.GB30265@elgon.mountain>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:57398 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751333Ab2E1Pbe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 May 2012 11:31:34 -0400
+Received: by dady13 with SMTP id y13so4269967dad.19
+        for <linux-ext4@vger.kernel.org>; Mon, 28 May 2012 08:31:34 -0700 (PDT)
+In-Reply-To: <20120528142032.GA1578@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 15, 2012 at 11:46:40AM +0300, Dan Carpenter wrote:
-> The ext4_get_group_desc() function returns NULL on error, and
-> ext4_free_inodes_count() function dereferences it without checking.
-> There is a check on the next line, but it's too late.
+On 2012-05-28, at 8:20, Ted Ts'o <tytso@mit.edu> wrote:
+
+> On Tue, May 22, 2012 at 09:41:29AM -0000, Mike Frysinger wrote:
+>> The commit 0df8a27bbaf51b55c0e8c3a533ef4c2ff9d79c9f removed the system
+>> quota.h include, but in doing so, added the problem:
+>> mkquota.c:55:2: warning: implicit declaration of function 'quotactl'
+>> 
+>> Since we're maintaining a copy of quota.h, add a proper func prototype.
+>> 
+>> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> Thanks, applied.
 
-Thanks, applied.
+This patch caused a compile failure on my FC 13 system, when I had no problem before, because caddr_t was not defined...
 
-					- Ted
+Cheers, Andreas
