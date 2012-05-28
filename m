@@ -1,18 +1,16 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: [PATCH] vfs: avoid hang caused by attempting to rmdir an invalid file system
-Date: Mon, 28 May 2012 13:33:42 -0400
-Message-ID: <1338226422-8845-1-git-send-email-tytso@mit.edu>
+Date: Mon, 28 May 2012 13:34:05 -0400
+Message-ID: <1338226445-8911-1-git-send-email-tytso@mit.edu>
+References: <20120528173133.GA31109@thunk.org>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	viro@ZenIV.linux.org.uk, sami.liedes@iki.fi,
 	Theodore Ts'o <tytso@mit.edu>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46010 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752035Ab2E1Rdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 May 2012 13:33:44 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120528173133.GA31109@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 If we rmdir a directory which is a hard link to '.', we will deadlock
 trying to grab the directory's i_mutex.  Check for this condition and
