@@ -1,46 +1,51 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext2 hang on (intentionally) corrupted filesystem
-Date: Mon, 28 May 2012 13:31:33 -0400
-Message-ID: <20120528173133.GA31109@thunk.org>
-References: <20120505013841.GD13332@sli.dy.fi>
- <20120509211236.GI5092@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Sami Liedes <sami.liedes@iki.fi>, linux-ext4@vger.kernel.org,
-	linux-fsdev@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
-To: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] vfs: avoid hang caused by attempting to rmdir an invalid file system
+Date: Mon, 28 May 2012 13:33:42 -0400
+Message-ID: <1338226422-8845-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@ZenIV.linux.org.uk, sami.liedes@iki.fi,
+	Theodore Ts'o <tytso@mit.edu>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46007 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46010 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751118Ab2E1Rbt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 May 2012 13:31:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20120509211236.GI5092@quack.suse.cz>
+	id S1752035Ab2E1Rdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 May 2012 13:33:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 09, 2012 at 11:12:36PM +0200, Jan Kara wrote:
-> > 1. wget http://sli.dy.fi/~sliedes/berserker/testcases/ext2.110.min.bz2
-> > 2. mount ... /mnt -t ext2 -o errors=continue
-> > 3. Do some operations; what I do (it's the rm that crashes):
-> >   timeout 30 rm -rf /mnt/* >&/dev/null
-> > 4. The rm task hangs
-> > 
->   OK, you've changed '.' directory entry to a normal directory entry with a
-> name 0x6e. I guess that has some potential in confusing something. Actually
-> rm -rf does not reproduce the problem for me (it just complains about
-> cyclic directory hierarchy) but trying to rmdir bad entry hangs the system
-> - we try to grab i_mutex for the directory twice because the directory is
-> it's own parent... That would be kind of hard to fix in VFS since once our
-> directory structure contains a cycle, our locking protocol is no longer
-> deadlock free. I'll see what we could do...
+If we rmdir a directory which is a hard link to '.', we will deadlock
+trying to grab the directory's i_mutex.  Check for this condition and
+return EINVAL, which is what we return if the user attempts to rmdir
+"/foo/bar/."
 
-Just wanted to chime in that this crashes when the file system is
-mounted using ext4; not surprising, since it's clearly a VFS issue.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/namei.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-The following proof-of-concept patch (see reply chained to this mail
-message) fixes the problem for your test file system.  Al, what do you
-think?  Is it worth it to define a new mechanism where we can pass
-VFS-detected corruption down to the low-level file system?
+diff --git a/fs/namei.c b/fs/namei.c
+index 0062dd1..081f872 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2774,6 +2774,17 @@ static long do_rmdir(int dfd, const char __user *pathname)
+ 		error = -ENOENT;
+ 		goto exit3;
+ 	}
++	if (nd.path.dentry->d_inode == dentry->d_inode) {
++		/*
++		 * Corrupt file system where there is a symlink to
++		 * '.'; treat it as if we are trying to rmdir '.'
++		 *
++		 * XXX Should we call into the low-level file system
++		 * to request that the file system be marked corrupt?
++		 */
++		error = -EINVAL;
++		goto exit3;
++	}
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+ 		goto exit3;
+-- 
+1.7.10.2.552.gaa3bb87
 
-						- Ted
