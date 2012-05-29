@@ -1,55 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Protect group inode free counting with group
- lock.
-Date: Tue, 29 May 2012 08:39:50 -0400
-Message-ID: <20120529123950.GC16351@thunk.org>
-References: <1337158192-4591-1-git-send-email-tm@tao.ma>
- <4FB3AF00.9060704@redhat.com>
- <4FB3BFC9.20901@tao.ma>
- <4FB3CC8C.4030502@redhat.com>
- <4FB45FBE.10004@tao.ma>
- <20120528222241.GD5610@thunk.org>
- <4FC431E6.7020206@tao.ma>
- <8932CA1F-B08D-4327-AD23-38EA56D49F47@dilger.ca>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
+Date: Tue, 29 May 2012 14:04:10 +0000 (UTC)
+Message-ID: <20120529140410.A8C9611FD1B@bugzilla.kernel.org>
+References: <bug-43292-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <tm@tao.ma>, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46216 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750715Ab2E2Mjz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 May 2012 08:39:55 -0400
-Content-Disposition: inline
-In-Reply-To: <8932CA1F-B08D-4327-AD23-38EA56D49F47@dilger.ca>
+Received: from mail.kernel.org ([198.145.19.201]:50797 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752577Ab2E2OEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 May 2012 10:04:13 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id BD3D9203B6
+	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 14:04:12 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id B0455203B8
+	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 14:04:10 +0000 (UTC)
+In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 28, 2012 at 11:57:59PM -0600, Andreas Dilger wrote:
-> > We are just disabling the uninit_bg so as to let the block group
-> > initialization happen in the mkfs time. I don't know why the checksum is
-> > also disabled by ^uninit_bg.
-> 
-> The checksum is controlled by uninit_bg, because there was a need to
-> ensure the bg_itable_unused count and the UNINIT flags could be
-> trusted when doing an e2fsck.
-> 
-> If you don't want to do lazy inode table initialization, that is
-> disabled by "mke2fs -E lazy_itable_init=0".
+https://bugzilla.kernel.org/show_bug.cgi?id=43292
 
-You can also disable whether or not lazy inode table initialization
-happens by default via /etc/mke2fs.conf.  At work we have a very
-fairly havily modified /etc/mke2fs.conf which has our
-production-specific mke2fs parameters defined, so that someone who
-runs mke2fs by hand will get the same result at as the automated
-systems.
 
-I can easily see how if you are trying for predictable latency
-numbers, disabling lazy inode table initialization makes a huge amount
-of sense.  I'd recommend doing it via /etc/mke2fs.conf, though.
+Jan Kara <jack@suse.cz> changed:
 
-Regards,
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
-						- Ted
 
+
+
+--- Comment #2 from Jan Kara <jack@suse.cz>  2012-05-29 14:04:10 ---
+If you can reproduce this, can you make the deadlock happen, then run 'echo w
+>/proc/sysrq-trigger', and attach here output from dmesg? Thanks!
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
