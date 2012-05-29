@@ -1,43 +1,83 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Tue, 29 May 2012 14:04:10 +0000 (UTC)
-Message-ID: <20120529140410.A8C9611FD1B@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: force ro mount if ext3_setup_super() fails
+Date: Tue, 29 May 2012 16:09:16 +0200
+Message-ID: <20120529140916.GD23991@quack.suse.cz>
+References: <4FBE6935.3000301@redhat.com>
+ <49CDEB80-418A-492C-B3F1-8E2A46DA9E29@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:50797 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:45039 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752577Ab2E2OEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 May 2012 10:04:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BD3D9203B6
-	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 14:04:12 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id B0455203B8
-	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 14:04:10 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
+	id S1751810Ab2E2OJY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 May 2012 10:09:24 -0400
+Content-Disposition: inline
+In-Reply-To: <49CDEB80-418A-492C-B3F1-8E2A46DA9E29@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+On Thu 24-05-12 11:41:57, Andreas Dilger wrote:
+> On 2012-05-24, at 11:00 AM, Eric Sandeen wrote:
+> > If ext3_setup_super() fails i.e. due to a too-high revision,
+> > the error is logged in dmesg but the fs is not mounted RO as
+> > indicated.
+> > 
+> > Tested by:
+> > 
+> > # mkfs.ext3 -r 4 /dev/sdb6
+> > # mount /dev/sdb6 /mnt/test
+> > # dmesg | grep "too high"
+> > [164152.114551] EXT3-fs (sdb6): error: revision level too high, forcing read-only mode
+> > # grep sdb6 /proc/mounts
+> > /dev/sdb6 /mnt/test2 ext3 rw,seclabel,relatime,errors=continue,user_xattr,acl,barrier=1,data=ordered 0 0
+> >                          ^^
+> > 
+> > Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> 
+> Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
+  Thanks! Merged to my tree.
 
+									Honza
 
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-
-
-
-
---- Comment #2 from Jan Kara <jack@suse.cz>  2012-05-29 14:04:10 ---
-If you can reproduce this, can you make the deadlock happen, then run 'echo w
->/proc/sysrq-trigger', and attach here output from dmesg? Thanks!
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> > ---
+> > 
+> > diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> > index cf0b592..fef7af2 100644
+> > --- a/fs/ext3/super.c
+> > +++ b/fs/ext3/super.c
+> > @@ -2043,7 +2043,8 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+> > 		goto failed_mount3;
+> > 	}
+> > 
+> > -	ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+> > +	if (ext3_setup_super(sb, es, sb->s_flags & MS_RDONLY))
+> > +		sb->s_flags |= MS_RDONLY;
+> 
+> I was wondering if this should be:
+> 
+> 	sb->s_flags |= ext3_setup_super(...)
+> 
+> but that might be over-thinking things.
+> 
+> > 	EXT3_SB(sb)->s_mount_state |= EXT3_ORPHAN_FS;
+> > 	ext3_orphan_cleanup(sb, es);
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
