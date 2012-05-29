@@ -1,47 +1,42 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: Protect group inode free counting with group lock.
-Date: Tue, 29 May 2012 22:28:34 +0800
-Message-ID: <4FC4DD12.4020007@tao.ma>
-References: <1337158192-4591-1-git-send-email-tm@tao.ma> <4FB3AF00.9060704@redhat.com> <4FB3BFC9.20901@tao.ma> <4FB3CC8C.4030502@redhat.com> <4FB45FBE.10004@tao.ma> <20120528222241.GD5610@thunk.org> <4FC431E6.7020206@tao.ma> <8932CA1F-B08D-4327-AD23-38EA56D49F47@dilger.ca> <20120529123950.GC16351@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 43305] Deleting a folder with 500 000 small files causes
+ deadlock in start_this_handle.irsa.7
+Date: Tue, 29 May 2012 15:38:48 +0000 (UTC)
+Message-ID: <20120529153848.045C611FD19@bugzilla.kernel.org>
+References: <bug-43305-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:57632 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753506Ab2E2O2n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 May 2012 10:28:43 -0400
-In-Reply-To: <20120529123950.GC16351@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:53177 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750860Ab2E2Piu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 May 2012 11:38:50 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id B1466203B4
+	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 15:38:49 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id 077482031F
+	for <linux-ext4@vger.kernel.org>; Tue, 29 May 2012 15:38:48 +0000 (UTC)
+In-Reply-To: <bug-43305-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/29/2012 08:39 PM, Ted Ts'o wrote:
-> On Mon, May 28, 2012 at 11:57:59PM -0600, Andreas Dilger wrote:
->>> We are just disabling the uninit_bg so as to let the block group
->>> initialization happen in the mkfs time. I don't know why the checksum is
->>> also disabled by ^uninit_bg.
->>
->> The checksum is controlled by uninit_bg, because there was a need to
->> ensure the bg_itable_unused count and the UNINIT flags could be
->> trusted when doing an e2fsck.
->>
->> If you don't want to do lazy inode table initialization, that is
->> disabled by "mke2fs -E lazy_itable_init=0".
-> 
-> You can also disable whether or not lazy inode table initialization
-> happens by default via /etc/mke2fs.conf.  At work we have a very
-> fairly havily modified /etc/mke2fs.conf which has our
-> production-specific mke2fs parameters defined, so that someone who
-> runs mke2fs by hand will get the same result at as the automated
-> systems.
-> 
-> I can easily see how if you are trying for predictable latency
-> numbers, disabling lazy inode table initialization makes a huge amount
-> of sense.  I'd recommend doing it via /etc/mke2fs.conf, though.
-OK, thank you all for the good suggestion.
+https://bugzilla.kernel.org/show_bug.cgi?id=43305
 
-Thanks
-Tao
+
+
+
+
+--- Comment #2 from Aigars Mahinovs <aigarius@gmail.com>  2012-05-29 15:38:47 ---
+Created an attachment (id=73458)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=73458)
+Kernel log after pressing SysRq+w twice during the lockup
+
+Note that I first pressed the Sysrq+w on the keyboard and after that ran the
+command to also execute it via /proc
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
