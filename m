@@ -1,50 +1,43 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] tests: use make rules to run tests in parallel (v3)
-Date: Mon, 28 May 2012 21:28:59 -0400
-Message-ID: <20120529012859.GF5610@thunk.org>
-References: <1338245904-31827-1-git-send-email-adilger@whamcloud.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: Protect group inode free counting with group lock.
+Date: Tue, 29 May 2012 10:18:14 +0800
+Message-ID: <4FC431E6.7020206@tao.ma>
+References: <1337158192-4591-1-git-send-email-tm@tao.ma> <4FB3AF00.9060704@redhat.com> <4FB3BFC9.20901@tao.ma> <4FB3CC8C.4030502@redhat.com> <4FB45FBE.10004@tao.ma> <20120528222241.GD5610@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46106 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751760Ab2E2B3E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 May 2012 21:29:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1338245904-31827-1-git-send-email-adilger@whamcloud.com>
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:43313 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752386Ab2E2CST (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 May 2012 22:18:19 -0400
+In-Reply-To: <20120528222241.GD5610@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 28, 2012 at 04:58:24PM -0600, Andreas Dilger wrote:
-> Change the e2fsck/mke2fs/tune2fs/e2image/debugfs regression tests
-> to be driven by Makefile rules instead of by a script loop.  This
-> allows the tests to be run in parallel like a build and reduces
-> testing time significantly.
+On 05/29/2012 06:22 AM, Ted Ts'o wrote:
+> On Thu, May 17, 2012 at 10:17:34AM +0800, Tao Ma wrote:
+>> oh, I see. Yes, we mkfs the system with the following configurations:
+>> mke2fs -O ^resize_inode,^uninit_bg,extent,meta_bg,flex_bg,ext_attr
+>> Maybe that's the reason why it has never be met by others before. ;)
 > 
-> One major change to the tests themselves is to printing the test
-> name, description, and status together after the test has passed
-> or failed, to avoid mixing lines from the tests.  The other major
-> change is to use unique temporary filenames for each test, which was
-> mostly handled already via b4db1e4c7461a50e18c9fd135b9f1ba6f27e4390,
-> but in some cases temporary files are changed to use $test_name.tmp
-> to avoid any collision between running tests.
-> 
-> On my old 2-CPU system it reduced the testing time from 160s to 40s.
-> Much of the savings is from the MMP test delays running in parallel.
-> It still takes the time of the slowest test, f_mmp_garbage, though
-> there will be ongoing benefit in the future as more tests are added
-> since the wallclock time will not increase linearly for each test.
-> 
-> Tests were run with various combinations of "make -j", and "make -j2"
-> through "make -j44" repeatedly without any test failures.
-> 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+> I'm curious -- is there a specific reason you're disabling the group
+> descriptor checksum?  Or was that just something that was picked at
+> one point and you haven't changed it since?
+We are just disabling the uninit_bg so as to let the block group
+initialization happen in the mkfs time. I don't know why the checksum is
+also disabled by ^uninit_bg.
 
-Applied with some fixes; test_script was still working correctly with
-VPATH.  Also, removing the writeable flag from test_one and
-test_script means that Makefile will get a "permission denied" if it
-needs to rebuild those two files.
+Thanks
+Tao
+> 
+> Thanks,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-						- Ted
