@@ -1,69 +1,51 @@
 From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: e2fsck: fix checks done for mounted vs. read-only
-Date: Wed, 30 May 2012 11:57:15 -0600
-Message-ID: <7F0A3486-878A-4E71-8C14-EAFDAD2FA8E4@whamcloud.com>
-References: <1337895296-16629-1-git-send-email-adilger@whamcloud.com> <20120528145100.GA21422@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: allow checking on mounted root filesystem
+Date: Wed, 30 May 2012 12:39:42 -0600
+Message-ID: <1338403182-2253-1-git-send-email-adilger@whamcloud.com>
+References: <1337895296-16629-1-git-send-email-adilger@whamcloud.com>
+Cc: Andreas Dilger <adilger@whamcloud.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:15816 "EHLO
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:36376 "EHLO
 	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756281Ab2E3R5M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2012 13:57:12 -0400
-In-Reply-To: <20120528145100.GA21422@thunk.org>
+	with ESMTP id S1751942Ab2E3Sjo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2012 14:39:44 -0400
+In-Reply-To: <1337895296-16629-1-git-send-email-adilger@whamcloud.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-05-28, at 8:51 AM, Ted Ts'o wrote:
-> On Thu, May 24, 2012 at 11:34:56AM -0000, Andreas Dilger wrote:
->> Currently, if e2fsck is run without the "-n" flag (i.e. it
->> might modify the filesystem), there is no guarantee that it will
->> open the filesystem with the EXCLUSIVE flag (i.e. O_EXCL) to
->> prevent the block device from being checked (in most cases this
->> means mounted, but it could also be an MD/LVM member device).
->> 
->> Conversely, if e2fsck is run with "-n" (i.e. read-only), and
->> /etc/mtab or /proc/mounts does not report the block device as
->> mounted then e2fsck thinks the filesystem is unmounted.  In this
->> case, e2fsck incorrectly sets the EXCLUSIVE flag, which causes
->> the check to fail, even though e2fsck is running read-only.
->> 
->> To fix this, do not open with EXCLUSIVE if it is a read-only check,
->> and always open with EXCLUSIVE if the filesystem might be changed.
->> This also prevents filesystem mounts while e2fsck is running.
->> 
->> Also refuse allow e2fsck to run at all if the filesystem is BUSY.
->> The e2fsck check_mount() was checking for MOUNTED, but not BUSY,
->> and it should refuse to run outright if the block device is BUSY.
->> The previous MOUNTED heuristics pre-date the O_EXCL reservation
->> by the kernel, so there could be uncertainty due to stale /etc/mtab
->> data, but with newer kernels a busy device should never be modified.
->> 
->> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> 
-> Thanks, applied.
+Commit 732e26b98e5c79a4298dbe341f43b54b354bb241 added checks to
+prevent e2fsck from being run in filesystem-modifying mode against
+a mounted or otherwise busy device, due to several bug reports of
+users doing this even with the verbose warnings in check_mount().
 
-In late-breaking news, this change prevents checking the root
-filesystem at mount time, because the device is BUSY, and all
-filesystem-modifying checks use O_EXCL...
+However, it also prevented e2fsck from checking a mounted root
+filesystem, which will prevent the node from booting.  Once again
+allow e2fsck to run against the mounted root filesystem.
 
-This was not a problem with our original patch, but I had changed
-it in discussion with Eric to prevent people from shooting
-themselves in the foot when bypassing "The filesystem is mounted.
-Do you really want to continue (y/n)?" questions and corrupting
-their filesystem.  The revised patch tested correctly on mounted
-and unmounted regular filesystems, but breaks for the root fs.
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+---
+ e2fsck/unix.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-Please revert this patch, and I'll come up with a better one.
-
-Cheers, Andreas
---
-Andreas Dilger                       Whamcloud, Inc.
-Principal Lustre Engineer            http://www.whamcloud.com/
-
-
-
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 6161e46..1c1bae8 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1221,8 +1221,11 @@ restart:
+ 			    &old_bitmaps);
+ 	if (!old_bitmaps)
+ 		flags |= EXT2_FLAG_64BITS;
+-	if ((ctx->options & E2F_OPT_READONLY) == 0)
+-		flags |= EXT2_FLAG_RW | EXT2_FLAG_EXCLUSIVE;
++	if ((ctx->options & E2F_OPT_READONLY) == 0) {
++		flags |= EXT2_FLAG_RW;
++		if (!(ctx->mount_flags & EXT2_MF_ISROOT))
++			flags |= EXT2_FLAG_EXCLUSIVE;
++	}
+ 
+ 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
+ 
+-- 
+1.7.3.4
 
