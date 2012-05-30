@@ -1,51 +1,113 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH] e2fsck: allow checking on mounted root filesystem
-Date: Wed, 30 May 2012 12:39:42 -0600
-Message-ID: <1338403182-2253-1-git-send-email-adilger@whamcloud.com>
-References: <1337895296-16629-1-git-send-email-adilger@whamcloud.com>
-Cc: Andreas Dilger <adilger@whamcloud.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] vfs: avoid hang caused by attempting to rmdir an
+ invalid file system
+Date: Wed, 30 May 2012 22:12:57 +0200
+Message-ID: <20120530201256.GA32477@quack.suse.cz>
+References: <1338226422-8845-1-git-send-email-tytso@mit.edu>
+ <4790434C-0DF2-4186-BE4C-CE97633F107C@dilger.ca>
+ <20120528210511.GA5610@thunk.org>
+ <20120529195019.GE23991@quack.suse.cz>
+ <20120529200856.GF23991@quack.suse.cz>
+ <20120530173709.GB16317@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>,
+	linux-fsdevel@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	viro@ZenIV.linux.org.uk, sami.liedes@iki.fi
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:36376 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751942Ab2E3Sjo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2012 14:39:44 -0400
-In-Reply-To: <1337895296-16629-1-git-send-email-adilger@whamcloud.com>
+Received: from cantor2.suse.de ([195.135.220.15]:38066 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750903Ab2E3UNJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 May 2012 16:13:09 -0400
+Content-Disposition: inline
+In-Reply-To: <20120530173709.GB16317@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 732e26b98e5c79a4298dbe341f43b54b354bb241 added checks to
-prevent e2fsck from being run in filesystem-modifying mode against
-a mounted or otherwise busy device, due to several bug reports of
-users doing this even with the verbose warnings in check_mount().
+On Wed 30-05-12 13:37:09, J. Bruce Fields wrote:
+> On Tue, May 29, 2012 at 10:08:56PM +0200, Jan Kara wrote:
+> > On Tue 29-05-12 21:50:19, Jan Kara wrote:
+> > > On Mon 28-05-12 17:05:11, Ted Tso wrote:
+> > > > On Mon, May 28, 2012 at 02:29:05PM -0600, Andreas Dilger wrote:
+> > > > > This patch is good from the POV of covering all filesystems, and
+> > > > > avoiding the deadlock at the dcache level.  It would be possible to
+> > > > > detect this problem in the filesystem itself during lookup, before
+> > > > > the bad link got into the dcache itself.  Something like:
+> > > > 
+> > > > I like that as a solution for detecting the problem in ext4.  As you
+> > > > say, it's still an issue for other file systems, and so the patch I
+> > > > proposed is still probably a good idea for the VFS.  But this way ext4
+> > > > (and ext3 when Jan backports it) will be able to detect the problem
+> > > > and mark the file system as being corrupted.
+> > >   Actually, I think there's even better way. d_splice_alias() can rather
+> > > easily detect the problem and report it to filesystem. The advantage is
+> > > that the check in d_splice_alias() can catch any "hardlinks" to
+> > > directories, not just self loops. The patch is attached, I also have
+> > > corresponding handling written for ext? filesystems but that's trivial.
+> > > I'll post the whole series to Al to have a look.
+> >   And now with the attachment. Sorry.
+> 
+> Well, my understanding of d_splice_alias is that it should just return
+> the existing dentry instead of failing.  (It does that now for
+> DISCONNECTED dentries, but I don't understand why they're special.)
+> So that's what:
+> 
+> http://git.kernel.org/?p=linux/kernel/git/viro/vfs.git;a=commit;h=9d345b3217b384813680901d42eae3fb380b9f77
+> 
+> does.
+  Thanks for the pointer. In the case I tried to solve, returning the
+existing dentry will solve the deadlocks, just user won't be warned that
+the filesystem is corrupted. Since you seem to describe a valid case where
+we can spot other !DISCONNECTED dentry of a directory, I guess we have no
+other choice than using your approach.
 
-However, it also prevented e2fsck from checking a mounted root
-filesystem, which will prevent the node from booting.  Once again
-allow e2fsck to run against the mounted root filesystem.
+We could do some sanity checks in ->lookup method (like Andreas suggested)
+but they are not that powerful as a check in d_splice_alias() can be. But
+what can one do...
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
----
- e2fsck/unix.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+								Honza
 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 6161e46..1c1bae8 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1221,8 +1221,11 @@ restart:
- 			    &old_bitmaps);
- 	if (!old_bitmaps)
- 		flags |= EXT2_FLAG_64BITS;
--	if ((ctx->options & E2F_OPT_READONLY) == 0)
--		flags |= EXT2_FLAG_RW | EXT2_FLAG_EXCLUSIVE;
-+	if ((ctx->options & E2F_OPT_READONLY) == 0) {
-+		flags |= EXT2_FLAG_RW;
-+		if (!(ctx->mount_flags & EXT2_MF_ISROOT))
-+			flags |= EXT2_FLAG_EXCLUSIVE;
-+	}
- 
- 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
- 
+
+> > >From 0715b656ac88ce1bb62800b14d99ef2e25c26d28 Mon Sep 17 00:00:00 2001
+> > From: Jan Kara <jack@suse.cz>
+> > Date: Tue, 29 May 2012 21:19:01 +0200
+> > Subject: [PATCH 1/4] vfs: Avoid creation of directory loops for corrupted filesystems
+> > 
+> > When a directory hierarchy is corrupted (e. g. due to a bit flip on the media),
+> > it can happen that it contains loops of directories. That creates possibilities
+> > for deadlock when locking directories.
+> > 
+> > Fix the problem by checking in d_splice_alias() that when we splice a
+> > directory, it does not have any other connected alias.
+> > 
+> > Reported-by: Sami Liedes <sami.liedes@iki.fi>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/dcache.c |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/dcache.c b/fs/dcache.c
+> > index 4435d8b..ca31a1e 100644
+> > --- a/fs/dcache.c
+> > +++ b/fs/dcache.c
+> > @@ -1658,6 +1658,10 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+> >  			d_move(new, dentry);
+> >  			iput(inode);
+> >  		} else {
+> > +			if (unlikely(!list_empty(&inode->i_dentry))) {
+> > +				spin_unlock(&inode->i_lock);
+> > +				return ERR_PTR(-EIO);
+> > +			}
+> >  			/* already taking inode->i_lock, so d_add() by hand */
+> >  			__d_instantiate(dentry, inode);
+> >  			spin_unlock(&inode->i_lock);
+> > -- 
+> > 1.7.1
+> > 
+> 
 -- 
-1.7.3.4
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
