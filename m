@@ -1,38 +1,63 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Wed, 30 May 2012 09:47:27 +0000 (UTC)
-Message-ID: <20120530094727.6C49711FD19@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH 5/4] exofs: Handle error from d_splice_alias()
+Date: Wed, 30 May 2012 13:39:08 +0300
+Message-ID: <4FC5F8CC.20400@panasas.com>
+References: <1338322067-17566-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Ted Tso <tytso@mit.edu>,
+	<linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:48515 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751172Ab2E3Jrj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 May 2012 05:47:39 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C27A020348
-	for <linux-ext4@vger.kernel.org>; Wed, 30 May 2012 09:47:33 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 767B120370
-	for <linux-ext4@vger.kernel.org>; Wed, 30 May 2012 09:47:27 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
+Received: from natasha.panasas.com ([67.152.220.90]:58570 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752246Ab2E3Kpx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2012 06:45:53 -0400
+In-Reply-To: <1338322067-17566-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
 
+When directory hierarchy is corrupted and contains cycles, d_splice_alias() can
+fail. Handle the failure cleanly.
 
+Identical/coppied from:
+	ext2: Handle error from d_splice_alias()
+	Signed-off-by: Jan Kara <jack@suse.cz>
 
+[exofs is just yet another copy/paste of ext2 code]
 
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exofs/namei.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
---- Comment #7 from Florian Pritz <flo@xssn.at>  2012-05-30 09:47:27 ---
-Created an attachment (id=73465)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=73465)
-output of echo w > /proc/sysrq-trigger with noop
-
+diff --git a/fs/exofs/namei.c b/fs/exofs/namei.c
+index fc7161d..82de452 100644
+--- a/fs/exofs/namei.c
++++ b/fs/exofs/namei.c
+@@ -50,13 +50,19 @@ static struct dentry *exofs_lookup(struct inode *dir, struct dentry *dentry,
+ {
+ 	struct inode *inode;
+ 	ino_t ino;
++	struct dentry *ret;
+ 
+ 	if (dentry->d_name.len > EXOFS_NAME_LEN)
+ 		return ERR_PTR(-ENAMETOOLONG);
+ 
+ 	ino = exofs_inode_by_name(dir, dentry);
+ 	inode = ino ? exofs_iget(dir->i_sb, ino) : NULL;
+-	return d_splice_alias(inode, dentry);
++	ret = d_splice_alias(inode, dentry);
++	if (IS_ERR(ret)) {
++		EXOFS_ERR("directory #%lu corrupted", dir->i_ino);
++		iput(inode);
++	}
++	return ret;
+ }
+ 
+ static int exofs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.10.2.677.gb6bc67f
+
