@@ -1,36 +1,52 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: allow checking on mounted root fs (v2)
-Date: Thu, 31 May 2012 17:35:51 -0400
-Message-ID: <20120531213551.GA7897@thunk.org>
-References: <1338403182-2253-1-git-send-email-adilger@whamcloud.com>
- <1338418504-3408-1-git-send-email-adilger@whamcloud.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
+Date: Thu, 31 May 2012 21:40:38 +0000 (UTC)
+Message-ID: <20120531214038.4714111FD1B@bugzilla.kernel.org>
+References: <bug-43292-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46838 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752733Ab2EaVf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2012 17:35:59 -0400
-Content-Disposition: inline
-In-Reply-To: <1338418504-3408-1-git-send-email-adilger@whamcloud.com>
+Received: from mail.kernel.org ([198.145.19.201]:55616 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751918Ab2EaVkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2012 17:40:42 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 22DFB20338
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 21:40:41 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id 4D34C2032D
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 21:40:38 +0000 (UTC)
+In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 30, 2012 at 04:55:04PM -0600, Andreas Dilger wrote:
-> Commit 732e26b98e5c79a4298dbe341f43b54b354bb241 added checks to
-> prevent e2fsck from being run in filesystem-modifying mode against
-> a mounted or otherwise busy device, due to several bug reports of
-> users doing this even with the verbose warnings in check_mount().
-> 
-> However, it also prevented e2fsck from checking a mounted root
-> filesystem, which will prevent the node from booting.  Once again
-> allow e2fsck to run against the mounted root filesystem if it is
-> also mounted read-only at the time.
-> 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=43292
 
-Thanks, applied.
 
-						- Ted
+
+
+
+--- Comment #11 from Florian Pritz <flo@xssn.at>  2012-05-31 21:40:38 ---
+Created an attachment (id=73480)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=73480)
+output of dumpe2fs /dev/dm-2
+
+(In reply to comment #10)
+> I have to say I'm puzzled. Everything looks normal, the IO is submitted and
+> completed, no sign of any hang. Just the last request - read - has been only
+> submitted to disk and not yet completed but that can be just a coincidence. To
+> check what has been read, can you attach here output of dumpe2fs /dev/dm-2?
+
+I've run it without the hanging nfsd, is that correct?
+
+> When the lockup happens, those nfsd threads are sitting there doing nothing for
+> a long time, am I right?
+
+Yeah. All nfs activity is frozen, but local system activity on the same file
+system works just fine.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
