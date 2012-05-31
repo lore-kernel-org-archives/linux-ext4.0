@@ -1,63 +1,78 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH] e2fsck: allow checking on mounted root filesystem
-Date: Wed, 30 May 2012 16:55:58 -0600
-Message-ID: <73E2624D-36C2-48A6-BF07-06482C85E15A@whamcloud.com>
-References: <1337895296-16629-1-git-send-email-adilger@whamcloud.com> <1338403182-2253-1-git-send-email-adilger@whamcloud.com>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
+From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 10/12] container quota: bill container inodes alloc/free
+	on ext4.
+Date: Thu, 31 May 2012 09:43:18 +0800
+Message-ID: <4FC6CCB6.4090908@oracle.com>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
+	<1338389946-13711-11-git-send-email-jeff.liu@oracle.com>
+	<20120530155543.GB13236@thunk.org>
+Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:39798 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751085Ab2E3W4D (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 May 2012 18:56:03 -0400
-Received: by dady13 with SMTP id y13so416901dad.19
-        for <linux-ext4@vger.kernel.org>; Wed, 30 May 2012 15:56:02 -0700 (PDT)
-In-Reply-To: <1338403182-2253-1-git-send-email-adilger@whamcloud.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: jack-AlSwsSmVLrQ@public.gmane.org, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
+	hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, bpm-sJ/iWh9BUns@public.gmane.org, christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
+	tinguely-sJ/iWh9BUns@public.gmane.org
+To: "Ted Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+In-Reply-To: <20120530155543.GB13236-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012-05-30, at 12:39 PM, Andreas Dilger wrote:
-> Commit 732e26b98e5c79a4298dbe341f43b54b354bb241 added checks to
-> prevent e2fsck from being run in filesystem-modifying mode against
-> a mounted or otherwise busy device, due to several bug reports of
-> users doing this even with the verbose warnings in check_mount().
+Hi Ted,
+
+Thanks for your response!
+On 05/30/2012 11:55 PM, Ted Ts'o wrote:
+
+> On Wed, May 30, 2012 at 10:59:04PM +0800, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
+>>  	dquot_free_inode(inode);
+>> +	ns_dquot_free_inode(inode);
 > 
-> However, it also prevented e2fsck from checking a mounted root
-> filesystem, which will prevent the node from booting.  Once again
-> allow e2fsck to run against the mounted root filesystem.
+> It looks like you are adding ns_dquot_<foo>() with exactly the same
+> arguments after dquot_<foo>() calls, for various values of <foo>.
 > 
-> Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-> ---
-> e2fsck/unix.c |    7 +++++--
-> 1 files changed, 5 insertions(+), 2 deletions(-)
+> Instead of needing to change all of the file systems, would it be
+> possible simply to change the quota layer to call the ns_dquot_*
+> functions?
+
+I also think that is stupid to change all of the file systems with those
+hook routines.
+At first I have tried to change the quota layer by adding
+ns_dquot_<foo>() to the corresponding dquot_<foo>(), it could works on
+ext4, and it should works on other file systems which are tightly bound
+to VFS quota IMHO.
+
+However, XFS has its own quota management subsystem, with looser binding
+to VFS quota.  That's why am trying to export those routines over all
+the file systems and CC to the maintainers, sorry for the noise.
+
+Nevertheless, I will try to find out a straightforward way according to
+your comments.
+
+Thanks,
+-Jeff
+
+> It might make your life simpler, and it would certainly
+> reduce the number of filesystem maintainers that would need to look
+> through and review your changes.  You'd just have to work with Jan
+> Kara as the quota system maintainer.
+
+
 > 
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index 6161e46..1c1bae8 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -1221,8 +1221,11 @@ restart:
-> 			    &old_bitmaps);
-> 	if (!old_bitmaps)
-> 		flags |= EXT2_FLAG_64BITS;
-> -	if ((ctx->options & E2F_OPT_READONLY) == 0)
-> -		flags |= EXT2_FLAG_RW | EXT2_FLAG_EXCLUSIVE;
-> +	if ((ctx->options & E2F_OPT_READONLY) == 0) {
-> +		flags |= EXT2_FLAG_RW;
-> +		if (!(ctx->mount_flags & EXT2_MF_ISROOT))
-> +			flags |= EXT2_FLAG_EXCLUSIVE;
-> +	}
-
-This should further exclude root filesystems that are not mounted
-read-only.  Another patch on the way.
-
-Cheers, Andreas
---
-Andreas Dilger                       Whamcloud, Inc.
-Principal Lustre Engineer            http://www.whamcloud.com/
-
-
-
-
+> Regards,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
