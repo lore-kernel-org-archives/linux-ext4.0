@@ -1,42 +1,70 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Thu, 31 May 2012 20:16:27 +0000 (UTC)
-Message-ID: <20120531201627.B6CAC11FD1B@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] mke2fs: enable bigalloc if -C is specified
+Date: Thu, 31 May 2012 15:44:42 -0500
+Message-ID: <4FC7D83A.40003@redhat.com>
+References: <4FC7A1D5.3040805@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53759 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:28194 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964841Ab2EaUQa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2012 16:16:30 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8C52620337
-	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 20:16:29 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id BE82C20330
-	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 20:16:27 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
+	id S1756142Ab2EaUoo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2012 16:44:44 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4VKihLb022369
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 16:44:43 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4VKigT3016569
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 16:44:43 -0400
+In-Reply-To: <4FC7A1D5.3040805@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+On 5/31/12 11:52 AM, Eric Sandeen wrote:
+> If -C is specified w/o -O bigalloc it has no effect and generates
+> no error.  If a cluster size is specified, that should imply
+> bigalloc.
 
+Hm, so should -O bigalloc even be supported (or documented), or should
+this always be done via -C XXXX?  It seems better to specify the size
+rather than have some other -O option which picks an (arbitrary?) default
+of 16x.
 
+I'm also wondering what kind of guidance we should offer for choosing
+cluster sizes - or if we should default to a cluster size given either
+fs size, inode count, or combinations thereof.
 
+I think the hard cold truth is that ext4 just isn't sufficiently scalable
+at larger sizes without a larger cluster size, so I'm inclined to start
+thinking about choosing some increasing cluster sizes as defaults, what
+do you think?
 
+And finally, is this stuff robust enough to start documenting in
+the manpages yet?  I'm not sure the enospc problems have been worked
+out yet...
 
---- Comment #10 from Jan Kara <jack@suse.cz>  2012-05-31 20:16:27 ---
-I have to say I'm puzzled. Everything looks normal, the IO is submitted and
-completed, no sign of any hang. Just the last request - read - has been only
-submitted to disk and not yet completed but that can be just a coincidence. To
-check what has been read, can you attach here output of dumpe2fs /dev/dm-2?
+-Eric
 
-When the lockup happens, those nfsd threads are sitting there doing nothing for
-a long time, am I right?
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 7ec8cc2..d1944dc 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -1351,6 +1351,8 @@ profile_error:
+>  					optarg);
+>  				exit(1);
+>  			}
+> +			fs_param.s_feature_ro_compat |=
+> +					EXT4_FEATURE_RO_COMPAT_BIGALLOC;
+>  			break;
+>  		case 'D':
+>  			direct_io = 1;
+> 
+> 
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
