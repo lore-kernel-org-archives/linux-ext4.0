@@ -1,58 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: let getattr report the right blocks in delalloc+bigalloc.
-Date: Thu, 31 May 2012 12:08:50 -0500
-Message-ID: <4FC7A5A2.1080704@redhat.com>
-References: <1328025496-3521-1-git-send-email-tm@tao.ma>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+From: Aditya Kali <adityakali@google.com>
+Subject: [PATCH] libext2fs: fix i_blocks for extent leaf create/delete
+Date: Thu, 31 May 2012 11:31:58 -0700
+Message-ID: <1338489118-13483-1-git-send-email-adityakali@google.com>
+Cc: linux-ext4@vger.kernel.org, Aditya Kali <adityakali@google.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13653 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751880Ab2EaSFT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2012 14:05:19 -0400
-In-Reply-To: <1328025496-3521-1-git-send-email-tm@tao.ma>
+Received: from mail-ee0-f74.google.com ([74.125.83.74]:55904 "EHLO
+	mail-ee0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758326Ab2EaScD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 May 2012 14:32:03 -0400
+Received: by eeit10 with SMTP id t10so74584eei.1
+        for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 11:32:01 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/31/12 9:58 AM, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> In delayed allocation, i_reserved_data_blocks now indicates
-> clusters, not blocks. So report it in the right number.
-> 
-> This can be easily exposed by the following command:
-> echo foo > blah; du -hc blah; sync; du -hc blah
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Reported-by: Eric Sandeen <sandeen@redhat.com>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+When libext2fs allocates/deletes an extent leaf, the i_blocks
+value is incremented/decremented by fs->blocksize / 512. This
+is incorrect in case of bigalloc. The correct way here is to
+use cluster_size / 512.
+The problem is seen if we try to create a large inode using
+libext2fs (say using ext2fs_block_iterate3()) on a bigalloc
+filesystem. fsck catches this and complains.
 
-Reviewed-by: Eric Sandeen <sandeen2redhat.com>
+Signed-off-by: Aditya Kali <adityakali@google.com>
+---
+ lib/ext2fs/extent.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-It'd be great to get this one merged.
-
-Thanks,
--Eric
-
-> ---
->  fs/ext4/inode.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index feaa82f..a5eb8c6 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4200,7 +4200,8 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
->  	 * will return the blocks that include the delayed allocation
->  	 * blocks for this file.
->  	 */
-> -	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-> +	delalloc_blocks = EXT4_C2B(EXT4_SB(inode->i_sb),
-> +				EXT4_I(inode)->i_reserved_data_blocks);
->  
->  	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
->  	return 0;
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index eb096d6..8828764 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1027,7 +1027,8 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
+ 		goto done;
+ 
+ 	/* new node hooked in, so update inode block count (do this here?) */
+-	handle->inode->i_blocks += handle->fs->blocksize / 512;
++	handle->inode->i_blocks += (handle->fs->blocksize *
++				    EXT2FS_CLUSTER_RATIO(handle->fs)) / 512;
+ 	retval = ext2fs_write_inode(handle->fs, handle->ino,
+ 				    handle->inode);
+ 	if (retval)
+@@ -1501,7 +1502,9 @@ errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, int flags)
+ 				return retval;
+ 
+ 			retval = ext2fs_extent_delete(handle, flags);
+-			handle->inode->i_blocks -= handle->fs->blocksize / 512;
++			handle->inode->i_blocks -=
++				(handle->fs->blocksize *
++				 EXT2FS_CLUSTER_RATIO(handle->fs)) / 512;
+ 			retval = ext2fs_write_inode(handle->fs, handle->ino,
+ 						    handle->inode);
+ 			ext2fs_block_alloc_stats2(handle->fs,
+-- 
+1.7.7.3
 
