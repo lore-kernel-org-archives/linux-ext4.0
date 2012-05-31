@@ -1,64 +1,46 @@
-From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 10/12] container quota: bill container inodes alloc/free
-	on ext4.
-Date: Thu, 31 May 2012 21:43:32 +0800
-Message-ID: <4FC77584.30503@oracle.com>
-References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
-	<1338389946-13711-11-git-send-email-jeff.liu@oracle.com>
-	<4FC736AD.2070404@parallels.com> <4FC76B0D.6020804@oracle.com>
-	<4FC76ECA.3070301@parallels.com>
-Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] mke2fs: enable bigalloc if -C is specified
+Date: Thu, 31 May 2012 11:52:37 -0500
+Message-ID: <4FC7A1D5.3040805@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: jack-AlSwsSmVLrQ@public.gmane.org, Ted Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
-	hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, bpm-sJ/iWh9BUns@public.gmane.org, christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
-	tinguely-sJ/iWh9BUns@public.gmane.org
-To: Glauber Costa <glommer-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-In-Reply-To: <4FC76ECA.3070301-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
-List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
-Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:27795 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752784Ab2EaRHY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2012 13:07:24 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q4VH7KCj028921
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 13:07:24 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q4VGqbWE027943
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 12:52:38 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/31/2012 09:14 PM, Glauber Costa wrote:
+If -C is specified w/o -O bigalloc it has no effect and generates
+no error.  If a cluster size is specified, that should imply
+bigalloc.
 
-> On 05/31/2012 04:58 PM, Jeff Liu wrote:
->>> >  This should be inside dquot_free_inode().
->> Yeah, Ted also mentioned this before, all name space dquot bill routine
->> could be placed to dquot_xxx() for VFS quota user.
->>
->> However, AFAICS, they still have to be exported to other file systems
->> which have their own quota management module, like XFS.
->>
->> Thanks,
->> -Jeff
->>
-> Do you have a personal need to have it working with xfs, or is the use
-> you are pursuing achievable with the other filesystems?
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-I am just trying to figure out a unique interface for all file systems.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 7ec8cc2..d1944dc 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1351,6 +1351,8 @@ profile_error:
+ 					optarg);
+ 				exit(1);
+ 			}
++			fs_param.s_feature_ro_compat |=
++					EXT4_FEATURE_RO_COMPAT_BIGALLOC;
+ 			break;
+ 		case 'D':
+ 			direct_io = 1;
 
-> 
-> Unless you have a reason yourself to use xfs, I'd say don't bother with
-> it too much at the moment. get it working for the standard interface first.
 
-Ok, It can also make my life easier.
-
-Thanks,
--Jeff
-
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
