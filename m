@@ -1,294 +1,240 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: 3.3.7 lockdep report from jbd.
-Date: Fri, 1 Jun 2012 20:36:03 +0200
-Message-ID: <20120601183603.GA1646@quack.suse.cz>
-References: <20120530023747.GA1845@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Dave Jones <davej@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50537 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932760Ab2FASgI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jun 2012 14:36:08 -0400
-Content-Disposition: inline
-In-Reply-To: <20120530023747.GA1845@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH 17/27] ext4: Convert to new freezing mechanism
+Date: Sat,  2 Jun 2012 00:30:31 +0200
+Message-ID: <1338589841-9568-18-git-send-email-jack@suse.cz>
+References: <1338589841-9568-1-git-send-email-jack@suse.cz>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1338589841-9568-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 29-05-12 22:37:47, Dave Jones wrote:
-> Just saw this on my backup server during an rsync.
-> I'll see if I can reproduce it in 3.4 later.
-> 
-> 	Dave
-> 
-> 
-> =========================================================
-> [ INFO: possible irq lock inversion dependency detected ]
-> 3.3.7-1.fc16.x86_64.debug #1 Not tainted
-> ---------------------------------------------------------
-> kswapd0/37 just changed the state of lock:
->  (jbd2_handle){+.+.-.}, at: [<ffffffff8128b457>] start_this_handle+0x507/0x700
-> but this lock took another, RECLAIM_FS-unsafe lock in the past:
->  (&isec->lock){+.+.+.}
-> 
-> and interrupts could create inverse lock ordering between them.
-> 
-> 
-> other info that might help us debug this:
->  Possible interrupt unsafe locking scenario:
-> 
->        CPU0                    CPU1
->        ----                    ----
->   lock(&isec->lock);
->                                local_irq_disable();
->                                lock(jbd2_handle);
->                                lock(&isec->lock);
->   <Interrupt>
->     lock(jbd2_handle);
+We remove most of frozen checks since upper layer takes care of blocking all
+writes. We have to handle protection in ext4_page_mkwrite() in a special way
+because we cannot use generic block_page_mkwrite(). Also we add a freeze
+protection to ext4_evict_inode() so that iput() of unlinked inode cannot modify
+a frozen filesystem (we cannot easily instrument ext4_journal_start() /
+ext4_journal_stop() with freeze protection because we are missing the
+superblock pointer in ext4_journal_stop() in nojournal mode).
 
-Frankly, this looks like a false positive and I have a hard time
-understanding how lockdep even came to the above conclusion.
+CC: linux-ext4@vger.kernel.org
+CC: "Theodore Ts'o" <tytso@mit.edu>
+BugLink: https://bugs.launchpad.net/bugs/897421
+Tested-by: Kamal Mostafa <kamal@canonical.com>
+Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
+Tested-by: Dann Frazier <dann.frazier@canonical.com>
+Tested-by: Massimo Morana <massimo.morana@canonical.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |   15 ++++++++++-----
+ fs/ext4/mmp.c   |   14 ++++++++++----
+ fs/ext4/super.c |   31 +++++++------------------------
+ 3 files changed, 27 insertions(+), 33 deletions(-)
 
-Certainly we never take jbd2_handle in an interrupt. Lockdep is correct
-jbd2_handle is taken in reclaim, although I'm reasonably sure we never end
-up taking isec->lock under jbd2_handle in reclaim.
-
-I'm not sure how to silence this warning though...
-
-								Honza
-> 
->  *** DEADLOCK ***
-> 
-> 2 locks held by kswapd0/37:
->  #0:  (shrinker_rwsem){++++..}, at: [<ffffffff8116304c>] shrink_slab+0x3c/0x4b0
->  #1:  (&type->s_umount_key#20){++++..}, at: [<ffffffff811bf654>] grab_super_passive+0x44/0x90
-> 
-> the shortest dependencies between 2nd lock and 1st lock:
->  -> (&isec->lock){+.+.+.} ops: 582449 {
->     HARDIRQ-ON-W at:
->                                          [<ffffffff810cbf69>] __lock_acquire+0x619/0x1c20
->                                          [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                          [<ffffffff8169ef94>] mutex_lock_nested+0x74/0x3a0
->                                          [<ffffffff812c68e2>] inode_doinit_with_dentry+0xc2/0x650
->                                          [<ffffffff812c6e8c>] selinux_d_instantiate+0x1c/0x20
->                                          [<ffffffff812bd75b>] security_d_instantiate+0x1b/0x30
->                                          [<ffffffff811d4081>] d_instantiate+0x61/0x80
->                                          [<ffffffff811d69d3>] d_alloc_root+0x43/0x50
->                                          [<ffffffff81237f62>] sysfs_mount+0x182/0x220
->                                          [<ffffffff811bffe3>] mount_fs+0x43/0x1b0
->                                          [<ffffffff811dd7f2>] vfs_kern_mount+0x72/0x100
->                                          [<ffffffff811dd899>] kern_mount_data+0x19/0x30
->                                          [<ffffffff81ef30b2>] sysfs_init+0x5a/0xb5
->                                          [<ffffffff81ef1862>] mnt_init+0xa1/0x181
->                                          [<ffffffff81ef14fc>] vfs_caches_init+0xfb/0x10c
->                                          [<ffffffff81ecebf3>] start_kernel+0x3b5/0x3fc
->                                          [<ffffffff81ece346>] x86_64_start_reservations+0x131/0x135
->                                          [<ffffffff81ece44c>] x86_64_start_kernel+0x102/0x111
->     SOFTIRQ-ON-W at:
->                                          [<ffffffff810cbf98>] __lock_acquire+0x648/0x1c20
->                                          [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                          [<ffffffff8169ef94>] mutex_lock_nested+0x74/0x3a0
->                                          [<ffffffff812c68e2>] inode_doinit_with_dentry+0xc2/0x650
->                                          [<ffffffff812c6e8c>] selinux_d_instantiate+0x1c/0x20
->                                          [<ffffffff812bd75b>] security_d_instantiate+0x1b/0x30
->                                          [<ffffffff811d4081>] d_instantiate+0x61/0x80
->                                          [<ffffffff811d69d3>] d_alloc_root+0x43/0x50
->                                          [<ffffffff81237f62>] sysfs_mount+0x182/0x220
->                                          [<ffffffff811bffe3>] mount_fs+0x43/0x1b0
->                                          [<ffffffff811dd7f2>] vfs_kern_mount+0x72/0x100
->                                          [<ffffffff811dd899>] kern_mount_data+0x19/0x30
->                                          [<ffffffff81ef30b2>] sysfs_init+0x5a/0xb5
->                                          [<ffffffff81ef1862>] mnt_init+0xa1/0x181
->                                          [<ffffffff81ef14fc>] vfs_caches_init+0xfb/0x10c
->                                          [<ffffffff81ecebf3>] start_kernel+0x3b5/0x3fc
->                                          [<ffffffff81ece346>] x86_64_start_reservations+0x131/0x135
->                                          [<ffffffff81ece44c>] x86_64_start_kernel+0x102/0x111
->     RECLAIM_FS-ON-W at:
->                                             [<ffffffff810ce626>] mark_held_locks+0x86/0x150
->                                             [<ffffffff810cedb1>] lockdep_trace_alloc+0x71/0xd0
->                                             [<ffffffff811591d6>] __alloc_pages_nodemask+0x86/0xa90
->                                             [<ffffffff81194063>] alloc_pages_current+0xa3/0x110
->                                             [<ffffffff81154b94>] __get_free_pages+0x14/0x50
->                                             [<ffffffff812c6b4b>] inode_doinit_with_dentry+0x32b/0x650
->                                             [<ffffffff812c6f56>] sb_finish_set_opts+0xc6/0x260
->                                             [<ffffffff812c753c>] selinux_set_mnt_opts+0x32c/0x540
->                                             [<ffffffff812c77b0>] superblock_doinit+0x60/0xc0
->                                             [<ffffffff812c78f0>] delayed_superblock_init+0x10/0x20
->                                             [<ffffffff811bfa41>] iterate_supers+0xf1/0x100
->                                             [<ffffffff812cae13>] selinux_complete_init+0x33/0x40
->                                             [<ffffffff812da95b>] security_load_policy+0x35b/0x4e0
->                                             [<ffffffff812ccb6f>] sel_write_load+0x9f/0x790
->                                             [<ffffffff811bb506>] vfs_write+0xb6/0x180
->                                             [<ffffffff811bb82d>] sys_write+0x4d/0x90
->                                             [<ffffffff816abc29>] system_call_fastpath+0x16/0x1b
->     INITIAL USE at:
->                                         [<ffffffff810cbc70>] __lock_acquire+0x320/0x1c20
->                                         [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                         [<ffffffff8169ef94>] mutex_lock_nested+0x74/0x3a0
->                                         [<ffffffff812c68e2>] inode_doinit_with_dentry+0xc2/0x650
->                                         [<ffffffff812c6e8c>] selinux_d_instantiate+0x1c/0x20
->                                         [<ffffffff812bd75b>] security_d_instantiate+0x1b/0x30
->                                         [<ffffffff811d4081>] d_instantiate+0x61/0x80
->                                         [<ffffffff811d69d3>] d_alloc_root+0x43/0x50
->                                         [<ffffffff81237f62>] sysfs_mount+0x182/0x220
->                                         [<ffffffff811bffe3>] mount_fs+0x43/0x1b0
->                                         [<ffffffff811dd7f2>] vfs_kern_mount+0x72/0x100
->                                         [<ffffffff811dd899>] kern_mount_data+0x19/0x30
->                                         [<ffffffff81ef30b2>] sysfs_init+0x5a/0xb5
->                                         [<ffffffff81ef1862>] mnt_init+0xa1/0x181
->                                         [<ffffffff81ef14fc>] vfs_caches_init+0xfb/0x10c
->                                         [<ffffffff81ecebf3>] start_kernel+0x3b5/0x3fc
->                                         [<ffffffff81ece346>] x86_64_start_reservations+0x131/0x135
->                                         [<ffffffff81ece44c>] x86_64_start_kernel+0x102/0x111
->   }
->   ... key      at: [<ffffffff829db510>] __key.51824+0x0/0x8
->   ... acquired at:
->    [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->    [<ffffffff8169ef94>] mutex_lock_nested+0x74/0x3a0
->    [<ffffffff812c68e2>] inode_doinit_with_dentry+0xc2/0x650
->    [<ffffffff812c6e8c>] selinux_d_instantiate+0x1c/0x20
->    [<ffffffff812bd75b>] security_d_instantiate+0x1b/0x30
->    [<ffffffff811d4081>] d_instantiate+0x61/0x80
->    [<ffffffff812510b6>] ext4_add_nondir+0x76/0x80
->    [<ffffffff812531b6>] ext4_symlink+0x1a6/0x330
->    [<ffffffff811ca2d9>] vfs_symlink+0x99/0x100
->    [<ffffffff811cdb73>] sys_symlinkat+0xb3/0xd0
->    [<ffffffff811cdba6>] sys_symlink+0x16/0x20
->    [<ffffffff816abc29>] system_call_fastpath+0x16/0x1b
-> 
-> -> (jbd2_handle){+.+.-.} ops: 20071115 {
->    HARDIRQ-ON-W at:
->                                        [<ffffffff810cbf69>] __lock_acquire+0x619/0x1c20
->                                        [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                        [<ffffffff8128b486>] start_this_handle+0x536/0x700
->                                        [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->                                        [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->                                        [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->                                        [<ffffffff81252907>] ext4_unlink+0x67/0x4b0
->                                        [<ffffffff811c9bdf>] vfs_unlink+0x9f/0x110
->                                        [<ffffffff811ccf43>] do_unlinkat+0x183/0x1c0
->                                        [<ffffffff811cda82>] sys_unlinkat+0x22/0x40
->                                        [<ffffffff816abc29>] system_call_fastpath+0x16/0x1b
->    SOFTIRQ-ON-W at:
->                                        [<ffffffff810cbf98>] __lock_acquire+0x648/0x1c20
->                                        [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                        [<ffffffff8128b486>] start_this_handle+0x536/0x700
->                                        [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->                                        [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->                                        [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->                                        [<ffffffff81252907>] ext4_unlink+0x67/0x4b0
->                                        [<ffffffff811c9bdf>] vfs_unlink+0x9f/0x110
->                                        [<ffffffff811ccf43>] do_unlinkat+0x183/0x1c0
->                                        [<ffffffff811cda82>] sys_unlinkat+0x22/0x40
->                                        [<ffffffff816abc29>] system_call_fastpath+0x16/0x1b
->    IN-RECLAIM_FS-W at:
->                                           [<ffffffff810cbee0>] __lock_acquire+0x590/0x1c20
->                                           [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                           [<ffffffff8128b486>] start_this_handle+0x536/0x700
->                                           [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->                                           [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->                                           [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->                                           [<ffffffff8124bfb9>] ext4_evict_inode+0x1a9/0x620
->                                           [<ffffffff811d91d3>] evict+0xa3/0x1b0
->                                           [<ffffffff811d93e5>] iput+0x105/0x200
->                                           [<ffffffff811d3bb8>] dentry_iput+0xa8/0x100
->                                           [<ffffffff811d53a0>] shrink_dentry_list+0x280/0x4c0
->                                           [<ffffffff811d64eb>] prune_dcache_sb+0x15b/0x190
->                                           [<ffffffff811bf7d0>] prune_super+0x130/0x1a0
->                                           [<ffffffff81163185>] shrink_slab+0x175/0x4b0
->                                           [<ffffffff8116762a>] balance_pgdat+0x52a/0x720
->                                           [<ffffffff811679c1>] kswapd+0x1a1/0x5b0
->                                           [<ffffffff8108b927>] kthread+0xb7/0xc0
->                                           [<ffffffff816ad074>] kernel_thread_helper+0x4/0x10
->    INITIAL USE at:
->                                       [<ffffffff810cbc70>] __lock_acquire+0x320/0x1c20
->                                       [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->                                       [<ffffffff8128b486>] start_this_handle+0x536/0x700
->                                       [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->                                       [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->                                       [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->                                       [<ffffffff81252907>] ext4_unlink+0x67/0x4b0
->                                       [<ffffffff811c9bdf>] vfs_unlink+0x9f/0x110
->                                       [<ffffffff811ccf43>] do_unlinkat+0x183/0x1c0
->                                       [<ffffffff811cda82>] sys_unlinkat+0x22/0x40
->                                       [<ffffffff816abc29>] system_call_fastpath+0x16/0x1b
->  }
->  ... key      at: [<ffffffff829cff00>] jbd2_handle_key+0x0/0x8
->  ... acquired at:
->    [<ffffffff810cae1b>] check_usage_forwards+0x11b/0x150
->    [<ffffffff810cb7f8>] mark_lock+0x198/0x2f0
->    [<ffffffff810cbee0>] __lock_acquire+0x590/0x1c20
->    [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->    [<ffffffff8128b486>] start_this_handle+0x536/0x700
->    [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->    [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->    [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->    [<ffffffff8124bfb9>] ext4_evict_inode+0x1a9/0x620
->    [<ffffffff811d91d3>] evict+0xa3/0x1b0
->    [<ffffffff811d93e5>] iput+0x105/0x200
->    [<ffffffff811d3bb8>] dentry_iput+0xa8/0x100
->    [<ffffffff811d53a0>] shrink_dentry_list+0x280/0x4c0
->    [<ffffffff811d64eb>] prune_dcache_sb+0x15b/0x190
->    [<ffffffff811bf7d0>] prune_super+0x130/0x1a0
->    [<ffffffff81163185>] shrink_slab+0x175/0x4b0
->    [<ffffffff8116762a>] balance_pgdat+0x52a/0x720
->    [<ffffffff811679c1>] kswapd+0x1a1/0x5b0
->    [<ffffffff8108b927>] kthread+0xb7/0xc0
->    [<ffffffff816ad074>] kernel_thread_helper+0x4/0x10
-> 
-> 
-> stack backtrace:
-> Pid: 37, comm: kswapd0 Not tainted 3.3.7-1.fc16.x86_64.debug #1
-> Call Trace:
->  [<ffffffff810cacf8>] print_irq_inversion_bug.part.19+0x1e8/0x1f0
->  [<ffffffff810cae1b>] check_usage_forwards+0x11b/0x150
->  [<ffffffff810cb7f8>] mark_lock+0x198/0x2f0
->  [<ffffffff810cad00>] ? print_irq_inversion_bug.part.19+0x1f0/0x1f0
->  [<ffffffff810cbee0>] __lock_acquire+0x590/0x1c20
->  [<ffffffff8128b6d9>] ? jbd2__journal_start+0x89/0x1a0
->  [<ffffffff81022023>] ? native_sched_clock+0x13/0x80
->  [<ffffffff810a3dc5>] ? sched_clock_local+0x25/0x90
->  [<ffffffff810a3f58>] ? sched_clock_cpu+0xa8/0x110
->  [<ffffffff810c815d>] ? trace_hardirqs_off+0xd/0x10
->  [<ffffffff810cdc5d>] lock_acquire+0x9d/0x200
->  [<ffffffff8128b457>] ? start_this_handle+0x507/0x700
->  [<ffffffff8128b486>] start_this_handle+0x536/0x700
->  [<ffffffff8128b457>] ? start_this_handle+0x507/0x700
->  [<ffffffff811a1c2b>] ? kmem_cache_alloc+0x19b/0x280
->  [<ffffffff8128b6d9>] ? jbd2__journal_start+0x89/0x1a0
->  [<ffffffff8128b77a>] jbd2__journal_start+0x12a/0x1a0
->  [<ffffffff8124bfb9>] ? ext4_evict_inode+0x1a9/0x620
->  [<ffffffff8128b803>] jbd2_journal_start+0x13/0x20
->  [<ffffffff81266cde>] ext4_journal_start_sb+0x7e/0x2a0
->  [<ffffffff8121ec90>] ? __dquot_initialize+0x30/0x180
->  [<ffffffff811d91c1>] ? evict+0x91/0x1b0
->  [<ffffffff8124bfb9>] ext4_evict_inode+0x1a9/0x620
->  [<ffffffff811d91d3>] evict+0xa3/0x1b0
->  [<ffffffff811d93e5>] iput+0x105/0x200
->  [<ffffffff811d3bb8>] dentry_iput+0xa8/0x100
->  [<ffffffff811d53a0>] shrink_dentry_list+0x280/0x4c0
->  [<ffffffff811d53d0>] ? shrink_dentry_list+0x2b0/0x4c0
->  [<ffffffff811d64eb>] prune_dcache_sb+0x15b/0x190
->  [<ffffffff811bf7d0>] prune_super+0x130/0x1a0
->  [<ffffffff81163185>] shrink_slab+0x175/0x4b0
->  [<ffffffff811ae776>] ? mem_cgroup_iter+0xf6/0x340
->  [<ffffffff8116762a>] balance_pgdat+0x52a/0x720
->  [<ffffffff811679c1>] kswapd+0x1a1/0x5b0
->  [<ffffffff8108c580>] ? __init_waitqueue_head+0x60/0x60
->  [<ffffffff81167820>] ? balance_pgdat+0x720/0x720
->  [<ffffffff8108b927>] kthread+0xb7/0xc0
->  [<ffffffff816ad074>] kernel_thread_helper+0x4/0x10
->  [<ffffffff816a3374>] ? retint_restore_args+0x13/0x13
->  [<ffffffff8108b870>] ? __init_kthread_worker+0x70/0x70
->  [<ffffffff816ad070>] ? gs_change+0x13/0x13
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 07eaf56..4884127 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -166,6 +166,11 @@ void ext4_evict_inode(struct inode *inode)
+ 	if (is_bad_inode(inode))
+ 		goto no_delete;
+ 
++	/*
++	 * Protect us against freezing - iput() caller didn't have to have any
++	 * protection against it
++	 */
++	sb_start_intwrite(inode->i_sb);
+ 	handle = ext4_journal_start(inode, ext4_blocks_for_truncate(inode)+3);
+ 	if (IS_ERR(handle)) {
+ 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
+@@ -175,6 +180,7 @@ void ext4_evict_inode(struct inode *inode)
+ 		 * cleaned up.
+ 		 */
+ 		ext4_orphan_del(NULL, inode);
++		sb_end_intwrite(inode->i_sb);
+ 		goto no_delete;
+ 	}
+ 
+@@ -206,6 +212,7 @@ void ext4_evict_inode(struct inode *inode)
+ 		stop_handle:
+ 			ext4_journal_stop(handle);
+ 			ext4_orphan_del(NULL, inode);
++			sb_end_intwrite(inode->i_sb);
+ 			goto no_delete;
+ 		}
+ 	}
+@@ -234,6 +241,7 @@ void ext4_evict_inode(struct inode *inode)
+ 	else
+ 		ext4_free_inode(handle, inode);
+ 	ext4_journal_stop(handle);
++	sb_end_intwrite(inode->i_sb);
+ 	return;
+ no_delete:
+ 	ext4_clear_inode(inode);	/* We must guarantee clearing of inode... */
+@@ -4606,11 +4614,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	get_block_t *get_block;
+ 	int retries = 0;
+ 
+-	/*
+-	 * This check is racy but catches the common case. We rely on
+-	 * __block_page_mkwrite() to do a reliable check.
+-	 */
+-	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
++	sb_start_pagefault(inode->i_sb);
+ 	/* Delalloc case is easy... */
+ 	if (test_opt(inode->i_sb, DELALLOC) &&
+ 	    !ext4_should_journal_data(inode) &&
+@@ -4678,5 +4682,6 @@ retry_alloc:
+ out_ret:
+ 	ret = block_page_mkwrite_return(ret);
+ out:
++	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index ed6548d..4f63f90 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -10,14 +10,20 @@
+  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
+  * faster.
+  */
+-static int write_mmp_block(struct buffer_head *bh)
++static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ {
++	/*
++	 * We protect against freezing so that we don't create dirty buffers
++	 * on frozen filesystem.
++	 */
++	sb_start_write(sb);
+ 	mark_buffer_dirty(bh);
+ 	lock_buffer(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+ 	get_bh(bh);
+ 	submit_bh(WRITE_SYNC, bh);
+ 	wait_on_buffer(bh);
++	sb_end_write(sb);
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		return 1;
+ 
+@@ -120,7 +126,7 @@ static int kmmpd(void *data)
+ 		mmp->mmp_time = cpu_to_le64(get_seconds());
+ 		last_update_time = jiffies;
+ 
+-		retval = write_mmp_block(bh);
++		retval = write_mmp_block(sb, bh);
+ 		/*
+ 		 * Don't spew too many error messages. Print one every
+ 		 * (s_mmp_update_interval * 60) seconds.
+@@ -200,7 +206,7 @@ static int kmmpd(void *data)
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+ 	mmp->mmp_time = cpu_to_le64(get_seconds());
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 
+ failed:
+ 	kfree(data);
+@@ -299,7 +305,7 @@ skip:
+ 	seq = mmp_new_seq();
+ 	mmp->mmp_seq = cpu_to_le32(seq);
+ 
+-	retval = write_mmp_block(bh);
++	retval = write_mmp_block(sb, bh);
+ 	if (retval)
+ 		goto failed;
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 35b5954..cd6a516 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -290,33 +290,17 @@ static void ext4_put_nojournal(handle_t *handle)
+  * journal_end calls result in the superblock being marked dirty, so
+  * that sync() will call the filesystem's write_super callback if
+  * appropriate.
+- *
+- * To avoid j_barrier hold in userspace when a user calls freeze(),
+- * ext4 prevents a new handle from being started by s_frozen, which
+- * is in an upper layer.
+  */
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ {
+ 	journal_t *journal;
+-	handle_t  *handle;
+ 
+ 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return ERR_PTR(-EROFS);
+ 
++	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+ 	journal = EXT4_SB(sb)->s_journal;
+-	handle = ext4_journal_current_handle();
+-
+-	/*
+-	 * If a handle has been started, it should be allowed to
+-	 * finish, otherwise deadlock could happen between freeze
+-	 * and others(e.g. truncate) due to the restart of the
+-	 * journal handle if the filesystem is forzen and active
+-	 * handles are not stopped.
+-	 */
+-	if (!handle)
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
+-
+ 	if (!journal)
+ 		return ext4_get_nojournal();
+ 	/*
+@@ -2633,6 +2617,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 	sb = elr->lr_super;
+ 	ngroups = EXT4_SB(sb)->s_groups_count;
+ 
++	sb_start_write(sb);
+ 	for (group = elr->lr_next_group; group < ngroups; group++) {
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		if (!gdp) {
+@@ -2659,6 +2644,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+ 		elr->lr_next_group = group + 1;
+ 	}
++	sb_end_write(sb);
+ 
+ 	return ret;
+ }
+@@ -4135,10 +4121,8 @@ int ext4_force_commit(struct super_block *sb)
+ 		return 0;
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal) {
+-		vfs_check_frozen(sb, SB_FREEZE_TRANS);
++	if (journal)
+ 		ret = ext4_journal_force_commit(journal);
+-	}
+ 
+ 	return ret;
+ }
+@@ -4170,9 +4154,8 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+  * gives us a chance to flush the journal completely and mark the fs clean.
+  *
+  * Note that only this function cannot bring a filesystem to be in a clean
+- * state independently, because ext4 prevents a new handle from being started
+- * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
+- * the upper layer.
++ * state independently. It relies on upper layer to stop all data & metadata
++ * modifications.
+  */
+ static int ext4_freeze(struct super_block *sb)
+ {
+@@ -4199,7 +4182,7 @@ static int ext4_freeze(struct super_block *sb)
+ 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	error = ext4_commit_super(sb, 1);
+ out:
+-	/* we rely on s_frozen to stop further updates */
++	/* we rely on upper layer to stop further updates */
+ 	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return error;
+ }
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
+
