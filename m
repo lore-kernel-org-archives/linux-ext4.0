@@ -1,36 +1,55 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/4] dumpe2fs: print journal's s_errno field if it is non-zero
-Date: Thu, 31 May 2012 20:14:55 -0400
-Message-ID: <1338509698-24349-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/4] tests: fix the e2fsck test script to handle a missing test name
+Date: Thu, 31 May 2012 20:14:58 -0400
+Message-ID: <1338509698-24349-4-git-send-email-tytso@mit.edu>
+References: <1338509698-24349-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46853 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46859 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758723Ab2FAAPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2012 20:15:01 -0400
+	id S1758731Ab2FAAPF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2012 20:15:05 -0400
+In-Reply-To: <1338509698-24349-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/dumpe2fs.c | 3 +++
- 1 file changed, 3 insertions(+)
+ tests/run_e2fsck | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index 8f4f2e4..8be5764 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -382,6 +382,9 @@ static void print_inline_journal_information(ext2_filsys fs)
- 	       (unsigned int)ntohl(jsb->s_maxlen),
- 	       (unsigned int)ntohl(jsb->s_sequence),
- 	       (unsigned int)ntohl(jsb->s_start));
-+	if (jsb->s_errno != 0)
-+		printf(_("Journal errno:            %d\n"),
-+		       (int) ntohl(jsb->s_errno));
- }
+diff --git a/tests/run_e2fsck b/tests/run_e2fsck
+index 937a171..ab623e8 100644
+--- a/tests/run_e2fsck
++++ b/tests/run_e2fsck
+@@ -82,12 +82,23 @@ if [ "$SKIP_VERIFY" != "true" ] ; then
+ 		status3=0
+ 	fi
  
- static void print_journal_information(ext2_filsys fs)
++	if [ -z "$test_description" ] ; then
++		description="$test_name"
++	else
++		description="$test_name: $test_description"
++	fi
++
+ 	if [ "$status1" -eq 0 -a "$status2" -eq 0 -a "$status3" -eq 0 ] ; then
+-		echo "$test_name: $test_description: ok"
++		echo "$description: ok"
+ 		touch $test_name.ok
+ 	else
+-		echo "$test_name: $test_description: failed"
+-		diff $DIFF_OPTS $EXP1 $OUT1 > $test_name.failed
++		echo "$description: failed"
++		rm -f $test_name.failed
++		if [ "$PASS_ZERO" = "true" ]; then
++			diff $DIFF_OPTS $test_dir/expect.0 \
++				$test_name.0.log >> $test_name.failed
++		fi
++		diff $DIFF_OPTS $EXP1 $OUT1 >> $test_name.failed
+ 		if [ "$ONE_PASS_ONLY" != "true" ]; then
+ 			diff $DIFF_OPTS $EXP2 $OUT2 >> $test_name.failed
+ 		fi
 -- 
 1.7.10.2.552.gaa3bb87
 
