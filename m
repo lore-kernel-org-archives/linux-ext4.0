@@ -1,44 +1,56 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: GIT PULL] ext4 updates for 3.5
-Date: Fri, 1 Jun 2012 08:44:19 -0700
-Message-ID: <CA+55aFwk8oYx8EKWdT=5cMTLK7RDz8GQdGmHk2KXwcCq+Bb8PA@mail.gmail.com>
-References: <E1SaTSI-0005UV-4B@tytso-glaptop.cam.corp.google.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: container disk quota
+Date: Fri, 1 Jun 2012 17:54:57 +0200
+Message-ID: <20120601155457.GA30909@quack.suse.cz>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:57091 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964909Ab2FAPol convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jun 2012 11:44:41 -0400
-In-Reply-To: <E1SaTSI-0005UV-4B@tytso-glaptop.cam.corp.google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jack-AlSwsSmVLrQ@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org,
+	david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, bpm-sJ/iWh9BUns@public.gmane.org,
+	christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, tinguely-sJ/iWh9BUns@public.gmane.org
+To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1338389946-13711-1-git-send-email-jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 1, 2012 at 8:07 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->
-> =A0git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+  Hello,
 
-Hmm, this is a regular branch, but you *usually* use a tag, and the
-format of the pull-request imples that too:
+On Wed 30-05-12 22:58:54, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
+> According to glauber's comments regarding container disk quota, it should be binded to mount
+> namespace rather than cgroup.
+> 
+> Per my try out, it works just fine by combining with userland quota utilitly in this way.
+> However, they are something has to be done at user tools too IMHO.
+> 
+> Currently, the patchset is in very initial phase, I'd like to post it early to seek more
+> feedbacks from you guys.
+> 
+> Hopefully I can clarify my ideas clearly.
+  So what I miss in this introductory email is some highlevel description
+like what is the desired functionality you try to implement and what is it
+good for. Looking at the examples below, it seems you want to be able to
+set quota limits for namespace-uid (and also namespace-gid???) pairs, am I
+right?
 
-> ----------------------------------------------------------------
-> Ext4 updates for 3.5
->
-> The major new feature added in this update is Darrick J. Wong's
-> metadata checksum feature, which adds crc32 checksums to ext4's
-> metadata fields. =A0There is also the usual set of cleanups and bug
-> fixes.
->
-> ----------------------------------------------------------------
+  If yes, then I would like to understand one thing: When writing to a
+file, used space is accounted to the owner of the file. Now how do we
+determine owning namespace? Do you implicitely assume that only processes
+from one namespace will be able to access the file?
 
-Is there perhaps a tag I should pull instead?
-
-               Linus
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+SUSE Labs, CR
