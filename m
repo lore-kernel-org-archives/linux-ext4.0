@@ -1,240 +1,132 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 17/27] ext4: Convert to new freezing mechanism
-Date: Sat,  2 Jun 2012 00:30:31 +0200
-Message-ID: <1338589841-9568-18-git-send-email-jack@suse.cz>
-References: <1338589841-9568-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 00/27 v6] Fix filesystem freezing deadlocks
+Date: Sat,  2 Jun 2012 00:30:14 +0200
+Message-ID: <1338589841-9568-1-git-send-email-jack@suse.cz>
 Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Jan Kara <jack@suse.cz>, Alex Elder <elder@kernel.org>,
+	Anton Altaparmakov <anton@tuxera.com>, Ben Myers <bpm@sgi.com>,
+	Chris Mason <chris.mason@oracle.com>, cluster-devel@redhat.com,
+	"David S. Miller" <davem@davemloft.net>,
+	fuse-devel@lists.sourceforge.net,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Joel Becker <jlbec@evilplan.org>,
+	KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	Mark Fasheh <mfasheh@suse.com>,
+	Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1338589841-9568-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:33370 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965882Ab2FAWb5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Jun 2012 18:31:57 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We remove most of frozen checks since upper layer takes care of blocking all
-writes. We have to handle protection in ext4_page_mkwrite() in a special way
-because we cannot use generic block_page_mkwrite(). Also we add a freeze
-protection to ext4_evict_inode() so that iput() of unlinked inode cannot modify
-a frozen filesystem (we cannot easily instrument ext4_journal_start() /
-ext4_journal_stop() with freeze protection because we are missing the
-superblock pointer in ext4_journal_stop() in nojournal mode).
+  Hello,
 
+  here is the sixth iteration of my patches to improve filesystem freezing.
+The change since last iteration is that filesystem can be frozen with open but
+unlinked files. After some thinking, I've decided that the best way to handle
+this is to block removal inside ->evict_inode() of each filesystem and use
+fs-internal level of freeze protection for that (usually I've instrumented
+filesystem's transaction system to use freeze protection). Handling
+inside VFS would be less work but the only level of freeze protection that
+has a chance of not causing deadlocks is the one used for page faults and even
+there it's not clear lock ordering would be correct wrt some fs-specific locks.
+I've converted ext2, ext4, btrfs, xfs, nilfs2, ocfs2, gfs2 and also checked
+that ext3, reiserfs, jfs should work as well (they have their internal freeze
+protection mechanisms, possibly they could be replaced by a generic one but
+given these are mostly aging filesystems, it's not a real priority IHMO).
+So finally I'm not aware of any pending issue with this patch set so if you
+have some concern, please speak up!
+
+Introductory text to first time readers:
+
+Filesystem freezing is currently racy and thus we can end up with dirty data on
+frozen filesystem (see changelog patch 13 for detailed race description). This
+patch series aims at fixing this.
+
+To be able to block all places where inodes get dirtied, I've moved filesystem
+file_update_time() call to ->page_mkwrite callback (patches 01-07) and put
+freeze handling in mnt_want_write() / mnt_drop_write(). That however required
+some code shuffling and changes to kern_path_create() (see patches 09-12). I
+think the result is OK but opinions may differ ;). The advantage of this change
+also is that all filesystems get freeze protection almost for free - even ext2
+can handle freezing well now.
+
+Another potential contention point might be patch 19. In that patch we make
+freeze_super() refuse to freeze the filesystem when there are open but unlinked
+files which may be impractical in some cases. The main reason for this is the
+problem with handling of file deletion from fput() called with mmap_sem held
+(e.g. from munmap(2)), and then there's the fact that we cannot really force
+such filesystem into a consistent state... But if people think that freezing
+with open but unlinked files should happen, then I have some possible
+solutions in mind (maybe as a separate patchset since this is large enough).
+
+I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
+filesystem despite beating it with fsstress and bash-shared-mapping while
+freezing and unfreezing for several hours (using ext4 and xfs) so I'm
+reasonably confident this could finally be the right solution.
+
+Changes since v5:
+  * handle unlinked & open files on frozen filesystem
+  * lockdep keys for freeze protection are now per filesystem type
+  * taught lockdep that freeze protection at lower level does not create
+    dependency when we already hold freeze protection at higher level 
+  * rebased on 3.5-rc1-ish
+
+Changes since v4:
+  * added a couple of Acked-by's
+  * added some comments & doc update
+  * added patches from series "Push file_update_time() into .page_mkwrite"
+    since it doesn't make much sense to keep them separate anymore
+  * rebased on top of 3.4-rc2
+
+Changes since v3:
+  * added third level of freezing for fs internal purposes - hooked some
+    filesystems to use it (XFS, nilfs2)
+  * removed racy i_size check from filemap_mkwrite()
+
+Changes since v2:
+  * completely rewritten
+  * freezing is now blocked at VFS entry points
+  * two stage freezing to handle both mmapped writes and other IO
+
+The biggest changes since v1:
+  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
+    and SB_FREEZE_TRANS states
+  * use percpu counters instead of own percpu structure
+  * added documentation fixes from the old fs freezing series
+  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
+    m_active_trans counter
+
+								Honza
+
+CC: Alex Elder <elder@kernel.org>
+CC: Anton Altaparmakov <anton@tuxera.com>
+CC: Ben Myers <bpm@sgi.com>
+CC: Chris Mason <chris.mason@oracle.com>
+CC: cluster-devel@redhat.com
+CC: "David S. Miller" <davem@davemloft.net>
+CC: fuse-devel@lists.sourceforge.net
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Joel Becker <jlbec@evilplan.org>
+CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
+CC: linux-btrfs@vger.kernel.org
 CC: linux-ext4@vger.kernel.org
+CC: linux-nfs@vger.kernel.org
+CC: linux-nilfs@vger.kernel.org
+CC: linux-ntfs-dev@lists.sourceforge.net
+CC: Mark Fasheh <mfasheh@suse.com>
+CC: Miklos Szeredi <miklos@szeredi.hu>
+CC: ocfs2-devel@oss.oracle.com
+CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+CC: Steven Whitehouse <swhiteho@redhat.com>
 CC: "Theodore Ts'o" <tytso@mit.edu>
-BugLink: https://bugs.launchpad.net/bugs/897421
-Tested-by: Kamal Mostafa <kamal@canonical.com>
-Tested-by: Peter M. Petrakis <peter.petrakis@canonical.com>
-Tested-by: Dann Frazier <dann.frazier@canonical.com>
-Tested-by: Massimo Morana <massimo.morana@canonical.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |   15 ++++++++++-----
- fs/ext4/mmp.c   |   14 ++++++++++----
- fs/ext4/super.c |   31 +++++++------------------------
- 3 files changed, 27 insertions(+), 33 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 07eaf56..4884127 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -166,6 +166,11 @@ void ext4_evict_inode(struct inode *inode)
- 	if (is_bad_inode(inode))
- 		goto no_delete;
- 
-+	/*
-+	 * Protect us against freezing - iput() caller didn't have to have any
-+	 * protection against it
-+	 */
-+	sb_start_intwrite(inode->i_sb);
- 	handle = ext4_journal_start(inode, ext4_blocks_for_truncate(inode)+3);
- 	if (IS_ERR(handle)) {
- 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
-@@ -175,6 +180,7 @@ void ext4_evict_inode(struct inode *inode)
- 		 * cleaned up.
- 		 */
- 		ext4_orphan_del(NULL, inode);
-+		sb_end_intwrite(inode->i_sb);
- 		goto no_delete;
- 	}
- 
-@@ -206,6 +212,7 @@ void ext4_evict_inode(struct inode *inode)
- 		stop_handle:
- 			ext4_journal_stop(handle);
- 			ext4_orphan_del(NULL, inode);
-+			sb_end_intwrite(inode->i_sb);
- 			goto no_delete;
- 		}
- 	}
-@@ -234,6 +241,7 @@ void ext4_evict_inode(struct inode *inode)
- 	else
- 		ext4_free_inode(handle, inode);
- 	ext4_journal_stop(handle);
-+	sb_end_intwrite(inode->i_sb);
- 	return;
- no_delete:
- 	ext4_clear_inode(inode);	/* We must guarantee clearing of inode... */
-@@ -4606,11 +4614,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	get_block_t *get_block;
- 	int retries = 0;
- 
--	/*
--	 * This check is racy but catches the common case. We rely on
--	 * __block_page_mkwrite() to do a reliable check.
--	 */
--	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
-+	sb_start_pagefault(inode->i_sb);
- 	/* Delalloc case is easy... */
- 	if (test_opt(inode->i_sb, DELALLOC) &&
- 	    !ext4_should_journal_data(inode) &&
-@@ -4678,5 +4682,6 @@ retry_alloc:
- out_ret:
- 	ret = block_page_mkwrite_return(ret);
- out:
-+	sb_end_pagefault(inode->i_sb);
- 	return ret;
- }
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index ed6548d..4f63f90 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -10,14 +10,20 @@
-  * Write the MMP block using WRITE_SYNC to try to get the block on-disk
-  * faster.
-  */
--static int write_mmp_block(struct buffer_head *bh)
-+static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
- {
-+	/*
-+	 * We protect against freezing so that we don't create dirty buffers
-+	 * on frozen filesystem.
-+	 */
-+	sb_start_write(sb);
- 	mark_buffer_dirty(bh);
- 	lock_buffer(bh);
- 	bh->b_end_io = end_buffer_write_sync;
- 	get_bh(bh);
- 	submit_bh(WRITE_SYNC, bh);
- 	wait_on_buffer(bh);
-+	sb_end_write(sb);
- 	if (unlikely(!buffer_uptodate(bh)))
- 		return 1;
- 
-@@ -120,7 +126,7 @@ static int kmmpd(void *data)
- 		mmp->mmp_time = cpu_to_le64(get_seconds());
- 		last_update_time = jiffies;
- 
--		retval = write_mmp_block(bh);
-+		retval = write_mmp_block(sb, bh);
- 		/*
- 		 * Don't spew too many error messages. Print one every
- 		 * (s_mmp_update_interval * 60) seconds.
-@@ -200,7 +206,7 @@ static int kmmpd(void *data)
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
- 	mmp->mmp_time = cpu_to_le64(get_seconds());
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 
- failed:
- 	kfree(data);
-@@ -299,7 +305,7 @@ skip:
- 	seq = mmp_new_seq();
- 	mmp->mmp_seq = cpu_to_le32(seq);
- 
--	retval = write_mmp_block(bh);
-+	retval = write_mmp_block(sb, bh);
- 	if (retval)
- 		goto failed;
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 35b5954..cd6a516 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -290,33 +290,17 @@ static void ext4_put_nojournal(handle_t *handle)
-  * journal_end calls result in the superblock being marked dirty, so
-  * that sync() will call the filesystem's write_super callback if
-  * appropriate.
-- *
-- * To avoid j_barrier hold in userspace when a user calls freeze(),
-- * ext4 prevents a new handle from being started by s_frozen, which
-- * is in an upper layer.
-  */
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
- {
- 	journal_t *journal;
--	handle_t  *handle;
- 
- 	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
- 	if (sb->s_flags & MS_RDONLY)
- 		return ERR_PTR(-EROFS);
- 
-+	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
- 	journal = EXT4_SB(sb)->s_journal;
--	handle = ext4_journal_current_handle();
--
--	/*
--	 * If a handle has been started, it should be allowed to
--	 * finish, otherwise deadlock could happen between freeze
--	 * and others(e.g. truncate) due to the restart of the
--	 * journal handle if the filesystem is forzen and active
--	 * handles are not stopped.
--	 */
--	if (!handle)
--		vfs_check_frozen(sb, SB_FREEZE_TRANS);
--
- 	if (!journal)
- 		return ext4_get_nojournal();
- 	/*
-@@ -2633,6 +2617,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 	sb = elr->lr_super;
- 	ngroups = EXT4_SB(sb)->s_groups_count;
- 
-+	sb_start_write(sb);
- 	for (group = elr->lr_next_group; group < ngroups; group++) {
- 		gdp = ext4_get_group_desc(sb, group, NULL);
- 		if (!gdp) {
-@@ -2659,6 +2644,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
- 		elr->lr_next_sched = jiffies + elr->lr_timeout;
- 		elr->lr_next_group = group + 1;
- 	}
-+	sb_end_write(sb);
- 
- 	return ret;
- }
-@@ -4135,10 +4121,8 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
- 
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal) {
--		vfs_check_frozen(sb, SB_FREEZE_TRANS);
-+	if (journal)
- 		ret = ext4_journal_force_commit(journal);
--	}
- 
- 	return ret;
- }
-@@ -4170,9 +4154,8 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
-  * gives us a chance to flush the journal completely and mark the fs clean.
-  *
-  * Note that only this function cannot bring a filesystem to be in a clean
-- * state independently, because ext4 prevents a new handle from being started
-- * by @sb->s_frozen, which stays in an upper layer.  It thus needs help from
-- * the upper layer.
-+ * state independently. It relies on upper layer to stop all data & metadata
-+ * modifications.
-  */
- static int ext4_freeze(struct super_block *sb)
- {
-@@ -4199,7 +4182,7 @@ static int ext4_freeze(struct super_block *sb)
- 	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 	error = ext4_commit_super(sb, 1);
- out:
--	/* we rely on s_frozen to stop further updates */
-+	/* we rely on upper layer to stop further updates */
- 	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	return error;
- }
--- 
-1.7.1
-
+CC: xfs@oss.sgi.com
