@@ -1,66 +1,134 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH v2 1/4] ext4: Remove useless marking of superblock dirty
-Date: Fri, 01 Jun 2012 16:55:35 +0300
-Message-ID: <1338558935.2536.152.camel@sauron.fi.intel.com>
-References: <1333367140-28370-1-git-send-email-artem.bityutskiy@linux.intel.com>
-	 <1333367140-28370-2-git-send-email-artem.bityutskiy@linux.intel.com>
-	 <1334215249.13842.36.camel@sauron.fi.intel.com>
-	 <1335775045.2584.3.camel@sauron.fi.intel.com>
-	 <1338558820.2536.151.camel@sauron.fi.intel.com>
-Reply-To: dedekind1@gmail.com
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-mtjJ5k9rj2taWwQ0alNq"
-Cc: Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:37811 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759876Ab2FANvw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jun 2012 09:51:52 -0400
-In-Reply-To: <1338558820.2536.151.camel@sauron.fi.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: GIT PULL] ext4 updates for 3.5
+Date: Fri, 01 Jun 2012 11:07:58 -0400
+Message-ID: <E1SaTSI-0005UV-4B@tytso-glaptop.cam.corp.google.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
---=-mtjJ5k9rj2taWwQ0alNq
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Sorry this is so late... it's been a crazily busy May...
 
-On Fri, 2012-06-01 at 16:53 +0300, Artem Bityutskiy wrote:
-> Hi Ted, any chance for this stuff to hit 3.4?
+	      	 	      	   - Ted
 
-Sorry, of course I actually meant the current merge window for 3.5.
 
---=20
-Best Regards,
-Artem Bityutskiy
+The following changes since commit 69964ea4c7b68c9399f7977aa5b9aa6539a6a98a:
 
---=-mtjJ5k9rj2taWwQ0alNq
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
+  Linux 3.4-rc5 (2012-04-29 15:19:10 -0700)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+are available in the git repository at:
 
-iQIcBAABAgAGBQJPyMnXAAoJECmIfjd9wqK0m+0QAL/gudA+AnCzSsxweJiTtuAM
-EcgIjKF4uHnOifnQ+r1vUWAxsKnECGSbTuz4T+FeLCDdX1JixiLWY4AtB+oDxqbO
-pKBPf0/oMZfFrU/maQ55jnPPbuvBuNFwjpFiJLcHAVwf0Q7OMojd7hx05d+gnqFz
-pfkNbPL7NG+8IEU0mhMYXgZf4wdgtRBe3E4F+a0NFzImsaS7VStsTbiurdBHkm2+
-JvNB/KJSIjJZCZTqFAX6cpRv/12mPujXY/zogZtrYtlGmTlUyVQdR3JGB3mZOEvs
-13qTFTkrKAJiHrdULdEQr3TuwXgUQhfS7x40BgM/DDRLelS2uhG80/XKEHCKdNCI
-5GddmIvFw+tng5Vid6Pkc8NzX34mxtiBbh2bUHn9q9b6qcaYX8jmeHzfJiNHq2sF
-u8wM1TLQDySNhIrPT1eQr3SvcZa6aG65CCthzEfyiracXyJT4U8CRiy2FpQ+CE0i
-vG2xAkPVF0lXFbX24xpQw3K+XuJ+S9tusOnElHx9bDdZos+DouI9x/0AnUC8rtUf
-sY3PF9BdI1OwfLGlOYTvG1NqgQEFBbwJQy8PnsQQezvVDT58/x3CPNIprYt3vgHw
-EEpj34cT6lop18fAc3Vr1dd2ISkDqo/UYVVydIfL7NMLA90KzaS4IAGtquAhn9lE
-yLzMMVNYBroJ9fDpbPgO
-=93JK
------END PGP SIGNATURE-----
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 
---=-mtjJ5k9rj2taWwQ0alNq--
+for you to fetch changes up to 5e44f8c374dc4f8eadf61cd18b2c0d46bc87c1b7:
 
+  ext4: hole-punch use truncate_pagecache_range (2012-06-01 00:15:28 -0400)
+
+----------------------------------------------------------------
+Ext4 updates for 3.5
+
+The major new feature added in this update is Darrick J. Wong's
+metadata checksum feature, which adds crc32 checksums to ext4's
+metadata fields.  There is also the usual set of cleanups and bug
+fixes.
+
+----------------------------------------------------------------
+Akira Fujita (1):
+      ext4: remove needs_recovery in ext4_mb_init()
+
+Andreas Dilger (1):
+      ext4: disallow hard-linked directory in ext4_lookup
+
+Dan Carpenter (1):
+      ext4: fix potential NULL dereference in ext4_free_inodes_counts()
+
+Darrick J. Wong (23):
+      ext4: create a new BH_Verified flag to avoid unnecessary metadata validation
+      ext4: change on-disk layout to support extended metadata checksumming
+      ext4: record the checksum algorithm in use in the superblock
+      ext4: load the crc32c driver if necessary
+      ext4: calculate and verify superblock checksum
+      ext4: calculate and verify inode checksums
+      ext4: calculate and verify checksums for inode bitmaps
+      ext4: calculate and verify block bitmap checksum
+      ext4: verify and calculate checksums for extent tree  blocks
+      ext4: Calculate and verify checksums for htree nodes
+      ext4: calculate and verify checksums of directory leaf blocks
+      ext4: Calculate and verify checksums of extended attribute blocks
+      ext4: make block group checksums use metadata_csum algorithm
+      ext4: add checksums to the MMP block
+      jbd2: change disk layout for metadata checksumming
+      jbd2: enable journal clients to enable v2 checksumming
+      jbd2: Grab a reference to the crc32c driver if necessary
+      jbd2: checksum journal superblock
+      jbd2: checksum revocation blocks
+      jbd2: checksum descriptor blocks
+      jbd2: checksum commit blocks
+      jbd2: checksum data blocks that are stored in the journal
+      ext4/jbd2: add metadata checksumming to the list of supported features
+
+Eric Sandeen (1):
+      ext4: force ro mount if ext4_setup_super() fails
+
+Haogang Chen (1):
+      ext4: fix potential integer overflow in alloc_flex_gd()
+
+Hugh Dickins (1):
+      ext4: hole-punch use truncate_pagecache_range
+
+Salman Qazi (2):
+      ext4: add ext4_mb_unload_buddy in the error path
+      ext4: remove mb_groups before tearing down the buddy_cache
+
+Tao Ma (2):
+      ext4: protect group inode free counting with group lock
+      ext4: let getattr report the right blocks in delalloc+bigalloc
+
+Theodore Ts'o (7):
+      ext4: remove unnecessary check in add_dirent_to_buf()
+      ext4: enable the 64-bit jbd2 feature based on the 64-bit ext4 feature
+      ext4: remove redundundant "(char *) bh->b_data" casts
+      ext4: return ENOMEM when mounts fail due to lack of memory
+      ext4: add debugging trigger for ext4_error()
+      ext4: add missing save_error_info() to ext4_error()
+      ext4: don't trash state flags in EXT4_IOC_SETFLAGS
+
+Wanlong Gao (1):
+      jbd2: use kmem_cache_zalloc wrapper instead of flag
+
+Zheng Liu (3):
+      ext4: cleanup in ext4_discard_allocated_blocks()
+      ext4: fix format flag in ext4_ext_binsearch_idx()
+      ext4: use consistent ssize_t type in ext4_file_write()
+
+ fs/ext4/Kconfig            |   2 +
+ fs/ext4/balloc.c           |  41 ++++-
+ fs/ext4/bitmap.c           |  83 +++++++++
+ fs/ext4/dir.c              |  12 ++
+ fs/ext4/ext4.h             | 130 +++++++++++--
+ fs/ext4/ext4_extents.h     |  24 +++
+ fs/ext4/ext4_jbd2.c        |   9 +-
+ fs/ext4/ext4_jbd2.h        |   7 +-
+ fs/ext4/extents.c          |  91 +++++++--
+ fs/ext4/file.c             |   2 +-
+ fs/ext4/ialloc.c           |  81 +++++++--
+ fs/ext4/inode.c            | 119 ++++++++++--
+ fs/ext4/ioctl.c            |  19 +-
+ fs/ext4/mballoc.c          |  30 +--
+ fs/ext4/mmp.c              |  44 ++++-
+ fs/ext4/namei.c            | 445 ++++++++++++++++++++++++++++++++++++++++++---
+ fs/ext4/resize.c           |  71 +++++++-
+ fs/ext4/super.c            | 253 +++++++++++++++++++++-----
+ fs/ext4/xattr.c            |  92 ++++++++--
+ fs/ext4/xattr.h            |   4 +-
+ fs/jbd2/Kconfig            |   2 +
+ fs/jbd2/commit.c           |  70 ++++++-
+ fs/jbd2/journal.c          | 132 +++++++++++++-
+ fs/jbd2/recovery.c         | 126 ++++++++++++-
+ fs/jbd2/revoke.c           |  27 ++-
+ fs/jbd2/transaction.c      |   4 +-
+ include/linux/jbd2.h       |  59 +++++-
+ include/linux/jbd_common.h |   2 +
+ 28 files changed, 1784 insertions(+), 197 deletions(-)
