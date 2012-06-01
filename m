@@ -1,46 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Fri,  1 Jun 2012 15:40:50 +0000 (UTC)
-Message-ID: <20120601154050.7E1A411FD1B@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: GIT PULL] ext4 updates for 3.5
+Date: Fri, 1 Jun 2012 08:44:19 -0700
+Message-ID: <CA+55aFwk8oYx8EKWdT=5cMTLK7RDz8GQdGmHk2KXwcCq+Bb8PA@mail.gmail.com>
+References: <E1SaTSI-0005UV-4B@tytso-glaptop.cam.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:48308 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964838Ab2FAPk4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Jun 2012 11:40:56 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 81A95202D3
-	for <linux-ext4@vger.kernel.org>; Fri,  1 Jun 2012 15:40:55 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 83EAE202DF
-	for <linux-ext4@vger.kernel.org>; Fri,  1 Jun 2012 15:40:50 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:57091 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964909Ab2FAPol convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jun 2012 11:44:41 -0400
+In-Reply-To: <E1SaTSI-0005UV-4B@tytso-glaptop.cam.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+On Fri, Jun 1, 2012 at 8:07 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> =A0git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 
+Hmm, this is a regular branch, but you *usually* use a tag, and the
+format of the pull-request imples that too:
 
+> ----------------------------------------------------------------
+> Ext4 updates for 3.5
+>
+> The major new feature added in this update is Darrick J. Wong's
+> metadata checksum feature, which adds crc32 checksums to ext4's
+> metadata fields. =A0There is also the usual set of cleanups and bug
+> fixes.
+>
+> ----------------------------------------------------------------
 
+Is there perhaps a tag I should pull instead?
 
-
---- Comment #15 from Florian Pritz <flo@xssn.at>  2012-06-01 15:40:50 ---
-Created an attachment (id=73488)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=73488)
-2nd blktrace
-
-(In reply to comment #14)
-> dd if=/dev/dm-2 of=/dev/null bs=512 count=8 skip=485490688
-
-Finishes before and after the hang. 
-
-I've attached another blktrace, but I let it run for like 20 seconds after nfsd
-hung up this time instead of only a few seconds.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+               Linus
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
