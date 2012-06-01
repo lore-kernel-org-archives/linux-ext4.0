@@ -1,41 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Thu, 31 May 2012 22:49:02 +0000 (UTC)
-Message-ID: <20120531224902.9392611FD1B@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/4] dumpe2fs: print journal's s_errno field if it is non-zero
+Date: Thu, 31 May 2012 20:14:55 -0400
+Message-ID: <1338509698-24349-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:56872 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754994Ab2EaWtF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 May 2012 18:49:05 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5D1A220370
-	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 22:49:04 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 9A3AE20339
-	for <linux-ext4@vger.kernel.org>; Thu, 31 May 2012 22:49:02 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46853 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758723Ab2FAAPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 May 2012 20:15:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/dumpe2fs.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-
-
-
-
---- Comment #13 from Florian Pritz <flo@xssn.at>  2012-05-31 22:49:02 ---
-(In reply to comment #12)
-> Oh, that explains it. I wanted blktrace around the moment when nfsd hangs. So
-> just start blktrace and let it run until nfsd hangs... Thanks.
-
-I meant, I ran dumpe2fs without nfsd hanging. As for blktrace, I ran that
-before nfsd hung and waited a few seconds after it hung before I killed it.
-
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 8f4f2e4..8be5764 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -382,6 +382,9 @@ static void print_inline_journal_information(ext2_filsys fs)
+ 	       (unsigned int)ntohl(jsb->s_maxlen),
+ 	       (unsigned int)ntohl(jsb->s_sequence),
+ 	       (unsigned int)ntohl(jsb->s_start));
++	if (jsb->s_errno != 0)
++		printf(_("Journal errno:            %d\n"),
++		       (int) ntohl(jsb->s_errno));
+ }
+ 
+ static void print_journal_information(ext2_filsys fs)
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.10.2.552.gaa3bb87
+
