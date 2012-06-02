@@ -1,122 +1,91 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v2 10/10] ext4: use memweight()
-Date: Sat, 2 Jun 2012 08:35:23 -0600
-Message-ID: <B6D8D29B-9D9E-4248-B1EE-703D46354522@dilger.ca>
-References: <1338644416-11417-1-git-send-email-akinobu.mita@gmail.com> <1338644416-11417-10-git-send-email-akinobu.mita@gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	Akinobu Mita <akinobu.mita@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Akinobu Mita <akinobu.mita@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail130c7-2520.megamailservers.com ([69.49.98.25]:38090 "EHLO
-	mail130c7.megamailservers.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752863Ab2FBOfR convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Jun 2012 10:35:17 -0400
-In-Reply-To: <1338644416-11417-10-git-send-email-akinobu.mita@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Kirill Korotaev <dev-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
+Subject: Re: container disk quota
+Date: Sat, 2 Jun 2012 19:21:17 +0400
+Message-ID: <8660DDAA-D7A7-4C03-8CBB-9DB7E94C80CB@parallels.com>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
+	<20120601155457.GA30909@quack.suse.cz>	<20120601160421.GA17402@amd1>
+	<4FC9ABBB.3050303@oracle.com>
+	<01FED15D-15A3-4542-B95B-1166F0A309E6@parallels.com>
+	<4FC9B183.10605@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "tytso-3s7WtUTddSA@public.gmane.org" <tytso-3s7WtUTddSA@public.gmane.org>,
+	"tinguely-sJ/iWh9BUns@public.gmane.org" <tinguely-sJ/iWh9BUns@public.gmane.org>,
+	"containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org"
+	<containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>,
+	"david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, "bpm-sJ/iWh9BUns@public.gmane.org" <bpm-sJ/iWh9BUns@public.gmane.org>,
+	"christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"tm-d1IQDZat3X0@public.gmane.org" <tm-d1IQDZat3X0@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+To: "jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+In-Reply-To: <4FC9B183.10605-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Content-Language: en-US
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012-06-02, at 7:40, Akinobu Mita <akinobu.mita@gmail.com> wrote:
+>>>> 
+>>>> Not having looked closely at the original patchset, let me ask - is this
+>>>> feature going to be a freebie with Eric's usernamespace patches?
+>>> 
+>>> It we can reach a consensus to bind quota on mount namespace for
+>>> container or other things maybe.
+>> 
+>> 1. OpenVZ doesn't use mount namespaces and still has quotas per container.
+> 
+> AFAICS, OpenVZ has self-released quota tools to supply this feature.
 
-> Use memweight() to count the total number of bits clear in memory area.
-> This change only affects the code segments enabled by EXT4FS_DEBUG.
+but standard quota tools work inside container w/o any modifications.
+This is very important for us, cause we run unmodified distros inside.
 
-Personally, I'd rather still keep a thin wrapper ext4_count_free() and put the memweight() call and math inside that. The function name ext4_count_free() is meaningful to readers, while memweight() is much less so. 
+Actually, this is unrelated. I meant that OpenVZ needs ability to have group quotas w/o mount namespaces.
 
-Cheers, Andreas
+> 
+>> 
+>> 2. BTW, have you seen Dmitry Monakhov patches for same containers quotas via additional inode attribute? it allows to make it journaled.
+> 
+> You means the directly/project quota on ext4?
+> If yes, I have observed this feature back to the end of last year in
+> EXT4 mail list.
 
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
-> ---
+yes
+
 > 
-> v2: don't remove bitmap.c which now has other than ext4_count_free()
+>> How quotas are stored in your case?
 > 
-> fs/ext4/balloc.c |    3 ++-
-> fs/ext4/bitmap.c |   18 ------------------
-> fs/ext4/ext4.h   |    1 -
-> fs/ext4/ialloc.c |    4 +++-
-> 4 files changed, 5 insertions(+), 21 deletions(-)
+> It simply cached at memory for now, it also can be tweak up to journaled
+> I think, if introducing corresponding routines quota_read/quota_write to
+> particular journal file system.
+
+just cached quotas are bad - you never sure they are correct.
+journaled quotas (as standart) are much better.
+
 > 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 99b6324..e5eadfe 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -609,7 +609,8 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
->        if (bitmap_bh == NULL)
->            continue;
+>> 
+>> 3. I tend to think nowdays such quotas maybe of less need. Quota code doesn't scale well. And it's easier to put container in image file (as OpenVZ recently introduced).
 > 
-> -        x = ext4_count_free(bitmap_bh, sb->s_blocksize);
-> +        x = sb->s_blocksize * BITS_PER_BYTE -
-> +            memweight(bitmap_bh->b_data, sb->s_blocksize);
->        printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
->            i, ext4_free_group_clusters(sb, gdp), x);
->        bitmap_count += x;
-> diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-> index b319721..3c67c97 100644
-> --- a/fs/ext4/bitmap.c
-> +++ b/fs/ext4/bitmap.c
-> @@ -11,24 +11,6 @@
-> #include <linux/jbd2.h>
-> #include "ext4.h"
+> There have such requirements dropped to LXC mail list nowadays.
+> Directory quota is pretty cool and it also useful to containers perspective.
 > 
-> -#ifdef EXT4FS_DEBUG
-> -
-> -static const int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
-> -
-> -unsigned int ext4_count_free(struct buffer_head *map, unsigned int numchars)
-> -{
-> -    unsigned int i, sum = 0;
-> -
-> -    if (!map)
-> -        return 0;
-> -    for (i = 0; i < numchars; i++)
-> -        sum += nibblemap[map->b_data[i] & 0xf] +
-> -            nibblemap[(map->b_data[i] >> 4) & 0xf];
-> -    return sum;
-> -}
-> -
-> -#endif  /*  EXT4FS_DEBUG  */
-> -
-> int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
->                  struct ext4_group_desc *gdp,
->                  struct buffer_head *bh, int sz)
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index cfc4e01..3a3511d 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1852,7 +1852,6 @@ struct mmpd_data {
-> # define NORET_AND    noreturn,
+> However, that's two different quota mechanism.
 > 
-> /* bitmap.c */
-> -extern unsigned int ext4_count_free(struct buffer_head *, unsigned);
-> void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
->                struct ext4_group_desc *gdp,
->                struct buffer_head *bh, int sz);
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index d48e8b1..1310108 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -1054,7 +1054,9 @@ unsigned long ext4_count_free_inodes(struct super_block *sb)
->        if (!bitmap_bh)
->            continue;
-> 
-> -        x = ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
-> +        x = EXT4_INODES_PER_GROUP(sb) / 8 * BITS_PER_BYTE -
-> +            memweight(bitmap_bh->b_data,
-> +                EXT4_INODES_PER_GROUP(sb) / 8);
->        printk(KERN_DEBUG "group %lu: stored = %d, counted = %lu\n",
->            (unsigned long) i, ext4_free_inodes_count(sb, gdp), x);
->        bitmap_count += x;
-> -- 
-> 1.7.7.6
-> 
+> "Quota code doesn't scale well".
+> Do you means it have global locking mechanism and only quota structure
+> to bill up quota for all file systems with VFS quota enabled?
+
+yes.
+
+Kirill
