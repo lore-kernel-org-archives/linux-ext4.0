@@ -1,121 +1,114 @@
-From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: container disk quota
-Date: Sat, 02 Jun 2012 14:24:03 +0800
-Message-ID: <4FC9B183.10605@oracle.com>
-References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
-	<20120601155457.GA30909@quack.suse.cz>	<20120601160421.GA17402@amd1>
-	<4FC9ABBB.3050303@oracle.com>
-	<01FED15D-15A3-4542-B95B-1166F0A309E6@parallels.com>
-Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "tytso-3s7WtUTddSA@public.gmane.org" <tytso-3s7WtUTddSA@public.gmane.org>,
-	"tinguely-sJ/iWh9BUns@public.gmane.org" <tinguely-sJ/iWh9BUns@public.gmane.org>,
-	"containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org"
-	<containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>,
-	"david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, "bpm-sJ/iWh9BUns@public.gmane.org" <bpm-sJ/iWh9BUns@public.gmane.org>,
-	"christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"tm-d1IQDZat3X0@public.gmane.org" <tm-d1IQDZat3X0@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-To: Kirill Korotaev <dev-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-In-Reply-To: <01FED15D-15A3-4542-B95B-1166F0A309E6-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
-List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
-Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: [PATCH v2 01/10] string: introduce memweight
+Date: Sat,  2 Jun 2012 22:40:07 +0900
+Message-ID: <1338644416-11417-1-git-send-email-akinobu.mita@gmail.com>
+Cc: Akinobu Mita <akinobu.mita@gmail.com>,
+	Anders Larsen <al@alarsen.net>,
+	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org,
+	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
+	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
+To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:49994 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759650Ab2FBNkr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Jun 2012 09:40:47 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/02/2012 02:06 PM, Kirill Korotaev wrote:
+memweight() is the function that counts the total number of bits set
+in memory area.  Unlike bitmap_weight(), memweight() takes pointer
+and size in bytes to specify a memory area which does not need to be
+aligned to long-word boundary.
 
-> 
-> On Jun 2, 2012, at 09:59 , Jeff Liu wrote:
-> 
->> Hi Serge,
->>
->> On 06/02/2012 12:04 AM, Serge Hallyn wrote:
->>
->>> Quoting Jan Kara (jack-AlSwsSmVLrQ@public.gmane.org):
->>>>  Hello,
->>>>
->>>> On Wed 30-05-12 22:58:54, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
->>>>> According to glauber's comments regarding container disk quota, it should be binded to mount
->>>>> namespace rather than cgroup.
->>>>>
->>>>> Per my try out, it works just fine by combining with userland quota utilitly in this way.
->>>>> However, they are something has to be done at user tools too IMHO.
->>>>>
->>>>> Currently, the patchset is in very initial phase, I'd like to post it early to seek more
->>>>> feedbacks from you guys.
->>>>>
->>>>> Hopefully I can clarify my ideas clearly.
->>>>  So what I miss in this introductory email is some highlevel description
->>>> like what is the desired functionality you try to implement and what is it
->>>> good for. Looking at the examples below, it seems you want to be able to
->>>> set quota limits for namespace-uid (and also namespace-gid???) pairs, am I
->>>> right?
->>>>
->>>>  If yes, then I would like to understand one thing: When writing to a
->>>> file, used space is accounted to the owner of the file. Now how do we
->>>> determine owning namespace? Do you implicitely assume that only processes
->>>> from one namespace will be able to access the file?
->>>>
->>>> 								Honza
->>>
->>> Not having looked closely at the original patchset, let me ask - is this
->>> feature going to be a freebie with Eric's usernamespace patches?
->>
->> It we can reach a consensus to bind quota on mount namespace for
->> container or other things maybe.
-> 
-> 1. OpenVZ doesn't use mount namespaces and still has quotas per container.
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Cc: Anders Larsen <al@alarsen.net>
+Cc: Alasdair Kergon <agk@redhat.com>
+Cc: dm-devel@redhat.com
+Cc: linux-fsdevel@vger.kernel.org
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: linux-media@vger.kernel.org
+Cc: Mark Fasheh <mfasheh@suse.com>
+Cc: Joel Becker <jlbec@evilplan.org>
+Cc: ocfs2-devel@oss.oracle.com
+Cc: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Matthew Wilcox <matthew@wil.cx>
+---
 
-AFAICS, OpenVZ has self-released quota tools to supply this feature.
+v2: simplify memweight(), adviced by Jan Kara
 
-> 
-> 2. BTW, have you seen Dmitry Monakhov patches for same containers quotas via additional inode attribute? it allows to make it journaled.
+ include/linux/string.h |    3 +++
+ lib/string.c           |   32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 35 insertions(+), 0 deletions(-)
 
-You means the directly/project quota on ext4?
-If yes, I have observed this feature back to the end of last year in
-EXT4 mail list.
+diff --git a/include/linux/string.h b/include/linux/string.h
+index e033564..ffe0442 100644
+--- a/include/linux/string.h
++++ b/include/linux/string.h
+@@ -145,4 +145,7 @@ static inline bool strstarts(const char *str, const char *prefix)
+ 	return strncmp(str, prefix, strlen(prefix)) == 0;
+ }
+ #endif
++
++extern size_t memweight(const void *ptr, size_t bytes);
++
+ #endif /* _LINUX_STRING_H_ */
+diff --git a/lib/string.c b/lib/string.c
+index e5878de..bf4d5a8 100644
+--- a/lib/string.c
++++ b/lib/string.c
+@@ -26,6 +26,7 @@
+ #include <linux/export.h>
+ #include <linux/bug.h>
+ #include <linux/errno.h>
++#include <linux/bitmap.h>
+ 
+ #ifndef __HAVE_ARCH_STRNICMP
+ /**
+@@ -824,3 +825,34 @@ void *memchr_inv(const void *start, int c, size_t bytes)
+ 	return check_bytes8(start, value, bytes % 8);
+ }
+ EXPORT_SYMBOL(memchr_inv);
++
++/**
++ * memweight - count the total number of bits set in memory area
++ * @ptr: pointer to the start of the area
++ * @bytes: the size of the area
++ */
++size_t memweight(const void *ptr, size_t bytes)
++{
++	size_t w = 0;
++	size_t longs;
++	const unsigned char *bitmap = ptr;
++
++	for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(long);
++			bytes--, bitmap++)
++		w += hweight8(*bitmap);
++
++	longs = bytes / sizeof(long);
++	if (longs) {
++		BUG_ON(longs >= INT_MAX / BITS_PER_LONG);
++		w += bitmap_weight((unsigned long *)bitmap,
++				longs * BITS_PER_LONG);
++		bytes -= longs * sizeof(long);
++		bitmap += longs * sizeof(long);
++	}
++
++	for (; bytes > 0; bytes--, bitmap++)
++		w += hweight8(*bitmap);
++
++	return w;
++}
++EXPORT_SYMBOL(memweight);
+-- 
+1.7.7.6
 
-> How quotas are stored in your case?
-
-It simply cached at memory for now, it also can be tweak up to journaled
-I think, if introducing corresponding routines quota_read/quota_write to
-particular journal file system.
-
-> 
-> 3. I tend to think nowdays such quotas maybe of less need. Quota code doesn't scale well. And it's easier to put container in image file (as OpenVZ recently introduced).
-
-There have such requirements dropped to LXC mail list nowadays.
-Directory quota is pretty cool and it also useful to containers perspective.
-
-However, that's two different quota mechanism.
-
-"Quota code doesn't scale well".
-Do you means it have global locking mechanism and only quota structure
-to bill up quota for all file systems with VFS quota enabled?
-
-I noticed that OpenVZ has introduced an image file to supply container
-quota, and especially for the container migration consideration.
-However, could it be a general solution to LXC?
-
-
-Thanks,
--Jeff
-
-> 
-> Thanks,
-> Kirill
-> 
