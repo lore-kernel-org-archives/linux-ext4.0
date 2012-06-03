@@ -1,50 +1,39 @@
-From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+From: Glauber Costa <glommer@parallels.com>
 Subject: Re: container disk quota
-Date: Sun, 03 Jun 2012 14:02:33 +0800
-Message-ID: <4FCAFDF9.9020609@oracle.com>
-References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
-	<20120601155457.GA30909@quack.suse.cz>	<20120601160421.GA17402@amd1>
-	<4FC9ABBB.3050303@oracle.com>
-	<01FED15D-15A3-4542-B95B-1166F0A309E6@parallels.com>
-	<4FC9B183.10605@oracle.com>
-	<8660DDAA-D7A7-4C03-8CBB-9DB7E94C80CB@parallels.com>
-	<4FCAE6CB.8060208@oracle.com>
-	<81DE9C10-649B-4D13-86B0-200944AE8767@parallels.com>
-Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+Date: Sun, 3 Jun 2012 13:48:18 +0400
+Message-ID: <4FCB32E2.6050404@parallels.com>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com> <20120601155457.GA30909@quack.suse.cz>	<20120601160421.GA17402@amd1> <4FC9ABBB.3050303@oracle.com> <01FED15D-15A3-4542-B95B-1166F0A309E6@parallels.com> <4FC9B183.10605@oracle.com> <8660DDAA-D7A7-4C03-8CBB-9DB7E94C80CB@parallels.com> <4FCAE6CB.8060208@oracle.com> <81DE9C10-649B-4D13-86B0-200944AE8767@parallels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "tytso-3s7WtUTddSA@public.gmane.org" <tytso-3s7WtUTddSA@public.gmane.org>,
-	"tinguely-sJ/iWh9BUns@public.gmane.org" <tinguely-sJ/iWh9BUns@public.gmane.org>,
-	"containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org"
-	<containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>,
-	"david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	"hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, "bpm-sJ/iWh9BUns@public.gmane.org" <bpm-sJ/iWh9BUns@public.gmane.org>,
-	"christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
-	"linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"tm-d1IQDZat3X0@public.gmane.org" <tm-d1IQDZat3X0@public.gmane.org>,
-	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-To: Kirill Korotaev <dev-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-In-Reply-To: <81DE9C10-649B-4D13-86B0-200944AE8767-bzQdu9zFT3WakBO8gow8eQ@public.gmane.org>
-List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
-List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
-Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "jeff.liu@oracle.com" <jeff.liu@oracle.com>,
+	Jan Kara <jack@suse.cz>, "tytso@mit.edu" <tytso@mit.edu>,
+	"tinguely@sgi.com" <tinguely@sgi.com>,
+	"containers@lists.linux-foundation.org"
+	<containers@lists.linux-foundation.org>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"bpm@sgi.com" <bpm@sgi.com>,
+	"christopher.jones@oracle.com" <christopher.jones@oracle.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"cgroups@vger.kernel.org" <cgroups@vger.kernel.org>,
+	"tm@tao.ma" <tm@tao.ma>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"chris.mason@oracle.com" <chris.mason@oracle.com>
+To: Kirill Korotaev <dev@parallels.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.parallels.com ([64.131.90.16]:48816 "EHLO mx2.parallels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752624Ab2FCJup (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 Jun 2012 05:50:45 -0400
+In-Reply-To: <81DE9C10-649B-4D13-86B0-200944AE8767@parallels.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/03/2012 01:47 PM, Kirill Korotaev wrote:
-
-> 
+On 06/03/2012 09:47 AM, Kirill Korotaev wrote:
+>
 > On Jun 3, 2012, at 08:23 , Jeff Liu wrote:
-> 
+>
 >> Hi Kirill,
 >>
 >> On 06/02/2012 11:21 PM, Kirill Korotaev wrote:
@@ -65,25 +54,12 @@ On 06/03/2012 01:47 PM, Kirill Korotaev wrote:
 >>
 >> Yes, am agree.
 >> I can work out a new patches regarding quota tools based on mount namespace w/o any modification.
-> 
+>
 > Jeff, why do you need fs namespace for quotas? OpenVZ works w/o it.
-
-This idea is come from by Glauber's comments for my previous patches
-which bind quota to cgroup, and per my try out, it really works to some
-extents.
-
 > It sounds as too strict use case limitation. Or do I understand your patchset description wrong?
+>
 
-According to my understood, bind quota to mount namespace is another
-quota strategy, and container is a potential user case, maybe could be
-used for other things.
+OpenVZ has its own kernel, with its very own isolation capabilities.
+So in upstream, something has to be used instead.
 
-I certainly will study openVZ's quota code.
 
-Thanks,
--Jeff
-
-> 
-> Thanks,
-> Kirill
-> 
