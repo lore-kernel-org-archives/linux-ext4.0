@@ -1,103 +1,136 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: Save and restore state flags in EXT4_IOC_SETFLAGS.
-Date: Mon, 04 Jun 2012 11:22:55 +0800
-Message-ID: <4FCC2A0F.40804@tao.ma>
-References: <1336145869-4120-1-git-send-email-tm@tao.ma> <20120601034820.GC7897@thunk.org>
+From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: container disk quota
+Date: Mon, 04 Jun 2012 12:46:49 +0800
+Message-ID: <4FCC3DB9.40105@oracle.com>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
+	<20120601155457.GA30909@quack.suse.cz>
+	<20120601160421.GA17402@amd1> <4FC9ABBB.3050303@oracle.com>
+	<20120604025716.GA3480@sergelap>
+Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, stable <stable@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:43262 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755683Ab2FDDXL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Jun 2012 23:23:11 -0400
-In-Reply-To: <20120601034820.GC7897@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: tytso-3s7WtUTddSA@public.gmane.org, tinguely-sJ/iWh9BUns@public.gmane.org, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org,
+	david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+	bpm-sJ/iWh9BUns@public.gmane.org, christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+	tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+To: Serge Hallyn <serge.hallyn-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+In-Reply-To: <20120604025716.GA3480@sergelap>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-	Sorry for the delay.
-On 06/01/2012 11:48 AM, Ted Ts'o wrote:
-> On Fri, May 04, 2012 at 11:37:49PM +0800, Tao Ma wrote:
->> From: Tao Ma <boyu.mt@taobao.com>
+On 06/04/2012 10:57 AM, Serge Hallyn wrote:
+
+> Quoting Jeff Liu (jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org):
+>> Hi Serge,
 >>
->> In commit 353eb83c we removes i_state_flags with 64-bit longs,
->> But in case we call EXT4_IOC_SETFLAGS, we fail to save the
->> high 32-bit state flags and only stores the low 32-bit back
->> to ei->i_flags. So the state flags are missing now in 64-bit
->> long architecture.
+>> On 06/02/2012 12:04 AM, Serge Hallyn wrote:
+>>
+>>> Quoting Jan Kara (jack-AlSwsSmVLrQ@public.gmane.org):
+>>>>   Hello,
+>>>>
+>>>> On Wed 30-05-12 22:58:54, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
+>>>>> According to glauber's comments regarding container disk quota, it should be binded to mount
+>>>>> namespace rather than cgroup.
+>>>>>
+>>>>> Per my try out, it works just fine by combining with userland quota utilitly in this way.
+>>>>> However, they are something has to be done at user tools too IMHO.
+>>>>>
+>>>>> Currently, the patchset is in very initial phase, I'd like to post it early to seek more
+>>>>> feedbacks from you guys.
+>>>>>
+>>>>> Hopefully I can clarify my ideas clearly.
+>>>>   So what I miss in this introductory email is some highlevel description
+>>>> like what is the desired functionality you try to implement and what is it
+>>>> good for. Looking at the examples below, it seems you want to be able to
+>>>> set quota limits for namespace-uid (and also namespace-gid???) pairs, am I
+>>>> right?
+>>>>
+>>>>   If yes, then I would like to understand one thing: When writing to a
+>>>> file, used space is accounted to the owner of the file. Now how do we
+>>>> determine owning namespace? Do you implicitely assume that only processes
+>>>> from one namespace will be able to access the file?
+>>>>
+>>>> 								Honza
+>>>
+>>> Not having looked closely at the original patchset, let me ask - is this
+>>> feature going to be a freebie with Eric's usernamespace patches?
+>>
+>> It we can reach a consensus to bind quota on mount namespace for
+>> container or other things maybe.
+>> I think it definitely should depends on user namespace.
+>>
+>>>
+>>> There, a container can be started in its own user namespace.  It's uid
+>>> 1000 will be mapped to something like 1101000 on the host.  So the actual
+>>> uid against who the quota is counted is 1101000.  In another container,
+>>> uid 1000 will be mapped to 1201000, and again quota will be counted against
+>>> 1201000.
+>>
+>> Is it also an implications that we can examine do container quota or not
+>> based on the uid/gid number?
 > 
-> The problem with this approach is that we are still editing i_flags
-> and then replacing it with the new value.  So we're vulnerable to
-> races where some other process is modifies the i_state_flags between
-> when we sample it using ext4_save_state_flags() and when we restore
-> them.
-> 
-> This is a better way to fix the problem, and what I plan to commit
-> into the ext4 tree:
-> 
-> commit 79906964a187c405db72a3abc60eb9b50d804fbc
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Thu May 31 23:46:01 2012 -0400
-> 
->     ext4: don't trash state flags in EXT4_IOC_SETFLAGS
->     
->     In commit 353eb83c we removed i_state_flags with 64-bit longs, But
->     when handling the EXT4_IOC_SETFLAGS ioctl, we replace i_flags
->     directly, which trashes the state flags which are stored in the high
->     32-bits of i_flags on 64-bit platforms.  So use the the
->     ext4_{set,clear}_inode_flags() functions which use atomic bit
->     manipulation functions instead.
->     
->     Reported-by: Tao Ma <boyu.mt@taobao.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->     Cc: stable@kernel.org
-> 
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index feba55a..8ad112a 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -38,7 +38,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  		handle_t *handle = NULL;
->  		int err, migrate = 0;
->  		struct ext4_iloc iloc;
-> -		unsigned int oldflags;
-> +		unsigned int oldflags, mask, i;
->  		unsigned int jflag;
->  
->  		if (!inode_owner_or_capable(inode))
-> @@ -115,8 +115,14 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  		if (err)
->  			goto flags_err;
->  
-> -		flags = flags & EXT4_FL_USER_MODIFIABLE;
-> -		flags |= oldflags & ~EXT4_FL_USER_MODIFIABLE;
-> +		for (i = 0, mask = 1; i < 32; i++, mask <<= 1) {
-> +			if (!(mask & EXT4_FL_USER_MODIFIABLE))
-> +				continue;
-> +			if (mask & flags)
-> +				ext4_set_inode_flag(inode, i);
-> +			else
-> +				ext4_clear_inode_flag(inode, i);
-> +		}
->  		ei->i_flags = flags;
-You forget to remove this line and we can still get the problem.
+> I'm sorry I don't understand the question.
 
-I am busy with other stuff and when I got to it, it is already in linus'
-tree. So I have sent out another patch to remove this line and after
-that my test case passed. The patch subject is "[PATCH] ext4: Don't set
-i_flags in EXT4_IOC_SETFLAGS."
+Sorry for my poor english.
 
-Thanks
-Tao
->  
->  		ext4_set_inode_flags(inode);
 > 
+> As an attempt at an answer:  the quota code wouldn't change at all.  We would
+> simply exploit the fact that uid 1000 in container1 has a real uid of 101100,
+> which is different from the real uid 102100 assigned to uid 1000 in container2
+> and from real uid 1000 (uid 1000 on the host).
+
+In that case, looks we only need to figure out how to let quota tools
+works at container.
+I'll build a new kernel with user_ns to give a try.
+
 > 
+>>> Note that this won't work with bind mounts, as a file can only be owned
+>>> by one uid, be it 1000, 1101000, or 1201000.  So for the quota to work
+>>> each container would need its own files.  (Of course the underlying
+>>> metadata can be shared through whatever ways - btrfs, lvm snapshotting,
+>>> etc)
+>>
+>> Do you means that we can not bind mount outside files to container for
+>> as general adquot.user/adquot.group purpose?
+> 
+> Right, not without some sort of stackable filesystem which masks the uid.
+> 
+> Actually there may be a way around it (simply provide a mount option,
+> requiring privilege in the original user namespace, saying mask uid x to
+> look like uid y for this bind mount), but it's too early to say how
+> cleanly that could be done.
+
+> 
+>> If so, per glauber's comments, bind quota to mount namespace should be a
+>> generic feature, and container just one of users could make use of it.
+>>
+>> Again, if bind quota to mount namespace is on right direction, and it
+>> only does make sense to container for now, maybe we don't need such
+>> files. IMHO, container is a lightweight virtualization solution, maybe
+>> its fine to make it as simple as possible.  If the server admin need to
+>> configure hundreds of user/group dquot per container, perhaps he should
+>> consider KVM/XEN.
+> 
+> Server admin doesn't need to do that.
+
+Thanks for the info!
+
+-Jeff
+
+> 
+> -serge
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
