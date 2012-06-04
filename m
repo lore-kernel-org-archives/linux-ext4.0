@@ -1,154 +1,132 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 01/10] string: introduce memweight
-Date: Mon, 4 Jun 2012 15:35:09 +0200
-Message-ID: <20120604133509.GA11010@quack.suse.cz>
-References: <1338644416-11417-1-git-send-email-akinobu.mita@gmail.com>
- <20120604101237.GD7670@quack.suse.cz>
- <CAC5umyjP0Pov1a3b7N3VzNVHc1uhan2tLmy2_bOzWeY0u7h2FA@mail.gmail.com>
+From: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: container disk quota
+Date: Mon, 04 Jun 2012 21:35:06 +0800
+Message-ID: <4FCCB98A.2030703@oracle.com>
+References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
+	<20120601155457.GA30909@quack.suse.cz>
+	<20120601160421.GA17402@amd1> <4FC9ABBB.3050303@oracle.com>
+	<20120604025716.GA3480@sergelap> <4FCC3DB9.40105@oracle.com>
+	<20120604094224.GA7670@quack.suse.cz>
+Reply-To: jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	akpm@linux-foundation.org, Anders Larsen <al@alarsen.net>,
-	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org,
-	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
-To: Akinobu Mita <akinobu.mita@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46613 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754032Ab2FDNfO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jun 2012 09:35:14 -0400
-Content-Disposition: inline
-In-Reply-To: <CAC5umyjP0Pov1a3b7N3VzNVHc1uhan2tLmy2_bOzWeY0u7h2FA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: tytso-3s7WtUTddSA@public.gmane.org, tinguely-sJ/iWh9BUns@public.gmane.org, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org,
+	david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, bpm-sJ/iWh9BUns@public.gmane.org,
+	christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+In-Reply-To: <20120604094224.GA7670-+0h/O2h83AeN3ZZ/Hiejyg@public.gmane.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 04-06-12 20:46:14, Akinobu Mita wrote:
-> 2012/6/4 Jan Kara <jack@suse.cz>:
-> > On Sat 02-06-12 22:40:07, Akinobu Mita wrote:
-> >> memweight() is the function that counts the total number of bits s=
-et
-> >> in memory area. =A0Unlike bitmap_weight(), memweight() takes point=
-er
-> >> and size in bytes to specify a memory area which does not need to =
-be
-> >> aligned to long-word boundary.
-> >>
-> >> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> >> Cc: Anders Larsen <al@alarsen.net>
-> >> Cc: Alasdair Kergon <agk@redhat.com>
-> >> Cc: dm-devel@redhat.com
-> >> Cc: linux-fsdevel@vger.kernel.org
-> >> Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-> >> Cc: linux-media@vger.kernel.org
-> >> Cc: Mark Fasheh <mfasheh@suse.com>
-> >> Cc: Joel Becker <jlbec@evilplan.org>
-> >> Cc: ocfs2-devel@oss.oracle.com
-> >> Cc: Jan Kara <jack@suse.cz>
-> >> Cc: linux-ext4@vger.kernel.org
-> >> Cc: Andrew Morton <akpm@linux-foundation.org>
-> >> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> >> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> >> Cc: Matthew Wilcox <matthew@wil.cx>
-> >> ---
-> >>
-> >> v2: simplify memweight(), adviced by Jan Kara
-> >>
-> >> =A0include/linux/string.h | =A0 =A03 +++
-> >> =A0lib/string.c =A0 =A0 =A0 =A0 =A0 | =A0 32 +++++++++++++++++++++=
-+++++++++++
-> >> =A02 files changed, 35 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/include/linux/string.h b/include/linux/string.h
-> >> index e033564..ffe0442 100644
-> >> --- a/include/linux/string.h
-> >> +++ b/include/linux/string.h
-> >> @@ -145,4 +145,7 @@ static inline bool strstarts(const char *str, =
-const char *prefix)
-> >> =A0 =A0 =A0 return strncmp(str, prefix, strlen(prefix)) =3D=3D 0;
-> >> =A0}
-> >> =A0#endif
-> >> +
-> >> +extern size_t memweight(const void *ptr, size_t bytes);
-> >> +
-> >> =A0#endif /* _LINUX_STRING_H_ */
-> >> diff --git a/lib/string.c b/lib/string.c
-> >> index e5878de..bf4d5a8 100644
-> >> --- a/lib/string.c
-> >> +++ b/lib/string.c
-> >> @@ -26,6 +26,7 @@
-> >> =A0#include <linux/export.h>
-> >> =A0#include <linux/bug.h>
-> >> =A0#include <linux/errno.h>
-> >> +#include <linux/bitmap.h>
-> >>
-> >> =A0#ifndef __HAVE_ARCH_STRNICMP
-> >> =A0/**
-> >> @@ -824,3 +825,34 @@ void *memchr_inv(const void *start, int c, si=
-ze_t bytes)
-> >> =A0 =A0 =A0 return check_bytes8(start, value, bytes % 8);
-> >> =A0}
-> >> =A0EXPORT_SYMBOL(memchr_inv);
-> >> +
-> >> +/**
-> >> + * memweight - count the total number of bits set in memory area
-> >> + * @ptr: pointer to the start of the area
-> >> + * @bytes: the size of the area
-> >> + */
-> >> +size_t memweight(const void *ptr, size_t bytes)
-> >> +{
-> >> + =A0 =A0 size_t w =3D 0;
-> >> + =A0 =A0 size_t longs;
-> >> + =A0 =A0 const unsigned char *bitmap =3D ptr;
-> >> +
-> >> + =A0 =A0 for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(lon=
-g);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 bytes--, bitmap++)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 w +=3D hweight8(*bitmap);
-> >> +
-> >> + =A0 =A0 longs =3D bytes / sizeof(long);
-> >> + =A0 =A0 if (longs) {
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 BUG_ON(longs >=3D INT_MAX / BITS_PER_LON=
-G);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 w +=3D bitmap_weight((unsigned long *)bi=
-tmap,
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 longs * =
-BITS_PER_LONG);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 bytes -=3D longs * sizeof(long);
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 bitmap +=3D longs * sizeof(long);
-> >> + =A0 =A0 }
-> >> +
-> >> + =A0 =A0 for (; bytes > 0; bytes--, bitmap++)
-> >> + =A0 =A0 =A0 =A0 =A0 =A0 w +=3D hweight8(*bitmap);
-> > =A0Looking at bitmap_weight() it seems this last loop is not needed=
-=2E Just
-> > pass to bitmap_weight() bytes*BITS_PER_BYTE. Also generally this fu=
-nction
-> > doesn't seem necessary at all at least for ext2 & ext3 (sorry for n=
-ot
-> > noticing this earlier...).
->=20
-> This last loop is necessary for big-endian architecture.
-> if bytes % sizeof(long) !=3D 0, bitmap_weight() counts one-bits in wr=
-ong
-> byte-field
-> of the last long word.
-  Ah, right. OK. Add this to the comment before the loop please. You sa=
-ve
-yourself some explanations :)
+On 06/04/2012 05:42 PM, Jan Kara wrote:
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> On Mon 04-06-12 12:46:49, Jeff Liu wrote:
+>> On 06/04/2012 10:57 AM, Serge Hallyn wrote:
+>>> Quoting Jeff Liu (jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org):
+>>>> Hi Serge,
+>>>>
+>>>> On 06/02/2012 12:04 AM, Serge Hallyn wrote:
+>>>>
+>>>>> Quoting Jan Kara (jack-AlSwsSmVLrQ@public.gmane.org):
+>>>>>>   Hello,
+>>>>>>
+>>>>>> On Wed 30-05-12 22:58:54, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
+>>>>>>> According to glauber's comments regarding container disk quota, it should be binded to mount
+>>>>>>> namespace rather than cgroup.
+>>>>>>>
+>>>>>>> Per my try out, it works just fine by combining with userland quota utilitly in this way.
+>>>>>>> However, they are something has to be done at user tools too IMHO.
+>>>>>>>
+>>>>>>> Currently, the patchset is in very initial phase, I'd like to post it early to seek more
+>>>>>>> feedbacks from you guys.
+>>>>>>>
+>>>>>>> Hopefully I can clarify my ideas clearly.
+>>>>>>   So what I miss in this introductory email is some highlevel description
+>>>>>> like what is the desired functionality you try to implement and what is it
+>>>>>> good for. Looking at the examples below, it seems you want to be able to
+>>>>>> set quota limits for namespace-uid (and also namespace-gid???) pairs, am I
+>>>>>> right?
+>>>>>>
+>>>>>>   If yes, then I would like to understand one thing: When writing to a
+>>>>>> file, used space is accounted to the owner of the file. Now how do we
+>>>>>> determine owning namespace? Do you implicitely assume that only processes
+>>>>>> from one namespace will be able to access the file?
+>>>>>>
+>>>>>> 								Honza
+>>>>>
+>>>>> Not having looked closely at the original patchset, let me ask - is this
+>>>>> feature going to be a freebie with Eric's usernamespace patches?
+>>>>
+>>>> It we can reach a consensus to bind quota on mount namespace for
+>>>> container or other things maybe.
+>>>> I think it definitely should depends on user namespace.
+>>>>
+>>>>>
+>>>>> There, a container can be started in its own user namespace.  It's uid
+>>>>> 1000 will be mapped to something like 1101000 on the host.  So the actual
+>>>>> uid against who the quota is counted is 1101000.  In another container,
+>>>>> uid 1000 will be mapped to 1201000, and again quota will be counted against
+>>>>> 1201000.
+>>>>
+>>>> Is it also an implications that we can examine do container quota or not
+>>>> based on the uid/gid number?
+>>>
+>>> I'm sorry I don't understand the question.
+>>
+>> Sorry for my poor english.
+>>
+>>>
+>>> As an attempt at an answer:  the quota code wouldn't change at all.  We would
+>>> simply exploit the fact that uid 1000 in container1 has a real uid of 101100,
+>>> which is different from the real uid 102100 assigned to uid 1000 in container2
+>>> and from real uid 1000 (uid 1000 on the host).
+>>
+>> In that case, looks we only need to figure out how to let quota tools
+>> works at container.
+>> I'll build a new kernel with user_ns to give a try.
+>   GETQUOTA or SETQUOTA quotactls should work just fine inside a container
+> (for those quota-tools just need access to /proc/mounts). QUOTAON should
+> also work for e.g. XFS or ext4 with hidden quota files. When quota files
+> are visible in fs namespace (as for ext3 or so), things would be a bit
+> tricky because they won't be possibly visible from container and QUOTAON
+> needs that.
+
+I still think if we can cache container dquot on memory to make this feature as simple as possible. :)
+
+And also, quotacheck is the major issue I have faced previously, since we need a reasonable approach to calculate
+and save the current inodes/blocks usage firstly.
+
+> 
+> Also with QUOTAON there is the principial problem that quotas either are or
+> are not enabled for the whole filesystem.
+
+IMHO, we could supply uid/gid quota for the whole filesystem only(i.e, the "/" rootfs), and we can support project
+quota among sub-directories in the future if possible.
+
+> So probably the only reasonable
+> choice when you would like to supporot quotas in the container would be to
+> have quotas enabled all the time, and inside the container, you would just
+> set some quota limits or you won't...
+
+I remember that ext4 has already supported quota as the first class, looks we can consider container quota same to that.
+
+So we can ignore the quotacheck step, only focus on quota limits setup inside container?
+
+
+Thanks for the teaching!
+-Jeff
+
+> 
+> 								Honza
