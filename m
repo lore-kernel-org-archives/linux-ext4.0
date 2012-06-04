@@ -1,106 +1,78 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: container disk quota
-Date: Mon, 4 Jun 2012 11:42:24 +0200
-Message-ID: <20120604094224.GA7670@quack.suse.cz>
-References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
- <20120601155457.GA30909@quack.suse.cz>
- <20120601160421.GA17402@amd1>
- <4FC9ABBB.3050303@oracle.com>
- <20120604025716.GA3480@sergelap>
- <4FCC3DB9.40105@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 08/10] ext2: use memweight()
+Date: Mon, 4 Jun 2012 12:10:18 +0200
+Message-ID: <20120604101018.GC7670@quack.suse.cz>
+References: <1338644416-11417-1-git-send-email-akinobu.mita@gmail.com>
+ <1338644416-11417-8-git-send-email-akinobu.mita@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Serge Hallyn <serge.hallyn-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	tytso-3s7WtUTddSA@public.gmane.org, containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org,
-	david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, bpm-sJ/iWh9BUns@public.gmane.org,
-	christopher.jones-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	cgroups-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tm-d1IQDZat3X0@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, tinguely-sJ/iWh9BUns@public.gmane.org
-To: Jeff Liu <jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Return-path: <cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Akinobu Mita <akinobu.mita@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59268 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751403Ab2FDKKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Jun 2012 06:10:20 -0400
 Content-Disposition: inline
-In-Reply-To: <4FCC3DB9.40105-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Sender: cgroups-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1338644416-11417-8-git-send-email-akinobu.mita@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 04-06-12 12:46:49, Jeff Liu wrote:
-> On 06/04/2012 10:57 AM, Serge Hallyn wrote:
-> > Quoting Jeff Liu (jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org):
-> >> Hi Serge,
-> >>
-> >> On 06/02/2012 12:04 AM, Serge Hallyn wrote:
-> >>
-> >>> Quoting Jan Kara (jack-AlSwsSmVLrQ@public.gmane.org):
-> >>>>   Hello,
-> >>>>
-> >>>> On Wed 30-05-12 22:58:54, jeff.liu-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org wrote:
-> >>>>> According to glauber's comments regarding container disk quota, it should be binded to mount
-> >>>>> namespace rather than cgroup.
-> >>>>>
-> >>>>> Per my try out, it works just fine by combining with userland quota utilitly in this way.
-> >>>>> However, they are something has to be done at user tools too IMHO.
-> >>>>>
-> >>>>> Currently, the patchset is in very initial phase, I'd like to post it early to seek more
-> >>>>> feedbacks from you guys.
-> >>>>>
-> >>>>> Hopefully I can clarify my ideas clearly.
-> >>>>   So what I miss in this introductory email is some highlevel description
-> >>>> like what is the desired functionality you try to implement and what is it
-> >>>> good for. Looking at the examples below, it seems you want to be able to
-> >>>> set quota limits for namespace-uid (and also namespace-gid???) pairs, am I
-> >>>> right?
-> >>>>
-> >>>>   If yes, then I would like to understand one thing: When writing to a
-> >>>> file, used space is accounted to the owner of the file. Now how do we
-> >>>> determine owning namespace? Do you implicitely assume that only processes
-> >>>> from one namespace will be able to access the file?
-> >>>>
-> >>>> 								Honza
-> >>>
-> >>> Not having looked closely at the original patchset, let me ask - is this
-> >>> feature going to be a freebie with Eric's usernamespace patches?
-> >>
-> >> It we can reach a consensus to bind quota on mount namespace for
-> >> container or other things maybe.
-> >> I think it definitely should depends on user namespace.
-> >>
-> >>>
-> >>> There, a container can be started in its own user namespace.  It's uid
-> >>> 1000 will be mapped to something like 1101000 on the host.  So the actual
-> >>> uid against who the quota is counted is 1101000.  In another container,
-> >>> uid 1000 will be mapped to 1201000, and again quota will be counted against
-> >>> 1201000.
-> >>
-> >> Is it also an implications that we can examine do container quota or not
-> >> based on the uid/gid number?
-> > 
-> > I'm sorry I don't understand the question.
+On Sat 02-06-12 22:40:14, Akinobu Mita wrote:
+> Use memweight() to count the total number of bits clear in memory area.
+> This change only affects the code segments enabled by EXT2FS_DEBUG.
 > 
-> Sorry for my poor english.
+> This also fixes printk format warning that only reveals with EXT2FS_DEBUG.
 > 
-> > 
-> > As an attempt at an answer:  the quota code wouldn't change at all.  We would
-> > simply exploit the fact that uid 1000 in container1 has a real uid of 101100,
-> > which is different from the real uid 102100 assigned to uid 1000 in container2
-> > and from real uid 1000 (uid 1000 on the host).
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: linux-ext4@vger.kernel.org
+> ---
 > 
-> In that case, looks we only need to figure out how to let quota tools
-> works at container.
-> I'll build a new kernel with user_ns to give a try.
-  GETQUOTA or SETQUOTA quotactls should work just fine inside a container
-(for those quota-tools just need access to /proc/mounts). QUOTAON should
-also work for e.g. XFS or ext4 with hidden quota files. When quota files
-are visible in fs namespace (as for ext3 or so), things would be a bit
-tricky because they won't be possibly visible from container and QUOTAON
-needs that.
+> No changes from v1
+> 
+>  fs/ext2/balloc.c |   22 ++--------------------
+>  fs/ext2/ext2.h   |    1 -
+>  fs/ext2/ialloc.c |    5 ++++-
+>  3 files changed, 6 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 1c36139..9095500 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -1442,25 +1442,6 @@ ext2_fsblk_t ext2_new_block(struct inode *inode, unsigned long goal, int *errp)
+>  	return ext2_new_blocks(inode, goal, &count, errp);
+>  }
+>  
+> -#ifdef EXT2FS_DEBUG
+> -
+> -static const int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
+> -
+> -unsigned long ext2_count_free (struct buffer_head * map, unsigned int numchars)
+> -{
+> -	unsigned int i;
+> -	unsigned long sum = 0;
+> -
+> -	if (!map)
+> -		return (0);
+> -	for (i = 0; i < numchars; i++)
+> -		sum += nibblemap[map->b_data[i] & 0xf] +
+> -			nibblemap[(map->b_data[i] >> 4) & 0xf];
+> -	return (sum);
+> -}
+> -
+> -#endif  /*  EXT2FS_DEBUG  */
+> -
+  So actually if you look at this function, you see that it counts bits in
+map->b_data. That is guaranteed to be long aligned pointer so there's no
+need for your memweight(). bitmap_weight() would be enough, especially
+given that it can handle number of bits which is not a multiple of
+BITS_PER_LONG.
 
-Also with QUOTAON there is the principial problem that quotas either are or
-are not enabled for the whole filesystem. So probably the only reasonable
-choice when you would like to supporot quotas in the container would be to
-have quotas enabled all the time, and inside the container, you would just
-set some quota limits or you won't...
+  For ext3 it's the same BTW.
 
 								Honza
 -- 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Jan Kara <jack@suse.cz>
 SUSE Labs, CR
