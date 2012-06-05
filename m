@@ -1,57 +1,39 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 10/12] container quota: bill container inodes alloc/free
- on ext4.
-Date: Tue, 5 Jun 2012 10:03:03 +1000
-Message-ID: <20120605000302.GC4347@dastard>
-References: <1338389946-13711-1-git-send-email-jeff.liu@oracle.com>
- <1338389946-13711-11-git-send-email-jeff.liu@oracle.com>
- <4FC736AD.2070404@parallels.com>
- <4FC76B0D.6020804@oracle.com>
- <4FC76ECA.3070301@parallels.com>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group
+ 1904, 32254 clusters in bitmap, 32258 in gd
+Date: Mon, 4 Jun 2012 17:03:56 -0700
+Message-ID: <20120605000356.GM29466@outflux.net>
+References: <471046920.20120604234941@eikelenboom.it>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jeff.liu@oracle.com, containers@lists.linux-foundation.org,
-	cgroups@vger.kernel.org, jack@suse.cz, daniel.lezcano@free.fr,
-	Ted Ts'o <tytso@mit.edu>, bpm@sgi.com, chris.mason@oracle.com,
-	hch@infradead.org, christopher.jones@oracle.com, tinguely@sgi.com,
-	tm@tao.ma, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Glauber Costa <glommer@parallels.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	dm-devel@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Sander Eikelenboom <linux@eikelenboom.it>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:65173 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751935Ab2FEADJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jun 2012 20:03:09 -0400
+Received: from smtp.outflux.net ([198.145.64.163]:34863 "EHLO smtp.outflux.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751935Ab2FEAEE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Jun 2012 20:04:04 -0400
 Content-Disposition: inline
-In-Reply-To: <4FC76ECA.3070301@parallels.com>
+In-Reply-To: <471046920.20120604234941@eikelenboom.it>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 31, 2012 at 05:14:50PM +0400, Glauber Costa wrote:
-> On 05/31/2012 04:58 PM, Jeff Liu wrote:
-> >>>  This should be inside dquot_free_inode().
-> >Yeah, Ted also mentioned this before, all name space dquot bill routine
-> >could be placed to dquot_xxx() for VFS quota user.
-> >
-> >However, AFAICS, they still have to be exported to other file systems
-> >which have their own quota management module, like XFS.
-> >
-> >Thanks,
-> >-Jeff
-> >
-> Do you have a personal need to have it working with xfs, or is the
-> use you are pursuing achievable with the other filesystems?
-> 
-> Unless you have a reason yourself to use xfs, I'd say don't bother
-> with it too much at the moment. get it working for the standard
-> interface first.
+Hi,
 
-Which means you'll end up with something that has to be rewritten to
-support XFS. Do it right the first time.
+On Mon, Jun 04, 2012 at 11:49:41PM +0200, Sander Eikelenboom wrote:
+> I have enabled some debug options, this is from around when the error occurs (kernel: [  950.610126] EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1699, 32254 clusters in bitmap, 32258 in gd)
 
-Cheers,
+Today I've finally managed to bisect this to here:
+[fd034a84e1ea5c8c8d159cd2089c32e792c269b0] ext4: split out ext4_free_blocks_after_init()
 
-Dave.
+If I revert all the "ext4:" patches in 3.2 up to and including that one,
+I get normal behavior again.
+
+-Kees
+
 -- 
-Dave Chinner
-david@fromorbit.com
+Kees Cook
+ChromeOS Security
