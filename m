@@ -1,48 +1,40 @@
-From: "WEBMAIL ADMIN" <triana.r.almeyda@nasa.gov>
-Subject: ACHTUNG ACHTUNG (QUOTE ALERT)
-Date: Tue, 5 Jun 2012 12:00:49 +0200 (CEST)
-Message-ID: <51012.41.58.17.7.1338890449.squirrel__31329.1617356755$1338892608$gmane$org@webmail.fidal.it>
+From: Sander Eikelenboom <linux@eikelenboom.it>
+Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1904, 32254 clusters in bitmap, 32258 in gd
+Date: Tue, 5 Jun 2012 22:41:54 +0200
+Message-ID: <1018371644.20120605224154@eikelenboom.it>
+References: <471046920.20120604234941@eikelenboom.it> <20120605000356.GM29466@outflux.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.fidal.it ([94.88.95.180]:51392 "EHLO server1.fidal.it"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932671Ab2FEKgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jun 2012 06:36:40 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	<dm-devel@redhat.com>, <linux-ext4@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>
+To: Kees Cook <keescook@chromium.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120605000356.GM29466@outflux.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Sehr geehrte Benutzer E-Mail,
+Tuesday, June 5, 2012, 2:03:56 AM, you wrote:
 
-Ihr Postfach hat es die Quote =FCberschritten. Sie k=F6nnen nicht sende=
-n oder
-empfangen neue E-Mails, bis Sie Ihre account.if revalidate Sie nicht
-aktualisieren Sie Ihre E-Mail-Konto im Jahr 2012, m=FCssen Sie es jetzt=
- tun.
-Sie k=F6nnen erweitern 1GB E-Mail-Kontingent, verwenden Sie folgenden L=
-ink
-an:
+> Hi,
 
-http://www.arundelhomeschoolers.net/WRITING/use/editor/form1.html
+> On Mon, Jun 04, 2012 at 11:49:41PM +0200, Sander Eikelenboom wrote:
+>> I have enabled some debug options, this is from around when the error occurs (kernel: [  950.610126] EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1699, 32254 clusters in bitmap, 32258 in gd)
 
-Warnung!
-Wenn Sie dies nicht tun, werden in begrenztem Zugang zu Ihrem Postfach =
-zur
-=46olge haben. Scheitern auf Ihr Konto innerhalb von drei Tagen von die=
-sem
-Update-Benachrichtigung aktualisieren, wird Ihr Konto dauerhaft
-geschlossen werden.
+> Today I've finally managed to bisect this to here:
+> [fd034a84e1ea5c8c8d159cd2089c32e792c269b0] ext4: split out ext4_free_blocks_after_init()
 
-Danke fuer die Benutzung unserer Web-Mail.
+> If I revert all the "ext4:" patches in 3.2 up to and including that one,
+> I get normal behavior again.
 
-unterzeichnet
-Es ist Service!
-Copyright =A9 2012 System Administrator =AE
+Hmm that seems consistent with this report which mentions 3.1.5 as last working kernel:
+http://comments.gmane.org/gmane.comp.file-systems.ext4/30575
+
+So somehow this only effects ext4 on DM (it's THE common factor in all reports) and fsck seems incapable of seeing the error (and thus repair it.)
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Sander
+
+> -Kees
