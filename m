@@ -1,48 +1,57 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1904, 32254 clusters in bitmap, 32258 in gd
-Date: Wed, 6 Jun 2012 16:40:12 +0200
-Message-ID: <1482118647.20120606164012@eikelenboom.it>
-References: <471046920.20120604234941@eikelenboom.it> <20120605000356.GM29466@outflux.net> <1018371644.20120605224154@eikelenboom.it> <20120605210806.GB7182@thunk.org> <1883708187.20120606090126@eikelenboom.it> <CAGXu5jK-4dO59-x3eTU10OntcPwsVptjpUzQdbbHOvy9_VBQ2A@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: ext4 corruption during unexpected power cycle in the middle of
+ writing
+Date: Wed, 6 Jun 2012 14:55:26 -0400
+Message-ID: <20120606185526.GA10034@thunk.org>
+References: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
+ <4FCEEB36.9010102@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	<dm-devel@redhat.com>, <linux-ext4@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>
-To: Kees Cook <keescook@chromium.org>
+Cc: Ming Lei <Ming.Lei@riverbed.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.121.164.40.188.clients.your-server.de ([188.40.164.121]:60741
-	"EHLO smtp.eikelenboom.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752026Ab2FFOkU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2012 10:40:20 -0400
-In-Reply-To: <CAGXu5jK-4dO59-x3eTU10OntcPwsVptjpUzQdbbHOvy9_VBQ2A@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48099 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752410Ab2FFSze (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jun 2012 14:55:34 -0400
+Content-Disposition: inline
+In-Reply-To: <4FCEEB36.9010102@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jun 06, 2012 at 12:31:34AM -0500, Eric Sandeen wrote:
+> Sort of.  You got:
+> 
+> > Free blocks count wrong (118366120, counted=76269471).
+> > Fix? yes
+> > 
+> > Free inodes count wrong (30081013, counted=30081004).
+> > Fix? yes
+> 
+> Those are the superblock counters, which aren't journaled - only the bg counters are logged via the journal, IIRC.
 
-Wednesday, June 6, 2012, 4:32:52 PM, you wrote:
+This has been partially addressed in e2fsprogs 1.42.3:
 
-> On Wed, Jun 6, 2012 at 12:01 AM, Sander Eikelenboom
-> <linux@eikelenboom.it> wrote:
->> Another thing that thought of that could be of interest, i think this was a ext3 converted to ext4 partition.
->> Don't know if that is true for the other reports as well though.
+commit 2788cc879bbe667d28277e1d660b7e56514e5b30
+Author: Andreas Dilger <adilger@whamcloud.com>
+Date:   Tue Apr 24 16:22:48 2012 -0400
 
-> FWIW, in my case, I have just built a fresh ext4 and immediately copy
-> data to it.
+    e2fsck: quiet harmless inode/blocks errors
+    
+    Don't consider only an error in the superblock summary as incorrect.
+    The kernel does not update this field except at unmount time, so
+    don't print errors during a "-n" run if there is nothing else wrong.
+    Any other unfixed errors will themselves mark the filesystem invalid.
+    
+    Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-> -Kees
+So e2fsck -n will silence the warnings, and e2fsck -p/-y will just fix
+them automatically, although they are still getting printed.  Maybe I
+should just mark these messages as one where they just print the fact
+that we are adjusting the free blocks count, and avoid using the word
+"wrong" --- at least if the filesystem has a journal --- so the error
+message isn't as scary/misleading.
 
-
-
-And it still results in the error ?
-And if you use it without the uninit_bg feature by running:
-
-tune2fs -O ^uninit_bg
-
-Then fsck found errors in my case after fixing them, i could copy files normally.
-Does that work in your case as well ?
---
-Sander
-
-
+						- Ted
