@@ -1,57 +1,53 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: ext4 corruption during unexpected power cycle in the middle of
- writing
-Date: Wed, 6 Jun 2012 14:55:26 -0400
-Message-ID: <20120606185526.GA10034@thunk.org>
-References: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
- <4FCEEB36.9010102@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
+Date: Wed,  6 Jun 2012 21:56:31 +0000 (UTC)
+Message-ID: <20120606215631.BCB8811FC42@bugzilla.kernel.org>
+References: <bug-43292-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ming Lei <Ming.Lei@riverbed.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48099 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752410Ab2FFSze (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jun 2012 14:55:34 -0400
-Content-Disposition: inline
-In-Reply-To: <4FCEEB36.9010102@redhat.com>
+Received: from mail.kernel.org ([198.145.19.201]:43433 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753998Ab2FFV4e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jun 2012 17:56:34 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9E01220385
+	for <linux-ext4@vger.kernel.org>; Wed,  6 Jun 2012 21:56:33 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
+	by mail.kernel.org (Postfix) with ESMTP id C727420387
+	for <linux-ext4@vger.kernel.org>; Wed,  6 Jun 2012 21:56:31 +0000 (UTC)
+In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 06, 2012 at 12:31:34AM -0500, Eric Sandeen wrote:
-> Sort of.  You got:
-> 
-> > Free blocks count wrong (118366120, counted=76269471).
-> > Fix? yes
-> > 
-> > Free inodes count wrong (30081013, counted=30081004).
-> > Fix? yes
-> 
-> Those are the superblock counters, which aren't journaled - only the bg counters are logged via the journal, IIRC.
+https://bugzilla.kernel.org/show_bug.cgi?id=43292
 
-This has been partially addressed in e2fsprogs 1.42.3:
 
-commit 2788cc879bbe667d28277e1d660b7e56514e5b30
-Author: Andreas Dilger <adilger@whamcloud.com>
-Date:   Tue Apr 24 16:22:48 2012 -0400
 
-    e2fsck: quiet harmless inode/blocks errors
-    
-    Don't consider only an error in the superblock summary as incorrect.
-    The kernel does not update this field except at unmount time, so
-    don't print errors during a "-n" run if there is nothing else wrong.
-    Any other unfixed errors will themselves mark the filesystem invalid.
-    
-    Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-So e2fsck -n will silence the warnings, and e2fsck -p/-y will just fix
-them automatically, although they are still getting printed.  Maybe I
-should just mark these messages as one where they just print the fact
-that we are adjusting the free blocks count, and avoid using the word
-"wrong" --- at least if the filesystem has a journal --- so the error
-message isn't as scary/misleading.
 
-						- Ted
+--- Comment #19 from Florian Pritz <flo@xssn.at>  2012-06-06 21:56:31 ---
+(In reply to comment #18)
+> OK, thanks for testing. So you say the problem resolves itself even when you
+> don't run dd, just it takes longer? I'm more and more inclined to blame some
+> hardware strangeness... Also originally you said the problem started happening
+> around 3.3 or 3.4 but now you are testing with 3.0. So do you have any kernel
+> where you don't see the problem?
+
+So far I can *not* reproduce the problem with 3.0.17 (transfered 8gb of data).
+However, with 3.0.32 I can reproduce every time by copying a 20mb+ file.
+
+If you want, I can test a few kernels in between .17 and .32, but that's going
+to take some time.
+
+FYI: I do notice short hickups on the client, but those are most likely just
+because the disks aren't fast enough to handle the write requests. I'm running
+with Gbit ethernet and reading is obviously faster than writing and writing is
+slower than the link limit, resulting in the network buffers filling up. I
+don't consider this a bug.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
