@@ -1,57 +1,113 @@
-From: Sander Eikelenboom <linux@eikelenboom.it>
-Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1904, 32254 clusters in bitmap, 32258 in gd
-Date: Wed, 6 Jun 2012 09:01:26 +0200
-Message-ID: <1883708187.20120606090126@eikelenboom.it>
-References: <471046920.20120604234941@eikelenboom.it> <20120605000356.GM29466@outflux.net> <1018371644.20120605224154@eikelenboom.it> <20120605210806.GB7182@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Hole punching and mmap races
+Date: Wed, 6 Jun 2012 11:58:27 +0200
+Message-ID: <20120606095827.GA6304@quack.suse.cz>
+References: <20120516130445.GA27661@quack.suse.cz>
+ <20120517074308.GQ25351@dastard>
+ <20120517232829.GA31028@quack.suse.cz>
+ <20120518101210.GX25351@dastard>
+ <20120518133250.GC5589@quack.suse.cz>
+ <20120519014024.GZ25351@dastard>
+ <20120524123538.GA5632@quack.suse.cz>
+ <20120605055150.GF4347@dastard>
+ <20120605231530.GB4402@quack.suse.cz>
+ <20120606000636.GG22848@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Kees Cook <keescook@chromium.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	<dm-devel@redhat.com>, <linux-ext4@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120605210806.GB7182@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120606000636.GG22848@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello Ted,
+On Wed 06-06-12 10:06:36, Dave Chinner wrote:
+> On Wed, Jun 06, 2012 at 01:15:30AM +0200, Jan Kara wrote:
+> > On Tue 05-06-12 15:51:50, Dave Chinner wrote:
+> > > On Thu, May 24, 2012 at 02:35:38PM +0200, Jan Kara wrote:
+> > > > > To me the issue at hand is that we have no method of serialising
+> > > > > multi-page operations on the mapping tree between the filesystem and
+> > > > > the VM, and that seems to be the fundamental problem we face in this
+> > > > > whole area of mmap/buffered/direct IO/truncate/holepunch coherency.
+> > > > > Hence it might be better to try to work out how to fix this entire
+> > > > > class of problems rather than just adding a complex kuldge that just
+> > > > > papers over the current "hot" symptom....
+> > > >   Yes, looking at the above table, the amount of different synchronization
+> > > > mechanisms is really striking. So probably we should look at some
+> > > > possibility of unifying at least some cases.
+> > > 
+> > > It seems to me that we need some thing in between the fine grained
+> > > page lock and the entire-file IO exclusion lock. We need to maintain
+> > > fine grained locking for mmap scalability, but we also need to be
+> > > able to atomically lock ranges of pages.
+> >   Yes, we also need to keep things fine grained to keep scalability of
+> > direct IO and buffered reads...
+> > 
+> > > I guess if we were to nest a fine grained multi-state lock
+> > > inside both the IO exclusion lock and the mmap_sem, we might be able
+> > > to kill all problems in one go.
+> > > 
+> > > Exclusive access on a range needs to be granted to:
+> > > 
+> > > 	- direct IO
+> > > 	- truncate
+> > > 	- hole punch
+> > > 
+> > > so they can be serialised against mmap based page faults, writeback
+> > > and concurrent buffered IO. Serialisation against themselves is an
+> > > IO/fs exclusion problem.
+> > > 
+> > > Shared access for traversal or modification needs to be granted to:
+> > > 
+> > > 	- buffered IO
+> > > 	- mmap page faults
+> > > 	- writeback
+> > > 
+> > > Each of these cases can rely on the existing page locks or IO
+> > > exclusion locks to provide safety for concurrent access to the same
+> > > ranges. This means that once we have access granted to a range we
+> > > can check truncate races once and ignore the problem until we drop
+> > > the access.  And the case of taking a page fault within a buffered
+> > > IO won't deadlock because both take a shared lock....
+> >   You cannot just use a lock (not even a shared one) both above and under
+> > mmap_sem. That is deadlockable in presence of other requests for exclusive
+> > locking...
+> 
+> Well, that's assuming that exclusive lock requests form a barrier to
+> new shared requests. Remember that I'm talking about a range lock
+> here, which we can make up whatever semantics we'd need, including
+> having "shared lock if already locked shared" nested locking
+> semantics which avoids this page-fault-in-buffered-IO-copy-in/out
+> problem....
+  That's true. But if you have semantics like this, constant writing to
+or reading from a file could starve e.g. truncate. So I'd prefer not to
+open this can of worms and keep semantics of rw semaphores if possible.
 
-Another thing that thought of that could be of interest, i think this was a ext3 converted to ext4 partition.
-Don't know if that is true for the other reports as well though.
+Furthermore, with direct IO you have to set in stone the ordering of
+mmap_sem and range lock anyway because there we need an exclusive lock.
 
---
-Sander
+> It also allows writeback to work the same way it does write now when
+> we take a page fault on a page that is under writeback
+  I'm not sure what would be the difference regardless of which semantics
+we choose...
 
-Tuesday, June 5, 2012, 11:08:06 PM, you wrote:
+> > Luckily, with buffered writes the situation isn't that bad. You
+> > need mmap_sem only before each page is processed (in
+> > iov_iter_fault_in_readable()). Later on in the loop we use
+> > iov_iter_copy_from_user_atomic() which doesn't need mmap_sem. So we can
+> > just get our shared lock after iov_iter_fault_in_readable() (or simply
+> > leave it for ->write_begin() if we want to give control over the locking to
+> > filesystems).
+> 
+> That would probably work as well, but it much more likely that
+> people would get it wrong as opposed to special casing the nested
+> lock semantic in the page fault code...
+  I suppose some helper functions could make this easier...
 
-> On Tue, Jun 05, 2012 at 10:41:54PM +0200, Sander Eikelenboom wrote:
->> 
->> > Today I've finally managed to bisect this to here:
->> > [fd034a84e1ea5c8c8d159cd2089c32e792c269b0] ext4: split out ext4_free_blocks_after_init()
->> 
->> > If I revert all the "ext4:" patches in 3.2 up to and including that one,
->> > I get normal behavior again.
-
-> This is excellent.  Thanks!  I'll take a deep look at that ocmmit to
-> see what might be going on.
-
->> So somehow this only effects ext4 on DM (it's THE common factor in all reports) and fsck seems incapable of seeing the error (and thus repair it.)
-
-> What's probably happening is it's only the in-memory copy of the
-> bitmap which is getting corrupted, and because the file system is
-> getting remounted read-only, the corrupted bitmap is not getting
-> written back to disk.  (This is the whole point of remount-ro when fs
-> corruptions are detected.  :-)
-
-> Cheers,
-
->                                                 - Ted
-
-
-
-
+								Honza
 -- 
-Best regards,
- Sander                            mailto:linux@eikelenboom.it
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
