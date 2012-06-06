@@ -1,75 +1,57 @@
-From: Ming Lei <Ming.Lei@riverbed.com>
-Subject: RE: ext4 corruption during unexpected power cycle in the middle of
- writing
-Date: Wed, 6 Jun 2012 05:44:47 +0000
-Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392825D27@SFO1EXC-MBXP06.nbttech.com>
-References: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
- <4FCEEB36.9010102@redhat.com>
+From: Sander Eikelenboom <linux@eikelenboom.it>
+Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1904, 32254 clusters in bitmap, 32258 in gd
+Date: Wed, 6 Jun 2012 09:01:26 +0200
+Message-ID: <1883708187.20120606090126@eikelenboom.it>
+References: <471046920.20120604234941@eikelenboom.it> <20120605000356.GM29466@outflux.net> <1018371644.20120605224154@eikelenboom.it> <20120605210806.GB7182@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eng.riverbed.com ([208.70.196.45]:46412 "EHLO
-	smtp1.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752448Ab2FFFos convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2012 01:44:48 -0400
-In-Reply-To: <4FCEEB36.9010102@redhat.com>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Kees Cook <keescook@chromium.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	<dm-devel@redhat.com>, <linux-ext4@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120605210806.GB7182@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Is this behavior documented somewhere?
+Hello Ted,
 
------Original Message-----
-From: Eric Sandeen [mailto:sandeen@redhat.com] 
-Sent: Tuesday, June 05, 2012 10:32 PM
-To: Ming Lei
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: ext4 corruption during unexpected power cycle in the middle of writing
+Another thing that thought of that could be of interest, i think this was a ext3 converted to ext4 partition.
+Don't know if that is true for the other reports as well though.
 
-On 6/6/12 12:24 AM, Ming Lei wrote:
-> I ran the power cycle test during the middle of file writing and after bootup, I ran force fsck and found two errors (If I run fsck -p -v I don't see the errors). From what I saw I think it is file system meta data corruption. Fsck can repair it but each time I ran the same test and I hit the same issue. 
-> 
-> I don't think it is relevant but want to point out that sda6 shares the same drive as another partition on sda(sda3) is used for the raid6 array for /var.
-> 
-> The same issue was found whenever barrier is on or off, and the disk drive write cache is enabled or disabled. The test result shown below is when barrier is on and disk write cache is disabled. 
-> 
-> I use kernel version 2.6.32SL6 version. I also see the same issue on 2.6.9 based kernel on the same hardware with ext3 file system.
-> 
-> My question is:
-> 1) Is the issue caused from something unique in my box? Configuration error?
-> 2) Is it possible my version of fsck reported false errors?
+--
+Sander
 
-Sort of.  You got:
+Tuesday, June 5, 2012, 11:08:06 PM, you wrote:
 
-> Free blocks count wrong (118366120, counted=76269471).
-> Fix? yes
-> 
-> Free inodes count wrong (30081013, counted=30081004).
-> Fix? yes
+> On Tue, Jun 05, 2012 at 10:41:54PM +0200, Sander Eikelenboom wrote:
+>> 
+>> > Today I've finally managed to bisect this to here:
+>> > [fd034a84e1ea5c8c8d159cd2089c32e792c269b0] ext4: split out ext4_free_blocks_after_init()
+>> 
+>> > If I revert all the "ext4:" patches in 3.2 up to and including that one,
+>> > I get normal behavior again.
 
-Those are the superblock counters, which aren't journaled - only the bg counters are logged via the journal, IIRC.
+> This is excellent.  Thanks!  I'll take a deep look at that ocmmit to
+> see what might be going on.
 
-They aren't false... they are just expected due to the design I'm afraid.
+>> So somehow this only effects ext4 on DM (it's THE common factor in all reports) and fsck seems incapable of seeing the error (and thus repair it.)
 
-If you had mounted/unmounted/fsck'd you wouldn't have seen errors, because at mount time the superblock gets updated from all of the individual bg counters in ext4_fill_super:
+> What's probably happening is it's only the in-memory copy of the
+> bitmap which is getting corrupted, and because the file system is
+> getting remounted read-only, the corrupted bitmap is not getting
+> written back to disk.  (This is the whole point of remount-ro when fs
+> corruptions are detected.  :-)
 
-        /*
-         * The journal may have updated the bg summary counts, so we
-         * need to update the global counters.
-         */
+> Cheers,
 
-> 3) Is this a known issue? ? Is it a kernel bug?
+>                                                 - Ted
 
-yes.  Not really.  ;)
 
-> 4) How do I find what's wrong?
 
-I think this is by design, though maybe a little unfortunate in that it is unexpected to get fsck errors on a journaling filesystem after a crash...
 
-I ran into this same thing when doing recovery testing for > 16T filesystems.
-
--Eric
-
+-- 
+Best regards,
+ Sander                            mailto:linux@eikelenboom.it
