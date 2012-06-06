@@ -1,22 +1,33 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 corruption during unexpected power cycle in the middle of
+From: Ming Lei <Ming.Lei@riverbed.com>
+Subject: RE: ext4 corruption during unexpected power cycle in the middle of
  writing
-Date: Wed, 06 Jun 2012 00:31:34 -0500
-Message-ID: <4FCEEB36.9010102@redhat.com>
+Date: Wed, 6 Jun 2012 05:44:47 +0000
+Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392825D27@SFO1EXC-MBXP06.nbttech.com>
 References: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
+ <4FCEEB36.9010102@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Ming Lei <Ming.Lei@riverbed.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9426 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750885Ab2FFFbg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jun 2012 01:31:36 -0400
-In-Reply-To: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
+Received: from eng.riverbed.com ([208.70.196.45]:46412 "EHLO
+	smtp1.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752448Ab2FFFos convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2012 01:44:48 -0400
+In-Reply-To: <4FCEEB36.9010102@redhat.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+Is this behavior documented somewhere?
+
+-----Original Message-----
+From: Eric Sandeen [mailto:sandeen@redhat.com] 
+Sent: Tuesday, June 05, 2012 10:32 PM
+To: Ming Lei
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: ext4 corruption during unexpected power cycle in the middle of writing
 
 On 6/6/12 12:24 AM, Ming Lei wrote:
 > I ran the power cycle test during the middle of file writing and after bootup, I ran force fsck and found two errors (If I run fsck -p -v I don't see the errors). From what I saw I think it is file system meta data corruption. Fsck can repair it but each time I ran the same test and I hit the same issue. 
