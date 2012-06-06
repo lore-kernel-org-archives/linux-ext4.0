@@ -1,124 +1,241 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Hole punching and mmap races
-Date: Wed, 6 Jun 2012 10:06:36 +1000
-Message-ID: <20120606000636.GG22848@dastard>
-References: <20120516021423.GO25351@dastard>
- <20120516130445.GA27661@quack.suse.cz>
- <20120517074308.GQ25351@dastard>
- <20120517232829.GA31028@quack.suse.cz>
- <20120518101210.GX25351@dastard>
- <20120518133250.GC5589@quack.suse.cz>
- <20120519014024.GZ25351@dastard>
- <20120524123538.GA5632@quack.suse.cz>
- <20120605055150.GF4347@dastard>
- <20120605231530.GB4402@quack.suse.cz>
+From: Ming Lei <Ming.Lei@riverbed.com>
+Subject: ext4 corruption during unexpected power cycle in the middle of
+ writing
+Date: Wed, 6 Jun 2012 05:24:16 +0000
+Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392825CBF@SFO1EXC-MBXP06.nbttech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
-	linux-mm@kvack.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:28193 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753563Ab2FFAGl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jun 2012 20:06:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20120605231530.GB4402@quack.suse.cz>
+Received: from smtp2.riverbed.com ([208.70.196.44]:50785 "EHLO
+	smtp2.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751961Ab2FFFYR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jun 2012 01:24:17 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 06, 2012 at 01:15:30AM +0200, Jan Kara wrote:
-> On Tue 05-06-12 15:51:50, Dave Chinner wrote:
-> > On Thu, May 24, 2012 at 02:35:38PM +0200, Jan Kara wrote:
-> > > > To me the issue at hand is that we have no method of serialising
-> > > > multi-page operations on the mapping tree between the filesystem and
-> > > > the VM, and that seems to be the fundamental problem we face in this
-> > > > whole area of mmap/buffered/direct IO/truncate/holepunch coherency.
-> > > > Hence it might be better to try to work out how to fix this entire
-> > > > class of problems rather than just adding a complex kuldge that just
-> > > > papers over the current "hot" symptom....
-> > >   Yes, looking at the above table, the amount of different synchronization
-> > > mechanisms is really striking. So probably we should look at some
-> > > possibility of unifying at least some cases.
-> > 
-> > It seems to me that we need some thing in between the fine grained
-> > page lock and the entire-file IO exclusion lock. We need to maintain
-> > fine grained locking for mmap scalability, but we also need to be
-> > able to atomically lock ranges of pages.
->   Yes, we also need to keep things fine grained to keep scalability of
-> direct IO and buffered reads...
-> 
-> > I guess if we were to nest a fine grained multi-state lock
-> > inside both the IO exclusion lock and the mmap_sem, we might be able
-> > to kill all problems in one go.
-> > 
-> > Exclusive access on a range needs to be granted to:
-> > 
-> > 	- direct IO
-> > 	- truncate
-> > 	- hole punch
-> > 
-> > so they can be serialised against mmap based page faults, writeback
-> > and concurrent buffered IO. Serialisation against themselves is an
-> > IO/fs exclusion problem.
-> > 
-> > Shared access for traversal or modification needs to be granted to:
-> > 
-> > 	- buffered IO
-> > 	- mmap page faults
-> > 	- writeback
-> > 
-> > Each of these cases can rely on the existing page locks or IO
-> > exclusion locks to provide safety for concurrent access to the same
-> > ranges. This means that once we have access granted to a range we
-> > can check truncate races once and ignore the problem until we drop
-> > the access.  And the case of taking a page fault within a buffered
-> > IO won't deadlock because both take a shared lock....
->   You cannot just use a lock (not even a shared one) both above and under
-> mmap_sem. That is deadlockable in presence of other requests for exclusive
-> locking...
+I ran the power cycle test during the middle of file writing and after =
+bootup, I ran force fsck and found two errors (If I run fsck -p -v I do=
+n't see the errors). From what I saw I think it is file system meta dat=
+a corruption. Fsck can repair it but each time I ran the same test and =
+I hit the same issue.=20
 
-Well, that's assuming that exclusive lock requests form a barrier to
-new shared requests. Remember that I'm talking about a range lock
-here, which we can make up whatever semantics we'd need, including
-having "shared lock if already locked shared" nested locking
-semantics which avoids this page-fault-in-buffered-IO-copy-in/out
-problem....
+I don't think it is relevant but want to point out that sda6 shares the=
+ same drive as another partition on sda(sda3) is used for the raid6 arr=
+ay for /var.
 
-It also allows writeback to work the same way it does write now when
-we take a page fult on a page that is under writeback
+The same issue was found whenever barrier is on or off, and the disk dr=
+ive write cache is enabled or disabled. The test result shown below is =
+when barrier is on and disk write cache is disabled.=20
 
-> Luckily, with buffered writes the situation isn't that bad. You
-> need mmap_sem only before each page is processed (in
-> iov_iter_fault_in_readable()). Later on in the loop we use
-> iov_iter_copy_from_user_atomic() which doesn't need mmap_sem. So we can
-> just get our shared lock after iov_iter_fault_in_readable() (or simply
-> leave it for ->write_begin() if we want to give control over the locking to
-> filesystems).
+I use kernel version 2.6.32SL6 version. I also see the same issue on 2.=
+6.9 based kernel on the same hardware with ext3 file system.
 
-That would probably work as well, but it much more likely that
-people would get it wrong as opposed to special casing the nested
-lock semantic in the page fault code...
+My question is:
+1) Is the issue caused from something unique in my box? Configuration e=
+rror?
+2) Is it possible my version of fsck reported false errors?
+3) Is this a known issue? ? Is it a kernel bug?
+4) How do I find what's wrong?
+Thanks.
 
-> > We'd need some kind of efficient shared/exclusive range lock for
-> > this sort of exclusion, and it's entirely possible that it would
-> > have too much overhead to be acceptible in the page fault path. It's
-> > the best I can think of right now.....
-> >
-> > As it is, a range lock of this kind would be very handy for other
-> > things, too (like the IO exclusion locks so we can do concurrent
-> > buffered writes in XFS ;).
->   Yes, that's what I thought as well. In particular it should be pretty
-> efficient in locking a single page range because that's going to be
-> majority of calls. I'll try to write something and see how fast it can
-> be...
+[admin@chief-csa81 ~]# uname -a
+Linux chief-csa81 2.6.32 #1 SMP Tue May 29 00:36:37 PDT 2012 x86_64 x86=
+_64 x86_64 GNU/Linux
+[admin@chief-csa81 ~]# mount
+/dev/md1 on /var type ext3 (rw,relatime,user_xattr,acl,barrier=3D1,data=
+=3Dordered)
+/dev/sda6 on /data type ext4 (rw,nodiratime,relatime,barrier=3D1,data=3D=
+ordered)
+[admin@chief-csa81 ~]# sdparm /dev/sda
+=A0=A0=A0 /dev/sda: ATA=A0=A0=A0=A0=A0=A0 WDC WD5003ABYX-0=A0 1S01
+Read write error recovery mode page:
+=A0 AWRE=A0=A0=A0=A0=A0=A0=A0 1=A0 [cha: n]
+=A0 ARRE=A0=A0=A0=A0=A0=A0=A0 0=A0 [cha: n]
+=A0 PER=A0 =A0=A0=A0=A0=A0=A0=A00=A0 [cha: n]
+Caching (SBC) mode page:
+=A0 WCE=A0=A0=A0=A0=A0=A0=A0=A0 0=A0 [cha: y]
+=A0 RCD=A0=A0=A0=A0=A0=A0=A0=A0 0=A0 [cha: n]
+Control mode page:
+=A0 SWP=A0=A0=A0=A0=A0=A0=A0=A0 0=A0 [cha: n]
+Informational exceptions control mode page:
+=A0 EWASC=A0=A0=A0=A0=A0=A0 0=A0 [cha: n]
+=A0 DEXCPT=A0=A0=A0=A0=A0 0=A0 [cha: n]
+=A0 MRIE=A0=A0=A0=A0=A0=A0=A0 6=A0 [cha: n]
+[admin@chief-csa81 ~]# cbt -p /data -x 1337 -s 400GB
+---------------------------------------------------
+Build info
+=A0=A0 Version: v2.2.5
+=A0=A0 Time: May 29 2012 01:51:41
+Runtime info
+=A0=A0 Sysname:=A0 Linux
+=A0=A0 Nodename: chief-csa81
+=A0=A0 Release:=A0 2.6.32
+=A0=A0 Version:=A0 #1 SMP Tue May 29 00:36:37 PDT 2012
+=A0=A0 Machine:=A0 x86_64
+=A0=A0 Time: Tue Jun=A0 5 15:02:55 2012
+Invocation
+=A0=A0=A0=A0=A0=A0=A0 cbt -p /data -x 1337 -s 400GB
+Configuration
+=A0 General Options:
+=A0=A0=A0=A0=A0 -r,--report-after-bytes=A0=A0 =3D 500MB
+=A0=A0=A0=A0=A0 -R,--report-after-seconds =3D 0
+=A0 Output Size/Dimensions:
+=A0=A0=A0=A0=A0 -p,--output-path=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D /data
+=A0=A0=A0=A0=A0 -s,--output-size=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 400GB
+=A0=A0=A0=A0=A0 -n,--max-streams=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 1
+=A0=A0=A0=A0=A0 -S,--output-file-size=A0=A0=A0=A0 =3D 18GB
+=A0=A0=A0=A0=A0 -w,--write-size=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D
+=A0=A0=A0=A0=A0=A0=A0=A0 --oow-max-distance=A0=A0=A0=A0 =3D
+=A0 Data Options:
+=A0=A0=A0=A0=A0=A0=A0=A0 --data-mode=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D=
+ s
+=A0=A0=A0=A0=A0 -x,--random-seed=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 1337
+=A0=A0=A0=A0=A0 -z,--lz-factor=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 3.5=
+425
+=A0=A0=A0=A0=A0 -D,--ddup-factor=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 1.029
+=A0=A0=A0=A0=A0 -c,--churn-pct=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 =3D 0
+=A0=A0=A0=A0=A0 -X,--churn-pct-rand-seed=A0 =3D 1338933774
+=A0=A0=A0=A0=A0 -A,--ddup-fanout-algorithm =3D CLUSTERED_RUNS
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-mean-run-size-in-segments =3D 1.3
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-mean-unique-run-size-in-segments =3D 12=
+00
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-run-size-multiple =3D 64
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-min-distance-from-last-ddup =3D 120KB
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-min-distance-from-cursor =3D 160MB
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-ave-dist-for-nearby-segs =3D 120KB
+=A0=A0=A0=A0=A0=A0=A0=A0 --ddup-random-jump-every-n-ddup-runs =3D 12.63=
+44
+=A0 Segmentation Options:
+=A0=A0=A0=A0=A0=A0=A0=A0 --type=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0 =3D rk
+=A0=A0=A0=A0=A0=A0=A0=A0 --rk-seg-size-min=A0=A0=A0=A0=A0 =3D 512
+=A0=A0=A0=A0=A0=A0=A0=A0 --rk-seg-size-max=A0=A0=A0=A0=A0 =3D 32KB
+=A0=A0=A0=A0=A0=A0=A0=A0 --rk-seg-size-ave=A0=A0=A0=A0=A0 =3D 8KB
+=A0=A0=A0=A0=A0=A0=A0=A0 --rk-seg-size-dist=A0=A0=A0=A0 =3D exponential
+=A0=A0=A0 Number of cut points (-C) being used: 3045800
+---------------------------------------------------
+Number of files to write: 23
 
-Cool. :)
+New_file: 0, stream 0,=A0=A0=A0 /data/cbt_output.0, size: 18GB
+=A0 Total: 2.284 sec (0:00:02), 500.001 MB, 218.926 MBps - Curr: 2.284 =
+sec, 500.001 MB, 218.926 MBps - Tue Jun=A0 5 15:02:57 2012
+=A0 Total: 4.822 sec (0:00:04), 1000.002 MB, 207.397 MBps - Curr: 2.538=
+ sec, 500.001 MB, 197.022 MBps - Tue Jun=A0 5 15:03:00 2012
+=A0 Total: 8.275 sec (0:00:08), 1500.004 MB, 181.263 MBps - Curr: 3.454=
+ sec, 500.002 MB, 144.776 MBps - Tue Jun=A0 5 15:03:03 2012
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D =A0P=
+ower cycle during the writing =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 
-Cheers,
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D on next boot, first fsck found 2 errors =
+and then next fsck passed =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+[admin@chief-csa81 ~]# fsck.ext4 -v -f -y /dev/sda6
+e2fsck 1.42 (29-Nov-2011)
+/dev/sda6: recovering journal
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+=46ree blocks count wrong (118366120, counted=3D76269471).
+=46ix? yes
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+=46ree inodes count wrong (30081013, counted=3D30081004).
+=46ix? yes
+
+/dev/sda6: ***** FILE SYSTEM WAS MODIFIED *****
+
+=A0=A0=A0=A0=A0 20 inodes used (0.00%)
+=A0=A0=A0=A0=A0 0 non-contiguous files (0.0%)
+=A0=A0=A0=A0=A0=A0 0 non-contiguous directories (0.0%)
+=A0=A0=A0=A0=A0=A0=A0=A0 # of inodes with ind/dind/tind blocks: 0/0/0
+=A0=A0=A0=A0=A0=A0=A0=A0 Extent depth histogram: 3/9
+44035281 blocks used (36.60%)
+=A0=A0=A0=A0=A0=A0 0 bad blocks
+=A0=A0=A0=A0=A0 10 large files
+
+=A0=A0=A0=A0=A0=A0 9 regular files
+=A0=A0=A0=A0=A0=A0 2 directories
+=A0=A0=A0=A0=A0=A0 0 character device files
+=A0=A0=A0=A0=A0=A0 0 block device files
+=A0=A0=A0=A0=A0=A0 0 fifos
+=A0=A0=A0=A0=A0=A0 0 links
+=A0=A0=A0=A0=A0=A0 0 symbolic links (0 fast symbolic links)
+=A0=A0=A0=A0=A0=A0 0 sockets
+--------
+=A0=A0=A0=A0=A0 11 files
+
+[admin@chief-csa81 ~]# fsck.ext4 -v -f -y /dev/sda6
+e2fsck 1.42 (29-Nov-2011)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+
+=A0=A0=A0=A0=A0 20 inodes used (0.00%)
+=A0=A0=A0=A0=A0=A0 0 non-contiguous files (0.0%)
+=A0=A0=A0=A0=A0=A0 0 non-contiguous directories (0.0%)
+=A0=A0=A0=A0=A0=A0=A0=A0 # of inodes with ind/dind/tind blocks: 0/0/0
+=A0=A0=A0=A0=A0=A0=A0=A0 Extent depth histogram: 3/9
+44035281 blocks used (36.60%)
+=A0=A0=A0=A0=A0=A0 0 bad blocks
+=A0=A0=A0=A0=A0 10 large files
+
+=A0=A0=A0=A0=A0=A0 9 regular files
+=A0=A0=A0=A0=A0=A0 2 directories
+=A0=A0=A0=A0=A0=A0 0 character device files
+=A0=A0=A0=A0=A0=A0 0 block device files
+=A0=A0=A0=A0=A0=A0 0 fifos
+=A0=A0=A0=A0=A0=A0 0 links
+=A0=A0=A0=A0=A0=A0 0 symbolic links (0 fast symbolic links)
+=A0=A0=A0=A0=A0=A0 0 sockets
+--------
+=A0=A0=A0=A0=A0 11 files
+
+
+=3D=3D=3D=3D=3D=3D Hardware Info =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+The box has 2 Quad-Core AMD Opteron(tm) Processor 2378 stepping 02 and =
+LSI sata controller.
+
+=46usion MPT base driver 4.28.00.00
+Copyright (c) 1999-2010 LSI Corporation
+=46usion MPT SPI Host driver 4.28.00.00
+=46usion MPT SAS Host driver 4.28.00.00
+ACPI: PCI Interrupt Link [LNEC] enabled at IRQ 17
+mptsas 0000:02:00.0: PCI INT A -> Link[LNEC] -> GSI 17 (level, low) -> =
+IRQ 17
+mptbase: ioc0: 64 BIT PCI BUS DMA ADDRESSING SUPPORTED, total memory =3D=
+ 8114680 kB
+mptbase: ioc0: Initiating bringup
+ioc0: LSISAS1068E B2: Capabilities=3D{Initiator}
+scsi0 : ioc0: LSISAS1068E B2, FwRev=3D011f0000h, Ports=3D1, MaxQ=3D277,=
+ IRQ=3D17
+mptsas: ioc0: add expander: num_phys 12, sas_addr (0x3000000403f)
+mptsas: ioc0: add expander: num_phys 12, sas_addr (0x3000000427f)
+mptsas: ioc0: attaching sata device: fw_channel 0, fw_id 37, phy 0, sas=
+_addr 0x30000004030
+scsi target0:0:0: mptsas: ioc0: add device: fw_channel 0, fw_id 37, phy=
+ 0, sas_addr 0x30000004030scsi 0:0:0:0: Direct-Access=A0=A0=A0=A0 ATA=A0=
+=A0=A0=A0=A0 WDC WD5003ABYX-0 1S01 PQ: 0 ANSI: 5
+scsi 0:0:0:0: mptscsih: ioc0: qdepth=3D64, tagged=3D1, simple=3D1, orde=
+red=3D0, scsi_level=3D6, cmd_que=3D1
+sdev dma_alignment 511
+sd 0:0:0:0: Attached scsi generic sg0 type 0
+sd 0:0:0:0: [sda] 976773168 512-byte logical blocks: (500 GB/465 GiB)
+sd 0:0:0:0: [sda] Write Protect is off
+sd 0:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn't su=
+pport DPO or FUA
+sda: sda1 sda2 sda3 sda4 < sda5 sda6 >
+sd 0:0:0:0: [sda] Attached SCSI disk
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
