@@ -1,52 +1,33 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [dm-devel] EXT4-fs error (device dm-42):
- ext4_mb_generate_buddy:741: group 1904, 32254 clusters in bitmap, 32258 in
- gd
-Date: Thu, 7 Jun 2012 18:54:46 -0400
-Message-ID: <20120607225446.GK19839@thunk.org>
-References: <471046920.20120604234941@eikelenboom.it>
- <20120605000356.GM29466@outflux.net>
- <1018371644.20120605224154@eikelenboom.it>
- <20120605210806.GB7182@thunk.org>
- <1883708187.20120606090126@eikelenboom.it>
- <CAGXu5jK-4dO59-x3eTU10OntcPwsVptjpUzQdbbHOvy9_VBQ2A@mail.gmail.com>
- <1482118647.20120606164012@eikelenboom.it>
- <20120607042756.GA30776@thunk.org>
- <20120607222729.GI6938@tux1.beaverton.ibm.com>
- <CAGXu5jKmBkfvuSR7q47-Ac57dVZynz_JkYXiA_-aXaGQiR_C4g@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Don't set i_flags in EXT4_IOC_SETFLAGS.
+Date: Thu, 7 Jun 2012 19:05:52 -0400
+Message-ID: <20120607230552.GL19839@thunk.org>
+References: <1338779898-3146-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: djwong@us.ibm.com, Sander Eikelenboom <linux@eikelenboom.it>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	dm-devel@redhat.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Kees Cook <keescook@chromium.org>
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48408 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48411 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756834Ab2FGWyy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jun 2012 18:54:54 -0400
+	id S933377Ab2FGXFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jun 2012 19:05:55 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGXu5jKmBkfvuSR7q47-Ac57dVZynz_JkYXiA_-aXaGQiR_C4g@mail.gmail.com>
+In-Reply-To: <1338779898-3146-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 07, 2012 at 03:40:40PM -0700, Kees Cook wrote:
+On Mon, Jun 04, 2012 at 11:18:18AM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
-> FWIW, I was building the filesystem that triggered this as ext4:
+> 7990696 uses the ext4_{set,clear}_inode_flags() functions to change
+> the i_flags automatically but fails to remove the error setting of
+> i_flags. So we still have the problem of trashing  state flags. So
+> remove it.
 > 
->   mkfs.ext4 -T default -m 0 -O ^huge_file,^flex_bg -E
-> discard,lazy_itable_init /dev/mapper/...
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 
-Ouy of curiosity, was there a reason you chose those particular file
-system parameters?  It's a surprising set, because if you're starting
-with a fresh file system, enabling flex_bg produces a more optimal
-file system layout.
+Good catch!  Sorry that I missed it.  I've taken this patch, thanks.
 
-The reason why I wrote the commit description way I did was because it
-seemed to be the most likely way that someone would trip across this
-bug.  We didn't notice this for as long as we did since most of the
-users of ext4 (especially those who use community distributions) have
-been using freshly mkfs'ed ext4 file systems.
-
-						- Ted
+     	     	   	  	      - Ted
