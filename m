@@ -1,53 +1,87 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Wed,  6 Jun 2012 21:56:31 +0000 (UTC)
-Message-ID: <20120606215631.BCB8811FC42@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741:
+ group 1904, 32254 clusters in bitmap, 32258 in gd
+Date: Thu, 7 Jun 2012 00:27:56 -0400
+Message-ID: <20120607042756.GA30776@thunk.org>
+References: <471046920.20120604234941@eikelenboom.it>
+ <20120605000356.GM29466@outflux.net>
+ <1018371644.20120605224154@eikelenboom.it>
+ <20120605210806.GB7182@thunk.org>
+ <1883708187.20120606090126@eikelenboom.it>
+ <CAGXu5jK-4dO59-x3eTU10OntcPwsVptjpUzQdbbHOvy9_VBQ2A@mail.gmail.com>
+ <1482118647.20120606164012@eikelenboom.it>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:43433 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753998Ab2FFV4e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jun 2012 17:56:34 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9E01220385
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Jun 2012 21:56:33 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id C727420387
-	for <linux-ext4@vger.kernel.org>; Wed,  6 Jun 2012 21:56:31 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Kees Cook <keescook@chromium.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	dm-devel@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Sander Eikelenboom <linux@eikelenboom.it>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1482118647.20120606164012@eikelenboom.it>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+I think this patch should fix things.  Could you give it a try (after
+re-enabling uninit_bg and then running e2fsck on the file systems)?
 
+Many thanks,
 
+						- Ted
 
+commit b6b218940d47f20fc14e4d203930c575be0c65bf
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Jun 7 00:26:56 2012 -0400
 
+    ext4: fix the free blocks calculation for ext3 file systems w/ uninit_bg
+    
+    Ext3 filesystems that are converted to use as many ext4 file systems
+    as possible will enable uninit_bg to speed up e2fsck times.  File
+    systems with an native ext3 layout of inode tables and block
+    allocation bitmaps (as opposed to ext4's flex_bg layout), ext4 would
+    sometimes incorrectly calculate the number of free blocks in an
+    uninitialized block group.  As a result, when first allocating a block
+    in block group marked uninitalized, ext4 would incorrectly report that
+    the file system was corrupt:
+    
+    EXT4-fs error (device dm-42): ext4_mb_generate_buddy:741: group 1699, 32254 clusters in bitmap, 32258 in gd
+    
+    Fix the calculation in ext4_num_overhead_clusters() to avoid this
+    problem.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
---- Comment #19 from Florian Pritz <flo@xssn.at>  2012-06-06 21:56:31 ---
-(In reply to comment #18)
-> OK, thanks for testing. So you say the problem resolves itself even when you
-> don't run dd, just it takes longer? I'm more and more inclined to blame some
-> hardware strangeness... Also originally you said the problem started happening
-> around 3.3 or 3.4 but now you are testing with 3.0. So do you have any kernel
-> where you don't see the problem?
-
-So far I can *not* reproduce the problem with 3.0.17 (transfered 8gb of data).
-However, with 3.0.32 I can reproduce every time by copying a 20mb+ file.
-
-If you want, I can test a few kernels in between .17 and .32, but that's going
-to take some time.
-
-FYI: I do notice short hickups on the client, but those are most likely just
-because the disks aren't fast enough to handle the write requests. I'm running
-with Gbit ethernet and reading is obviously faster than writing and writing is
-slower than the link limit, resulting in the network buffers filling up. I
-don't consider this a bug.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 99b6324..cee7812 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -90,8 +90,8 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ 	 * unusual file system layouts.
+ 	 */
+ 	if (ext4_block_in_group(sb, ext4_block_bitmap(sb, gdp), block_group)) {
+-		block_cluster = EXT4_B2C(sbi, (start -
+-					       ext4_block_bitmap(sb, gdp)));
++		block_cluster = EXT4_B2C(sbi,
++					 ext4_block_bitmap(sb, gdp) - start);
+ 		if (block_cluster < num_clusters)
+ 			block_cluster = -1;
+ 		else if (block_cluster == num_clusters) {
+@@ -102,7 +102,7 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ 
+ 	if (ext4_block_in_group(sb, ext4_inode_bitmap(sb, gdp), block_group)) {
+ 		inode_cluster = EXT4_B2C(sbi,
+-					 start - ext4_inode_bitmap(sb, gdp));
++					 ext4_inode_bitmap(sb, gdp) - start);
+ 		if (inode_cluster < num_clusters)
+ 			inode_cluster = -1;
+ 		else if (inode_cluster == num_clusters) {
+@@ -114,7 +114,7 @@ unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ 	itbl_blk = ext4_inode_table(sb, gdp);
+ 	for (i = 0; i < sbi->s_itb_per_group; i++) {
+ 		if (ext4_block_in_group(sb, itbl_blk + i, block_group)) {
+-			c = EXT4_B2C(sbi, start - itbl_blk + i);
++			c = EXT4_B2C(sbi, itbl_blk + i - start);
+ 			if ((c < num_clusters) || (c == inode_cluster) ||
+ 			    (c == block_cluster) || (c == itbl_cluster))
+ 				continue;
