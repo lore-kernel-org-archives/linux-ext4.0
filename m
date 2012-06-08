@@ -1,91 +1,98 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
- deactivate_locked_super() to filesystems
-Date: Sat, 9 Jun 2012 02:31:27 +0300
-Message-ID: <20120608233127.GB18981@otc-wbsnb-06>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [RFC, PATCH,
+ RESEND] fs: push rcu_barrier() from deactivate_locked_super() to
+ filesystems
+Date: Fri, 8 Jun 2012 16:37:51 -0700
+Message-ID: <20120608163751.7a8ec2bc.akpm@linux-foundation.org>
 References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
- <20120608150253.e42464a6.akpm@linux-foundation.org>
- <20120608221446.GA18250@otc-wbsnb-06>
- <20120608152550.258d6a30.akpm@linux-foundation.org>
- <20120608222734.GT30000@ZenIV.linux.org.uk>
- <20120608153120.b722d7c3.akpm@linux-foundation.org>
+	<20120608150253.e42464a6.akpm@linux-foundation.org>
+	<20120608221446.GA18250@otc-wbsnb-06>
+	<20120608152550.258d6a30.akpm@linux-foundation.org>
+	<20120608222734.GT30000@ZenIV.linux.org.uk>
+	<20120608153120.b722d7c3.akpm@linux-foundation.org>
+	<20120608233127.GB18981@otc-wbsnb-06>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="3uo+9/B/ebqu+fSQ"
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Boaz Harrosh <bharrosh@panasas.com>,
-	Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
-	"Dmitry V. Levin" <ldv@altlinux.org>,
-	v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-	linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-	osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-	fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-	jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <ecryptfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120608153120.b722d7c3.akpm@linux-foundation.org>
-Sender: ecryptfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, "Dmitry V. Levin" <ldv@altlinux.org>,
+	linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
+	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+	linux-nilfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	Nick Piggin <npiggin@kernel.dk>,
+	fuse-devel@lists.sourceforge.net, Ma <boyu.mt@taobao.com>,
+	ecryptfs@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+	osd-dev@open-osd.org, ceph-devel@vger.kernel.org,
+	codalist@TELEMANN.coda.cs.cmu.edu, linux-nfs@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	logfs@logfs.org, Al Viro <viro@ZenIV.linux.org.uk>,
+	linux-fsdevel@vger.kernel.org, Tao,
+	Linus Torvalds <torvalds@linux-foundation.org>, linux-btrfs@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+In-Reply-To: <20120608233127.GB18981@otc-wbsnb-06>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
+On Sat, 9 Jun 2012 02:31:27 +0300
+"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com> wrote:
 
---3uo+9/B/ebqu+fSQ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> On Fri, Jun 08, 2012 at 03:31:20PM -0700, Andrew Morton wrote:
+> > On Fri, 8 Jun 2012 23:27:34 +0100
+> > Al Viro <viro@ZenIV.linux.org.uk> wrote:
+> > 
+> > > On Fri, Jun 08, 2012 at 03:25:50PM -0700, Andrew Morton wrote:
+> > > 
+> > > > A neater implementation might be to add a kmem_cache* argument to
+> > > > unregister_filesystem().  If that is non-NULL, unregister_filesystem()
+> > > > does the rcu_barrier() and destroys the cache.  That way we get to
+> > > > delete (rather than add) a bunch of code from all filesystems and new
+> > > > and out-of-tree filesystems cannot forget to perform the rcu_barrier().
+> > > 
+> > > There's often enough more than one cache, so that one is no-go.
+> > 
+> > kmem_cache** ;)
+> > 
+> > Which filesystems have multiple inode caches?
+> 
+> Multiple inode caches? No.
+> Multiple caches with call_rcu() free? See btrfs or gfs2.
 
-On Fri, Jun 08, 2012 at 03:31:20PM -0700, Andrew Morton wrote:
-> On Fri, 8 Jun 2012 23:27:34 +0100
-> Al Viro <viro@ZenIV.linux.org.uk> wrote:
->=20
-> > On Fri, Jun 08, 2012 at 03:25:50PM -0700, Andrew Morton wrote:
-> >=20
-> > > A neater implementation might be to add a kmem_cache* argument to
-> > > unregister_filesystem().  If that is non-NULL, unregister_filesystem()
-> > > does the rcu_barrier() and destroys the cache.  That way we get to
-> > > delete (rather than add) a bunch of code from all filesystems and new
-> > > and out-of-tree filesystems cannot forget to perform the rcu_barrier(=
-).
-> >=20
-> > There's often enough more than one cache, so that one is no-go.
->=20
-> kmem_cache** ;)
->=20
-> Which filesystems have multiple inode caches?
+OK.  But for those non-inode caches, the rcu treatment is private to
+the filesystem.  Hence it is appropriate that the filesystem call
+rcu_barrier() for those caches.
 
-Multiple inode caches? No.
-Multiple caches with call_rcu() free? See btrfs or gfs2.
+But in the case of the inode caches, the rcu treatment is a vfs thing,
+so it is the vfs which should perform the rcu_barrier().
 
---=20
- Kirill A. Shutemov
+This is a red herring - those non-inode caches have nothing to do with
+the issue we're dicussing.
 
---3uo+9/B/ebqu+fSQ
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+So how about open-coding the rcu_barrier() in btrfs and gfs2 for the
+non-inode caches (which is the appropriate place), and hand the inode
+cache over to the vfs for treatment (which is the appropriate place).
 
-iQIcBAEBAgAGBQJP0otPAAoJEAd+omnVudOM8pEP/j4da9wjUyer1zimYCUs0oA1
-EQKJF+RlKs67b4j9eDRZKS/yDOC11CBemw333suupZugHnUmMrRIfbYw2c4vOsQs
-C8E3glDJ3i6plLquzD2tBNmrs2rFFSEoLXQEuzpDuN5BVKB4ifXqnuwxVX8/lxTN
-x3l81bt7sQvgO3OHL/DfuyVFsRG/N1qfaKJVjLhSFF971vPiz+xfn9uwiB8Be/Sa
-28SBw4eVneaEZotHoNmDJmGH+LpRo0F5sy6gJNmh1VzK7eYN4pCr73f9tIL6x7XM
-GBF84tK8uN8iNPqVoMXh4HtLCbS+q6TvVpHCWqab9u/ajvLPP0vY+Osm6Ryw2Exn
-dnHjxqH9yyOsZmeHFP2osHNHbJMinKGX7iYoSAVuie5fTc27FkdyQkTS66KLpKGJ
-UHCZ/PeDfRtxVo+3gV8g0PQJCWJ2LHz7b4g3q4zK44pNZDeyslgS+gMMG881tCBp
-1Qy9Xq6Hb8MlkrlDY43hz4suQRCibG1nBZK37Ni02fEcj6S2lD6gsu5J91gNEEkc
-49Ry0vBmCMRT+Zsl4YP9PPKSfsPG+2oTpf06xV8V+rApqwZ6nKBpWqyuJuVVpxIT
-e/wamM+Ff6Ni6DVkXyXTO99wkSLHjdM+HL2MwhzQ38KMLrBAfzzZ8nGn67PahR/5
-9q5U5UjNlz2F387CCYaK
-=It/C
------END PGP SIGNATURE-----
+The downside is that btrfs and gfs2 will do an extra rcu_barrier() at
+umount time.  Shrug.
 
---3uo+9/B/ebqu+fSQ--
+If they really want to super-optimise that, they can skip the private
+rcu_barrier() call and assume that the vfs will be doing it.  Not a
+good idea, IMO.
+
+
+
+------------------------------------------------------------------------------
+Live Security Virtual Conference
+Exclusive live event will cover all the ways today's security and 
+threat landscape has changed and how IT managers can respond. Discussions 
+will include endpoint security, mobile security and the latest in malware 
+threats. http://www.accelacomm.com/jaw/sfrnl04242012/114/50122263/
