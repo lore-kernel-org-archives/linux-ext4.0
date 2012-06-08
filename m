@@ -1,45 +1,54 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.5-rc2
-Date: Fri, 08 Jun 2012 14:13:19 -0400
-Message-ID: <E1Sd3gV-00080R-1E@tytso-glaptop.cam.corp.google.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48578 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932400Ab2FHSNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 8 Jun 2012 14:13:22 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Sync does not flush to disk!?
+Date: Fri, 8 Jun 2012 14:28:26 -0400
+Message-ID: <20120608182826.GA31636@thunk.org>
+References: <4FD1CB8A.9080805@shiftmail.org>
+ <20120608223332.5fe49193@notabene.brown>
+ <4FD202CD.7000309@turmel.org>
+ <4FD204B0.3000204@shiftmail.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Phil Turmel <philip@turmel.org>, NeilBrown <neilb@suse.de>,
+	linux-raid <linux-raid@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
+To: Asdo <asdo@shiftmail.org>
+Return-path: <linux-raid-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4FD204B0.3000204@shiftmail.org>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Fri, Jun 08, 2012 at 03:57:04PM +0200, Asdo wrote:
+> 
+> I might say that it seems to me a bad design: never before I saw a
+> cache that is not updated by writes.
+> Here the cache content is *older* than the data on the real devices!?
+> if it was *newer*, there are known cases (writeback cache not
+> flushed yet), but *older*... never seen.
 
-The following changes since commit f8f5701bdaf9134b1f90e5044a82c66324d2073f:
+It's not just a matter of keeping the caches in sync --- it's also a
+simple matter of locking.  If a file system is mounted on two systems
+at the same time, there's no way (without using a cluster lock
+manager, which is what a cluster file system like ocfs2 uses) to avoid
+both systems from trying to modify a particular of the file system (an
+inode or a directory, for example) at the same time.
 
-  Linux 3.5-rc1 (2012-06-02 18:29:26 -0700)
+As a result, there's no way for a local disk file system to know when
+a block has been modified out from under it, so that it can update its
+inode cache (where the in-memory inode data structure looks quite
+different from the on-disk inode table).
 
-are available in the git repository at:
+There is overhead in using a cluster file system, since it has to do
+all of these extra checks to see if the block device has gotten
+magically modified out from under it.  So that's why most people won't
+use a cluster file system if it is only going to be mounted on one
+system at a time.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+But if you are going to have a file system mounted in both the guest
+and host file system at the same time, you *have* to use a cluster
+file system.  Alternately, you could have the guest access the file
+system as mounted on the host OS via NFS.
 
-for you to fetch changes up to b22b1f178f6799278d3178d894f37facb2085765:
+Regards,
 
-  ext4: don't set i_flags in EXT4_IOC_SETFLAGS (2012-06-07 19:04:19 -0400)
-
-----------------------------------------------------------------
-ext4 bug fixes for 3.5-rc2
-
-This update contains two bug fixes, both destined for the stable tree.
-Perhaps the most important is one which fixes ext4 when used with file
-systems originally formatted for use with ext3, but then later
-converted to take advantage of ext4.
-
-----------------------------------------------------------------
-Tao Ma (1):
-      ext4: don't set i_flags in EXT4_IOC_SETFLAGS
-
-Theodore Ts'o (1):
-      ext4: fix the free blocks calculation for ext3 file systems w/ uninit_bg
-
- fs/ext4/balloc.c | 8 ++++----
- fs/ext4/ioctl.c  | 1 -
- 2 files changed, 4 insertions(+), 5 deletions(-)
+						- Ted
