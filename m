@@ -1,51 +1,82 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
- deactivate_locked_super() to filesystems
-Date: Fri, 8 Jun 2012 15:31:20 -0700
-Message-ID: <20120608153120.b722d7c3.akpm@linux-foundation.org>
-References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com>
-	<20120608150253.e42464a6.akpm@linux-foundation.org>
-	<20120608221446.GA18250@otc-wbsnb-06>
-	<20120608152550.258d6a30.akpm@linux-foundation.org>
-	<20120608222734.GT30000@ZenIV.linux.org.uk>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Hole punching and mmap races
+Date: Sat, 9 Jun 2012 09:06:16 +1000
+Message-ID: <20120608230616.GA25389@dastard>
+References: <20120519014024.GZ25351@dastard>
+ <20120524123538.GA5632@quack.suse.cz>
+ <20120605055150.GF4347@dastard>
+ <20120605231530.GB4402@quack.suse.cz>
+ <20120606000636.GG22848@dastard>
+ <20120606095827.GA6304@quack.suse.cz>
+ <20120606133616.GL22848@dastard>
+ <20120607215835.GB393@quack.suse.cz>
+ <20120608005700.GW4347@dastard>
+ <20120608213629.GA1365@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Boaz Harrosh <bharrosh@panasas.com>,
-	Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
-	"Dmitry V. Levin" <ldv@altlinux.org>,
-	v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-	linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	codalist@TELEMANN.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-	osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-	fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-	jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <ceph-devel-owner@vger.kernel.org>
-In-Reply-To: <20120608222734.GT30000@ZenIV.linux.org.uk>
-Sender: ceph-devel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, Hugh Dickins <hughd@google.com>,
+	linux-mm@kvack.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20120608213629.GA1365@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 8 Jun 2012 23:27:34 +0100
-Al Viro <viro@ZenIV.linux.org.uk> wrote:
-
-> On Fri, Jun 08, 2012 at 03:25:50PM -0700, Andrew Morton wrote:
+On Fri, Jun 08, 2012 at 11:36:29PM +0200, Jan Kara wrote:
+> On Fri 08-06-12 10:57:00, Dave Chinner wrote:
+> > On Thu, Jun 07, 2012 at 11:58:35PM +0200, Jan Kara wrote:
+> > > On Wed 06-06-12 23:36:16, Dave Chinner wrote:
+> > > Also we could implement the common case of locking a range
+> > > containing single page by just taking page lock so we save modification of
+> > > interval tree in the common case and generally make the tree smaller (of
+> > > course, at the cost of somewhat slowing down cases where we want to lock
+> > > larger ranges).
+> > 
+> > That seems like premature optimistion to me, and all the cases I
+> > think we need to care about are locking large ranges of the tree.
+> > Let's measure what the overhead of tracking everything in a single
+> > tree is first so we can then see what needs optimising...
+>   Umm, I agree that initially we probably want just to have the mapping
+> range lock ability, stick it somewhere to IO path and make things work.
+> Then we can look into making it faster / merging with page lock.
 > 
-> > A neater implementation might be to add a kmem_cache* argument to
-> > unregister_filesystem().  If that is non-NULL, unregister_filesystem()
-> > does the rcu_barrier() and destroys the cache.  That way we get to
-> > delete (rather than add) a bunch of code from all filesystems and new
-> > and out-of-tree filesystems cannot forget to perform the rcu_barrier().
-> 
-> There's often enough more than one cache, so that one is no-go.
+> However I disagree we care most about locking large ranges. For all
+> buffered IO and all page faults we need to lock a range containing just a
+> single page. We cannot lock more due to locking constraints with mmap_sem.
 
-kmem_cache** ;)
+Not sure I understand what that constraint is - I hav ebeen thinking
+that the buffered IO range lok would be across the entire IO, not
+individual pages.
 
-Which filesystems have multiple inode caches?
+As it is, if we want to do multipage writes (and we do), we have to
+be able to lock a range of the mapping in the buffered IO path at a
+time...
+
+> So the places that will lock larger ranges are: direct IO, truncate, punch
+> hole. Writeback actually doesn't seem to need any additional protection at
+> least as I've sketched out things so far.
+
+AFAICT, writeback needs protection against punching holes, just like
+mmap does, because they use the same "avoid truncated pages"
+mechanism.
+
+> So single-page ranges matter at least as much as longer ranges. That's why
+> I came up with that page lock optimisation and merging...
+
+I agree they are common, but lets measure the overhead first before
+trying to optimise/special case certain behaviours....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
