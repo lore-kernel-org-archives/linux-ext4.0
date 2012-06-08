@@ -1,867 +1,213 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [RFC, PATCH] fs: push rcu_barrier() from deactivate_locked_super() to
- filesystems
-Date: Sat,  9 Jun 2012 00:28:50 +0300
-Message-ID: <1339190930-17233-1-git-send-email-kirill.shutemov@linux.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Hole punching and mmap races
+Date: Fri, 8 Jun 2012 23:36:29 +0200
+Message-ID: <20120608213629.GA1365@quack.suse.cz>
+References: <20120518133250.GC5589@quack.suse.cz>
+ <20120519014024.GZ25351@dastard>
+ <20120524123538.GA5632@quack.suse.cz>
+ <20120605055150.GF4347@dastard>
+ <20120605231530.GB4402@quack.suse.cz>
+ <20120606000636.GG22848@dastard>
+ <20120606095827.GA6304@quack.suse.cz>
+ <20120606133616.GL22848@dastard>
+ <20120607215835.GB393@quack.suse.cz>
+ <20120608005700.GW4347@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Latchesar Ionkov <lucho@ionkov.net>, Dave Kleikamp <shaggy@kernel.org>,
- jfs-discussion@lists.sourceforge.net,
- Phillip Lougher <phillip@squashfs.org.uk>, Jan Kara <jack@suse.cz>,
- Kai Bankett <chaosman@ontika.net>, logfs@logfs.org,
- Frederic Weisbecker <fweisbec@gmail.com>, Anders Larsen <al@alarsen.net>,
- Trond Myklebust <Trond.Myklebust@netapp.com>,
- William Irwin <wli@holomorphy.com>, "Dmitry V. Levin" <ldv@altlinux.org>,
- David Howells <dhowells@redhat.com>,
- Dustin Kirkland <dustin.kirkland@gazzang.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
- KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
- Petr Vandrovec <petr@vandrovec.name>, linux-afs@lists.infradead.org,
- Alexey Khoroshilov <khoroshilov@ispras.ru>, linux-cifs@vger.kernel.org,
- Namjae Jeon <linkinjeon@gmail.com>, linux-nilfs@vger.kernel.org,
- fuse-devel@lists.source
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
- Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: linux-mtd-bounces@lists.infradead.org
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20120608005700.GW4347@dastard>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+On Fri 08-06-12 10:57:00, Dave Chinner wrote:
+> On Thu, Jun 07, 2012 at 11:58:35PM +0200, Jan Kara wrote:
+> > On Wed 06-06-12 23:36:16, Dave Chinner wrote:
+> > > On Wed, Jun 06, 2012 at 11:58:27AM +0200, Jan Kara wrote:
+> > > > On Wed 06-06-12 10:06:36, Dave Chinner wrote:
+> > > > > On Wed, Jun 06, 2012 at 01:15:30AM +0200, Jan Kara wrote:
+> > > > > > On Tue 05-06-12 15:51:50, Dave Chinner wrote:
+> > > > > > > On Thu, May 24, 2012 at 02:35:38PM +0200, Jan Kara wrote:
+> > > > > > > > > To me the issue at hand is that we have no method of serialising
+> > > > > > > > > multi-page operations on the mapping tree between the filesystem and
+> > > > > > > > > the VM, and that seems to be the fundamental problem we face in this
+> > > > > > > > > whole area of mmap/buffered/direct IO/truncate/holepunch coherency.
+> > > > > > > > > Hence it might be better to try to work out how to fix this entire
+> > > > > > > > > class of problems rather than just adding a complex kuldge that just
+> > > > > > > > > papers over the current "hot" symptom....
+> > > > > > > >   Yes, looking at the above table, the amount of different synchronization
+> > > > > > > > mechanisms is really striking. So probably we should look at some
+> > > > > > > > possibility of unifying at least some cases.
+> > > > > > > 
+> > > > > > > It seems to me that we need some thing in between the fine grained
+> > > > > > > page lock and the entire-file IO exclusion lock. We need to maintain
+> > > > > > > fine grained locking for mmap scalability, but we also need to be
+> > > > > > > able to atomically lock ranges of pages.
+> > > > > >   Yes, we also need to keep things fine grained to keep scalability of
+> > > > > > direct IO and buffered reads...
+> > > > > > 
+> > > > > > > I guess if we were to nest a fine grained multi-state lock
+> > > > > > > inside both the IO exclusion lock and the mmap_sem, we might be able
+> > > > > > > to kill all problems in one go.
+> > > > > > > 
+> > > > > > > Exclusive access on a range needs to be granted to:
+> > > > > > > 
+> > > > > > > 	- direct IO
+> > > > > > > 	- truncate
+> > > > > > > 	- hole punch
+> > > > > > > 
+> > > > > > > so they can be serialised against mmap based page faults, writeback
+> > > > > > > and concurrent buffered IO. Serialisation against themselves is an
+> > > > > > > IO/fs exclusion problem.
+> > > > > > > 
+> > > > > > > Shared access for traversal or modification needs to be granted to:
+> > > > > > > 
+> > > > > > > 	- buffered IO
+> > > > > > > 	- mmap page faults
+> > > > > > > 	- writeback
+> > > > > > > 
+> > > > > > > Each of these cases can rely on the existing page locks or IO
+> > > > > > > exclusion locks to provide safety for concurrent access to the same
+> > > > > > > ranges. This means that once we have access granted to a range we
+> > > > > > > can check truncate races once and ignore the problem until we drop
+> > > > > > > the access.  And the case of taking a page fault within a buffered
+> > > > > > > IO won't deadlock because both take a shared lock....
+> > > > > >   You cannot just use a lock (not even a shared one) both above and under
+> > > > > > mmap_sem. That is deadlockable in presence of other requests for exclusive
+> > > > > > locking...
+> > > > > 
+> > > > > Well, that's assuming that exclusive lock requests form a barrier to
+> > > > > new shared requests. Remember that I'm talking about a range lock
+> > > > > here, which we can make up whatever semantics we'd need, including
+> > > > > having "shared lock if already locked shared" nested locking
+> > > > > semantics which avoids this page-fault-in-buffered-IO-copy-in/out
+> > > > > problem....
+> > > >   That's true. But if you have semantics like this, constant writing to
+> > > > or reading from a file could starve e.g. truncate. So I'd prefer not to
+> > > > open this can of worms and keep semantics of rw semaphores if possible.
+> > > 
+> > > Except truncate uses the i_mutex/i_iolock for exclusion, so it would
+> > > never get held off any more than it already does by buffered IO in
+> > > this case. i.e. the mapping tree range lock is inside the locks used
+> > > for truncate serialisation, so we don't have a situation where other
+> > > operations woul dbe held off by such an IO pattern...
+> >   True. I was just hoping that i_mutex won't be needed if we get our new
+> > lock right.
+> > 
+> > > > Furthermore, with direct IO you have to set in stone the ordering of
+> > > > mmap_sem and range lock anyway because there we need an exclusive lock.
+> > > 
+> > > Yes, mmap basically requires exclusive mmap_sem->shared range lock ordering. For
+> > > direct IO, we only need the mmap_sem for the get_user_pages() call
+> > > IIRC, so that requires exclusive range lock-> shared mmap_sem
+> > > ordering. Unless we can lift the range lock in the mmap path outside
+> > > the mmap_sem, we're still in the same boat....
+> >   Yes. Just as I said before it is not an unsolvable situation since for
+> > direct IO we can grab our lock after get_user_pages() call. I was thinking
+> > about it for a while and I realized, that if we have range lock that we
+> > take during page fault, buffered IO, direct IO, truncate, punch hole, we
+> > actually don't need a shared version of it. Just the fact it would be range
+> > lock is enough to avoid serialization.
+> 
+> Well, we currently allow overlapping direct IO to the same range in
+> XFS, The order of completion is underfined, just like concurrent IOs
+> to the same sector of a disk, but it basically results in direct IO
+> on an XFS file to behave exactly the same way as concurrent IO to a raw
+> device would....
+> 
+> Now, that does cause some problems for naive users of direct IO
+> (just like those same naive users mix mmap, buffered and direct IO to
+> the same file), but if we are going to make everything else coherent
+> then I have no problems with dropping this functionality and ony
+> allowing concurrency for non-overlapping requests.
+  Yeah, overlapping direct IO is asking for trouble (except possibly two
+direct IO reads).
 
-There's no reason to call rcu_barrier() on every deactivate_locked_super().
-We only need to make sure that all delayed rcu free inodes are flushed
-before we destroy related cache.
+> The other thing is that concurrent overlapping buffered reads to the
+> same range will only serialise on page locks if the range can be
+> lock shared, so there would be no change in behaviour. Making the
+> range lock exclusive would serialise the overlapping reads at a much
+> higher level and will result in a change of cached read behaviour
+> and potentially a significant reduction in performance. This may be
+> a corner case no-one cares about, but exclusive range locking will
+> definitely impact such a workload....
+  For buffered reads we would lock page-by-page anyway (again due to
+locking constraints with mmap_sem when copying what we've read) so there
+shouldn't be any difference to current level of concurrency.
 
-Removing rcu_barrier() from deactivate_locked_super() affects some
-fas paths. E.g. on my machine exit_group() of a last process in IPC
-namespace takes 0.07538s. rcu_barrier() takes 0.05188s of that time.
+> > Also I was thinking that since lock ordering forces our new lock to be
+> > relatively close to page lock and page lock is serializing quite some of
+> > IO operations anyway,
+> 
+> That's the observation that has led me to call it a "mapping
+> tree" lock.
+  I've internally called the locking function lock_mapping_range() ;).
 
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
----
- fs/9p/v9fs.c             |    5 +++++
- fs/adfs/super.c          |    5 +++++
- fs/affs/super.c          |    5 +++++
- fs/afs/super.c           |    5 +++++
- fs/befs/linuxvfs.c       |    5 +++++
- fs/bfs/inode.c           |    5 +++++
- fs/btrfs/extent_io.c     |    6 ++++++
- fs/btrfs/inode.c         |    5 +++++
- fs/ceph/super.c          |    5 +++++
- fs/cifs/cifsfs.c         |    5 +++++
- fs/coda/inode.c          |    5 +++++
- fs/ecryptfs/main.c       |    6 ++++++
- fs/efs/super.c           |    5 +++++
- fs/exofs/super.c         |    5 +++++
- fs/ext2/super.c          |    5 +++++
- fs/ext3/super.c          |    5 +++++
- fs/ext4/super.c          |    5 +++++
- fs/fat/inode.c           |    5 +++++
- fs/freevxfs/vxfs_super.c |    5 +++++
- fs/fuse/inode.c          |    6 ++++++
- fs/hfs/super.c           |    6 ++++++
- fs/hfsplus/super.c       |    6 ++++++
- fs/hpfs/super.c          |    5 +++++
- fs/hugetlbfs/inode.c     |    5 +++++
- fs/isofs/inode.c         |    5 +++++
- fs/jffs2/super.c         |    6 ++++++
- fs/jfs/super.c           |    6 ++++++
- fs/logfs/inode.c         |    5 +++++
- fs/minix/inode.c         |    5 +++++
- fs/ncpfs/inode.c         |    5 +++++
- fs/nfs/inode.c           |    5 +++++
- fs/nilfs2/super.c        |    6 ++++++
- fs/ntfs/super.c          |    6 ++++++
- fs/ocfs2/dlmfs/dlmfs.c   |    5 +++++
- fs/ocfs2/super.c         |    5 +++++
- fs/openpromfs/inode.c    |    5 +++++
- fs/qnx4/inode.c          |    5 +++++
- fs/qnx6/inode.c          |    5 +++++
- fs/reiserfs/super.c      |    5 +++++
- fs/romfs/super.c         |    5 +++++
- fs/squashfs/super.c      |    5 +++++
- fs/super.c               |    6 ------
- fs/sysv/inode.c          |    5 +++++
- fs/ubifs/super.c         |    6 ++++++
- fs/udf/super.c           |    5 +++++
- fs/ufs/super.c           |    5 +++++
- fs/xfs/xfs_super.c       |    5 +++++
- 47 files changed, 240 insertions(+), 6 deletions(-)
+> > it might be workable (and actually reasonably easy
+> > to grasp for developers) if the range lock is coupled with page lock - i.e.
+> > locking a range will be equivalent to locking each page in a range, except
+> > that this way you can "lock" pages which are not present and thus forbid
+> > their creation.
+> 
+> Nice idea, but I think that is introducing requirements and
+> potential complexity way beyond what we need right now. It's already
+> a complex problem, so lets not make it any harder to validate than
+> it already will be... :/
+> 
+> As it is, we can't "forbid" the creation of pages - we control
+> access to the mapping tree, which allows us to prevent insertion or
+> removal of pages from a given range.  That's exactly how it will
+> serialise DIO against buffered/mmap IO, hole punch/truncate against
+> mmap, and so on. It's a mapping tree access control mechanism, not a
+> page serialisation mechanism...
+  I agree, I was imprecise here and it's good to realize exactly what we
+guard.
 
-diff --git a/fs/9p/v9fs.c b/fs/9p/v9fs.c
-index b85efa7..392c5da 100644
---- a/fs/9p/v9fs.c
-+++ b/fs/9p/v9fs.c
-@@ -560,6 +560,11 @@ static int v9fs_init_inode_cache(void)
-  */
- static void v9fs_destroy_inode_cache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(v9fs_inode_cache);
- }
- 
-diff --git a/fs/adfs/super.c b/fs/adfs/super.c
-index 06fdcc9..f137165 100644
---- a/fs/adfs/super.c
-+++ b/fs/adfs/super.c
-@@ -276,6 +276,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(adfs_inode_cachep);
- }
- 
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index 0782653..4fe18a8 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -129,6 +129,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(affs_inode_cachep);
- }
- 
-diff --git a/fs/afs/super.c b/fs/afs/super.c
-index f02b31e..af69050 100644
---- a/fs/afs/super.c
-+++ b/fs/afs/super.c
-@@ -123,6 +123,11 @@ void __exit afs_fs_exit(void)
- 		BUG();
- 	}
- 
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(afs_inode_cachep);
- 	_leave("");
- }
-diff --git a/fs/befs/linuxvfs.c b/fs/befs/linuxvfs.c
-index e18da23..02f3331 100644
---- a/fs/befs/linuxvfs.c
-+++ b/fs/befs/linuxvfs.c
-@@ -454,6 +454,11 @@ befs_init_inodecache(void)
- static void
- befs_destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(befs_inode_cachep);
- }
- 
-diff --git a/fs/bfs/inode.c b/fs/bfs/inode.c
-index 9870417..d5fc598 100644
---- a/fs/bfs/inode.c
-+++ b/fs/bfs/inode.c
-@@ -280,6 +280,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(bfs_inode_cachep);
- }
- 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index 2c8f7b2..010623a 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -106,6 +106,12 @@ void extent_io_exit(void)
- 		list_del(&eb->leak_list);
- 		kmem_cache_free(extent_buffer_cache, eb);
- 	}
-+
-+	/*
-+	 * Make sure all delayed rcu free are flushed before we
-+	 * destroy caches.
-+	 */
-+	rcu_barrier();
- 	if (extent_state_cache)
- 		kmem_cache_destroy(extent_state_cache);
- 	if (extent_buffer_cache)
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index f6ab6f5..971d222 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -6976,6 +6976,11 @@ static void init_once(void *foo)
- 
- void btrfs_destroy_cachep(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	if (btrfs_inode_cachep)
- 		kmem_cache_destroy(btrfs_inode_cachep);
- 	if (btrfs_trans_handle_cachep)
-diff --git a/fs/ceph/super.c b/fs/ceph/super.c
-index 1e67dd7..ecc251e 100644
---- a/fs/ceph/super.c
-+++ b/fs/ceph/super.c
-@@ -602,6 +602,11 @@ bad_cap:
- 
- static void destroy_caches(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ceph_inode_cachep);
- 	kmem_cache_destroy(ceph_cap_cachep);
- 	kmem_cache_destroy(ceph_dentry_cachep);
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index 8b6e344..93ce9b3f 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -975,6 +975,11 @@ cifs_init_inodecache(void)
- static void
- cifs_destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(cifs_inode_cachep);
- }
- 
-diff --git a/fs/coda/inode.c b/fs/coda/inode.c
-index f181312..0c70460 100644
---- a/fs/coda/inode.c
-+++ b/fs/coda/inode.c
-@@ -85,6 +85,11 @@ int coda_init_inodecache(void)
- 
- void coda_destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(coda_inode_cachep);
- }
- 
-diff --git a/fs/ecryptfs/main.c b/fs/ecryptfs/main.c
-index 6895493..f6acf8a 100644
---- a/fs/ecryptfs/main.c
-+++ b/fs/ecryptfs/main.c
-@@ -693,6 +693,12 @@ static void ecryptfs_free_kmem_caches(void)
- {
- 	int i;
- 
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
-+
- 	for (i = 0; i < ARRAY_SIZE(ecryptfs_cache_infos); i++) {
- 		struct ecryptfs_cache_info *info;
- 
-diff --git a/fs/efs/super.c b/fs/efs/super.c
-index e755ec7..2002431 100644
---- a/fs/efs/super.c
-+++ b/fs/efs/super.c
-@@ -96,6 +96,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(efs_inode_cachep);
- }
- 
-diff --git a/fs/exofs/super.c b/fs/exofs/super.c
-index 4337836..d271f96 100644
---- a/fs/exofs/super.c
-+++ b/fs/exofs/super.c
-@@ -206,6 +206,11 @@ static int init_inodecache(void)
-  */
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(exofs_inode_cachep);
- }
- 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index b3621cb..de2051c 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -204,6 +204,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ext2_inode_cachep);
- }
- 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 8c3a44b..bd60e08 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -543,6 +543,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ext3_inode_cachep);
- }
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index eb7aa3e..4e2aacb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1046,6 +1046,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ext4_inode_cachep);
- }
- 
-diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-index a3d81eb..35113bc 100644
---- a/fs/fat/inode.c
-+++ b/fs/fat/inode.c
-@@ -526,6 +526,11 @@ static int __init fat_init_inodecache(void)
- 
- static void __exit fat_destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(fat_inode_cachep);
- }
- 
-diff --git a/fs/freevxfs/vxfs_super.c b/fs/freevxfs/vxfs_super.c
-index d4fabd2..fed2c8a 100644
---- a/fs/freevxfs/vxfs_super.c
-+++ b/fs/freevxfs/vxfs_super.c
-@@ -279,6 +279,11 @@ static void __exit
- vxfs_cleanup(void)
- {
- 	unregister_filesystem(&vxfs_fs_type);
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(vxfs_inode_cachep);
- }
- 
-diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-index 1cd6165..9078173 100644
---- a/fs/fuse/inode.c
-+++ b/fs/fuse/inode.c
-@@ -1171,6 +1171,12 @@ static void fuse_fs_cleanup(void)
- {
- 	unregister_filesystem(&fuse_fs_type);
- 	unregister_fuseblk();
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(fuse_inode_cachep);
- }
- 
-diff --git a/fs/hfs/super.c b/fs/hfs/super.c
-index 7b4c537..373a9e5 100644
---- a/fs/hfs/super.c
-+++ b/fs/hfs/super.c
-@@ -483,6 +483,12 @@ static int __init init_hfs_fs(void)
- static void __exit exit_hfs_fs(void)
- {
- 	unregister_filesystem(&hfs_fs_type);
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(hfs_inode_cachep);
- }
- 
-diff --git a/fs/hfsplus/super.c b/fs/hfsplus/super.c
-index a9bca4b..bde9ecf 100644
---- a/fs/hfsplus/super.c
-+++ b/fs/hfsplus/super.c
-@@ -615,6 +615,12 @@ static int __init init_hfsplus_fs(void)
- static void __exit exit_hfsplus_fs(void)
- {
- 	unregister_filesystem(&hfsplus_fs_type);
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(hfsplus_inode_cachep);
- }
- 
-diff --git a/fs/hpfs/super.c b/fs/hpfs/super.c
-index 706a12c..3cb1da5 100644
---- a/fs/hpfs/super.c
-+++ b/fs/hpfs/super.c
-@@ -210,6 +210,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(hpfs_inode_cachep);
- }
- 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index cc9281b..b482175 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -1042,6 +1042,11 @@ static int __init init_hugetlbfs_fs(void)
- 
- static void __exit exit_hugetlbfs_fs(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(hugetlbfs_inode_cachep);
- 	kern_unmount(hugetlbfs_vfsmount);
- 	unregister_filesystem(&hugetlbfs_fs_type);
-diff --git a/fs/isofs/inode.c b/fs/isofs/inode.c
-index 29037c3..f94cde4 100644
---- a/fs/isofs/inode.c
-+++ b/fs/isofs/inode.c
-@@ -114,6 +114,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(isofs_inode_cachep);
- }
- 
-diff --git a/fs/jffs2/super.c b/fs/jffs2/super.c
-index 61ea413..ff48795 100644
---- a/fs/jffs2/super.c
-+++ b/fs/jffs2/super.c
-@@ -418,6 +418,12 @@ static void __exit exit_jffs2_fs(void)
- 	unregister_filesystem(&jffs2_fs_type);
- 	jffs2_destroy_slab_caches();
- 	jffs2_compressors_exit();
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(jffs2_inode_cachep);
- }
- 
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index 4a82950..2fc7602 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -898,6 +898,12 @@ static void __exit exit_jfs_fs(void)
- 	jfs_proc_clean();
- #endif
- 	unregister_filesystem(&jfs_fs_type);
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(jfs_inode_cachep);
- }
- 
-diff --git a/fs/logfs/inode.c b/fs/logfs/inode.c
-index a422f42..3d1b9fa 100644
---- a/fs/logfs/inode.c
-+++ b/fs/logfs/inode.c
-@@ -401,5 +401,10 @@ int logfs_init_inode_cache(void)
- 
- void logfs_destroy_inode_cache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(logfs_inode_cache);
- }
-diff --git a/fs/minix/inode.c b/fs/minix/inode.c
-index 2a503ad..dc8d362 100644
---- a/fs/minix/inode.c
-+++ b/fs/minix/inode.c
-@@ -100,6 +100,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(minix_inode_cachep);
- }
- 
-diff --git a/fs/ncpfs/inode.c b/fs/ncpfs/inode.c
-index 333df07..0c62c55 100644
---- a/fs/ncpfs/inode.c
-+++ b/fs/ncpfs/inode.c
-@@ -89,6 +89,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ncp_inode_cachep);
- }
- 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e605d69..39aae2e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1566,6 +1566,11 @@ static int __init nfs_init_inodecache(void)
- 
- static void nfs_destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(nfs_inode_cachep);
- }
- 
-diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
-index 1099a76..956e5a4 100644
---- a/fs/nilfs2/super.c
-+++ b/fs/nilfs2/super.c
-@@ -1386,6 +1386,12 @@ static void nilfs_segbuf_init_once(void *obj)
- 
- static void nilfs_destroy_cachep(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
-+
- 	if (nilfs_inode_cachep)
- 		kmem_cache_destroy(nilfs_inode_cachep);
- 	if (nilfs_transaction_cachep)
-diff --git a/fs/ntfs/super.c b/fs/ntfs/super.c
-index b341492..ecc8625 100644
---- a/fs/ntfs/super.c
-+++ b/fs/ntfs/super.c
-@@ -3185,6 +3185,12 @@ static void __exit exit_ntfs_fs(void)
- 	ntfs_debug("Unregistering NTFS driver.");
- 
- 	unregister_filesystem(&ntfs_fs_type);
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ntfs_big_inode_cache);
- 	kmem_cache_destroy(ntfs_inode_cache);
- 	kmem_cache_destroy(ntfs_name_cache);
-diff --git a/fs/ocfs2/dlmfs/dlmfs.c b/fs/ocfs2/dlmfs/dlmfs.c
-index e31d6ae..6934459 100644
---- a/fs/ocfs2/dlmfs/dlmfs.c
-+++ b/fs/ocfs2/dlmfs/dlmfs.c
-@@ -691,6 +691,11 @@ static void __exit exit_dlmfs_fs(void)
- 	flush_workqueue(user_dlm_worker);
- 	destroy_workqueue(user_dlm_worker);
- 
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(dlmfs_inode_cache);
- 
- 	bdi_destroy(&dlmfs_backing_dev_info);
-diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
-index 68f4541..0e91ec2 100644
---- a/fs/ocfs2/super.c
-+++ b/fs/ocfs2/super.c
-@@ -1818,6 +1818,11 @@ static int ocfs2_initialize_mem_caches(void)
- 
- static void ocfs2_free_mem_caches(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	if (ocfs2_inode_cachep)
- 		kmem_cache_destroy(ocfs2_inode_cachep);
- 	ocfs2_inode_cachep = NULL;
-diff --git a/fs/openpromfs/inode.c b/fs/openpromfs/inode.c
-index bc49c97..1b76370 100644
---- a/fs/openpromfs/inode.c
-+++ b/fs/openpromfs/inode.c
-@@ -463,6 +463,11 @@ static int __init init_openprom_fs(void)
- static void __exit exit_openprom_fs(void)
- {
- 	unregister_filesystem(&openprom_fs_type);
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(op_inode_cachep);
- }
- 
-diff --git a/fs/qnx4/inode.c b/fs/qnx4/inode.c
-index 552e994..9534b4f 100644
---- a/fs/qnx4/inode.c
-+++ b/fs/qnx4/inode.c
-@@ -391,6 +391,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(qnx4_inode_cachep);
- }
- 
-diff --git a/fs/qnx6/inode.c b/fs/qnx6/inode.c
-index e44012d..3cba5d2 100644
---- a/fs/qnx6/inode.c
-+++ b/fs/qnx6/inode.c
-@@ -652,6 +652,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(qnx6_inode_cachep);
- }
- 
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index 651ce76..ad39139 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -603,6 +603,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(reiserfs_inode_cachep);
- }
- 
-diff --git a/fs/romfs/super.c b/fs/romfs/super.c
-index e64f6b5..f901eaf 100644
---- a/fs/romfs/super.c
-+++ b/fs/romfs/super.c
-@@ -648,6 +648,11 @@ error_register:
- static void __exit exit_romfs_fs(void)
- {
- 	unregister_filesystem(&romfs_fs_type);
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(romfs_inode_cachep);
- }
- 
-diff --git a/fs/squashfs/super.c b/fs/squashfs/super.c
-index 29cd014..260e392 100644
---- a/fs/squashfs/super.c
-+++ b/fs/squashfs/super.c
-@@ -425,6 +425,11 @@ static int __init init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(squashfs_inode_cachep);
- }
- 
-diff --git a/fs/super.c b/fs/super.c
-index cf00177..2d962aa 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -256,12 +256,6 @@ void deactivate_locked_super(struct super_block *s)
- 
- 		/* caches are now gone, we can safely kill the shrinker now */
- 		unregister_shrinker(&s->s_shrink);
--
--		/*
--		 * We need to call rcu_barrier so all the delayed rcu free
--		 * inodes are flushed before we release the fs module.
--		 */
--		rcu_barrier();
- 		put_filesystem(fs);
- 		put_super(s);
- 	} else {
-diff --git a/fs/sysv/inode.c b/fs/sysv/inode.c
-index 08d0b25..a08341c 100644
---- a/fs/sysv/inode.c
-+++ b/fs/sysv/inode.c
-@@ -376,5 +376,10 @@ int __init sysv_init_icache(void)
- 
- void sysv_destroy_icache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(sysv_inode_cachep);
- }
-diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
-index 5862dd9..e8ae748 100644
---- a/fs/ubifs/super.c
-+++ b/fs/ubifs/super.c
-@@ -2302,6 +2302,12 @@ static void __exit ubifs_exit(void)
- 	dbg_debugfs_exit();
- 	ubifs_compressors_exit();
- 	unregister_shrinker(&ubifs_shrinker_info);
-+
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ubifs_inode_slab);
- 	unregister_filesystem(&ubifs_fs_type);
- }
-diff --git a/fs/udf/super.c b/fs/udf/super.c
-index ac8a348..ebe9f52 100644
---- a/fs/udf/super.c
-+++ b/fs/udf/super.c
-@@ -170,6 +170,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(udf_inode_cachep);
- }
- 
-diff --git a/fs/ufs/super.c b/fs/ufs/super.c
-index 302f340..f655c1d 100644
---- a/fs/ufs/super.c
-+++ b/fs/ufs/super.c
-@@ -1449,6 +1449,11 @@ static int init_inodecache(void)
- 
- static void destroy_inodecache(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free inodes are flushed before we
-+	 * destroy cache.
-+	 */
-+	rcu_barrier();
- 	kmem_cache_destroy(ufs_inode_cachep);
- }
- 
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 0d9de41..bbcbf2a 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -1582,6 +1582,11 @@ xfs_init_zones(void)
- STATIC void
- xfs_destroy_zones(void)
- {
-+	/*
-+	 * Make sure all delayed rcu free are flushed before we
-+	 * destroy caches.
-+	 */
-+	rcu_barrier();
- 	kmem_zone_destroy(xfs_ili_zone);
- 	kmem_zone_destroy(xfs_inode_zone);
- 	kmem_zone_destroy(xfs_efi_zone);
+> > Also we could implement the common case of locking a range
+> > containing single page by just taking page lock so we save modification of
+> > interval tree in the common case and generally make the tree smaller (of
+> > course, at the cost of somewhat slowing down cases where we want to lock
+> > larger ranges).
+> 
+> That seems like premature optimistion to me, and all the cases I
+> think we need to care about are locking large ranges of the tree.
+> Let's measure what the overhead of tracking everything in a single
+> tree is first so we can then see what needs optimising...
+  Umm, I agree that initially we probably want just to have the mapping
+range lock ability, stick it somewhere to IO path and make things work.
+Then we can look into making it faster / merging with page lock.
+
+However I disagree we care most about locking large ranges. For all
+buffered IO and all page faults we need to lock a range containing just a
+single page. We cannot lock more due to locking constraints with mmap_sem.
+So the places that will lock larger ranges are: direct IO, truncate, punch
+hole. Writeback actually doesn't seem to need any additional protection at
+least as I've sketched out things so far.
+
+So single-page ranges matter at least as much as longer ranges. That's why
+I came up with that page lock optimisation and merging...
+
+> Also, I don't think it can replace the page lock entirely because
+> the page lock as that also serialises against other parts of the VM
+> (e.g. memory reclaim). I'd prefer not to complicate the issue by
+> trying to be fancy - it's going to be hard enough to validate that
+> it works correctly without having to validate that it does not
+> introduce races that were previously prevented by the page lock.
+  So I never meant to completely replace page lock. I agree that will be
+almost impossible. I rather meant to add a capability of locking a range of
+pages. But lets leave that for now.
+ 
+									Honza
 -- 
-1.7.10
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
