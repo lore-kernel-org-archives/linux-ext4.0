@@ -1,114 +1,85 @@
 From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH v3 1/9] string: introduce memweight
-Date: Sat,  9 Jun 2012 09:50:30 +0900
-Message-ID: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
-Cc: Akinobu Mita <akinobu.mita@gmail.com>,
-	Anders Larsen <al@alarsen.net>,
-	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org,
-	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
+Subject: [PATCH v3 7/9] ext2: use memweight()
+Date: Sat,  9 Jun 2012 09:50:36 +0900
+Message-ID: <1339203038-13069-7-git-send-email-akinobu.mita@gmail.com>
+References: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+Cc: Akinobu Mita <akinobu.mita@gmail.com>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:59124 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934538Ab2FIAvU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Jun 2012 20:51:20 -0400
+In-Reply-To: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-memweight() is the function that counts the total number of bits set
-in memory area.  Unlike bitmap_weight(), memweight() takes pointer
-and size in bytes to specify a memory area which does not need to be
-aligned to long-word boundary.
+Convert ext2_count_free() to use memweight() instead of table lookup
+based counting clear bits implementation.  This change only affects
+the code segments enabled by EXT2FS_DEBUG.
+
+Note that this memweight() call can't be replaced with a single
+bitmap_weight() call, although the pointer to the memory area is
+aligned to long-word boundary.  Because the size of the memory area
+may not be a multiple of BITS_PER_LONG, then it returns wrong value on
+big-endian architecture.
+
+This also includes the following changes.
+
+- Remove unnecessary map == NULL check in ext2_count_free() which
+  always takes non-null pointer as the memory area.
+
+- Fix printk format warning that only reveals with EXT2FS_DEBUG.
 
 Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: Anders Larsen <al@alarsen.net>
-Cc: Alasdair Kergon <agk@redhat.com>
-Cc: dm-devel@redhat.com
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Cc: linux-media@vger.kernel.org
-Cc: Mark Fasheh <mfasheh@suse.com>
-Cc: Joel Becker <jlbec@evilplan.org>
-Cc: ocfs2-devel@oss.oracle.com
 Cc: Jan Kara <jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Matthew Wilcox <matthew@wil.cx>
 ---
-v3: add comment for the last loop, adviced by Jan Kara
-v2: simplify memweight(), adviced by Jan Kara
+v3: rewrite to keep ext2_count_free() as a wrapper for memweight()
 
- include/linux/string.h |    3 +++
- lib/string.c           |   36 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 39 insertions(+), 0 deletions(-)
+ fs/ext2/balloc.c |   14 ++------------
+ fs/ext2/ialloc.c |    1 +
+ 2 files changed, 3 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/string.h b/include/linux/string.h
-index e033564..ffe0442 100644
---- a/include/linux/string.h
-+++ b/include/linux/string.h
-@@ -145,4 +145,7 @@ static inline bool strstarts(const char *str, const char *prefix)
- 	return strncmp(str, prefix, strlen(prefix)) == 0;
- }
- #endif
-+
-+extern size_t memweight(const void *ptr, size_t bytes);
-+
- #endif /* _LINUX_STRING_H_ */
-diff --git a/lib/string.c b/lib/string.c
-index e5878de..e467186 100644
---- a/lib/string.c
-+++ b/lib/string.c
-@@ -26,6 +26,7 @@
- #include <linux/export.h>
- #include <linux/bug.h>
- #include <linux/errno.h>
-+#include <linux/bitmap.h>
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 1c36139..376aa77 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -1444,19 +1444,9 @@ ext2_fsblk_t ext2_new_block(struct inode *inode, unsigned long goal, int *errp)
  
- #ifndef __HAVE_ARCH_STRNICMP
- /**
-@@ -824,3 +825,38 @@ void *memchr_inv(const void *start, int c, size_t bytes)
- 	return check_bytes8(start, value, bytes % 8);
+ #ifdef EXT2FS_DEBUG
+ 
+-static const int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
+-
+-unsigned long ext2_count_free (struct buffer_head * map, unsigned int numchars)
++unsigned long ext2_count_free(struct buffer_head *map, unsigned int numchars)
+ {
+-	unsigned int i;
+-	unsigned long sum = 0;
+-
+-	if (!map)
+-		return (0);
+-	for (i = 0; i < numchars; i++)
+-		sum += nibblemap[map->b_data[i] & 0xf] +
+-			nibblemap[(map->b_data[i] >> 4) & 0xf];
+-	return (sum);
++	return numchars * BITS_PER_BYTE - memweight(map->b_data, numchars);
  }
- EXPORT_SYMBOL(memchr_inv);
-+
-+/**
-+ * memweight - count the total number of bits set in memory area
-+ * @ptr: pointer to the start of the area
-+ * @bytes: the size of the area
-+ */
-+size_t memweight(const void *ptr, size_t bytes)
-+{
-+	size_t w = 0;
-+	size_t longs;
-+	const unsigned char *bitmap = ptr;
-+
-+	for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(long);
-+			bytes--, bitmap++)
-+		w += hweight8(*bitmap);
-+
-+	longs = bytes / sizeof(long);
-+	if (longs) {
-+		BUG_ON(longs >= INT_MAX / BITS_PER_LONG);
-+		w += bitmap_weight((unsigned long *)bitmap,
-+				longs * BITS_PER_LONG);
-+		bytes -= longs * sizeof(long);
-+		bitmap += longs * sizeof(long);
-+	}
-+	/*
-+	 * The reason that this last loop is distinct from the preceding
-+	 * bitmap_weight() call is to compute 1-bits in the last region smaller
-+	 * than sizeof(long) properly on big-endian systems.
-+	 */
-+	for (; bytes > 0; bytes--, bitmap++)
-+		w += hweight8(*bitmap);
-+
-+	return w;
-+}
-+EXPORT_SYMBOL(memweight);
+ 
+ #endif  /*  EXT2FS_DEBUG  */
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index c13eb7b..8f370e01 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -644,6 +644,7 @@ unsigned long ext2_count_free_inodes (struct super_block * sb)
+ 	}
+ 	brelse(bitmap_bh);
+ 	printk("ext2_count_free_inodes: stored = %lu, computed = %lu, %lu\n",
++		(unsigned long)
+ 		percpu_counter_read(&EXT2_SB(sb)->s_freeinodes_counter),
+ 		desc_count, bitmap_count);
+ 	return desc_count;
 -- 
 1.7.7.6
 
