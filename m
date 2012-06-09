@@ -1,55 +1,60 @@
-From: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-Subject: Re: [PATCH 00/27 v6] Fix filesystem freezing deadlocks
-Date: Sat, 9 Jun 2012 07:29:52 +0100
-Message-ID: <20120609062952.GY30000@ZenIV.linux.org.uk>
-References: <1338589841-9568-1-git-send-email-jack@suse.cz>
+From: Marco Stornelli <marco.stornelli@gmail.com>
+Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from deactivate_locked_super()
+ to filesystems
+Date: Sat, 09 Jun 2012 09:06:28 +0200
+Message-ID: <4FD2F5F4.1000106@gmail.com>
+References: <1339191663-17693-1-git-send-email-kirill.shutemov@linux.intel.com> <20120608150253.e42464a6.akpm@linux-foundation.org> <20120608221446.GA18250@otc-wbsnb-06> <20120608152550.258d6a30.akpm@linux-foundation.org> <20120608222734.GT30000@ZenIV.linux.org.uk> <20120608153120.b722d7c3.akpm@linux-foundation.org> <20120608233127.GB18981@otc-wbsnb-06> <20120608163751.7a8ec2bc.akpm@linux-foundation.org> <CA+55aFw5k3daxeoZb9H1HGcOCWjPF+d7inSbf0QHmG-atp4reQ@mail.gmail.com> <20120608172842.9826b5cd.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dchinner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	Alex Elder <elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
-	Anton Altaparmakov <anton-yrGDUoBaLx3QT0dZR+AlfA@public.gmane.org>, Ben Myers <bpm-sJ/iWh9BUns@public.gmane.org>,
-	Chris Mason <chris.mason-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	"David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
-	fuse-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Joel Becker <jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org>,
-	KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
-	linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
-	Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
-	OGAWA Hirofumi <hirofumi-UIVanBePwB70ZhReMnHkpc8NsWr+9BEh@public.gmane.org>,
-	Steven Whitehouse <swhiteho-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <1338589841-9568-1-git-send-email-jack-AlSwsSmVLrQ@public.gmane.org>
-Sender: linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
+	"Dmitry V. Levin" <ldv@altlinux.org>,
+	v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+	linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	codalist@telemann.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+	osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
+	fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+	jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
+	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+	rei
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <ceph-devel-owner@vger.kernel.org>
+In-Reply-To: <20120608172842.9826b5cd.akpm@linux-foundation.org>
+Sender: ceph-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Jun 02, 2012 at 12:30:14AM +0200, Jan Kara wrote:
->   Hello,
-> 
->   here is the sixth iteration of my patches to improve filesystem freezing.
-> The change since last iteration is that filesystem can be frozen with open but
-> unlinked files. After some thinking, I've decided that the best way to handle
-> this is to block removal inside ->evict_inode() of each filesystem and use
-> fs-internal level of freeze protection for that (usually I've instrumented
-> filesystem's transaction system to use freeze protection). Handling
-> inside VFS would be less work but the only level of freeze protection that
-> has a chance of not causing deadlocks is the one used for page faults and even
-> there it's not clear lock ordering would be correct wrt some fs-specific locks.
-> I've converted ext2, ext4, btrfs, xfs, nilfs2, ocfs2, gfs2 and also checked
-> that ext3, reiserfs, jfs should work as well (they have their internal freeze
-> protection mechanisms, possibly they could be replaced by a generic one but
-> given these are mostly aging filesystems, it's not a real priority IHMO).
-> So finally I'm not aware of any pending issue with this patch set so if you
-> have some concern, please speak up!
+Il 09/06/2012 02:28, Andrew Morton ha scritto:
+> On Fri, 8 Jun 2012 16:46:47 -0700 Linus Torvalds<torvalds@linux-foundation.org>  wrote:
+>
+>> Of course, if you just mean having a VFS wrapper that does
+>>
+>>      static void vfs_inode_kmem_cache_destroy(struct kmem_cache *cachep)
+>>      {
+>>          rcu_barrier();
+>>          kmem_cache_destroy(cachep);
+>>      }
+>>
+>> then we could do that. Not much better than what Kirill's patch did,
+>> but at least we could have that comment in just one single place.
+>
+> That's conceptually what I meant.  But it has the problem that new and
+> out-of-tree filesystems might forget to do it.  Which is why I suggest
+> adding a kmem_cache* argument to unregister_filesystem() for this.
+>
+> It's a bit awkward, and the fs can pass in NULL if it knows what it's
+> doing.  But it's reliable.
+> --
 
-Could you rebase on top of e.g. -rc2 and repost?
---
-To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The call of rcu_barrier should be mandatory for the "unload fs module" 
+problem, right? If the fs is compiled statically maybe we could avoid 
+it, but (eventually) this kind of decision is per-fs, so this could be a 
+clue that the call of rcu_barrier maybe is inside each fs not in VFS.
+
+Marco
