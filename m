@@ -1,86 +1,142 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [RFC, PATCH, RESEND] fs: push rcu_barrier() from
- deactivate_locked_super() to filesystems
-Date: Mon, 11 Jun 2012 12:16:00 +0300
-Message-ID: <20120611091600.GA1122@otc-wbsnb-06>
-References: <20120608221446.GA18250@otc-wbsnb-06>
- <20120608152550.258d6a30.akpm@linux-foundation.org>
- <20120608222734.GT30000@ZenIV.linux.org.uk>
- <20120608153120.b722d7c3.akpm@linux-foundation.org>
- <20120608233127.GB18981@otc-wbsnb-06>
- <20120608163751.7a8ec2bc.akpm@linux-foundation.org>
- <CA+55aFw5k3daxeoZb9H1HGcOCWjPF+d7inSbf0QHmG-atp4reQ@mail.gmail.com>
- <20120608172842.9826b5cd.akpm@linux-foundation.org>
- <4FD2F5F4.1000106@gmail.com>
- <20120609002557.b8aba759.akpm@linux-foundation.org>
+From: Saugata Das <saugata.das@stericsson.com>
+Subject: [PATCH 2/3] ext4: Context support
+Date: Mon, 11 Jun 2012 16:16:01 +0530
+Message-ID: <1339411562-17100-2-git-send-email-saugata.das@stericsson.com>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="LZvS9be/3tNcYl/X"
-Cc: Marco Stornelli <marco.stornelli@gmail.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Boaz Harrosh <bharrosh@panasas.com>,
-	Tao Ma <boyu.mt@taobao.com>, Nick Piggin <npiggin@kernel.dk>,
-	"Dmitry V. Levin" <ldv@altlinux.org>,
-	v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-	linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-	codalist@telemann.coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-	osd-dev@open-osd.org, linux-ext4@vger.kernel.org,
-	fuse-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-	jfs-discussion@lists.sourceforge.net, logfs@logfs.org,
-	linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-	reiserfs-devel
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:32844 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752698Ab2FKJOr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Jun 2012 05:14:47 -0400
-Content-Disposition: inline
-In-Reply-To: <20120609002557.b8aba759.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: <patches@linaro.org>, <venkat@linaro.org>,
+	Saugata Das <saugata.das@linaro.org>
+To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+	<linux-mmc@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+From: Saugata Das <saugata.das@linaro.org>
 
---LZvS9be/3tNcYl/X
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On eMMC and UFS devices there is a new feature of setting context with
+each read or write. The idea is to classify the data from different files
+and apply the realibility on the complete file instead of individual writes.
+On ext4 file system, the inode number of the file is passed as b_context
+in the bh structure during write and via the get_context callback function
+during read. Since number of MMC contexts is limited, multiple file system
+contexts are mapped to single MMC context.
 
-On Sat, Jun 09, 2012 at 12:25:57AM -0700, Andrew Morton wrote:
-> And...  it seems that I misread what's going on.  The individual
-> filesystems are doing the rcu freeing of their inodes, so it is
-> appropriate that they also call rcu_barrier() prior to running
-> kmem_cache_free().  Which is what Kirill's patch does.  oops.
+Signed-off-by: Saugata Das <saugata.das@linaro.org>
+---
+ fs/ext4/inode.c   |   33 +++++++++++++++++++++++++++++++++
+ fs/ext4/page-io.c |    1 +
+ 2 files changed, 34 insertions(+), 0 deletions(-)
 
-Ack? ;)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 754fe77..2667396 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -790,6 +790,21 @@ static int do_journal_get_write_access(handle_t *handle,
+ 	return ret;
+ }
+ 
++/* Get the context of the buffer within the underlying storage device */
++static int ext4_get_context(struct page *page)
++{
++	if (page && page->mapping && page->mapping->host)
++		return page->mapping->host->i_ino;
++	else
++		return 0;
++}
++
++static int ext4_set_buffer_context(handle_t *handle, struct buffer_head *bh)
++{
++	bh->b_context = ext4_get_context(bh->b_page);
++	return 0;
++}
++
+ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create);
+ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+@@ -843,6 +858,11 @@ retry:
+ 				from, to, NULL, do_journal_get_write_access);
+ 	}
+ 
++	if (!ret && walk_page_buffers(NULL, page_buffers(page),
++				from, to, NULL, ext4_set_buffer_context)) {
++		ext4_warning(inode->i_sb, "Couldn't set context\n");
++	}
++
+ 	if (ret) {
+ 		unlock_page(page);
+ 		page_cache_release(page);
+@@ -2394,8 +2414,11 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	pgoff_t index;
+ 	struct inode *inode = mapping->host;
+ 	handle_t *handle;
++	unsigned from, to;
+ 
+ 	index = pos >> PAGE_CACHE_SHIFT;
++	from = pos & (PAGE_CACHE_SIZE - 1);
++	to = from + len;
+ 
+ 	if (ext4_nonda_switch(inode->i_sb)) {
+ 		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
+@@ -2444,6 +2467,12 @@ retry:
+ 
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
++
++	if (walk_page_buffers(NULL, page_buffers(page),
++			from, to, NULL, ext4_set_buffer_context)) {
++		ext4_warning(inode->i_sb, "Couldn't set context\n");
++	}
++
+ out:
+ 	return ret;
+ }
+@@ -3040,6 +3069,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
++	.get_context		= ext4_get_context,
+ };
+ 
+ static const struct address_space_operations ext4_writeback_aops = {
+@@ -3055,6 +3085,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
++	.get_context		= ext4_get_context,
+ };
+ 
+ static const struct address_space_operations ext4_journalled_aops = {
+@@ -3070,6 +3101,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.direct_IO		= ext4_direct_IO,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
++	.get_context		= ext4_get_context,
+ };
+ 
+ static const struct address_space_operations ext4_da_aops = {
+@@ -3086,6 +3118,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
++	.get_context		= ext4_get_context,
+ };
+ 
+ void ext4_set_aops(struct inode *inode)
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index dcdeef1..bf1381e 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -296,6 +296,7 @@ static int io_submit_init(struct ext4_io_submit *io,
+ 	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
+ 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_bdev = bh->b_bdev;
++	bio->bi_context = bh->b_context;
+ 	bio->bi_private = io->io_end = io_end;
+ 	bio->bi_end_io = ext4_end_bio;
+ 
+-- 
+1.7.4.3
 
---=20
- Kirill A. Shutemov
-
---LZvS9be/3tNcYl/X
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBAgAGBQJP1bdQAAoJEAd+omnVudOMOWIP/0ggxQY/gopg5nzCYdokfLxR
-gz+eQJznRY+O6tbDMn0QyMJNfwsqKWUKVPxVmBnzrXv2YXiU2s1pdeWcUrkhkGzo
-t+dSzoQYx3IsVY23ViQvCojLacfFODIUvb/fu7h+ZOFN3xkCB9VW7Do7y4JwflUV
-2kEzQc+a6BU660CPnkDsGVLQTj9gw6XSmKazzbHkLg6wAr4IyyKAq7MPvLQfocIo
-ZF9oqOTKx+2K0+YaupJJRzxPPPxOCXUzxPDjbJIAOJHJQ2DtJy2WEME5V4wS9R7K
-+9ldJwDN4uu+IpWGVMJFNXCkRQk6UfmKgBLrVv+32Y2+B2VebXeaEj3QECpmqqcG
-vm3vLoQB0TITfjtGTSqojE7WjTJl61jarsFzXEY3bvwdJ3h1XHeUhK5pbBiRVcu2
-v7RkgZH04E5Y+3/FGJVvxWRy+GJafI7ip+G8Rdl2r7aNmuyjmqtkdmBms/VS53Pp
-Oc1bDv+wmVwJjPJzT6z/7gE/A8LHvizvZfvt8ttS2WbWHhTuObLvtSnNd03ayhWu
-ROYpfE7qQ6CTrcGilpOLg9+N5wZOrT1mxn4s8h9d2+mkUdLHkudMFOoM/aTUyR0r
-A+Jq0iCfFYO6+SdhRo4zbecLVf0aihZ+pdOHQJ428Cguf28QPHusRiPlaYYTrsHD
-8zzLHxfwcftJ4IqVR7K4
-=IpC+
------END PGP SIGNATURE-----
-
---LZvS9be/3tNcYl/X--
