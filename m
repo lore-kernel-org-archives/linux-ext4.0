@@ -1,113 +1,76 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v3 1/9] string: introduce memweight
-Date: Mon, 11 Jun 2012 16:17:25 -0700
-Message-ID: <20120611161725.84330925.akpm@linux-foundation.org>
-References: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, Anders Larsen <al@alarsen.net>,
-	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org,
-	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
-To: Akinobu Mita <akinobu.mita@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: update global free blocks/inodes count when truncating orphan inodes
+Date: Mon, 11 Jun 2012 22:22:42 -0400
+Message-ID: <1339467762-5725-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:58228 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752349Ab2FKXR0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Jun 2012 19:17:26 -0400
-In-Reply-To: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49222 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752447Ab2FLCWp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jun 2012 22:22:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat,  9 Jun 2012 09:50:30 +0900
-Akinobu Mita <akinobu.mita@gmail.com> wrote:
+By the time we start processing the orphan inode list, we have already
+calculated the total expected number of free blocks and inodes in
+ctx->free_{blocks,inodes}.  This is used to set the free blocks/inodes
+count in the superblock in the case where we don't need to do a full
+e2fsck.
 
-> memweight() is the function that counts the total number of bits set
-> in memory area.  Unlike bitmap_weight(), memweight() takes pointer
-> and size in bytes to specify a memory area which does not need to be
-> aligned to long-word boundary.
-> 
-> ...
->
-> +/**
-> + * memweight - count the total number of bits set in memory area
-> + * @ptr: pointer to the start of the area
-> + * @bytes: the size of the area
-> + */
-> +size_t memweight(const void *ptr, size_t bytes)
-> +{
-> +	size_t w = 0;
+We need to update these expected free block counts as we process the
+orphan inode list so that superblock values are set correctly.
+Otherwise we could have the following happen:
 
-Calling the return value "ret" is a useful convention and fits well here.
+% e2fsck /tmp/test.img
+e2fsck 1.42.3 (14-May-2012)
+Truncating orphaned inode 12 (uid=0, gid=0, mode=0100644, size=0)
+Setting free blocks count to 46 (was 79)
+/tmp/test.img: clean, 12/16 files, 54/100 blocks
 
-> +	size_t longs;
-> +	const unsigned char *bitmap = ptr;
-> +
-> +	for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(long);
-> +			bytes--, bitmap++)
-> +		w += hweight8(*bitmap);
-> +
-> +	longs = bytes / sizeof(long);
-> +	if (longs) {
-> +		BUG_ON(longs >= INT_MAX / BITS_PER_LONG);
-> +		w += bitmap_weight((unsigned long *)bitmap,
-> +				longs * BITS_PER_LONG);
-> +		bytes -= longs * sizeof(long);
-> +		bitmap += longs * sizeof(long);
-> +	}
-> +	/*
-> +	 * The reason that this last loop is distinct from the preceding
-> +	 * bitmap_weight() call is to compute 1-bits in the last region smaller
-> +	 * than sizeof(long) properly on big-endian systems.
-> +	 */
-> +	for (; bytes > 0; bytes--, bitmap++)
-> +		w += hweight8(*bitmap);
-> +
-> +	return w;
-> +}
-> +EXPORT_SYMBOL(memweight);
+% e2fsck /tmp/test.img
+e2fsck 1.42.3 (14-May-2012)
+Setting free blocks count to 79 (was 46)
+/tmp/test.img: clean, 12/16 files, 21/100 blocks
 
-diff -puN lib/string.c~string-introduce-memweight-fix lib/string.c
---- a/lib/string.c~string-introduce-memweight-fix
-+++ a/lib/string.c
-@@ -833,18 +833,18 @@ EXPORT_SYMBOL(memchr_inv);
-  */
- size_t memweight(const void *ptr, size_t bytes)
- {
--	size_t w = 0;
-+	size_t ret = 0;
- 	size_t longs;
- 	const unsigned char *bitmap = ptr;
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/super.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 6c18d0e..160991d 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -143,6 +143,7 @@ static int release_inode_block(ext2_filsys fs,
+ 	}
  
- 	for (; bytes > 0 && ((unsigned long)bitmap) % sizeof(long);
- 			bytes--, bitmap++)
--		w += hweight8(*bitmap);
-+		ret += hweight8(*bitmap);
- 
- 	longs = bytes / sizeof(long);
- 	if (longs) {
- 		BUG_ON(longs >= INT_MAX / BITS_PER_LONG);
--		w += bitmap_weight((unsigned long *)bitmap,
-+		ret += bitmap_weight((unsigned long *)bitmap,
- 				longs * BITS_PER_LONG);
- 		bytes -= longs * sizeof(long);
- 		bitmap += longs * sizeof(long);
-@@ -855,8 +855,8 @@ size_t memweight(const void *ptr, size_t
- 	 * than sizeof(long) properly on big-endian systems.
- 	 */
- 	for (; bytes > 0; bytes--, bitmap++)
--		w += hweight8(*bitmap);
-+		ret += hweight8(*bitmap);
- 
--	return w;
-+	return ret;
+ 	ext2fs_block_alloc_stats2(fs, blk, -1);
++	ctx->free_blocks++;
+ 	return retval;
  }
- EXPORT_SYMBOL(memweight);
-_
+ 
+@@ -211,9 +212,11 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 				ino);
+ 			return 1;
+ 		}
+-		if (count == 0)
++		if (count == 0) {
+ 			ext2fs_block_alloc_stats2(fs,
+ 					ext2fs_file_acl_block(fs, inode), -1);
++			ctx->free_blocks++;
++		}
+ 		ext2fs_file_acl_block_set(fs, inode, 0);
+ 	}
+ 	return 0;
+@@ -286,6 +289,7 @@ static int release_orphan_inodes(e2fsck_t ctx)
+ 		if (!inode.i_links_count) {
+ 			ext2fs_inode_alloc_stats2(fs, ino, -1,
+ 						  LINUX_S_ISDIR(inode.i_mode));
++			ctx->free_inodes++;
+ 			inode.i_dtime = ctx->now;
+ 		} else {
+ 			inode.i_dtime = 0;
+-- 
+1.7.10.2.552.gaa3bb87
 
