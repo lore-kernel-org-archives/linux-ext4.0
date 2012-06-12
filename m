@@ -1,57 +1,97 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/4] exofs: Handle error from d_splice_alias()
-Date: Tue, 12 Jun 2012 11:04:12 +0200
-Message-ID: <20120612090412.GB6021@quack.suse.cz>
-References: <1338322067-17566-1-git-send-email-jack@suse.cz>
- <4FC5F8CC.20400@panasas.com>
- <20120608215950.GQ30000@ZenIV.linux.org.uk>
- <4FD611AA.5010006@panasas.com>
- <20120611190108.GF16086@thunk.org>
+Subject: Re: [PATCH v3 7/9] ext2: use memweight()
+Date: Tue, 12 Jun 2012 11:14:19 +0200
+Message-ID: <20120612091419.GC6021@quack.suse.cz>
+References: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+ <1339203038-13069-7-git-send-email-akinobu.mita@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Ted Ts'o <tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Akinobu Mita <akinobu.mita@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36673 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:37666 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847Ab2FLJEP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jun 2012 05:04:15 -0400
+	id S1751182Ab2FLJOV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jun 2012 05:14:21 -0400
 Content-Disposition: inline
-In-Reply-To: <20120611190108.GF16086@thunk.org>
+In-Reply-To: <1339203038-13069-7-git-send-email-akinobu.mita@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 11-06-12 15:01:08, Ted Tso wrote:
-> On Mon, Jun 11, 2012 at 06:41:30PM +0300, Boaz Harrosh wrote:
-> > 
-> > My point being that please any changes made to ext2, in this area please also
-> > apply to exofs, since it is just another copy/paste of ext2. I'll ACK any
-> > which way you guys decide to properly go with, as part of the VFS changes.
+On Sat 09-06-12 09:50:36, Akinobu Mita wrote:
+> Convert ext2_count_free() to use memweight() instead of table lookup
+> based counting clear bits implementation.  This change only affects
+> the code segments enabled by EXT2FS_DEBUG.
 > 
-> Well, I already have this quick and dirty fix to address the problem
-> in ext4.  See commit 7e936b7372.  If we need to make changes to all of
-> the file systems to accomodate some new VFS abstraction, it might be
-> worth considering whether it's easier/simpler to just put in a quick
-> check like I did for ext4 (just so I could plug the security hole[1]
-> quickly).
+> Note that this memweight() call can't be replaced with a single
+> bitmap_weight() call, although the pointer to the memory area is
+> aligned to long-word boundary.  Because the size of the memory area
+> may not be a multiple of BITS_PER_LONG, then it returns wrong value on
+> big-endian architecture.
 > 
-> [1] It's a denial of service attack for kiosks that do automounts of
-> USB sticks; granted, it's not that big a of a security deal, but some
-> people care about such things.
+> This also includes the following changes.
 > 
-> Of course, if the new/changed VFS abstraction solves other problems,
-> that's cool, but if not, sometimes a simple brute force check is
-> better than something complicated if elegant.  :-)
-  I think that fix in ext4 is fine. Just you don't catch the situation when
-the directory entry points e.g. to a parent and that's deadlockable
-trivially as well. Even if it points to some unrelated directory, you can
-easily deadlock rename which tries to lock both directories. So I attempted
-for a fix in VFS because that's the only place having enough information to
-be able to tell whether you are creating directory hardlink or not.
+> - Remove unnecessary map == NULL check in ext2_count_free() which
+>   always takes non-null pointer as the memory area.
+> 
+> - Fix printk format warning that only reveals with EXT2FS_DEBUG.
+> 
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> Cc: Jan Kara <jack@suse.cz>
+  Acked-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> Cc: linux-ext4@vger.kernel.org
+> ---
+> v3: rewrite to keep ext2_count_free() as a wrapper for memweight()
+> 
+>  fs/ext2/balloc.c |   14 ++------------
+>  fs/ext2/ialloc.c |    1 +
+>  2 files changed, 3 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 1c36139..376aa77 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -1444,19 +1444,9 @@ ext2_fsblk_t ext2_new_block(struct inode *inode, unsigned long goal, int *errp)
+>  
+>  #ifdef EXT2FS_DEBUG
+>  
+> -static const int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
+> -
+> -unsigned long ext2_count_free (struct buffer_head * map, unsigned int numchars)
+> +unsigned long ext2_count_free(struct buffer_head *map, unsigned int numchars)
+>  {
+> -	unsigned int i;
+> -	unsigned long sum = 0;
+> -
+> -	if (!map)
+> -		return (0);
+> -	for (i = 0; i < numchars; i++)
+> -		sum += nibblemap[map->b_data[i] & 0xf] +
+> -			nibblemap[(map->b_data[i] >> 4) & 0xf];
+> -	return (sum);
+> +	return numchars * BITS_PER_BYTE - memweight(map->b_data, numchars);
+>  }
+>  
+>  #endif  /*  EXT2FS_DEBUG  */
+> diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+> index c13eb7b..8f370e01 100644
+> --- a/fs/ext2/ialloc.c
+> +++ b/fs/ext2/ialloc.c
+> @@ -644,6 +644,7 @@ unsigned long ext2_count_free_inodes (struct super_block * sb)
+>  	}
+>  	brelse(bitmap_bh);
+>  	printk("ext2_count_free_inodes: stored = %lu, computed = %lu, %lu\n",
+> +		(unsigned long)
+>  		percpu_counter_read(&EXT2_SB(sb)->s_freeinodes_counter),
+>  		desc_count, bitmap_count);
+>  	return desc_count;
+> -- 
+> 1.7.7.6
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
