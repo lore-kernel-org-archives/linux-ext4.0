@@ -1,97 +1,55 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Hole punching and mmap races
-Date: Tue, 12 Jun 2012 10:56:39 +0200
-Message-ID: <20120612085639.GA6021@quack.suse.cz>
-References: <20120524123538.GA5632@quack.suse.cz>
- <20120605055150.GF4347@dastard>
- <20120605231530.GB4402@quack.suse.cz>
- <20120606000636.GG22848@dastard>
- <20120606095827.GA6304@quack.suse.cz>
- <20120606133616.GL22848@dastard>
- <20120607215835.GB393@quack.suse.cz>
- <20120608005700.GW4347@dastard>
- <20120608213629.GA1365@quack.suse.cz>
- <20120608230616.GA25389@dastard>
+Subject: Re: [PATCH 5/4] exofs: Handle error from d_splice_alias()
+Date: Tue, 12 Jun 2012 11:04:12 +0200
+Message-ID: <20120612090412.GB6021@quack.suse.cz>
+References: <1338322067-17566-1-git-send-email-jack@suse.cz>
+ <4FC5F8CC.20400@panasas.com>
+ <20120608215950.GQ30000@ZenIV.linux.org.uk>
+ <4FD611AA.5010006@panasas.com>
+ <20120611190108.GF16086@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
-To: Dave Chinner <david@fromorbit.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36131 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:36673 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751873Ab2FLI4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jun 2012 04:56:44 -0400
+	id S1751847Ab2FLJEP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jun 2012 05:04:15 -0400
 Content-Disposition: inline
-In-Reply-To: <20120608230616.GA25389@dastard>
+In-Reply-To: <20120611190108.GF16086@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 09-06-12 09:06:16, Dave Chinner wrote:
-> On Fri, Jun 08, 2012 at 11:36:29PM +0200, Jan Kara wrote:
-> > On Fri 08-06-12 10:57:00, Dave Chinner wrote:
-> > > On Thu, Jun 07, 2012 at 11:58:35PM +0200, Jan Kara wrote:
-> > > > On Wed 06-06-12 23:36:16, Dave Chinner wrote:
-> > > > Also we could implement the common case of locking a range
-> > > > containing single page by just taking page lock so we save modification of
-> > > > interval tree in the common case and generally make the tree smaller (of
-> > > > course, at the cost of somewhat slowing down cases where we want to lock
-> > > > larger ranges).
-> > > 
-> > > That seems like premature optimistion to me, and all the cases I
-> > > think we need to care about are locking large ranges of the tree.
-> > > Let's measure what the overhead of tracking everything in a single
-> > > tree is first so we can then see what needs optimising...
-> >   Umm, I agree that initially we probably want just to have the mapping
-> > range lock ability, stick it somewhere to IO path and make things work.
-> > Then we can look into making it faster / merging with page lock.
+On Mon 11-06-12 15:01:08, Ted Tso wrote:
+> On Mon, Jun 11, 2012 at 06:41:30PM +0300, Boaz Harrosh wrote:
 > > 
-> > However I disagree we care most about locking large ranges. For all
-> > buffered IO and all page faults we need to lock a range containing just a
-> > single page. We cannot lock more due to locking constraints with mmap_sem.
+> > My point being that please any changes made to ext2, in this area please also
+> > apply to exofs, since it is just another copy/paste of ext2. I'll ACK any
+> > which way you guys decide to properly go with, as part of the VFS changes.
 > 
-> Not sure I understand what that constraint is - I hav ebeen thinking
-> that the buffered IO range lok would be across the entire IO, not
-> individual pages.
+> Well, I already have this quick and dirty fix to address the problem
+> in ext4.  See commit 7e936b7372.  If we need to make changes to all of
+> the file systems to accomodate some new VFS abstraction, it might be
+> worth considering whether it's easier/simpler to just put in a quick
+> check like I did for ext4 (just so I could plug the security hole[1]
+> quickly).
 > 
-> As it is, if we want to do multipage writes (and we do), we have to
-> be able to lock a range of the mapping in the buffered IO path at a
-> time...
-  The problem is that buffered IO path does (e.g. in
-generic_perform_write()):
-  iov_iter_fault_in_readable() - that faults in one page worth of buffers,
-    takes mmap_sem
-  ->write_begin()
-  copy data - iov_iter_copy_from_user_atomic()
-  ->write_end()
-
-  So we take mmap_sem before writing every page. We could fault in more,
-but that increases risk of iov_iter_copy_from_user_atomic() failing because
-the page got reclaimed before we got to it. So the amount we fault in would
-have to adapt to current memory pressure. That's certainly possible but not
-related to the problem we are trying to solve now so I'd prefer to handle
-it separately.
-
-> > So the places that will lock larger ranges are: direct IO, truncate, punch
-> > hole. Writeback actually doesn't seem to need any additional protection at
-> > least as I've sketched out things so far.
+> [1] It's a denial of service attack for kiosks that do automounts of
+> USB sticks; granted, it's not that big a of a security deal, but some
+> people care about such things.
 > 
-> AFAICT, writeback needs protection against punching holes, just like
-> mmap does, because they use the same "avoid truncated pages"
-> mechanism.
-  If punching hole does:
-lock_mapping_range()
-evict all pages in a range
-punch blocks
-unlock_mapping_range()
-
-  Then we shouldn't race against writeback because there are no pages in
-the mapping range we punch and they cannot be created there because we
-hold the lock. I agree this might be unnecessary optimization, but the nice
-result is that we can clean dirty pages regardless of what others do with
-the mapping. So in case there would be problems with taking mapping lock from
-writeback, we could avoid that.
+> Of course, if the new/changed VFS abstraction solves other problems,
+> that's cool, but if not, sometimes a simple brute force check is
+> better than something complicated if elegant.  :-)
+  I think that fix in ext4 is fine. Just you don't catch the situation when
+the directory entry points e.g. to a parent and that's deadlockable
+trivially as well. Even if it points to some unrelated directory, you can
+easily deadlock rename which tries to lock both directories. So I attempted
+for a fix in VFS because that's the only place having enough information to
+be able to tell whether you are creating directory hardlink or not.
 
 								Honza
 -- 
