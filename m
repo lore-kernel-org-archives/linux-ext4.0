@@ -1,114 +1,99 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH 1/1] ext4: fix hole punch failure when depth is greater
- than 0
-Date: Tue, 12 Jun 2012 11:17:32 +0530
-Message-ID: <CAOiN93nGE+z5-0=f-Ghq+xb+y4XCA10LnxmMoA7wJsP4YQciUQ@mail.gmail.com>
-References: <1338727489-16867-1-git-send-email-ashish.sangwan2@gmail.com>
-	<20120608025219.GA28527@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Hole punching and mmap races
+Date: Tue, 12 Jun 2012 10:56:39 +0200
+Message-ID: <20120612085639.GA6021@quack.suse.cz>
+References: <20120524123538.GA5632@quack.suse.cz>
+ <20120605055150.GF4347@dastard>
+ <20120605231530.GB4402@quack.suse.cz>
+ <20120606000636.GG22848@dastard>
+ <20120606095827.GA6304@quack.suse.cz>
+ <20120606133616.GL22848@dastard>
+ <20120607215835.GB393@quack.suse.cz>
+ <20120608005700.GW4347@dastard>
+ <20120608213629.GA1365@quack.suse.cz>
+ <20120608230616.GA25389@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Ted Ts'o" <tytso@mit.edu>,
-	Ashish Sangwan <ashishsangwan2@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Namjae Jeon <linkinjeon@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Hugh Dickins <hughd@google.com>, linux-mm@kvack.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:54369 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751338Ab2FLFrc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jun 2012 01:47:32 -0400
-In-Reply-To: <20120608025219.GA28527@thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36131 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751873Ab2FLI4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Jun 2012 04:56:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20120608230616.GA25389@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Sat 09-06-12 09:06:16, Dave Chinner wrote:
+> On Fri, Jun 08, 2012 at 11:36:29PM +0200, Jan Kara wrote:
+> > On Fri 08-06-12 10:57:00, Dave Chinner wrote:
+> > > On Thu, Jun 07, 2012 at 11:58:35PM +0200, Jan Kara wrote:
+> > > > On Wed 06-06-12 23:36:16, Dave Chinner wrote:
+> > > > Also we could implement the common case of locking a range
+> > > > containing single page by just taking page lock so we save modification of
+> > > > interval tree in the common case and generally make the tree smaller (of
+> > > > course, at the cost of somewhat slowing down cases where we want to lock
+> > > > larger ranges).
+> > > 
+> > > That seems like premature optimistion to me, and all the cases I
+> > > think we need to care about are locking large ranges of the tree.
+> > > Let's measure what the overhead of tracking everything in a single
+> > > tree is first so we can then see what needs optimising...
+> >   Umm, I agree that initially we probably want just to have the mapping
+> > range lock ability, stick it somewhere to IO path and make things work.
+> > Then we can look into making it faster / merging with page lock.
+> > 
+> > However I disagree we care most about locking large ranges. For all
+> > buffered IO and all page faults we need to lock a range containing just a
+> > single page. We cannot lock more due to locking constraints with mmap_sem.
+> 
+> Not sure I understand what that constraint is - I hav ebeen thinking
+> that the buffered IO range lok would be across the entire IO, not
+> individual pages.
+> 
+> As it is, if we want to do multipage writes (and we do), we have to
+> be able to lock a range of the mapping in the buffered IO path at a
+> time...
+  The problem is that buffered IO path does (e.g. in
+generic_perform_write()):
+  iov_iter_fault_in_readable() - that faults in one page worth of buffers,
+    takes mmap_sem
+  ->write_begin()
+  copy data - iov_iter_copy_from_user_atomic()
+  ->write_end()
 
-Thanks for checking the patch.
-The reason for the crash is the "again" tag at the end of function
-ext4_ext_remove_space() which restarts the truncate operation.
-Setting path =3D NULL here, before doing truncate again solves the prob=
-lem.
-out:
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
-+	path =3D NULL;   <=3D Required fix
- 	if (err =3D=3D -EAGAIN)
- 		goto again;
+  So we take mmap_sem before writing every page. We could fault in more,
+but that increases risk of iov_iter_copy_from_user_atomic() failing because
+the page got reclaimed before we got to it. So the amount we fault in would
+have to adapt to current memory pressure. That's certainly possible but not
+related to the problem we are trying to solve now so I'd prefer to handle
+it separately.
 
-We will again submit proper patch for it.
+> > So the places that will lock larger ranges are: direct IO, truncate, punch
+> > hole. Writeback actually doesn't seem to need any additional protection at
+> > least as I've sketched out things so far.
+> 
+> AFAICT, writeback needs protection against punching holes, just like
+> mmap does, because they use the same "avoid truncated pages"
+> mechanism.
+  If punching hole does:
+lock_mapping_range()
+evict all pages in a range
+punch blocks
+unlock_mapping_range()
 
-On Fri, Jun 8, 2012 at 8:22 AM, Ted Ts'o <tytso@mit.edu> wrote:
-> I tried applying this patch, and it causes fsstress to die in xfstest=
-s
-> #13. =A0I took a quick look, but the truncate/punch codepaths are one=
- of
-> the more obscure parts of ext4, and it's not obvious what causing the
-> null dereference, which at first glance looks like is coming from
-> path->b_bh->b_data.
->
-> Also, please note that commit descriptions should be wrapped around
-> 70-72 columns, so that "git log" is reasonable to look at on 80 colum=
-n
-> terminals.
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 =A0 =A0- Ted
->
-> 013 =A0 =A0 [ =A0 62.356981] BUG: unable to handle kernel NULL pointe=
-r dereference at 00000019
-> [ =A0 62.357880] IP: [<c029413f>] __ext4_ext_dirty+0x1c/0x52
-> [ =A0 62.358836] *pdpt =3D 00000000352d2001 *pde =3D 0000000000000000
-> [ =A0 62.359528] Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> [ =A0 62.360046] Modules linked in:
-> [ =A0 62.360046]
-> [ =A0 62.360046] Pid: 7178, comm: fsstress Not tainted 3.5.0-rc1-0000=
-3-g69e292a-dirty #123 Bochs Bochs
-> [ =A0 62.360046] EIP: 0060:[<c029413f>] EFLAGS: 00010202 CPU: 0
-> [ =A0 62.360046] EIP is at __ext4_ext_dirty+0x1c/0x52
-> [ =A0 62.360046] EAX: 00000001 EBX: 000009c9 ECX: f603b948 EDX: 00000=
-9c9
-> [ =A0 62.360046] ESI: c07234c4 EDI: f6bc05a0 EBP: efd7ddd4 ESP: efd7d=
-dc4
-> [ =A0 62.360046] =A0DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-> [ =A0 62.360046] CR0: 8005003b CR2: 00000019 CR3: 352d1000 CR4: 00000=
-6f0
-> [ =A0 62.360046] DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000=
-000
-> [ =A0 62.360046] DR6: ffff0ff0 DR7: 00000400
-> [ =A0 62.360046] Process fsstress (pid: 7178, ti=3Defd7c000 task=3Df6=
-9214b0 task.ti=3Defd7c000)
-> [ =A0 62.360046] Stack:
-> [ =A0 62.360046] =A0f627f1ec 00000050 f627f1ec 00000007 efd7de8c c029=
-62b9 f627f2e0 f6bc05a0
-> [ =A0 62.360046] =A000000008 ffffffff ffffffff 80504000 f603b948 f62f=
-1150 00000000 00000fe3
-> [ =A0 62.360046] =A000010c15 00000000 f603b948 c071edb4 f5da6000 0000=
-0001 f627f1ec 00000012
-> [ =A0 62.360046] Call Trace:
-> [ =A0 62.360046] =A0[<c02962b9>] ext4_ext_remove_space+0x6c2/0xaeb
-> [ =A0 62.360046] =A0[<c0278998>] ? ext4_reserve_inode_write+0x38/0x6a
-> [ =A0 62.360046] =A0[<c0296bd3>] ext4_ext_truncate+0x127/0x199
-> [ =A0 62.360046] =A0[<c027a165>] ext4_truncate+0x7d/0xac
-> [ =A0 62.360046] =A0[<c027a483>] ext4_setattr+0x2ef/0x377
-> [ =A0 62.360046] =A0[<c0222636>] notify_change+0x1a6/0x27a
-> [ =A0 62.360046] =A0[<c020e69d>] do_truncate+0x69/0x82
-> [ =A0 62.360046] =A0[<c035094b>] ? security_inode_permission+0x1c/0x2=
-2
-> [ =A0 62.360046] =A0[<c020e8f7>] do_sys_truncate+0x12f/0x135
-> [ =A0 62.360046] =A0[<c020e913>] sys_truncate64+0x16/0x18
-> [ =A0 62.360046] =A0[<c06ec7c5>] syscall_call+0x7/0xb
-> [ =A0 62.360046] =A0[<c06e0000>] ? pci_acpi_scan_root+0x12a/0x258
-> [ =A0 62.360046] Code: 89 d1 ba 8b 00 00 00 e8 3b 4e 00 00 5a c9 c3 5=
-5 89 e5 57 56 53 83 ec 04 3e 8d 74 26 00 8b 7d 0c 89 c6 89 d3 8b 47 18 =
-85 c0 74 24 <8b> 50 18 8b 45 08 89 4d f0 e8 6d ff ff ff 8b 4d f0 89 da =
-89 f0
-> [ =A0 62.360046] EIP: [<c029413f>] __ext4_ext_dirty+0x1c/0x52 SS:ESP =
-0068:efd7ddc4
-> [ =A0 62.360046] CR2: 0000000000000019
-> [ =A0 62.395961] ---[ end trace d13d52b79a9cd4d5 ]---
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  Then we shouldn't race against writeback because there are no pages in
+the mapping range we punch and they cannot be created there because we
+hold the lock. I agree this might be unnecessary optimization, but the nice
+result is that we can clean dirty pages regardless of what others do with
+the mapping. So in case there would be problems with taking mapping lock from
+writeback, we could avoid that.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
