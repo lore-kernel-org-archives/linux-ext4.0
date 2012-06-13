@@ -1,23 +1,23 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 14465] WARNING: at /build/buildd/linux-2.6.31/fs/inode.c:1212
  generic_delete_inode+0x14e/0x160
-Date: Wed, 13 Jun 2012 20:38:15 +0000 (UTC)
-Message-ID: <20120613203815.23FCC12060E@bugzilla.kernel.org>
+Date: Wed, 13 Jun 2012 20:38:09 +0000 (UTC)
+Message-ID: <20120613203809.E155E12060E@bugzilla.kernel.org>
 References: <bug-14465-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:47742 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.19.201]:47704 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752231Ab2FMUiR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2012 16:38:17 -0400
+	id S1752231Ab2FMUiN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Jun 2012 16:38:13 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C8001204AA
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49CCF2049B
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:12 +0000 (UTC)
 Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id 24B872049F
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E1DB52049F
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:09 +0000 (UTC)
 In-Reply-To: <bug-14465-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -29,7 +29,9 @@ Alan <alan@lxorguk.ukuu.org.uk> changed:
 
            What    |Removed                     |Added
 ----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+             Status|NEW                         |RESOLVED
+                 CC|                            |alan@lxorguk.ukuu.org.uk
+         Resolution|                            |OBSOLETE
 
 
 
