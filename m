@@ -1,39 +1,26 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14287] ext4: fixpoint divide exception at ext4_fill_super
-Date: Wed, 13 Jun 2012 18:55:50 +0000 (UTC)
-Message-ID: <20120613185550.506D712060F@bugzilla.kernel.org>
-References: <bug-14287-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] E2fsprogs: add missing usage for No_COW
+Date: Wed, 13 Jun 2012 15:44:55 -0400
+Message-ID: <20120613194455.GA17990@thunk.org>
+References: <1339577802-31343-1-git-send-email-liubo2009@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:40069 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752476Ab2FMSzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2012 14:55:53 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E12A720463
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 18:55:51 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id E69932045C
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 18:55:50 +0000 (UTC)
-In-Reply-To: <bug-14287-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	rm@romanrm.ru
+To: Liu Bo <liubo2009@cn.fujitsu.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1339577802-31343-1-git-send-email-liubo2009@cn.fujitsu.com>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14287
+On Wed, Jun 13, 2012 at 04:56:42PM +0800, Liu Bo wrote:
+> Add the missing usage for No_COW since we've supported No_COW flag.
+> 
+> Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
 
+Applied, although I changed the commit desciption to read:
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+    chattr: add the -C option to the usage message
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+    	    	       	      	     - Ted
