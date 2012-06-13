@@ -1,7 +1,7 @@
 From: Ming Lei <Ming.Lei@riverbed.com>
 Subject: RE: ext4 corruption on 17TB file system during power cycle test
-Date: Wed, 13 Jun 2012 14:20:42 +0000
-Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392828B31@SFO1EXC-MBXP06.nbttech.com>
+Date: Wed, 13 Jun 2012 14:30:06 +0000
+Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392828B4D@SFO1EXC-MBXP06.nbttech.com>
 References: <2CE44BD3DBCF9541909CCB42F11CA392828AAC@SFO1EXC-MBXP06.nbttech.com>
  <4FD89F5C.4040600@redhat.com>
 Mime-Version: 1.0
@@ -10,16 +10,19 @@ Content-Transfer-Encoding: 8BIT
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.riverbed.com ([208.70.196.44]:28554 "EHLO
+Received: from eng.riverbed.com ([208.70.196.44]:51764 "EHLO
 	smtp2.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753719Ab2FMOUo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 10:20:44 -0400
+	with ESMTP id S1754175Ab2FMOaf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 10:30:35 -0400
 In-Reply-To: <4FD89F5C.4040600@redhat.com>
 Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the bug is in e2fsck, then if I mount the ext4 fs and umount it before I do e2fsck, should fsck return no error? The journal replay would be done by kernel during mount, am I correct?
+We actually ran into problem in our real power cycle testing. We used fsck -p option and then mount the ext4 file system but during test after the power cycle, kernel found EXT4 error and then force ext4 mount become read only. Do you think the problem is inside kernel?
+
+Thanks
+M- 
 
 -----Original Message-----
 From: Eric Sandeen [mailto:sandeen@redhat.com] 
