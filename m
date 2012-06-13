@@ -1,42 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14465] WARNING: at /build/buildd/linux-2.6.31/fs/inode.c:1212
- generic_delete_inode+0x14e/0x160
-Date: Wed, 13 Jun 2012 20:38:09 +0000 (UTC)
-Message-ID: <20120613203809.E155E12060E@bugzilla.kernel.org>
-References: <bug-14465-13602@https.bugzilla.kernel.org/>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: [PATCH] e2image: add -a switch to include all data
+Date: Wed, 13 Jun 2012 16:41:12 -0400
+Message-ID: <4FD8FAE8.3030002@ubuntu.com>
+References: <1329841206-14769-1-git-send-email-psusi@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:47704 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752231Ab2FMUiN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2012 16:38:13 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 49CCF2049B
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:12 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.204])
-	by mail.kernel.org (Postfix) with ESMTP id E1DB52049F
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:38:09 +0000 (UTC)
-In-Reply-To: <bug-14465-13602@https.bugzilla.kernel.org/>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:15286 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752231Ab2FMUlO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 16:41:14 -0400
+In-Reply-To: <1329841206-14769-1-git-send-email-psusi@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14465
+Hey Ted, I still haven't heard anything about this.  Do you not like the 
+patch?
 
-
-Alan <alan@lxorguk.ukuu.org.uk> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-         Resolution|                            |OBSOLETE
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+On 2/21/2012 11:20 AM, Phillip Susi wrote:
+> Normally the raw and QCOW2 images only contain fs metadata.
+> Add a new switch ( -a ) to include all data.  This makes it
+> possible to use e2image to clone a whole filesystem.
+>
+> Signed-off-by: Phillip Susi<psusi@ubuntu.com>
