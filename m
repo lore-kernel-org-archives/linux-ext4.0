@@ -1,90 +1,62 @@
-From: Arnd Bergmann <arnd.bergmann@linaro.org>
+From: Ted Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 2/3] ext4: Context support
-Date: Wed, 13 Jun 2012 19:44:35 +0000
-Message-ID: <201206131944.35351.arnd.bergmann@linaro.org>
-References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com> <201206122007.28514.arnd.bergmann@linaro.org> <20120612204128.GF12161@thunk.org>
+Date: Wed, 13 Jun 2012 16:00:33 -0400
+Message-ID: <20120613200033.GB17990@thunk.org>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
+ <201206122007.28514.arnd.bergmann@linaro.org>
+ <20120612204128.GF12161@thunk.org>
+ <201206131944.35351.arnd.bergmann@linaro.org>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Saugata Das <saugata.das@linaro.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Lemberg <Alex.Lemberg@sandisk.com>,
+	HYOJIN JEONG <syr.jeong@samsung.com>,
+	Saugata Das <saugata.das@linaro.org>,
 	Artem Bityutskiy <dedekind1@gmail.com>,
 	Saugata Das <saugata.das@stericsson.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
 	"Luca Porzio (lporzio)" <lporzio@micron.com>
-To: "Ted Ts'o" <tytso@mit.edu>,
-	Alex Lemberg <Alex.Lemberg@sandisk.com>,
-	HYOJIN JEONG <syr.jeong@samsung.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120612204128.GF12161@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Arnd Bergmann <arnd.bergmann@linaro.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49655 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753389Ab2FMUAl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Jun 2012 16:00:41 -0400
+Content-Disposition: inline
+In-Reply-To: <201206131944.35351.arnd.bergmann@linaro.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 12 June 2012, Ted Ts'o wrote:
-> On Tue, Jun 12, 2012 at 08:07:28PM +0000, Arnd Bergmann wrote:
-> > Right. The danger here is that the context support was described in
-> > the standard first, while none of the devices seem to even be
-> > smart enough to make use of the information we put in there. Once
-> > operating systems start putting some data in there, at least
-> > some manufacturers will start making use of that data to optimize
-> > the accesses, but it's very unlikely that they will tell us exactly
-> > what they are doing. Having code in ext4 that uses the contexts will
-> > at least make it more likely that the firmware optimizations are
-> > based on ext4 measurements rather than some other file system or
-> > operating system.
-> >
-> > From talking with the emmc device vendors, I can tell you that ext4
-> > is very high on the list of file systems to optimize for, because
-> > they all target Android products.
+On Wed, Jun 13, 2012 at 07:44:35PM +0000, Arnd Bergmann wrote:
 > 
-> Well, I have a contact at SanDisk where I can discuss things under
-> NDA, if that will help.  He had reached out to me specifically because
-> of ext4 and Android --- he's the guy that I invited to give a talk at
-> the LSF workshop last year.
+> I think using the inode number is a reasonable fit. Using the
+> inode number of the parent directory might be more appropriate
+> but it breaks with hard links and cross-directory renames (we
+> must not use the same LBA with conflicting context numbers,
+> or flush the old context inbetween).
 
-Well, the Linaro storage team is in close contact with Alex Lemberg
-from Sandisk, Luca Porzio from Micron and Hyojin Jeong from Samsung,
-and we discussed this patch in our meeting two weeks ago and on
-our Linaro mailing lists before that.
+I think the inode number of the parent directory by itself is actually
+*not* a good idea, because there are plenty of cases where files in
+the same directory do not have the same life time.  For example,
+consider your openoffice files in ~/Documents, for example.  Or worse,
+the files in ~/Downloads written by your web browser.
 
-I have a good feeling about that work relationship, and they
-all understand the needs of the Linux file systems, but my impression
-is also that with an NDA in place we would not be able to put any
-better implementation into the Linux kernel that makes use of hw
-details of one of the manufacturers. Also note that the eMMC standard
-is intentionally written in an abstract way to give the hardware
-manufacturers the option to provide better implementations over time,
-e.g. when new devices start using large amounts of cache, or replace
-NAND flash with phase change memory or other technologies.
+It might be worth considering the hueristic of a series of files
+written by a single process close together in time as belonging to a
+single context.  That still might not be quite right in the case of a
+git checkout for example, most of the time I think that hueristic
+would be quite valid.
 
-That said, I think it is rather clear what the authors of the spec
-had in mind, and there is only one reasonable implementation given
-current flash technology: You get something like a log structured
-file system with 15 contexts, where each context writes to exactly
-one erase block at a given time. This is not all that different
-from how eMMC/SD/USB works already without context support, the main
-difference being that the context normally gets picked based on the
-LBA of the write in segments between 512KB and 16MB. Because the number
-of active contexts is smaller than the number of total segments in
-the device, the device keeps an LRU list of something between 5 and
-30 segments.
+One thing that *would* be worth consider when trying to decide the
+right granularity for a context would be the size of the erase block.
+If the erase block is 2 megs, and we are writing a lot of 8 meg files,
+a per-inode context granularity probably makes a lot of sense.
 
-Letting the file system pick the context number based on information
-it has about the contents rather than the LBA should reduce the amount
-of garbage collection if there is a stronger correlation between life
-times of data written to the same context than there is between
-life times of data written to adjacent LBA numbers.
+OTOH, if the erase block size is 8mb, and we are writing a whole bunch
+of small files, we probably want to use a much more aggressive way of
+aggregating relating blocks than just "inodes" that average in size of
+say, 32k or 128k.  Getting this information may requiring leaning
+rather hard on the eMMC manufacturers, since they (irrationally, in my
+opinion) think this should be trade secret information.  :-(
 
-The trouble with this is of course that getting the file system to
-do a really good job at picking the context numbers is a harder
-task than coming up with a block allocation scheme that just gets
-it right for devices without context ID support ;-).
-
-I think using the inode number is a reasonable fit. Using the
-inode number of the parent directory might be more appropriate
-but it breaks with hard links and cross-directory renames (we
-must not use the same LBA with conflicting context numbers,
-or flush the old context inbetween).
-
-	Arnd
+	       	    	      	    	   - Ted
