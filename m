@@ -1,52 +1,24 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] tests: add two more tests of orphaned inode
- handling
-Date: Wed, 13 Jun 2012 09:26:57 -0400
-Message-ID: <20120613132657.GA12595@thunk.org>
-References: <1339467762-5725-1-git-send-email-tytso@mit.edu>
- <1339479907-19088-1-git-send-email-tytso@mit.edu>
- <1339479907-19088-2-git-send-email-tytso@mit.edu>
- <F7262E20-BC8F-42BE-A8F0-C7DBD49CA8C6@whamcloud.com>
+From: Ming Lei <Ming.Lei@riverbed.com>
+Subject: ext4 corruption on 17TB file system during power cycle test
+Date: Wed, 13 Jun 2012 13:49:29 +0000
+Message-ID: <2CE44BD3DBCF9541909CCB42F11CA392828AAC@SFO1EXC-MBXP06.nbttech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49580 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753688Ab2FMN1A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2012 09:27:00 -0400
-Content-Disposition: inline
-In-Reply-To: <F7262E20-BC8F-42BE-A8F0-C7DBD49CA8C6@whamcloud.com>
+Received: from smtp.riverbed.com ([208.70.196.44]:32206 "EHLO
+	smtp2.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753428Ab2FMNtb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 09:49:31 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 13, 2012 at 12:44:10AM -0600, Andreas Dilger wrote:
-> > diff --git a/tests/f_orphan_indirect_inode/expect.1 b/tests/f_orphan_indirect_inode/expect.1
-> > new file mode 100644
-> > index 0000000..33cdd65
-> > --- /dev/null
-> > +++ b/tests/f_orphan_indirect_inode/expect.1
-> > @@ -0,0 +1,2 @@
-> > +test_filesys: clean, 12/16 files, 21/100 blocks
-> > +Exit status is 0
-> 
-> Hmm, this doesn't appear to be truncating an orphan inode, unlike
-> the f_orphan_extent_inode test is doing?
+I  have raid0 on 12 Seagate new 3TB sas drives and kernel version is 2.6.32SL6.1 version. The ext4 is mounted with barrier on, delalloc on/off has almost the same result.
 
-That's because we're running the test in preen mode, where messages
-about the orphan inode processing are suppressed.  The bug that this
-test is specifically testing for only happens we don't do a full file
-system check, and normally tests run with -fy, which forces a full
-check.
+I ran fs_mark -F -t 10 -D 1000 -N 1000 -n 1000000 -s 40 -S 2 into 4 iterations(reported count of 40000000) and then power cycled the box. After the box came up, I ran fsck -f to check inconsistency. On ext4 FS 7.5TB and 16TB, I got no fsck error; but on 17TB, 21TB and 33TB, I got big chunk of fsck errors.
 
-I overrode the default options used for the first fs check in this
-test to be -p.  I probably should have used -y instead, so that the
-orpan inode message didn't get hidden.  I'll fix that for the next
-release.
-
-In any case, if you take the image from this test, and run "e2fsck -y
-/tmp/image; e2fsck -fy /tmp/image" using the e2fsck from 1.42.3, it'll
-become obvious what this test is checking....
-
-						- Ted
+My question is: is this known issue and any fix?
+Thanks
+M-
