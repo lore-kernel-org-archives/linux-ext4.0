@@ -1,40 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 14562] On umount warn in page_alloc.c:1751
- __alloc_pages_slowpath
-Date: Thu, 14 Jun 2012 16:50:54 +0000 (UTC)
-Message-ID: <20120614165054.8FFE111FBF6@bugzilla.kernel.org>
-References: <bug-14562-13602@https.bugzilla.kernel.org/>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Context support
+Date: Thu, 14 Jun 2012 13:05:33 -0400
+Message-ID: <20120614170533.GA15093@thunk.org>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
+ <201206131944.35351.arnd.bergmann@linaro.org>
+ <20120613200033.GB17990@thunk.org>
+ <201206132043.47962.arnd.bergmann@linaro.org>
+ <20120614020757.GB8226@thunk.org>
+ <alpine.LFD.2.02.1206141204591.23555@xanadu.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Arnd Bergmann <arnd.bergmann@linaro.org>,
+	Alex Lemberg <Alex.Lemberg@sandisk.com>,
+	HYOJIN JEONG <syr.jeong@samsung.com>,
+	Saugata Das <saugata.das@linaro.org>,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	Saugata Das <saugata.das@stericsson.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
+	"Luca Porzio (lporzio)" <lporzio@micron.com>
+To: Nicolas Pitre <nicolas.pitre@linaro.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53757 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756196Ab2FNQu5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jun 2012 12:50:57 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 462C4204C8
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jun 2012 16:50:56 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 964B7204AF
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Jun 2012 16:50:54 +0000 (UTC)
-In-Reply-To: <bug-14562-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:49850 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753999Ab2FNRFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2012 13:05:40 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.02.1206141204591.23555@xanadu.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=14562
+On Thu, Jun 14, 2012 at 12:14:13PM -0400, Nicolas Pitre wrote:
+> Let's not forget that, in almost all cases, filesystem images are not 
+> created live on the final medium.  Factories are picking a batch of 
+> flash devices and a pre-built filesystem image is stamped on them, and 
+> there might not even be a guarantee that those flash devices will all 
+> have the same characteristics.  So to say that making this tuning at 
+> mkfs time is probably not the best strategy.
 
+Sure, that just means there needs to be a way of overriding the values
+used by mke2fs.  (Because as you create the fs image, the storage
+device parameters may make a difference to how blocks get allocated.)
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+The reason why I talk about making it work automatically at mke2fs
+time is that the vast majority of created file systems (where a
+specially created fs by a handset vendor counts as "one", even if it
+then gets stamped on millions of devices), the end user is someone
+naive/oblivious, so the right thing *has* to happen by default in the
+common case of running mke2fs on the storage device where the file
+system gets used.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
