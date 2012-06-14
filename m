@@ -1,39 +1,78 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Avoid unnecessary calls to ext4_mb_load_buddy
- while reading mb_groups proc file
-Date: Wed, 13 Jun 2012 19:52:41 -0400
-Message-ID: <20120613235241.GA22646@thunk.org>
-References: <AANLkTimPwhK1NggZAkCzB8Q29Ogf5SswH1kBbH8WAjX7@mail.gmail.com>
+Subject: Re: [PATCH RESEND] ext4: make sure O_(D)SYNC semantic in
+ ext4_fallocate()
+Date: Wed, 13 Jun 2012 20:15:31 -0400
+Message-ID: <20120614001531.GB22646@thunk.org>
+References: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Aditya Kali <adityakali@google.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49694 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49696 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754859Ab2FNApd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754923Ab2FNApd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 13 Jun 2012 20:45:33 -0400
 Content-Disposition: inline
-In-Reply-To: <AANLkTimPwhK1NggZAkCzB8Q29Ogf5SswH1kBbH8WAjX7@mail.gmail.com>
+In-Reply-To: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 14, 2011 at 02:05:15PM -0800, Aditya Kali wrote:
-> Currently ext4_mb_load_buddy is called for every group, irrespective
-> of whether the group info is already in memory, while reading
-> /proc/fs/ext4/<partition>/mb_groups proc file. For the purpose of
-> mb_groups proc file, it is unnecessary to load the file group info
-> from disk if it was loaded in past. These calls to ext4_mb_load_buddy
-> make reading the mb_groups proc file expensive.
-> Also, the locks around ext4_get_group_info are not required.
-> This patch modifies the code to call ext4_mb_load_buddy only if the
-> group info had never been loaded into memory in past. It also removes
-> the mb group locking around ext4_get_group_info call.
+Hi Zheng,
+
+I finally got around to reviewing this patch and I had one comment
+
+> Ext4 must make sure the transaction to be commited to the disk when
+> user opens a file with O_(D)SYNC flag and do a fallocate(2) call.
 > 
-> Signed-off-by: Aditya Kali <adityakali@google.com>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 74f23c2..00e32d9 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4356,6 +4356,8 @@ retry:
+>  			ret = PTR_ERR(handle);
+>  			break;
+>  		}
+> +		if (file->f_flags & O_SYNC)
+> +			ext4_handle_sync(handle);
+>  		ret = ext4_map_blocks(handle, inode, &map, flags);
+>  		if (ret <= 0) {
+>  #ifdef EXT4FS_DEBUG
 
-I realized that this had dropped through the cracks.  Sorry!
+For a large fallocate(), it can require multiple calls to
+ext4_map_blocks(), and we should only sync after we've allocated the
+last segment.  We should also not force a sync if there is an error
+allocating blocks.  So it seems to me this patch would be better; what
+do you think?
 
-I've queued this for the next merge window.
+						- Ted
 
-     	    	     	      	    - Ted
+commit b790d70be9515dfaba59b0be0aff373e6867826d
+Author: Zheng Liu <gnehzuil.liu@gmail.com>
+Date:   Wed Jun 13 20:15:01 2012 -0400
+
+    ext4: honor O_(D)SYNC semantic in ext4_fallocate()
+    
+    Ext4 must make sure the transaction to be commited to the disk when
+    user opens a file with O_(D)SYNC flag and do a fallocate(2) call.
+    
+    This problem had been reported by Christoph Hellwig in this thread:
+    http://www.spinics.net/lists/linux-btrfs/msg13621.html
+    
+    Reported-by: Christoph Hellwig <hch@infradead.org>
+    Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91341ec..f1089cb 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4420,6 +4420,8 @@ retry:
+ 		ext4_falloc_update_inode(inode, mode, new_size,
+ 					 (map.m_flags & EXT4_MAP_NEW));
+ 		ext4_mark_inode_dirty(handle, inode);
++		if ((file->f_flags & O_SYNC) && ret >= max_blocks)
++			ext4_handle_sync(handle);
+ 		ret2 = ext4_journal_stop(handle);
+ 		if (ret2)
+ 			break;
