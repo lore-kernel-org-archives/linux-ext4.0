@@ -1,53 +1,46 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] ext4: Context support
-Date: Thu, 14 Jun 2012 13:05:33 -0400
-Message-ID: <20120614170533.GA15093@thunk.org>
-References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
- <201206131944.35351.arnd.bergmann@linaro.org>
- <20120613200033.GB17990@thunk.org>
- <201206132043.47962.arnd.bergmann@linaro.org>
- <20120614020757.GB8226@thunk.org>
- <alpine.LFD.2.02.1206141204591.23555@xanadu.home>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Discrepancy in 'df' output between kernel 3.0 and 3.2 for ext4?
+Date: Thu, 14 Jun 2012 14:00:29 -0500
+Message-ID: <4FDA34CD.9070404@redhat.com>
+References: <4FD8D731.9070008@cleversafe.com> <4FD8DB86.8030603@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Arnd Bergmann <arnd.bergmann@linaro.org>,
-	Alex Lemberg <Alex.Lemberg@sandisk.com>,
-	HYOJIN JEONG <syr.jeong@samsung.com>,
-	Saugata Das <saugata.das@linaro.org>,
-	Artem Bityutskiy <dedekind1@gmail.com>,
-	Saugata Das <saugata.das@stericsson.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
-	"Luca Porzio (lporzio)" <lporzio@micron.com>
-To: Nicolas Pitre <nicolas.pitre@linaro.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Zachary Mark <zmark@cleversafe.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49850 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753999Ab2FNRFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Jun 2012 13:05:40 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.02.1206141204591.23555@xanadu.home>
+Received: from mx1.redhat.com ([209.132.183.28]:42858 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752721Ab2FNTAe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2012 15:00:34 -0400
+In-Reply-To: <4FD8DB86.8030603@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 14, 2012 at 12:14:13PM -0400, Nicolas Pitre wrote:
-> Let's not forget that, in almost all cases, filesystem images are not 
-> created live on the final medium.  Factories are picking a batch of 
-> flash devices and a pre-built filesystem image is stamped on them, and 
-> there might not even be a guarantee that those flash devices will all 
-> have the same characteristics.  So to say that making this tuning at 
-> mkfs time is probably not the best strategy.
+On 6/13/12 1:27 PM, Eric Sandeen wrote:
+> On 6/13/12 1:08 PM, Zachary Mark wrote:
+>> Ext4 developers,
+>>
+>> I recently upgraded my kernel from 3.0.24 to 3.2.18, and discovered
+>> that df is now reporting different statistics for my ext4 file
+>> systems (sda1 is ext3 and unaffected). Notice the difference
+>> between the 1K-blocks column and Used column between kernel
+>> versions (Available remains constant, as it is merely Used
+>> subtracted from the total size):
 
-Sure, that just means there needs to be a way of overriding the values
-used by mke2fs.  (Because as you create the fs image, the storage
-device parameters may make a difference to how blocks get allocated.)
+...
 
-The reason why I talk about making it work automatically at mke2fs
-time is that the vast majority of created file systems (where a
-specially created fs by a handset vendor counts as "one", even if it
-then gets stamped on millions of devices), the end user is someone
-naive/oblivious, so the right thing *has* to happen by default in the
-common case of running mke2fs on the storage device where the file
-system gets used.
+>> Is this discrepancy between the df outputs on the two kernel versions
+>> expected given my mount options? I decided to come to the list
+>> because I don't have the technical depth with regard to ext4 to be
+>> able to analyze the ext4_statfs changes that went into making
+>> bigalloc work, and I haven't found any reports of similar symptoms
+>> via web searches or the Documentation/filesystems/ext4.txt. This is
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=830412 just came in and is probably the same root cause.
+> 
+> Thanks for the bisect!  I'll let Ted worry about it for now, at least until I have more time.
 
-					- Ted
+Ted, one thing that seems very weird to me.  When using BSD-style df, which is supposed to ignore basic metadata overhead, shouldn't a freshly mkfs'd filesystem always show free blocks == total blocks?  It doesn't do that either before or after your changes, which seems odd to me.  Am I misunderstanding what "bsddf" is supposed to do?
+
+-eric
