@@ -1,136 +1,102 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: [PATCH v2] ext4: fix hole punch failure when depth is greater than 0
-Date: Thu, 14 Jun 2012 07:23:56 +0530
-Message-ID: <1339638836-19990-1-git-send-email-ashish.sangwan2@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:51127 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754842Ab2FNBzs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 21:55:48 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Context support
+Date: Wed, 13 Jun 2012 22:07:57 -0400
+Message-ID: <20120614020757.GB8226@thunk.org>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
+ <201206131944.35351.arnd.bergmann@linaro.org>
+ <20120613200033.GB17990@thunk.org>
+ <201206132043.47962.arnd.bergmann@linaro.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Lemberg <Alex.Lemberg@sandisk.com>,
+	HYOJIN JEONG <syr.jeong@samsung.com>,
+	Saugata Das <saugata.das@linaro.org>,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	Saugata Das <saugata.das@stericsson.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
+	"Luca Porzio (lporzio)" <lporzio@micron.com>
+To: Arnd Bergmann <arnd.bergmann@linaro.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <201206132043.47962.arnd.bergmann@linaro.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The current implementation of hole punch uses the same code path as for
-truncate in which the block removal starts from the end of the file and
-continue backwards removing extents and in the process decreases the
-count of valid entries in the extent header of extent index.
-If all the extents under current extent index are removed than this index
-is also removed and the number of valid entries in the "depth -1"
-extent header is decreased by 1.
+On Wed, Jun 13, 2012 at 08:43:47PM +0000, Arnd Bergmann wrote:
+> > It might be worth considering the hueristic of a series of files
+> > written by a single process close together in time as belonging to a
+> > single context.  That still might not be quite right in the case of a
+> > git checkout for example, most of the time I think that hueristic
+> > would be quite valid.
+> 
+> I agree that using the process as an indication would be nice, but
+> I could not come up with a way to ensure that we use the same
+> context ID if two processes are writing to the same file.
 
-Whether to continue removing extents or not is decided by the return value
-of function ext4_ext_more_to_rm() which checks 2 conditions:
-a) if there are no more indexes to process.
-b) if the number of entries are decreased in the header of "depth -1".
+Oh, well *that's* easy.  Whichever process opens the file drops a
+context ID into fs-specific inode structure (for ext4, that would be
+struct ext4_inode_info), and if a second process opens the file, we
+use the same context ID.  When the last file descriptor for the inode
+is closed, we zap the context ID.
 
-In case of hole punch, if the last block to be removed is not part of the
-last extent index than this index will not be deleted, hence the number of
-valid entries in the extent header of "depth - 1" will remain as it is and
-ext4_ext_more_to_rm will return 0 although the required blocks are not
-yet removed.
+It also occurs to me that if a file is being written to by two
+processes, it's likely that it's a update-in-place database, and we
+want to treat those special; no matter what the size, we probably
+don't want to group that file into the same context as the others.
+More generally, if a file is opened without O_CREAT, it's probably a
+good bet that it wants to either be in a context by itself, or not
+part of any context.
 
-This patch fixes the above mentioned problem as instead of removing the
-extents from the end of file, it starts removing the blocks from the
-particular extent from which removing blocks is actually required and
-continue backward until done.
+The files which we would probably find most interesting is the files
+which are created from scratch, and more specifically, for files which
+are dumped out all at once: i.e., open w/O_CREAT, optional fallocate,
+write, optional fsync, and close.  If we can detect a series of file
+operations with this characteristic originating from the same process,
+when we detect a second open w/O_CREAT very shortly after the first
+O_CREAT in the same directory from the same process, we simply reuse
+the context ID for the second and subsequent files.
 
-Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
----
- fs/ext4/extents.c |   43 +++++++++++++++++++++++++++----------------
- 1 files changed, 27 insertions(+), 16 deletions(-)
+> I think ideally we would also want to write small files separately from
+> large files in the file system, and that would also make support for
+> contexts less useful.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91341ec..27c3a30 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2570,10 +2570,10 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- {
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
--	struct ext4_ext_path *path;
-+	struct ext4_ext_path *path = NULL;
- 	ext4_fsblk_t partial_cluster = 0;
- 	handle_t *handle;
--	int i, err;
-+	int i = 0, err;
- 
- 	ext_debug("truncate since %u to %u\n", start, end);
- 
-@@ -2606,8 +2606,12 @@ again:
- 		}
- 		depth = ext_depth(inode);
- 		ex = path[depth].p_ext;
--		if (!ex)
-+		if (!ex) {
-+			ext4_ext_drop_refs(path);
-+			kfree(path);
-+			path = NULL;
- 			goto cont;
-+		}
- 
- 		ee_block = le32_to_cpu(ex->ee_block);
- 
-@@ -2637,8 +2641,6 @@ again:
- 			if (err < 0)
- 				goto out;
- 		}
--		ext4_ext_drop_refs(path);
--		kfree(path);
- 	}
- cont:
- 
-@@ -2647,19 +2649,27 @@ cont:
- 	 * after i_size and walking into the tree depth-wise.
- 	 */
- 	depth = ext_depth(inode);
--	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
--	if (path == NULL) {
--		ext4_journal_stop(handle);
--		return -ENOMEM;
--	}
--	path[0].p_depth = depth;
--	path[0].p_hdr = ext_inode_hdr(inode);
-+	if (path) {
-+		int k = i = depth;
-+		while (--k >= 0)
-+			path[k].p_block =
-+			le16_to_cpu(path[k].p_hdr->eh_entries)+1;
-+	} else {
-+		path =
-+		kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
-+		if (path == NULL) {
-+			ext4_journal_stop(handle);
-+			return -ENOMEM;
-+		}
-+		path[0].p_depth = depth;
-+		path[0].p_hdr = ext_inode_hdr(inode);
- 
--	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
--		err = -EIO;
--		goto out;
-+		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
-+			err = -EIO;
-+			goto out;
-+		}
- 	}
--	i = err = 0;
-+	err = 0;
- 
- 	while (i >= 0 && err == 0) {
- 		if (i == depth) {
-@@ -2773,6 +2783,7 @@ cont:
- out:
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
-+	path = NULL;
- 	if (err == -EAGAIN)
- 		goto again;
- 	ext4_journal_stop(handle);
--- 
-1.7.2.3
+Well, for file systems with delayed allocation, this is actually
+pretty easy.  By the time we do the writeback for a file with delayed
+allocation, if it's substantially bigger than the erase block size and
+we haven't yet written any blocks for the file, we should give it a
+new context ID.  And furthermore, your idea that we should try to
+align the file on an erase block boundary would be a great thing to
+do.
 
+> For eMMC at least the erase block size is information that we should
+> be able to figure out. While I've seen devices that are lying there,
+> the representatives of the eMMC manufactures that I talked to basically
+> agreed that we should take the provided information to be correct
+> and if it happens to be wrong, that should be considered a firmware
+> bug that may result in bad performance and should be fixed in the
+> next version.
+
+What would be *great* is if the erase block size were exposed in
+sysfs, and that the blockid library (which is how mke2fs and other
+similar mkfs programs get other storage device parameters) were
+enhanced to return this information.
+
+> For SD cards, almost everyone is lying and we cannot trust the
+> information, and for USB flash, there is no way to ask the device.
+> In both of these cases, we probably want to detect the erase block
+> size at mkfs time using some timing attack that I worked on before.
+> Note that those devices also do not offer support for context IDs.
+
+Yes, although presumably aligning large files to erase block
+boundaries would still be useful, yes?
+
+So adding an erase block size to the ext2/3/4 superblock sounds like a
+first great step.  By making it be a superblock field, that way it's
+possible to override the value returned by the hardware if it turns
+out to be a lie, and we can also use programs like flashbench to
+figure out the erase block size and populate the superblock value via
+some userspace process.  (Possibly called out of mke2fs directly if we
+can automate it completely, and make it dead reliable.)
+
+    	     		    	     	- Ted
