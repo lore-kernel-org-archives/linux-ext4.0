@@ -1,78 +1,136 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RESEND] ext4: make sure O_(D)SYNC semantic in
- ext4_fallocate()
-Date: Wed, 13 Jun 2012 20:15:31 -0400
-Message-ID: <20120614001531.GB22646@thunk.org>
-References: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: [PATCH v2] ext4: fix hole punch failure when depth is greater than 0
+Date: Thu, 14 Jun 2012 07:23:56 +0530
+Message-ID: <1339638836-19990-1-git-send-email-ashish.sangwan2@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49696 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754923Ab2FNApd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Jun 2012 20:45:33 -0400
-Content-Disposition: inline
-In-Reply-To: <1326703663-4801-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:51127 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754842Ab2FNBzs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 21:55:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Zheng,
+The current implementation of hole punch uses the same code path as for
+truncate in which the block removal starts from the end of the file and
+continue backwards removing extents and in the process decreases the
+count of valid entries in the extent header of extent index.
+If all the extents under current extent index are removed than this index
+is also removed and the number of valid entries in the "depth -1"
+extent header is decreased by 1.
 
-I finally got around to reviewing this patch and I had one comment
+Whether to continue removing extents or not is decided by the return value
+of function ext4_ext_more_to_rm() which checks 2 conditions:
+a) if there are no more indexes to process.
+b) if the number of entries are decreased in the header of "depth -1".
 
-> Ext4 must make sure the transaction to be commited to the disk when
-> user opens a file with O_(D)SYNC flag and do a fallocate(2) call.
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 74f23c2..00e32d9 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4356,6 +4356,8 @@ retry:
->  			ret = PTR_ERR(handle);
->  			break;
->  		}
-> +		if (file->f_flags & O_SYNC)
-> +			ext4_handle_sync(handle);
->  		ret = ext4_map_blocks(handle, inode, &map, flags);
->  		if (ret <= 0) {
->  #ifdef EXT4FS_DEBUG
+In case of hole punch, if the last block to be removed is not part of the
+last extent index than this index will not be deleted, hence the number of
+valid entries in the extent header of "depth - 1" will remain as it is and
+ext4_ext_more_to_rm will return 0 although the required blocks are not
+yet removed.
 
-For a large fallocate(), it can require multiple calls to
-ext4_map_blocks(), and we should only sync after we've allocated the
-last segment.  We should also not force a sync if there is an error
-allocating blocks.  So it seems to me this patch would be better; what
-do you think?
+This patch fixes the above mentioned problem as instead of removing the
+extents from the end of file, it starts removing the blocks from the
+particular extent from which removing blocks is actually required and
+continue backward until done.
 
-						- Ted
-
-commit b790d70be9515dfaba59b0be0aff373e6867826d
-Author: Zheng Liu <gnehzuil.liu@gmail.com>
-Date:   Wed Jun 13 20:15:01 2012 -0400
-
-    ext4: honor O_(D)SYNC semantic in ext4_fallocate()
-    
-    Ext4 must make sure the transaction to be commited to the disk when
-    user opens a file with O_(D)SYNC flag and do a fallocate(2) call.
-    
-    This problem had been reported by Christoph Hellwig in this thread:
-    http://www.spinics.net/lists/linux-btrfs/msg13621.html
-    
-    Reported-by: Christoph Hellwig <hch@infradead.org>
-    Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+---
+ fs/ext4/extents.c |   43 +++++++++++++++++++++++++++----------------
+ 1 files changed, 27 insertions(+), 16 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91341ec..f1089cb 100644
+index 91341ec..27c3a30 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4420,6 +4420,8 @@ retry:
- 		ext4_falloc_update_inode(inode, mode, new_size,
- 					 (map.m_flags & EXT4_MAP_NEW));
- 		ext4_mark_inode_dirty(handle, inode);
-+		if ((file->f_flags & O_SYNC) && ret >= max_blocks)
-+			ext4_handle_sync(handle);
- 		ret2 = ext4_journal_stop(handle);
- 		if (ret2)
- 			break;
+@@ -2570,10 +2570,10 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+-	struct ext4_ext_path *path;
++	struct ext4_ext_path *path = NULL;
+ 	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
+-	int i, err;
++	int i = 0, err;
+ 
+ 	ext_debug("truncate since %u to %u\n", start, end);
+ 
+@@ -2606,8 +2606,12 @@ again:
+ 		}
+ 		depth = ext_depth(inode);
+ 		ex = path[depth].p_ext;
+-		if (!ex)
++		if (!ex) {
++			ext4_ext_drop_refs(path);
++			kfree(path);
++			path = NULL;
+ 			goto cont;
++		}
+ 
+ 		ee_block = le32_to_cpu(ex->ee_block);
+ 
+@@ -2637,8 +2641,6 @@ again:
+ 			if (err < 0)
+ 				goto out;
+ 		}
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+ 	}
+ cont:
+ 
+@@ -2647,19 +2649,27 @@ cont:
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
+ 	depth = ext_depth(inode);
+-	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+-	if (path == NULL) {
+-		ext4_journal_stop(handle);
+-		return -ENOMEM;
+-	}
+-	path[0].p_depth = depth;
+-	path[0].p_hdr = ext_inode_hdr(inode);
++	if (path) {
++		int k = i = depth;
++		while (--k >= 0)
++			path[k].p_block =
++			le16_to_cpu(path[k].p_hdr->eh_entries)+1;
++	} else {
++		path =
++		kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
++		if (path == NULL) {
++			ext4_journal_stop(handle);
++			return -ENOMEM;
++		}
++		path[0].p_depth = depth;
++		path[0].p_hdr = ext_inode_hdr(inode);
+ 
+-	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+-		err = -EIO;
+-		goto out;
++		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
++			err = -EIO;
++			goto out;
++		}
+ 	}
+-	i = err = 0;
++	err = 0;
+ 
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
+@@ -2773,6 +2783,7 @@ cont:
+ out:
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
++	path = NULL;
+ 	if (err == -EAGAIN)
+ 		goto again;
+ 	ext4_journal_stop(handle);
+-- 
+1.7.2.3
+
