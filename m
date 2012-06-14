@@ -1,156 +1,105 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH v2 3/3] ext4: add dio overwrite nolock
-Date: Thu, 14 Jun 2012 11:32:10 +0800
-Message-ID: <1339644730-6204-4-git-send-email-wenqing.lz@taobao.com>
-References: <1339644730-6204-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Tao Ma <tm@tao.ma>, Eric Sandeen <sandeen@redhat.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Liu Bo <liubo2009@cn.fujitsu.com>
+Subject: [PATCH] E2fsprogs/filefrag: fix filefrag regression
+Date: Thu, 14 Jun 2012 16:44:46 +0800
+Message-ID: <1339663486-5417-1-git-send-email-liubo2009@cn.fujitsu.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:37650 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755096Ab2FNDYe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jun 2012 23:24:34 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so3174066pbb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 13 Jun 2012 20:24:34 -0700 (PDT)
-In-Reply-To: <1339644730-6204-1-git-send-email-wenqing.lz@taobao.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:37455 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751485Ab2FNIhT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jun 2012 04:37:19 -0400
+Received: from fnstmail02.fnst.cn.fujitsu.com (tang.cn.fujitsu.com [127.0.0.1])
+	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id q5E8bGUQ031950
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Jun 2012 16:37:16 +0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+filefrag has several bugs:
 
-Aligned and overwrite direct I/O can be parallelized.  In ext4_file_dio_write,
-we first check whether these conditions are satisfied or not.  If so, we
-take i_data_sem and release i_mutex lock directly.  Meanwhile iocb->private is
-set to indicate that this is a dio overwrite, and it will be handled in
-ext4_ext_direct_IO.
+1.
+$ touch f1
+$ filefrag f1
+f1: 1 extent found  ----> bug!
+$ filefrag -v f1
+Filesystem type is: ef53
+File size of f1 is 0 (0 blocks, blocksize 4096)
+f1: 0 extents found
 
-CC: Tao Ma <tm@tao.ma>
-CC: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+2.
+$ truncate -s 1m f2
+$ filefrag f2
+f2: 1 extent found  ----> bug!
+$ filefrag -v f2
+Filesystem type is: ef53
+File size of f2 is 1048576 (256 blocks, blocksize 4096)
+f2: 0 extents found
+
+3.
+$ for i in `seq 11 -2 0`; do dd if=/dev/zero of=f4 bs=4k count=1 seek=$i conv=notrunc oflag=sync &>/dev/null; done
+$ ll f4
+-rw-r--r-- 1 root root 49152 Jun  9 15:09 f4
+$ filefrag f4
+f4: 7 extents found
+$ filefrag -v f4
+Filesystem type is: ef53
+File size of f4 is 49152 (12 blocks, blocksize 4096)
+ ext logical physical expected length flags
+   0       1  1109993               1
+   1       3  1109992  1109994      1
+   2       5  1109991  1109993      1
+   3       7  1109990  1109992      1
+   4       9  1109989  1109991      1
+   5      11  1108207  1109990      1 eof
+f4: 7 extents found  --------------------------> but we only have 6 extents, bug!
+
+All of these bugs come from the fact that we've made a mistake on calculating
+total extents:
+o   we set 1 as default for 'total extents', and this will report 1 extent found
+    even when we don't get any extent from fiemap.
+o   if our first extent does not start from 0(logical addr), total extents will
+    be one more than what it should be.
+
+Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
 ---
- fs/ext4/file.c  |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/inode.c |   27 +++++++++++++++++++++++++++
- 2 files changed, 78 insertions(+), 2 deletions(-)
+ misc/filefrag.c |   25 ++++++++++---------------
+ 1 files changed, 10 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index a10dc77..812358f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -93,9 +93,13 @@ static ssize_t
- ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 		    unsigned long nr_segs, loff_t pos)
- {
--	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
-+	struct file *file = iocb->ki_filp;
-+	struct inode *inode = file->f_mapping->host;
-+	struct blk_plug plug;
- 	int unaligned_aio = 0;
- 	ssize_t ret;
-+	int overwrite = 0;
-+	size_t length = iov_length(iov, nr_segs);
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index 0583e91..af008fb 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -175,7 +175,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+ 	unsigned int i;
+ 	static int fiemap_incompat_printed;
+ 	int fiemap_header_printed = 0;
+-	int tot_extents = 1, n = 0;
++	int tot_extents = 0, n = 0;
+ 	int last = 0;
+ 	int rc;
  
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
- 	    !is_sync_kiocb(iocb))
-@@ -115,7 +119,52 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 		ext4_aiodio_wait(inode);
- 	}
- 
--	ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
-+	BUG_ON(iocb->ki_pos != pos);
-+
-+	mutex_lock(&inode->i_mutex);
-+	blk_start_plug(&plug);
-+
-+	iocb->private = &overwrite;
-+
-+	/* check whether we do a DIO overwrite or not */
-+	if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-+	    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
-+		struct ext4_map_blocks map;
-+		unsigned int blkbits = inode->i_blkbits;
-+		int err, len;
-+
-+		map.m_lblk = pos >> blkbits;
-+		map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
-+			- map.m_lblk;
-+		map.m_flags &= ~EXT4_MAP_FLAGS;
-+		len = map.m_len;
-+
-+		err = ext4_map_blocks(NULL, inode, &map, 0);
-+		/*
-+		 * 'err==len' means that all of blocks has been preallocated no
-+		 * matter they are initialized or not.  For excluding
-+		 * uninitialized extents, we need to check m_flags.  There are
-+		 * two conditions that indicate for initialized extents.
-+		 * 1) If we hit extent cache, EXT4_MAP_MAPPED flag is returned;
-+		 * 2) If we do a real lookup, non-flags are returned.
-+		 * So we should check these two conditions.
-+		 */
-+		if (err == len && (!map.m_flags ||
-+				   map.m_flags & EXT4_MAP_MAPPED))
-+			overwrite = 1;
-+	}
-+
-+	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
-+	mutex_unlock(&inode->i_mutex);
-+
-+	if (ret > 0 || ret == -EIOCBQUEUED) {
-+		ssize_t err;
-+
-+		err = generic_write_sync(file, pos, ret);
-+		if (err < 0 && ret > 0)
-+			ret = err;
-+	}
-+	blk_finish_plug(&plug);
- 
- 	if (unaligned_aio)
- 		mutex_unlock(ext4_aio_mutex(inode));
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9a714ff..98e9096 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2996,6 +2996,26 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	if (rw == WRITE && final_size <= inode->i_size) {
- 		int overwrite = 0;
- 
-+		BUG_ON(iocb->private == NULL);
-+
-+		/* If we do a overwrite dio, i_mutex locking can be released */
-+		overwrite = *((int *)iocb->private);
-+
-+		if (overwrite) {
-+			down_read(&EXT4_I(inode)->i_data_sem);
-+			mutex_unlock(&inode->i_mutex);
-+		}
-+
-+		/*
-+		 * If there are still some buffered I/O, we should fall back
-+		 * to take i_mutex locking.
-+		 */
-+		if (overwrite && file->f_mapping->nrpages) {
-+			overwrite = 0;
-+			up_read(&EXT4_I(inode)->i_data_sem);
-+			mutex_lock(&inode->i_mutex);
-+		}
-+
- 		/*
-  		 * We could direct write to holes and fallocate.
- 		 *
-@@ -3083,6 +3103,13 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 				ret = err;
- 			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+@@ -201,25 +201,17 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+ 			return rc;
  		}
-+
-+		/* take i_mutex locking again if we do a ovewrite dio */
-+		if (overwrite) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
-+			mutex_lock(&inode->i_mutex);
-+		}
-+
- 		return ret;
- 	}
  
--- 
-1.7.4.1
-
++		/* If 0 extents are returned, then more ioctls are not needed */
++		if (fiemap->fm_mapped_extents == 0)
++			break;
++
+ 		if (verbose && !fiemap_header_printed) {
+-			/*
+-			 * No extents on first call?
+-			 * Skip header and show 0 extents.
+-			 */
+-			if (fiemap->fm_mapped_extents == 0) {
+-				*num_extents = 0;
+-				goto out;
+-			}
+ 			printf(" ext %*s %*s %*s length flags\n", logical_width,
+ 			       "logical", physical_width, "physical",
+ 			       physical_width, "expected");
+ 			fiemap_header_printed = 1;
+ 		}
+ 
+-		/* If 0 extents are returned, then more ioctls are not needed */
+-		if (fiemap->fm_mapped_extents == 0)
+-			break;
