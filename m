@@ -1,42 +1,51 @@
-From: Carlos Carvalho <carlos@fisica.ufpr.br>
-Subject: sudden (big) performance drop in writes
-Date: Fri, 15 Jun 2012 01:20:36 -0300
-Message-ID: <20442.47124.34363.560455@fisica.ufpr.br>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 2/3] ext4: Context support
+Date: Thu, 14 Jun 2012 23:18:36 -0600
+Message-ID: <A65DE25A-54D6-4367-9CBD-E47A36B7E4AE@dilger.ca>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com> <201206132043.47962.arnd.bergmann@linaro.org> <20120614020757.GB8226@thunk.org> <201206142155.32009.arnd.bergmann@linaro.org>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fisica.ufpr.br ([200.17.209.129]:43341 "EHLO fisica.ufpr.br"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751363Ab2FOEa3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jun 2012 00:30:29 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Alex Lemberg <Alex.Lemberg@sandisk.com>,
+	HYOJIN JEONG <syr.jeong@samsung.com>,
+	Saugata Das <saugata.das@linaro.org>,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	Saugata Das <saugata.das@stericsson.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
+	"Luca Porzio (lporzio)" <lporzio@micron.com>
+To: Arnd Bergmann <arnd.bergmann@linaro.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <201206142155.32009.arnd.bergmann@linaro.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Our server has suddenly become extremely slow in writes. With
+On 2012-06-14, at 3:55 PM, Arnd Bergmann wrote:
+> My feeling is that we would actually benefit much more from the
+> erase block alignment than from the context for the large files.
+> 
+> I think this is something we can do in the Linaro storage team.
+> We actually have plans to also put the erase block size in the swap
+> header, so we should be able to use the same code in mke2fs and mkswap,
+> and potentially others. What we discussed in the storage team meeting
+> today is that we start out by making ext4 aware of the erase block
+> size through the superblock and aligning extents for large files to
+> erase block boundaries.
 
-% dd if=/dev/zero of=zero bs=2M count=2000
+Note that there are already the s_raid_stride and s_raid_stripe_width,
+used by the ext4 allocator to align the start and size of allocations
+on RAID systems.  The erase block size would be like s_raid_stride
+(the minimum amount of data to allocate and write contiguously).
 
-I get only 1.4MB/s in an almost idle machine. It has a raid6 with 6
-disks, running 3.3.7. 3.4.2 doesn't improve matters.
+I don't know that there is a benefit to having a separate erase block
+size, since in the end it means the same as s_raid_stride to the
+allocator - make sure allocations/writes are aligned and sized on
+multiples of this.
 
-The important point is that it became so slow yesterday. No hardware
-has changed and all disks are fine. Reading from the filesystem is
-unaffected, at more than 85MB/s. The problem happens both in the root
-and home partitions.
+Cheers, Andreas
 
-During the dd the disk utilization measured by sar is small:
 
-DEV       tps  rd_sec/s  wr_sec/s  avgrq-sz  avgqu-sz     await     svctm     %util
-sdb     93.30    254.40    931.20     12.71      0.57      6.10      4.16     38.77
-sdc    100.50    244.00    970.40     12.08      0.76      7.59      3.80     38.20
-sdd    101.40    261.60    927.20     11.72      0.68      6.68      3.74     37.90
-sde     86.80    300.00    780.80     12.45      0.69      7.93      4.29     37.20
-sdf     82.90    315.20    810.40     13.58      0.55      6.60      4.39     36.37
-sda     96.70    220.00    984.00     12.45      0.47      4.87      3.72     35.94
 
-So it seems that it's not a disk problem. Both filesystems reached 90%
-usage in space but less than 10% in inodes shortly before the slowness
-appeared. Now they're at 57% and 77% but still crawl. Could this be
-related?
+
+
