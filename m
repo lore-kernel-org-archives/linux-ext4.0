@@ -1,115 +1,42 @@
-From: Tony Breeds <tony@bakeyournoodle.com>
-Subject: Minimal configuration for e2fsprogs
-Date: Fri, 15 Jun 2012 14:24:21 +1000
-Message-ID: <20120615042421.GA7021@thor.bakeyournoodle.com>
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+Subject: sudden (big) performance drop in writes
+Date: Fri, 15 Jun 2012 01:20:36 -0300
+Message-ID: <20442.47124.34363.560455@fisica.ufpr.br>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="NzB8fVQJ5HfG6fxh"
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:42798 "EHLO ozlabs.org"
+Received: from fisica.ufpr.br ([200.17.209.129]:43341 "EHLO fisica.ufpr.br"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750954Ab2FOEYa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jun 2012 00:24:30 -0400
-Content-Disposition: inline
+	id S1751363Ab2FOEa3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Jun 2012 00:30:29 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Our server has suddenly become extremely slow in writes. With
 
---NzB8fVQJ5HfG6fxh
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+% dd if=/dev/zero of=zero bs=2M count=2000
 
-Hi All,
-	I appologise if this is not the correct place to discuss this,
-or if it's been discussed before.  In either event please point me in
-the right direction and I'll move along.
+I get only 1.4MB/s in an almost idle machine. It has a raid6 with 6
+disks, running 3.3.7. 3.4.2 doesn't improve matters.
 
-I'm the maintainer for yaboot a bootloader for powerpc systems.  We link
-against libext2fs.a, but as we're a bootloader we do NOT link against
-libc as such we need to implement a number of "stub" functions to keep
-up with the newer features being added here.
+The important point is that it became so slow yesterday. No hardware
+has changed and all disks are fine. Reading from the filesystem is
+unaffected, at more than 85MB/s. The problem happens both in the root
+and home partitions.
 
-Our current set looks like:
----
-int printf(const char *format, ...);
-int fprintf(FILE *stream, const char *format, ...);
-int fputs(const char *s, FILE *stream);
-int fflush(FILE *stream);
-char *getenv(const char *name);
-int gethostname(char *name, size_t len);
-int gettimeofday(struct timeval *tv, struct timezone *tz);
-int * __errno_location(void);
-unsigned int sleep(unsigned int seconds);
-int rand(void);
-void srand(unsigned int seed);
-long int random(void);
-void srandom(unsigned int seed);
-uid_t geteuid(void);
-uid_t getuid(void);
-pid_t getpid(void);
-int stat(const char *path, struct stat *buf);
-int stat64(const char *path, struct stat *buf);
-int fstat(int fd, struct stat *buf);
-int fstat64(int fd, struct stat *buf);
-int open(const char *pathname, int flags, mode_t mode);
-int open64(const char *pathname, int flags, mode_t mode);
-off_t lseek(int fd, off_t offset, int whence);
-off64_t lseek64(int fd, off64_t offset, int whence);
-ssize_t read(int fildes, void *buf, size_t nbyte);
-int close(int fd);
-void *calloc(size_t nmemb, size_t size);
-void perror(const char *s);
-void exit(int status);
-int ioctl(int d, int request, ...);
-size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
-long sysconf(int name);
-int getpagesize(void);
-void qsort(void *base, size_t nmemb, size_t size,
-           int(*compar)(const void *, const void *));
----
+During the dd the disk utilization measured by sar is small:
 
-Plus a few typdefs and #defines.
+DEV       tps  rd_sec/s  wr_sec/s  avgrq-sz  avgqu-sz     await     svctm     %util
+sdb     93.30    254.40    931.20     12.71      0.57      6.10      4.16     38.77
+sdc    100.50    244.00    970.40     12.08      0.76      7.59      3.80     38.20
+sdd    101.40    261.60    927.20     11.72      0.68      6.68      3.74     37.90
+sde     86.80    300.00    780.80     12.45      0.69      7.93      4.29     37.20
+sdf     82.90    315.20    810.40     13.58      0.55      6.60      4.39     36.37
+sda     96.70    220.00    984.00     12.45      0.47      4.87      3.72     35.94
 
-It looks to me (with only a quick look) that a lot of these libc
-functions are used for nice error messages to the end user.
-
-So my question is essentially twofold.
-1) Is there a "good" way to ./configure e2fsprogs to build a really
-minimal libext2fs.a ?
-2) If not can I get some pointers adding a --really-minimal autoconf
-argument to pretty much do what I need.
-
-Of course getting e2fsprogs to support this minimal build is only the
-first step I then need to convince the distros to package it.
-
-I did consider, cp'ing the code into yaboot but that seems pretty gross
-and would end up breaching the Fedora Packaging Guidelines.
-
-Any advice gladly accepted.
-
-Yours Tony
-
---NzB8fVQJ5HfG6fxh
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBCAAGBQJP2rj1AAoJEEsCiJRY75GKpYkP/iKxIi6Rt/2Z5MogObTENmvt
-rmc42jUiwvVke92xN2UDiG5o+q8hYlaxgxqJqVIwXVHRrIFbPiRKkRVpTLkcD5qn
-RiTvw22INv6Env3MH1TUT2pWprpZiIyzfnHsR3RGhwDKJr2C+jvNEGCy6wwx0lCw
-DFSwlMTRLk6nHkiI0VbI3HtxUsLeMCu+22oSu22NjAvyIkj9O5fO5PasFVh5wf6L
-SglgzHAFT+VtQzlVZYNkJF6lo7f/xvoTOXKRzutXvSGL5GuZv0KadN+DXARKwY58
-SxUULh26Ltz2Mgoylp2/jQlvmGIQxu8NTjVsWA2ZzP5JiwowF/DPsxcQ8LTIP0Zf
-IV/VMbq3FsdqXGe/wVVSvndO1K+4jRJjY29uIVCDGsYOrdItRqQLGkMVlQooYoQ8
-Aox85CzygbDvSig0An8Gg3rpwHl5zHSBjv03+KLmJo6st2ij1w+SrnyzgelLPj9n
-Lx6MJaf2GpyUOa69FTQzS29lvG9YIRD+oFRnyaivcPTEldGbvcGOmzA8/gV16gmX
-rT2grDvISLf3O4TKfdGSPK11q0RFBed8YWd4oGifgrHmY45ONmjWlQI93a6K1Kgw
-1tDasDwIpzjIqWVeGkHPNShxP/Yk8sa8zvTFpSaCmaUMgR3hRls9aymvqyZ/tANU
-SfbNFkvLNIHqL06jQHVe
-=lwqF
------END PGP SIGNATURE-----
-
---NzB8fVQJ5HfG6fxh--
+So it seems that it's not a disk problem. Both filesystems reached 90%
+usage in space but less than 10% in inodes shortly before the slowness
+appeared. Now they're at 57% and 77% but still crawl. Could this be
+related?
