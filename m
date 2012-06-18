@@ -1,129 +1,212 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] vfs: avoid hang caused by attempting to rmdir an
- invalid file system
-Date: Mon, 18 Jun 2012 17:19:30 -0400
-Message-ID: <20120618211930.GB12929@fieldses.org>
-References: <1338226422-8845-1-git-send-email-tytso@mit.edu>
- <4790434C-0DF2-4186-BE4C-CE97633F107C@dilger.ca>
- <20120528210511.GA5610@thunk.org>
- <20120529195019.GE23991@quack.suse.cz>
- <20120529200856.GF23991@quack.suse.cz>
- <20120530173709.GB16317@fieldses.org>
- <20120530201256.GA32477@quack.suse.cz>
+From: Spelic <spelic@shiftmail.org>
+Subject: Ext4 and xfs problems in dm-thin on allocation and discard
+Date: Mon, 18 Jun 2012 23:33:50 +0200
+Message-ID: <4FDF9EBE.2030809@shiftmail.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-	linux-fsdevel@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	viro@ZenIV.linux.org.uk, sami.liedes@iki.fi
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57307 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752957Ab2FRVTg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jun 2012 17:19:36 -0400
+Content-Type: multipart/mixed; boundary="===============8917870514997115124=="
+To: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+        device-mapper development <dm-devel@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+This is a multi-part message in MIME format.
+
+--===============8917870514997115124==
+Content-type: multipart/alternative;
+ boundary="Boundary_(ID_LFZuP2xNwTyTwg/PmXTa3A)"
+
+This is a multi-part message in MIME format.
+
+--Boundary_(ID_LFZuP2xNwTyTwg/PmXTa3A)
+Content-type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7BIT
+
+Hello all
+I am doing some testing of dm-thin on kernel 3.4.2 and latest lvm from 
+source (the rest is Ubuntu Precise 12.04).
+There are a few problems with ext4 and (different ones with) xfs
+
+I am doing this:
+dd if=/dev/zero of=zeroes bs=1M count=1000 conv=fsync
+lvs
+rm zeroes #optional
+dd if=/dev/zero of=zeroes bs=1M count=1000 conv=fsync  #again
+lvs
+rm zeroes #optional
+...
+dd if=/dev/zero of=zeroes bs=1M count=1000 conv=fsync  #again
+lvs
+rm zeroes
+fstrim /mnt/mountpoint
+lvs
+
+On ext4 the problem is that it always reallocates blocks at different 
+places, so you can see from lvs that space occupation in the pool and 
+thinlv increases at each iteration of dd, again and again, until it has 
+allocated the whole thin device (really 100% of it). And this is true 
+regardless of me doing rm or not between one dd and the other.
+The other problem is that by doing this, ext4 always gets the worst 
+performance from thinp, about 140MB/sec on my system, because it is 
+constantly allocating blocks, instead of 350MB/sec which should have 
+been with my system if it used already allocated regions (see below 
+compared to xfs). I am on an MD raid-5 of 5 hdds.
+I could suggest to add a "thinp mode" mount option to ext4 affecting the 
+allocator, so that it tries to reallocate recently used and freed areas 
+and not constantly new areas. Note that mount -o discard does work and 
+prevents allocation bloating, but it still always gets the worst write 
+performances from thinp. Alternatively thinp could be improved so that 
+block allocation is fast :-P (*)
+However, good news is that fstrim works correctly on ext4, and is able 
+to drop all space allocated by all dd's. Also mount -o discard works.
+
+On xfs there is a different problem.
+Xfs apparently correctly re-uses the same blocks so that after the first 
+write at 140MB/sec, subsequent overwrites of the same file are at full 
+speed such as 350MB/sec (same speed as with non-thin lvm), and also you 
+don't see space occupation going up at every iteration of dd, either 
+with or without rm in-between the dd's. [ok actually now retrying it 
+needed 3 rewrites to stabilize allocation... probably an AG count thing.]
+However the problem with XFS is that discard doesn't appear to work. 
+Fstrim doesn't work, and neither does "mount -o discard ... + rm zeroes" 
+. There is apparently no way to drop the allocated blocks, as seen from 
+lvs. This is in contrast to what it is written here 
+http://xfs.org/index.php/FITRIM/discard which declare fstrim and mount 
+-o discard to be working.
+Please note that since I am above MD raid5 (I believe this is the 
+reason), the passdown of discards does not work, as my dmesg says:
+[160508.497879] device-mapper: thin: Discard unsupported by data device 
+(dm-1): Disabling discard passdown.
+but AFAIU, unless there is a thinp bug, this should not affect the 
+unmapping of thin blocks by fstrimming xfs... and in fact ext4 is able 
+to do that.
+
+(*) Strange thing is that write performance appears to be roughly the 
+same for default thin chunksize and for 1MB thin chunksize. I would have 
+expected thinp allocation to be faster with larger thin chunksizes but 
+instead it is actually slower (note that there are no snapshots here and 
+hence no CoW). This is also true if I set the thinpool to not zero newly 
+allocated blocks: performances are about 240 MB/sec then, but again they 
+don't increase with larger chunksizes, they actually decrease slightly 
+with very large chunksizes such as 16MB. Why is that?
+
+Thanks for your help
+S.
+
+--Boundary_(ID_LFZuP2xNwTyTwg/PmXTa3A)
+Content-type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+X-MIME-Autoconverted: from 8bit to quoted-printable by oss.sgi.com id q5ILXgsG243846
+
+<html>
+  <head>
+    <meta http-equiv=3D"content-type" content=3D"text/html; charset=3DUTF=
+-8">
+  </head>
+  <body bgcolor=3D"#FFFFFF" text=3D"#000000">
+    Hello all<br>
+    I am doing some testing of dm-thin on kernel 3.4.2 and latest lvm
+    from source (the rest is Ubuntu Precise 12.04).<br>
+    There are a few problems with ext4 and (different ones with) xfs<br>
+    <br>
+    I am doing this:<br>
+    dd if=3D/dev/zero of=3Dzeroes bs=3D1M count=3D1000 conv=3Dfsync<br>
+    lvs<br>
+    rm zeroes #optional<br>
+    dd if=3D/dev/zero of=3Dzeroes bs=3D1M count=3D1000 conv=3Dfsync=C2=A0=
+ #again<br>
+    lvs<br>
+    rm zeroes #optional<br>
+    ...<br>
+    dd if=3D/dev/zero of=3Dzeroes bs=3D1M count=3D1000 conv=3Dfsync=C2=A0=
+ #again<br>
+    lvs<br>
+    rm zeroes<br>
+    fstrim /mnt/mountpoint<br>
+    lvs<br>
+    <br>
+    On ext4 the problem is that it always reallocates blocks at
+    different places, so you can see from lvs that space occupation in
+    the pool and thinlv increases at each iteration of dd, again and
+    again, until it has allocated the whole thin device (really 100% of
+    it). And this is true regardless of me doing rm or not between one
+    dd and the other.<br>
+    The other problem is that by doing this, ext4 always gets the worst
+    performance from thinp, about 140MB/sec on my system, because it is
+    constantly allocating blocks, instead of 350MB/sec which should have
+    been with my system if it used already allocated regions (see below
+    compared to xfs). I am on an MD raid-5 of 5 hdds.<br>
+    I could suggest to add a "thinp mode" mount option to ext4 affecting
+    the allocator, so that it tries to reallocate recently used and
+    freed areas and not constantly new areas. Note that mount -o discard
+    does work and prevents allocation bloating, but it still always gets
+    the worst write performances from thinp. Alternatively thinp could
+    be improved so that block allocation is fast :-P (*) <br>
+    However, good news is that fstrim works correctly on ext4, and is
+    able to drop all space allocated by all dd's. Also mount -o discard
+    works.<br>
+    <br>
+    On xfs there is a different problem.<br>
+    Xfs apparently correctly re-uses the same blocks so that after the
+    first write at 140MB/sec, subsequent overwrites of the same file are
+    at full speed such as 350MB/sec (same speed as with non-thin lvm),
+    and also you don't see space occupation going up at every iteration
+    of dd, either with or without rm in-between the dd's. [ok actually
+    now retrying it needed 3 rewrites to stabilize allocation...
+    probably an AG count thing.]<br>
+    However the problem with XFS is that discard doesn't appear to work.
+    Fstrim doesn't work, and neither does "mount -o discard ... + rm
+    zeroes" . There is apparently no way to drop the allocated blocks,
+    as seen from lvs. This is in contrast to what it is written here
+    <meta http-equiv=3D"content-type" content=3D"text/html; charset=3DUTF=
+-8">
+    <a href=3D"http://xfs.org/index.php/FITRIM/discard">http://xfs.org/in=
+dex.php/FITRIM/discard</a>
+    which declare fstrim and mount -o discard to be working.<br>
+    Please note that since I am above MD raid5 (I believe this is the
+    reason), the passdown of discards does not work, as my dmesg says:<br=
+>
+    [160508.497879] device-mapper: thin: Discard unsupported by data
+    device (dm-1): Disabling discard passdown.<br>
+    but AFAIU, unless there is a thinp bug, this should not affect the
+    unmapping of thin blocks by fstrimming xfs... and in fact ext4 is
+    able to do that.<br>
+    <br>
+    (*) Strange thing is that write performance appears to be roughly
+    the same for default thin chunksize and for 1MB thin chunksize. I
+    would have expected thinp allocation to be faster with larger thin
+    chunksizes but instead it is actually slower (note that there are no
+    snapshots here and hence no CoW). This is also true if I set the
+    thinpool to not zero newly allocated blocks: performances are about
+    240 MB/sec then, but again they don't increase with larger
+    chunksizes, they actually decrease slightly with very large
+    chunksizes such as 16MB. Why is that?<br>
+    <br>
+    Thanks for your help<br>
+    S.<br>
+  </body>
+</html>
+
+--Boundary_(ID_LFZuP2xNwTyTwg/PmXTa3A)--
+
+
+--===============8917870514997115124==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Content-Disposition: inline
-In-Reply-To: <20120530201256.GA32477@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
 
-On Wed, May 30, 2012 at 10:12:57PM +0200, Jan Kara wrote:
-> On Wed 30-05-12 13:37:09, J. Bruce Fields wrote:
-> > On Tue, May 29, 2012 at 10:08:56PM +0200, Jan Kara wrote:
-> > > On Tue 29-05-12 21:50:19, Jan Kara wrote:
-> > > > On Mon 28-05-12 17:05:11, Ted Tso wrote:
-> > > > > On Mon, May 28, 2012 at 02:29:05PM -0600, Andreas Dilger wrote:
-> > > > > > This patch is good from the POV of covering all filesystems, and
-> > > > > > avoiding the deadlock at the dcache level.  It would be possible to
-> > > > > > detect this problem in the filesystem itself during lookup, before
-> > > > > > the bad link got into the dcache itself.  Something like:
-> > > > > 
-> > > > > I like that as a solution for detecting the problem in ext4.  As you
-> > > > > say, it's still an issue for other file systems, and so the patch I
-> > > > > proposed is still probably a good idea for the VFS.  But this way ext4
-> > > > > (and ext3 when Jan backports it) will be able to detect the problem
-> > > > > and mark the file system as being corrupted.
-> > > >   Actually, I think there's even better way. d_splice_alias() can rather
-> > > > easily detect the problem and report it to filesystem. The advantage is
-> > > > that the check in d_splice_alias() can catch any "hardlinks" to
-> > > > directories, not just self loops. The patch is attached, I also have
-> > > > corresponding handling written for ext? filesystems but that's trivial.
-> > > > I'll post the whole series to Al to have a look.
-> > >   And now with the attachment. Sorry.
-> > 
-> > Well, my understanding of d_splice_alias is that it should just return
-> > the existing dentry instead of failing.  (It does that now for
-> > DISCONNECTED dentries, but I don't understand why they're special.)
-> > So that's what:
-> > 
-> > http://git.kernel.org/?p=linux/kernel/git/viro/vfs.git;a=commit;h=9d345b3217b384813680901d42eae3fb380b9f77
-> > 
-> > does.
->   Thanks for the pointer. In the case I tried to solve, returning the
-> existing dentry will solve the deadlocks, just user won't be warned that
-> the filesystem is corrupted. Since you seem to describe a valid case where
-> we can spot other !DISCONNECTED dentry of a directory, I guess we have no
-> other choice than using your approach.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
 
-But my patch got reverted, on suspicion that it was either wrong or
-covering up some other problem:
-
-	http://marc.info/?l=linux-fsdevel&m=133917767003505&w=2
-
-... which an approach like yours might help at least find?  So maybe
-it's worth another try.
-
---b.
-
-> 
-> We could do some sanity checks in ->lookup method (like Andreas suggested)
-> but they are not that powerful as a check in d_splice_alias() can be. But
-> what can one do...
-> 
-> 								Honza
-> 
-> 
-> > > >From 0715b656ac88ce1bb62800b14d99ef2e25c26d28 Mon Sep 17 00:00:00 2001
-> > > From: Jan Kara <jack@suse.cz>
-> > > Date: Tue, 29 May 2012 21:19:01 +0200
-> > > Subject: [PATCH 1/4] vfs: Avoid creation of directory loops for corrupted filesystems
-> > > 
-> > > When a directory hierarchy is corrupted (e. g. due to a bit flip on the media),
-> > > it can happen that it contains loops of directories. That creates possibilities
-> > > for deadlock when locking directories.
-> > > 
-> > > Fix the problem by checking in d_splice_alias() that when we splice a
-> > > directory, it does not have any other connected alias.
-> > > 
-> > > Reported-by: Sami Liedes <sami.liedes@iki.fi>
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/dcache.c |    4 ++++
-> > >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/fs/dcache.c b/fs/dcache.c
-> > > index 4435d8b..ca31a1e 100644
-> > > --- a/fs/dcache.c
-> > > +++ b/fs/dcache.c
-> > > @@ -1658,6 +1658,10 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
-> > >  			d_move(new, dentry);
-> > >  			iput(inode);
-> > >  		} else {
-> > > +			if (unlikely(!list_empty(&inode->i_dentry))) {
-> > > +				spin_unlock(&inode->i_lock);
-> > > +				return ERR_PTR(-EIO);
-> > > +			}
-> > >  			/* already taking inode->i_lock, so d_add() by hand */
-> > >  			__d_instantiate(dentry, inode);
-> > >  			spin_unlock(&inode->i_lock);
-> > > -- 
-> > > 1.7.1
-> > > 
-> > 
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--===============8917870514997115124==--
