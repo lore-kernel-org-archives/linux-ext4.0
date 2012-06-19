@@ -1,79 +1,67 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Ext4 and xfs problems in dm-thin on allocation and discard
-Date: Wed, 20 Jun 2012 06:06:31 +1000
-Message-ID: <20120619200631.GL25389@dastard>
-References: <4FDF9EBE.2030809@shiftmail.org>
- <20120619015745.GJ25389@dastard>
- <20120619031241.GA3884@redhat.com>
- <alpine.LFD.2.00.1206190816440.2241@dhcp-1-248.brq.redhat.com>
- <20120619131649.GA6811@redhat.com>
- <alpine.LFD.2.00.1206191519320.21961@dhcp-1-248.brq.redhat.com>
- <20120619133041.GB6811@redhat.com>
- <4FE0840F.2050704@shiftmail.org>
- <20120619144413.GA7225@redhat.com>
- <20120619184858.GA8841@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/2] Re: Discrepancy in 'df' output between kernel 3.0
+ and 3.2 for ext4?
+Date: Tue, 19 Jun 2012 16:13:25 -0400
+Message-ID: <20120619201325.GE22805@thunk.org>
+References: <4FD8D731.9070008@cleversafe.com>
+ <1340055909-7683-1-git-send-email-tytso@mit.edu>
+ <4FE0D904.7050401@cleversafe.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Spelic <spelic@shiftmail.org>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	device-mapper development <dm-devel@redhat.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Mike Snitzer <snitzer@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Zachary Mark <zmark@cleversafe.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:11718 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753902Ab2FSUGg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Jun 2012 16:06:36 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:51382 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753762Ab2FSUN2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jun 2012 16:13:28 -0400
 Content-Disposition: inline
-In-Reply-To: <20120619184858.GA8841@redhat.com>
+In-Reply-To: <4FE0D904.7050401@cleversafe.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 19, 2012 at 02:48:59PM -0400, Mike Snitzer wrote:
-> On Tue, Jun 19 2012 at 10:44am -0400,
-> Mike Snitzer <snitzer@redhat.com> wrote:
+On Tue, Jun 19, 2012 at 02:54:44PM -0500, Zachary Mark wrote:
 > 
-> > On Tue, Jun 19 2012 at  9:52am -0400,
-> > Spelic <spelic@shiftmail.org> wrote:
-> >
-> > > I do not know what is the mechanism for which xfs cannot unmap
-> > > blocks from dm-thin, but it really can't.
-> > > If anyone has dm-thin installed he can try. This is 100%
-> > > reproducible for me.
-> > 
-> > I was initially surprised by this considering the thinp-test-suite does
-> > test a compilebench workload against xfs and ext4 using online discard
-> > (-o discard).
-> > 
-> > But I just modified that test to use a thin-pool with 'ignore_discard'
-> > and the test still passed on both ext4 and xfs.
-> > 
-> > So there is more work needed in the thinp-test-suite to use blktrace
-> > hooks to verify that discards are occuring when the compilebench
-> > generated files are removed.
-> > 
-> > I'll work through that and report back.
+> Ted, thanks for the patches!  I've tested your patches against
+> 3.5~rc3.  I had to return the machine on which I first spotted the
+> problem, but here are results from a box with identical hardware:
 > 
-> blktrace shows discards for both xfs and ext4.
+> df from 3.0:
+> Filesystem           1K-blocks      Used Available Use% Mounted on
+> /dev/sdh1            2907178636    205816 2906972820   1%
+> /dev/sdi1            2907178636   1056768 2906121868   1%
 > 
-> But in general xfs is issuing discards with much smaller extents than
-> ext4 does, e.g.:
+> df from 3.2.20 (identical to 3.5~rc3 without your patches):
+> Filesystem           1K-blocks      Used Available Use% Mounted on
+> /dev/sdh1            2928733612  21760792 2906972820   1%
+> /dev/sdi1            2928733612  22611744 2906121868   1%
+> 
+> 
+> df from 3.5~rc3 with your patches applied (as they didn't apply to 3.2):
+> /dev/sdh1            2907178636    205816 2906972820   1%
+> /dev/sdi1            2907178636   1060936 2906117700   1%
+> 
+> sdh1 is mostly empty.  sdi1 has about 6700 128k files written to it plus
+> everything on sdh1.  There seems to be slightly more overhead accounted
+> for after your patches.  Not sure if this is to be expected or not.
 
-THat's normal when you use -o discard - XFS sends extremely
-fine-grained discards as the have to be issued during the checkpoint
-commit that frees the extent. Hence they can't be aggregated like is
-done in ext4.
+Hmm... it looks like df output /dev/sdh1 is identical between 3.0 and
+3.5~rc3 with my patches.  I'm not sure why there is a difference for
+/dev/sdi1.  However, I note that the "Available" figure is the same
+between 3.0, 3.2.20 and 3.5~rc3 for /dev/sdh1, but there is a
+difference in the Available column between 3.2.20 and 3.5~rc3 for
+/dev/sdi3.  Could it be that some files got written to /dev/sdi
+between your test run?
 
-As it is, no-one really should be using -o discard - it is extremely
-inefficient compared to a background fstrim run given that discards
-are unqueued, blocking IOs. It's just a bad idea until the lower
-layers get fixed to allow asynchronous, vectored discards and SATA
-supports queued discards...
+It would be good if we could get this sorted out.  I was pretty
+careful to account for all of the fs overhead blocks between when I
+did my patch with an empty file system.
 
-Cheers,
+If this can't be accounted by more files being written to /dev/sdi1,
+could you send me the (compressed, since they will be large) output of
+dumpe2fs for /dev/sdh1 and /dev/sdi1 with the "df" output from your
+three test kernel so I can investigate further?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks,
+
+						- Ted
