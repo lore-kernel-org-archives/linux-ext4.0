@@ -1,68 +1,110 @@
-From: Spelic <spelic@shiftmail.org>
-Subject: Re: Ext4 and xfs problems in dm-thin on allocation and discard
-Date: Tue, 19 Jun 2012 15:52:15 +0200
-Message-ID: <4FE0840F.2050704@shiftmail.org>
-References: <4FDF9EBE.2030809@shiftmail.org> <20120619015745.GJ25389@dastard>
- <20120619031241.GA3884@redhat.com>
- <alpine.LFD.2.00.1206190816440.2241@dhcp-1-248.brq.redhat.com>
- <20120619131649.GA6811@redhat.com>
- <alpine.LFD.2.00.1206191519320.21961@dhcp-1-248.brq.redhat.com>
- <20120619133041.GB6811@redhat.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Minimal configuration for e2fsprogs
+Date: Tue, 19 Jun 2012 09:56:10 -0400
+Message-ID: <20120619135610.GA10637@thunk.org>
+References: <20120615042421.GA7021@thor.bakeyournoodle.com>
+ <20120616000825.GE7363@thunk.org>
+ <20120618055836.GA30557@thor.bakeyournoodle.com>
+ <20120618171257.GA16017@thunk.org>
+ <20120619054751.GA2660@thor.bakeyournoodle.com>
+ <86585638-21F5-4FEE-9313-28AC122FCCEE@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Spelic <spelic@shiftmail.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Mike Snitzer <msnitzer@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tony Breeds <tony@bakeyournoodle.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from blade3.isti.cnr.it ([194.119.192.19]:1105 "EHLO
-	blade3.isti.cnr.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752353Ab2FSNwf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2012 09:52:35 -0400
-Received: from [192.168.6.232] ([155.253.6.254])
- by mx.isti.cnr.it (PMDF V6.5-x6 #31988)
- with ESMTPSA id <01OGVIYF00W4ODSR3C@mx.isti.cnr.it> for
- linux-ext4@vger.kernel.org; Tue, 19 Jun 2012 15:51:39 +0200 (MEST)
-In-reply-to: <20120619133041.GB6811@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51265 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753022Ab2FSN4Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jun 2012 09:56:16 -0400
+Content-Disposition: inline
+In-Reply-To: <86585638-21F5-4FEE-9313-28AC122FCCEE@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/19/12 15:30, Mike Snitzer wrote:
-> I don't recall Spelic saying anything about EOPNOTSUPP. So what has 
-> made you zero in on an -EOPNOTSUPP return (which should not be 
-> happening)? 
+On Tue, Jun 19, 2012 at 12:01:54AM -0600, Andreas Dilger wrote:
+> 
+> That is what I would do, though perhaps with macro names that are not
+> so confusingly similar to the actual macro names, which might otherwise
+> cause confusion if someone doesn't read the code very closely.  Like:
+> 
+> #ifdef ENABLE_MMP
+> ...
+> #define EXT2_LIB_INCOMPAT_SUPP_MMP EXT4_FEATURE_INCOMPAT_MMP
+> #else
+> #define EXT2_LIB_INCOMPAT_SUPP_MMP (0)
+> #endif
 
-Exactly: I do not know if EOPNOTSUPP is being returned or not.
+either name is fine with me; I'm not particularly picky here, since
+the only place the #define would get used is the header file, the
+opportunities for confusion are pretty limited.
 
-If this helps, I have configured dm-thin via lvm2
-   LVM version:     2.02.95(2) (2012-03-06)
-   Library version: 1.02.74 (2012-03-06)
-   Driver version:  4.22.0
+> > 2) in debugfs you have a command table (debug_cmds.ct or similar) there
+> > doesn't seem to be a way to exclude commands based on the state of
+> > CONFIG_MMP.  Is it a problem the expose a debugfs command that will do
+> > nothing when built with --disable-mmp, or should I look at extending
+> > the command table generator to support the conditionals?
 
-from dmsetup table I only see one option : "skip_block_zeroing", if and 
-only if I configure it with -Zn . I do not see anything regarding 
-ignore_discard
-
-      vg1-pooltry1-tpool: 0 20971520 thin-pool 252:1 252:2 2048 0 1 
-skip_block_zeroing
-      vg1-pooltry1_tdata: 0 20971520 linear 9:20 62922752
-      vg1-pooltry1_tmeta: 0 8192 linear 9:20 83894272
-      vg1-thinlv1: 0 31457280 thin 252:3 1
-
-
-and in dmesg:
-[   33.685200] device-mapper: thin: Discard unsupported by data device 
-(dm-2): Disabling discard passdown.
-[   33.709586] device-mapper: thin: Discard unsupported by data device 
-(dm-6): Disabling discard passdown.
+I'd have it print an error of some kind, i.e., "MMP not supported"
 
 
-I do not know what is the mechanism for which xfs cannot unmap blocks 
-from dm-thin, but it really can't.
-If anyone has dm-thin installed he can try. This is 100% reproducible 
-for me.
+> > --- a/lib/ext2fs/ext2fs.h
+> > +++ b/lib/ext2fs/ext2fs.h
+> > @@ -1366,6 +1366,7 @@ errcode_t ext2fs_unlink(ext2_filsys fs, ext2_ino_t dir, const char *name,
+> > 			ext2_ino_t ino, int flags);
+> > 
+> > /* mmp.c */
+> > +#ifdef CONFIG_MMP
+> > errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf);
+> > errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf);
+> > errcode_t ext2fs_mmp_clear(ext2_filsys fs);
+> > @@ -1374,6 +1375,7 @@ errcode_t ext2fs_mmp_start(ext2_filsys fs);
+> > errcode_t ext2fs_mmp_update(ext2_filsys fs);
+> > errcode_t ext2fs_mmp_stop(ext2_filsys fs);
+> > unsigned ext2fs_mmp_new_seq(void);
+> > +#endif /* CONFIG_MMP */
+> 
+> These should all conditionally become static inline no-op functions
+> here (returning zero as needed) so that the calling code does not need
+> messy #ifdefs everywhere.
 
+If we've removed MMP from the list of supported features, a much
+simpler thing we can do is to just add at the beginning of each of the
+functions in mmp.c:
 
+#ifndef CONFIG_MMP
+	return EXT2_ET_OP_NOT_SUPPORTED;
+#endif
+
+and then letting the compiler optimize out the rest of the code in the
+function; I wouldn't worry about using static inlines, since it's not
+something we really need to optimize in this case.  The mmp functions
+don't get called all that often anyway.
+
+I also wouldn't bother commenting out the function signatures in
+ext2fs.h.  For programs which are including ext2fs.h, they're not
+going to be including the config.h which has CONFIG_* or ENABLE_*
+autoconf #defines anyway.
+
+Arguably all of the EXT2_LIB_* defines shouldn't be in ext2fs.h for
+that reason; they should be in ext2fsP.h, and the only reason why they
+aren't is due to history (since we didn't have ext2fsP.h when they
+were first introduced).  At some point I'll probably move that logic
+into ext2fsP.h, just to keep ext2fs.h smaller/cleaner for application
+programs.
+
+Regards,
+
+						- Ted
+
+P.S.  I'm debating whether or not it makes sense to create a special
+static library just for bootloaders which is stripped down and
+read-only.  I realized while looking at things that there is a pretty
+large amount of coding getting dragged in due to namei.c pulling in
+dir_iterate.c pulling in block_iterate.c pulling in extent.c, which
+then pulls in a lot of code since we might need to allocate or
+deallocate blocks.  If we made a read-only variant of the library, it
+could significantly reduce the size of the statically linked
+bootloader.  I'm not entirely sure it's worth it, since you don't seem
+to be worrying about the compiled binary size of yaboot, but it's
+something we could do if it was interesting.  What do you think?
