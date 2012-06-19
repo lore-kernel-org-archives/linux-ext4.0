@@ -1,81 +1,54 @@
-From: Arnd Bergmann <arnd.bergmann@linaro.org>
-Subject: Re: [PATCH 2/3] ext4: Context support
-Date: Tue, 19 Jun 2012 15:17:26 +0000
-Message-ID: <201206191517.26687.arnd.bergmann@linaro.org>
-References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com> <201206161741.23900.arnd.bergmann@linaro.org> <20120618174214.GA1506@thunk.org>
+From: Mike Snitzer <snitzer@redhat.com>
+Subject: Re: Ext4 and xfs problems in dm-thin on allocation and	discard
+Date: Tue, 19 Jun 2012 11:28:56 -0400
+Message-ID: <20120619152856.GB7225@redhat.com>
+References: <4FDF9EBE.2030809@shiftmail.org>
+ <alpine.LFD.2.00.1206191601290.21961@dhcp-1-248.brq.redhat.com>
+ <20120619141933.GC10637@thunk.org>
+ <20120619144316.GD14208@agk-dp.fab.redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Alex Lemberg <Alex.Lemberg@sandisk.com>,
-	HYOJIN JEONG <syr.jeong@samsung.com>,
-	Saugata Das <saugata.das@linaro.org>,
-	Artem Bityutskiy <dedekind1@gmail.com>,
-	Saugata Das <saugata.das@stericsson.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
-	"Luca Porzio (lporzio)" <lporzio@micron.com>
-To: "Ted Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: device-mapper development <dm-devel@redhat.com>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	Spelic <spelic@shiftmail.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.9]:55110 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753388Ab2FSPRd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jun 2012 11:17:33 -0400
-In-Reply-To: <20120618174214.GA1506@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58638 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750955Ab2FSP3G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jun 2012 11:29:06 -0400
+Content-Disposition: inline
+In-Reply-To: <20120619144316.GD14208@agk-dp.fab.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday 18 June 2012, Ted Ts'o wrote:
-> On Sat, Jun 16, 2012 at 05:41:23PM +0000, Arnd Bergmann wrote:
-> > 
-> > * We cannot read from write-only large-unit context, so we have to
-> >   do one of these:
-> >    a) ensure we never drop any pages from page-cache between writing
-> >       them to the large context and closing that context
-> >    b) if we need to read some data that we have just written to the
-> >       large-unit context, close that context and open a new rw-context
-> >       without the large-unit flag set (or write in the default context)
+On Tue, Jun 19 2012 at 10:43am -0400,
+Alasdair G Kergon <agk@redhat.com> wrote:
+
+> On Tue, Jun 19, 2012 at 10:19:33AM -0400, Ted Ts'o wrote:
+> > One of the things which would be nice to be able to easily set up is a
+> > configuration where we get the benefits of thin provisioning with
+> > respect to snapshost, but where the underlying block device used by
+> > the file system is contiguous.  
 > 
-> If we ever a read on the inode in question, we close the large-unit
-> context.  That's the simplest thing to do, since we then don't need to
-> track which blocks had been written from the inode.  And in general,
-> if you have a random read/write workload, large-unit contexts probably
-> won't help you.  We mainly would need this when the workload is doing
-> large sequential writes, which is *easy* to optimize for.
+> We're tracking this requirement (for lvm2) here:
+>   https://bugzilla.redhat.com/show_bug.cgi?id=814737
 
-right.
+That is an lvm2 BZ but there is further kernel work needed.
 
-> > * All writes to the large-unit context have to be done in superpage
-> >   size, which means something between 8 and 32 kb typically, so more
-> >   than the underlying fs block size
-> 
-> Right, so we only enable the large-unit context when we are in
-> ext4_da_writepages() and we can do the first write in a way that meets
-> the requirements (i.e., the write starts aligned on the erase block,
-> and is a multiple of the superpage size).  The moment we need to do a
-> read (see above) or a write which doesn't meet the large-unit
-> restrictions, we close the large-unit context.
-> 
-> (This is why I asked the question about whether there are performance
-> penalties for opening and closing contexts.  If it requires flushing
-> the NCQ queues, ala the trim request, then we might need to be more
-> careful.)
+It should be noted that the "external origin" feature was added to the
+thinp target with this commit: 
+http://git.kernel.org/linus/2dd9c257fbc243aa76ee6d
 
-I believe it should only require flushing that one context, although
-a specific hardware implementation might be worse than that. Maybe
-Luca or Alex can comment on this.
+It is start, but external origin is kept read-only and any writes
+trigger allocation of new blocks within the thin-pool.
 
-> > * We can only start the large unit at the start of an erase block. If
-> >   we unmount the drive and later continue writing, it has to continue
-> >   without the large-unit flag at first until we hit an erase block
-> >   boundary.
-> 
-> My assumption was that when you umount the drive, the file system
-> would close all of the contexts.
+We've talked some about the desire to have a fully provisioned volume
+that only starts to get fragmented once snapshots are taken.  The idea
+is to move the origin into the data volume, via mapping, rather than
+copying:
 
-Yes, makes sense. This is probably required to ensure that the data
-has made to the drive, at least for the large contexts, but it is
-definitely required for housekeeping of contexts if we manage them
-from the block layer.
-
-	Arnd
+Dec 14 10:37:08 <ejt> we then build a data dev that consists of a linear mapping to that origin
+Dec 14 10:37:12 <ejt> plus some extra stuff
+Dec 14 10:37:23 <ejt> (the additonal free space for snapshots)
+Dec 14 10:37:49 <ejt> we then prepare thinp metadata with a mapping to that origin
