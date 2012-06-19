@@ -1,41 +1,97 @@
-From: Alasdair G Kergon <agk@redhat.com>
-Subject: Re: [dm-devel] Ext4 and xfs problems in dm-thin on allocation and
-	discard
-Date: Tue, 19 Jun 2012 17:03:01 +0100
-Message-ID: <20120619160300.GF14208@agk-dp.fab.redhat.com>
-References: <4FDF9EBE.2030809@shiftmail.org> <alpine.LFD.2.00.1206191601290.21961@dhcp-1-248.brq.redhat.com> <20120619141933.GC10637@thunk.org> <20120619144316.GD14208@agk-dp.fab.redhat.com> <20120619152856.GB7225@redhat.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
+Date: Tue, 19 Jun 2012 13:43:26 -0400
+Message-ID: <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
+References: <4FDEC3C2.4060909@secunet.com>
+	<x49fw9smohy.fsf@segfault.boston.devel.redhat.com>
+	<4FE0155A.6010404@secunet.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Spelic <spelic@shiftmail.org>
-To: device-mapper development <dm-devel@redhat.com>
+Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	Nick Piggin <npiggin@kernel.dk>
+To: Torsten Hilbrich <torsten.hilbrich@secunet.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36674 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56393 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751792Ab2FSQDK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Jun 2012 12:03:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20120619152856.GB7225@redhat.com>
+	id S1751049Ab2FSRni (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jun 2012 13:43:38 -0400
+In-Reply-To: <4FE0155A.6010404@secunet.com> (Torsten Hilbrich's message of
+	"Tue, 19 Jun 2012 07:59:54 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 19, 2012 at 11:28:56AM -0400, Mike Snitzer wrote:
-> That is an lvm2 BZ but there is further kernel work needed.
- 
-In principle, userspace should already be able to handle the replumbing I
-think.  (But when we work through the details of an online import, perhaps
-we'll want some further kernel change for atomicity/speed reasons?  In 
-particular we need to be able to do the last part of the metadata merge
-quickly.)
+Torsten Hilbrich <torsten.hilbrich@secunet.com> writes:
 
-Roughly:
-1. rejig the lvm metadata for the new configuration [lvm]
-  - appends the "whole LV" data to the pool's data
-2. Generate metadata for the appended data and append this to the metadata area [dmpd]
-3. suspend all the affected devices [lvm]
-4. link the already-prepared metadata into the existing metadata [dmpd]
-5. resume all the devices (now using the new extended pool)
+> The system where I reproduced the problem upstream is an amd64 based
+> ubuntu 12.04 installation. I used both v3.3.8 and v3.4 for reproducing.
+>
+> The partition layout is the following:
+>
+> ======================================================================
+>
+> Disk /dev/sda: 120.0 GB, 120034123776 bytes
+> 255 heads, 63 sectors/track, 14593 cylinders, total 234441648 sectors
+> Units = sectors of 1 * 512 = 512 bytes
+> Sector size (logical/physical): 512 bytes / 512 bytes
+> I/O size (minimum/optimal): 512 bytes / 512 bytes
+> Disk identifier: 0x1669c708
+>
+>    Device Boot      Start         End      Blocks   Id  System
+> /dev/sda1   *          63    86285114    43142526   83  Linux
+> /dev/sda2       216797175   234436544     8819685   82  Linux swap / Solaris
+> /dev/sda3        86285115    87088364      401625   83  Linux
+> /dev/sda4        87088426   216797174    64854374+   5  Extended
+> /dev/sda5        87088428    91104614     2008093+  83  Linux
+> /dev/sda6        91104678   216797174    62846248+  8e  Linux LVM
+>
+> Partition table entries are not in disk order
 
-Alasdair
+OK, got it to reproduce, thanks for the info.  The attached patch fixed
+the problem for me.
 
+Note, though, that the patch doesn't make sense to me.  blkdev_max_block
+returns i_size_read(blkdev_inode) >> block_size.  This should be the
+*size* of the block device, not the max block.  The code in
+fs/block_device.c uses the return value in two different ways!
+
+static int
+blkdev_get_block(struct inode *inode, sector_t iblock,
+                struct buffer_head *bh, int create)
+{
+        if (iblock >= blkdev_max_block(I_BDEV(inode))) {
+
+Here, the return value from blkdev_max_block is interpreted as the size
+of the device, so actually max_block + 1.
+
+static int
+blkdev_get_blocks(struct inode *inode, sector_t iblock,
+                struct buffer_head *bh, int create)
+{
+        sector_t end_block = blkdev_max_block(I_BDEV(inode));
+        unsigned long max_blocks = bh->b_size >> inode->i_blkbits;
+
+        if ((iblock + max_blocks) > end_block) {
+
+Here, the return value is treated as the maximum addressable block
+number.  Given the fact that I had to modify init_page_buffers to treat
+the return value from blkdev_max_block as the maximum addressable block,
+I clearly have something wrong with my logic.  Nick, Jens, care to set
+my head straight?
+
+Cheers,
+Jeff
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 838a9cf..769b30b 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -930,7 +930,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
+ 			bh->b_blocknr = block;
+ 			if (uptodate)
+ 				set_buffer_uptodate(bh);
+-			if (block < end_block)
++			if (block <= end_block)
+ 				set_buffer_mapped(bh);
+ 		}
+ 		block++;
