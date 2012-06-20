@@ -1,61 +1,83 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4 slow on links
-Date: Wed, 20 Jun 2012 09:07:23 -0500
-Message-ID: <4FE1D91B.8020707@redhat.com>
-References: <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <4FE14034.6070800@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <20120620021912.GA26323@thunk.org> <20120620033831.GA2395@gamma.logic.tuwien.ac.at> <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com> <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Minimal configuration for e2fsprogs
+Date: Wed, 20 Jun 2012 08:14:21 -0600
+Message-ID: <2314E505-27E8-4FA7-8034-4CE3F6CAA138@dilger.ca>
+References: <20120615042421.GA7021@thor.bakeyournoodle.com> <20120616000825.GE7363@thunk.org> <20120618055836.GA30557@thor.bakeyournoodle.com> <20120618171257.GA16017@thunk.org> <20120619054751.GA2660@thor.bakeyournoodle.com> <86585638-21F5-4FEE-9313-28AC122FCCEE@dilger.ca> <20120619135610.GA10637@thunk.org> <20120620052604.GB11330@thor.bakeyournoodle.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: multipart/signed; protocol="application/pgp-signature"; micalg=pgp-sha1; boundary="Apple-Mail-154--1030274518"
 Content-Transfer-Encoding: 7bit
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Norbert Preining <preining@logic.at>
+Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Tony Breeds <tony@bakeyournoodle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31232 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751799Ab2FTOHd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jun 2012 10:07:33 -0400
-In-Reply-To: <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:33318 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751753Ab2FTOOX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 10:14:23 -0400
+In-Reply-To: <20120620052604.GB11330@thor.bakeyournoodle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/20/12 12:18 AM, Norbert Preining wrote:
-> Hi Eric,
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--Apple-Mail-154--1030274518
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+
+On 2012-06-19, at 11:26 PM, Tony Breeds wrote:
+> From 5f6a6528c93ad9b3eb878afbeab10c01802647b0 Mon Sep 17 00:00:00 2001
+> From: Tony Breeds <tony@bakeyournoodle.com>
+> Date: Wed, 20 Jun 2012 15:04:43 +1000
+> Subject: [PATCH] WiP: Add --disable-mmp
 > 
-> On Di, 19 Jun 2012, Eric Sandeen wrote:
->> blktrace of the actions would show you something interesting as well.
+> Signed-off-by: Tony Breeds <tony@bakeyournoodle.com>
+> ---
+> configure.in         |   17 +++++++++++++++++
+> debugfs/debugfs.c    |    5 +++++
+> debugfs/set_fields.c |    5 +++++
+> lib/config.h.in      |    3 +++
+> lib/ext2fs/ext2fs.h  |   23 ++++++++++++-----------
+> lib/ext2fs/mmp.c     |   24 ++++++++++++++++++++++++
+> 6 files changed, 66 insertions(+), 11 deletions(-)
 > 
-> I tried to understand the output, but didn't get any information
-> that tells me something.
+> diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
+> index bb3772d..a783698 100644
+> --- a/lib/ext2fs/mmp.c
+> +++ b/lib/ext2fs/mmp.c
+> @@ -33,6 +33,9 @@
 > 
-> I rebooted into single user mode, started blktrace on sda, then run
-> time ls -l /..../dir/with/links/ >/dev/null, stopped the blktrace.
-> 
-> Then I run blkparse and btt etc to generate a variety of data.
+> errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+> {
+> +#ifndef CONFIG_MMP
+> +	return EXT2_ET_OP_NOT_SUPPORTED;
+> +#endif
+> 	struct mmp_struct *mmp_cmp;
+> 	errcode_t retval = 0;
 
-...
+I suspect that this will cause warnings from code analysis tools about
+dead code, and bloat the code if the compiler isn't optimizing heavily.
+Better to put the whole function body inside "#ifdef CONFIG_MMP" and
+the "return EXT2_ET_OP_NOT_SUPPORTED" in the #else clause.
 
-> 
-> I don't know if that shows anything of interest, but if you need more,
-> and want to waste a bit of time looking at the data, I have uploaded
-> everything created into
-> 	http://www.logic.at/people/preining/BlkParse.tar.gz
+Cheers, Andreas
 
-Here are the overall stats:
 
-Total (sda):
- Reads Queued:       8,864,   35,456KiB	 Writes Queued:          90,    7,980KiB
- Read Dispatches:    8,864,   35,456KiB	 Write Dispatches:       49,    7,980KiB
- Reads Requeued:         0		 Writes Requeued:         0
- Reads Completed:    8,864,   35,456KiB	 Writes Completed:       59,    7,980KiB
- Read Merges:            0,        0KiB	 Write Merges:           41,      164KiB
- IO unplugs:            81        	 Timer unplugs:           0
 
-so almost all reads, and no read merges; almost 35 megabytes read and every
-one was a small 4k IO.
 
-It's doing about 120 seeks/second.  I'm a little surprised that there was no read
-merging...
 
-Let me think about this. :)
 
--Eric
+--Apple-Mail-154--1030274518
+content-type: application/pgp-signature; x-mac-type=70674453;
+	name=PGP.sig
+content-description: This is a digitally signed message part
+content-disposition: inline; filename=PGP.sig
+content-transfer-encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG/MacGPG2 v2.0.17 (Darwin)
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFP4dq+pIg59Q01vtYRAgFPAJ4pyOr84/NINoPzvqXca0CVSYgoZQCg1fDc
+zF9AFZp0pOXNEBUdoNa89G0=
+=ezWL
+-----END PGP SIGNATURE-----
+
+--Apple-Mail-154--1030274518--
