@@ -1,42 +1,61 @@
-From: Marcos Mello <marcosfrm@gmail.com>
-Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
-Date: Wed, 20 Jun 2012 12:18:44 +0000 (UTC)
-Message-ID: <loom.20120620T141614-743@post.gmane.org>
-References: <4FDEC3C2.4060909@secunet.com> <x49fw9smohy.fsf@segfault.boston.devel.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Ext4 slow on links
+Date: Wed, 20 Jun 2012 09:07:23 -0500
+Message-ID: <4FE1D91B.8020707@redhat.com>
+References: <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <4FE14034.6070800@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <20120620021912.GA26323@thunk.org> <20120620033831.GA2395@gamma.logic.tuwien.ac.at> <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com> <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Norbert Preining <preining@logic.at>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:58239 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:31232 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751386Ab2FTMUH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jun 2012 08:20:07 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1ShJtD-00053d-Py
-	for linux-ext4@vger.kernel.org; Wed, 20 Jun 2012 14:20:04 +0200
-Received: from bd3f8ea4.virtua.com.br ([bd3f8ea4.virtua.com.br])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2012 14:20:03 +0200
-Received: from marcosfrm by bd3f8ea4.virtua.com.br with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2012 14:20:03 +0200
+	id S1751799Ab2FTOHd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jun 2012 10:07:33 -0400
+In-Reply-To: <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jeff Moyer <jmoyer <at> redhat.com> writes:
-
-<snip>
+On 6/20/12 12:18 AM, Norbert Preining wrote:
+> Hi Eric,
 > 
-> I am unable to reproduce this behaviour.  Can you give more information
-> about your storage configuration?  What is the partition layout, which
-> partition are you trying to mount, and are you using the standard mount
-> command to try to mount it?  Is there anything else you can provide that
-> would help me reproduce the problem?
+> On Di, 19 Jun 2012, Eric Sandeen wrote:
+>> blktrace of the actions would show you something interesting as well.
 > 
+> I tried to understand the output, but didn't get any information
+> that tells me something.
+> 
+> I rebooted into single user mode, started blktrace on sda, then run
+> time ls -l /..../dir/with/links/ >/dev/null, stopped the blktrace.
+> 
+> Then I run blkparse and btt etc to generate a variety of data.
 
-Probably the same problem:
-http://www.sysresccd.org/forums/viewtopic.php?f=13&t=4511
+...
 
+> 
+> I don't know if that shows anything of interest, but if you need more,
+> and want to waste a bit of time looking at the data, I have uploaded
+> everything created into
+> 	http://www.logic.at/people/preining/BlkParse.tar.gz
+
+Here are the overall stats:
+
+Total (sda):
+ Reads Queued:       8,864,   35,456KiB	 Writes Queued:          90,    7,980KiB
+ Read Dispatches:    8,864,   35,456KiB	 Write Dispatches:       49,    7,980KiB
+ Reads Requeued:         0		 Writes Requeued:         0
+ Reads Completed:    8,864,   35,456KiB	 Writes Completed:       59,    7,980KiB
+ Read Merges:            0,        0KiB	 Write Merges:           41,      164KiB
+ IO unplugs:            81        	 Timer unplugs:           0
+
+so almost all reads, and no read merges; almost 35 megabytes read and every
+one was a small 4k IO.
+
+It's doing about 120 seeks/second.  I'm a little surprised that there was no read
+merging...
+
+Let me think about this. :)
+
+-Eric
