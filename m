@@ -1,43 +1,58 @@
-From: Torsten Hilbrich <torsten.hilbrich@secunet.com>
-Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
-Date: Wed, 20 Jun 2012 08:14:01 +0200
-Message-ID: <4FE16A29.9050508@secunet.com>
-References: <4FDEC3C2.4060909@secunet.com> <x49fw9smohy.fsf@segfault.boston.devel.redhat.com> <4FE0155A.6010404@secunet.com> <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Ext4 and xfs problems in dm-thin on allocation and discard
+Date: Wed, 20 Jun 2012 05:01:17 -0400
+Message-ID: <20120620090117.GA26764@infradead.org>
+References: <alpine.LFD.2.00.1206190816440.2241@dhcp-1-248.brq.redhat.com>
+ <20120619131649.GA6811@redhat.com>
+ <alpine.LFD.2.00.1206191519320.21961@dhcp-1-248.brq.redhat.com>
+ <20120619133041.GB6811@redhat.com>
+ <4FE0840F.2050704@shiftmail.org>
+ <20120619144413.GA7225@redhat.com>
+ <20120619184858.GA8841@redhat.com>
+ <20120619200631.GL25389@dastard>
+ <20120619202130.GF22805@thunk.org>
+ <20120619203938.GM25389@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Nick Piggin <npiggin@kernel.dk>
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Mike Snitzer <snitzer@redhat.com>,
+	xfs@oss.sgi.com, device-mapper development <dm-devel@redhat.com>,
+	Spelic <spelic@shiftmail.org>,
+	Luk???? Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:44494
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754670Ab2FTJBX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Jun 2012 05:01:23 -0400
+Content-Disposition: inline
+In-Reply-To: <20120619203938.GM25389@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am 19.06.2012 19:43, schrieb Jeff Moyer:
+On Wed, Jun 20, 2012 at 06:39:38AM +1000, Dave Chinner wrote:
+> Exactly - XFS transactions are fine grained, checkpoints are coarse.
+> We don't merge extents freed in fine grained transactions inside
+> checkpoints. We probably could, but, well, it's complex to do in XFS
+> and merging adjacent requests is something the block layer is
+> supposed to do....
 
-[...]
+Last time I checked it actually tries to do that for discard requests,
+but then badly falls flat (=oopses).  That's the reason why the XFS
+transaction commit code still uses the highly suboptimal synchronous
+blkdev_issue_discard instead of the async variant I wrote when designing
+the code.
 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 838a9cf..769b30b 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -930,7 +930,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
->  			bh->b_blocknr = block;
->  			if (uptodate)
->  				set_buffer_uptodate(bh);
-> -			if (block < end_block)
-> +			if (block <= end_block)
->  				set_buffer_mapped(bh);
->  		}
->  		block++;
+Another "issue" with the XFS discard pattern and the current block
+layer implementation is that XFS frees a lot of small metadata like
+inode clusters and btree blocks and discards them as well.  If those
+simply fill one of the vectors in a range ATA TRIM command and/or a
+queueable command that's not much of an issue, but with the current
+combination of non-queueable, non-vetored TRIM that's a fairly nasty
+pattern.
 
-I can confirm that this patch fixes the problem for my test case too.
-Here is the kernel output when performing the mount operation:
+So until the block layer is sorted out I can not recommend actually
+using -o dicard.  I planned to sort out the block layer issues ASAP
+when writing that code, but other things have kept me busy every since.
 
-attempt to access beyond end of device
-sda4: rw=0, want=4, limit=2
-EXT3-fs (sda4): error: unable to read superblock
-
-	Torsten
