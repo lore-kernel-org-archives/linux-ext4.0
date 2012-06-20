@@ -1,104 +1,121 @@
-From: Tony Breeds <tony@bakeyournoodle.com>
-Subject: Re: Minimal configuration for e2fsprogs
-Date: Wed, 20 Jun 2012 14:45:43 +1000
-Message-ID: <20120620044543.GA11330@thor.bakeyournoodle.com>
-References: <20120615042421.GA7021@thor.bakeyournoodle.com>
- <20120616000825.GE7363@thunk.org>
- <20120618055836.GA30557@thor.bakeyournoodle.com>
- <20120618171257.GA16017@thunk.org>
- <20120619054751.GA2660@thor.bakeyournoodle.com>
- <86585638-21F5-4FEE-9313-28AC122FCCEE@dilger.ca>
+From: Norbert Preining <preining@logic.at>
+Subject: Re: Ext4 slow on links
+Date: Wed, 20 Jun 2012 14:18:44 +0900
+Message-ID: <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
+References: <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <4FE14034.6070800@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <20120620021912.GA26323@thunk.org> <20120620033831.GA2395@gamma.logic.tuwien.ac.at> <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="r5Pyd7+fXNt84Ff3"
-Cc: Ted Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <esandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:39623 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752732Ab2FTEps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Jun 2012 00:45:48 -0400
+Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:43877 "EHLO
+	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751342Ab2FTFSt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 01:18:49 -0400
 Content-Disposition: inline
-In-Reply-To: <86585638-21F5-4FEE-9313-28AC122FCCEE@dilger.ca>
+In-Reply-To: <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Eric,
 
---r5Pyd7+fXNt84Ff3
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Di, 19 Jun 2012, Eric Sandeen wrote:
+> blktrace of the actions would show you something interesting as well.
 
-On Tue, Jun 19, 2012 at 12:01:54AM -0600, Andreas Dilger wrote:
+I tried to understand the output, but didn't get any information
+that tells me something.
 
-Thanks for the feedback.
+I rebooted into single user mode, started blktrace on sda, then run
+time ls -l /..../dir/with/links/ >/dev/null, stopped the blktrace.
 
-> That is what I would do, though perhaps with macro names that are not
-> so confusingly similar to the actual macro names, which might otherwise
-> cause confusion if someone doesn't read the code very closely.  Like:
->=20
-> #ifdef ENABLE_MMP
-> ...
-> #define EXT2_LIB_INCOMPAT_SUPP_MMP EXT4_FEATURE_INCOMPAT_MMP
-> #else
-> #define EXT2_LIB_INCOMPAT_SUPP_MMP (0)
-> #endif
+Then I run blkparse and btt etc to generate a variety of data.
+Here are some output of the btt run:
+==================== All Devices ====================
 
-Okay, since Ted doesn't mind I went with:
-#ifdef CONFIG_MMP
-#define EXT4_LIB_INCOMPAT_MMP          EXT2_FEATURE_INCOMPAT_MMP
-#else
-#define EXT4_LIB_INCOMPAT_MMP          (0)
-#endif
+            ALL           MIN           AVG           MAX           N
+--------------- ------------- ------------- ------------- -----------
 
-Of course we /could/ #undef them once we're done to be really clear
-that they're special.
+Q2Q               0.000002654   0.009716548   6.594440648        8953
+Q2G               0.000001047   0.000001825   0.000011594        8913
+G2I               0.000000908   0.000001561   0.000234317        8913
+Q2M               0.000000908   0.000001046   0.000001536          41
+I2D               0.000005378   0.001040528   1.572900300        8913
+M2D               0.000014527   0.038626776   1.572908333          41
+D2C               0.000098337   0.009050273   0.053790446        8954
+Q2C               0.000108394   0.010266282   1.577191424        8954
+
+==================== Device Overhead ====================
+
+       DEV |       Q2G       G2I       Q2M       I2D       D2C
+---------- | --------- --------- --------- --------- ---------
+ (  8,  0) |   0.0177%   0.0151%   0.0000%  10.0890%  88.1553%
+---------- | --------- --------- --------- --------- ---------
+   Overall |   0.0177%   0.0151%   0.0000%  10.0890%  88.1553%
+
+==================== Device Merge Information ====================
+
+       DEV |       #Q       #D   Ratio |   BLKmin   BLKavg   BLKmax    Total
+---------- | -------- -------- ------- | -------- -------- -------- --------
+ (  8,  0) |     8954     8913     1.0 |        8        9     1024    86872
+
+==================== Device Q2Q Seek Information ====================
+
+       DEV |          NSEEKS            MEAN          MEDIAN | MODE           
+---------- | --------------- --------------- --------------- | ---------------
+ (  8,  0) |            8954     193362127.3               0 | 0(538)
+---------- | --------------- --------------- --------------- | ---------------
+   Overall |          NSEEKS            MEAN          MEDIAN | MODE           
+   Average |            8954     193362127.3               0 | 0(538)
+
+==================== Device D2D Seek Information ====================
+
+       DEV |          NSEEKS            MEAN          MEDIAN | MODE           
+---------- | --------------- --------------- --------------- | ---------------
+ (  8,  0) |            8913     194044831.4               0 | 0(497)
+---------- | --------------- --------------- --------------- | ---------------
+   Overall |          NSEEKS            MEAN          MEDIAN | MODE           
+   Average |            8913     194044831.4               0 | 0(497)
+
+==================== Plug Information ====================
+
+       DEV |    # Plugs # Timer Us  | % Time Q Plugged
+---------- | ---------- ----------  | ----------------
+ (  8,  0) |         81(         0) |   0.002663579%
+
+       DEV |    IOs/Unp   IOs/Unp(to)
+---------- | ----------   ----------
+ (  8,  0) |        1.2          0.0
+---------- | ----------   ----------
+   Overall |    IOs/Unp   IOs/Unp(to)
+   Average |        1.2          0.0
+
+==================== Active Requests At Q Information ====================
+
+       DEV |  Avg Reqs @ Q
+---------- | -------------
+ (  8,  0) |           0.1
+
+.....
 
 
-> This should at least print a message like "This version of debugfs
-> does not support MMP.  Recompile with --enable-mmp if necessary."
+I don't know if that shows anything of interest, but if you need more,
+and want to waste a bit of time looking at the data, I have uploaded
+everything created into
+	http://www.logic.at/people/preining/BlkParse.tar.gz
+size 5090853
+md5sum 46db8455a04dcc4a602e34d21eecc6bd
 
-Okay done.
+In any case, thanks for your patience and support
 
-> Having conditionals inline in the code is frowned upon.  Better to
-> put the conditionals inside ext2fs_mmp_stop(), or declare a no-op
-> inline function and keep the rest of the code clean.
+Norbert
 
-Okay I went with putting the conditionals in the ext2fs_mmp_*()
-functions.  As this removes the changes to ext2fs.h and
-lib/ext2fs/Makefile.in
-=20
-> These should all conditionally become static inline no-op functions
-> here (returning zero as needed) so that the calling code does not need
-> messy #ifdefs everywhere.
-
-Well here you and Ted disagree :)  I'm happy with either.  For the time
-being I've gone with Ted's idea.  I'll let you guys decide on the
-relative merits of each approach and then go with whichever "wins"
-
-I'll include by v3 patch in my reply to Ted.
-
-Yours Tony
-
---r5Pyd7+fXNt84Ff3
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBCAAGBQJP4VV3AAoJEEsCiJRY75GKZY8P/A1yRi7EJNb19kthqFUDbGy+
-IBPyGB2ecNS8YrtwHwzW56WXlccdoImiJ1aoHuNYmzMFM2YDgduYhrpzVgKxXB1i
-V5vZip1Ty6NEDFCSlXdPm3aJdvzER9ZfJV/CIa9BvBZrp4jq78PDq+5eeWejniAH
-oRqZi5aNEdlrlfydCTCrSJhHI6E9awp5lbHXBl9LLPanmRevRQDhsYj0DOOywV7v
-6jxeaHd4VXRf7qz0lfHBE1mO5ZFz5xstEn/h9mg/+wuBQSftZE56Y2nvZrG88Z9a
-WDmx+mLlS5JgUnDK1H8l3w68yMRNKOqSdHC+GKT8BwObj6Alg8qdvX9K2GJblWYc
-dfDs4jsKGrwTHiBEd/+jtXzvkUDn2ojtSTVPLqpFv65+xTEQi4stXB0egt0bxNWJ
-f2vx4cPWIIVsv8EEFJz7kR+avxQ5gwrYYEeR2mSgBgoTbdIVJ3earugQ7lhglrqq
-b3Dj4/zKzBFZGvlXQ8FWtEaA3xxbf9KNkT1EHCzhNZeekKraRNpL4h9zxgiRqk4I
-N5PFVyQlYIjb+HZLqm2oIPklV8gIUJQgw56UTzgxCT3v9zqUKOZUKv7juFgFZQo8
-8Hs+8i4OQFEYA5ksEDh86g5ACIsOLrIAqS1BTTRUjEggh9FJS4IuJBlUo27FPswY
-J7ZXNYaWFp46Y3CR8Q3o
-=+hU6
------END PGP SIGNATURE-----
-
---r5Pyd7+fXNt84Ff3--
+------------------------------------------------------------------------
+Norbert Preining            preining@{jaist.ac.jp, logic.at, debian.org}
+JAIST, Japan                                 TeX Live & Debian Developer
+DSA: 0x09C5B094   fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
+------------------------------------------------------------------------
+KIRBY (n.)
+Small but repulsive piece of food prominently attached to a person's
+face or clothing. See also CHIPPING ONGAR.
+			--- Douglas Adams, The Meaning of Liff
