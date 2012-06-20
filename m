@@ -1,71 +1,58 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH] change a comment on fs/ext4/extents.c
-Date: Wed, 20 Jun 2012 23:51:25 +0800
-Message-ID: <20120620155125.GA14203@gmail.com>
-References: <y>
- <4fe09c5f.4ad3440a.5cc5.7bac@mx.google.com>
+From: Arnd Bergmann <arnd.bergmann@linaro.org>
+Subject: Re: [PATCH 2/3] ext4: Context support
+Date: Wed, 20 Jun 2012 15:46:27 +0000
+Message-ID: <201206201546.27362.arnd.bergmann@linaro.org>
+References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com> <201206191517.26687.arnd.bergmann@linaro.org> <26E7A31274623843B0E8CF86148BFE32779D94DD@NTXAVZMBX04.azit.micron.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: haiboliu6@gmail.com
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Alex Lemberg <Alex.Lemberg@sandisk.com>,
+	HYOJIN JEONG <syr.jeong@samsung.com>,
+	Saugata Das <saugata.das@linaro.org>,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	Saugata Das <saugata.das@stericsson.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+	"patches@linaro.org" <patches@linaro.org>,
+	"venkat@linaro.org" <venkat@linaro.org>
+To: "Luca Porzio (lporzio)" <lporzio@micron.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:45783 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756831Ab2FTPnZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 11:43:25 -0400
-Received: by mail-pz0-f46.google.com with SMTP id y13so9988901dad.19
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jun 2012 08:43:25 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <4fe09c5f.4ad3440a.5cc5.7bac@mx.google.com>
+Received: from moutng.kundenserver.de ([212.227.17.9]:55595 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752991Ab2FTPqd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 11:46:33 -0400
+In-Reply-To: <26E7A31274623843B0E8CF86148BFE32779D94DD@NTXAVZMBX04.azit.micron.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Haibo,
-
-If your patch only relates to ext4, please change the patch's subject
-like this:
-[PATCH] ext4: change a comment on fs/ext4/extents.c
-
-On Tue, Jun 19, 2012 at 11:35:47PM +0800, haiboliu6@gmail.com wrote:
-> From: HaiboLiu <HaiboLiu6@gmail.com>
+On Wednesday 20 June 2012, Luca Porzio (lporzio) wrote:
+> > > > * We can only start the large unit at the start of an erase block. If
+> > > >   we unmount the drive and later continue writing, it has to continue
+> > > >   without the large-unit flag at first until we hit an erase block
+> > > >   boundary.
+> > >
+> > > My assumption was that when you umount the drive, the file system
+> > > would close all of the contexts.
+> > 
+> > Yes, makes sense. This is probably required to ensure that the data
+> > has made to the drive, at least for the large contexts, but it is
+> > definitely required for housekeeping of contexts if we manage them
+> > from the block layer.
+> > 
 > 
-> May be it's better.
+> One comment here, large unit contexts (according to spec) are not bounded
+> to erase blocks. They can span one or more blocks, actually they are not
+> related to block size at all (just virtual page size of the device which
+> can be read from the EXT_CSD configuration registers for eMMC).
 
-Maybe the following commit log is better:
-In this patch (197217a5), ext4_ext_try_to_merge has been changed to
-merge an extent both left and right.  So we need to update the comment
-in here.
+Well, when I say erase block, I really mean the "large unit", which is some
+multiple of entire megabytes, because the only reasonable way to use this
+is to define this to the size of the erase block or a very small multiple
+of that. When detecting the "erase block size" of an eMMC, we should report
+the smallest multiple of the ERASE_GPR_SIZE, HC_ERASE_GRP_SIZE and 
+LARGE_UNIT_SIZE_M1.
 
-Regards,
-Zheng
-
-> 
-> Signed-off-by: HaiboLiu <HaiboLiu6@gmail.com>
-> ---
->  fs/ext4/extents.c |    3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 74f23c2..db671b9 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1807,11 +1807,10 @@ has_space:
->  	nearex->ee_len = newext->ee_len;
->  
->  merge:
-> -	/* try to merge extents to the right */
-> +	/* try to merge extents */
->  	if (!(flag & EXT4_GET_BLOCKS_PRE_IO))
->  		ext4_ext_try_to_merge(inode, path, nearex);
->  
-> -	/* try to merge extents to the left */
->  
->  	/* time to correct all indexes above */
->  	err = ext4_ext_correct_indexes(handle, inode, path);
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	Arnd
