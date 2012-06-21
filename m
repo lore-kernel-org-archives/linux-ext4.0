@@ -1,123 +1,246 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Ext4 and xfs problems in dm-thin on allocation and discard
-Date: Fri, 22 Jun 2012 09:29:57 +1000
-Message-ID: <20120621232957.GE10673@dastard>
-References: <4FDF9EBE.2030809@shiftmail.org>
- <20120619015745.GJ25389@dastard>
- <4FE1BDF3.4080702@shiftmail.org>
- <20120620225327.GL30705@dastard>
- <20120621174742.GA27837@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4
+ filesystem
+Date: Fri, 22 Jun 2012 01:51:46 +0200
+Message-ID: <20120621235146.GC11645@quack.suse.cz>
+References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org>
+ <1340269733-25922-4-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Spelic <spelic@shiftmail.org>,
-	device-mapper development <dm-devel@redhat.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Paolo Bonzini <pbonzini@redhat.com>, axboe@kernel.dk,
-	hch@infradead.org
-To: Mike Snitzer <snitzer@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:59459 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760359Ab2FUXaD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jun 2012 19:30:03 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:53381 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760662Ab2FUXvs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Jun 2012 19:51:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20120621174742.GA27837@redhat.com>
+In-Reply-To: <1340269733-25922-4-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 21, 2012 at 01:47:43PM -0400, Mike Snitzer wrote:
-> On Wed, Jun 20 2012 at  6:53pm -0400,
-> Dave Chinner <david@fromorbit.com> wrote:
+On Thu 21-06-12 13:08:51, Dmitry Monakhov wrote:
+> * Abstract
+>   A subtree of a directory tree T is a tree consisting of a directory
+>   (the subtree root) in T and all of its descendants in T.
 > 
-> > On Wed, Jun 20, 2012 at 02:11:31PM +0200, Spelic wrote:
-> > > Ok guys, I think I found the bug. One or more bugs.
-> > > 
-> > > 
-> > > Pool has chunksize 1MB.
-> > > In sysfs the thin volume has: queue/discard_max_bytes and
-> > > queue/discard_granularity are 1048576 .
-> > > And it has discard_alignment = 0, which based on sysfs-block
-> > > documentation is correct (a less misleading name would have been
-> > > discard_offset imho).
-> > > Here is the blktrace from ext4 fstrim:
-> > > ...
-> > > 252,9   17      498     0.030466556   841  Q   D 19898368 + 2048 [fstrim]
-> > > 252,9   17      499     0.030467501   841  Q   D 19900416 + 2048 [fstrim]
-> > > 252,9   17      500     0.030468359   841  Q   D 19902464 + 2048 [fstrim]
-....
-> > > Here is the blktrace from xfs fstrim:
-> > > 252,12  16        1     0.000000000   554  Q   D 96 + 2048 [fstrim]
-> > > 252,12  16        2     0.000010149   554  Q   D 2144 + 2048 [fstrim]
-> > > 252,12  16        3     0.000011349   554  Q   D 4192 + 2048 [fstrim]
-.....
-> > It looks like blkdev_issue_discard() has reduced each discard to
-> > bios of a single "granule" (1MB), and not aligned them, hence they
-> > are ignore by dm-thinp.
-> > 
-> > what are the discard parameters exposed by dm-thinp in
-> > /sys/block/<thinp-blkdev>/queue/discard*
-> > 
-> > It looks to me that dmthinp might be setting discard_max_bytes to
-> > 1MB rather than discard_granularity. Looking at dm-thin.c:
-> > 
-> > static void set_discard_limits(struct pool *pool, struct queue_limits *limits)
-> > {
-> >         /*
-> >          * FIXME: these limits may be incompatible with the pool's data device
-> >          */
-> >         limits->max_discard_sectors = pool->sectors_per_block;
-> > 
-> >         /*
-> >          * This is just a hint, and not enforced.  We have to cope with
-> >          * bios that overlap 2 blocks.
-> >          */
-> >         limits->discard_granularity = pool->sectors_per_block << SECTOR_SHIFT;
-> >         limits->discard_zeroes_data = pool->pf.zero_new_blocks;
-> > }
-> > 
-> > 
-> > Yes - discard_max_bytes == discard_granularity, and so
-> > blkdev_issue_discard fails to align the request properly. As it is,
-> > setting discard_max_bytes to the thinp block size is silly - it
-> > means you'll never get range requests, and we sent a discard for
-> > every single block in a range rather than having the thinp code
-> > iterate over a range itself.
+>   *NOTE*: User is allowed to break pure subtree hierarchy via manual
+>           id manipulation.
 > 
-> So 2 different issues:
-> 1) blkdev_issue_discard isn't properly aligning
-> 2) thinp should accept larger discards (up to the stacked
->    discard_max_bytes rather than setting an override)
+>   Project subtrees assumptions:
+>   (1) Each inode has an id. This id is persistently stored inside
+>       inode (xattr, usually inside ibody)
+>   (2) Project id is inherent from parent directory
+> 
+>   This feature is similar to project-id in XFS. One may assign some id to
+>   a subtree. Each entry from the subtree may be accounted in directory
+>   project quota. Will appear in later patches.
+> 
+> * Disk layout
+>   Project id is stored on disk inside xattr usually inside ibody.
+>   Xattr is used only as a data storage, It has not user visible xattr
+>   interface.
+> 
+> * User interface
+>   Project id is accessible via generic xattr interface "system.project_id"
+> 
+> * Notes
+>   ext4_setattr interface to prjid: Semantically prjid must being changed
+>   similar to uid/gid, but project_id is stored inside xattr so on-disk
+>   structures updates is not that trivial, so I've move prjid change
+>   logic to separate function.
+  Generally, I like the patch. Some comments are below.
 
-Yes, in effect, but there's no real reason I can see why thinp can't
-accept large discard requests than the underlying stack and break
-them up appropriately itself....
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/Kconfig   |    8 ++
+>  fs/ext4/Makefile  |    1 +
+>  fs/ext4/ext4.h    |    4 +
+>  fs/ext4/ialloc.c  |    6 ++
+>  fs/ext4/inode.c   |    4 +
+>  fs/ext4/project.c |  213 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/project.h |   45 +++++++++++
+>  fs/ext4/super.c   |   16 ++++
+>  fs/ext4/xattr.c   |    7 ++
+>  fs/ext4/xattr.h   |    2 +
+>  10 files changed, 306 insertions(+), 0 deletions(-)
+>  create mode 100644 fs/ext4/project.c
+>  create mode 100644 fs/ext4/project.h
+> 
+> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+> index c22f170..377af40 100644
+> --- a/fs/ext4/Kconfig
+> +++ b/fs/ext4/Kconfig
+> @@ -76,6 +76,14 @@ config EXT4_FS_SECURITY
+>  
+>  	  If you are not using a security module that requires using
+>  	  extended attributes for file security labels, say N.
+> +config EXT4_PROJECT_ID
+> +	bool "Ext4 project_id support"
+> +	depends on PROJECT_ID
+> +	depends on EXT4_FS_XATTR
+> +	help
+> +	  Enables project inode identifier support for ext4 filesystem.
+> +	  This feature allow to assign some id to inodes similar to
+> +	  uid/gid. 
+  Is separate config option useful? The amount of code added for this is
+not really big and there is not other speed / space benefit in disabling
+this, is there?
 
-> > i.e. this is not a filesystem bug that is causing the problem....
-> 
-> Paolo Bonzini fixed blkdev_issue_discard to properly align some time
-> ago; unfortunately the patches slipped through the cracks (cc'ing Paolo,
-> Jens, and Christoph).
-> 
-> Here are references to Paolo's patches:
-> 0/2 https://lkml.org/lkml/2012/3/14/323
-> 1/2 https://lkml.org/lkml/2012/3/14/324
-> 2/2 https://lkml.org/lkml/2012/3/14/325
-> 
-> Patch 2/2 specifically addresses the case where:
->  discard_max_bytes == discard_granularity 
-> 
-> Paolo, any chance you could resend to Jens (maybe with hch's comments on
-> patch#2 accounted for)?  Also, please add hch's Reviewed-by when
-> reposting.
-> 
-> (would love to see this fixed for 3.5-rcX but if not 3.6 it is?)
+>  config EXT4_DEBUG
+>  	bool "EXT4 debugging support"
+> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+> index 56fd8f8..692fe56 100644
+> --- a/fs/ext4/Makefile
+> +++ b/fs/ext4/Makefile
+> @@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+>  ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
+>  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+>  ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+> +ext4-$(CONFIG_EXT4_PROJECT_ID)		+= project.o
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index cfc4e01..c0e33d7 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -925,6 +925,9 @@ struct ext4_inode_info {
+>  
+>  	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
+>  	__u32 i_csum_seed;
+> +#ifdef CONFIG_EXT4_PROJECT_ID
+> +	__u32 i_prjid;
+> +#endif
+>  };
+>  
+>  /*
+> @@ -962,6 +965,7 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+>  #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+>  #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+> +#define EXT4_MOUNT_PROJECT_ID		0x40000 /* project owner id support */
+  And I would even question the necessity of the mount option. Can we make
+the rule that no system.prjid xattr simply means prjid == 0. When someone
+sets prjid, it gets further automatically inherited and everything works
+fine. I don't see the need for special mount option for this - again no
+significant overhead is introduced when we always check whether we should
+inherit non-zero prjid... Thoughts?
 
-That would be good...
+>  #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+>  #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+>  #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index d48e8b1..d4b72e5 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -28,6 +28,7 @@
+>  #include "ext4_jbd2.h"
+>  #include "xattr.h"
+>  #include "acl.h"
+> +#include "project.h"
+>  
+>  #include <trace/events/ext4.h>
+>  
+> @@ -898,6 +899,8 @@ got:
+>  
+>  	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+>  
+> +	ext4_setprjid(inode, ext4_getprjid(dir));
+> +
+>  	ret = inode;
+>  	dquot_initialize(inode);
+>  	err = dquot_alloc_inode(inode);
+> @@ -911,6 +914,9 @@ got:
+>  	err = ext4_init_security(handle, inode, dir, qstr);
+>  	if (err)
+>  		goto fail_free_drop;
+> +	err = ext4_prj_init(handle, inode);
+> +	if (err)
+> +		goto fail_free_drop;
+>  
+>  	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+>  		/* set extent flag only for directory, file and normal symlink*/
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 02bc8cb..c98d8d6 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -42,6 +42,7 @@
+>  #include "xattr.h"
+>  #include "acl.h"
+>  #include "truncate.h"
+> +#include "project.h"
+>  
+>  #include <trace/events/ext4.h>
+>  
+> @@ -3870,6 +3871,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>  	}
+>  	if (ret)
+>  		goto bad_inode;
+> +	ret = ext4_prj_read(inode);
+> +	if (ret)
+> +		goto bad_inode;
+>  
+>  	if (S_ISREG(inode->i_mode)) {
+>  		inode->i_op = &ext4_file_inode_operations;
+> diff --git a/fs/ext4/project.c b/fs/ext4/project.c
+> new file mode 100644
+> index 0000000..a262a49
+> --- /dev/null
+> +++ b/fs/ext4/project.c
+> @@ -0,0 +1,213 @@
+> +/*
+> + * linux/fs/ext4/projectid.c
+> + *
+> + * Copyright (C) 2010 Parallels Inc
+> + * Dmitry Monakhov <dmonakhov@openvz.org>
+> + */
+> +
+> +#include <linux/init.h>
+> +#include <linux/sched.h>
+> +#include <linux/slab.h>
+> +#include <linux/capability.h>
+> +#include <linux/fs.h>
+> +#include <linux/quotaops.h>
+> +#include "ext4_jbd2.h"
+> +#include "ext4.h"
+> +#include "xattr.h"
+> +#include "project.h"
+> +
+> +
+> +/*
+> + * PROJECT SUBTREE
+> + * A subtree of a directory tree T is a tree consisting of a directory
+> + * (the subtree root) in T and all of its descendants in T.
+> + *
+> + * Project Subtree's assumptions:
+> + * (1) Each inode has subtree id. This id is persistently stored inside
+> + *     inode's xattr, usually inside ibody
+> + * (2) Subtree id is inherent from parent directory
+> + */
+> +
+> +/*
+> + * Read project_id id from inode's xattr
+> + * Locking: none
+> + */
+> +int ext4_prj_xattr_read(struct inode *inode, unsigned int *prjid)
+> +{
+> +	__le32 dsk_prjid;
+> +	int retval;
+  Please add empty line between declarations and function body... Also
+holds for some functions below.
 
-Cheers,
+> +	retval = ext4_xattr_get(inode, EXT4_XATTR_INDEX_PROJECT_ID, "",
+> +				&dsk_prjid, sizeof (dsk_prjid));
+> +	if (retval > 0) {
+> +		if (retval != sizeof(dsk_prjid))
+> +			return -EIO;
+> +		else
+> +			retval = 0;
+> +	}
+> +	*prjid = le32_to_cpu(dsk_prjid);
+> +	return retval;
+> +
+> +}
 
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
