@@ -1,59 +1,91 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: Re: [PATCH v3 1/9] string: introduce memweight
-Date: Thu, 21 Jun 2012 18:07:14 +0900
-Message-ID: <CAC5umyj1RGHh_0miku_R+ZCtfTOBK6XeY62Aun2MifgFTn_MKg@mail.gmail.com>
-References: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
-	<CA+8MBb+Kk=G5GQbSdbjXqFmw+GCON6jLZABCAGuL+bNDC+dLgA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	Anders Larsen <al@alarsen.net>,
-	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org,
-	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
-To: Tony Luck <tony.luck@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/5] RFC: introduce extended inode owner identifier v9
+Date: Thu, 21 Jun 2012 13:08:48 +0400
+Message-ID: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:43112 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759090Ab2FUJHP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2012 05:07:15 -0400
-In-Reply-To: <CA+8MBb+Kk=G5GQbSdbjXqFmw+GCON6jLZABCAGuL+bNDC+dLgA@mail.gmail.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:37226 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759092Ab2FUJJB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jun 2012 05:09:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/6/21 Tony Luck <tony.luck@gmail.com>:
-> On Fri, Jun 8, 2012 at 5:50 PM, Akinobu Mita <akinobu.mita@gmail.com>=
- wrote:
->> =A0lib/string.c =A0 =A0 =A0 =A0 =A0 | =A0 36 +++++++++++++++++++++++=
-+++++++++++++
->
-> Is lib/string.c the right place for this? =A0I get a build error on t=
-he
-> ia64 sim_defconfig:
->
-> =A0LD =A0 =A0 =A0arch/ia64/hp/sim/boot/bootloader
->
-> It fails because it pulls in lib/lib.a(string.o) to get some
-> innocuous function like strcpy() ... but it also gets
-> given memweight() which relies on __bitmap_weight()
-> which it doesn't have, because it doesn't include lib/built-in.o
-> (which is where bitmap.o, the definer of __bitmap_weight(), has
-> been linked).
->
-> Moving memweight() to lib/bitmap.c fixes the problem. But it
-> isn't really clear that it belongs there either. =A0Perhaps it should
-> be its own file lib/memweight.c that gets included in lib/lib.a?
+Hi, I've updated old standing project quota id patch-set.
+Please take a look at it and replay me your oppinion, especially if you
+do not like it by some reason :) This is really important because i do
+want this feature to be merged sooner or later.
 
-I'll fix it by making lib/memweight.c as you suggested.
-Thanks for your report and suggestion.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+*Feature description*
+1) Inode may has a project identifier which has same meaning as uid/gid.
+2) In general case Id is stored in inode's xattr named "system.project_id"
+   NOTE: by historical reasons XFS has speciffic API,
+3) Id is inherent from parent inode on creation.
+4) This id is cached in memory fs_inode structure and may be accessible
+   via s_op->get_prjid(). This field it restricted by CONFIG_PROJECT_ID.
+   So no wasting of memory happens.
+
+5) Since id is cached in memory it may be used for different purposes
+   such as:
+5A) Implement additional quota id space orthogonal to uid/gid. This is
+    useful in managing quota for some filesystem hierarchy(chroot or
+    container over bindmount)
+
+*User interface *
+Project id is managed via generic xattr interface "system.project_id"
+This good because
+ 1) We may use already existing interface.
+ 2) xattr already supported by generic utilities tar/rsync and etc
+
+PATCH SET TOC:
+1) generic projectid support
+2) generic project quota support
+3) ext4: small mount flags cleanup
+4) ext4 project support implementation
+ 4A) ext4: generic project support
+ 4B) ext4: project quota support
+ NOTE:Ext4 quota is now managed via e2fsprogs, changes which add prjquota suppport for
+ e2fsprogs will be submitted as separate patch-set.
+5) XFS: prjquota and grpquota may coexist now
+
+Patch against next-20120605-1-g20a6ee4
+Actually vfs part is really small, and most changes happen in ext4-tree
+
+Changes against V7
+ - Small fix for project switch error path
+ - Remove usless macro expressions
+Changes against v6
+ - get rid of iattr stuff, current __dquot_transfer() provides sane interface
+   for quota manipulation. i_prjid can must be changed only by fs-speciffic
+   methods so only get() method is really necessery.
+ - remove #ifdef tricks from generic code.
+ - move i_prjid from vfs_inode to fs_inode, to prevent inode bloating.
+ - get rid of isolation logic, because this feature confuse most users.
+Changes against v5
+ - convert dquota_transfer to struct iattr interface. Not it is possible
+   to change i_prjid via notify_changes()
+ - some bugfixes.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 0d718ed..8dbcc39 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,7 +2,7 @@ VERSION = 3
+ PATCHLEVEL = 5
+ SUBLEVEL = 0
+ EXTRAVERSION = -rc1
+-NAME = Saber-toothed Squirrel
++NAME = Saber-toothed Squirrel-tree-quota
+ 
+ # *DOCUMENTATION*
+ # To see a list of typical targets execute "make help"
+-- 
+1.7.1
+
