@@ -1,55 +1,72 @@
-From: Tony Luck <tony.luck@gmail.com>
-Subject: Re: [PATCH v3 1/9] string: introduce memweight
-Date: Wed, 20 Jun 2012 16:12:51 -0700
-Message-ID: <CA+8MBb+Kk=G5GQbSdbjXqFmw+GCON6jLZABCAGuL+bNDC+dLgA@mail.gmail.com>
-References: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+From: Norbert Preining <preining@logic.at>
+Subject: Re: Ext4 slow on links
+Date: Thu, 21 Jun 2012 11:28:19 +0900
+Message-ID: <20120621022818.GD9669@gamma.logic.tuwien.ac.at>
+References: <20120620051844.GA7829@gamma.logic.tuwien.ac.at> <4FE1D993.8090307@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <4FE14034.6070800@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <20120620021912.GA26323@thunk.org> <20120620033831.GA2395@gamma.logic.tuwien.ac.at> <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com> <20120620051844.GA7829@gamma.logic.tuwien.ac.at> <4FE1D91B.8020707@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	Anders Larsen <al@alarsen.net>,
-	Alasdair Kergon <agk@redhat.com>, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org,
-	Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-	linux-media@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <matthew@wil.cx>
-To: Akinobu Mita <akinobu.mita@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <esandeen@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:37403 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758423Ab2FTXMw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 19:12:52 -0400
-In-Reply-To: <1339203038-13069-1-git-send-email-akinobu.mita@gmail.com>
+Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:46750 "EHLO
+	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755169Ab2FUC2X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jun 2012 22:28:23 -0400
+Content-Disposition: inline
+In-Reply-To: <4FE2260B.6090602@redhat.com> <4FE1D993.8090307@redhat.com> <4FE1D91B.8020707@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 8, 2012 at 5:50 PM, Akinobu Mita <akinobu.mita@gmail.com> w=
-rote:
-> =A0lib/string.c =A0 =A0 =A0 =A0 =A0 | =A0 36 ++++++++++++++++++++++++=
-++++++++++++
+Hi Eric,
 
-Is lib/string.c the right place for this?  I get a build error on the
-ia64 sim_defconfig:
+thanks a lot for looking into that.
 
-  LD      arch/ia64/hp/sim/boot/bootloader
+On Mi, 20 Jun 2012, Eric Sandeen wrote:
+> so almost all reads, and no read merges; almost 35 megabytes read and every
+> one was a small 4k IO.
 
-It fails because it pulls in lib/lib.a(string.o) to get some
-innocuous function like strcpy() ... but it also gets
-given memweight() which relies on __bitmap_weight()
-which it doesn't have, because it doesn't include lib/built-in.o
-(which is where bitmap.o, the definer of __bitmap_weight(), has
-been linked).
+Ouch, that hurts.
 
-Moving memweight() to lib/bitmap.c fixes the problem. But it
-isn't really clear that it belongs there either.  Perhaps it should
-be its own file lib/memweight.c that gets included in lib/lib.a?
+On Mi, 20 Jun 2012, Eric Sandeen wrote:
+> Would you be willing to provide an "e2image -r" image of the filesystem?
 
--Tony
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ok, it is running now since a few hours and I am far from finished
+I guess, since there are 350+G on the fs, and the compressed image
+is by now 200M.
+
+Is it fine to do it on a running system, or do I have to boot
+from USB or so?
+
+If it is not toooo big I will tr to upload it to some place were
+you can get access to.
+
+On Mi, 20 Jun 2012, Eric Sandeen wrote:
+> Oh, but Zach Brown reminds me that if we stat the entries in getdents/hash
+> order, it's roughly random w.r.t. disk location.  Newer utils will sort into
+> inode order, I think(?)  Might be interesting to strace the ls -l and see
+> if it's doing it in inode order, or not.
+
+Ok, is there a special option to strace, or -trace=all?
+
+Best wishes
+
+Norbert
+------------------------------------------------------------------------
+Norbert Preining            preining@{jaist.ac.jp, logic.at, debian.org}
+JAIST, Japan                                 TeX Live & Debian Developer
+DSA: 0x09C5B094   fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
+------------------------------------------------------------------------
+CANNOCK CHASE (n.)
+In any box of After Eight Mints, there is always a large number of
+empty envelopes and no more that four or five actual mints. The
+cannock chase is the process by which, no matter which part of the box
+often, you will always extract most of the empty sachets before
+pinning down an actual mint, or 'cannock'. The cannock chase also
+occurs with people who put their dead matches back in the matchbox,
+and then embarrass themselves at parties trying to light cigarettes
+with tree quarters of an inch of charcoal. The term is also used to
+describe futile attempts to pursue unscrupulous advertising agencies
+who nick your ideas to sell chocolates with.
+			--- Douglas Adams, The Meaning of Liff
