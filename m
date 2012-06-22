@@ -1,89 +1,148 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
-Date: Fri, 22 Jun 2012 02:12:02 +0200
-Message-ID: <20120622001202.GG11645@quack.suse.cz>
-References: <4FDEC3C2.4060909@secunet.com>
- <x49fw9smohy.fsf@segfault.boston.devel.redhat.com>
- <4FE0155A.6010404@secunet.com>
- <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: Re: [PATCH v2] ext4: fix hole punch failure when depth is greater
+ than 0
+Date: Fri, 22 Jun 2012 09:49:00 +0900
+Message-ID: <CAKYAXd_g_vgAmyD4jyUqz0u=vaSTAKFqZz0sqhM+2+hy1Z85ug@mail.gmail.com>
+References: <1339638836-19990-1-git-send-email-ashish.sangwan2@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Torsten Hilbrich <torsten.hilbrich@secunet.com>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Jens Axboe <jaxboe@fusionio.com>,
-	Nick Piggin <npiggin@kernel.dk>
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Ted Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	Ashish Sangwan <ashishsangwan2@gmail.com>
+To: sandeen@redhat.com,
+	=?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <1339638836-19990-1-git-send-email-ashish.sangwan2@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 19-06-12 13:43:26, Jeff Moyer wrote:
-> Torsten Hilbrich <torsten.hilbrich@secunet.com> writes:
-> 
-> > The system where I reproduced the problem upstream is an amd64 based
-> > ubuntu 12.04 installation. I used both v3.3.8 and v3.4 for reproducing.
-> >
-> > The partition layout is the following:
-> >
-> > ======================================================================
-> >
-> > Disk /dev/sda: 120.0 GB, 120034123776 bytes
-> > 255 heads, 63 sectors/track, 14593 cylinders, total 234441648 sectors
-> > Units = sectors of 1 * 512 = 512 bytes
-> > Sector size (logical/physical): 512 bytes / 512 bytes
-> > I/O size (minimum/optimal): 512 bytes / 512 bytes
-> > Disk identifier: 0x1669c708
-> >
-> >    Device Boot      Start         End      Blocks   Id  System
-> > /dev/sda1   *          63    86285114    43142526   83  Linux
-> > /dev/sda2       216797175   234436544     8819685   82  Linux swap / Solaris
-> > /dev/sda3        86285115    87088364      401625   83  Linux
-> > /dev/sda4        87088426   216797174    64854374+   5  Extended
-> > /dev/sda5        87088428    91104614     2008093+  83  Linux
-> > /dev/sda6        91104678   216797174    62846248+  8e  Linux LVM
-> >
-> > Partition table entries are not in disk order
-> 
-> OK, got it to reproduce, thanks for the info.  The attached patch fixed
-> the problem for me.
-> 
-> Note, though, that the patch doesn't make sense to me.  blkdev_max_block
-> returns i_size_read(blkdev_inode) >> block_size.  This should be the
-> *size* of the block device, not the max block.  The code in
-> fs/block_device.c uses the return value in two different ways!
-> 
-> static int
-> blkdev_get_block(struct inode *inode, sector_t iblock,
->                 struct buffer_head *bh, int create)
-> {
->         if (iblock >= blkdev_max_block(I_BDEV(inode))) {
-> 
-> Here, the return value from blkdev_max_block is interpreted as the size
-> of the device, so actually max_block + 1.
-> 
-> static int
-> blkdev_get_blocks(struct inode *inode, sector_t iblock,
->                 struct buffer_head *bh, int create)
-> {
->         sector_t end_block = blkdev_max_block(I_BDEV(inode));
->         unsigned long max_blocks = bh->b_size >> inode->i_blkbits;
-> 
->         if ((iblock + max_blocks) > end_block) {
-> 
-> Here, the return value is treated as the maximum addressable block
-> number.  Given the fact that I had to modify init_page_buffers to treat
-> the return value from blkdev_max_block as the maximum addressable block,
-> I clearly have something wrong with my logic.  Nick, Jens, care to set
-> my head straight?
-  I think it can have something to do with the fact that the partition size
-is not a multiple of 4k (i.e. expected block size)?
+Hi. Eric.
 
-  BTW: blkdev_max_block() is a terrible name for something that intends to
-return size in blocks...
+This is the patch for punch hole issue.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Thanks.
+
+2012/6/14, Ashish Sangwan <ashishsangwan2@gmail.com>:
+> The current implementation of hole punch uses the same code path as for
+> truncate in which the block removal starts from the end of the file and
+> continue backwards removing extents and in the process decreases the
+> count of valid entries in the extent header of extent index.
+> If all the extents under current extent index are removed than this index
+> is also removed and the number of valid entries in the "depth -1"
+> extent header is decreased by 1.
+>
+> Whether to continue removing extents or not is decided by the return value
+> of function ext4_ext_more_to_rm() which checks 2 conditions:
+> a) if there are no more indexes to process.
+> b) if the number of entries are decreased in the header of "depth -1".
+>
+> In case of hole punch, if the last block to be removed is not part of the
+> last extent index than this index will not be deleted, hence the number of
+> valid entries in the extent header of "depth - 1" will remain as it is and
+> ext4_ext_more_to_rm will return 0 although the required blocks are not
+> yet removed.
+>
+> This patch fixes the above mentioned problem as instead of removing the
+> extents from the end of file, it starts removing the blocks from the
+> particular extent from which removing blocks is actually required and
+> continue backward until done.
+>
+> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
+> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+> ---
+>  fs/ext4/extents.c |   43 +++++++++++++++++++++++++++----------------
+>  1 files changed, 27 insertions(+), 16 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 91341ec..27c3a30 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2570,10 +2570,10 @@ static int ext4_ext_remove_space(struct inode
+> *inode, ext4_lblk_t start,
+>  {
+>  	struct super_block *sb = inode->i_sb;
+>  	int depth = ext_depth(inode);
+> -	struct ext4_ext_path *path;
+> +	struct ext4_ext_path *path = NULL;
+>  	ext4_fsblk_t partial_cluster = 0;
+>  	handle_t *handle;
+> -	int i, err;
+> +	int i = 0, err;
+>
+>  	ext_debug("truncate since %u to %u\n", start, end);
+>
+> @@ -2606,8 +2606,12 @@ again:
+>  		}
+>  		depth = ext_depth(inode);
+>  		ex = path[depth].p_ext;
+> -		if (!ex)
+> +		if (!ex) {
+> +			ext4_ext_drop_refs(path);
+> +			kfree(path);
+> +			path = NULL;
+>  			goto cont;
+> +		}
+>
+>  		ee_block = le32_to_cpu(ex->ee_block);
+>
+> @@ -2637,8 +2641,6 @@ again:
+>  			if (err < 0)
+>  				goto out;
+>  		}
+> -		ext4_ext_drop_refs(path);
+> -		kfree(path);
+>  	}
+>  cont:
+>
+> @@ -2647,19 +2649,27 @@ cont:
+>  	 * after i_size and walking into the tree depth-wise.
+>  	 */
+>  	depth = ext_depth(inode);
+> -	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+> -	if (path == NULL) {
+> -		ext4_journal_stop(handle);
+> -		return -ENOMEM;
+> -	}
+> -	path[0].p_depth = depth;
+> -	path[0].p_hdr = ext_inode_hdr(inode);
+> +	if (path) {
+> +		int k = i = depth;
+> +		while (--k >= 0)
+> +			path[k].p_block =
+> +			le16_to_cpu(path[k].p_hdr->eh_entries)+1;
+> +	} else {
+> +		path =
+> +		kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+> +		if (path == NULL) {
+> +			ext4_journal_stop(handle);
+> +			return -ENOMEM;
+> +		}
+> +		path[0].p_depth = depth;
+> +		path[0].p_hdr = ext_inode_hdr(inode);
+>
+> -	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+> -		err = -EIO;
+> -		goto out;
+> +		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+> +			err = -EIO;
+> +			goto out;
+> +		}
+>  	}
+> -	i = err = 0;
+> +	err = 0;
+>
+>  	while (i >= 0 && err == 0) {
+>  		if (i == depth) {
+> @@ -2773,6 +2783,7 @@ cont:
+>  out:
+>  	ext4_ext_drop_refs(path);
+>  	kfree(path);
+> +	path = NULL;
+>  	if (err == -EAGAIN)
+>  		goto again;
+>  	ext4_journal_stop(handle);
+> --
+> 1.7.2.3
+>
+>
