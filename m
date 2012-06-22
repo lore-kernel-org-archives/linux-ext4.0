@@ -1,120 +1,46 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4
- filesystem
-Date: Fri, 22 Jun 2012 13:07:53 +1000
-Message-ID: <20120622030753.GU19223@dastard>
-References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org>
- <1340269733-25922-4-git-send-email-dmonakhov@openvz.org>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: Ext4 slow on links
+Date: Fri, 22 Jun 2012 11:53:13 +0200
+Message-ID: <4FE44089.2010609@fastmail.fm>
+References: <20120620051844.GA7829@gamma.logic.tuwien.ac.at> <4FE1D993.8090307@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <4FE14034.6070800@redhat.com> <20120620002014.GA25471@gamma.logic.tuwien.ac.at> <20120620021912.GA26323@thunk.org> <20120620033831.GA2395@gamma.logic.tuwien.ac.at> <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com> <20120620051844.GA7829@gamma.logic.tuwien.ac.at> <4FE1D91B.8020707@redhat.com> <20120621022818.GD9669@gamma.logic.tuwien.ac.at> <4FE29DA7.40405@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Norbert Preining <preining@logic.at>, "Ted Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:60456 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755707Ab2FVDH5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jun 2012 23:07:57 -0400
-Content-Disposition: inline
-In-Reply-To: <1340269733-25922-4-git-send-email-dmonakhov@openvz.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:48740 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761923Ab2FVJxT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2012 05:53:19 -0400
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id q5M9rH5m012751
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jun 2012 11:53:17 +0200
+In-Reply-To: <4FE29DA7.40405@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 21, 2012 at 01:08:51PM +0400, Dmitry Monakhov wrote:
-> * Abstract
->   A subtree of a directory tree T is a tree consisting of a directory
->   (the subtree root) in T and all of its descendants in T.
-> 
->   *NOTE*: User is allowed to break pure subtree hierarchy via manual
->           id manipulation.
-> 
->   Project subtrees assumptions:
->   (1) Each inode has an id. This id is persistently stored inside
->       inode (xattr, usually inside ibody)
->   (2) Project id is inherent from parent directory
+On 06/21/2012 06:05 AM, Eric Sandeen wrote:
+> On 6/20/12 9:28 PM, Norbert Preining wrote:
+>> Hi Eric,
+>>
+>
+> You could see if you could get this LD_PRELOAD working:
+>
+> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=blob_plain;f=contrib/spd_readdir.c
+>
 
-You are mashing two different concepts into one, and naming it in a
-manner guaranteed to create confusion with all the people already
-using project quotas on XFS. You're implementing subtree quotas, not
-project quotas.
+Hrmm, I need to look through that commit again, but on a first glance I 
+cannot see code doing the sorting for ext3/ext4 only (e.g. by checking 
+the fsid). So while I like the general approach, it will have the 
+opposite effect for some file systems. I will report that back on the 
+coreutils list.
 
->   This feature is similar to project-id in XFS.  One may assign
->   some id to a subtree. Each entry from the subtree may be
->   accounted in directory project quota. Will appear in later
->   patches.
+Thanks a lot for the pointer to the commit!
 
-As implied above, project quotas ID in XFS are not subtree quotas.
-They are used to implement project quotas, not subtree quotas.
-subtree quotas are a userspace management construction using a
-subset of project quota infrastructure. i.e. the inheritance of
-project IDs in XFS and the restriction of operations to within
-subtrees is not a function of project quotas - it's a separately
-managed feature that was added to support the functioanlity needed
-for subtree quotas.
-
-ISTR raising this objection last time you posted this patch set -
-either you implement project quotas as they exist in XFS and handle
-subtree quotas as a constrainted set of project quota functionality
-or you need to drop all references to "project quotas" and call this
-something like sub-tree quotas that uses subtree IDs.
-
-> * Disk layout
->   Project id is stored on disk inside xattr usually inside ibody.
->   Xattr is used only as a data storage, It has not user visible xattr
->   interface.
-
-If you've got enough xattrs on the inode, then it will end up out of
-line and performance is going to suck - every time you write to a
-cold file you now need two IOs - one to read the extent list, and
-one to read the xattrs to get the project ID....
-
-> * User interface
->   Project id is accessible via generic xattr interface "system.project_id"
-
-Which means it is an incompatible with XFS. What purpose does this
-serve except to confuse people? Why not a generic set/get project ID
-quotactl/ioctl? That's much easier for applications to use compared
-to xattrs, and far easier to support different implementations
-across filesystems. The way the project ID is stored in ext4 should
-not define the API.
-
-Indeed, an ioctl/quotactl style interface matches the existing quota
-interface, so it's much more natural to use a similar API to one
-already used for quota manipulation...
-
-> * Notes
->   ext4_setattr interface to prjid: Semantically prjid must being changed
->   similar to uid/gid, but project_id is stored inside xattr so on-disk
->   structures updates is not that trivial, so I've move prjid change
->   logic to separate function.
-
-I suspect that there are corner cases you haven't thought about
-yet. What happens when you hard link a file into two separate
-subtrees? how do you account for that? What happens when you remove
-the hard link from the subtree the inode is accounted to?  What
-happens when a rename occurs, moving a file from one subtree to
-another? 
-
-.....
-
-> +static int
-> +ext4_xattr_prj_set(struct dentry *dentry, const char *name,
-> +		const void *value, size_t size, int flags, int type)
-> +{
-> +	unsigned int new_prjid;
-> +	if (strcmp(name, "") != 0)
-> +		return -EINVAL;
-> +	new_prjid = simple_strtoul(value, (char **)&value, 0);
-> +	return ext4_prj_change(dentry->d_inode, new_prjid);
-
-Because you are using strings rather than integers for the ID, you
-need to do a lot better verification here - what will happen when
-someone tries to set an ID of "frobnozzle"? Using integers via
-ioctls for the user API make this problem....
 
 Cheers,
+Bernd
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
