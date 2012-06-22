@@ -1,81 +1,59 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH 2/3] ext4: Context support
-Date: Fri, 22 Jun 2012 16:29:13 +0300
-Message-ID: <1340371753.3363.7.camel@koala>
+From: "Luca Porzio (lporzio)" <lporzio@micron.com>
+Subject: RE: [PATCH 2/3] ext4: Context support
+Date: Fri, 22 Jun 2012 14:07:29 +0000
+Message-ID: <26E7A31274623843B0E8CF86148BFE32779DA704@NTXAVZMBX04.azit.micron.com>
 References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
 	 <201206122007.28514.arnd.bergmann@linaro.org>
 	 <20120612204128.GF12161@thunk.org>
 	 <201206131944.35351.arnd.bergmann@linaro.org>
+ <1340371753.3363.7.camel@koala>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-B95O5XiujiIlHa+XiYYh"
-Cc: Ted Ts'o <tytso@mit.edu>, Alex Lemberg <Alex.Lemberg@sandisk.com>,
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+	Alex Lemberg <Alex.Lemberg@sandisk.com>,
 	HYOJIN JEONG <syr.jeong@samsung.com>,
 	Saugata Das <saugata.das@linaro.org>,
 	Saugata Das <saugata.das@stericsson.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mmc@vger.kernel.org, patches@linaro.org, venkat@linaro.org,
-	"Luca Porzio (lporzio)" <lporzio@micron.com>
-To: Arnd Bergmann <arnd.bergmann@linaro.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:47169 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754580Ab2FVN30 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2012 09:29:26 -0400
-In-Reply-To: <201206131944.35351.arnd.bergmann@linaro.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+	"patches@linaro.org" <patches@linaro.org>,
+	"venkat@linaro.org" <venkat@linaro.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>,
+	Arnd Bergmann <arnd.bergmann@linaro.org>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+In-Reply-To: <1340371753.3363.7.camel@koala>
+Content-Language: en-US
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
---=-B95O5XiujiIlHa+XiYYh
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-On Wed, 2012-06-13 at 19:44 +0000, Arnd Bergmann wrote:
-> I think using the inode number is a reasonable fit. Using the
-> inode number of the parent directory might be more appropriate
-> but it breaks with hard links and cross-directory renames (we
-> must not use the same LBA with conflicting context numbers,
-> or flush the old context inbetween).
-
-I would put it this way.
-
-1. contex =3D inode number for data blocks.
-2. context =3D parent directory's inode number for stat data (times,
-permissions, etc) blocks and directory entry blocks. Should help things
-like readdir and readdir + stat. Besides, this stuff tend to change more
-often than the data, so mixing it with the data in the same eraseblock
-is not smart.
-3. context =3D parent inode number for all the stuff belonging to xattrs.
-
-We do something similar in UBIFS.
-
---=20
-Best Regards,
-Artem Bityutskiy
-
---=-B95O5XiujiIlHa+XiYYh
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAABAgAGBQJP5HMpAAoJECmIfjd9wqK0wOMP/0WLtrd2KQF6T1dLk1pdfsoT
-C/RVafAySd/Ww9w9c8XNG4CV7I0RwHY6vVO7JmN1Z5IElvF+upEo8JXCqO+JRIRl
-WeoencsjCJCXvUvv6xDzxBSxNuMQRJZ6MJ7qmqfmTssreQ3yaPHG7eOs6K5C3mIx
-1PTCm1LSTA/LgF36sdF21C9DGb1ycDzndvJcRIuCEOKjO31S+SDhlscuul863MlK
-3xtOtHV3pFTWYTNdEBaTQEu9SB03GXgRSMopfIB84Vx/IK8qA4nekU5U9BZ9q72n
-0kh8bPjKtD6jxgS3xlJaXoQFjZdCNhIBrZnQay7MYnFx3Lu1CKKsCbEaoz0gMTNM
-INW2c3w2UOaH3Ok+GYNFjcjqDXbMWfhUuDE6y4txcJhzaMejwxI3bhAukDROq27A
-shnWuvtZcplqkLp9YAECAfXq6x34KHYsdT9fU7CuQ2yRvrvKgidijfZFe2+xKrbU
-DJtdgZ7mvSY2ZFGViNCqa/y2kjG/MfooHZkSIh/YbSYdHUEXJ7xmmAuZOzf5XdOq
-AAvcnWgS3E7g3bB2acp+hGTaefbv9fIgwzAoW/dunquIcbBdcHnLxmXSXajKS1BZ
-z1PLHtIQC42xgYoHDb6w0z/jPO1j+saCCB7ekeP7Px4rvubztbIIxH58IsEoX5ZG
-NJoF3aW9aeObP9AO3Eo0
-=lMhn
------END PGP SIGNATURE-----
-
---=-B95O5XiujiIlHa+XiYYh--
-
+SGFsbG8sDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogbGludXgtbW1j
+LW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW1tYy1vd25lckB2Z2VyLmtlcm5l
+bC5vcmddDQo+IE9uIEJlaGFsZiBPZiBBcnRlbSBCaXR5dXRza2l5DQo+IFNlbnQ6IEZyaWRheSwg
+SnVuZSAyMiwgMjAxMiAzOjI5IFBNDQo+IFRvOiBBcm5kIEJlcmdtYW5uDQo+IENjOiBUZWQgVHMn
+bzsgQWxleCBMZW1iZXJnOyBIWU9KSU4gSkVPTkc7IFNhdWdhdGEgRGFzOyBTYXVnYXRhIERhczsg
+bGludXgtDQo+IGV4dDRAdmdlci5rZXJuZWwub3JnOyBsaW51eC1mc2RldmVsQHZnZXIua2VybmVs
+Lm9yZzsgbGludXgtDQo+IG1tY0B2Z2VyLmtlcm5lbC5vcmc7IHBhdGNoZXNAbGluYXJvLm9yZzsg
+dmVua2F0QGxpbmFyby5vcmc7IEx1Y2EgUG9yemlvDQo+IChscG9yemlvKQ0KPiBTdWJqZWN0OiBS
+ZTogW1BBVENIIDIvM10gZXh0NDogQ29udGV4dCBzdXBwb3J0DQo+IA0KPiBPbiBXZWQsIDIwMTIt
+MDYtMTMgYXQgMTk6NDQgKzAwMDAsIEFybmQgQmVyZ21hbm4gd3JvdGU6DQo+ID4gSSB0aGluayB1
+c2luZyB0aGUgaW5vZGUgbnVtYmVyIGlzIGEgcmVhc29uYWJsZSBmaXQuIFVzaW5nIHRoZSBpbm9k
+ZQ0KPiA+IG51bWJlciBvZiB0aGUgcGFyZW50IGRpcmVjdG9yeSBtaWdodCBiZSBtb3JlIGFwcHJv
+cHJpYXRlIGJ1dCBpdCBicmVha3MNCj4gPiB3aXRoIGhhcmQgbGlua3MgYW5kIGNyb3NzLWRpcmVj
+dG9yeSByZW5hbWVzICh3ZSBtdXN0IG5vdCB1c2UgdGhlIHNhbWUNCj4gPiBMQkEgd2l0aCBjb25m
+bGljdGluZyBjb250ZXh0IG51bWJlcnMsIG9yIGZsdXNoIHRoZSBvbGQgY29udGV4dA0KPiA+IGlu
+YmV0d2VlbikuDQo+IA0KPiBJIHdvdWxkIHB1dCBpdCB0aGlzIHdheS4NCj4gDQo+IDEuIGNvbnRl
+eCA9IGlub2RlIG51bWJlciBmb3IgZGF0YSBibG9ja3MuDQo+IDIuIGNvbnRleHQgPSBwYXJlbnQg
+ZGlyZWN0b3J5J3MgaW5vZGUgbnVtYmVyIGZvciBzdGF0IGRhdGEgKHRpbWVzLA0KPiBwZXJtaXNz
+aW9ucywgZXRjKSBibG9ja3MgYW5kIGRpcmVjdG9yeSBlbnRyeSBibG9ja3MuIFNob3VsZCBoZWxw
+IHRoaW5ncyBsaWtlDQo+IHJlYWRkaXIgYW5kIHJlYWRkaXIgKyBzdGF0LiBCZXNpZGVzLCB0aGlz
+IHN0dWZmIHRlbmQgdG8gY2hhbmdlIG1vcmUgb2Z0ZW4gdGhhbg0KPiB0aGUgZGF0YSwgc28gbWl4
+aW5nIGl0IHdpdGggdGhlIGRhdGEgaW4gdGhlIHNhbWUgZXJhc2VibG9jayBpcyBub3Qgc21hcnQu
+DQo+IDMuIGNvbnRleHQgPSBwYXJlbnQgaW5vZGUgbnVtYmVyIGZvciBhbGwgdGhlIHN0dWZmIGJl
+bG9uZ2luZyB0byB4YXR0cnMuDQo+IA0KPiBXZSBkbyBzb21ldGhpbmcgc2ltaWxhciBpbiBVQklG
+Uy4NCj4gDQoNCkRvZXNuJ3QgdGhpcyBlbmQgdXAgdXNpbmcgdG9vIG1hbnkgY29udGV4dHM/DQpP
+cGVuaW5nIG9uZSBjb250ZXh0cyBwZXIgaW5vZGUgd291bGQgZW5kIHVwIGluIG9wZW5pbmcgbW9y
+ZSBjb250ZXh0cyB0aGFuIGF2YWlsYWJsZS4NClRoZSBlTU1DIHNwZWMgZm9yYmlkcyBtb3JlIHRo
+YW4gMTUgY29udGV4dHMgZm9yIHRoZSB3aG9sZSBkZXZpY2UuDQoNCj4gLS0NCj4gQmVzdCBSZWdh
+cmRzLA0KPiBBcnRlbSBCaXR5dXRza2l5DQoNCkNoZWVycywNCiAgICBMdWNhDQo=
