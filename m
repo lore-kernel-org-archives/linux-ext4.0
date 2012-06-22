@@ -1,59 +1,66 @@
-From: "Luca Porzio (lporzio)" <lporzio@micron.com>
-Subject: RE: [PATCH 2/3] ext4: Context support
-Date: Fri, 22 Jun 2012 14:07:29 +0000
-Message-ID: <26E7A31274623843B0E8CF86148BFE32779DA704@NTXAVZMBX04.azit.micron.com>
-References: <1339411562-17100-1-git-send-email-saugata.das@stericsson.com>
-	 <201206122007.28514.arnd.bergmann@linaro.org>
-	 <20120612204128.GF12161@thunk.org>
-	 <201206131944.35351.arnd.bergmann@linaro.org>
- <1340371753.3363.7.camel@koala>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: Ext4 slow on links
+Date: Fri, 22 Jun 2012 10:08:18 -0400
+Message-ID: <20120622140818.GA28155@thunk.org>
+References: <4FE14034.6070800@redhat.com>
+ <20120620002014.GA25471@gamma.logic.tuwien.ac.at>
+ <20120620021912.GA26323@thunk.org>
+ <20120620033831.GA2395@gamma.logic.tuwien.ac.at>
+ <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com>
+ <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
+ <4FE1D91B.8020707@redhat.com>
+ <20120621022818.GD9669@gamma.logic.tuwien.ac.at>
+ <4FE29DA7.40405@redhat.com>
+ <4FE44089.2010609@fastmail.fm>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "Ted Ts'o" <tytso@mit.edu>,
-	Alex Lemberg <Alex.Lemberg@sandisk.com>,
-	HYOJIN JEONG <syr.jeong@samsung.com>,
-	Saugata Das <saugata.das@linaro.org>,
-	Saugata Das <saugata.das@stericsson.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
-	"patches@linaro.org" <patches@linaro.org>,
-	"venkat@linaro.org" <venkat@linaro.org>
-To: Artem Bityutskiy <dedekind1@gmail.com>,
-	Arnd Bergmann <arnd.bergmann@linaro.org>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-In-Reply-To: <1340371753.3363.7.camel@koala>
-Content-Language: en-US
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Norbert Preining <preining@logic.at>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51964 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932915Ab2FVOIZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Jun 2012 10:08:25 -0400
+Content-Disposition: inline
+In-Reply-To: <4FE44089.2010609@fastmail.fm>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-SGFsbG8sDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogbGludXgtbW1j
-LW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW1tYy1vd25lckB2Z2VyLmtlcm5l
-bC5vcmddDQo+IE9uIEJlaGFsZiBPZiBBcnRlbSBCaXR5dXRza2l5DQo+IFNlbnQ6IEZyaWRheSwg
-SnVuZSAyMiwgMjAxMiAzOjI5IFBNDQo+IFRvOiBBcm5kIEJlcmdtYW5uDQo+IENjOiBUZWQgVHMn
-bzsgQWxleCBMZW1iZXJnOyBIWU9KSU4gSkVPTkc7IFNhdWdhdGEgRGFzOyBTYXVnYXRhIERhczsg
-bGludXgtDQo+IGV4dDRAdmdlci5rZXJuZWwub3JnOyBsaW51eC1mc2RldmVsQHZnZXIua2VybmVs
-Lm9yZzsgbGludXgtDQo+IG1tY0B2Z2VyLmtlcm5lbC5vcmc7IHBhdGNoZXNAbGluYXJvLm9yZzsg
-dmVua2F0QGxpbmFyby5vcmc7IEx1Y2EgUG9yemlvDQo+IChscG9yemlvKQ0KPiBTdWJqZWN0OiBS
-ZTogW1BBVENIIDIvM10gZXh0NDogQ29udGV4dCBzdXBwb3J0DQo+IA0KPiBPbiBXZWQsIDIwMTIt
-MDYtMTMgYXQgMTk6NDQgKzAwMDAsIEFybmQgQmVyZ21hbm4gd3JvdGU6DQo+ID4gSSB0aGluayB1
-c2luZyB0aGUgaW5vZGUgbnVtYmVyIGlzIGEgcmVhc29uYWJsZSBmaXQuIFVzaW5nIHRoZSBpbm9k
-ZQ0KPiA+IG51bWJlciBvZiB0aGUgcGFyZW50IGRpcmVjdG9yeSBtaWdodCBiZSBtb3JlIGFwcHJv
-cHJpYXRlIGJ1dCBpdCBicmVha3MNCj4gPiB3aXRoIGhhcmQgbGlua3MgYW5kIGNyb3NzLWRpcmVj
-dG9yeSByZW5hbWVzICh3ZSBtdXN0IG5vdCB1c2UgdGhlIHNhbWUNCj4gPiBMQkEgd2l0aCBjb25m
-bGljdGluZyBjb250ZXh0IG51bWJlcnMsIG9yIGZsdXNoIHRoZSBvbGQgY29udGV4dA0KPiA+IGlu
-YmV0d2VlbikuDQo+IA0KPiBJIHdvdWxkIHB1dCBpdCB0aGlzIHdheS4NCj4gDQo+IDEuIGNvbnRl
-eCA9IGlub2RlIG51bWJlciBmb3IgZGF0YSBibG9ja3MuDQo+IDIuIGNvbnRleHQgPSBwYXJlbnQg
-ZGlyZWN0b3J5J3MgaW5vZGUgbnVtYmVyIGZvciBzdGF0IGRhdGEgKHRpbWVzLA0KPiBwZXJtaXNz
-aW9ucywgZXRjKSBibG9ja3MgYW5kIGRpcmVjdG9yeSBlbnRyeSBibG9ja3MuIFNob3VsZCBoZWxw
-IHRoaW5ncyBsaWtlDQo+IHJlYWRkaXIgYW5kIHJlYWRkaXIgKyBzdGF0LiBCZXNpZGVzLCB0aGlz
-IHN0dWZmIHRlbmQgdG8gY2hhbmdlIG1vcmUgb2Z0ZW4gdGhhbg0KPiB0aGUgZGF0YSwgc28gbWl4
-aW5nIGl0IHdpdGggdGhlIGRhdGEgaW4gdGhlIHNhbWUgZXJhc2VibG9jayBpcyBub3Qgc21hcnQu
-DQo+IDMuIGNvbnRleHQgPSBwYXJlbnQgaW5vZGUgbnVtYmVyIGZvciBhbGwgdGhlIHN0dWZmIGJl
-bG9uZ2luZyB0byB4YXR0cnMuDQo+IA0KPiBXZSBkbyBzb21ldGhpbmcgc2ltaWxhciBpbiBVQklG
-Uy4NCj4gDQoNCkRvZXNuJ3QgdGhpcyBlbmQgdXAgdXNpbmcgdG9vIG1hbnkgY29udGV4dHM/DQpP
-cGVuaW5nIG9uZSBjb250ZXh0cyBwZXIgaW5vZGUgd291bGQgZW5kIHVwIGluIG9wZW5pbmcgbW9y
-ZSBjb250ZXh0cyB0aGFuIGF2YWlsYWJsZS4NClRoZSBlTU1DIHNwZWMgZm9yYmlkcyBtb3JlIHRo
-YW4gMTUgY29udGV4dHMgZm9yIHRoZSB3aG9sZSBkZXZpY2UuDQoNCj4gLS0NCj4gQmVzdCBSZWdh
-cmRzLA0KPiBBcnRlbSBCaXR5dXRza2l5DQoNCkNoZWVycywNCiAgICBMdWNhDQo=
+On Fri, Jun 22, 2012 at 11:53:13AM +0200, Bernd Schubert wrote:
+> On 06/21/2012 06:05 AM, Eric Sandeen wrote:
+> >On 6/20/12 9:28 PM, Norbert Preining wrote:
+> >>Hi Eric,
+> >>
+> >
+> >You could see if you could get this LD_PRELOAD working:
+> >
+> >http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=blob_plain;f=contrib/spd_readdir.c
+> >
+> 
+> Hrmm, I need to look through that commit again, but on a first
+> glance I cannot see code doing the sorting for ext3/ext4 only (e.g.
+> by checking the fsid). So while I like the general approach, it will
+> have the opposite effect for some file systems. I will report that
+> back on the coreutils list.
+> 
+> Thanks a lot for the pointer to the commit!
+
+One warning about spd_readdir.  It's not thread-safe, and I've noted
+that some programs crash when they try using spd_readdir.so as a
+pre-load.  I've tried to fix some of the causes, and I think
+thread-safety is the primary fix which is missing, but it's possible
+that program which really care about telldir()/seekdir() behaviour as
+it relates to readdir() and when files are added to a directory may
+also end up getting surprised.
+
+I wrote it primarily as a demonstration of how sorting by inode number
+is a big win.  It is *not* suitable for use in /etc/ld.so.preload!
+
+If people want to try to make it safer, patches are accepted, but
+ultimately it's better to fix this in the application; that way you
+will get your performance gains no matter what OS you happen to be
+running on, whether it's Linux, Solaris, AIX, OS X, etc.
+
+     	       	     	   	    	- Ted
