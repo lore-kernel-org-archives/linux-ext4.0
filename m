@@ -1,66 +1,58 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: Ext4 slow on links
-Date: Fri, 22 Jun 2012 10:08:18 -0400
-Message-ID: <20120622140818.GA28155@thunk.org>
-References: <4FE14034.6070800@redhat.com>
- <20120620002014.GA25471@gamma.logic.tuwien.ac.at>
- <20120620021912.GA26323@thunk.org>
- <20120620033831.GA2395@gamma.logic.tuwien.ac.at>
- <BA050E9A-2385-4FF9-B41A-3A25F3FF066A@redhat.com>
- <20120620051844.GA7829@gamma.logic.tuwien.ac.at>
- <4FE1D91B.8020707@redhat.com>
- <20120621022818.GD9669@gamma.logic.tuwien.ac.at>
- <4FE29DA7.40405@redhat.com>
- <4FE44089.2010609@fastmail.fm>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Norbert Preining <preining@logic.at>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Use proper csum calculation in ext4_rename.
+Date: Fri, 22 Jun 2012 23:38:34 +0800
+Message-ID: <1340379514-2838-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51964 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932915Ab2FVOIZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Jun 2012 10:08:25 -0400
-Content-Disposition: inline
-In-Reply-To: <4FE44089.2010609@fastmail.fm>
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:45450 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S933193Ab2FVPix (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jun 2012 11:38:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 22, 2012 at 11:53:13AM +0200, Bernd Schubert wrote:
-> On 06/21/2012 06:05 AM, Eric Sandeen wrote:
-> >On 6/20/12 9:28 PM, Norbert Preining wrote:
-> >>Hi Eric,
-> >>
-> >
-> >You could see if you could get this LD_PRELOAD working:
-> >
-> >http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=blob_plain;f=contrib/spd_readdir.c
-> >
-> 
-> Hrmm, I need to look through that commit again, but on a first
-> glance I cannot see code doing the sorting for ext3/ext4 only (e.g.
-> by checking the fsid). So while I like the general approach, it will
-> have the opposite effect for some file systems. I will report that
-> back on the coreutils list.
-> 
-> Thanks a lot for the pointer to the commit!
+From: Tao Ma <boyu.mt@taobao.com>
 
-One warning about spd_readdir.  It's not thread-safe, and I've noted
-that some programs crash when they try using spd_readdir.so as a
-pre-load.  I've tried to fix some of the causes, and I think
-thread-safety is the primary fix which is missing, but it's possible
-that program which really care about telldir()/seekdir() behaviour as
-it relates to readdir() and when files are added to a directory may
-also end up getting surprised.
+In ext4_rename, when the old name is a dir, we need to
+change ".." to its new parent and journal the change, so
+with metadata_csum enabled, we have to re-calc the csum.
 
-I wrote it primarily as a demonstration of how sorting by inode number
-is a big win.  It is *not* suitable for use in /etc/ld.so.preload!
+As the first block of the dir can be either a htree root
+or a normal directory block and we have different csum
+calculation for these 2 types, we have to choose the right
+one in ext4_rename.
 
-If people want to try to make it safer, patches are accepted, but
-ultimately it's better to fix this in the application; that way you
-will get your performance gains no matter what OS you happen to be
-running on, whether it's Linux, Solaris, AIX, OS X, etc.
+btw, it is found by xfstests 013.
 
-     	       	     	   	    	- Ted
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/namei.c |   11 +++++++++--
+ 1 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5845cd9..0edaf18 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2918,8 +2918,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+ 						cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
+-		retval = ext4_handle_dirty_dirent_node(handle, old_inode,
+-						       dir_bh);
++		if (is_dx(old_inode)) {
++			retval = ext4_handle_dirty_dx_node(handle,
++							   old_inode,
++							   dir_bh);
++		} else {
++			retval = ext4_handle_dirty_dirent_node(handle,
++							       old_inode,
++							       dir_bh);
++		}
+ 		if (retval) {
+ 			ext4_std_error(old_dir->i_sb, retval);
+ 			goto end_rename;
+-- 
+1.7.1
+
