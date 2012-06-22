@@ -1,92 +1,89 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/5] Add additional owner identifier
-Date: Fri, 22 Jun 2012 02:03:53 +0200
-Message-ID: <20120622000353.GF11645@quack.suse.cz>
-References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org>
- <1340269733-25922-2-git-send-email-dmonakhov@openvz.org>
+Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
+Date: Fri, 22 Jun 2012 02:12:02 +0200
+Message-ID: <20120622001202.GG11645@quack.suse.cz>
+References: <4FDEC3C2.4060909@secunet.com>
+ <x49fw9smohy.fsf@segfault.boston.devel.redhat.com>
+ <4FE0155A.6010404@secunet.com>
+ <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54010 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760697Ab2FVADz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Jun 2012 20:03:55 -0400
+Cc: Torsten Hilbrich <torsten.hilbrich@secunet.com>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Jens Axboe <jaxboe@fusionio.com>,
+	Nick Piggin <npiggin@kernel.dk>
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1340269733-25922-2-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <x49ehpbjiyp.fsf@segfault.boston.devel.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 21-06-12 13:08:49, Dmitry Monakhov wrote:
-> This patch add project inode identifier. Project ID may be used as
-> auxiliary owner specifier in addition to standard uid/gid.
-  I would just join patches 1 and 2. One without the other looks a bit
-dumb... Otherwise I'm OK with the changes. I can take these two patches
-through my tree when filesystem maintainers agree they want this feature and
-are going to merge corresponding fs patches...
-  
+On Tue 19-06-12 13:43:26, Jeff Moyer wrote:
+> Torsten Hilbrich <torsten.hilbrich@secunet.com> writes:
+> 
+> > The system where I reproduced the problem upstream is an amd64 based
+> > ubuntu 12.04 installation. I used both v3.3.8 and v3.4 for reproducing.
+> >
+> > The partition layout is the following:
+> >
+> > ======================================================================
+> >
+> > Disk /dev/sda: 120.0 GB, 120034123776 bytes
+> > 255 heads, 63 sectors/track, 14593 cylinders, total 234441648 sectors
+> > Units = sectors of 1 * 512 = 512 bytes
+> > Sector size (logical/physical): 512 bytes / 512 bytes
+> > I/O size (minimum/optimal): 512 bytes / 512 bytes
+> > Disk identifier: 0x1669c708
+> >
+> >    Device Boot      Start         End      Blocks   Id  System
+> > /dev/sda1   *          63    86285114    43142526   83  Linux
+> > /dev/sda2       216797175   234436544     8819685   82  Linux swap / Solaris
+> > /dev/sda3        86285115    87088364      401625   83  Linux
+> > /dev/sda4        87088426   216797174    64854374+   5  Extended
+> > /dev/sda5        87088428    91104614     2008093+  83  Linux
+> > /dev/sda6        91104678   216797174    62846248+  8e  Linux LVM
+> >
+> > Partition table entries are not in disk order
+> 
+> OK, got it to reproduce, thanks for the info.  The attached patch fixed
+> the problem for me.
+> 
+> Note, though, that the patch doesn't make sense to me.  blkdev_max_block
+> returns i_size_read(blkdev_inode) >> block_size.  This should be the
+> *size* of the block device, not the max block.  The code in
+> fs/block_device.c uses the return value in two different ways!
+> 
+> static int
+> blkdev_get_block(struct inode *inode, sector_t iblock,
+>                 struct buffer_head *bh, int create)
+> {
+>         if (iblock >= blkdev_max_block(I_BDEV(inode))) {
+> 
+> Here, the return value from blkdev_max_block is interpreted as the size
+> of the device, so actually max_block + 1.
+> 
+> static int
+> blkdev_get_blocks(struct inode *inode, sector_t iblock,
+>                 struct buffer_head *bh, int create)
+> {
+>         sector_t end_block = blkdev_max_block(I_BDEV(inode));
+>         unsigned long max_blocks = bh->b_size >> inode->i_blkbits;
+> 
+>         if ((iblock + max_blocks) > end_block) {
+> 
+> Here, the return value is treated as the maximum addressable block
+> number.  Given the fact that I had to modify init_page_buffers to treat
+> the return value from blkdev_max_block as the maximum addressable block,
+> I clearly have something wrong with my logic.  Nick, Jens, care to set
+> my head straight?
+  I think it can have something to do with the fact that the partition size
+is not a multiple of 4k (i.e. expected block size)?
+
+  BTW: blkdev_max_block() is a terrible name for something that intends to
+return size in blocks...
 
 								Honza
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/Kconfig            |    7 +++++++
->  include/linux/fs.h    |    1 +
->  include/linux/xattr.h |    3 +++
->  3 files changed, 11 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index c8554b5..1932458 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -60,6 +60,13 @@ config FILE_LOCKING
->  	  This option enables standard file locking support, required
->            for filesystems like NFS and for the flock() system
->            call. Disabling this option saves about 11k.
-> +config PROJECT_ID
-> +	bool "Enable project inode identifier"
-> +	default y
-> +	help
-> +	  This option enables project inode identifier. Project ID
-> +	  may be used as auxiliary owner specifier in addition to
-> +	  standard uid/gid.
->  
->  source "fs/notify/Kconfig"
->  
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index b0a6d44..6779fc2 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1739,6 +1739,7 @@ struct super_operations {
->  	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
->  	int (*nr_cached_objects)(struct super_block *);
->  	void (*free_cached_objects)(struct super_block *, int);
-> +	u32 (*get_prjid)(const struct inode *inode);
->  };
->  
->  /*
-> diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-> index e5d1220..f8a83c3 100644
-> --- a/include/linux/xattr.h
-> +++ b/include/linux/xattr.h
-> @@ -61,6 +61,9 @@
->  
->  #include <linux/types.h>
->  
-> +#define XATTR_PRJID "system.project_id"
-> +#define XATTR_PRJID_LEN (sizeof (XATTR_PRJID))
-> +
->  struct inode;
->  struct dentry;
->  
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
