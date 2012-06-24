@@ -1,46 +1,98 @@
-From: Cong Wang <amwang@redhat.com>
-Subject: [PATCH 01/12] jbd2: remove the second argument of kmap_atomic
-Date: Sat, 23 Jun 2012 18:04:12 +0800
-Message-ID: <1340445863-16111-2-git-send-email-amwang@redhat.com>
-References: <1340445863-16111-1-git-send-email-amwang@redhat.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Cong Wang <amwang@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+From: Wanlong Gao <gaowanlong@cn.fujitsu.com>
+Subject: [PATCH] ext2: cleanup the confused goto label
+Date: Sun, 24 Jun 2012 10:51:43 +0800
+Message-ID: <1340506303-31723-1-git-send-email-gaowanlong@cn.fujitsu.com>
+Cc: linux-ext4@vger.kernel.org, Wanlong Gao <gaowanlong@cn.fujitsu.com>
+To: jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19275 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753565Ab2FWKEp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Jun 2012 06:04:45 -0400
-In-Reply-To: <1340445863-16111-1-git-send-email-amwang@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:62041 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753432Ab2FXCvt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Jun 2012 22:51:49 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Cong Wang <amwang@redhat.com>
+Cleanup the confused goto label in ext2_fill_super.
 
+Signed-off-by: Wanlong Gao <gaowanlong@cn.fujitsu.com>
 ---
- fs/jbd2/commit.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext2/super.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 216f429..af5280f 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -349,12 +349,12 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
- 		return;
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index b3621cb..301379d 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -771,14 +771,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	err = -ENOMEM;
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+-		goto failed_unlock;
++		goto failed;
  
- 	sequence = cpu_to_be32(sequence);
--	addr = kmap_atomic(page, KM_USER0);
-+	addr = kmap_atomic(page);
- 	csum = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
- 			  sizeof(sequence));
- 	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
- 			  bh->b_size);
--	kunmap_atomic(addr, KM_USER0);
-+	kunmap_atomic(addr);
+ 	sbi->s_blockgroup_lock =
+ 		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
+-	if (!sbi->s_blockgroup_lock) {
+-		kfree(sbi);
+-		goto failed_unlock;
+-	}
++	if (!sbi->s_blockgroup_lock)
++		goto failed_sbi;
++
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
  
- 	tag->t_checksum = cpu_to_be32(csum);
+@@ -794,7 +793,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
+ 	if (!blocksize) {
+ 		ext2_msg(sb, KERN_ERR, "error: unable to set blocksize");
+-		goto failed_sbi;
++		goto failed_bg_lock;
+ 	}
+ 
+ 	/*
+@@ -810,7 +809,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	if (!(bh = sb_bread(sb, logic_sb_block))) {
+ 		ext2_msg(sb, KERN_ERR, "error: unable to read superblock");
+-		goto failed_sbi;
++		goto failed_bg_lock;
+ 	}
+ 	/*
+ 	 * Note: s_es must be initialized as soon as possible because
+@@ -905,7 +904,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		if (!sb_set_blocksize(sb, blocksize)) {
+ 			ext2_msg(sb, KERN_ERR,
+ 				"error: bad blocksize %d", blocksize);
+-			goto failed_sbi;
++			goto failed_bg_lock;
+ 		}
+ 
+ 		logic_sb_block = (sb_block*BLOCK_SIZE) / blocksize;
+@@ -914,7 +913,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		if(!bh) {
+ 			ext2_msg(sb, KERN_ERR, "error: couldn't read"
+ 				"superblock on 2nd try");
+-			goto failed_sbi;
++			goto failed_bg_lock;
+ 		}
+ 		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
+ 		sbi->s_es = es;
+@@ -1126,11 +1125,12 @@ failed_mount_group_desc:
+ 	kfree(sbi->s_debts);
+ failed_mount:
+ 	brelse(bh);
+-failed_sbi:
++failed_bg_lock:
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
++failed_sbi:
+ 	kfree(sbi);
+-failed_unlock:
++failed:
+ 	return ret;
  }
+ 
 -- 
-1.7.7.6
+1.7.11.rc0
 
