@@ -1,61 +1,46 @@
-From: Yuanhan Liu <yliu.null@gmail.com>
-Subject: [PATCH 2/2] jbd2: retname jbd2_get_transaction to jbd2_init_transaction
-Date: Mon, 25 Jun 2012 17:08:08 +0800
-Message-ID: <1340615288-24016-1-git-send-email-yliu.null@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Yuanhan Liu <yliu.null@gmail.com>
-To: tytso@mit.edu
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
+Date: Mon, 25 Jun 2012 12:34:57 +0100
+Message-ID: <20120625113457.GA1289@amd.home.annexia.org>
+References: <4FDEC3C2.4060909@secunet.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: jmoyer@redhat.com, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Torsten Hilbrich <torsten.hilbrich@secunet.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:58107 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752136Ab2FYJIP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2012 05:08:15 -0400
-Received: by dady13 with SMTP id y13so5055097dad.19
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Jun 2012 02:08:15 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:64620 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751863Ab2FYLfE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2012 07:35:04 -0400
+Content-Disposition: inline
+In-Reply-To: <4FDEC3C2.4060909@secunet.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_get_transaction() does nothing but initialization. So, rename it
-and also fix the comments.
+On Mon, Jun 18, 2012 at 07:59:30AM +0200, Torsten Hilbrich wrote:
+> Hello,
+> 
+> a software that tries to mount each existing partition as ext3 file system started to fail when updating from v3.3.7 to v3.3.8.
+> 
+> The applications then hangs-up in the mount syscall, here is a snapshot of its stack at this moment:
 
-Signed-off-by: Yuanhan Liu <yliu.null@gmail.com>
----
- fs/jbd2/transaction.c |   18 ++++++++----------
- 1 files changed, 8 insertions(+), 10 deletions(-)
+We just ran into what we think is the same problem.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index fb1ab953..4f8b1a0 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -63,12 +63,12 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
- }
- 
- /*
-- * jbd2_get_transaction: obtain a new transaction_t object.
-+ * jbd2_init_transaction: Initialize a new transaction_t object.
-  *
-- * Simply allocate and initialise a new transaction.  Create it in
-- * RUNNING state and add it to the current journal (which should not
-- * have an existing running transaction: we only make a new transaction
-- * once we have started to commit the old one).
-+ * Simply initialise a new transaction.  Initialize it in RUNNING state
-+ * and add it to the current journal (which should not have an existing
-+ * running transaction: we only make a new transaction once we have
-+ * started to commit the old one).
-  *
-  * Preconditions:
-  *	The journal MUST be locked.  We don't perform atomic mallocs on the
-@@ -77,8 +77,8 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
-  *
-  */
- 
--static transaction_t *
--jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
-+static void
-+jbd2_init_transaction(journal_t *journal, transaction_t *transaction)
- {
- 	transaction->t_journal = journal;
- 	transaction->t_state = T_RUNNING;
-@@ -100,8 +100,6 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
- 	journal->j_running_transaction = transaction;
- 	transaction->t_max_wait = 0;
- 	transaction->t_start = jiffies;
+Note that ext4 fails like this for any 1024 byte sized filesystem (of
+zeroes) that you try to mount.  It's really nothing to do with
+extended partitions.
+
+Here is a very simple reproducer + stack trace:
+
+  https://bugzilla.redhat.com/show_bug.cgi?id=835019#c4
+
+I will try out the patch suggested later on in this thread.
+
+Rich.
+
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+virt-p2v converts physical machines to virtual machines.  Boot with a
+live CD or over the network (PXE) and turn machines into Xen guests.
+http://et.redhat.com/~rjones/virt-p2v
