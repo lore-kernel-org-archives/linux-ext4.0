@@ -1,202 +1,60 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: ext4_fallocate
-Date: Mon, 25 Jun 2012 16:51:59 +0800
-Message-ID: <20120625085159.GA18931@gmail.com>
-References: <4FE8086F.4070506@zoho.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: Fredrick <fjohnber@zoho.com>
+From: Yuanhan Liu <yliu.null@gmail.com>
+Subject: [PATCH 1/2] jbd: rename get_transaction to init_transaction
+Date: Mon, 25 Jun 2012 17:06:47 +0800
+Message-ID: <1340615207-20548-1-git-send-email-yliu.null@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Yuanhan Liu <yliu.null@gmail.com>
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:39411 "EHLO
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:40017 "EHLO
 	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752214Ab2FYInz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2012 04:43:55 -0400
-Received: by dady13 with SMTP id y13so5029377dad.19
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Jun 2012 01:43:55 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <4FE8086F.4070506@zoho.com>
+	with ESMTP id S1752667Ab2FYJG7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2012 05:06:59 -0400
+Received: by dady13 with SMTP id y13so5053637dad.19
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Jun 2012 02:06:59 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 24, 2012 at 11:42:55PM -0700, Fredrick wrote:
-> Hello Ext4 developers,
-> 
-> When calling fallocate on ext4 fs, ext4_fallocate does not initialize
-> the extents. The extents are allocated only when they are actually
-> written. This is causing a problem for us. Our programs create many
-> "write only once" files as large as 1G on ext4 very rapidly at times.
-> We thought fallocate would solve the problem. But it didnt.
-> If I change the EXT4_GET_BLOCKS_CREATE_UNINIT_EXT to
-> just EXT4_GET_BLOCKS_CREATE in the ext4_map_blocks in the
-> ext4_fallocate call,
-> the extents get created in fallocate call itself. This is helping us.
-> Now the write throughtput to the disk was close to 98%. When extents
-> were not
-> initialized, our disk throughput were only 70%.
-> 
-> Can this change be made to ext4_fallocate?
+get_transaction() does nothing but initialization. So, rename it and
+also fix the comments.
 
-Hi Fredrick,
-
-I think that this patch maybe can help you. :-)
-
-Actually I want to send a url for you from linux mailing list archive but
-I cannot find it.  After applying this patch, you can call ioctl(2) to
-enable expose_stale_data flag, and then when you call fallocate(2), ext4
-create initialized extents for you.  This patch cannot be merged into
-upstream kernel because it brings a huge security hole.
-
-Regards,
-Zheng
-
-From: Zheng Liu <wenqing.lz@taobao.com>
-Date: Wed, 6 Jun 2012 11:10:57 +0800
-Subject: [RFC][PATCH v2] ext4: add expose_stale_data flag in fallocate
-
-Here is the v2 of FALLOC_FL_NO_HIDE_STALE in fallocate.  Now no new flag is
-added into vfs in order to reduce the impacts and avoid a huge security hole.
-The application cannot call fallocate with a new flag to create an unwritten
-extent.  It needs to call ioctl to enable/disable this feature.  Meanwhile, in
-ioctl, filesystem will check CAP_SYS_RAWIO to ensure that the user has a
-privilege to switch on/off it.  Currently, I only implement it in ext4.
-
-Even though I try to reduce its impact, this feature still brings a security
-hole.  So the application must ensure that it initializes an unwritten extent
-by itself before reading it, and it is used in a limited environment.
-
-v1 -> v2:
-* remove FALLOC_FL_NO_HIDE_STALE flag in vfs
-* add 'i_expose_stale_data' in ext4 to enable/disable it
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Yuanhan Liu <yliu.null@gmail.com>
 ---
- fs/ext4/ext4.h    |    5 +++++
- fs/ext4/extents.c |    6 +++++-
- fs/ext4/ioctl.c   |   43 +++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c   |    1 +
- 4 files changed, 54 insertions(+), 1 deletions(-)
+ fs/jbd/transaction.c |   17 +++++++----------
+ 1 files changed, 7 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..61da070 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -606,6 +606,8 @@ enum {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
-+#define EXT4_IOC_GET_EXPOSE_STALE	_IOR('f', 17, int)
-+#define EXT4_IOC_SET_EXPOSE_STALE	_IOW('f', 18, int)
- 
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-@@ -925,6 +927,9 @@ struct ext4_inode_info {
- 
- 	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
- 	__u32 i_csum_seed;
-+
-+	/* expose stale data in creating a new extent */
-+	int i_expose_stale_data;
- };
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index febc10d..82f8a7a 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -31,12 +31,12 @@
+ static void __journal_temp_unlink_buffer(struct journal_head *jh);
  
  /*
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91341ec..9ef883c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4336,6 +4336,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
- long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+- * get_transaction: obtain a new transaction_t object.
++ * init_transaction: Initialise a new transaction_t object.
+  *
+- * Simply allocate and initialise a new transaction.  Create it in
+- * RUNNING state and add it to the current journal (which should not
+- * have an existing running transaction: we only make a new transaction
+- * once we have started to commit the old one).
++ * Simply initialise a new transaction. initialise it in RUNNING state
++ * and add it to the current journal (which should not have an existing
++ * running transaction: we only make a new transaction once we have
++ * started to commit the old one).
+  *
+  * Preconditions:
+  *	The journal MUST be locked.  We don't perform atomic mallocs on the
+@@ -46,8 +46,7 @@ static void __journal_temp_unlink_buffer(struct journal_head *jh);
+  * Called under j_state_lock
+  */
+ 
+-static transaction_t *
+-get_transaction(journal_t *journal, transaction_t *transaction)
++static void init_transaction(journal_t *journal, transaction_t *transaction)
  {
- 	struct inode *inode = file->f_path.dentry->d_inode;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	handle_t *handle;
- 	loff_t new_size;
- 	unsigned int max_blocks;
-@@ -4379,7 +4380,10 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 		trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
- 		return ret;
- 	}
--	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
-+	if (ei->i_expose_stale_data)
-+		flags = EXT4_GET_BLOCKS_CREATE;
-+	else
-+		flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
- 	/*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 8ad112a..fffb3eb 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -445,6 +445,47 @@ resizefs_out:
- 		return 0;
- 	}
+ 	transaction->t_journal = journal;
+ 	transaction->t_state = T_RUNNING;
+@@ -63,8 +62,6 @@ get_transaction(journal_t *journal, transaction_t *transaction)
  
-+	case EXT4_IOC_GET_EXPOSE_STALE: {
-+		int enable;
-+
-+		/* security check */
-+		if (!capable(CAP_SYS_RAWIO))
-+			return -EPERM;
-+
-+		/*
-+		 * currently only extent-based files support (pre)allocate with
-+		 * EXPOSE_STALE_DATA flag
-+		 */
-+		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-+			return -EOPNOTSUPP;
-+
-+		enable = ei->i_expose_stale_data;
-+
-+		return put_user(enable, (int __user *) arg);
-+	}
-+
-+	case EXT4_IOC_SET_EXPOSE_STALE: {
-+		int enable;
-+
-+		/* security check */
-+		if (!capable(CAP_SYS_RAWIO))
-+			return -EPERM;
-+
-+		/*
-+		 * currently only extent-based files support (pre)allocate with
-+		 * EXPOSE_STALE_DATA flag
-+		 */
-+		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-+			return -EOPNOTSUPP;
-+
-+		if (get_user(enable, (int __user *) arg))
-+			return -EFAULT;
-+
-+		ei->i_expose_stale_data = enable;
-+
-+		return 0;
-+	}
-+
- 	default:
- 		return -ENOTTY;
- 	}
-@@ -508,6 +549,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC_MOVE_EXT:
- 	case FITRIM:
- 	case EXT4_IOC_RESIZE_FS:
-+	case EXT4_IOC_GET_EXPOSE_STALE:
-+	case EXT4_IOC_SET_EXPOSE_STALE:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index eb7aa3e..3654bb8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -988,6 +988,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_datasync_tid = 0;
- 	atomic_set(&ei->i_ioend_count, 0);
- 	atomic_set(&ei->i_aiodio_unwritten, 0);
-+	ei->i_expose_stale_data = 0;
- 
- 	return &ei->vfs_inode;
- }
--- 
-1.7.4.1
-
+ 	J_ASSERT(journal->j_running_transaction == NULL);
+ 	journal->j_running_transaction = transaction;
