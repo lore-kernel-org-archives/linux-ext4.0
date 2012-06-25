@@ -1,295 +1,223 @@
-From: Fredrick <fjohnber@zoho.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: ext4_fallocate
-Date: Mon, 25 Jun 2012 12:04:08 -0700
-Message-ID: <4FE8B628.3090407@zoho.com>
-References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com>
+Date: Mon, 25 Jun 2012 15:17:44 -0400
+Message-ID: <20120625191744.GB9688@thunk.org>
+References: <4FE8086F.4070506@zoho.com>
+ <20120625085159.GA18931@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+To: Fredrick <fjohnber@zoho.com>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sender1.zohomail.com ([72.5.230.103]:54696 "EHLO
-	sender1.zohomail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751088Ab2FYTES (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2012 15:04:18 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:52607 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753906Ab2FYTRu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2012 15:17:50 -0400
+Content-Disposition: inline
 In-Reply-To: <20120625085159.GA18931@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/25/2012 01:51 AM, Zheng Liu wrote:
-> On Sun, Jun 24, 2012 at 11:42:55PM -0700, Fredrick wrote:
->> Hello Ext4 developers,
->>
->> When calling fallocate on ext4 fs, ext4_fallocate does not initialize
->> the extents. The extents are allocated only when they are actually
->> written. This is causing a problem for us. Our programs create many
->> "write only once" files as large as 1G on ext4 very rapidly at times.
->> We thought fallocate would solve the problem. But it didnt.
->> If I change the EXT4_GET_BLOCKS_CREATE_UNINIT_EXT to
->> just EXT4_GET_BLOCKS_CREATE in the ext4_map_blocks in the
->> ext4_fallocate call,
->> the extents get created in fallocate call itself. This is helping us.
->> Now the write throughtput to the disk was close to 98%. When extents
->> were not
->> initialized, our disk throughput were only 70%.
->>
->> Can this change be made to ext4_fallocate?
->
-> Hi Fredrick,
->
-> I think that this patch maybe can help you. :-)
->
+On Mon, Jun 25, 2012 at 04:51:59PM +0800, Zheng Liu wrote:
+> 
 > Actually I want to send a url for you from linux mailing list archive but
 > I cannot find it.  After applying this patch, you can call ioctl(2) to
 > enable expose_stale_data flag, and then when you call fallocate(2), ext4
 > create initialized extents for you.  This patch cannot be merged into
 > upstream kernel because it brings a huge security hole.
->
-> Regards,
-> Zheng
->
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> Date: Wed, 6 Jun 2012 11:10:57 +0800
-> Subject: [RFC][PATCH v2] ext4: add expose_stale_data flag in fallocate
->
-> Here is the v2 of FALLOC_FL_NO_HIDE_STALE in fallocate.  Now no new flag is
-> added into vfs in order to reduce the impacts and avoid a huge security hole.
-> The application cannot call fallocate with a new flag to create an unwritten
-> extent.  It needs to call ioctl to enable/disable this feature.  Meanwhile, in
-> ioctl, filesystem will check CAP_SYS_RAWIO to ensure that the user has a
-> privilege to switch on/off it.  Currently, I only implement it in ext4.
->
-> Even though I try to reduce its impact, this feature still brings a security
-> hole.  So the application must ensure that it initializes an unwritten extent
-> by itself before reading it, and it is used in a limited environment.
->
-> v1 -> v2:
-> * remove FALLOC_FL_NO_HIDE_STALE flag in vfs
-> * add 'i_expose_stale_data' in ext4 to enable/disable it
->
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->   fs/ext4/ext4.h    |    5 +++++
->   fs/ext4/extents.c |    6 +++++-
->   fs/ext4/ioctl.c   |   43 +++++++++++++++++++++++++++++++++++++++++++
->   fs/ext4/super.c   |    1 +
->   4 files changed, 54 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index cfc4e01..61da070 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -606,6 +606,8 @@ enum {
->   #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
->   #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
->   #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
-> +#define EXT4_IOC_GET_EXPOSE_STALE	_IOR('f', 17, int)
-> +#define EXT4_IOC_SET_EXPOSE_STALE	_IOW('f', 18, int)
->
->   #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
->   /*
-> @@ -925,6 +927,9 @@ struct ext4_inode_info {
->
->   	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
->   	__u32 i_csum_seed;
-> +
-> +	/* expose stale data in creating a new extent */
-> +	int i_expose_stale_data;
->   };
->
->   /*
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 91341ec..9ef883c 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4336,6 +4336,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->   long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->   {
->   	struct inode *inode = file->f_path.dentry->d_inode;
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
->   	handle_t *handle;
->   	loff_t new_size;
->   	unsigned int max_blocks;
-> @@ -4379,7 +4380,10 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->   		trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
->   		return ret;
->   	}
-> -	flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
-> +	if (ei->i_expose_stale_data)
-> +		flags = EXT4_GET_BLOCKS_CREATE;
-> +	else
-> +		flags = EXT4_GET_BLOCKS_CREATE_UNINIT_EXT;
->   	if (mode & FALLOC_FL_KEEP_SIZE)
->   		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
->   	/*
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 8ad112a..fffb3eb 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -445,6 +445,47 @@ resizefs_out:
->   		return 0;
->   	}
->
-> +	case EXT4_IOC_GET_EXPOSE_STALE: {
-> +		int enable;
-> +
-> +		/* security check */
-> +		if (!capable(CAP_SYS_RAWIO))
-> +			return -EPERM;
-> +
-> +		/*
-> +		 * currently only extent-based files support (pre)allocate with
-> +		 * EXPOSE_STALE_DATA flag
-> +		 */
-> +		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> +			return -EOPNOTSUPP;
-> +
-> +		enable = ei->i_expose_stale_data;
-> +
-> +		return put_user(enable, (int __user *) arg);
-> +	}
-> +
-> +	case EXT4_IOC_SET_EXPOSE_STALE: {
-> +		int enable;
-> +
-> +		/* security check */
-> +		if (!capable(CAP_SYS_RAWIO))
-> +			return -EPERM;
-> +
-> +		/*
-> +		 * currently only extent-based files support (pre)allocate with
-> +		 * EXPOSE_STALE_DATA flag
-> +		 */
-> +		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> +			return -EOPNOTSUPP;
-> +
-> +		if (get_user(enable, (int __user *) arg))
-> +			return -EFAULT;
-> +
-> +		ei->i_expose_stale_data = enable;
-> +
-> +		return 0;
-> +	}
-> +
->   	default:
->   		return -ENOTTY;
->   	}
-> @@ -508,6 +549,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
->   	case EXT4_IOC_MOVE_EXT:
->   	case FITRIM:
->   	case EXT4_IOC_RESIZE_FS:
-> +	case EXT4_IOC_GET_EXPOSE_STALE:
-> +	case EXT4_IOC_SET_EXPOSE_STALE:
->   		break;
->   	default:
->   		return -ENOIOCTLCMD;
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index eb7aa3e..3654bb8 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -988,6 +988,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->   	ei->i_datasync_tid = 0;
->   	atomic_set(&ei->i_ioend_count, 0);
->   	atomic_set(&ei->i_aiodio_unwritten, 0);
-> +	ei->i_expose_stale_data = 0;
->
->   	return &ei->vfs_inode;
->   }
->
 
+This is what we're using internally inside Google.... this allows the
+security exposure to be restricted to those programs running with a
+specific group id (which is better than giving programs access to
+CAP_SYS_RAWIO).  We also require the use of a specific fallocate flag
+so that programs have to explicitly ask for this feature.
 
-Thanks Zheng for this nice patch.
-Thanks Andreas for the comments.
-I had the following patch to do the same.
+Also note that I restrict the combination of NO_HIDE_STALE &&
+KEEP_SIZE since it causes e2fsck to complain --- and if you're trying
+to avoid fs metadata I/O, you want to avoid the extra i_size update
+anyway, so it's not worth trying to make this work w/o causing e2fsck
+complaints.
 
--Fredrick
+This patch is versus the v3.3 kernel (as it happens, I was just in the
+middle of rebasing this patch from 2.6.34 :-)
+
+					- Ted
+
+P.S.  It just occurred to me that there are some patches being
+discussed that assign new fallocate flags for volatile data handling.
+So it would probably be a good idea to move the fallocate flag
+codepoint assignment up out of the way to avoid future conflicts.
+
+commit 5f12f1bc2b0fb0866d52763a611b022780780f05
+Author: Theodore Ts'o <tytso@google.com>
+Date:   Fri Jun 22 17:19:53 2012 -0400
+
+    ext4: add an fallocate flag to mark newly allocated extents initialized
+    
+    This commit adds a new flag to ext4's fallocate that allows new,
+    uninitialized extents to be marked as initialized. This flag,
+    FALLOC_FL_NO_HIDE_STALE requires that the nohide_stale_gid=<gid> mount
+    option be used when the file system is mounted, and that the user is
+    in the group <gid>.
+    
+    The benefit is to a program fallocates a larger space, but then writes
+    to that space in small increments.  This option prevents ext4 from
+    having to split the unallocated extent and merge the newly initialized
+    extent with the extent to its left.  Even though this usually happens
+    in-memory, this option is useful for tight memory situations and for
+    ext4 on flash.  Note: This allows an application in ths hohide_stale
+    group to see stale data on the filesystem.
+    
+    Tested: Updated xfstests g002 to test a case where
+      fallocate:no-hide-stale is not allowed.  The existing tests now pass
+      because I added a remount with a group that user root is in.
+    Rebase-Tested-v3.3: same
+    
+    Effort: fs/nohide-stale
+    Origin-2.6.34-SHA1: c3099bf61be1baf94bc91c481995bb0d77f05786
+    Origin-2.6.34-SHA1: 004dd33b9ebc5d860781c3435526658cc8aa8ccb
+    Change-Id: I0d2a7f2a4cf34443269acbcedb7b7074e0055e69
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1a34c1c..7fe835c 100644
+index aaaece6..ac7aa42 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -549,6 +549,7 @@ struct ext4_new_group_data {
-   /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
-  #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
-  #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
-+#define EXT4_IOC_INIT_EXT		_IOWR('f', 20, unsigned long)
-
-  #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
-  /*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 4cbe1c2..c66555e 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -335,6 +335,57 @@ mext_out:
-  		mnt_drop_write(filp->f_path.mnt);
-  		return err;
-  	}
-+	
-+	case EXT4_IOC_INIT_EXT:
-+	{
+@@ -1240,6 +1240,9 @@ struct ext4_sb_info {
+ 	unsigned long s_mb_last_group;
+ 	unsigned long s_mb_last_start;
+ 
++	/* gid that's allowed to see stale data via falloc flag. */
++	gid_t no_hide_stale_gid;
 +
-+		handle_t *handle;
-+		unsigned int max_blocks;
-+		unsigned int credits;
-+		struct ext4_map_blocks map;
-+		unsigned int blkbits = inode->i_blkbits;	
-+		unsigned long offset = filp->f_pos;
-+		unsigned long len = arg;
-+		int ret = 0, ret2 = 0;
+ 	/* stats for buddy allocator */
+ 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
+ 	atomic_t s_bal_success;	/* we found long enough chunks */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index cb99346..cc57c85 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4375,6 +4375,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	int retries = 0;
+ 	int flags;
+ 	struct ext4_map_blocks map;
++	struct ext4_sb_info *sbi;
+ 	unsigned int credits, blkbits = inode->i_blkbits;
+ 
+ 	/*
+@@ -4385,12 +4386,28 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EOPNOTSUPP;
+ 
+ 	/* Return error if mode is not supported */
+-	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
++	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
++		     FALLOC_FL_NO_HIDE_STALE))
++		return -EOPNOTSUPP;
 +
-+		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-+			return -EOPNOTSUPP;
++	/* The combination of NO_HIDE_STALE and KEEP_SIZE is not supported */
++	if ((mode & FALLOC_FL_NO_HIDE_STALE) &&
++	    (mode & FALLOC_FL_KEEP_SIZE))
+ 		return -EOPNOTSUPP;
+ 
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return ext4_punch_hole(file, offset, len);
+ 
++	sbi = EXT4_SB(inode->i_sb);
++	/* Must have RAWIO to see stale data. */
++	if ((mode & FALLOC_FL_NO_HIDE_STALE) &&
++	    !in_egroup_p(sbi->no_hide_stale_gid))
++		return -EACCES;
 +
-+		mutex_lock(&inode->i_mutex);
-+		if ((offset + len)> i_size_read(inode)) {
-+			mutex_unlock(&inode->i_mutex);
-+			return -EINVAL;
-+		}
-+		map.m_lblk = offset >> blkbits;
-+		max_blocks = ((EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits) -
-+			      map.m_lblk);
++	/* preallocation to directories is currently not supported */
++	if (S_ISDIR(inode->i_mode))
++		return -ENODEV;
 +
-+		credits = ext4_chunk_trans_blocks(inode, max_blocks);
-+		while (ret >= 0 && ret < max_blocks) {
-+			map.m_lblk += ret;
-+			map.m_len = (max_blocks -= ret);
-+			handle = ext4_journal_start(inode, credits);
-+			if (IS_ERR(handle)) {
-+				ret = PTR_ERR(handle);
-+				break;
-+			}
-+			ret = ext4_map_blocks(handle, inode, &map,
-+					      EXT4_GET_BLOCKS_CREATE);
-+			if (ret <= 0) {
-+				WARN_ON(ret <= 0);
-+				printk(KERN_ERR "%s: ext4_map_blocks "
-+					    "returned error inode#%lu, block=%u, "
-+					    "max_blocks=%u", __func__,
-+					    inode->i_ino, map.m_lblk, map.m_len);
-+			}
-+			ext4_mark_inode_dirty(handle, inode);
-+			ret2 = ext4_journal_stop(handle);
-+			if (ret <= 0 || ret2 )
-+				break;
-+		}
-+		mutex_unlock(&inode->i_mutex);
-+		return ret > 0 ? ret2 : ret;
-+	}
-
-  	case FITRIM:
-  	{
-@@ -432,6 +483,7 @@ long ext4_compat_ioctl(struct file *file, unsigned 
-int cmd, unsigned long arg)
-  		return err;
-  	}
-  	case EXT4_IOC_MOVE_EXT:
-+	case EXT4_IOC_INIT_EXT:
-  	case FITRIM:
-  		break;
-  	default:
-
-
-
-
-
+ 	trace_ext4_fallocate_enter(inode, offset, len, mode);
+ 	map.m_lblk = offset >> blkbits;
+ 	/*
+@@ -4429,6 +4446,8 @@ retry:
+ 			ret = PTR_ERR(handle);
+ 			break;
+ 		}
++		if (mode & FALLOC_FL_NO_HIDE_STALE)
++			flags &= ~EXT4_GET_BLOCKS_UNINIT_EXT;
+ 		ret = ext4_map_blocks(handle, inode, &map, flags);
+ 		if (ret <= 0) {
+ #ifdef EXT4FS_DEBUG
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5b443a8..d976ec1 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1175,6 +1175,8 @@ static int ext4_show_options(struct seq_file *seq, struct dentry *root)
+ 	if (test_opt2(sb, BIG_EXT))
+ 		seq_puts(seq, ",big_extent");
+ #endif
++	if (sbi->no_hide_stale_gid != -1)
++		seq_printf(seq, ",nohide_stale_gid=%u", sbi->no_hide_stale_gid);
+ 
+ 	ext4_show_quota_options(seq, sb);
+ 
+@@ -1353,6 +1355,7 @@ enum {
+ #ifdef CONFIG_EXT4_BIG_EXTENT
+ 	Opt_big_extent, Opt_nobig_extent,
+ #endif
++	Opt_nohide_stale_gid,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1432,6 +1435,7 @@ static const match_table_t tokens = {
+ 	{Opt_big_extent, "big_extent"},
+ 	{Opt_nobig_extent, "nobig_extent"},
+ #endif
++	{Opt_nohide_stale_gid, "nohide_stale_gid=%u"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1931,6 +1935,12 @@ set_qf_format:
+ 				return 0;
+ 			sbi->s_li_wait_mult = option;
+ 			break;
++		case Opt_nohide_stale_gid:
++			if (match_int(&args[0], &option))
++				return 0;
++			/* -1 for disabled, otherwise it's valid. */
++			sbi->no_hide_stale_gid = option;
++			break;
+ 		case Opt_noinit_itable:
+ 			clear_opt(sb, INIT_INODE_TABLE);
+ 			break;
+@@ -3274,6 +3284,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_EXT4_BIG_EXTENT
+ 	sbi->s_min_big_ext_size = EXT4_DEFAULT_MIN_BIG_EXT_SIZE;
+ #endif
++	/* Default to having no-hide-stale disabled. */
++	sbi->no_hide_stale_gid = -1;
+ 
+ 	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
+ 		set_opt(sb, BARRIER);
+diff --git a/fs/open.c b/fs/open.c
+index 201431a..4edc0cd 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -224,7 +224,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EINVAL;
+ 
+ 	/* Return error if mode is not supported */
+-	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
++	if (mode & ~(FALLOC_FL_KEEP_SIZE |
++		     FALLOC_FL_PUNCH_HOLE |
++		     FALLOC_FL_NO_HIDE_STALE))
+ 		return -EOPNOTSUPP;
+ 
+ 	/* Punch hole must have keep size set */
+diff --git a/include/linux/falloc.h b/include/linux/falloc.h
+index 73e0b62..a2489ac 100644
+--- a/include/linux/falloc.h
++++ b/include/linux/falloc.h
+@@ -3,6 +3,7 @@
+ 
+ #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
+ #define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
++#define FALLOC_FL_NO_HIDE_STALE	0x04 /* default is hide stale data */
+ 
+ #ifdef __KERNEL__
+ 
