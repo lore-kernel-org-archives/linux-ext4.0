@@ -1,93 +1,56 @@
-From: Fredrick <fjohnber@zoho.com>
-Subject: Re: ext4_fallocate
-Date: Tue, 26 Jun 2012 11:05:40 -0700
-Message-ID: <4FE9F9F4.7010804@zoho.com>
-References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com>
+From: "Nelson, John R" <John_Nelson@student.uml.edu>
+Subject: RE: Extent Depth Histogram Fsck
+Date: Tue, 26 Jun 2012 18:07:10 +0000
+Message-ID: <0408C81F72528E40A0D3235A1F67FFC804A3B3@SN2PRD0202MB144.namprd02.prod.outlook.com>
+References: <0408C81F72528E40A0D3235A1F67FFC804A37F@SN2PRD0202MB144.namprd02.prod.outlook.com>,<55654AE5-17FE-44EC-B7FE-A8D5FAAB3560@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sender1.zohomail.com ([72.5.230.95]:55477 "EHLO
-	sender1.zohomail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755755Ab2FZSFp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2012 14:05:45 -0400
-In-Reply-To: <4FE9B57F.4030704@redhat.com>
+Received: from va3ehsobe006.messaging.microsoft.com ([216.32.180.16]:33037
+	"EHLO va3outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756160Ab2FZSHS convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jun 2012 14:07:18 -0400
+In-Reply-To: <55654AE5-17FE-44EC-B7FE-A8D5FAAB3560@dilger.ca>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+ok i see!
+So when there are like
+3/3/4 that means double index blocks?? How many extents can a single extent index hold in a block?
+________________________________________
+From: Andreas Dilger [adilger@dilger.ca]
+Sent: Tuesday, June 26, 2012 11:40 AM
+To: Nelson, John R
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: Extent Depth Histogram Fsck
 
-> Hi Ted,
+On 2012-06-26, at 8:34 AM, Nelson, John R wrote:
+> What does the extent depth histogram mean? Is it a measure of something?
 >
-> Has anyone made progress digging into the performance impact of running
-> without this patch? We should definitely see if there is some low
-> hanging fruit there, especially given that XFS does not seem to suffer
-> such a huge hit.
+> like mine is
 >
-> I think that we need to get a good reproducer for the workload that
-> causes the pain and start to dig into this.
 >
-> Opening this security exposure is still something that is clearly a hack
-> and best avoided if we can fix the root cause :)
->
-> Ric
->
->>
+> Extent depth histogram: 36010/81
 
-Hi Ric,
+This means that of all the extent-mapped files in the filesystem,
+36010 files have an extent tree of depth 0 (i.e. they fit inside the inode)
+81 files have an extent tree of depth 1 (i.e. there is a single index block)
 
-I had run perf stat on ext4 functions between two runs of our program
-writing data to a file for the first time and writing data to the file
-for the second time(where the extents are initialized).
-The amount of data written is same between the two runs.
+Typically, files larger than 4 * 128MB = 512MB need an index block, but if
+the maximum-sized extents cannot be allocated then an index block will be needed for smaller files.  Only if you have very large files (> 40GB),
+or a very fragmented free space would you need more than a single level
+of index blocks.
 
-left is first time
-right is second time.
-
-
-<                 42 ext4:ext4_mb_bitmap_load 
-
-<                 42 ext4:ext4_mb_buddy_bitmap_load 
-
-<                642 ext4:ext4_mb_new_inode_pa 
-
-<                645 ext4:ext4_mballoc_alloc 
-
-<              9,596 ext4:ext4_mballoc_prealloc 
-
-<             10,240 ext4:ext4_da_update_reserve_space 
-
----
- >              7,413 ext4:ext4_mark_inode_dirty 
-
-49d52
-<             10,241 ext4:ext4_allocate_blocks 
-
-51d53
-<             10,241 ext4:ext4_request_blocks 
-
-55d56
-<          1,310,720 ext4:ext4_da_reserve_space 
-
-58,60c59,60
-<          1,331,288 ext4:ext4_ext_map_blocks_enter 
-
-<          1,331,288 ext4:ext4_ext_map_blocks_exit 
-
-<          1,341,467 ext4:ext4_mark_inode_dirty 
-
----
- >          1,310,806 ext4:ext4_ext_map_blocks_enter 
-
- >          1,310,806 ext4:ext4_ext_map_blocks_exit 
+Cheers, Andreas
 
 
 
-May be the mballocs have overhead.
 
-I ll try to compare numbers on XFS during this week.
 
--Fredrick
+
 
