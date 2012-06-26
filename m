@@ -1,80 +1,88 @@
-From: Ric Wheeler <rwheeler@redhat.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
 Subject: Re: ext4_fallocate
-Date: Tue, 26 Jun 2012 15:22:01 -0400
-Message-ID: <4FEA0BD9.8060101@redhat.com>
-References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <20120626173050.GA6745@thunk.org> <4FE9FDA4.60509@redhat.com> <20120626185721.GA26669@thunk.org>
+Date: Tue, 26 Jun 2012 15:30:25 -0400
+Message-ID: <4FEA0DD1.8080403@gmail.com>
+References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <4FE9F9F4.7010804@zoho.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Fredrick <fjohnber@zoho.com>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
-To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Ric Wheeler <rwheeler@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
+	wenqing.lz@taobao.com, Eric Sandeen <sandeen@redhat.com>
+To: Fredrick <fjohnber@zoho.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25676 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752804Ab2FZTVP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jun 2012 15:21:15 -0400
-In-Reply-To: <20120626185721.GA26669@thunk.org>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:43198 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751410Ab2FZT33 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Jun 2012 15:29:29 -0400
+Received: by dady13 with SMTP id y13so319182dad.19
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2012 12:29:28 -0700 (PDT)
+In-Reply-To: <4FE9F9F4.7010804@zoho.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/26/2012 02:57 PM, Ted Ts'o wrote:
-> On Tue, Jun 26, 2012 at 02:21:24PM -0400, Ric Wheeler wrote:
->> It would be interesting to see if simply not doing the preallocation
->> would be easier and safer. Better yet, figure out how to leverage
->> trim commands to safely allow us to preallocate and not expose other
->> users' data (and not have to mark the extents as allocated but not
->> written).
-> TRIM is applicable to SSD's and enterprise storage arrays.  It's not
-> applicable HDD's.
-
-and device mapper can also support TRIM these days with the thinly provisioned 
-lun targets (although this just moves the multiple IO issues down to device 
-mapper :))
-
-We would only use it when the device supports it of course. Also note that you 
-can use WRITE_SAME on pretty much any drive (although again, it can be slow).
-
+On 06/26/2012 02:05 PM, Fredrick wrote:
 >
->> This is not a theory guy worry. I would not use any server/web
->> service that knowingly enabled this hack in a multi-user machine and
->> would not enable it for any enterprise customers.
-> Sure, but for single-user or for dedicated cluster file system server,
-> it makes sense; it's not not going to be useful for all customers,
-> sure, but for some customers it will make sense.
-
-The danger is that people use that google thing and see "ext4 performance 
-improvement" and then turn it on without understanding what they bought. Believe 
-me, I deal with that *a lot* in my day job :)
-
+>> Hi Ted,
+>>
+>> Has anyone made progress digging into the performance impact of running
+>> without this patch? We should definitely see if there is some low
+>> hanging fruit there, especially given that XFS does not seem to suffer
+>> such a huge hit.
+>>
+>> I think that we need to get a good reproducer for the workload that
+>> causes the pain and start to dig into this.
+>>
+>> Opening this security exposure is still something that is clearly a hack
+>> and best avoided if we can fix the root cause :)
+>>
+>> Ric
+>>
+>>>
 >
->> We should be very, very careful not to strip away the usefulness of
->> file system just to cater to some users.
-> A mount option or a superblock flag does not "strip away the
-> usefulness of the file system".  It makes it more useful for some use
-> cases.
+> Hi Ric,
 >
-> Your alternate proposals (preinitializing the space with zeros, using
-> trim, writing larger chunks) will work for some use cases, certainly.
-> But it's not going to be sufficient for at least some use cases, or
-> they will simply not work.
-
-I think that for the use case discussed in this thread it would probably work 
-quite well, but always worth testing of course.
-
+> I had run perf stat on ext4 functions between two runs of our program
+> writing data to a file for the first time and writing data to the file
+> for the second time(where the extents are initialized).
+> The amount of data written is same between the two runs.
 >
-> Fundamentally it sounds to me the biggest problem is that you don't
-> trust your customers, and so you're afraid people will use the
-> no-hide-stale feature if it becomes available, even if it's not needed
-> or if it's needed but you're afraid that they don't understand the
-> security tradeoffs.
+> left is first time
+> right is second time.
 >
-> 					- Ted
+>
+> <                 42 ext4:ext4_mb_bitmap_load
+> <                 42 ext4:ext4_mb_buddy_bitmap_load
+> <                642 ext4:ext4_mb_new_inode_pa
+> <                645 ext4:ext4_mballoc_alloc
+> <              9,596 ext4:ext4_mballoc_prealloc
+> <             10,240 ext4:ext4_da_update_reserve_space
+> ---
+> >              7,413 ext4:ext4_mark_inode_dirty
+> 49d52
+> <             10,241 ext4:ext4_allocate_blocks
+> 51d53
+> <             10,241 ext4:ext4_request_blocks
+> 55d56
+> <          1,310,720 ext4:ext4_da_reserve_space
+> 58,60c59,60
+> <          1,331,288 ext4:ext4_ext_map_blocks_enter
+> <          1,331,288 ext4:ext4_ext_map_blocks_exit
+> <          1,341,467 ext4:ext4_mark_inode_dirty
+> ---
+> >          1,310,806 ext4:ext4_ext_map_blocks_enter
+> >          1,310,806 ext4:ext4_ext_map_blocks_exit
+>
+>
+> May be the mballocs have overhead.
+>
+> I ll try to compare numbers on XFS during this week.
+>
+> -Fredrick
+>
 
-No Ted, we don't trust exposing other customers data in order to cover up a poor 
-design that other file systems don't suffer from.
+Thanks!  Eric is also running some tests to evaluate the impact of various 
+techniques :)
 
-Ric
-
-
+ric
 
