@@ -1,233 +1,286 @@
-From: Fredrick <fjohnber@zoho.com>
-Subject: Re: ext4_fallocate
-Date: Mon, 25 Jun 2012 18:23:29 -0700
-Message-ID: <4FE90F11.4040801@zoho.com>
-References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
-	wenqing.lz@taobao.com
-To: Theodore Ts'o <tytso@mit.edu>
+From: Tony Breeds <tony@bakeyournoodle.com>
+Subject: [PATCH 2/2] Make Multi Mount Protection (MMP) optional at configure time.
+Date: Tue, 26 Jun 2012 11:42:15 +1000
+Message-ID: <1340674935-1503-2-git-send-email-tony@bakeyournoodle.com>
+References: <1340674935-1503-1-git-send-email-tony@bakeyournoodle.com>
+To: linux-ext4 <linux-ext4@vger.kernel.org>, Ted Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sender1.zohomail.com ([72.5.230.95]:55805 "EHLO
-	sender1.zohomail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757788Ab2FZBXd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jun 2012 21:23:33 -0400
-In-Reply-To: <20120625191744.GB9688@thunk.org>
+Received: from ozlabs.org ([203.10.76.45]:34488 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757942Ab2FZBmW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2012 21:42:22 -0400
+In-Reply-To: <1340674935-1503-1-git-send-email-tony@bakeyournoodle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/25/2012 12:17 PM, Theodore Ts'o wrote:
-> On Mon, Jun 25, 2012 at 04:51:59PM +0800, Zheng Liu wrote:
->>
->> Actually I want to send a url for you from linux mailing list archive but
->> I cannot find it.  After applying this patch, you can call ioctl(2) to
->> enable expose_stale_data flag, and then when you call fallocate(2), ext4
->> create initialized extents for you.  This patch cannot be merged into
->> upstream kernel because it brings a huge security hole.
->
-> This is what we're using internally inside Google.... this allows the
-> security exposure to be restricted to those programs running with a
-> specific group id (which is better than giving programs access to
-> CAP_SYS_RAWIO).  We also require the use of a specific fallocate flag
-> so that programs have to explicitly ask for this feature.
->
-> Also note that I restrict the combination of NO_HIDE_STALE &&
-> KEEP_SIZE since it causes e2fsck to complain --- and if you're trying
-> to avoid fs metadata I/O, you want to avoid the extra i_size update
-> anyway, so it's not worth trying to make this work w/o causing e2fsck
-> complaints.
->
-> This patch is versus the v3.3 kernel (as it happens, I was just in the
-> middle of rebasing this patch from 2.6.34 :-)
->
-> 					- Ted
->
-> P.S.  It just occurred to me that there are some patches being
-> discussed that assign new fallocate flags for volatile data handling.
-> So it would probably be a good idea to move the fallocate flag
-> codepoint assignment up out of the way to avoid future conflicts.
->
-> commit 5f12f1bc2b0fb0866d52763a611b022780780f05
-> Author: Theodore Ts'o <tytso@google.com>
-> Date:   Fri Jun 22 17:19:53 2012 -0400
->
->      ext4: add an fallocate flag to mark newly allocated extents initialized
->
->      This commit adds a new flag to ext4's fallocate that allows new,
->      uninitialized extents to be marked as initialized. This flag,
->      FALLOC_FL_NO_HIDE_STALE requires that the nohide_stale_gid=<gid> mount
->      option be used when the file system is mounted, and that the user is
->      in the group <gid>.
->
->      The benefit is to a program fallocates a larger space, but then writes
->      to that space in small increments.  This option prevents ext4 from
->      having to split the unallocated extent and merge the newly initialized
->      extent with the extent to its left.  Even though this usually happens
->      in-memory, this option is useful for tight memory situations and for
->      ext4 on flash.  Note: This allows an application in ths hohide_stale
->      group to see stale data on the filesystem.
->
->      Tested: Updated xfstests g002 to test a case where
->        fallocate:no-hide-stale is not allowed.  The existing tests now pass
->        because I added a remount with a group that user root is in.
->      Rebase-Tested-v3.3: same
->
->      Effort: fs/nohide-stale
->      Origin-2.6.34-SHA1: c3099bf61be1baf94bc91c481995bb0d77f05786
->      Origin-2.6.34-SHA1: 004dd33b9ebc5d860781c3435526658cc8aa8ccb
->      Change-Id: I0d2a7f2a4cf34443269acbcedb7b7074e0055e69
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index aaaece6..ac7aa42 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1240,6 +1240,9 @@ struct ext4_sb_info {
->   	unsigned long s_mb_last_group;
->   	unsigned long s_mb_last_start;
->
-> +	/* gid that's allowed to see stale data via falloc flag. */
-> +	gid_t no_hide_stale_gid;
-> +
->   	/* stats for buddy allocator */
->   	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
->   	atomic_t s_bal_success;	/* we found long enough chunks */
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index cb99346..cc57c85 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4375,6 +4375,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->   	int retries = 0;
->   	int flags;
->   	struct ext4_map_blocks map;
-> +	struct ext4_sb_info *sbi;
->   	unsigned int credits, blkbits = inode->i_blkbits;
->
->   	/*
-> @@ -4385,12 +4386,28 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->   		return -EOPNOTSUPP;
->
->   	/* Return error if mode is not supported */
-> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> +	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
-> +		     FALLOC_FL_NO_HIDE_STALE))
-> +		return -EOPNOTSUPP;
-> +
-> +	/* The combination of NO_HIDE_STALE and KEEP_SIZE is not supported */
-> +	if ((mode & FALLOC_FL_NO_HIDE_STALE) &&
-> +	    (mode & FALLOC_FL_KEEP_SIZE))
->   		return -EOPNOTSUPP;
->
->   	if (mode & FALLOC_FL_PUNCH_HOLE)
->   		return ext4_punch_hole(file, offset, len);
->
-> +	sbi = EXT4_SB(inode->i_sb);
-> +	/* Must have RAWIO to see stale data. */
-> +	if ((mode & FALLOC_FL_NO_HIDE_STALE) &&
-> +	    !in_egroup_p(sbi->no_hide_stale_gid))
-> +		return -EACCES;
-> +
-> +	/* preallocation to directories is currently not supported */
-> +	if (S_ISDIR(inode->i_mode))
-> +		return -ENODEV;
-> +
->   	trace_ext4_fallocate_enter(inode, offset, len, mode);
->   	map.m_lblk = offset >> blkbits;
->   	/*
-> @@ -4429,6 +4446,8 @@ retry:
->   			ret = PTR_ERR(handle);
->   			break;
->   		}
-> +		if (mode & FALLOC_FL_NO_HIDE_STALE)
-> +			flags &= ~EXT4_GET_BLOCKS_UNINIT_EXT;
->   		ret = ext4_map_blocks(handle, inode, &map, flags);
->   		if (ret <= 0) {
->   #ifdef EXT4FS_DEBUG
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 5b443a8..d976ec1 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1175,6 +1175,8 @@ static int ext4_show_options(struct seq_file *seq, struct dentry *root)
->   	if (test_opt2(sb, BIG_EXT))
->   		seq_puts(seq, ",big_extent");
->   #endif
-> +	if (sbi->no_hide_stale_gid != -1)
-> +		seq_printf(seq, ",nohide_stale_gid=%u", sbi->no_hide_stale_gid);
->
->   	ext4_show_quota_options(seq, sb);
->
-> @@ -1353,6 +1355,7 @@ enum {
->   #ifdef CONFIG_EXT4_BIG_EXTENT
->   	Opt_big_extent, Opt_nobig_extent,
->   #endif
-> +	Opt_nohide_stale_gid,
->   };
->
->   static const match_table_t tokens = {
-> @@ -1432,6 +1435,7 @@ static const match_table_t tokens = {
->   	{Opt_big_extent, "big_extent"},
->   	{Opt_nobig_extent, "nobig_extent"},
->   #endif
-> +	{Opt_nohide_stale_gid, "nohide_stale_gid=%u"},
->   	{Opt_err, NULL},
->   };
->
-> @@ -1931,6 +1935,12 @@ set_qf_format:
->   				return 0;
->   			sbi->s_li_wait_mult = option;
->   			break;
-> +		case Opt_nohide_stale_gid:
-> +			if (match_int(&args[0], &option))
-> +				return 0;
-> +			/* -1 for disabled, otherwise it's valid. */
-> +			sbi->no_hide_stale_gid = option;
-> +			break;
->   		case Opt_noinit_itable:
->   			clear_opt(sb, INIT_INODE_TABLE);
->   			break;
-> @@ -3274,6 +3284,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->   #ifdef CONFIG_EXT4_BIG_EXTENT
->   	sbi->s_min_big_ext_size = EXT4_DEFAULT_MIN_BIG_EXT_SIZE;
->   #endif
-> +	/* Default to having no-hide-stale disabled. */
-> +	sbi->no_hide_stale_gid = -1;
->
->   	if ((def_mount_opts & EXT4_DEFM_NOBARRIER) == 0)
->   		set_opt(sb, BARRIER);
-> diff --git a/fs/open.c b/fs/open.c
-> index 201431a..4edc0cd 100644
-> --- a/fs/open.c
-> +++ b/fs/open.c
-> @@ -224,7 +224,9 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->   		return -EINVAL;
->
->   	/* Return error if mode is not supported */
-> -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> +	if (mode & ~(FALLOC_FL_KEEP_SIZE |
-> +		     FALLOC_FL_PUNCH_HOLE |
-> +		     FALLOC_FL_NO_HIDE_STALE))
->   		return -EOPNOTSUPP;
->
->   	/* Punch hole must have keep size set */
-> diff --git a/include/linux/falloc.h b/include/linux/falloc.h
-> index 73e0b62..a2489ac 100644
-> --- a/include/linux/falloc.h
-> +++ b/include/linux/falloc.h
-> @@ -3,6 +3,7 @@
->
->   #define FALLOC_FL_KEEP_SIZE	0x01 /* default is extend size */
->   #define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
-> +#define FALLOC_FL_NO_HIDE_STALE	0x04 /* default is hide stale data */
->
->   #ifdef __KERNEL__
->
->
+Add --{en,dis}able-mmp options for configure, default to enabled.
+Also make tools fail gracefully in the event of encoutering a filesystem
+with MMP enabled when the tools were compiled with --disable-mmp
 
-Thanks Ted. This patch is very nice
-and addresses the comments of Andreas
-of using a mount option.
+Signed-off-by: Tony Breeds <tony@bakeyournoodle.com>
+---
+ configure.in         |   17 +++++++++++++++++
+ debugfs/debugfs.c    |    5 +++++
+ debugfs/set_fields.c |    5 +++++
+ lib/config.h.in      |    3 +++
+ lib/ext2fs/ext2fs.h  |    8 +++++++-
+ lib/ext2fs/mmp.c     |   32 ++++++++++++++++++++++++++++++++
+ 6 files changed, 69 insertions(+), 1 deletions(-)
 
--Fredrick
-
+diff --git a/configure.in b/configure.in
+index 7373e8e..a02234d 100644
+--- a/configure.in
++++ b/configure.in
+@@ -746,6 +746,23 @@ AC_MSG_RESULT([Building uuidd by default])
+ )
+ AC_SUBST(UUIDD_CMT)
+ dnl
++dnl handle --disable-mmp
++dnl
++AH_TEMPLATE([CONFIG_MMP], [Define to 1 to enable mmp support])
++AC_ARG_ENABLE([mmp],
++[  --disable-mmp   	  disable support mmp, Multi Mount Protection],
++if test "$enableval" = "no"
++then
++	AC_MSG_RESULT([Disabling mmp support])
++else
++	AC_MSG_RESULT([Enabling mmp support])
++	AC_DEFINE(CONFIG_MMP, 1)
++fi
++,
++AC_MSG_RESULT([Enabling mmp support by default])
++AC_DEFINE(CONFIG_MMP, 1)
++)
++dnl
+ dnl
+ dnl
+ MAKEFILE_LIBRARY=$srcdir/lib/Makefile.library
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index cf80bd0..0c27b1e 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -2194,6 +2194,7 @@ void do_punch(int argc, char *argv[])
+ 
+ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
+ {
++#if CONFIG_MMP
+ 	struct ext2_super_block *sb;
+ 	struct mmp_struct *mmp_s;
+ 	time_t t;
+@@ -2237,6 +2238,10 @@ void do_dump_mmp(int argc EXT2FS_ATTR((unused)), char *argv[])
+ 	fprintf(stdout, "node_name: %s\n", mmp_s->mmp_nodename);
+ 	fprintf(stdout, "device_name: %s\n", mmp_s->mmp_bdevname);
+ 	fprintf(stdout, "magic: 0x%x\n", mmp_s->mmp_magic);
++#else
++	fprintf(stdout, "MMP is unsupported, please recompile with "
++	                "--enable-mmp\n");
++#endif
+ }
+ 
+ static int source_file(const char *cmd_file, int sci_idx)
+diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
+index 08bfd8d..a42faa2 100644
+--- a/debugfs/set_fields.c
++++ b/debugfs/set_fields.c
+@@ -765,6 +765,7 @@ static errcode_t parse_mmp_clear(struct field_set_info *info,
+ 
+ void do_set_mmp_value(int argc, char *argv[])
+ {
++#ifdef CONFIG_MMP
+ 	const char *usage = "<field> <value>\n"
+ 		"\t\"set_mmp_value -l\" will list the names of "
+ 		"MMP fields\n\twhich can be set.";
+@@ -819,5 +820,9 @@ void do_set_mmp_value(int argc, char *argv[])
+ 				 &set_mmp);
+ 		*mmp_s = set_mmp;
+ 	}
++#else
++	fprintf(stdout, "MMP is unsupported, please recompile with "
++	                "--enable-mmp\n");
++#endif
+ }
+ 
+diff --git a/lib/config.h.in b/lib/config.h.in
+index 90e9743..52c3897 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -12,6 +12,9 @@
+ /* Define to 1 if debugging ext3/4 journal code */
+ #undef CONFIG_JBD_DEBUG
+ 
++/* Define to 1 to enable mmp support */
++#undef CONFIG_MMP
++
+ /* Define to 1 to enable quota support */
+ #undef CONFIG_QUOTA
+ 
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 7be148e..542b20f 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -559,6 +559,12 @@ typedef struct ext2_icount *ext2_icount_t;
+ #define EXT2_LIB_INCOMPAT_COMPRESSION	(0)
+ #endif
+ 
++#ifdef CONFIG_MMP
++#define EXT4_LIB_INCOMPAT_MMP		EXT4_FEATURE_INCOMPAT_MMP
++#else
++#define EXT4_LIB_INCOMPAT_MMP		(0)
++#endif
++
+ #define EXT2_LIB_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE|\
+ 					 EXT2_LIB_INCOMPAT_COMPRESSION|\
+ 					 EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|\
+@@ -566,7 +572,7 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
+ 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
+-					 EXT4_FEATURE_INCOMPAT_MMP|\
++					 EXT4_LIB_INCOMPAT_MMP|\
+ 					 EXT4_FEATURE_INCOMPAT_64BIT)
+ #ifdef CONFIG_QUOTA
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
+index bb3772d..c76aefa 100644
+--- a/lib/ext2fs/mmp.c
++++ b/lib/ext2fs/mmp.c
+@@ -33,6 +33,7 @@
+ 
+ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ {
++#ifdef CONFIG_MMP
+ 	struct mmp_struct *mmp_cmp;
+ 	errcode_t retval = 0;
+ 
+@@ -88,10 +89,14 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ 
+ out:
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ {
++#ifdef CONFIG_MMP
+ 	struct mmp_struct *mmp_s = buf;
+ 	struct timeval tv;
+ 	errcode_t retval = 0;
+@@ -119,6 +124,9 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ 	/* Make sure the block gets to disk quickly */
+ 	io_channel_flush(fs->io);
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ #ifdef HAVE_SRANDOM
+@@ -128,6 +136,7 @@ errcode_t ext2fs_mmp_write(ext2_filsys fs, blk64_t mmp_blk, void *buf)
+ 
+ unsigned ext2fs_mmp_new_seq()
+ {
++#ifdef CONFIG_MMP
+ 	unsigned new_seq;
+ 	struct timeval tv;
+ 
+@@ -144,6 +153,9 @@ unsigned ext2fs_mmp_new_seq()
+ 	} while (new_seq > EXT4_MMP_SEQ_MAX);
+ 
+ 	return new_seq;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ static errcode_t ext2fs_mmp_reset(ext2_filsys fs)
+@@ -182,6 +194,7 @@ out:
+ 
+ errcode_t ext2fs_mmp_clear(ext2_filsys fs)
+ {
++#ifdef CONFIG_MMP
+ 	errcode_t retval = 0;
+ 
+ 	if (!(fs->flags & EXT2_FLAG_RW))
+@@ -190,10 +203,14 @@ errcode_t ext2fs_mmp_clear(ext2_filsys fs)
+ 	retval = ext2fs_mmp_reset(fs);
+ 
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ errcode_t ext2fs_mmp_init(ext2_filsys fs)
+ {
++#ifdef CONFIG_MMP
+ 	struct ext2_super_block *sb = fs->super;
+ 	blk64_t mmp_block;
+ 	errcode_t retval;
+@@ -222,6 +239,9 @@ errcode_t ext2fs_mmp_init(ext2_filsys fs)
+ 
+ out:
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ /*
+@@ -229,6 +249,7 @@ out:
+  */
+ errcode_t ext2fs_mmp_start(ext2_filsys fs)
+ {
++#ifdef CONFIG_MMP
+ 	struct mmp_struct *mmp_s;
+ 	unsigned seq;
+ 	unsigned int mmp_check_interval;
+@@ -318,6 +339,9 @@ clean_seq:
+ 
+ mmp_error:
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ /*
+@@ -328,6 +352,7 @@ mmp_error:
+  */
+ errcode_t ext2fs_mmp_stop(ext2_filsys fs)
+ {
++#ifdef CONFIG_MMP
+ 	struct mmp_struct *mmp, *mmp_cmp;
+ 	errcode_t retval = 0;
+ 
+@@ -357,6 +382,9 @@ mmp_error:
+ 	}
+ 
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+ 
+ #define EXT2_MIN_MMP_UPDATE_INTERVAL 60
+@@ -366,6 +394,7 @@ mmp_error:
+  */
+ errcode_t ext2fs_mmp_update(ext2_filsys fs)
+ {
++#ifdef CONFIG_MMP
+ 	struct mmp_struct *mmp, *mmp_cmp;
+ 	struct timeval tv;
+ 	errcode_t retval = 0;
+@@ -394,4 +423,7 @@ errcode_t ext2fs_mmp_update(ext2_filsys fs)
+ 
+ mmp_error:
+ 	return retval;
++#else
++	return EXT2_ET_OP_NOT_SUPPORTED;
++#endif
+ }
+-- 
+1.7.7.6
 
