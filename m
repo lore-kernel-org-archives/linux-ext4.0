@@ -1,47 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Use s_csum_seed instead of i_csum_seed for xattr
- block csum.
-Date: Mon, 25 Jun 2012 22:23:00 -0400
-Message-ID: <20120626022300.GB14329@thunk.org>
-References: <1340547236-2838-1-git-send-email-tm@tao.ma>
+Subject: Re: Minimal configuration for e2fsprogs
+Date: Mon, 25 Jun 2012 22:33:31 -0400
+Message-ID: <20120626023331.GC14329@thunk.org>
+References: <20120615042421.GA7021@thor.bakeyournoodle.com>
+ <20120616000825.GE7363@thunk.org>
+ <20120618055836.GA30557@thor.bakeyournoodle.com>
+ <20120618171257.GA16017@thunk.org>
+ <20120626021046.GA26200@thor.bakeyournoodle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Darrick J. Wong" <djwong@us.ibm.com>
-To: Tao Ma <tm@tao.ma>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52694 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52696 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757909Ab2FZCXK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Jun 2012 22:23:10 -0400
+	id S1753684Ab2FZCde (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jun 2012 22:33:34 -0400
 Content-Disposition: inline
-In-Reply-To: <1340547236-2838-1-git-send-email-tm@tao.ma>
+In-Reply-To: <20120626021046.GA26200@thor.bakeyournoodle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 24, 2012 at 10:13:56PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Tue, Jun 26, 2012 at 12:10:47PM +1000, Tony Breeds wrote:
 > 
-> In xattr block operation, we use h_refcount to indicate whether the
-> xattr block is shared among many inodes. And xattr block csum uses
-> s_csum_seed if it is shared and i_csum_seed if it belongs to
-> one inode. But this has a problem. So consider the block is shared
-> first bewteen inode A and B, and B has some xattr update and CoW
-> the xattr block. When it updates the *old* xattr block(because
-> of the h_refcount change) and calls ext4_xattr_release_block, we
-> has no idea that inode A is the real owner of the *old* xattr
-> block and we can't use the i_csum_seed of inode A either in xattr
-> block csum calculation. And I don't think we have an easy way to
-> find inode A.
+> I was thinking that this was the very sinmple matter of making
+> BMAP_STATS conditional rather that have it always #defined.  Is that
+> what you were thinking?
 > 
-> So this patch just removes the tricky i_csum_seed and we now uses
-> s_csum_seed every time for the xattr block csum. The corresponding
-> patch for the e2fsprogs will be sent in another patch.
+> Also what's the correct way to get BMAP_STATS_OPS defined?
 
-This makes sense to me; it's an on-disk format change, but we haven't
-released the e2fsprogs patches in anything other than the proposed
-updates branch of the e2fsprogs repo, so it seems reasonable to make
-this change as there's really no other way to fix this.
+Yeah, I was thinking to simply rename BMAP_STATS and BMAP_STATS_OPS to
+ENABLE_BMAP_STATS and ENABLE_BMAP_STATS_OPS, and then handle them via
+an AC_ARG_ENABLE much like --enable-compression is handled (with the
+first enabled by default, so --disable-bmap-stats to the configure
+script would disable it, while the much more heavier weight from a
+performance standpoint BMAP_STATS_OPS would be disabled by default, so
+the user would have to specify --enable-bmap-stats-ops to the
+configure script to enable it.)
 
-Darrick, any objections to this change?
+Regards,
 
 						- Ted
