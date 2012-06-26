@@ -1,110 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43821] New: Possible ext4 bug
-Date: Tue, 26 Jun 2012 06:32:29 +0000 (UTC)
-Message-ID: <bug-43821-13602@https.bugzilla.kernel.org/>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: Kernel 3.3.8 breaks accidental ext3 mount of extended partition
+Date: Tue, 26 Jun 2012 09:02:27 -0400
+Message-ID: <x49ehp2tee4.fsf@segfault.boston.devel.redhat.com>
+References: <4FDEC3C2.4060909@secunet.com>
+	<20120625113457.GA1289@amd.home.annexia.org>
+	<x49r4t3z6s4.fsf@segfault.boston.devel.redhat.com>
+	<4FE951A0.8040900@secunet.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Richard W.M. Jones" <rjones@redhat.com>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Torsten Hilbrich <torsten.hilbrich@secunet.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:48661 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:18763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752276Ab2FZGcd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jun 2012 02:32:33 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5AB2B20252
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2012 06:32:32 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 92ECF2020D
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2012 06:32:30 +0000 (UTC)
+	id S1756430Ab2FZNCb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jun 2012 09:02:31 -0400
+In-Reply-To: <4FE951A0.8040900@secunet.com> (Torsten Hilbrich's message of
+	"Tue, 26 Jun 2012 08:07:28 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43821
+Torsten Hilbrich <torsten.hilbrich@secunet.com> writes:
 
-           Summary: Possible ext4 bug
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.2.12-gentoo
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: killian.de.volder@megasoft.be
-        Regression: No
+> Am 25.06.2012 18:38, schrieb Jeff Moyer:
+>> "Richard W.M. Jones" <rjones@redhat.com> writes:
+>> 
+>>> On Mon, Jun 18, 2012 at 07:59:30AM +0200, Torsten Hilbrich wrote:
+>>>> Hello,
+>>>>
+>>>> a software that tries to mount each existing partition as ext3 file system started to fail when updating from v3.3.7 to v3.3.8.
+>>>>
+>>>> The applications then hangs-up in the mount syscall, here is a snapshot of its stack at this moment:
+>>>
+>>> We just ran into what we think is the same problem.
+>>>
+>>> Note that ext4 fails like this for any 1024 byte sized filesystem (of
+>>> zeroes) that you try to mount.  It's really nothing to do with
+>>> extended partitions.
+>>>
+>>> Here is a very simple reproducer + stack trace:
+>>>
+>>>   https://bugzilla.redhat.com/show_bug.cgi?id=835019#c4
+>>>
+>>> I will try out the patch suggested later on in this thread.
+>> 
+>> Please try the attached patch instead.  The patch I had originally
+>> posted for this allowed marking the first buffer beyond EOD as
+>> uptodate.  This isn't correct.  The patch I've attached below fixes the
+>> infinite loop in __getblk_slow.
+>
+> This patch also fixes the ext3 mount problem on extented partition.
 
+Great news, thanks for testing, guys!  I'll follow up with another patch
+posting this morning.
 
-My computer has been running fine for a while with this kernel, but suddenly
-this happened (once).
-
-If more info is required, please ask, I'll do my best to provide all you need.
-
-BUG: unable to handle kernel NULL pointer dereference at           (null)
-IP: [<ffffffff811e986f>] ext4_mb_good_group+0x5f/0x130
-PGD 21ee03067 PUD 21ee09067 PMD 0 
-Oops: 0000 [#1] SMP 
-CPU 1 
-Modules linked in: nvidia(P) snd_emu10k1 snd_rawmidi snd_ac97_codec ac97_bus
-snd_pcm snd_seq_device snd_timer snd_page_alloc snd_util_mem snd_hwdep snd
-soundcore [last unloaded: nvidia]
-
-Pid: 3119, comm: flush-252:2 Tainted: P           O 3.2.12-gentoo #2 Gigabyte
-Technology Co., Ltd. GA-MA790X-UD3P/GA-MA790X-UD3P
-RIP: 0010:[<ffffffff811e986f>]  [<ffffffff811e986f>]
-ext4_mb_good_group+0x5f/0x130
-RSP: 0018:ffff8802230016d0  EFLAGS: 00010293
-RAX: ffff880222170c00 RBX: 00000000000003f0 RCX: 0000000000000070
-RDX: 0000000000000000 RSI: ffff880225106000 RDI: ffff880226116400
-RBP: ffff880224a6a088 R08: 0000000000000007 R09: 0000000000002238
-R10: 0000000000000003 R11: 0000000000100000 R12: 0000000000000000
-R13: 0000000000000000 R14: 00000000000003f0 R15: 0000000000000001
-FS:  00007fdc09923720(0000) GS:ffff88022fc80000(0000) knlGS:00000000f6f21b70
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000000 CR3: 0000000222305000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process flush-252:2 (pid: 3119, threadinfo ffff880223000000, task
-ffff880223f74500)
-Stack:
- 0000000000011200 ffff880224a6a088 00000000000003c0 ffff880224a6a088
- 0000000000000000 00000000000003c0 ffff880226116400 ffffffff811ebd90
- 0000000000000086 ffffffff81051484 ffff880226114400 0000000000000000
-Call Trace:
- [<ffffffff811ebd90>] ? ext4_mb_regular_allocator+0x170/0x3c0
- [<ffffffff81051484>] ? gart_map_sg+0x404/0x440
- [<ffffffff811ed5aa>] ? ext4_mb_new_blocks+0x2ea/0x3e0
- [<ffffffff811f1eda>] ? ext4_alloc_branch+0x3aa/0x5a0
- [<ffffffff811f1b07>] ? ext4_get_branch+0x107/0x130
- [<ffffffff811f2b27>] ? ext4_ind_map_blocks+0x247/0x620
- [<ffffffff811cb53d>] ? ext4_map_blocks+0xed/0x2c0
- [<ffffffff811cf435>] ? mpage_da_map_and_submit+0xc5/0x470
- [<ffffffff811d9998>] ? ext4_journal_start_sb+0x68/0x160
- [<ffffffff811cfeab>] ? ext4_da_writepages+0x28b/0x470
- [<ffffffff8112dd6b>] ? writeback_single_inode+0x16b/0x350
- [<ffffffff8112e3b5>] ? writeback_sb_inodes+0x1e5/0x290
- [<ffffffff8112e4f6>] ? __writeback_inodes_wb+0x96/0xc0
- [<ffffffff8112e72b>] ? wb_writeback+0x20b/0x220
- [<ffffffff811229b1>] ? get_nr_inodes+0x41/0x60
- [<ffffffff8112eaca>] ? wb_do_writeback+0x1aa/0x1c0
- [<ffffffff8112eb62>] ? bdi_writeback_thread+0x82/0x150
- [<ffffffff8112eae0>] ? wb_do_writeback+0x1c0/0x1c0
- [<ffffffff8112eae0>] ? wb_do_writeback+0x1c0/0x1c0
- [<ffffffff81097146>] ? kthread+0x96/0xa0
- [<ffffffff8165cb34>] ? kernel_thread_helper+0x4/0x10
- [<ffffffff810970b0>] ? kthread_worker_fn+0x120/0x120
- [<ffffffff8165cb30>] ? gs_change+0xb/0xb
-Code: 28 02 00 00 44 8b a0 e0 02 00 00 41 d3 e8 48 8b 48 38 45 89 c0 4a 8b 04
-c6 48 ff c9 21 d9 83 fa 03 4c 8b 2c c8 0f 87 c8 00 00 00 <49> 8b 45 00 a8 01 75
-61 41 8b 45 14 41 8b 4d 18 85 c0 74 6d 85 
-RIP  [<ffffffff811e986f>] ext4_mb_good_group+0x5f/0x130
- RSP <ffff8802230016d0>
-CR2: 0000000000000000
----[ end trace 1e3ba02eddf7210a ]---
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Cheers,
+Jeff
