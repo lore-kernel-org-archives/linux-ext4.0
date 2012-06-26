@@ -1,55 +1,31 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] filefrag: Fix segfault on virtual fs
-Date: Tue, 26 Jun 2012 09:59:08 -0400
-Message-ID: <4FE9C02C.8040703@redhat.com>
+From: "Nelson, John R" <John_Nelson@student.uml.edu>
+Subject: Extent Depth Histogram Fsck
+Date: Tue, 26 Jun 2012 14:34:12 +0000
+Message-ID: <0408C81F72528E40A0D3235A1F67FFC804A37F@SN2PRD0202MB144.namprd02.prod.outlook.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: maxnet@onlinehome.de
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57089 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751310Ab2FZN7W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jun 2012 09:59:22 -0400
+Received: from tx2ehsobe005.messaging.microsoft.com ([65.55.88.15]:18993 "EHLO
+	tx2outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756863Ab2FZOeT convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Jun 2012 10:34:19 -0400
+Received: from mail87-tx2 (localhost [127.0.0.1])	by mail87-tx2-R.bigfish.com
+ (Postfix) with ESMTP id 34CC1420097	for <linux-ext4@vger.kernel.org>; Tue, 26
+ Jun 2012 14:32:37 +0000 (UTC)
+Received: from TX2EHSMHS014.bigfish.com (unknown [10.9.14.254])	by
+ mail87-tx2.bigfish.com (Postfix) with ESMTP id 595B6A0046	for
+ <linux-ext4@vger.kernel.org>; Tue, 26 Jun 2012 14:32:35 +0000 (UTC)
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-filefrag on a virtual fs like proc segfaults:
+What does the extent depth histogram mean? Is it a measure of something?
 
-# filefrag /proc/filesystems 
-Floating point exception
+like mine is 
 
-because stat.f_blocks is 0, so the calculation of cylgroups is 0,
-which leads to a divide by 0 when calculating expected extents.
 
-Since it's only used for ext2 filesystems anyway, just move
-the calculation of expected under "if (is_ext2)" to fix this.
-
-Reported-by: Max Beikirch <maxnet@onlinehome.de>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 0583e91..b6e7d62 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -365,11 +366,12 @@ static void frag_report(const char *filename)
- 	else
- 		printf("%s: %d extents found", filename, num_extents);
- 	/* count, and thus expected, only set for indirect FIBMAP'd files */
--	expected = (count/((bs*8)-(fsinfo.f_files/8/cylgroups)-3))+1;
--	if (is_ext2 && expected && expected < num_extents)
--		printf(", perfection would be %d extent%s\n", expected,
--			(expected>1) ? "s" : "");
--	else
-+	if (is_ext2) {
-+		expected = (count/((bs*8)-(fsinfo.f_files/8/cylgroups)-3))+1;
-+		if (expected && expected < num_extents)
-+			printf(", perfection would be %d extent%s\n", expected,
-+				(expected>1) ? "s" : "");
-+	} else
- 		fputc('\n', stdout);
- 	close(fd);
- 	once = 0;
+Extent depth histogram: 36010/81
 
