@@ -1,74 +1,114 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4_fallocate
-Date: Wed, 27 Jun 2012 11:14:00 -0400
-Message-ID: <4FEB2338.9080008@redhat.com>
-References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: cleanup the confused goto label
+Date: Wed, 27 Jun 2012 18:29:55 +0200
+Message-ID: <20120627162955.GD5387@quack.suse.cz>
+References: <1340506303-31723-1-git-send-email-gaowanlong@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Fredrick <fjohnber@zoho.com>, Ric Wheeler <rwheeler@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
-To: Ric Wheeler <ricwheeler@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Wanlong Gao <gaowanlong@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25082 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:42117 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757016Ab2F0POM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jun 2012 11:14:12 -0400
-In-Reply-To: <4FEA1F18.6010206@redhat.com>
+	id S1752330Ab2F0Q35 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jun 2012 12:29:57 -0400
+Content-Disposition: inline
+In-Reply-To: <1340506303-31723-1-git-send-email-gaowanlong@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/26/12 4:44 PM, Eric Sandeen wrote:
-> On 6/26/12 3:57 PM, Eric Sandeen wrote:
->> On 6/26/12 3:30 PM, Ric Wheeler wrote:
+On Sun 24-06-12 10:51:43, Wanlong Gao wrote:
+> Cleanup the confused goto label in ext2_fill_super.
+> 
+> Signed-off-by: Wanlong Gao <gaowanlong@cn.fujitsu.com>
+> ---
+>  fs/ext2/super.c | 22 +++++++++++-----------
+>  1 file changed, 11 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index b3621cb..301379d 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -771,14 +771,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  	err = -ENOMEM;
+>  	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+>  	if (!sbi)
+> -		goto failed_unlock;
+> +		goto failed;
+  This change is OK...
 
-...
+>  
+>  	sbi->s_blockgroup_lock =
+>  		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
+> -	if (!sbi->s_blockgroup_lock) {
+> -		kfree(sbi);
+> -		goto failed_unlock;
+> -	}
+> +	if (!sbi->s_blockgroup_lock)
+> +		goto failed_sbi;
+> +
+  ... but this and all the changes below really look like an unnecessary
+code churn. So please just submit that one change. Thanks.
 
->> I tried running this fio recipe on v3.3, which I think does a decent job of
->> emulating the situation (fallocate 1G, do random 1M writes into it, with
->> fsyncs after each):
->>
->> [test]
->> filename=testfile
->> rw=randwrite
->> size=1g
->> filesize=1g
->> bs=1024k
->> ioengine=sync
->> fallocate=1
->> fsync=1
+										Honza
 
-
-I realized the kernel I tested on had a lot of debugging bells & whistles turned on.  For a more performance-configured v3.3 kernel, I see much less impact, more or less negligible:
-
-unwritten conversion on ext4:
-
-  WRITE: io=1024.0MB, aggrb=23077KB/s, minb=23631KB/s, maxb=23631KB/s, mint=45437msec, maxt=45437msec
-  WRITE: io=1024.0MB, aggrb=23040KB/s, minb=23593KB/s, maxb=23593KB/s, mint=45511msec, maxt=45511msec
-  WRITE: io=1024.0MB, aggrb=23011KB/s, minb=23564KB/s, maxb=23564KB/s, mint=45567msec, maxt=45567msec
-
-overwrites on ext4:
-
-  WRITE: io=1024.0MB, aggrb=23046KB/s, minb=23599KB/s, maxb=23599KB/s, mint=45499msec, maxt=45499msec
-  WRITE: io=1024.0MB, aggrb=23222KB/s, minb=23780KB/s, maxb=23780KB/s, mint=45153msec, maxt=45153msec
-  WRITE: io=1024.0MB, aggrb=23031KB/s, minb=23584KB/s, maxb=23584KB/s, mint=45528msec, maxt=45528msec
-
-
-So I guess it's interesting information; the debug kernel showed a much bigger difference; the performance-config'd kernel showed almost no difference.
-
-FWIW, on this same kernel,
-
-unwritten conversion on xfs:
-
-  WRITE: io=1024.0MB, aggrb=28409KB/s, minb=29091KB/s, maxb=29091KB/s, mint=36909msec, maxt=36909msec
-  WRITE: io=1024.0MB, aggrb=28372KB/s, minb=29053KB/s, maxb=29053KB/s, mint=36958msec, maxt=36958msec
-  WRITE: io=1024.0MB, aggrb=28406KB/s, minb=29088KB/s, maxb=29088KB/s, mint=36913msec, maxt=36913msec
-
-overwrites on xfs:
-
-  WRITE: io=1024.0MB, aggrb=28268KB/s, minb=28946KB/s, maxb=28946KB/s, mint=37094msec, maxt=37094msec
-  WRITE: io=1024.0MB, aggrb=28316KB/s, minb=28995KB/s, maxb=28995KB/s, mint=37031msec, maxt=37031msec
-  WRITE: io=1024.0MB, aggrb=28576KB/s, minb=29262KB/s, maxb=29262KB/s, mint=36694msec, maxt=36694msec
-
--Eric
+>  	sb->s_fs_info = sbi;
+>  	sbi->s_sb_block = sb_block;
+>  
+> @@ -794,7 +793,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
+>  	if (!blocksize) {
+>  		ext2_msg(sb, KERN_ERR, "error: unable to set blocksize");
+> -		goto failed_sbi;
+> +		goto failed_bg_lock;
+>  	}
+>  
+>  	/*
+> @@ -810,7 +809,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  
+>  	if (!(bh = sb_bread(sb, logic_sb_block))) {
+>  		ext2_msg(sb, KERN_ERR, "error: unable to read superblock");
+> -		goto failed_sbi;
+> +		goto failed_bg_lock;
+>  	}
+>  	/*
+>  	 * Note: s_es must be initialized as soon as possible because
+> @@ -905,7 +904,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  		if (!sb_set_blocksize(sb, blocksize)) {
+>  			ext2_msg(sb, KERN_ERR,
+>  				"error: bad blocksize %d", blocksize);
+> -			goto failed_sbi;
+> +			goto failed_bg_lock;
+>  		}
+>  
+>  		logic_sb_block = (sb_block*BLOCK_SIZE) / blocksize;
+> @@ -914,7 +913,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+>  		if(!bh) {
+>  			ext2_msg(sb, KERN_ERR, "error: couldn't read"
+>  				"superblock on 2nd try");
+> -			goto failed_sbi;
+> +			goto failed_bg_lock;
+>  		}
+>  		es = (struct ext2_super_block *) (((char *)bh->b_data) + offset);
+>  		sbi->s_es = es;
+> @@ -1126,11 +1125,12 @@ failed_mount_group_desc:
+>  	kfree(sbi->s_debts);
+>  failed_mount:
+>  	brelse(bh);
+> -failed_sbi:
+> +failed_bg_lock:
+>  	sb->s_fs_info = NULL;
+>  	kfree(sbi->s_blockgroup_lock);
+> +failed_sbi:
+>  	kfree(sbi);
+> -failed_unlock:
+> +failed:
+>  	return ret;
+>  }
+>  
+> -- 
+> 1.7.11.rc0
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
