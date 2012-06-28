@@ -1,133 +1,142 @@
-From: Tony Breeds <tony@bakeyournoodle.com>
-Subject: Re: Minimal configuration for e2fsprogs
-Date: Thu, 28 Jun 2012 12:43:56 +1000
-Message-ID: <20120628024356.GB17989@thor.bakeyournoodle.com>
-References: <20120615042421.GA7021@thor.bakeyournoodle.com>
- <20120627112117.GA15231@thor.bakeyournoodle.com>
- <20120627125443.GA32356@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4
+ filesystem
+Date: Thu, 28 Jun 2012 12:16:55 +0200
+Message-ID: <20120628101655.GA17515@quack.suse.cz>
+References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org>
+ <1340269733-25922-4-git-send-email-dmonakhov@openvz.org>
+ <20120622030753.GU19223@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="qDbXVdCdHGoSgWSk"
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:40020 "EHLO ozlabs.org"
+Received: from cantor2.suse.de ([195.135.220.15]:57033 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753785Ab2F1CoA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jun 2012 22:44:00 -0400
+	id S1755979Ab2F1KQ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Jun 2012 06:16:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20120627125443.GA32356@thunk.org>
+In-Reply-To: <20120622030753.GU19223@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri 22-06-12 13:07:53, Dave Chinner wrote:
+> On Thu, Jun 21, 2012 at 01:08:51PM +0400, Dmitry Monakhov wrote:
+> > * Abstract
+> >   A subtree of a directory tree T is a tree consisting of a directory
+> >   (the subtree root) in T and all of its descendants in T.
+> > 
+> >   *NOTE*: User is allowed to break pure subtree hierarchy via manual
+> >           id manipulation.
+> > 
+> >   Project subtrees assumptions:
+> >   (1) Each inode has an id. This id is persistently stored inside
+> >       inode (xattr, usually inside ibody)
+> >   (2) Project id is inherent from parent directory
+> 
+> You are mashing two different concepts into one, and naming it in a
+> manner guaranteed to create confusion with all the people already
+> using project quotas on XFS. You're implementing subtree quotas, not
+> project quotas.
+> 
+> >   This feature is similar to project-id in XFS.  One may assign
+> >   some id to a subtree. Each entry from the subtree may be
+> >   accounted in directory project quota. Will appear in later
+> >   patches.
+> 
+> As implied above, project quotas ID in XFS are not subtree quotas.
+> They are used to implement project quotas, not subtree quotas.
+> subtree quotas are a userspace management construction using a
+> subset of project quota infrastructure. i.e. the inheritance of
+> project IDs in XFS and the restriction of operations to within
+> subtrees is not a function of project quotas - it's a separately
+> managed feature that was added to support the functioanlity needed
+> for subtree quotas.
+> 
+> ISTR raising this objection last time you posted this patch set -
+> either you implement project quotas as they exist in XFS and handle
+> subtree quotas as a constrainted set of project quota functionality
+> or you need to drop all references to "project quotas" and call this
+> something like sub-tree quotas that uses subtree IDs.
+  Frankly, I fail to see the difference between XFS project quotas and how
+Dmitry implemented his variant of quotas. He associated additional ID with
+each inode and that ID can have quota limits. This seems pretty much like
+what XFS project quotas do but maybe I'm missing something.
 
---qDbXVdCdHGoSgWSk
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I agree that his changelogs somewhat suggest that he had only subtrees in
+mind but the code does not really depend on that AFAICS. The only
+difference I can see is that in XFS project ID is inherited only if
+XFS_DIFLAG_PROJINHERIT is set and that is inherited by default but can be
+manipulated from userspace. But that looks like a minor thing.
 
-On Wed, Jun 27, 2012 at 08:54:43AM -0400, Theodore Ts'o wrote:
-=20
-> Well, rb_insert_extent() isn't returning an error; it's returning
-> whether or not it needed to insert an extent or not.  And the bigger
-> problem is there's no way to return an error all the way up the
-> callchain, since it ultimately gets called by functions like
-> ext2fs_mark_block_bitmap() which never contemplated that the function
-> might fail.
+> > * Disk layout
+> >   Project id is stored on disk inside xattr usually inside ibody.
+> >   Xattr is used only as a data storage, It has not user visible xattr
+> >   interface.
+> 
+> If you've got enough xattrs on the inode, then it will end up out of
+> line and performance is going to suck - every time you write to a
+> cold file you now need two IOs - one to read the extent list, and
+> one to read the xattrs to get the project ID....
+> 
+> > * User interface
+> >   Project id is accessible via generic xattr interface "system.project_id"
+> 
+> Which means it is an incompatible with XFS. What purpose does this
+> serve except to confuse people? Why not a generic set/get project ID
+> quotactl/ioctl? That's much easier for applications to use compared
+> to xattrs, and far easier to support different implementations
+> across filesystems. The way the project ID is stored in ext4 should
+> not define the API.
+> 
+> Indeed, an ioctl/quotactl style interface matches the existing quota
+> interface, so it's much more natural to use a similar API to one
+> already used for quota manipulation...
+  I'm kind of undecided here - xattrs have the disadvantages you wrote
+above but also some advantages like that backup tools know about them, you
+can manipulate them with setxattr, getxattr, etc.
 
-Okay.  I shoudl have read more carefully.
-=20
-> So there really is no way to return an error at this point, and if you
-> fail allocating memory, we're kind of doomed anyway.  We could replace
-> this with an abort(), but there's really not much else we can do here.
->=20
-> I suppose, more generally, we could add a new callback which gets
-> called on memory allocation failures; although in practice, the place
-> where we are most likely to run into trouble is e2fsck, and we already
-> have sufficient debugging code there thanks to e2fsck/sigcatcher.c.
-> So maybe just using an abort() is the best approach for now.
+>From kernel POV I agree that for XFS it's a bit ugly to fake the project
+quota xattr though...
 
-Okay so I think you want somethign like:
----
-diff --git a/e2fsck/sigcatcher.c b/e2fsck/sigcatcher.c
-index 10b9328..bd56c3f 100644
---- a/e2fsck/sigcatcher.c
-+++ b/e2fsck/sigcatcher.c
-@@ -387,6 +387,7 @@ void sigcatcher_setup(void)
- 	sigaction(SIGILL, &sa, 0);
- 	sigaction(SIGBUS, &sa, 0);
- 	sigaction(SIGSEGV, &sa, 0);
-+	sigaction(SIGABRT, &sa, 0);
- }=09
-=20
-=20
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index e6b7e04..74140ec 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -134,10 +134,8 @@ static void rb_get_new_extent(struct bmap_rb_extent **=
-ext, __u64 start,
-=20
- 	retval =3D ext2fs_get_mem(sizeof (struct bmap_rb_extent),
- 				&new_ext);
--	if (retval) {
--		perror("ext2fs_get_mem");
--		exit(1);
--	}
-+	if (retval)
-+		abort();
-=20
- 	new_ext->start =3D start;
- 	new_ext->count =3D count;
----
+> > * Notes
+> >   ext4_setattr interface to prjid: Semantically prjid must being changed
+> >   similar to uid/gid, but project_id is stored inside xattr so on-disk
+> >   structures updates is not that trivial, so I've move prjid change
+> >   logic to separate function.
+> 
+> I suspect that there are corner cases you haven't thought about
+> yet. What happens when you hard link a file into two separate
+> subtrees? how do you account for that? What happens when you remove
+> the hard link from the subtree the inode is accounted to?  What
+> happens when a rename occurs, moving a file from one subtree to
+> another?
+  Yeah, handling of these things is missing from an ext4 patch. Good that
+you've spotted that. I forgot about it.
 
-Adding something that calls itself abort() wont be hard in yaboot.
+> .....
+> 
+> > +static int
+> > +ext4_xattr_prj_set(struct dentry *dentry, const char *name,
+> > +		const void *value, size_t size, int flags, int type)
+> > +{
+> > +	unsigned int new_prjid;
+> > +	if (strcmp(name, "") != 0)
+> > +		return -EINVAL;
+> > +	new_prjid = simple_strtoul(value, (char **)&value, 0);
+> > +	return ext4_prj_change(dentry->d_inode, new_prjid);
+> 
+> Because you are using strings rather than integers for the ID, you
+> need to do a lot better verification here - what will happen when
+> someone tries to set an ID of "frobnozzle"? Using integers via
+> ioctls for the user API make this problem....
+  Well, simple_strtoul() returns something for arbitary string - that's the
+project ID ;). But I agree forcing project ID 0 if there's parse error is
+more user friendly given the simple_strtoul() return value for unparseable
+strings can change.
 
-> So I believe the only place where the dblist.o file is getting dragged
-> in is due to the call to ext2fs_free_dblist() in freefs.c.  Can you
-> confirm this?
-
-What I did was remove dblist.o from my libext2fs.a and I now get:
-/home/tony/src/e2fsprogs/../e2fsprogs-root/lib/libext2fs.a(gen_bitmap64.o):=
- In function `ext2fs_alloc_generic_bmap':
-/home/tony/src/e2fsprogs-build/lib/ext2fs/../../../e2fsprogs/lib/ext2fs/gen=
-_bitmap64.c:112: undefined reference to `ext2fs_get_num_dirs'
-
-So it looks like dblist.o is being pulled in for ext2fs_get_num_dirs()
-in that case a EXT2FS_BMAP64_AUTODIR bmap type has been asked for.
-
-How would you feel about moving ext2fs_get_num_dirs from dblist.c to
-blknum.c?
-
-> If so, probably the way to solve this is the via the same trick we do
-> with fs->write_bitmaps() --- see how we only call fs->write_bitmaps()
-> if it is defined in ext2fs_close2(); this was done precisely to avoid
-> dragging in the write_bitmaps code if it's not needed for programs
-> which are opening the file system read/only.
-
-I didn't really look at this because of what I discovered above.
-
-Yours Tony
-
---qDbXVdCdHGoSgWSk
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAEBCAAGBQJP68TrAAoJEEsCiJRY75GKiZEQAKJ0zfDy8zFlFawvL2n2wAgp
-N6UCS3aV97gOMD3lc2aw3k0iTukUFvU5OYNORmkcAUgW5zNvzjTCoy93sRnDyLzW
-SOEipNr3DVqHoIUiDmuNsdW5oRrVF+dQFYHVQIxQiYMjYJFkuOyLORsySamdm7Ho
-/qf1IZMl9ehZBK/crxuRfdUq1sVjaMLPbMHOTIZUOOA0h2j3KSL5hMVofqfIs1wx
-3bsAsc9CpXq+cZvVLrnYA/7+LAscyyT3xi7tOn/L7DG5AcMoSV8Rfb5HvmM9sZ3T
-VFXvCqxzk3hSDVa2CT2IyFp2UChRZtibRvIGeXwgq765Wzugp1kojtQkZT9+KR6R
-euVyM6oACPzBZnyo/ZYyB6qyM86cbQWbL7iVcI9kAJjgP/adIebSBgekdNKc3zik
-Pz+mAD0ATsJPHp3RXDzMe+Wbkfoz1As6EBbKqLUdL4B0haCBQ+VgBu+DE1LBl3bh
-SvPIsLZXSrkcSBMlbPGgglORAXTeqV/HPctzX9E4raiyOdm79HZr/KLBOtIBZu06
-MNdoIntk5BDmh8uqgxIv07zRGTKFk2ooH8Nc3Thh/UYujG0yXtf10D+C5057CG0P
-mvM5EWSIO4baQpPxIQljDl+Ln2XliuX5iPAOx88URWncwgRqLaKWP8d/rkrXut9D
-gD9k/eBxj7K3K2cq5afL
-=Xs7V
------END PGP SIGNATURE-----
-
---qDbXVdCdHGoSgWSk--
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
