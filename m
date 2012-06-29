@@ -1,78 +1,94 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] e2fsck: delay metadata checksum in pass1
-Date: Fri, 29 Jun 2012 10:35:56 +0800
-Message-ID: <1340937356-12493-1-git-send-email-wenqing.lz@taobao.com>
-Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/8] Revert "ext4: fix fsx truncate failure"
+Date: Fri, 29 Jun 2012 12:56:04 +0200
+Message-ID: <1340967370-13728-2-git-send-email-lczerner@redhat.com>
+References: <1340967370-13728-1-git-send-email-lczerner@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+	achender@linux.vnet.ibm.com, Lukas Czerner <lczerner@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:62680 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754272Ab2F2C2A (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jun 2012 22:28:00 -0400
-Received: by dady13 with SMTP id y13so3700910dad.19
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Jun 2012 19:28:00 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:64537 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754040Ab2F2K4Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Jun 2012 06:56:24 -0400
+In-Reply-To: <1340967370-13728-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
 
-in __ext4_get_inode_loc, when all other inodes are free, we will skip I/O.
-Thus, all of inodes in this block are set to 0.  Then when we scan these inodes
-in pass1, we will get a metadata checksum error.  However, we don't need to scan
-these inodes because they have been freed.
+This commit reintroduces the use of ext4_block_truncate_page() in ext4
+truncate operation instead of ext4_discard_partial_page_buffers().
 
-This bug can be reproduced by xfstests #013.
+The statement in the commit description that the truncate operation only
+zero block unaligned portion of the last page is not exactly right,
+since truncate_pagecache_range() also zeroes and invalidate the unaligned
+portion of the page. Then there is no need to zero and unmap it once more
+and ext4_block_truncate_page() was doing the right job, although we
+still need to update the buffer head containing the last block, which is
+exactly what ext4_block_truncate_page() is doing.
 
-Reported-by: Tao Ma <boyu.tm@taobao.com>
-Cc: Darrick J. Wong <djwong@us.ibm.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+This was tested on ppc64 machine with block size of 1024 bytes without
+any problems.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- e2fsck/pass1.c |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
+ fs/ext4/extents.c  |   13 ++-----------
+ fs/ext4/indirect.c |   13 ++-----------
+ 2 files changed, 4 insertions(+), 22 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 48a1af0..72f8e82 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -583,6 +583,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 	ext2_ino_t	ino = 0;
- 	struct ext2_inode *inode;
- 	ext2_inode_scan	scan;
-+	errcode_t	csum_errcode;
- 	char		*block_buf;
- #ifdef RESOURCE_TRACK
- 	struct resource_track	rtrack;
-@@ -788,12 +789,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		pctx.inode = inode;
- 		ctx->stashed_ino = ino;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91341ec..ceab5f5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4222,7 +4222,6 @@ void ext4_ext_truncate(struct inode *inode)
+ 	struct super_block *sb = inode->i_sb;
+ 	ext4_lblk_t last_block;
+ 	handle_t *handle;
+-	loff_t page_len;
+ 	int err = 0;
  
--		/* Clear corrupt inode? */
--		if (pctx.errcode == EXT2_ET_INODE_CSUM_INVALID) {
--			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
--				goto clear_inode;
--			failed_csum = 1;
--		}
-+		csum_errcode = pctx.errcode;
+ 	/*
+@@ -4239,16 +4238,8 @@ void ext4_ext_truncate(struct inode *inode)
+ 	if (IS_ERR(handle))
+ 		return;
  
- 		if (inode->i_links_count) {
- 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
-@@ -1063,6 +1059,14 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			}
- 			continue;
- 		}
-+
-+		/* Clear corrupt inode? */
-+		if (csum_errcode == EXT2_ET_INODE_CSUM_INVALID) {
-+			if (fix_problem(ctx, PR_1_INODE_CSUM_INVALID, &pctx))
-+				goto clear_inode;
-+			failed_csum = 1;
-+		}
-+
- 		/*
- 		 * n.b.  0.3c ext2fs code didn't clear i_links_count for
- 		 * deleted files.  Oops.
--- 
-1.7.4.1
-
+-	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, inode->i_size, page_len, 0);
+-
+-		if (err)
+-			goto out_stop;
+-	}
++	if (inode->i_size & (sb->s_blocksize - 1))
++		ext4_block_truncate_page(handle, mapping, inode->i_size);
+ 
+ 	if (ext4_orphan_add(handle, inode))
+ 		goto out_stop;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 830e1b2..a082b30 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1349,9 +1349,7 @@ void ext4_ind_truncate(struct inode *inode)
+ 	__le32 nr = 0;
+ 	int n = 0;
+ 	ext4_lblk_t last_block, max_block;
+-	loff_t page_len;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	int err;
+ 
+ 	handle = start_transaction(inode);
+ 	if (IS_ERR(handle))
+@@ -1362,16 +1360,9 @@ void ext4_ind_truncate(struct inode *inode)
+ 	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
+ 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
+ 
+-	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, inode->i_size, page_len, 0);
