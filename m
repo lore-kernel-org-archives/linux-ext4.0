@@ -1,94 +1,140 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 2/8] Revert "ext4: fix fsx truncate failure"
-Date: Fri, 29 Jun 2012 12:56:04 +0200
-Message-ID: <1340967370-13728-2-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 6/8] mm: teach truncate_inode_pages_range() to hadnle non page aligned ranges
+Date: Fri, 29 Jun 2012 12:56:08 +0200
+Message-ID: <1340967370-13728-6-git-send-email-lczerner@redhat.com>
 References: <1340967370-13728-1-git-send-email-lczerner@redhat.com>
 Cc: linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	achender@linux.vnet.ibm.com, Lukas Czerner <lczerner@redhat.com>
+	achender@linux.vnet.ibm.com, Lukas Czerner <lczerner@redhat.com>,
+	Hugh Dickins <hughd@google.com>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64537 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754040Ab2F2K4Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2012 06:56:24 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1340967370-13728-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
+This commit changes truncate_inode_pages_range() so it can handle non
+page aligned regions of the truncate. Currently we can hit BUG_ON when
+the end of the range is not page aligned, but he can handle unaligned
+start of the range.
 
-This commit reintroduces the use of ext4_block_truncate_page() in ext4
-truncate operation instead of ext4_discard_partial_page_buffers().
-
-The statement in the commit description that the truncate operation only
-zero block unaligned portion of the last page is not exactly right,
-since truncate_pagecache_range() also zeroes and invalidate the unaligned
-portion of the page. Then there is no need to zero and unmap it once more
-and ext4_block_truncate_page() was doing the right job, although we
-still need to update the buffer head containing the last block, which is
-exactly what ext4_block_truncate_page() is doing.
-
-This was tested on ppc64 machine with block size of 1024 bytes without
-any problems.
+Being able to handle non page aligned regions of the page can help file
+system punch_hole implementations and save some work, because once we're
+holding the page we might as well deal with it right away.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: Hugh Dickins <hughd@google.com>
 ---
- fs/ext4/extents.c  |   13 ++-----------
- fs/ext4/indirect.c |   13 ++-----------
- 2 files changed, 4 insertions(+), 22 deletions(-)
+ mm/truncate.c |   61 ++++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 50 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91341ec..ceab5f5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4222,7 +4222,6 @@ void ext4_ext_truncate(struct inode *inode)
- 	struct super_block *sb = inode->i_sb;
- 	ext4_lblk_t last_block;
- 	handle_t *handle;
--	loff_t page_len;
- 	int err = 0;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 77a693e..92aa4ad 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -49,6 +49,16 @@ void do_invalidatepage(struct page *page, unsigned long offset)
+ 		(*invalidatepage)(page, offset);
+ }
  
- 	/*
-@@ -4239,16 +4238,8 @@ void ext4_ext_truncate(struct inode *inode)
- 	if (IS_ERR(handle))
++static inline void punch_hole_into_page(struct page *page, unsigned start,
++					unsigned end)
++{
++	BUG_ON(end > PAGE_CACHE_SIZE);
++	zero_user_segment(page, start, end);
++	cleancache_invalidate_page(page->mapping, page);
++	if (page_has_private(page))
++		do_invalidatepage(page, start);
++}
++
+ static inline void truncate_partial_page(struct page *page, unsigned partial)
+ {
+ 	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
+@@ -206,24 +216,30 @@ int invalidate_inode_page(struct page *page)
+ void truncate_inode_pages_range(struct address_space *mapping,
+ 				loff_t lstart, loff_t lend)
+ {
+-	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
+-	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
++	const unsigned partial_start = lstart & (PAGE_CACHE_SIZE - 1);
++	const unsigned partial_end = lend & (PAGE_CACHE_SIZE - 1);
++	loff_t start = lstart >> PAGE_CACHE_SHIFT;
++	loff_t end = lend >> PAGE_CACHE_SHIFT;
+ 	struct pagevec pvec;
+-	pgoff_t index;
+-	pgoff_t end;
++	loff_t index;
+ 	int i;
+ 
++	BUG_ON(lend < start || lend < 0);
++
+ 	cleancache_invalidate_inode(mapping);
+ 	if (mapping->nrpages == 0)
  		return;
  
--	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
--		page_len = PAGE_CACHE_SIZE -
--			(inode->i_size & (PAGE_CACHE_SIZE - 1));
--
--		err = ext4_discard_partial_page_buffers(handle,
--			mapping, inode->i_size, page_len, 0);
--
--		if (err)
--			goto out_stop;
--	}
-+	if (inode->i_size & (sb->s_blocksize - 1))
-+		ext4_block_truncate_page(handle, mapping, inode->i_size);
+-	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
+-	end = (lend >> PAGE_CACHE_SHIFT);
++	/* Adjust start and end so we cover only full pages */
++	if (partial_start)
++		start++;
++	if (partial_end < PAGE_CACHE_SIZE - 1)
++		end--;
  
- 	if (ext4_orphan_add(handle, inode))
- 		goto out_stop;
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 830e1b2..a082b30 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1349,9 +1349,7 @@ void ext4_ind_truncate(struct inode *inode)
- 	__le32 nr = 0;
- 	int n = 0;
- 	ext4_lblk_t last_block, max_block;
--	loff_t page_len;
- 	unsigned blocksize = inode->i_sb->s_blocksize;
--	int err;
+ 	pagevec_init(&pvec, 0);
+ 	index = start;
+ 	while (index <= end && pagevec_lookup(&pvec, mapping, index,
+-			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
++			min(end - index, (loff_t)PAGEVEC_SIZE - 1) + 1)) {
+ 		mem_cgroup_uncharge_start();
+ 		for (i = 0; i < pagevec_count(&pvec); i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -249,21 +265,44 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 		index++;
+ 	}
  
- 	handle = start_transaction(inode);
- 	if (IS_ERR(handle))
-@@ -1362,16 +1360,9 @@ void ext4_ind_truncate(struct inode *inode)
- 	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
- 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
+-	if (partial) {
++	/* truncate happened within the page - punch hole */
++	if ((start > end) && (start - end > 1)) {
+ 		struct page *page = find_lock_page(mapping, start - 1);
+ 		if (page) {
+ 			wait_on_page_writeback(page);
+-			truncate_partial_page(page, partial);
++			punch_hole_into_page(page, partial_start,
++					     partial_end + 1);
+ 			unlock_page(page);
+ 			page_cache_release(page);
+ 		}
++	} else {
++		/* Partial page truncate at the start of the region */
++		if (partial_start) {
++			struct page *page = find_lock_page(mapping, start - 1);
++			if (page) {
++				wait_on_page_writeback(page);
++				truncate_partial_page(page, partial_start);
++				unlock_page(page);
++				page_cache_release(page);
++			}
++		}
++		/* Partial page truncate at the end of the region */
++		if (partial_end < PAGE_CACHE_SIZE - 1) {
++			struct page *page = find_lock_page(mapping, end + 1);
++			if (page) {
++				wait_on_page_writeback(page);
++				punch_hole_into_page(page, 0, partial_end + 1);
++				unlock_page(page);
++				page_cache_release(page);
++			}
++		}
+ 	}
  
--	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
--		page_len = PAGE_CACHE_SIZE -
--			(inode->i_size & (PAGE_CACHE_SIZE - 1));
--
--		err = ext4_discard_partial_page_buffers(handle,
--			mapping, inode->i_size, page_len, 0);
+ 	index = start;
+-	for ( ; ; ) {
++	while (index <= end) {
+ 		cond_resched();
+ 		if (!pagevec_lookup(&pvec, mapping, index,
+-			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
++			min(end - index, (loff_t)PAGEVEC_SIZE - 1) + 1)) {
+ 			if (index == start)
+ 				break;
+ 			index = start;
+-- 
+1.7.7.6
+
