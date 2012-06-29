@@ -1,63 +1,58 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Use s_csum_seed instead of i_csum_seed for xattr
- block csum.
-Date: Fri, 29 Jun 2012 14:13:50 -0400
-Message-ID: <20120629181349.GA16668@thunk.org>
-References: <1340547236-2838-1-git-send-email-tm@tao.ma>
- <20120626022300.GB14329@thunk.org>
- <20120628162726.GA2342@tux1.beaverton.ibm.com>
- <EFD4E943-92D1-4F51-8659-0340B11D3674@dilger.ca>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: ext4_fallocate
+Date: Fri, 29 Jun 2012 13:02:35 -0600
+Message-ID: <27810AD9-FEA3-4C82-A5EC-A4B9B5F90071@dilger.ca>
+References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <4FEC3FAA.1060503@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: djwong@us.ibm.com, Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Transfer-Encoding: 8BIT
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Ric Wheeler <ricwheeler@gmail.com>,
+	Fredrick <fjohnber@zoho.com>, linux-ext4@vger.kernel.org,
+	wenqing.lz@taobao.com
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53532 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751012Ab2F2SN5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Jun 2012 14:13:57 -0400
-Content-Disposition: inline
-In-Reply-To: <EFD4E943-92D1-4F51-8659-0340B11D3674@dilger.ca>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:54739 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755856Ab2F2TCg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Jun 2012 15:02:36 -0400
+In-Reply-To: <4FEC3FAA.1060503@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 28, 2012 at 08:27:06PM -0600, Andreas Dilger wrote:
-> That was my fault.  I was trying to avoid the case when some node gets
-> wrong xattr block, and there is no way to detect this.  Going from a
-> single owner (using ino as seed) to multiple owners (using block as seed)
-> is easy.  It's just the case of going from multiple owners to a single
-> one that is tricky.
+On 2012-06-28, at 5:27 AM, Ric Wheeler wrote:
+> We need to keep in mind what the goal of pre-allocation is (should be?) - spend a bit of extra time doing the allocation call so we get really good, contiguous layout on disk which ultimately will help in streaming read/write workloads.
 > 
-> We could take the easy way out, and fall back to the block-seed checksum
-> if the inode seed checksum fails.  In the most common cases (no shared
-> block checksum, or many inodes sharing a checksum) this works fine, and
-> in the uncommon case (formerly shared block only used by one inode) it
-> would need to compute the checksum twice.  This means there are only a
-> small number of xattr blocks for which two checksums work, instead of
-> all xattr blocks which can be incorrectly referenced by any inode since
-> if the inode is pointing at that block it will also compute the right
-> checksum using the block seed.
+> If you have a reasonably small file, pre-allocation is probably simply a waste of time - you would be better off overwriting the maximum file size with all zeros (even a 1GB file would take only a few seconds).
 > 
-> Note that I'm not dead set on this, but wanted to explain the reasoning
-> about how this decision got made.
+> If the file is large enough to be interesting, I think that we might want to think about a scheme that would bring small random IO's more into line with the 1MB results Eric saw.
+> 
+> One way to do that might be to have a minimum "chunk" that we would zero out for any IO to an allocated but unwritten extent. You write 4KB to the middle of said region, we pad up and zero out to the nearest MB with zeros.
 
-I thought about proposing adding a flag to the xattr header to
-indicate whether the superblock seed or the per-inode seed should be
-used; I ultimately decided it wasn't worth the complexity that it
-would add, so I didn't bring it up.
+There is already code for this in the ext4 uninit extent handling.
+Currently the limit is 15(?) blocks, to inflate the write size up
+to zero-fill a 64kB chunk on 4kB blocksize filesystems.  I wouldn't
+object to increasing this to zero out a full 1MB (aligned) chunk
+under random IO cases.
 
-It seems to me that in the vast majority of the cases, the xattr will
-fit in the inode, especially in the SElinux and ACL case.  So the
-question is how often will we have really large xattrs.  It *should*
-be rare, since if it is happening all the time for ACL's and SElinux
-cases, performance will be disastrous.  If we do have lots of xattr
-blocks, it would make sense to be worried about per-inode seeds, but
-is it worth the extra complexity?
+Yes, it would hurt the latency a small amount for the first writes
+(though not very much for disks, given the seek overhead), but it
+would avoid clobbering the extent tree so drastically, which also
+has long-term bad performance effects.
 
-Eh.....  In the end it's kind of on the line as I see it.  I don't
-feel strongly enough to engineer it myself, but if someone were to
-send me the patch, I'd probably accept it.
+> Note for the target class of drives (S-ATA) that Ted mentioned earlier, doing a random 4KB write vs a 1MB write is not that much slower (you need to pay the head movement costs already).  Of course, the sweet spot might turn out to be a bit smaller or larger.
 
-Regards,
+Right, at ~100-150 seeks/sec, it is pretty close to the 150 MB/s write
+bandwidth limit, so the cost of doing 4kB vs. 1MB writes is a toss-up.
+I expect the bandwidth of drives to continue increasing, while the seek
+rate will stay the same.  The tradeoff for SSD devices is not so clear,
+since inflated writes will hurt the cache, but in that case, it makes
+more sense to use trim-with-zero (if supported) instead of unallocated
+blocks anyway.
 
-						- Ted
+Cheers, Andreas
+
+
+
+
+
