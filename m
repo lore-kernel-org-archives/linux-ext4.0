@@ -1,129 +1,278 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V5 19/23] ext4: Let fiemap work with inline data.
-Date: Sat, 30 Jun 2012 23:45:20 +0800
-Message-ID: <1341071124-4976-19-git-send-email-tm@tao.ma>
+Subject: [PATCH V5 12/23] ext4: Let ext4_readdir handle inline data.
+Date: Sat, 30 Jun 2012 23:45:13 +0800
+Message-ID: <1341071124-4976-12-git-send-email-tm@tao.ma>
 References: <1341070917-4889-1-git-send-email-tm@tao.ma>
  <1341071124-4976-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:46556 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754344Ab2F3Pt7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:49:59 -0400
+Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:53308 "HELO
+	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755674Ab2F3Pt6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:49:58 -0400
 Received: from [221.217.40.18] (port=40170 helo=localhost.localdomain)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1SkzuL-0006eg-DL
-	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:48:26 -0600
+	id 1Skzu2-0006eg-SU
+	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:48:07 -0600
 In-Reply-To: <1341071124-4976-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-fiemap is used to find the disk layout of a file, as for inline data,
-let us just pretend like a file with just one extent.
-
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/extents.c |    9 +++++++++
- fs/ext4/inline.c  |   35 +++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.h   |   10 ++++++++++
- 3 files changed, 54 insertions(+), 0 deletions(-)
+ fs/ext4/dir.c    |   23 ++++-----
+ fs/ext4/ext4.h   |   12 +++++
+ fs/ext4/inline.c |  138 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.h  |    7 +++
+ 4 files changed, 167 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ca2ae18..e6089be 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4908,6 +4908,15 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	ext4_lblk_t start_blk;
- 	int error = 0;
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 1b2afca..f298cf0 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -27,23 +27,11 @@
+ #include <linux/slab.h>
+ #include <linux/rbtree.h>
+ #include "ext4.h"
+-
+-static unsigned char ext4_filetype_table[] = {
+-	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+-};
++#include "xattr.h"
+ 
+ static int ext4_dx_readdir(struct file *filp,
+ 			   void *dirent, filldir_t filldir);
+ 
+-static unsigned char get_dtype(struct super_block *sb, int filetype)
+-{
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
+-	    (filetype >= EXT4_FT_MAX))
+-		return DT_UNKNOWN;
+-
+-	return (ext4_filetype_table[filetype]);
+-}
+-
+ /**
+  * Check if the given dir-inode refers to an htree-indexed directory
+  * (or a directory which chould potentially get coverted to use htree
+@@ -68,6 +56,9 @@ static int is_dx_dir(struct inode *inode)
+  * Return 0 if the directory entry is OK, and 1 if there is a problem
+  *
+  * Note: this is the opposite of what ext2 and ext3 historically returned...
++ *
++ * bh passed here can be an inode block or a dir data block, depending
++ * on the inode inline data flag.
+  */
+ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 			   struct inode *dir, struct file *filp,
+@@ -124,6 +115,12 @@ static int ext4_readdir(struct file *filp,
+ 	int ret = 0;
+ 	int dir_has_error = 0;
  
 +	if (ext4_has_inline_data(inode)) {
-+		int has_inline = 1;
-+
-+		error = ext4_inline_data_fiemap(inode, fieinfo, &has_inline);
-+
-+		if (has_inline)
-+			return error;
++		ret = ext4_read_inline_dir(filp, dirent, filldir);
++		if (ret > 0 || ret < 0)
++			return ret;
 +	}
 +
- 	/* fallback to generic here if not in extents fmt */
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return generic_block_fiemap(inode, fieinfo, start, len,
+ 	if (is_dx_dir(inode)) {
+ 		err = ext4_dx_readdir(filp, dirent, filldir);
+ 		if (err != ERR_BAD_DX_DIR) {
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6f1291a..ca83c08 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1951,6 +1951,18 @@ static inline void ext4_update_dx_flag(struct inode *inode)
+ 				     EXT4_FEATURE_COMPAT_DIR_INDEX))
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+ }
++static unsigned char ext4_filetype_table[] = {
++	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
++};
++
++static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
++{
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
++	    (filetype >= EXT4_FT_MAX))
++		return DT_UNKNOWN;
++
++	return ext4_filetype_table[filetype];
++}
+ 
+ /* fsync.c */
+ extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index bc30e21..9e61dea 100644
+index e02c0c2..0315ce6 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -15,6 +15,7 @@
- #include "ext4.h"
- #include "xattr.h"
- #include "truncate.h"
-+#include <linux/fiemap.h>
- 
- #define EXT4_XATTR_SYSTEM_DATA	"data"
- #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
-@@ -1623,3 +1624,37 @@ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- 
- 	return ret;
+@@ -1266,6 +1266,144 @@ out:
  }
-+
-+int ext4_inline_data_fiemap(struct inode *inode,
-+			    struct fiemap_extent_info *fieinfo,
-+			    int *has_inline)
+ 
+ /*
++ * Get the inline dentry at offset.
++ */
++static inline struct ext4_dir_entry_2 *
++ext4_get_inline_entry(struct inode *inode,
++		      struct ext4_iloc *iloc,
++		      unsigned int offset,
++		      void **inline_start,
++		      int *inline_size)
 +{
-+	__u64 physical = 0;
-+	__u64 length;
-+	__u32 flags = FIEMAP_EXTENT_DATA_INLINE | FIEMAP_EXTENT_LAST;
++	void *inline_pos;
++
++	BUG_ON(offset > ext4_get_inline_size(inode));
++
++	if (offset < EXT4_MIN_INLINE_DATA_SIZE) {
++		inline_pos = ext4_raw_inode(iloc)->i_block;
++		*inline_size = EXT4_MIN_INLINE_DATA_SIZE;
++	} else {
++		inline_pos = ext4_get_inline_xattr_pos(inode, iloc);
++		offset -= EXT4_MIN_INLINE_DATA_SIZE;
++		*inline_size = ext4_get_inline_size(inode) -
++				EXT4_MIN_INLINE_DATA_SIZE;
++	}
++
++	if (inline_start)
++		*inline_start = inline_pos;
++	return (struct ext4_dir_entry_2 *)(inline_pos + offset);
++}
++
++int ext4_read_inline_dir(struct file *filp,
++			 void *dirent, filldir_t filldir)
++{
 +	int error = 0;
++	unsigned int offset;
++	int i, stored;
++	struct ext4_dir_entry_2 *de;
++	struct super_block *sb;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	int ret, inline_size = 0;
 +	struct ext4_iloc iloc;
++	void *dir_buf = NULL;
++
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		return ret;
 +
 +	down_read(&EXT4_I(inode)->xattr_sem);
 +	if (!ext4_has_inline_data(inode)) {
-+		*has_inline = 0;
++		up_read(&EXT4_I(inode)->xattr_sem);
 +		goto out;
 +	}
 +
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
++	inline_size = ext4_get_inline_size(inode);
++	dir_buf = kmalloc(inline_size, GFP_NOFS);
++	if (!dir_buf) {
++		ret = -ENOMEM;
++		up_read(&EXT4_I(inode)->xattr_sem);
++		goto out;
++	}
++
++	ret = ext4_read_inline_data(inode, dir_buf, inline_size, &iloc);
++	up_read(&EXT4_I(inode)->xattr_sem);
++	if (ret < 0)
 +		goto out;
 +
-+	physical = iloc.bh->b_blocknr << inode->i_sb->s_blocksize_bits;
-+	physical += (char *)ext4_raw_inode(&iloc) - iloc.bh->b_data;
-+	physical += offsetof(struct ext4_inode, i_block);
-+	length = i_size_read(inode);
++	sb = inode->i_sb;
++	stored = 0;
++	offset = filp->f_pos & (sb->s_blocksize - 1);
 +
-+	if (physical)
-+		error = fiemap_fill_next_extent(fieinfo, 0, physical,
-+						length, flags);
-+	brelse(iloc.bh);
++	while (!error && !stored && filp->f_pos < inode->i_size) {
++revalidate:
++		/* If the version has changed since the last call to
++		 * readdir(2), then we might be pointing to an invalid
++		 * dirent right now.  Scan from the start of the block
++		 * to make sure. */
++		if (filp->f_version != inode->i_version) {
++			for (i = 0; i < inode->i_size && i < offset; ) {
++				de = (struct ext4_dir_entry_2 *)
++					(dir_buf + i);
++				/* It's too expensive to do a full
++				 * dirent test each time round this
++				 * loop, but we do have to test at
++				 * least that it is non-zero.  A
++				 * failure will be detected in the
++				 * dirent test below. */
++				if (ext4_rec_len_from_disk(de->rec_len,
++					inline_size) < EXT4_DIR_REC_LEN(1))
++					break;
++				i += ext4_rec_len_from_disk(de->rec_len,
++							    inline_size);
++			}
++			offset = i;
++			filp->f_pos = offset;
++			filp->f_version = inode->i_version;
++		}
++
++		while (!error && filp->f_pos < inode->i_size) {
++			de = (struct ext4_dir_entry_2 *)(dir_buf + offset);
++			if (ext4_check_dir_entry(inode, filp, de,
++						 iloc.bh, dir_buf,
++						 inline_size, offset)) {
++				ret = stored;
++				goto out;
++			}
++			offset += ext4_rec_len_from_disk(de->rec_len,
++							 inline_size);
++			if (le32_to_cpu(de->inode)) {
++				/* We might block in the next section
++				 * if the data destination is
++				 * currently swapped out.  So, use a
++				 * version stamp to detect whether or
++				 * not the directory has been modified
++				 * during the copy operation.
++				 */
++				u64 version = filp->f_version;
++
++				error = filldir(dirent, de->name,
++						de->name_len,
++						filp->f_pos,
++						le32_to_cpu(de->inode),
++						get_dtype(sb, de->file_type));
++				if (error)
++					break;
++				if (version != filp->f_version)
++					goto revalidate;
++				stored++;
++			}
++			filp->f_pos += ext4_rec_len_from_disk(de->rec_len,
++							      inline_size);
++		}
++		offset = 0;
++	}
 +out:
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	return (error < 0 ? error : 0);
++	kfree(dir_buf);
++	brelse(iloc.bh);
++	return ret;
 +}
++
++/*
+  * Try to create the inline data for the new dir.
+  * If it succeeds, return 0, otherwise return the error.
+  * In case of ENOSPC, the caller should create the normal disk layout dir.
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 82a70e4..213c3b3 100644
+index 6fecf7b..0c8285f 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -183,6 +183,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
- 						       void **buf,
- 						       int *buf_size,
- 						       int *retval);
-+extern int ext4_inline_data_fiemap(struct inode *inode,
-+				   struct fiemap_extent_info *fieinfo,
-+				   int *has_inline);
+@@ -168,6 +168,8 @@ extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
+ extern int ext4_try_create_inline_dir(handle_t *handle,
+ 				      struct inode *parent,
+ 				      struct inode *inode);
++extern int ext4_read_inline_dir(struct file *filp,
++				void *dirent, filldir_t filldir);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -393,6 +396,13 @@ ext4_get_first_inline_block(struct inode *inode,
+@@ -345,6 +347,11 @@ static inline int ext4_try_create_inline_dir(handle_t *handle,
  {
- 	return NULL;
+ 	return 0;
  }
-+
-+static inline int ext4_inline_data_fiemap(struct inode *inode,
-+					  struct fiemap_extent_info *fieinfo,
-+					  int *has_inline)
++static inline int ext4_read_inline_dir(struct file *filp,
++				       void *dirent, filldir_t filldir)
 +{
 +	return 0;
 +}
