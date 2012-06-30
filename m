@@ -1,284 +1,164 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V5 12/23] ext4: Let ext4_readdir handle inline data.
-Date: Sat, 30 Jun 2012 23:45:13 +0800
-Message-ID: <1341071124-4976-12-git-send-email-tm@tao.ma>
+Subject: [PATCH V5 15/23] ext4: make ext4_delete_entry generic.
+Date: Sat, 30 Jun 2012 23:45:16 +0800
+Message-ID: <1341071124-4976-15-git-send-email-tm@tao.ma>
 References: <1341070917-4889-1-git-send-email-tm@tao.ma>
  <1341071124-4976-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:53308 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755674Ab2F3Pt6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:49:58 -0400
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:57140 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755654Ab2F3Pt5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:49:57 -0400
 Received: from [221.217.40.18] (port=40170 helo=localhost.localdomain)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1Skzu2-0006eg-SU
-	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:48:07 -0600
+	id 1Skzu9-0006eg-NS
+	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:48:14 -0600
 In-Reply-To: <1341071124-4976-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
+Currently ext4_delete_entry is used only for dir entry
+removing from a dir block. So let us create a new function
+ext4_generic_delete_entry and this function takes a entry_buf
+and a buf_size so that it can be used for inline data.
+
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/dir.c    |   23 ++++-----
- fs/ext4/ext4.h   |   12 +++++
- fs/ext4/inline.c |  138 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.h  |    7 +++
- 4 files changed, 167 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h  |    7 +++++
+ fs/ext4/namei.c |   72 +++++++++++++++++++++++++++++++++++--------------------
+ 2 files changed, 53 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 1b2afca..f298cf0 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -27,23 +27,11 @@
- #include <linux/slab.h>
- #include <linux/rbtree.h>
- #include "ext4.h"
--
--static unsigned char ext4_filetype_table[] = {
--	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
--};
-+#include "xattr.h"
- 
- static int ext4_dx_readdir(struct file *filp,
- 			   void *dirent, filldir_t filldir);
- 
--static unsigned char get_dtype(struct super_block *sb, int filetype)
--{
--	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
--	    (filetype >= EXT4_FT_MAX))
--		return DT_UNKNOWN;
--
--	return (ext4_filetype_table[filetype]);
--}
--
- /**
-  * Check if the given dir-inode refers to an htree-indexed directory
-  * (or a directory which chould potentially get coverted to use htree
-@@ -68,6 +56,9 @@ static int is_dx_dir(struct inode *inode)
-  * Return 0 if the directory entry is OK, and 1 if there is a problem
-  *
-  * Note: this is the opposite of what ext2 and ext3 historically returned...
-+ *
-+ * bh passed here can be an inode block or a dir data block, depending
-+ * on the inode inline data flag.
-  */
- int __ext4_check_dir_entry(const char *function, unsigned int line,
- 			   struct inode *dir, struct file *filp,
-@@ -124,6 +115,12 @@ static int ext4_readdir(struct file *filp,
- 	int ret = 0;
- 	int dir_has_error = 0;
- 
-+	if (ext4_has_inline_data(inode)) {
-+		ret = ext4_read_inline_dir(filp, dirent, filldir);
-+		if (ret > 0 || ret < 0)
-+			return ret;
-+	}
-+
- 	if (is_dx_dir(inode)) {
- 		err = ext4_dx_readdir(filp, dirent, filldir);
- 		if (err != ERR_BAD_DX_DIR) {
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6f1291a..ca83c08 100644
+index 9b4a0dd..953f530 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1951,6 +1951,18 @@ static inline void ext4_update_dx_flag(struct inode *inode)
- 				     EXT4_FEATURE_COMPAT_DIR_INDEX))
- 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
- }
-+static unsigned char ext4_filetype_table[] = {
-+	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
-+};
-+
-+static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
-+{
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
-+	    (filetype >= EXT4_FT_MAX))
-+		return DT_UNKNOWN;
-+
-+	return ext4_filetype_table[filetype];
-+}
+@@ -2089,6 +2089,13 @@ extern int search_dir(struct buffer_head *bh,
+ 		      const struct qstr *d_name,
+ 		      unsigned int offset,
+ 		      struct ext4_dir_entry_2 **res_dir);
++extern int ext4_generic_delete_entry(handle_t *handle,
++				     struct inode *dir,
++				     struct ext4_dir_entry_2 *de_del,
++				     struct buffer_head *bh,
++				     void *entry_buf,
++				     int buf_size,
++				     int csum_size);
  
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index e02c0c2..0315ce6 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1266,6 +1266,144 @@ out:
+ /* resize.c */
+ extern int ext4_group_add(struct super_block *sb,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 3cff036..b39da8b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2037,37 +2037,29 @@ cleanup:
  }
  
  /*
-+ * Get the inline dentry at offset.
-+ */
-+static inline struct ext4_dir_entry_2 *
-+ext4_get_inline_entry(struct inode *inode,
-+		      struct ext4_iloc *iloc,
-+		      unsigned int offset,
-+		      void **inline_start,
-+		      int *inline_size)
-+{
-+	void *inline_pos;
-+
-+	BUG_ON(offset > ext4_get_inline_size(inode));
-+
-+	if (offset < EXT4_MIN_INLINE_DATA_SIZE) {
-+		inline_pos = ext4_raw_inode(iloc)->i_block;
-+		*inline_size = EXT4_MIN_INLINE_DATA_SIZE;
-+	} else {
-+		inline_pos = ext4_get_inline_xattr_pos(inode, iloc);
-+		offset -= EXT4_MIN_INLINE_DATA_SIZE;
-+		*inline_size = ext4_get_inline_size(inode) -
-+				EXT4_MIN_INLINE_DATA_SIZE;
-+	}
-+
-+	if (inline_start)
-+		*inline_start = inline_pos;
-+	return (struct ext4_dir_entry_2 *)(inline_pos + offset);
-+}
-+
-+int ext4_read_inline_dir(struct file *filp,
-+			 void *dirent, filldir_t filldir)
-+{
-+	int error = 0;
-+	unsigned int offset;
-+	int i, stored;
-+	struct ext4_dir_entry_2 *de;
-+	struct super_block *sb;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	int ret, inline_size = 0;
-+	struct ext4_iloc iloc;
-+	void *dir_buf = NULL;
-+
-+	ret = ext4_get_inode_loc(inode, &iloc);
-+	if (ret)
-+		return ret;
-+
-+	down_read(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode)) {
-+		up_read(&EXT4_I(inode)->xattr_sem);
-+		goto out;
-+	}
-+
-+	inline_size = ext4_get_inline_size(inode);
-+	dir_buf = kmalloc(inline_size, GFP_NOFS);
-+	if (!dir_buf) {
-+		ret = -ENOMEM;
-+		up_read(&EXT4_I(inode)->xattr_sem);
-+		goto out;
-+	}
-+
-+	ret = ext4_read_inline_data(inode, dir_buf, inline_size, &iloc);
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	if (ret < 0)
-+		goto out;
-+
-+	sb = inode->i_sb;
-+	stored = 0;
-+	offset = filp->f_pos & (sb->s_blocksize - 1);
-+
-+	while (!error && !stored && filp->f_pos < inode->i_size) {
-+revalidate:
-+		/* If the version has changed since the last call to
-+		 * readdir(2), then we might be pointing to an invalid
-+		 * dirent right now.  Scan from the start of the block
-+		 * to make sure. */
-+		if (filp->f_version != inode->i_version) {
-+			for (i = 0; i < inode->i_size && i < offset; ) {
-+				de = (struct ext4_dir_entry_2 *)
-+					(dir_buf + i);
-+				/* It's too expensive to do a full
-+				 * dirent test each time round this
-+				 * loop, but we do have to test at
-+				 * least that it is non-zero.  A
-+				 * failure will be detected in the
-+				 * dirent test below. */
-+				if (ext4_rec_len_from_disk(de->rec_len,
-+					inline_size) < EXT4_DIR_REC_LEN(1))
-+					break;
-+				i += ext4_rec_len_from_disk(de->rec_len,
-+							    inline_size);
-+			}
-+			offset = i;
-+			filp->f_pos = offset;
-+			filp->f_version = inode->i_version;
-+		}
-+
-+		while (!error && filp->f_pos < inode->i_size) {
-+			de = (struct ext4_dir_entry_2 *)(dir_buf + offset);
-+			if (ext4_check_dir_entry(inode, filp, de,
-+						 iloc.bh, dir_buf,
-+						 inline_size, offset)) {
-+				ret = stored;
-+				goto out;
-+			}
-+			offset += ext4_rec_len_from_disk(de->rec_len,
-+							 inline_size);
-+			if (le32_to_cpu(de->inode)) {
-+				/* We might block in the next section
-+				 * if the data destination is
-+				 * currently swapped out.  So, use a
-+				 * version stamp to detect whether or
-+				 * not the directory has been modified
-+				 * during the copy operation.
-+				 */
-+				u64 version = filp->f_version;
-+
-+				error = filldir(dirent, de->name,
-+						de->name_len,
-+						filp->f_pos,
-+						le32_to_cpu(de->inode),
-+						get_dtype(sb, de->file_type));
-+				if (error)
-+					break;
-+				if (version != filp->f_version)
-+					goto revalidate;
-+				stored++;
-+			}
-+			filp->f_pos += ext4_rec_len_from_disk(de->rec_len,
-+							      inline_size);
-+		}
-+		offset = 0;
-+	}
-+out:
-+	kfree(dir_buf);
-+	brelse(iloc.bh);
-+	return ret;
-+}
-+
-+/*
-  * Try to create the inline data for the new dir.
-  * If it succeeds, return 0, otherwise return the error.
-  * In case of ENOSPC, the caller should create the normal disk layout dir.
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 6fecf7b..0c8285f 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -168,6 +168,8 @@ extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
- extern int ext4_try_create_inline_dir(handle_t *handle,
- 				      struct inode *parent,
- 				      struct inode *inode);
-+extern int ext4_read_inline_dir(struct file *filp,
-+				void *dirent, filldir_t filldir);
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
-@@ -345,6 +347,11 @@ static inline int ext4_try_create_inline_dir(handle_t *handle,
+- * ext4_delete_entry deletes a directory entry by merging it with the
+- * previous entry
++ * ext4_generic_delete_entry deletes a directory entry by merging it
++ * with the previous entry
+  */
+-static int ext4_delete_entry(handle_t *handle,
+-			     struct inode *dir,
+-			     struct ext4_dir_entry_2 *de_del,
+-			     struct buffer_head *bh)
++int ext4_generic_delete_entry(handle_t *handle,
++			      struct inode *dir,
++			      struct ext4_dir_entry_2 *de_del,
++			      struct buffer_head *bh,
++			      void *entry_buf,
++			      int buf_size,
++			      int csum_size)
  {
- 	return 0;
- }
-+static inline int ext4_read_inline_dir(struct file *filp,
-+				       void *dirent, filldir_t filldir)
-+{
-+	return 0;
-+}
- # endif  /* CONFIG_EXT4_FS_XATTR */
+ 	struct ext4_dir_entry_2 *de, *pde;
+ 	unsigned int blocksize = dir->i_sb->s_blocksize;
+-	int csum_size = 0;
+-	int i, err;
+-
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+-				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+-		csum_size = sizeof(struct ext4_dir_entry_tail);
++	int i;
  
- #ifdef CONFIG_EXT4_FS_SECURITY
+ 	i = 0;
+ 	pde = NULL;
+-	de = (struct ext4_dir_entry_2 *) bh->b_data;
+-	while (i < bh->b_size - csum_size) {
++	de = (struct ext4_dir_entry_2 *)entry_buf;
++	while (i < buf_size - csum_size) {
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 bh->b_data, bh->b_size, i))
+ 			return -EIO;
+ 		if (de == de_del)  {
+-			BUFFER_TRACE(bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle, bh);
+-			if (unlikely(err)) {
+-				ext4_std_error(dir->i_sb, err);
+-				return err;
+-			}
+ 			if (pde)
+ 				pde->rec_len = ext4_rec_len_to_disk(
+ 					ext4_rec_len_from_disk(pde->rec_len,
+@@ -2078,12 +2070,6 @@ static int ext4_delete_entry(handle_t *handle,
+ 			else
+ 				de->inode = 0;
+ 			dir->i_version++;
+-			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+-			err = ext4_handle_dirty_dirent_node(handle, dir, bh);
+-			if (unlikely(err)) {
+-				ext4_std_error(dir->i_sb, err);
+-				return err;
+-			}
+ 			return 0;
+ 		}
+ 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
+@@ -2093,6 +2079,40 @@ static int ext4_delete_entry(handle_t *handle,
+ 	return -ENOENT;
+ }
+ 
++static int ext4_delete_entry(handle_t *handle,
++			     struct inode *dir,
++			     struct ext4_dir_entry_2 *de_del,
++			     struct buffer_head *bh)
++{
++	int err, csum_size = 0;
++
++	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
++				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
++		csum_size = sizeof(struct ext4_dir_entry_tail);
++
++	BUFFER_TRACE(bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, bh);
++	if (unlikely(err))
++		goto out;
++
++	err = ext4_generic_delete_entry(handle, dir, de_del,
++					bh, bh->b_data,
++					dir->i_sb->s_blocksize, csum_size);
++	if (err)
++		goto out;
++
++	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
++	if (unlikely(err))
++		goto out;
++
++	return 0;
++out:
++	if (err != -ENOENT)
++		ext4_std_error(dir->i_sb, err);
++	return err;
++}
++
+ /*
+  * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
+  * since this indicates that nlinks count was previously 1.
 -- 
 1.7.0.4
 
