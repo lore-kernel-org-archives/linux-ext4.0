@@ -1,71 +1,196 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V5 01/23] ext4: Move extra inode read to a new function.
-Date: Sat, 30 Jun 2012 23:45:02 +0800
-Message-ID: <1341071124-4976-1-git-send-email-tm@tao.ma>
+Subject: [PATCH V5 02/23] ext4: export inline xattr functions.
+Date: Sat, 30 Jun 2012 23:45:03 +0800
+Message-ID: <1341071124-4976-2-git-send-email-tm@tao.ma>
 References: <1341070917-4889-1-git-send-email-tm@tao.ma>
+ <1341071124-4976-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:58806 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751155Ab2F3Prn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:47:43 -0400
+Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:56945 "HELO
+	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754600Ab2F3Prp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:47:45 -0400
 Received: from [221.217.40.18] (port=40170 helo=localhost.localdomain)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1Skztd-0006eg-Ac
-	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:47:42 -0600
-In-Reply-To: <1341070917-4889-1-git-send-email-tm@tao.ma>
+	id 1Skztf-0006eg-Gi
+	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:47:44 -0600
+In-Reply-To: <1341071124-4976-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Currently, in ext4_iget we do a simple check to see whether
-there does exist some information starting from the end
-of i_extra_size. With inline data added, this procedure
-is more complicated. So move it to a new function named
-ext4_iget_extra_inode.
+Inline data needs some inline xattr functions, so export them
+from fs/ext4/xattr.c so that inline.c can uses them.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inode.c |   16 +++++++++++-----
- 1 files changed, 11 insertions(+), 5 deletions(-)
+ fs/ext4/xattr.c |   39 +++++-------------------------------
+ fs/ext4/xattr.h |   57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 63 insertions(+), 33 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 02bc8cb..21793ea 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3687,6 +3687,16 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
- 	}
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 2cdb98d..dfcb156 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -61,11 +61,6 @@
+ #include "xattr.h"
+ #include "acl.h"
+ 
+-#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
+-#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
+-#define BFIRST(bh) ENTRY(BHDR(bh)+1)
+-#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
+-
+ #ifdef EXT4_XATTR_DEBUG
+ # define ea_idebug(inode, f...) do { \
+ 		printk(KERN_DEBUG "inode %s:%lu: ", \
+@@ -312,7 +307,7 @@ cleanup:
+ 	return error;
  }
  
-+static inline void ext4_iget_extra_inode(struct inode *inode,
-+					 struct ext4_inode *raw_inode,
-+					 struct ext4_inode_info *ei)
+-static int
++int
+ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+ 		     void *buffer, size_t buffer_size)
+ {
+@@ -581,21 +576,6 @@ static size_t ext4_xattr_free_space(struct ext4_xattr_entry *last,
+ 	return (*min_offs - ((void *)last - base) - sizeof(__u32));
+ }
+ 
+-struct ext4_xattr_info {
+-	int name_index;
+-	const char *name;
+-	const void *value;
+-	size_t value_len;
+-};
+-
+-struct ext4_xattr_search {
+-	struct ext4_xattr_entry *first;
+-	void *base;
+-	void *end;
+-	struct ext4_xattr_entry *here;
+-	int not_found;
+-};
+-
+ static int
+ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+ {
+@@ -950,14 +930,8 @@ bad_block:
+ #undef header
+ }
+ 
+-struct ext4_xattr_ibody_find {
+-	struct ext4_xattr_search s;
+-	struct ext4_iloc iloc;
+-};
+-
+-static int
+-ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+-		      struct ext4_xattr_ibody_find *is)
++int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
++			  struct ext4_xattr_ibody_find *is)
+ {
+ 	struct ext4_xattr_ibody_header *header;
+ 	struct ext4_inode *raw_inode;
+@@ -985,10 +959,9 @@ ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+ 	return 0;
+ }
+ 
+-static int
+-ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+-		     struct ext4_xattr_info *i,
+-		     struct ext4_xattr_ibody_find *is)
++int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
++			 struct ext4_xattr_info *i,
++			 struct ext4_xattr_ibody_find *is)
+ {
+ 	struct ext4_xattr_ibody_header *header;
+ 	struct ext4_xattr_search *s = &is->s;
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 91f31ca..8c61a41 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -65,6 +65,32 @@ struct ext4_xattr_entry {
+ 		EXT4_I(inode)->i_extra_isize))
+ #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+ 
++#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
++#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
++#define BFIRST(bh) ENTRY(BHDR(bh)+1)
++#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
++
++
++struct ext4_xattr_info {
++	int name_index;
++	const char *name;
++	const void *value;
++	size_t value_len;
++};
++
++struct ext4_xattr_search {
++	struct ext4_xattr_entry *first;
++	void *base;
++	void *end;
++	struct ext4_xattr_entry *here;
++	int not_found;
++};
++
++struct ext4_xattr_ibody_find {
++	struct ext4_xattr_search s;
++	struct ext4_iloc iloc;
++};
++
+ # ifdef CONFIG_EXT4_FS_XATTR
+ 
+ extern const struct xattr_handler ext4_xattr_user_handler;
+@@ -90,6 +116,15 @@ extern void ext4_exit_xattr(void);
+ 
+ extern const struct xattr_handler *ext4_xattr_handlers[];
+ 
++extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
++				 struct ext4_xattr_ibody_find *is);
++extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
++				const char *name,
++				void *buffer, size_t buffer_size);
++extern int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
++				struct ext4_xattr_info *i,
++				struct ext4_xattr_ibody_find *is);
++
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -143,6 +178,28 @@ ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 
+ #define ext4_xattr_handlers	NULL
+ 
++static inline int
++ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
++		      struct ext4_xattr_ibody_find *is)
 +{
-+	__le32 *magic = (void *)raw_inode +
-+			EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize;
-+	if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
-+		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
++	return -EOPNOTSUPP;
 +}
 +
- struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- {
- 	struct ext4_iloc iloc;
-@@ -3829,11 +3839,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			ei->i_extra_isize = sizeof(struct ext4_inode) -
- 					    EXT4_GOOD_OLD_INODE_SIZE;
- 		} else {
--			__le32 *magic = (void *)raw_inode +
--					EXT4_GOOD_OLD_INODE_SIZE +
--					ei->i_extra_isize;
--			if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC))
--				ext4_set_inode_state(inode, EXT4_STATE_XATTR);
-+			ext4_iget_extra_inode(inode, raw_inode, ei);
- 		}
- 	}
++static inline int
++ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
++		     struct ext4_xattr_info *i,
++		     struct ext4_xattr_ibody_find *is)
++{
++	return -EOPNOTSUPP;
++}
++
++extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
++				const char *name,
++				void *buffer, size_t buffer_size)
++{
++	return -EOPNOTSUPP;
++}
++
+ # endif  /* CONFIG_EXT4_FS_XATTR */
  
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.0.4
 
