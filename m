@@ -1,78 +1,48 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 14/35 v3] debugfs: make filefrag cmd support inline data
-Date: Sun,  1 Jul 2012 21:48:37 +0800
-Message-ID: <1341150538-32047-15-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 15/35 v3] debugfs: make link cmd support inline data
+Date: Sun,  1 Jul 2012 21:48:38 +0800
+Message-ID: <1341150538-32047-16-git-send-email-wenqing.lz@taobao.com>
 References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:49296 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932426Ab2GANlP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:15 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so6469492pbb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:15 -0700 (PDT)
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:36672 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932431Ab2GANlR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:17 -0400
+Received: by mail-pz0-f46.google.com with SMTP id y13so6319540dad.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:17 -0700 (PDT)
 In-Reply-To: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Inode with inline data doesn't have any fragmentations.
-
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/filefrag.c |   30 ++++++++++++++++++------------
- 1 files changed, 18 insertions(+), 12 deletions(-)
+ lib/ext2fs/link.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/debugfs/filefrag.c b/debugfs/filefrag.c
-index 7f28bc0..c94396c 100644
---- a/debugfs/filefrag.c
-+++ b/debugfs/filefrag.c
-@@ -153,16 +153,18 @@ static void filefrag(ext2_ino_t ino, struct ext2_inode *inode,
- 		fprintf(fs->f, "\n%s has %llu block(s), i_size is %llu\n",
- 			fs->name, num_blocks, EXT2_I_SIZE(inode));
- 	}
--	print_header(fs);
--	retval = ext2fs_block_iterate3(current_fs, ino,
--				       BLOCK_FLAG_READ_ONLY, NULL,
--				       filefrag_blocks_proc, fs);
--	if (retval)
--		com_err("ext2fs_block_iterate3", retval, 0);
--
--	report_filefrag(fs);
--	fprintf(fs->f, "%s: %d contiguous extents%s\n", fs->name, fs->ext,
--		LINUX_S_ISDIR(inode->i_mode) ? " (dir)" : "");
-+	if (!ext2fs_has_inline_data(current_fs, ino)) {
-+		print_header(fs);
-+		retval = ext2fs_block_iterate3(current_fs, ino,
-+					       BLOCK_FLAG_READ_ONLY, NULL,
-+					       filefrag_blocks_proc, fs);
-+		if (retval)
-+			com_err("ext2fs_block_iterate3", retval, 0);
-+
-+		report_filefrag(fs);
-+		fprintf(fs->f, "%s: %d contiguous extents%s\n", fs->name, fs->ext,
-+			LINUX_S_ISDIR(inode->i_mode) ? " (dir)" : "");
-+	}
- }
+diff --git a/lib/ext2fs/link.c b/lib/ext2fs/link.c
+index 2dec5dc..67151c3 100644
+--- a/lib/ext2fs/link.c
++++ b/lib/ext2fs/link.c
+@@ -135,8 +135,13 @@ errcode_t ext2fs_link(ext2_filsys fs, ext2_ino_t dir, const char *name,
+ 	ls.blocksize = fs->blocksize;
+ 	ls.err = 0;
  
- static int filefrag_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
-@@ -240,8 +242,12 @@ static void dir_iterate(ext2_ino_t ino, struct filefrag_struct *fs)
- 	fs->dir_name = fs->name;
- 
- 	while (1) {
--		retval = ext2fs_dir_iterate2(current_fs, ino, 0,
--					     0, filefrag_dir_proc, fs);
-+		if (ext2fs_has_inline_data(current_fs, ino))
-+			retval = ext2fs_inline_data_iterate2(current_fs, ino,
-+						0, 0, filefrag_dir_proc, fs);
-+		else
-+			retval = ext2fs_dir_iterate2(current_fs, ino, 0,
-+						     0, filefrag_dir_proc, fs);
- 		if (retval)
- 			com_err("ext2fs_dir_iterate2", retval, 0);
- 		if (p) {
+-	retval = ext2fs_dir_iterate(fs, dir, DIRENT_FLAG_INCLUDE_EMPTY,
+-				    0, link_proc, &ls);
++	if (ext2fs_has_inline_data(fs, dir))
++		retval = ext2fs_inline_data_iterate3(fs, dir,
++				DIRENT_FLAG_INCLUDE_EMPTY, 0, ls.name,
++				ls.namelen, link_proc, &ls);
++	else
++		retval = ext2fs_dir_iterate(fs, dir, DIRENT_FLAG_INCLUDE_EMPTY,
++					    0, link_proc, &ls);
+ 	if (retval)
+ 		return retval;
+ 	if (ls.err)
 -- 
 1.7.4.1
 
