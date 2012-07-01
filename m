@@ -1,48 +1,82 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 26/35 v3] debugfs: make dirsearch cmd support inline data
-Date: Sun,  1 Jul 2012 21:48:49 +0800
-Message-ID: <1341150538-32047-27-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 28/35 v3] debugfs: make punch/truncate cmd support inline data
+Date: Sun,  1 Jul 2012 21:48:51 +0800
+Message-ID: <1341150538-32047-29-git-send-email-wenqing.lz@taobao.com>
 References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:58131 "EHLO
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:49296 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932443Ab2GANlh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:37 -0400
-Received: by pbbrp8 with SMTP id rp8so6469913pbb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:37 -0700 (PDT)
+	with ESMTP id S932441Ab2GANll (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:41 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so6469492pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:41 -0700 (PDT)
 In-Reply-To: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
+If inode includes inline_data flag, start and end arguments will be ignored.
+Meanwhile we truncate inline data.
+
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/htree.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+ lib/ext2fs/punch.c |   33 ++++++++++++++++++++++++++++++++-
+ 1 files changed, 32 insertions(+), 1 deletions(-)
 
-diff --git a/debugfs/htree.c b/debugfs/htree.c
-index 1932962..8051618 100644
---- a/debugfs/htree.c
-+++ b/debugfs/htree.c
-@@ -374,9 +374,15 @@ void do_dirsearch(int argc, char *argv[])
- 	pb.search_name = argv[2];
- 	pb.len = strlen(pb.search_name);
- 
-+	if (ext2fs_has_inline_data(current_fs, inode))
-+		if (ext2fs_inline_data_search_dir(current_fs, inode, argv[2],
-+						  strlen(argv[2])) == 0)
-+			goto out;
-+
- 	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, 0,
- 			      search_dir_block, &pb);
- 
-+out:
- 	free(pb.buf);
+diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
+index b53653a..28967a4 100644
+--- a/lib/ext2fs/punch.c
++++ b/lib/ext2fs/punch.c
+@@ -281,6 +281,34 @@ errout:
+ 	ext2fs_extent_free(handle);
+ 	return retval;
  }
- 
++
++static errcode_t ext2fs_punch_inline_data(ext2_filsys fs, ext2_ino_t ino,
++					  struct ext2_inode *inode,
++					  blk64_t start, blk64_t end)
++{
++	struct ext2_inode_large large_inode;
++	struct inline_data idata;
++	errcode_t retval;
++	int inline_size;
++
++	retval = ext2fs_read_inode_full(fs, ino, (void *)&large_inode,
++					EXT2_INODE_SIZE(fs->super));
++	if (retval)
++		return retval;
++
++	ext2fs_iget_extra_inode(fs, &large_inode, &idata);
++
++	inline_size = idata.inline_size;
++	retval = inline_data_destory_data(fs, ino, &large_inode, &idata);
++	if (retval)
++		return retval;
++
++	large_inode.i_size = 0;
++	ext2fs_write_inode_full(fs, ino, (void *)&large_inode,
++				EXT2_INODE_SIZE(fs->super));
++
++	return retval;
++}
+ 	
+ /*
+  * Deallocate all logical blocks starting at start to end, inclusive.
+@@ -307,7 +335,10 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
+ 			return retval;
+ 		inode = &inode_buf;
+ 	}
+-	if (inode->i_flags & EXT4_EXTENTS_FL)
++	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
++		retval = ext2fs_punch_inline_data(fs, ino, inode, start, end);
++		return retval;
++	} else if (inode->i_flags & EXT4_EXTENTS_FL)
+ 		retval = ext2fs_punch_extent(fs, ino, inode, start, end);
+ 	else {
+ 		blk_t	count;
 -- 
 1.7.4.1
 
