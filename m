@@ -1,133 +1,182 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 32/35 v3] libext2fs: add read/write inline data functions
-Date: Sun,  1 Jul 2012 21:48:55 +0800
-Message-ID: <1341150538-32047-33-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 33/35 v3] e2fsck: check inline data in pass2
+Date: Sun,  1 Jul 2012 21:48:56 +0800
+Message-ID: <1341150538-32047-34-git-send-email-wenqing.lz@taobao.com>
 References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:36672 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932441Ab2GANls (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:48 -0400
-Received: by mail-pz0-f46.google.com with SMTP id y13so6319540dad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:48 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:58131 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932441Ab2GANlv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:51 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so6469913pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:51 -0700 (PDT)
 In-Reply-To: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Add read/write inline data functions for pass2.
-
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/dirblock.c |   62 +++++++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fs.h   |    7 +++++
- 2 files changed, 69 insertions(+), 0 deletions(-)
+ e2fsck/pass2.c           |   64 +++++++++++++++++++++++++++++++++++++--------
+ lib/ext2fs/inline_data.c |    4 +-
+ 2 files changed, 54 insertions(+), 14 deletions(-)
 
-diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
-index 54b2777..77e8f39 100644
---- a/lib/ext2fs/dirblock.c
-+++ b/lib/ext2fs/dirblock.c
-@@ -62,6 +62,45 @@ errcode_t ext2fs_read_dir_block(ext2_filsys fs, blk_t block,
- 	return ext2fs_read_dir_block3(fs, block, buf, 0);
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index e28af61..7267409 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -725,6 +725,15 @@ static void salvage_directory(ext2_filsys fs,
+ 	}
  }
  
-+errcode_t ext2fs_read_dir_inline_data(ext2_filsys fs, ext2_ino_t ino, void *buf)
++static int is_last_entry(ext2_filsys fs, ext2_ino_t ino, unsigned int offset,
++			 int csum_size)
 +{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	if (!(inode->i_flags & EXT4_INLINE_DATA_FL))
-+		return -1;
-+
-+	memcpy(buf, inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_free_mem(&inode);
-+	return 0;
++	if (ext2fs_has_inline_data(fs, ino))
++		return (offset < ext2fs_inline_data_size(fs, ino));
++	else
++		return (offset < fs->blocksize - csum_size);
 +}
 +
-+errcode_t ext2fs_read_dir_inline_data_more(ext2_filsys fs, ext2_ino_t ino, void *buf)
-+{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	if (!(inode->i_flags & EXT4_INLINE_DATA_FL))
-+		return -1;
-+
-+	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	if (idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
-+		return 0;
-+
-+	memcpy(buf + EXT4_MIN_INLINE_DATA_SIZE,
-+	       ext2fs_get_inline_xattr_pos(inode, &idata),
-+	       idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_free_mem(&inode);
-+	return 0;
-+}
+ static int check_dir_block(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *db,
+ 			   void *priv_data)
+@@ -734,6 +743,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	struct dx_dirblock_info	*dx_db = 0;
+ #endif /* ENABLE_HTREE */
+ 	struct ext2_dir_entry 	*dirent, *prev;
++	struct ext2_inode	inode;
+ 	ext2_dirhash_t		hash;
+ 	unsigned int		offset = 0;
+ 	int			dir_modified = 0;
+@@ -756,6 +766,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	int	dx_csum_size = 0, de_csum_size = 0;
+ 	int	failed_csum = 0;
+ 	int	is_leaf = 1;
++	int	has_inline_data = 0;
  
- errcode_t ext2fs_write_dir_block4(ext2_filsys fs, blk64_t block,
- 				  void *inbuf, int flags EXT2FS_ATTR((unused)),
-@@ -111,3 +150,26 @@ errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
- 	return ext2fs_write_dir_block3(fs, block, inbuf, 0);
- }
+ 	cd = (struct check_dir_struct *) priv_data;
+ 	buf = cd->buf;
+@@ -787,7 +798,8 @@ static int check_dir_block(ext2_filsys fs,
+ 	cd->pctx.dirent = 0;
+ 	cd->pctx.num = 0;
  
-+errcode_t ext2fs_write_dir_inline_data(ext2_filsys fs, ext2_ino_t ino, void *buf)
-+{
-+	struct ext2_inode_large *inode;
-+	struct inline_data idata;
-+
-+	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-+	ext2fs_read_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+
-+	memcpy(inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
-+
-+	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	if (idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
-+		goto out;
-+
-+	memcpy(ext2fs_get_inline_xattr_pos(inode, &idata),
-+	       buf + EXT4_MIN_INLINE_DATA_SIZE,
-+	       idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE);
-+
-+out:
-+	ext2fs_write_inode_full(fs, ino, (void *)inode, EXT2_INODE_SIZE(fs->super));
-+	ext2fs_free_mem(&inode);
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index bacc14d..0bd5023 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1060,6 +1060,11 @@ extern errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
- 					void *buf, int flags);
- extern errcode_t ext2fs_read_dir_block4(ext2_filsys fs, blk64_t block,
- 					void *buf, int flags, ext2_ino_t ino);
-+extern errcode_t ext2fs_read_dir_inline_data(ext2_filsys fs, ext2_ino_t ino,
-+					     void *buf);
-+extern errcode_t ext2fs_read_dir_inline_data_more(ext2_filsys fs,
-+						  ext2_ino_t ino,
-+						  void *buf);
- extern errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
- 					void *buf);
- extern errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
-@@ -1068,6 +1073,8 @@ extern errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
- 					 void *buf, int flags);
- extern errcode_t ext2fs_write_dir_block4(ext2_filsys fs, blk64_t block,
- 					 void *buf, int flags, ext2_ino_t ino);
-+extern errcode_t ext2fs_write_dir_inline_data(ext2_filsys fs, ext2_ino_t ino,
-+					      void *buf);
+-	if (db->blk == 0) {
++	/* We don't need to allocate dir blocks for inline_data dir */
++	if (db->blk == 0 && !ext2fs_has_inline_data(fs, db->ino)) {
+ 		if (allocate_dir_block(ctx, db, buf, &cd->pctx))
+ 			return 0;
+ 		block_nr = db->blk;
+@@ -808,7 +820,20 @@ static int check_dir_block(ext2_filsys fs,
+ #endif
  
- /* dirhash.c */
- extern errcode_t ext2fs_dirhash(int version, const char *name, int len,
+ 	ehandler_operation(_("reading directory block"));
+-	cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf, 0, ino);
++	ext2fs_read_inode(fs, ino, &inode);
++
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				      EXT4_FEATURE_INCOMPAT_INLINE_DATA))
++		has_inline_data = (inode.i_flags & EXT4_INLINE_DATA_FL);
++
++	if (has_inline_data) {
++		cd->pctx.errcode = ext2fs_read_dir_inline_data(fs, ino, buf);
++		if (!cd->pctx.errcode)
++			cd->pctx.errcode = ext2fs_read_dir_inline_data_more(fs,
++								ino, buf);
++	} else
++		cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf,
++							  0, ino);
+ 	ehandler_operation(0);
+ 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
+ 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
+@@ -879,7 +904,7 @@ out_htree:
+ #endif /* ENABLE_HTREE */
+ 
+ 	/* Verify checksum. */
+-	if (is_leaf && de_csum_size) {
++	if (is_leaf && de_csum_size && !has_inline_data) {
+ 		/* No space for csum?  Rebuild dirs in pass 3A. */
+ 		if (!ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf)) {
+ 			de_csum_size = 0;
+@@ -1173,7 +1198,7 @@ skip_checksum:
+ 			(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
+ 		offset += rec_len;
+ 		dot_state++;
+-	} while (offset < fs->blocksize - de_csum_size);
++	} while (is_last_entry(fs, ino, offset, de_csum_size));
+ #if 0
+ 	printf("\n");
+ #endif
+@@ -1191,12 +1216,24 @@ skip_checksum:
+ 	}
+ #endif /* ENABLE_HTREE */
+ 
+-	if (offset != fs->blocksize - de_csum_size) {
+-		cd->pctx.num = rec_len - (fs->blocksize - de_csum_size) +
+-			       offset;
+-		if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
+-			dirent->rec_len = cd->pctx.num;
+-			dir_modified++;
++	if (!has_inline_data) {
++		if (offset != fs->blocksize - de_csum_size) {
++			cd->pctx.num = rec_len -
++				(fs->blocksize - de_csum_size) +
++				offset;
++			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
++				dirent->rec_len = cd->pctx.num;
++				dir_modified++;
++			}
++		}
++	} else {
++		if (offset != ext2fs_inline_data_size(fs, ino)) {
++			cd->pctx.num = rec_len + offset -
++				ext2fs_inline_data_size(fs, ino);
++			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
++				dirent->rec_len = cd->pctx.num;
++				dir_modified++;
++			}
+ 		}
+ 	}
+ 	if (dir_modified) {
+@@ -1210,8 +1247,11 @@ skip_checksum:
+ write_and_fix:
+ 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
+ 			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+-		cd->pctx.errcode = ext2fs_write_dir_block4(fs, block_nr, buf,
+-							   0, ino);
++		if (inode.i_flags & EXT4_INLINE_DATA_FL)
++			cd->pctx.errcode = ext2fs_write_dir_inline_data(fs, ino, buf);
++		else
++			cd->pctx.errcode = ext2fs_write_dir_block4(fs,
++							block_nr, buf, 0, ino);
+ 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
+ 			ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		if (cd->pctx.errcode) {
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index 59483a6..3adab3c 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -575,7 +575,7 @@ int ext2fs_inline_data_in_extra(ext2_filsys fs, ext2_ino_t ino)
+ 	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+ 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+ 
+-	ext2fs_iget_extra_inode(fs, inode, &idata);
++	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
+ 	ext2fs_free_mem(&inode);
+ 	if (idata.inline_off == 0 ||
+ 	    idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
+@@ -592,7 +592,7 @@ int ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino)
+ 	inode = (struct ext2_inode *) malloc(EXT2_INODE_SIZE(fs->super));
+ 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+ 
+-	ext2fs_iget_extra_inode(fs, inode, &idata);
++	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
+ 	free(inode);
+ 	if (idata.inline_off == 0)
+ 		return 0;
 -- 
 1.7.4.1
 
