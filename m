@@ -1,108 +1,113 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V5 13/23] ext4: Create a new function search_dir.
-Date: Sat, 30 Jun 2012 23:45:14 +0800
-Message-ID: <1341071124-4976-13-git-send-email-tm@tao.ma>
-References: <1341070917-4889-1-git-send-email-tm@tao.ma>
- <1341071124-4976-1-git-send-email-tm@tao.ma>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 00/35 v3] e2fsprogs: make e2fsprogs support inline data
+Date: Sun,  1 Jul 2012 21:48:23 +0800
+Message-ID: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy1-pub.bluehost.com ([66.147.249.253]:35026 "HELO
-	oproxy1-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755378Ab2F3Pt5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jun 2012 11:49:57 -0400
-Received: from [221.217.40.18] (port=40170 helo=localhost.localdomain)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.76)
-	(envelope-from <tm@tao.ma>)
-	id 1Skzu5-0006eg-4O
-	for linux-ext4@vger.kernel.org; Sat, 30 Jun 2012 09:48:10 -0600
-In-Reply-To: <1341071124-4976-1-git-send-email-tm@tao.ma>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:49296 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932358Ab2GANku (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:40:50 -0400
+Received: by pbbrp8 with SMTP id rp8so6469492pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:40:49 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+Hi list,
 
-search_dirblock is used to search a dir block, but the code is
-almost the same for searching an inline dir.
+Here is v3 for making e2fsprogs support inline data.
 
-So create a new fuction search_dir and let search_dirblock
-call it.
+v2->v3:
+* [mke2fs] EXT4_FEATURE_INCOMPAT_INLINE_DATA is set back to 0x8000
+* [mke2fs] enable inline_data on ext4dev filesystem
+* [tests] modify a regression test in tests
+* rebase to the latest pu branch of e2fsprogs
+* fix some bugs
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/ext4.h  |    7 +++++++
- fs/ext4/namei.c |   26 +++++++++++++++++++-------
- 2 files changed, 26 insertions(+), 7 deletions(-)
+v1->v2:
+* [mke2fs] automatically set EXT_ATTR feature when INLINE_DATA is set
+* [debugfs] supports read-write mode
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ca83c08..9b4a0dd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2082,6 +2082,13 @@ extern int ext4_orphan_add(handle_t *, struct inode *);
- extern int ext4_orphan_del(handle_t *, struct inode *);
- extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 				__u32 start_minor_hash, __u32 *next_hash);
-+extern int search_dir(struct buffer_head *bh,
-+		      char *search_buf,
-+		      int buf_size,
-+		      struct inode *dir,
-+		      const struct qstr *d_name,
-+		      unsigned int offset,
-+		      struct ext4_dir_entry_2 **res_dir);
- 
- /* resize.c */
- extern int ext4_group_add(struct super_block *sb,
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 7f7e999..ddb38cd 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1063,11 +1063,13 @@ static inline int ext4_match (int len, const char * const name,
- /*
-  * Returns 0 if not found, -1 on failure, and 1 on success
-  */
--static inline int search_dirblock(struct buffer_head *bh,
--				  struct inode *dir,
--				  const struct qstr *d_name,
--				  unsigned int offset,
--				  struct ext4_dir_entry_2 ** res_dir)
-+int search_dir(struct buffer_head *bh,
-+	       char *search_buf,
-+	       int buf_size,
-+	       struct inode *dir,
-+	       const struct qstr *d_name,
-+	       unsigned int offset,
-+	       struct ext4_dir_entry_2 **res_dir)
- {
- 	struct ext4_dir_entry_2 * de;
- 	char * dlimit;
-@@ -1075,8 +1077,8 @@ static inline int search_dirblock(struct buffer_head *bh,
- 	const char *name = d_name->name;
- 	int namelen = d_name->len;
- 
--	de = (struct ext4_dir_entry_2 *) bh->b_data;
--	dlimit = bh->b_data + dir->i_sb->s_blocksize;
-+	de = (struct ext4_dir_entry_2 *)search_buf;
-+	dlimit = search_buf + buf_size;
- 	while ((char *) de < dlimit) {
- 		/* this code is executed quadratically often */
- 		/* do minimal checking `by hand' */
-@@ -1101,6 +1103,16 @@ static inline int search_dirblock(struct buffer_head *bh,
- 	return 0;
- }
- 
-+static inline int search_dirblock(struct buffer_head *bh,
-+				  struct inode *dir,
-+				  const struct qstr *d_name,
-+				  unsigned int offset,
-+				  struct ext4_dir_entry_2 **res_dir)
-+{
-+	return search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
-+			  d_name, offset, res_dir);
-+}
-+
- 
- /*
-  *	ext4_find_entry()
--- 
-1.7.0.4
+Hi Ted,  I review the regression that you reported.  IMHO, it is not a
+regression because in tests/f_bad_disconnected_inode test the flag quite
+contains inline data.  So I think that this test needs to be changed.
 
+Any comments are welcomed.  Thanks
+
+Regards,
+Zheng
+
+Zheng Liu (35):
+      libext2fs: add EXT4_FEATURE_INCOMPAT_INLINE_DATA flag
+      mke2fs: make it support inline data feature
+      mke2fs: add inline_data feature in mke2fs's manpage
+      libext2fs: add ext2fs_find_entry_ext_attr function
+      libext2fs: add EXT4_INLINE_DATA_FL flag for inode
+      libext2fs: add data structures for inline data feature
+      libext2fs: add inline_data file
+      debugfs: make ncheck cmd support inline data
+      debugfs: make icheck cmd support inline data
+      debugfs: make chroot and cd cmd support inline data
+      debugfs: make ls cmd support inline data
+      debugfs: make stat cmd support inline data
+      debugfs: make blocks cmd support inline data
+      debugfs: make filefrag cmd support inline data
+      debugfs: make link cmd support inline data
+      debugfs: make unlink cmd support inline data
+      debugfs: make mkdir cmd support inline data
+      debugfs: make rmdir cmd support inline data
+      debugfs: make rm and kill_file cmd support inline data
+      debugfs: make pwd cmd support inline data
+      debugfs: make expand_dir cmd support inline data
+      debugfs: make lsdel cmd support inline data
+      debugfs: make undelete cmd support inline data
+      debugfs: make dump and cat cmd support inline data
+      debugfs: make rdump cmd support inline data
+      debugfs: make dirsearch cmd support inline data
+      debugfs: make bmap cmd support inline data
+      debugfs: make punch/truncate cmd support inline data
+      e2fsck: add three problem descriptions in pass1
+      e2fsck: check incorrect inline data flag
+      e2fsck: make pass1 support inline data
+      libext2fs: add read/write inline data functions
+      e2fsck: check inline data in pass2
+      mke2fs: add inline_data feature into ext4dev
+      tests: change test f_bad_disconnected_inode to support inline_data feature
+
+ debugfs/debugfs.c                       |   25 +-
+ debugfs/dump.c                          |   38 ++-
+ debugfs/filefrag.c                      |   30 +-
+ debugfs/htree.c                         |    6 +
+ debugfs/icheck.c                        |    9 +-
+ debugfs/ls.c                            |    8 +-
+ debugfs/lsdel.c                         |   19 +-
+ debugfs/ncheck.c                        |    8 +-
+ e2fsck/pass1.c                          |  109 +++++-
+ e2fsck/pass1b.c                         |    5 +-
+ e2fsck/pass2.c                          |   64 +++-
+ e2fsck/problem.c                        |   15 +
+ e2fsck/problem.h                        |    9 +
+ lib/e2p/feature.c                       |    2 +-
+ lib/ext2fs/Makefile.in                  |    5 +
+ lib/ext2fs/Makefile.pq                  |    1 +
+ lib/ext2fs/bmap.c                       |   16 +
+ lib/ext2fs/dblist_dir.c                 |    8 +-
+ lib/ext2fs/dirblock.c                   |   62 +++
+ lib/ext2fs/expanddir.c                  |    8 +-
+ lib/ext2fs/ext2_ext_attr.h              |    4 +
+ lib/ext2fs/ext2_fs.h                    |   10 +-
+ lib/ext2fs/ext2fs.h                     |   74 +++-
+ lib/ext2fs/ext_attr.c                   |   26 ++
+ lib/ext2fs/get_pathname.c               |    7 +-
+ lib/ext2fs/inline_data.c                |  724 +++++++++++++++++++++++++++++++
+ lib/ext2fs/link.c                       |    9 +-
+ lib/ext2fs/lookup.c                     |    6 +-
+ lib/ext2fs/mkdir.c                      |   33 ++-
+ lib/ext2fs/punch.c                      |   33 ++-
+ lib/ext2fs/unlink.c                     |    9 +-
+ misc/mke2fs.8.in                        |    3 +
+ misc/mke2fs.c                           |   10 +-
+ misc/mke2fs.conf.in                     |    2 +-
+ tests/f_bad_disconnected_inode/expect.1 |   27 +-
+ 35 files changed, 1329 insertions(+), 95 deletions(-)
