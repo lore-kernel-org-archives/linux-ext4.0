@@ -1,45 +1,45 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 20/35 v3] debugfs: make pwd cmd support inline data
-Date: Sun,  1 Jul 2012 21:48:43 +0800
-Message-ID: <1341150538-32047-21-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 23/35 v3] debugfs: make undelete cmd support inline data
+Date: Sun,  1 Jul 2012 21:48:46 +0800
+Message-ID: <1341150538-32047-24-git-send-email-wenqing.lz@taobao.com>
 References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:36672 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932428Ab2GANl0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:26 -0400
-Received: by mail-pz0-f46.google.com with SMTP id y13so6319540dad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:26 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:49296 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932439Ab2GANlb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:31 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so6469492pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:31 -0700 (PDT)
 In-Reply-To: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
+Inode with inline data doesn't need to mark blocks.
+
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/get_pathname.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
+ debugfs/debugfs.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/get_pathname.c b/lib/ext2fs/get_pathname.c
-index 52aea62..f92f17d 100644
---- a/lib/ext2fs/get_pathname.c
-+++ b/lib/ext2fs/get_pathname.c
-@@ -98,7 +98,12 @@ static errcode_t ext2fs_get_pathname_int(ext2_filsys fs, ext2_ino_t dir,
- 	gp.name = 0;
- 	gp.errcode = 0;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 9069735..cf32068 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -1445,8 +1445,9 @@ void do_undel(int argc, char *argv[])
+ 	if (debugfs_write_inode(ino, &inode, argv[0]))
+ 		return;
  
--	retval = ext2fs_dir_iterate(fs, dir, 0, buf, get_pathname_proc, &gp);
-+	if (ext2fs_has_inline_data(fs, dir))
-+		retval = ext2fs_inline_data_iterate(fs, dir, 0, buf,
-+						    get_pathname_proc, &gp);
-+	else
-+		retval = ext2fs_dir_iterate(fs, dir, 0, buf,
-+					    get_pathname_proc, &gp);
- 	if (retval == EXT2_ET_NO_DIRECTORY) {
- 		char tmp[32];
+-	ext2fs_block_iterate3(current_fs, ino, BLOCK_FLAG_READ_ONLY, NULL,
+-			      mark_blocks_proc, NULL);
++	if (!ext2fs_has_inline_data(current_fs, ino))
++		ext2fs_block_iterate3(current_fs, ino, BLOCK_FLAG_READ_ONLY, NULL,
++				      mark_blocks_proc, NULL);
+ 
+ 	ext2fs_inode_alloc_stats2(current_fs, ino, +1, 0);
  
 -- 
 1.7.4.1
