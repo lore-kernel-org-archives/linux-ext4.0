@@ -1,72 +1,57 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 24/35 v3] debugfs: make dump and cat cmd support inline data
-Date: Sun,  1 Jul 2012 21:48:47 +0800
-Message-ID: <1341150538-32047-25-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 27/35 v3] debugfs: make bmap cmd support inline data
+Date: Sun,  1 Jul 2012 21:48:50 +0800
+Message-ID: <1341150538-32047-28-git-send-email-wenqing.lz@taobao.com>
 References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f46.google.com ([209.85.210.46]:36672 "EHLO
 	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932438Ab2GANle (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:34 -0400
+	with ESMTP id S932447Ab2GANlj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Jul 2012 09:41:39 -0400
 Received: by mail-pz0-f46.google.com with SMTP id y13so6319540dad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:33 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Jul 2012 06:41:39 -0700 (PDT)
 In-Reply-To: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-dump and cat command use the same function to read data.  We can
-directly read the data from inode.
+Now this command returns inode's phy block when this inode has inline data.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/dump.c |   30 ++++++++++++++++++++++++++++++
- 1 files changed, 30 insertions(+), 0 deletions(-)
+ lib/ext2fs/bmap.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+), 0 deletions(-)
 
-diff --git a/debugfs/dump.c b/debugfs/dump.c
-index a15a0b7..10ebe7a 100644
---- a/debugfs/dump.c
-+++ b/debugfs/dump.c
-@@ -113,6 +113,36 @@ static void dump_file(const char *cmdname, ext2_ino_t ino, int fd,
- 	if (debugfs_read_inode(ino, &inode, cmdname))
- 		return;
+diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
+index 16d51e0..101fe90 100644
+--- a/lib/ext2fs/bmap.c
++++ b/lib/ext2fs/bmap.c
+@@ -264,6 +264,22 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
+ 		block_buf = buf;
+ 	}
  
-+	if (ext2fs_has_inline_data(current_fs, ino)) {
-+		struct ext2_inode_large *inode;
-+		struct inline_data idata;
-+		void *inline_start;
-+		int inline_size;
++	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
++		unsigned long group, block, offset;
 +
-+		retval = ext2fs_get_mem(EXT2_INODE_SIZE(current_fs->super),
-+							&inode);
-+		if (retval)
-+			return;
++		group = (ino - 1) / EXT2_INODES_PER_GROUP(fs->super);
++		if (group > fs->group_desc_count)
++			return EXT2_ET_BAD_INODE_NUM;
++		offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
++			 EXT2_INODE_SIZE(fs->super);
++		block = offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
++		if (!ext2fs_inode_table_loc(fs, (unsigned) group))
++			return EXT2_ET_MISSING_INODE_TABLE;
++		*phys_blk = ext2fs_inode_table_loc(fs, group) + block;
 +
-+		retval = ext2fs_read_inode_full(current_fs, ino, (void *)inode,
-+						EXT2_INODE_SIZE(current_fs->super));
-+		if (retval)
-+			goto out;
-+		write(fd, inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
-+
-+		ext2fs_iget_extra_inode(current_fs, inode, &idata);
-+		if (idata.inline_off == EXT4_MIN_INLINE_DATA_SIZE)
-+			goto out;
-+
-+		inline_start = ext2fs_get_inline_xattr_pos(inode, &idata);
-+		inline_size = idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE;
-+		write(fd, inline_start, inline_size);
-+
-+out:
-+		ext2fs_free_mem(&inode);
-+		return;
++		goto done;
 +	}
 +
- 	retval = ext2fs_file_open(current_fs, ino, 0, &e2_file);
- 	if (retval) {
- 		com_err(cmdname, retval, "while opening ext2 file");
+ 	if (inode->i_flags & EXT4_EXTENTS_FL) {
+ 		retval = ext2fs_extent_open2(fs, ino, inode, &handle);
+ 		if (retval)
 -- 
 1.7.4.1
 
