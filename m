@@ -1,30 +1,42 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Htree?
-Date: Mon, 02 Jul 2012 11:36:53 -0500
-Message-ID: <4FF1CE25.7020202@redhat.com>
-References: <0408C81F72528E40A0D3235A1F67FFC804A415@SN2PRD0202MB144.namprd02.prod.outlook.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 blocks up
+Date: Mon, 2 Jul 2012 12:45:48 -0400
+Message-ID: <20120702164548.GD18074@thunk.org>
+References: <1341231316.2979.11.camel@sauron.fi.intel.com>
+ <20120702144444.GA18074@thunk.org>
+ <1341240862.2979.23.camel@sauron.fi.intel.com>
+ <20120702151442.GB18074@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Nelson, John R" <John_Nelson@student.uml.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Artem Bityutskiy <dedekind1@gmail.com>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45892 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754147Ab2GBQgz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jul 2012 12:36:55 -0400
-In-Reply-To: <0408C81F72528E40A0D3235A1F67FFC804A415@SN2PRD0202MB144.namprd02.prod.outlook.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:53987 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754813Ab2GBQpv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jul 2012 12:45:51 -0400
+Content-Disposition: inline
+In-Reply-To: <20120702151442.GB18074@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/01/2012 04:18 PM, Nelson, John R wrote:
-> hello, 
+On Mon, Jul 02, 2012 at 11:14:42AM -0400, Theodore Ts'o wrote:
+> On Mon, Jul 02, 2012 at 05:54:22PM +0300, Artem Bityutskiy wrote:
+> > On Mon, 2012-07-02 at 10:44 -0400, Theodore Ts'o wrote:
+> > > Can you tell me *which* xfstest this was blocking on?
+> > 
+> > Test 068 which runs fsstress.
 > 
->  exactly what is an Htree? I noticed EXT3/4 uses those, for directorys and extents (ext4). Are they some sort of B+tree?
+> Hmmm, I had just started an xfstests -g auto run using standard ext4
+> defaults with 3.5-rc2, and I'm not noting any problems.  And I've
+> gotten past test 68 w/o any problems.
 
-See http://en.wikipedia.org/wiki/Htree and references therein, in
-particular:
+I just tried again with 3.5-rc5, and I was able to reproduce your
+failure by using "check 68 68 68 68 68" (it failed after the 2nd time
+it ran the fsstress test.  What's interesting is that there have been
+no changes in fs/ext4 or fs/jbd2 since 3.5-rc2.  So this may have been
+caused by a writeback related change; I'm starting a bisect now.
 
-http://www.linuxshowcase.org/2001/full_papers/phillips/phillips_html/index.html
-
--Eric
+       	      	      	      	   	     - Ted
