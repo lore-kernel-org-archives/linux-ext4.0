@@ -1,37 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: dead/wrong code in ext3/4_releasepage()
-Date: Mon, 2 Jul 2012 14:17:20 -0400
-Message-ID: <20120702181720.GD5795@thunk.org>
-References: <4FEDDD63.4000800@ya.ru>
- <20120702170959.GJ6679@quack.suse.cz>
- <4FF1D712.3060402@ya.ru>
- <20120702173326.GL6679@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Perepechko <anserper@ya.ru>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Andrew Perepechko <anserper@ya.ru>
+Subject: [PATCH] ext4: remove an unneeded check in ext4_releasepage
+Date: Mon,  2 Jul 2012 22:18:37 +0400
+Message-ID: <1341253117-18679-1-git-send-email-anserper@ya.ru>
+Cc: Andrew Perepechko <andrew_perepechko@xyratex.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54032 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750861Ab2GBSRW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jul 2012 14:17:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20120702173326.GL6679@quack.suse.cz>
+Received: from forward9.mail.yandex.net ([77.88.61.48]:48191 "EHLO
+	forward9.mail.yandex.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932299Ab2GBSZK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Jul 2012 14:25:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 02, 2012 at 07:33:26PM +0200, Jan Kara wrote:
->   Hi,
-> 
-> On Mon 02-07-12 21:14:58, Andrew Perepechko wrote:
-> > So you think the correct fix would be to remove the check completely
-> > since every try_to_release_page() caller is obliged to perform the
-> > page_has_private() check?
->   Yes, I think that would be reasonable. XFS already relies on this so
-> it should be safe.
+From: Andrew Perepechko <andrew_perepechko@xyratex.com>
 
-Andrew, can you send me a patch?
+The page_has_buffers() checks in ext3/4_releasepage are not
+needed, since ->releasepage() is only called if
+page_has_private() is positive.
 
-Thanks,
+Signed-off-by: Andrew Perepechko <andrew_perepechko@xyratex.com>
+---
+ fs/ext3/inode.c |    2 --
+ fs/ext4/inode.c |    2 --
+ 2 files changed, 4 deletions(-)
 
-							- Ted
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 9a4a5c4..ee5ef30 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1841,8 +1841,6 @@ static int ext3_releasepage(struct page *page, gfp_t wait)
+ 
+ 	trace_ext3_releasepage(page);
+ 	WARN_ON(PageChecked(page));
+-	if (!page_has_buffers(page))
+-		return 0;
+ 	return journal_try_to_free_buffers(journal, page, wait);
+ }
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 02bc8cb..bfad0a8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2796,8 +2796,6 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+ 	trace_ext4_releasepage(page);
+ 
+ 	WARN_ON(PageChecked(page));
+-	if (!page_has_buffers(page))
+-		return 0;
+ 	if (journal)
+ 		return jbd2_journal_try_to_free_buffers(journal, page, wait);
+ 	else
+-- 
+1.7.9.5
+
