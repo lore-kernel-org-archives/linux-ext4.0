@@ -1,40 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 blocks up
-Date: Mon, 2 Jul 2012 11:20:32 -0400
-Message-ID: <20120702152032.GC18074@thunk.org>
-References: <1341231316.2979.11.camel@sauron.fi.intel.com>
- <20120702144444.GA18074@thunk.org>
- <1341240862.2979.23.camel@sauron.fi.intel.com>
- <20120702151442.GB18074@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4_fallocate
+Date: Mon, 02 Jul 2012 11:33:33 -0500
+Message-ID: <4FF1CD5D.8010904@redhat.com>
+References: <4FE8086F.4070506@zoho.com> <20120625085159.GA18931@gmail.com> <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <20120702031611.GB2406@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Artem Bityutskiy <dedekind1@gmail.com>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Ts'o" <tytso@mit.edu>, Fredrick <fjohnber@zoho.com>,
+	Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53959 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754047Ab2GBPUe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jul 2012 11:20:34 -0400
-Content-Disposition: inline
-In-Reply-To: <20120702151442.GB18074@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:20143 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752478Ab2GBQdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jul 2012 12:33:44 -0400
+In-Reply-To: <20120702031611.GB2406@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've removed linux-fsdevel and linux-kernel to avoid spamming folks
-who don't need to see the blow-by-blow debugging....
+On 07/01/2012 10:16 PM, Zheng Liu wrote:
+> On Wed, Jun 27, 2012 at 07:02:45PM -0400, Eric Sandeen wrote:
+>> On 6/27/12 3:30 PM, Theodore Ts'o wrote:
+>>> A better workload would be to use a blocksize of 4k.  By using a
+>>> blocksize of 1024k, it's not surprising that the metadata overhead is
+>>> in the noise.
+>>>
+>>> Try something like this; this will cause the extent tree overhead to
+>>> be roughly equal to the data block I/O.
+>>>
+>>> [global]
+>>> rw=randwrite
+>>> size=128m
+>>> filesize=1g
+>>> bs=4k
+>>> ioengine=sync
+>>> fallocate=1
+>>> fsync=1
+>>>
+>>> [thread1]
+>>> filename=testfile
+> 
+> Hi Eric,
+> 
+> Could you please run this test with 'journal_async_commit' flag.  In my
+> previous test, this feature can dramatically improve the performance of
+> uninitialized extent conversion.
+> 
+> I have sent an email to do a similar test [1].  In that email, I do a
+> similar test and the journal_async_commit flag quite can improve the
+> performance.
 
-On Mon, Jul 02, 2012 at 11:14:42AM -0400, Theodore Ts'o wrote:
-> On Mon, Jul 02, 2012 at 05:54:22PM +0300, Artem Bityutskiy wrote:
-> > On Mon, 2012-07-02 at 10:44 -0400, Theodore Ts'o wrote:
-> > > Can you tell me *which* xfstest this was blocking on?
-> > 
-> > Test 068 which runs fsstress.
+I can try to find time for that, but so far I haven't actually seen any
+severe impact of conversion on a non-debug kernel.  And didn't Jan think
+that journal_async_commit was fatally flawed?
 
-How reliably can you reproduce this hang-up?  I've just run the
-equivalent of "check 68,68,68,68,68" and I haven't gotten hung up
-once. 
+At this point I think it is up to the proponents of the
+expose-stale-data patch to document & demonstrate the workload which
+justifies such a change...
 
-And this is a stock 4k ext4 filesystem, right?  Created with "mke2fs
--t ext4" w/o any other options?
+-Eric
 
-							- Ted
+> 1. http://comments.gmane.org/gmane.linux.file-systems/63569
+> 
+> Regards,
+> Zheng
+
