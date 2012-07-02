@@ -1,46 +1,96 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43821] Possible ext4 bug
-Date: Mon,  2 Jul 2012 13:12:44 +0000 (UTC)
-Message-ID: <20120702131244.4920811FA63@bugzilla.kernel.org>
-References: <bug-43821-13602@https.bugzilla.kernel.org/>
+From: Paolo Bonzini <pbonzini@redhat.com>
+Subject: Re: Ext4 and xfs problems in dm-thin on allocation and discard
+Date: Mon, 02 Jul 2012 15:15:38 +0200
+Message-ID: <4FF19EFA.8020109@redhat.com>
+References: <4FDF9EBE.2030809@shiftmail.org> <20120619015745.GJ25389@dastard> <4FE1BDF3.4080702@shiftmail.org> <20120620225327.GL30705@dastard> <20120621174742.GA27837@redhat.com> <4FF06480.6030109@redhat.com> <20120702130034.GA785@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Dave Chinner <david@fromorbit.com>, Spelic <spelic@shiftmail.org>,
+	device-mapper development <dm-devel@redhat.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, axboe@kernel.dk,
+	hch@infradead.org,
+	"Martin K. Petersen" <martin.petersen@oracle.com>
+To: Mike Snitzer <snitzer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:46701 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41189 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750971Ab2GBNMq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Jul 2012 09:12:46 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A3CC02023D
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Jul 2012 13:12:45 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 80DA020231
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Jul 2012 13:12:44 +0000 (UTC)
-In-Reply-To: <bug-43821-13602@https.bugzilla.kernel.org/>
+	id S1750793Ab2GBNP7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Jul 2012 09:15:59 -0400
+In-Reply-To: <20120702130034.GA785@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43821
+Il 02/07/2012 15:00, Mike Snitzer ha scritto:
+> On Sun, Jul 01 2012 at 10:53am -0400,
+> Paolo Bonzini <pbonzini@redhat.com> wrote:
+> 
+>> Il 21/06/2012 19:47, Mike Snitzer ha scritto:
+>>> Paolo Bonzini fixed blkdev_issue_discard to properly align some time
+>>> ago; unfortunately the patches slipped through the cracks (cc'ing Paolo,
+>>> Jens, and Christoph).
+>>>
+>>> Here are references to Paolo's patches:
+>>> 0/2 https://lkml.org/lkml/2012/3/14/323
+>>> 1/2 https://lkml.org/lkml/2012/3/14/324
+>>> 2/2 https://lkml.org/lkml/2012/3/14/325
+>>>
+>>> Patch 2/2 specifically addresses the case where:
+>>>  discard_max_bytes == discard_granularity 
+>>>
+>>> Paolo, any chance you could resend to Jens (maybe with hch's comments on
+>>> patch#2 accounted for)?  Also, please add hch's Reviewed-by when
+>>> reposting.
+>>
+>> Sure, I'll do it this week.  I just need to retest.
+> 
+> Great, thanks.
+> 
+> (cc'ing mkp)
+> 
+> One thing that seemed odd was your adjustment for discard_alignment (in
+> patch 1/2).
+> 
+> I need to better understand how discard_alignment (an offset despite the
+> name not saying as much) relates to alignment_offset.
 
+In principle, it doesn't.  All SBC says is:
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+  The UNMAP GRANULARITY ALIGNMENT field indicates the LBA of the first
+  logical block to which the OPTIMAL UNMAP GRANULARITY field applies.
+  The unmap granularity alignment is used to calculate an optimal unmap
+  request starting LBA as follows:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-         Resolution|                            |INVALID
+   optimal unmap request starting LBA = (n * optimal unmap granularity)
+      + unmap granularity alignment
 
+and what my patch does is ensure that all requests except the first
+start at such an LBA.
 
+In practice, there is a connection between the two, because a sane disk
+will make all discard_alignment-aligned sectors also
+alignment_offset-aligned, or vice versa, or both (depending on whether
+1<<phys_exp is < > or = to discard_granularity).
 
+> Could just be that once a partition tool, or lvm, etc account for
+> alignment_offset (which they do now) that discard_alignment is
+> automagically accounted for as a side-effect?
 
---- Comment #1 from Alan <alan@lxorguk.ukuu.org.uk>  2012-07-02 13:12:43 ---
-Please duplicate the problem without proprietary modules loaded otherwise we
-can't really do much with it. If you can't duplicate it that way then report it
-to Nvidia instead.
+Yes, if discard_granularity <= 1<<phys_exp.  In that case, the condition
+above simplifies to discard_alignment == alignment_offset %
+discard_granularity.  Your partitions will be already aligned to both
+alignment_offset and discard_alignment.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+It seems more likely that discard_granularity > 1<<phys_exp if they
+differ at all, in which case the partition tool will improve the
+situation but still not reach an optimal setting.
+
+The optimal positioning of partitions/logical volumes/etc. would be to
+align them to lcm(1<<phys_exp, discard_granularity), and "misalign" the
+starting sector by max(discard_alignment, alignment_offset).
+
+> (I haven't actually seen discard_alignment != 0 in the wild)
+
+Me neither, but it was easy to account for it in the patch.
+
+Paolo
