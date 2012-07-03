@@ -1,84 +1,90 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv3 3/4] ext4: remove unnecessary superblock dirtying
-Date: Tue, 3 Jul 2012 14:48:04 +0200
-Message-ID: <20120703124804.GC27388@quack.suse.cz>
-References: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
- <1341316810-22598-4-git-send-email-dedekind1@gmail.com>
+From: "Darrick J. Wong" <djwong@us.ibm.com>
+Subject: Re: [PATCH] ext4: Use proper csum calculation in ext4_rename.
+Date: Tue, 3 Jul 2012 10:01:53 -0700
+Message-ID: <20120703170153.GC2342@tux1.beaverton.ibm.com>
+References: <1340379514-2838-1-git-send-email-tm@tao.ma>
+Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>
-To: Artem Bityutskiy <dedekind1@gmail.com>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40308 "EHLO mx2.suse.de"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:60090 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752520Ab2GCMsH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jul 2012 08:48:07 -0400
+	id S1755297Ab2GCRD5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Jul 2012 13:03:57 -0400
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
+	Tue, 3 Jul 2012 13:03:55 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id C5BCD38C809E
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Jul 2012 13:01:55 -0400 (EDT)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q63H1t3Z409210
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 13:01:55 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q63H1sKn008613
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 13:01:55 -0400
 Content-Disposition: inline
-In-Reply-To: <1341316810-22598-4-git-send-email-dedekind1@gmail.com>
+In-Reply-To: <1340379514-2838-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Artem,
+On Fri, Jun 22, 2012 at 11:38:34PM +0800, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In ext4_rename, when the old name is a dir, we need to
+> change ".." to its new parent and journal the change, so
+> with metadata_csum enabled, we have to re-calc the csum.
+> 
+> As the first block of the dir can be either a htree root
+> or a normal directory block and we have different csum
+> calculation for these 2 types, we have to choose the right
+> one in ext4_rename.
+> 
+> btw, it is found by xfstests 013.
 
-  thanks for your persistence with this. I wanted to give you my
-Reviewed-by on this patch but I've noticed two (mostly minor) things
-(see below).
+Good catch!
 
-On Tue 03-07-12 15:00:09, Artem Bityutskiy wrote:
-> From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-> 
-> This patch changes the '__ext4_handle_dirty_super()' function which is used
-> by ext4 to update the super-block via the journal in the following cases:
-> 
-> 1. When creating the first large file on a file
->    system without EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
-> 2. When re-sizing the file-system
-> 3. When creating an xattr on a file-system without the
->    EXT4_FEATURE_COMPAT_EXT_ATTR feature.
-  Since this was written, we seem to have grown a use of
-ext4_handle_dirty_super() in fs/ext4/namei.c when adding inode to orphan
-list.
+Acked-by: Darrick J. Wong <djwong@us.ibm.com>
 
-> This function, however, falls back to just marking the superblock as dirty
-> if the file-system has no journal. But it is user really rarely and it does not
-> give any benefit to use the delayed superblock write (via the VFS's
-> 'sync_supers()' kernel thread) in these cases. We can just write out the
-> superblock asynchronously instead.
+--D
 > 
-> This patch also removes 's_dirt' condition on the unmount path because we never
-> set it anymore, so we should not test it.
-> 
-> Tested using xfstests for both journalled and non-journalled ext4.
-> 
-> Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 > ---
->  fs/ext4/ext4.h      |    1 +
->  fs/ext4/ext4_jbd2.c |    2 +-
->  fs/ext4/super.c     |    5 ++---
->  3 files changed, 4 insertions(+), 4 deletions(-)
+>  fs/ext4/namei.c |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
 > 
-...
-> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> index 90f7c2e..27354df 100644
-> --- a/fs/ext4/ext4_jbd2.c
-> +++ b/fs/ext4/ext4_jbd2.c
-> @@ -156,6 +156,6 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
->  				(struct ext4_super_block *)bh->b_data);
->  		mark_buffer_dirty(bh);
->  	} else
-> -		sb->s_dirt = 1;
-> +		err = ext4_commit_super(sb, 0);
-  When you look at the whole __ext4_handle_dirty_super() function now, it
-doesn't make much sense like this. When now == 1, we mark superblock buffer
-as dirty, when now == 0, we set wtime, kbytes_written, free blocks and
-inodes in the superblock buffer and then mark it dirty. Looking into all
-the places calling this, I'd just drop the 'now' argument and make
-everything behave as in now == 1 case.
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 5845cd9..0edaf18 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -2918,8 +2918,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+>  						cpu_to_le32(new_dir->i_ino);
+>  		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
+> -		retval = ext4_handle_dirty_dirent_node(handle, old_inode,
+> -						       dir_bh);
+> +		if (is_dx(old_inode)) {
+> +			retval = ext4_handle_dirty_dx_node(handle,
+> +							   old_inode,
+> +							   dir_bh);
+> +		} else {
+> +			retval = ext4_handle_dirty_dirent_node(handle,
+> +							       old_inode,
+> +							       dir_bh);
+> +		}
+>  		if (retval) {
+>  			ext4_std_error(old_dir->i_sb, retval);
+>  			goto end_rename;
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
