@@ -1,88 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4_fallocate
-Date: Tue, 3 Jul 2012 11:30:29 +0200
-Message-ID: <20120703093029.GS6679@quack.suse.cz>
-References: <4FE9F9F4.7010804@zoho.com>
- <4FEA0DD1.8080403@gmail.com>
- <4FEA1415.8040809@redhat.com>
- <4FEA1F18.6010206@redhat.com>
- <20120627193034.GA3198@thunk.org>
- <4FEB9115.6090309@redhat.com>
- <20120702031611.GB2406@gmail.com>
- <4FF1CD5D.8010904@redhat.com>
- <20120702174421.GM6679@quack.suse.cz>
- <20120702180150.GB5795@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Fredrick <fjohnber@zoho.com>, Ric Wheeler <rwheeler@redhat.com>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
-	wenqing.lz@taobao.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56079 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754420Ab2GCJad (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jul 2012 05:30:33 -0400
-Content-Disposition: inline
-In-Reply-To: <20120702180150.GB5795@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: [PATCHv3 0/4] ext4: stop using write_supers and s_dirt
+Date: Tue,  3 Jul 2012 15:00:06 +0300
+Message-ID: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
+Cc: Jan Kara <jack@suse.cz>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 02-07-12 14:01:50, Ted Tso wrote:
-> On Mon, Jul 02, 2012 at 07:44:21PM +0200, Jan Kara wrote:
-> >   Yes, that option is broken and basically unfixable for data=ordered mode
-> > (see http://comments.gmane.org/gmane.comp.file-systems.ext4/30727). For
-> > data=writeback it works fine AFAICT.
-> 
-> The journal_async_commit option can be saved, but it requires changing
-> how we handle stale data.  What we need to do is to change things so
-> that we update the metadata *after* the data has been written back.
-> We do this already if the experimental dioread_nolock code is used,
-> but currently it only works for 4k blocks. 
-  This won't save us. The problem with async commit is that in the
-sequence:
-write data
-wait for data write completion
-change metadata
-write transaction with changed metadata
-write commit block
-CACHE_FLUSH
+This patch-set makes ext4 file-system stop using the VFS '->write_supers()'
+call-back and the '->s_dirt' superblock field because I plan to remove them
+once all users are gone.
 
-if you flip power switch just before CACHE_FLUSH, disk could have cached
-stuff so that the whole transaction made it to pernament storage but data
-didn't. So recovery will happily replay the transaction and make unwritten
-disk blocks accessible. There is no simple way around this problem except
-for issuing CACHE_FLUSH sometime after data writes have completed and
-before you write commit block...
+Like the other similar patch-sets, we switch to a delayed job for writing out
+the superblock instead of using the 's_dirt' flag. Additionally, this patch-set
+includes several clean-ups.
 
-And if you ask about the complicated way ;-): You can compute data
-checksum, add it to the transaction and check it on replay.
+Tested with xfstests. And thanks to Jan Kara for the help!
 
-> The I/O tree work will give us the infrastructure we need so we can
-> easily update the metadata after the data blocks have been written out
-> when we are extending or filling in a sparse hole, even when the block
-> size != page size.  (This is why we can't currently make the
-> dioread_nolock code path the default; it would cause things to break
-> on 1k/2k file systems, as well as 4k file systems on Power.)  But once
-> this is done, it will allow us to subsume and rip out dioread_nolock
-> code[path, and the distinction between ordered and writeback mode.
-> 
-> Also, the metadata checksum patches will fix the other potential
-> problem with using journal_async_commit, which is that it adds
-> fine-grained checksums in the journal, so we can recover more easily
-> from a corrupted journal.
-> 
-> So once all of this is stable, we'll be able significantly simplify
-> the ext4 code and our testing matrix, and get all of the benefits of
-> data=writeback, dioread_nolock, and journal_async_commit, without any
-> of their current drawbacks.  Which is why I've kept on pestering Zheng
-> about how the I/O tree work has been coming along on the ext4 calls;
-> it's going to enable some really cool things.  :-)
-  Yeah, this would be good stuff. Just it won't be enough for
-journal_async_commit in data=ordered mode...
+Reminder:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The goal is to get rid of the 'sync_supers()' kernel thread. This kernel thread
+wakes up every 5 seconds (by default) and calls '->write_super()' for all
+mounted file-systems. And the bad thing is that this is done even if all the
+superblocks are clean. Moreover, many file-systems do not even need this end
+they do not register the '->write_super()' method at all (e.g., btrfs).
+
+So 'sync_supers()' most often just generates useless wake-ups and wastes power.
+I am trying to make all file-systems independent of '->write_super()' and plan
+to remove 'sync_supers()' and '->write_super()' completely once there are no
+more users.
+
+======
+Overall status:
+
+1.  ext4: patches submitted,
+    https://lkml.org/lkml/2012/4/2/111
+2.  exofs: patch submitted,
+    https://lkml.org/lkml/2012/6/4/211
+3.  udf: patch submitted, sits in Jan Kara's tree:
+    https://lkml.org/lkml/2012/6/4/233
+    git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs for_testing
+4.  affs: patches submitted, sit in Al Viro's tree:
+    https://lkml.org/lkml/2012/6/6/400
+    git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs for-next
+5.  hfs: patches submitted, sit Andrew Morton's tree
+    http://lkml.org/lkml/2012/6/12/82
+6.  hfsplus: patches submitted, sit in Andre Morton's tree:
+    https://lkml.org/lkml/2012/6/13/195
+7.  ext2:     done, see commit f72cf5e223a28d3b3ea7dc9e40464fd534e359e8
+8.  vfat:     done, see commit 78491189ddb6d84d4a4abae992ed891a236d0263
+9.  jffs2:    done, see commit 208b14e507c00ff7f108e1a388dd3d8cc805a443
+10. reiserfs: done, see commit 033369d1af1264abc23bea2e174aa47cdd212f6f
+
+TODO: sysv, ufs
+======
+
+ fs/ext4/ext4.h      |   10 +---------
+ fs/ext4/ext4_jbd2.c |    2 +-
+ fs/ext4/file.c      |   14 +++++++++++++-
+ fs/ext4/ialloc.c    |    2 --
+ fs/ext4/mballoc.c   |    2 --
+ fs/ext4/super.c     |   15 ++-------------
+ 6 files changed, 17 insertions(+), 28 deletions(-)
+
+Thanks,
+Artem.
