@@ -1,74 +1,82 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv3 1/4] ext4: Remove useless marking of superblock dirty
-Date: Tue,  3 Jul 2012 15:00:07 +0300
-Message-ID: <1341316810-22598-2-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv3 2/4] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
+Date: Tue,  3 Jul 2012 15:00:08 +0300
+Message-ID: <1341316810-22598-3-git-send-email-dedekind1@gmail.com>
 References: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
 Cc: Jan Kara <jack@suse.cz>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jan Kara <jack@suse.cz>
 
-Commit a0375156 properly notes that superblock doesn't need to be marked
-as dirty when only number of free inodes / blocks / number of directories
-changes since that is recomputed on each mount anyway. However that comment
-leaves some unnecessary markings as dirty in place. Remove these.
+The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
+can well be modifying the superblock properly by journalling the change.
+Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
 
+Artem: small amendments.
 Artem: tested using xfstests for both journalled and non-journalled ext4.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/ialloc.c  |    2 --
- fs/ext4/mballoc.c |    2 --
- 2 files changed, 0 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h |    9 ---------
+ fs/ext4/file.c |   14 +++++++++++++-
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index d48e8b1..25b918c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -315,7 +315,6 @@ out:
- 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
- 		if (!fatal)
- 			fatal = err;
--		ext4_mark_super_dirty(sb);
- 	} else
- 		ext4_error(sb, "bit already cleared for inode %lu", ino);
- 
-@@ -830,7 +829,6 @@ got:
- 	percpu_counter_dec(&sbi->s_freeinodes_counter);
- 	if (S_ISDIR(mode))
- 		percpu_counter_inc(&sbi->s_dirs_counter);
--	ext4_mark_super_dirty(sb);
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		flex_group = ext4_flex_group(sbi, group);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1cd6994..eabfb4c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2825,7 +2825,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
- 
- out_err:
--	ext4_mark_super_dirty(sb);
- 	brelse(bitmap_bh);
- 	return err;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cfc4e01..0c4042e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
+ 	spin_unlock(ext4_group_lock_ptr(sb, group));
  }
-@@ -4694,7 +4693,6 @@ do_more:
- 		put_bh(bitmap_bh);
- 		goto do_more;
+ 
+-static inline void ext4_mark_super_dirty(struct super_block *sb)
+-{
+-	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+-
+-	ext4_superblock_csum_set(sb, es);
+-	if (EXT4_SB(sb)->s_journal == NULL)
+-		sb->s_dirt =1;
+-}
+-
+ /*
+  * Block validity checking
+  */
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 8c7642a..3a77494 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 		path.dentry = mnt->mnt_root;
+ 		cp = d_path(&path, buf, sizeof(buf));
+ 		if (!IS_ERR(cp)) {
++			handle_t *handle;
++			int err;
++
++			handle = ext4_journal_start_sb(sb, 1);
++			if (IS_ERR(handle))
++				return PTR_ERR(handle);
++			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
++			if (err) {
++				ext4_journal_stop(handle);
++				return err;
++			}
+ 			strlcpy(sbi->s_es->s_last_mounted, cp,
+ 				sizeof(sbi->s_es->s_last_mounted));
+-			ext4_mark_super_dirty(sb);
++			ext4_handle_dirty_super(handle, sb);
++			ext4_journal_stop(handle);
+ 		}
  	}
--	ext4_mark_super_dirty(sb);
- error_return:
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
+ 	/*
 -- 
 1.7.7.6
+
