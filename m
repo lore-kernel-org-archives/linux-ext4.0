@@ -1,84 +1,87 @@
 From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH] ext4: Use proper csum calculation in ext4_rename.
-Date: Tue, 3 Jul 2012 10:01:53 -0700
-Message-ID: <20120703170153.GC2342@tux1.beaverton.ibm.com>
-References: <1340379514-2838-1-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH] e2fsprogs/csum: Use fs.csum_seed for xattr block csum
+ calculation.
+Date: Tue, 3 Jul 2012 09:58:26 -0700
+Message-ID: <20120703165826.GB2342@tux1.beaverton.ibm.com>
+References: <1340547756-2932-1-git-send-email-tm@tao.ma>
 Reply-To: djwong@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:60090 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755297Ab2GCRD5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jul 2012 13:03:57 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:42325 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756555Ab2GCREB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 13:04:01 -0400
 Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
 	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 3 Jul 2012 13:03:55 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id C5BCD38C809E
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Jul 2012 13:01:55 -0400 (EDT)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q63H1t3Z409210
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 13:01:55 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q63H1sKn008613
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 13:01:55 -0400
+	Tue, 3 Jul 2012 11:03:59 -0600
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 658C3C90050
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Jul 2012 12:58:29 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q63GwSsH4719086
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 12:58:28 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q63MTK18011797
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 18:29:21 -0400
 Content-Disposition: inline
-In-Reply-To: <1340379514-2838-1-git-send-email-tm@tao.ma>
+In-Reply-To: <1340547756-2932-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 22, 2012 at 11:38:34PM +0800, Tao Ma wrote:
+On Sun, Jun 24, 2012 at 10:22:36PM +0800, Tao Ma wrote:
 > From: Tao Ma <boyu.mt@taobao.com>
 > 
-> In ext4_rename, when the old name is a dir, we need to
-> change ".." to its new parent and journal the change, so
-> with metadata_csum enabled, we have to re-calc the csum.
+> As I mentioned in the kernel part patch with the subject
+> "ext4: Use s_csum_seed instead of i_csum_seed for xattr block csum",
+> it is not easy for the kernel to use the proper inode csum seed.
+> So always use the fs.csum_seed for the xattr block csum calculation.
 > 
-> As the first block of the dir can be either a htree root
-> or a normal directory block and we have different csum
-> calculation for these 2 types, we have to choose the right
-> one in ext4_rename.
-> 
-> btw, it is found by xfstests 013.
-
-Good catch!
+> Cc: Darrick J. Wong <djwong@us.ibm.com>
 
 Acked-by: Darrick J. Wong <djwong@us.ibm.com>
 
+(I assume there's a similar patch for e2fsprogs?)
+
 --D
-> 
 > Cc: "Theodore Ts'o" <tytso@mit.edu>
 > Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 > ---
->  fs/ext4/namei.c |   11 +++++++++--
->  1 files changed, 9 insertions(+), 2 deletions(-)
+>  lib/ext2fs/csum.c |   18 +++---------------
+>  1 files changed, 3 insertions(+), 15 deletions(-)
 > 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 5845cd9..0edaf18 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -2918,8 +2918,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->  		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
->  						cpu_to_le32(new_dir->i_ino);
->  		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
-> -		retval = ext4_handle_dirty_dirent_node(handle, old_inode,
-> -						       dir_bh);
-> +		if (is_dx(old_inode)) {
-> +			retval = ext4_handle_dirty_dx_node(handle,
-> +							   old_inode,
-> +							   dir_bh);
-> +		} else {
-> +			retval = ext4_handle_dirty_dirent_node(handle,
-> +							       old_inode,
-> +							       dir_bh);
-> +		}
->  		if (retval) {
->  			ext4_std_error(old_dir->i_sb, retval);
->  			goto end_rename;
+> diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+> index a7096d2..5ccbc1c 100644
+> --- a/lib/ext2fs/csum.c
+> +++ b/lib/ext2fs/csum.c
+> @@ -119,21 +119,9 @@ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
+>  	struct ext2_inode inode;
+> 
+>  	hdr->h_checksum = 0;
+> -	if (ext2fs_le32_to_cpu(hdr->h_refcount) != 1) {
+> -		block = ext2fs_cpu_to_le64(block);
+> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
+> -					sizeof(block));
+> -	} else {
+> -		retval = ext2fs_read_inode(fs, inum, &inode);
+> -		if (retval)
+> -			return retval;
+> -		inum = ext2fs_cpu_to_le32(inum);
+> -		gen = ext2fs_cpu_to_le32(inode.i_generation);
+> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
+> -					sizeof(inum));
+> -		*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen,
+> -					sizeof(gen));
+> -	}
+> +	block = ext2fs_cpu_to_le64(block);
+> +	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
+> +				sizeof(block));
+>  	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, fs->blocksize);
+>  	hdr->h_checksum = old_crc;
+> 
 > -- 
 > 1.7.1
 > 
