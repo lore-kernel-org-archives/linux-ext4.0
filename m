@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv3 2/4] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
-Date: Tue,  3 Jul 2012 15:00:08 +0300
-Message-ID: <1341316810-22598-3-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv3 4/4] ext4: weed out ext4_write_super
+Date: Tue,  3 Jul 2012 15:00:10 +0300
+Message-ID: <1341316810-22598-5-git-send-email-dedekind1@gmail.com>
 References: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
 Cc: Jan Kara <jack@suse.cz>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
@@ -13,70 +13,59 @@ In-Reply-To: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
-can well be modifying the superblock properly by journalling the change.
-Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
+We do not depend on VFS's '->write_super()' anymore and do not need the
+'s_dirt' flag anymore. This patch weeds out 'ext4_write_super()' and the
+'s_dirt' usage in VFS.
 
-Artem: small amendments.
-Artem: tested using xfstests for both journalled and non-journalled ext4.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/ext4.h |    9 ---------
- fs/ext4/file.c |   14 +++++++++++++-
- 2 files changed, 13 insertions(+), 10 deletions(-)
+ fs/ext4/super.c |   10 ----------
+ 1 files changed, 0 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..0c4042e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 	spin_unlock(ext4_group_lock_ptr(sb, group));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9b26ba0..546c6ed 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -73,7 +73,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+-static void ext4_write_super(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+ 		       const char *dev_name, void *data);
+@@ -1193,7 +1192,6 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
+-	.write_super	= ext4_write_super,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4202,7 +4200,6 @@ int ext4_commit_super(struct super_block *sb, int sync)
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+-	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	ext4_superblock_csum_set(sb, es);
+ 	mark_buffer_dirty(sbh);
+@@ -4309,13 +4306,6 @@ int ext4_force_commit(struct super_block *sb)
+ 	return ret;
  }
  
--static inline void ext4_mark_super_dirty(struct super_block *sb)
+-static void ext4_write_super(struct super_block *sb)
 -{
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--
--	ext4_superblock_csum_set(sb, es);
--	if (EXT4_SB(sb)->s_journal == NULL)
--		sb->s_dirt =1;
+-	lock_super(sb);
+-	ext4_commit_super(sb, 1);
+-	unlock_super(sb);
 -}
 -
- /*
-  * Block validity checking
-  */
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8c7642a..3a77494 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		path.dentry = mnt->mnt_root;
- 		cp = d_path(&path, buf, sizeof(buf));
- 		if (!IS_ERR(cp)) {
-+			handle_t *handle;
-+			int err;
-+
-+			handle = ext4_journal_start_sb(sb, 1);
-+			if (IS_ERR(handle))
-+				return PTR_ERR(handle);
-+			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+			if (err) {
-+				ext4_journal_stop(handle);
-+				return err;
-+			}
- 			strlcpy(sbi->s_es->s_last_mounted, cp,
- 				sizeof(sbi->s_es->s_last_mounted));
--			ext4_mark_super_dirty(sb);
-+			ext4_handle_dirty_super(handle, sb);
-+			ext4_journal_stop(handle);
- 		}
- 	}
- 	/*
+ static int ext4_sync_fs(struct super_block *sb, int wait)
+ {
+ 	int ret = 0;
 -- 
 1.7.7.6
 
