@@ -1,49 +1,95 @@
-From: Zach Brown <zab@zabbo.net>
-Subject: Re: ext4_fallocate
-Date: Tue, 03 Jul 2012 10:57:35 -0700
-Message-ID: <4FF3328F.3090301@zabbo.net>
-References: <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <20120702031611.GB2406@gmail.com> <4FF1CD5D.8010904@redhat.com> <20120702174421.GM6679@quack.suse.cz> <4FF1DEDF.90105@redhat.com> <20120703174147.GA14986@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/5] Add additional owner identifier
+Date: Tue, 03 Jul 2012 22:42:34 +0400
+Message-ID: <87k3yky9d1.fsf@dmbot.sw.ru>
+References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org> <1340269733-25922-2-git-send-email-dmonakhov@openvz.org> <20120622000353.GF11645@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Ric Wheeler <rwheeler@redhat.com>, Jan Kara <jack@suse.cz>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, Fredrick <fjohnber@zoho.com>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
-	wenqing.lz@taobao.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 50-193-208-193-static.hfc.comcastbusiness.net ([50.193.208.193]:52089
-	"EHLO tetsuo.zabbo.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751089Ab2GCSEu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 14:04:50 -0400
-In-Reply-To: <20120703174147.GA14986@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120622000353.GF11645@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
-> workload frequently does a uninitialized extent conversion.  Thus, now
-> we set it to 256 (1MB chunk), and put it into super block in order to
-> adjust it dynamically in sysfs.
-
-It's a bit of a tangent, but this caught my eye.
-
-> +	/* If extent has less than 2*s_extent_zeroout_len zerout directly */
-> +	if (ee_len<= 2*sbi->s_extent_zeroout_len&&
->   	(EXT4_EXT_MAY_ZEROOUT&  split_flag)) {
-
-> -		if (allocated<= EXT4_EXT_ZERO_LEN&&
-> +		if (allocated<= sbi->s_extent_zeroout_len&&
->   		(EXT4_EXT_MAY_ZEROOUT&  split_flag)) {
-
->   		} else if ((map->m_lblk - ee_block + map->m_len<
-> -			   EXT4_EXT_ZERO_LEN)&&
-> +			   sbi->s_extent_zeroout_len)&&
-
-I'd be worried about having to verify that nothing bad happened if these
-sbi s_extent_zeroout_len references could see different values if they
-raced with a sysfs update.  Can they do that?
-
-Maybe avoid the risk all together and have an on-stack copy that's only
-referenced once at the start?
-
-- z
+On Fri, 22 Jun 2012 02:03:53 +0200, Jan Kara <jack@suse.cz> wrote:
+> On Thu 21-06-12 13:08:49, Dmitry Monakhov wrote:
+> > This patch add project inode identifier. Project ID may be used as
+> > auxiliary owner specifier in addition to standard uid/gid.
+Hi,
+First of all please excuse me for a very very late replay.
+Where were some very urgent work to do, Please excuse me one more time.
+>   I would just join patches 1 and 2. One without the other looks a bit
+> dumb... Otherwise I'm OK with the changes. I can take these two patches
+> through my tree when filesystem maintainers agree they want this feature and
+> are going to merge corresponding fs patches...
+Ok, seem reasonable will redo.
+>   
+> 
+> 								Honza
+> 
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > ---
+> >  fs/Kconfig            |    7 +++++++
+> >  include/linux/fs.h    |    1 +
+> >  include/linux/xattr.h |    3 +++
+> >  3 files changed, 11 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/Kconfig b/fs/Kconfig
+> > index c8554b5..1932458 100644
+> > --- a/fs/Kconfig
+> > +++ b/fs/Kconfig
+> > @@ -60,6 +60,13 @@ config FILE_LOCKING
+> >  	  This option enables standard file locking support, required
+> >            for filesystems like NFS and for the flock() system
+> >            call. Disabling this option saves about 11k.
+> > +config PROJECT_ID
+> > +	bool "Enable project inode identifier"
+> > +	default y
+> > +	help
+> > +	  This option enables project inode identifier. Project ID
+> > +	  may be used as auxiliary owner specifier in addition to
+> > +	  standard uid/gid.
+> >  
+> >  source "fs/notify/Kconfig"
+> >  
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index b0a6d44..6779fc2 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -1739,6 +1739,7 @@ struct super_operations {
+> >  	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
+> >  	int (*nr_cached_objects)(struct super_block *);
+> >  	void (*free_cached_objects)(struct super_block *, int);
+> > +	u32 (*get_prjid)(const struct inode *inode);
+> >  };
+> >  
+> >  /*
+> > diff --git a/include/linux/xattr.h b/include/linux/xattr.h
+> > index e5d1220..f8a83c3 100644
+> > --- a/include/linux/xattr.h
+> > +++ b/include/linux/xattr.h
+> > @@ -61,6 +61,9 @@
+> >  
+> >  #include <linux/types.h>
+> >  
+> > +#define XATTR_PRJID "system.project_id"
+> > +#define XATTR_PRJID_LEN (sizeof (XATTR_PRJID))
+> > +
+> >  struct inode;
+> >  struct dentry;
+> >  
+> > -- 
+> > 1.7.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
