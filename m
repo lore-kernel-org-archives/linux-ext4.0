@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv3 4/4] ext4: weed out ext4_write_super
-Date: Tue,  3 Jul 2012 15:00:10 +0300
-Message-ID: <1341316810-22598-5-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv3 3/4] ext4: remove unnecessary superblock dirtying
+Date: Tue,  3 Jul 2012 15:00:09 +0300
+Message-ID: <1341316810-22598-4-git-send-email-dedekind1@gmail.com>
 References: <1341316810-22598-1-git-send-email-dedekind1@gmail.com>
 Cc: Jan Kara <jack@suse.cz>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
@@ -15,57 +15,87 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-We do not depend on VFS's '->write_super()' anymore and do not need the
-'s_dirt' flag anymore. This patch weeds out 'ext4_write_super()' and the
-'s_dirt' usage in VFS.
+This patch changes the '__ext4_handle_dirty_super()' function which is used
+by ext4 to update the super-block via the journal in the following cases:
+
+1. When creating the first large file on a file
+   system without EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
+2. When re-sizing the file-system
+3. When creating an xattr on a file-system without the
+   EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+
+This function, however, falls back to just marking the superblock as dirty
+if the file-system has no journal. But it is user really rarely and it does not
+give any benefit to use the delayed superblock write (via the VFS's
+'sync_supers()' kernel thread) in these cases. We can just write out the
+superblock asynchronously instead.
+
+This patch also removes 's_dirt' condition on the unmount path because we never
+set it anymore, so we should not test it.
+
+Tested using xfstests for both journalled and non-journalled ext4.
 
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/super.c |   10 ----------
- 1 files changed, 0 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h      |    1 +
+ fs/ext4/ext4_jbd2.c |    2 +-
+ fs/ext4/super.c     |    5 ++---
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0c4042e..b2439d5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2041,6 +2041,7 @@ extern int ext4_superblock_csum_verify(struct super_block *sb,
+ 				       struct ext4_super_block *es);
+ extern void ext4_superblock_csum_set(struct super_block *sb,
+ 				     struct ext4_super_block *es);
++extern int ext4_commit_super(struct super_block *sb, int sync);
+ extern void *ext4_kvmalloc(size_t size, gfp_t flags);
+ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+ extern void ext4_kvfree(void *ptr);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 90f7c2e..27354df 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -156,6 +156,6 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 				(struct ext4_super_block *)bh->b_data);
+ 		mark_buffer_dirty(bh);
+ 	} else
+-		sb->s_dirt = 1;
++		err = ext4_commit_super(sb, 0);
+ 	return err;
+ }
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9b26ba0..546c6ed 100644
+index eb7aa3e..9b26ba0 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -73,7 +73,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
- static int ext4_unfreeze(struct super_block *sb);
--static void ext4_write_super(struct super_block *sb);
- static int ext4_freeze(struct super_block *sb);
- static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
- 		       const char *dev_name, void *data);
-@@ -1193,7 +1192,6 @@ static const struct super_operations ext4_nojournal_sops = {
- 	.dirty_inode	= ext4_dirty_inode,
- 	.drop_inode	= ext4_drop_inode,
- 	.evict_inode	= ext4_evict_inode,
--	.write_super	= ext4_write_super,
- 	.put_super	= ext4_put_super,
- 	.statfs		= ext4_statfs,
- 	.remount_fs	= ext4_remount,
-@@ -4202,7 +4200,6 @@ int ext4_commit_super(struct super_block *sb, int sync)
- 	es->s_free_inodes_count =
- 		cpu_to_le32(percpu_counter_sum_positive(
- 				&EXT4_SB(sb)->s_freeinodes_counter));
--	sb->s_dirt = 0;
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	ext4_superblock_csum_set(sb, es);
- 	mark_buffer_dirty(sbh);
-@@ -4309,13 +4306,6 @@ int ext4_force_commit(struct super_block *sb)
- 	return ret;
+@@ -63,7 +63,6 @@ static struct ext4_features *ext4_feat;
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
+ static int ext4_show_options(struct seq_file *seq, struct dentry *root);
+-static int ext4_commit_super(struct super_block *sb, int sync);
+ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 					struct ext4_super_block *es);
+ static void ext4_clear_journal_err(struct super_block *sb,
+@@ -896,7 +895,7 @@ static void ext4_put_super(struct super_block *sb)
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 	}
+-	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
++	if (!(sb->s_flags & MS_RDONLY))
+ 		ext4_commit_super(sb, 1);
+ 
+ 	if (sbi->s_proc) {
+@@ -4155,7 +4154,7 @@ static int ext4_load_journal(struct super_block *sb,
+ 	return 0;
  }
  
--static void ext4_write_super(struct super_block *sb)
--{
--	lock_super(sb);
--	ext4_commit_super(sb, 1);
--	unlock_super(sb);
--}
--
- static int ext4_sync_fs(struct super_block *sb, int wait)
+-static int ext4_commit_super(struct super_block *sb, int sync)
++int ext4_commit_super(struct super_block *sb, int sync)
  {
- 	int ret = 0;
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
 -- 
 1.7.7.6
 
