@@ -1,91 +1,247 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 1/5] Add additional owner identifier
-Date: Tue, 03 Jul 2012 22:42:34 +0400
-Message-ID: <87k3yky9d1.fsf@dmbot.sw.ru>
-References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org> <1340269733-25922-2-git-send-email-dmonakhov@openvz.org> <20120622000353.GF11645@quack.suse.cz>
+Subject: Re: [PATCH 3/5] ext4: Implement project ID support for ext4 filesystem
+Date: Tue, 03 Jul 2012 22:46:17 +0400
+Message-ID: <87hatoy96u.fsf@dmbot.sw.ru>
+References: <1340269733-25922-1-git-send-email-dmonakhov@openvz.org> <1340269733-25922-4-git-send-email-dmonakhov@openvz.org> <20120621235146.GC11645@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120622000353.GF11645@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:63115 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752656Ab2GCSqX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 14:46:23 -0400
+In-Reply-To: <20120621235146.GC11645@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 22 Jun 2012 02:03:53 +0200, Jan Kara <jack@suse.cz> wrote:
-> On Thu 21-06-12 13:08:49, Dmitry Monakhov wrote:
-> > This patch add project inode identifier. Project ID may be used as
-> > auxiliary owner specifier in addition to standard uid/gid.
-Hi,
-First of all please excuse me for a very very late replay.
-Where were some very urgent work to do, Please excuse me one more time.
->   I would just join patches 1 and 2. One without the other looks a bit
-> dumb... Otherwise I'm OK with the changes. I can take these two patches
-> through my tree when filesystem maintainers agree they want this feature and
-> are going to merge corresponding fs patches...
-Ok, seem reasonable will redo.
->   
-> 
-> 								Honza
+On Fri, 22 Jun 2012 01:51:46 +0200, Jan Kara <jack@suse.cz> wrote:
+> On Thu 21-06-12 13:08:51, Dmitry Monakhov wrote:
+> > * Abstract
+> >   A subtree of a directory tree T is a tree consisting of a directory
+> >   (the subtree root) in T and all of its descendants in T.
+> > 
+> >   *NOTE*: User is allowed to break pure subtree hierarchy via manual
+> >           id manipulation.
+> > 
+> >   Project subtrees assumptions:
+> >   (1) Each inode has an id. This id is persistently stored inside
+> >       inode (xattr, usually inside ibody)
+> >   (2) Project id is inherent from parent directory
+> > 
+> >   This feature is similar to project-id in XFS. One may assign some id to
+> >   a subtree. Each entry from the subtree may be accounted in directory
+> >   project quota. Will appear in later patches.
+> > 
+> > * Disk layout
+> >   Project id is stored on disk inside xattr usually inside ibody.
+> >   Xattr is used only as a data storage, It has not user visible xattr
+> >   interface.
+> > 
+> > * User interface
+> >   Project id is accessible via generic xattr interface "system.project_id"
+> > 
+> > * Notes
+> >   ext4_setattr interface to prjid: Semantically prjid must being changed
+> >   similar to uid/gid, but project_id is stored inside xattr so on-disk
+> >   structures updates is not that trivial, so I've move prjid change
+> >   logic to separate function.
+>   Generally, I like the patch. Some comments are below.
+Also reasonable, will redo.
 > 
 > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 > > ---
-> >  fs/Kconfig            |    7 +++++++
-> >  include/linux/fs.h    |    1 +
-> >  include/linux/xattr.h |    3 +++
-> >  3 files changed, 11 insertions(+), 0 deletions(-)
+> >  fs/ext4/Kconfig   |    8 ++
+> >  fs/ext4/Makefile  |    1 +
+> >  fs/ext4/ext4.h    |    4 +
+> >  fs/ext4/ialloc.c  |    6 ++
+> >  fs/ext4/inode.c   |    4 +
+> >  fs/ext4/project.c |  213 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  fs/ext4/project.h |   45 +++++++++++
+> >  fs/ext4/super.c   |   16 ++++
+> >  fs/ext4/xattr.c   |    7 ++
+> >  fs/ext4/xattr.h   |    2 +
+> >  10 files changed, 306 insertions(+), 0 deletions(-)
+> >  create mode 100644 fs/ext4/project.c
+> >  create mode 100644 fs/ext4/project.h
 > > 
-> > diff --git a/fs/Kconfig b/fs/Kconfig
-> > index c8554b5..1932458 100644
-> > --- a/fs/Kconfig
-> > +++ b/fs/Kconfig
-> > @@ -60,6 +60,13 @@ config FILE_LOCKING
-> >  	  This option enables standard file locking support, required
-> >            for filesystems like NFS and for the flock() system
-> >            call. Disabling this option saves about 11k.
-> > +config PROJECT_ID
-> > +	bool "Enable project inode identifier"
-> > +	default y
+> > diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+> > index c22f170..377af40 100644
+> > --- a/fs/ext4/Kconfig
+> > +++ b/fs/ext4/Kconfig
+> > @@ -76,6 +76,14 @@ config EXT4_FS_SECURITY
+> >  
+> >  	  If you are not using a security module that requires using
+> >  	  extended attributes for file security labels, say N.
+> > +config EXT4_PROJECT_ID
+> > +	bool "Ext4 project_id support"
+> > +	depends on PROJECT_ID
+> > +	depends on EXT4_FS_XATTR
 > > +	help
-> > +	  This option enables project inode identifier. Project ID
-> > +	  may be used as auxiliary owner specifier in addition to
-> > +	  standard uid/gid.
+> > +	  Enables project inode identifier support for ext4 filesystem.
+> > +	  This feature allow to assign some id to inodes similar to
+> > +	  uid/gid. 
+>   Is separate config option useful? The amount of code added for this is
+> not really big and there is not other speed / space benefit in disabling
+> this, is there?
+> 
+> >  config EXT4_DEBUG
+> >  	bool "EXT4 debugging support"
+> > diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+> > index 56fd8f8..692fe56 100644
+> > --- a/fs/ext4/Makefile
+> > +++ b/fs/ext4/Makefile
+> > @@ -12,3 +12,4 @@ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+> >  ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
+> >  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+> >  ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+> > +ext4-$(CONFIG_EXT4_PROJECT_ID)		+= project.o
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index cfc4e01..c0e33d7 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -925,6 +925,9 @@ struct ext4_inode_info {
 > >  
-> >  source "fs/notify/Kconfig"
-> >  
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index b0a6d44..6779fc2 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -1739,6 +1739,7 @@ struct super_operations {
-> >  	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-> >  	int (*nr_cached_objects)(struct super_block *);
-> >  	void (*free_cached_objects)(struct super_block *, int);
-> > +	u32 (*get_prjid)(const struct inode *inode);
+> >  	/* Precomputed uuid+inum+igen checksum for seeding inode checksums */
+> >  	__u32 i_csum_seed;
+> > +#ifdef CONFIG_EXT4_PROJECT_ID
+> > +	__u32 i_prjid;
+> > +#endif
 > >  };
 > >  
 > >  /*
-> > diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-> > index e5d1220..f8a83c3 100644
-> > --- a/include/linux/xattr.h
-> > +++ b/include/linux/xattr.h
-> > @@ -61,6 +61,9 @@
+> > @@ -962,6 +965,7 @@ struct ext4_inode_info {
+> >  #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+> >  #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+> >  #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+> > +#define EXT4_MOUNT_PROJECT_ID		0x40000 /* project owner id support */
+>   And I would even question the necessity of the mount option. Can we make
+> the rule that no system.prjid xattr simply means prjid == 0. When someone
+> sets prjid, it gets further automatically inherited and everything works
+> fine. I don't see the need for special mount option for this - again no
+> significant overhead is introduced when we always check whether we should
+> inherit non-zero prjid... Thoughts?
+Yep. this reasonable, Also it allows us to save mountopt bit space for
+new crazy stuff. 
+> 
+> >  #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+> >  #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+> >  #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> > index d48e8b1..d4b72e5 100644
+> > --- a/fs/ext4/ialloc.c
+> > +++ b/fs/ext4/ialloc.c
+> > @@ -28,6 +28,7 @@
+> >  #include "ext4_jbd2.h"
+> >  #include "xattr.h"
+> >  #include "acl.h"
+> > +#include "project.h"
 > >  
-> >  #include <linux/types.h>
+> >  #include <trace/events/ext4.h>
 > >  
-> > +#define XATTR_PRJID "system.project_id"
-> > +#define XATTR_PRJID_LEN (sizeof (XATTR_PRJID))
+> > @@ -898,6 +899,8 @@ got:
+> >  
+> >  	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+> >  
+> > +	ext4_setprjid(inode, ext4_getprjid(dir));
 > > +
-> >  struct inode;
-> >  struct dentry;
+> >  	ret = inode;
+> >  	dquot_initialize(inode);
+> >  	err = dquot_alloc_inode(inode);
+> > @@ -911,6 +914,9 @@ got:
+> >  	err = ext4_init_security(handle, inode, dir, qstr);
+> >  	if (err)
+> >  		goto fail_free_drop;
+> > +	err = ext4_prj_init(handle, inode);
+> > +	if (err)
+> > +		goto fail_free_drop;
 > >  
-> > -- 
-> > 1.7.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >  	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+> >  		/* set extent flag only for directory, file and normal symlink*/
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 02bc8cb..c98d8d6 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -42,6 +42,7 @@
+> >  #include "xattr.h"
+> >  #include "acl.h"
+> >  #include "truncate.h"
+> > +#include "project.h"
+> >  
+> >  #include <trace/events/ext4.h>
+> >  
+> > @@ -3870,6 +3871,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> >  	}
+> >  	if (ret)
+> >  		goto bad_inode;
+> > +	ret = ext4_prj_read(inode);
+> > +	if (ret)
+> > +		goto bad_inode;
+> >  
+> >  	if (S_ISREG(inode->i_mode)) {
+> >  		inode->i_op = &ext4_file_inode_operations;
+> > diff --git a/fs/ext4/project.c b/fs/ext4/project.c
+> > new file mode 100644
+> > index 0000000..a262a49
+> > --- /dev/null
+> > +++ b/fs/ext4/project.c
+> > @@ -0,0 +1,213 @@
+> > +/*
+> > + * linux/fs/ext4/projectid.c
+> > + *
+> > + * Copyright (C) 2010 Parallels Inc
+> > + * Dmitry Monakhov <dmonakhov@openvz.org>
+> > + */
+> > +
+> > +#include <linux/init.h>
+> > +#include <linux/sched.h>
+> > +#include <linux/slab.h>
+> > +#include <linux/capability.h>
+> > +#include <linux/fs.h>
+> > +#include <linux/quotaops.h>
+> > +#include "ext4_jbd2.h"
+> > +#include "ext4.h"
+> > +#include "xattr.h"
+> > +#include "project.h"
+> > +
+> > +
+> > +/*
+> > + * PROJECT SUBTREE
+> > + * A subtree of a directory tree T is a tree consisting of a directory
+> > + * (the subtree root) in T and all of its descendants in T.
+> > + *
+> > + * Project Subtree's assumptions:
+> > + * (1) Each inode has subtree id. This id is persistently stored inside
+> > + *     inode's xattr, usually inside ibody
+> > + * (2) Subtree id is inherent from parent directory
+> > + */
+> > +
+> > +/*
+> > + * Read project_id id from inode's xattr
+> > + * Locking: none
+> > + */
+> > +int ext4_prj_xattr_read(struct inode *inode, unsigned int *prjid)
+> > +{
+> > +	__le32 dsk_prjid;
+> > +	int retval;
+>   Please add empty line between declarations and function body... Also
+> holds for some functions below.
+> 
+> > +	retval = ext4_xattr_get(inode, EXT4_XATTR_INDEX_PROJECT_ID, "",
+> > +				&dsk_prjid, sizeof (dsk_prjid));
+> > +	if (retval > 0) {
+> > +		if (retval != sizeof(dsk_prjid))
+> > +			return -EIO;
+> > +		else
+> > +			retval = 0;
+> > +	}
+> > +	*prjid = le32_to_cpu(dsk_prjid);
+> > +	return retval;
+> > +
+> > +}
+> 
+> 								Honza
 > -- 
 > Jan Kara <jack@suse.cz>
 > SUSE Labs, CR
