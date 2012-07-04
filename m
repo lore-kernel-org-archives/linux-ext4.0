@@ -1,222 +1,243 @@
-From: Mel Gorman <mgorman@suse.de>
-Subject: [MMTests] Page reclaim performance on ext4
-Date: Wed, 4 Jul 2012 16:53:16 +0100
-Message-ID: <20120704155316.GK14154@suse.de>
-References: <20120620113252.GE4011@suse.de>
- <20120629111932.GA14154@suse.de>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v2] ext4: fix hole punch failure when depth is greater
+ than 0
+Date: Wed, 4 Jul 2012 19:33:26 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207041926290.29222@localhost>
+References: <1339638836-19990-1-git-send-email-ashish.sangwan2@gmail.com> <CAKYAXd_g_vgAmyD4jyUqz0u=vaSTAKFqZz0sqhM+2+hy1Z85ug@mail.gmail.com> <CAOiN93=BKyGKtpLng-ddX0RFUOdHCaxHi2O26GFokdT19xad2g@mail.gmail.com> <alpine.LFD.2.00.1207021110530.24050@dhcp-1-248.brq.redhat.com>
+ <CAOiN93kzvKVDzSJ13HJZDh9ANt3UaBy0o_QHNKCSHHTizjtY0w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: linux-mm@kvack.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20120629111932.GA14154@suse.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-206302476-1341423215=:29222"
+Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
+	sandeen@redhat.com, Ted Tso <tytso@mit.edu>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Ashish Sangwan <ashishsangwan2@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:20905 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750972Ab2GDRdj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jul 2012 13:33:39 -0400
+In-Reply-To: <CAOiN93kzvKVDzSJ13HJZDh9ANt3UaBy0o_QHNKCSHHTizjtY0w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Configuration:	global-dhp__pagereclaim-performance-ext4
-Result: 	http://www.csn.ul.ie/~mel/postings/mmtests-20120424/global-dhp__pagereclaim-performance-ext4
-Benchmarks:	postmark largedd fsmark-single fsmark-threaded micro
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Summary
-=======
+--8323328-206302476-1341423215=:29222
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
 
-fsmark is showing a performance dip in 3.4 on a 32-bit machine that is
-not matched by results elsewhere.
+So I've finally has some time to look at the patch and reproduce the
+problem. Thanks for noticing the problem, the patch seems good,
+though I have one question. Is the p_block setting really necessary
+? I do not think so, but I might be missing something. Here is
+updated patch I've tested, bellow.
 
-A number of tests show that there was swapping activity in 3.1 and 3.2
-which should have been completely unnecessary. It has been fixed but the
-fixes should have been backported as some were based on reports of poor
-interactivity performance during IO.
+Note: there are some indent problems in your patch, like for example
+this:
 
-One largedd test on hydra showed that a number of dirty pages are reaching
-the end of the LRU. This is not visible on other tests but should be
-monitored.
++                       path[k].p_block =
++                       le16_to_cpu(path[k].p_hdr->eh_entries)+1;
 
-I added linux-ext4 to the list because there are some performance drops
-that are not visible elsewhere so may be filesystem-specific.
 
-Benchmark notes
-===============
+Anyway, what do you think about the modification ?
 
-Each of the benchmarks trigger page reclaim in a fairly simple manner. The
-intention is not to be exhaustive but to test basic reclaim patterns that
-the VM should never get wrong. Regressions may also be due to changes in
-the IO scheduler or underlying filesystem.
+Thanks!
+-Lukas
 
-The workloads are predominately file-based. Anonymous page reclaim stress
-testing is covered by another test.
 
-mkfs was run on system startup. No attempt was made to age it. No
-special mkfs or mount options were used.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index b3300eb..94bc1bd 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2570,7 +2570,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+-	struct ext4_ext_path *path;
++	struct ext4_ext_path *path = NULL;
+ 	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
+ 	int i, err;
+@@ -2606,8 +2606,12 @@ again:
+ 		}
+ 		depth = ext_depth(inode);
+ 		ex = path[depth].p_ext;
+-		if (!ex)
++		if (!ex) {
++			ext4_ext_drop_refs(path);
++			kfree(path);
++			path = NULL;
+ 			goto cont;
++		}
+ 
+ 		ee_block = le32_to_cpu(ex->ee_block);
+ 
+@@ -2637,8 +2641,6 @@ again:
+ 			if (err < 0)
+ 				goto out;
+ 		}
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+ 	}
+ cont:
+ 
+@@ -2646,20 +2648,26 @@ cont:
+ 	 * We start scanning from right side, freeing all the blocks
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
+-	depth = ext_depth(inode);
+-	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+-	if (path == NULL) {
+-		ext4_journal_stop(handle);
+-		return -ENOMEM;
+-	}
+-	path[0].p_depth = depth;
+-	path[0].p_hdr = ext_inode_hdr(inode);
++	if (path)
++		i = depth;
++	else {
++		depth = ext_depth(inode);
++		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
++			       GFP_NOFS);
++		if (path == NULL) {
++			ext4_journal_stop(handle);
++			return -ENOMEM;
++		}
++		path[0].p_depth = depth;
++		path[0].p_hdr = ext_inode_hdr(inode);
+ 
+-	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+-		err = -EIO;
+-		goto out;
++		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
++			err = -EIO;
++			goto out;
++		}
++		i = 0;
+ 	}
+-	i = err = 0;
++	err = 0;
+ 
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
 
-postmark
-  o 15000 transactions
-  o File size ranged 3096 bytes to 5M
-  o 100 subdirectories
-  o Total footprint approximately 4*TOTAL_RAM
+On Mon, 2 Jul 2012, Ashish Sangwan wrote:
 
-  This workload is a single-threaded benchmark intended to measure
-  filesystem performance for many short-lived and small files. It's
-  primary weakness is that it does no application processing and
-  so the page aging is basically on per-file granularity. 
-
-largedd
-  o Target size 8*TOTAL_RAM
-
-  This downloads a large file and makes copies with dd until the
-  target footprint size is reached.
-
-fsmark
-  o Parallel directories were used
-  o 1 Thread per CPU
-  o 30M Filesize
-  o 16 directories
-  o 256 files per directory
-  o TOTAL_RAM_IN_BYTES/FILESIZE files per iteration
-  o 15 iterations
-  Single: ./fs_mark  -d  /tmp/fsmark-25458/1  -D  16  -N  256  -n  532  -L  15  -S0  -s  31457280
-  Thread: ./fs_mark  -d  /tmp/fsmark-28217/1  -d  /tmp/fsmark-28217/2  -d  /tmp/fsmark-28217/3  -d
-/tmp/fsmark-28217/4  -d  /tmp/fsmark-28217/5  -d  /tmp/fsmark-28217/6  -d  /tmp/fsmark-28217/7  -d
-/tmp/fsmark-28217/8  -d  /tmp/fsmark-28217/9  -d  /tmp/fsmark-28217/10  -d  /tmp/fsmark-28217/11  -d
-/tmp/fsmark-28217/12  -d  /tmp/fsmark-28217/13  -d  /tmp/fsmark-28217/14  -d  /tmp/fsmark-28217/15  -d
-/tmp/fsmark-28217/16  -d  /tmp/fsmark-28217/17  -d  /tmp/fsmark-28217/18  -d  /tmp/fsmark-28217/19  -d
-/tmp/fsmark-28217/20  -d  /tmp/fsmark-28217/21  -d  /tmp/fsmark-28217/22  -d  /tmp/fsmark-28217/23  -d
-/tmp/fsmark-28217/24  -d  /tmp/fsmark-28217/25  -d  /tmp/fsmark-28217/26  -d  /tmp/fsmark-28217/27  -d
-/tmp/fsmark-28217/28  -d  /tmp/fsmark-28217/29  -d  /tmp/fsmark-28217/30  -d  /tmp/fsmark-28217/31  -d
-/tmp/fsmark-28217/32  -D  16  -N  256  -n  16  -L  15  -S0  -s  31457280
-
-micro
-  o Total mapping size 10*TOTAL_RAM
-  o NR_CPU threads
-  o 5 iterations
-
-  This creates one process per CPU and creates a large file-backed mapping
-  up to the total mapping size. Each of the threads does a streaming
-  read of the mapping for a number of iterations. It then restarts with
-  a streaming write.
-
-  Completion time is the primary factor here but be careful as a good
-  completion time can be due to excessive reclaim which has an adverse
-  effect on many other workloads.
-
-===========================================================
-Machine:	arnold
-Result:		http://www.csn.ul.ie/~mel/postings/mmtests-20120424/global-dhp__pagereclaim-performance-ext4/arnold/comparison.html
-Arch:		x86
-CPUs:		1 socket, 2 threads
-Model:		Pentium 4
-Disk:		Single Rotary Disk
-Status:		Generally good but swapping in 3.1 and 3.2
-===========================================================
-
-fsmark-single
--------------
-  There was a performance dip in 3.4 that is not visible for ext3 and so
-  may be filesystem-specific. From a reclaim perspective the figures look ok.
-
-fsmark-threaded
----------------
-  This also shows a large performance dip in 3.4 and an increase in variance
-  but again the reclaim stats look ok.
-
-postmark
---------
-  As seen on ext3 there was a performance dip for kernels 3.1 to 3.3 that
-  is not quite been recovered in 3.4. There was also swapping activity
-  for the 3.1 and 3.2 kernels which may partially explain the problem.
-
-largedd
--------
-  Completion times are mixed. Again some swapping activity is visible in
-  3.1 and 3.2 which has been resolved but not backported.
-
-micro
------
-  Completion figures are not looking bad for 3.4
-   
-==========================================================
-Machine:	hydra
-Result:		http://www.csn.ul.ie/~mel/postings/mmtests-20120424/global-dhp__pagereclaim-performance-ext4/hydra/comparison.html
-Arch:		x86-64
-CPUs:		1 socket, 4 threads
-Model:		AMD Phenom II X4 940
-Disk:		Single Rotary Disk
-Status:		Ok but postmark shows high inode steals
-==========================================================
-
-fsmark-single
--------------
-  Performance was declining until 3.1 and been steady every since.
-  Some minor amounts of swapping is visible in 3.1
-
-fsmark-threaded
----------------
- Surprisingly stead performance but recent kernels show some direct
- reclaim is going on. It's a tiny percentage and lower than it has
- been historically but keep an eye on it.
-
-postmark
--------
-  As with other tests 3.1 saw a performance dip and swapping activity. 3.2
-  was also swapping although performance was not affected. While the reclaim
-  figures currently look ok, the actual performance sucks. As the same is
-  not visible on ext3, this may be a filesystem problem.
-
-largedd
--------
-  Completion figures look good but as before, swapping in 3.1 and 3.2.
-  What is of concern is the pages reclaimed by PageReclaim are excessively
-  high in 3.3 and 3.4. This implies that a large number of dirty pages
-  are reaching the end of the LRU and this can be a problem. Minimally
-  it increases kswapd CPU usage but can also be indicate a flushing
-  problem.
-
-micro
------
-  Looks ok.
-
-==========================================================
-Machine:	sandy
-Result:		http://www.csn.ul.ie/~mel/postings/mmtests-20120424/global-dhp__pagereclaim-performance-ext4/sandy/comparison.html
-Arch:		x86-64
-CPUs:		1 socket, 8 threads
-Model:		Intel Core i7-2600
-Disk:		Single Rotary Disk
-Status:		Generally ok, but swapping in 3.1 and 3.2
-==========================================================
-
-fsmark-single
--------------
-  Steady performance throughout. Tiny swap activity visible on 3.1 and 3.2
-  which caused no harm but does correlate with other tests.
-
-fsmark-threaded
----------------
-  Also steady with the exception of 3.2 which is bizzare from a reclaim
-  perspective. There was no direct reclaim scanning but a lot of inodes
-  were reclaimed.
-
-postmark
---------
-  Same performance dip in 3.1 and 3.2 and accompanied by the same swapping
-  problem.
-
-largedd
--------
-  Completion figures generally looking ok although again 3.1 is bad from
-  a swapping and direct reclaim perspective.
-
-micro
------
-  Looks ok
-
--- 
-Mel Gorman
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> Date: Mon, 2 Jul 2012 16:51:43 +0530
+> From: Ashish Sangwan <ashishsangwan2@gmail.com>
+> To: Lukáš Czerner <lczerner@redhat.com>
+> Cc: sandeen@redhat.com, Ted Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+>     linux-ext4@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>
+> Subject: Re: [PATCH v2] ext4: fix hole punch failure when depth is greater
+>     than 0
+> 
+> I will try to elaborate more about the problem and steps to reproduce:
+> Linux version 3.4.0 on X86 box.
+> 
+> Step1:
+> First create a small partition as it would be easy to fragment quickly.
+> The main intent for fragmenting the partition is to create a file with
+> at least 2 extent indexes.
+> You can also choose some other method to create such a file.
+> I created 200Mb partition and while formating used blocksize as 4KB
+> and used attached script to fragment.
+> This script fragments the partition such that each extent is exactly
+> 6FS blocks OR 24KB in length.
+> Linux#> ./fragment.sh /mnt/
+> 6+0 records in
+> 6+0 records out
+> 24576 bytes (24.0KB) copied, 0.087997 seconds, 272.7KB/s
+> cp: write error: No space left on device
+> Partition filled
+> rm: can't remove '/mnt//file1.7564': No such file or directory
+> fragmented partition /mnt/ with 24KB files
+> 
+> Step2:
+> Create a file with 342 extents i.e 2 extent indexes
+> [root@sputnik ashish]# dd if=linux-3.4.tar.bz2 of=check_1 bs=24576 count=342
+> 342+0 records in
+> 342+0 records out
+> 8404992 bytes (8.4 MB) copied, 0.0913289 s, 92.0 MB/s
+> [root@sputnik ashish]# cp check_1 /mnt/check_2
+> [root@sputnik ashish]# debugfs  /dev/sdb1
+> debugfs 1.41.14 (22-Dec-2010)
+> debugfs:  dump_extents check_2
+> Level Entries       Logical      Physical Length Flags
+>  0/ 1   1/  2     0 -  2039 32792             2040
+>  1/ 1   1/340     0 -     5  5771 -  5776       6
+>  1/ 1   2/340     6 -    11  5783 -  5788      6
+> <------- continue like wise till 340 ------------->
+>  1/ 1 340/340  2034 -  2039  9835 -  9840   6
+>  0/ 1   2/  2  2040 -  2051  5764              12
+>  1/ 1   1/  2  2040 -  2045  9847 -  9852     6
+>  1/ 1   2/  2  2046 -  2051  9859 -  9864     6
+> 
+> Step3: Punch hole at offset 4KB and length of hole is also 4KB
+> There is attached fallocate.c
+> [root@sputnik ashish]# ./fallacote.x86 /mnt/check_2
+> ret = 0
+> [root@sputnik ashish]#
+> 
+> Check extent tree:
+> [root@sputnik ashish]# debugfs  /dev/sdb1
+> debugfs 1.41.14 (22-Dec-2010)
+> debugfs:  dump_extents check_2
+> Level Entries       Logical      Physical Length Flags
+>  0/ 1   1/  3     0 -     5 32792                 6
+>  1/ 1   1/  2     0 -     1  5771 -  5772      2
+>  1/ 1   2/  2     2 -     5  5773 -  5776      4
+>  0/ 1   2/  3     6 -  2039  9871           2034
+>  1/ 1   1/339     6 -    11  5783 -  5788    6
+> <------- continue like wise till 339 ------------->
+>  1/ 1 339/339  2034 -  2039  9835 -  9840   6
+>  0/ 1   3/  3  2040 -  2051  5764             12
+>  1/ 1   1/  2  2040 -  2045  9847 -  9852    6
+>  1/ 1   2/  2  2046 -  2051  9859 -  9864    6
+> 
+> It is clearly visible that punching hole just split the first extent into 2
+> but failed to remove the required blocks.
+> 
+> Step4: To cross check, take diff of 2 files.
+> [root@sputnik ashish]# diff check_1 /mnt/check_2
+> [root@sputnik ashish]#
+> 
+> The 2 files are exactly same.
+> 
+> After applying this patch, correct results will be observed.
+> 
+> On Mon, Jul 2, 2012 at 2:42 PM, Lukáš Czerner <lczerner@redhat.com> wrote:
+> > On Mon, 2 Jul 2012, Ashish Sangwan wrote:
+> >
+> >> Date: Mon, 2 Jul 2012 11:03:26 +0530
+> >> From: Ashish Sangwan <ashishsangwan2@gmail.com>
+> >> To: sandeen@redhat.com, Lukáš Czerner <lczerner@redhat.com>,
+> >>     Ted Tso <tytso@mit.edu>
+> >> Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+> >>     Namjae Jeon <linkinjeon@gmail.com>
+> >> Subject: Re: [PATCH v2] ext4: fix hole punch failure when depth is greater
+> >>     than 0
+> >>
+> >> Hi Ted, Lukas, Eric,
+> >>
+> >> Did any of you get a chance to look at it?
+> >
+> > I am sorry for the delay. I have been trying to reproduce this
+> > problem without any success so far. But is was on ppc64 machine, so
+> > I'll try that on x86_64 and then review the patch.
+> >
+> > Thanks!
+> > -Lukas
+> >
+> >>
+> >> On Fri, Jun 22, 2012 at 6:19 AM, Namjae Jeon <linkinjeon@gmail.com> wrote:
+> >> > Hi. Eric.
+> >> >
+> >> > This is the patch for punch hole issue.
+> >> >
+> >> > Thanks.
+> >> >
+> >>
+> 
+--8323328-206302476-1341423215=:29222--
