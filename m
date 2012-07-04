@@ -1,47 +1,91 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: ext4_fallocate
-Date: Tue, 03 Jul 2012 21:15:16 -0400
-Message-ID: <4FF39924.7070602@ubuntu.com>
-References: <20120625191744.GB9688@thunk.org> <4FE9B57F.4030704@redhat.com> <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <20120702031611.GB2406@gmail.com> <4FF1CD5D.8010904@redhat.com> <20120702174421.GM6679@quack.suse.cz>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] e2fsprogs/csum: Use fs.csum_seed for xattr block csum
+ calculation.
+Date: Wed, 04 Jul 2012 09:44:36 +0800
+Message-ID: <4FF3A004.7050006@tao.ma>
+References: <1340547756-2932-1-git-send-email-tm@tao.ma> <20120703165826.GB2342@tux1.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-	Fredrick <fjohnber@zoho.com>, Ric Wheeler <rwheeler@redhat.com>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
-	wenqing.lz@taobao.com
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: djwong@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:8936 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932541Ab2GDBPS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 21:15:18 -0400
-In-Reply-To: <20120702174421.GM6679@quack.suse.cz>
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:39212 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755825Ab2GDBom (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 21:44:42 -0400
+In-Reply-To: <20120703165826.GB2342@tux1.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+On 07/04/2012 12:58 AM, Darrick J. Wong wrote:
+> On Sun, Jun 24, 2012 at 10:22:36PM +0800, Tao Ma wrote:
+>> From: Tao Ma <boyu.mt@taobao.com>
+>>
+>> As I mentioned in the kernel part patch with the subject
+>> "ext4: Use s_csum_seed instead of i_csum_seed for xattr block csum",
+>> it is not easy for the kernel to use the proper inode csum seed.
+>> So always use the fs.csum_seed for the xattr block csum calculation.
+>>
+>> Cc: Darrick J. Wong <djwong@us.ibm.com>
+> 
+> Acked-by: Darrick J. Wong <djwong@us.ibm.com>
+> 
+> (I assume there's a similar patch for e2fsprogs?)
+uh, sorry, but this *is* the patch for e2fsprogs. Something wrong here?
 
-On 07/02/2012 01:44 PM, Jan Kara wrote:
->   Yes, that option is broken and basically unfixable for data=ordered mode
-> (see http://comments.gmane.org/gmane.comp.file-systems.ext4/30727). For
-> data=writeback it works fine AFAICT.
+Thanks
+Tao
+> 
+> --D
+>> Cc: "Theodore Ts'o" <tytso@mit.edu>
+>> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+>> ---
+>>  lib/ext2fs/csum.c |   18 +++---------------
+>>  1 files changed, 3 insertions(+), 15 deletions(-)
+>>
+>> diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+>> index a7096d2..5ccbc1c 100644
+>> --- a/lib/ext2fs/csum.c
+>> +++ b/lib/ext2fs/csum.c
+>> @@ -119,21 +119,9 @@ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
+>>  	struct ext2_inode inode;
+>>
+>>  	hdr->h_checksum = 0;
+>> -	if (ext2fs_le32_to_cpu(hdr->h_refcount) != 1) {
+>> -		block = ext2fs_cpu_to_le64(block);
+>> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
+>> -					sizeof(block));
+>> -	} else {
+>> -		retval = ext2fs_read_inode(fs, inum, &inode);
+>> -		if (retval)
+>> -			return retval;
+>> -		inum = ext2fs_cpu_to_le32(inum);
+>> -		gen = ext2fs_cpu_to_le32(inode.i_generation);
+>> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
+>> -					sizeof(inum));
+>> -		*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen,
+>> -					sizeof(gen));
+>> -	}
+>> +	block = ext2fs_cpu_to_le64(block);
+>> +	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
+>> +				sizeof(block));
+>>  	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, fs->blocksize);
+>>  	hdr->h_checksum = old_crc;
+>>
+>> -- 
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Does data=writeback with barriers fix this fallocate problem?
 
-I can see that writing small random bits into a very large uninitialized file would cause a lot of updates to the extent tree, but with a sufficiently large cache, shouldn't many of the small, random writes become coalesced into fewer, larger extent updates that are done at delayed flush time?  Are you sure that the extent tree updates are not being done right away and blocking the writing application, instead of being delayed?
-
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iQEcBAEBAgAGBQJP85kgAAoJEJrBOlT6nu75pnEIAM1qX1PeoZOiWJumgv9yA0te
-C61813Vx2cVz5UpRZLO/YpAPTtei1ry2uLdN/TlmiH8TBc/fexipJwZGucYH7b9w
-iwE4u19eixYCDV8iVJYVZ6NI6dp9McKNxqrvhcrBUCRiG+/q0Qp5dsD0Gu4PAnOy
-rZzMvDU6Ln12nBH0M+UqE7VVZR6FR89tgpklSCDliPbDc0xWNUZQW0CRUkMVaAXu
-jFJlNMiMBg7Cu0QzGVj7EzY+GtFGcEEVE5Us2c04bdm6nbvS567Pq6LfwyOM5IVe
-q+/dwIN0Sdj3nneyPvrIfaFvQAKmtRnd6vkPxUnZgYSniq+hD0uf6J4nU1IKhw8=
-=i9g7
------END PGP SIGNATURE-----
