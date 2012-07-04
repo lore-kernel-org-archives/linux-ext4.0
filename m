@@ -1,85 +1,51 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv4 2/5] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
-Date: Wed,  4 Jul 2012 15:21:51 +0300
-Message-ID: <1341404514-13660-3-git-send-email-dedekind1@gmail.com>
-References: <1341404514-13660-1-git-send-email-dedekind1@gmail.com>
-Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
-	Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: ext4_fallocate
+Date: Wed, 04 Jul 2012 08:20:07 -0400
+Message-ID: <4FF434F7.2070906@redhat.com>
+References: <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <20120702031611.GB2406@gmail.com> <4FF1CD5D.8010904@redhat.com> <20120702174421.GM6679@quack.suse.cz> <4FF39924.7070602@ubuntu.com> <20120704023634.GB16947@gmail.com> <4FF3B352.3040707@ubuntu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, Fredrick <fjohnber@zoho.com>,
+	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>,
+	wenqing.lz@taobao.com
+To: Phillip Susi <psusi@ubuntu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:45031 "EHLO mga02.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24998 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751234Ab2GDMUY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Jul 2012 08:20:24 -0400
-In-Reply-To: <1341404514-13660-1-git-send-email-dedekind1@gmail.com>
+	id S1751081Ab2GDMUW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Jul 2012 08:20:22 -0400
+In-Reply-To: <4FF3B352.3040707@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+On 07/03/2012 11:06 PM, Phillip Susi wrote:
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+>
+> On 07/03/2012 10:36 PM, Zheng Liu wrote:
+>> Actually the workload needs to flush the data after writting a small
+>> random bits.  This workload is met in our product system at Taobao.
+>> Thus, the application has to wait this write to be done.  Certainly if
+>> we don't flush the data, the problem won't happen but there is a risk
+>> that we could loss our data.
+> Ohh, I see now... you want lots of small, random, synchronous writes.  Then I think the only way to avoid the metadata overhead is with the unsafe stale data patch.  More importantly, this workload is going to have terrible performance no matter what the fs does, because even with all of the blocks initialized, you're still doing lots of seeking and not allowing the IO elevator to help.  Maybe the application can be redesigned so that it does not generate such pathological IO?
+>
+> Or is this another case of userspace really needing access to barriers rather than using the big hammer of fsync?
+>
+> Is there any technical reason why a barrier flag can't be added to the aio interface?
 
-The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
-can well be modifying the superblock properly by journalling the change.
-Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
+For reasonably sized files, you might just as well really write out the full 
+file with "write" (do pre-allocation the old fashioned way).
 
-Artem: small amendments.
-Artem: tested using xfstests for both journalled and non-journalled ext4.
+Performance of course depends on the size of the file, but for a 1GB file you 
+can do this in a few seconds and prevent fragmentation and totally eliminate the 
+performance of flipping extents.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
----
- fs/ext4/ext4.h |    9 ---------
- fs/ext4/file.c |   14 +++++++++++++-
- 2 files changed, 13 insertions(+), 10 deletions(-)
+How large is the file you need to pre-allocate? How long does the job typically 
+run (minutes? hours? days?) :)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..0c4042e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 	spin_unlock(ext4_group_lock_ptr(sb, group));
- }
- 
--static inline void ext4_mark_super_dirty(struct super_block *sb)
--{
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--
--	ext4_superblock_csum_set(sb, es);
--	if (EXT4_SB(sb)->s_journal == NULL)
--		sb->s_dirt =1;
--}
--
- /*
-  * Block validity checking
-  */
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8c7642a..3a77494 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		path.dentry = mnt->mnt_root;
- 		cp = d_path(&path, buf, sizeof(buf));
- 		if (!IS_ERR(cp)) {
-+			handle_t *handle;
-+			int err;
-+
-+			handle = ext4_journal_start_sb(sb, 1);
-+			if (IS_ERR(handle))
-+				return PTR_ERR(handle);
-+			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+			if (err) {
-+				ext4_journal_stop(handle);
-+				return err;
-+			}
- 			strlcpy(sbi->s_es->s_last_mounted, cp,
- 				sizeof(sbi->s_es->s_last_mounted));
--			ext4_mark_super_dirty(sb);
-+			ext4_handle_dirty_super(handle, sb);
-+			ext4_journal_stop(handle);
- 		}
- 	}
- 	/*
--- 
-1.7.7.6
+ric
+
 
