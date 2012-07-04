@@ -1,113 +1,48 @@
-From: "Darrick J. Wong" <djwong@us.ibm.com>
-Subject: Re: [PATCH] e2fsprogs/csum: Use fs.csum_seed for xattr block csum
- calculation.
-Date: Tue, 3 Jul 2012 20:03:21 -0700
-Message-ID: <20120704030321.GD2342@tux1.beaverton.ibm.com>
-References: <1340547756-2932-1-git-send-email-tm@tao.ma>
- <20120703165826.GB2342@tux1.beaverton.ibm.com>
- <4FF3A004.7050006@tao.ma>
-Reply-To: djwong@us.ibm.com
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: ext4_fallocate
+Date: Tue, 03 Jul 2012 23:06:58 -0400
+Message-ID: <4FF3B352.3040707@ubuntu.com>
+References: <4FE9F9F4.7010804@zoho.com> <4FEA0DD1.8080403@gmail.com> <4FEA1415.8040809@redhat.com> <4FEA1F18.6010206@redhat.com> <20120627193034.GA3198@thunk.org> <4FEB9115.6090309@redhat.com> <20120702031611.GB2406@gmail.com> <4FF1CD5D.8010904@redhat.com> <20120702174421.GM6679@quack.suse.cz> <4FF39924.7070602@ubuntu.com> <20120704023634.GB16947@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>, Fredrick <fjohnber@zoho.com>,
+	Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger@dilger.ca>, wenqing.lz@taobao.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:32775 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755464Ab2GDDD0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Jul 2012 23:03:26 -0400
-Received: from /spool/local
-	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <djwong@us.ibm.com>;
-	Tue, 3 Jul 2012 23:03:25 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 8CE4A38C803A
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Jul 2012 23:03:22 -0400 (EDT)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q6433M69370726
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Jul 2012 23:03:22 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q648YEbv000369
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Jul 2012 04:34:15 -0400
-Content-Disposition: inline
-In-Reply-To: <4FF3A004.7050006@tao.ma>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:12221 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755790Ab2GDDHB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Jul 2012 23:07:01 -0400
+In-Reply-To: <20120704023634.GB16947@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 04, 2012 at 09:44:36AM +0800, Tao Ma wrote:
-> On 07/04/2012 12:58 AM, Darrick J. Wong wrote:
-> > On Sun, Jun 24, 2012 at 10:22:36PM +0800, Tao Ma wrote:
-> >> From: Tao Ma <boyu.mt@taobao.com>
-> >>
-> >> As I mentioned in the kernel part patch with the subject
-> >> "ext4: Use s_csum_seed instead of i_csum_seed for xattr block csum",
-> >> it is not easy for the kernel to use the proper inode csum seed.
-> >> So always use the fs.csum_seed for the xattr block csum calculation.
-> >>
-> >> Cc: Darrick J. Wong <djwong@us.ibm.com>
-> > 
-> > Acked-by: Darrick J. Wong <djwong@us.ibm.com>
-> > 
-> > (I assume there's a similar patch for e2fsprogs?)
-> uh, sorry, but this *is* the patch for e2fsprogs. Something wrong here?
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Oops, I got confused.  Please ignore my baffled comment. :/
+On 07/03/2012 10:36 PM, Zheng Liu wrote:
+> Actually the workload needs to flush the data after writting a small
+> random bits.  This workload is met in our product system at Taobao.
+> Thus, the application has to wait this write to be done.  Certainly if
+> we don't flush the data, the problem won't happen but there is a risk
+> that we could loss our data.
 
---D
-> 
-> Thanks
-> Tao
-> > 
-> > --D
-> >> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> >> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-> >> ---
-> >>  lib/ext2fs/csum.c |   18 +++---------------
-> >>  1 files changed, 3 insertions(+), 15 deletions(-)
-> >>
-> >> diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
-> >> index a7096d2..5ccbc1c 100644
-> >> --- a/lib/ext2fs/csum.c
-> >> +++ b/lib/ext2fs/csum.c
-> >> @@ -119,21 +119,9 @@ static errcode_t ext2fs_ext_attr_block_csum(ext2_filsys fs, ext2_ino_t inum,
-> >>  	struct ext2_inode inode;
-> >>
-> >>  	hdr->h_checksum = 0;
-> >> -	if (ext2fs_le32_to_cpu(hdr->h_refcount) != 1) {
-> >> -		block = ext2fs_cpu_to_le64(block);
-> >> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
-> >> -					sizeof(block));
-> >> -	} else {
-> >> -		retval = ext2fs_read_inode(fs, inum, &inode);
-> >> -		if (retval)
-> >> -			return retval;
-> >> -		inum = ext2fs_cpu_to_le32(inum);
-> >> -		gen = ext2fs_cpu_to_le32(inode.i_generation);
-> >> -		*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&inum,
-> >> -					sizeof(inum));
-> >> -		*crc = ext2fs_crc32c_le(*crc, (unsigned char *)&gen,
-> >> -					sizeof(gen));
-> >> -	}
-> >> +	block = ext2fs_cpu_to_le64(block);
-> >> +	*crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&block,
-> >> +				sizeof(block));
-> >>  	*crc = ext2fs_crc32c_le(*crc, (unsigned char *)buf, fs->blocksize);
-> >>  	hdr->h_checksum = old_crc;
-> >>
-> >> -- 
-> >> 1.7.1
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> 
+Ohh, I see now... you want lots of small, random, synchronous writes.  Then I think the only way to avoid the metadata overhead is with the unsafe stale data patch.  More importantly, this workload is going to have terrible performance no matter what the fs does, because even with all of the blocks initialized, you're still doing lots of seeking and not allowing the IO elevator to help.  Maybe the application can be redesigned so that it does not generate such pathological IO?
 
+Or is this another case of userspace really needing access to barriers rather than using the big hammer of fsync?
+
+Is there any technical reason why a barrier flag can't be added to the aio interface?
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iQEcBAEBAgAGBQJP87NSAAoJEJrBOlT6nu75F7wH/0NrhBZyp+KwYuJpqM+hUs8o
+1CSRXpw/OBOljH61kAT1zqRofMNA/6gF5EYnAB3usUiwjJk4eQu4kFCVastZrLRQ
+Zm3H2yuSXbeoRvuSnNBbpjCPFQYIKWHcKjt2+pov853Kb2auYSyN2T6I7qUmLu7U
+tMJtJekMi4HPz3snBrLGsvYRyy7rMLWwf3wd+G2SBrVNS/tKuRSRaw0FwXqDaoN9
+Dc4FqWmVeicG9qQbszkal84IZo1YwSWMzeRvqjn+LER1XTJJaSzvttppBKKFsS2M
+FVeMwTtRHJ3wl3jWYTyN/AwDUg3Pr/PX9/xmdn8DSGQG3eo7sBlqyPBzN6QYz5w=
+=C2YA
+-----END PGP SIGNATURE-----
