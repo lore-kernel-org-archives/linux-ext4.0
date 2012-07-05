@@ -1,41 +1,71 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 15576] Data Loss (flex_bg and ext4_mb_generate_buddy errors)
-Date: Thu,  5 Jul 2012 16:17:12 +0000 (UTC)
-Message-ID: <20120705161712.B681611FA62@bugzilla.kernel.org>
-References: <bug-15576-13602@https.bugzilla.kernel.org/>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: New Defects based on recent changes in Kernel code found by
+ Coverity Scan
+Date: Thu, 5 Jul 2012 12:44:26 -0700
+Message-ID: <20120705124426.c4a2f347.akpm@linux-foundation.org>
+References: <829BE905228AE14A9AE1A46E6F2E371605538D039D@VA3DIAXVS891.RED001.local>
+	<20120703152739.ea7df9e6.akpm@linux-foundation.org>
+	<20120705153316.GN14928@shiny>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:53045 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751196Ab2GEQRP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Jul 2012 12:17:15 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4059B2027F
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Jul 2012 16:17:14 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id B86E820223
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Jul 2012 16:17:12 +0000 (UTC)
-In-Reply-To: <bug-15576-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Scan Subscription <scan-subscription@coverity.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+	"Chris L. Mason" <clmason@fusionio.com>,
+	Bing Zhao <bzhao@marvell.com>,
+	Robert Love <robert.w.love@intel.com>,
+	Andrew Vasquez <andrew.vasquez@qlogic.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Mattia Dongili <malattia@linux.it>,
+	Matthew Garrett <mjg@redhat.com>
+To: Chris Mason <chris.mason@fusionio.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120705153316.GN14928@shiny>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=15576
+On Thu, 5 Jul 2012 11:33:16 -0400 Chris Mason <chris.mason@fusionio.com> wrote:
 
+> > > * CID 709112: Dereference after null check - fs/btrfs/ioctl.c, line: 1309 Comparing "device->fs_devices" to null implies that "device->fs_devices" might be null, and then it is deference
+> > > fs/btrfs/ioctl.c:1309
+> > 
+> > Chris.
+> 
+> Thanks for forwarding this.  But I'm a little confused, our line 1309 is
+> this:
+> 
+>         if (device->fs_devices && device->fs_devices->seeding) {
+> 
+> Is coverity telling me that I'm using fs_devices later on in the
+> function without extra checks?  Some functions we call do assume it
+> isn't null, but the seeding devices are special snowflakes. 
 
-Alan <alan@lxorguk.ukuu.org.uk> changed:
+There were more details further down in the email:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-         Resolution|                            |DOCUMENTED
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> ____________________________________________________________________________________________________________
+> CID 709112: Dereference after null check 
+> 
+> fs/btrfs/ioctl.c:1309
+> 1256 static noinline int btrfs_ioctl_resize(struct btrfs_root *root,
+> 1257                                        void __user *arg)
+> 1258 {
+> ...
+> >>> At conditional (1): "device->fs_devices" taking the false branch.
+> >>> CID 709112: Dereference after null check (FORWARD_NULL) Comparing "device->fs_devices" to null implies that "device->fs_devices" might be null.
+> 1309        if (device->fs_devices && device->fs_devices->seeding) {
+> 1310                printk(KERN_INFO "btrfs: resizer unable to apply on "
+> 1311                       "seeding device %llu\n", devid);
+> 1312                ret = -EINVAL;
+> 1313                goto out_free;
+> 1314        }
+> ...
+> >>> Passing null variable "device->fs_devices" to function "btrfs_grow_device", which dereferences it. 
+> 1367                ret = btrfs_grow_device(trans, device, new_size);
+> 1368                btrfs_commit_transaction(trans, root);
+> 1369        } else if (new_size < old_size) {
+> >>> Passing null variable "device->fs_devices" to function "btrfs_shrink_device", which dereferences it. 
+> 1370                ret = btrfs_shrink_device(device, new_size);
+> 1371        }
+> 1378 }
