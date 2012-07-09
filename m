@@ -1,62 +1,59 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: e2defrag 0.81 released
-Date: Mon, 09 Jul 2012 14:49:51 -0400
-Message-ID: <4FFB27CF.4090901@ubuntu.com>
-References: <4FF76E37.1020001@ubuntu.com> <6642BE04-8D3A-4B15-8FB1-05DFB80CB6B9@dilger.ca> <4FF84D4C.1030308@ubuntu.com> <CAGpXXZ+B67C9+oxH35sW4Pjg61VC-GdJEjUqwDw57AnLHdUkAw@mail.gmail.com>
+From: Ted Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4
+ filesystem
+Date: Mon, 9 Jul 2012 17:04:39 -0400
+Message-ID: <20120709210439.GB11960@thunk.org>
+References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org>
+ <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:21139 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751202Ab2GIStw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Jul 2012 14:49:52 -0400
-In-Reply-To: <CAGpXXZ+B67C9+oxH35sW4Pjg61VC-GdJEjUqwDw57AnLHdUkAw@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38107 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751405Ab2GIVEn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2012 17:04:43 -0400
+Content-Disposition: inline
+In-Reply-To: <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-On 7/9/2012 12:16 PM, Greg Freemyer wrote:
-> Of course, even that is better than having to unmount the
-> filesystem like you new tool apparently requires.
-
-Old tool... very old tool ;)
-
-I remember using the thing with one of the first releases of slackware
-when I first started playing with Linux, and iirc, DOS hadn't yet
-included its own defragger.
-
-> I think you're right e4defrag userspace code ignores consolidating 
-> freespace to make bigger extents possible and I don't think
-> userspace has any file packing specific knowledge.
+On Mon, Jul 09, 2012 at 07:28:44PM +0400, Dmitry Monakhov wrote:
+> * Abstract
+>   A subtree of a directory tree T is a tree consisting of a directory
+>   (the subtree root) in T and all of its descendants in T.
 > 
-> Does fallocate itself assist with either?
+>   *NOTE*: User is allowed to break pure subtree hierarchy via manual
+>           id manipulation.
 > 
-> ie. since e4defrag uses fallocate to allocate the donor file
-> blocks, logically it would make sense to add the intelligence you
-> are looking for into fallocate.  And hopefully it is already
-> there.
+>   Subtree subtrees assumptions:
+>   (1) Each inode has an id. This id is persistently stored inside
+>       inode (xattr, usually inside ibody)
+>   (2) Subtree id is inherent from parent directory
+                      ^^^^^^^^ inherited
 
-You need a method of requesting specific blocks instead of just asking
-for the right number.  Then you need to analyze all of the files on
-the disk to figure out where their blocks are, and decide where you
-want them to be instead.  Then you could use the donor inode method to
-move things around.
+What really bothers me about this patch is that the abstraction is
+extremely leaky.  In particular, it's not just "manual id
+manipulation" that will break the abstraction.  If you rename a file
+or directory across subtrees, it breaks the abstraction; so does hard
+links.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+When you get right down to it, this is effectively a secondary group
+id, except it's not used for access control, but rather for quota
+tracking.  You've used the name "subtree" id, but in fact there's no
+guarantee subtrees has anything to do with it.  With a few renames,
+any semblance of a subtree organization seems to disappear very
+easily.
 
-iQEcBAEBAgAGBQJP+yfPAAoJEJrBOlT6nu75Y8AH/09qDUt0jdhPjNyXMUUFRVaV
-U7Ih5j6r0srRHH9VmS7ppq6ingqpbrFEExbalg8ynTRX1nYDGL0nLiBU79rfK+KK
-XOTK0ZYm+CUMElLdO5bYnaHti9vsSHL5xRyGmI5OR0CY7LwfnyJeDw6wS7+WsgyQ
-o6ziTPcBEfaJzn9BBS+EP/1WI06lQ/cJbWUqUAJhefu2my3IXJUrjUYjnH46HKGM
-2ptPbIJM2fT4QubBNnuPpdTNI5yc56+auzoB3hrK2Nf/Yh17w5R0MomHk/VitzPt
-AD7zKLgpk6R9G/IbnajsMVzbLsjBbn8Tcyrhher2uyw3xE0XtJgj2fmPq32ZrL0=
-=hMeu
------END PGP SIGNATURE-----
+Another question which gets raised is is allowed to change the project
+ownership?  Maybe I'm missing something, but I don't see any access
+checking, so today it seems the answer is "anybody".  We could change
+it so that only a root process can change project ownership, that
+could raise other problems.
+
+I also worry that this feature will have very limited applicability.
+Will anyone other than parallels use it?
+
+					- Ted
