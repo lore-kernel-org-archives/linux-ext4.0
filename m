@@ -1,59 +1,50 @@
-From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4
- filesystem
-Date: Mon, 9 Jul 2012 17:04:39 -0400
-Message-ID: <20120709210439.GB11960@thunk.org>
-References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org>
- <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] jbd: Check return value of blkdev_issue_flush()
+Date: Mon,  9 Jul 2012 23:45:06 +0200
+Message-ID: <1341870307-11803-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38107 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751405Ab2GIVEn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2012 17:04:43 -0400
-Content-Disposition: inline
-In-Reply-To: <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58719 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752442Ab2GIVpK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2012 17:45:10 -0400
+Received: from relay2.suse.de (unknown [195.135.220.254])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 745ACA2111
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Jul 2012 23:45:09 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 09, 2012 at 07:28:44PM +0400, Dmitry Monakhov wrote:
-> * Abstract
->   A subtree of a directory tree T is a tree consisting of a directory
->   (the subtree root) in T and all of its descendants in T.
-> 
->   *NOTE*: User is allowed to break pure subtree hierarchy via manual
->           id manipulation.
-> 
->   Subtree subtrees assumptions:
->   (1) Each inode has an id. This id is persistently stored inside
->       inode (xattr, usually inside ibody)
->   (2) Subtree id is inherent from parent directory
-                      ^^^^^^^^ inherited
+blkdev_issue_flush() can fail. Make sure the error gets properly propagated.
 
-What really bothers me about this patch is that the abstraction is
-extremely leaky.  In particular, it's not just "manual id
-manipulation" that will break the abstraction.  If you rename a file
-or directory across subtrees, it breaks the abstraction; so does hard
-links.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/recovery.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-When you get right down to it, this is effectively a secondary group
-id, except it's not used for access control, but rather for quota
-tracking.  You've used the name "subtree" id, but in fact there's no
-guarantee subtrees has anything to do with it.  With a few renames,
-any semblance of a subtree organization seems to disappear very
-easily.
+ I have queued this patch in my tree and plan to send it to Linus in the
+next merge window.
 
-Another question which gets raised is is allowed to change the project
-ownership?  Maybe I'm missing something, but I don't see any access
-checking, so today it seems the answer is "anybody".  We could change
-it so that only a root process can change project ownership, that
-could raise other problems.
+diff --git a/fs/jbd/recovery.c b/fs/jbd/recovery.c
+index 008bf06..a748fe2 100644
+--- a/fs/jbd/recovery.c
++++ b/fs/jbd/recovery.c
+@@ -265,8 +265,11 @@ int journal_recover(journal_t *journal)
+ 	if (!err)
+ 		err = err2;
+ 	/* Flush disk caches to get replayed data on the permanent storage */
+-	if (journal->j_flags & JFS_BARRIER)
+-		blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
++	if (journal->j_flags & JFS_BARRIER) {
++		err2 = blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
++		if (!err)
++			err = err2;
++	}
+ 
+ 	return err;
+ }
+-- 
+1.7.1
 
-I also worry that this feature will have very limited applicability.
-Will anyone other than parallels use it?
-
-					- Ted
