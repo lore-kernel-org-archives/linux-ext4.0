@@ -1,54 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext3: Check return value of blkdev_issue_flush()
-Date: Mon,  9 Jul 2012 23:45:07 +0200
-Message-ID: <1341870307-11803-2-git-send-email-jack@suse.cz>
-References: <1341870307-11803-1-git-send-email-jack@suse.cz>
-Cc: Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+From: wfg@linux.intel.com
+Subject: [ext4:master 4/4] fs/ext4/resize.c:1200:9: warning: unused variable
+ 'ret'
+Date: Tue, 10 Jul 2012 07:44:04 +0800
+Message-ID: <20120709234404.GA5584@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: kernel-janitors@vger.kernel.org,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58720 "EHLO mx2.suse.de"
+Received: from mga01.intel.com ([192.55.52.88]:22191 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752442Ab2GIVpL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2012 17:45:11 -0400
-Received: from relay1.suse.de (unknown [195.135.220.254])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id CD0FDA2111
-	for <linux-ext4@vger.kernel.org>; Mon,  9 Jul 2012 23:45:10 +0200 (CEST)
-In-Reply-To: <1341870307-11803-1-git-send-email-jack@suse.cz>
+	id S1752424Ab2GIXoJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2012 19:44:09 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-blkdev_issue_flush() can fail. Make sure the error gets properly propagated.
+Hi Theodore,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/fsync.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
+There are new compile warnings show up in
 
- I have queued this patch in my tree and plan to send it to Linus in the
-next merge window.
+tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git master
+head:   952fc18ef9ec707ebdc16c0786ec360295e5ff15
+commit: 952fc18ef9ec707ebdc16c0786ec360295e5ff15 [4/4] ext4: fix overhead calculation used by ext4_statfs()
 
-diff --git a/fs/ext3/fsync.c b/fs/ext3/fsync.c
-index d4dff27..b31dbd4 100644
---- a/fs/ext3/fsync.c
-+++ b/fs/ext3/fsync.c
-@@ -92,8 +92,13 @@ int ext3_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	 * disk caches manually so that data really is on persistent
- 	 * storage
- 	 */
--	if (needs_barrier)
--		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-+	if (needs_barrier) {
-+		int err;
+All warnings:
+
+fs/ext4/resize.c: In function 'ext4_update_super':
+fs/ext4/resize.c:1200:9: warning: unused variable 'ret' [-Wunused-variable]
+
+vim +1200 fs/ext4/resize.c
+  1197		struct ext4_new_group_data *group_data = flex_gd->groups;
+  1198		struct ext4_sb_info *sbi = EXT4_SB(sb);
+  1199		struct ext4_super_block *es = sbi->s_es;
+> 1200		int i, ret;
+  1201	
+  1202		BUG_ON(flex_gd->count == 0 || group_data == NULL);
+  1203		/*
+
+The unused 'ret' is introduced by:
+
+@@ -1197,7 +1197,7 @@ static void ext4_update_super(struct super_block *sb,
+        struct ext4_new_group_data *group_data = flex_gd->groups;
+        struct ext4_sb_info *sbi = EXT4_SB(sb);
+        struct ext4_super_block *es = sbi->s_es;
+-       int i;
++       int i, ret;
+ 
+        BUG_ON(flex_gd->count == 0 || group_data == NULL);
+        /*
+@@ -1272,6 +1272,11 @@ static void ext4_update_super(struct super_block *sb,
+                           &sbi->s_flex_groups[flex_group].free_inodes);
+        }
+ 
++       /*
++        * Update the fs overhead information
++        */
++       ext4_calculate_overhead(sb);
 +
-+		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-+		if (!ret)
-+			ret = err;
-+	}
- out:
- 	trace_ext3_sync_file_exit(inode, ret);
- 	return ret;
--- 
-1.7.1
+        if (test_opt(sb, DEBUG))
+                printk(KERN_DEBUG "EXT4-fs: added group %u:"
+                       "%llu blocks(%llu free %llu reserved)\n", flex_gd->count,
 
+---
+0-DAY kernel build testing backend         Open Source Technology Centre
+Fengguang Wu <wfg@linux.intel.com>                     Intel Corporation
