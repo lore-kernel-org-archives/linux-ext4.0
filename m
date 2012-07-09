@@ -1,48 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Use s_csum_seed instead of i_csum_seed for xattr
- block csum.
-Date: Mon, 9 Jul 2012 10:12:48 -0400
-Message-ID: <20120709141248.GB3649@thunk.org>
-References: <1340547236-2838-1-git-send-email-tm@tao.ma>
+Subject: Re: [v2] ext4: change a comment on fs/ext4/extents.c
+Date: Mon, 9 Jul 2012 10:21:20 -0400
+Message-ID: <20120709142120.GA5589@thunk.org>
+References: <4fe32049.28d5440a.3265.ffffb61a@mx.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Darrick J. Wong" <djwong@us.ibm.com>
-To: Tao Ma <tm@tao.ma>
+Cc: linux-ext4@vger.kernel.org
+To: Liu Haibo <haiboliu6@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38001 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38008 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753915Ab2GIOMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2012 10:12:52 -0400
+	id S1751214Ab2GIOVW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2012 10:21:22 -0400
 Content-Disposition: inline
-In-Reply-To: <1340547236-2838-1-git-send-email-tm@tao.ma>
+In-Reply-To: <4fe32049.28d5440a.3265.ffffb61a@mx.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 24, 2012 at 10:13:56PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Thu, Jun 21, 2012 at 03:23:14AM -0000, Liu Haibo wrote:
+> From: HaiboLiu <HaiboLiu6@gmail.com>
 > 
-> In xattr block operation, we use h_refcount to indicate whether the
-> xattr block is shared among many inodes. And xattr block csum uses
-> s_csum_seed if it is shared and i_csum_seed if it belongs to
-> one inode. But this has a problem. So consider the block is shared
-> first bewteen inode A and B, and B has some xattr update and CoW
-> the xattr block. When it updates the *old* xattr block(because
-> of the h_refcount change) and calls ext4_xattr_release_block, we
-> has no idea that inode A is the real owner of the *old* xattr
-> block and we can't use the i_csum_seed of inode A either in xattr
-> block csum calculation. And I don't think we have an easy way to
-> find inode A.
+> In this patch, ext4_ext_try_to_merge has been change to merge 
+> an extent both left and right. So we need to update the comment
+> in here.
 > 
-> So this patch just removes the tricky i_csum_seed and we now uses
-> s_csum_seed every time for the xattr block csum. The corresponding
-> patch for the e2fsprogs will be sent in another patch.
+> v1->v2: update the subject and the patch comment.
 > 
-> This is spotted by xfstests 117.
-> 
-> Cc: Darrick J. Wong <djwong@us.ibm.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: HaiboLiu <HaiboLiu6@gmail.com>
 
-Thanks, applied.
+Applied, thanks.
+
+BTW, in the future, it's better to put the v1-v2 log after the "---"
+separator.
 
 					- Ted
