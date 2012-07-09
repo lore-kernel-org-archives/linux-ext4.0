@@ -1,40 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3 v3] ext4: add dio overwrite nolock
-Date: Mon, 9 Jul 2012 11:01:19 -0400
-Message-ID: <20120709150118.GE3649@thunk.org>
-References: <1341152506-32649-1-git-send-email-wenqing.lz@taobao.com>
- <1341152506-32649-4-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Tao Ma <tm@tao.ma>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Robin Dong <hao.bigrat@gmail.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38041 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752523Ab2GIPBY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2012 11:01:24 -0400
-Content-Disposition: inline
-In-Reply-To: <1341152506-32649-4-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/3] RFC: introduce extended inode owner identifier v10
+Date: Mon,  9 Jul 2012 19:28:42 +0400
+Message-ID: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jul 01, 2012 at 10:21:46PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> Aligned and overwrite direct I/O can be parallelized.  In ext4_file_dio_write,
-> we first check whether these conditions are satisfied or not.  If so, we
-> take i_data_sem and release i_mutex lock directly.  Meanwhile iocb->private is
-> set to indicate that this is a dio overwrite, and it will be handled in
-> ext4_ext_direct_IO.
-> 
-> CC: Tao Ma <tm@tao.ma>
-> CC: Eric Sandeen <sandeen@redhat.com>
-> CC: Robin Dong <hao.bigrat@gmail.com>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Hi, Here is updated version subtree-quota pachset
 
-Thanks, applied.
+*Feature description*
+1) Inode may has a subtree identifier which has same meaning as uid/gid.
+2) In general case Id is stored in inode's xattr named "system.subtree"
+3) Id is inherent from parent inode on creation.
+4) This id is cached in memory fs_inode structure and may be accessible
+   via s_op->get_subtree(). This field it restricted by CONFIG_SUBTREE.
+   So no wasting of memory happens.
 
-					- Ted
+5) Since id is cached in memory it may be used for different purposes
+   such as:
+5A) Implement additional quota id space orthogonal to uid/gid. This is
+    useful in managing quota for some filesystem hierarchy(chroot or
+    container over bindmount)
+
+6) In comparison to XFS's project ID feature it does not affect
+   rename(2)/link(2) in case of cross tries transfer
+
+*User interface *
+Subtree id is managed via generic xattr interface "system.subtree"
+This good because
+ 1) We may use already existing interface.
+ 2) xattr already supported by generic utilities tar/rsync and etc
+
+PATCH SET TOC:
+1) generic subtree support
+2) ext4: generic subtree support
+3) ext4: subtree quota support
+ NOTE:Ext4 quota is now managed via e2fsprogs, changes which add prjquota suppport for
+ e2fsprogs will be submitted as separate patch-set.
+
+Patch against next-20120605-1-g20a6ee4
+Actually vfs part is really small, and most changes happen in fs/ext4/
+
+Changes agains V9
+ 1) Change the name of the id from "project_id" to "subtree" accordings to Dave's
+    comments.
+ 2) Fixes according to Jan's comments
+   -  coalapse first and second patch
+   -  get rid-of didicated mount point for subtree_id support
+   -  code style changes
+ 3) Drop XFS stuff, since it require nontrivial changes in disk structures.
+
+Changes against V7
+ - Small fix for subtree switch error path
+ - Remove usless macro expressions
+Changes against v6
+ - get rid of iattr stuff, current __dquot_transfer() provides sane interface
+   for quota manipulation. i_prjid can must be changed only by fs-speciffic
+   methods so only get() method is really necessery.
+ - remove #ifdef tricks from generic code.
+ - move i_prjid from vfs_inode to fs_inode, to prevent inode bloating.
+ - get rid of isolation logic, because this feature confuse most users.
+Changes against v5
+ - convert dquota_transfer to struct iattr interface. Not it is possible
+   to change i_prjid via notify_changes()
+ - some bugfixes.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 0d718ed..8dbcc39 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,7 +2,7 @@ VERSION = 3
+ PATCHLEVEL = 5
+ SUBLEVEL = 0
+ EXTRAVERSION = -rc1
+-NAME = Saber-toothed Squirrel
++NAME = Saber-toothed Squirrel-tree-quota
+ 
+ # *DOCUMENTATION*
+ # To see a list of typical targets execute "make help"
+-- 
+1.7.1
+
