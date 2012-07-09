@@ -1,35 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [v2] ext4: delete a no useful sentence
-Date: Mon, 9 Jul 2012 10:25:28 -0400
-Message-ID: <20120709142528.GA18072@thunk.org>
-References: <1340303466-7967-1-git-send-email-HaiboLiu6@gmail.com>
+Subject: Re: [PATCH 1/3 v3] ext4: split ext4_file_write into buffered IO and
+ direct IO
+Date: Mon, 9 Jul 2012 10:44:27 -0400
+Message-ID: <20120709144427.GC3649@thunk.org>
+References: <1341152506-32649-1-git-send-email-wenqing.lz@taobao.com>
+ <1341152506-32649-2-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Haibo Liu <HaiboLiu6@gmai.com>
-To: Liu Haibo <haiboliu6@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Tao Ma <tm@tao.ma>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Robin Dong <hao.bigrat@gmail.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38013 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38022 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750767Ab2GIOZb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Jul 2012 10:25:31 -0400
+	id S1754435Ab2GIOoi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Jul 2012 10:44:38 -0400
 Content-Disposition: inline
-In-Reply-To: <1340303466-7967-1-git-send-email-HaiboLiu6@gmail.com>
+In-Reply-To: <1341152506-32649-2-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 21, 2012 at 08:31:06AM -0000, Liu Haibo wrote:
-> From: Haibo Liu <HaiboLiu6@gmai.com>
+On Sun, Jul 01, 2012 at 10:21:44PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> In this patch, the sentence "poff = block % blocks_per_page"
-> in ext4_mb_get_buddy_page_lock has no effect.
-> So we should delete it to save cpu.
+> ext4_file_dio_write is defined in order to split buffered IO and
+> direct IO in ext4.  This patch just refactor some stuff in write path.
 > 
-> v1->v2: update the patch subject and the patch comment.
-> 
-> Signed-off-by: Haibo Liu <HaiboLiu6@gmail.com>
+> CC: Tao Ma <tm@tao.ma>
+> CC: Eric Sandeen <sandeen@redhat.com>
+> CC: Robin Dong <hao.bigrat@gmail.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Applied, thanks.  BTW, I modified the patch description a little to
-note that the compiler would optimize out the statement, but it's
-better to remove unused C statements.
+Applied, thanks.
 
-       	  	 				- Ted
+						 -Ted
