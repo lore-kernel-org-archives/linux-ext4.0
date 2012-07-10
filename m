@@ -1,73 +1,89 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv5 1/4] ext4: Remove useless marking of superblock dirty
-Date: Tue, 10 Jul 2012 15:17:50 +0300
-Message-ID: <1341922673-14147-2-git-send-email-dedekind1@gmail.com>
-References: <1341922673-14147-1-git-send-email-dedekind1@gmail.com>
-Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv4 3/5] ext4: remove unnecessary superblock dirtying
+Date: Tue, 10 Jul 2012 14:52:38 +0200
+Message-ID: <20120710125238.GF13539@quack.suse.cz>
+References: <1341404514-13660-1-git-send-email-dedekind1@gmail.com>
+ <1341404514-13660-4-git-send-email-dedekind1@gmail.com>
+ <20120704131124.GA29954@quack.suse.cz>
+ <1341916536.2963.61.camel@sauron>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1341922673-14147-1-git-send-email-dedekind1@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Artem Bityutskiy <dedekind1@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:39499 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752681Ab2GJMwk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jul 2012 08:52:40 -0400
+Content-Disposition: inline
+In-Reply-To: <1341916536.2963.61.camel@sauron>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+On Tue 10-07-12 13:35:36, Artem Bityutskiy wrote:
+> On Wed, 2012-07-04 at 15:11 +0200, Jan Kara wrote:
+> > On Wed 04-07-12 15:21:52, Artem Bityutskiy wrote:
+> > > From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> > > 
+> > > This patch changes the '__ext4_handle_dirty_super()' function which is used
+> > > by ext4 to update the superblock via the journal in the following cases:
+> > > 
+> > > 1. When creating the first large file on a file system without
+> > >    EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
+> > > 2. When re-sizing the file-system.
+> > > 3. When creating an xattr on a file-system without the
+> > >    EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+> > > 4. When adding or deleting an orphan (because we update the 's_last_orphan'
+> > >    superblock field).
+> > > 
+> > > This function, however, falls back to just marking the superblock as dirty
+> > > if the file-system has no journal. This means that we delay the actual
+> > > superblock I/O submission by 5 seconds (roughly speaking). Namely, the
+> > > 'sync_supers()' kernel thread will call 'ext4_write_super()' later, where
+> > > we actually will submit the superblock down to the media.
+> > > 
+> > > However:
+> > > 1. For cases 1-3 it does not add any value to delay the I/O submission. These
+> > >    events are rare and we may just commit submit the superblock for
+> > >    asynchronous I/O right away.
+> > > 2. For case 4 - similarly, not terribly frequent event in most of workloads.
+> > >    It should be good enough to just submit asynchronous superblock write-out.
+> >   Well, it happens for every inode being truncated / deleted to it can be
+> > rather frequent. That's why I wanted to have now == 1 case everywhere -
+> > i.e. just recompute the checksum and do mark_buffer_dirty(). I'd just
+> > remove the 'now' test in this patch and then in patch 5 remove the now
+> > argument from the function and callers as you did.
+> 
+> I am a bit confused.
+> 
+> It seems you consider that 'ext4_commit_super()' is a considerably
+> slower than just marking the buffer as dirty right away. But I do not
+> really understand why - all it does - it just updates a couple of
+> superblock fields and then marks the buffer as dirty (I assume sync ==
+> 0). So from my POW they are almost the same. And when csum is enabled -
+> re-calculating csum will probably be the longest part.
+  Well, the part you might be missing is:
+        ext4_free_blocks_count_set(es,
+                        EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
+                                &EXT4_SB(sb)->s_freeclusters_counter)));
+        es->s_free_inodes_count =
+                cpu_to_le32(percpu_counter_sum_positive(
+                                &EXT4_SB(sb)->s_freeinodes_counter));
+  percpu_counter_sum() *is* rather expensive. At least for big machines.
 
-Commit a0375156 properly notes that superblock doesn't need to be marked
-as dirty when only number of free inodes / blocks / number of directories
-changes since that is recomputed on each mount anyway. However that comment
-leaves some unnecessary markings as dirty in place. Remove these.
+  Also just marking the buffer dirty more corresponds to what we do when
+journalling.
 
-Artem: tested using xfstests for both journalled and non-journalled ext4.
+> More important is that we dirty the superblock on every deletion - this
+> mean that with my change we will re-calculate checsum on every deletion
+> and I am not sure it is nice. Ideally, we should be able to calculate
+> the checksum just before sending the buffer to the IO queue...
+  Yes, that would be nice but it's not easy to do currently...
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
----
- fs/ext4/ialloc.c  |    2 --
- fs/ext4/mballoc.c |    2 --
- 2 files changed, 0 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index d48e8b1..25b918c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -315,7 +315,6 @@ out:
- 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
- 		if (!fatal)
- 			fatal = err;
--		ext4_mark_super_dirty(sb);
- 	} else
- 		ext4_error(sb, "bit already cleared for inode %lu", ino);
- 
-@@ -830,7 +829,6 @@ got:
- 	percpu_counter_dec(&sbi->s_freeinodes_counter);
- 	if (S_ISDIR(mode))
- 		percpu_counter_inc(&sbi->s_dirs_counter);
--	ext4_mark_super_dirty(sb);
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		flex_group = ext4_flex_group(sbi, group);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1cd6994..eabfb4c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2825,7 +2825,6 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	err = ext4_handle_dirty_metadata(handle, NULL, gdp_bh);
- 
- out_err:
--	ext4_mark_super_dirty(sb);
- 	brelse(bitmap_bh);
- 	return err;
- }
-@@ -4694,7 +4693,6 @@ do_more:
- 		put_bh(bitmap_bh);
- 		goto do_more;
- 	}
--	ext4_mark_super_dirty(sb);
- error_return:
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
+								Honza
 -- 
-1.7.7.6
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
