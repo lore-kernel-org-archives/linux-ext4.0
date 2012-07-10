@@ -1,145 +1,117 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH v3] ext4: fix hole punch failure when depth is greater
- than 0
-Date: Tue, 10 Jul 2012 10:05:28 +0530
-Message-ID: <CAOiN93mqfi4iLPa0VDTFkpr75duMj4owc8ys5JaAeyR2oztSjQ@mail.gmail.com>
-References: <1341881004-1601-1-git-send-email-ashish.sangwan2@gmail.com>
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCHv4 3/5] ext4: remove unnecessary superblock dirtying
+Date: Tue, 10 Jul 2012 13:35:36 +0300
+Message-ID: <1341916536.2963.61.camel@sauron>
+References: <1341404514-13660-1-git-send-email-dedekind1@gmail.com>
+	 <1341404514-13660-4-git-send-email-dedekind1@gmail.com>
+	 <20120704131124.GA29954@quack.suse.cz>
+Reply-To: dedekind1@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	lczerner@redhat.com, Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: Ted Tso <tytso@mit.edu>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-5PfY+T1PONxy8KaD45Uz"
+Cc: Theodore Tso <tytso@mit.edu>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:65444 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751198Ab2GJEf3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jul 2012 00:35:29 -0400
-In-Reply-To: <1341881004-1601-1-git-send-email-ashish.sangwan2@gmail.com>
+Received: from mga14.intel.com ([143.182.124.37]:29927 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752247Ab2GJKbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Jul 2012 06:31:23 -0400
+In-Reply-To: <20120704131124.GA29954@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Please ignore the last sent mail.
-I will re-send the patch in new mail chain.
 
-Thanks,
-Ashish
-On Tue, Jul 10, 2012 at 6:13 AM, Ashish Sangwan
-<ashishsangwan2@gmail.com> wrote:
-> Whether to continue removing extents or not is decided by the return value
-> of function ext4_ext_more_to_rm() which checks 2 conditions:
-> a) if there are no more indexes to process.
-> b) if the number of entries are decreased in the header of "depth -1".
->
-> In case of hole punch, if the last block to be removed is not part of the
-> last extent index than this index will not be deleted, hence the number of
-> valid entries in the extent header of "depth - 1" will remain as it is and
-> ext4_ext_more_to_rm will return 0 although the required blocks are not
-> yet removed.
->
-> This patch fixes the above mentioned problem as instead of removing the
-> extents from the end of file, it starts removing the blocks from the
-> particular extent from which removing blocks is actually required and
-> continue backward until done.
->
-> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c |   46 +++++++++++++++++++++++++++++-----------------
->  1 file changed, 29 insertions(+), 17 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 91341ec..45ac45d 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2570,10 +2570,10 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
->  {
->         struct super_block *sb = inode->i_sb;
->         int depth = ext_depth(inode);
-> -       struct ext4_ext_path *path;
-> +       struct ext4_ext_path *path = NULL;
->         ext4_fsblk_t partial_cluster = 0;
->         handle_t *handle;
-> -       int i, err;
-> +       int i = 0, err;
->
->         ext_debug("truncate since %u to %u\n", start, end);
->
-> @@ -2606,8 +2606,12 @@ again:
->                 }
->                 depth = ext_depth(inode);
->                 ex = path[depth].p_ext;
-> -               if (!ex)
-> +               if (!ex) {
-> +                       ext4_ext_drop_refs(path);
-> +                       kfree(path);
-> +                       path = NULL;
->                         goto cont;
-> +               }
->
->                 ee_block = le32_to_cpu(ex->ee_block);
->
-> @@ -2637,8 +2641,6 @@ again:
->                         if (err < 0)
->                                 goto out;
->                 }
-> -               ext4_ext_drop_refs(path);
-> -               kfree(path);
->         }
->  cont:
->
-> @@ -2647,19 +2649,27 @@ cont:
->          * after i_size and walking into the tree depth-wise.
->          */
->         depth = ext_depth(inode);
-> -       path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
-> -       if (path == NULL) {
-> -               ext4_journal_stop(handle);
-> -               return -ENOMEM;
-> -       }
-> -       path[0].p_depth = depth;
-> -       path[0].p_hdr = ext_inode_hdr(inode);
-> +       if (path) {
-> +               int k = i = depth;
-> +               while (--k > 0)
-> +                       path[k].p_block =
-> +                               le16_to_cpu(path[k].p_hdr->eh_entries)+1;
-> +       } else {
-> +               path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
-> +                              GFP_NOFS);
-> +               if (path == NULL) {
-> +                       ext4_journal_stop(handle);
-> +                       return -ENOMEM;
-> +               }
-> +               path[0].p_depth = depth;
-> +               path[0].p_hdr = ext_inode_hdr(inode);
->
-> -       if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
-> -               err = -EIO;
-> -               goto out;
-> +               if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
-> +                       err = -EIO;
-> +                       goto out;
-> +               }
->         }
-> -       i = err = 0;
-> +       err = 0;
->
->         while (i >= 0 && err == 0) {
->                 if (i == depth) {
-> @@ -2773,8 +2783,10 @@ cont:
->  out:
->         ext4_ext_drop_refs(path);
->         kfree(path);
-> -       if (err == -EAGAIN)
-> +       if (err == -EAGAIN) {
-> +               path = NULL
->                 goto again;
-> +       }
->         ext4_journal_stop(handle);
->
->         return err;
-> --
-> 1.7.10.4
->
+--=-5PfY+T1PONxy8KaD45Uz
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, 2012-07-04 at 15:11 +0200, Jan Kara wrote:
+> On Wed 04-07-12 15:21:52, Artem Bityutskiy wrote:
+> > From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+> >=20
+> > This patch changes the '__ext4_handle_dirty_super()' function which is =
+used
+> > by ext4 to update the superblock via the journal in the following cases=
+:
+> >=20
+> > 1. When creating the first large file on a file system without
+> >    EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
+> > 2. When re-sizing the file-system.
+> > 3. When creating an xattr on a file-system without the
+> >    EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+> > 4. When adding or deleting an orphan (because we update the 's_last_orp=
+han'
+> >    superblock field).
+> >=20
+> > This function, however, falls back to just marking the superblock as di=
+rty
+> > if the file-system has no journal. This means that we delay the actual
+> > superblock I/O submission by 5 seconds (roughly speaking). Namely, the
+> > 'sync_supers()' kernel thread will call 'ext4_write_super()' later, whe=
+re
+> > we actually will submit the superblock down to the media.
+> >=20
+> > However:
+> > 1. For cases 1-3 it does not add any value to delay the I/O submission.=
+ These
+> >    events are rare and we may just commit submit the superblock for
+> >    asynchronous I/O right away.
+> > 2. For case 4 - similarly, not terribly frequent event in most of workl=
+oads.
+> >    It should be good enough to just submit asynchronous superblock writ=
+e-out.
+>   Well, it happens for every inode being truncated / deleted to it can be
+> rather frequent. That's why I wanted to have now =3D=3D 1 case everywhere=
+ -
+> i.e. just recompute the checksum and do mark_buffer_dirty(). I'd just
+> remove the 'now' test in this patch and then in patch 5 remove the now
+> argument from the function and callers as you did.
+
+I am a bit confused.
+
+It seems you consider that 'ext4_commit_super()' is a considerably
+slower than just marking the buffer as dirty right away. But I do not
+really understand why - all it does - it just updates a couple of
+superblock fields and then marks the buffer as dirty (I assume sync =3D=3D
+0). So from my POW they are almost the same. And when csum is enabled -
+re-calculating csum will probably be the longest part.
+
+More important is that we dirty the superblock on every deletion - this
+mean that with my change we will re-calculate checsum on every deletion
+and I am not sure it is nice. Ideally, we should be able to calculate
+the checksum just before sending the buffer to the IO queue...
+
+I'll prepare a new patch-set and send it to you. Thanks!
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-5PfY+T1PONxy8KaD45Uz
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJP/AV4AAoJECmIfjd9wqK0sZoP/0TFhM8VzKh3Mo16ymBj9JI2
+wRRm6envCvDLvbcjcdvZgEq+a9eS1VybZGHDSZVc/6xsqOK30HThT41Tc3flQbMc
+DdCQC11tdUijlgh1nth6YfyLh+5TMfB/CQQTiI14wgV+57brjAme7gTCl74mCEEE
+lwSyFGIFJO8kSjj49d1jv3PbC38XdlrWghCMq3qIeGydbGr+FqVQQ36Lk4lM54bu
+AaOUnZl6Ydir6svCL/AJpCeQwgJVUi5WjtYOHUIzFwaJF6l4j5QBQii0kGtEF64w
+/IYYvb/TlzhXkyltOfsrBBdpNLcnoQIlhBA9fPeaJu96ZwK++YIzWk1cDyvTKsxs
+m0sySLnQEpsgQq/UXqeFh8oEwkmM45bX+e2it8cZek+UW74wX0j8Ka2UFR7G7X7a
+JeRgVhHT5bRPNNlxAUil9VIP4LSSE3taO79TkrEKBGMG0Fx3hGFfn4hpHZP17ayH
+vQog3Nz8H3gay8iD1qHmi76vWrIVNOrCwTtdRRlIT+2q1X/FtRiAqB9r10gJsL19
+SVoFlFSBARv4Kkkr7OWeXmJXINazfQ9R/0bpJHzN8XCwAKmS+JHuVvjZ6+xg9G3F
+StQjBmBs9rotTUulJgI8cdniqzeeMx187LWz0/t0P/80y7T//m00Hjw4TR1jni5i
+vg48tZhz0dTaVB1nSxop
+=vgoo
+-----END PGP SIGNATURE-----
+
+--=-5PfY+T1PONxy8KaD45Uz--
+
