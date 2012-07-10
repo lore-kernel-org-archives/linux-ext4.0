@@ -1,30 +1,26 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
 Subject: Re: [PATCHv4 3/5] ext4: remove unnecessary superblock dirtying
-Date: Tue, 10 Jul 2012 13:35:36 +0300
-Message-ID: <1341916536.2963.61.camel@sauron>
+Date: Tue, 10 Jul 2012 15:17:29 +0300
+Message-ID: <1341922649.2963.94.camel@sauron>
 References: <1341404514-13660-1-git-send-email-dedekind1@gmail.com>
 	 <1341404514-13660-4-git-send-email-dedekind1@gmail.com>
 	 <20120704131124.GA29954@quack.suse.cz>
 Reply-To: dedekind1@gmail.com
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-5PfY+T1PONxy8KaD45Uz"
+	boundary="=-g8v1ShFN8TOJjY8zEqUL"
 Cc: Theodore Tso <tytso@mit.edu>,
 	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:29927 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752247Ab2GJKbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2012 06:31:23 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20120704131124.GA29954@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
---=-5PfY+T1PONxy8KaD45Uz
+--=-g8v1ShFN8TOJjY8zEqUL
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
@@ -70,27 +66,24 @@ e-out.
 > remove the 'now' test in this patch and then in patch 5 remove the now
 > argument from the function and callers as you did.
 
-I am a bit confused.
+It looked logical to me to use 'ext4_commit_super()' always and remove
+'now' and marking the buffer dirty directly. Just because I thought the
+speed difference should be nearly 0, and 'ext4_commit_super()' is doing
+some error checking. But you seem to suggest to do the opposite, and I
+do not understand why would that be better. So I dropped this change so
+far.
 
-It seems you consider that 'ext4_commit_super()' is a considerably
-slower than just marking the buffer as dirty right away. But I do not
-really understand why - all it does - it just updates a couple of
-superblock fields and then marks the buffer as dirty (I assume sync =3D=3D
-0). So from my POW they are almost the same. And when csum is enabled -
-re-calculating csum will probably be the longest part.
+I've sent v5 where I basically only changed the commit message in patch
+3 and dropped patch 5. In patch 3 I've explicitly indicated that we'll
+do more checksum calculations, but I think this is OK acceptable.
 
-More important is that we dirty the superblock on every deletion - this
-mean that with my change we will re-calculate checsum on every deletion
-and I am not sure it is nice. Ideally, we should be able to calculate
-the checksum just before sending the buffer to the IO queue...
-
-I'll prepare a new patch-set and send it to you. Thanks!
+Thanks!
 
 --=20
 Best Regards,
 Artem Bityutskiy
 
---=-5PfY+T1PONxy8KaD45Uz
+--=-g8v1ShFN8TOJjY8zEqUL
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: This is a digitally signed message part
 Content-Transfer-Encoding: 7bit
@@ -98,20 +91,19 @@ Content-Transfer-Encoding: 7bit
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.12 (GNU/Linux)
 
-iQIcBAABAgAGBQJP/AV4AAoJECmIfjd9wqK0sZoP/0TFhM8VzKh3Mo16ymBj9JI2
-wRRm6envCvDLvbcjcdvZgEq+a9eS1VybZGHDSZVc/6xsqOK30HThT41Tc3flQbMc
-DdCQC11tdUijlgh1nth6YfyLh+5TMfB/CQQTiI14wgV+57brjAme7gTCl74mCEEE
-lwSyFGIFJO8kSjj49d1jv3PbC38XdlrWghCMq3qIeGydbGr+FqVQQ36Lk4lM54bu
-AaOUnZl6Ydir6svCL/AJpCeQwgJVUi5WjtYOHUIzFwaJF6l4j5QBQii0kGtEF64w
-/IYYvb/TlzhXkyltOfsrBBdpNLcnoQIlhBA9fPeaJu96ZwK++YIzWk1cDyvTKsxs
-m0sySLnQEpsgQq/UXqeFh8oEwkmM45bX+e2it8cZek+UW74wX0j8Ka2UFR7G7X7a
-JeRgVhHT5bRPNNlxAUil9VIP4LSSE3taO79TkrEKBGMG0Fx3hGFfn4hpHZP17ayH
-vQog3Nz8H3gay8iD1qHmi76vWrIVNOrCwTtdRRlIT+2q1X/FtRiAqB9r10gJsL19
-SVoFlFSBARv4Kkkr7OWeXmJXINazfQ9R/0bpJHzN8XCwAKmS+JHuVvjZ6+xg9G3F
-StQjBmBs9rotTUulJgI8cdniqzeeMx187LWz0/t0P/80y7T//m00Hjw4TR1jni5i
-vg48tZhz0dTaVB1nSxop
-=vgoo
+iQIcBAABAgAGBQJP/B1ZAAoJECmIfjd9wqK0TREP/1CdrYyy7/NnH/ymCVj78GVZ
+JNxTsZb5t1Pg9nPNksqbjyXgclsE/anvopAwif81XiMZVkFhI63sg5ona8p5rb7N
+L70B1mZ6KJT3OKNGYFa/Hku6/lCks2HcKM0UbYXMzYQqi7Mi3WtTTeHUxe3eo0O3
+PE/T8wo7BA2pnPj+CJLELyPitnm671BlZERjb25JPOFoJ5PQNopyb5q11fADf+6a
+2H03r7PzcQZ0emkRMNoIKX3MYseUEGmffbUjT0JwoPD8oG0qsGdxOoa0DoZ7R3QS
+hwyh2xtb/SN4qisZX+UFM9OaUGuSMCep6iCvuQES6/ggFU+gtA88MUCN/ODqVINv
+DYcV6iM3REjU0aMrAxk8xRn/5EzDyWs0dcopwjzzxN+jmN5vCXLmHN7MWfu2UkOt
+EOo2kQz4XwesnWfzO5Oab0fCOQz4O9EqtFUQCQE7H3rVZQX5yBrurRrP0EjDqNQh
+UoVgkaoUco2pD/8bN95XItUw7tnrcp3rudYjZZO6/bvyZFEXQPnM9qiN1uiel8jt
+/RMflJ+RFhNgXUPg1xPj5NFA7CMRRJXC+g1PHP4TtwtygR86a53t8vSFDa1Hd58A
+zYaynfsQWL4spGnIG8uKTbVv3KA6Et4WByx98JfbGeo4pv5WDhq1Mn9XvKIcvjM0
+Q3fmwbDlp6zAE+RLMmIe
+=CcLr
 -----END PGP SIGNATURE-----
 
---=-5PfY+T1PONxy8KaD45Uz--
-
+--=-g8v1ShFN8TOJjY8zEqUL--
