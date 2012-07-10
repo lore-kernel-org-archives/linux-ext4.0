@@ -1,40 +1,128 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43292] jdb2 lockup with ext3 and nfs
-Date: Tue, 10 Jul 2012 13:12:46 +0000 (UTC)
-Message-ID: <20120710131246.16DBC11FB04@bugzilla.kernel.org>
-References: <bug-43292-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:47795 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751731Ab2GJNMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Jul 2012 09:12:52 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 0D5D02022B
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2012 13:12:48 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 1D7292023A
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Jul 2012 13:12:46 +0000 (UTC)
-In-Reply-To: <bug-43292-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: [PATCH v3] ext4: fix hole punch failure when depth is greater than 0
+Date: Tue, 10 Jul 2012 21:56:10 +0530
+Message-ID: <1341937570-5229-1-git-send-email-ashish.sangwan2@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	lczerner@redhat.com, Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43292
+Whether to continue removing extents or not is decided by the return value
+of function ext4_ext_more_to_rm() which checks 2 conditions:
+a) if there are no more indexes to process.
+b) if the number of entries are decreased in the header of "depth -1".
 
+In case of hole punch, if the last block to be removed is not part of the
+last extent index than this index will not be deleted, hence the number of
+valid entries in the extent header of "depth - 1" will remain as it is and
+ext4_ext_more_to_rm will return 0 although the required blocks are not
+yet removed.
 
+This patch fixes the above mentioned problem as instead of removing the
+extents from the end of file, it starts removing the blocks from the
+particular extent from which removing blocks is actually required and
+continue backward until done.
 
+Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |   46 +++++++++++++++++++++++++++++-----------------
+ 1 file changed, 29 insertions(+), 17 deletions(-)
 
-
---- Comment #24 from Jan Kara <jack@suse.cz>  2012-07-10 13:12:45 ---
-Thanks a lot for trying out the kernels. I don't see how using ext4 instead of
-ext3 can make the difference we observed - i.e. a submitted read request is not
-completed. I guess I'll try to use ext4 to mount ext3 filesystem and beat it up
-a bit to see whether I'll reproduce the problem locally for further
-investigation.
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91341ec..45ac45d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2570,10 +2570,10 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
+-	struct ext4_ext_path *path;
++	struct ext4_ext_path *path = NULL;
+ 	ext4_fsblk_t partial_cluster = 0;
+ 	handle_t *handle;
+-	int i, err;
++	int i = 0, err;
+ 
+ 	ext_debug("truncate since %u to %u\n", start, end);
+ 
+@@ -2606,8 +2606,12 @@ again:
+ 		}
+ 		depth = ext_depth(inode);
+ 		ex = path[depth].p_ext;
+-		if (!ex)
++		if (!ex) {
++			ext4_ext_drop_refs(path);
++			kfree(path);
++			path = NULL;
+ 			goto cont;
++		}
+ 
+ 		ee_block = le32_to_cpu(ex->ee_block);
+ 
+@@ -2637,8 +2641,6 @@ again:
+ 			if (err < 0)
+ 				goto out;
+ 		}
+-		ext4_ext_drop_refs(path);
+-		kfree(path);
+ 	}
+ cont:
+ 
+@@ -2647,19 +2649,27 @@ cont:
+ 	 * after i_size and walking into the tree depth-wise.
+ 	 */
+ 	depth = ext_depth(inode);
+-	path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1), GFP_NOFS);
+-	if (path == NULL) {
+-		ext4_journal_stop(handle);
+-		return -ENOMEM;
+-	}
+-	path[0].p_depth = depth;
+-	path[0].p_hdr = ext_inode_hdr(inode);
++	if (path) {
++		int k = i = depth;
++		while (--k > 0)
++			path[k].p_block =
++				le16_to_cpu(path[k].p_hdr->eh_entries)+1;
++	} else {
++		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
++			       GFP_NOFS);
++		if (path == NULL) {
++			ext4_journal_stop(handle);
++			return -ENOMEM;
++		}
++		path[0].p_depth = depth;
++		path[0].p_hdr = ext_inode_hdr(inode);
+ 
+-	if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
+-		err = -EIO;
+-		goto out;
++		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
++			err = -EIO;
++			goto out;
++		}
+ 	}
+-	i = err = 0;
++	err = 0;
+ 
+ 	while (i >= 0 && err == 0) {
+ 		if (i == depth) {
+@@ -2773,8 +2783,10 @@ cont:
+ out:
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
+-	if (err == -EAGAIN)
++	if (err == -EAGAIN) {
++		path = NULL;
+ 		goto again;
++	}
+ 	ext4_journal_stop(handle);
+ 
+ 	return err;
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.10.4
