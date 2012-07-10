@@ -1,84 +1,69 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv5 0/4] ext4: stop using write_supers and s_dirt
-Date: Tue, 10 Jul 2012 15:17:49 +0300
-Message-ID: <1341922673-14147-1-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv5 4/4] ext4: weed out ext4_write_super
+Date: Tue, 10 Jul 2012 15:17:53 +0300
+Message-ID: <1341922673-14147-5-git-send-email-dedekind1@gmail.com>
+References: <1341922673-14147-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1341922673-14147-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch-set makes ext4 file-system stop using the VFS '->write_supers()'
-call-back and the '->s_dirt' superblock field because I plan to remove them
-once all users are gone.
+From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-Most of the ext4 changes were done or suggested by Jan Kara (thanks!). This
-patch does not do anything complex - we basically notice that ext4 does not
-really needed the 'write_super()' functionality and we can remove it. We
-mark the superblock buffer as dirty directly, rather than postponing this till
-the next 'sync_supers()' kernel thread wake-up.
+We do not depend on VFS's '->write_super()' anymore and do not need the
+'s_dirt' flag anymore. This patch weeds out 'ext4_write_super()' and the
+'s_dirt' usage in VFS.
 
-However, this means that we'll end up with calculating the checksum more often,
-see patch 3 for more information.
+Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+---
+ fs/ext4/super.c |   10 ----------
+ 1 files changed, 0 insertions(+), 10 deletions(-)
 
-I've also dropped the fifth patch which removes the 'now' argument from
-'__ext4_handle_dirty_super()' - simply because I do not understand why we
-should prefer marking the buffer as dirty directly instead of calling
-'ext4_commit_super()': the speed difference must be neglectable and
-'ext4_commit_super()' performs some error checking. I can submit this patch
-later - just need some more explanation from Jan.
-
-Tested with xfstests (both journalled and non-journalled ext4 modes).
-
-Reminder:
-
-The goal is to get rid of the 'sync_supers()' kernel thread. This kernel thread
-wakes up every 5 seconds (by default) and calls '->write_super()' for all
-mounted file-systems. And the bad thing is that this is done even if all the
-superblocks are clean. Moreover, many file-systems do not even need this end
-they do not register the '->write_super()' method at all (e.g., btrfs).
-
-So 'sync_supers()' most often just generates useless wake-ups and wastes power.
-I am trying to make all file-systems independent of '->write_super()' and plan
-to remove 'sync_supers()' and '->write_super()' completely once there are no
-more users.
-
-======
-Overall status:
-
-1.  ext4: patches submitted,
-    https://lkml.org/lkml/2012/7/3/210
-2.  exofs: patch submitted,
-    https://lkml.org/lkml/2012/6/4/211
-3.  sysv: patches submitted,
-    http://lkml.org/lkml/2012/7/3/250
-4.  udf: patch submitted, sits in Jan Kara's tree:
-    https://lkml.org/lkml/2012/6/4/233
-    git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs for_testing
-5.  affs: patches submitted, sit in Al Viro's tree:
-    https://lkml.org/lkml/2012/6/6/400
-    git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs for-next
-6.  hfs: patches submitted, sit Andrew Morton's tree
-    http://lkml.org/lkml/2012/6/12/82
-7.  hfsplus: patches submitted, sit in Andrew Morton's tree:
-    https://lkml.org/lkml/2012/6/13/195
-8.  ext2:     done, see commit f72cf5e223a28d3b3ea7dc9e40464fd534e359e8
-9.  vfat:     done, see commit 78491189ddb6d84d4a4abae992ed891a236d0263
-10. jffs2:    done, see commit 208b14e507c00ff7f108e1a388dd3d8cc805a443
-11. reiserfs: done, see commit 033369d1af1264abc23bea2e174aa47cdd212f6f
-
-TODO: ufs
-======
-
- fs/ext4/ext4.h      |   10 +---------
- fs/ext4/ext4_jbd2.c |    2 +-
- fs/ext4/file.c      |   14 +++++++++++++-
- fs/ext4/ialloc.c    |    2 --
- fs/ext4/mballoc.c   |    2 --
- fs/ext4/super.c     |   15 ++-------------
- 6 files changed, 17 insertions(+), 28 deletions(-)
-
-Thanks,
-Artem.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9b26ba0..546c6ed 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -73,7 +73,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+-static void ext4_write_super(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+ 		       const char *dev_name, void *data);
+@@ -1193,7 +1192,6 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
+-	.write_super	= ext4_write_super,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4202,7 +4200,6 @@ int ext4_commit_super(struct super_block *sb, int sync)
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+-	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	ext4_superblock_csum_set(sb, es);
+ 	mark_buffer_dirty(sbh);
+@@ -4309,13 +4306,6 @@ int ext4_force_commit(struct super_block *sb)
+ 	return ret;
+ }
+ 
+-static void ext4_write_super(struct super_block *sb)
+-{
+-	lock_super(sb);
+-	ext4_commit_super(sb, 1);
+-	unlock_super(sb);
+-}
+-
+ static int ext4_sync_fs(struct super_block *sb, int wait)
+ {
+ 	int ret = 0;
+-- 
+1.7.7.6
