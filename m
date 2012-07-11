@@ -1,66 +1,86 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: Some warnings
-Date: Wed, 11 Jul 2012 12:58:37 +0300
-Message-ID: <1342000717.2963.147.camel@sauron>
-References: <1342000571.2963.145.camel@sauron>
-Reply-To: dedekind1@gmail.com
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-nAfYqz+bO2RuK+H1Hyjc"
-Cc: Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+Subject: [PATCHv6 0/5] ext4: stop using write_supers and s_dirt
+Date: Wed, 11 Jul 2012 12:58:13 +0300
+Message-ID: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
+Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:64559 "EHLO mga02.intel.com"
+Received: from mga09.intel.com ([134.134.136.24]:29919 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752534Ab2GKJyW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 05:54:22 -0400
-In-Reply-To: <1342000571.2963.145.camel@sauron>
+	id S1752320Ab2GKJ4j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jul 2012 05:56:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This patch-set makes ext4 file-system stop using the VFS '->write_supers()'
+call-back and the '->s_dirt' superblock field because I plan to remove them
+once all users are gone.
 
---=-nAfYqz+bO2RuK+H1Hyjc
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+What we do in this patch-set is we notice that ext4 does not really needed the
+'write_super()' functionality and we can remove it. Instead, we simply mark the
+superblock buffer as dirty directly, rather than postponing this till the next
+'sync_supers()' kernel thread wake-up. Most of the ext4 changes were done or
+suggested by Jan Kara - thanks Jan!
 
-On Wed, 2012-07-11 at 12:56 +0300, Artem Bityutskiy wrote:
-> In short, aiaia is a script which builds the kernel before patching (and
-> uses sparse/smatch/coccinelle/cppplus while building) and after patching
-> and compares to build logs in a smart way, and then tells you about new
-> warnings/complaints from gcc/sparse/smatch/coccinelle. It also checks
-> bisectability and reports about failures. I find it very useful for
-> verifying incoming patches.
+In v6 I stop using 'ext4_commit_super()' in '__ext4_handle_dirty_super()' and
+add the fifth patch which removes the 'now' argument from
+'__ext4_handle_dirty_super()'.
 
-Oh, and the important point is that you may use parallel build, so if
-you have a relatively fast machine, you do not have to wait too long. I
-use -j18, for example.
+Tested with xfstests (both journalled and non-journalled ext4 modes).
 
---=20
-Best Regards,
-Artem Bityutskiy
+fs/ext4/ext4.h      |    9 ---------
+fs/ext4/ext4_jbd2.c |    8 +++-----
+fs/ext4/ext4_jbd2.h |    7 ++-----
+fs/ext4/file.c      |   14 +++++++++++++-
+fs/ext4/ialloc.c    |    2 --
+fs/ext4/inode.c     |    2 +-
+fs/ext4/mballoc.c   |    2 --
+fs/ext4/namei.c     |    4 ++--
+fs/ext4/resize.c    |    2 +-
+fs/ext4/super.c     |   12 +-----------
+10 files changed, 23 insertions(+), 39 deletions(-)
 
---=-nAfYqz+bO2RuK+H1Hyjc
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
+Reminder
+========
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+The goal is to get rid of the 'sync_supers()' kernel thread. This kernel thread
+wakes up every 5 seconds (by default) and calls '->write_super()' for all
+mounted file-systems. And the bad thing is that this is done even if all the
+superblocks are clean. Moreover, many file-systems do not even need this and
+they do not even register the '->write_super()' method at all (e.g., btrfs).
 
-iQIcBAABAgAGBQJP/U5NAAoJECmIfjd9wqK0+XQP/2m3+eGnLoaaNW8jQGPytSMB
-BJ3XvoiGx9eWZcbqeWdjVeMVMX0Ef0wfdgfjxJnkqX1qJEfm3ssu2TlvFZxjTK9u
-ratiCffa38CK8XOfKvtpJxvTd1YrVdiMXxrrlYObTC89G6A9dXQlh/Y/AJkggqzT
-OgZC/MKtwTi0ba36jzOegvdR2HtbuzUfQf/rwm8EgDX0t54GIXu/5Ln8kae62wPJ
-cbWetQ9HP/UoQsl2KdQQHm1vnukFMLbnIbaVSWQt9OP52lWLWvVKB9VpXJxAALP8
-LUfLFj2wPYhhW1har4c0XW4b8AgPG24LE+BexvkdysCtEgfVAfnn2bO31ftnrO+t
-3sa1NuHYrnRN+LalhdPP/O4UMJUPfZpzUPIAA6MX5hjbczoocV7qoOwl92go/Ss9
-xuVKYLMNgpqnqhFX56JuwwtU3a1FqSvYEJsOGfbfdKoCz9t1deAUXinR2/aOdodI
-F+R4JHAosDkOdw0DXJUkmfzeltEZ6D50t6AggkEjkkNAofyXCxHHxSqtrwUwL4WA
-5gYJxqo0CAisTYIAlJMhQYo6KQl9VrtCLEqMM5TdAXspfNimJ/zTuO8WNzcpXItO
-FT+qy2BQEvtxfpsQu2nrD8b/Aut4AJp+TJhOXk8Jzw0399PLDHYDlCU4eiUMuHbB
-cpJiSnfYe90wLXytf1Zn
-=aWNb
------END PGP SIGNATURE-----
+So 'sync_supers()' mostly just generates useless wake-ups and wastes power.
+I am trying to make all file-systems independent of '->write_super()' and plan
+to remove 'sync_supers()' and '->write_super()' completely once there are no
+more users.
 
---=-nAfYqz+bO2RuK+H1Hyjc--
+Overall status
+==============
 
+1.  ext4: patches submitted,
+    https://lkml.org/lkml/2012/7/10/195
+2.  exofs: patch submitted,
+    https://lkml.org/lkml/2012/6/4/211
+3.  sysv: patches submitted,
+    http://lkml.org/lkml/2012/7/3/250
+4.  udf: patch submitted, sits in Jan Kara's tree:
+    https://lkml.org/lkml/2012/6/4/233
+    git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs for_testing
+5.  affs: patches submitted, sit in Al Viro's tree:
+    https://lkml.org/lkml/2012/6/6/400
+    git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs for-next
+6.  hfs: patches submitted, sit Andrew Morton's tree
+    http://lkml.org/lkml/2012/6/12/82
+7.  hfsplus: patches submitted, sit in Andrew Morton's tree:
+    https://lkml.org/lkml/2012/6/13/195
+8.  ext2:     done, see commit f72cf5e223a28d3b3ea7dc9e40464fd534e359e8
+9.  vfat:     done, see commit 78491189ddb6d84d4a4abae992ed891a236d0263
+10. jffs2:    done, see commit 208b14e507c00ff7f108e1a388dd3d8cc805a443
+11. reiserfs: done, see commit 033369d1af1264abc23bea2e174aa47cdd212f6f
+
+TODO: ufs
+
+Thanks,
+Artem.
