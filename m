@@ -1,86 +1,80 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv6 0/5] ext4: stop using write_supers and s_dirt
-Date: Wed, 11 Jul 2012 12:58:13 +0300
-Message-ID: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv6 2/5] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
+Date: Wed, 11 Jul 2012 12:58:15 +0300
+Message-ID: <1342000698-13556-3-git-send-email-dedekind1@gmail.com>
+References: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:29919 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752320Ab2GKJ4j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 05:56:39 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This patch-set makes ext4 file-system stop using the VFS '->write_supers()'
-call-back and the '->s_dirt' superblock field because I plan to remove them
-once all users are gone.
+From: Jan Kara <jack@suse.cz>
 
-What we do in this patch-set is we notice that ext4 does not really needed the
-'write_super()' functionality and we can remove it. Instead, we simply mark the
-superblock buffer as dirty directly, rather than postponing this till the next
-'sync_supers()' kernel thread wake-up. Most of the ext4 changes were done or
-suggested by Jan Kara - thanks Jan!
+The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
+can well be modifying the superblock properly by journalling the change.
+Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
 
-In v6 I stop using 'ext4_commit_super()' in '__ext4_handle_dirty_super()' and
-add the fifth patch which removes the 'now' argument from
-'__ext4_handle_dirty_super()'.
+Artem: small amendments.
+Artem: tested using xfstests for both journalled and non-journalled ext4.
 
-Tested with xfstests (both journalled and non-journalled ext4 modes).
+Signed-off-by: Jan Kara <jack@suse.cz>
+Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+---
+ fs/ext4/ext4.h |    9 ---------
+ fs/ext4/file.c |   14 +++++++++++++-
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-fs/ext4/ext4.h      |    9 ---------
-fs/ext4/ext4_jbd2.c |    8 +++-----
-fs/ext4/ext4_jbd2.h |    7 ++-----
-fs/ext4/file.c      |   14 +++++++++++++-
-fs/ext4/ialloc.c    |    2 --
-fs/ext4/inode.c     |    2 +-
-fs/ext4/mballoc.c   |    2 --
-fs/ext4/namei.c     |    4 ++--
-fs/ext4/resize.c    |    2 +-
-fs/ext4/super.c     |   12 +-----------
-10 files changed, 23 insertions(+), 39 deletions(-)
-
-Reminder
-========
-
-The goal is to get rid of the 'sync_supers()' kernel thread. This kernel thread
-wakes up every 5 seconds (by default) and calls '->write_super()' for all
-mounted file-systems. And the bad thing is that this is done even if all the
-superblocks are clean. Moreover, many file-systems do not even need this and
-they do not even register the '->write_super()' method at all (e.g., btrfs).
-
-So 'sync_supers()' mostly just generates useless wake-ups and wastes power.
-I am trying to make all file-systems independent of '->write_super()' and plan
-to remove 'sync_supers()' and '->write_super()' completely once there are no
-more users.
-
-Overall status
-==============
-
-1.  ext4: patches submitted,
-    https://lkml.org/lkml/2012/7/10/195
-2.  exofs: patch submitted,
-    https://lkml.org/lkml/2012/6/4/211
-3.  sysv: patches submitted,
-    http://lkml.org/lkml/2012/7/3/250
-4.  udf: patch submitted, sits in Jan Kara's tree:
-    https://lkml.org/lkml/2012/6/4/233
-    git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs for_testing
-5.  affs: patches submitted, sit in Al Viro's tree:
-    https://lkml.org/lkml/2012/6/6/400
-    git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs for-next
-6.  hfs: patches submitted, sit Andrew Morton's tree
-    http://lkml.org/lkml/2012/6/12/82
-7.  hfsplus: patches submitted, sit in Andrew Morton's tree:
-    https://lkml.org/lkml/2012/6/13/195
-8.  ext2:     done, see commit f72cf5e223a28d3b3ea7dc9e40464fd534e359e8
-9.  vfat:     done, see commit 78491189ddb6d84d4a4abae992ed891a236d0263
-10. jffs2:    done, see commit 208b14e507c00ff7f108e1a388dd3d8cc805a443
-11. reiserfs: done, see commit 033369d1af1264abc23bea2e174aa47cdd212f6f
-
-TODO: ufs
-
-Thanks,
-Artem.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cfc4e01..0c4042e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
+ 	spin_unlock(ext4_group_lock_ptr(sb, group));
+ }
+ 
+-static inline void ext4_mark_super_dirty(struct super_block *sb)
+-{
+-	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+-
+-	ext4_superblock_csum_set(sb, es);
+-	if (EXT4_SB(sb)->s_journal == NULL)
+-		sb->s_dirt =1;
+-}
+-
+ /*
+  * Block validity checking
+  */
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 8c7642a..3a77494 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 		path.dentry = mnt->mnt_root;
+ 		cp = d_path(&path, buf, sizeof(buf));
+ 		if (!IS_ERR(cp)) {
++			handle_t *handle;
++			int err;
++
++			handle = ext4_journal_start_sb(sb, 1);
++			if (IS_ERR(handle))
++				return PTR_ERR(handle);
++			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
++			if (err) {
++				ext4_journal_stop(handle);
++				return err;
++			}
+ 			strlcpy(sbi->s_es->s_last_mounted, cp,
+ 				sizeof(sbi->s_es->s_last_mounted));
+-			ext4_mark_super_dirty(sb);
++			ext4_handle_dirty_super(handle, sb);
++			ext4_journal_stop(handle);
+ 		}
+ 	}
+ 	/*
+-- 
+1.7.7.6
