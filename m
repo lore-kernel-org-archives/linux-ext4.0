@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv6 5/5] ext4: remove unnecessary argument
-Date: Wed, 11 Jul 2012 12:58:18 +0300
-Message-ID: <1342000698-13556-6-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv6 4/5] ext4: weed out ext4_write_super
+Date: Wed, 11 Jul 2012 12:58:17 +0300
+Message-ID: <1342000698-13556-5-git-send-email-dedekind1@gmail.com>
 References: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
@@ -14,105 +14,55 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-The '__ext4_handle_dirty_metadata()' does not need the 'now' argument anymore
-and we can kill it.
+We do not depend on VFS's '->write_super()' anymore and do not need the
+'s_dirt' flag anymore, so weed out 'ext4_write_super()' and 's_dirt'.
 
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/ext4_jbd2.c |    3 +--
- fs/ext4/ext4_jbd2.h |    7 ++-----
- fs/ext4/inode.c     |    2 +-
- fs/ext4/namei.c     |    4 ++--
- fs/ext4/resize.c    |    2 +-
- 5 files changed, 7 insertions(+), 11 deletions(-)
+ fs/ext4/super.c |   10 ----------
+ 1 files changed, 0 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index c19ab6a..bfa65b4 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -138,8 +138,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a391c53..622d5c7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -74,7 +74,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+-static void ext4_write_super(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
+ static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
+ 		       const char *dev_name, void *data);
+@@ -1194,7 +1193,6 @@ static const struct super_operations ext4_nojournal_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.drop_inode	= ext4_drop_inode,
+ 	.evict_inode	= ext4_evict_inode,
+-	.write_super	= ext4_write_super,
+ 	.put_super	= ext4_put_super,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+@@ -4203,7 +4201,6 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	es->s_free_inodes_count =
+ 		cpu_to_le32(percpu_counter_sum_positive(
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+-	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	ext4_superblock_csum_set(sb, es);
+ 	mark_buffer_dirty(sbh);
+@@ -4310,13 +4307,6 @@ int ext4_force_commit(struct super_block *sb)
+ 	return ret;
  }
  
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb,
--			      int now)
-+			      handle_t *handle, struct super_block *sb)
+-static void ext4_write_super(struct super_block *sb)
+-{
+-	lock_super(sb);
+-	ext4_commit_super(sb, 1);
+-	unlock_super(sb);
+-}
+-
+ static int ext4_sync_fs(struct super_block *sb, int wait)
  {
- 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
- 	int err = 0;
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index f440e8f1..83b20fc 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -213,8 +213,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 				 struct buffer_head *bh);
- 
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb,
--			      int now);
-+			      handle_t *handle, struct super_block *sb);
- 
- #define ext4_journal_get_write_access(handle, bh) \
- 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
-@@ -226,10 +225,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- #define ext4_handle_dirty_metadata(handle, inode, bh) \
- 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
- 				     (bh))
--#define ext4_handle_dirty_super_now(handle, sb) \
--	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
- #define ext4_handle_dirty_super(handle, sb) \
--	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
-+	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
- 
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 02bc8cb..b1bd96f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4034,7 +4034,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 			EXT4_SET_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_super_now(handle, sb);
-+			err = ext4_handle_dirty_super(handle, sb);
- 		}
- 	}
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5845cd9..f155d57 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2397,7 +2397,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_super_now(handle, sb);
-+	err = ext4_handle_dirty_super(handle, sb);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2470,7 +2470,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
-+		err = ext4_handle_dirty_super(handle, inode->i_sb);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 7ea6cbb..09c7aae 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -798,7 +798,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	ext4_kvfree(o_group_desc);
- 
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
--	err = ext4_handle_dirty_super_now(handle, sb);
-+	err = ext4_handle_dirty_super(handle, sb);
- 	if (err)
- 		ext4_std_error(sb, err);
- 
+ 	int ret = 0;
 -- 
 1.7.7.6
