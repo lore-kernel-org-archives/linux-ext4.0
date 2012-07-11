@@ -1,81 +1,77 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv7 2/5] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
-Date: Wed, 11 Jul 2012 16:46:41 +0300
-Message-ID: <1342014404-14834-3-git-send-email-dedekind1@gmail.com>
+Subject: Re: [PATCHv7 0/5] ext4: stop using write_supers and s_dirt
+Date: Wed, 11 Jul 2012 17:32:21 +0300
+Message-ID: <1342017141.18274.57.camel@sauron.fi.intel.com>
 References: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
-Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-fG1AhFxsLS9nIHkcvnJf"
+Cc: Jan Kara <jack@suse.cz>,
+	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga11.intel.com ([192.55.52.93]:5962 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932521Ab2GKO2G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jul 2012 10:28:06 -0400
 In-Reply-To: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
 
-The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
-can well be modifying the superblock properly by journalling the change.
-Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
+--=-fG1AhFxsLS9nIHkcvnJf
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Artem: small amendments.
-Artem: tested using xfstests for both journalled and non-journalled ext4.
+On Wed, 2012-07-11 at 16:46 +0300, Artem Bityutskiy wrote:
+> This patch-set makes ext4 file-system stop using the VFS '->write_supers(=
+)'
+> call-back and the '->s_dirt' superblock field because I plan to remove th=
+em
+> once all users are gone.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
----
- fs/ext4/ext4.h |    9 ---------
- fs/ext4/file.c |   14 +++++++++++++-
- 2 files changed, 13 insertions(+), 10 deletions(-)
+Hi Ted, is there any chance for this stuff to hit 3.6?
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..0c4042e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 	spin_unlock(ext4_group_lock_ptr(sb, group));
- }
- 
--static inline void ext4_mark_super_dirty(struct super_block *sb)
--{
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--
--	ext4_superblock_csum_set(sb, es);
--	if (EXT4_SB(sb)->s_journal == NULL)
--		sb->s_dirt =1;
--}
--
- /*
-  * Block validity checking
-  */
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8c7642a..3a77494 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		path.dentry = mnt->mnt_root;
- 		cp = d_path(&path, buf, sizeof(buf));
- 		if (!IS_ERR(cp)) {
-+			handle_t *handle;
-+			int err;
-+
-+			handle = ext4_journal_start_sb(sb, 1);
-+			if (IS_ERR(handle))
-+				return PTR_ERR(handle);
-+			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+			if (err) {
-+				ext4_journal_stop(handle);
-+				return err;
-+			}
- 			strlcpy(sbi->s_es->s_last_mounted, cp,
- 				sizeof(sbi->s_es->s_last_mounted));
--			ext4_mark_super_dirty(sb);
-+			ext4_handle_dirty_super(handle, sb);
-+			ext4_journal_stop(handle);
- 		}
- 	}
- 	/*
--- 
-1.7.7.6
+Basically I have 3 pending file-systems:
+1. ext4 (these patches)
+2. sysv - trivial, I hope Andrew would pick them.
+3. ufs - should be straight-forward to change the same way I changed
+hfs. I'll send patches soon. I hope Andrew would pick them as well.
+
+Everything else - either in upstream or in -mm or in sub-system trees.
+
+After this, I can kill sync_supers and have a chance that Linus would
+accept the patches at 3.6-rc1, and end up with sync_super-less 3.6.
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-fG1AhFxsLS9nIHkcvnJf
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJP/Y51AAoJECmIfjd9wqK00i0P/Riv9H4w/5mJHWksCxYkJvk5
+p+JxXiF4NGdwqur++B0g2EFBnYsNg1Zg8GThUB0T+9z5Ooopb5tm+KFDcvUXFUBQ
+MqfOhbRRJ46Vc+7j02XSIm3L+oJWPVdfgWZOmYhfHZrUnxdSXe1LemoE8TAkDY5z
+5C0wdmj6c1gJHxS5Z63bcAm51FAfZS67GdL+A7fmPiZSMZnm5w9UoaPhcqg5DWss
+c52H82vNW4/R+k3InkR8KccqvWbm7zipP4sE/wyo0EvGVsq0OEof3zzcMd8JDeS1
+wCXQjBbQuejaP3UUk/Vr1iQa5hzIF+XFTAciZT0UAEqhJR5J5i+a44uUECHzAjHh
+behhtYJh7NUwt2WJZoMJTW7w/lVER1Rk+w4qeJmflSVOtLFG03FIfwGlnF4xIpy1
+Bto6+KdEfwAkQ0HDa/Nf0jCUSIu/5tsGKlGsN05T9ESqzfB8SDW+q2WeHZQmSQ9G
+cvuSNx76D0deHCdd674hluADz5V8rlleJBK8ePVw9JdbHFJuKPkSLfqMHC+WS1ZH
+S4eQ9dE3D2LzAmcVxT1Tq+tYK5lIE0YSCID0E9RvdUd8Vdtv98NtShVqua045ans
+sJGp3WoiA9O0UCFbG/UD2IuLWP3JVw27DMsauWmKDwHb820YZf9oQnatjidNrRlc
+0zVs84QRuCf0ET5YL+tY
+=//t4
+-----END PGP SIGNATURE-----
+
+--=-fG1AhFxsLS9nIHkcvnJf--
 
