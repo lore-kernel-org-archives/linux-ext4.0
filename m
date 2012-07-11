@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv6 2/5] ext4: Convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
-Date: Wed, 11 Jul 2012 12:58:15 +0300
-Message-ID: <1342000698-13556-3-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv6 3/5] ext4: remove unnecessary superblock dirtying
+Date: Wed, 11 Jul 2012 12:58:16 +0300
+Message-ID: <1342000698-13556-4-git-send-email-dedekind1@gmail.com>
 References: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
@@ -12,69 +12,88 @@ In-Reply-To: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-The last user of ext4_mark_super_dirty() in ext4_file_open() is so rare it
-can well be modifying the superblock properly by journalling the change.
-Change it and get rid of ext4_mark_super_dirty() as it's not needed anymore.
+This patch changes the '__ext4_handle_dirty_super()' function which submits
+the superblock for I/O in the following cases:
 
-Artem: small amendments.
-Artem: tested using xfstests for both journalled and non-journalled ext4.
+1. When creating the first large file on a file system without
+   EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
+2. When re-sizing the file-system.
+3. When creating an xattr on a file-system without the
+   EXT4_FEATURE_COMPAT_EXT_ATTR feature.
+4. When adding or deleting an orphan which happens on every delete operation
+   (because we update the 's_last_orphan' superblock field).
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Tested-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+If the file-system has journal enabled, the superblock is written via the
+journal. We do not modify this path.
+
+If the file-system has no journal, this function, falls back to just marking
+the superblock as dirty using the 's_dirt' superblock flag. This means that it
+delays the actual superblock I/O submission by 5 seconds (default setting).
+Namely, the 'sync_supers()' kernel thread will call 'ext4_write_super()' later
+and will actually submit the superblock for I/O.
+
+And this is the behavior this patch modifies: we stop using 's_dirt' and just
+mark the superblock buffer as dirty right away. Indeed:
+
+1. It does not add any value to delay the I/O submission for cases 1-3 above.
+   They are rare.
+2. Case number 4 above depends on whether we have file-system checksumming
+   enabled or disables.
+   a) If it is disabled (most common scenario), then it is all-right to just
+      mark the superblock buffer as dirty right away and it should affect
+      performance.
+   b) If it is enabled, then we'll end up doing a bit more work on deletion
+      because we'll re-calculate superblock checksum every time.
+
+So case 2.b is a bit controversial, but I think it is acceptable. After all, by
+enabling checksumming we already sign up for paying the price of calculating
+it. The way to improve checksumming performance globally would be to calculate
+it just before sending buffers to the I/O queue. We'd need some kind of
+call-back which could be registered by file-systems.
+
+This patch also removes 's_dirt' condition on the unmount path because we never
+set it anymore, so we should not test it.
+
+Tested using xfstests for both journalled and non-journalled ext4.
+
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/ext4.h |    9 ---------
- fs/ext4/file.c |   14 +++++++++++++-
- 2 files changed, 13 insertions(+), 10 deletions(-)
+ fs/ext4/ext4_jbd2.c |    5 ++---
+ fs/ext4/super.c     |    2 +-
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..0c4042e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2321,15 +2321,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 	spin_unlock(ext4_group_lock_ptr(sb, group));
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 90f7c2e..c19ab6a 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -151,11 +151,10 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__,
+ 						  bh, handle, err);
+-	} else if (now) {
++	} else {
+ 		ext4_superblock_csum_set(sb,
+ 				(struct ext4_super_block *)bh->b_data);
+ 		mark_buffer_dirty(bh);
+-	} else
+-		sb->s_dirt = 1;
++	}
+ 	return err;
  }
- 
--static inline void ext4_mark_super_dirty(struct super_block *sb)
--{
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--
--	ext4_superblock_csum_set(sb, es);
--	if (EXT4_SB(sb)->s_journal == NULL)
--		sb->s_dirt =1;
--}
--
- /*
-  * Block validity checking
-  */
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8c7642a..3a77494 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -181,9 +181,21 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		path.dentry = mnt->mnt_root;
- 		cp = d_path(&path, buf, sizeof(buf));
- 		if (!IS_ERR(cp)) {
-+			handle_t *handle;
-+			int err;
-+
-+			handle = ext4_journal_start_sb(sb, 1);
-+			if (IS_ERR(handle))
-+				return PTR_ERR(handle);
-+			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
-+			if (err) {
-+				ext4_journal_stop(handle);
-+				return err;
-+			}
- 			strlcpy(sbi->s_es->s_last_mounted, cp,
- 				sizeof(sbi->s_es->s_last_mounted));
--			ext4_mark_super_dirty(sb);
-+			ext4_handle_dirty_super(handle, sb);
-+			ext4_journal_stop(handle);
- 		}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index eb7aa3e..a391c53 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -896,7 +896,7 @@ static void ext4_put_super(struct super_block *sb)
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
  	}
- 	/*
+-	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
++	if (!(sb->s_flags & MS_RDONLY))
+ 		ext4_commit_super(sb, 1);
+ 
+ 	if (sbi->s_proc) {
 -- 
 1.7.7.6
