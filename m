@@ -1,89 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4 filesystem
-Date: Wed, 11 Jul 2012 16:59:24 +0400
-Message-ID: <874npefo7n.fsf@dmbot.sw.ru>
-References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org> <1341847725-26114-3-git-send-email-dmonakhov@openvz.org> <20120709210439.GB11960@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4
+ filesystem
+Date: Wed, 11 Jul 2012 09:24:29 -0400
+Message-ID: <20120711132429.GA10872@thunk.org>
+References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org>
+ <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
+ <20120709210439.GB11960@thunk.org>
+ <874npefo7n.fsf@dmbot.sw.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	jack@suse.cz
-To: Ted Ts'o <tytso@mit.edu>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:57507 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753901Ab2GKM7c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2012 08:59:32 -0400
-In-Reply-To: <20120709210439.GB11960@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:38468 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757297Ab2GKNYf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jul 2012 09:24:35 -0400
+Content-Disposition: inline
+In-Reply-To: <874npefo7n.fsf@dmbot.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 9 Jul 2012 17:04:39 -0400, Ted Ts'o <tytso@mit.edu> wrote:
-> On Mon, Jul 09, 2012 at 07:28:44PM +0400, Dmitry Monakhov wrote:
-> > * Abstract
-> >   A subtree of a directory tree T is a tree consisting of a directory
-> >   (the subtree root) in T and all of its descendants in T.
-> > 
-> >   *NOTE*: User is allowed to break pure subtree hierarchy via manual
-> >           id manipulation.
-> > 
-> >   Subtree subtrees assumptions:
-> >   (1) Each inode has an id. This id is persistently stored inside
-> >       inode (xattr, usually inside ibody)
-> >   (2) Subtree id is inherent from parent directory
->                       ^^^^^^^^ inherited
+On Wed, Jul 11, 2012 at 04:59:24PM +0400, Dmitry Monakhov wrote:
 > 
-> What really bothers me about this patch is that the abstraction is
-> extremely leaky.  In particular, it's not just "manual id
-> manipulation" that will break the abstraction.  If you rename a file
-> or directory across subtrees, it breaks the abstraction; so does hard
-> links.
-Yes this is my bad, bad name was chosen. When people hear about subtree they
-do expect to see a true subtree (ADG). But the feature i want to add is
-not about true subtree hierarchy, this is just an 3'rd inode's identifier
-similar to uid/gid, subtree hierarchy is just one of most obvious
-use-case. I just want to pick the best name for the feature
+> May be it would be better if i describe feature as "Namespace ID"
+> namespaces is well known abstraction in kernel, so misunderstanding
+> shouldn't happen.
 
-May be it would be better if i describe feature as "Namespace ID"
-namespaces is well known abstraction in kernel, so misunderstanding
-shouldn't happen.
+What if we call it a "quota group", with the rules that if a parent
+directory has a quota group, any files or directories created in that
+parent directory will inherit that quota group, and only processes
+with CAP_SYS_ADMIN can change it.
 
-Updated feature description:
-1) Add XID (extension ID) the 3'rd inode's identifier similar to UID/GID
-2) XID is stored inside xattr
-3) XID is obtained from current task from current->cred->xid
-4) XID is initialized on clone() according to namespace->xid
+And then what if we simply make the rule that if an inode has a quota
+group, the quota is charged against two group id's; the group id named
+in inode, and the quota group?
 
-Obviously one can understand xid as "chroot id", "container id", or
-"process-set id"
-What do you think about that description?
-> 
-> When you get right down to it, this is effectively a secondary group
-> id, except it's not used for access control, but rather for quota
-> tracking.  You've used the name "subtree" id, but in fact there's no
-> guarantee subtrees has anything to do with it.  With a few renames,
-> any semblance of a subtree organization seems to disappear very
-> easily.
-> 
-> Another question which gets raised is is allowed to change the project
-> ownership?  Maybe I'm missing something, but I don't see any access
-> checking, so today it seems the answer is "anybody".  We could change
-> it so that only a root process can change project ownership, that
-> could raise other problems.
-Definitely, this should be restricted to CAP_SYS_ADMIN
-> 
-> I also worry that this feature will have very limited applicability.
-> Will anyone other than parallels use it?
-Off course no, this is very useful feature, but seems no one know
-about this yet :). Third quota identifier should be usefully in following
-cases:
-1) Various containers implementation XLR and others
-2) Chroot environments. For example I have an Android chroot environment
-   and i want to prevent it from eat all space on my disk.
-3) NFS: Per-mount quota. Server administrator is able to assign global
-   disk limit for single nfs-share w/o limiting uid/gid quotas
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+That is, do we really need to have a separate namespace for group ids
+and "subtrees" or "namespaces"?  That means we don't have to change
+the userspace quota tools and we can leverage the existing ways people
+are used to managing group quotas.
+
+						- Ted
