@@ -1,82 +1,119 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCHv6 3/5] ext4: remove unnecessary superblock dirtying
-Date: Wed, 11 Jul 2012 16:36:16 +0300
-Message-ID: <1342013776.18274.52.camel@sauron.fi.intel.com>
-References: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
-	 <1342000698-13556-4-git-send-email-dedekind1@gmail.com>
-	 <20120711100726.GE1316@quack.suse.cz> <20120711101150.GH1316@quack.suse.cz>
-Reply-To: dedekind1@gmail.com
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-M09F2wkXjz6TraIu71G9"
-Cc: Theodore Tso <tytso@mit.edu>,
-	Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+Subject: [PATCHv7 5/5] ext4: remove unnecessary argument
+Date: Wed, 11 Jul 2012 16:46:44 +0300
+Message-ID: <1342014404-14834-6-git-send-email-dedekind1@gmail.com>
+References: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
+Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:62981 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754932Ab2GKNcA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 09:32:00 -0400
-In-Reply-To: <20120711101150.GH1316@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
---=-M09F2wkXjz6TraIu71G9
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+The '__ext4_handle_dirty_metadata()' does not need the 'now' argument anymore
+and we can kill it.
 
-On Wed, 2012-07-11 at 12:11 +0200, Jan Kara wrote:
-> > > So case 2.b is a bit controversial, but I think it is acceptable. Aft=
-er all, by
-> > > enabling checksumming we already sign up for paying the price of calc=
-ulating
-> > > it. The way to improve checksumming performance globally would be to =
-calculate
-> > > it just before sending buffers to the I/O queue. We'd need some kind =
-of
-> > > call-back which could be registered by file-systems.
->   Actually, the most common case of adding orphan inode used
-> ext4_handle_dirty_super_now() so for that case there is no difference. An=
-d
-> other cases are so rare it really does not matter... So there shouldn't b=
-e
-> any measurable difference.
+Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4_jbd2.c |    3 +--
+ fs/ext4/ext4_jbd2.h |    7 ++-----
+ fs/ext4/inode.c     |    2 +-
+ fs/ext4/namei.c     |    4 ++--
+ fs/ext4/resize.c    |    2 +-
+ 5 files changed, 7 insertions(+), 11 deletions(-)
 
-Actually, the entire "orphan" case uses 'ext4_handle_dirty_super_now()',
-so this code-path is actually unaffected by my patch-set, so I do not
-have to even worry about it. My changes affect only the
-'ext4_handle_dirty_super()' users, and there are only 3 of them, and
-they are extremely rare one-time events.
-
---=20
-Best Regards,
-Artem Bityutskiy
-
---=-M09F2wkXjz6TraIu71G9
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIcBAABAgAGBQJP/YFQAAoJECmIfjd9wqK0ux4QAL3OCUVT3fbTMwzacISAGrMW
-c0Ak/XyQy8ecXA6nAsiZPvTpuUg8LuVkvsq5v1YcOooL4TVJHxTvxHwo72sPSNEo
-RdVf5XxnEUJasKecAz7aBB7U5DIrVQPi3UrWW3aEWwARiXzE7X3Wix68cq5hykm5
-XCVgGBcREqj3P57hInyMWQF9ev/aR/OtOehNNA086XOd75RXfd8T6HgbGJ7G83nM
-ItZcRHxDWjwtZ5/+5olh7ayouxA3tPfg45hudY9i9dUeEwqH4XYsxEHGfDCL6qT3
-8PXmF5dnWnz/13EXQajs27sUpdFqMtQqeqFjpcWQc2/qwwPAjF+7OxsHoxICZZZA
-T8pUez+ER/WKzgKdMCKN5aequM0VeSciXdum9ylBPK7+kozrd2TONBxyk53/dOBJ
-RLC7vTFIfYIWQ7KbqR4OTVhYACJos/Rl5/IscsABRYFoIDhfXfxXly1oW0RSGhD4
-z6MDKRWvH6i+UCKlM4+cZSUSfUR7xanU/DETp2AQYoyZoPQ3apuBvlyIbE1+D9Rq
-hBMESsIJ2N6cZrBJjyKxO9njglU4z1JN4QPf7hWwc3PYrIHx2NaU9bMohvR9vQc+
-fFgphFnyw/KbveF1Ahku3lfryZbsgvzTZoBUPxPqEpR0Yz1/oxFUyWKJuy64vgOD
-75zgfpqE7EQTpJ1Oup2L
-=vHqr
------END PGP SIGNATURE-----
-
---=-M09F2wkXjz6TraIu71G9--
-
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index c19ab6a..bfa65b4 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -138,8 +138,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ }
+ 
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb,
+-			      int now)
++			      handle_t *handle, struct super_block *sb)
+ {
+ 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+ 	int err = 0;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index f440e8f1..83b20fc 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -213,8 +213,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 				 struct buffer_head *bh);
+ 
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb,
+-			      int now);
++			      handle_t *handle, struct super_block *sb);
+ 
+ #define ext4_journal_get_write_access(handle, bh) \
+ 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
+@@ -226,10 +225,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_metadata(handle, inode, bh) \
+ 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
+ 				     (bh))
+-#define ext4_handle_dirty_super_now(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
+ #define ext4_handle_dirty_super(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
++	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+ 
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 02bc8cb..b1bd96f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4034,7 +4034,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			EXT4_SET_RO_COMPAT_FEATURE(sb,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+ 			ext4_handle_sync(handle);
+-			err = ext4_handle_dirty_super_now(handle, sb);
++			err = ext4_handle_dirty_super(handle, sb);
+ 		}
+ 	}
+ 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5845cd9..f155d57 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2397,7 +2397,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	/* Insert this inode at the head of the on-disk orphan list... */
+ 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+ 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+-	err = ext4_handle_dirty_super_now(handle, sb);
++	err = ext4_handle_dirty_super(handle, sb);
+ 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	if (!err)
+ 		err = rc;
+@@ -2470,7 +2470,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		if (err)
+ 			goto out_brelse;
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+-		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
++		err = ext4_handle_dirty_super(handle, inode->i_sb);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+ 		struct inode *i_prev =
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 7ea6cbb..09c7aae 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -798,7 +798,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	ext4_kvfree(o_group_desc);
+ 
+ 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+-	err = ext4_handle_dirty_super_now(handle, sb);
++	err = ext4_handle_dirty_super(handle, sb);
+ 	if (err)
+ 		ext4_std_error(sb, err);
+ 
+-- 
+1.7.7.6
