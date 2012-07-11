@@ -1,77 +1,49 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: e2fsprogs alignment issues
-Date: Wed, 11 Jul 2012 10:04:51 -0500
-Message-ID: <4FFD9613.3050305@redhat.com>
-References: <4FFD7D9B.2080503@bobich.net>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4 filesystem
+Date: Wed, 11 Jul 2012 19:26:25 +0400
+Message-ID: <87vchue2u6.fsf@dmbot.sw.ru>
+References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org> <1341847725-26114-3-git-send-email-dmonakhov@openvz.org> <20120709210439.GB11960@thunk.org> <874npefo7n.fsf@dmbot.sw.ru> <20120711132429.GA10872@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Gordan Bobic <gordan@bobich.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30833 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753265Ab2GKPFj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 11:05:39 -0400
-In-Reply-To: <4FFD7D9B.2080503@bobich.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	jack@suse.cz
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120711132429.GA10872@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 7/11/12 8:20 AM, Gordan Bobic wrote:
-> I would like to bring the following bug report to people's
-> attention:
+On Wed, 11 Jul 2012 09:24:29 -0400, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jul 11, 2012 at 04:59:24PM +0400, Dmitry Monakhov wrote:
+> > 
+> > May be it would be better if i describe feature as "Namespace ID"
+> > namespaces is well known abstraction in kernel, so misunderstanding
+> > shouldn't happen.
 > 
-> https://bugzilla.redhat.com/show_bug.cgi?id=680090
+> What if we call it a "quota group", with the rules that if a parent
+> directory has a quota group, any files or directories created in that
+> parent directory will inherit that quota group, and only processes
+> with CAP_SYS_ADMIN can change it.
 > 
-> The issue is that the code used in e2fsprogs WRT allocating unaligned
-> buffers and then casting them into structs is non-portable and
-> dangerous - eyewateringly dangerous in something like e2fsprogs where
-> it can lead to thorough trashing of the file system.
+> And then what if we simply make the rule that if an inode has a quota
+> group, the quota is charged against two group id's; the group id named
+> in inode, and the quota group?
+Yes this looks reasonable, the only thing that we should aware of is id
+collision. We have to reserve pool numbers to quota group id's.
+This can be easily solved by changing disk structure of quota-file
+to use u64 on uid.
 > 
-> Can something be done to improve the portability of the userspace
-> code?
+> That is, do we really need to have a separate namespace for group ids
+> and "subtrees" or "namespaces"?  That means we don't have to change
+> the userspace quota tools and we can leverage the existing ways people
+> are used to managing group quotas.
 > 
-> The issue has been discussed on the Fedora-ARM mailing list: 
-> http://lists.fedoraproject.org/pipermail/arm/2012-July/003637.html 
-> but the argument there was that the issue needs to be fixed upstream,
-> hence why I am posting it here.
-> 
-> This is an issue on all ARMs up to ARMv5, possibly ARMv6, and likely
-> other CPU architectures that don't have transparent alignment fixup
-> in hardware (Itanium, SPARC, probably others).
-> 
-> Apart from being dangerous, using unaligned arrays also affects
-> performance because it leads to data needlessly straddling cache
-> lines in the CPU. But that doesn't really matter in this case.
-
-For what it's worth, I've never seen reports from anywhere that indicate
-that it didn't get fixed up.  But I agree that if we can eliminate the need
-for the fixups it'd be best.
-
-Many of these are the result of things like:
-
-        char buf[4096] = "";
-        struct fiemap *fiemap = (struct fiemap *)buf;
-
-
-Ted, is this construct just an attempt to avoid malloc/free for
-simplicity of the code?  I think Gordan suggested (if I understand it
-right) that doing an array of ints might also solve the problem, since
-ints should be on natural alignment.  Or maybe in some cases malloc/free
-would be more obvious, if handling errors isn't too tricky.
-
-Gordan, until I get handy access to a real arm box, if you could do a
-"make check" in the e2fsprogs tree, it might flush out a few more
-of these alignment warnings, and adding them all to the bug for tracking
-purposes might be helpful.
-
-(IIRC "make gcc-wall" will also emit warnings for casts which change
-natural alignment, among other things)
-
-Thanks,
-
--Eric
-
-
-> Many thanks.
-
+> 						- Ted
+> --
+P.S. You probably heard about tragedy in Krimsk due to water flood.
+Tonight i'll go Krimsk to help as a volunteer, so i probably will be
+out of Internet next 10-12days. Please excuse me, i'll send updated
+version right after i'll back to Moscow.
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
