@@ -1,119 +1,82 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv7 5/5] ext4: remove unnecessary argument
-Date: Wed, 11 Jul 2012 16:46:44 +0300
-Message-ID: <1342014404-14834-6-git-send-email-dedekind1@gmail.com>
-References: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv7 0/5] ext4: stop using write_supers and s_dirt
+Date: Wed, 11 Jul 2012 16:46:39 +0300
+Message-ID: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
 	Ext4 Mailing List <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1342014404-14834-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+This patch-set makes ext4 file-system stop using the VFS '->write_supers()'
+call-back and the '->s_dirt' superblock field because I plan to remove them
+once all users are gone.
 
-The '__ext4_handle_dirty_metadata()' does not need the 'now' argument anymore
-and we can kill it.
+What we do in this patch-set is we notice that ext4 does not really needed the
+'write_super()' functionality and we can remove it. Instead, we simply mark the
+superblock buffer as dirty directly, rather than postponing this till the next
+'sync_supers()' kernel thread wake-up. Most of the ext4 changes were done or
+suggested by Jan Kara - thanks Jan!
 
-Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4_jbd2.c |    3 +--
- fs/ext4/ext4_jbd2.h |    7 ++-----
- fs/ext4/inode.c     |    2 +-
- fs/ext4/namei.c     |    4 ++--
- fs/ext4/resize.c    |    2 +-
- 5 files changed, 7 insertions(+), 11 deletions(-)
+V7 is identical to v6, but I've added Jan's "Reviewed-by" and removed my
+worries about slowing down the deletion path - they were false, apologies. So
+only the commit messages changed.
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index c19ab6a..bfa65b4 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -138,8 +138,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- }
- 
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb,
--			      int now)
-+			      handle_t *handle, struct super_block *sb)
- {
- 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
- 	int err = 0;
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index f440e8f1..83b20fc 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -213,8 +213,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 				 struct buffer_head *bh);
- 
- int __ext4_handle_dirty_super(const char *where, unsigned int line,
--			      handle_t *handle, struct super_block *sb,
--			      int now);
-+			      handle_t *handle, struct super_block *sb);
- 
- #define ext4_journal_get_write_access(handle, bh) \
- 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
-@@ -226,10 +225,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- #define ext4_handle_dirty_metadata(handle, inode, bh) \
- 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
- 				     (bh))
--#define ext4_handle_dirty_super_now(handle, sb) \
--	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
- #define ext4_handle_dirty_super(handle, sb) \
--	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
-+	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
- 
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 02bc8cb..b1bd96f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4034,7 +4034,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 			EXT4_SET_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
- 			ext4_handle_sync(handle);
--			err = ext4_handle_dirty_super_now(handle, sb);
-+			err = ext4_handle_dirty_super(handle, sb);
- 		}
- 	}
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5845cd9..f155d57 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2397,7 +2397,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	/* Insert this inode at the head of the on-disk orphan list... */
- 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
- 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
--	err = ext4_handle_dirty_super_now(handle, sb);
-+	err = ext4_handle_dirty_super(handle, sb);
- 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
- 	if (!err)
- 		err = rc;
-@@ -2470,7 +2470,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
- 		if (err)
- 			goto out_brelse;
- 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
--		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
-+		err = ext4_handle_dirty_super(handle, inode->i_sb);
- 	} else {
- 		struct ext4_iloc iloc2;
- 		struct inode *i_prev =
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 7ea6cbb..09c7aae 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -798,7 +798,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	ext4_kvfree(o_group_desc);
- 
- 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
--	err = ext4_handle_dirty_super_now(handle, sb);
-+	err = ext4_handle_dirty_super(handle, sb);
- 	if (err)
- 		ext4_std_error(sb, err);
- 
--- 
-1.7.7.6
+Tested with xfstests (both journalled and non-journalled ext4 modes).
+
+fs/ext4/ext4.h      |    9 ---------
+fs/ext4/ext4_jbd2.c |    8 +++-----
+fs/ext4/ext4_jbd2.h |    7 ++-----
+fs/ext4/file.c      |   14 +++++++++++++-
+fs/ext4/ialloc.c    |    2 --
+fs/ext4/inode.c     |    2 +-
+fs/ext4/mballoc.c   |    2 --
+fs/ext4/namei.c     |    4 ++--
+fs/ext4/resize.c    |    2 +-
+fs/ext4/super.c     |   12 +-----------
+10 files changed, 23 insertions(+), 39 deletions(-)
+
+Reminder
+========
+
+The goal is to get rid of the 'sync_supers()' kernel thread. This kernel thread
+wakes up every 5 seconds (by default) and calls '->write_super()' for all
+mounted file-systems. And the bad thing is that this is done even if all the
+superblocks are clean. Moreover, many file-systems do not even need this and
+they do not even register the '->write_super()' method at all (e.g., btrfs).
+
+So 'sync_supers()' mostly just generates useless wake-ups and wastes power.
+I am trying to make all file-systems independent of '->write_super()' and plan
+to remove 'sync_supers()' and '->write_super()' completely once there are no
+more users.
+
+Overall status
+==============
+
+1.  ext4: patches submitted,
+    https://lkml.org/lkml/2012/7/10/195
+2.  exofs: patch submitted,
+    https://lkml.org/lkml/2012/6/4/211
+3.  sysv: patches submitted,
+    http://lkml.org/lkml/2012/7/3/250
+4.  udf: patch submitted, sits in Jan Kara's tree:
+    https://lkml.org/lkml/2012/6/4/233
+    git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs for_testing
+5.  affs: patches submitted, sit in Al Viro's tree:
+    https://lkml.org/lkml/2012/6/6/400
+    git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs for-next
+6.  hfs: patches submitted, sit Andrew Morton's tree
+    http://lkml.org/lkml/2012/6/12/82
+7.  hfsplus: patches submitted, sit in Andrew Morton's tree:
+    https://lkml.org/lkml/2012/6/13/195
+8.  ext2:     done, see commit f72cf5e223a28d3b3ea7dc9e40464fd534e359e8
+9.  vfat:     done, see commit 78491189ddb6d84d4a4abae992ed891a236d0263
+10. jffs2:    done, see commit 208b14e507c00ff7f108e1a388dd3d8cc805a443
+11. reiserfs: done, see commit 033369d1af1264abc23bea2e174aa47cdd212f6f
+
+TODO: ufs
+
+Thanks,
+Artem.
