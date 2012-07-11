@@ -1,7 +1,7 @@
 From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: [PATCHv6 3/5] ext4: remove unnecessary superblock dirtying
-Date: Wed, 11 Jul 2012 12:58:16 +0300
-Message-ID: <1342000698-13556-4-git-send-email-dedekind1@gmail.com>
+Subject: [PATCHv6 5/5] ext4: remove unnecessary argument
+Date: Wed, 11 Jul 2012 12:58:18 +0300
+Message-ID: <1342000698-13556-6-git-send-email-dedekind1@gmail.com>
 References: <1342000698-13556-1-git-send-email-dedekind1@gmail.com>
 Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
 	Linux Kernel Maling List <linux-kernel@vger.kernel.org>,
@@ -14,86 +14,105 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
-This patch changes the '__ext4_handle_dirty_super()' function which submits
-the superblock for I/O in the following cases:
-
-1. When creating the first large file on a file system without
-   EXT4_FEATURE_RO_COMPAT_LARGE_FILE feature.
-2. When re-sizing the file-system.
-3. When creating an xattr on a file-system without the
-   EXT4_FEATURE_COMPAT_EXT_ATTR feature.
-4. When adding or deleting an orphan which happens on every delete operation
-   (because we update the 's_last_orphan' superblock field).
-
-If the file-system has journal enabled, the superblock is written via the
-journal. We do not modify this path.
-
-If the file-system has no journal, this function, falls back to just marking
-the superblock as dirty using the 's_dirt' superblock flag. This means that it
-delays the actual superblock I/O submission by 5 seconds (default setting).
-Namely, the 'sync_supers()' kernel thread will call 'ext4_write_super()' later
-and will actually submit the superblock for I/O.
-
-And this is the behavior this patch modifies: we stop using 's_dirt' and just
-mark the superblock buffer as dirty right away. Indeed:
-
-1. It does not add any value to delay the I/O submission for cases 1-3 above.
-   They are rare.
-2. Case number 4 above depends on whether we have file-system checksumming
-   enabled or disables.
-   a) If it is disabled (most common scenario), then it is all-right to just
-      mark the superblock buffer as dirty right away and it should affect
-      performance.
-   b) If it is enabled, then we'll end up doing a bit more work on deletion
-      because we'll re-calculate superblock checksum every time.
-
-So case 2.b is a bit controversial, but I think it is acceptable. After all, by
-enabling checksumming we already sign up for paying the price of calculating
-it. The way to improve checksumming performance globally would be to calculate
-it just before sending buffers to the I/O queue. We'd need some kind of
-call-back which could be registered by file-systems.
-
-This patch also removes 's_dirt' condition on the unmount path because we never
-set it anymore, so we should not test it.
-
-Tested using xfstests for both journalled and non-journalled ext4.
+The '__ext4_handle_dirty_metadata()' does not need the 'now' argument anymore
+and we can kill it.
 
 Signed-off-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 ---
- fs/ext4/ext4_jbd2.c |    5 ++---
- fs/ext4/super.c     |    2 +-
- 2 files changed, 3 insertions(+), 4 deletions(-)
+ fs/ext4/ext4_jbd2.c |    3 +--
+ fs/ext4/ext4_jbd2.h |    7 ++-----
+ fs/ext4/inode.c     |    2 +-
+ fs/ext4/namei.c     |    4 ++--
+ fs/ext4/resize.c    |    2 +-
+ 5 files changed, 7 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 90f7c2e..c19ab6a 100644
+index c19ab6a..bfa65b4 100644
 --- a/fs/ext4/ext4_jbd2.c
 +++ b/fs/ext4/ext4_jbd2.c
-@@ -151,11 +151,10 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 		if (err)
- 			ext4_journal_abort_handle(where, line, __func__,
- 						  bh, handle, err);
--	} else if (now) {
-+	} else {
- 		ext4_superblock_csum_set(sb,
- 				(struct ext4_super_block *)bh->b_data);
- 		mark_buffer_dirty(bh);
--	} else
--		sb->s_dirt = 1;
-+	}
- 	return err;
+@@ -138,8 +138,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
  }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index eb7aa3e..a391c53 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -896,7 +896,7 @@ static void ext4_put_super(struct super_block *sb)
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
- 	}
--	if (sb->s_dirt || !(sb->s_flags & MS_RDONLY))
-+	if (!(sb->s_flags & MS_RDONLY))
- 		ext4_commit_super(sb, 1);
  
- 	if (sbi->s_proc) {
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb,
+-			      int now)
++			      handle_t *handle, struct super_block *sb)
+ {
+ 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
+ 	int err = 0;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index f440e8f1..83b20fc 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -213,8 +213,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 				 struct buffer_head *bh);
+ 
+ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+-			      handle_t *handle, struct super_block *sb,
+-			      int now);
++			      handle_t *handle, struct super_block *sb);
+ 
+ #define ext4_journal_get_write_access(handle, bh) \
+ 	__ext4_journal_get_write_access(__func__, __LINE__, (handle), (bh))
+@@ -226,10 +225,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_metadata(handle, inode, bh) \
+ 	__ext4_handle_dirty_metadata(__func__, __LINE__, (handle), (inode), \
+ 				     (bh))
+-#define ext4_handle_dirty_super_now(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 1)
+ #define ext4_handle_dirty_super(handle, sb) \
+-	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb), 0)
++	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+ 
+ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 02bc8cb..b1bd96f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4034,7 +4034,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			EXT4_SET_RO_COMPAT_FEATURE(sb,
+ 					EXT4_FEATURE_RO_COMPAT_LARGE_FILE);
+ 			ext4_handle_sync(handle);
+-			err = ext4_handle_dirty_super_now(handle, sb);
++			err = ext4_handle_dirty_super(handle, sb);
+ 		}
+ 	}
+ 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5845cd9..f155d57 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2397,7 +2397,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	/* Insert this inode at the head of the on-disk orphan list... */
+ 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
+ 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
+-	err = ext4_handle_dirty_super_now(handle, sb);
++	err = ext4_handle_dirty_super(handle, sb);
+ 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	if (!err)
+ 		err = rc;
+@@ -2470,7 +2470,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 		if (err)
+ 			goto out_brelse;
+ 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
+-		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
++		err = ext4_handle_dirty_super(handle, inode->i_sb);
+ 	} else {
+ 		struct ext4_iloc iloc2;
+ 		struct inode *i_prev =
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 7ea6cbb..09c7aae 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -798,7 +798,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	ext4_kvfree(o_group_desc);
+ 
+ 	le16_add_cpu(&es->s_reserved_gdt_blocks, -1);
+-	err = ext4_handle_dirty_super_now(handle, sb);
++	err = ext4_handle_dirty_super(handle, sb);
+ 	if (err)
+ 		ext4_std_error(sb, err);
+ 
 -- 
 1.7.7.6
