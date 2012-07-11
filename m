@@ -1,45 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] ext4: Implement subtree ID support for ext4
- filesystem
-Date: Wed, 11 Jul 2012 09:24:29 -0400
-Message-ID: <20120711132429.GA10872@thunk.org>
-References: <1341847725-26114-1-git-send-email-dmonakhov@openvz.org>
- <1341847725-26114-3-git-send-email-dmonakhov@openvz.org>
- <20120709210439.GB11960@thunk.org>
- <874npefo7n.fsf@dmbot.sw.ru>
+From: Gordan Bobic <gordan@bobich.net>
+Subject: e2fsprogs alignment issues
+Date: Wed, 11 Jul 2012 14:20:27 +0100
+Message-ID: <4FFD7D9B.2080503@bobich.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38468 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757297Ab2GKNYf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 09:24:35 -0400
-Content-Disposition: inline
-In-Reply-To: <874npefo7n.fsf@dmbot.sw.ru>
+Received: from 78-86-195-58.zone2.bethere.co.uk ([78.86.195.58]:48747 "EHLO
+	external.sentinel2" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754988Ab2GKN2S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jul 2012 09:28:18 -0400
+Received: from thinkpad.shatteredsilicon.net (5adfcbc1.bb.sky.com [90.223.203.193])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by external.sentinel2 (Postfix) with ESMTPSA id 456472A1E
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jul 2012 14:20:30 +0100 (BST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 11, 2012 at 04:59:24PM +0400, Dmitry Monakhov wrote:
-> 
-> May be it would be better if i describe feature as "Namespace ID"
-> namespaces is well known abstraction in kernel, so misunderstanding
-> shouldn't happen.
+I would like to bring the following bug report to people's attention:
 
-What if we call it a "quota group", with the rules that if a parent
-directory has a quota group, any files or directories created in that
-parent directory will inherit that quota group, and only processes
-with CAP_SYS_ADMIN can change it.
+https://bugzilla.redhat.com/show_bug.cgi?id=680090
 
-And then what if we simply make the rule that if an inode has a quota
-group, the quota is charged against two group id's; the group id named
-in inode, and the quota group?
+The issue is that the code used in e2fsprogs WRT allocating unaligned 
+buffers and then casting them into structs is non-portable and dangerous 
+- eyewateringly dangerous in something like e2fsprogs where it can lead 
+to thorough trashing of the file system.
 
-That is, do we really need to have a separate namespace for group ids
-and "subtrees" or "namespaces"?  That means we don't have to change
-the userspace quota tools and we can leverage the existing ways people
-are used to managing group quotas.
+Can something be done to improve the portability of the userspace code?
 
-						- Ted
+The issue has been discussed on the Fedora-ARM mailing list:
+http://lists.fedoraproject.org/pipermail/arm/2012-July/003637.html
+but the argument there was that the issue needs to be fixed upstream, 
+hence why I am posting it here.
+
+This is an issue on all ARMs up to ARMv5, possibly ARMv6, and likely 
+other CPU architectures that don't have transparent alignment fixup in 
+hardware (Itanium, SPARC, probably others).
+
+Apart from being dangerous, using unaligned arrays also affects 
+performance because it leads to data needlessly straddling cache lines 
+in the CPU. But that doesn't really matter in this case.
+
+Many thanks.
+
+Gordan
