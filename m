@@ -1,126 +1,149 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsprogs alignment issues
-Date: Wed, 11 Jul 2012 20:05:03 -0400
-Message-ID: <20120712000503.GC5838@thunk.org>
-References: <4FFD7D9B.2080503@bobich.net>
- <4FFD9613.3050305@redhat.com>
- <20120711200557.GB5838@thunk.org>
- <4FFDEEA5.1020401@bobich.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Gordan Bobic <gordan@bobich.net>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH v2] ext4: dynamical adjust the length of zero-out chunk
+Date: Thu, 12 Jul 2012 14:48:23 +0800
+Message-ID: <1342075703-4537-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zach Brown <zab@zabbo.net>, Andreas Dilger <adilger@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38587 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753604Ab2GLAFK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jul 2012 20:05:10 -0400
-Content-Disposition: inline
-In-Reply-To: <4FFDEEA5.1020401@bobich.net>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:57676 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751282Ab2GLGkA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jul 2012 02:40:00 -0400
+Received: by pbbrp8 with SMTP id rp8so3252614pbb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Jul 2012 23:40:00 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 11, 2012 at 10:22:45PM +0100, Gordan Bobic wrote:
-> >I will observe that being able to derefrence unaligned pointers is
-> >something that Linus has said any architecture which does *not*
-> >provide fixups is probably doomed to fail.
-> 
-> That sounds like a resigned recognition that a lot of developers
-> will use unsafe practices anyway, not a model for how things should
-> be done.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-The reality is there is a lot of userspace code which does things a
-certain way.  Ignoring that reality will very often doom you to
-irrelvance.  (For example, Plan9 and Mach assumed that the existing
-huge amount of Posix-compatible userspace code wasn't important, and
-people would implement new applications to their new OS interfaces
-from scratch.)
+Currently in ext4 the length of zero-out chunk is set to 7.  But it is
+too short so that it will cause a lot of fragmentation of extent when
+we use fallocate to preallocate some uninitialized extents and the
+workload frequently does some uninitialized extent conversions.  Thus,
+now we set it to 256 (1MB chunk), and put it into super block in order
+to adjust it dynamically in sysfs.
 
-> >Yes, someone can send me patches.  :-)
-> 
-> Sure, I can sed __attribute__((aligned(4))) on every char[]
-> definition, as long as no art rather than engineering oriented
-> individuals aren;t going to complain that it "looks ugly". :)
+CC: Zach Brown <zab@zabbo.net>
+CC: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+v2 <- v1:
+ * use a on-stack copy to avoid seeing differenet values
+ * add missing spaces around '*'
 
-Um, no.  NAK.
+ fs/ext4/ext4.h    |    3 +++
+ fs/ext4/extents.c |   13 ++++++++-----
+ fs/ext4/super.c   |    3 +++
+ 3 files changed, 14 insertions(+), 5 deletions(-)
 
-#1, it's not going to be necessary in all cases, and #2, we try very
-hard in e2fsprogs to make sure we are not dependent on GCC extensions.
-If you must use a GCC extension, it must be under an #ifdef __GNUC__
-and there must be a reasonable alternative if it's compiled using (for
-example) the Solaris icc....
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cfc4e01..0f44577 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1265,6 +1265,9 @@ struct ext4_sb_info {
+ 	/* locality groups */
+ 	struct ext4_locality_group __percpu *s_locality_groups;
+ 
++	/* the size of zero-out chunk */
++	unsigned int s_extent_zeroout_len;
++
+ 	/* for write statistics */
+ 	unsigned long s_sectors_written_start;
+ 	u64 s_kbytes_written;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91341ec..a114d65 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3029,7 +3029,6 @@ out:
+ 	return err ? err : map->m_len;
+ }
+ 
+-#define EXT4_EXT_ZERO_LEN 7
+ /*
+  * This function is called by ext4_ext_map_blocks() if someone tries to write
+  * to an uninitialized extent. It may result in splitting the uninitialized
+@@ -3055,12 +3054,14 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 					   struct ext4_map_blocks *map,
+ 					   struct ext4_ext_path *path)
+ {
++	struct ext4_sb_info *sbi;
+ 	struct ext4_extent_header *eh;
+ 	struct ext4_map_blocks split_map;
+ 	struct ext4_extent zero_ex;
+ 	struct ext4_extent *ex;
+ 	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int ee_len, depth;
++	unsigned int zeroout_len;
+ 	int allocated;
+ 	int err = 0;
+ 	int split_flag = 0;
+@@ -3069,6 +3070,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		"block %llu, max_blocks %u\n", inode->i_ino,
+ 		(unsigned long long)map->m_lblk, map->m_len);
+ 
++	sbi = EXT4_SB(inode->i_sb);
++	zeroout_len = sbi->s_extent_zeroout_len;
+ 	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+ 		inode->i_sb->s_blocksize_bits;
+ 	if (eof_block < map->m_lblk + map->m_len)
+@@ -3168,8 +3171,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	 */
+ 	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
+ 
+-	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
+-	if (ee_len <= 2*EXT4_EXT_ZERO_LEN &&
++	/* If extent has less than 2*s_extent_zeroout_len zerout directly */
++	if (ee_len <= (2 * zeroout_len) &&
+ 	    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+ 		err = ext4_ext_zeroout(inode, ex);
+ 		if (err)
+@@ -3195,7 +3198,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	split_map.m_len = map->m_len;
+ 
+ 	if (allocated > map->m_len) {
+-		if (allocated <= EXT4_EXT_ZERO_LEN &&
++		if (allocated <= zeroout_len &&
+ 		    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+ 			/* case 3 */
+ 			zero_ex.ee_block =
+@@ -3209,7 +3212,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 			split_map.m_lblk = map->m_lblk;
+ 			split_map.m_len = allocated;
+ 		} else if ((map->m_lblk - ee_block + map->m_len <
+-			   EXT4_EXT_ZERO_LEN) &&
++			   zeroout_len) &&
+ 			   (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+ 			/* case 2 */
+ 			if (map->m_lblk != ee_block) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index eb7aa3e..ea7cb6b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2535,6 +2535,7 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+ EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+ EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+ EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
++EXT4_RW_ATTR_SBI_UI(extent_zeroout_len, s_extent_zeroout_len);
+ EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
+ 
+ static struct attribute *ext4_attrs[] = {
+@@ -2550,6 +2551,7 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(mb_stream_req),
+ 	ATTR_LIST(mb_group_prealloc),
+ 	ATTR_LIST(max_writeback_mb_bump),
++	ATTR_LIST(extent_zeroout_len),
+ 	ATTR_LIST(trigger_fs_error),
+ 	NULL,
+ };
+@@ -3626,6 +3628,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	sbi->s_stripe = ext4_get_stripe_size(sbi);
+ 	sbi->s_max_writeback_mb_bump = 128;
++	sbi->s_extent_zeroout_len = 256;
+ 
+ 	/*
+ 	 * set up enough so that it can read an inode
+-- 
+1.7.4.1
 
-Weren't you the one ranting on and on about how portability was so
-important?
-
-> >>  I think Gordan suggested (if I understand it
-> >>right) that doing an array of ints might also solve the problem, since
-> >>ints should be on natural alignment.  Or maybe in some cases malloc/free
-> >>would be more obvious, if handling errors isn't too tricky.
-> >
-> >In the specific case which Gordon has pointed out, the obvious thing
-> >to do is to just to set errno to ENOMEM, and return -1. since we
-> >already reflect an error code up to the caller if the FIEMAP ioctl()
-> >fails.
-> >
-> >If someone sends me the patch, I will happily apply it.
-> 
-> As opposed to aligning the char arrays explicitly?
-
-The right thing in the case of the filefrag example which you gave is
-to allocate the structure dynamically using malloc().
-
-In other cases there may be other solutions which may be a better way
-to do things.  Please do *not* bother to do a global sed style patch.
-I will reject that summarily.  Thought and care are required, not a
-blunt instrument.
-
-> >What we are currently doing may not be 100% portable, but we're not
-> >going to penalize sane archiectures like x86 just because there might
-> >be some future insane architecture that requires 32-byte aligned ints!
-> >All the ranting in the world about how this could hypothetically cause
-> >file system corruption on said insane architecture will just cause me
-> >to laugh at you.
-> 
-> By that definition, the majority of architectures supported by Linux
-> are insane. Word alignment requirements apply to ARM, and IIRC to
-> Itanium and SPARC (not sure about the most recent SPARCs) too. If
-> you think that Linux should become x86-only, that's fair enough, I'm
-> sure the ARM kernel maintainers are getting sufficiently frustrated
-> with the current situation that they might think this is a positive
-> development. But meanwhile, back in the real world, we do need to
-> deal with the issue.
-
-You're not reading what I wrote.  There are plenty of places where we
-read in an on-disk structure into a malloc'ed buffer, where all of the
-fields of that structure which have 4-byte alignment for 32-bit
-fields, and 2-byte alignment for 16-bit fields.  We dereference those
-fields directly, without doing a manual copy operation.  Strictly
-speaking, this may not be portable, since there may be architectures
-that do something insane with greater than 8 byte alignment
-requirements for 4-byte types.
-
-We (both e2fsprogs and the Linux kernel) also assume that the bit
-pattern field for NULL is 0x00.  Strictly speaking the C standard does
-not require this; it only requires that if you cast an integer value
-of 0, the result must be the NULL pointer.  For example, on the
-Honeywell GE-645, a NULL pointer was (segment -2, offset 0).
-
-Architectures which have odd alignments or wierd bit patterns for NULL
-pointers are what I am calling "insane".  And I don't care about
-complete generic portability to weird architectures.  So please don't
-try to make arguments about portability as a platonic ideal that we
-must adhere to at all costs.  If we did that, we would have to
-manually copy each field from the on-disk structure to an in-memory
-structure, and that would be insanely slow.  Can you imagine doing
-that in the TCP stack?!?
-
-I am willing to support the ARM architecture, but we need to do this
-in a careful way; not via some quick and dirty sed script.  But please
-note that other architectures, including the Alpha, have always
-supported doing unaligned pointer fixups (even if it is slow), because
-if they didn't vast amounts of userspace *would* break.
-
-Regards,
-
-						- Ted
