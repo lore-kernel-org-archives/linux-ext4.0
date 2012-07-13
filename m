@@ -1,46 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Add support for DragonFly BSD operating system.
-Date: Thu, 12 Jul 2012 20:30:26 -0400
-Message-ID: <20120713003026.GA30092@thunk.org>
-References: <op.whcml3m4f7p71t@sixfeet.quantumachine.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Antonio Huete =?iso-8859-1?Q?Jim=E9nez?= <ahuete.devel@gmail.com>
+Subject: [PATCH] ext4: remove dynamic array size in ext4_chksum()
+Date: Thu, 12 Jul 2012 23:25:36 -0400
+Message-ID: <1342149936-15148-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <djwong@us.ibm.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38813 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:38846 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754462Ab2GMAaa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jul 2012 20:30:30 -0400
-Content-Disposition: inline
-In-Reply-To: <op.whcml3m4f7p71t@sixfeet.quantumachine.net>
+	id S1754698Ab2GMDZj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jul 2012 23:25:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 12, 2012 at 09:48:37PM +0200, Antonio Huete Jim=E9nez wrote=
-:
->=20
-> - Add a new OS tag.
+The ext4_checksum() inline function was using a dynamic array size,
+which is not legal C.  (It is a gcc extension).
 
-Is there a particular reason why you need the OS tag?  That's really
-more of a historical thing than anything else.  I'd be much happier
-renaming the FreeBSD tag to BSD.
+Remove it.
 
-The only thing where we change what we do based on the OS tag was for
-the Hurd operating system, and I consider what was done back then by
-Remy Card (one of the original ext2 authors) to be a design mistake.
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Also, for future reference, it's highly preferable to have separate
-patches for each logically distinct change; it's easier to review,
-especially if it's only one patch out of several that needs to be
-modified/reworked.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1610e80..e8e8afa 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1667,10 +1667,12 @@ static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
+ {
+ 	struct {
+ 		struct shash_desc shash;
+-		char ctx[crypto_shash_descsize(sbi->s_chksum_driver)];
++		char ctx[4];
+ 	} desc;
+ 	int err;
+ 
++	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
++
+ 	desc.shash.tfm = sbi->s_chksum_driver;
+ 	desc.shash.flags = 0;
+ 	*(u32 *)desc.ctx = crc;
+-- 
+1.7.11.1.108.gb129051
 
-Regards,
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
