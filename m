@@ -1,56 +1,51 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 04/12 v2] xfs: pass LLONG_MAX to truncate_inode_pages_range
-Date: Fri, 13 Jul 2012 15:19:07 +0200
-Message-ID: <1342185555-21146-4-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 03/12 v2] shmem: pass LLONG_MAX to shmem_truncate_range
+Date: Fri, 13 Jul 2012 15:19:06 +0200
+Message-ID: <1342185555-21146-3-git-send-email-lczerner@redhat.com>
 References: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
 Cc: linux-fsdevel@vger.kernel.org, tytso@mit.edu,
 	achender@linux.vnet.ibm.com, Lukas Czerner <lczerner@redhat.com>,
-	Dave Chinner <dchinner@redhat.com>
+	Hugh Dickins <hughd@google.com>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:42262 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030437Ab2GMNT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jul 2012 09:19:29 -0400
 In-Reply-To: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we're passing -1 to truncate_inode_pages_range() which is
-actually really confusing since the argument is signed so we do not get
-"huge" number as one would expect, but rather just -1. To make things
-clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
-since it is actually what was intended anyway.
+Currently we're passing -1 to shmem_truncate_range which can then call
+truncate_inode_pages_range() which is actually really confusing since the
+argument is signed so we do not get "huge" number as one would expect,
+but rather just -1. To make things clearer and easier for
+truncate_inode_pages_range() just pass LLONG_MAX since it is actually what
+was intended anyway.
 
 It also makes thing easier for allowing truncate_inode_pages_range() to
 handle non page aligned regions. Moreover letting the lend argument to
 be negative might actually hide some bugs.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Cc: Dave Chinner <dchinner@redhat.com>
+Cc: Hugh Dickins <hughd@google.com>
 ---
- fs/xfs/xfs_fs_subr.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ mm/shmem.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
-index 652b875..6e9b052 100644
---- a/fs/xfs/xfs_fs_subr.c
-+++ b/fs/xfs/xfs_fs_subr.c
-@@ -34,7 +34,8 @@ xfs_tosspages(
- {
- 	/* can't toss partial tail pages, so mask them out */
- 	last &= ~(PAGE_SIZE - 1);
--	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
-+	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
-+				   last == -1 ? LLONG_MAX : last);
- }
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 4ce02e0..3199733 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2961,7 +2961,8 @@ void shmem_unlock_mapping(struct address_space *mapping)
  
- int
-@@ -53,7 +54,8 @@ xfs_flushinval_pages(
- 	ret = filemap_write_and_wait_range(mapping, first,
- 				last == -1 ? LLONG_MAX : last);
- 	if (!ret)
--		truncate_inode_pages_range(mapping, first, last);
-+		truncate_inode_pages_range(mapping, first,
-+					   last == -1 ? LLONG_MAX : last);
- 	return -ret;
+ void shmem_truncate_range(struct inode *inode, loff_t lstart, loff_t lend)
+ {
+-	truncate_inode_pages_range(inode->i_mapping, lstart, lend);
++	truncate_inode_pages_range(inode->i_mapping, lstart,
++				   lend == -1 ? LLONG_MAX : last);
  }
+ EXPORT_SYMBOL_GPL(shmem_truncate_range);
  
 -- 
 1.7.7.6
