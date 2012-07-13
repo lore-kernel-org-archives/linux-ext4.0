@@ -1,44 +1,43 @@
-From: Aditya Kali <adityakali@google.com>
-Subject: [PATCH 2/4] libquota: fix quota_inode_truncate()
-Date: Fri, 13 Jul 2012 15:25:07 -0700
-Message-ID: <1342218309-25983-2-git-send-email-adityakali@google.com>
-References: <1342218309-25983-1-git-send-email-adityakali@google.com>
-Cc: Aditya Kali <adityakali@google.com>
-To: tytso@mit.edu, johann@whamcloud.com, linux-ext4@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: e2fsprogs alignment issues
+Date: Sat, 14 Jul 2012 08:25:31 +1000
+Message-ID: <20120713222531.GB2920@dastard>
+References: <4FFD7D9B.2080503@bobich.net>
+ <4FFD9613.3050305@redhat.com>
+ <20120711200557.GB5838@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Gordan Bobic <gordan@bobich.net>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yx0-f202.google.com ([209.85.213.202]:55729 "EHLO
-	mail-yx0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752434Ab2GMWZP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jul 2012 18:25:15 -0400
-Received: by yenl3 with SMTP id l3so390733yen.1
-        for <linux-ext4@vger.kernel.org>; Fri, 13 Jul 2012 15:25:15 -0700 (PDT)
-In-Reply-To: <1342218309-25983-1-git-send-email-adityakali@google.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:49086 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752272Ab2GMWZf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jul 2012 18:25:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20120711200557.GB5838@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We failed to clear EXT2_FLAG_SUPER_ONLY after deleting the
-quota inode and so, the updated block bitmap was not written
-back. This caused fsck to complain after running
-'tune2fs -O ^quota <dev>'. Clear this flag so that updated
-block bitmap gets written. Also, avoid truncating the quota
-inode if it is not hidden.
+On Wed, Jul 11, 2012 at 04:05:57PM -0400, Theodore Ts'o wrote:
+> I will *not* accept a patch which uses memcpy to copy each field in
+> the on-disk superblock, or directory entry, into an int, just in case
+> there is some insane architecture which requires that 4 byte integers
+> be 32-byte aligned, or something else insane like that.
 
-Signed-off-by: Aditya Kali <adityakali@google.com>
----
- lib/quota/quotaio.c |   20 ++++++++++++--------
- 1 files changed, 12 insertions(+), 8 deletions(-)
+This is a problem we've had to deal with in the XFS userspace for
+years because of the way extent records are packed into inodes.
+Hence we have "get/set_unaligned_be32" and "get/set_unaligned_be64"
+functions to read and write unaligned variables directly out of
+buffers without having platform specific alignment issues. It's
+exactly the same generic code as the kernel uses for this purpose.
+See libxfs/xfs.h....
 
-diff --git a/lib/quota/quotaio.c b/lib/quota/quotaio.c
-index c0ebaa1..7cdd653 100644
---- a/lib/quota/quotaio.c
-+++ b/lib/quota/quotaio.c
-@@ -133,14 +133,18 @@ errcode_t quota_inode_truncate(ext2_filsys fs, ext2_ino_t ino)
- 	if ((err = ext2fs_read_inode(fs, ino, &inode)))
- 		return err;
- 
--	inode.i_dtime = fs->now ? fs->now : time(0);
--	if (!ext2fs_inode_has_valid_blocks2(fs, &inode))
--		return 0;
--
--	ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_READ_ONLY, NULL,
--			      release_blocks_proc, NULL);
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
