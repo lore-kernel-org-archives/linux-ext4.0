@@ -1,43 +1,38 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: e2fsprogs alignment issues
-Date: Sat, 14 Jul 2012 08:25:31 +1000
-Message-ID: <20120713222531.GB2920@dastard>
-References: <4FFD7D9B.2080503@bobich.net>
- <4FFD9613.3050305@redhat.com>
- <20120711200557.GB5838@thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
+Date: Sat, 14 Jul 2012 03:45:54 -0400
+Message-ID: <20120714074554.GA27610@infradead.org>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
+ <1342185555-21146-2-git-send-email-lczerner@redhat.com>
+ <20120713174209.GC17109@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Gordan Bobic <gordan@bobich.net>, linux-ext4@vger.kernel.org
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:49086 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752272Ab2GMWZf (ORCPT
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:36839
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755714Ab2GNHp7 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Jul 2012 18:25:35 -0400
+	Sat, 14 Jul 2012 03:45:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20120711200557.GB5838@thunk.org>
+In-Reply-To: <20120713174209.GC17109@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 11, 2012 at 04:05:57PM -0400, Theodore Ts'o wrote:
-> I will *not* accept a patch which uses memcpy to copy each field in
-> the on-disk superblock, or directory entry, into an int, just in case
-> there is some insane architecture which requires that 4 byte integers
-> be 32-byte aligned, or something else insane like that.
+On Fri, Jul 13, 2012 at 01:42:09PM -0400, Theodore Ts'o wrote:
+> Hi Lukas,
+> 
+> This patch set has changes to the VFS, XFS, and ext4, and there are
+> cross dependencies between them.  Is there any way you can disentagle
+> the dependencies between the patches so we don't need to worry about
+> how these get pulled in during the merge window?
+> 
+> I suppose could try to get the XFS folks to sign off with my carrying
+> this patch in the ext4 tree, since the bulk of the changes are
+> ext4-related, but it is a bit of a complication.
 
-This is a problem we've had to deal with in the XFS userspace for
-years because of the way extent records are packed into inodes.
-Hence we have "get/set_unaligned_be32" and "get/set_unaligned_be64"
-functions to read and write unaligned variables directly out of
-buffers without having platform specific alignment issues. It's
-exactly the same generic code as the kernel uses for this purpose.
-See libxfs/xfs.h....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+There are no real XFS changes, just changing the calling conventions for
+a generic function.  Adding this through another tree if properly
+reviewed seems perfectly fine.
