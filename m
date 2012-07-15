@@ -1,29 +1,79 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] build: add generated files to .gitignore
-Date: Sat, 14 Jul 2012 19:44:06 -0400
-Message-ID: <20120714234406.GB31952@thunk.org>
-References: <1341539091-97716-1-git-send-email-adilger@whamcloud.com>
+From: Dave Chinner <dchinner@redhat.com>
+Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
+ truncate_inode_pages_range
+Date: Mon, 16 Jul 2012 09:11:17 +1000
+Message-ID: <20120715231117.GD30524@devil.redhat.com>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
+ <1342185555-21146-4-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: Andreas Dilger <adilger@whamcloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, achender@linux.vnet.ibm.com
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39182 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751083Ab2GOQPY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Jul 2012 12:15:24 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:32964 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751115Ab2GOXLb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Jul 2012 19:11:31 -0400
 Content-Disposition: inline
-In-Reply-To: <1341539091-97716-1-git-send-email-adilger@whamcloud.com>
+In-Reply-To: <1342185555-21146-4-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 05, 2012 at 07:44:51PM -0600, Andreas Dilger wrote:
-> Add a batch of files/wildcards to the list of ignored files, so
-> that "git status" does not show so many files that should be ignored.
-> The "*.dSYM" directories are generated during building on MacOS.
+On Fri, Jul 13, 2012 at 03:19:07PM +0200, Lukas Czerner wrote:
+> Currently we're passing -1 to truncate_inode_pages_range() which is
+> actually really confusing since the argument is signed so we do not get
+> "huge" number as one would expect, but rather just -1. To make things
+> clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
+> since it is actually what was intended anyway.
 > 
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+> It also makes thing easier for allowing truncate_inode_pages_range() to
+> handle non page aligned regions. Moreover letting the lend argument to
+> be negative might actually hide some bugs.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Cc: Dave Chinner <dchinner@redhat.com>
+> ---
+>  fs/xfs/xfs_fs_subr.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
+> index 652b875..6e9b052 100644
+> --- a/fs/xfs/xfs_fs_subr.c
+> +++ b/fs/xfs/xfs_fs_subr.c
+> @@ -34,7 +34,8 @@ xfs_tosspages(
+>  {
+>  	/* can't toss partial tail pages, so mask them out */
+>  	last &= ~(PAGE_SIZE - 1);
+> -	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
+> +	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
+> +				   last == -1 ? LLONG_MAX : last);
 
-Applied, thanks.
+The last paramter changed from (last -1) to last. so if we pass in
+last = 16384, we now truncate to 16384 (first byte of page index 5)
+instead of 16383 (last byte of page index 4). That's a change of
+behaviour and a potential off-by one error, right?
 
-						- Ted
+> @@ -53,7 +54,8 @@ xfs_flushinval_pages(
+>  	ret = filemap_write_and_wait_range(mapping, first,
+>  				last == -1 ? LLONG_MAX : last);
+>  	if (!ret)
+> -		truncate_inode_pages_range(mapping, first, last);
+> +		truncate_inode_pages_range(mapping, first,
+> +					   last == -1 ? LLONG_MAX : last);
+
+Given this is also done immediately above in the function, perhaps
+this should be done before anything:
+
+	if (last == -1)
+		last = LLONG_MAX;
+
+and the parameter simply passed to the two functions without the
+conditional logic?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+dchinner@redhat.com
