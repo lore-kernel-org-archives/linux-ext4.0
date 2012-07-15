@@ -1,38 +1,41 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
-Date: Sat, 14 Jul 2012 03:45:54 -0400
-Message-ID: <20120714074554.GA27610@infradead.org>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
- <1342185555-21146-2-git-send-email-lczerner@redhat.com>
- <20120713174209.GC17109@thunk.org>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: [PATCH] ext4: fix trivial typo in the comment for extents.c/ext4_split_unwritten_extents
+Date: Sun, 15 Jul 2012 11:41:08 +0800
+Message-ID: <50023BD4.2050809@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:36839
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755714Ab2GNHp7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 Jul 2012 03:45:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20120713174209.GC17109@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:37561 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751461Ab2GODlT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Jul 2012 23:41:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 13, 2012 at 01:42:09PM -0400, Theodore Ts'o wrote:
-> Hi Lukas,
-> 
-> This patch set has changes to the VFS, XFS, and ext4, and there are
-> cross dependencies between them.  Is there any way you can disentagle
-> the dependencies between the patches so we don't need to worry about
-> how these get pulled in during the merge window?
-> 
-> I suppose could try to get the XFS folks to sign off with my carrying
-> this patch in the ext4 tree, since the bulk of the changes are
-> ext4-related, but it is a bit of a complication.
+Put the sign '/' to the right position.
 
-There are no real XFS changes, just changing the calling conventions for
-a generic function.  Adding this through another tree if properly
-reviewed seems perfectly fine.
+Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+---
+ fs/ext4/extents.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7f6fb48..f394e0f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3241,7 +3241,7 @@ out:
+  * to an uninitialized extent.
+  *
+  * Writing to an uninitialized extent may result in splitting the uninitialized
+- * extent into multiple /initialized uninitialized extents (up to three)
++ * extent into multiple initialized/uninitialized extents (up to three)
+  * There are three possibilities:
+  *   a> There is no split required: Entire extent should be uninitialized
+  *   b> Splits in two extents: Write is happening at either end of the extent
+-- 
+1.7.1
+
