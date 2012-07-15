@@ -1,79 +1,128 @@
-From: Dave Chinner <dchinner@redhat.com>
-Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
- truncate_inode_pages_range
-Date: Mon, 16 Jul 2012 09:11:17 +1000
-Message-ID: <20120715231117.GD30524@devil.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com>
- <1342185555-21146-4-git-send-email-lczerner@redhat.com>
+From: Kevin Shanahan <kmshanah@disenchant.net>
+Subject: Ext4 external journal UUID mismatch?
+Date: Mon, 16 Jul 2012 09:10:58 +0930
+Message-ID: <20120715234058.GA2562@tuon.disenchant.local>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, achender@linux.vnet.ibm.com
-To: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32964 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751115Ab2GOXLb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Jul 2012 19:11:31 -0400
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:53436 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752399Ab2GOXlE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Jul 2012 19:41:04 -0400
 Content-Disposition: inline
-In-Reply-To: <1342185555-21146-4-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 13, 2012 at 03:19:07PM +0200, Lukas Czerner wrote:
-> Currently we're passing -1 to truncate_inode_pages_range() which is
-> actually really confusing since the argument is signed so we do not get
-> "huge" number as one would expect, but rather just -1. To make things
-> clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
-> since it is actually what was intended anyway.
-> 
-> It also makes thing easier for allowing truncate_inode_pages_range() to
-> handle non page aligned regions. Moreover letting the lend argument to
-> be negative might actually hide some bugs.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: Dave Chinner <dchinner@redhat.com>
-> ---
->  fs/xfs/xfs_fs_subr.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
-> index 652b875..6e9b052 100644
-> --- a/fs/xfs/xfs_fs_subr.c
-> +++ b/fs/xfs/xfs_fs_subr.c
-> @@ -34,7 +34,8 @@ xfs_tosspages(
->  {
->  	/* can't toss partial tail pages, so mask them out */
->  	last &= ~(PAGE_SIZE - 1);
-> -	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
-> +	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
-> +				   last == -1 ? LLONG_MAX : last);
+Hi,
 
-The last paramter changed from (last -1) to last. so if we pass in
-last = 16384, we now truncate to 16384 (first byte of page index 5)
-instead of 16383 (last byte of page index 4). That's a change of
-behaviour and a potential off-by one error, right?
+I have created some filesystems with external journals, and after
+reboot (clean shutdown) these will not mount anymore. I see in dmesg:
 
-> @@ -53,7 +54,8 @@ xfs_flushinval_pages(
->  	ret = filemap_write_and_wait_range(mapping, first,
->  				last == -1 ? LLONG_MAX : last);
->  	if (!ret)
-> -		truncate_inode_pages_range(mapping, first, last);
-> +		truncate_inode_pages_range(mapping, first,
-> +					   last == -1 ? LLONG_MAX : last);
+  [42214.365496] EXT4-fs (dm-10): journal UUID does not match
 
-Given this is also done immediately above in the function, perhaps
-this should be done before anything:
+However, the UUIDs look fine when viewed with dumpe2fs:
 
-	if (last == -1)
-		last = LLONG_MAX;
+# dumpe2fs -h /dev/it8/nfs-kvmhost0
+Filesystem volume name:   <none>
+Last mounted on:          /srv/nfs4/kvmhost0-rootfs
+Filesystem UUID:          8a543c99-8a66-4ec2-9664-e82e3642cee0
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash 
+Default mount options:    journal_data user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              983040
+Block count:              3932160
+Reserved block count:     196608
+Free blocks:              3628551
+Free inodes:              939811
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      959
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+RAID stride:              128
+RAID stripe width:        768
+Flex block group size:    16
+Filesystem created:       Sun Jul  8 10:45:26 2012
+Last mount time:          Sun Jul  8 10:45:26 2012
+Last write time:          Sun Jul 15 20:47:20 2012
+Mount count:              1
+Maximum mount count:      -1
+Last checked:             Sun Jul  8 10:45:26 2012
+Check interval:           0 (<none>)
+Lifetime writes:          2024 MB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     28
+Desired extra isize:      28
+Journal UUID:             9e21ab2e-533e-41b1-a006-21bcf7574a45
+Journal device:	          0xfd0c
+Default directory hash:   half_md4
+Directory Hash Seed:      61c03a7c-947b-4432-a134-7b0dfd307228
 
-and the parameter simply passed to the two functions without the
-conditional logic?
+# dumpe2fs -h /dev/ssdvg/jnl-kvmhost0
+Filesystem volume name:   <none>
+Last mounted on:          <not available>
+Filesystem UUID:          9e21ab2e-533e-41b1-a006-21bcf7574a45
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      journal_dev
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              0
+Block count:              262144
+Reserved block count:     0
+Free blocks:              0
+Free inodes:              0
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         0
+Inode blocks per group:   0
+Filesystem created:       Sun Jul  8 10:45:20 2012
+Last mount time:          n/a
+Last write time:          Sun Jul  8 10:45:21 2012
+Mount count:              0
+Maximum mount count:      -1
+Last checked:             Sun Jul  8 10:45:20 2012
+Check interval:           0 (<none>)
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     28
+Desired extra isize:      28
+Default directory hash:   half_md4
+Directory Hash Seed:      9f3616f0-a8e2-4e61-8e31-2632a0fb2287
 
-Cheers,
+Journal block size:       4096
+Journal length:           262144
+Journal first block:      2
+Journal sequence:         0x000120d6
+Journal start:            0
+Journal number of users:  1
+Journal users:            8a543c99-8a66-4ec2-9664-e82e3642cee0
 
-Dave.
--- 
-Dave Chinner
-dchinner@redhat.com
+I don't understand why mount/kernel unhappy with this. Can someone
+shed some light on this?
+
+# uname -r
+3.4.4-3-ARCH
+
+Thanks,
+Kevin.
