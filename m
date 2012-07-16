@@ -1,74 +1,101 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: Question about extents.c/ext4_ext_punch_hole
-Date: Mon, 16 Jul 2012 08:36:06 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207160829280.3857@dhcp-1-248.brq.redhat.com>
-References: <5002BFAE.9030408@gmail.com>
+Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
+ truncate_inode_pages_range
+Date: Mon, 16 Jul 2012 09:13:44 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207160854080.3857@dhcp-1-248.brq.redhat.com>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-4-git-send-email-lczerner@redhat.com> <20120715231117.GD30524@devil.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Wang Sheng-Hui <shhuiw@gmail.com>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+	achender@linux.vnet.ibm.com
+To: Dave Chinner <dchinner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27896 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43183 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798Ab2GPGgS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 02:36:18 -0400
-In-Reply-To: <5002BFAE.9030408@gmail.com>
+	id S1752500Ab2GPHNv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2012 03:13:51 -0400
+In-Reply-To: <20120715231117.GD30524@devil.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 15 Jul 2012, Wang Sheng-Hui wrote:
+On Mon, 16 Jul 2012, Dave Chinner wrote:
 
-> Date: Sun, 15 Jul 2012 21:03:42 +0800
-> From: Wang Sheng-Hui <shhuiw@gmail.com>
-> To: Allison Henderson <achender@linux.vnet.ibm.com>,
->     Lukas Czerner <lczerner@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
->     linux-ext4@vger.kernel.org
-> Subject: Question about extents.c/ext4_ext_punch_hole
+> Date: Mon, 16 Jul 2012 09:11:17 +1000
+> From: Dave Chinner <dchinner@redhat.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+>     achender@linux.vnet.ibm.com
+> Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
+>     truncate_inode_pages_range
 > 
-> Dear all,
+> On Fri, Jul 13, 2012 at 03:19:07PM +0200, Lukas Czerner wrote:
+> > Currently we're passing -1 to truncate_inode_pages_range() which is
+> > actually really confusing since the argument is signed so we do not get
+> > "huge" number as one would expect, but rather just -1. To make things
+> > clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
+> > since it is actually what was intended anyway.
+> > 
+> > It also makes thing easier for allowing truncate_inode_pages_range() to
+> > handle non page aligned regions. Moreover letting the lend argument to
+> > be negative might actually hide some bugs.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > Cc: Dave Chinner <dchinner@redhat.com>
+> > ---
+> >  fs/xfs/xfs_fs_subr.c |    6 ++++--
+> >  1 files changed, 4 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
+> > index 652b875..6e9b052 100644
+> > --- a/fs/xfs/xfs_fs_subr.c
+> > +++ b/fs/xfs/xfs_fs_subr.c
+> > @@ -34,7 +34,8 @@ xfs_tosspages(
+> >  {
+> >  	/* can't toss partial tail pages, so mask them out */
+> >  	last &= ~(PAGE_SIZE - 1);
+> > -	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
+> > +	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
+> > +				   last == -1 ? LLONG_MAX : last);
 > 
-> I'm reading the code of extents.c, and confused by the function "ext4_ext_punch_hole".
-> 
-> In my understanding, if we want to punch hole for the range (loff_t offset, loff_t length),
-> then we finally will get one hole block-size aligned, right?
-> 
-> [code in ext4_ext_punch_hole]
-> 	first_block = (offset + sb->s_blocksize - 1) >>
-> 		EXT4_BLOCK_SIZE_BITS(sb);
-> 	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
-> [code]
-> 
-> From the code, we'll get one hole range contained in the range [offset, length+offset-1].
-> 
-> For example, we set the block size to 1K, and we specify the range [offset:1000, offset:2000].
-> Then we'll get first_block:1,stop_block:2, with some head/tail range ignored.
->       {-23------|===========|----952---}
->      1000      1024       2048        2999
->      offset                        offset+length-1
-> '==='means punched hole here.
-> 
-> Please correct me if I'm wrong.
-> 
-> 
-> Regards,
+> The last paramter changed from (last -1) to last. so if we pass in
+> last = 16384, we now truncate to 16384 (first byte of page index 5)
+> instead of 16383 (last byte of page index 4). That's a change of
+> behaviour and a potential off-by one error, right?
 
-Hi,
+Right, this could potentially cause off-by-one errors, but as it is
+now I do not think this could happen. The only place where it is
+used with a proper range is XFS_IOC_ZERO_RANGE and you're going to
+convert the whole range to unwritten anyway. But it was unintended
+and I\ll fix it.
 
-your understanding is partially right. Indeed we're going to align
-the range to the block size, but that's because blocks in this range
-are going to be freed. Then, the rest of the range (non block
-aligned) is going to be zeroed manually. The reason is that we can
-not free those blocks, because it still contains valid data and we
-can not just leave it alone, since after the punch hole finishes
-we'll have to read zeroes from entire punched region.
 
-Btw, there is a patch set on the list which reworks part of the
-punch hole code patch, it starts with the path:
+> 
+> > @@ -53,7 +54,8 @@ xfs_flushinval_pages(
+> >  	ret = filemap_write_and_wait_range(mapping, first,
+> >  				last == -1 ? LLONG_MAX : last);
+> >  	if (!ret)
+> > -		truncate_inode_pages_range(mapping, first, last);
+> > +		truncate_inode_pages_range(mapping, first,
+> > +					   last == -1 ? LLONG_MAX : last);
+> 
+> Given this is also done immediately above in the function, perhaps
+> this should be done before anything:
+> 
+> 	if (last == -1)
+> 		last = LLONG_MAX;
+> 
+> and the parameter simply passed to the two functions without the
+> conditional logic?
 
-[PATCH 01/12 v2] Revert "ext4: remove no longer used functions in
-inode.c"
+Yes, it makes sense to do this, I'll change it in the next
+iteration.
 
-I hope that helps.
+Thanks for the review Dave.
 -Lukas
+
+> 
+> Cheers,
+> 
+> Dave.
+> 
