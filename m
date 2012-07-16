@@ -1,55 +1,52 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Ext4 external journal UUID mismatch?
-Date: Mon, 16 Jul 2012 08:13:20 -0600
-Message-ID: <06122409-66B8-41E0-84D3-AE449A0AE908@dilger.ca>
-References: <20120715234058.GA2562@tuon.disenchant.local> <20120716025610.GB2562@tuon.disenchant.local> <11FEA6E4-EF75-4CD9-B2B6-78E42410027B@gmail.com> <20120716100010.GC2562@tuon.disenchant.local>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Kevin Shanahan <kmshanah@disenchant.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 05/35 v3] libext2fs: add EXT4_INLINE_DATA_FL flag for
+ inode
+Date: Mon, 16 Jul 2012 11:01:44 -0400
+Message-ID: <20120716150144.GA3670@thunk.org>
+References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
+ <1341150538-32047-6-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail119c7.megamailservers.com ([69.49.98.219]:39726 "EHLO
-	mail119c7.megamailservers.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751611Ab2GPOqZ convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 10:46:25 -0400
-In-Reply-To: <20120716100010.GC2562@tuon.disenchant.local>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39304 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752617Ab2GPPBr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2012 11:01:47 -0400
+Content-Disposition: inline
+In-Reply-To: <1341150538-32047-6-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-07-16, at 4:00, Kevin Shanahan <kmshanah@disenchant.net> wrote:
-
-> On Sun, Jul 15, 2012 at 10:32:01PM -0600, Andreas Dilger wrote:
->> 
->> 
->> Because LVM changed the block device numbers after the reboot, and
->> the device number used previously for the external journal was
->> different.
->> 
->> The lookup of the journal by UUID (instead of relying on the "device
->> hint" in the superblock) _should_ be handled by mount, but I don't
->> recall if we ever got a mount.ext4 to handle this or not. It would
->> also be possible for the "fast e2fsck" check to verify the journal
->> UUID before mounting the filesystem, but again I'm not sure if this
->> is done yet, and I can't check right now.
+On Sun, Jul 01, 2012 at 09:48:28PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> Ok, thanks. For now I can ask LVM to make the major/minor number
-> persistent.
+> Add EXT4_INLINE_DATA_FL flag.
 > 
-> Assuming it's not already done, do you think adding the UUID lookup
-> would be a reasonable project for a newbie or is it likely to be a bit
-> complicated?
+>  /* EXT4_EOFBLOCKS_FL 0x00400000 was here */
+> +#define EXT4_INLINE_DATA_FL		0x00800000 /* Inode has inline data */
 
-It should be fairly easy. During e2fsck checking of the superblock, it should check if there is an external journal, and then call into libblkid to find the journal UUID and verify the block device matches the value stored in the superblock. 
+Hi,
 
-> I'm assuming support is not there, at least for the versions in Arch:
-> 
-> $ pacman -Q e2fsprogs util-linux
-> e2fsprogs 1.42.4-1
-> util-linux 2.21.2-5
+Unfortunately, we have a codepoint collision.  The BTRFS folks have
+already exposed FS_NOCOW_FL as 0x00800000; this is in mainline in the
+kernel, and in fact that latest version of e2fsprogs understands this
+since lsattr and chattr are used by multiple file systems (even though
+it was originally intended only for ext2/3/4).
 
-This is the latest version of e2fsprogs. 
+I'd like to move this to:
 
-Cheers, Andreas
+#define EXT4_INLINE_DATA_FL	0x10000000 /* Inode has inline data */
+
+However, if you already have this in production internally inside
+Taobao, this could potentially could be a problem for you.  (We've had
+to handle this before inside Google, when we used a different code
+point for EOFBLOCKS_FL than what ended up being used in mainline; it
+can be dealt with, but it's certainly annoying...)
+
+Is this going to potentially be a problem for you?
+
+Regards,
+
+						- Ted
