@@ -1,101 +1,57 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
- truncate_inode_pages_range
-Date: Mon, 16 Jul 2012 09:13:44 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207160854080.3857@dhcp-1-248.brq.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-4-git-send-email-lczerner@redhat.com> <20120715231117.GD30524@devil.redhat.com>
+Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
+Date: Mon, 16 Jul 2012 09:35:02 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-2-git-send-email-lczerner@redhat.com> <20120713174209.GC17109@thunk.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	achender@linux.vnet.ibm.com
-To: Dave Chinner <dchinner@redhat.com>
+	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com,
+	Hugh Dickins <hughd@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43183 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54354 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752500Ab2GPHNv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 03:13:51 -0400
-In-Reply-To: <20120715231117.GD30524@devil.redhat.com>
+	id S1751118Ab2GPHfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2012 03:35:12 -0400
+In-Reply-To: <20120713174209.GC17109@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 16 Jul 2012, Dave Chinner wrote:
+On Fri, 13 Jul 2012, Theodore Ts'o wrote:
 
-> Date: Mon, 16 Jul 2012 09:11:17 +1000
-> From: Dave Chinner <dchinner@redhat.com>
+> Date: Fri, 13 Jul 2012 13:42:09 -0400
+> From: Theodore Ts'o <tytso@mit.edu>
 > To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 >     achender@linux.vnet.ibm.com
-> Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
->     truncate_inode_pages_range
+> Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
 > 
-> On Fri, Jul 13, 2012 at 03:19:07PM +0200, Lukas Czerner wrote:
-> > Currently we're passing -1 to truncate_inode_pages_range() which is
-> > actually really confusing since the argument is signed so we do not get
-> > "huge" number as one would expect, but rather just -1. To make things
-> > clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
-> > since it is actually what was intended anyway.
-> > 
-> > It also makes thing easier for allowing truncate_inode_pages_range() to
-> > handle non page aligned regions. Moreover letting the lend argument to
-> > be negative might actually hide some bugs.
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > Cc: Dave Chinner <dchinner@redhat.com>
-> > ---
-> >  fs/xfs/xfs_fs_subr.c |    6 ++++--
-> >  1 files changed, 4 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
-> > index 652b875..6e9b052 100644
-> > --- a/fs/xfs/xfs_fs_subr.c
-> > +++ b/fs/xfs/xfs_fs_subr.c
-> > @@ -34,7 +34,8 @@ xfs_tosspages(
-> >  {
-> >  	/* can't toss partial tail pages, so mask them out */
-> >  	last &= ~(PAGE_SIZE - 1);
-> > -	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
-> > +	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
-> > +				   last == -1 ? LLONG_MAX : last);
+> Hi Lukas,
 > 
-> The last paramter changed from (last -1) to last. so if we pass in
-> last = 16384, we now truncate to 16384 (first byte of page index 5)
-> instead of 16383 (last byte of page index 4). That's a change of
-> behaviour and a potential off-by one error, right?
+> This patch set has changes to the VFS, XFS, and ext4, and there are
+> cross dependencies between them.  Is there any way you can disentagle
+> the dependencies between the patches so we don't need to worry about
+> how these get pulled in during the merge window?
+> 
+> I suppose could try to get the XFS folks to sign off with my carrying
+> this patch in the ext4 tree, since the bulk of the changes are
+> ext4-related, but it is a bit of a complication.
+> 
+> 	      	     	      	 - Ted
 
-Right, this could potentially cause off-by-one errors, but as it is
-now I do not think this could happen. The only place where it is
-used with a proper range is XFS_IOC_ZERO_RANGE and you're going to
-convert the whole range to unwritten anyway. But it was unintended
-and I\ll fix it.
+Hi Ted,
 
+there is no VFS change, MM is probably what you've had in mind ? So
+the only reason why there are xfs, mm and tmpfs changes is that I am
+changing truncate_partial_page() and a small side effect is changed
+calling conventions.
 
-> 
-> > @@ -53,7 +54,8 @@ xfs_flushinval_pages(
-> >  	ret = filemap_write_and_wait_range(mapping, first,
-> >  				last == -1 ? LLONG_MAX : last);
-> >  	if (!ret)
-> > -		truncate_inode_pages_range(mapping, first, last);
-> > +		truncate_inode_pages_range(mapping, first,
-> > +					   last == -1 ? LLONG_MAX : last);
-> 
-> Given this is also done immediately above in the function, perhaps
-> this should be done before anything:
-> 
-> 	if (last == -1)
-> 		last = LLONG_MAX;
-> 
-> and the parameter simply passed to the two functions without the
-> conditional logic?
+We can push patches 3, 4, 5 and 6 through the mm tree. But we'll
+have to make sure that it will land before ext4 changes since I am
+using the new truncate_partial_page() behaviour in ext4. Will that
+be possible ?
 
-Yes, it makes sense to do this, I'll change it in the next
-iteration.
+Hugh ?
 
-Thanks for the review Dave.
 -Lukas
-
-> 
-> Cheers,
-> 
-> Dave.
-> 
