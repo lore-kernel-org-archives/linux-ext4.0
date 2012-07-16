@@ -1,133 +1,55 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
- truncate_inode_pages_range
-Date: Mon, 16 Jul 2012 13:52:00 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207161348140.943@dhcp-1-248.brq.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-4-git-send-email-lczerner@redhat.com> <20120715231117.GD30524@devil.redhat.com> <alpine.LFD.2.00.1207160854080.3857@dhcp-1-248.brq.redhat.com>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571144193-1223212112-1342439525=:943"
-Cc: Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-	hch@infradead.org
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Ext4 external journal UUID mismatch?
+Date: Mon, 16 Jul 2012 08:13:20 -0600
+Message-ID: <06122409-66B8-41E0-84D3-AE449A0AE908@dilger.ca>
+References: <20120715234058.GA2562@tuon.disenchant.local> <20120716025610.GB2562@tuon.disenchant.local> <11FEA6E4-EF75-4CD9-B2B6-78E42410027B@gmail.com> <20120716100010.GC2562@tuon.disenchant.local>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Kevin Shanahan <kmshanah@disenchant.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41504 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752540Ab2GPLwN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 07:52:13 -0400
-In-Reply-To: <alpine.LFD.2.00.1207160854080.3857@dhcp-1-248.brq.redhat.com>
+Received: from mail119c7.megamailservers.com ([69.49.98.219]:39726 "EHLO
+	mail119c7.megamailservers.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751611Ab2GPOqZ convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2012 10:46:25 -0400
+In-Reply-To: <20120716100010.GC2562@tuon.disenchant.local>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On 2012-07-16, at 4:00, Kevin Shanahan <kmshanah@disenchant.net> wrote:
 
---571144193-1223212112-1342439525=:943
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+> On Sun, Jul 15, 2012 at 10:32:01PM -0600, Andreas Dilger wrote:
+>> 
+>> 
+>> Because LVM changed the block device numbers after the reboot, and
+>> the device number used previously for the external journal was
+>> different.
+>> 
+>> The lookup of the journal by UUID (instead of relying on the "device
+>> hint" in the superblock) _should_ be handled by mount, but I don't
+>> recall if we ever got a mount.ext4 to handle this or not. It would
+>> also be possible for the "fast e2fsck" check to verify the journal
+>> UUID before mounting the filesystem, but again I'm not sure if this
+>> is done yet, and I can't check right now.
+> 
+> Ok, thanks. For now I can ask LVM to make the major/minor number
+> persistent.
+> 
+> Assuming it's not already done, do you think adding the UUID lookup
+> would be a reasonable project for a newbie or is it likely to be a bit
+> complicated?
 
-On Mon, 16 Jul 2012, Luká¨ Czerner wrote:
+It should be fairly easy. During e2fsck checking of the superblock, it should check if there is an external journal, and then call into libblkid to find the journal UUID and verify the block device matches the value stored in the superblock. 
 
-> Date: Mon, 16 Jul 2012 09:13:44 +0200 (CEST)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Dave Chinner <dchinner@redhat.com>
-> Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, tytso@mit.edu, achender@linux.vnet.ibm.com
-> Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
->     truncate_inode_pages_range
+> I'm assuming support is not there, at least for the versions in Arch:
 > 
-> On Mon, 16 Jul 2012, Dave Chinner wrote:
-> 
-> > Date: Mon, 16 Jul 2012 09:11:17 +1000
-> > From: Dave Chinner <dchinner@redhat.com>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-> >     achender@linux.vnet.ibm.com
-> > Subject: Re: [PATCH 04/12 v2] xfs: pass LLONG_MAX to
-> >     truncate_inode_pages_range
-> > 
-> > On Fri, Jul 13, 2012 at 03:19:07PM +0200, Lukas Czerner wrote:
-> > > Currently we're passing -1 to truncate_inode_pages_range() which is
-> > > actually really confusing since the argument is signed so we do not get
-> > > "huge" number as one would expect, but rather just -1. To make things
-> > > clearer and easier for truncate_inode_pages_range() just pass LLONG_MAX
-> > > since it is actually what was intended anyway.
-> > > 
-> > > It also makes thing easier for allowing truncate_inode_pages_range() to
-> > > handle non page aligned regions. Moreover letting the lend argument to
-> > > be negative might actually hide some bugs.
-> > > 
-> > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > > Cc: Dave Chinner <dchinner@redhat.com>
-> > > ---
-> > >  fs/xfs/xfs_fs_subr.c |    6 ++++--
-> > >  1 files changed, 4 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/xfs/xfs_fs_subr.c b/fs/xfs/xfs_fs_subr.c
-> > > index 652b875..6e9b052 100644
-> > > --- a/fs/xfs/xfs_fs_subr.c
-> > > +++ b/fs/xfs/xfs_fs_subr.c
-> > > @@ -34,7 +34,8 @@ xfs_tosspages(
-> > >  {
-> > >  	/* can't toss partial tail pages, so mask them out */
-> > >  	last &= ~(PAGE_SIZE - 1);
-> > > -	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first, last - 1);
-> > > +	truncate_inode_pages_range(VFS_I(ip)->i_mapping, first,
-> > > +				   last == -1 ? LLONG_MAX : last);
-> > 
-> > The last paramter changed from (last -1) to last. so if we pass in
-> > last = 16384, we now truncate to 16384 (first byte of page index 5)
-> > instead of 16383 (last byte of page index 4). That's a change of
-> > behaviour and a potential off-by one error, right?
-> 
-> Right, this could potentially cause off-by-one errors, but as it is
-> now I do not think this could happen. The only place where it is
-> used with a proper range is XFS_IOC_ZERO_RANGE and you're going to
-> convert the whole range to unwritten anyway. But it was unintended
-> and I\ll fix it.
+> $ pacman -Q e2fsprogs util-linux
+> e2fsprogs 1.42.4-1
+> util-linux 2.21.2-5
 
-Hi Dave,
+This is the latest version of e2fsprogs. 
 
-Is there a reason for aligning the last page in the xfs_tosspages()
-other than truncate_inode_pages_range() does not handle unaligned
-regions ? Because with my patch it does now, so it seems to me that
-we can easily get rid of the xfs_tosspages() and just use
-truncate_inode_pages_range() instead in xfs_change_file_space() and
-xfs_swap_extents().
-
-Thanks!
--Lukas
-
-> 
-> 
-> > 
-> > > @@ -53,7 +54,8 @@ xfs_flushinval_pages(
-> > >  	ret = filemap_write_and_wait_range(mapping, first,
-> > >  				last == -1 ? LLONG_MAX : last);
-> > >  	if (!ret)
-> > > -		truncate_inode_pages_range(mapping, first, last);
-> > > +		truncate_inode_pages_range(mapping, first,
-> > > +					   last == -1 ? LLONG_MAX : last);
-> > 
-> > Given this is also done immediately above in the function, perhaps
-> > this should be done before anything:
-> > 
-> > 	if (last == -1)
-> > 		last = LLONG_MAX;
-> > 
-> > and the parameter simply passed to the two functions without the
-> > conditional logic?
-> 
-> Yes, it makes sense to do this, I'll change it in the next
-> iteration.
-> 
-> Thanks for the review Dave.
-> -Lukas
-> 
-> > 
-> > Cheers,
-> > 
-> > Dave.
-> > 
-> 
---571144193-1223212112-1342439525=:943--
+Cheers, Andreas
