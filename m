@@ -1,57 +1,39 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
-Date: Mon, 16 Jul 2012 09:35:02 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-2-git-send-email-lczerner@redhat.com> <20120713174209.GC17109@thunk.org>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: Re: Question about extents.c/ext4_ext_punch_hole
+Date: Mon, 16 Jul 2012 16:04:54 +0800
+Message-ID: <5003CB26.9040401@gmail.com>
+References: <5002BFAE.9030408@gmail.com> <alpine.LFD.2.00.1207160829280.3857@dhcp-1-248.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com,
-	Hugh Dickins <hughd@google.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54354 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751118Ab2GPHfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 03:35:12 -0400
-In-Reply-To: <20120713174209.GC17109@thunk.org>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:48514 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750843Ab2GPIFI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2012 04:05:08 -0400
+Received: by obbuo13 with SMTP id uo13so9153812obb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2012 01:05:08 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1207160829280.3857@dhcp-1-248.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 13 Jul 2012, Theodore Ts'o wrote:
+On 2012=E5=B9=B407=E6=9C=8816=E6=97=A5 14:36, Luk=C3=A1=C5=A1 Czerner w=
+rote:
+> Indeed we're going to align
+> the range to the block size, but that's because blocks in this range
+> are going to be freed. Then, the rest of the range (non block
+> aligned) is going to be zeroed manually. The reason is that we can
+> not free those blocks, because it still contains valid data and we
+> can not just leave it alone, since after the punch hole finishes
+> we'll have to read zeroes from entire punched region.
+>=20
 
-> Date: Fri, 13 Jul 2012 13:42:09 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
->     achender@linux.vnet.ibm.com
-> Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
-> 
-> Hi Lukas,
-> 
-> This patch set has changes to the VFS, XFS, and ext4, and there are
-> cross dependencies between them.  Is there any way you can disentagle
-> the dependencies between the patches so we don't need to worry about
-> how these get pulled in during the merge window?
-> 
-> I suppose could try to get the XFS folks to sign off with my carrying
-> this patch in the ext4 tree, since the bulk of the changes are
-> ext4-related, but it is a bit of a complication.
-> 
-> 	      	     	      	 - Ted
-
-Hi Ted,
-
-there is no VFS change, MM is probably what you've had in mind ? So
-the only reason why there are xfs, mm and tmpfs changes is that I am
-changing truncate_partial_page() and a small side effect is changed
-calling conventions.
-
-We can push patches 3, 4, 5 and 6 through the mm tree. But we'll
-have to make sure that it will land before ext4 changes since I am
-using the new truncate_partial_page() behaviour in ext4. Will that
-be possible ?
-
-Hugh ?
-
--Lukas
+Got it. Thanks, Lukas!
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
