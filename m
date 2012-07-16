@@ -1,56 +1,95 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 44731] ext4 deadlock under heavy io?
-Date: Mon, 16 Jul 2012 20:54:14 +0000 (UTC)
-Message-ID: <20120716205414.B3E7511FB37@bugzilla.kernel.org>
-References: <bug-44731-13602@https.bugzilla.kernel.org/>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
+Date: Mon, 16 Jul 2012 14:41:41 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1207161402420.3376@eggly.anvils>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-2-git-send-email-lczerner@redhat.com> <20120713174209.GC17109@thunk.org> <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:34667 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753794Ab2GPUyS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jul 2012 16:54:18 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 3FAF120253
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2012 20:54:17 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 77FC52024E
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2012 20:54:15 +0000 (UTC)
-In-Reply-To: <bug-44731-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=44731
+On Mon, 16 Jul 2012, Lukas Czerner wrote:
+> On Fri, 13 Jul 2012, Theodore Ts'o wrote:
+> > Date: Fri, 13 Jul 2012 13:42:09 -0400
+> > From: Theodore Ts'o <tytso@mit.edu>
+> > To: Lukas Czerner <lczerner@redhat.com>
+> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+> >     achender@linux.vnet.ibm.com
+> > Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
+> > 
+> > Hi Lukas,
+> > 
+> > This patch set has changes to the VFS, XFS, and ext4, and there are
+> > cross dependencies between them.  Is there any way you can disentagle
+> > the dependencies between the patches so we don't need to worry about
+> > how these get pulled in during the merge window?
+> > 
+> > I suppose could try to get the XFS folks to sign off with my carrying
+> > this patch in the ext4 tree, since the bulk of the changes are
+> > ext4-related, but it is a bit of a complication.
+> > 
+> > 	      	     	      	 - Ted
+> 
+> Hi Ted,
+> 
+> there is no VFS change, MM is probably what you've had in mind ? So
+> the only reason why there are xfs, mm and tmpfs changes is that I am
+> changing truncate_partial_page() and a small side effect is changed
+> calling conventions.
 
+truncate_partial_page() is static inline to mm/truncate.c:
+was that a typo, or are you changing that too and I missed it?
 
+Sorry, but I find your changes of the infinity convention from -1 to
+LLONG_MAX just gratuitous and confusing (and error prone if we ever
+have to backport portions to earlier stable releases).
 
+It grieves me enough that unmap_mapping_range() has always had quite
+a different convention from truncate_inode_pages_range().  You're now
+proposing to give truncate_inode_pages_range() yet another convention
+different from invalidate_inode_pages2_range() and
+truncate_pagecache_range()?
 
+At cost of having to make xfs and tmpfs (well, actually it's the
+tiny !SHMEM ramfs case you're changing there in 03/12) dependent
+on synchronizing with your other changes?
 
---- Comment #2 from Anssi Hannula <anssi.hannula@iki.fi>  2012-07-16 20:54:14 ---
-Created an attachment (id=75501)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=75501)
-sysrq-w output on 3.4.2 with frozen filesystem dm-4
+I can see that when I converted shmem_truncate_range() (later extended
+to shmem_undo_range()) to partial_start and partial_end, I did put in
+an ugly couple of lines
+	if (lend == -1)
+		end = -1;	/* unsigned, so actually very big */
+but I think it's better there than "lend == -1 ? LLONG_MAX : lend;"
+ugliness spread around in the filesystems.
 
-I'm seeing a very similar issue on 3.4.2. I think this issue didn't exist
-several major versions back.
+I don't see any upside: please, could you just drop those changes,
+so that then it comes down to synchronizing ext4 with mm/truncate.c?
 
-When one or more applications do intensive I/O, the filesystem freezes and all
-processes trying to access it freeze as well.
+> 
+> We can push patches 3, 4, 5 and 6 through the mm tree. But we'll
+> have to make sure that it will land before ext4 changes since I am
+> using the new truncate_partial_page() behaviour in ext4. Will that
+> be possible ?
+> 
+> Hugh ?
 
-It doesn't always happen in the same way, though. Sometimes I get the "task
-blocked for more than 120 seconds", but sometimes I don't (in the attached case
-I didn't get those). Also, sometimes the system becomes usable again after
-several minutes of being seemingly frozen, but often it doesn't recover (like
-in the attached case). If wanted, I can provide more logs of these different
-situations (the logs do look very similar than the ones on this report,
-though).
+I'd like patchs 3, 4 and 5 to vanish.  As to 6 (perhaps it won't be
+6 after that!), I want to work through that one myself (I'll try this
+evening): it looked over-complicated to me, and I'd rather go back to
+what I worked out for partial_end in shmem_truncate_range().
 
-In the attachment the frozen fs is dm-4. It is on the same LVM VG and RAID-6 as
-dm-3, dm-5, dm-6, and those other filesystems continued to work while dm-4 was
-frozen.
+Then yes, if we're all happy with the result of that, it will be best
+for Ted to take even the mm/truncate.c patch into his ext4 branch,
+made visible in linux-next before the merge window.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+We're running out of time: I'll make every effort to get back to you
+on 6 after I've tested late today.
+
+Hugh
