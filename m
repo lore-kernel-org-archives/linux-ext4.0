@@ -1,39 +1,71 @@
-From: Wang Sheng-Hui <shhuiw@gmail.com>
-Subject: Re: Question about extents.c/ext4_ext_punch_hole
-Date: Mon, 16 Jul 2012 16:04:54 +0800
-Message-ID: <5003CB26.9040401@gmail.com>
-References: <5002BFAE.9030408@gmail.com> <alpine.LFD.2.00.1207160829280.3857@dhcp-1-248.brq.redhat.com>
+From: Kevin Shanahan <kmshanah@disenchant.net>
+Subject: Re: Ext4 external journal UUID mismatch?
+Date: Mon, 16 Jul 2012 19:30:10 +0930
+Message-ID: <20120716100010.GC2562@tuon.disenchant.local>
+References: <20120715234058.GA2562@tuon.disenchant.local>
+ <20120716025610.GB2562@tuon.disenchant.local>
+ <11FEA6E4-EF75-4CD9-B2B6-78E42410027B@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Allison Henderson <achender@linux.vnet.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:48514 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750843Ab2GPIFI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2012 04:05:08 -0400
-Received: by obbuo13 with SMTP id uo13so9153812obb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2012 01:05:08 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1207160829280.3857@dhcp-1-248.brq.redhat.com>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:28481 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751522Ab2GPKAQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jul 2012 06:00:16 -0400
+Content-Disposition: inline
+In-Reply-To: <11FEA6E4-EF75-4CD9-B2B6-78E42410027B@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012=E5=B9=B407=E6=9C=8816=E6=97=A5 14:36, Luk=C3=A1=C5=A1 Czerner w=
-rote:
-> Indeed we're going to align
-> the range to the block size, but that's because blocks in this range
-> are going to be freed. Then, the rest of the range (non block
-> aligned) is going to be zeroed manually. The reason is that we can
-> not free those blocks, because it still contains valid data and we
-> can not just leave it alone, since after the punch hole finishes
-> we'll have to read zeroes from entire punched region.
->=20
+On Sun, Jul 15, 2012 at 10:32:01PM -0600, Andreas Dilger wrote:
+> On 2012-07-15, at 20:56, Kevin Shanahan <kmshanah@disenchant.net> wrote:
+> 
+> > On Mon, Jul 16, 2012 at 09:10:58AM +0930, Kevin Shanahan wrote:
+> >> I have created some filesystems with external journals, and after
+> >> reboot (clean shutdown) these will not mount anymore. I see in dmesg:
+> >> 
+> >>  [42214.365496] EXT4-fs (dm-10): journal UUID does not match
+> >> 
+> >> However, the UUIDs look fine when viewed with dumpe2fs:
+> >> 
+> > Here is what e2fsck said about it.
+> > 
+> > # e2fsck -p -j /dev/ssdvg/jnl-kvmhost0 /dev/it8/nfs-kvmhost0
+> > /dev/it8/nfs-kvmhost0: Superblock hint for external superblock should be 0xfd0d.  FIXED.
+> > /dev/it8/nfs-kvmhost0: clean, 43229/983040 files, 303609/3932160 blocks
+> > 
+> > I guess that is the "Journal Device" field? Mount worked fine after
+> > that and the data looks okay.
+> > 
+> > Any idea how this might have happened across all three fs with
+> > external journals?
+> 
+> Because LVM changed the block device numbers after the reboot, and
+> the device number used previously for the external journal was
+> different.
+> 
+> The lookup of the journal by UUID (instead of relying on the "device
+> hint" in the superblock) _should_ be handled by mount, but I don't
+> recall if we ever got a mount.ext4 to handle this or not. It would
+> also be possible for the "fast e2fsck" check to verify the journal
+> UUID before mounting the filesystem, but again I'm not sure if this
+> is done yet, and I can't check right now.
 
-Got it. Thanks, Lukas!
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ok, thanks. For now I can ask LVM to make the major/minor number
+persistent.
+
+Assuming it's not already done, do you think adding the UUID lookup
+would be a reasonable project for a newbie or is it likely to be a bit
+complicated?
+
+I'm assuming support is not there, at least for the versions in Arch:
+
+$ pacman -Q e2fsprogs util-linux
+e2fsprogs 1.42.4-1
+util-linux 2.21.2-5
+
+Cheers,
+Kevin.
