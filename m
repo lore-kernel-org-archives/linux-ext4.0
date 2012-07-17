@@ -1,270 +1,139 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
- non page aligned ranges
-Date: Tue, 17 Jul 2012 14:16:48 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207171413350.14869@dhcp-1-248.brq.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-6-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1207170114490.1577@eggly.anvils> <alpine.LFD.2.00.1207171315330.2402@dhcp-1-248.brq.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] E2fsprogs/filefrag: fix filefrag regression
+Date: Tue, 17 Jul 2012 16:57:15 -0500
+Message-ID: <5005DFBB.4090004@redhat.com>
+References: <1339663486-5417-1-git-send-email-liubo2009@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571144193-1991951733-1342527413=:14869"
-Cc: Hugh Dickins <hughd@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1207171315330.2402@dhcp-1-248.brq.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Liu Bo <liubo2009@cn.fujitsu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:33285 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751007Ab2GQV5U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Jul 2012 17:57:20 -0400
+In-Reply-To: <1339663486-5417-1-git-send-email-liubo2009@cn.fujitsu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On 6/14/12 3:44 AM, Liu Bo wrote:
+> filefrag has several bugs:
+> 
+> 1.
+> $ touch f1
+> $ filefrag f1
+> f1: 1 extent found  ----> bug!
+> $ filefrag -v f1
+> Filesystem type is: ef53
+> File size of f1 is 0 (0 blocks, blocksize 4096)
+> f1: 0 extents found
+> 
+> 2.
+> $ truncate -s 1m f2
+> $ filefrag f2
+> f2: 1 extent found  ----> bug!
+> $ filefrag -v f2
+> Filesystem type is: ef53
+> File size of f2 is 1048576 (256 blocks, blocksize 4096)
+> f2: 0 extents found
+> 
+> 3.
+> $ for i in `seq 11 -2 0`; do dd if=/dev/zero of=f4 bs=4k count=1 seek=$i conv=notrunc oflag=sync &>/dev/null; done
+> $ ll f4
+> -rw-r--r-- 1 root root 49152 Jun  9 15:09 f4
+> $ filefrag f4
+> f4: 7 extents found
+> $ filefrag -v f4
+> Filesystem type is: ef53
+> File size of f4 is 49152 (12 blocks, blocksize 4096)
+>  ext logical physical expected length flags
+>    0       1  1109993               1
+>    1       3  1109992  1109994      1
+>    2       5  1109991  1109993      1
+>    3       7  1109990  1109992      1
+>    4       9  1109989  1109991      1
+>    5      11  1108207  1109990      1 eof
+> f4: 7 extents found  --------------------------> but we only have 6 extents, bug!
+> 
+> All of these bugs come from the fact that we've made a mistake on calculating
+> total extents:
+> o   we set 1 as default for 'total extents', and this will report 1 extent found
+>     even when we don't get any extent from fiemap.
+> o   if our first extent does not start from 0(logical addr), total extents will
+>     be one more than what it should be.
+> 
+> Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
 
---571144193-1991951733-1342527413=:14869
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
+Looks right to me.  FWIW, there's a Fedora bug open for this, #840848
 
-On Tue, 17 Jul 2012, Luká¨ Czerner wrote:
+Maybe another one for merging, Ted?
 
-> Date: Tue, 17 Jul 2012 13:57:42 +0200 (CEST)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Hugh Dickins <hughd@google.com>
-> Cc: Lukas Czerner <lczerner@redhat.com>,
->     Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
->     Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-> Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
->      non page aligned ranges
-> 
-> On Tue, 17 Jul 2012, Hugh Dickins wrote:
-> 
-> > Date: Tue, 17 Jul 2012 01:28:08 -0700 (PDT)
-> > From: Hugh Dickins <hughd@google.com>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
-> >     Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-> >     linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-> > Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
-> >      non page aligned ranges
-> > 
-> > On Fri, 13 Jul 2012, Lukas Czerner wrote:
-> > > This commit changes truncate_inode_pages_range() so it can handle non
-> > > page aligned regions of the truncate. Currently we can hit BUG_ON when
-> > > the end of the range is not page aligned, but he can handle unaligned
-> > > start of the range.
-> > > 
-> > > Being able to handle non page aligned regions of the page can help file
-> > > system punch_hole implementations and save some work, because once we're
-> > > holding the page we might as well deal with it right away.
-> > > 
-> > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > > Cc: Hugh Dickins <hughd@google.com>
-> > 
-> > As I said under 02/12, I'd much rather not change from the existing -1
-> > convention: I don't think it's wonderful, but I do think it's confusing
-> > and a waste of effort to change from it; and I'd rather keep the code
-> > in truncate.c close to what's doing the same job in shmem.c.
-> > 
-> > Here's what I came up with (and hacked tmpfs to use it without swap
-> > temporarily, so I could run fsx for an hour to validate it).  But you
-> > can see I've a couple of questions; and probably ought to reduce the
-> > partial page code duplication once we're sure what should go in there.
-> > 
-> > Hugh
-> 
-> Ok.
-> 
-> > 
-> > [PATCH]...
-> > 
-> > Apply to truncate_inode_pages_range() the changes 83e4fa9c16e4 ("tmpfs:
-> > support fallocate FALLOC_FL_PUNCH_HOLE") made to shmem_truncate_range():
-> > so the generic function can handle partial end offset for hole-punching.
-> > 
-> > In doing tmpfs, I became convinced that it needed a set_page_dirty() on
-> > the partial pages, and I'm doing that here: but perhaps it should be the
-> > responsibility of the calling filesystem?  I don't know.
-> 
-> In file system, if the range is block aligned we do not need the page to
-> be dirtied. However if it is not block aligned (at least in ext4)
-> we're going to handle it ourselves and possibly mark the page buffer
-> dirty (hence the page would be dirty). Also in case of data
-> journalling, we'll have to take care of the last block in the hole
-> ourselves. So I think file systems should take care of dirtying the
-> partial page if needed.
-> 
-> > 
-> > And I'm doubtful whether this code can be correct (on a filesystem with
-> > blocksize less than pagesize) without adding an end offset argument to
-> > address_space_operations invalidatepage(page, offset): convince me!
-> 
-> Well, I can't. It really seems that on block size < page size file
-> systems we could potentially discard dirty buffers beyond the hole
-> we're punching if it is not page aligned. We would probably need to
-> add end offset argument to the invalidatepage() aop. However I do not
-> seem to be able to trigger the problem yet so maybe I'm still
-> missing something.
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-My bad, it definitely is not safe without the end offset argument in
-invalidatepage() aops ..sigh..
+> ---
+>  misc/filefrag.c |   25 ++++++++++---------------
+>  1 files changed, 10 insertions(+), 15 deletions(-)
+> 
+> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> index 0583e91..af008fb 100644
+> --- a/misc/filefrag.c
+> +++ b/misc/filefrag.c
+> @@ -175,7 +175,7 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  	unsigned int i;
+>  	static int fiemap_incompat_printed;
+>  	int fiemap_header_printed = 0;
+> -	int tot_extents = 1, n = 0;
+> +	int tot_extents = 0, n = 0;
+>  	int last = 0;
+>  	int rc;
+>  
+> @@ -201,25 +201,17 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  			return rc;
+>  		}
+>  
+> +		/* If 0 extents are returned, then more ioctls are not needed */
+> +		if (fiemap->fm_mapped_extents == 0)
+> +			break;
+> +
+>  		if (verbose && !fiemap_header_printed) {
+> -			/*
+> -			 * No extents on first call?
+> -			 * Skip header and show 0 extents.
+> -			 */
+> -			if (fiemap->fm_mapped_extents == 0) {
+> -				*num_extents = 0;
+> -				goto out;
+> -			}
+>  			printf(" ext %*s %*s %*s length flags\n", logical_width,
+>  			       "logical", physical_width, "physical",
+>  			       physical_width, "expected");
+>  			fiemap_header_printed = 1;
+>  		}
+>  
+> -		/* If 0 extents are returned, then more ioctls are not needed */
+> -		if (fiemap->fm_mapped_extents == 0)
+> -			break;
+> -
+>  		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
+>  			__u64 phy_blk, logical_blk;
+>  			unsigned long ext_len;
+> @@ -228,10 +220,13 @@ static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
+>  			ext_len = fm_ext[i].fe_length >> blk_shift;
+>  			logical_blk = fm_ext[i].fe_logical >> blk_shift;
+>  
+> -			if (logical_blk && phy_blk != expected)
+> +			if (logical_blk && phy_blk != expected) {
+>  				tot_extents++;
+> -			else
+> +			} else {
+>  				expected = 0;
+> +				if (!tot_extents)
+> +					tot_extents = 1;
+> +			}
+>  			if (verbose)
+>  				print_extent_info(&fm_ext[i], n, expected,
+>  						  blk_shift);
+> 
 
-> 
-> -Lukas
-> 
-> > 
-> > Not-yet-signed-off-by: Hugh Dickins <hughd@google.com>
-> > ---
-> > 
-> >  mm/truncate.c |   69 +++++++++++++++++++++++++++++-------------------
-> >  1 file changed, 42 insertions(+), 27 deletions(-)
-> > 
-> > --- 3.5-rc7/mm/truncate.c	2012-06-03 06:42:11.249787128 -0700
-> > +++ linux/mm/truncate.c	2012-07-16 22:54:16.903821549 -0700
-> > @@ -49,14 +49,6 @@ void do_invalidatepage(struct page *page
-> >  		(*invalidatepage)(page, offset);
-> >  }
-> >  
-> > -static inline void truncate_partial_page(struct page *page, unsigned partial)
-> > -{
-> > -	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
-> > -	cleancache_invalidate_page(page->mapping, page);
-> > -	if (page_has_private(page))
-> > -		do_invalidatepage(page, partial);
-> > -}
-> > -
-> >  /*
-> >   * This cancels just the dirty bit on the kernel page itself, it
-> >   * does NOT actually remove dirty bits on any mmap's that may be
-> > @@ -190,8 +182,8 @@ int invalidate_inode_page(struct page *p
-> >   * @lend: offset to which to truncate
-> >   *
-> >   * Truncate the page cache, removing the pages that are between
-> > - * specified offsets (and zeroing out partial page
-> > - * (if lstart is not page aligned)).
-> > + * specified offsets (and zeroing out partial pages
-> > + * if lstart or lend + 1 is not page aligned).
-> >   *
-> >   * Truncate takes two passes - the first pass is nonblocking.  It will not
-> >   * block on page locks and it will not block on writeback.  The second pass
-> > @@ -206,31 +198,32 @@ int invalidate_inode_page(struct page *p
-> >  void truncate_inode_pages_range(struct address_space *mapping,
-> >  				loff_t lstart, loff_t lend)
-> >  {
-> > -	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
-> > -	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
-> > +	pgoff_t start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-> > +	pgoff_t end = (lend + 1) >> PAGE_CACHE_SHIFT;
-> > +	unsigned int partial_start = lstart & (PAGE_CACHE_SIZE - 1);
-> > +	unsigned int partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
-> >  	struct pagevec pvec;
-> >  	pgoff_t index;
-> > -	pgoff_t end;
-> >  	int i;
-> >  
-> >  	cleancache_invalidate_inode(mapping);
-> >  	if (mapping->nrpages == 0)
-> >  		return;
-> >  
-> > -	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
-> > -	end = (lend >> PAGE_CACHE_SHIFT);
-> > +	if (lend == -1)
-> > +		end = -1;	/* unsigned, so actually very big */
-> >  
-> >  	pagevec_init(&pvec, 0);
-> >  	index = start;
-> > -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
-> > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> > +	while (index < end && pagevec_lookup(&pvec, mapping, index,
-> > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
-> >  		mem_cgroup_uncharge_start();
-> >  		for (i = 0; i < pagevec_count(&pvec); i++) {
-> >  			struct page *page = pvec.pages[i];
-> >  
-> >  			/* We rely upon deletion not changing page->index */
-> >  			index = page->index;
-> > -			if (index > end)
-> > +			if (index >= end)
-> >  				break;
-> >  
-> >  			if (!trylock_page(page))
-> > @@ -249,27 +242,51 @@ void truncate_inode_pages_range(struct a
-> >  		index++;
-> >  	}
-> >  
-> > -	if (partial) {
-> > +	if (partial_start) {
-> >  		struct page *page = find_lock_page(mapping, start - 1);
-> >  		if (page) {
-> > +			unsigned int top = PAGE_CACHE_SIZE;
-> > +			if (start > end) {
-> > +				top = partial_end;
-> > +				partial_end = 0;
-> > +			}
-> >  			wait_on_page_writeback(page);
-> > -			truncate_partial_page(page, partial);
-> > +			zero_user_segment(page, partial_start, top);
-> > +			cleancache_invalidate_page(mapping, page);
-> > +			if (page_has_private(page))
-> > +				do_invalidatepage(page, partial_start);
-> > +			set_page_dirty(page);
-> >  			unlock_page(page);
-> >  			page_cache_release(page);
-> >  		}
-> >  	}
-> > +	if (partial_end) {
-> > +		struct page *page = find_lock_page(mapping, end);
-> > +		if (page) {
-> > +			wait_on_page_writeback(page);
-> > +			zero_user_segment(page, 0, partial_end);
-> > +			cleancache_invalidate_page(mapping, page);
-> > +			if (page_has_private(page))
-> > +				do_invalidatepage(page, 0);
-> > +			set_page_dirty(page);
-> > +			unlock_page(page);
-> > +			page_cache_release(page);
-> > +		}
-> > +	}
-> > +	if (start >= end)
-> > +		return;
-> >  
-> >  	index = start;
-> >  	for ( ; ; ) {
-> >  		cond_resched();
-> >  		if (!pagevec_lookup(&pvec, mapping, index,
-> > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
-> >  			if (index == start)
-> >  				break;
-> >  			index = start;
-> >  			continue;
-> >  		}
-> > -		if (index == start && pvec.pages[0]->index > end) {
-> > +		if (index == start && pvec.pages[0]->index >= end) {
-> >  			pagevec_release(&pvec);
-> >  			break;
-> >  		}
-> > @@ -279,7 +296,7 @@ void truncate_inode_pages_range(struct a
-> >  
-> >  			/* We rely upon deletion not changing page->index */
-> >  			index = page->index;
-> > -			if (index > end)
-> > +			if (index >= end)
-> >  				break;
-> >  
-> >  			lock_page(page);
-> > @@ -624,10 +641,8 @@ void truncate_pagecache_range(struct ino
-> >  	 * This rounding is currently just for example: unmap_mapping_range
-> >  	 * expands its hole outwards, whereas we want it to contract the hole
-> >  	 * inwards.  However, existing callers of truncate_pagecache_range are
-> > -	 * doing their own page rounding first; and truncate_inode_pages_range
-> > -	 * currently BUGs if lend is not pagealigned-1 (it handles partial
-> > -	 * page at start of hole, but not partial page at end of hole).  Note
-> > -	 * unmap_mapping_range allows holelen 0 for all, and we allow lend -1.
-> > +	 * doing their own page rounding first.  Note that unmap_mapping_range
-> > +	 * allows holelen 0 for all, and we allow lend -1 for end of file.
-> >  	 */
-> >  
-> >  	/*
-> > 
-> 
---571144193-1991951733-1342527413=:14869--
+
