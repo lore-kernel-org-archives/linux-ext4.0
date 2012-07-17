@@ -1,95 +1,61 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
-Date: Mon, 16 Jul 2012 14:41:41 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1207161402420.3376@eggly.anvils>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-2-git-send-email-lczerner@redhat.com> <20120713174209.GC17109@thunk.org> <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 05/35 v3] libext2fs: add EXT4_INLINE_DATA_FL flag for
+ inode
+Date: Tue, 17 Jul 2012 10:20:53 +0800
+Message-ID: <20120717022052.GA27204@gmail.com>
+References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
+ <1341150538-32047-6-git-send-email-wenqing.lz@taobao.com>
+ <20120716150144.GA3670@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1207160917360.5313@dhcp-1-248.brq.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Tao Ma <tm@tao.ma>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:37167 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754317Ab2GQCMR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jul 2012 22:12:17 -0400
+Received: by pbbrp8 with SMTP id rp8so10975289pbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jul 2012 19:12:17 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20120716150144.GA3670@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 16 Jul 2012, Lukas Czerner wrote:
-> On Fri, 13 Jul 2012, Theodore Ts'o wrote:
-> > Date: Fri, 13 Jul 2012 13:42:09 -0400
-> > From: Theodore Ts'o <tytso@mit.edu>
-> > To: Lukas Czerner <lczerner@redhat.com>
-> > Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-> >     achender@linux.vnet.ibm.com
-> > Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
+On Mon, Jul 16, 2012 at 11:01:44AM -0400, Theodore Ts'o wrote:
+> On Sun, Jul 01, 2012 at 09:48:28PM +0800, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
 > > 
-> > Hi Lukas,
+> > Add EXT4_INLINE_DATA_FL flag.
 > > 
-> > This patch set has changes to the VFS, XFS, and ext4, and there are
-> > cross dependencies between them.  Is there any way you can disentagle
-> > the dependencies between the patches so we don't need to worry about
-> > how these get pulled in during the merge window?
-> > 
-> > I suppose could try to get the XFS folks to sign off with my carrying
-> > this patch in the ext4 tree, since the bulk of the changes are
-> > ext4-related, but it is a bit of a complication.
-> > 
-> > 	      	     	      	 - Ted
+> >  /* EXT4_EOFBLOCKS_FL 0x00400000 was here */
+> > +#define EXT4_INLINE_DATA_FL		0x00800000 /* Inode has inline data */
 > 
-> Hi Ted,
+> Hi,
 > 
-> there is no VFS change, MM is probably what you've had in mind ? So
-> the only reason why there are xfs, mm and tmpfs changes is that I am
-> changing truncate_partial_page() and a small side effect is changed
-> calling conventions.
-
-truncate_partial_page() is static inline to mm/truncate.c:
-was that a typo, or are you changing that too and I missed it?
-
-Sorry, but I find your changes of the infinity convention from -1 to
-LLONG_MAX just gratuitous and confusing (and error prone if we ever
-have to backport portions to earlier stable releases).
-
-It grieves me enough that unmap_mapping_range() has always had quite
-a different convention from truncate_inode_pages_range().  You're now
-proposing to give truncate_inode_pages_range() yet another convention
-different from invalidate_inode_pages2_range() and
-truncate_pagecache_range()?
-
-At cost of having to make xfs and tmpfs (well, actually it's the
-tiny !SHMEM ramfs case you're changing there in 03/12) dependent
-on synchronizing with your other changes?
-
-I can see that when I converted shmem_truncate_range() (later extended
-to shmem_undo_range()) to partial_start and partial_end, I did put in
-an ugly couple of lines
-	if (lend == -1)
-		end = -1;	/* unsigned, so actually very big */
-but I think it's better there than "lend == -1 ? LLONG_MAX : lend;"
-ugliness spread around in the filesystems.
-
-I don't see any upside: please, could you just drop those changes,
-so that then it comes down to synchronizing ext4 with mm/truncate.c?
-
+> Unfortunately, we have a codepoint collision.  The BTRFS folks have
+> already exposed FS_NOCOW_FL as 0x00800000; this is in mainline in the
+> kernel, and in fact that latest version of e2fsprogs understands this
+> since lsattr and chattr are used by multiple file systems (even though
+> it was originally intended only for ext2/3/4).
 > 
-> We can push patches 3, 4, 5 and 6 through the mm tree. But we'll
-> have to make sure that it will land before ext4 changes since I am
-> using the new truncate_partial_page() behaviour in ext4. Will that
-> be possible ?
+> I'd like to move this to:
 > 
-> Hugh ?
+> #define EXT4_INLINE_DATA_FL	0x10000000 /* Inode has inline data */
+> 
+> However, if you already have this in production internally inside
+> Taobao, this could potentially could be a problem for you.  (We've had
+> to handle this before inside Google, when we used a different code
+> point for EOFBLOCKS_FL than what ended up being used in mainline; it
+> can be dealt with, but it's certainly annoying...)
+> 
+> Is this going to potentially be a problem for you?
 
-I'd like patchs 3, 4 and 5 to vanish.  As to 6 (perhaps it won't be
-6 after that!), I want to work through that one myself (I'll try this
-evening): it looked over-complicated to me, and I'd rather go back to
-what I worked out for partial_end in shmem_truncate_range().
+Hi Ted,
 
-Then yes, if we're all happy with the result of that, it will be best
-for Ted to take even the mm/truncate.c patch into his ext4 branch,
-made visible in linux-next before the merge window.
+I have discussed this issue with Tao, and it is not a problem for us.
+So we could change it to '0x10000000'. :)
 
-We're running out of time: I'll make every effort to get back to you
-on 6 after I've tested late today.
-
-Hugh
+Regards,
+Zheng
