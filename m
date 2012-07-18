@@ -1,77 +1,59 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
- non page aligned ranges
-Date: Wed, 18 Jul 2012 12:36:39 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1207181154410.2160@eggly.anvils>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-6-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1207170114490.1577@eggly.anvils> <alpine.LFD.2.00.1207171315330.2402@dhcp-1-248.brq.redhat.com>
- <alpine.LFD.2.00.1207171413350.14869@dhcp-1-248.brq.redhat.com> <alpine.LFD.2.00.1207180945390.2291@dhcp-1-248.brq.redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 03/12 v2] shmem: pass LLONG_MAX to shmem_truncate_range
+Date: Wed, 18 Jul 2012 14:54:04 -0500
+Message-ID: <5007145C.1080407@redhat.com>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-3-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, achender@linux.vnet.ibm.com,
+	Hugh Dickins <hughd@google.com>
 To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <alpine.LFD.2.00.1207180945390.2291@dhcp-1-248.brq.redhat.com>
+In-Reply-To: <1342185555-21146-3-git-send-email-lczerner@redhat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 18 Jul 2012, Lukas Czerner wrote:
-> On Tue, 17 Jul 2012, Lukas Czerner wrote:
-> > 
-> > My bad, it definitely is not safe without the end offset argument in
-> > invalidatepage() aops ..sigh..
+On 7/13/12 8:19 AM, Lukas Czerner wrote:
+> Currently we're passing -1 to shmem_truncate_range which can then call
+> truncate_inode_pages_range() which is actually really confusing since the
+> argument is signed so we do not get "huge" number as one would expect,
+> but rather just -1. To make things clearer and easier for
+> truncate_inode_pages_range() just pass LLONG_MAX since it is actually what
+> was intended anyway.
 > 
-> So what about having new aop invalidatepage_range and using that in
-> the truncate_inode_pages_range(). We can still BUG_ON if the file
-> system register invalidatepage, but not invalidatepage_range,
-> when the range to truncate is not page aligned at the end.
-
-I had some trouble parsing what you wrote, and have slightly adjusted
-it (mainly adding a comma) to fit my understanding: shout at me if I'm
-misrepresenting you!
-
-Yes, I think that's what has to be done.  It's irritating to have two
-methods doing the same job, but not nearly so irritating as having to
-change core and all filesystems at the same time.  Then at some future
-date there can be a cleanup to remove the old invalidatepage method.
-
+> It also makes thing easier for allowing truncate_inode_pages_range() to
+> handle non page aligned regions. Moreover letting the lend argument to
+> be negative might actually hide some bugs.
 > 
-> I am sure more file system than just ext4 can take advantage of
-> this. Currently only ext4, xfs and ocfs2 support punch hole and I
-> think that all of them can use truncate_inode_pages_range() which
-> handles unaligned ranges.
-
-I expect that they can, but I'm far from sure of it: each filesystem
-will have its own needs and difficulties, which might delay them from
-a quick switchover to invalidatepage_range.
-
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Cc: Hugh Dickins <hughd@google.com>
+> ---
+>  mm/shmem.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
 > 
-> Currently ext4 has it's own overcomplicated method of freeing and
-> zeroing unaligned ranges.
+> diff --git a/mm/shmem.c b/mm/shmem.c
+> index 4ce02e0..3199733 100644
+> --- a/mm/shmem.c
+> +++ b/mm/shmem.c
+> @@ -2961,7 +2961,8 @@ void shmem_unlock_mapping(struct address_space *mapping)
+>  
+>  void shmem_truncate_range(struct inode *inode, loff_t lstart, loff_t lend)
+>  {
+> -	truncate_inode_pages_range(inode->i_mapping, lstart, lend);
+> +	truncate_inode_pages_range(inode->i_mapping, lstart,
+> +				   lend == -1 ? LLONG_MAX : last);
 
-You're best placed to judge if its overcomplicated, I've not looked.
+Where'd "last" come from?  That won't build; should be "lend" right?
 
-> Xfs seems just truncate the whole file and
+(code only goes this way if !CONFIG_SHMEM so you might have missed it)
 
-I doubt that can be the case: how would it ever pass testing with
-the hole-punching fsx if so?  But it is the case that xfs unmaps
-all the pages from hole onwards, in the exceptional case where the
-punched file is currently mmap'ed into userspace; and that is wrong,
-and will get fixed, but it's not a huge big deal meanwhile.  (But it
-does suggest that hole-punching is more difficult to get completely
-right than people think at first.)
+-Eric
 
-> there seems to be a bug in ocfs2 where we can hit BUG_ON when the
-> cluster size < page size.
+>  }
+>  EXPORT_SYMBOL_GPL(shmem_truncate_range);
+>  
 > 
-> What do you reckon ?
 
-I agree that you need invalidatepage_range for truncate_inode_page_range
-to drop its end alignment restriction.  But now that we have to add a
-method, I think it would be more convincing justification to have two
-filesystems converted to make use of it, than just the one ext4.
 
-Hugh
