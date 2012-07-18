@@ -1,307 +1,102 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
- non page aligned ranges
-Date: Wed, 18 Jul 2012 10:18:57 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207180945390.2291@dhcp-1-248.brq.redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-6-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1207170114490.1577@eggly.anvils> <alpine.LFD.2.00.1207171315330.2402@dhcp-1-248.brq.redhat.com>
- <alpine.LFD.2.00.1207171413350.14869@dhcp-1-248.brq.redhat.com>
+Subject: Re: [BUG] ext4: i_size, EOFBLOCKS_FS corruption with xfstests 269
+Date: Wed, 18 Jul 2012 11:40:38 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207181137190.2291@dhcp-1-248.brq.redhat.com>
+References: <50066C93.1070006@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571144193-574685042-1342599543=:2291"
-Cc: Hugh Dickins <hughd@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41905 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23492 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752992Ab2GRITJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Jul 2012 04:19:09 -0400
-In-Reply-To: <alpine.LFD.2.00.1207171413350.14869@dhcp-1-248.brq.redhat.com>
+	id S1751010Ab2GRJkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Jul 2012 05:40:46 -0400
+In-Reply-To: <50066C93.1070006@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Wed, 18 Jul 2012, Akira Fujita wrote:
 
---571144193-574685042-1342599543=:2291
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: 8BIT
-
-On Tue, 17 Jul 2012, Luká¨ Czerner wrote:
-
-> Date: Tue, 17 Jul 2012 14:16:48 +0200 (CEST)
-> From: Luká¨ Czerner <lczerner@redhat.com>
-> To: Luká¨ Czerner <lczerner@redhat.com>
-> Cc: Hugh Dickins <hughd@google.com>,
->     Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
->     Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-> Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
->      non page aligned ranges
+> Date: Wed, 18 Jul 2012 16:58:11 +0900
+> From: Akira Fujita <a-fujita@rs.jp.nec.com>
+> To: Theodore Tso <tytso@mit.edu>
+> Cc: ext4 development <linux-ext4@vger.kernel.org>
+> Subject: [BUG] ext4: i_size, EOFBLOCKS_FS corruption with xfstests 269
 > 
-> On Tue, 17 Jul 2012, Luká¨ Czerner wrote:
+> Hi,
 > 
-> > Date: Tue, 17 Jul 2012 13:57:42 +0200 (CEST)
-> > From: Luká¨ Czerner <lczerner@redhat.com>
-> > To: Hugh Dickins <hughd@google.com>
-> > Cc: Lukas Czerner <lczerner@redhat.com>,
-> >     Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
-> >     Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-> >     linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-> > Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
-> >      non page aligned ranges
-> > 
-> > On Tue, 17 Jul 2012, Hugh Dickins wrote:
-> > 
-> > > Date: Tue, 17 Jul 2012 01:28:08 -0700 (PDT)
-> > > From: Hugh Dickins <hughd@google.com>
-> > > To: Lukas Czerner <lczerner@redhat.com>
-> > > Cc: Andrew Morton <akpm@linux-foundation.org>, Theodore Ts'o <tytso@mit.edu>,
-> > >     Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
-> > >     linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
-> > > Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
-> > >      non page aligned ranges
-> > > 
-> > > On Fri, 13 Jul 2012, Lukas Czerner wrote:
-> > > > This commit changes truncate_inode_pages_range() so it can handle non
-> > > > page aligned regions of the truncate. Currently we can hit BUG_ON when
-> > > > the end of the range is not page aligned, but he can handle unaligned
-> > > > start of the range.
-> > > > 
-> > > > Being able to handle non page aligned regions of the page can help file
-> > > > system punch_hole implementations and save some work, because once we're
-> > > > holding the page we might as well deal with it right away.
-> > > > 
-> > > > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > > > Cc: Hugh Dickins <hughd@google.com>
-> > > 
-> > > As I said under 02/12, I'd much rather not change from the existing -1
-> > > convention: I don't think it's wonderful, but I do think it's confusing
-> > > and a waste of effort to change from it; and I'd rather keep the code
-> > > in truncate.c close to what's doing the same job in shmem.c.
-> > > 
-> > > Here's what I came up with (and hacked tmpfs to use it without swap
-> > > temporarily, so I could run fsx for an hour to validate it).  But you
-> > > can see I've a couple of questions; and probably ought to reduce the
-> > > partial page code duplication once we're sure what should go in there.
-> > > 
-> > > Hugh
-> > 
-> > Ok.
-> > 
-> > > 
-> > > [PATCH]...
-> > > 
-> > > Apply to truncate_inode_pages_range() the changes 83e4fa9c16e4 ("tmpfs:
-> > > support fallocate FALLOC_FL_PUNCH_HOLE") made to shmem_truncate_range():
-> > > so the generic function can handle partial end offset for hole-punching.
-> > > 
-> > > In doing tmpfs, I became convinced that it needed a set_page_dirty() on
-> > > the partial pages, and I'm doing that here: but perhaps it should be the
-> > > responsibility of the calling filesystem?  I don't know.
-> > 
-> > In file system, if the range is block aligned we do not need the page to
-> > be dirtied. However if it is not block aligned (at least in ext4)
-> > we're going to handle it ourselves and possibly mark the page buffer
-> > dirty (hence the page would be dirty). Also in case of data
-> > journalling, we'll have to take care of the last block in the hole
-> > ourselves. So I think file systems should take care of dirtying the
-> > partial page if needed.
-> > 
-> > > 
-> > > And I'm doubtful whether this code can be correct (on a filesystem with
-> > > blocksize less than pagesize) without adding an end offset argument to
-> > > address_space_operations invalidatepage(page, offset): convince me!
-> > 
-> > Well, I can't. It really seems that on block size < page size file
-> > systems we could potentially discard dirty buffers beyond the hole
-> > we're punching if it is not page aligned. We would probably need to
-> > add end offset argument to the invalidatepage() aop. However I do not
-> > seem to be able to trigger the problem yet so maybe I'm still
-> > missing something.
+> I got a issue which makes i_size and EOFBLOCKS_FL corrupted
+> on ext4 with xfstests 269.
+> In my environment (linux-3.5-rc7), this can be reproduced
+> once of 10 times trial.
 > 
-> My bad, it definitely is not safe without the end offset argument in
-> invalidatepage() aops ..sigh..
+> Kernel: 3.5-rc7
+> Arch: x86_64
+> 
+> Step and log are as bellow, after xfstests 269, e2fsck outputs
+> i_size and EOFBLOCKS_FL corruption.
+> Is this an already known issue?
 
-So what about having new aop invalidatepage_range and using that in
-the truncate_inode_pages_range(). We can still BUG_ON if the file
-system register invalidatepage, but does not invalidatepage_range
-while the range to truncate is not page aligned at the end.
+Hi Akira,
 
-I am sure more file system than just ext4 can take advantage of
-this. Currently only ext4, xfs and ocfs2 support punch hole and I
-think that all of them can use truncate_inode_pages_range() which
-handles unaligned ranges.
+thanks for reporting this. Could you please try to use the most
+recent e2fsprogs ? The EOFBLOCKS_FL has been removed from e2fsprogs
+with:
 
-Currently ext4 has it's own overcomplicated method of freeing and
-zeroing unaligned ranges. Xfs seems just truncate the whole file and
-there seems to be a bug in ocfs2 where we can hit BUG_ON when the
-cluster size < page size.
+010dc7b90d97b93907cbf57b3b44f1c1cad234f6 e2fsck: remove
+EXT4_EOFBLOCKS_FL flag handling
 
-What do you reckon ?
+and is about to be removed from kernel as well, so the EOFBLOCKS_FL
+problem probably does not even matter. Though the i_size problem
+might be real.
 
+Not sure if it is a known problem, but I've certainly seen it before
+with xfstest 269, though I have not had time to look at this yet. So
+I guess I should :).
+
+Thanks!
 -Lukas
 
 > 
-> > 
-> > -Lukas
-> > 
-> > > 
-> > > Not-yet-signed-off-by: Hugh Dickins <hughd@google.com>
-> > > ---
-> > > 
-> > >  mm/truncate.c |   69 +++++++++++++++++++++++++++++-------------------
-> > >  1 file changed, 42 insertions(+), 27 deletions(-)
-> > > 
-> > > --- 3.5-rc7/mm/truncate.c	2012-06-03 06:42:11.249787128 -0700
-> > > +++ linux/mm/truncate.c	2012-07-16 22:54:16.903821549 -0700
-> > > @@ -49,14 +49,6 @@ void do_invalidatepage(struct page *page
-> > >  		(*invalidatepage)(page, offset);
-> > >  }
-> > >  
-> > > -static inline void truncate_partial_page(struct page *page, unsigned partial)
-> > > -{
-> > > -	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
-> > > -	cleancache_invalidate_page(page->mapping, page);
-> > > -	if (page_has_private(page))
-> > > -		do_invalidatepage(page, partial);
-> > > -}
-> > > -
-> > >  /*
-> > >   * This cancels just the dirty bit on the kernel page itself, it
-> > >   * does NOT actually remove dirty bits on any mmap's that may be
-> > > @@ -190,8 +182,8 @@ int invalidate_inode_page(struct page *p
-> > >   * @lend: offset to which to truncate
-> > >   *
-> > >   * Truncate the page cache, removing the pages that are between
-> > > - * specified offsets (and zeroing out partial page
-> > > - * (if lstart is not page aligned)).
-> > > + * specified offsets (and zeroing out partial pages
-> > > + * if lstart or lend + 1 is not page aligned).
-> > >   *
-> > >   * Truncate takes two passes - the first pass is nonblocking.  It will not
-> > >   * block on page locks and it will not block on writeback.  The second pass
-> > > @@ -206,31 +198,32 @@ int invalidate_inode_page(struct page *p
-> > >  void truncate_inode_pages_range(struct address_space *mapping,
-> > >  				loff_t lstart, loff_t lend)
-> > >  {
-> > > -	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
-> > > -	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
-> > > +	pgoff_t start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-> > > +	pgoff_t end = (lend + 1) >> PAGE_CACHE_SHIFT;
-> > > +	unsigned int partial_start = lstart & (PAGE_CACHE_SIZE - 1);
-> > > +	unsigned int partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
-> > >  	struct pagevec pvec;
-> > >  	pgoff_t index;
-> > > -	pgoff_t end;
-> > >  	int i;
-> > >  
-> > >  	cleancache_invalidate_inode(mapping);
-> > >  	if (mapping->nrpages == 0)
-> > >  		return;
-> > >  
-> > > -	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
-> > > -	end = (lend >> PAGE_CACHE_SHIFT);
-> > > +	if (lend == -1)
-> > > +		end = -1;	/* unsigned, so actually very big */
-> > >  
-> > >  	pagevec_init(&pvec, 0);
-> > >  	index = start;
-> > > -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
-> > > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> > > +	while (index < end && pagevec_lookup(&pvec, mapping, index,
-> > > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
-> > >  		mem_cgroup_uncharge_start();
-> > >  		for (i = 0; i < pagevec_count(&pvec); i++) {
-> > >  			struct page *page = pvec.pages[i];
-> > >  
-> > >  			/* We rely upon deletion not changing page->index */
-> > >  			index = page->index;
-> > > -			if (index > end)
-> > > +			if (index >= end)
-> > >  				break;
-> > >  
-> > >  			if (!trylock_page(page))
-> > > @@ -249,27 +242,51 @@ void truncate_inode_pages_range(struct a
-> > >  		index++;
-> > >  	}
-> > >  
-> > > -	if (partial) {
-> > > +	if (partial_start) {
-> > >  		struct page *page = find_lock_page(mapping, start - 1);
-> > >  		if (page) {
-> > > +			unsigned int top = PAGE_CACHE_SIZE;
-> > > +			if (start > end) {
-> > > +				top = partial_end;
-> > > +				partial_end = 0;
-> > > +			}
-> > >  			wait_on_page_writeback(page);
-> > > -			truncate_partial_page(page, partial);
-> > > +			zero_user_segment(page, partial_start, top);
-> > > +			cleancache_invalidate_page(mapping, page);
-> > > +			if (page_has_private(page))
-> > > +				do_invalidatepage(page, partial_start);
-> > > +			set_page_dirty(page);
-> > >  			unlock_page(page);
-> > >  			page_cache_release(page);
-> > >  		}
-> > >  	}
-> > > +	if (partial_end) {
-> > > +		struct page *page = find_lock_page(mapping, end);
-> > > +		if (page) {
-> > > +			wait_on_page_writeback(page);
-> > > +			zero_user_segment(page, 0, partial_end);
-> > > +			cleancache_invalidate_page(mapping, page);
-> > > +			if (page_has_private(page))
-> > > +				do_invalidatepage(page, 0);
-> > > +			set_page_dirty(page);
-> > > +			unlock_page(page);
-> > > +			page_cache_release(page);
-> > > +		}
-> > > +	}
-> > > +	if (start >= end)
-> > > +		return;
-> > >  
-> > >  	index = start;
-> > >  	for ( ; ; ) {
-> > >  		cond_resched();
-> > >  		if (!pagevec_lookup(&pvec, mapping, index,
-> > > -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> > > +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
-> > >  			if (index == start)
-> > >  				break;
-> > >  			index = start;
-> > >  			continue;
-> > >  		}
-> > > -		if (index == start && pvec.pages[0]->index > end) {
-> > > +		if (index == start && pvec.pages[0]->index >= end) {
-> > >  			pagevec_release(&pvec);
-> > >  			break;
-> > >  		}
-> > > @@ -279,7 +296,7 @@ void truncate_inode_pages_range(struct a
-> > >  
-> > >  			/* We rely upon deletion not changing page->index */
-> > >  			index = page->index;
-> > > -			if (index > end)
-> > > +			if (index >= end)
-> > >  				break;
-> > >  
-> > >  			lock_page(page);
-> > > @@ -624,10 +641,8 @@ void truncate_pagecache_range(struct ino
-> > >  	 * This rounding is currently just for example: unmap_mapping_range
-> > >  	 * expands its hole outwards, whereas we want it to contract the hole
-> > >  	 * inwards.  However, existing callers of truncate_pagecache_range are
-> > > -	 * doing their own page rounding first; and truncate_inode_pages_range
-> > > -	 * currently BUGs if lend is not pagealigned-1 (it handles partial
-> > > -	 * page at start of hole, but not partial page at end of hole).  Note
-> > > -	 * unmap_mapping_range allows holelen 0 for all, and we allow lend -1.
-> > > +	 * doing their own page rounding first.  Note that unmap_mapping_range
-> > > +	 * allows holelen 0 for all, and we allow lend -1 for end of file.
-> > >  	 */
-> > >  
-> > >  	/*
-> > > 
-> > 
---571144193-574685042-1342599543=:2291--
+> # ./check 269
+>     FSTYP         -- ext4
+>     PLATFORM      -- Linux/x86_64 mcds1 3.5.0-rc7
+>     MKFS_OPTIONS  -- /dev/sdb3
+>     MOUNT_OPTIONS -- -o acl,user_xattr /dev/sdb3 /mnt/mp2
+> 
+>     269 97s ... [failed, exit status 1] - output mismatch (see 269.out.bad)
+>     --- 269.out	2012-07-02 10:51:34.000000000 +0900
+>     +++ 269.out.bad	2012-07-18 14:09:03.000000000 +0900
+>     @@ -3,3 +3,4 @@
+>      Run fsstress
+> 
+>      Run dd writers in parallel
+>     +_check_generic_filesystem: filesystem on /dev/sdb3 is inconsistent (see 269.full)
+>     Ran: 269
+>     Failures: 269
+>     Failed 1 of 1 tests
+> 
+> 
+>     # cat 269.full
+>       (snip)
+> 
+>     e2fsck 1.41.12 (17-May-2010)
+>     Pass 1: Checking inodes, blocks, and sizes
+>     Inode 2336, i_size is 625045, should be 1277952.  Fix? no
+> 
+>     Inode 3193 should not have EOFBLOCKS_FL set (size 1928717, lblk 218)
+>     Clear? no
+> 
+>     Inode 4198 should not have EOFBLOCKS_FL set (size 380389, lblk 73)
+>     Clear? no
+> 
+> 
+> Regards,
+> Akira Fujita
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
