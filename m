@@ -1,115 +1,77 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 02/12 v2] Revert "ext4: fix fsx truncate failure"
-Date: Wed, 18 Jul 2012 14:34:47 -0500
-Message-ID: <50070FD7.40301@redhat.com>
-References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-2-git-send-email-lczerner@redhat.com>
+From: Hugh Dickins <hughd@google.com>
+Subject: Re: [PATCH 06/12 v2] mm: teach truncate_inode_pages_range() to hadnle
+ non page aligned ranges
+Date: Wed, 18 Jul 2012 12:36:39 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1207181154410.2160@eggly.anvils>
+References: <1342185555-21146-1-git-send-email-lczerner@redhat.com> <1342185555-21146-6-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1207170114490.1577@eggly.anvils> <alpine.LFD.2.00.1207171315330.2402@dhcp-1-248.brq.redhat.com>
+ <alpine.LFD.2.00.1207171413350.14869@dhcp-1-248.brq.redhat.com> <alpine.LFD.2.00.1207180945390.2291@dhcp-1-248.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu, achender@linux.vnet.ibm.com
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Dave Chinner <dchinner@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, achender@linux.vnet.ibm.com
 To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21005 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755631Ab2GRTfh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Jul 2012 15:35:37 -0400
-In-Reply-To: <1342185555-21146-2-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1207180945390.2291@dhcp-1-248.brq.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 7/13/12 8:19 AM, Lukas Czerner wrote:
-> This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
+On Wed, 18 Jul 2012, Lukas Czerner wrote:
+> On Tue, 17 Jul 2012, Lukas Czerner wrote:
+> > 
+> > My bad, it definitely is not safe without the end offset argument in
+> > invalidatepage() aops ..sigh..
 > 
-> This commit reintroduces the use of ext4_block_truncate_page() in ext4
-> truncate operation instead of ext4_discard_partial_page_buffers().
+> So what about having new aop invalidatepage_range and using that in
+> the truncate_inode_pages_range(). We can still BUG_ON if the file
+> system register invalidatepage, but not invalidatepage_range,
+> when the range to truncate is not page aligned at the end.
 
-And I think commit 15291164b22a357cb211b618adfef4fa82fc0de3
-jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
+I had some trouble parsing what you wrote, and have slightly adjusted
+it (mainly adding a comma) to fit my understanding: shout at me if I'm
+misrepresenting you!
 
-fixed the fsx problem referenced in that commit more properly.
+Yes, I think that's what has to be done.  It's irritating to have two
+methods doing the same job, but not nearly so irritating as having to
+change core and all filesystems at the same time.  Then at some future
+date there can be a cleanup to remove the old invalidatepage method.
 
-> The statement in the commit description that the truncate operation only
-> zero block unaligned portion of the last page is not exactly right,
-> since truncate_pagecache_range() also zeroes and invalidate the unaligned
-> portion of the page. Then there is no need to zero and unmap it once more
-> and ext4_block_truncate_page() was doing the right job, although we
-> still need to update the buffer head containing the last block, which is
-> exactly what ext4_block_truncate_page() is doing.
 > 
-> This was tested on ppc64 machine with block size of 1024 bytes without
-> any problems.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c  |   13 ++-----------
->  fs/ext4/indirect.c |   13 ++-----------
->  2 files changed, 4 insertions(+), 22 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 91341ec..ceab5f5 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4222,7 +4222,6 @@ void ext4_ext_truncate(struct inode *inode)
->  	struct super_block *sb = inode->i_sb;
->  	ext4_lblk_t last_block;
->  	handle_t *handle;
-> -	loff_t page_len;
->  	int err = 0;
->  
->  	/*
-> @@ -4239,16 +4238,8 @@ void ext4_ext_truncate(struct inode *inode)
->  	if (IS_ERR(handle))
->  		return;
->  
-> -	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
-> -		page_len = PAGE_CACHE_SIZE -
-> -			(inode->i_size & (PAGE_CACHE_SIZE - 1));
-> -
-> -		err = ext4_discard_partial_page_buffers(handle,
-> -			mapping, inode->i_size, page_len, 0);
-> -
-> -		if (err)
-> -			goto out_stop;
-> -	}
-> +	if (inode->i_size & (sb->s_blocksize - 1))
-> +		ext4_block_truncate_page(handle, mapping, inode->i_size);
->  
->  	if (ext4_orphan_add(handle, inode))
->  		goto out_stop;
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 830e1b2..a082b30 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -1349,9 +1349,7 @@ void ext4_ind_truncate(struct inode *inode)
->  	__le32 nr = 0;
->  	int n = 0;
->  	ext4_lblk_t last_block, max_block;
-> -	loff_t page_len;
->  	unsigned blocksize = inode->i_sb->s_blocksize;
-> -	int err;
->  
->  	handle = start_transaction(inode);
->  	if (IS_ERR(handle))
-> @@ -1362,16 +1360,9 @@ void ext4_ind_truncate(struct inode *inode)
->  	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
->  					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
->  
-> -	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
-> -		page_len = PAGE_CACHE_SIZE -
-> -			(inode->i_size & (PAGE_CACHE_SIZE - 1));
-> -
-> -		err = ext4_discard_partial_page_buffers(handle,
-> -			mapping, inode->i_size, page_len, 0);
-> -
-> -		if (err)
-> +	if (inode->i_size & (blocksize - 1))
-> +		if (ext4_block_truncate_page(handle, mapping, inode->i_size))
->  			goto out_stop;
-> -	}
->  
->  	if (last_block != max_block) {
->  		n = ext4_block_to_path(inode, last_block, offsets, NULL);
-> 
+> I am sure more file system than just ext4 can take advantage of
+> this. Currently only ext4, xfs and ocfs2 support punch hole and I
+> think that all of them can use truncate_inode_pages_range() which
+> handles unaligned ranges.
 
+I expect that they can, but I'm far from sure of it: each filesystem
+will have its own needs and difficulties, which might delay them from
+a quick switchover to invalidatepage_range.
 
+> 
+> Currently ext4 has it's own overcomplicated method of freeing and
+> zeroing unaligned ranges.
+
+You're best placed to judge if its overcomplicated, I've not looked.
+
+> Xfs seems just truncate the whole file and
+
+I doubt that can be the case: how would it ever pass testing with
+the hole-punching fsx if so?  But it is the case that xfs unmaps
+all the pages from hole onwards, in the exceptional case where the
+punched file is currently mmap'ed into userspace; and that is wrong,
+and will get fixed, but it's not a huge big deal meanwhile.  (But it
+does suggest that hole-punching is more difficult to get completely
+right than people think at first.)
+
+> there seems to be a bug in ocfs2 where we can hit BUG_ON when the
+> cluster size < page size.
+> 
+> What do you reckon ?
+
+I agree that you need invalidatepage_range for truncate_inode_page_range
+to drop its end alignment restriction.  But now that we have to add a
+method, I think it would be more convincing justification to have two
+filesystems converted to make use of it, than just the one ext4.
+
+Hugh
