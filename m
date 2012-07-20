@@ -1,36 +1,45 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 44951] renaming socket in use does not update /proc/X/fd
-Date: Fri, 20 Jul 2012 16:50:40 +0000 (UTC)
-Message-ID: <20120720165040.5A79411FACE@bugzilla.kernel.org>
-References: <bug-44951-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: How should e2fsck clear s_errno/j_errno on an ro mount?
+Date: Fri, 20 Jul 2012 18:13:50 -0500
+Message-ID: <5009E62E.3020608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:38272 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:37635 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752591Ab2GTQup (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Jul 2012 12:50:45 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D3F3220212
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2012 16:50:42 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id F28D620181
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2012 16:50:41 +0000 (UTC)
-In-Reply-To: <bug-44951-13602@https.bugzilla.kernel.org/>
+	id S1752508Ab2GTXNw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 20 Jul 2012 19:13:52 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q6KNDqEe000319
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2012 19:13:52 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q6KNDpMj012770
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jul 2012 19:13:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=44951
+I'm looking at a situation where a root filesystem encountered an error and shut down, and therefore the error was stored in the journal.
 
+But for the root fs, it seems that nothing can clear it.
 
+If we do e2fsck -fy on a readonly mounted filesystem, then remount,rw the error persists:
 
+[25124.319387] EXT4-fs warning (device loop3): ext4_clear_journal_err:4281: Filesystem error recorded from previous mount: IO failure
+[25124.331140] EXT4-fs warning (device loop3): ext4_clear_journal_err:4282: Marking fs in need of filesystem check.
 
+ad infinitum.
 
---- Comment #2 from Wolfgang Rohdewald <wolfgang@rohdewald.de>  2012-07-20 16:50:40 ---
-I also have one ext3 - and yes, ext3 behaves the same way.
+It may be my fever-addled brain this week but I'm having a hard time following how this error is supposed to get set & cleared, especially if e2fsck has modified it while mounted ro.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+As soon as I mount rw again, load_superblock() sees the journal superblock has an error set, and copies it back into the journal->j_errno.
+
+After Ted's "e2fsck: correctly propagate error from journal to superblock" in e2fsprogs, at least an unmounted fs gets cleaned up, but I'm not sure what to do to fix this when it's mounted.  
+
+Am I missing something obvious?
+
+Thanks,
+-Eric
