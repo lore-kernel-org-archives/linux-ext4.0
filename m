@@ -1,42 +1,31 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: How should e2fsck clear s_errno/j_errno on an ro mount?
-Date: Fri, 20 Jul 2012 20:39:53 -0400
-Message-ID: <20120721003953.GA9399@thunk.org>
-References: <5009E62E.3020608@redhat.com>
+From: David Hayes <davemellow@gmail.com>
+Subject: restoring ext3 filesystem overwritten by ext4
+Date: Sat, 21 Jul 2012 20:49:07 +1200
+Message-ID: <CAGFSy5kJFtBH5ogrppKNXht24bPc+9qQhvupqEyhkShxdpHNaw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40217 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751380Ab2GUAkE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 20 Jul 2012 20:40:04 -0400
-Content-Disposition: inline
-In-Reply-To: <5009E62E.3020608@redhat.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:58483 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752401Ab2GUItI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jul 2012 04:49:08 -0400
+Received: by wgbdr13 with SMTP id dr13so4335225wgb.1
+        for <linux-ext4@vger.kernel.org>; Sat, 21 Jul 2012 01:49:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 20, 2012 at 06:13:50PM -0500, Eric Sandeen wrote:
-> I'm looking at a situation where a root filesystem encountered an error and shut down, and therefore the error was stored in the journal.
-> 
-> But for the root fs, it seems that nothing can clear it.
-> 
-> If we do e2fsck -fy on a readonly mounted filesystem, then remount,rw the error persists:
-> 
-> [25124.319387] EXT4-fs warning (device loop3): ext4_clear_journal_err:4281: Filesystem error recorded from previous mount: IO failure
-> [25124.331140] EXT4-fs warning (device loop3): ext4_clear_journal_err:4282: Marking fs in need of filesystem check.
-> 
-> ad infinitum.
-> 
-> It may be my fever-addled brain this week but I'm having a hard time following how this error is supposed to get set & cleared, especially if e2fsck has modified it while mounted ro.
-> 
-> As soon as I mount rw again, load_superblock() sees the journal superblock has an error set, and copies it back into the journal->j_errno.
-> 
-> After Ted's "e2fsck: correctly propagate error from journal to superblock" in e2fsprogs, at least an unmounted fs gets cleaned up, but I'm not sure what to do to fix this when it's mounted.  
+This is a general question about whether it should be possible to
+effectively undo a mkfs.ext4 on a partition which previously held an
+ext3 filesystem. I'm just a user, not a developer, so I'm not familiar
+with the details of where backup superblocks get written etc. I had no
+luck finding any old filesystem information with testdisk, so I'm
+wondering whether ext4 might overwrite all the superblocks by
+coincidence of choosing the same blocks in the partition to write them
+as mkfs.ext3 did, or something.
 
-The problem you describe should have been fixed by commit 6d75685e:
-e2fsck: handle an already recovered journal with a non-zero s_error
-field, which is in e2fsprogs 1.42.4.
+If the answer to the above is "yes" I'll respond with more specific
+details if required.
 
-					- Ted
+Thanks,
+David.
