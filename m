@@ -1,192 +1,220 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 05/10 v1][RESEND] ext4: add some tracepoints in extent status tree
-Date: Sun, 22 Jul 2012 15:59:41 +0800
-Message-ID: <1342943986-12413-6-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 08/10 v1][RESEND] ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
+Date: Sun, 22 Jul 2012 15:59:44 +0800
+Message-ID: <1342943986-12413-9-git-send-email-wenqing.lz@taobao.com>
 References: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com>
 Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
 	wenqing.lz@taobao.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:34290 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403Ab2GVHvg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Jul 2012 03:51:36 -0400
 In-Reply-To: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This patch adds some tracepoints in extent status tree.
+This patch makes ext4 really support SEEK_DATA/SEEK_HOLE flags.  Extent-based
+and block-based files are implemented together because ext4_map_blocks hides
+this difference.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents_status.c    |    8 +++
- include/trace/events/ext4.h |  101 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 109 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h     |    1 +
+ fs/ext4/file.c     |  152 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/indirect.c |    1 -
+ 3 files changed, 152 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index bd4e589..1c82340 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -10,6 +10,8 @@
- #include "extents_status.h"
- #include "ext4_extents.h"
- 
-+#include <trace/events/ext4.h>
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f64b471..0957309 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2400,6 +2400,7 @@ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			   struct ext4_map_blocks *map, int flags);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
 +
- /*
-  * extents status tree implementation for ext4.
-  *
-@@ -188,6 +190,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
- 	struct rb_node *node;
- 	ext4_lblk_t ret = EXT_MAX_BLOCKS;
- 
-+	trace_ext4_es_find_extent_enter(inode, es->start);
-+
- 	es->len = 0;
- 	tree = &EXT4_I(inode)->i_es_tree;
- 	es1 = __es_tree_search(&tree->root, es->start);
-@@ -202,6 +206,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
- 		}
- 	}
- 
-+	trace_ext4_es_find_extent_exit(inode, es, ret);
-+
- 	return ret;
+ /* move_extent.c */
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 8c7642a..38f4d97 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -210,6 +210,145 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	return dquot_file_open(inode, filp);
  }
  
-@@ -282,6 +288,7 @@ int ext4_es_add_space(struct inode *inode, ext4_lblk_t offset, ext4_lblk_t len)
- 	BUG_ON(end <= offset);
++static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
++{
++	struct inode *inode = file->f_mapping->host;
++	struct ext4_map_blocks map;
++	struct extent_status es;
++	ext4_lblk_t start_block, end_block, len, delblk;
++	loff_t dataoff, isize;
++	int blkbits;
++	int ret = 0;
++
++	mutex_lock(&inode->i_mutex);
++
++	blkbits = inode->i_sb->s_blocksize_bits;
++	isize = i_size_read(inode);
++	start_block = offset >> blkbits;
++	end_block = isize >> blkbits;
++	len = isize - offset + 1;
++
++	do {
++		map.m_lblk = start_block;
++		map.m_len = len >> blkbits;
++
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++
++		if (ret > 0) {
++			dataoff = start_block << blkbits;
++			break;
++		} else {
++			/* search in extent status */
++			es.start = start_block;
++			down_read(&EXT4_I(inode)->i_data_sem);
++			delblk = ext4_es_find_extent(inode, &es);
++			up_read(&EXT4_I(inode)->i_data_sem);
++
++			if (start_block >= es.start &&
++			    start_block < es.start + es.len) {
++				dataoff = start_block << blkbits;
++				break;
++			}
++
++			start_block++;
++
++			/*
++			 * currently hole punching doesn't change the size of
++			 * file.  So after hole punching, maybe there has a
++			 * hole at the end of file.
++			 */
++			if (start_block > end_block) {
++				dataoff = -ENXIO;
++				break;
++			}
++		}
++	} while (1);
++
++	mutex_unlock(&inode->i_mutex);
++	return dataoff;
++}
++
++static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
++{
++	struct inode *inode = file->f_mapping->host;
++	struct ext4_map_blocks map;
++	struct extent_status es;
++	ext4_lblk_t start_block, end_block, len, delblk;
++	loff_t holeoff, isize;
++	int blkbits;
++	int ret = 0;
++
++	mutex_lock(&inode->i_mutex);
++
++	blkbits = inode->i_sb->s_blocksize_bits;
++	isize = i_size_read(inode);
++	start_block = offset >> blkbits;
++	end_block = isize >> blkbits;
++	len = isize - offset + 1;
++
++	do {
++		map.m_lblk = start_block;
++		map.m_len = len >> blkbits;
++
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++
++		if (ret > 0) {
++			/* skip this extent */
++			start_block += ret;
++			if (start_block > end_block) {
++				holeoff = isize;
++				break;
++			}
++		} else {
++			/* search in extent status */
++			es.start = start_block;
++			down_read(&EXT4_I(inode)->i_data_sem);
++			delblk = ext4_es_find_extent(inode, &es);
++			up_read(&EXT4_I(inode)->i_data_sem);
++
++			if (start_block >= es.start &&
++			    start_block < es.start + es.len) {
++				/* skip this delay extent */
++				start_block = es.start + es.len;
++				continue;
++			}
++
++			holeoff = start_block << blkbits;
++			break;
++		}
++	} while (1);
++
++	mutex_unlock(&inode->i_mutex);
++	return holeoff;
++}
++
++static loff_t ext4_seek_data_hole(struct file *file, loff_t offset,
++				  int origin, loff_t maxsize)
++{
++	struct inode *inode = file->f_mapping->host;
++
++	BUG_ON((origin != SEEK_DATA) && (origin != SEEK_HOLE));
++
++	if (offset >= i_size_read(inode))
++		return -ENXIO;
++
++	if (offset < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
++		return -EINVAL;
++	if (offset > maxsize)
++		return -EINVAL;
++
++	switch (origin) {
++	case SEEK_DATA:
++		return ext4_seek_data(file, offset, maxsize);
++	case SEEK_HOLE:
++		return ext4_seek_hole(file, offset, maxsize);
++	default:
++		ext4_error(inode->i_sb, "Unknown origin");
++	}
++
++	return -EINVAL;
++}
++
+ /*
+  * ext4_llseek() copied from generic_file_llseek() to handle both
+  * block-mapped and extent-mapped maxbytes values. This should
+@@ -225,7 +364,18 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+ 	else
+ 		maxbytes = inode->i_sb->s_maxbytes;
  
- 	es = tree->cache_es;
-+	trace_ext4_es_add_space(inode, offset, len);
- 	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
- 		 offset, len, inode->i_ino);
+-	return generic_file_llseek_size(file, offset, origin, maxbytes);
++	switch (origin) {
++	case SEEK_END:
++	case SEEK_CUR:
++	case SEEK_SET:
++		return generic_file_llseek_size(file, offset,
++						origin, maxbytes);
++	case SEEK_DATA:
++	case SEEK_HOLE:
++		return ext4_seek_data_hole(file, offset, origin, maxbytes);
++	}
++
++	return -EINVAL;
+ }
  
-@@ -351,6 +358,7 @@ int ext4_es_remove_space(struct inode *inode, ext4_lblk_t offset,
- 	struct extent_status orig_es;
- 	ext4_lblk_t len1, len2, end;
- 
-+	trace_ext4_es_remove_space(inode, offset, len);
- 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
- 		 offset, len, inode->i_ino);
- 
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 69d8a69..5c17592 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -15,6 +15,7 @@ struct ext4_inode_info;
- struct mpage_da_data;
- struct ext4_map_blocks;
- struct ext4_extent;
-+struct extent_status;
- 
- #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
- 
-@@ -2055,6 +2056,106 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		  (unsigned short) __entry->eh_entries)
- );
- 
-+TRACE_EVENT(ext4_es_add_space,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
-+
-+	TP_ARGS(inode, start, len),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	ino_t,	ino			)
-+		__field(	loff_t,	start			)
-+		__field(	loff_t, len			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->start	= start;
-+		__entry->len	= len;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->start, __entry->len)
-+);
-+
-+TRACE_EVENT(ext4_es_remove_space,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
-+
-+	TP_ARGS(inode, start, len),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	ino_t,	ino			)
-+		__field(	loff_t,	start			)
-+		__field(	loff_t,	len			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->start	= start;
-+		__entry->len	= len;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->start, __entry->len)
-+);
-+
-+TRACE_EVENT(ext4_es_find_extent_enter,
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start),
-+
-+	TP_ARGS(inode, start),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,		dev		)
-+		__field(	ino_t,		ino		)
-+		__field(	ext4_lblk_t,	start		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->start	= start;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu start %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino, __entry->start)
-+);
-+
-+TRACE_EVENT(ext4_es_find_extent_exit,
-+	TP_PROTO(struct inode *inode, struct extent_status *es,
-+		 ext4_lblk_t ret),
-+
-+	TP_ARGS(inode, es, ret),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,		dev		)
-+		__field(	ino_t,		ino		)
-+		__field(	ext4_lblk_t,	start		)
-+		__field(	ext4_lblk_t,	len		)
-+		__field(	ext4_lblk_t,	ret		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+		__entry->start	= es->start;
-+		__entry->len	= es->len;
-+		__entry->ret	= ret;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) ret %u",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino,
-+		  __entry->start, __entry->len, __entry->ret)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
--- 
-1.7.4.1
-
+ const struct file_operations ext4_file_operations = {
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index e190427..b22b86b 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1502,4 +1502,3 @@ out_stop:
+ 	ext4_journal_stop(handle);
+ 	trace_ext4_truncate_exit(inode);
+ }
