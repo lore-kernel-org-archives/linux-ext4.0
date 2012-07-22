@@ -1,67 +1,55 @@
-From: Imran Chaudhry <ichaudhry@gmail.com>
-Subject: Bug#679830: linux-image-2.6.32-5-686: Kernel bug observed in syslog
-	when performing an rsync operation.
-Date: Sun, 22 Jul 2012 11:26:18 +0100
-Message-ID: <CABpWkk_4=E=GMY5MhyD9ysyUSr=3F=aCqAxQ_07g5s9N8KQhjg@mail.gmail.com>
-References: <20120701221420.1784.81013.reportbug@altair.ejectdisc.net> <1342932566.11373.229.camel@deadeye.wl.decadent.org.uk>
-Reply-To: Imran Chaudhry <ichaudhry@gmail.com>, 679830@bugs.debian.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Bug#679830: linux-image-2.6.32-5-686: Kernel bug observed in
+ syslog when performing an rsync operation.
+Date: Sun, 22 Jul 2012 19:33:53 -0400
+Message-ID: <20120722233353.GC9958@thunk.org>
+References: <20120701221420.1784.81013.reportbug@altair.ejectdisc.net>
+ <1342932566.11373.229.camel@deadeye.wl.decadent.org.uk>
+ <CABpWkk_4=E=GMY5MhyD9ysyUSr=3F=aCqAxQ_07g5s9N8KQhjg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary=485b393aab737e4b8804c5689059
-Cc: Akinobu Mita <akinobu.mita@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>, 679830@bugs.debian.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Ben Hutchings <ben@decadent.org.uk>,
+	Akinobu Mita <akinobu.mita@gmail.com>, 679830@bugs.debian.org,
 	linux-ext4@vger.kernel.org
-To: Ben Hutchings <ben@decadent.org.uk>
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.679830.B679830.134295280523047@bugs.debian.org>
-In-Reply-To: <1342932566.11373.229.camel@deadeye.wl.decadent.org.uk>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
-List-Id: linux-ext4.vger.kernel.org
+To: Imran Chaudhry <ichaudhry@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:40564 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752531Ab2GVXeE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Jul 2012 19:34:04 -0400
+Content-Disposition: inline
+In-Reply-To: <CABpWkk_4=E=GMY5MhyD9ysyUSr=3F=aCqAxQ_07g5s9N8KQhjg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---485b393aab737e4b8804c5689059
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+On Sun, Jul 22, 2012 at 11:26:18AM +0100, Imran Chaudhry wrote:
+> 
+> Thanks for your reply Ben.
+> 
+> As an aside, from what kernel version would you recommend use of ext4 in?
+> 
+> Maybe I should use (tried and rusted) ext3 for my backup devices. I
+> mentioned this problem in my local LUG and a couple of people reported
+> similar problems with ext4.
 
->
-> Sorry to hear this.  I cannot recommend using ext4 in Linux 2.6.32.
->
+There were a lot of important bug fixes were integrated in the oh,
+2.6.35 or 2.6.36.  Unfortunately, porting the necessary ext4 patches
+to 2.6.32 was very difficult, since some of the patches in question
+had prerequisites that involved fairly massive changes to the quota
+subsystem.
 
-Thanks for your reply Ben.
+An enterprise distro such as Red Hat could make the backports work,
+but it wasn't easy, and Red Hat by policy doesn't release its broken
+out patches, so it's hard for Oracle (and Debian) to profit by the
+yeoman work done by Eric Sandeen.  (Note, by the way, not his fault;
+blame Red Hat management.)
 
-As an aside, from what kernel version would you recommend use of ext4 in?
+As a result, I would strongly recommend that people use a more modern
+3.x kernel.
 
-Maybe I should use (tried and rusted) ext3 for my backup devices. I
-mentioned this problem in my local LUG and a couple of people reported
-similar problems with ext4.
+Since Debian Wheezy will be using a 3.2-based kernel, this problem
+will be addressed for the Debian stable users (hopefully!) soon.
 
---=20
-GPG Key fingerprint =3D B323 477E F6AB 4181 9C65  F637 BC5F 7FCC 9CC9 CC7F
+Regards,
 
-=E2=80=9CLive as if you were to die tomorrow. Learn as if you were to live
-forever.=E2=80=9D - Indian political and spiritual leader Mahatma Gandhi (1=
-869-1948)
-
---485b393aab737e4b8804c5689059
-Content-Type: text/html; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-
-<div class=3D"gmail_quote"><blockquote class=3D"gmail_quote" style=3D"margi=
-n:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">Sorry to hear thi=
-s. =C2=A0I cannot recommend using ext4 in Linux 2.6.32.<br></blockquote><di=
-v><br></div>
-
-<div>Thanks for your reply Ben.</div><div><br></div><div>As an aside, from =
-what kernel version would you recommend use of ext4 in?</div><div><br></div=
-><div>Maybe I should use (tried and rusted) ext3 for my backup devices. I m=
-entioned this problem in my local LUG and a couple of people reported simil=
-ar problems with ext4.</div>
-
-<div><br></div></div>-- <br>GPG Key fingerprint =3D B323 477E F6AB 4181 9C6=
-5=C2=A0 F637 BC5F 7FCC 9CC9 CC7F<br><br>=E2=80=9CLive as if you were to die=
- tomorrow. Learn as if you were to live forever.=E2=80=9D - Indian politica=
-l and spiritual leader Mahatma Gandhi (1869-1948)<br>
-
-
-
---485b393aab737e4b8804c5689059--
+						- Ted
