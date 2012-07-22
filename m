@@ -1,43 +1,192 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 03/10 v1][RESEND] ext4: initialize extent status tree
-Date: Sun, 22 Jul 2012 15:59:39 +0800
-Message-ID: <1342943986-12413-4-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 05/10 v1][RESEND] ext4: add some tracepoints in extent status tree
+Date: Sun, 22 Jul 2012 15:59:41 +0800
+Message-ID: <1342943986-12413-6-git-send-email-wenqing.lz@taobao.com>
 References: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com>
 Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
 	wenqing.lz@taobao.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:34290 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751153Ab2GVHvY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Jul 2012 03:51:24 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Let ext4 initialize extent status tree of an inode.
+This patch adds some tracepoints in extent status tree.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/super.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/ext4/extents_status.c    |    8 +++
+ include/trace/events/ext4.h |  101 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 109 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index eb7aa3e..7cd5e4f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -972,6 +972,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
-+	ext4_es_init_tree(&ei->i_es_tree);
- 	ei->i_reserved_data_blocks = 0;
- 	ei->i_reserved_meta_blocks = 0;
- 	ei->i_allocated_meta_blocks = 0;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index bd4e589..1c82340 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -10,6 +10,8 @@
+ #include "extents_status.h"
+ #include "ext4_extents.h"
+ 
++#include <trace/events/ext4.h>
++
+ /*
+  * extents status tree implementation for ext4.
+  *
+@@ -188,6 +190,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+ 	struct rb_node *node;
+ 	ext4_lblk_t ret = EXT_MAX_BLOCKS;
+ 
++	trace_ext4_es_find_extent_enter(inode, es->start);
++
+ 	es->len = 0;
+ 	tree = &EXT4_I(inode)->i_es_tree;
+ 	es1 = __es_tree_search(&tree->root, es->start);
+@@ -202,6 +206,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+ 		}
+ 	}
+ 
++	trace_ext4_es_find_extent_exit(inode, es, ret);
++
+ 	return ret;
+ }
+ 
+@@ -282,6 +288,7 @@ int ext4_es_add_space(struct inode *inode, ext4_lblk_t offset, ext4_lblk_t len)
+ 	BUG_ON(end <= offset);
+ 
+ 	es = tree->cache_es;
++	trace_ext4_es_add_space(inode, offset, len);
+ 	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
+ 		 offset, len, inode->i_ino);
+ 
+@@ -351,6 +358,7 @@ int ext4_es_remove_space(struct inode *inode, ext4_lblk_t offset,
+ 	struct extent_status orig_es;
+ 	ext4_lblk_t len1, len2, end;
+ 
++	trace_ext4_es_remove_space(inode, offset, len);
+ 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
+ 		 offset, len, inode->i_ino);
+ 
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 69d8a69..5c17592 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -15,6 +15,7 @@ struct ext4_inode_info;
+ struct mpage_da_data;
+ struct ext4_map_blocks;
+ struct ext4_extent;
++struct extent_status;
+ 
+ #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
+ 
+@@ -2055,6 +2056,106 @@ TRACE_EVENT(ext4_ext_remove_space_done,
+ 		  (unsigned short) __entry->eh_entries)
+ );
+ 
++TRACE_EVENT(ext4_es_add_space,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
++
++	TP_ARGS(inode, start, len),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	loff_t,	start			)
++		__field(	loff_t, len			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++		__entry->len	= len;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len)
++);
++
++TRACE_EVENT(ext4_es_remove_space,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
++
++	TP_ARGS(inode, start, len),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	loff_t,	start			)
++		__field(	loff_t,	len			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++		__entry->len	= len;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len)
++);
++
++TRACE_EVENT(ext4_es_find_extent_enter,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start),
++
++	TP_ARGS(inode, start),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	start		)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++	),
++
++	TP_printk("dev %d,%d ino %lu start %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino, __entry->start)
++);
++
++TRACE_EVENT(ext4_es_find_extent_exit,
++	TP_PROTO(struct inode *inode, struct extent_status *es,
++		 ext4_lblk_t ret),
++
++	TP_ARGS(inode, es, ret),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	start		)
++		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_lblk_t,	ret		)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= es->start;
++		__entry->len	= es->len;
++		__entry->ret	= ret;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%u/%u) ret %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len, __entry->ret)
++);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
 -- 
 1.7.4.1
 
