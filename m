@@ -1,320 +1,83 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 6/10 v1] ext4: reimplement ext4_find_delay_alloc_range on extent status tree
-Date: Sun, 22 Jul 2012 15:46:04 +0800
-Message-ID: <1342943167-12153-8-git-send-email-wenqing.lz@taobao.com>
-References: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 00/10 v1][RESEND] ext4: extent status tree (step 1)
+Date: Sun, 22 Jul 2012 15:59:36 +0800
+Message-ID: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com>
 Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
 	wenqing.lz@taobao.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+[Sorry, it is my fault because the title of patches is out of order.  So I
+re-send this patch set]
 
-ext4_find_delay_alloc_range is reimplemented on extent status tree.
+Hi all,
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/ext4.h         |    4 --
- fs/ext4/ext4_extents.h |    3 +-
- fs/ext4/extents.c      |  112 +++++------------------------------------------
- fs/ext4/inode.c        |   53 +----------------------
- 4 files changed, 14 insertions(+), 158 deletions(-)
+As these links described and discussed [1-3], this is my first try to implement
+extent status tree in ext4.  Although now maybe it is not perfect, I think that
+it should be sent out as soon as possible because some one can review these
+patches earlier and give me some feedbacks.  So I really appreciate if you can
+review and comment this patch set.  Thanks.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c0fe23e..f64b471 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2433,14 +2433,10 @@ enum ext4_state_bits {
- 				 * never, ever appear in a buffer_head's state
- 				 * flag. See EXT4_MAP_FROM_CLUSTER to see where
- 				 * this is used. */
--	BH_Da_Mapped,	/* Delayed allocated block that now has a mapping. This
--			 * flag is set when ext4_map_blocks is called on a
--			 * delayed allocated block to get its real mapping. */
- };
- 
- BUFFER_FNS(Uninit, uninit)
- TAS_BUFFER_FNS(Uninit, uninit)
--BUFFER_FNS(Da_Mapped, da_mapped)
- 
- /*
-  * Add new method to test wether block and inode bitmaps are properly
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index cb1b2c9..603bb11 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -314,7 +314,6 @@ extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
- 							struct ext4_ext_path *);
- extern void ext4_ext_drop_refs(struct ext4_ext_path *);
- extern int ext4_ext_check_inode(struct inode *inode);
--extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
--				      int search_hint_reverse);
-+extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
- #endif /* _EXT4_EXTENTS */
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 06ca2a3..f2c5294 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3394,115 +3394,27 @@ out:
- /**
-  * ext4_find_delalloc_range: find delayed allocated block in the given range.
-  *
-- * Goes through the buffer heads in the range [lblk_start, lblk_end] and returns
-- * whether there are any buffers marked for delayed allocation. It returns '1'
-- * on the first delalloc'ed buffer head found. If no buffer head in the given
-- * range is marked for delalloc, it returns 0.
-- * lblk_start should always be <= lblk_end.
-- * search_hint_reverse is to indicate that searching in reverse from lblk_end to
-- * lblk_start might be more efficient (i.e., we will likely hit the delalloc'ed
-- * block sooner). This is useful when blocks are truncated sequentially from
-- * lblk_start towards lblk_end.
-+ * Return 1 if there is a delalloc block in the range, otherwise 0.
-  */
- static int ext4_find_delalloc_range(struct inode *inode,
- 				    ext4_lblk_t lblk_start,
--				    ext4_lblk_t lblk_end,
--				    int search_hint_reverse)
-+				    ext4_lblk_t lblk_end)
- {
--	struct address_space *mapping = inode->i_mapping;
--	struct buffer_head *head, *bh = NULL;
--	struct page *page;
--	ext4_lblk_t i, pg_lblk;
--	pgoff_t index;
--
--	if (!test_opt(inode->i_sb, DELALLOC))
--		return 0;
--
--	/* reverse search wont work if fs block size is less than page size */
--	if (inode->i_blkbits < PAGE_CACHE_SHIFT)
--		search_hint_reverse = 0;
--
--	if (search_hint_reverse)
--		i = lblk_end;
--	else
--		i = lblk_start;
--
--	index = i >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
--
--	while ((i >= lblk_start) && (i <= lblk_end)) {
--		page = find_get_page(mapping, index);
--		if (!page)
--			goto nextpage;
--
--		if (!page_has_buffers(page))
--			goto nextpage;
--
--		head = page_buffers(page);
--		if (!head)
--			goto nextpage;
--
--		bh = head;
--		pg_lblk = index << (PAGE_CACHE_SHIFT -
--						inode->i_blkbits);
--		do {
--			if (unlikely(pg_lblk < lblk_start)) {
--				/*
--				 * This is possible when fs block size is less
--				 * than page size and our cluster starts/ends in
--				 * middle of the page. So we need to skip the
--				 * initial few blocks till we reach the 'lblk'
--				 */
--				pg_lblk++;
--				continue;
--			}
--
--			/* Check if the buffer is delayed allocated and that it
--			 * is not yet mapped. (when da-buffers are mapped during
--			 * their writeout, their da_mapped bit is set.)
--			 */
--			if (buffer_delay(bh) && !buffer_da_mapped(bh)) {
--				page_cache_release(page);
--				trace_ext4_find_delalloc_range(inode,
--						lblk_start, lblk_end,
--						search_hint_reverse,
--						1, i);
--				return 1;
--			}
--			if (search_hint_reverse)
--				i--;
--			else
--				i++;
--		} while ((i >= lblk_start) && (i <= lblk_end) &&
--				((bh = bh->b_this_page) != head));
--nextpage:
--		if (page)
--			page_cache_release(page);
--		/*
--		 * Move to next page. 'i' will be the first lblk in the next
--		 * page.
--		 */
--		if (search_hint_reverse)
--			index--;
--		else
--			index++;
--		i = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
--	}
-+	struct extent_status es;
- 
--	trace_ext4_find_delalloc_range(inode, lblk_start, lblk_end,
--					search_hint_reverse, 0, 0);
--	return 0;
-+	es.start = lblk_start;
-+	ext4_es_find_extent(inode, &es);
-+	return (es.start + es.len) >= lblk_end && es.start <= lblk_start;
- }
- 
--int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
--			       int search_hint_reverse)
-+int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_lblk_t lblk_start, lblk_end;
- 	lblk_start = lblk & (~(sbi->s_cluster_ratio - 1));
- 	lblk_end = lblk_start + sbi->s_cluster_ratio - 1;
- 
--	return ext4_find_delalloc_range(inode, lblk_start, lblk_end,
--					search_hint_reverse);
-+	return ext4_find_delalloc_range(inode, lblk_start, lblk_end);
- }
- 
- /**
-@@ -3563,7 +3475,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 		lblk_from = lblk_start & (~(sbi->s_cluster_ratio - 1));
- 		lblk_to = lblk_from + c_offset - 1;
- 
--		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
-+		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to))
- 			allocated_clusters--;
- 	}
- 
-@@ -3573,7 +3485,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
- 		lblk_from = lblk_start + num_blks;
- 		lblk_to = lblk_from + (sbi->s_cluster_ratio - c_offset) - 1;
- 
--		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
-+		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to))
- 			allocated_clusters--;
- 	}
- 
-@@ -3857,7 +3769,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
- 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
- 			if ((sbi->s_cluster_ratio > 1) &&
--			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-+			    ext4_find_delalloc_cluster(inode, map->m_lblk))
- 				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 
- 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-@@ -3945,7 +3857,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	if ((sbi->s_cluster_ratio > 1) &&
--	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
-+	    ext4_find_delalloc_cluster(inode, map->m_lblk))
- 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
- 
- 	/*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2f82630..2d6d93e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -467,49 +467,6 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
- }
- 
- /*
-- * Sets the BH_Da_Mapped bit on the buffer heads corresponding to the given map.
-- */
--static void set_buffers_da_mapped(struct inode *inode,
--				   struct ext4_map_blocks *map)
--{
--	struct address_space *mapping = inode->i_mapping;
--	struct pagevec pvec;
--	int i, nr_pages;
--	pgoff_t index, end;
--
--	index = map->m_lblk >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
--	end = (map->m_lblk + map->m_len - 1) >>
--		(PAGE_CACHE_SHIFT - inode->i_blkbits);
--
--	pagevec_init(&pvec, 0);
--	while (index <= end) {
--		nr_pages = pagevec_lookup(&pvec, mapping, index,
--					  min(end - index + 1,
--					      (pgoff_t)PAGEVEC_SIZE));
--		if (nr_pages == 0)
--			break;
--		for (i = 0; i < nr_pages; i++) {
--			struct page *page = pvec.pages[i];
--			struct buffer_head *bh, *head;
--
--			if (unlikely(page->mapping != mapping) ||
--			    !PageDirty(page))
--				break;
--
--			if (page_has_buffers(page)) {
--				bh = head = page_buffers(page);
--				do {
--					set_buffer_da_mapped(bh);
--					bh = bh->b_this_page;
--				} while (bh != head);
--			}
--			index++;
--		}
--		pagevec_release(&pvec);
--	}
--}
--
--/*
-  * The ext4_map_blocks() function tries to look up the requested blocks,
-  * and returns if the blocks are already mapped.
-  *
-@@ -642,13 +599,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
- 		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
- 
--		/* If we have successfully mapped the delayed allocated blocks,
--		 * set the BH_Da_Mapped bit on them. Its important to do this
--		 * under the protection of i_data_sem.
--		 */
- 		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
- 			int ret;
--			set_buffers_da_mapped(inode, map);
- delayed_mapped:
- 			/* delayed allocation blocks has been allocated */
- 			ret = ext4_es_remove_space(inode, map->m_lblk,
-@@ -1296,7 +1248,6 @@ static void ext4_da_page_release_reservation(struct page *page,
- 		if ((offset <= curr_off) && (buffer_delay(bh))) {
- 			to_release++;
- 			clear_buffer_delay(bh);
--			clear_buffer_da_mapped(bh);
- 		}
- 		curr_off = next_off;
- 	} while ((bh = bh->b_this_page) != head);
-@@ -1309,7 +1260,7 @@ static void ext4_da_page_release_reservation(struct page *page,
- 		lblk = (page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits)) +
- 			((num_clusters - 1) << sbi->s_cluster_bits);
- 		if (sbi->s_cluster_ratio == 1 ||
--		    !ext4_find_delalloc_cluster(inode, lblk, 1))
-+		    !ext4_find_delalloc_cluster(inode, lblk))
- 			ext4_da_release_space(inode, 1);
- 
- 		num_clusters--;
-@@ -1415,8 +1366,6 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
- 						clear_buffer_delay(bh);
- 						bh->b_blocknr = pblock;
- 					}
--					if (buffer_da_mapped(bh))
--						clear_buffer_da_mapped(bh);
- 					if (buffer_unwritten(bh) ||
- 					    buffer_mapped(bh))
- 						BUG_ON(bh->b_blocknr != pblock);
--- 
-1.7.4.1
+This patch set is based-on Yongqiang's and Allison's work.  Thank you for your
+excellent work.  Meanwhile I don't change its name from extent status tree to io
+tree.  If most developers think that we should change it, I will fix it in next
+version.  As previous discussion, extent status tree will bring a lot of
+benifits for us, which includes bug fix, improvements and range locking.  In
+first step, this patch set aims at improving fiemap implementation and quota
+reservation in bigalloc, simplifying punching hole implementation, and
+introducing SEEK_DATA/SEEK_HOLE support.
 
+Extent status tree is used to identify a delay extent in ext4.  It aims at
+providing a efficient method to lookup some blocks whether these blocks are
+belong to a delay extent or not.  If without extent status tree, ext4 needs to
+lookup page cache.  So it is too complicated and inefficient.  About the
+detailed information, please feel free to see the second patch.  In comment of
+the head of this patch it describes the extent status tree in detailed.
+
+Patch [1-5]:
+  Extent status tree is added in ext4 in order to identify a delay extent.
+Patch [6]:
+  Fiemap is re-implemented.  Now we only need to lookup extent status tree to
+  find a delay extent rather than lookup page cache.
+Patch [7]:
+  ext4_find_delay_alloc_range is reworked using extent status tree to avoid to
+  lookup page cache.
+Patch [8]:
+  Introduce lseek SEEK_DATA/SEEK_HOLE support.
+Patch [9-10]:
+  Avoid writeot all dirty pages in punching a hole, and add two tracepoints in
+  ext4_ext_punch_hole
+
+1. http://www.spinics.net/lists/linux-ext4/msg31742.html
+2. http://www.spinics.net/lists/linux-ext4/msg32661.html
+3. http://www.spinics.net/lists/linux-ext4/msg30281.html
+
+Regards,
+Zheng
+
+Zheng Liu (10):
+      ext4: add two structures supporting extent status tree
+      ext4: add operations on extent status tree
+      ext4: initialize extent status tree
+      ext4: let ext4 maintain extent status tree
+      ext4: add some tracepoints in extent status tree
+      ext4: reimplement fiemap on extent status tree
+      ext4: reimplement ext4_find_delay_alloc_range on extent status tree
+      ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
+      ext4: don't need to writeout all dirty pages in punch hole
+      ext4: add two tracepoints in punching hole
+
+ fs/ext4/Makefile            |    2 +-
+ fs/ext4/ext4.h              |   10 +-
+ fs/ext4/ext4_extents.h      |    3 +-
+ fs/ext4/extents.c           |  331 ++++++----------------------------
+ fs/ext4/extents_status.c    |  426 +++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.h    |   39 ++++
+ fs/ext4/file.c              |  152 +++++++++++++++-
+ fs/ext4/indirect.c          |    4 +-
+ fs/ext4/inode.c             |   83 +++------
+ fs/ext4/super.c             |   13 ++-
+ include/trace/events/ext4.h |  154 ++++++++++++++++
+ 11 files changed, 874 insertions(+), 343 deletions(-)
