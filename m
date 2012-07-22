@@ -1,85 +1,80 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 1/10 v1] ext4: add two structures supporting extent status tree
-Date: Sun, 22 Jul 2012 15:45:58 +0800
-Message-ID: <1342943167-12153-2-git-send-email-wenqing.lz@taobao.com>
-References: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 0/10 v1] ext4: extent status tree (step 1)
+Date: Sun, 22 Jul 2012 15:45:57 +0800
+Message-ID: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
 Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
 	wenqing.lz@taobao.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:36677 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750923Ab2GVHiH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Jul 2012 03:38:07 -0400
-In-Reply-To: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+Hi all,
 
-This patch adds two structures that supports status extent tree and
-status_extent_info to inode_info.
+As these links described and discussed [1-3], this is my first try to implement
+extent status tree in ext4.  Although now maybe it is not perfect, I think that
+it should be sent out as soon as possible because some one can review these
+patches earlier and give me some feedbacks.  So I really appreciate if you can
+review and comment this patch set.  Thanks.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/ext4.h           |    5 +++++
- fs/ext4/extents_status.h |   22 ++++++++++++++++++++++
- 2 files changed, 27 insertions(+), 0 deletions(-)
- create mode 100644 fs/ext4/extents_status.h
+This patch set is based-on Yongqiang's and Allison's work.  Thank you for your
+excellent work.  Meanwhile I don't change its name from extent status tree to io
+tree.  If most developers think that we should change it, I will fix it in next
+version.  As previous discussion, extent status tree will bring a lot of
+benifits for us, which includes bug fix, improvements and range locking.  In
+first step, this patch set aims at improving fiemap implementation and quota
+reservation in bigalloc, simplifying punching hole implementation, and
+introducing SEEK_DATA/SEEK_HOLE support.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cfc4e01..c0fe23e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -810,6 +810,8 @@ struct ext4_ext_cache {
- 	__u32		ec_len; /* must be 32bit to return holes */
- };
- 
-+#include "extents_status.h"
-+
- /*
-  * fourth extended file system inode data in memory
-  */
-@@ -887,6 +889,9 @@ struct ext4_inode_info {
- 	struct list_head i_prealloc_list;
- 	spinlock_t i_prealloc_lock;
- 
-+	/* extents status tree */
-+	struct ext4_es_tree i_es_tree;
-+
- 	/* ialloc */
- 	ext4_group_t	i_last_alloc_group;
- 
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-new file mode 100644
-index 0000000..d87fd71
---- /dev/null
-+++ b/fs/ext4/extents_status.h
-@@ -0,0 +1,22 @@
-+/*
-+ *  fs/ext4/extents_status.h
-+ *
-+ * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
-+ *
-+ */
-+
-+#ifndef _EXT4_EXTENTS_STATUS_H
-+#define _EXT4_EXTENTS_STATUS_H
-+
-+struct extent_status {
-+	struct rb_node rb_node;
-+	ext4_lblk_t start;	/* first block extent covers */
-+	ext4_lblk_t len;	/* length of extent in block */
-+};
-+
-+struct ext4_es_tree {
-+	struct rb_root root;
-+	struct extent_status *cache_es;	/* recently accessed extent */
-+};
-+
-+#endif /* _EXT4_EXTENTS_STATUS_H */
--- 
-1.7.4.1
+Extent status tree is used to identify a delay extent in ext4.  It aims at
+providing a efficient method to lookup some blocks whether these blocks are
+belong to a delay extent or not.  If without extent status tree, ext4 needs to
+lookup page cache.  So it is too complicated and inefficient.  About the
+detailed information, please feel free to see the second patch.  In comment of
+the head of this patch it describes the extent status tree in detailed.
 
+Patch [1-5]:
+  Extent status tree is added in ext4 in order to identify a delay extent.
+Patch [6]:
+  Fiemap is re-implemented.  Now we only need to lookup extent status tree to
+  find a delay extent rather than lookup page cache.
+Patch [7]:
+  ext4_find_delay_alloc_range is reworked using extent status tree to avoid to
+  lookup page cache.
+Patch [8]:
+  Introduce lseek SEEK_DATA/SEEK_HOLE support.
+Patch [9-10]:
+  Avoid writeot all dirty pages in punching a hole, and add two tracepoints in
+  ext4_ext_punch_hole
+
+1. http://www.spinics.net/lists/linux-ext4/msg31742.html
+2. http://www.spinics.net/lists/linux-ext4/msg32661.html
+3. http://www.spinics.net/lists/linux-ext4/msg30281.html
+
+Regards,
+Zheng
+
+Zheng Liu (10):
+      ext4: add two structures supporting extent status tree
+      ext4: add operations on extent status tree
+      ext4: initialize extent status tree
+      ext4: let ext4 maintain extent status tree
+      ext4: add some tracepoints in extent status tree
+      ext4: reimplement fiemap on extent status tree
+      ext4: reimplement ext4_find_delay_alloc_range on extent status tree
+      ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
+      ext4: don't need to writeout all dirty pages in punch hole
+      ext4: add two tracepoints in punching hole
+
+ fs/ext4/Makefile            |    2 +-
+ fs/ext4/ext4.h              |   10 +-
+ fs/ext4/ext4_extents.h      |    3 +-
+ fs/ext4/extents.c           |  331 ++++++----------------------------
+ fs/ext4/extents_status.c    |  426 +++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.h    |   39 ++++
+ fs/ext4/file.c              |  152 +++++++++++++++-
+ fs/ext4/indirect.c          |    4 +-
+ fs/ext4/inode.c             |   83 +++------
+ fs/ext4/super.c             |   13 ++-
+ include/trace/events/ext4.h |  154 ++++++++++++++++
+ 11 files changed, 874 insertions(+), 343 deletions(-)
