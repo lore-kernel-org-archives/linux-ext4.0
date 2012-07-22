@@ -1,177 +1,192 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 4/6] ext4: let ext4 maintain extent status tree
-Date: Sun, 22 Jul 2012 15:46:01 +0800
-Message-ID: <1342943167-12153-5-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 05/10 v1] ext4: add some tracepoints in extent status tree
+Date: Sun, 22 Jul 2012 15:46:02 +0800
+Message-ID: <1342943167-12153-6-git-send-email-wenqing.lz@taobao.com>
 References: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
 Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
 	wenqing.lz@taobao.com
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:36677 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751107Ab2GVHiO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Jul 2012 03:38:14 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1342943167-12153-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This patch lets ext4 maintain extent status tree.
+This patch adds some tracepoints in extent status tree.
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents.c  |    2 ++
- fs/ext4/indirect.c |    3 +++
- fs/ext4/inode.c    |   30 ++++++++++++++++++++++++++++--
- fs/ext4/super.c    |   12 +++++++++++-
- 4 files changed, 44 insertions(+), 3 deletions(-)
+ fs/ext4/extents_status.c    |    8 +++
+ include/trace/events/ext4.h |  101 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 109 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91341ec..0747917 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4270,6 +4270,8 @@ void ext4_ext_truncate(struct inode *inode)
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index bd4e589..1c82340 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -10,6 +10,8 @@
+ #include "extents_status.h"
+ #include "ext4_extents.h"
  
- 	last_block = (inode->i_size + sb->s_blocksize - 1)
- 			>> EXT4_BLOCK_SIZE_BITS(sb);
-+	err = ext4_es_remove_space(inode, last_block,
-+				   EXT_MAX_BLOCKS - last_block);
- 	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
- 
- 	/* In a multi-transaction truncate, we only make the final
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 830e1b2..e190427 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -21,6 +21,7 @@
-  */
- 
- #include "ext4_jbd2.h"
-+#include "ext4_extents.h"
- #include "truncate.h"
- 
- #include <trace/events/ext4.h>
-@@ -1398,6 +1399,8 @@ void ext4_ind_truncate(struct inode *inode)
- 	down_write(&ei->i_data_sem);
- 
- 	ext4_discard_preallocations(inode);
-+	ext4_es_remove_space(inode, last_block,
-+			     EXT_MAX_BLOCKS - last_block);
- 
- 	/*
- 	 * The orphan list entry will now protect us from any crash which
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 02bc8cb..2f82630 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -555,7 +555,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
--		int ret = check_block_validity(inode, map);
-+		int ret;
-+		if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
-+			/* delayed alloc may be allocated by fallocate and
-+			 * coverted to initialized by directIO.
-+			 * we need to handle delayed extent here.
-+			 */
-+			down_write((&EXT4_I(inode)->i_data_sem));
-+			goto delayed_mapped;
-+		}
-+		ret = check_block_validity(inode, map);
- 		if (ret != 0)
- 			return ret;
- 	}
-@@ -637,8 +646,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		 * set the BH_Da_Mapped bit on them. Its important to do this
- 		 * under the protection of i_data_sem.
- 		 */
--		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED)
-+		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-+			int ret;
- 			set_buffers_da_mapped(inode, map);
-+delayed_mapped:
-+			/* delayed allocation blocks has been allocated */
-+			ret = ext4_es_remove_space(inode, map->m_lblk,
-+						   map->m_len);
-+			if (ret < 0)
-+				retval = ret;
-+		}
- 	}
- 
- 	up_write((&EXT4_I(inode)->i_data_sem));
-@@ -1750,6 +1767,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 			      struct buffer_head *bh)
- {
- 	int retval;
-+	int ret;
- 	sector_t invalid_block = ~((sector_t) 0xffff);
- 
- 	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
-@@ -1796,6 +1814,14 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- out_unlock:
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
-+	if (retval == 0) {
-+		down_write((&EXT4_I(inode)->i_data_sem));
-+		ret = ext4_es_add_space(inode, map->m_lblk, map->m_len);
-+		up_write((&EXT4_I(inode)->i_data_sem));
-+		if (ret)
-+			return ret;
-+	}
++#include <trace/events/ext4.h>
 +
- 	return retval;
+ /*
+  * extents status tree implementation for ext4.
+  *
+@@ -188,6 +190,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+ 	struct rb_node *node;
+ 	ext4_lblk_t ret = EXT_MAX_BLOCKS;
+ 
++	trace_ext4_es_find_extent_enter(inode, es->start);
++
+ 	es->len = 0;
+ 	tree = &EXT4_I(inode)->i_es_tree;
+ 	es1 = __es_tree_search(&tree->root, es->start);
+@@ -202,6 +206,8 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+ 		}
+ 	}
+ 
++	trace_ext4_es_find_extent_exit(inode, es, ret);
++
+ 	return ret;
  }
  
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7cd5e4f..6f97c47 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -50,6 +50,7 @@
- #include "xattr.h"
- #include "acl.h"
- #include "mballoc.h"
-+#include "ext4_extents.h"
+@@ -282,6 +288,7 @@ int ext4_es_add_space(struct inode *inode, ext4_lblk_t offset, ext4_lblk_t len)
+ 	BUG_ON(end <= offset);
  
- #define CREATE_TRACE_POINTS
- #include <trace/events/ext4.h>
-@@ -1056,6 +1057,7 @@ void ext4_clear_inode(struct inode *inode)
- 	clear_inode(inode);
- 	dquot_drop(inode);
- 	ext4_discard_preallocations(inode);
-+	ext4_es_remove_space(inode, 0, EXT_MAX_BLOCKS);
- 	if (EXT4_I(inode)->jinode) {
- 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
- 					       EXT4_I(inode)->jinode);
-@@ -5080,9 +5082,14 @@ static int __init ext4_init_fs(void)
- 		init_waitqueue_head(&ext4__ioend_wq[i]);
- 	}
+ 	es = tree->cache_es;
++	trace_ext4_es_add_space(inode, offset, len);
+ 	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
+ 		 offset, len, inode->i_ino);
  
--	err = ext4_init_pageio();
-+	err = ext4_init_es();
- 	if (err)
- 		return err;
-+
-+	err = ext4_init_pageio();
-+	if (err)
-+		goto out7;
-+
- 	err = ext4_init_system_zone();
- 	if (err)
- 		goto out6;
-@@ -5130,6 +5137,9 @@ out5:
- 	ext4_exit_system_zone();
- out6:
- 	ext4_exit_pageio();
-+out7:
-+	ext4_exit_es();
-+
- 	return err;
- }
+@@ -351,6 +358,7 @@ int ext4_es_remove_space(struct inode *inode, ext4_lblk_t offset,
+ 	struct extent_status orig_es;
+ 	ext4_lblk_t len1, len2, end;
  
++	trace_ext4_es_remove_space(inode, offset, len);
+ 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
+ 		 offset, len, inode->i_ino);
+ 
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 69d8a69..5c17592 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -15,6 +15,7 @@ struct ext4_inode_info;
+ struct mpage_da_data;
+ struct ext4_map_blocks;
+ struct ext4_extent;
++struct extent_status;
+ 
+ #define EXT4_I(inode) (container_of(inode, struct ext4_inode_info, vfs_inode))
+ 
+@@ -2055,6 +2056,106 @@ TRACE_EVENT(ext4_ext_remove_space_done,
+ 		  (unsigned short) __entry->eh_entries)
+ );
+ 
++TRACE_EVENT(ext4_es_add_space,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
++
++	TP_ARGS(inode, start, len),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	loff_t,	start			)
++		__field(	loff_t, len			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++		__entry->len	= len;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len)
++);
++
++TRACE_EVENT(ext4_es_remove_space,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t len),
++
++	TP_ARGS(inode, start, len),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	ino_t,	ino			)
++		__field(	loff_t,	start			)
++		__field(	loff_t,	len			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++		__entry->len	= len;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len)
++);
++
++TRACE_EVENT(ext4_es_find_extent_enter,
++	TP_PROTO(struct inode *inode, ext4_lblk_t start),
++
++	TP_ARGS(inode, start),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	start		)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= start;
++	),
++
++	TP_printk("dev %d,%d ino %lu start %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino, __entry->start)
++);
++
++TRACE_EVENT(ext4_es_find_extent_exit,
++	TP_PROTO(struct inode *inode, struct extent_status *es,
++		 ext4_lblk_t ret),
++
++	TP_ARGS(inode, es, ret),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	start		)
++		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_lblk_t,	ret		)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= inode->i_sb->s_dev;
++		__entry->ino	= inode->i_ino;
++		__entry->start	= es->start;
++		__entry->len	= es->len;
++		__entry->ret	= ret;
++	),
++
++	TP_printk("dev %d,%d ino %lu es [%u/%u) ret %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->start, __entry->len, __entry->ret)
++);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
 -- 
 1.7.4.1
 
