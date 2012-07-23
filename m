@@ -1,48 +1,71 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] ext4: fix hole punch failure when depth is greater
- than 0
-Date: Sun, 22 Jul 2012 20:34:40 -0400
-Message-ID: <20120723003440.GG9958@thunk.org>
-References: <1341937570-5229-1-git-send-email-ashish.sangwan2@gmail.com>
+Subject: Re: [RFC PATCH 1/2] ext4: warn on delalloc md block allocation
+ without reservation
+Date: Mon, 23 Jul 2012 00:00:11 -0400
+Message-ID: <20120723040011.GA17588@thunk.org>
+References: <4F79C245.8010101@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	lczerner@redhat.com, Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Brian Foster <bfoster@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40590 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:40605 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752759Ab2GWAes (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Jul 2012 20:34:48 -0400
+	id S1750704Ab2GWEAP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jul 2012 00:00:15 -0400
 Content-Disposition: inline
-In-Reply-To: <1341937570-5229-1-git-send-email-ashish.sangwan2@gmail.com>
+In-Reply-To: <4F79C245.8010101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 10, 2012 at 09:56:10PM +0530, Ashish Sangwan wrote:
-> Whether to continue removing extents or not is decided by the return value
-> of function ext4_ext_more_to_rm() which checks 2 conditions:
-> a) if there are no more indexes to process.
-> b) if the number of entries are decreased in the header of "depth -1".
+On Mon, Apr 02, 2012 at 11:14:13AM -0400, Brian Foster wrote:
+> From: Brian Foster <bfoster@redhat.com>
 > 
-> In case of hole punch, if the last block to be removed is not part of the
-> last extent index than this index will not be deleted, hence the number of
-> valid entries in the extent header of "depth - 1" will remain as it is and
-> ext4_ext_more_to_rm will return 0 although the required blocks are not
-> yet removed.
+> If we hit a condition where we have allocated metadata blocks that
+> were not appropriately reserved, we risk underflow of
+> ei->i_reserved_meta_blocks. In turn, this can throw
+> sbi->s_dirtyclusters_counter significantly out of whack and undermine
+> the nondelalloc fallback logic in ext4_nonda_switch(). Warn if this
+> occurs and fix up the counter to handle only what we've reserved.
+> This condition is reproduced by xfstests 270 against ext2 with
+> delalloc enabled.
 > 
-> This patch fixes the above mentioned problem as instead of removing the
-> extents from the end of file, it starts removing the blocks from the
-> particular extent from which removing blocks is actually required and
-> continue backward until done.
-> 
-> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Brian Foster <bfoster@redhat.com>
 
-Applied, with a cc: to stable@kernel.org since it is a bug fix.
+Hi Brian,
 
-Thanks for submitting this patch!
+Thanks for looking into this xfstests failure and proposing a bug fix.
+My apologies for not getting back to you until now.
 
-	      	       			       	  - Ted
+I modified your commit description a little, but the patch looks good
+to me.
+
+  	   	       		    	    - Ted
+
+Author: Brian Foster <bfoster@redhat.com>
+Date:   Sun Jul 22 23:59:40 2012 -0400
+
+    ext4: don't let i_reserved_meta_blocks go negative
+    
+    If we hit a condition where we have allocated metadata blocks that
+    were not appropriately reserved, we risk underflow of
+    ei->i_reserved_meta_blocks.  In turn, this can throw
+    sbi->s_dirtyclusters_counter significantly out of whack and undermine
+    the nondelalloc fallback logic in ext4_nonda_switch().  Warn if this
+    occurs and set i_allocated_meta_blocks to avoid this problem.
+    
+    This condition is reproduced by xfstests 270 against ext2 with
+    delalloc enabled:
+    
+    Mar 28 08:58:02 localhost kernel: [  171.526344] EXT4-fs (loop1): delayed blo
+    Mar 28 08:58:02 localhost kernel: [  171.526346] EXT4-fs (loop1): This should
+    
+    270 ultimately fails with an inconsistent filesystem and requires an
+    fsck to repair.  The cause of the error is an underflow in
+    ext4_da_update_reserve_space() due to an unreserved meta block
+    allocation.
+    
+    Signed-off-by: Brian Foster <bfoster@redhat.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+    Cc: stable@vger.kernel.org
+
