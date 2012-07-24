@@ -1,60 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] jbd2: don't write superblock when unmounting an ro filesystem
-Date: Tue, 24 Jul 2012 17:18:42 -0500
-Message-ID: <500F1F42.5010209@redhat.com>
-References: <500F1C28.8010800@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PULL REQUEST] UDF, ext3, isofs fixes for 3.6-rc1
+Date: Wed, 25 Jul 2012 00:31:17 +0200
+Message-ID: <20120724223117.GA9508@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17147 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754357Ab2GXWSp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jul 2012 18:18:45 -0400
-In-Reply-To: <500F1C28.8010800@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 7/24/12 5:05 PM, Eric Sandeen wrote:
-> This sequence:
-> 
-> # truncate --size=65536 fsfile
-> # losetup --offset 65536 /dev/loop0 fsfile 
-> # mkfs.ext4 /dev/loop0 
-> # losetup -d /dev/loop0
-> # mount -o loop,ro,offset=65536 fsfile  mnt/
-> # umount mnt
-> # dmesg | tail
-> 
-> results in an IO error when unmounting the RO filesystem:
-> 
-> [  312.386074] SELinux: initialized (dev loop1, type ext4), uses xattr
-> [  318.020828] Buffer I/O error on device loop1, logical block 196608
-> [  318.027024] lost page write due to I/O error on loop1
-> [  318.032088] JBD2: Error -5 detected when updating journal superblock for loop1-8.
-> 
-> This behavior changed with:
-> 
-> commit 24bcc89c7e7c64982e6192b4952a0a92379fc341
-> Author: Jan Kara <jack@suse.cz>
-> Date:   Tue Mar 13 15:41:04 2012 -0400
-> 
->     jbd2: split updating of journal superblock and marking journal empty
-> 
-> which lost some of the magic in jbd2_journal_update_superblock() which
-> used to test for a journal with no outstanding transactions.
-> 
-> I'm not sure if the following is quite the right approach, but it fixes
-> it for me.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> p.s. no idea why this only happens if I use a loop device with an offset!
+  Hello Linus,
 
-PEBKAC.  no-offset ro loop mount does the same.
+  could you please pull from
 
--Eric
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
 
+To get assorted, mostly trivial fixes, for udf, ext2, ext3, and isofs. I'm
+on vacation and scarcely checking email since we are expecting baby any day
+now but these fixes should be safe to go in and I don't want to delay them
+unnecessarily.
+
+Top of the tree is 0143fc5. The full shortlog is:
+
+Artem Bityutskiy (1):
+      udf: stop using s_dirt
+
+Ashish Sangwan (1):
+      UDF: Remove unnecessary variable "offset" from udf_fill_inode
+
+Eric Sandeen (1):
+      ext3: force ro mount if ext3_setup_super() fails
+
+Jan Kara (5):
+      udf: Fix memory leak when mounting
+      udf: Do not decrement i_blocks when freeing indirect extent block
+      jbd: Check return value of blkdev_issue_flush()
+      ext3: Check return value of blkdev_issue_flush()
+      udf: Improve table length check to avoid possible overflow
+
+Jeff Liu (1):
+      quota: fix checkpatch.pl warning by replacing <asm/uaccess.h> with <linux/uaccess.h>
+
+Mathias Krause (2):
+      isofs: avoid info leak on export
+      udf: avoid info leak on export
+
+Wanlong Gao (1):
+      ext2: cleanup the confused goto label
+
+The diffstat is
+
+ fs/ext2/super.c   |    6 +-
+ fs/ext3/fsync.c   |    9 +++-
+ fs/ext3/super.c   |    3 +-
+ fs/isofs/export.c |    1 +
+ fs/jbd/recovery.c |    7 ++-
+ fs/quota/dquot.c  |    2 +-
+ fs/quota/quota.c  |    2 +-
+ fs/udf/inode.c    |    4 --
+ fs/udf/namei.c    |    1 +
+ fs/udf/super.c    |  130 ++++++++++++++++++++++++++--------------------------
+ fs/udf/truncate.c |    4 +-
+ fs/udf/udfdecl.h  |    1 -
+ 12 files changed, 88 insertions(+), 82 deletions(-)
+
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
