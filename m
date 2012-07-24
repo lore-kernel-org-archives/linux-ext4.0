@@ -1,45 +1,70 @@
-From: Tomasz Chmielewski <mangoo@wpkg.org>
-Subject: Re: "Setting filesystem feature 'metadata_csum' not supported" when
- trying to enable ext4 metadata checksums
-Date: Tue, 24 Jul 2012 17:32:21 +0700
-Message-ID: <500E79B5.1000003@wpkg.org>
-References: <500E4384.4090002@wpkg.org> <20120724075000.GA10906@gmail.com> <500E6209.2060604@wpkg.org> <20120724094445.GA11369@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] jbd2: don't write superblock when unmounting an ro filesystem
+Date: Tue, 24 Jul 2012 17:05:28 -0500
+Message-ID: <500F1C28.8010800@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.virtall.com ([178.63.195.102]:37939 "EHLO mail.virtall.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54468 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751515Ab2GXKc1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jul 2012 06:32:27 -0400
-Received: from mail.virtall.com (localhost [127.0.0.1])
-	by mail.virtall.com (Postfix) with ESMTP id 0BCDA34B6EB
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jul 2012 12:32:27 +0200 (CEST)
-Received: from [192.168.10.177] (unknown [223.204.74.89])
-	by mail.virtall.com (Postfix) with ESMTPSA id E520F34B6DC
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jul 2012 12:32:25 +0200 (CEST)
-In-Reply-To: <20120724094445.GA11369@gmail.com>
+	id S1754309Ab2GXWFc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jul 2012 18:05:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/24/2012 04:44 PM, Zheng Liu wrote:
+This sequence:
 
->> root@s9:/usr/src/e2fsprogs# misc/tune2fs -O metadata_csum /dev/sda1
->> tune2fs 1.42.3 (14-May-2012)
->> rewrite_directory: Unknown code kJe 176 while rewriting directories
->>
->> Expected?
->
-> No, it seems that it is not our expectation.  Could you please provide
-> more information?  Such as feature list.  Use "debugfs -R
-> 'stats' /dev/${DEVICE}" to get it, please.
+# truncate --size=65536 fsfile
+# losetup --offset 65536 /dev/loop0 fsfile 
+# mkfs.ext4 /dev/loop0 
+# losetup -d /dev/loop0
+# mount -o loop,ro,offset=65536 fsfile  mnt/
+# umount mnt
+# dmesg | tail
 
-The file is over 200 kB, so uploaded it here:
+results in an IO error when unmounting the RO filesystem:
 
-http://blog.wpkg.org/debugfs-stats.txt
+[  312.386074] SELinux: initialized (dev loop1, type ext4), uses xattr
+[  318.020828] Buffer I/O error on device loop1, logical block 196608
+[  318.027024] lost page write due to I/O error on loop1
+[  318.032088] JBD2: Error -5 detected when updating journal superblock for loop1-8.
 
+This behavior changed with:
 
--- 
-Tomasz Chmielewski
+commit 24bcc89c7e7c64982e6192b4952a0a92379fc341
+Author: Jan Kara <jack@suse.cz>
+Date:   Tue Mar 13 15:41:04 2012 -0400
+
+    jbd2: split updating of journal superblock and marking journal empty
+
+which lost some of the magic in jbd2_journal_update_superblock() which
+used to test for a journal with no outstanding transactions.
+
+I'm not sure if the following is quite the right approach, but it fixes
+it for me.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+p.s. no idea why this only happens if I use a loop device with an offset!
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e9a3c4c..987ec76 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1354,6 +1354,11 @@ static void jbd2_mark_journal_empty(journal_t *journal)
+ 
+ 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+ 	read_lock(&journal->j_state_lock);
++	/* Is it already empty? */
++	if (sb->s_start == 0) {
++		read_unlock(&journal->j_state_lock);
++		return;
++	}
+ 	jbd_debug(1, "JBD2: Marking journal as empty (seq %d)\n",
+ 		  journal->j_tail_sequence);
+ 
 
