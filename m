@@ -1,7 +1,7 @@
 From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: [PATCH] Ext4: No need to add inode to orphan list during hole punch
-Date: Wed, 25 Jul 2012 19:48:28 +0530
-Message-ID: <1343225908-1997-1-git-send-email-ashish.sangwan2@gmail.com>
+Subject: [PATCH RESEND] Ext4: No need to add inode to orphan list during hole punch
+Date: Wed, 25 Jul 2012 19:53:34 +0530
+Message-ID: <1343226214-2068-1-git-send-email-ashish.sangwan2@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	lczerner@redhat.com, a.sangwan@samsung.com,
 	namjae.jeon@samsung.com,
@@ -9,13 +9,15 @@ Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Namjae Jeon <linkinjeon@gmail.com>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:56171 "EHLO
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:54962 "EHLO
 	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933117Ab2GYOTR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2012 10:19:17 -0400
+	with ESMTP id S932993Ab2GYOXx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2012 10:23:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+While performing punch hole for an inode, i_disksize is not changed.
+So, there is no need to add the inode to orphan list.
 
 Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
 Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
