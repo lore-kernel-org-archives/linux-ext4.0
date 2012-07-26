@@ -1,7 +1,7 @@
 From: Marc MERLIN <marc@merlins.org>
 Subject: Re: du -s src is a lot slower on SSD than spinning disk in the same laptop
-Date: Wed, 25 Jul 2012 20:35:35 -0700
-Message-ID: <20120726033535.GT3888@merlins.org>
+Date: Wed, 25 Jul 2012 23:54:12 -0700
+Message-ID: <20120726065412.GB20315@merlins.org>
 References: <20120725154521.GA3398@merlins.org> <alpine.LFD.2.00.1207252023080.4340@(none)> <20120726033223.GA5884@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -11,10 +11,10 @@ Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
 	Milan Broz <mbroz@redhat.com>
 To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from magic.merlins.org ([209.81.13.136]:58646 "EHLO
+Received: from magic.merlins.org ([209.81.13.136]:60178 "EHLO
 	mail1.merlins.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751345Ab2GZDfg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jul 2012 23:35:36 -0400
+	with ESMTP id S1751304Ab2GZGyR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jul 2012 02:54:17 -0400
 Content-Disposition: inline
 In-Reply-To: <20120726033223.GA5884@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -43,25 +43,38 @@ ould be
 > > > through the filesystem:
 >=20
 > Was this an identical file system image on HDD and SSD?
->=20
-> The obvious thing to do is to get a blktrace of du -sh w/ a cold cach=
-e
-> for both the HDD and SSD.  Regardless of whether it's something we ca=
-n
-> address at the fs level, or in the block device layer, the blktrace
-> should make it really clear what is going on.
 
-I'm not very familiar with blktrace, but here is one run I did when I w=
-as
-trying to debug why dd of my dmcrypted FS was running at 27MB/s instead=
- of
-270MB/s.
-http://marc.merlins.org/tmp/blktrace.txt
-(dd shows up as 'bash' for some reason).
+Not entirely, but I did another test on similar ext4 FS, one on the SSD
+and one on th HDD:
 
-If that format isn't good, can you tell me which blktrace command lines=
- I
-should use to get you the exact output you'd like?
+gandalfthegreat:/boot# find /boot/src | wc -l
+6261
+gandalfthegreat:/boot# reset_cache; time du -sh /boot/src ; reset_cache=
+; time du -sh /boot2/src
+169M	/boot/src
+real	0m5.248s
+
+157M	/boot2/src
+real	0m0.698s
+
+gandalfthegreat:/boot# df -h /boot /boot2
+=46ilesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       241M  226M  2.5M  99% /boot
+/dev/sdb2       298M  273M  9.3M  97% /boot2
+gandalfthegreat:/boot# grep boot /proc/mounts
+/dev/sdb2 /boot2 ext4 rw,relatime,stripe=3D4,data=3Dordered 0 0
+/dev/sda1 /boot ext4 rw,relatime,discard,stripe=3D32,data=3Dordered 0 0
+
+The only sizeable difference is that sda1 is a 4K block size I forced t=
+o
+help with faster writes on the ssd.
+
+In the example above, the SSD is almost 10 times slower than the HDD.
+
+blktrace -d /dev/sda -o - | blkparse -i - during du is=20
+http://marc.merlins.org/tmp/blktrace_du_sda1.txt
+
+Does that give enough info on what's going on?
 
 Thanks,
 Marc
