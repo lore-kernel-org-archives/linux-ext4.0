@@ -1,103 +1,75 @@
-From: Wang Sheng-Hui <shhuiw@gmail.com>
-Subject: Re: one question about xfstests for ext4?
-Date: Thu, 26 Jul 2012 19:48:21 +0800
-Message-ID: <50112E85.7090006@gmail.com>
-References: <5010AB10.9050701@gmail.com> <alpine.LFD.2.00.1207260951200.27130@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: =?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:58889 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751298Ab2GZLsm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Jul 2012 07:48:42 -0400
-Received: by ghrr11 with SMTP id r11so1839621ghr.19
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Jul 2012 04:48:41 -0700 (PDT)
-In-Reply-To: <alpine.LFD.2.00.1207260951200.27130@localhost>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Add invalidatepage_range address space operation
+Date: Fri, 27 Jul 2012 10:00:59 +0200
+Message-ID: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+	linux-mmc@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-mmc-owner@vger.kernel.org>
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012=E5=B9=B407=E6=9C=8826=E6=97=A5 16:01, Luk=C3=A1=C5=A1 Czerner w=
-rote:
-> On Thu, 26 Jul 2012, Wang Sheng-Hui wrote:
->=20
->> Date: Thu, 26 Jul 2012 10:27:28 +0800
->> From: Wang Sheng-Hui <shhuiw@gmail.com>
->> To: Andreas Dilger <adilger.kernel@dilger.ca>, Theodore Ts'o <tytso@=
-mit.edu>,
->>     ext4 development <linux-ext4@vger.kernel.org>
->> Subject: one question about xfstests for ext4?
->>
->> Dear all,
->>
->> I want to run xfstests on ext4.=20
->> I have tried the official xfstests git tree, but in my test, I got m=
-any=20
->> 	"[not run] not suitable for this filesystem type: ext4".
->> -------------------------------------------------------------
->> 001	 6s
->> 002	 0s
->> 003	 [not run] not suitable for this filesystem type: ext4
->> 004	 [not run] not suitable for this filesystem type: ext4
->> 005	 0s
->> 006	 2s
->> 007	 3s
->> 008	 [not run] not suitable for this filesystem type: ext4
->> 009	 [not run] not suitable for this filesystem type: ext4
->> 010	 [not run] dbtest was not built for this platform
->> 011	 2s
->> 012	 [not run] not suitable for this filesystem type: ext4
->> ......
->>
->>
->> Is this expected? Or do I need to make some config changes?
->> I wonder if there is any xfstests for ex4 specific git tree?
->=20
-> Hi,
->=20
-> it actually is called XFStests for a reason :). Well historically it
-> started off as a xfs test suite, but over time it got more and more
-> generic tests and support for other file system. There are still lot
-> of tests which are file system specific and if you look at the test
-> itself, you'll see what it actually does.
->=20
-> There might be some tests which maybe could be changed to generic
-> tests, or more file systems can be supported. That said, if you find
-> a test which you think would make sense for other file systems as
-> well, then please by all means feel free to send a patch.
->=20
-> So to answer your question, there is nothing wrong with your setup
-> and there is no ext4 specific xfstests tree, we all share the same
-> xfstests tree. Some tests simply makes sense only for some file
-> systems, since they are supposed to be focused on certain
-> functionality.
->=20
-> Hope it helps
->=20
+This set of patches are aimed to allow truncate_inode_pages_range() handle
+ranges which are not aligned at the end of the page. Currently it will
+hit BUG_ON() when the end of the range is not aligned. Punch hole feature
+however can benefit from this ability saving file systems some work not
+forcing them to implement their own invalidate code to handle unaligned
+ranges.
 
-Got it. Thanks a lot, Lukas !
+In order for this to work we need however new address space operation
+invalidatepage_range which should be able to handle page invalidation with
+offset and length specified.
 
-Regards,
-Sheng-Hui
+patch 01:	Implements the new invalidatepage_range address space
+		operation in the mm layer
+patch 02 - 05:	Wire the new invalidatepage_range aop to the ext4, xfs and
+		ocfs2 file system (which are currently the only file
+		systems supporting punch hole) and implement this
+		functionality for jbd2 as well.
+patch 06:	Change truncate_inode_pages_range() to handle unaligned
+		ranges.
+patch 07 - 15:	Ext4 specific changes which take benefit from the
+		previous truncate_inode_pages_range() change. Not all
+		are realated specifically to this change, but all are
+		related to the punch hole feature.
 
-> Regards,
-> -Lukas
->=20
->>
->> Regards,
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Thanks!
+-Lukas
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+[PATCH 01/15] mm: add invalidatepage_range address space operation
+[PATCH 02/15] jbd2: implement jbd2_journal_invalidatepage_range
+[PATCH 03/15] ext4: implement invalidatepage_range aop
+[PATCH 04/15] xfs: implement invalidatepage_range aop
+[PATCH 05/15] ocfs2: implement invalidatepage_range aop
+[PATCH 06/15] mm: teach truncate_inode_pages_range() to handle non
+[PATCH 07/15] ext4: Take i_mutex before punching hole
+[PATCH 08/15] Revert "ext4: remove no longer used functions in
+[PATCH 09/15] Revert "ext4: fix fsx truncate failure"
+[PATCH 10/15] ext4: use ext4_zero_partial_blocks in punch_hole
+[PATCH 11/15] ext4: remove unused discard_partial_page_buffers
+[PATCH 12/15] ext4: remove unused code from ext4_remove_blocks()
+[PATCH 13/15] ext4: update ext4_ext_remove_space trace point
+[PATCH 14/15] ext4: make punch hole code path work with bigalloc
+[PATCH 15/15] ext4: Allow punch hole with bigalloc enabled
+
+
+fs/buffer.c                 |   23 +++-
+fs/ext4/ext4.h              |   14 +-
+fs/ext4/extents.c           |  215 +++++++++++-------------------
+fs/ext4/indirect.c          |   13 +--
+fs/ext4/inode.c             |  316 +++++++++++++++++++------------------------
+fs/jbd2/journal.c           |    1 +
+fs/jbd2/transaction.c       |   20 +++-
+fs/ocfs2/aops.c             |    7 +-
+fs/xfs/xfs_aops.c           |   14 +-
+fs/xfs/xfs_trace.h          |   41 ++++++-
+include/linux/buffer_head.h |    2 +
+include/linux/fs.h          |    2 +
+include/linux/jbd2.h        |    2 +
+include/linux/mm.h          |    2 +
+include/trace/events/ext4.h |   55 +++++---
+mm/truncate.c               |  107 +++++++++++-----
+16 files changed, 437 insertions(+), 397 deletions(-)
+
+
