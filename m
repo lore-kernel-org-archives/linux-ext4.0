@@ -1,276 +1,129 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 11/15] ext4: remove unused discard_partial_page_buffers
-Date: Fri, 27 Jul 2012 10:01:10 +0200
-Message-ID: <1343376074-28034-12-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 13/15] ext4: update ext4_ext_remove_space trace point
+Date: Fri, 27 Jul 2012 10:01:12 +0200
+Message-ID: <1343376074-28034-14-git-send-email-lczerner@redhat.com>
 References: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
 	linux-mmc@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-mmc-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:39275 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752048Ab2G0ICK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jul 2012 04:02:10 -0400
 In-Reply-To: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The discard_partial_page_buffers is no longer used anywhere so we can
-simply remove it including the *_no_lock variant and
-EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED define.
+Add "end" variable.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/ext4.h  |    8 --
- fs/ext4/inode.c |  206 -------------------------------------------------------
- 2 files changed, 0 insertions(+), 214 deletions(-)
+ fs/ext4/extents.c           |    6 +++---
+ include/trace/events/ext4.h |   21 ++++++++++++++-------
+ 2 files changed, 17 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 704ceab..72d75ff 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -583,11 +583,6 @@ enum {
- #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4d0084e..014bec4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2572,7 +2572,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ again:
+ 	ext4_ext_invalidate_cache(inode);
  
- /*
-- * Flags used by ext4_discard_partial_page_buffers
-- */
--#define EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED	0x0001
--
--/*
-  * ioctl commands
-  */
- #define	EXT4_IOC_GETFLAGS		FS_IOC_GETFLAGS
-@@ -2001,9 +1996,6 @@ extern int ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
--extern int ext4_discard_partial_page_buffers(handle_t *handle,
--		struct address_space *mapping, loff_t from,
--		loff_t length, int flags);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern void ext4_da_update_reserve_space(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5205152..2f950d6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -139,9 +139,6 @@ static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode);
- static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate);
- static int __ext4_journalled_writepage(struct page *page, unsigned int len);
- static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh);
--static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
--		struct inode *inode, struct page *page, loff_t from,
--		loff_t length, int flags);
+-	trace_ext4_ext_remove_space(inode, start, depth);
++	trace_ext4_ext_remove_space(inode, start, end, depth);
  
- /*
-  * Test whether an inode is a fast symlink.
-@@ -3202,209 +3199,6 @@ void ext4_set_aops(struct inode *inode)
+ 	/*
+ 	 * Check if we are removing extents inside the extent tree. If that
+@@ -2725,8 +2725,8 @@ cont:
+ 		}
  	}
- }
  
--
--/*
-- * ext4_discard_partial_page_buffers()
-- * Wrapper function for ext4_discard_partial_page_buffers_no_lock.
-- * This function finds and locks the page containing the offset
-- * "from" and passes it to ext4_discard_partial_page_buffers_no_lock.
-- * Calling functions that already have the page locked should call
-- * ext4_discard_partial_page_buffers_no_lock directly.
-- */
--int ext4_discard_partial_page_buffers(handle_t *handle,
--		struct address_space *mapping, loff_t from,
--		loff_t length, int flags)
--{
--	struct inode *inode = mapping->host;
--	struct page *page;
--	int err = 0;
--
--	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
--				   mapping_gfp_mask(mapping) & ~__GFP_FS);
--	if (!page)
--		return -ENOMEM;
--
--	err = ext4_discard_partial_page_buffers_no_lock(handle, inode, page,
--		from, length, flags);
--
--	unlock_page(page);
--	page_cache_release(page);
--	return err;
--}
--
--/*
-- * ext4_discard_partial_page_buffers_no_lock()
-- * Zeros a page range of length 'length' starting from offset 'from'.
-- * Buffer heads that correspond to the block aligned regions of the
-- * zeroed range will be unmapped.  Unblock aligned regions
-- * will have the corresponding buffer head mapped if needed so that
-- * that region of the page can be updated with the partial zero out.
-- *
-- * This function assumes that the page has already been  locked.  The
-- * The range to be discarded must be contained with in the given page.
-- * If the specified range exceeds the end of the page it will be shortened
-- * to the end of the page that corresponds to 'from'.  This function is
-- * appropriate for updating a page and it buffer heads to be unmapped and
-- * zeroed for blocks that have been either released, or are going to be
-- * released.
-- *
-- * handle: The journal handle
-- * inode:  The files inode
-- * page:   A locked page that contains the offset "from"
-- * from:   The starting byte offset (from the begining of the file)
-- *         to begin discarding
-- * len:    The length of bytes to discard
-- * flags:  Optional flags that may be used:
-- *
-- *         EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED
-- *         Only zero the regions of the page whose buffer heads
-- *         have already been unmapped.  This flag is appropriate
-- *         for updateing the contents of a page whose blocks may
-- *         have already been released, and we only want to zero
-- *         out the regions that correspond to those released blocks.
-- *
-- * Returns zero on sucess or negative on failure.
-- */
--static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
--		struct inode *inode, struct page *page, loff_t from,
--		loff_t length, int flags)
--{
--	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
--	unsigned int offset = from & (PAGE_CACHE_SIZE-1);
--	unsigned int blocksize, max, pos;
--	ext4_lblk_t iblock;
--	struct buffer_head *bh;
--	int err = 0;
--
--	blocksize = inode->i_sb->s_blocksize;
--	max = PAGE_CACHE_SIZE - offset;
--
--	if (index != page->index)
--		return -EINVAL;
--
--	/*
--	 * correct length if it does not fall between
--	 * 'from' and the end of the page
--	 */
--	if (length > max || length < 0)
--		length = max;
--
--	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
--
--	if (!page_has_buffers(page))
--		create_empty_buffers(page, blocksize, 0);
--
--	/* Find the buffer that contains "offset" */
--	bh = page_buffers(page);
--	pos = blocksize;
--	while (offset >= pos) {
--		bh = bh->b_this_page;
--		iblock++;
--		pos += blocksize;
--	}
--
--	pos = offset;
--	while (pos < offset + length) {
--		unsigned int end_of_block, range_to_discard;
--
--		err = 0;
--
--		/* The length of space left to zero and unmap */
--		range_to_discard = offset + length - pos;
--
--		/* The length of space until the end of the block */
--		end_of_block = blocksize - (pos & (blocksize-1));
--
--		/*
--		 * Do not unmap or zero past end of block
--		 * for this buffer head
--		 */
--		if (range_to_discard > end_of_block)
--			range_to_discard = end_of_block;
--
--
--		/*
--		 * Skip this buffer head if we are only zeroing unampped
--		 * regions of the page
--		 */
--		if (flags & EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED &&
--			buffer_mapped(bh))
--				goto next;
--
--		/* If the range is block aligned, unmap */
--		if (range_to_discard == blocksize) {
--			clear_buffer_dirty(bh);
--			bh->b_bdev = NULL;
--			clear_buffer_mapped(bh);
--			clear_buffer_req(bh);
--			clear_buffer_new(bh);
--			clear_buffer_delay(bh);
--			clear_buffer_unwritten(bh);
--			clear_buffer_uptodate(bh);
--			zero_user(page, pos, range_to_discard);
--			BUFFER_TRACE(bh, "Buffer discarded");
--			goto next;
--		}
--
--		/*
--		 * If this block is not completely contained in the range
--		 * to be discarded, then it is not going to be released. Because
--		 * we need to keep this block, we need to make sure this part
--		 * of the page is uptodate before we modify it by writeing
--		 * partial zeros on it.
--		 */
--		if (!buffer_mapped(bh)) {
--			/*
--			 * Buffer head must be mapped before we can read
--			 * from the block
--			 */
--			BUFFER_TRACE(bh, "unmapped");
--			ext4_get_block(inode, iblock, bh, 0);
--			/* unmapped? It's a hole - nothing to do */
--			if (!buffer_mapped(bh)) {
--				BUFFER_TRACE(bh, "still unmapped");
--				goto next;
--			}
--		}
--
--		/* Ok, it's mapped. Make sure it's up-to-date */
--		if (PageUptodate(page))
--			set_buffer_uptodate(bh);
--
--		if (!buffer_uptodate(bh)) {
--			err = -EIO;
--			ll_rw_block(READ, 1, &bh);
--			wait_on_buffer(bh);
--			/* Uhhuh. Read error. Complain and punt.*/
--			if (!buffer_uptodate(bh))
--				goto next;
--		}
--
--		if (ext4_should_journal_data(inode)) {
--			BUFFER_TRACE(bh, "get write access");
--			err = ext4_journal_get_write_access(handle, bh);
--			if (err)
--				goto next;
--		}
--
--		zero_user(page, pos, range_to_discard);
--
--		err = 0;
--		if (ext4_should_journal_data(inode)) {
--			err = ext4_handle_dirty_metadata(handle, inode, bh);
--		} else
--			mark_buffer_dirty(bh);
--
--		BUFFER_TRACE(bh, "Partial buffer zeroed");
--next:
--		bh = bh->b_this_page;
--		iblock++;
--		pos += range_to_discard;
--	}
--
--	return err;
--}
--
- /*
-  * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
-  * up to the end of the block which corresponds to `from'.
+-	trace_ext4_ext_remove_space_done(inode, start, depth, partial_cluster,
+-			path->p_hdr->eh_entries);
++	trace_ext4_ext_remove_space_done(inode, start, end, depth,
++			partial_cluster, path->p_hdr->eh_entries);
+ 
+ 	/* If we still have something in the partial cluster and we have removed
+ 	 * even the first extent, then we should free the blocks in the partial
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 30bae72..884cbf2 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -1999,14 +1999,16 @@ TRACE_EVENT(ext4_ext_rm_idx,
+ );
+ 
+ TRACE_EVENT(ext4_ext_remove_space,
+-	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth),
++	TP_PROTO(struct inode *inode, ext4_lblk_t start,
++		 ext4_lblk_t end, int depth),
+ 
+-	TP_ARGS(inode, start, depth),
++	TP_ARGS(inode, start, end, depth),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	ino_t,		ino	)
+ 		__field(	dev_t,		dev	)
+ 		__field(	ext4_lblk_t,	start	)
++		__field(	ext4_lblk_t,	end	)
+ 		__field(	int,		depth	)
+ 	),
+ 
+@@ -2014,26 +2016,29 @@ TRACE_EVENT(ext4_ext_remove_space,
+ 		__entry->ino	= inode->i_ino;
+ 		__entry->dev	= inode->i_sb->s_dev;
+ 		__entry->start	= start;
++		__entry->end	= end;
+ 		__entry->depth	= depth;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu since %u depth %d",
++	TP_printk("dev %d,%d ino %lu start %u end %u depth %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+ 		  (unsigned) __entry->start,
++		  (unsigned) __entry->end,
+ 		  __entry->depth)
+ );
+ 
+ TRACE_EVENT(ext4_ext_remove_space_done,
+-	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth,
+-		ext4_lblk_t partial, unsigned short eh_entries),
++	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t end,
++		 int depth, ext4_lblk_t partial, unsigned short eh_entries),
+ 
+-	TP_ARGS(inode, start, depth, partial, eh_entries),
++	TP_ARGS(inode, start, end, depth, partial, eh_entries),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	ino_t,		ino		)
+ 		__field(	dev_t,		dev		)
+ 		__field(	ext4_lblk_t,	start		)
++		__field(	ext4_lblk_t,	end		)
+ 		__field(	int,		depth		)
+ 		__field(	ext4_lblk_t,	partial		)
+ 		__field(	unsigned short,	eh_entries	)
+@@ -2043,16 +2048,18 @@ TRACE_EVENT(ext4_ext_remove_space_done,
+ 		__entry->ino		= inode->i_ino;
+ 		__entry->dev		= inode->i_sb->s_dev;
+ 		__entry->start		= start;
++		__entry->end		= end;
+ 		__entry->depth		= depth;
+ 		__entry->partial	= partial;
+ 		__entry->eh_entries	= eh_entries;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu since %u depth %d partial %u "
++	TP_printk("dev %d,%d ino %lu start %u end %u depth %d partial %u "
+ 		  "remaining_entries %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+ 		  (unsigned) __entry->start,
++		  (unsigned) __entry->end,
+ 		  __entry->depth,
+ 		  (unsigned) __entry->partial,
+ 		  (unsigned short) __entry->eh_entries)
 -- 
 1.7.7.6
 
