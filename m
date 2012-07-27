@@ -1,100 +1,100 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 09/15] Revert "ext4: fix fsx truncate failure"
-Date: Fri, 27 Jul 2012 10:01:08 +0200
-Message-ID: <1343376074-28034-10-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 07/15] ext4: Take i_mutex before punching hole
+Date: Fri, 27 Jul 2012 10:01:06 +0200
+Message-ID: <1343376074-28034-8-git-send-email-lczerner@redhat.com>
 References: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
 	linux-mmc@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38410 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63024 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752562Ab2G0ICC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jul 2012 04:02:02 -0400
+	id S1752532Ab2G0IB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jul 2012 04:01:58 -0400
 In-Reply-To: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
+Currently the allocation might happen in the punched range after the
+truncation and before the releasing the space of the range. This would
+lead to blocks being unallocated under the mapped buffer heads resulting
+in nasty bugs.
 
-This commit reintroduces the use of ext4_block_truncate_page() in ext4
-truncate operation instead of ext4_discard_partial_page_buffers().
+With this commit we take i_mutex before going to do anything in the
+ext4_ext_punch_hole() preventing any write to happen while the hole
+punching is in progress. This will also allow us to ditch the writeout
+of dirty pages withing the range.
 
-The statement in the commit description that the truncate operation only
-zero block unaligned portion of the last page is not exactly right,
-since truncate_pagecache_range() also zeroes and invalidate the unaligned
-portion of the page. Then there is no need to zero and unmap it once more
-and ext4_block_truncate_page() was doing the right job, although we
-still need to update the buffer head containing the last block, which is
-exactly what ext4_block_truncate_page() is doing.
-
-Moreover the problem described in the commit is fixed more properly with
-commit
-
-15291164b22a357cb211b618adfef4fa82fc0de3
-	jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
-
-This was tested on ppc64 machine with block size of 1024 bytes without
-any problems.
+This commit was based on code provided by Zheng Liu, thanks!
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/extents.c  |   13 ++-----------
- fs/ext4/indirect.c |   13 ++-----------
- 2 files changed, 4 insertions(+), 22 deletions(-)
+ fs/ext4/extents.c |   26 ++++++++++----------------
+ 1 files changed, 10 insertions(+), 16 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2d6a216..9967947 100644
+index 91341ec..2d6a216 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4222,7 +4222,6 @@ void ext4_ext_truncate(struct inode *inode)
- 	struct super_block *sb = inode->i_sb;
- 	ext4_lblk_t last_block;
- 	handle_t *handle;
--	loff_t page_len;
- 	int err = 0;
+@@ -4755,9 +4755,11 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	loff_t first_page_offset, last_page_offset;
+ 	int credits, err = 0;
+ 
++	mutex_lock(&inode->i_mutex);
++
+ 	/* No need to punch hole beyond i_size */
+ 	if (offset >= inode->i_size)
+-		return 0;
++		goto out1;
  
  	/*
-@@ -4239,16 +4238,8 @@ void ext4_ext_truncate(struct inode *inode)
- 	if (IS_ERR(handle))
- 		return;
+ 	 * If the hole extends beyond i_size, set the hole
+@@ -4775,18 +4777,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	first_page_offset = first_page << PAGE_CACHE_SHIFT;
+ 	last_page_offset = last_page << PAGE_CACHE_SHIFT;
  
--	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
--		page_len = PAGE_CACHE_SIZE -
--			(inode->i_size & (PAGE_CACHE_SIZE - 1));
--
--		err = ext4_discard_partial_page_buffers(handle,
--			mapping, inode->i_size, page_len, 0);
+-	/*
+-	 * Write out all dirty pages to avoid race conditions
+-	 * Then release them.
+-	 */
+-	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+-		err = filemap_write_and_wait_range(mapping,
+-			offset, offset + length - 1);
 -
 -		if (err)
--			goto out_stop;
+-			return err;
 -	}
-+	if (inode->i_size & (sb->s_blocksize - 1))
-+		ext4_block_truncate_page(handle, mapping, inode->i_size);
- 
- 	if (ext4_orphan_add(handle, inode))
- 		goto out_stop;
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 830e1b2..a082b30 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1349,9 +1349,7 @@ void ext4_ind_truncate(struct inode *inode)
- 	__le32 nr = 0;
- 	int n = 0;
- 	ext4_lblk_t last_block, max_block;
--	loff_t page_len;
- 	unsigned blocksize = inode->i_sb->s_blocksize;
--	int err;
- 
- 	handle = start_transaction(inode);
- 	if (IS_ERR(handle))
-@@ -1362,16 +1360,9 @@ void ext4_ind_truncate(struct inode *inode)
- 	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
- 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
- 
--	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
--		page_len = PAGE_CACHE_SIZE -
--			(inode->i_size & (PAGE_CACHE_SIZE - 1));
 -
--		err = ext4_discard_partial_page_buffers(handle,
--			mapping, inode->i_size, page_len, 0);
+ 	/* Now release the pages */
+ 	if (last_page_offset > first_page_offset) {
+ 		truncate_pagecache_range(inode, first_page_offset,
+@@ -4798,12 +4788,14 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	credits = ext4_writepage_trans_blocks(inode);
+ 	handle = ext4_journal_start(inode, credits);
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		goto out1;
++	}
+ 
+ 	err = ext4_orphan_add(handle, inode);
+ 	if (err)
+-		goto out;
++		goto out1;
+ 
+ 	/*
+ 	 * Now we need to zero out the non-page-aligned data in the
+@@ -4893,6 +4885,8 @@ out:
+ 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+ 	ext4_journal_stop(handle);
++out1:
++	mutex_unlock(&inode->i_mutex);
+ 	return err;
+ }
+ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+-- 
+1.7.7.6
+
