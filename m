@@ -1,44 +1,276 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 15/15] ext4: Allow punch hole with bigalloc enabled
-Date: Fri, 27 Jul 2012 10:01:14 +0200
-Message-ID: <1343376074-28034-16-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 11/15] ext4: remove unused discard_partial_page_buffers
+Date: Fri, 27 Jul 2012 10:01:10 +0200
+Message-ID: <1343376074-28034-12-git-send-email-lczerner@redhat.com>
 References: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
 	linux-mmc@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-mmc-owner@vger.kernel.org>
 In-Reply-To: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-mmc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In commits 5f95d21fb6f2aaa52830e5b7fb405f6c71d3ab85 and
-30bc2ec9598a1b156ad75217f2e7d4560efdeeab we've reworked punch_hole
-implementation and there is noting holding us back from using punch hole
-on file system with bigalloc feature enabled.
-
-This has been tested with fsx and xfstests.
+The discard_partial_page_buffers is no longer used anywhere so we can
+simply remove it including the *_no_lock variant and
+EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED define.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/inode.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h  |    8 --
+ fs/ext4/inode.c |  206 -------------------------------------------------------
+ 2 files changed, 0 insertions(+), 214 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 704ceab..72d75ff 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -583,11 +583,6 @@ enum {
+ #define EXT4_FREE_BLOCKS_NOFREE_LAST_CLUSTER	0x0020
+ 
+ /*
+- * Flags used by ext4_discard_partial_page_buffers
+- */
+-#define EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED	0x0001
+-
+-/*
+  * ioctl commands
+  */
+ #define	EXT4_IOC_GETFLAGS		FS_IOC_GETFLAGS
+@@ -2001,9 +1996,6 @@ extern int ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length);
+ extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t lend);
+-extern int ext4_discard_partial_page_buffers(handle_t *handle,
+-		struct address_space *mapping, loff_t from,
+-		loff_t length, int flags);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2f950d6..7dc7f79 100644
+index 5205152..2f950d6 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3383,11 +3383,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		return -EOPNOTSUPP;
- 	}
+@@ -139,9 +139,6 @@ static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode);
+ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate);
+ static int __ext4_journalled_writepage(struct page *page, unsigned int len);
+ static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh);
+-static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+-		struct inode *inode, struct page *page, loff_t from,
+-		loff_t length, int flags);
  
--	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1) {
--		/* TODO: Add support for bigalloc file systems */
--		return -EOPNOTSUPP;
--	}
--
- 	return ext4_ext_punch_hole(file, offset, length);
+ /*
+  * Test whether an inode is a fast symlink.
+@@ -3202,209 +3199,6 @@ void ext4_set_aops(struct inode *inode)
+ 	}
  }
  
+-
+-/*
+- * ext4_discard_partial_page_buffers()
+- * Wrapper function for ext4_discard_partial_page_buffers_no_lock.
+- * This function finds and locks the page containing the offset
+- * "from" and passes it to ext4_discard_partial_page_buffers_no_lock.
+- * Calling functions that already have the page locked should call
+- * ext4_discard_partial_page_buffers_no_lock directly.
+- */
+-int ext4_discard_partial_page_buffers(handle_t *handle,
+-		struct address_space *mapping, loff_t from,
+-		loff_t length, int flags)
+-{
+-	struct inode *inode = mapping->host;
+-	struct page *page;
+-	int err = 0;
+-
+-	page = find_or_create_page(mapping, from >> PAGE_CACHE_SHIFT,
+-				   mapping_gfp_mask(mapping) & ~__GFP_FS);
+-	if (!page)
+-		return -ENOMEM;
+-
+-	err = ext4_discard_partial_page_buffers_no_lock(handle, inode, page,
+-		from, length, flags);
+-
+-	unlock_page(page);
+-	page_cache_release(page);
+-	return err;
+-}
+-
+-/*
+- * ext4_discard_partial_page_buffers_no_lock()
+- * Zeros a page range of length 'length' starting from offset 'from'.
+- * Buffer heads that correspond to the block aligned regions of the
+- * zeroed range will be unmapped.  Unblock aligned regions
+- * will have the corresponding buffer head mapped if needed so that
+- * that region of the page can be updated with the partial zero out.
+- *
+- * This function assumes that the page has already been  locked.  The
+- * The range to be discarded must be contained with in the given page.
+- * If the specified range exceeds the end of the page it will be shortened
+- * to the end of the page that corresponds to 'from'.  This function is
+- * appropriate for updating a page and it buffer heads to be unmapped and
+- * zeroed for blocks that have been either released, or are going to be
+- * released.
+- *
+- * handle: The journal handle
+- * inode:  The files inode
+- * page:   A locked page that contains the offset "from"
+- * from:   The starting byte offset (from the begining of the file)
+- *         to begin discarding
+- * len:    The length of bytes to discard
+- * flags:  Optional flags that may be used:
+- *
+- *         EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED
+- *         Only zero the regions of the page whose buffer heads
+- *         have already been unmapped.  This flag is appropriate
+- *         for updateing the contents of a page whose blocks may
+- *         have already been released, and we only want to zero
+- *         out the regions that correspond to those released blocks.
+- *
+- * Returns zero on sucess or negative on failure.
+- */
+-static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+-		struct inode *inode, struct page *page, loff_t from,
+-		loff_t length, int flags)
+-{
+-	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+-	unsigned int offset = from & (PAGE_CACHE_SIZE-1);
+-	unsigned int blocksize, max, pos;
+-	ext4_lblk_t iblock;
+-	struct buffer_head *bh;
+-	int err = 0;
+-
+-	blocksize = inode->i_sb->s_blocksize;
+-	max = PAGE_CACHE_SIZE - offset;
+-
+-	if (index != page->index)
+-		return -EINVAL;
+-
+-	/*
+-	 * correct length if it does not fall between
+-	 * 'from' and the end of the page
+-	 */
+-	if (length > max || length < 0)
+-		length = max;
+-
+-	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
+-
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, blocksize, 0);
+-
+-	/* Find the buffer that contains "offset" */
+-	bh = page_buffers(page);
+-	pos = blocksize;
+-	while (offset >= pos) {
+-		bh = bh->b_this_page;
+-		iblock++;
+-		pos += blocksize;
+-	}
+-
+-	pos = offset;
+-	while (pos < offset + length) {
+-		unsigned int end_of_block, range_to_discard;
+-
+-		err = 0;
+-
+-		/* The length of space left to zero and unmap */
+-		range_to_discard = offset + length - pos;
+-
+-		/* The length of space until the end of the block */
+-		end_of_block = blocksize - (pos & (blocksize-1));
+-
+-		/*
+-		 * Do not unmap or zero past end of block
+-		 * for this buffer head
+-		 */
+-		if (range_to_discard > end_of_block)
+-			range_to_discard = end_of_block;
+-
+-
+-		/*
+-		 * Skip this buffer head if we are only zeroing unampped
+-		 * regions of the page
+-		 */
+-		if (flags & EXT4_DISCARD_PARTIAL_PG_ZERO_UNMAPPED &&
+-			buffer_mapped(bh))
+-				goto next;
+-
+-		/* If the range is block aligned, unmap */
+-		if (range_to_discard == blocksize) {
+-			clear_buffer_dirty(bh);
+-			bh->b_bdev = NULL;
+-			clear_buffer_mapped(bh);
+-			clear_buffer_req(bh);
+-			clear_buffer_new(bh);
+-			clear_buffer_delay(bh);
+-			clear_buffer_unwritten(bh);
+-			clear_buffer_uptodate(bh);
+-			zero_user(page, pos, range_to_discard);
+-			BUFFER_TRACE(bh, "Buffer discarded");
+-			goto next;
+-		}
+-
+-		/*
+-		 * If this block is not completely contained in the range
+-		 * to be discarded, then it is not going to be released. Because
+-		 * we need to keep this block, we need to make sure this part
+-		 * of the page is uptodate before we modify it by writeing
+-		 * partial zeros on it.
+-		 */
+-		if (!buffer_mapped(bh)) {
+-			/*
+-			 * Buffer head must be mapped before we can read
+-			 * from the block
+-			 */
+-			BUFFER_TRACE(bh, "unmapped");
+-			ext4_get_block(inode, iblock, bh, 0);
+-			/* unmapped? It's a hole - nothing to do */
+-			if (!buffer_mapped(bh)) {
+-				BUFFER_TRACE(bh, "still unmapped");
+-				goto next;
+-			}
+-		}
+-
+-		/* Ok, it's mapped. Make sure it's up-to-date */
+-		if (PageUptodate(page))
+-			set_buffer_uptodate(bh);
+-
+-		if (!buffer_uptodate(bh)) {
+-			err = -EIO;
+-			ll_rw_block(READ, 1, &bh);
+-			wait_on_buffer(bh);
+-			/* Uhhuh. Read error. Complain and punt.*/
+-			if (!buffer_uptodate(bh))
+-				goto next;
+-		}
+-
+-		if (ext4_should_journal_data(inode)) {
+-			BUFFER_TRACE(bh, "get write access");
+-			err = ext4_journal_get_write_access(handle, bh);
+-			if (err)
+-				goto next;
+-		}
+-
+-		zero_user(page, pos, range_to_discard);
+-
+-		err = 0;
+-		if (ext4_should_journal_data(inode)) {
+-			err = ext4_handle_dirty_metadata(handle, inode, bh);
+-		} else
+-			mark_buffer_dirty(bh);
+-
+-		BUFFER_TRACE(bh, "Partial buffer zeroed");
+-next:
+-		bh = bh->b_this_page;
+-		iblock++;
+-		pos += range_to_discard;
+-	}
+-
+-	return err;
+-}
+-
+ /*
+  * ext4_block_truncate_page() zeroes out a mapping from file offset `from'
+  * up to the end of the block which corresponds to `from'.
 -- 
 1.7.7.6
 
