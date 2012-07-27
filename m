@@ -1,129 +1,100 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 13/15] ext4: update ext4_ext_remove_space trace point
-Date: Fri, 27 Jul 2012 10:01:12 +0200
-Message-ID: <1343376074-28034-14-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 09/15] Revert "ext4: fix fsx truncate failure"
+Date: Fri, 27 Jul 2012 10:01:08 +0200
+Message-ID: <1343376074-28034-10-git-send-email-lczerner@redhat.com>
 References: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
 	linux-mmc@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39275 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38410 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752048Ab2G0ICK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jul 2012 04:02:10 -0400
+	id S1752562Ab2G0ICC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jul 2012 04:02:02 -0400
 In-Reply-To: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add "end" variable.
+This reverts commit 189e868fa8fdca702eb9db9d8afc46b5cb9144c9.
+
+This commit reintroduces the use of ext4_block_truncate_page() in ext4
+truncate operation instead of ext4_discard_partial_page_buffers().
+
+The statement in the commit description that the truncate operation only
+zero block unaligned portion of the last page is not exactly right,
+since truncate_pagecache_range() also zeroes and invalidate the unaligned
+portion of the page. Then there is no need to zero and unmap it once more
+and ext4_block_truncate_page() was doing the right job, although we
+still need to update the buffer head containing the last block, which is
+exactly what ext4_block_truncate_page() is doing.
+
+Moreover the problem described in the commit is fixed more properly with
+commit
+
+15291164b22a357cb211b618adfef4fa82fc0de3
+	jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
+
+This was tested on ppc64 machine with block size of 1024 bytes without
+any problems.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/extents.c           |    6 +++---
- include/trace/events/ext4.h |   21 ++++++++++++++-------
- 2 files changed, 17 insertions(+), 10 deletions(-)
+ fs/ext4/extents.c  |   13 ++-----------
+ fs/ext4/indirect.c |   13 ++-----------
+ 2 files changed, 4 insertions(+), 22 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4d0084e..014bec4 100644
+index 2d6a216..9967947 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -2572,7 +2572,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- again:
- 	ext4_ext_invalidate_cache(inode);
- 
--	trace_ext4_ext_remove_space(inode, start, depth);
-+	trace_ext4_ext_remove_space(inode, start, end, depth);
+@@ -4222,7 +4222,6 @@ void ext4_ext_truncate(struct inode *inode)
+ 	struct super_block *sb = inode->i_sb;
+ 	ext4_lblk_t last_block;
+ 	handle_t *handle;
+-	loff_t page_len;
+ 	int err = 0;
  
  	/*
- 	 * Check if we are removing extents inside the extent tree. If that
-@@ -2725,8 +2725,8 @@ cont:
- 		}
- 	}
+@@ -4239,16 +4238,8 @@ void ext4_ext_truncate(struct inode *inode)
+ 	if (IS_ERR(handle))
+ 		return;
  
--	trace_ext4_ext_remove_space_done(inode, start, depth, partial_cluster,
--			path->p_hdr->eh_entries);
-+	trace_ext4_ext_remove_space_done(inode, start, end, depth,
-+			partial_cluster, path->p_hdr->eh_entries);
+-	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, inode->i_size, page_len, 0);
+-
+-		if (err)
+-			goto out_stop;
+-	}
++	if (inode->i_size & (sb->s_blocksize - 1))
++		ext4_block_truncate_page(handle, mapping, inode->i_size);
  
- 	/* If we still have something in the partial cluster and we have removed
- 	 * even the first extent, then we should free the blocks in the partial
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 30bae72..884cbf2 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1999,14 +1999,16 @@ TRACE_EVENT(ext4_ext_rm_idx,
- );
+ 	if (ext4_orphan_add(handle, inode))
+ 		goto out_stop;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 830e1b2..a082b30 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1349,9 +1349,7 @@ void ext4_ind_truncate(struct inode *inode)
+ 	__le32 nr = 0;
+ 	int n = 0;
+ 	ext4_lblk_t last_block, max_block;
+-	loff_t page_len;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	int err;
  
- TRACE_EVENT(ext4_ext_remove_space,
--	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth),
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start,
-+		 ext4_lblk_t end, int depth),
+ 	handle = start_transaction(inode);
+ 	if (IS_ERR(handle))
+@@ -1362,16 +1360,9 @@ void ext4_ind_truncate(struct inode *inode)
+ 	max_block = (EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + blocksize-1)
+ 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
  
--	TP_ARGS(inode, start, depth),
-+	TP_ARGS(inode, start, end, depth),
- 
- 	TP_STRUCT__entry(
- 		__field(	ino_t,		ino	)
- 		__field(	dev_t,		dev	)
- 		__field(	ext4_lblk_t,	start	)
-+		__field(	ext4_lblk_t,	end	)
- 		__field(	int,		depth	)
- 	),
- 
-@@ -2014,26 +2016,29 @@ TRACE_EVENT(ext4_ext_remove_space,
- 		__entry->ino	= inode->i_ino;
- 		__entry->dev	= inode->i_sb->s_dev;
- 		__entry->start	= start;
-+		__entry->end	= end;
- 		__entry->depth	= depth;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu since %u depth %d",
-+	TP_printk("dev %d,%d ino %lu start %u end %u depth %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->start,
-+		  (unsigned) __entry->end,
- 		  __entry->depth)
- );
- 
- TRACE_EVENT(ext4_ext_remove_space_done,
--	TP_PROTO(struct inode *inode, ext4_lblk_t start, int depth,
--		ext4_lblk_t partial, unsigned short eh_entries),
-+	TP_PROTO(struct inode *inode, ext4_lblk_t start, ext4_lblk_t end,
-+		 int depth, ext4_lblk_t partial, unsigned short eh_entries),
- 
--	TP_ARGS(inode, start, depth, partial, eh_entries),
-+	TP_ARGS(inode, start, end, depth, partial, eh_entries),
- 
- 	TP_STRUCT__entry(
- 		__field(	ino_t,		ino		)
- 		__field(	dev_t,		dev		)
- 		__field(	ext4_lblk_t,	start		)
-+		__field(	ext4_lblk_t,	end		)
- 		__field(	int,		depth		)
- 		__field(	ext4_lblk_t,	partial		)
- 		__field(	unsigned short,	eh_entries	)
-@@ -2043,16 +2048,18 @@ TRACE_EVENT(ext4_ext_remove_space_done,
- 		__entry->ino		= inode->i_ino;
- 		__entry->dev		= inode->i_sb->s_dev;
- 		__entry->start		= start;
-+		__entry->end		= end;
- 		__entry->depth		= depth;
- 		__entry->partial	= partial;
- 		__entry->eh_entries	= eh_entries;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu since %u depth %d partial %u "
-+	TP_printk("dev %d,%d ino %lu start %u end %u depth %d partial %u "
- 		  "remaining_entries %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  (unsigned) __entry->start,
-+		  (unsigned) __entry->end,
- 		  __entry->depth,
- 		  (unsigned) __entry->partial,
- 		  (unsigned short) __entry->eh_entries)
--- 
-1.7.7.6
-
+-	if (inode->i_size % PAGE_CACHE_SIZE != 0) {
+-		page_len = PAGE_CACHE_SIZE -
+-			(inode->i_size & (PAGE_CACHE_SIZE - 1));
+-
+-		err = ext4_discard_partial_page_buffers(handle,
+-			mapping, inode->i_size, page_len, 0);
