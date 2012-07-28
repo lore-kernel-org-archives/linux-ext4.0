@@ -1,143 +1,100 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [RFC][PATCH 10/10 v1][RESEND] ext4: add two tracepoints in
- punching hole
-Date: Fri, 27 Jul 2012 15:43:46 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1207271540350.23525@vpn-10-43.rdu.redhat.com>
-References: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com> <1342943986-12413-11-git-send-email-wenqing.lz@taobao.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 3.6
+Date: Fri, 27 Jul 2012 23:11:57 -0400
+Message-ID: <20120728031157.GA14094@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
-	wenqing.lz@taobao.com
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12112 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751650Ab2G0Nn4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jul 2012 09:43:56 -0400
-In-Reply-To: <1342943986-12413-11-git-send-email-wenqing.lz@taobao.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:41752 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752862Ab2G1DMA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jul 2012 23:12:00 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 22 Jul 2012, Zheng Liu wrote:
+The following changes since commit 6887a4131da3adaab011613776d865f4bcfb5678:
 
-> Date: Sun, 22 Jul 2012 15:59:46 +0800
-> From: Zheng Liu <gnehzuil.liu@gmail.com>
-> To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-> Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com, wenqing.lz@taobao.com
-> Subject: [RFC][PATCH 10/10 v1][RESEND] ext4: add two tracepoints in punching
->     hole
-> 
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> This patch adds two tracepoints in ext4_ext_punch_hole.
+  Linux 3.5-rc5 (2012-06-30 16:08:57 -0700)
 
-Hi,
+are available in the git repository at:
 
-the trace_ext4_ext_punch_hole_enter() looks good, but I am not so
-sure about the trace_ext4_ext_punch_hole_exit() trace point. What is
-the point of having this tracepoint ? The only thing it adds to the
-information we already have is return value of the function and
-that's something we'll know anyway, right ?
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-Is there any special reason for having this ? If not, I think it can
-be removed and trace_ext4_ext_punch_hole_enter() can be renamed to
-trace_ext4_ext_punch_hole() to match the naming conventions of other
-ext4 tracepoints.
+for you to fetch changes up to 03179fe92318e7934c180d96f12eff2cb36ef7b6:
 
-Thanks!
--Lukas
+  ext4: undo ext4_calc_metadata_amount if we fail to claim space (2012-07-23 00:00:20 -0400)
 
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->  fs/ext4/extents.c           |    3 ++
->  include/trace/events/ext4.h |   53 +++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 56 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 2a526b4..0fb4ff5 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4529,6 +4529,8 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	loff_t first_page_offset, last_page_offset;
->  	int credits, err = 0;
->  
-> +	trace_ext4_ext_punch_hole_enter(inode, offset, length);
-> +
->  	mutex_lock(&inode->i_mutex);
->  
->  	/* No need to punch hole beyond i_size */
-> @@ -4663,6 +4665,7 @@ out:
->  	ext4_journal_stop(handle);
->  error:
->  	mutex_unlock(&inode->i_mutex);
-> +	trace_ext4_ext_punch_hole_exit(inode, offset, length, err);
->  	return err;
->  }
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index 5c17592..583f066 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -1312,6 +1312,59 @@ TRACE_EVENT(ext4_fallocate_exit,
->  		  __entry->ret)
->  );
->  
-> +TRACE_EVENT(ext4_ext_punch_hole_enter,
-> +	TP_PROTO(struct inode *inode, loff_t offset, loff_t len),
-> +
-> +	TP_ARGS(inode, offset, len),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	dev_t,	dev			)
-> +		__field(	ino_t,	ino			)
-> +		__field(	loff_t,	offset			)
-> +		__field(	loff_t, len			)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev	= inode->i_sb->s_dev;
-> +		__entry->ino	= inode->i_ino;
-> +		__entry->offset	= offset;
-> +		__entry->len	= len;
-> +	),
-> +
-> +	TP_printk("dev %d,%d ino %lu offset %lld len %lld",
-> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> +		  (unsigned long) __entry->ino,
-> +		  __entry->offset, __entry->len)
-> +);
-> +
-> +TRACE_EVENT(ext4_ext_punch_hole_exit,
-> +	TP_PROTO(struct inode *inode, loff_t offset,
-> +		 loff_t len, int err),
-> +
-> +	TP_ARGS(inode, offset, len, err),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	dev_t,	dev			)
-> +		__field(	ino_t,	ino			)
-> +		__field(	loff_t,	offset			)
-> +		__field(	loff_t,	len			)
-> +		__field(	int,	err			)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev	= inode->i_sb->s_dev;
-> +		__entry->ino	= inode->i_ino;
-> +		__entry->offset	= offset;
-> +		__entry->len	= len;
-> +		__entry->err	= err;
-> +	),
-> +
-> +	TP_printk("dev %d,%d ino %lu offset %lld len %lld err %d",
-> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> +		  (unsigned long) __entry->ino,
-> +		  __entry->offset, __entry->len, __entry->err)
-> +);
-> +
->  TRACE_EVENT(ext4_unlink_enter,
->  	TP_PROTO(struct inode *parent, struct dentry *dentry),
->  
-> 
+----------------------------------------------------------------
+The usual collection of bug fixes and optimizations.  Perhaps of
+greatest note is a speed up for parallel, non-allocating DIO writes,
+since we no longer take the i_mutex lock in that case.  For bug fixes,
+we fix an incorrect overhead calculation which caused slightly
+incorrect results for df(1) and statfs(2).  We also fixed bugs in the
+metadata checksum feature.
+
+----------------------------------------------------------------
+Aditya Kali (2):
+      ext4: avoid uneeded calls to ext4_mb_load_buddy() while reading mb_groups
+      ext4: make quota as first class supported feature
+
+Al Viro (1):
+      ext4: fix ext4 mismerge back in January
+
+Artem Bityutskiy (3):
+      ext4: remove unnecessary superblock dirtying
+      ext4: weed out ext4_write_super
+      ext4: remove unnecessary argument from __ext4_handle_dirty_metadata()
+
+Ashish Sangwan (1):
+      ext4: fix hole punch failure when depth is greater than 0
+
+Brian Foster (1):
+      ext4: don't let i_reserved_meta_blocks go negative
+
+Haibo Liu (1):
+      ext4: remove an unused statement in ext4_mb_get_buddy_page_lock()
+
+HaiboLiu (1):
+      ext4: fix out-of-date comments in extents.c
+
+Jan Kara (2):
+      ext4: remove useless marking of superblock dirty
+      ext4: convert last user of ext4_mark_super_dirty() to ext4_handle_dirty_super()
+
+Tao Ma (2):
+      ext4: use proper csum calculation in ext4_rename
+      ext4: use s_csum_seed instead of i_csum_seed for xattr block
+
+Theodore Ts'o (5):
+      ext4: pass a char * to ext4_count_free() instead of a buffer_head ptr
+      ext4: fix overhead calculation used by ext4_statfs()
+      ext4: remove unused variable in ext4_update_super()
+      ext4: remove dynamic array size in ext4_chksum()
+      ext4: undo ext4_calc_metadata_amount if we fail to claim space
+
+Zheng Liu (4):
+      ext4: honor O_(D)SYNC semantic in ext4_fallocate()
+      ext4: split ext4_file_write into buffered IO and direct IO
+      ext4: add a new nolock flag in ext4_map_blocks
+      ext4: don't take the i_mutex lock when doing DIO overwrites
+
+ fs/ext4/balloc.c    |   3 +-
+ fs/ext4/bitmap.c    |  12 +-
+ fs/ext4/ext4.h      |  26 ++---
+ fs/ext4/ext4_jbd2.c |   8 +-
+ fs/ext4/ext4_jbd2.h |  25 ++--
+ fs/ext4/extents.c   |  51 +++++----
+ fs/ext4/file.c      | 121 ++++++++++++++++----
+ fs/ext4/ialloc.c    |   5 +-
+ fs/ext4/inode.c     | 126 ++++++++++++++++----
+ fs/ext4/ioctl.c     |   1 -
+ fs/ext4/mballoc.c   |  26 +++--
+ fs/ext4/namei.c     |  15 ++-
+ fs/ext4/resize.c    |   7 +-
+ fs/ext4/super.c     | 323 +++++++++++++++++++++++++++++++++++++++++-----------
+ fs/ext4/xattr.c     |  11 +-
+ 15 files changed, 563 insertions(+), 197 deletions(-)
+
