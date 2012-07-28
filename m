@@ -1,37 +1,34 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43354] Corruption on a small loopback ext4 file system with
- Linux 3.4
-Date: Sat, 28 Jul 2012 14:33:19 +0000 (UTC)
-Message-ID: <20120728143319.5849511FB41@bugzilla.kernel.org>
-References: <bug-43354-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] E2fsprogs/filefrag: fix filefrag regression
+Date: Sat, 28 Jul 2012 17:34:31 -0400
+Message-ID: <20120728213431.GF659@thunk.org>
+References: <1339663486-5417-1-git-send-email-liubo2009@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Liu Bo <liubo2009@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:43676 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752627Ab2G1Od0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Jul 2012 10:33:26 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 81CC9205A4
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Jul 2012 14:33:25 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 600972059A
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Jul 2012 14:33:24 +0000 (UTC)
-In-Reply-To: <bug-43354-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:41839 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753065Ab2G1Vee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Jul 2012 17:34:34 -0400
+Content-Disposition: inline
+In-Reply-To: <1339663486-5417-1-git-send-email-liubo2009@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43354
+On Thu, Jun 14, 2012 at 04:44:46PM +0800, Liu Bo wrote:
+> filefrag has several bugs
+> ...
+> All of these bugs come from the fact that we've made a mistake on calculating
+> total extents:
+> o   we set 1 as default for 'total extents', and this will report 1 extent found
+>     even when we don't get any extent from fiemap.
+> o   if our first extent does not start from 0(logical addr), total extents will
+>     be one more than what it should be.
+> 
+> Signed-off-by: Liu Bo <liubo2009@cn.fujitsu.com>
 
+Thanks, applied.
 
-
-
-
---- Comment #6 from Alec Moskvin <alecm@gmx.com>  2012-07-28 14:33:19 ---
-I can't reproduce with 3.5 either.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
