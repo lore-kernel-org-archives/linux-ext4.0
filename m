@@ -1,50 +1,105 @@
-From: Giustizia e Letteratura 2010-2011
-	<giustiziaeletteratura.csgp@unicatt.it>
-Subject: (unknown)
-Date: Sun, 29 Jul 2012 12:12:49 +0200
-Message-ID: <CF95A4BB6CE69A4E8CA81677875419060256AEEDF22F__4036.7127549418$1343557706$gmane$org@MIGE332.unicatt.it>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail1-smtp.unicatt.it ([193.205.48.153]:56065 "EHLO
-	mail1.unicatt.it" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751631Ab2G2K2L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Jul 2012 06:28:11 -0400
-Subject: 
-Content-Language: it-IT
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH] ext4: add error handling when discard cmd is fail in FITRIM
+Date: Sun, 29 Jul 2012 07:31:54 -0400
+Message-ID: <1343561514-8380-1-git-send-email-linkinjeon@gmail.com>
+Cc: linux-kernel@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Although free extents is proper not trimmed(mmc driver return error code
+while sending trim command), currently FITRIM ioctl return success.
+Add exception routine to inform user error code.
 
+#> ./fitrim_test
+end_request: I/O error, dev mmcblk0, sector 27232
+EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857:
+Discard command returned error -5
+#>
 
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/mballoc.c |   25 +++++++++++++++++--------
+ 1 file changed, 17 insertions(+), 8 deletions(-)
 
-
-=BFNecesita un pr=E9stamo para un negocio en marcha? o si necesita un p=
-r=E9stamo para pagar todas sus deudas? Aplique ahora y conseguir su apr=
-obaci=F3n dentro de los 3 d=EDas que ofrecen todo tipo de pr=E9stamos a=
- un tipo de inter=E9s reducido del 4% anual para el correo electr=F3nic=
-o la informaci=F3n m=E1s ahora en: johncollinsloanfirm@careceo.com
-
-Aviso Importante: Todas las respuestas o las respuestas deben enviarse =
-a la siguiente direcci=F3n de correo electr=F3nico: johncollinsloanfirm=
-@careceo.com para un r=E1pido procesamiento de su pr=E9stamo.
------------------------------ Messaggio istituzionale -----------------=
-----------------------
-
-Grazie a un gesto semplice puoi sostenere l'Ateneo dei cattolici italia=
-ni nella ricerca scientifica,=20
-nell'educazione dei giovani e nella cura dei malati del Policlinico "A.=
- Gemelli".=20
-Sottoscrivi il 5 per mille a favore dell'Universit=E0 Cattolica (CF 021=
-33120150)
-Info: http://www.unicatt.it/5permille
-
------------------------------------------------------------------------=
-------------------------------
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8eae947..07569b6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4852,10 +4852,11 @@ error_return:
+  * one will allocate those blocks, mark it as used in buddy bitmap. This must
+  * be called with under the group lock.
+  */
+-static void ext4_trim_extent(struct super_block *sb, int start, int count,
++static int ext4_trim_extent(struct super_block *sb, int start, int count,
+ 			     ext4_group_t group, struct ext4_buddy *e4b)
+ {
+ 	struct ext4_free_extent ex;
++	int err;
+ 
+ 	trace_ext4_trim_extent(sb, group, start, count);
+ 
+@@ -4871,9 +4872,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
+ 	 */
+ 	mb_mark_used(e4b, &ex);
+ 	ext4_unlock_group(sb, group);
+-	ext4_issue_discard(sb, group, start, count);
++	err = ext4_issue_discard(sb, group, start, count);
+ 	ext4_lock_group(sb, group);
+ 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
++	return err;
+ }
+ 
+ /**
+@@ -4902,7 +4904,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 	void *bitmap;
+ 	ext4_grpblk_t next, count = 0, free_count = 0;
+ 	struct ext4_buddy e4b;
+-	int ret;
++	int ret = 0;
+ 
+ 	trace_ext4_trim_all_free(sb, group, start, max);
+ 
+@@ -4929,15 +4931,22 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 		next = mb_find_next_bit(bitmap, max + 1, start);
+ 
+ 		if ((next - start) >= minblocks) {
+-			ext4_trim_extent(sb, start,
+-					 next - start, group, &e4b);
+-			count += next - start;
++			ret = ext4_trim_extent(sb, start,
++						next - start, group, &e4b);
++			if (ret < 0) {
++				if (ret != -EOPNOTSUPP)
++					ext4_warning(sb,
++						"Discard command returned error %d\n",
++						ret);
++					break;
++			} else
++				count += next - start;
+ 		}
+ 		free_count += next - start;
+ 		start = next + 1;
+ 
+ 		if (fatal_signal_pending(current)) {
+-			count = -ERESTARTSYS;
++			ret = -ERESTARTSYS;
+ 			break;
+ 		}
+ 
+@@ -4960,7 +4969,7 @@ out:
+ 	ext4_debug("trimmed %d blocks in the group %d\n",
+ 		count, group);
+ 
+-	return count;
++	return (ret < 0) ? ret : count;
+ }
+ 
+ /**
+-- 
+1.7.9.5
