@@ -1,105 +1,129 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: [PATCH] ext4: add error handling when discard cmd is fail in FITRIM
-Date: Sun, 29 Jul 2012 07:31:54 -0400
-Message-ID: <1343561514-8380-1-git-send-email-linkinjeon@gmail.com>
-Cc: linux-kernel@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
-	Amit Sahrawat <amit.sahrawat83@gmail.com>
-To: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: =?iso-8859-1?Q?Arne_H=FCggenberg?= <hueggenberg@sportsandbytes.de>
+Subject: resize2fs > 16TB questions
+Date: Sun, 29 Jul 2012 17:24:35 +0200
+Message-ID: <2019C80F-7D05-44FD-89AE-829E3A97053A@sportsandbytes.de>
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail2.sportsandbytes.de ([87.193.191.13]:42539 "EHLO
+	mail2.sportsandbytes.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753168Ab2G2PbT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Jul 2012 11:31:19 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Although free extents is proper not trimmed(mmc driver return error code
-while sending trim command), currently FITRIM ioctl return success.
-Add exception routine to inform user error code.
+Hello List,
 
-#> ./fitrim_test
-end_request: I/O error, dev mmcblk0, sector 27232
-EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857:
-Discard command returned error -5
-#>
+im trying to resize a ext4 fs to > 16TB.
 
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c |   25 +++++++++++++++++--------
- 1 file changed, 17 insertions(+), 8 deletions(-)
+Having had a look at the e2fsprogs 1.42.x release notes i thought that, with the online resize ioctl having been merged in Kernel 3.3, this should be possible.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8eae947..07569b6 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4852,10 +4852,11 @@ error_return:
-  * one will allocate those blocks, mark it as used in buddy bitmap. This must
-  * be called with under the group lock.
-  */
--static void ext4_trim_extent(struct super_block *sb, int start, int count,
-+static int ext4_trim_extent(struct super_block *sb, int start, int count,
- 			     ext4_group_t group, struct ext4_buddy *e4b)
- {
- 	struct ext4_free_extent ex;
-+	int err;
- 
- 	trace_ext4_trim_extent(sb, group, start, count);
- 
-@@ -4871,9 +4872,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
- 	 */
- 	mb_mark_used(e4b, &ex);
- 	ext4_unlock_group(sb, group);
--	ext4_issue_discard(sb, group, start, count);
-+	err = ext4_issue_discard(sb, group, start, count);
- 	ext4_lock_group(sb, group);
- 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
-+	return err;
- }
- 
- /**
-@@ -4902,7 +4904,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 	void *bitmap;
- 	ext4_grpblk_t next, count = 0, free_count = 0;
- 	struct ext4_buddy e4b;
--	int ret;
-+	int ret = 0;
- 
- 	trace_ext4_trim_all_free(sb, group, start, max);
- 
-@@ -4929,15 +4931,22 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 		next = mb_find_next_bit(bitmap, max + 1, start);
- 
- 		if ((next - start) >= minblocks) {
--			ext4_trim_extent(sb, start,
--					 next - start, group, &e4b);
--			count += next - start;
-+			ret = ext4_trim_extent(sb, start,
-+						next - start, group, &e4b);
-+			if (ret < 0) {
-+				if (ret != -EOPNOTSUPP)
-+					ext4_warning(sb,
-+						"Discard command returned error %d\n",
-+						ret);
-+					break;
-+			} else
-+				count += next - start;
- 		}
- 		free_count += next - start;
- 		start = next + 1;
- 
- 		if (fatal_signal_pending(current)) {
--			count = -ERESTARTSYS;
-+			ret = -ERESTARTSYS;
- 			break;
- 		}
- 
-@@ -4960,7 +4969,7 @@ out:
- 	ext4_debug("trimmed %d blocks in the group %d\n",
- 		count, group);
- 
--	return count;
-+	return (ret < 0) ? ret : count;
- }
- 
- /**
--- 
-1.7.9.5
+But so far i have had no success achieving this:
+
+~ # uname -a
+Linux 3.3.8-gentoo #1 SMP Fri Jul 27 16:13:25 CEST 2012 x86_64 Intel(R) Xeon(R) CPU E5620 @ 2.40GHz GenuineIntel GNU/Linux
+
+~ # tune2fs -l /dev/vg0/lvol1
+tune2fs 1.42.4 (12-June-2012)
+Filesystem volume name:   <none>
+Last mounted on:          /home/filestore_extern_1
+Filesystem UUID:          8fba4f1b-5311-4c9b-b8bf-def4957dc1bd
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent 64bit flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              521011200
+Block count:              4168089600
+Reserved block count:     191127425
+Free blocks:              2195165566
+Free inodes:              520937830
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      60
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         4096
+Inode blocks per group:   256
+RAID stride:              16
+RAID stripe width:        160
+Flex block group size:    16
+Filesystem created:       Fri Jul 27 17:16:24 2012
+Last mount time:          Sun Jul 29 15:22:23 2012
+Last write time:          Sun Jul 29 15:22:23 2012
+Mount count:              6
+Maximum mount count:      -1
+Last checked:             Fri Jul 27 17:16:24 2012
+Check interval:           0 (<none>)
+Lifetime writes:          7485 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      ef2ec72a-750b-4822-bd8d-9117faadeaee
+Journal backup:           inode blocks
+
+
+~ # vgdisplay
+  --- Volume group ---
+  VG Name               vg0
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  4
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                1
+  Open LV               1
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               18.18 TiB
+  PE Size               4.00 MiB
+  Total PE              4766718
+  Alloc PE / Size       4766718 / 18.18 TiB
+  Free  PE / Size       0 / 0   
+  VG UUID               q6p5LG-pi1P-pAcI-fSsv-vFI7-6sAA-eabaBH
+   
+~ # lvdisplay
+  --- Logical volume ---
+  LV Name                /dev/vg0/lvol1
+  VG Name                vg0
+  LV UUID                7OF1do-HqZD-FGSN-chJF-rPYC-x1Ty-vGCZlc
+  LV Write Access        read/write
+  LV Status              available
+  # open                 1
+  LV Size                18.18 TiB
+  Current LE             4766718
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           254:1
+
+ ~ # resize2fs /dev/vg0/lvol1
+resize2fs 1.42.4 (12-June-2012)
+resize2fs: New size too large to be expressed in 32 bits
+
+
+Any advice on how to proceed would be welcome.
+
+Regards,
+Arne
+
+
+
+
+
+
