@@ -1,56 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: check a file system mounted read-only if forced
-Date: Sun, 29 Jul 2012 00:19:57 -0400
-Message-ID: <1343535597-18983-1-git-send-email-tytso@mit.edu>
-References: <1343535209-18588-1-git-send-email-tytso@mit.edu>
-Cc: sandeen@redhat.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Giustizia e Letteratura 2010-2011
+	<giustiziaeletteratura.csgp@unicatt.it>
+Subject: (unknown)
+Date: Sun, 29 Jul 2012 12:12:49 +0200
+Message-ID: <CF95A4BB6CE69A4E8CA81677875419060256AEEDF22F__4036.7127549418$1343557706$gmane$org@MIGE332.unicatt.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41890 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750950Ab2G2EUC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 29 Jul 2012 00:20:02 -0400
-In-Reply-To: <1343535209-18588-1-git-send-email-tytso@mit.edu>
+Received: from mail1-smtp.unicatt.it ([193.205.48.153]:56065 "EHLO
+	mail1.unicatt.it" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751631Ab2G2K2L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Jul 2012 06:28:11 -0400
+Subject: 
+Content-Language: it-IT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously e2fsck would only allow a mounted file system to be checked
-if it was the root file system and it was mounted read-only.  Now
-allow any file system mounted read-only if the -f option is specified.
 
-This makes it easier to test how e2fsck handles checking file systems
-which are mounted without having to test on the root file system.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- e2fsck/unix.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index f71a125..da41f69 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -225,7 +225,9 @@ static void check_mount(e2fsck_t ctx)
- 	     !(ctx->options & E2F_OPT_WRITECHECK)))
- 		return;
- 
--	if ((ctx->options & E2F_OPT_READONLY) &&
-+	if (((ctx->options & E2F_OPT_READONLY) ||
-+	     ((ctx->options & E2F_OPT_FORCE) &&
-+	      (ctx->mount_flags & EXT2_MF_READONLY))) &&
- 	    !(ctx->options & E2F_OPT_WRITECHECK)) {
- 		log_out(ctx, _("Warning!  %s is %s.\n"),
- 			ctx->filesystem_name,
-@@ -1226,6 +1228,9 @@ restart:
- 		if (!(ctx->mount_flags & EXT2_MF_ISROOT &&
- 		      ctx->mount_flags & EXT2_MF_READONLY))
- 			flags |= EXT2_FLAG_EXCLUSIVE;
-+		if ((ctx->mount_flags & EXT2_MF_READONLY) &&
-+		    (ctx->options & E2F_OPT_FORCE))
-+			flags &= ~EXT2_FLAG_EXCLUSIVE;
- 	}
- 
- 	retval = try_open_fs(ctx, flags, io_ptr, &fs);
--- 
-1.7.12.rc0.22.gcdd159b
 
+=BFNecesita un pr=E9stamo para un negocio en marcha? o si necesita un p=
+r=E9stamo para pagar todas sus deudas? Aplique ahora y conseguir su apr=
+obaci=F3n dentro de los 3 d=EDas que ofrecen todo tipo de pr=E9stamos a=
+ un tipo de inter=E9s reducido del 4% anual para el correo electr=F3nic=
+o la informaci=F3n m=E1s ahora en: johncollinsloanfirm@careceo.com
+
+Aviso Importante: Todas las respuestas o las respuestas deben enviarse =
+a la siguiente direcci=F3n de correo electr=F3nico: johncollinsloanfirm=
+@careceo.com para un r=E1pido procesamiento de su pr=E9stamo.
+----------------------------- Messaggio istituzionale -----------------=
+----------------------
+
+Grazie a un gesto semplice puoi sostenere l'Ateneo dei cattolici italia=
+ni nella ricerca scientifica,=20
+nell'educazione dei giovani e nella cura dei malati del Policlinico "A.=
+ Gemelli".=20
+Sottoscrivi il 5 per mille a favore dell'Universit=E0 Cattolica (CF 021=
+33120150)
+Info: http://www.unicatt.it/5permille
+
+-----------------------------------------------------------------------=
+------------------------------
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
