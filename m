@@ -1,86 +1,141 @@
-From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 7/8]fs/ocfs2: Evalue bio->bi_rw after calling bio_alloc() and
-	before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:48 +0800
-Message-ID: <2012073015243906251018@gmail.com>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: add error handling when discard cmd is fail in
+ FITRIM
+Date: Mon, 30 Jul 2012 13:31:39 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207301323550.23560@localhost>
+References: <1343561514-8380-1-git-send-email-linkinjeon@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion <jfs-discussion@lists.sourceforge.net>,
-        linux-kernel <linux-kernel@vger.kernel.org>, xfs <xfs@oss.sgi.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>
-To: axboe <axboe@kernel.dk>, "konrad.wilk" <konrad.wilk@oracle.com>,
-        "chris.mason" <chris.mason@fusionio.com>,
-        viro <viro@ZenIV.linux.org.uk>, tytso <tytso@mit.edu>,
-        "adilger.kernel" <adilger.kernel@dilger.ca>,
-        shaggy <shaggy@kernel.org>, mfasheh <mfasheh@suse.com>,
-        jlbec <jlbec@evilplan.org>, bpm <bpm@sgi.com>,
-        elder <elder@kernel.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Amit Sahrawat <amit.sahrawat83@gmail.com>
+To: Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56292 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753178Ab2G3Lbs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jul 2012 07:31:48 -0400
+In-Reply-To: <1343561514-8380-1-git-send-email-linkinjeon@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Because call bio_alloc, the bi_rw is zero by default,but in
-bio_add_page used the bi_rw. So evalue bi_rw.
+On Sun, 29 Jul 2012, Namjae Jeon wrote:
 
-Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
----
- fs/ocfs2/cluster/heartbeat.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+> Date: Sun, 29 Jul 2012 07:31:54 -0400
+> From: Namjae Jeon <linkinjeon@gmail.com>
+> To: tytso@mit.edu, sandeen@redhat.com, lczerner@redhat.com,
+>     linux-ext4@vger.kernel.org
+> Cc: linux-kernel@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
+>     Amit Sahrawat <amit.sahrawat83@gmail.com>
+> Subject: [PATCH] ext4: add error handling when discard cmd is fail in FITRIM
+> 
+> Although free extents is proper not trimmed(mmc driver return error code
+> while sending trim command), currently FITRIM ioctl return success.
+> Add exception routine to inform user error code.
+> 
+> #> ./fitrim_test
+> end_request: I/O error, dev mmcblk0, sector 27232
+> EXT4-fs warning (device mmcblk0): ext4_trim_all_free:4857:
+> Discard command returned error -5
+> #>
 
-diff --git a/fs/ocfs2/cluster/heartbeat.c b/fs/ocfs2/cluster/heartbeat.c
-index a4e855e..50079d3 100644
---- a/fs/ocfs2/cluster/heartbeat.c
-+++ b/fs/ocfs2/cluster/heartbeat.c
-@@ -399,7 +399,8 @@ static void o2hb_bio_end_io(struct bio *bio,
- static struct bio *o2hb_setup_one_bio(struct o2hb_region *reg,
- 				      struct o2hb_bio_wait_ctxt *wc,
- 				      unsigned int *current_slot,
--				      unsigned int max_slots)
-+				      unsigned int max_slots,
-+				      int rw)
- {
- 	int len, current_page;
- 	unsigned int vec_len, vec_start;
-@@ -425,6 +426,7 @@ static struct bio *o2hb_setup_one_bio(struct o2hb_region *reg,
- 	bio->bi_bdev = reg->hr_bdev;
- 	bio->bi_private = wc;
- 	bio->bi_end_io = o2hb_bio_end_io;
-+	bio->bi_rw = rw;
- 
- 	vec_start = (cs << bits) % PAGE_CACHE_SIZE;
- 	while(cs < max_slots) {
-@@ -460,7 +462,7 @@ static int o2hb_read_slots(struct o2hb_region *reg,
- 	o2hb_bio_wait_init(&wc);
- 
- 	while(current_slot < max_slots) {
--		bio = o2hb_setup_one_bio(reg, &wc, &current_slot, max_slots);
-+		bio = o2hb_setup_one_bio(reg, &wc, &current_slot, max_slots, READ);
- 		if (IS_ERR(bio)) {
- 			status = PTR_ERR(bio);
- 			mlog_errno(status);
-@@ -492,7 +494,7 @@ static int o2hb_issue_node_write(struct o2hb_region *reg,
- 
- 	slot = o2nm_this_node();
- 
--	bio = o2hb_setup_one_bio(reg, write_wc, &slot, slot+1);
-+	bio = o2hb_setup_one_bio(reg, write_wc, &slot, slot+1, WRITE);
- 	if (IS_ERR(bio)) {
- 		status = PTR_ERR(bio);
- 		mlog_errno(status);
--- 
-1.7.9.5
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Well, by this change you're actually reverting commit
+
+d9f34504e6952e909a6932c5b2d1857716606380
+	 ext4: ignore errors when issuing discards
+
+which effectively reverts a30eec2a8.
+
+Now I think that the way it is now is actually better than your
+proposal for the reasons mentioned in the commit
+d9f34504e6952e909a6932c5b2d1857716606380. However I think that the
+discard errors should be logged nevertheless but not at the file
+system level, but rather on block layer level if it is not done
+already.
+
+Thanks!
+-Lukas
+
+> 
+> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+> Signed-off-by: Amit Sahrawat <amit.sahrawat83@gmail.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/mballoc.c |   25 +++++++++++++++++--------
+>  1 file changed, 17 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 8eae947..07569b6 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4852,10 +4852,11 @@ error_return:
+>   * one will allocate those blocks, mark it as used in buddy bitmap. This must
+>   * be called with under the group lock.
+>   */
+> -static void ext4_trim_extent(struct super_block *sb, int start, int count,
+> +static int ext4_trim_extent(struct super_block *sb, int start, int count,
+>  			     ext4_group_t group, struct ext4_buddy *e4b)
+>  {
+>  	struct ext4_free_extent ex;
+> +	int err;
+>  
+>  	trace_ext4_trim_extent(sb, group, start, count);
+>  
+> @@ -4871,9 +4872,10 @@ static void ext4_trim_extent(struct super_block *sb, int start, int count,
+>  	 */
+>  	mb_mark_used(e4b, &ex);
+>  	ext4_unlock_group(sb, group);
+> -	ext4_issue_discard(sb, group, start, count);
+> +	err = ext4_issue_discard(sb, group, start, count);
+>  	ext4_lock_group(sb, group);
+>  	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+> +	return err;
+>  }
+>  
+>  /**
+> @@ -4902,7 +4904,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>  	void *bitmap;
+>  	ext4_grpblk_t next, count = 0, free_count = 0;
+>  	struct ext4_buddy e4b;
+> -	int ret;
+> +	int ret = 0;
+>  
+>  	trace_ext4_trim_all_free(sb, group, start, max);
+>  
+> @@ -4929,15 +4931,22 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>  		next = mb_find_next_bit(bitmap, max + 1, start);
+>  
+>  		if ((next - start) >= minblocks) {
+> -			ext4_trim_extent(sb, start,
+> -					 next - start, group, &e4b);
+> -			count += next - start;
+> +			ret = ext4_trim_extent(sb, start,
+> +						next - start, group, &e4b);
+> +			if (ret < 0) {
+> +				if (ret != -EOPNOTSUPP)
+> +					ext4_warning(sb,
+> +						"Discard command returned error %d\n",
+> +						ret);
+> +					break;
+> +			} else
+> +				count += next - start;
+>  		}
+>  		free_count += next - start;
+>  		start = next + 1;
+>  
+>  		if (fatal_signal_pending(current)) {
+> -			count = -ERESTARTSYS;
+> +			ret = -ERESTARTSYS;
+>  			break;
+>  		}
+>  
+> @@ -4960,7 +4969,7 @@ out:
+>  	ext4_debug("trimmed %d blocks in the group %d\n",
+>  		count, group);
+>  
+> -	return count;
+> +	return (ret < 0) ? ret : count;
+>  }
+>  
+>  /**
+> 
