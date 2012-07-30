@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 2/8] drivers/block/xen-blkback:Evalue bio->bi_rw after calling
-	bio_alloc() and before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:23:55 +0800
-Message-ID: <2012073015233873461213@gmail.com>
+Subject: [PATCH 8/8]fs/xfs: Evalue bio->bi_rw after calling bio_alloc() and
+	before calling bio_add_page().
+Date: Mon, 30 Jul 2012 15:24:52 +0800
+Message-ID: <2012073015244959361219@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,21 +35,35 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- drivers/block/xen-blkback/blkback.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/xfs/xfs_aops.c |    2 ++
+ fs/xfs/xfs_buf.c  |    1 +
+ 2 files changed, 3 insertions(+)
 
-diff --git a/drivers/block/xen-blkback/blkback.c b/drivers/block/xen-blkback/blkback.c
-index 73f196c..02ca290 100644
---- a/drivers/block/xen-blkback/blkback.c
-+++ b/drivers/block/xen-blkback/blkback.c
-@@ -701,6 +701,7 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
- 			bio->bi_private = pending_req;
- 			bio->bi_end_io  = end_block_io_op;
- 			bio->bi_sector  = preq.sector_number;
-+			bio->bi_rw	= operation;
- 		}
+diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+index 8dad722..f69f4b2 100644
+--- a/fs/xfs/xfs_aops.c
++++ b/fs/xfs/xfs_aops.c
+@@ -496,6 +496,8 @@ xfs_submit_ioend(
+ 			if (!bio) {
+  retry:
+ 				bio = xfs_alloc_ioend_bio(bh);
++				bio->bi_rw = (wbc->sync_mode == WB_SYNC_ALL
++						? WRITE_SYNC : WRITE);
+ 			} else if (bh->b_blocknr != lastblock + 1) {
+ 				xfs_submit_ioend_bio(wbc, ioend, bio);
+ 				goto retry;
+diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
+index 269b35c..744ec64 100644
+--- a/fs/xfs/xfs_buf.c
++++ b/fs/xfs/xfs_buf.c
+@@ -1186,6 +1186,7 @@ next_chunk:
+ 	bio->bi_sector = sector;
+ 	bio->bi_end_io = xfs_buf_bio_end_io;
+ 	bio->bi_private = bp;
++	bio->bi_rw = rw;
  
- 		preq.sector_number += seg[i].nsec;
+ 
+ 	for (; size && nr_pages; nr_pages--, map_i++) {
 -- 
 1.7.9.5
 _______________________________________________
