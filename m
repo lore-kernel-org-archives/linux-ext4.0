@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 8/8]fs/xfs: Evalue bio->bi_rw after calling bio_alloc() and
+Subject: [PATCH 6/8]fs/jfs: Evalue bio->bi_rw after calling bio_alloc() and
 	before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:52 +0800
-Message-ID: <2012073015244959361219@gmail.com>
+Date: Mon, 30 Jul 2012 15:24:27 +0800
+Message-ID: <2012073015242529632717@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,35 +35,21 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- fs/xfs/xfs_aops.c |    2 ++
- fs/xfs/xfs_buf.c  |    1 +
- 2 files changed, 3 insertions(+)
+ fs/jfs/jfs_metapage.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 8dad722..f69f4b2 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -496,6 +496,8 @@ xfs_submit_ioend(
- 			if (!bio) {
-  retry:
- 				bio = xfs_alloc_ioend_bio(bh);
-+				bio->bi_rw = (wbc->sync_mode == WB_SYNC_ALL
-+						? WRITE_SYNC : WRITE);
- 			} else if (bh->b_blocknr != lastblock + 1) {
- 				xfs_submit_ioend_bio(wbc, ioend, bio);
- 				goto retry;
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 269b35c..744ec64 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -1186,6 +1186,7 @@ next_chunk:
- 	bio->bi_sector = sector;
- 	bio->bi_end_io = xfs_buf_bio_end_io;
- 	bio->bi_private = bp;
-+	bio->bi_rw = rw;
+diff --git a/fs/jfs/jfs_metapage.c b/fs/jfs/jfs_metapage.c
+index 6740d34..db79ae0 100644
+--- a/fs/jfs/jfs_metapage.c
++++ b/fs/jfs/jfs_metapage.c
+@@ -441,6 +441,7 @@ static int metapage_writepage(struct page *page, struct writeback_control *wbc)
+ 		bio->bi_sector = pblock << (inode->i_blkbits - 9);
+ 		bio->bi_end_io = metapage_write_end_io;
+ 		bio->bi_private = page;
++		bio->bi_rw = WRITE;
  
- 
- 	for (; size && nr_pages; nr_pages--, map_i++) {
+ 		/* Don't call bio_add_page yet, we may add to this vec */
+ 		bio_offset = offset;
 -- 
 1.7.9.5
 _______________________________________________
