@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 4/8] fs/direct-io.c:Evalue bio->bi_rw after calling
-	bio_alloc() and before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:06 +0800
-Message-ID: <2012073015240404693715@gmail.com>
+Subject: [PATCH 5/8]fs/ext4: Evalue bio->bi_rw after calling bio_alloc() and
+	before calling bio_add_page().
+Date: Mon, 30 Jul 2012 15:24:24 +0800
+Message-ID: <2012073015241559305016@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,21 +35,21 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- fs/direct-io.c |    1 +
+ fs/ext4/page-io.c |    1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 1faf4cb..77f0bbf 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -349,6 +349,7 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index dcdeef1..c875502 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -304,6 +304,7 @@ static int io_submit_init(struct ext4_io_submit *io,
+ 	io->io_bio = bio;
+ 	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
+ 	io->io_next_block = bh->b_blocknr;
++	bio->bi_rw = io->io_op;
+ 	return 0;
+ }
  
- 	bio->bi_bdev = bdev;
- 	bio->bi_sector = first_sector;
-+	bio->bi_rw = dio->rw;
- 	if (dio->is_async)
- 		bio->bi_end_io = dio_bio_end_aio;
- 	else
 -- 
 1.7.9.5
 _______________________________________________
