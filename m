@@ -1,17 +1,16 @@
-From: kedacomkernel <kedacomkernel@gmail.com>
-Subject: [PATCH 1/8] Evalue bio->bi_rw after calling bio_alloc() and before
-	calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:15:52 +0800
-Message-ID: <201207301515481405853@gmail.com>
+From: majianpeng <majianpeng@gmail.com>
+Subject: [PATCH 1/8] block/blk-lib.c: Evalue bio->bi_rw after calling
+	bio_alloc() and before calling bio_add_page().
+Date: Mon, 30 Jul 2012 15:23:29 +0800
+Message-ID: <2012073015232276563612@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: jfs-discussion <jfs-discussion@lists.sourceforge.net>,
         linux-kernel <linux-kernel@vger.kernel.org>, xfs <xfs@oss.sgi.com>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        ocfs2-devel <ocfs2-devel@oss.oracle.com>
+        linux-btrfs <linux-btrfs@vger.kernel.org>
 To: axboe <axboe@kernel.dk>, "konrad.wilk" <konrad.wilk@oracle.com>,
         "chris.mason" <chris.mason@fusionio.com>,
         viro <viro@ZenIV.linux.org.uk>, tytso <tytso@mit.edu>,
