@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 1/8] block/blk-lib.c: Evalue bio->bi_rw after calling
+Subject: [PATCH 2/8] drivers/block/xen-blkback:Evalue bio->bi_rw after calling
 	bio_alloc() and before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:23:29 +0800
-Message-ID: <2012073015232276563612@gmail.com>
+Date: Mon, 30 Jul 2012 15:23:55 +0800
+Message-ID: <2012073015233873461213@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -30,26 +30,26 @@ Sender: xfs-bounces@oss.sgi.com
 Errors-To: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Because call bio_alloc, the bi_rw is zero by default,but in bio_add_page
-used the bi_rw. So evalue bi_rw.
+Because call bio_alloc, the bi_rw is zero by default,but in
+bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- block/blk-lib.c |    1 +
+ drivers/block/xen-blkback/blkback.c |    1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/block/blk-lib.c b/block/blk-lib.c
-index 2b461b4..fac777b 100644
---- a/block/blk-lib.c
-+++ b/block/blk-lib.c
-@@ -151,6 +151,7 @@ int blkdev_issue_zeroout(struct block_device *bdev, sector_t sector,
- 		bio->bi_bdev   = bdev;
- 		bio->bi_end_io = bio_batch_end_io;
- 		bio->bi_private = &bb;
-+		bio->bi_rw = WRITE;
+diff --git a/drivers/block/xen-blkback/blkback.c b/drivers/block/xen-blkback/blkback.c
+index 73f196c..02ca290 100644
+--- a/drivers/block/xen-blkback/blkback.c
++++ b/drivers/block/xen-blkback/blkback.c
+@@ -701,6 +701,7 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
+ 			bio->bi_private = pending_req;
+ 			bio->bi_end_io  = end_block_io_op;
+ 			bio->bi_sector  = preq.sector_number;
++			bio->bi_rw	= operation;
+ 		}
  
- 		while (nr_sects != 0) {
- 			sz = min((sector_t) PAGE_SIZE >> 9 , nr_sects);
+ 		preq.sector_number += seg[i].nsec;
 -- 
 1.7.9.5
 _______________________________________________
