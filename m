@@ -1,57 +1,47 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/8] Set bi_rw when alloc bio before call bio_add_page.
-Date: Tue, 31 Jul 2012 07:42:13 +1000
-Message-ID: <20120730214213.GF2877@dastard>
-References: <201207301514247032532@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Minimal configuration for e2fsprogs
+Date: Mon, 30 Jul 2012 17:45:32 -0400
+Message-ID: <20120730214531.GE10343@thunk.org>
+References: <20120615042421.GA7021@thor.bakeyournoodle.com>
+ <20120627112117.GA15231@thor.bakeyournoodle.com>
+ <20120627125443.GA32356@thunk.org>
+ <20120628024356.GB17989@thor.bakeyournoodle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe <axboe@kernel.dk>, "konrad.wilk" <konrad.wilk@oracle.com>,
-	"chris.mason" <chris.mason@fusionio.com>,
-	viro <viro@ZenIV.linux.org.uk>, tytso <tytso@mit.edu>,
-	"adilger.kernel" <adilger.kernel@dilger.ca>,
-	shaggy <shaggy@kernel.org>, mfasheh <mfasheh@suse.com>,
-	jlbec <jlbec@evilplan.org>, bpm <bpm@sgi.com>,
-	elder <elder@kernel.org>,
-	jfs-discussion <jfs-discussion@lists.sourceforge.net>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	xfs <xfs@oss.sgi.com>, linux-btrfs <linux-btrfs@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	ocfs2-devel <ocfs2-devel@oss.oracle.com>
-To: majianpeng <majianpeng@gmail.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42122 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754599Ab2G3Vpe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jul 2012 17:45:34 -0400
 Content-Disposition: inline
-In-Reply-To: <201207301514247032532@gmail.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120628024356.GB17989@thor.bakeyournoodle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 30, 2012 at 03:14:28PM +0800, majianpeng wrote:
-> When exec bio_alloc, the bi_rw is zero.But after calling bio_add_page,
-> it will use bi_rw.
-> Fox example, in functiion __bio_add_page,it will call merge_bvec_fn().
-> The merge_bvec_fn of raid456 will use the bi_rw to judge the merge.
-> >> if ((bvm->bi_rw & 1) == WRITE)
-> >> return biovec->bv_len; /* always allow writes to be mergeable */
+On Thu, Jun 28, 2012 at 12:43:56PM +1000, Tony Breeds wrote:
+> 
+> Okay so I think you want somethign like:
 
-So if bio_add_page() requires bi_rw to be set, then shouldn't it be
-set up for every caller? I noticed there are about 50 call sites for
-bio_add_page(), and you've only touched about 10 of them. Indeed, I
-notice that the RAID0/1 code uses bio_add_page, and as that can be
-stacked on top of RAID456, it also needs to set bi_rw correctly.
-As a result, your patch set is nowhere near complete, not does it
-document that bio_add_page requires that bi_rw be set before calling
-(which is the new API requirement, AFAICT).
+Yep!
 
-So, my question is whether the RAID456 code is doing something
-valid.  That write optimisation is clearly not enabled for a
-significant amount of code and filesystems, so the first thing to do
-is quantify the benefit of the optimisation. I can't evalute the
-merit of this change without data telling me it is worthwhile, and
-it's a lot of code to churn for no benefit....
+> What I did was remove dblist.o from my libext2fs.a and I now get:
+> /home/tony/src/e2fsprogs/../e2fsprogs-root/lib/libext2fs.a(gen_bitmap64.o): In function `ext2fs_alloc_generic_bmap':
+> /home/tony/src/e2fsprogs-build/lib/ext2fs/../../../e2fsprogs/lib/ext2fs/gen_bitmap64.c:112: undefined reference to `ext2fs_get_num_dirs'
+> 
+> So it looks like dblist.o is being pulled in for ext2fs_get_num_dirs()
+> in that case a EXT2FS_BMAP64_AUTODIR bmap type has been asked for.
+> 
+> How would you feel about moving ext2fs_get_num_dirs from dblist.c to
+> blknum.c?
 
-Cheers,
+Sure, no problem.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Take a look at this set of patches (see attached).  With this and the
+set of ext2fs functions that I understand yaboot is using, I think it
+solves the concern that you have.  This will be in the next branch of
+the e2fsprogs.
+
+Regards,
+
+					- Ted
