@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 5/8]fs/ext4: Evalue bio->bi_rw after calling bio_alloc() and
+Subject: [PATCH 7/8]fs/ocfs2: Evalue bio->bi_rw after calling bio_alloc() and
 	before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:24 +0800
-Message-ID: <2012073015241559305016@gmail.com>
+Date: Mon, 30 Jul 2012 15:24:48 +0800
+Message-ID: <2012073015243906251018@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,21 +35,49 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- fs/ext4/page-io.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/ocfs2/cluster/heartbeat.c |    8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index dcdeef1..c875502 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -304,6 +304,7 @@ static int io_submit_init(struct ext4_io_submit *io,
- 	io->io_bio = bio;
- 	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
- 	io->io_next_block = bh->b_blocknr;
-+	bio->bi_rw = io->io_op;
- 	return 0;
- }
+diff --git a/fs/ocfs2/cluster/heartbeat.c b/fs/ocfs2/cluster/heartbeat.c
+index a4e855e..50079d3 100644
+--- a/fs/ocfs2/cluster/heartbeat.c
++++ b/fs/ocfs2/cluster/heartbeat.c
+@@ -399,7 +399,8 @@ static void o2hb_bio_end_io(struct bio *bio,
+ static struct bio *o2hb_setup_one_bio(struct o2hb_region *reg,
+ 				      struct o2hb_bio_wait_ctxt *wc,
+ 				      unsigned int *current_slot,
+-				      unsigned int max_slots)
++				      unsigned int max_slots,
++				      int rw)
+ {
+ 	int len, current_page;
+ 	unsigned int vec_len, vec_start;
+@@ -425,6 +426,7 @@ static struct bio *o2hb_setup_one_bio(struct o2hb_region *reg,
+ 	bio->bi_bdev = reg->hr_bdev;
+ 	bio->bi_private = wc;
+ 	bio->bi_end_io = o2hb_bio_end_io;
++	bio->bi_rw = rw;
  
+ 	vec_start = (cs << bits) % PAGE_CACHE_SIZE;
+ 	while(cs < max_slots) {
+@@ -460,7 +462,7 @@ static int o2hb_read_slots(struct o2hb_region *reg,
+ 	o2hb_bio_wait_init(&wc);
+ 
+ 	while(current_slot < max_slots) {
+-		bio = o2hb_setup_one_bio(reg, &wc, &current_slot, max_slots);
++		bio = o2hb_setup_one_bio(reg, &wc, &current_slot, max_slots, READ);
+ 		if (IS_ERR(bio)) {
+ 			status = PTR_ERR(bio);
+ 			mlog_errno(status);
+@@ -492,7 +494,7 @@ static int o2hb_issue_node_write(struct o2hb_region *reg,
+ 
+ 	slot = o2nm_this_node();
+ 
+-	bio = o2hb_setup_one_bio(reg, write_wc, &slot, slot+1);
++	bio = o2hb_setup_one_bio(reg, write_wc, &slot, slot+1, WRITE);
+ 	if (IS_ERR(bio)) {
+ 		status = PTR_ERR(bio);
+ 		mlog_errno(status);
 -- 
 1.7.9.5
 _______________________________________________
