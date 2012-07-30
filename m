@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 6/8]fs/jfs: Evalue bio->bi_rw after calling bio_alloc() and
+Subject: [PATCH 3/8]fs/btrfs: Evalue bio->bi_rw after calling bio_alloc() and
 	before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:27 +0800
-Message-ID: <2012073015242529632717@gmail.com>
+Date: Mon, 30 Jul 2012 15:24:07 +0800
+Message-ID: <2012073015235342134014@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,21 +35,21 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- fs/jfs/jfs_metapage.c |    1 +
+ fs/btrfs/check-integrity.c |    1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/jfs/jfs_metapage.c b/fs/jfs/jfs_metapage.c
-index 6740d34..db79ae0 100644
---- a/fs/jfs/jfs_metapage.c
-+++ b/fs/jfs/jfs_metapage.c
-@@ -441,6 +441,7 @@ static int metapage_writepage(struct page *page, struct writeback_control *wbc)
- 		bio->bi_sector = pblock << (inode->i_blkbits - 9);
- 		bio->bi_end_io = metapage_write_end_io;
- 		bio->bi_private = page;
-+		bio->bi_rw = WRITE;
+diff --git a/fs/btrfs/check-integrity.c b/fs/btrfs/check-integrity.c
+index 9197e2e..25440aa 100644
+--- a/fs/btrfs/check-integrity.c
++++ b/fs/btrfs/check-integrity.c
+@@ -1700,6 +1700,7 @@ static int btrfsic_read_block(struct btrfsic_state *state,
+ 		bio->bi_sector = dev_bytenr >> 9;
+ 		bio->bi_end_io = btrfsic_complete_bio_end_io;
+ 		bio->bi_private = &complete;
++		bio->bi_rw = READ;
  
- 		/* Don't call bio_add_page yet, we may add to this vec */
- 		bio_offset = offset;
+ 		for (j = i; j < num_pages; j++) {
+ 			ret = bio_add_page(bio, block_ctx->pagev[j],
 -- 
 1.7.9.5
 _______________________________________________
