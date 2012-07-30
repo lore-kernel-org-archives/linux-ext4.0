@@ -1,8 +1,8 @@
 From: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 3/8]fs/btrfs: Evalue bio->bi_rw after calling bio_alloc() and
-	before calling bio_add_page().
-Date: Mon, 30 Jul 2012 15:24:07 +0800
-Message-ID: <2012073015235342134014@gmail.com>
+Subject: [PATCH 4/8] fs/direct-io.c:Evalue bio->bi_rw after calling
+	bio_alloc() and before calling bio_add_page().
+Date: Mon, 30 Jul 2012 15:24:06 +0800
+Message-ID: <2012073015240404693715@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -35,21 +35,21 @@ bio_add_page used the bi_rw. So evalue bi_rw.
 
 Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
 ---
- fs/btrfs/check-integrity.c |    1 +
+ fs/direct-io.c |    1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/btrfs/check-integrity.c b/fs/btrfs/check-integrity.c
-index 9197e2e..25440aa 100644
---- a/fs/btrfs/check-integrity.c
-+++ b/fs/btrfs/check-integrity.c
-@@ -1700,6 +1700,7 @@ static int btrfsic_read_block(struct btrfsic_state *state,
- 		bio->bi_sector = dev_bytenr >> 9;
- 		bio->bi_end_io = btrfsic_complete_bio_end_io;
- 		bio->bi_private = &complete;
-+		bio->bi_rw = READ;
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index 1faf4cb..77f0bbf 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -349,6 +349,7 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
  
- 		for (j = i; j < num_pages; j++) {
- 			ret = bio_add_page(bio, block_ctx->pagev[j],
+ 	bio->bi_bdev = bdev;
+ 	bio->bi_sector = first_sector;
++	bio->bi_rw = dio->rw;
+ 	if (dio->is_async)
+ 		bio->bi_end_io = dio_bio_end_aio;
+ 	else
 -- 
 1.7.9.5
 _______________________________________________
