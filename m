@@ -1,82 +1,65 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 36/36 v4] tune2fs: set inline_data feature
-Date: Tue, 31 Jul 2012 19:48:29 +0800
-Message-ID: <1343735309-30579-37-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 35/36 v4] tests: change test f_bad_disconnected_inode to support inline_data feature
+Date: Tue, 31 Jul 2012 19:48:28 +0800
+Message-ID: <1343735309-30579-36-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:53943 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756041Ab2GaLkx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:53 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so11540999pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:53 -0700 (PDT)
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:54597 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756041Ab2GaLkv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:51 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so5889814ghr.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:51 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Now inline_data feature can be set when ext_attr feature enabled.  Currently we
-cannot clear this feature in tune2fs because we need to allocate some blocks for
-inode which contains inline data, and it may exhaust all of disk space.
+In this test, inode flag is some random data, and when we apply inline data
+patch set we should need to handle it.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- misc/tune2fs.8.in |    5 +++++
- misc/tune2fs.c    |   15 ++++++++++++++-
- 2 files changed, 19 insertions(+), 1 deletions(-)
+ tests/f_bad_disconnected_inode/expect.1 |   27 ++++++++++++---------------
+ 1 files changed, 12 insertions(+), 15 deletions(-)
 
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index e77dde7..c10696a 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -531,6 +531,11 @@ Setting the filesystem feature is equivalent to using the
- .B \-j
- option.
- .TP
-+.B inline_data
-+Allow data to be stored in inode.
-+.B Tune2fs
-+only supports setting this filesystem feature.
-+.TP
- .B large_file
- Filesystem can contain files that are greater than 2GB.  (Modern kernels
- set this feature automatically when a file > 2GB is created.)
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 6a48009..1ee6a65 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -137,7 +137,8 @@ static __u32 ok_features[3] = {
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT3_FEATURE_INCOMPAT_EXTENTS |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
--		EXT4_FEATURE_INCOMPAT_MMP,
-+		EXT4_FEATURE_INCOMPAT_MMP |
-+		EXT4_FEATURE_INCOMPAT_INLINE_DATA,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -991,6 +992,18 @@ mmp_error:
- 		disable_uninit_bg(fs,
- 				EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
+index 11862f6..9b7f7d8 100644
+--- a/tests/f_bad_disconnected_inode/expect.1
++++ b/tests/f_bad_disconnected_inode/expect.1
+@@ -2,7 +2,16 @@ Pass 1: Checking inodes, blocks, and sizes
+ Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
+ Clear? yes
  
-+	if (FEATURE_ON(E2P_FEATURE_INCOMPAT,
-+			EXT4_FEATURE_INCOMPAT_INLINE_DATA)) {
-+		/* We cannot be enable inline_data when ext_attr disabled */
-+		if (!(fs->super->s_feature_compat &
-+		      EXT2_FEATURE_COMPAT_EXT_ATTR)) {
-+			fputs(_("The inline data feature can't "
-+				"be set if the extend attribute feature "
-+				"disabled.\n"), stderr);
-+			return 1;
-+		}
-+	}
+-Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
++Inode 11 has INLINE_DATA_FL flag set on filesystem without inline data support.
++Clear? yes
 +
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
- 		/*
--- 
-1.7.4.1
-
++Inode 13 has INLINE_DATA_FL flag set on filesystem without inline data support.
++Clear? yes
++
++Inode 14 has INLINE_DATA_FL flag set on filesystem without inline data support.
++Clear? yes
++
++Inode 15 has INLINE_DATA_FL flag set on filesystem without inline data support.
+ Clear? yes
+ 
+ Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
+@@ -15,18 +24,6 @@ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Inode 2 ref count is 4, should be 3.  Fix? yes
+ 
+-i_file_acl for inode 13 (...) is 4218798225, should be zero.
+-Clear? yes
+-
+-Inode 13 (...) has invalid mode (0117003).
+-Clear? yes
+-
+-i_file_acl for inode 14 (...) is 2892851642, should be zero.
+-Clear? yes
+-
+-Inode 14 (...) has invalid mode (0154247).
+-Clear? yes
