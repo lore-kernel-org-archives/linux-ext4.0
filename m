@@ -1,65 +1,182 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 35/36 v4] tests: change test f_bad_disconnected_inode to support inline_data feature
-Date: Tue, 31 Jul 2012 19:48:28 +0800
-Message-ID: <1343735309-30579-36-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 33/36 v4] e2fsck: check inline data in pass2
+Date: Tue, 31 Jul 2012 19:48:26 +0800
+Message-ID: <1343735309-30579-34-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:54597 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756041Ab2GaLkv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:51 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so5889814ghr.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:51 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755438Ab2GaLkr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:47 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:47 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-In this test, inode flag is some random data, and when we apply inline data
-patch set we should need to handle it.
-
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- tests/f_bad_disconnected_inode/expect.1 |   27 ++++++++++++---------------
- 1 files changed, 12 insertions(+), 15 deletions(-)
+ e2fsck/pass2.c           |   64 +++++++++++++++++++++++++++++++++++++--------
+ lib/ext2fs/inline_data.c |    4 +-
+ 2 files changed, 54 insertions(+), 14 deletions(-)
 
-diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
-index 11862f6..9b7f7d8 100644
---- a/tests/f_bad_disconnected_inode/expect.1
-+++ b/tests/f_bad_disconnected_inode/expect.1
-@@ -2,7 +2,16 @@ Pass 1: Checking inodes, blocks, and sizes
- Inode 1 has EXTENTS_FL flag set on filesystem without extents support.
- Clear? yes
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index e28af61..7267409 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -725,6 +725,15 @@ static void salvage_directory(ext2_filsys fs,
+ 	}
+ }
  
--Inode 15 has EXTENTS_FL flag set on filesystem without extents support.
-+Inode 11 has INLINE_DATA_FL flag set on filesystem without inline data support.
-+Clear? yes
++static int is_last_entry(ext2_filsys fs, ext2_ino_t ino, unsigned int offset,
++			 int csum_size)
++{
++	if (ext2fs_has_inline_data(fs, ino))
++		return (offset < ext2fs_inline_data_size(fs, ino));
++	else
++		return (offset < fs->blocksize - csum_size);
++}
 +
-+Inode 13 has INLINE_DATA_FL flag set on filesystem without inline data support.
-+Clear? yes
-+
-+Inode 14 has INLINE_DATA_FL flag set on filesystem without inline data support.
-+Clear? yes
-+
-+Inode 15 has INLINE_DATA_FL flag set on filesystem without inline data support.
- Clear? yes
+ static int check_dir_block(ext2_filsys fs,
+ 			   struct ext2_db_entry2 *db,
+ 			   void *priv_data)
+@@ -734,6 +743,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	struct dx_dirblock_info	*dx_db = 0;
+ #endif /* ENABLE_HTREE */
+ 	struct ext2_dir_entry 	*dirent, *prev;
++	struct ext2_inode	inode;
+ 	ext2_dirhash_t		hash;
+ 	unsigned int		offset = 0;
+ 	int			dir_modified = 0;
+@@ -756,6 +766,7 @@ static int check_dir_block(ext2_filsys fs,
+ 	int	dx_csum_size = 0, de_csum_size = 0;
+ 	int	failed_csum = 0;
+ 	int	is_leaf = 1;
++	int	has_inline_data = 0;
  
- Inode 16 has EXTENTS_FL flag set on filesystem without extents support.
-@@ -15,18 +24,6 @@ Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Inode 2 ref count is 4, should be 3.  Fix? yes
+ 	cd = (struct check_dir_struct *) priv_data;
+ 	buf = cd->buf;
+@@ -787,7 +798,8 @@ static int check_dir_block(ext2_filsys fs,
+ 	cd->pctx.dirent = 0;
+ 	cd->pctx.num = 0;
  
--i_file_acl for inode 13 (...) is 4218798225, should be zero.
--Clear? yes
--
--Inode 13 (...) has invalid mode (0117003).
--Clear? yes
--
--i_file_acl for inode 14 (...) is 2892851642, should be zero.
--Clear? yes
--
--Inode 14 (...) has invalid mode (0154247).
--Clear? yes
+-	if (db->blk == 0) {
++	/* We don't need to allocate dir blocks for inline_data dir */
++	if (db->blk == 0 && !ext2fs_has_inline_data(fs, db->ino)) {
+ 		if (allocate_dir_block(ctx, db, buf, &cd->pctx))
+ 			return 0;
+ 		block_nr = db->blk;
+@@ -808,7 +820,20 @@ static int check_dir_block(ext2_filsys fs,
+ #endif
+ 
+ 	ehandler_operation(_("reading directory block"));
+-	cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf, 0, ino);
++	ext2fs_read_inode(fs, ino, &inode);
++
++	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
++				      EXT4_FEATURE_INCOMPAT_INLINE_DATA))
++		has_inline_data = (inode.i_flags & EXT4_INLINE_DATA_FL);
++
++	if (has_inline_data) {
++		cd->pctx.errcode = ext2fs_read_dir_inline_data(fs, ino, buf);
++		if (!cd->pctx.errcode)
++			cd->pctx.errcode = ext2fs_read_dir_inline_data_more(fs,
++								ino, buf);
++	} else
++		cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf,
++							  0, ino);
+ 	ehandler_operation(0);
+ 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
+ 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
+@@ -879,7 +904,7 @@ out_htree:
+ #endif /* ENABLE_HTREE */
+ 
+ 	/* Verify checksum. */
+-	if (is_leaf && de_csum_size) {
++	if (is_leaf && de_csum_size && !has_inline_data) {
+ 		/* No space for csum?  Rebuild dirs in pass 3A. */
+ 		if (!ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf)) {
+ 			de_csum_size = 0;
+@@ -1173,7 +1198,7 @@ skip_checksum:
+ 			(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
+ 		offset += rec_len;
+ 		dot_state++;
+-	} while (offset < fs->blocksize - de_csum_size);
++	} while (is_last_entry(fs, ino, offset, de_csum_size));
+ #if 0
+ 	printf("\n");
+ #endif
+@@ -1191,12 +1216,24 @@ skip_checksum:
+ 	}
+ #endif /* ENABLE_HTREE */
+ 
+-	if (offset != fs->blocksize - de_csum_size) {
+-		cd->pctx.num = rec_len - (fs->blocksize - de_csum_size) +
+-			       offset;
+-		if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
+-			dirent->rec_len = cd->pctx.num;
+-			dir_modified++;
++	if (!has_inline_data) {
++		if (offset != fs->blocksize - de_csum_size) {
++			cd->pctx.num = rec_len -
++				(fs->blocksize - de_csum_size) +
++				offset;
++			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
++				dirent->rec_len = cd->pctx.num;
++				dir_modified++;
++			}
++		}
++	} else {
++		if (offset != ext2fs_inline_data_size(fs, ino)) {
++			cd->pctx.num = rec_len + offset -
++				ext2fs_inline_data_size(fs, ino);
++			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
++				dirent->rec_len = cd->pctx.num;
++				dir_modified++;
++			}
+ 		}
+ 	}
+ 	if (dir_modified) {
+@@ -1210,8 +1247,11 @@ skip_checksum:
+ write_and_fix:
+ 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
+ 			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+-		cd->pctx.errcode = ext2fs_write_dir_block4(fs, block_nr, buf,
+-							   0, ino);
++		if (inode.i_flags & EXT4_INLINE_DATA_FL)
++			cd->pctx.errcode = ext2fs_write_dir_inline_data(fs, ino, buf);
++		else
++			cd->pctx.errcode = ext2fs_write_dir_block4(fs,
++							block_nr, buf, 0, ino);
+ 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
+ 			ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 		if (cd->pctx.errcode) {
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index 59483a6..3adab3c 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -575,7 +575,7 @@ int ext2fs_inline_data_in_extra(ext2_filsys fs, ext2_ino_t ino)
+ 	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+ 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+ 
+-	ext2fs_iget_extra_inode(fs, inode, &idata);
++	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
+ 	ext2fs_free_mem(&inode);
+ 	if (idata.inline_off == 0 ||
+ 	    idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
+@@ -592,7 +592,7 @@ int ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino)
+ 	inode = (struct ext2_inode *) malloc(EXT2_INODE_SIZE(fs->super));
+ 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
+ 
+-	ext2fs_iget_extra_inode(fs, inode, &idata);
++	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
+ 	free(inode);
+ 	if (idata.inline_off == 0)
+ 		return 0;
+-- 
+1.7.4.1
+
