@@ -1,115 +1,46 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 17/36 v4] debugfs: make mkdir cmd support inline data
-Date: Tue, 31 Jul 2012 19:48:10 +0800
-Message-ID: <1343735309-30579-18-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 19/36 v4] debugfs: make rm and kill_file cmd support inline data
+Date: Tue, 31 Jul 2012 19:48:12 +0800
+Message-ID: <1343735309-30579-20-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:53943 "EHLO
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755715Ab2GaLkS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:18 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so11540999pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:18 -0700 (PDT)
+	with ESMTP id S1756026Ab2GaLkW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:22 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:22 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-We need to reload inode in ext2fs_mkdir because inode with inline itself
-data is modified in ext2fs_link.
-
-Now we cannot create an empty dir with inline data because we need to do
-a lot of works for maniluating xattr, and it brings a huge impacts for
-e2fsprogs.
+rm and kill_file command don't need to release blocks.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/mkdir.c |   33 +++++++++++++++++++++++++++++----
- 1 files changed, 29 insertions(+), 4 deletions(-)
+ debugfs/debugfs.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index 4a85439..3c226f3 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -41,6 +41,7 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	ext2_ino_t		scratch_ino;
- 	blk64_t			blk;
- 	char			*block = 0;
-+	int			unmark_blk = 0;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 87fc6a9..9069735 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -1851,8 +1851,9 @@ static void kill_file_by_inode(ext2_ino_t inode)
+ 	if (!ext2fs_inode_has_valid_blocks2(current_fs, &inode_buf))
+ 		return;
  
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-@@ -115,6 +116,14 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	}
- 
- 	/*
-+	 * XXX: We need to update accouting before we mkdir successful because
-+	 * in ext2fs_link it could allocate a new block when there is no space
-+	 * to store a new dir entry in inline data.  If ext2fs_link failed, we
-+	 * need to unmark this block.
-+	 */
-+	ext2fs_block_alloc_stats2(fs, blk, +1);
-+
-+	/*
- 	 * Link the directory into the filesystem hierarchy
- 	 */
- 	if (name) {
-@@ -123,32 +132,48 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 		if (!retval) {
- 			retval = EXT2_ET_DIR_EXISTS;
- 			name = 0;
-+			unmark_blk = 1;
- 			goto cleanup;
- 		}
--		if (retval != EXT2_ET_FILE_NOT_FOUND)
-+		if (retval != EXT2_ET_FILE_NOT_FOUND) {
-+			unmark_blk = 1;
- 			goto cleanup;
-+		}
- 		retval = ext2fs_link(fs, parent, name, ino, EXT2_FT_DIR);
--		if (retval)
-+		if (retval) {
-+			unmark_blk = 1;
- 			goto cleanup;
-+		}
- 	}
- 
- 	/*
- 	 * Update parent inode's counts
- 	 */
- 	if (parent != ino) {
-+		/* Reload parent inode */
-+		retval = ext2fs_read_inode(fs, parent, &parent_inode);
-+		if (retval) {
-+			unmark_blk = 1;
-+			goto cleanup;
-+		}
- 		parent_inode.i_links_count++;
- 		retval = ext2fs_write_inode(fs, parent, &parent_inode);
--		if (retval)
-+		if (retval) {
-+			unmark_blk = 1;
- 			goto cleanup;
-+		}
- 	}
- 
- 	/*
- 	 * Update accounting....
- 	 */
--	ext2fs_block_alloc_stats2(fs, blk, +1);
- 	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
- 
- cleanup:
-+	/* Unmark block because mkdir failed */
-+	if (unmark_blk)
-+		ext2fs_block_alloc_stats2(fs, blk, -1);
-+
- 	if (block)
- 		ext2fs_free_mem(&block);
- 	return retval;
+-	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
+-			      release_blocks_proc, NULL);
++	if (!ext2fs_has_inline_data(current_fs, inode))
++		ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY,
++				      NULL, release_blocks_proc, NULL);
+ 	printf("\n");
+ 	ext2fs_inode_alloc_stats2(current_fs, inode, -1,
+ 				  LINUX_S_ISDIR(inode_buf.i_mode));
 -- 
 1.7.4.1
 
