@@ -1,17 +1,17 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 11/36 v4] debugfs: make ls cmd support inline data
-Date: Tue, 31 Jul 2012 19:48:04 +0800
-Message-ID: <1343735309-30579-12-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 15/36 v4] debugfs: make link cmd support inline data
+Date: Tue, 31 Jul 2012 19:48:08 +0800
+Message-ID: <1343735309-30579-16-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:54597 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755715Ab2GaLkI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:08 -0400
-Received: by mail-gh0-f174.google.com with SMTP id r11so5889814ghr.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:07 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755715Ab2GaLkO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:14 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:14 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -20,28 +20,29 @@ From: Zheng Liu <wenqing.lz@taobao.com>
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/ls.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+ lib/ext2fs/link.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/debugfs/ls.c b/debugfs/ls.c
-index b4036de..00b497d 100644
---- a/debugfs/ls.c
-+++ b/debugfs/ls.c
-@@ -170,8 +170,12 @@ void do_list_dir(int argc, char *argv[])
- 	if (ls.options & DELETED_OPT)
- 		flags |= DIRENT_FLAG_INCLUDE_REMOVED;
+diff --git a/lib/ext2fs/link.c b/lib/ext2fs/link.c
+index 2dec5dc..67151c3 100644
+--- a/lib/ext2fs/link.c
++++ b/lib/ext2fs/link.c
+@@ -135,8 +135,13 @@ errcode_t ext2fs_link(ext2_filsys fs, ext2_ino_t dir, const char *name,
+ 	ls.blocksize = fs->blocksize;
+ 	ls.err = 0;
  
--	retval = ext2fs_dir_iterate2(current_fs, inode, flags,
--				    0, list_dir_proc, &ls);
-+	if (ext2fs_has_inline_data(current_fs, inode))
-+		retval = ext2fs_inline_data_iterate2(current_fs, inode, flags,
-+						     0, list_dir_proc, &ls);
+-	retval = ext2fs_dir_iterate(fs, dir, DIRENT_FLAG_INCLUDE_EMPTY,
+-				    0, link_proc, &ls);
++	if (ext2fs_has_inline_data(fs, dir))
++		retval = ext2fs_inline_data_iterate3(fs, dir,
++				DIRENT_FLAG_INCLUDE_EMPTY, 0, ls.name,
++				ls.namelen, link_proc, &ls);
 +	else
-+		retval = ext2fs_dir_iterate2(current_fs, inode, flags,
-+					    0, list_dir_proc, &ls);
- 	fprintf(ls.f, "\n");
- 	close_pager(ls.f);
++		retval = ext2fs_dir_iterate(fs, dir, DIRENT_FLAG_INCLUDE_EMPTY,
++					    0, link_proc, &ls);
  	if (retval)
+ 		return retval;
+ 	if (ls.err)
 -- 
 1.7.4.1
 
