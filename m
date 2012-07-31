@@ -1,52 +1,64 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 unknown problem
-Date: Tue, 31 Jul 2012 12:34:33 -0400
-Message-ID: <20120731163433.GA32228@thunk.org>
-References: <613523755.179491343719039762.JavaMail.root@shiva>
- <1343355595.179511343719122536.JavaMail.root@shiva>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, info <info@plaintext.sk>
-To: luvar@plaintext.sk
+Subject: [PATCH 1/2] ext4: use proper csum calculation in ext4_rename
+Date: Tue, 31 Jul 2012 13:27:03 -0400
+Message-ID: <1343755624-26583-1-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Tao Ma <boyu.mt@taobao.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: stable@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42296 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:42314 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754493Ab2GaQej (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Jul 2012 12:34:39 -0400
-Content-Disposition: inline
-In-Reply-To: <1343355595.179511343719122536.JavaMail.root@shiva>
+	id S1752353Ab2GaR1I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Jul 2012 13:27:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 08:18:42AM +0100, luvar@plaintext.sk wrote:
-> usb 2-4.4: USB disconnect, device number 10
+From: Tao Ma <boyu.mt@taobao.com>
 
-So what's this?  Is this at all related to how you've created your
-RAID device?  You haven't told us what your RAID device on dm-3 is
-composed of (i.e., what are the underlying devices).
+commit ef58f69c3c34f6377f1e21d3533c806dbd980ad0 upstream.
 
-And there were no OOPS or BUG or WARN messages in your dmesg?
+In ext4_rename, when the old name is a dir, we need to
+change ".." to its new parent and journal the change, so
+with metadata_csum enabled, we have to re-calc the csum.
 
-> PS: Writing to disk from jbd2/dm-3-8 still active (iotop shows it still on top of I/O activity).
+As the first block of the dir can be either a htree root
+or a normal directory block and we have different csum
+calculation for these 2 types, we have to choose the right
+one in ext4_rename.
 
-I'm not sure if your kernel has trace debugging enabled, or if you
-have debugfs mounted, but try this:
+btw, it is found by xfstests 013.
 
-echo 1 > /sys/kernel/debug/tracing/events/jbd2/jbd2_run_stats/enable
-cat /sys/kernel/debug/tracing/trace_pipe
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Darrick J. Wong <djwong@us.ibm.com>
+---
+[ Sorry, I forgot to tag these with stable@vger.kernel.org -- Ted ]
 
-If these commands don't work try running this command and see if it
-works then:
+ fs/ext4/namei.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-mount -t debugfs debugfs /sys/kernel/debug
-
-Let us know if you see jbd2 activity.  It's possible that sync isn't
-returning because some process is still writing to the file system,
-and if I recall correctly, Linux 3.2 didn't have some of the sync
-livelock fixes that could cause sync to not return until the file
-system had actually quieted down completely.
-
-Regards,
-
-					- Ted
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5845cd9..0edaf18 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2918,8 +2918,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		PARENT_INO(dir_bh->b_data, new_dir->i_sb->s_blocksize) =
+ 						cpu_to_le32(new_dir->i_ino);
+ 		BUFFER_TRACE(dir_bh, "call ext4_handle_dirty_metadata");
+-		retval = ext4_handle_dirty_dirent_node(handle, old_inode,
+-						       dir_bh);
++		if (is_dx(old_inode)) {
++			retval = ext4_handle_dirty_dx_node(handle,
++							   old_inode,
++							   dir_bh);
++		} else {
++			retval = ext4_handle_dirty_dirent_node(handle,
++							       old_inode,
++							       dir_bh);
++		}
+ 		if (retval) {
+ 			ext4_std_error(old_dir->i_sb, retval);
+ 			goto end_rename;
+-- 
+1.7.12.rc0.22.gcdd159b
 
