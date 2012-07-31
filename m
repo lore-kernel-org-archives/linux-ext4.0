@@ -1,99 +1,63 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 unknown problem
-Date: Tue, 31 Jul 2012 11:45:32 -0500
-Message-ID: <50180BAC.8070607@redhat.com>
-References: <1343355595.179511343719122536.JavaMail.root@shiva>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	info <info@plaintext.sk>
-To: luvar@plaintext.sk
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH 2/7] libext2fs: use abort() instead of perror()/exit()
+Date: Tue, 31 Jul 2012 11:34:38 -0700
+Message-ID: <C4F449DF-59AB-4E63-9545-9D2F8F912563@whamcloud.com>
+References: <20120628024356.GB17989@thor.bakeyournoodle.com> <1343684862-13181-1-git-send-email-tytso@mit.edu> <1343684862-13181-2-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"tony@bakeyournoodle.com" <tony@bakeyournoodle.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23981 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753444Ab2GaS2t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Jul 2012 14:28:49 -0400
-In-Reply-To: <1343355595.179511343719122536.JavaMail.root@shiva>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:50027 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752368Ab2GaSjN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 14:39:13 -0400
+Received: by yhmm54 with SMTP id m54so6413790yhm.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 11:39:12 -0700 (PDT)
+In-Reply-To: <1343684862-13181-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 7/31/12 2:18 AM, luvar@plaintext.sk wrote:
-> Hi,
-> dmesg is probably useles:
+On 2012-07-30, at 14:47, Theodore Ts'o <tytso@mit.edu> wrote:
+
+> This simplifies the number of C library symbols needed by boot loader
+> systems such as yaboot.
+
+This doesn't improve the debugability of the code at all. Instead of getting an error message (as cryptic as it was), now there is no error and the process will just die.
+
+I'm guessing from the original coding that there is no error handling for this case? 
+
+Cheers, Andreas
+
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+> lib/ext2fs/blkmap64_rb.c | 6 ++----
+> 1 file changed, 2 insertions(+), 4 deletions(-)
 > 
-> Probably some logs after mounting...:
+> diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+> index e6b7e04..74140ec 100644
+> --- a/lib/ext2fs/blkmap64_rb.c
+> +++ b/lib/ext2fs/blkmap64_rb.c
+> @@ -134,10 +134,8 @@ static void rb_get_new_extent(struct bmap_rb_extent **ext, __u64 start,
 > 
-> # dmesg | grep EXT
-> EXT3-fs (md2): mounted filesystem with ordered data mode
-> EXT3-fs (md2): using internal journal
-> EXT3-fs (dm-2): using internal journal
-> EXT3-fs (dm-2): mounted filesystem with ordered data mode
-> EXT4-fs (dm-8): mounted filesystem with ordered data mode. Opts: (null)
-> EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts: (null)
-> EXT4-fs (dm-12): mounted filesystem without journal. Opts: (null)
-> EXT4-fs (dm-8): re-mounted. Opts: commit=0
-> EXT4-fs (dm-3): re-mounted. Opts: commit=0
-> EXT4-fs (dm-12): re-mounted. Opts: commit=0
-
-^^^ um, what's that all about?
-
-In theory, according to the docs, that's the same as the default, I guess.
-
-and:
-
-                } else if (token == Opt_commit) {
-                        if (arg == 0)
-                                arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
-
-ok, I guess it is.
-
-> EXT4-fs (dm-28): mounted filesystem with ordered data mode. Opts: (null)
-> EXT3-fs (dm-10): using internal journal
-> EXT3-fs (dm-10): mounted filesystem with ordered data mode
+>    retval = ext2fs_get_mem(sizeof (struct bmap_rb_extent),
+>                &new_ext);
+> -    if (retval) {
+> -        perror("ext2fs_get_mem");
+> -        exit(1);
+> -    }
+> +    if (retval)
+> +        abort();
 > 
-> On last few lines, there is some info about usb key used on thic pc:
+>    new_ext->start = start;
+>    new_ext->count = count;
+> -- 
+> 1.7.12.rc0.22.gcdd159b
 > 
-> # dmesg | tail -n 30
-> sd 14:0:0:0: [sdg] Asking for cache data failed
-> sd 14:0:0:0: [sdg] Assuming drive cache: write through
-...
-
-> Other lines from dmesg seems not relevant. Should I post them too?
-
-Usually best to post all the data and let us sort it out, yes.
-
--Eric
-
-> PS: Writing to disk from jbd2/dm-3-8 still active (iotop shows it still on top of I/O activity).
-> 
-> LuVar
-> 
-> ----- "Theodore Ts'o" <tytso@mit.edu> wrote:
-> 
->> On Mon, Jul 30, 2012 at 08:26:20PM +0100, LuVar wrote:
->>> Hi,
->>> I have seriouse issue here. I have copyied about 7GB files to one of
->> my ext4 partitions and from that point of time there is sustained
->> write to that partition from jbd2/dm-3-8 process. I have lunched "sudo
->> sync" command (about day ago :) and a few hours a after sync start, I
->> have tryied to use umount on that partition... Booth of them are still
->> running...
->>>
->>> I have no serious data there, but if I could be helpfull in
->> bugreport, give me some info what to do.
->>
->> Try running the dmesg command, and see if there's anything
->> interesting
->> there.  If you're not sure if it's interesting, send it to us and we
->> can take a quick look at it.
->>
->> Regards,
->>
->> 					- Ted
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
