@@ -1,72 +1,78 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 24/36 v4] debugfs: make dump and cat cmd support inline data
-Date: Tue, 31 Jul 2012 19:48:17 +0800
-Message-ID: <1343735309-30579-25-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 29/36 v4] e2fsck: add three problem descriptions in pass1
+Date: Tue, 31 Jul 2012 19:48:22 +0800
+Message-ID: <1343735309-30579-30-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756035Ab2GaLkb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:31 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:31 -0700 (PDT)
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53681 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756028Ab2GaLkk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:40 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so5916848yhm.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:40 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-dump and cat command use the same function to read data.  We can
-directly read the data from inode.
+In pass1, we will meet three problems.  So add descriptions in problem
+table.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- debugfs/dump.c |   30 ++++++++++++++++++++++++++++++
- 1 files changed, 30 insertions(+), 0 deletions(-)
+ e2fsck/problem.c |   15 +++++++++++++++
+ e2fsck/problem.h |    9 +++++++++
+ 2 files changed, 24 insertions(+), 0 deletions(-)
 
-diff --git a/debugfs/dump.c b/debugfs/dump.c
-index a15a0b7..10ebe7a 100644
---- a/debugfs/dump.c
-+++ b/debugfs/dump.c
-@@ -113,6 +113,36 @@ static void dump_file(const char *cmdname, ext2_ino_t ino, int fd,
- 	if (debugfs_read_inode(ino, &inode, cmdname))
- 		return;
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 286257d..e55372d 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1000,6 +1000,21 @@ static struct e2fsck_problem problem_table[] = {
+ 	     "@i %i does not match.  "),
+ 	  PROMPT_FIX, 0 },
  
-+	if (ext2fs_has_inline_data(current_fs, ino)) {
-+		struct ext2_inode_large *inode;
-+		struct inline_data idata;
-+		void *inline_start;
-+		int inline_size;
++	/* INLINE_DATA is set and EXT_ATTR is not set */
++	{ PR_1_INLINE_DATA_AND_EXT_ATTR,
++	  N_("INLINE_DATA is set in @S, but it is missing EXT_ATTR feature\n"),
++	  PROMPT_FIX, 0 },
 +
-+		retval = ext2fs_get_mem(EXT2_INODE_SIZE(current_fs->super),
-+							&inode);
-+		if (retval)
-+			return;
++	/* Inode has inline data, superblock missing INCOMPAT_INLINE_DATA feature */
++	{ PR_1_INLINE_DATA_FEATURE,
++	  N_("@i %i is in inline data format, but @S is missing INLINEDATA feature\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
 +
-+		retval = ext2fs_read_inode_full(current_fs, ino, (void *)inode,
-+						EXT2_INODE_SIZE(current_fs->super));
-+		if (retval)
-+			goto out;
-+		write(fd, inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
++	/* INLINE_DATA_FL flag set on a non-inline-data filesystem */
++	{ PR_1_INLINE_DATA_SET,
++	  N_("@i %i has INLINE_DATA_FL flag set on @f without inline data support.\n"),
++	  PROMPT_CLEAR, 0 },
 +
-+		ext2fs_iget_extra_inode(current_fs, inode, &idata);
-+		if (idata.inline_off == EXT4_MIN_INLINE_DATA_SIZE)
-+			goto out;
+ 	/* Pass 1b errors */
+ 
+ 	/* Pass 1B: Rescan for duplicate/bad blocks */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 5caade4..4ea2b2d 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -587,6 +587,15 @@ struct problem_context {
+ #define PR_1_EA_BLOCK_ONLY_CSUM_INVALID        0x01006C
+ 
+ 
++/* INLINE_DATA is set and EXT_ATTR is not set */
++#define PR_1_INLINE_DATA_AND_EXT_ATTR	0x01006D
 +
-+		inline_start = ext2fs_get_inline_xattr_pos(inode, &idata);
-+		inline_size = idata.inline_size - EXT4_MIN_INLINE_DATA_SIZE;
-+		write(fd, inline_start, inline_size);
++/* Inode has inline data, superblock missing INCOMPAT_INLINE_DATA feature */
++#define PR_1_INLINE_DATA_FEATURE	0x01006E
 +
-+out:
-+		ext2fs_free_mem(&inode);
-+		return;
-+	}
++/* INLINE_DATA_FL flag set on a non-inline-data capable filesystem */
++#define PR_1_INLINE_DATA_SET		0x01006F
 +
- 	retval = ext2fs_file_open(current_fs, ino, 0, &e2_file);
- 	if (retval) {
- 		com_err(cmdname, retval, "while opening ext2 file");
+ /*
+  * Pass 1b errors
+  */
 -- 
 1.7.4.1
 
