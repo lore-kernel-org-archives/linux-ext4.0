@@ -1,182 +1,558 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 33/36 v4] e2fsck: check inline data in pass2
-Date: Tue, 31 Jul 2012 19:48:26 +0800
-Message-ID: <1343735309-30579-34-git-send-email-wenqing.lz@taobao.com>
-References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [RFC][PATCH 02/10 v1][RESEND] ext4: add operations on extent
+ status tree
+Date: Tue, 31 Jul 2012 13:55:14 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1207301343060.26051@localhost>
+References: <1342943986-12413-1-git-send-email-wenqing.lz@taobao.com> <1342943986-12413-3-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
+	wenqing.lz@taobao.com
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755438Ab2GaLkr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:47 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:47 -0700 (PDT)
-In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mx1.redhat.com ([209.132.183.28]:62623 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751298Ab2GaLz0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Jul 2012 07:55:26 -0400
+In-Reply-To: <1342943986-12413-3-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Sun, 22 Jul 2012, Zheng Liu wrote:
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- e2fsck/pass2.c           |   64 +++++++++++++++++++++++++++++++++++++--------
- lib/ext2fs/inline_data.c |    4 +-
- 2 files changed, 54 insertions(+), 14 deletions(-)
+> Date: Sun, 22 Jul 2012 15:59:38 +0800
+> From: Zheng Liu <gnehzuil.liu@gmail.com>
+> To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+> Cc: xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com, wenqing.lz@taobao.com
+> Subject: [RFC][PATCH 02/10 v1][RESEND] ext4: add operations on extent status
+>     tree
+> 
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> This patch adds operations on a extent status tree.
+> 
+> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+>  fs/ext4/Makefile         |    2 +-
+>  fs/ext4/extents_status.c |  418 ++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/extents_status.h |   17 ++
+>  3 files changed, 436 insertions(+), 1 deletions(-)
+>  create mode 100644 fs/ext4/extents_status.c
+> 
+> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+> index 56fd8f86..41f22be 100644
+> --- a/fs/ext4/Makefile
+> +++ b/fs/ext4/Makefile
+> @@ -7,7 +7,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
+>  ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+>  		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+>  		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
+> -		mmp.o indirect.o
+> +		mmp.o indirect.o extents_status.o
+>  
+>  ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
+>  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> new file mode 100644
+> index 0000000..bd4e589
+> --- /dev/null
+> +++ b/fs/ext4/extents_status.c
+> @@ -0,0 +1,418 @@
+> +/*
+> + *  fs/ext4/extents_status.c
+> + *
+> + * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
+> + *
+> + * Ext4 extents status tree core functions.
+> + */
+> +#include <linux/rbtree.h>
+> +#include "ext4.h"
+> +#include "extents_status.h"
+> +#include "ext4_extents.h"
+> +
+> +/*
+> + * extents status tree implementation for ext4.
+> + *
+> + *
+> + * ==========================================================================
+> + * Extents status encompass delayed extents and extent locks
+> + *
+> + * 1. Why delayed extent implementation ?
+> + *
+> + * Without delayed extent, ext4 identifies a delayed extent by looking up
+> + * page cache, this has several deficiencies - complicated, buggy, and
+> + * inefficient code.
+> + *
+> + * FIEMAP, SEEK_HOLE/DATA, bigalloc, punch hole and writeout all need to know if
+> + * a block or a range of blocks are belonged to a delayed extent.
+> + *
+> + * Let us have a look at how they do without delayed extents implementation.
+> + *   --	FIEMAP
+> + *	FIEMAP looks up page cache to identify delayed allocations from holes.
+> + *
+> + *   --	SEEK_HOLE/DATA
+> + *	SEEK_HOLE/DATA has the same problem as FIEMAP.
+> + *
+> + *   --	bigalloc
+> + *	bigalloc looks up page cache to figure out if a block is already
+> + *	under delayed allocation or not to determine whether quota reserving
+> + *	is needed for the cluster.
+> + *
+> + *   -- punch hole
+> + *	punch hole looks up page cache to identify a delayed extent.
+> + *
+> + *   --	writeout
+> + *	Writeout looks up whole page cache to see if a buffer is mapped, If
+> + *	there are not very many delayed buffers, then it is time comsuming.
+> + *
+> + * With delayed extents implementation, FIEMAP, SEEK_HOLE/DATA, bigalloc and
+> + * writeout can figure out if a block or a range of blocks is under delayed
+> + * allocation(belonged to a delayed extent) or not by searching the delayed
+> + * extent tree.
+> + *
+> + *
+> + * ==========================================================================
+> + * 2. ext4 delayed extents impelmentation
+> + *
+> + *   --	delayed extent
+> + *	A delayed extent is a range of blocks which are contiguous logically and
+> + *	under delayed allocation.  Unlike extent in ext4, delayed extent in ext4
+> + *	is a in-memory struct, there is no corresponding on-disk data.  There is
+> + *	no limit on length of delayed extent, so a delayed extent can contain as
+> + *	many blocks as they are contiguous logically.
+> + *
+> + *   --	delayed extent tree
+> + *	Every inode has a delayed extent tree and all under delayed allocation
+> + *	blocks are added to the tree as dealyed extents.  Delayed extents in
+> + *	the tree are ordered by logical block no.
+> + *
+> + *   --	operations on a delayed extent tree
+> + *	There are three operations on a delayed extent tree: find next delayed
+> + *	extent, adding a space(a range of blocks) and removing a space.
+> + *
+> + *   --	race on a delayed extent tree
+> + *	Delayed extent tree is protected inode->i_data_sem like extent tree.
+> + *
+> + *
+> + * ==========================================================================
+> + * 3. performance analysis
+> + *   --	overhead
+> + *	1. Apart from operations on a delayed extent tree, we need to
+> + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
+> + *	extent tree, this can have impact on parallel read-write and write-write
+> + *
+> + *	2. There is a cache extent for write access, so if writes are not very
+> + *	random, adding space operaions are in O(1) time.
+> + *
+> + *   --	gain
+> + *	3. Code is much simpler, more readable, more maintainable and
+> + *      more efficient.
+> + */
+> +
+> +static struct kmem_cache *ext4_es_cachep;
+> +
+> +int __init ext4_init_es(void)
+> +{
+> +	ext4_es_cachep = KMEM_CACHE(extent_status, SLAB_RECLAIM_ACCOUNT);
+> +	if (ext4_es_cachep == NULL)
+> +		return -ENOMEM;
+> +	return 0;
+> +}
+> +
+> +void ext4_exit_es(void)
+> +{
+> +	if (ext4_es_cachep)
+> +		kmem_cache_destroy(ext4_es_cachep);
+> +}
+> +
+> +void ext4_es_init_tree(struct ext4_es_tree *tree)
+> +{
+> +	tree->root = RB_ROOT;
+> +	tree->cache_es = NULL;
+> +}
+> +
+> +#ifdef SE_DEBUG
+> +static void ext4_es_print_tree(struct inode *inode)
+> +{
+> +	struct ext4_es_tree *tree;
+> +	struct rb_node *node;
+> +
+> +	printk(KERN_DEBUG "status extents for inode %lu:", inode->i_ino);
+> +	tree = &EXT4_I(inode)->i_es_tree;
+> +	node = rb_first(&tree->root);
+> +	while (node) {
+> +		struct extent_status *es;
+> +		es = rb_entry(node, struct extent_status, rb_node);
+> +		printk(KERN_DEBUG " [%u/%u)", es->start, es->len);
+> +		node = rb_next(node);
+> +	}
+> +	printk(KERN_DEBUG "\n");
+> +}
+> +#else
+> +#define ext4_es_print_tree(inode)
+> +#endif
+> +
+> +static inline ext4_lblk_t extent_status_end(struct extent_status *es)
+> +{
+> +	if (es->start + es->len < es->start)
+> +		return (ext4_lblk_t)-1;
 
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index e28af61..7267409 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -725,6 +725,15 @@ static void salvage_directory(ext2_filsys fs,
- 	}
- }
- 
-+static int is_last_entry(ext2_filsys fs, ext2_ino_t ino, unsigned int offset,
-+			 int csum_size)
-+{
-+	if (ext2fs_has_inline_data(fs, ino))
-+		return (offset < ext2fs_inline_data_size(fs, ino));
-+	else
-+		return (offset < fs->blocksize - csum_size);
-+}
-+
- static int check_dir_block(ext2_filsys fs,
- 			   struct ext2_db_entry2 *db,
- 			   void *priv_data)
-@@ -734,6 +743,7 @@ static int check_dir_block(ext2_filsys fs,
- 	struct dx_dirblock_info	*dx_db = 0;
- #endif /* ENABLE_HTREE */
- 	struct ext2_dir_entry 	*dirent, *prev;
-+	struct ext2_inode	inode;
- 	ext2_dirhash_t		hash;
- 	unsigned int		offset = 0;
- 	int			dir_modified = 0;
-@@ -756,6 +766,7 @@ static int check_dir_block(ext2_filsys fs,
- 	int	dx_csum_size = 0, de_csum_size = 0;
- 	int	failed_csum = 0;
- 	int	is_leaf = 1;
-+	int	has_inline_data = 0;
- 
- 	cd = (struct check_dir_struct *) priv_data;
- 	buf = cd->buf;
-@@ -787,7 +798,8 @@ static int check_dir_block(ext2_filsys fs,
- 	cd->pctx.dirent = 0;
- 	cd->pctx.num = 0;
- 
--	if (db->blk == 0) {
-+	/* We don't need to allocate dir blocks for inline_data dir */
-+	if (db->blk == 0 && !ext2fs_has_inline_data(fs, db->ino)) {
- 		if (allocate_dir_block(ctx, db, buf, &cd->pctx))
- 			return 0;
- 		block_nr = db->blk;
-@@ -808,7 +820,20 @@ static int check_dir_block(ext2_filsys fs,
- #endif
- 
- 	ehandler_operation(_("reading directory block"));
--	cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf, 0, ino);
-+	ext2fs_read_inode(fs, ino, &inode);
-+
-+	if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-+				      EXT4_FEATURE_INCOMPAT_INLINE_DATA))
-+		has_inline_data = (inode.i_flags & EXT4_INLINE_DATA_FL);
-+
-+	if (has_inline_data) {
-+		cd->pctx.errcode = ext2fs_read_dir_inline_data(fs, ino, buf);
-+		if (!cd->pctx.errcode)
-+			cd->pctx.errcode = ext2fs_read_dir_inline_data_more(fs,
-+								ino, buf);
-+	} else
-+		cd->pctx.errcode = ext2fs_read_dir_block4(fs, block_nr, buf,
-+							  0, ino);
- 	ehandler_operation(0);
- 	if (cd->pctx.errcode == EXT2_ET_DIR_CORRUPTED)
- 		cd->pctx.errcode = 0; /* We'll handle this ourselves */
-@@ -879,7 +904,7 @@ out_htree:
- #endif /* ENABLE_HTREE */
- 
- 	/* Verify checksum. */
--	if (is_leaf && de_csum_size) {
-+	if (is_leaf && de_csum_size && !has_inline_data) {
- 		/* No space for csum?  Rebuild dirs in pass 3A. */
- 		if (!ext2fs_dirent_has_tail(fs, (struct ext2_dir_entry *)buf)) {
- 			de_csum_size = 0;
-@@ -1173,7 +1198,7 @@ skip_checksum:
- 			(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
- 		offset += rec_len;
- 		dot_state++;
--	} while (offset < fs->blocksize - de_csum_size);
-+	} while (is_last_entry(fs, ino, offset, de_csum_size));
- #if 0
- 	printf("\n");
- #endif
-@@ -1191,12 +1216,24 @@ skip_checksum:
- 	}
- #endif /* ENABLE_HTREE */
- 
--	if (offset != fs->blocksize - de_csum_size) {
--		cd->pctx.num = rec_len - (fs->blocksize - de_csum_size) +
--			       offset;
--		if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
--			dirent->rec_len = cd->pctx.num;
--			dir_modified++;
-+	if (!has_inline_data) {
-+		if (offset != fs->blocksize - de_csum_size) {
-+			cd->pctx.num = rec_len -
-+				(fs->blocksize - de_csum_size) +
-+				offset;
-+			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
-+				dirent->rec_len = cd->pctx.num;
-+				dir_modified++;
-+			}
-+		}
-+	} else {
-+		if (offset != ext2fs_inline_data_size(fs, ino)) {
-+			cd->pctx.num = rec_len + offset -
-+				ext2fs_inline_data_size(fs, ino);
-+			if (fix_problem(ctx, PR_2_FINAL_RECLEN, &cd->pctx)) {
-+				dirent->rec_len = cd->pctx.num;
-+				dir_modified++;
-+			}
- 		}
- 	}
- 	if (dir_modified) {
-@@ -1210,8 +1247,11 @@ skip_checksum:
- write_and_fix:
- 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
- 			ctx->fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
--		cd->pctx.errcode = ext2fs_write_dir_block4(fs, block_nr, buf,
--							   0, ino);
-+		if (inode.i_flags & EXT4_INLINE_DATA_FL)
-+			cd->pctx.errcode = ext2fs_write_dir_inline_data(fs, ino, buf);
-+		else
-+			cd->pctx.errcode = ext2fs_write_dir_block4(fs,
-+							block_nr, buf, 0, ino);
- 		if (e2fsck_dir_will_be_rehashed(ctx, ino))
- 			ctx->fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		if (cd->pctx.errcode) {
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index 59483a6..3adab3c 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -575,7 +575,7 @@ int ext2fs_inline_data_in_extra(ext2_filsys fs, ext2_ino_t ino)
- 	ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
- 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
- 
--	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
- 	ext2fs_free_mem(&inode);
- 	if (idata.inline_off == 0 ||
- 	    idata.inline_size == EXT4_MIN_INLINE_DATA_SIZE)
-@@ -592,7 +592,7 @@ int ext2fs_inline_data_size(ext2_filsys fs, ext2_ino_t ino)
- 	inode = (struct ext2_inode *) malloc(EXT2_INODE_SIZE(fs->super));
- 	ext2fs_read_inode_full(fs, ino, inode, EXT2_INODE_SIZE(fs->super));
- 
--	ext2fs_iget_extra_inode(fs, inode, &idata);
-+	ext2fs_iget_extra_inode(fs, (void *)inode, &idata);
- 	free(inode);
- 	if (idata.inline_off == 0)
- 		return 0;
--- 
-1.7.4.1
+Is this possible to happen ? It seems to me that if so, it means
+that the extent is corrupted and we should do something about this
+rather than ignore the problem by returning -1 (callers does not
+actually check for it), at least warning should be in place.
 
+> +	return es->start + es->len;
+
+This seems like it should rather be es->start + es->len - 1, since
+the function name suggests that we should get the last block of the
+extent. Having it this way seems error prone to the off by one
+errors.
+
+> +}
+> +
+> +/*
+> + * search through the tree for an delayed_extent with a given offset.  If
+> + * it can't be found, try to find next extent.
+
+This helper could be used by any other extent tree in the ext4 not
+just for delayed extents right (if we're going to add some in the
+future)? So we should change the comment, because it is generic
+enough.
+
+> + */
+> +static struct extent_status *__es_tree_search(struct rb_root *root,
+> +						ext4_lblk_t offset)
+> +{
+> +	struct rb_node *node = root->rb_node;
+> +	struct extent_status *es = NULL;
+> +
+> +	while (node) {
+> +		es = rb_entry(node, struct extent_status, rb_node);
+> +		if (offset < es->start)
+> +			node = node->rb_left;
+> +		else if (offset >= extent_status_end(es))
+> +			node = node->rb_right;
+> +		else
+> +			return es;
+> +	}
+> +
+> +	if (es && offset < es->start)
+> +		return es;
+> +
+> +	if (es && offset >= extent_status_end(es)) {
+> +		node = rb_next(&es->rb_node);
+> +		return node ? rb_entry(node, struct extent_status, rb_node) :
+> +			      NULL;
+> +	}
+> +
+> +	return NULL;
+> +}
+> +
+> +/*
+> + * ext4_es_find_extent: find the 1st delayed extent covering @es->start
+> + * if it exists, otherwise, the next extent after @es->start.
+> + *
+> + * @inode: the inode which owns delayed extents
+> + * @es: delayed extent that we found
+> + *
+> + * Returns next block beyond the found extent.
+
+This is not exactly right isn't it ? From what I can see it returns
+the first block of the next extent after the one we're returning in
+es, or EXT_MAX_BLOCKS if no extent is found.
+
+> + * Delayed extent is returned via @es.
+> + */
+> +ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+> +{
+> +	struct ext4_es_tree *tree;
+> +	struct extent_status *es1;
+> +	struct rb_node *node;
+> +	ext4_lblk_t ret = EXT_MAX_BLOCKS;
+
+Would not it make sense to try the cache first ? Maybe we do not
+need to search the tree at all ?
+
+> +
+> +	es->len = 0;
+> +	tree = &EXT4_I(inode)->i_es_tree;
+> +	es1 = __es_tree_search(&tree->root, es->start);
+> +	if (es1) {
+> +		tree->cache_es = es1;
+> +		es->start = es1->start;
+> +		es->len = es1->len;
+> +		node = rb_next(&es1->rb_node);
+> +		if (node) {
+> +			es1 = rb_entry(node, struct extent_status, rb_node);
+> +			ret = es1->start;
+> +		}
+> +	}
+> +
+> +	return ret;
+> +}
+> +
+> +static struct extent_status *
+> +ext4_es_alloc_extent(ext4_lblk_t start, ext4_lblk_t len)
+> +{
+> +	struct extent_status *es;
+> +	es = kmem_cache_alloc(ext4_es_cachep, GFP_NOFS);
+> +	if (es == NULL)
+> +		return NULL;
+> +	es->start = start;
+> +	es->len = len;
+> +	return es;
+> +}
+> +
+> +static void ext4_es_free_extent(struct extent_status *es)
+> +{
+> +	kmem_cache_free(ext4_es_cachep, es);
+> +}
+> +
+> +static void ext4_es_try_to_merge_left(struct ext4_es_tree *tree,
+> +				      struct extent_status *es)
+> +{
+> +	struct extent_status *es1;
+> +	struct rb_node *node;
+> +
+> +	node = rb_prev(&es->rb_node);
+> +	if (!node)
+> +		return;
+> +
+> +	es1 = rb_entry(node, struct extent_status, rb_node);
+> +	if (extent_status_end(es1) == es->start) {
+> +		es1->len += es->len;
+> +		rb_erase(&es->rb_node, &tree->root);
+> +		if (es == tree->cache_es)
+> +			tree->cache_es = es1;
+> +		ext4_es_free_extent(es);
+> +	}
+> +}
+> +
+> +static void ext4_es_try_to_merge_right(struct ext4_es_tree *tree,
+> +				       struct extent_status *es)
+> +{
+> +	struct extent_status *es1;
+> +	struct rb_node *node;
+> +
+> +	node = rb_next(&es->rb_node);
+> +	if (!node)
+> +		return;
+> +
+> +	es1 = rb_entry(node, struct extent_status, rb_node);
+> +	if (es1->start == extent_status_end(es)) {
+> +		es->len += es1->len;
+> +		rb_erase(node, &tree->root);
+> +		if (es1 == tree->cache_es)
+> +			tree->cache_es = es;
+> +		ext4_es_free_extent(es1);
+> +	}
+> +}
+> +
+> +/*
+> + * ext4_es_add_space: adds a space to a delayed extent tree.
+> + * Caller holds inode->i_data_sem.
+> + *
+> + * ext4_es_add_space is callyed by ext4_dealyed_write_begin and
+> + * ext4_es_remove_space.
+> + *
+> + * Return 0 on success, error code on failure.
+> + */
+> +int ext4_es_add_space(struct inode *inode, ext4_lblk_t offset, ext4_lblk_t len)
+
+I would rather call the function ext4_es_add_extent(), but that may
+be subjective.
+
+> +{
+> +	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+> +	struct rb_node **p = &tree->root.rb_node;
+> +	struct rb_node *parent = NULL;
+> +	struct extent_status *es;
+> +	ext4_lblk_t end = offset + len;
+> +
+> +	BUG_ON(end <= offset);
+> +
+> +	es = tree->cache_es;
+> +	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
+> +		 offset, len, inode->i_ino);
+> +
+> +	if (es && extent_status_end(es) == offset) {
+> +		es_debug("cached by [%u/%u)\n", es->start, es->len);
+> +		es->len += len;
+> +		ext4_es_try_to_merge_right(tree, es);
+> +		goto out;
+> +	} else if (es && es->start == end) {
+> +		es_debug("cached by [%u/%u)\n", es->start, es->len);
+> +		es->start = offset;
+> +		es->len += len;
+> +		ext4_es_try_to_merge_left(tree, es);
+> +		goto out;
+> +	} else if (es && es->start <= offset &&
+> +		   extent_status_end(es) >= end) {
+> +		es_debug("cached by [%u/%u)\n", es->start, es->len);
+> +		goto out;
+> +	}
+> +
+> +	while (*p) {
+> +		parent = *p;
+> +		es = rb_entry(parent, struct extent_status, rb_node);
+> +
+> +		if (offset < es->start) {
+> +			if (end == es->start) {
+> +				es->len += len;
+> +				es->start = offset;
+> +				goto out;
+> +			}
+> +			p = &(*p)->rb_left;
+> +		} else if (offset >= extent_status_end(es)) {
+> +			if (extent_status_end(es) == offset) {
+> +				es->len += len;
+> +				goto out;
+> +			}
+> +			p = &(*p)->rb_right;
+> +		} else
+> +			goto out;
+> +	}
+> +
+> +	es = ext4_es_alloc_extent(offset, len);
+> +	if (!es)
+> +		return -ENOMEM;
+> +	rb_link_node(&es->rb_node, parent, p);
+> +	rb_insert_color(&es->rb_node, &tree->root);
+> +
+> +out:
+> +	tree->cache_es = es;
+> +	ext4_es_print_tree(inode);
+> +
+> +	return 0;
+> +}
+> +
+> +/*
+> + * ext4_es_remove_space() removes a space from a delayed extent tree.
+> + * Caller holds inode->i_data_sem.
+> + *
+> + * Return 0 on success, error code on failure.
+> + */
+> +int ext4_es_remove_space(struct inode *inode, ext4_lblk_t offset,
+> +			 ext4_lblk_t len)
+
+Again, my subjective opinion is that it could be rather called
+ext4_es_remove_extent().
+
+> +{
+> +	struct rb_node *node;
+> +	struct ext4_es_tree *tree;
+> +	struct extent_status *es;
+> +	struct extent_status orig_es;
+> +	ext4_lblk_t len1, len2, end;
+> +
+> +	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
+> +		 offset, len, inode->i_ino);
+
+Since you're adding tracepoints later on, are those debug messages
+necessary ?
+
+> +
+> +	end = offset + len;
+> +	BUG_ON(end <= offset);
+> +	tree = &EXT4_I(inode)->i_es_tree;
+> +	es = __es_tree_search(&tree->root, offset);
+> +	if (!es)
+> +		goto out;
+> +
+> +	/* Simply invalidate cache_es. */
+> +	tree->cache_es = NULL;
+> +
+> +	orig_es.start = es->start;
+> +	orig_es.len = es->len;
+> +	len1 = offset > es->start ? offset - es->start : 0;
+> +	len2 = extent_status_end(es) > end ?
+> +	       extent_status_end(es) - end : 0;
+> +	if (len1 > 0)
+> +		es->len = len1;
+> +	if (len2 > 0) {
+> +		if (len1 > 0) {
+> +			int err;
+> +			err = ext4_es_add_space(inode, end, len2);
+> +			if (err) {
+> +				es->start = orig_es.start;
+> +				es->len = orig_es.len;
+> +				return err;
+> +			}
+> +		} else {
+> +			es->start = end;
+> +			es->len = len2;
+> +		}
+> +		goto out;
+> +	}
+> +
+> +	if (len1 > 0) {
+> +		node = rb_next(&es->rb_node);
+> +		if (!node)
+> +			es = rb_entry(node, struct extent_status, rb_node);
+> +		else
+> +			es = NULL;
+> +	}
+> +
+> +	while (es && extent_status_end(es) <= end) {
+> +		node = rb_next(&es->rb_node);
+> +		rb_erase(&es->rb_node, &tree->root);
+> +		ext4_es_free_extent(es);
+> +		if (!node) {
+> +			es = NULL;
+> +			break;
+> +		}
+> +		es = rb_entry(node, struct extent_status, rb_node);
+> +	}
+> +
+> +	if (es && es->start < end) {
+> +		len1 = extent_status_end(es) - end;
+> +		es->start = end;
+> +		es->len = len1;
+> +	}
+> +
+> +out:
+> +	ext4_es_print_tree(inode);
+> +	return 0;
+> +}
+> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> index d87fd71..8fe8084 100644
+> --- a/fs/ext4/extents_status.h
+> +++ b/fs/ext4/extents_status.h
+> @@ -8,6 +8,12 @@
+>  #ifndef _EXT4_EXTENTS_STATUS_H
+>  #define _EXT4_EXTENTS_STATUS_H
+>  
+> +#ifdef ES_DEBUG
+> +#define es_debug(a...)         printk(a)
+
+Please take a look at the ext4_debug() or ext_debug(), maybe you can
+use it, or at least reuse the code from it.
+
+> +#else
+> +#define es_debug(a...)
+> +#endif
+> +
+>  struct extent_status {
+>  	struct rb_node rb_node;
+>  	ext4_lblk_t start;	/* first block extent covers */
+> @@ -19,4 +25,15 @@ struct ext4_es_tree {
+>  	struct extent_status *cache_es;	/* recently accessed extent */
+>  };
+>  
+> +extern int __init ext4_init_es(void);
+> +extern void ext4_exit_es(void);
+> +extern void ext4_es_init_tree(struct ext4_es_tree *tree);
+> +
+> +extern int ext4_es_add_space(struct inode *inode, ext4_lblk_t start,
+> +				ext4_lblk_t len);
+> +extern int ext4_es_remove_space(struct inode *inode, ext4_lblk_t start,
+> +				ext4_lblk_t len);
+> +extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
+> +				struct extent_status *es);
+> +
+>  #endif /* _EXT4_EXTENTS_STATUS_H */
+> 
