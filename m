@@ -1,87 +1,101 @@
-From: Tony Breeds <tony@bakeyournoodle.com>
-Subject: Re: Minimal configuration for e2fsprogs
-Date: Tue, 31 Jul 2012 15:21:50 +1000
-Message-ID: <20120731052150.GB14970@thor.bakeyournoodle.com>
-References: <20120615042421.GA7021@thor.bakeyournoodle.com>
- <20120627112117.GA15231@thor.bakeyournoodle.com>
- <20120627125443.GA32356@thunk.org>
- <20120628024356.GB17989@thor.bakeyournoodle.com>
- <20120730214531.GE10343@thunk.org>
+From: luvar@plaintext.sk
+Subject: Re: ext4 unknown problem
+Date: Tue, 31 Jul 2012 08:18:42 +0100 (GMT+01:00)
+Message-ID: <1343355595.179511343719122536.JavaMail.root@shiva>
+References: <613523755.179491343719039762.JavaMail.root@shiva>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="OwLcNYc0lM97+oe1"
-Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, info <info@plaintext.sk>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:33016 "EHLO ozlabs.org"
+Received: from mail.plaintext.sk ([81.0.124.6]:47412 "EHLO shiva.plaintext.sk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751838Ab2GaFVz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Jul 2012 01:21:55 -0400
-Content-Disposition: inline
-In-Reply-To: <20120730214531.GE10343@thunk.org>
+	id S1755543Ab2GaHSt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Jul 2012 03:18:49 -0400
+In-Reply-To: <613523755.179491343719039762.JavaMail.root@shiva>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
+dmesg is probably useles:
 
---OwLcNYc0lM97+oe1
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Probably some logs after mounting...:
 
-On Mon, Jul 30, 2012 at 05:45:32PM -0400, Theodore Ts'o wrote:
-> On Thu, Jun 28, 2012 at 12:43:56PM +1000, Tony Breeds wrote:
-> >=20
-> > Okay so I think you want somethign like:
->=20
-> Yep!
->=20
-> > What I did was remove dblist.o from my libext2fs.a and I now get:
-> > /home/tony/src/e2fsprogs/../e2fsprogs-root/lib/libext2fs.a(gen_bitmap64=
-=2Eo): In function `ext2fs_alloc_generic_bmap':
-> > /home/tony/src/e2fsprogs-build/lib/ext2fs/../../../e2fsprogs/lib/ext2fs=
-/gen_bitmap64.c:112: undefined reference to `ext2fs_get_num_dirs'
-> >=20
-> > So it looks like dblist.o is being pulled in for ext2fs_get_num_dirs()
-> > in that case a EXT2FS_BMAP64_AUTODIR bmap type has been asked for.
-> >=20
-> > How would you feel about moving ext2fs_get_num_dirs from dblist.c to
-> > blknum.c?
->=20
-> Sure, no problem.
->=20
-> Take a look at this set of patches (see attached).  With this and the
-> set of ext2fs functions that I understand yaboot is using, I think it
-> solves the concern that you have.  This will be in the next branch of
-> the e2fsprogs.
+# dmesg | grep EXT
+EXT3-fs (md2): mounted filesystem with ordered data mode
+EXT3-fs (md2): using internal journal
+EXT3-fs (dm-2): using internal journal
+EXT3-fs (dm-2): mounted filesystem with ordered data mode
+EXT4-fs (dm-8): mounted filesystem with ordered data mode. Opts: (null)
+EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts: (null)
+EXT4-fs (dm-12): mounted filesystem without journal. Opts: (null)
+EXT4-fs (dm-8): re-mounted. Opts: commit=0
+EXT4-fs (dm-3): re-mounted. Opts: commit=0
+EXT4-fs (dm-12): re-mounted. Opts: commit=0
+EXT4-fs (dm-28): mounted filesystem with ordered data mode. Opts: (null)
+EXT3-fs (dm-10): using internal journal
+EXT3-fs (dm-10): mounted filesystem with ordered data mode
 
-Thanks so much Ted for your help with my patches and the next set.
+On last few lines, there is some info about usb key used on thic pc:
 
-I tried next + your 7 patches and yaboot only fails with errors for
-calloc and abort.  Both of these I'm very happy to fix in yaboot.
+# dmesg | tail -n 30
+sd 14:0:0:0: [sdg] Asking for cache data failed
+sd 14:0:0:0: [sdg] Assuming drive cache: write through
+ sdg: sdg1
+sd 14:0:0:0: [sdg] Asking for cache data failed
+sd 14:0:0:0: [sdg] Assuming drive cache: write through
+sd 14:0:0:0: [sdg] Attached SCSI disk
+mdadm: sending ioctl 1261 to a partition!
+mdadm: sending ioctl 1261 to a partition!
+usb 2-4.4: USB disconnect, device number 10
+hda-intel: IRQ timing workaround is activated for card #0. Suggest a bigger bdl_pos_adj.
+usb 1-1: new high-speed USB device number 2 using ehci_hcd
+usb 1-1: New USB device found, idVendor=0951, idProduct=1687
+usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+usb 1-1: Product: DT R400
+usb 1-1: Manufacturer: Kingston
+usb 1-1: SerialNumber: 0018F30C7FX10B000XX029
+scsi15 : usb-storage 1-1:1.0
+scsi 15:0:0:0: Direct-Access     Kingston DT R400          PMAP PQ: 0 ANSI: 0 CCS
+sd 15:0:0:0: Attached scsi generic sg6 type 0
+sd 15:0:0:0: [sdg] 7774208 512-byte logical blocks: (3.98 GB/3.70 GiB)
+sd 15:0:0:0: [sdg] Write Protect is off
+sd 15:0:0:0: [sdg] Mode Sense: 23 00 00 00
+sd 15:0:0:0: [sdg] No Caching mode page present
+sd 15:0:0:0: [sdg] Assuming drive cache: write through
+sd 15:0:0:0: [sdg] No Caching mode page present
+sd 15:0:0:0: [sdg] Assuming drive cache: write through
+ sdg: sdg1 sdg2
+sd 15:0:0:0: [sdg] No Caching mode page present
+sd 15:0:0:0: [sdg] Assuming drive cache: write through
+sd 15:0:0:0: [sdg] Attached SCSI removable disk
 
-Looking forward to v1.42.6 :)
+Other lines from dmesg seems not relevant. Should I post them too?
 
-Yours Tony
+PS: Writing to disk from jbd2/dm-3-8 still active (iotop shows it still on top of I/O activity).
 
---OwLcNYc0lM97+oe1
-Content-Type: application/pgp-signature
+LuVar
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+----- "Theodore Ts'o" <tytso@mit.edu> wrote:
 
-iQIcBAEBCAAGBQJQF2tuAAoJEEsCiJRY75GK7sgP/Ru1q2T6uYAq6zaM4xzN5gi/
-kD8ajLIvompT5DOTQ1CAALf6s+n+7ZMwC3vbi9SjfqtuXLEWHJsLhRQx/nPoUNhH
-qUcERidpKTHEQnzqaqbQ27fPLSh9NRGAr4EW8qVsyLHcxt/JLHtXodEuylU9iaU/
-m6/3m63jbIDMDUx0ipFeue4+yn5QX+cdjFCypZmHavQTAtpIN13KYqhoPpGkOBTq
-QmQoW0jgkTU3KtIldyge7U5ZTsDN34nuSkokJVUXm7pHd7Z2SxTfQS5uekum6pwm
-N9XVZeOAzclZQW9LNlwnTszJA5yhaedA2gqNQgJe98n9lHZpm1vH8x298Qt6r4tI
-JdMPKlQEwk2vH4/9uVmSuol/JltPfcv8rEWoGzhBVPUcpN0YrCpesTJA/tEb03qk
-ILD7o5nBdIIwj3QsYGganol294pxmnm2YvA/RAEoq9bZe06Vdba0+lWk9fwgrip0
-NRioAp2KtziD9WtBtGf6UXbeC9c8i8uilxRlgdIHbYVHhL7XdPpzcpHSZR38cb4K
-Ok7NiflLyjgeW7K0Z3lRUdM6T2qkXULjAY9p5EuD69N8ZiK+i4t1gq0OJe8eqUHY
-fED/uKXZuXqOXvv+oduwc/TB2ZiTItF+2cJxu7AdYwx2mG97Sxx0dkoVSGakZr+u
-3bf3ilLFzvpC314LuU2x
-=EEUs
------END PGP SIGNATURE-----
-
---OwLcNYc0lM97+oe1--
+> On Mon, Jul 30, 2012 at 08:26:20PM +0100, LuVar wrote:
+> > Hi,
+> > I have seriouse issue here. I have copyied about 7GB files to one of
+> my ext4 partitions and from that point of time there is sustained
+> write to that partition from jbd2/dm-3-8 process. I have lunched "sudo
+> sync" command (about day ago :) and a few hours a after sync start, I
+> have tryied to use umount on that partition... Booth of them are still
+> running...
+> > 
+> > I have no serious data there, but if I could be helpfull in
+> bugreport, give me some info what to do.
+> 
+> Try running the dmesg command, and see if there's anything
+> interesting
+> there.  If you're not sure if it's interesting, send it to us and we
+> can take a quick look at it.
+> 
+> Regards,
+> 
+> 					- Ted
