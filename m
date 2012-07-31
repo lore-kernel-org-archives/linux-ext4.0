@@ -1,59 +1,42 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 02/36 v4] mke2fs: make it support inline data feature
-Date: Tue, 31 Jul 2012 19:47:55 +0800
-Message-ID: <1343735309-30579-3-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 05/36 v4] libext2fs: add EXT4_INLINE_DATA_FL flag for inode
+Date: Tue, 31 Jul 2012 19:47:58 +0800
+Message-ID: <1343735309-30579-6-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:54597 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755715Ab2GaLjv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:39:51 -0400
-Received: by ghrr11 with SMTP id r11so5889814ghr.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:39:51 -0700 (PDT)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:35285 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755715Ab2GaLj4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:39:56 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rp8so11540445pbb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:39:56 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-EXT2_FEATURE_COMPAT_EXT_ATTR flag will be set when inline_data is set
-because inline data feature depends on it.
+Add EXT4_INLINE_DATA_FL flag.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- misc/mke2fs.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+ lib/ext2fs/ext2_fs.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 9564e81..13c3634 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -883,7 +883,8 @@ static __u32 ok_features[3] = {
- 		EXT2_FEATURE_INCOMPAT_META_BG|
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
- 		EXT4_FEATURE_INCOMPAT_MMP |
--		EXT4_FEATURE_INCOMPAT_64BIT,
-+		EXT4_FEATURE_INCOMPAT_64BIT|
-+		EXT4_FEATURE_INCOMPAT_INLINE_DATA,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -1956,6 +1957,13 @@ profile_error:
- 		exit(1);
- 	}
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index c6de26a..6688763 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -318,6 +318,7 @@ struct ext2_dx_tail {
+ #define EXT4_SNAPFILE_FL		0x01000000  /* Inode is a snapshot */
+ #define EXT4_SNAPFILE_DELETED_FL	0x04000000  /* Snapshot is being deleted */
+ #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
++#define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data */
+ #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
  
-+	/* if inline_data is set, ext_attr would be set because inline_data
-+	 * depends on it.
-+	 */
-+	if ((fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_INLINE_DATA) &&
-+	    !(fs_param.s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR))
-+		fs_param.s_feature_compat |= EXT2_FEATURE_COMPAT_EXT_ATTR;
-+
- 	if (fs_param.s_blocks_per_group) {
- 		if (fs_param.s_blocks_per_group < 256 ||
- 		    fs_param.s_blocks_per_group > 8 * (unsigned) blocksize) {
+ #define EXT2_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
 -- 
 1.7.4.1
 
