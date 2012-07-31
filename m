@@ -1,44 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Serious bug?
-Date: Mon, 30 Jul 2012 22:42:36 -0400
-Message-ID: <20120731024236.GB5027@thunk.org>
-References: <0408C81F72528E40A0D3235A1F67FFC804A61E@SN2PRD0202MB144.namprd02.prod.outlook.com>
+From: Nick Semenkovich <semenko@alum.mit.edu>
+Subject: "Unknown code" error when enabling metadata_csum on ext4 raid1 device
+Date: Mon, 30 Jul 2012 21:53:15 -0500
+Message-ID: <CAFepXZhPc0Vw-m0h_U9SnS6=CutOsGbiApe=-PEbKb3dxWOEvw@mail.gmail.com>
+Reply-To: semenko@syndetics.net
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Nelson, John R" <John_Nelson@student.uml.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42199 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754644Ab2GaCmp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jul 2012 22:42:45 -0400
-Content-Disposition: inline
-In-Reply-To: <0408C81F72528E40A0D3235A1F67FFC804A61E@SN2PRD0202MB144.namprd02.prod.outlook.com>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:37253 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751847Ab2GaCxg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jul 2012 22:53:36 -0400
+Received: by qcro28 with SMTP id o28so3418129qcr.19
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Jul 2012 19:53:36 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 02:17:03AM +0000, Nelson, John R wrote:
-> Hi,
->  I created a big 400GB file image and formatted it with mkfs.ext4. the format failed with
-> 
-> Warning: could not erase sector 2: Attempt to write block to filesystem resulted in short write
->
-> i then checked my dmesg and found error on my sda3 partition
-> [  119.578077] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 53, depth: 2 pblock 0
+I'm trying to enable metadata_csum on an ext4 raid1 device, but end up
+with a semi-cryptic error.
 
-All of the errors indicate that an extent tree block in inode
-#32243725 was corrupted.  When you deleted the image file, that
-destroyed the evidence, so that's why fsck didn't reveal any problems.
+(This is probably the same thing Tomasz Chmielewski reported in
+http://www.spinics.net/lists/linux-ext4/msg33139.html )
 
-In terms of how and why the extent tree block got corrupted, that is a
-mystery.  It could have been a memory corruption, due to hardware or
-software bug in the kernel.  It could be a disk corruption, again due
-to hardware or software bug.
+Is this issue being tracked someplace?
 
-So we can note what happened, and see if we see anything else similar,
-ut unless you can replicate it, I'm not sure we can do much more at
-the moment.
+$ uname -ar
+Linux dev 3.5.0-6-generic #6-Ubuntu SMP Mon Jul 23 19:52:14 UTC 2012
+x86_64 x86_64 x86_64 GNU/Linux
 
-Regardless, thank you for the report.   We'll keep an eye out....
+$ git clone git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+$ ./configure
+[snip]
+$ make progs
+[snip]
+$ sudo misc/tune2fs -O metadata_csum /dev/md1
+tune2fs 1.42.3 (14-May-2012)
+rewrite_directory: Unknown code Ijv 64 while rewriting directories
 
-	    	      	      		      - Ted
+The error code changes when I re-run tune2fs (to [a-zA-Z]*3 64).
+
+
+I've tried this on the master, "next", & "pu" git branches, all with errors.
+
+
+$ debugfs -R 'stats' /dev/md1 >
+http://web.mit.edu/semenko/Public/debugfs-md1.txt
+
+
+Best,
+Nick
+
+-- 
+Nick Semenkovich
+Laboratory of Dr. Jeffrey I. Gordon
+Medical Scientist Training Program
+School of Medicine
+Washington University in St. Louis
+http://web.mit.edu/semenko/
