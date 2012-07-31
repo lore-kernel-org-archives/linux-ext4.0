@@ -1,113 +1,115 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Re: [PATCH 0/8] Set bi_rw when alloc bio before call
- bio_add_page.
-Date: Tue, 31 Jul 2012 11:14:57 +1000
-Message-ID: <20120731011457.GO2877@dastard>
-References: <201207301514247032532@gmail.com>
- <20120730214213.GF2877@dastard>
- <201207310855556258267@gmail.com>
+From: "Nelson, John R" <John_Nelson@student.uml.edu>
+Subject: Serious bug?
+Date: Tue, 31 Jul 2012 02:17:03 +0000
+Message-ID: <0408C81F72528E40A0D3235A1F67FFC804A61E@SN2PRD0202MB144.namprd02.prod.outlook.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, axboe <axboe@kernel.dk>,
-	"konrad.wilk" <konrad.wilk@oracle.com>,
-	"chris.mason" <chris.mason@fusionio.com>,
-	viro <viro@ZenIV.linux.org.uk>, tytso <tytso@mit.edu>,
-	"adilger.kernel" <adilger.kernel@dilger.ca>,
-	shaggy <shaggy@kernel.org>, mfasheh <mfasheh@suse.com>,
-	jlbec <jlbec@evilplan.org>, bpm <bpm@sgi.com>,
-	elder <elder@kernel.org>,
-	jfs-discussion <jfs-discussion@lists.sourceforge.net>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	xfs <xfs@oss.sgi.com>, linux-btrfs <linux-btrfs@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-raid <linux-raid@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: majianpeng <majianpeng@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:43616 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752546Ab2GaBPE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jul 2012 21:15:04 -0400
-Content-Disposition: inline
-In-Reply-To: <201207310855556258267@gmail.com>
+Received: from db3ehsobe005.messaging.microsoft.com ([213.199.154.143]:52314
+	"EHLO db3outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751476Ab2GaCRI convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Jul 2012 22:17:08 -0400
+Received: from mail24-db3 (localhost [127.0.0.1])	by mail24-db3-R.bigfish.com
+ (Postfix) with ESMTP id C46A41C0229	for <linux-ext4@vger.kernel.org>; Tue, 31
+ Jul 2012 02:17:06 +0000 (UTC)
+Received: from DB3EHSMHS003.bigfish.com (unknown [10.3.81.238])	by
+ mail24-db3.bigfish.com (Postfix) with ESMTP id 85A411E0048	for
+ <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 02:17:05 +0000 (UTC)
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 31, 2012 at 08:55:59AM +0800, majianpeng wrote:
-> On 2012-07-31 05:42 Dave Chinner <david@fromorbit.com> Wrote:
-> >On Mon, Jul 30, 2012 at 03:14:28PM +0800, majianpeng wrote:
-> >> When exec bio_alloc, the bi_rw is zero.But after calling bio_add_page,
-> >> it will use bi_rw.
-> >> Fox example, in functiion __bio_add_page,it will call merge_bvec_fn().
-> >> The merge_bvec_fn of raid456 will use the bi_rw to judge the merge.
-> >> >> if ((bvm->bi_rw & 1) == WRITE)
-> >> >> return biovec->bv_len; /* always allow writes to be mergeable */
-> >
-> >So if bio_add_page() requires bi_rw to be set, then shouldn't it be
-> >set up for every caller? I noticed there are about 50 call sites for
-> >bio_add_page(), and you've only touched about 10 of them. Indeed, I
-> >notice that the RAID0/1 code uses bio_add_page, and as that can be
-> >stacked on top of RAID456, it also needs to set bi_rw correctly.
-> >As a result, your patch set is nowhere near complete, not does it
-> >document that bio_add_page requires that bi_rw be set before calling
-> >(which is the new API requirement, AFAICT).
-> There are many place call bio_add_page and I send some of those. Because my abilty, so I only send 
-> some patchs which i understand clearly.
+Hi,
+ I created a big 400GB file image and formatted it with mkfs.ext4. the format failed with
 
-Sure, but my point is that there is no point changing only a few and
-ignoring the great majority of callers. Either fix them all, fix it
-some other way (e.g. API change), or remove the code from the RAID5
-function that requires it.
+Warning: could not erase sector 2: Attempt to write block to filesystem resulted in short write
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+26214400 inodes, 104857600 blocks
+5242880 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=4294967296
+3200 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks: 
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+        4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968, 
+        102400000
 
-> In __bio_add_page:
-> >>if (q->merge_bvec_fn) {
-> >>				struct bvec_merge_data bvm = {
-> >>					/* prev_bvec is already charged in
-> >>					   bi_size, discharge it in order to
-> >>					   simulate merging updated prev_bvec
-> >>					   as new bvec. */
-> >>					.bi_bdev = bio->bi_bdev,
-> >>					.bi_sector = bio->bi_sector,
-> >>					.bi_size = bio->bi_size - prev_bv_len,
-> >>					.bi_rw = bio->bi_rw,
-> >>				};
-> it used bio->bi_rw.
-> Before raid5_mergeable_bvec appearing, in kernel 'merge_bvec_fn' did not use bio->bi_rw.
+Allocating group tables: done                            
+Warning: could not read block 0: Attempt to read block from filesystem resulted in short read
+Warning: could not erase sector 0: Attempt to write block to filesystem resulted in short write
+mkfs.ext4: Attempt to write block to filesystem resulted in short write while zeroing block 104857584 at end of filesystem
+Writing inode tables: done                            
+Creating journal (32768 blocks): mkfs.ext4: Attempt to write block to filesystem resulted in short write 
+        while trying to create journal
+john@john-K53E:~$ 
 
-Right, but as things stand right now, the RAID5 code is a no-op
-because nobody is setting bio->bi_rw correctly. it is effectively
-dead code.
+i then checked my dmesg and found error on my sda3 partition
+[  119.578077] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 53, depth: 2 pblock 0
+[  119.578209] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 54, depth: 2 pblock 0
+[  119.578340] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 55, depth: 2 pblock 0
+[  119.578449] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 56, depth: 2 pblock 0
+[  119.578569] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 57, depth: 2 pblock 0
+[  119.578695] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 58, depth: 2 pblock 0
+[  119.578827] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 59, depth: 2 pblock 0
+[  119.578958] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 60, depth: 2 pblock 0
+[  119.579090] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 61, depth: 2 pblock 0
+[  119.579221] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 62, depth: 2 pblock 0
+[  119.579330] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 63, depth: 2 pblock 0
+[  119.579450] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 64, depth: 2 pblock 0
+[  119.579576] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 65, depth: 2 pblock 0
+[  119.579708] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 66, depth: 2 pblock 0
+[  119.579844] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 67, depth: 2 pblock 0
+[  119.579977] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 68, depth: 2 pblock 0
+[  119.580106] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 69, depth: 2 pblock 0
+[  119.580214] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 70, depth: 2 pblock 0
+[  119.580332] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 71, depth: 2 pblock 0
+[  119.580458] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 72, depth: 2 pblock 0
+[  119.580590] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 73, depth: 2 pblock 0
+[  119.580731] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 74, depth: 2 pblock 0
+[  119.580854] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 75, depth: 2 pblock 0
+[  119.580985] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 76, depth: 2 pblock 0
+[  119.581116] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 77, depth: 2 pblock 0
+[  119.581227] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 78, depth: 2 pblock 0
+[  119.581347] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 79, depth: 2 pblock 0
+[  119.581473] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 80, depth: 2 pblock 0
+[  119.581604] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 81, depth: 2 pblock 0
+[  119.581735] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 82, depth: 2 pblock 0
+[  119.581844] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 83, depth: 2 pblock 0
+[  119.581964] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 84, depth: 2 pblock 0
+[  119.582091] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 85, depth: 2 pblock 0
+[  119.582222] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 86, depth: 2 pblock 0
+[  119.582354] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 87, depth: 2 pblock 0
+[  119.582494] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 88, depth: 2 pblock 0
+[  119.582594] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 89, depth: 2 pblock 0
+[  119.582715] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 90, depth: 2 pblock 0
+[  119.582886] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 91, depth: 2 pblock 0
+[  119.582986] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 92, depth: 2 pblock 0
+[  119.583108] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 93, depth: 2 pblock 0
+[  119.583238] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 94, depth: 2 pblock 0
+[  119.583368] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 95, depth: 2 pblock 0
+[  119.583561] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 96, depth: 2 pblock 0
+[  119.583651] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 97, depth: 2 pblock 0
+[  119.583802] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 98, depth: 2 pblock 0
+[  119.584024] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 99, depth: 2 pblock 0
+[  119.584127] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 100, depth: 2 pblock 0
+[  119.584252] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 101, depth: 2 pblock 0
+[  119.584382] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 102, depth: 2 pblock 0
+[  119.584511] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 103, depth: 2 pblock 0
+[  119.584620] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 104, depth: 2 pblock 0
+[  119.584740] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 105, depth: 2 pblock 0
+[  119.584867] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 106, depth: 2 pblock 0
+[  119.584998] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 107, depth: 2 pblock 0
+[  119.585130] EXT4-fs error (device sda3): ext4_ext_map_blocks:3769: inode #32243725: comm mkfs.ext4: bad extent address lblock: 108, depth: 2 pblock 0
 
-> But i think we shold not suppose bi_rw not meanless.
+i deleted the image and rebooted and fsck was forced, but i didnt find any errors. But im not sure why this is happening. and please note this. the iblock in my log continues all the way down to 924.
 
-To decide whether we should take it to have meaning, data is
-required to show that the RAID5 optimisation it enables is
-worthwhile.  If the optimisation is not worthwhile, then the correct
-thing to do is remove the optimisation in the RAID5 code and remove
-the bi_rw field from the struct bvec_merge_data.
-
-> >So, my question is whether the RAID456 code is doing something
-> >valid.  That write optimisation is clearly not enabled for a
-> >significant amount of code and filesystems, so the first thing to do
-> >is quantify the benefit of the optimisation. I can't evalute the
-> >merit of this change without data telling me it is worthwhile, and
-> >it's a lot of code to churn for no benefit....
-> >
-> Sorry, we do not think the 'merge_bvec_fn' did not use bi_rw.
-
-It's entirely possible that when bi_rw was added to struct
-bvec_merge_data, the person who added it was mistaken that bi_rw was
-set at this point in time when in fact it never has been. Hence it's
-presence and reliance on it would be a bug.
-
-That's what I'm asking - is this actually beneificial, or should it
-simply be removed from struct bvec_merge_data? Data is needed to
-answer that question....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+John Nelson
