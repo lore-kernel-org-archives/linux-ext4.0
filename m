@@ -1,79 +1,99 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: use s_csum_seed instead of i_csum_seed for xattr block
-Date: Tue, 31 Jul 2012 13:27:04 -0400
-Message-ID: <1343755624-26583-2-git-send-email-tytso@mit.edu>
-References: <1343755624-26583-1-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Tao Ma <boyu.mt@taobao.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: stable@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4 unknown problem
+Date: Tue, 31 Jul 2012 11:45:32 -0500
+Message-ID: <50180BAC.8070607@redhat.com>
+References: <1343355595.179511343719122536.JavaMail.root@shiva>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	info <info@plaintext.sk>
+To: luvar@plaintext.sk
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42315 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752362Ab2GaR1I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Jul 2012 13:27:08 -0400
-In-Reply-To: <1343755624-26583-1-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:23981 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753444Ab2GaS2t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Jul 2012 14:28:49 -0400
+In-Reply-To: <1343355595.179511343719122536.JavaMail.root@shiva>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On 7/31/12 2:18 AM, luvar@plaintext.sk wrote:
+> Hi,
+> dmesg is probably useles:
+> 
+> Probably some logs after mounting...:
+> 
+> # dmesg | grep EXT
+> EXT3-fs (md2): mounted filesystem with ordered data mode
+> EXT3-fs (md2): using internal journal
+> EXT3-fs (dm-2): using internal journal
+> EXT3-fs (dm-2): mounted filesystem with ordered data mode
+> EXT4-fs (dm-8): mounted filesystem with ordered data mode. Opts: (null)
+> EXT4-fs (dm-3): mounted filesystem with ordered data mode. Opts: (null)
+> EXT4-fs (dm-12): mounted filesystem without journal. Opts: (null)
+> EXT4-fs (dm-8): re-mounted. Opts: commit=0
+> EXT4-fs (dm-3): re-mounted. Opts: commit=0
+> EXT4-fs (dm-12): re-mounted. Opts: commit=0
 
-commit 41eb70dde42b2360074a559a6f1fc49860a50179 upstream.
+^^^ um, what's that all about?
 
-In xattr block operation, we use h_refcount to indicate whether the
-xattr block is shared among many inodes. And xattr block csum uses
-s_csum_seed if it is shared and i_csum_seed if it belongs to
-one inode. But this has a problem. So consider the block is shared
-first bewteen inode A and B, and B has some xattr update and CoW
-the xattr block. When it updates the *old* xattr block(because
-of the h_refcount change) and calls ext4_xattr_release_block, we
-has no idea that inode A is the real owner of the *old* xattr
-block and we can't use the i_csum_seed of inode A either in xattr
-block csum calculation. And I don't think we have an easy way to
-find inode A.
+In theory, according to the docs, that's the same as the default, I guess.
 
-So this patch just removes the tricky i_csum_seed and we now uses
-s_csum_seed every time for the xattr block csum. The corresponding
-patch for the e2fsprogs will be sent in another patch.
+and:
 
-This is spotted by xfstests 117.
+                } else if (token == Opt_commit) {
+                        if (arg == 0)
+                                arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Acked-by: Darrick J. Wong <djwong@us.ibm.com>
----
-[ Sorry, I forgot to tag these with stable@vger.kernel.org -- Ted ]
+ok, I guess it is.
 
- fs/ext4/xattr.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+> EXT4-fs (dm-28): mounted filesystem with ordered data mode. Opts: (null)
+> EXT3-fs (dm-10): using internal journal
+> EXT3-fs (dm-10): mounted filesystem with ordered data mode
+> 
+> On last few lines, there is some info about usb key used on thic pc:
+> 
+> # dmesg | tail -n 30
+> sd 14:0:0:0: [sdg] Asking for cache data failed
+> sd 14:0:0:0: [sdg] Assuming drive cache: write through
+...
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index e56c9ed..2cdb98d 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -127,19 +127,16 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
- 				    struct ext4_xattr_header *hdr)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	struct ext4_inode_info *ei = EXT4_I(inode);
- 	__u32 csum, old;
- 
- 	old = hdr->h_checksum;
- 	hdr->h_checksum = 0;
--	if (le32_to_cpu(hdr->h_refcount) != 1) {
--		block_nr = cpu_to_le64(block_nr);
--		csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
--				   sizeof(block_nr));
--	} else
--		csum = ei->i_csum_seed;
-+	block_nr = cpu_to_le64(block_nr);
-+	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
-+			   sizeof(block_nr));
- 	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
- 			   EXT4_BLOCK_SIZE(inode->i_sb));
-+
- 	hdr->h_checksum = old;
- 	return cpu_to_le32(csum);
- }
--- 
-1.7.12.rc0.22.gcdd159b
+> Other lines from dmesg seems not relevant. Should I post them too?
+
+Usually best to post all the data and let us sort it out, yes.
+
+-Eric
+
+> PS: Writing to disk from jbd2/dm-3-8 still active (iotop shows it still on top of I/O activity).
+> 
+> LuVar
+> 
+> ----- "Theodore Ts'o" <tytso@mit.edu> wrote:
+> 
+>> On Mon, Jul 30, 2012 at 08:26:20PM +0100, LuVar wrote:
+>>> Hi,
+>>> I have seriouse issue here. I have copyied about 7GB files to one of
+>> my ext4 partitions and from that point of time there is sustained
+>> write to that partition from jbd2/dm-3-8 process. I have lunched "sudo
+>> sync" command (about day ago :) and a few hours a after sync start, I
+>> have tryied to use umount on that partition... Booth of them are still
+>> running...
+>>>
+>>> I have no serious data there, but if I could be helpfull in
+>> bugreport, give me some info what to do.
+>>
+>> Try running the dmesg command, and see if there's anything
+>> interesting
+>> there.  If you're not sure if it's interesting, send it to us and we
+>> can take a quick look at it.
+>>
+>> Regards,
+>>
+>> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
