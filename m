@@ -1,46 +1,115 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 20/36 v4] debugfs: make pwd cmd support inline data
-Date: Tue, 31 Jul 2012 19:48:13 +0800
-Message-ID: <1343735309-30579-21-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 17/36 v4] debugfs: make mkdir cmd support inline data
+Date: Tue, 31 Jul 2012 19:48:10 +0800
+Message-ID: <1343735309-30579-18-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pb0-f46.google.com ([209.85.160.46]:53943 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756027Ab2GaLkX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:23 -0400
+	with ESMTP id S1755715Ab2GaLkS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:18 -0400
 Received: by mail-pb0-f46.google.com with SMTP id rp8so11540999pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:23 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:18 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
+We need to reload inode in ext2fs_mkdir because inode with inline itself
+data is modified in ext2fs_link.
+
+Now we cannot create an empty dir with inline data because we need to do
+a lot of works for maniluating xattr, and it brings a huge impacts for
+e2fsprogs.
+
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/get_pathname.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
+ lib/ext2fs/mkdir.c |   33 +++++++++++++++++++++++++++++----
+ 1 files changed, 29 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/get_pathname.c b/lib/ext2fs/get_pathname.c
-index 52aea62..f92f17d 100644
---- a/lib/ext2fs/get_pathname.c
-+++ b/lib/ext2fs/get_pathname.c
-@@ -98,7 +98,12 @@ static errcode_t ext2fs_get_pathname_int(ext2_filsys fs, ext2_ino_t dir,
- 	gp.name = 0;
- 	gp.errcode = 0;
+diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
+index 4a85439..3c226f3 100644
+--- a/lib/ext2fs/mkdir.c
++++ b/lib/ext2fs/mkdir.c
+@@ -41,6 +41,7 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	ext2_ino_t		scratch_ino;
+ 	blk64_t			blk;
+ 	char			*block = 0;
++	int			unmark_blk = 0;
  
--	retval = ext2fs_dir_iterate(fs, dir, 0, buf, get_pathname_proc, &gp);
-+	if (ext2fs_has_inline_data(fs, dir))
-+		retval = ext2fs_inline_data_iterate(fs, dir, 0, buf,
-+						    get_pathname_proc, &gp);
-+	else
-+		retval = ext2fs_dir_iterate(fs, dir, 0, buf,
-+					    get_pathname_proc, &gp);
- 	if (retval == EXT2_ET_NO_DIRECTORY) {
- 		char tmp[32];
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
  
+@@ -115,6 +116,14 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	}
+ 
+ 	/*
++	 * XXX: We need to update accouting before we mkdir successful because
++	 * in ext2fs_link it could allocate a new block when there is no space
++	 * to store a new dir entry in inline data.  If ext2fs_link failed, we
++	 * need to unmark this block.
++	 */
++	ext2fs_block_alloc_stats2(fs, blk, +1);
++
++	/*
+ 	 * Link the directory into the filesystem hierarchy
+ 	 */
+ 	if (name) {
+@@ -123,32 +132,48 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 		if (!retval) {
+ 			retval = EXT2_ET_DIR_EXISTS;
+ 			name = 0;
++			unmark_blk = 1;
+ 			goto cleanup;
+ 		}
+-		if (retval != EXT2_ET_FILE_NOT_FOUND)
++		if (retval != EXT2_ET_FILE_NOT_FOUND) {
++			unmark_blk = 1;
+ 			goto cleanup;
++		}
+ 		retval = ext2fs_link(fs, parent, name, ino, EXT2_FT_DIR);
+-		if (retval)
++		if (retval) {
++			unmark_blk = 1;
+ 			goto cleanup;
++		}
+ 	}
+ 
+ 	/*
+ 	 * Update parent inode's counts
+ 	 */
+ 	if (parent != ino) {
++		/* Reload parent inode */
++		retval = ext2fs_read_inode(fs, parent, &parent_inode);
++		if (retval) {
++			unmark_blk = 1;
++			goto cleanup;
++		}
+ 		parent_inode.i_links_count++;
+ 		retval = ext2fs_write_inode(fs, parent, &parent_inode);
+-		if (retval)
++		if (retval) {
++			unmark_blk = 1;
+ 			goto cleanup;
++		}
+ 	}
+ 
+ 	/*
+ 	 * Update accounting....
+ 	 */
+-	ext2fs_block_alloc_stats2(fs, blk, +1);
+ 	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
+ 
+ cleanup:
++	/* Unmark block because mkdir failed */
++	if (unmark_blk)
++		ext2fs_block_alloc_stats2(fs, blk, -1);
++
+ 	if (block)
+ 		ext2fs_free_mem(&block);
+ 	return retval;
 -- 
 1.7.4.1
 
