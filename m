@@ -1,78 +1,48 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 29/36 v4] e2fsck: add three problem descriptions in pass1
-Date: Tue, 31 Jul 2012 19:48:22 +0800
-Message-ID: <1343735309-30579-30-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 26/36 v4] debugfs: make dirsearch cmd support inline data
+Date: Tue, 31 Jul 2012 19:48:19 +0800
+Message-ID: <1343735309-30579-27-git-send-email-wenqing.lz@taobao.com>
 References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:53681 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756028Ab2GaLkk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:40 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so5916848yhm.19
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:40 -0700 (PDT)
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:54597 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756028Ab2GaLkf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jul 2012 07:40:35 -0400
+Received: by mail-gh0-f174.google.com with SMTP id r11so5889814ghr.19
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Jul 2012 04:40:35 -0700 (PDT)
 In-Reply-To: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-In pass1, we will meet three problems.  So add descriptions in problem
-table.
-
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- e2fsck/problem.c |   15 +++++++++++++++
- e2fsck/problem.h |    9 +++++++++
- 2 files changed, 24 insertions(+), 0 deletions(-)
+ debugfs/htree.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 286257d..e55372d 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1000,6 +1000,21 @@ static struct e2fsck_problem problem_table[] = {
- 	     "@i %i does not match.  "),
- 	  PROMPT_FIX, 0 },
+diff --git a/debugfs/htree.c b/debugfs/htree.c
+index 1932962..8051618 100644
+--- a/debugfs/htree.c
++++ b/debugfs/htree.c
+@@ -374,9 +374,15 @@ void do_dirsearch(int argc, char *argv[])
+ 	pb.search_name = argv[2];
+ 	pb.len = strlen(pb.search_name);
  
-+	/* INLINE_DATA is set and EXT_ATTR is not set */
-+	{ PR_1_INLINE_DATA_AND_EXT_ATTR,
-+	  N_("INLINE_DATA is set in @S, but it is missing EXT_ATTR feature\n"),
-+	  PROMPT_FIX, 0 },
++	if (ext2fs_has_inline_data(current_fs, inode))
++		if (ext2fs_inline_data_search_dir(current_fs, inode, argv[2],
++						  strlen(argv[2])) == 0)
++			goto out;
 +
-+	/* Inode has inline data, superblock missing INCOMPAT_INLINE_DATA feature */
-+	{ PR_1_INLINE_DATA_FEATURE,
-+	  N_("@i %i is in inline data format, but @S is missing INLINEDATA feature\n"),
-+	  PROMPT_CLEAR, PR_PREEN_OK },
-+
-+	/* INLINE_DATA_FL flag set on a non-inline-data filesystem */
-+	{ PR_1_INLINE_DATA_SET,
-+	  N_("@i %i has INLINE_DATA_FL flag set on @f without inline data support.\n"),
-+	  PROMPT_CLEAR, 0 },
-+
- 	/* Pass 1b errors */
+ 	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, 0,
+ 			      search_dir_block, &pb);
  
- 	/* Pass 1B: Rescan for duplicate/bad blocks */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index 5caade4..4ea2b2d 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -587,6 +587,15 @@ struct problem_context {
- #define PR_1_EA_BLOCK_ONLY_CSUM_INVALID        0x01006C
++out:
+ 	free(pb.buf);
+ }
  
- 
-+/* INLINE_DATA is set and EXT_ATTR is not set */
-+#define PR_1_INLINE_DATA_AND_EXT_ATTR	0x01006D
-+
-+/* Inode has inline data, superblock missing INCOMPAT_INLINE_DATA feature */
-+#define PR_1_INLINE_DATA_FEATURE	0x01006E
-+
-+/* INLINE_DATA_FL flag set on a non-inline-data capable filesystem */
-+#define PR_1_INLINE_DATA_SET		0x01006F
-+
- /*
-  * Pass 1b errors
-  */
 -- 
 1.7.4.1
 
