@@ -1,37 +1,53 @@
 From: Marc MERLIN <marc@merlins.org>
-Subject: Re: How can btrfs take 23sec to stat 23K files from an SSD?
-Date: Tue, 31 Jul 2012 23:01:35 -0700
-Message-ID: <20120801060135.GH12695@merlins.org>
-References: <201207222135.11159.Martin@lichtvoll.de> <20120202124241.GW16796@shiny> <20120718220446.GB3888@merlins.org> <20120722185848.GA10089@merlins.org> <201207222135.11159.Martin@lichtvoll.de> <20120722204428.GC3925@merlins.org> <20120722224145.GC12951@merlins.org> <20120723064202.GB6931@merlins.org> <20120727110835.GA6933@shiny> <20120727184238.GA6713@merlins.org>
+Subject: Re: du -s src is a lot slower on SSD than spinning disk in the same laptop
+Date: Tue, 31 Jul 2012 22:30:42 -0700
+Message-ID: <20120801053042.GG12695@merlins.org>
+References: <20120725154521.GA3398@merlins.org> <alpine.LFD.2.00.1207252023080.4340@(none)> <20120726033223.GA5884@thunk.org> <20120726065412.GB20315@merlins.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
 	linux-ext4@vger.kernel.org, axboe@kernel.dk,
 	Milan Broz <mbroz@redhat.com>
-To: Chris Mason <chris.mason@fusionio.com>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	Ted Ts'o <tytso@mit.edu>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from magic.merlins.org ([209.81.13.136]:43390 "EHLO
+	mail1.merlins.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751902Ab2HAFar (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Aug 2012 01:30:47 -0400
 Content-Disposition: inline
-In-Reply-To: <20120801053042.GG12695@merlins.org> <20120727184238.GA6713@merlins.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120726065412.GB20315@merlins.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 27, 2012 at 11:42:39AM -0700, Marc MERLIN wrote:
-> > https://oss.oracle.com/~mason/latencytop.patch
+On Wed, Jul 25, 2012 at 11:54:12PM -0700, Marc MERLIN wrote:
+> and one on th HDD:
 > 
-> Thanks for the patch, and yes I can confirm I'm definitely not pegged on CPU 
-> (not even close and I get the same problem with unencrypted filesystem, actually
-> du -sh is exactly the same speed on encrypted and unecrypted).
+> gandalfthegreat:/boot# find /boot/src | wc -l
+> 6261
+> gandalfthegreat:/boot# reset_cache; time du -sh /boot/src ; reset_cache; time du -sh /boot2/src
+> 169M	/boot/src
+> real	0m5.248s
 > 
-> Here's the result I think you were looking for. I'm not good at reading this,
-> but hopefully it tells you something useful :)
+> 157M	/boot2/src
+> real	0m0.698s
 > 
-> The full run is here if that helps:
-> http://marc.merlins.org/tmp/latencytop.txt
- 
-I did some other tests since last week since my laptop is hard to use
-considering how slow the SSD is.
+> gandalfthegreat:/boot# df -h /boot /boot2
+> Filesystem      Size  Used Avail Use% Mounted on
+> /dev/sda1       241M  226M  2.5M  99% /boot
+> /dev/sdb2       298M  273M  9.3M  97% /boot2
+> gandalfthegreat:/boot# grep boot /proc/mounts
+> /dev/sdb2 /boot2 ext4 rw,relatime,stripe=4,data=ordered 0 0
+> /dev/sda1 /boot ext4 rw,relatime,discard,stripe=32,data=ordered 0 0
+> 
+> The only sizeable difference is that sda1 is a 4K block size I forced to
+> help with faster writes on the ssd.
+> 
+> In the example above, the SSD is almost 10 times slower than the HDD.
+> 
+> blktrace -d /dev/sda -o - | blkparse -i - during du is 
+> http://marc.merlins.org/tmp/blktrace_du_sda1.txt
+> 
+> Does that give enough info on what's going on?
 
 (TL;DR: ntfs on linux via fuse is 33% faster than ext4, which is 2x faster
 than btrfs, but 3x slower than the same filesystem on spinning disk :( )
@@ -55,26 +71,18 @@ It it were a random crappy SSD from a random vendor, I'd blame the SSD, but
 I have a hard time believing that samsung is selling SSDs that are slower
 than hard drives at random IO and 'seeks'.
 
-3) I just got a 2nd ssd from samsung (same kind), just to make sure the one
-I had wasn't bad. It's brand new, and I formatted it carefully on 512
-boundaries:
-/dev/sda1            2048      502271      250112   83  Linux
-/dev/sda2          502272    52930559    26214144    7  HPFS/NTFS/exFAT
-/dev/sda3        52930560    73902079    10485760   82  Linux swap / Solaris
-/dev/sda4        73902080  1000215215   463156568   83  Linux
+Mmmh, and to do more tests, I eventually got a 2nd ssd from samsung (same
+kind), just to make sure the one I had wasn't bad.
 
-I also upgraded to 3.5.0 in the meantime but unfortunately the results are
-similar.
+Unfortunately the results are similar.
+I upgraded to 3.5.0 in the meantime:
 
 First: btrfs is the slowest:
 gandalfthegreat:/mnt/ssd/var/local# time du -sh src/
 514M	src/
 real	0m25.741s
-gandalfthegreat:/mnt/ssd/var/local# grep /mnt/ssd/var /proc/mounts 
-/dev/mapper/ssd /mnt/ssd/var btrfs rw,noatime,compress=lzo,ssd,discard,space_cache 0 0
 
-
-Second: ext4 is 2x faster than btrfs with mkfs.ext4 -O extent -b 4096 /dev/sda3
+Second: ext4 with mkfs.ext4 -O extent -b 4096 /dev/sda3
 gandalfthegreat:/mnt/mnt3# reset_cache
 gandalfthegreat:/mnt/mnt3# time du -sh src/
 519M	src/
@@ -82,7 +90,7 @@ real	0m12.459s
 gandalfthegreat:~# grep mnt3 /proc/mounts
 /dev/sda3 /mnt/mnt3 ext4 rw,noatime,discard,data=ordered 0 0
 
-Third, A freshly made ntfs filesystem through fuse is actually FASTER!
+A freshly made ntfs filesystem through fuse is actually FASTER!
 gandalfthegreat:/mnt/mnt2# reset_cache 
 gandalfthegreat:/mnt/mnt2# time du -sh src/
 506M	src/
@@ -90,12 +98,7 @@ real	0m8.928s
 gandalfthegreat:/mnt/mnt2# grep mnt2 /proc/mounts
 /dev/sda2 /mnt/mnt2 fuseblk rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other,blksize=4096 0 0
 
-How can ntfs via fuse be the fastest and btrfs so slow?
-Of course, all 3 are slower than the same filesystem on spinning too, but
-I'm wondering if there is a scheduling issue that is somehow causing the
-extreme slowness I'm seeing.
-
-Did the latencytop trace I got help in any way?
+How can ntfs via fuse be the fastest?
 
 Thanks,
 Marc
