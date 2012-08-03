@@ -1,47 +1,170 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: "Unknown code" error when enabling metadata_csum on ext4 raid1
- device
-Date: Fri, 3 Aug 2012 00:01:15 -0400
-Message-ID: <20120803040115.GC4253@thunk.org>
-References: <CAFepXZhPc0Vw-m0h_U9SnS6=CutOsGbiApe=-PEbKb3dxWOEvw@mail.gmail.com>
- <20120801071935.GA12929@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: semenko@syndetics.net, linux-ext4@vger.kernel.org,
-	semenko@alum.mit.edu, mangoo@wpkg.org, djwong@us.ibm.com
+From: Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: resize2fs > 16TB questions
+Date: Thu, 2 Aug 2012 22:28:20 -0700
+Message-ID: <250D8AFB-6442-4399-BBC5-2B37B5EC9B4B@whamcloud.com>
+References: <2019C80F-7D05-44FD-89AE-829E3A97053A@sportsandbytes.de> <2AD4EE0D-16C3-4D01-9A34-544E5D5FE8ED@whamcloud.com> <28D780F2-63AA-4FD8-B873-EBE3FD1DF3D3@sportsandbytes.de> <4DA51F27-D3C1-4867-9DC2-7040423E4BAD@whamcloud.com> <71E9EE6B-0615-4F22-9B7F-37D238F2D683@sportsandbytes.de> <82C4FEEB-5926-494D-B68D-6FAC530F098A@whamcloud.com> <CAKgsxVSpfmMG5nP=ykQSAkvx8Z1Zem_GM=BPGQy92ov2-0OiEA@mail.gmail.com> <CAKgsxVTkG4Mf8P-eOQ-SkKCvZzB4d1L1Ji3n7_4hgcGNC07-Zw@mail.gmail.com> <CAGBYx2ZXZ5jT5hrK9Che_2WcTeW8inJjkSJ8d2cb+0BBzfhAog@mail.gmail.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Justin Maggard <jmaggard10@gmail.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42767 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750716Ab2HCEBY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Aug 2012 00:01:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20120801071935.GA12929@gmail.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:33426 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751056Ab2HCF22 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2012 01:28:28 -0400
+Received: by yhmm54 with SMTP id m54so383610yhm.19
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Aug 2012 22:28:28 -0700 (PDT)
+In-Reply-To: <CAGBYx2ZXZ5jT5hrK9Che_2WcTeW8inJjkSJ8d2cb+0BBzfhAog@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 01, 2012 at 03:19:35PM +0800, Zheng Liu wrote:
-> Subject: [PATCH] tune2fs: clear error code before rewriting directory when metadata_csum enabled
-> 
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> When we enable metadata_csum feature in tune2fs, all inodes need to be rewrited
-> to calculate checksum.  In this process, the inode that has been removed also
-> needs to calculate checksum, but the extent tree in these inodes has been clear.
-> Thus, we cannot read any extents, and an 'EXT2_ET_EXTENT_NO_NEXT' error is
-> returned back.  But in this condition error code in rewrite_dir_context doesn't
-> be initialized, and it causes an unknown error.
+On 2012-08-02, at 19:36, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
 
-Thanks, I've merged this into my e2fsprogs checksum branch.
+> In my memory, meta_bg is not allowed to set with resize_inode.  So if
+> you want to use the patch, you need options
+> meta_bg,64bit,^resize_inode when mkfs.
 
-I've promoted all of the metadata checksum patches in e2fsprogs into
-the next branch.  
+It is already default to disable resize_inode when 64bit is enabled, bu=
+t possibly this is only some for filesystems over 16TB.
 
-At that point I'll strongly suggest that people use the development
-branch (currently the next branch, but in the next or two, the master
-branch) of e2fsprogs.  For the kernel, for now I suggest using the
-v3.5 kernel with the ext4_for_linus (commit 03179fe92318) from the
-ext4.git tree merged in.  Hopefully the necessary bug fix commits will
-be in the v3.5.1 kernel, but the 3.5.y series hasn't been released
-yet.
+It might make sense to disable resize_inode when the filesystem is resi=
+zed to 16TB by resize2fs.=20
 
-						- Ted
+>  I am busy on other things, so
+> I am a way the patch for a while.
+
+
+>=20
+> On Fri, Aug 3, 2012 at 4:57 AM, Justin Maggard <jmaggard10@gmail.com>=
+ wrote:
+>> On Thu, Aug 2, 2012 at 1:15 PM, Andreas Dilger <adilger@whamcloud.co=
+m> wrote:
+>>>=20
+>>> On 2012-07-29, at 12:08, Arne H=C3=BCggenberg <hueggenberg@sportsan=
+dbytes.de> wrote:
+>>>=20
+>>>> On Jul 29, 2012, at 8:30 PM, Andreas Dilger wrote:
+>>>>>>> Unfortunately, the group descriptor size is not printed.
+>>>>>>=20
+>>>>>> how can i get the group descriptor size?
+>>>>>=20
+>>>>> Possibly with "debugfs stats"?
+>>>>=20
+>>>> ~ # debugfs /dev/vg0/lvol1
+>>>> debugfs 1.42.4 (12-June-2012)
+>>>> debugfs:  stats
+>>>> debugfs:  stats
+>>>>=20
+>>>> Filesystem volume name:   <none>
+>>>> Last mounted on:          /home/filestore_extern_1
+>>>> Filesystem UUID:          8fba4f1b-5311-4c9b-b8bf-def4957dc1bd
+>>>> Filesystem magic number:  0xEF53
+>>>> Filesystem revision #:    1 (dynamic)
+>>>> Filesystem features:      has_journal ext_attr resize_inode dir_in=
+dex filetype extent 64bit flex_bg sparse_super large_file huge_file uni=
+nit_bg dir_nlink extra_isize
+>>>> Filesystem flags:         signed_directory_hash
+>>>> Default mount options:    user_xattr acl
+>>>> Filesystem state:         clean
+>>>> Errors behavior:          Continue
+>>>> Filesystem OS type:       Linux
+>>>> Inode count:              521011200
+>>>> Block count:              4168089600
+>>>> Reserved block count:     191127425
+>>>> Free blocks:              2162482117
+>>>> Free inodes:              520936736
+>>>> First block:              0
+>>>> Block size:               4096
+>>>> Fragment size:            4096
+>>>> Reserved GDT blocks:      60
+>>>> Blocks per group:         32768
+>>>> Fragments per group:      32768
+>>>> Inodes per group:         4096
+>>>> Inode blocks per group:   256
+>>>> RAID stride:              16
+>>>> RAID stripe width:        160
+>>>> Flex block group size:    16
+>>>> Filesystem created:       Fri Jul 27 17:16:24 2012
+>>>> Last mount time:          Sun Jul 29 15:22:23 2012
+>>>> Last write time:          Sun Jul 29 20:50:44 2012
+>>>> Mount count:              6
+>>>> Maximum mount count:      -1
+>>>> Last checked:             Fri Jul 27 17:16:24 2012
+>>>> Check interval:           0 (<none>)
+>>>> Lifetime writes:          7662 GB
+>>>> Reserved blocks uid:      0 (user root)
+>>>> Reserved blocks gid:      0 (group root)
+>>>> First inode:              11
+>>>> Inode size:               256
+>>>> Required extra isize:     28
+>>>> Desired extra isize:      28
+>>>> Journal inode:            8
+>>>> Default directory hash:   half_md4
+>>>> Directory Hash Seed:      ef2ec72a-750b-4822-bd8d-9117faadeaee
+>>>> Journal backup:           inode blocks
+>>>> Directories:              6392
+>>>> Group  0: block bitmap at 2049, inode bitmap at 2065, inode table =
+at 2081
+>>>>          26585 free blocks, 4085 free inodes, 2 used directories, =
+4084 unused inodes
+>>>>          [Checksum 0x7d46]
+>>>> Group  1: block bitmap at 2050, inode bitmap at 2066, inode table =
+at 2337
+>>>>          4634 free blocks, 4096 free inodes, 0 used directories, 4=
+096 unused inodes
+>>>>          [Inode not init, Checksum 0x97aa]
+>>>> Group  2: block bitmap at 2051, inode bitmap at 2067, inode table =
+at 2593
+>>>>          1020 free blocks, 4096 free inodes, 0 used directories, 4=
+096 unused inodes
+>>>>          [Inode not init, Checksum 0x571f]
+>>>> Group  3: block bitmap at 2052, inode bitmap at 2068, inode table =
+at 2849
+>>>>          2047 free blocks, 4096 free inodes, 0 used directories, 4=
+096 unused inodes
+>>>=20
+>>> Surprisingly, the group descriptor size is also not printed here. L=
+ooking at the code in mke2fs, it appears the 64-byte size used for file=
+systems when the 64bit flag is set, regardless of what size the filesys=
+tem is, and there is no way to change it.
+>>>=20
+>>> It looks like my theory is wrong, but I don't have access to a syst=
+em to test this. Probably worthwhile to ask Yongqiang Yang (CC'd), who =
+wrote the 64-bit resize code.
+>>>=20
+>>=20
+>> I had the same confusion 11 months ago, when the 64-bit resize
+>> patchset was first posted, and I posted almost the same question her=
+e.
+>> My understanding at the end of the mailing list discussion was that
+>> you still cannot resize your filesystem beyond 16TB -- even if the
+>> 64bit flag is set -- and you may never be able to do so on that
+>> filesystem because you are using resize_inode and not meta_bg.  Ther=
+e
+>> was a patchset posted on this list a few months ago by Yongquiang Ya=
+ng
+>> to do meta_bg expansion, but there hasn't been much action around it
+>> from what I have seen (maybe for the 3.7 merge window?).
+>>=20
+>> You can read on here:
+>> http://permalink.gmane.org/gmane.comp.file-systems.ext4/27718
+>>=20
+>> -Justin
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+>=20
+>=20
+> --=20
+> Best Wishes
+> Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
