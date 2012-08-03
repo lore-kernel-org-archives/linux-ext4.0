@@ -1,51 +1,163 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 7/7] libext2fs: enforce the block group descriptor size
- in ext2fs_open()
-Date: Thu, 2 Aug 2012 20:00:03 -0400
-Message-ID: <20120803000003.GA4253@thunk.org>
-References: <20120628024356.GB17989@thor.bakeyournoodle.com>
- <1343684862-13181-1-git-send-email-tytso@mit.edu>
- <1343684862-13181-7-git-send-email-tytso@mit.edu>
- <B4B1A06B-F856-4248-8A7E-3BFF8F3E7267@whamcloud.com>
- <20120731200918.GF32228@thunk.org>
- <CD3F0352-A252-4427-AE7B-F71160BF77BC@whamcloud.com>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: resize2fs > 16TB questions
+Date: Fri, 3 Aug 2012 10:36:29 +0800
+Message-ID: <CAGBYx2ZXZ5jT5hrK9Che_2WcTeW8inJjkSJ8d2cb+0BBzfhAog@mail.gmail.com>
+References: <2019C80F-7D05-44FD-89AE-829E3A97053A@sportsandbytes.de>
+ <2AD4EE0D-16C3-4D01-9A34-544E5D5FE8ED@whamcloud.com> <28D780F2-63AA-4FD8-B873-EBE3FD1DF3D3@sportsandbytes.de>
+ <4DA51F27-D3C1-4867-9DC2-7040423E4BAD@whamcloud.com> <71E9EE6B-0615-4F22-9B7F-37D238F2D683@sportsandbytes.de>
+ <82C4FEEB-5926-494D-B68D-6FAC530F098A@whamcloud.com> <CAKgsxVSpfmMG5nP=ykQSAkvx8Z1Zem_GM=BPGQy92ov2-0OiEA@mail.gmail.com>
+ <CAKgsxVTkG4Mf8P-eOQ-SkKCvZzB4d1L1Ji3n7_4hgcGNC07-Zw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"tony@bakeyournoodle.com" <tony@bakeyournoodle.com>
-To: Andreas Dilger <adilger@whamcloud.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Justin Maggard <jmaggard10@gmail.com>,
+	Andreas Dilger <adilger@whamcloud.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42735 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949Ab2HCAAI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Aug 2012 20:00:08 -0400
-Content-Disposition: inline
-In-Reply-To: <CD3F0352-A252-4427-AE7B-F71160BF77BC@whamcloud.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:45346 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751744Ab2HCCgu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Aug 2012 22:36:50 -0400
+Received: by obbuo13 with SMTP id uo13so367361obb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Aug 2012 19:36:49 -0700 (PDT)
+In-Reply-To: <CAKgsxVTkG4Mf8P-eOQ-SkKCvZzB4d1L1Ji3n7_4hgcGNC07-Zw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 01, 2012 at 01:45:32PM -0700, Andreas Dilger wrote:
-> 
-> I'm pretty sure that we've always checked that it is a power-of-two
-> value. The problem with this change is that it makes it much harder
-> to increase the size again in the future .
+In my memory, meta_bg is not allowed to set with resize_inode.  So if
+you want to use the patch, you need options
+meta_bg,64bit,^resize_inode when mkfs.  I am busy on other things, so
+I am a way the patch for a while.
 
-Unfortunately, no, there aren't any such checks anywhere in either the
-kernel or e2fsck.  In fact, e2fsck wasn't checking s_desc_size at all
-(although it was depending on it), which is what caused me to get very
-worried...
+Yongqiang.
 
-> It would definitely need another feature flag, but it isn't clear
-> without more investigation (that i can't do on my phone) if a COMPAT
-> flag would be enough (which we would likely have anyway if we needed
-> a larger descriptor) or if we need a more restrictive feature flag.
+On Fri, Aug 3, 2012 at 4:57 AM, Justin Maggard <jmaggard10@gmail.com> w=
+rote:
+> On Thu, Aug 2, 2012 at 1:15 PM, Andreas Dilger <adilger@whamcloud.com=
+> wrote:
+>>
+>> On 2012-07-29, at 12:08, Arne H=FCggenberg <hueggenberg@sportsandbyt=
+es.de> wrote:
+>>
+>> > On Jul 29, 2012, at 8:30 PM, Andreas Dilger wrote:
+>> >>>> Unfortunately, the group descriptor size is not printed.
+>> >>>
+>> >>> how can i get the group descriptor size?
+>> >>
+>> >> Possibly with "debugfs stats"?
+>> >
+>> > ~ # debugfs /dev/vg0/lvol1
+>> > debugfs 1.42.4 (12-June-2012)
+>> > debugfs:  stats
+>> > debugfs:  stats
+>> >
+>> > Filesystem volume name:   <none>
+>> > Last mounted on:          /home/filestore_extern_1
+>> > Filesystem UUID:          8fba4f1b-5311-4c9b-b8bf-def4957dc1bd
+>> > Filesystem magic number:  0xEF53
+>> > Filesystem revision #:    1 (dynamic)
+>> > Filesystem features:      has_journal ext_attr resize_inode dir_in=
+dex filetype extent 64bit flex_bg sparse_super large_file huge_file uni=
+nit_bg dir_nlink extra_isize
+>> > Filesystem flags:         signed_directory_hash
+>> > Default mount options:    user_xattr acl
+>> > Filesystem state:         clean
+>> > Errors behavior:          Continue
+>> > Filesystem OS type:       Linux
+>> > Inode count:              521011200
+>> > Block count:              4168089600
+>> > Reserved block count:     191127425
+>> > Free blocks:              2162482117
+>> > Free inodes:              520936736
+>> > First block:              0
+>> > Block size:               4096
+>> > Fragment size:            4096
+>> > Reserved GDT blocks:      60
+>> > Blocks per group:         32768
+>> > Fragments per group:      32768
+>> > Inodes per group:         4096
+>> > Inode blocks per group:   256
+>> > RAID stride:              16
+>> > RAID stripe width:        160
+>> > Flex block group size:    16
+>> > Filesystem created:       Fri Jul 27 17:16:24 2012
+>> > Last mount time:          Sun Jul 29 15:22:23 2012
+>> > Last write time:          Sun Jul 29 20:50:44 2012
+>> > Mount count:              6
+>> > Maximum mount count:      -1
+>> > Last checked:             Fri Jul 27 17:16:24 2012
+>> > Check interval:           0 (<none>)
+>> > Lifetime writes:          7662 GB
+>> > Reserved blocks uid:      0 (user root)
+>> > Reserved blocks gid:      0 (group root)
+>> > First inode:              11
+>> > Inode size:               256
+>> > Required extra isize:     28
+>> > Desired extra isize:      28
+>> > Journal inode:            8
+>> > Default directory hash:   half_md4
+>> > Directory Hash Seed:      ef2ec72a-750b-4822-bd8d-9117faadeaee
+>> > Journal backup:           inode blocks
+>> > Directories:              6392
+>> > Group  0: block bitmap at 2049, inode bitmap at 2065, inode table =
+at 2081
+>> >           26585 free blocks, 4085 free inodes, 2 used directories,=
+ 4084 unused inodes
+>> >           [Checksum 0x7d46]
+>> > Group  1: block bitmap at 2050, inode bitmap at 2066, inode table =
+at 2337
+>> >           4634 free blocks, 4096 free inodes, 0 used directories, =
+4096 unused inodes
+>> >           [Inode not init, Checksum 0x97aa]
+>> > Group  2: block bitmap at 2051, inode bitmap at 2067, inode table =
+at 2593
+>> >           1020 free blocks, 4096 free inodes, 0 used directories, =
+4096 unused inodes
+>> >           [Inode not init, Checksum 0x571f]
+>> > Group  3: block bitmap at 2052, inode bitmap at 2068, inode table =
+at 2849
+>> >           2047 free blocks, 4096 free inodes, 0 used directories, =
+4096 unused inodes
+>>
+>> Surprisingly, the group descriptor size is also not printed here. Lo=
+oking at the code in mke2fs, it appears the 64-byte size used for files=
+ystems when the 64bit flag is set, regardless of what size the filesyst=
+em is, and there is no way to change it.
+>>
+>> It looks like my theory is wrong, but I don't have access to a syste=
+m to test this. Probably worthwhile to ask Yongqiang Yang (CC'd), who w=
+rote the 64-bit resize code.
+>>
+>
+> I had the same confusion 11 months ago, when the 64-bit resize
+> patchset was first posted, and I posted almost the same question here=
+=2E
+>  My understanding at the end of the mailing list discussion was that
+> you still cannot resize your filesystem beyond 16TB -- even if the
+> 64bit flag is set -- and you may never be able to do so on that
+> filesystem because you are using resize_inode and not meta_bg.  There
+> was a patchset posted on this list a few months ago by Yongquiang Yan=
+g
+> to do meta_bg expansion, but there hasn't been much action around it
+> from what I have seen (maybe for the 3.7 merge window?).
+>
+> You can read on here:
+> http://permalink.gmane.org/gmane.comp.file-systems.ext4/27718
+>
+> -Justin
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-It seems very likely that any new feature that would require us to
-expand the block group descriptor would require other changes to the
-file system's structures that would require a more restrictive
-feature flag....
-
-						- Ted
 
 
-		
+--=20
+Best Wishes
+Yongqiang Yang
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
