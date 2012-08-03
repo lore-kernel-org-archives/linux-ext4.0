@@ -1,44 +1,32 @@
-From: luvar@plaintext.sk
-Subject: Re: ext4 unknown problem
-Date: Fri, 3 Aug 2012 08:10:08 +0100 (GMT+01:00)
-Message-ID: <1979415850.180301343977808646.JavaMail.root@shiva>
-References: <1907038122.180281343977772253.JavaMail.root@shiva>
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: Use fsck to free the space used by dir?
+Date: Fri, 03 Aug 2012 22:19:17 +0800
+Message-ID: <501BDDE5.8060005@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, info <info@plaintext.sk>
-To: Theodore Ts'o <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.plaintext.sk ([81.0.124.6]:60960 "EHLO shiva.plaintext.sk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751987Ab2HCHKN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Aug 2012 03:10:13 -0400
-In-Reply-To: <1907038122.180281343977772253.JavaMail.root@shiva>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:43858 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752648Ab2HCOTj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2012 10:19:39 -0400
+Received: by qcro28 with SMTP id o28so406279qcr.19
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Aug 2012 07:19:38 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I will compile my kernel with these options, but I have question what to do now. Should I ignore current state (locked journaling proccess) and just sync and reboot? (I have no problem, but I would like to try to investigate current problem if it is possible with my current kernel config).
+Dear all,
 
-By LuVar.
+I read through the namei.c code recently, but didn't notice any code to
+reduce the size of a dir file (append can increase its size though).
+
+I wonder if I create large amount of files under dir A, then remove all
+the sub items, do I need to run fsck to free the disk space used by the
+dir file? 
+
+Please help confirm or if I missed some points.
 
 
------ "Theodore Ts'o" <tytso@mit.edu> wrote:
-
-> On Wed, Aug 01, 2012 at 09:30:39AM +0100, LuVar wrote:
-> > 
-> > File does not exist... (if there is something to turn on in kernel
-> config, I could do that for future...)
-> 
-> The options you need to enable to use ftrace are:
-> 
->     CONFIG_FUNCTION_TRACER
->     CONFIG_FUNCTION_GRAPH_TRACER
->     CONFIG_STACK_TRACER
->     CONFIG_DYNAMIC_FTRACE    
-> 
-> There's a pretty good tutorial here: http://lwn.net/Articles/365835/
-> 
-> If you are willing to compile your own kernel, can you try going to
-> the latest 3.5 kernel and see if the problem still affects you there?
-> 
->     	       	      	      	 - Ted
+Regards,
+Sheng-Hui
