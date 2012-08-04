@@ -1,88 +1,66 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: Exciting :-( adventures in metadata checksumming
-Date: 3 Aug 2012 21:42:39 -0400
-Message-ID: <20120804014239.14269.qmail@science.horizon.com>
-References: <20120803234902.GA18757@thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: linux@horizon.com, tytso@mit.edu
+From: Wang Sheng-Hui <shhuiw@gmail.com>
+Subject: Re: Use fsck to free the space used by dir?
+Date: Sat, 04 Aug 2012 12:25:49 +0800
+Message-ID: <501CA44D.2010201@gmail.com>
+References: <501BDDE5.8060005@gmail.com> <501BEBE1.5080508@redhat.com> <20120803175727.GB8463@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:18470 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752676Ab2HDBmk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Aug 2012 21:42:40 -0400
-In-Reply-To: <20120803234902.GA18757@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:33450 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751000Ab2HDEZ7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Aug 2012 00:25:59 -0400
+Received: by pbbrp8 with SMTP id rp8so2368715pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Aug 2012 21:25:59 -0700 (PDT)
+In-Reply-To: <20120803175727.GB8463@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> This is what I normally do when I build debian packages.  I normally
-> will create a tarball using the gen-tarball script in the util
-> directory (which is a generated file, so that means you need to run
-> "configure ; sh -vx util/gen-tarball" if you are using a freshly
-> checked out git tree.  In theory you should be able to do a debian
-> build out of the git tree, but it's not what I normally do....
+On 2012=E5=B9=B408=E6=9C=8804=E6=97=A5 01:57, Theodore Ts'o wrote:
+> On Fri, Aug 03, 2012 at 10:18:57AM -0500, Eric Sandeen wrote:
+>> On 8/3/12 9:19 AM, Wang Sheng-Hui wrote:
+>>> Dear all,
+>>>
+>>> I read through the namei.c code recently, but didn't notice any cod=
+e to
+>>> reduce the size of a dir file (append can increase its size though)=
+=2E
+>>
+>> Right, AFAIK nothing in kernelspace will reduce the size.
+>=20
+> In theory, if the dir_index (htree) support is enabled, it would be
+> possible for the kernel to reorganize the directory dynamically. =20
+>=20
+> If dir_index is not enabled, reorganizing the directory would would
+> break any open readdir() sessions and any NFS server file handles.
+> (Which means if the file system has been exported by NFS in the past,
+> and expects to be exported by NFS in the future, reorg'ing a director=
+y
+> will seriously confuse any clients which have cached NFS handles.)
+>=20
+> For that reason, historically we've never bothered to try to implemen=
+t
+> ways of decreasing the size of a directory --- especially since in
+> most cases, sysadmins can do something like:
+>=20
+> mkdir foo.new ; mv foo/* foo.new ; mv foo.new foo
+>=20
+> which while isn't perfect, works most of the time.
+>=20
+> Regards,
+>=20
+> 						- Ted
 
-Thanks for the info.  That's what I tried.  I also used "git archive"
-to make the tarball.
+Thanks for your patient explanations, Eric & Ted!
 
-I'll try it your way.
-
-Lesson 1: gen-tarball must be run from the "util" directory, because it
-tars up ".."; if you run it from the git root as shown above, it tars
-up entirely too much!
-
-Anyway, it appeared to work, but halted with one of the same errors I
-encountered before:
-
-gcc -c -I. -I../lib -I/tmp/build/e2fsprogs-1.43/lib -D_FORTIFY_SOURCE=2 -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -D__NO_STRING_INLINES /tmp/build/e2fsprogs-1.43/e2fsck/sigcatcher.c -o sigcatcher.o
-gcc -Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-rpath-link,../lib -rdynamic -o e2fsck dict.o unix.o e2fsck.o super.o pass1.o pass1b.o pass2.o pass3.o pass4.o pass5.o journal.o badblocks.o util.o dirinfo.o dx_dirinfo.o ehandler.o problem.o message.o quota.o recovery.o region.o revoke.o ea_refcount.o rehash.o profile.o prof_err.o logfile.o sigcatcher.o  ../lib/libquota.a ../lib/libext2fs.so ../lib/libcom_err.so  -lblkid    -luuid     ../lib/libe2p.so 
-../lib/libcom_err.so: undefined reference to `sem_post'
-../lib/libcom_err.so: undefined reference to `sem_wait'
-../lib/libcom_err.so: undefined reference to `sem_init'
-../lib/libcom_err.so: undefined reference to `sem_destroy'
-collect2: error: ld returned 1 exit status
-make[3]: *** [e2fsck] Error 1
-make[3]: Leaving directory `/tmp/build/e2fsprogs-1.43/debian/BUILD-STD/e2fsck'
-make[2]: *** [all-progs-recursive] Error 1
-make[2]: Leaving directory `/tmp/build/e2fsprogs-1.43/debian/BUILD-STD'
-make[1]: *** [all] Error 2
-make[1]: Leaving directory `/tmp/build/e2fsprogs-1.43/debian/BUILD-STD'
-make: *** [debian/stampdir/build-std-stamp] Error 2
-dpkg-buildpackage: error: debian/rules build gave error exit status 2
-
-> Hmm... I can't replicate the problem using a cleanly created file
-> system, copying a huge number of files to it, and then enabling
-> metadata_csum using tune2fs, and then running e2fsck -f on the device
-> again.
-
-The corruption was on a backuppc directory, so if you're so inclined,
-do a lot of hard-linking with "cp -l" as well.
-
-There are 3220155 names in the file system, but only 1.5M inodes:
-Filesystem        Inodes   IUsed     IFree IUse% Mounted on
-/dev/md0       152619008 1565807 151053201    2% /data
-
-What I *now* just realized is that, had my brain been in gear,
-I should have run e2image on the file system *before* repairing it
-for real.  What would have been highly informative.
-
-I'm very very sorry.
-
-> The fact that you are were seeing multiple cases of file system
-> corruption before you started using metadata_csum makes me very
-> suspicious, though.  I'm not sure whether you have a hardware problem,
-> or a bug in the md layer, or something else but the fact you were
-> seeing what looks like metadata corruption problems even before
-> turning on metadata_csum doesn't make it surprising that you might be
-> having the checksum failures reported!
-
-Yes, I'm not sure what's going on, either.  updatedb found the problems
-as it traversed the FS, but it does that *every* night, and literally
-Nothing Happened the night of the failure.
-
-It's also an oddly patterned and elusive error, with bits being
-cleared in the high byte of the magic number, and then reappearing
-when e2fsck looks at them.
-
-One part of me thinks it's *got* to be a RAM problem, but I'd think
-parallel kernel compiles and "git fsck" would catch that.  I've alo been
-running updatedb manually, since that's what triggered last time.
+Regards,
+Wang Sheng-Hui=20
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
