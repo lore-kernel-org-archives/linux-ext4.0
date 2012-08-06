@@ -1,49 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 45621] Kernel ooops: BUG: unable to handle kernel paging
- request at 000000080000001c
-Date: Sun,  5 Aug 2012 22:36:15 +0000 (UTC)
-Message-ID: <20120805223615.2F02611FC6B@bugzilla.kernel.org>
-References: <bug-45621-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: avoid kmemcheck complaint from reading uninitialized memory
+Date: Sun,  5 Aug 2012 23:29:08 -0400
+Message-ID: <1344223748-13589-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:35588 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755137Ab2HEWgR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Aug 2012 18:36:17 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C7F4B201D6
-	for <linux-ext4@vger.kernel.org>; Sun,  5 Aug 2012 22:36:16 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 35EA7201CD
-	for <linux-ext4@vger.kernel.org>; Sun,  5 Aug 2012 22:36:15 +0000 (UTC)
-In-Reply-To: <bug-45621-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43178 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755513Ab2HFD3K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Aug 2012 23:29:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=45621
+Commit 03179fe923 introduced a kmemcheck complaint in
+ext4_da_get_block_prep() because we save and restore
+ei->i_da_metadata_calc_last_lblock even though it is left
+uninitialized in the case where i_da_metadata_calc_len is zero.
 
+This doesn't hurt anything, but silencing the kmemcheck complaint
+makes it easier for people to find real bugs.
 
+Addresses https://bugzilla.kernel.org/show_bug.cgi?id=45631
+(which is marked as a regression).
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+[ Cc: stable@vger.kernel.org ]
+---
+ fs/ext4/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-
---- Comment #4 from Theodore Tso <tytso@mit.edu>  2012-08-05 22:36:14 ---
-Hi, I'm hoping this rings a bell with an mm developer:
-
-    https://bugzilla.kernel.org/show_bug.cgi?id=45621
-
-It looks like the user is reporting a OOPS which was caused by the
-inode's mapping->page_tree having gotten corrupted.  The call stack
-was from a write system call while the system was undergoing heavy
-I/O, on a v3.4.7 kernel.
-
-If someone could take a quick look at this, I'd really appreciate it.
-Thanks!!
-
-                        - Ted
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ccc4bca..56bcaec 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -959,6 +959,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_reserved_meta_blocks = 0;
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_da_metadata_calc_len = 0;
++	ei->i_da_metadata_calc_last_lblock = 0;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
+ #ifdef CONFIG_QUOTA
+ 	ei->i_reserved_quota = 0;
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.12.rc0.22.gcdd159b
+
