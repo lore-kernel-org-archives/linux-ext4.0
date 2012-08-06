@@ -1,36 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Exciting :-( adventures in metadata checksumming
-Date: Mon, 6 Aug 2012 18:12:07 -0400
-Message-ID: <20120806221207.GA30677@thunk.org>
-References: <20120806164700.GA7896@thunk.org>
- <20120806181441.26850.qmail@science.horizon.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 45621] Kernel ooops: BUG: unable to handle kernel paging
+ request at 000000080000001c
+Date: Mon,  6 Aug 2012 22:14:42 +0000 (UTC)
+Message-ID: <20120806221442.D539011FA3A@bugzilla.kernel.org>
+References: <bug-45621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43333 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757016Ab2HFWML (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Aug 2012 18:12:11 -0400
-Content-Disposition: inline
-In-Reply-To: <20120806181441.26850.qmail@science.horizon.com>
+Received: from mail.kernel.org ([198.145.19.201]:32964 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755950Ab2HFWOq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Aug 2012 18:14:46 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6D30D201EF
+	for <linux-ext4@vger.kernel.org>; Mon,  6 Aug 2012 22:14:45 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id BD94B201E0
+	for <linux-ext4@vger.kernel.org>; Mon,  6 Aug 2012 22:14:43 +0000 (UTC)
+In-Reply-To: <bug-45621-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 06, 2012 at 02:14:41PM -0400, George Spelvin wrote:
-> 
-> (Well, some problems with multiarch and not wanting to *install* without
-> a new libcomerr2:i386 to match the new libcomerr2:amd64, but that's
-> something I have to figure out.)
-
-Obvious stupid question --- you don't have a 32-bit krb5 package or
-something else which depewnds on libcomerr2:i386?
-
-I'm using Debain testing and haven't noted any issues like this...
-
-    	  	 	     	     	       - Ted
+https://bugzilla.kernel.org/show_bug.cgi?id=45621
 
 
 
 
+
+--- Comment #6 from markus.doits@googlemail.com  2012-08-06 22:14:42 ---
+Just ran memtest for 3+ hours, 3 passes finished successfully. I know, longer
+is better, but cannot run it longer atm (since it's a server with crucial
+infrastructure). System is not overclocked or so, everything default.
+
+The oops happend to me about 3-4 times in the last 3 months, often on heavy io
+but maybe once when idling (can't say exactly).
+
+So I'll wait for the next one and report back - if there's a next one.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
