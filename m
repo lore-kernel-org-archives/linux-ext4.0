@@ -1,53 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Exciting :-( adventures in metadata checksumming
-Date: Mon, 6 Aug 2012 19:25:12 -0400
-Message-ID: <20120806232512.GE30677@thunk.org>
-References: <20120806221207.GA30677@thunk.org>
- <20120806225937.17241.qmail@science.horizon.com>
+Subject: Re: [PATCH 01/35 v3] libext2fs: add
+ EXT4_FEATURE_INCOMPAT_INLINE_DATA flag
+Date: Tue, 7 Aug 2012 14:22:14 -0400
+Message-ID: <20120807182214.GA29423@thunk.org>
+References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
+ <1341150538-32047-2-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43355 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43454 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751726Ab2HFXZV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Aug 2012 19:25:21 -0400
+	id S1753016Ab2HGSWS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Aug 2012 14:22:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20120806225937.17241.qmail@science.horizon.com>
+In-Reply-To: <1341150538-32047-2-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 06, 2012 at 06:59:37PM -0400, George Spelvin wrote:
-> dpkg-buildpackage: error: debian/rules build gave error exit status 2
-> debuild: fatal error at line 1350:
-> dpkg-buildpackage -rfakeroot -d -us -uc -b -ai386 failed
+On Sun, Jul 01, 2012 at 09:48:24PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> Add EXT4_FEATURE_INCOMPAT_INLINE_DATA flag to support inline
+> data feature.
+> 
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-I don't think -ai386 will work for e2fsprogs since we need external
-libraries; specifically, libblkid-dev and libuuid-dev and the dev
-packages aren't multiarch compatible.  (In fact, I'm not sure -ai386
-to build 32-bit packages in an x86 environment will work in general.
-It's certainly not the standard way 32-bit packages are built.)
+I've pulled in the part of this patch which renames
+INCOMPAT_INLINEDATA to INCOMPAT_INLINE_DATA to the next branch.
 
-The failures you're seeing is because "pkg-config --libs blkid" is
-returning a null string when run in the dpkg-buildpackage -ai386
-environment --- which is not surprising, since we don't have a -32/-64
-bit link libraries in libblkid-dev.
+As far as actually adding this feature to
+EXT2_LIB_FEATURE_INCOMPAT_SUPP, I have two comments.  In general, it's
+best to add this to the patch series at the very end, so that if
+someone is bisecting e2fsprogs, there's no chance that they end up
+with the feature only partially supported.
 
-So if you want to build a 32-bit set of packages of e2fsprogs, you'll
-need to make a 32-bit build environment as a chroot, using debootstrap
-and build e2fsprogs in the 32-bit chroot.
+If the development of the patch is going to take a long time, what I
+have done in the past is to add the feature to
+EXT2_LIB_SOFTSUPP_INCOMPAT and EXt2_LIB_SOFTSUPP_RO_COMPAT.  This
+allows dumpe2fs and debugfs to recognize the file system, which is
+handy for debugging and development.  But it doesn't allow e2fsck to
+try to check or repair file systems with the feature enabled, since
+usually e2fsck support is one of the last things to be coded up.
 
-That's actually how I build my packages for Debian, BTW --- I have a
-32-bit chroot, and I build the binary packages for i386 and upload
-them from there.  I let the autobuilders build the 64-bit binary
-packages from the source upload.  That way, the most commonly used
-binary packages are built in a standard autobuilder environment, and
-are not subject to the vagracies of my build environment.  It also
-means that I don't have to worry about the build scripts bitrot for
-the 32-bit packages.  (I also build 64-bit debs for my own use --- but
-I don't upload them.)
+Then when we're ready to turn on the feature and fully support things,
+we'll have a patch which adds the feature to
+EXT2_LIB_FEATURE_INCOMPAT_SUPP, and remove it from the SOFTSUPP mask.
 
-Regards,
-
-	   	      	     	      	 - Ted
+				    	      - Ted
