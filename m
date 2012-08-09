@@ -1,72 +1,97 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 45741] ext4 scans all disk when calling fallocate after mount
- on 99% full volume.
-Date: Thu,  9 Aug 2012 18:10:59 +0000 (UTC)
-Message-ID: <20120809181059.A5BAA11FC69@bugzilla.kernel.org>
-References: <bug-45741-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: "George Spelvin" <linux@horizon.com>
+Subject: Arrgh!  Even more excitement with metadata checksumming
+Date: 9 Aug 2012 19:48:43 -0400
+Message-ID: <20120809234843.25187.qmail@science.horizon.com>
+References: <20120809050058.23273.qmail@science.horizon.com>
+To: linux-ext4@vger.kernel.org, linux@horizon.com, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:33337 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751973Ab2HISLE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Aug 2012 14:11:04 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id E7D9620280
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Aug 2012 18:11:02 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id E3DA82026B
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Aug 2012 18:11:00 +0000 (UTC)
-In-Reply-To: <bug-45741-13602@https.bugzilla.kernel.org/>
+Received: from science.horizon.com ([71.41.210.146]:23251 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1759875Ab2HIXsp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Aug 2012 19:48:45 -0400
+In-Reply-To: <20120809050058.23273.qmail@science.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=45741
+Havimg, I think, fixed the entire memory corruption problem that inspired
+me to turn on metadata checksums, I want to revert to the standard Ubuntu
+kernel, but first I need to figure out how to turn them off!
 
+The obvious answer is with tune2fs:
 
-Theodore Tso <tytso@mit.edu> changed:
+> ~# tune2fs -O ^metadata_csum /dev/md0
+> tune2fs 1.43-WIP (1-Aug-2012)
+> rewrite_extents: Corrupt extent header while rewriting extents
+> ~# 
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Arrgh!  The file system passes e2fsck fine.  Well, *now* it doesn't; it
+bitches about a zillion missing directory checksums and the lack
+of lost+found:
 
+> Directory inode 82676842, block #1, offset 3260: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Directory inode 82676842, block #2, offset 3264: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Directory inode 82677333, block #1, offset 3260: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Directory inode 82677333, block #2, offset 1328: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Directory inode 82675733, block #3, offset 124: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Directory inode 82676842, block #3, offset 432: directory passes checks but fails checksum
+> Fix? yes
+> 
+> Pass 3: Checking directory connectivity
+> Error while trying to find /lost+found: Directory block checksum does not match directory block
+> /lost+found not found.  Create? yes
+> 
+> Error creating /lost+found directory (ext2fs_link): Directory block checksum does not match directory block
+> Pass 3A: Optimizing directories
+> Pass 4: Checking reference counts
+> Unattached inode 12
+> Connect to /lost+found? yes
+> 
+> Pass 5: Checking group summary information
+> Block bitmap differences:  -937953738
+> Fix? yes
+> 
+> Free blocks count wrong for group #28624 (28170, counted=28171).
+> Fix? yes
+> 
+> Free blocks count wrong (841115975, counted=841115976).
+> Fix? yes
+> 
+> 
+> /dev/md0: ***** FILE SYSTEM WAS MODIFIED *****
 
+But *after* that, it passes fine.
 
+Unfortunately, I don't know where the problem is or I'd see if I could
+just delete the damn problematic file.  (Or move it somewhere else
+temporarily.)
 
---- Comment #1 from Theodore Tso <tytso@mit.edu>  2012-08-09 18:10:59 ---
-It's not scanning every single inode (that would take a lot longer!), but it is
-scanning every single block allocation bitmap.   The problem is that we know
-how many free blocks are in a block group, but we don't know the distribution
-of the free blocks.  The distribution (there X blocks of size 2**3, Y blocks of
-size 2**4, etc.) is cached in memory, but the first time you unmount and mount
-the file system, we need to read in the block bitmap for a block group.
+I'm adding debugging to tune2fs and trying to track down the source.
 
-Normally, we only do this until we find a suitable group, but when the file
-system is completely full, we might need to scan the entire disk.
+Step 1:
+eh_magic = dabe != f30a
+Problem with extent of inode #85800449
+rewrite_extents: Corrupt extent header while rewriting extents
 
-I've looked at mballoc, and there are some things we can fix on our side. 
-We're reading in the block bitmap without first checking to see if the block
-group is completely filled.  So that's an easy fix on our side, which will help
-at least somewhat.   So thanks for for reporting this.
+Step 2:
+debugfs:  ncheck 85800449
+Inode   Pathname
+debugfs:  testi <85800449>
+Inode 85800449 is not in use
 
-That being said, it's a really bad idea to try to use a file system to 99%. 
-Above 80%, the file system performance definitely starts to fall off, and by
-the time you get up to 95%, performance is going to be really awful.  There are
-definitely things we can do to improve things, but ultimately, it's something
-that you should plan for.
+Step 3: ???
+The print is in ext2fs_extent_open2, and I'm just printing the "ino"
+parameter if ext2fs_extent_header_verify fails.
 
-You could also try increasing the flex-bg size, which is a configuration knob
-when the file system is formatted.  This collects allocation bitmaps for
-adjacent block groups together.  The default is 16, but you could try bumping
-that up to 64 or even 128.  It will improve the time needed to scan all of the
-allocation bitmaps in the cold cache case, but it may also decrease performance
-after that, when you need to allocate and delalocate inodes and blocks, and by
-increasing the distance from data blocks to the inode table.   How much this
-tradeoff will work is going to be very dependent on the details of your
-workload.
+Why is tune2fs looking at an inode that's not in use?
+That *would* explain the magic number error...
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
