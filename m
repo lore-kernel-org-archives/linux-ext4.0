@@ -1,177 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: 3.5.1 ext4_ sleeping while atomic bug.
-Date: Fri, 10 Aug 2012 14:24:09 -0400
-Message-ID: <20120810182409.GA10333@thunk.org>
-References: <20120810031701.GA17765@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Dave Jones <davej@redhat.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Subject: [PATCH] ext4: add max_dir_size_kb mount option
+Date: Fri, 10 Aug 2012 15:23:58 -0400
+Message-ID: <1344626638-31548-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44027 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44039 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759877Ab2HJSYR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Aug 2012 14:24:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20120810031701.GA17765@redhat.com>
+	id S1751832Ab2HJTYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 15:24:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Dave,
+Very large directories can cause significant performance problems,
+especially if jobs are running in memory-tight environment (whether it
+is VM's with a small amount of memory or small memory cgroups).
 
-Thanks for the bug report!  The following should address the bug which
-you found.
+So it is useful, in cloud server/data center environments, to be able
+to set a filesystem-wide cap on the maximum size of a directory, to
+ensure that directories never get larger than a sane size.  We do this
+via a new mount option, max_dir_size_kb.  If there is an attempt to
+grow the directory larger than max_dir_size_kb, the system call will
+return ENOSPC instead.
 
-						- Ted
+Google-Bug-Id: 6863013
 
->From 05ca87aa00121756b5d41f3d71eb8b51bed3bc92 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Fri, 10 Aug 2012 13:57:52 -0400
-Subject: [PATCH] ext4: don't call ext4_error while block group is locked
-
-While in ext4_validate_block_bitmap(), if an block allocation bitmap
-is found to be invalid, we call ext4_error() while the block group is
-still locked.  This causes ext4_commit_super() to call a function
-which might sleep while in an atomic context.
-
-There's no need to keep the block group locked at this point, so hoist
-the ext4_error() call up to ext4_validate_block_bitmap() and release
-the block group spinlock before calling ext4_error().
-
-The reported stack trace can be found at:
-
-	http://article.gmane.org/gmane.comp.file-systems.ext4/33731
-
-Reported-by: Dave Jones <davej@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/balloc.c | 62 +++++++++++++++++++++++++++++++++-----------------------
- fs/ext4/bitmap.c |  1 -
- 2 files changed, 37 insertions(+), 26 deletions(-)
+ fs/ext4/ext4.h  | 1 +
+ fs/ext4/namei.c | 6 ++++++
+ fs/ext4/super.c | 7 +++++++
+ 3 files changed, 14 insertions(+)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index d23b31c..1b50890 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -280,14 +280,18 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 	return desc;
- }
- 
--static int ext4_valid_block_bitmap(struct super_block *sb,
--				   struct ext4_group_desc *desc,
--				   unsigned int block_group,
--				   struct buffer_head *bh)
-+/*
-+ * Return the block number which was discovered to be invalid, or 0 if
-+ * the block bitmap is valid.
-+ */
-+static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
-+					    struct ext4_group_desc *desc,
-+					    unsigned int block_group,
-+					    struct buffer_head *bh)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c3411d4..7c0841e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1243,6 +1243,7 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+ 	unsigned int s_max_writeback_mb_bump;
++	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
+ 	unsigned long s_mb_last_start;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2a42cc0..bdde668 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -55,6 +55,12 @@ static struct buffer_head *ext4_append(handle_t *handle,
  {
- 	ext4_grpblk_t offset;
- 	ext4_grpblk_t next_zero_bit;
--	ext4_fsblk_t bitmap_blk;
-+	ext4_fsblk_t blk;
- 	ext4_fsblk_t group_first_block;
+ 	struct buffer_head *bh;
  
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-@@ -297,37 +301,33 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
- 		 * or it has to also read the block group where the bitmaps
- 		 * are located to verify they are set.
- 		 */
--		return 1;
-+		return 0;
- 	}
- 	group_first_block = ext4_group_first_block_no(sb, block_group);
- 
- 	/* check whether block bitmap block number is set */
--	bitmap_blk = ext4_block_bitmap(sb, desc);
--	offset = bitmap_blk - group_first_block;
-+	blk = ext4_block_bitmap(sb, desc);
-+	offset = blk - group_first_block;
- 	if (!ext4_test_bit(offset, bh->b_data))
- 		/* bad block bitmap */
--		goto err_out;
-+		return blk;
- 
- 	/* check whether the inode bitmap block number is set */
--	bitmap_blk = ext4_inode_bitmap(sb, desc);
--	offset = bitmap_blk - group_first_block;
-+	blk = ext4_inode_bitmap(sb, desc);
-+	offset = blk - group_first_block;
- 	if (!ext4_test_bit(offset, bh->b_data))
- 		/* bad block bitmap */
--		goto err_out;
-+		return blk;
- 
- 	/* check whether the inode table block number is set */
--	bitmap_blk = ext4_inode_table(sb, desc);
--	offset = bitmap_blk - group_first_block;
-+	blk = ext4_inode_table(sb, desc);
-+	offset = blk - group_first_block;
- 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
- 				offset + EXT4_SB(sb)->s_itb_per_group,
- 				offset);
--	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
--		/* good bitmap for inode tables */
--		return 1;
--
--err_out:
--	ext4_error(sb, "Invalid block bitmap - block_group = %d, block = %llu",
--			block_group, bitmap_blk);
-+	if (next_zero_bit < offset + EXT4_SB(sb)->s_itb_per_group)
-+		/* bad bitmap for inode tables */
-+		return blk;
- 	return 0;
- }
- 
-@@ -336,14 +336,26 @@ void ext4_validate_block_bitmap(struct super_block *sb,
- 			       unsigned int block_group,
- 			       struct buffer_head *bh)
- {
-+	ext4_fsblk_t	blk;
++	if (unlikely((inode->i_size >> 10) >=
++		     EXT4_SB(inode->i_sb)->s_max_dir_size_kb)) {
++		*err = -ENOSPC;
++		return NULL;
++	}
 +
- 	if (buffer_verified(bh))
- 		return;
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
  
- 	ext4_lock_group(sb, block_group);
--	if (ext4_valid_block_bitmap(sb, desc, block_group, bh) &&
--	    ext4_block_bitmap_csum_verify(sb, block_group, desc, bh,
--					  EXT4_BLOCKS_PER_GROUP(sb) / 8))
--		set_buffer_verified(bh);
-+	blk = ext4_valid_block_bitmap(sb, desc, block_group, bh);
-+	if (unlikely(blk != 0)) {
-+		ext4_unlock_group(sb, block_group);
-+		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
-+			   block_group, blk);
-+		return;
-+	}
-+	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
-+			desc, bh, EXT4_BLOCKS_PER_GROUP(sb) / 8))) {
-+		ext4_unlock_group(sb, block_group);
-+		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
-+		return;
-+	}
-+	set_buffer_verified(bh);
- 	ext4_unlock_group(sb, block_group);
- }
+ 	bh = ext4_bread(handle, inode, *block, 1, err);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 56bcaec..5896dcb 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1230,6 +1230,7 @@ enum {
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
++	Opt_max_dir_size_kb,
+ };
  
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index f8716ea..5c2d181 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -79,7 +79,6 @@ int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 	if (provided == calculated)
- 		return 1;
+ static const match_table_t tokens = {
+@@ -1303,6 +1304,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable=%u"},
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
++	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
+@@ -1483,6 +1485,7 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
++	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+ 	{Opt_err, 0, 0}
+ };
  
--	ext4_error(sb, "Bad block bitmap checksum: block_group = %u", group);
+@@ -1598,6 +1601,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			if (!args->from)
+ 				arg = EXT4_DEF_LI_WAIT_MULT;
+ 			sbi->s_li_wait_mult = arg;
++		} else if (token == Opt_max_dir_size_kb) {
++			sbi->s_max_dir_size_kb = arg;
+ 		} else if (token == Opt_stripe) {
+ 			sbi->s_stripe = arg;
+ 		} else if (m->flags & MOPT_DATAJ) {
+@@ -1829,6 +1834,8 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
+ 	if (nodefs || (test_opt(sb, INIT_INODE_TABLE) &&
+ 		       (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)))
+ 		SEQ_OPTS_PRINT("init_itable=%u", sbi->s_li_wait_mult);
++	if (nodefs || sbi->s_max_dir_size_kb)
++		SEQ_OPTS_PRINT("max_dir_size_kb=%u", sbi->s_max_dir_size_kb);
+ 
+ 	ext4_show_quota_options(seq, sb);
  	return 0;
- }
- 
 -- 
 1.7.12.rc0.22.gcdd159b
 
