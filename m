@@ -1,50 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: add max_dir_size_kb mount option
-Date: Fri, 10 Aug 2012 17:58:11 -0400
-Message-ID: <20120810215811.GA1137@thunk.org>
+Date: Fri, 10 Aug 2012 17:59:59 -0400
+Message-ID: <20120810215959.GB1137@thunk.org>
 References: <1344626638-31548-1-git-send-email-tytso@mit.edu>
- <x49r4repkwj.fsf@segfault.boston.devel.redhat.com>
+ <50256322.9040409@redhat.com>
+ <20120810195907.GA557@thunk.org>
+ <50256C39.4030502@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jeff Moyer <jmoyer@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44057 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44060 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758991Ab2HJV6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Aug 2012 17:58:15 -0400
+	id S1758713Ab2HJWAB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 18:00:01 -0400
 Content-Disposition: inline
-In-Reply-To: <x49r4repkwj.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <50256C39.4030502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 10, 2012 at 04:11:24PM -0400, Jeff Moyer wrote:
+On Fri, Aug 10, 2012 at 03:16:57PM -0500, Eric Sandeen wrote:
 > 
-> I have no idea what a reasonable number for this would be.  Can you
-> provide guidelines that would help admins understand what factors
-> influence performance degradation due to directory size?
+> Oh, I thought this was papering over a scaling problem in ext4.  The intent
+> is to protect userspace from arbitrarily large readdir results?
 
-Well, for example, if you have a job which is a 512mb memory
-container, and the directory has grown to 176mb, an attempt to readdir
-said directory will cause that job to thrash badly, and perhaps get
-killed by the OOM killer.  If you know that no sane directory should
-ever grow beyond a single megabyte, you might pick a max_dir_size_kb
-of 1024.
+The problem that arose was that the directory had grown to 176mb, and
+in a tight memory cgroup (say, 512mb, or some such), this could cause
+significant memory thrashing, or the actual OOM killing of the task in
+said tight memory cgroup when it tried to read the entire directory
+via readdir().
 
-> Finally, I don't pretend to understand how your mount option parsing
-> routines work, but based on what I see in this patch it looks like the
-> default will be set to and enforced as 0.  What am I missing?
+> If that's the case, this should probably be proposed as a VFS level
+> option, and see how it's received there...
 
-Sorry, I sent out the wrong version of the patch.  The limit was only
-supposed to be used if maximum directory size is greater than 0; that
-is, the default is that the directory size is unlimited, as before.
-I'll send out a revised v2 version of the patch.
+It's not really a VFS level thing, since the goal is to stop the
+directory size itself from growing beyond a size limit (say, 1mb).
 
-I view this as a very specialized option, but if you're running in a
-tightly constrained memory cgroup, or a tiny EC2 instance, or the
-equivalent Cloud Open VM, it might be a very useful thing to be able
-to cap.
-
-Regards,
-
-						- Ted
+	       	      	   	   	    - Ted
