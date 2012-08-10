@@ -1,97 +1,56 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Arrgh!  Even more excitement with metadata checksumming
-Date: 9 Aug 2012 19:48:43 -0400
-Message-ID: <20120809234843.25187.qmail@science.horizon.com>
-References: <20120809050058.23273.qmail@science.horizon.com>
-To: linux-ext4@vger.kernel.org, linux@horizon.com, tytso@mit.edu
+From: Dave Jones <davej@redhat.com>
+Subject: 3.5.1 ext4_ sleeping while atomic bug.
+Date: Thu, 9 Aug 2012 23:17:01 -0400
+Message-ID: <20120810031701.GA17765@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Linux Kernel <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:23251 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1759875Ab2HIXsp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Aug 2012 19:48:45 -0400
-In-Reply-To: <20120809050058.23273.qmail@science.horizon.com>
+Received: from mx1.redhat.com ([209.132.183.28]:26062 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757429Ab2HJDRH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Aug 2012 23:17:07 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Havimg, I think, fixed the entire memory corruption problem that inspired
-me to turn on metadata checksums, I want to revert to the standard Ubuntu
-kernel, but first I need to figure out how to turn them off!
-
-The obvious answer is with tune2fs:
-
-> ~# tune2fs -O ^metadata_csum /dev/md0
-> tune2fs 1.43-WIP (1-Aug-2012)
-> rewrite_extents: Corrupt extent header while rewriting extents
-> ~# 
-
-Arrgh!  The file system passes e2fsck fine.  Well, *now* it doesn't; it
-bitches about a zillion missing directory checksums and the lack
-of lost+found:
-
-> Directory inode 82676842, block #1, offset 3260: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Directory inode 82676842, block #2, offset 3264: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Directory inode 82677333, block #1, offset 3260: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Directory inode 82677333, block #2, offset 1328: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Directory inode 82675733, block #3, offset 124: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Directory inode 82676842, block #3, offset 432: directory passes checks but fails checksum
-> Fix? yes
-> 
-> Pass 3: Checking directory connectivity
-> Error while trying to find /lost+found: Directory block checksum does not match directory block
-> /lost+found not found.  Create? yes
-> 
-> Error creating /lost+found directory (ext2fs_link): Directory block checksum does not match directory block
-> Pass 3A: Optimizing directories
-> Pass 4: Checking reference counts
-> Unattached inode 12
-> Connect to /lost+found? yes
-> 
-> Pass 5: Checking group summary information
-> Block bitmap differences:  -937953738
-> Fix? yes
-> 
-> Free blocks count wrong for group #28624 (28170, counted=28171).
-> Fix? yes
-> 
-> Free blocks count wrong (841115975, counted=841115976).
-> Fix? yes
-> 
-> 
-> /dev/md0: ***** FILE SYSTEM WAS MODIFIED *****
-
-But *after* that, it passes fine.
-
-Unfortunately, I don't know where the problem is or I'd see if I could
-just delete the damn problematic file.  (Or move it somewhere else
-temporarily.)
-
-I'm adding debugging to tune2fs and trying to track down the source.
-
-Step 1:
-eh_magic = dabe != f30a
-Problem with extent of inode #85800449
-rewrite_extents: Corrupt extent header while rewriting extents
-
-Step 2:
-debugfs:  ncheck 85800449
-Inode   Pathname
-debugfs:  testi <85800449>
-Inode 85800449 is not in use
-
-Step 3: ???
-The print is in ext2fs_extent_open2, and I'm just printing the "ino"
-parameter if ext2fs_extent_header_verify fails.
-
-Why is tune2fs looking at an inode that's not in use?
-That *would* explain the magic number error...
+BUG: sleeping function called from invalid context at include/linux/buffer_head.h:333
+in_atomic(): 1, irqs_disabled(): 0, pid: 9894, name: fstest
+3 locks held by fstest/9894:
+ #0:  (&type->i_mutex_dir_key#4/1){+.+.+.}, at: [<ffffffff811d5dae>] kern_path_create+0x7e/0x140
+ #1:  (&ei->i_data_sem){++++..}, at: [<ffffffff81252e76>] ext4_map_blocks+0xb6/0x250
+ #2:  (&(&bgl->locks[i].lock)->rlock){+.+...}, at: [<ffffffff8124a5e7>] ext4_validate_block_bitmap+0x77/0x230
+Pid: 9894, comm: fstest Not tainted 3.5.1-1.fc17.x86_64.debug #1
+Call Trace:
+ [<ffffffff8109cd0a>] __might_sleep+0x18a/0x240
+ [<ffffffff811fb430>] __sync_dirty_buffer+0x30/0xf0
+ [<ffffffff811fb503>] sync_dirty_buffer+0x13/0x20
+ [<ffffffff81273018>] ext4_commit_super+0x1e8/0x260
+ [<ffffffff81273283>] save_error_info+0x23/0x30
+ [<ffffffff81274539>] __ext4_error+0x89/0xa0
+ [<ffffffff8124a5e7>] ? ext4_validate_block_bitmap+0x77/0x230
+ [<ffffffff8124a72b>] ext4_validate_block_bitmap+0x1bb/0x230
+ [<ffffffff8124b0ae>] ext4_read_block_bitmap_nowait+0x8e/0x3b0
+ [<ffffffff812891c0>] ext4_mb_init_cache+0x160/0x990
+ [<ffffffff810d16bd>] ? trace_hardirqs_on_caller+0x10d/0x1a0
+ [<ffffffff81289b16>] ext4_mb_init_group+0x126/0x250
+ [<ffffffff81289d56>] ext4_mb_good_group+0x116/0x130
+ [<ffffffff8128c493>] ext4_mb_regular_allocator+0x1a3/0x420
+ [<ffffffff811aa920>] ? kmem_cache_alloc+0xe0/0x290
+ [<ffffffff8128e2c1>] ext4_mb_new_blocks+0x4f1/0xb90
+ [<ffffffff811fad9f>] ? __find_get_block+0xaf/0x220
+ [<ffffffff81293e7e>] ext4_alloc_branch+0x42e/0x690
+ [<ffffffff816c6030>] ? _raw_spin_unlock_irq+0x30/0x50
+ [<ffffffff812949a7>] ext4_ind_map_blocks+0x1e7/0x990
+ [<ffffffff816c348a>] ? down_write+0x9a/0xb0
+ [<ffffffff81252e76>] ? ext4_map_blocks+0xb6/0x250
+ [<ffffffff81252ea5>] ext4_map_blocks+0xe5/0x250
+ [<ffffffff8125306b>] ext4_getblk+0x5b/0x1f0
+ [<ffffffff81253218>] ext4_bread+0x18/0xa0
+ [<ffffffff8125e527>] ext4_mkdir+0x147/0x3d0
+ [<ffffffff811d2536>] vfs_mkdir+0xa6/0x130
+ [<ffffffff811d6c6e>] sys_mkdirat+0xbe/0xd0
+ [<ffffffff811d6c99>] sys_mkdir+0x19/0x20
+ [<ffffffff816cefe9>] system_call_fastpath+0x16/0x1b
 
