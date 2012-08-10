@@ -1,58 +1,176 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: don't load the block bitmap for block groups which have no space
-Date: Fri, 10 Aug 2012 14:21:25 -0400
-Message-ID: <1344622885-14982-1-git-send-email-tytso@mit.edu>
-References: <20120809181059.A5BAA11FC69@bugzilla.kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: 3.5.1 ext4_ sleeping while atomic bug.
+Date: Fri, 10 Aug 2012 14:24:09 -0400
+Message-ID: <20120810182409.GA10333@thunk.org>
+References: <20120810031701.GA17765@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Dave Jones <davej@redhat.com>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44022 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44027 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759750Ab2HJSV1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Aug 2012 14:21:27 -0400
-In-Reply-To: <20120809181059.A5BAA11FC69@bugzilla.kernel.org>
+	id S1759877Ab2HJSYR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 14:24:17 -0400
+Content-Disposition: inline
+In-Reply-To: <20120810031701.GA17765@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a short circuit check to ext4_mb_group_group() so that we don't
-bother to load the block bitmap for a block group which does not have
-any space available.  (Or which does not have enough space until we
-are in desperation mode, i.e., when cr == 3.)
+Hi Dave,
 
-Resolves-bug: https://bugzilla.kernel.org/show_bug.cgi?id=45741
-Reported-by: mirek@me.com
+Thanks for the bug report!  The following should address the bug which
+you found.
+
+						- Ted
+
+>From 05ca87aa00121756b5d41f3d71eb8b51bed3bc92 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Fri, 10 Aug 2012 13:57:52 -0400
+Subject: [PATCH] ext4: don't call ext4_error while block group is locked
+
+While in ext4_validate_block_bitmap(), if an block allocation bitmap
+is found to be invalid, we call ext4_error() while the block group is
+still locked.  This causes ext4_commit_super() to call a function
+which might sleep while in an atomic context.
+
+There's no need to keep the block group locked at this point, so hoist
+the ext4_error() call up to ext4_validate_block_bitmap() and release
+the block group spinlock before calling ext4_error().
+
+The reported stack trace can be found at:
+
+	http://article.gmane.org/gmane.comp.file-systems.ext4/33731
+
+Reported-by: Dave Jones <davej@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/mballoc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ fs/ext4/balloc.c | 62 +++++++++++++++++++++++++++++++++-----------------------
+ fs/ext4/bitmap.c |  1 -
+ 2 files changed, 37 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 8eae947..3a57975 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1862,6 +1862,12 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index d23b31c..1b50890 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -280,14 +280,18 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
+ 	return desc;
+ }
  
- 	BUG_ON(cr < 0 || cr >= 4);
+-static int ext4_valid_block_bitmap(struct super_block *sb,
+-				   struct ext4_group_desc *desc,
+-				   unsigned int block_group,
+-				   struct buffer_head *bh)
++/*
++ * Return the block number which was discovered to be invalid, or 0 if
++ * the block bitmap is valid.
++ */
++static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
++					    struct ext4_group_desc *desc,
++					    unsigned int block_group,
++					    struct buffer_head *bh)
+ {
+ 	ext4_grpblk_t offset;
+ 	ext4_grpblk_t next_zero_bit;
+-	ext4_fsblk_t bitmap_blk;
++	ext4_fsblk_t blk;
+ 	ext4_fsblk_t group_first_block;
  
-+	free = grp->bb_free;
-+	if (free == 0)
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
+@@ -297,37 +301,33 @@ static int ext4_valid_block_bitmap(struct super_block *sb,
+ 		 * or it has to also read the block group where the bitmaps
+ 		 * are located to verify they are set.
+ 		 */
+-		return 1;
 +		return 0;
-+	if (cr <= 2 && free < ac->ac_g_ex.fe_len)
-+		return 0;
-+
- 	/* We only do this if the grp has never been initialized */
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
- 		int ret = ext4_mb_init_group(ac->ac_sb, group);
-@@ -1869,10 +1875,7 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 			return 0;
  	}
+ 	group_first_block = ext4_group_first_block_no(sb, block_group);
  
--	free = grp->bb_free;
- 	fragments = grp->bb_fragments;
--	if (free == 0)
--		return 0;
- 	if (fragments == 0)
- 		return 0;
+ 	/* check whether block bitmap block number is set */
+-	bitmap_blk = ext4_block_bitmap(sb, desc);
+-	offset = bitmap_blk - group_first_block;
++	blk = ext4_block_bitmap(sb, desc);
++	offset = blk - group_first_block;
+ 	if (!ext4_test_bit(offset, bh->b_data))
+ 		/* bad block bitmap */
+-		goto err_out;
++		return blk;
+ 
+ 	/* check whether the inode bitmap block number is set */
+-	bitmap_blk = ext4_inode_bitmap(sb, desc);
+-	offset = bitmap_blk - group_first_block;
++	blk = ext4_inode_bitmap(sb, desc);
++	offset = blk - group_first_block;
+ 	if (!ext4_test_bit(offset, bh->b_data))
+ 		/* bad block bitmap */
+-		goto err_out;
++		return blk;
+ 
+ 	/* check whether the inode table block number is set */
+-	bitmap_blk = ext4_inode_table(sb, desc);
+-	offset = bitmap_blk - group_first_block;
++	blk = ext4_inode_table(sb, desc);
++	offset = blk - group_first_block;
+ 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
+ 				offset + EXT4_SB(sb)->s_itb_per_group,
+ 				offset);
+-	if (next_zero_bit >= offset + EXT4_SB(sb)->s_itb_per_group)
+-		/* good bitmap for inode tables */
+-		return 1;
+-
+-err_out:
+-	ext4_error(sb, "Invalid block bitmap - block_group = %d, block = %llu",
+-			block_group, bitmap_blk);
++	if (next_zero_bit < offset + EXT4_SB(sb)->s_itb_per_group)
++		/* bad bitmap for inode tables */
++		return blk;
+ 	return 0;
+ }
+ 
+@@ -336,14 +336,26 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+ 			       unsigned int block_group,
+ 			       struct buffer_head *bh)
+ {
++	ext4_fsblk_t	blk;
++
+ 	if (buffer_verified(bh))
+ 		return;
+ 
+ 	ext4_lock_group(sb, block_group);
+-	if (ext4_valid_block_bitmap(sb, desc, block_group, bh) &&
+-	    ext4_block_bitmap_csum_verify(sb, block_group, desc, bh,
+-					  EXT4_BLOCKS_PER_GROUP(sb) / 8))
+-		set_buffer_verified(bh);
++	blk = ext4_valid_block_bitmap(sb, desc, block_group, bh);
++	if (unlikely(blk != 0)) {
++		ext4_unlock_group(sb, block_group);
++		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
++			   block_group, blk);
++		return;
++	}
++	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
++			desc, bh, EXT4_BLOCKS_PER_GROUP(sb) / 8))) {
++		ext4_unlock_group(sb, block_group);
++		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
++		return;
++	}
++	set_buffer_verified(bh);
+ 	ext4_unlock_group(sb, block_group);
+ }
+ 
+diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+index f8716ea..5c2d181 100644
+--- a/fs/ext4/bitmap.c
++++ b/fs/ext4/bitmap.c
+@@ -79,7 +79,6 @@ int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+ 	if (provided == calculated)
+ 		return 1;
+ 
+-	ext4_error(sb, "Bad block bitmap checksum: block_group = %u", group);
+ 	return 0;
+ }
  
 -- 
 1.7.12.rc0.22.gcdd159b
