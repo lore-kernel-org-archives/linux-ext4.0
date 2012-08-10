@@ -1,56 +1,111 @@
-From: Dave Jones <davej@redhat.com>
-Subject: 3.5.1 ext4_ sleeping while atomic bug.
-Date: Thu, 9 Aug 2012 23:17:01 -0400
-Message-ID: <20120810031701.GA17765@redhat.com>
+From: Muthu Kumar <muthu.lkml@gmail.com>
+Subject: Re: Re: [PATCH 0/8] Set bi_rw when alloc bio before call bio_add_page.
+Date: Fri, 10 Aug 2012 08:29:45 -0700
+Message-ID: <CAFR8uedP7pGm+KbW4q0fR3L1GS6GwG0yAGUDBsJbrTfKNHnWag@mail.gmail.com>
+References: <201207301514247032532@gmail.com>
+	<20120730214213.GF2877@dastard>
+	<201207310855556258267@gmail.com>
+	<20120731011457.GO2877@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Linux Kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: majianpeng <majianpeng@gmail.com>, Neil Brown <neilb@suse.de>,
+	axboe <axboe@kernel.dk>, "konrad.wilk" <konrad.wilk@oracle.com>,
+	"chris.mason" <chris.mason@fusionio.com>,
+	viro <viro@zeniv.linux.org.uk>, tytso <tytso@mit.edu>,
+	"adilger.kernel" <adilger.kernel@dilger.ca>,
+	shaggy <shaggy@kernel.org>, mfasheh <mfasheh@suse.com>,
+	jlbec <jlbec@evilplan.org>, bpm <bpm@sgi.com>,
+	elder <elder@kernel.org>,
+	jfs-discussion <jfs-discussion@lists.sourceforge.net>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	xfs <xfs@oss.sgi.com>, linux-btrfs <linux-btrfs@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-raid <linux-raid@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26062 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757429Ab2HJDRH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Aug 2012 23:17:07 -0400
-Content-Disposition: inline
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:45128 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759203Ab2HJP3q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2012 11:29:46 -0400
+In-Reply-To: <20120731011457.GO2877@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-BUG: sleeping function called from invalid context at include/linux/buffer_head.h:333
-in_atomic(): 1, irqs_disabled(): 0, pid: 9894, name: fstest
-3 locks held by fstest/9894:
- #0:  (&type->i_mutex_dir_key#4/1){+.+.+.}, at: [<ffffffff811d5dae>] kern_path_create+0x7e/0x140
- #1:  (&ei->i_data_sem){++++..}, at: [<ffffffff81252e76>] ext4_map_blocks+0xb6/0x250
- #2:  (&(&bgl->locks[i].lock)->rlock){+.+...}, at: [<ffffffff8124a5e7>] ext4_validate_block_bitmap+0x77/0x230
-Pid: 9894, comm: fstest Not tainted 3.5.1-1.fc17.x86_64.debug #1
-Call Trace:
- [<ffffffff8109cd0a>] __might_sleep+0x18a/0x240
- [<ffffffff811fb430>] __sync_dirty_buffer+0x30/0xf0
- [<ffffffff811fb503>] sync_dirty_buffer+0x13/0x20
- [<ffffffff81273018>] ext4_commit_super+0x1e8/0x260
- [<ffffffff81273283>] save_error_info+0x23/0x30
- [<ffffffff81274539>] __ext4_error+0x89/0xa0
- [<ffffffff8124a5e7>] ? ext4_validate_block_bitmap+0x77/0x230
- [<ffffffff8124a72b>] ext4_validate_block_bitmap+0x1bb/0x230
- [<ffffffff8124b0ae>] ext4_read_block_bitmap_nowait+0x8e/0x3b0
- [<ffffffff812891c0>] ext4_mb_init_cache+0x160/0x990
- [<ffffffff810d16bd>] ? trace_hardirqs_on_caller+0x10d/0x1a0
- [<ffffffff81289b16>] ext4_mb_init_group+0x126/0x250
- [<ffffffff81289d56>] ext4_mb_good_group+0x116/0x130
- [<ffffffff8128c493>] ext4_mb_regular_allocator+0x1a3/0x420
- [<ffffffff811aa920>] ? kmem_cache_alloc+0xe0/0x290
- [<ffffffff8128e2c1>] ext4_mb_new_blocks+0x4f1/0xb90
- [<ffffffff811fad9f>] ? __find_get_block+0xaf/0x220
- [<ffffffff81293e7e>] ext4_alloc_branch+0x42e/0x690
- [<ffffffff816c6030>] ? _raw_spin_unlock_irq+0x30/0x50
- [<ffffffff812949a7>] ext4_ind_map_blocks+0x1e7/0x990
- [<ffffffff816c348a>] ? down_write+0x9a/0xb0
- [<ffffffff81252e76>] ? ext4_map_blocks+0xb6/0x250
- [<ffffffff81252ea5>] ext4_map_blocks+0xe5/0x250
- [<ffffffff8125306b>] ext4_getblk+0x5b/0x1f0
- [<ffffffff81253218>] ext4_bread+0x18/0xa0
- [<ffffffff8125e527>] ext4_mkdir+0x147/0x3d0
- [<ffffffff811d2536>] vfs_mkdir+0xa6/0x130
- [<ffffffff811d6c6e>] sys_mkdirat+0xbe/0xd0
- [<ffffffff811d6c99>] sys_mkdir+0x19/0x20
- [<ffffffff816cefe9>] system_call_fastpath+0x16/0x1b
+[ Resending in plain text... sorry for the duplicate ]
 
+Hi,
+
+On Mon, Jul 30, 2012 at 6:14 PM, Dave Chinner <david@fromorbit.com> wrote:
+>
+> On Tue, Jul 31, 2012 at 08:55:59AM +0800, majianpeng wrote:
+> > On 2012-07-31 05:42 Dave Chinner <david@fromorbit.com> Wrote:
+> > >On Mon, Jul 30, 2012 at 03:14:28PM +0800, majianpeng wrote:
+> > >> When exec bio_alloc, the bi_rw is zero.But after calling
+> > >> bio_add_page,
+> > >> it will use bi_rw.
+> > >> Fox example, in functiion __bio_add_page,it will call
+> > >> merge_bvec_fn().
+> > >> The merge_bvec_fn of raid456 will use the bi_rw to judge the merge.
+> > >> >> if ((bvm->bi_rw & 1) == WRITE)
+> > >> >> return biovec->bv_len; /* always allow writes to be mergeable */
+> > >
+> > >So if bio_add_page() requires bi_rw to be set, then shouldn't it be
+> > >set up for every caller? I noticed there are about 50 call sites for
+> > >bio_add_page(), and you've only touched about 10 of them. Indeed, I
+> > >notice that the RAID0/1 code uses bio_add_page, and as that can be
+> > >stacked on top of RAID456, it also needs to set bi_rw correctly.
+> > >As a result, your patch set is nowhere near complete, not does it
+> > >document that bio_add_page requires that bi_rw be set before calling
+> > >(which is the new API requirement, AFAICT).
+> > There are many place call bio_add_page and I send some of those. Because
+> > my abilty, so I only send
+> > some patchs which i understand clearly.
+>
+> Sure, but my point is that there is no point changing only a few and
+> ignoring the great majority of callers. Either fix them all, fix it
+> some other way (e.g. API change), or remove the code from the RAID5
+> function that requires it.
+
+A while back, we tried to address this by changing the alloc functions to
+take rw argument and set it (as per Jens suggestion). I guess the patch did
+not make it in. Please check:
+
+https://lkml.org/lkml/2011/7/11/275
+
+and the follow ups. If needed, I can dust up that patch and resend it.
+
+>
+
+<snip>
+
+>
+> It's entirely possible that when bi_rw was added to struct
+> bvec_merge_data, the person who added it was mistaken that bi_rw was
+> set at this point in time when in fact it never has been. Hence it's
+> presence and reliance on it would be a bug.
+>
+> That's what I'm asking - is this actually beneificial, or should it
+> simply be removed from struct bvec_merge_data? Data is needed to
+> answer that question....
+
+There are cases where we found it really beneficial to know the rw
+field to decide if the can be really merged or not.
+
+
+Regards,
+Muthu
+
+
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
