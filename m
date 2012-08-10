@@ -1,125 +1,58 @@
-From: Jeff Moyer <jmoyer@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [PATCH] ext4: add max_dir_size_kb mount option
-Date: Fri, 10 Aug 2012 16:11:24 -0400
-Message-ID: <x49r4repkwj.fsf@segfault.boston.devel.redhat.com>
-References: <1344626638-31548-1-git-send-email-tytso@mit.edu>
+Date: Fri, 10 Aug 2012 15:16:57 -0500
+Message-ID: <50256C39.4030502@redhat.com>
+References: <1344626638-31548-1-git-send-email-tytso@mit.edu> <50256322.9040409@redhat.com> <20120810195907.GA557@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64390 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32562 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754891Ab2HJUL1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Aug 2012 16:11:27 -0400
-In-Reply-To: <1344626638-31548-1-git-send-email-tytso@mit.edu> (Theodore
-	Ts'o's message of "Fri, 10 Aug 2012 15:23:58 -0400")
+	id S1753645Ab2HJURA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 16:17:00 -0400
+In-Reply-To: <20120810195907.GA557@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Theodore Ts'o" <tytso@mit.edu> writes:
+On 8/10/12 2:59 PM, Theodore Ts'o wrote:
+> On Fri, Aug 10, 2012 at 02:38:10PM -0500, Eric Sandeen wrote:
+>>
+>> Can the commit message also describe more about the problem: how bad
+>> it is, the root cause, and why it's so hard to fix properly?
+> 
+> The use case is going to be fairly userspace specific, but one example
+> might be if the log reaper fails to run for whatever reason, and the
+> log directory then proceeds to grow without bound.  And then when the
+> log repear *does* have a chance to run, if it happens to be in tight
+> memory cgroup, it then dies so the directory grows even larger, and
+> then when other processes try to access the directory, a readdir will
+> cause them to die because of their memory limitation, and hilarity
+> ensues.
 
-> Very large directories can cause significant performance problems,
-> especially if jobs are running in memory-tight environment (whether it
-> is VM's with a small amount of memory or small memory cgroups).
->
-> So it is useful, in cloud server/data center environments, to be able
-> to set a filesystem-wide cap on the maximum size of a directory, to
-> ensure that directories never get larger than a sane size.  We do this
-> via a new mount option, max_dir_size_kb.  If there is an attempt to
-> grow the directory larger than max_dir_size_kb, the system call will
-> return ENOSPC instead.
+Oh, I thought this was papering over a scaling problem in ext4.  The intent
+is to protect userspace from arbitrarily large readdir results?
 
-I have no idea what a reasonable number for this would be.  Can you
-provide guidelines that would help admins understand what factors
-influence performance degradation due to directory size?
+If that's the case, this should probably be proposed as a VFS level
+option, and see how it's received there...
 
-Finally, I don't pretend to understand how your mount option parsing
-routines work, but based on what I see in this patch it looks like the
-default will be set to and enforced as 0.  What am I missing?
+(Can you tell I'm not a huge fan of the idea?) ;)
 
-Cheers,
-Jeff
+-Eric
 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h  | 1 +
->  fs/ext4/namei.c | 6 ++++++
->  fs/ext4/super.c | 7 +++++++
->  3 files changed, 14 insertions(+)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index c3411d4..7c0841e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1243,6 +1243,7 @@ struct ext4_sb_info {
->  	unsigned int s_mb_order2_reqs;
->  	unsigned int s_mb_group_prealloc;
->  	unsigned int s_max_writeback_mb_bump;
-> +	unsigned int s_max_dir_size_kb;
->  	/* where last allocation was done - for stream allocation */
->  	unsigned long s_mb_last_group;
->  	unsigned long s_mb_last_start;
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 2a42cc0..bdde668 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -55,6 +55,12 @@ static struct buffer_head *ext4_append(handle_t *handle,
->  {
->  	struct buffer_head *bh;
->  
-> +	if (unlikely((inode->i_size >> 10) >=
-> +		     EXT4_SB(inode->i_sb)->s_max_dir_size_kb)) {
-> +		*err = -ENOSPC;
-> +		return NULL;
-> +	}
-> +
->  	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
->  
->  	bh = ext4_bread(handle, inode, *block, 1, err);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 56bcaec..5896dcb 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1230,6 +1230,7 @@ enum {
->  	Opt_inode_readahead_blks, Opt_journal_ioprio,
->  	Opt_dioread_nolock, Opt_dioread_lock,
->  	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-> +	Opt_max_dir_size_kb,
->  };
->  
->  static const match_table_t tokens = {
-> @@ -1303,6 +1304,7 @@ static const match_table_t tokens = {
->  	{Opt_init_itable, "init_itable=%u"},
->  	{Opt_init_itable, "init_itable"},
->  	{Opt_noinit_itable, "noinit_itable"},
-> +	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
->  	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
->  	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
->  	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
-> @@ -1483,6 +1485,7 @@ static const struct mount_opts {
->  	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
->  	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
->  	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
-> +	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
->  	{Opt_err, 0, 0}
->  };
->  
-> @@ -1598,6 +1601,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->  			if (!args->from)
->  				arg = EXT4_DEF_LI_WAIT_MULT;
->  			sbi->s_li_wait_mult = arg;
-> +		} else if (token == Opt_max_dir_size_kb) {
-> +			sbi->s_max_dir_size_kb = arg;
->  		} else if (token == Opt_stripe) {
->  			sbi->s_stripe = arg;
->  		} else if (m->flags & MOPT_DATAJ) {
-> @@ -1829,6 +1834,8 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
->  	if (nodefs || (test_opt(sb, INIT_INODE_TABLE) &&
->  		       (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)))
->  		SEQ_OPTS_PRINT("init_itable=%u", sbi->s_li_wait_mult);
-> +	if (nodefs || sbi->s_max_dir_size_kb)
-> +		SEQ_OPTS_PRINT("max_dir_size_kb=%u", sbi->s_max_dir_size_kb);
->  
->  	ext4_show_quota_options(seq, sb);
->  	return 0;
+> You can fix this in other places in the software stack, but belt and
+> suspenders is good, and if there is no reason for directories to grow
+> larger than some set size, it's better to get a hard failure with an
+> ENOSPC rather than an funny failures caused by OOM's or slower and
+> slower performance.
+
+>> Please also update Documentation/filesystems/ext4.txt so people
+>> know for sure what the use & intent of this new knob is.
+> 
+> Yes, I'll do that in the next spin of the patches.
+> 
+>      	     	     	      	      - Ted
+> 
+
