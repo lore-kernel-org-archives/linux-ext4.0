@@ -1,58 +1,50 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: add max_dir_size_kb mount option
-Date: Fri, 10 Aug 2012 15:16:57 -0500
-Message-ID: <50256C39.4030502@redhat.com>
-References: <1344626638-31548-1-git-send-email-tytso@mit.edu> <50256322.9040409@redhat.com> <20120810195907.GA557@thunk.org>
+Date: Fri, 10 Aug 2012 17:58:11 -0400
+Message-ID: <20120810215811.GA1137@thunk.org>
+References: <1344626638-31548-1-git-send-email-tytso@mit.edu>
+ <x49r4repkwj.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32562 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753645Ab2HJURA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Aug 2012 16:17:00 -0400
-In-Reply-To: <20120810195907.GA557@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44057 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758991Ab2HJV6P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 17:58:15 -0400
+Content-Disposition: inline
+In-Reply-To: <x49r4repkwj.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/10/12 2:59 PM, Theodore Ts'o wrote:
-> On Fri, Aug 10, 2012 at 02:38:10PM -0500, Eric Sandeen wrote:
->>
->> Can the commit message also describe more about the problem: how bad
->> it is, the root cause, and why it's so hard to fix properly?
+On Fri, Aug 10, 2012 at 04:11:24PM -0400, Jeff Moyer wrote:
 > 
-> The use case is going to be fairly userspace specific, but one example
-> might be if the log reaper fails to run for whatever reason, and the
-> log directory then proceeds to grow without bound.  And then when the
-> log repear *does* have a chance to run, if it happens to be in tight
-> memory cgroup, it then dies so the directory grows even larger, and
-> then when other processes try to access the directory, a readdir will
-> cause them to die because of their memory limitation, and hilarity
-> ensues.
+> I have no idea what a reasonable number for this would be.  Can you
+> provide guidelines that would help admins understand what factors
+> influence performance degradation due to directory size?
 
-Oh, I thought this was papering over a scaling problem in ext4.  The intent
-is to protect userspace from arbitrarily large readdir results?
+Well, for example, if you have a job which is a 512mb memory
+container, and the directory has grown to 176mb, an attempt to readdir
+said directory will cause that job to thrash badly, and perhaps get
+killed by the OOM killer.  If you know that no sane directory should
+ever grow beyond a single megabyte, you might pick a max_dir_size_kb
+of 1024.
 
-If that's the case, this should probably be proposed as a VFS level
-option, and see how it's received there...
+> Finally, I don't pretend to understand how your mount option parsing
+> routines work, but based on what I see in this patch it looks like the
+> default will be set to and enforced as 0.  What am I missing?
 
-(Can you tell I'm not a huge fan of the idea?) ;)
+Sorry, I sent out the wrong version of the patch.  The limit was only
+supposed to be used if maximum directory size is greater than 0; that
+is, the default is that the directory size is unlimited, as before.
+I'll send out a revised v2 version of the patch.
 
--Eric
+I view this as a very specialized option, but if you're running in a
+tightly constrained memory cgroup, or a tiny EC2 instance, or the
+equivalent Cloud Open VM, it might be a very useful thing to be able
+to cap.
 
-> You can fix this in other places in the software stack, but belt and
-> suspenders is good, and if there is no reason for directories to grow
-> larger than some set size, it's better to get a hard failure with an
-> ENOSPC rather than an funny failures caused by OOM's or slower and
-> slower performance.
+Regards,
 
->> Please also update Documentation/filesystems/ext4.txt so people
->> know for sure what the use & intent of this new knob is.
-> 
-> Yes, I'll do that in the next spin of the patches.
-> 
->      	     	     	      	      - Ted
-> 
-
+						- Ted
