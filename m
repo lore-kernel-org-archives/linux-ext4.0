@@ -1,149 +1,108 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH -v2] ext4: add max_dir_size_kb mount option
-Date: Fri, 10 Aug 2012 21:22:39 -0600
-Message-ID: <C9EF93CD-99DF-483E-BE66-713616B12D8C@whamcloud.com>
-References: <20120810215811.GA1137@thunk.org> <1344649235-9289-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+Subject: Re: Upgraded from 3.4 to 3.5.1 kernel: machine does not boot
+Date: Sat, 11 Aug 2012 00:14:51 -0400
+Message-ID: <CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
+References: <0bac01cd7717$9fa6bbf0$def433d0$@lucidpixels.com>
+	<alpine.LNX.2.00.1208101948590.17673@swampdragon.chaosbits.net>
+	<CAO9zADxocKKFMsf5RqmP+YMjFLj58yDbdqFm1xexQ+mSLb7JHQ@mail.gmail.com>
+	<0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-kernel@vger.kernel.org, ap@solarrain.com,
+	linux-ext4@vger.kernel.org
+To: Jesper Juhl <jj@chaosbits.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:61536 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751060Ab2HKDWk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2012 23:22:40 -0400
-Received: by pbbrr13 with SMTP id rr13so3747001pbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2012 20:22:39 -0700 (PDT)
-In-Reply-To: <1344649235-9289-1-git-send-email-tytso@mit.edu>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:49340 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750850Ab2HKEOv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Aug 2012 00:14:51 -0400
+Received: by obbuo13 with SMTP id uo13so3249325obb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2012 21:14:51 -0700 (PDT)
+In-Reply-To: <0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-08-10, at 19:40, Theodore Ts'o <tytso@mit.edu> wrote:
-
-> Very large directories can cause significant performance problems, or
-> perhaps even invoke the OOM killer, if the process is running in a
-> highly constrained memory environment (whether it is VM's with a small
-> amount of memory or in a small memory cgroup).
-> 
-> So it is useful, in cloud server/data center environments, to be able
-> to set a filesystem-wide cap on the maximum size of a directory, to
-> ensure that directories never get larger than a sane size.  We do this
-> via a new mount option, max_dir_size_kb.  If there is an attempt to
-> grow the directory larger than max_dir_size_kb, the system call will
-> return ENOSPC instead.
-
-In our patch, it returns EFBIG, since it isn't really a case of being out of space for blocks or inodes.
-
-Cheers, Andreas
-
-> Google-Bug-Id: 6863013
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
-> Documentation/filesystems/ext4.txt | 4 ++++
-> fs/ext4/ext4.h                     | 1 +
-> fs/ext4/namei.c                    | 7 +++++++
-> fs/ext4/super.c                    | 7 +++++++
-> 4 files changed, 19 insertions(+)
-> 
-> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-> index 1b7f9ac..43b80b5 100644
-> --- a/Documentation/filesystems/ext4.txt
-> +++ b/Documentation/filesystems/ext4.txt
-> @@ -375,6 +375,10 @@ dioread_nolock        locking. If the dioread_nolock option is specified
->            Because of the restrictions this options comprises
->            it is off by default (e.g. dioread_lock).
-> 
-> +max_dir_size_kb=n    This limits the size of directories so that any
-> +            attempt to expand them beyond the specified
-> +            limit in kilobytes will cause an ENOSPC error.
-> +
-> i_version        Enable 64-bit inode version support. This option is
->            off by default.
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index c3411d4..7c0841e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1243,6 +1243,7 @@ struct ext4_sb_info {
->    unsigned int s_mb_order2_reqs;
->    unsigned int s_mb_group_prealloc;
->    unsigned int s_max_writeback_mb_bump;
-> +    unsigned int s_max_dir_size_kb;
->    /* where last allocation was done - for stream allocation */
->    unsigned long s_mb_last_group;
->    unsigned long s_mb_last_start;
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 2a42cc0..7450ff0 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -55,6 +55,13 @@ static struct buffer_head *ext4_append(handle_t *handle,
-> {
->    struct buffer_head *bh;
-> 
-> +    if (unlikely(EXT4_SB(inode->i_sb)->s_max_dir_size_kb &&
-> +             ((inode->i_size >> 10) >=
-> +              EXT4_SB(inode->i_sb)->s_max_dir_size_kb))) {
-> +        *err = -ENOSPC;
-> +        return NULL;
-> +    }
-> +
->    *block = inode->i_size >> inode->i_sb->s_blocksize_bits;
-> 
->    bh = ext4_bread(handle, inode, *block, 1, err);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 56bcaec..5896dcb 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1230,6 +1230,7 @@ enum {
->    Opt_inode_readahead_blks, Opt_journal_ioprio,
->    Opt_dioread_nolock, Opt_dioread_lock,
->    Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-> +    Opt_max_dir_size_kb,
-> };
-> 
-> static const match_table_t tokens = {
-> @@ -1303,6 +1304,7 @@ static const match_table_t tokens = {
->    {Opt_init_itable, "init_itable=%u"},
->    {Opt_init_itable, "init_itable"},
->    {Opt_noinit_itable, "noinit_itable"},
-> +    {Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
->    {Opt_removed, "check=none"},    /* mount option from ext2/3 */
->    {Opt_removed, "nocheck"},    /* mount option from ext2/3 */
->    {Opt_removed, "reservation"},    /* mount option from ext2/3 */
-> @@ -1483,6 +1485,7 @@ static const struct mount_opts {
->    {Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
->    {Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
->    {Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
-> +    {Opt_max_dir_size_kb, 0, MOPT_GTE0},
->    {Opt_err, 0, 0}
-> };
-> 
-> @@ -1598,6 +1601,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->            if (!args->from)
->                arg = EXT4_DEF_LI_WAIT_MULT;
->            sbi->s_li_wait_mult = arg;
-> +        } else if (token == Opt_max_dir_size_kb) {
-> +            sbi->s_max_dir_size_kb = arg;
->        } else if (token == Opt_stripe) {
->            sbi->s_stripe = arg;
->        } else if (m->flags & MOPT_DATAJ) {
-> @@ -1829,6 +1834,8 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
->    if (nodefs || (test_opt(sb, INIT_INODE_TABLE) &&
->               (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)))
->        SEQ_OPTS_PRINT("init_itable=%u", sbi->s_li_wait_mult);
-> +    if (nodefs || sbi->s_max_dir_size_kb)
-> +        SEQ_OPTS_PRINT("max_dir_size_kb=%u", sbi->s_max_dir_size_kb);
-> 
->    ext4_show_quota_options(seq, sb);
->    return 0;
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
+On Fri, Aug 10, 2012 at 7:07 PM, Justin Piszcz
+>
+> Hi,
+>
+> Found the root cause, the 3.5.1 kernel cannot mount my ext4 filesystem
+> (60TB).
+>
+> The 3.4 kernel works fine.
+>
+> This is proven by commenting out the filesystem in /etc/fstab with
+> 3.5.1, and all is OK.
+>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> Hi again,
+>
+> I tested with linux-3.6-rc1:
+>
+> The same problem, here is what I get from the strace:
+>
+> irectory)
+> 4434  readlink("/dev", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
+> 4434  readlink("/dev/sda1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid
+> argument)
+> 4434  readlink("/r1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
+> 4434  getuid()                          = 0
+> 4434  geteuid()                         = 0
+> 4434  getgid()                          = 0
+> 4434  getegid()                         = 0
+> 4434  prctl(PR_GET_DUMPABLE)            = 1
+> 4434  lstat("/etc/mtab", {st_mode=S_IFLNK|0777, st_size=12, ...}) = 0
+> 4434  getuid()                          = 0
+> 4434  geteuid()                         = 0
+> 4434  getgid()                          = 0
+> 4434  getegid()                         = 0
+> 4434  prctl(PR_GET_DUMPABLE)            = 1
+> 4434  stat("/run", {st_mode=S_IFDIR|0755, st_size=820, ...}) = 0
+> 4434  lstat("/run/mount/utab", {st_mode=S_IFREG|0644, st_size=0, ...}) = 0
+> 4434  open("/run/mount/utab", O_RDWR|O_CREAT, 0644) = 3
+> 4434  close(3)                          = 0
+> 4434  mount("/dev/sda1", "/r1", "ext4", MS_MGC_VAL|MS_NOATIME, NULL
+>
+> --
+>
+> (w/ 3.6-rc1)
+>
+> [   89.868843] mount           R  running task        0  4434   4433
+> 0x00000009
+> [   89.868847]  ffff880c246b7b68 ffffffff816c9279 ffff880c246b7aa8
+> ffff880c246b7fd8
+> [   89.868851]  ffff880c246b7fd8 0000000000004000 ffff88062720cdb0
+> ffff880c246862d0
+> [   89.868855]  00000000000116c0 ffff880623a863c0 ffff880623a863c0
+> 00000000ffffffff
+> [   89.868855] Call Trace:
+> [   89.868858]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
+> [   89.868860]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
+> [   89.868864]  [<ffffffff8114a729>] ? ext4_get_group_desc+0x49/0xb0
+> [   89.868868]  [<ffffffff81161d41>] ? ext4_calculate_overhead+0x131/0x3e0
+> [   89.868871]  [<ffffffff81163a3b>] ? ext4_fill_super+0x1a4b/0x28d0
+> [   89.868875]  [<ffffffff810cc301>] ? mount_bdev+0x1a1/0x1e0
+> [   89.868877]  [<ffffffff81161ff0>] ? ext4_calculate_overhead+0x3e0/0x3e0
+> [   89.868880]  [<ffffffff8115dd00>] ? ext4_mount+0x10/0x20
+> [   89.868882]  [<ffffffff810cc55b>] ? mount_fs+0x1b/0xd0
+> [   89.868885]  [<ffffffff810e57af>] ? vfs_kern_mount+0x6f/0x110
+> [   89.868888]  [<ffffffff810e58cf>] ? do_kern_mount+0x4f/0x100
+> [   89.868890]  [<ffffffff810e6dae>] ? do_mount+0x2fe/0x8a0
+> [   89.868894]  [<ffffffff8109c0a3>] ? strndup_user+0x53/0x70
+> [   89.868896]  [<ffffffff810e73e0>] ? sys_mount+0x90/0xe0
+> [   89.868899]  [<ffffffff816cafa1>] ? tracesys+0xd4/0xd9
+>
+> Justin.
+>
+>
+>
+
+CC: linux-ext4
+
+Any ideas here (kernel 3.4 and below can mount 60TB ext4 no issues)
+but > 3.5.1 (did not try 3.5) cannot mount the filesystem.
+
+Justin.
+
+Justin.
