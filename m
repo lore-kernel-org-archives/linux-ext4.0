@@ -1,102 +1,132 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: [PATCH] ext4: add max_dir_size_kb mount option
-Date: Fri, 10 Aug 2012 17:14:12 -0600
-Message-ID: <771B0C8F-33E3-4ACF-8873-8EA8177D1CB9@dilger.ca>
-References: <1344626638-31548-1-git-send-email-tytso@mit.edu> <x49r4repkwj.fsf@segfault.boston.devel.redhat.com> <20120810215811.GA1137@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: add max_dir_size_kb mount option
+Date: Fri, 10 Aug 2012 21:40:35 -0400
+Message-ID: <1344649235-9289-1-git-send-email-tytso@mit.edu>
+References: <20120810215811.GA1137@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:57697 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754862Ab2HJXOR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Aug 2012 19:14:17 -0400
-Received: by pbbrr13 with SMTP id rr13so3454785pbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2012 16:14:17 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:44079 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754326Ab2HKBki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Aug 2012 21:40:38 -0400
 In-Reply-To: <20120810215811.GA1137@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-08-10, at 3:58 PM, Theodore Ts'o wrote:
-> On Fri, Aug 10, 2012 at 04:11:24PM -0400, Jeff Moyer wrote:
->>=20
->> I have no idea what a reasonable number for this would be.  Can you
->> provide guidelines that would help admins understand what factors
->> influence performance degradation due to directory size?
->=20
-> Well, for example, if you have a job which is a 512mb memory
-> container, and the directory has grown to 176mb, an attempt to readdi=
-r
-> said directory will cause that job to thrash badly, and perhaps get
-> killed by the OOM killer.  If you know that no sane directory should
-> ever grow beyond a single megabyte, you might pick a max_dir_size_kb
-> of 1024.
+Very large directories can cause significant performance problems, or
+perhaps even invoke the OOM killer, if the process is running in a
+highly constrained memory environment (whether it is VM's with a small
+amount of memory or in a small memory cgroup).
 
-Actually, we've been carrying a very similar patch to this in Lustre
-for a long time.  I didn't think this would be of interest to others
-outside of Lustre, so I don't think I ever sent it upstream.
+So it is useful, in cloud server/data center environments, to be able
+to set a filesystem-wide cap on the maximum size of a directory, to
+ensure that directories never get larger than a sane size.  We do this
+via a new mount option, max_dir_size_kb.  If there is an attempt to
+grow the directory larger than max_dir_size_kb, the system call will
+return ENOSPC instead.
 
-The reason we have this is that some HPC jobs might create 10k files
-every hour in the same output directory, and if the user/job don't
-pay attention to clean up the old files, then they might get many
-millions of files in the same directory.  Simple operations like
-"ls -l" in the directory will behave badly because GNU ls will read
-and sort all of the entries first.  Even if "-U" is given to not sort
-entries, ls will try to read (and by default stat for color) all the
-entries before displaying them so that column widths can be made nice.
-Similarly, "rm *" or other foolish things will break on large dirs for
-na=EFve users (who are scientists and not sysadmins).
+Google-Bug-Id: 6863013
 
-Operations may take many minutes on a huge directory, and users will
-complain and call support when they think the filesystem has hung.
-Instead, the admins limit the directory size and cause such application=
-s
-to fail early to alert the user that their application is behaving badl=
-y.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ Documentation/filesystems/ext4.txt | 4 ++++
+ fs/ext4/ext4.h                     | 1 +
+ fs/ext4/namei.c                    | 7 +++++++
+ fs/ext4/super.c                    | 7 +++++++
+ 4 files changed, 19 insertions(+)
 
-Of course, other sites want huge directories (10 billion files in one
-directory is the latest number I've seen), so this has to be tunable.
-We have a patch to fix the 2-level htree and 2GB directory size limits
-already, in case that is of interest to anyone.
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 1b7f9ac..43b80b5 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -375,6 +375,10 @@ dioread_nolock		locking. If the dioread_nolock option is specified
+ 			Because of the restrictions this options comprises
+ 			it is off by default (e.g. dioread_lock).
+ 
++max_dir_size_kb=n	This limits the size of directories so that any
++			attempt to expand them beyond the specified
++			limit in kilobytes will cause an ENOSPC error.
++
+ i_version		Enable 64-bit inode version support. This option is
+ 			off by default.
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c3411d4..7c0841e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1243,6 +1243,7 @@ struct ext4_sb_info {
+ 	unsigned int s_mb_order2_reqs;
+ 	unsigned int s_mb_group_prealloc;
+ 	unsigned int s_max_writeback_mb_bump;
++	unsigned int s_max_dir_size_kb;
+ 	/* where last allocation was done - for stream allocation */
+ 	unsigned long s_mb_last_group;
+ 	unsigned long s_mb_last_start;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2a42cc0..7450ff0 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -55,6 +55,13 @@ static struct buffer_head *ext4_append(handle_t *handle,
+ {
+ 	struct buffer_head *bh;
+ 
++	if (unlikely(EXT4_SB(inode->i_sb)->s_max_dir_size_kb &&
++		     ((inode->i_size >> 10) >=
++		      EXT4_SB(inode->i_sb)->s_max_dir_size_kb))) {
++		*err = -ENOSPC;
++		return NULL;
++	}
++
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ 
+ 	bh = ext4_bread(handle, inode, *block, 1, err);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 56bcaec..5896dcb 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1230,6 +1230,7 @@ enum {
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
++	Opt_max_dir_size_kb,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1303,6 +1304,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable=%u"},
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
++	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
+@@ -1483,6 +1485,7 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
++	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+ 	{Opt_err, 0, 0}
+ };
+ 
+@@ -1598,6 +1601,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			if (!args->from)
+ 				arg = EXT4_DEF_LI_WAIT_MULT;
+ 			sbi->s_li_wait_mult = arg;
++		} else if (token == Opt_max_dir_size_kb) {
++			sbi->s_max_dir_size_kb = arg;
+ 		} else if (token == Opt_stripe) {
+ 			sbi->s_stripe = arg;
+ 		} else if (m->flags & MOPT_DATAJ) {
+@@ -1829,6 +1834,8 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
+ 	if (nodefs || (test_opt(sb, INIT_INODE_TABLE) &&
+ 		       (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)))
+ 		SEQ_OPTS_PRINT("init_itable=%u", sbi->s_li_wait_mult);
++	if (nodefs || sbi->s_max_dir_size_kb)
++		SEQ_OPTS_PRINT("max_dir_size_kb=%u", sbi->s_max_dir_size_kb);
+ 
+ 	ext4_show_quota_options(seq, sb);
+ 	return 0;
+-- 
+1.7.12.rc0.22.gcdd159b
 
-Cheers, Andreas
-
->> Finally, I don't pretend to understand how your mount option parsing
->> routines work, but based on what I see in this patch it looks like t=
-he
->> default will be set to and enforced as 0.  What am I missing?
->=20
-> Sorry, I sent out the wrong version of the patch.  The limit was only
-> supposed to be used if maximum directory size is greater than 0; that
-> is, the default is that the directory size is unlimited, as before.
-> I'll send out a revised v2 version of the patch.
->=20
-> I view this as a very specialized option, but if you're running in a
-> tightly constrained memory cgroup, or a tiny EC2 instance, or the
-> equivalent Cloud Open VM, it might be a very useful thing to be able
-> to cap.
->=20
-> Regards,
->=20
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
