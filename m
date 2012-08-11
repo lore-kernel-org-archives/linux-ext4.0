@@ -1,82 +1,54 @@
 From: Ted Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -v2] ext4: add max_dir_size_kb mount option
-Date: Sat, 11 Aug 2012 17:13:13 -0400
-Message-ID: <20120811211313.GA906@thunk.org>
-References: <20120810215811.GA1137@thunk.org>
- <1344649235-9289-1-git-send-email-tytso@mit.edu>
- <C9EF93CD-99DF-483E-BE66-713616B12D8C@whamcloud.com>
- <20120811192648.GA9363@thunk.org>
+Subject: An idea for supporting large directories and readdir+stat workloads
+Date: Sat, 11 Aug 2012 17:25:32 -0400
+Message-ID: <20120811212532.GB906@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@whamcloud.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <aedilger@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44164 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44171 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753114Ab2HKVNQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Aug 2012 17:13:16 -0400
+	id S1751907Ab2HKVZg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Aug 2012 17:25:36 -0400
 Content-Disposition: inline
-In-Reply-To: <20120811192648.GA9363@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 11, 2012 at 03:26:48PM -0400, Theodore Ts'o wrote:
-> On Fri, Aug 10, 2012 at 09:22:39PM -0600, Andreas Dilger wrote:
-> > 
-> > In our patch, it returns EFBIG, since it isn't really a case of
-> > being out of space for blocks or inodes.
-> 
-> I agree, EFBIG seems to be a better errno.
+I was thinking about how to respond to Andreas's offer:
 
-Hmmm..... upon doing some more research, there was a related
-discussion on this point on the IETF NFSv4 mailing list earlier this
-year[1].  In it, Trond argued that EFBIG is defined by POSIX to mean:
-"An attempt was made to write a file that exceeds the file size limit
-of the process.", while ENOSPC is explicitly documented as an
-allowable error code for rename(2):
+On Fri, Aug 10, 2012 at 05:14:12PM -0600, Andreas Dilger wrote:
+> We have a patch to fix the 2-level htree and 2GB directory size limits
+> already, in case that is of interest to anyone.
 
-[ENOSPC]
-   The directory that would contain new cannot be extended.
+where in theory, I'd be interested, but there have been enough other
+performance problems with really large directories that it was never
+been clear to me it would be a huge win, and given the many other
+changes queued up, I was hesitant.
 
-The same definition is there for link(2) and open(2).  For open, it
-reads:
+... and then I started thinking about this while I was in the shower,
+and I think I've come up with a really good solution to the problem.
+What if we also integrated the proposed extension that you guys have
+designed for storing additional metadata in the directory, and then
+for files that do not have hard links, we keep a copy of all of the fs
+metadata required for stat(2) in the directory?
 
-[ENOSPC]
-    The directory or file system that would contain the new file
-    cannot be expanded, the file does not exist, and O_CREAT is
-    specified.
+This would speed up the readdir() + stat(2) workload, which has always
+been the major problem, in the common case where a file is linked to
+via only a single directory.  If a file gets hard-linked, we will need
+to drop the copy in the directory and then make sure the fields in the
+inode table are up-to-date.  But if we do this, I think it would be a
+huge improvement for ext4.
 
-Hence, Trond argued that using ENOSPC was a better choice, in terms of
-being a closer match with POSIX specifications, and hence what
-programs might expect.
-
-The string returned by perror/strerror is going to be a little
-confusing to users in either case.  EFBIG returns "File too large",
-while ENOSPC returns "No space left on device".  One might argue that
-ENOSPC's error return is a little better, but then again there's a
-grand Unix tradition in this, after all --- "Not a typewriter",
-anyone?  :-)
+What do folks think?
 
 						- Ted
 
-[1] http://www.ietf.org/mail-archive/web/nfsv4/current/msg10720.html
-
-P.S.  The context for this is a feature which the NetApp filer has,
-MaxDirSize, which controls the maximum size of a directory specified
-in Kilobytes.  The discussion was what was the proper NFS error code
-that should be returned, given how it would be reflected back to a
-Posix errno by most clients.
-
-Interestingly, it appears the default MaxDirSize starting with
-NetApp's Data before ONTAP 6.5 was 64k.  On newer NetApps, the limit
-is defaulted to be 1% of the memory size configured on the filer.  The
-reason given for limiting the maximum directory size was for
-performance reasons.  Given the issues we've seen when you have jobs
-running with a 512mb memory cgroup (which would also apply if you were
-running a micro EC2 instance, or some other Xen or KVM VM with a small
-memory size), it's interesting that this was an issue that NetApp has
-run into, and addressed the same way.
-
-I can definitely attest to the fact that the system will not be happy
-if you are limited to 512mb of memory, and you have a 176mb
-directory....
+P.S.  We might need to add a special case hack for the SELINUX sid,
+and put it in the extended directory entry as well, since otherwise
+every single stat operation will need to go to the inode table just to
+read the SELINUX extended attribute.  But I don't really care about
+that, since my personal answer to SELINUX has been "just say no".  But
+I do know there are enough people using it that we probably do need to
+accomodate those poor folks....
