@@ -1,108 +1,36 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: Upgraded from 3.4 to 3.5.1 kernel: machine does not boot
-Date: Sat, 11 Aug 2012 00:14:51 -0400
-Message-ID: <CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
-References: <0bac01cd7717$9fa6bbf0$def433d0$@lucidpixels.com>
-	<alpine.LNX.2.00.1208101948590.17673@swampdragon.chaosbits.net>
-	<CAO9zADxocKKFMsf5RqmP+YMjFLj58yDbdqFm1xexQ+mSLb7JHQ@mail.gmail.com>
-	<0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com>
+From: "Justin Piszcz" <jpiszcz@lucidpixels.com>
+Subject: 3.4->(3.5.1 || 3.6-rc1) => can no longer mount 60TB ext4 filesystem
+Date: Sat, 11 Aug 2012 13:36:19 -0400
+Message-ID: <005501cd77e7$d222d020$76687060$@lucidpixels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-kernel@vger.kernel.org, ap@solarrain.com,
-	linux-ext4@vger.kernel.org
-To: Jesper Juhl <jj@chaosbits.net>
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: <ap@solarrain.com>
+To: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:49340 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750850Ab2HKEOv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Aug 2012 00:14:51 -0400
-Received: by obbuo13 with SMTP id uo13so3249325obb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Aug 2012 21:14:51 -0700 (PDT)
-In-Reply-To: <0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:40677 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752770Ab2HKRgW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Aug 2012 13:36:22 -0400
+Received: by yhmm54 with SMTP id m54so2451665yhm.19
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Aug 2012 10:36:21 -0700 (PDT)
+Content-Language: en-us
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 10, 2012 at 7:07 PM, Justin Piszcz
->
-> Hi,
->
-> Found the root cause, the 3.5.1 kernel cannot mount my ext4 filesystem
-> (60TB).
->
-> The 3.4 kernel works fine.
->
-> This is proven by commenting out the filesystem in /etc/fstab with
-> 3.5.1, and all is OK.
->
-> --
->
-> Hi again,
->
-> I tested with linux-3.6-rc1:
->
-> The same problem, here is what I get from the strace:
->
-> irectory)
-> 4434  readlink("/dev", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
-> 4434  readlink("/dev/sda1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid
-> argument)
-> 4434  readlink("/r1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
-> 4434  getuid()                          = 0
-> 4434  geteuid()                         = 0
-> 4434  getgid()                          = 0
-> 4434  getegid()                         = 0
-> 4434  prctl(PR_GET_DUMPABLE)            = 1
-> 4434  lstat("/etc/mtab", {st_mode=S_IFLNK|0777, st_size=12, ...}) = 0
-> 4434  getuid()                          = 0
-> 4434  geteuid()                         = 0
-> 4434  getgid()                          = 0
-> 4434  getegid()                         = 0
-> 4434  prctl(PR_GET_DUMPABLE)            = 1
-> 4434  stat("/run", {st_mode=S_IFDIR|0755, st_size=820, ...}) = 0
-> 4434  lstat("/run/mount/utab", {st_mode=S_IFREG|0644, st_size=0, ...}) = 0
-> 4434  open("/run/mount/utab", O_RDWR|O_CREAT, 0644) = 3
-> 4434  close(3)                          = 0
-> 4434  mount("/dev/sda1", "/r1", "ext4", MS_MGC_VAL|MS_NOATIME, NULL
->
-> --
->
-> (w/ 3.6-rc1)
->
-> [   89.868843] mount           R  running task        0  4434   4433
-> 0x00000009
-> [   89.868847]  ffff880c246b7b68 ffffffff816c9279 ffff880c246b7aa8
-> ffff880c246b7fd8
-> [   89.868851]  ffff880c246b7fd8 0000000000004000 ffff88062720cdb0
-> ffff880c246862d0
-> [   89.868855]  00000000000116c0 ffff880623a863c0 ffff880623a863c0
-> 00000000ffffffff
-> [   89.868855] Call Trace:
-> [   89.868858]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
-> [   89.868860]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
-> [   89.868864]  [<ffffffff8114a729>] ? ext4_get_group_desc+0x49/0xb0
-> [   89.868868]  [<ffffffff81161d41>] ? ext4_calculate_overhead+0x131/0x3e0
-> [   89.868871]  [<ffffffff81163a3b>] ? ext4_fill_super+0x1a4b/0x28d0
-> [   89.868875]  [<ffffffff810cc301>] ? mount_bdev+0x1a1/0x1e0
-> [   89.868877]  [<ffffffff81161ff0>] ? ext4_calculate_overhead+0x3e0/0x3e0
-> [   89.868880]  [<ffffffff8115dd00>] ? ext4_mount+0x10/0x20
-> [   89.868882]  [<ffffffff810cc55b>] ? mount_fs+0x1b/0xd0
-> [   89.868885]  [<ffffffff810e57af>] ? vfs_kern_mount+0x6f/0x110
-> [   89.868888]  [<ffffffff810e58cf>] ? do_kern_mount+0x4f/0x100
-> [   89.868890]  [<ffffffff810e6dae>] ? do_mount+0x2fe/0x8a0
-> [   89.868894]  [<ffffffff8109c0a3>] ? strndup_user+0x53/0x70
-> [   89.868896]  [<ffffffff810e73e0>] ? sys_mount+0x90/0xe0
-> [   89.868899]  [<ffffffff816cafa1>] ? tracesys+0xd4/0xd9
->
-> Justin.
->
->
->
+Hello,
 
-CC: linux-ext4
+I upgrade to each new kernel release and with 3.5.1 (from 3.4) I can no
+longer mount my 60TB ext4 volume.
+If I boot back to 3.4, it works fine.
 
-Any ideas here (kernel 3.4 and below can mount 60TB ext4 no issues)
-but > 3.5.1 (did not try 3.5) cannot mount the filesystem.
+Details here:
+https://lkml.org/lkml/2012/8/10/205
+
+Anything I can do besides testing each 3.5-rcX to find where the regression
+lies?
 
 Justin.
 
-Justin.
+
