@@ -1,126 +1,88 @@
-From: Eric Sandeen <sandeen@sandeen.net>
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
 Subject: Re: Upgraded from 3.4 to 3.5.1 kernel: machine does not boot
-Date: Sun, 12 Aug 2012 08:10:34 -0500
-Message-ID: <5027AB4A.6010200@sandeen.net>
-References: <0bac01cd7717$9fa6bbf0$def433d0$@lucidpixels.com> <alpine.LNX.2.00.1208101948590.17673@swampdragon.chaosbits.net> <CAO9zADxocKKFMsf5RqmP+YMjFLj58yDbdqFm1xexQ+mSLb7JHQ@mail.gmail.com> <0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com> <CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
+Date: Sun, 12 Aug 2012 09:51:06 -0400
+Message-ID: <CAO9zADxPQc9vqdhOeXj1Du=TeV_k5pRtBV9jyVLz-zk0bYFk_w@mail.gmail.com>
+References: <0bac01cd7717$9fa6bbf0$def433d0$@lucidpixels.com>
+	<alpine.LNX.2.00.1208101948590.17673@swampdragon.chaosbits.net>
+	<CAO9zADxocKKFMsf5RqmP+YMjFLj58yDbdqFm1xexQ+mSLb7JHQ@mail.gmail.com>
+	<0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com>
+	<CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
+	<5027AB4A.6010200@sandeen.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
 Cc: Jesper Juhl <jj@chaosbits.net>, linux-kernel@vger.kernel.org,
-	ap@solarrain.com, linux-ext4@vger.kernel.org
-To: Justin Piszcz <jpiszcz@lucidpixels.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	ap@solarrain.com, linux-ext4@vger.kernel.org, greg@kroah.com
+To: Eric Sandeen <sandeen@sandeen.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:59452 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751999Ab2HLNvG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Aug 2012 09:51:06 -0400
+Received: by obbuo13 with SMTP id uo13so5346949obb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 12 Aug 2012 06:51:06 -0700 (PDT)
+In-Reply-To: <5027AB4A.6010200@sandeen.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/10/12 11:14 PM, Justin Piszcz wrote:
-> On Fri, Aug 10, 2012 at 7:07 PM, Justin Piszcz
->>
->> Hi,
->>
->> Found the root cause, the 3.5.1 kernel cannot mount my ext4 filesystem
->> (60TB).
+On Sun, Aug 12, 2012 at 9:10 AM, Eric Sandeen <sandeen@sandeen.net> wrote:
+> On 8/10/12 11:14 PM, Justin Piszcz wrote:
+>> On Fri, Aug 10, 2012 at 7:07 PM, Justin Piszcz
+>>>
+>>> Hi,
+>>>
+>>> Found the root cause, the 3.5.1 kernel cannot mount my ext4 filesystem
+>>> (60TB).
+>
+> You are a brave man running ext4 at 60T, but thank you for testing :)
+>
+> Backing out 8aeb00ff85ad25453765dd339b408c0087db1527 from 3.5.1
+> (952fc18ef9ec707ebdc16c0786ec360295e5ff15 upstream) probably helps?
+>
+> From a quick look, I think that essentially has a :
+>
+> for (i = 0; i < ngroups; i++) {
+>
+>         for (j = 0; j < ngroups; j++) {
+>
+>         }
+> }
+>
+> type nested loop going on; for a filesystem this big it's going to take almost
+> literally forever, if I read it right.
+>
+> -Eric
 
-You are a brave man running ext4 at 60T, but thank you for testing :)
+Hello,
 
-Backing out 8aeb00ff85ad25453765dd339b408c0087db1527 from 3.5.1
-(952fc18ef9ec707ebdc16c0786ec360295e5ff15 upstream) probably helps?
+It worked!! I can mount my filesystem now!
 
->From a quick look, I think that essentially has a :
+I pulled down 3.5 and backed out that commit, I could not quickly find
+a doc to do this, so I will add how to do that below:
 
-for (i = 0; i < ngroups; i++) {
+1. Clone Linux repo (3.5/stable as of this writing)
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 
-	for (j = 0; j < ngroups; j++) {
+2. List commits:
+git log
 
-	}
-}
+3. Show a specific commit
+git show 8aeb00ff85ad25453765dd339b408c0087db1527
 
-type nested loop going on; for a filesystem this big it's going to take almost
-literally forever, if I read it right.
+4. How to revert the commit:
+git revert 8aeb00ff85ad25453765dd339b408c0087db1527
 
--Eric
+# On branch master
+nothing to commit (working directory clean)
 
->> The 3.4 kernel works fine.
->>
->> This is proven by commenting out the filesystem in /etc/fstab with
->> 3.5.1, and all is OK.
->>
->> --
->>
->> Hi again,
->>
->> I tested with linux-3.6-rc1:
->>
->> The same problem, here is what I get from the strace:
->>
->> irectory)
->> 4434  readlink("/dev", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
->> 4434  readlink("/dev/sda1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid
->> argument)
->> 4434  readlink("/r1", 0x7fff3b05c670, 4096) = -1 EINVAL (Invalid argument)
->> 4434  getuid()                          = 0
->> 4434  geteuid()                         = 0
->> 4434  getgid()                          = 0
->> 4434  getegid()                         = 0
->> 4434  prctl(PR_GET_DUMPABLE)            = 1
->> 4434  lstat("/etc/mtab", {st_mode=S_IFLNK|0777, st_size=12, ...}) = 0
->> 4434  getuid()                          = 0
->> 4434  geteuid()                         = 0
->> 4434  getgid()                          = 0
->> 4434  getegid()                         = 0
->> 4434  prctl(PR_GET_DUMPABLE)            = 1
->> 4434  stat("/run", {st_mode=S_IFDIR|0755, st_size=820, ...}) = 0
->> 4434  lstat("/run/mount/utab", {st_mode=S_IFREG|0644, st_size=0, ...}) = 0
->> 4434  open("/run/mount/utab", O_RDWR|O_CREAT, 0644) = 3
->> 4434  close(3)                          = 0
->> 4434  mount("/dev/sda1", "/r1", "ext4", MS_MGC_VAL|MS_NOATIME, NULL
->>
->> --
->>
->> (w/ 3.6-rc1)
->>
->> [   89.868843] mount           R  running task        0  4434   4433
->> 0x00000009
->> [   89.868847]  ffff880c246b7b68 ffffffff816c9279 ffff880c246b7aa8
->> ffff880c246b7fd8
->> [   89.868851]  ffff880c246b7fd8 0000000000004000 ffff88062720cdb0
->> ffff880c246862d0
->> [   89.868855]  00000000000116c0 ffff880623a863c0 ffff880623a863c0
->> 00000000ffffffff
->> [   89.868855] Call Trace:
->> [   89.868858]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
->> [   89.868860]  [<ffffffff816c9279>] ? __schedule+0x299/0x770
->> [   89.868864]  [<ffffffff8114a729>] ? ext4_get_group_desc+0x49/0xb0
->> [   89.868868]  [<ffffffff81161d41>] ? ext4_calculate_overhead+0x131/0x3e0
->> [   89.868871]  [<ffffffff81163a3b>] ? ext4_fill_super+0x1a4b/0x28d0
->> [   89.868875]  [<ffffffff810cc301>] ? mount_bdev+0x1a1/0x1e0
->> [   89.868877]  [<ffffffff81161ff0>] ? ext4_calculate_overhead+0x3e0/0x3e0
->> [   89.868880]  [<ffffffff8115dd00>] ? ext4_mount+0x10/0x20
->> [   89.868882]  [<ffffffff810cc55b>] ? mount_fs+0x1b/0xd0
->> [   89.868885]  [<ffffffff810e57af>] ? vfs_kern_mount+0x6f/0x110
->> [   89.868888]  [<ffffffff810e58cf>] ? do_kern_mount+0x4f/0x100
->> [   89.868890]  [<ffffffff810e6dae>] ? do_mount+0x2fe/0x8a0
->> [   89.868894]  [<ffffffff8109c0a3>] ? strndup_user+0x53/0x70
->> [   89.868896]  [<ffffffff810e73e0>] ? sys_mount+0x90/0xe0
->> [   89.868899]  [<ffffffff816cafa1>] ? tracesys+0xd4/0xd9
->>
->> Justin.
->>
->>
->>
-> 
-> CC: linux-ext4
-> 
-> Any ideas here (kernel 3.4 and below can mount 60TB ext4 no issues)
-> but > 3.5.1 (did not try 3.5) cannot mount the filesystem.
-> 
-> Justin.
-> 
-> Justin.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
-> 
+5. Recompile, reboot, does it work?
+# df -h
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        61T   17T   44T  28% /r1
+# uname -a
+Linux p34 3.5.0 #1 SMP Sun Aug 12 09:42:41 EDT 2012 x86_64 GNU/Linux
+
+Yes!
+
+CC: Greg to see if this can be backed out for 3.5.2?
+
+Justin.
