@@ -1,54 +1,115 @@
-From: Justin Piszcz <jpiszcz@lucidpixels.com>
-Subject: Re: 3.4->(3.5.1 || 3.6-rc1) => can no longer mount 60TB ext4 filesystem
-Date: Sun, 12 Aug 2012 09:52:43 -0400
-Message-ID: <CAO9zADzpVeeQqcm78GK-Y562ieS6i5wnan7roCCwm0KLY0vdUA@mail.gmail.com>
-References: <005501cd77e7$d222d020$76687060$@lucidpixels.com>
-	<5027B04D.3090703@gmail.com>
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: Re: Upgraded from 3.4 to 3.5.1 kernel: machine does not boot
+Date: Sun, 12 Aug 2012 10:13:01 -0400
+Message-ID: <CAP=VYLoRosDjR-ciSP6cLwVtxy=Xf_k-RgkXHxfi=WLtxiaY7A@mail.gmail.com>
+References: <0bac01cd7717$9fa6bbf0$def433d0$@lucidpixels.com>
+ <alpine.LNX.2.00.1208101948590.17673@swampdragon.chaosbits.net>
+ <CAO9zADxocKKFMsf5RqmP+YMjFLj58yDbdqFm1xexQ+mSLb7JHQ@mail.gmail.com>
+ <0de101cd774c$fb2afa10$f180ee30$@lucidpixels.com> <CAO9zADzxste_Zs0CGtNoTL0SARV41-q4X-8i8fXBPVNQ4ADDcA@mail.gmail.com>
+ <5027AB4A.6010200@sandeen.net> <CAO9zADxPQc9vqdhOeXj1Du=TeV_k5pRtBV9jyVLz-zk0bYFk_w@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	ap@solarrain.com
-To: Daniel Mack <zonque@gmail.com>
+Cc: Eric Sandeen <sandeen@sandeen.net>, Jesper Juhl <jj@chaosbits.net>,
+	linux-kernel@vger.kernel.org, ap@solarrain.com,
+	linux-ext4@vger.kernel.org, greg@kroah.com
+To: Justin Piszcz <jpiszcz@lucidpixels.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:61299 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751971Ab2HLNwo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Aug 2012 09:52:44 -0400
-Received: by obbuo13 with SMTP id uo13so5348777obb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Aug 2012 06:52:44 -0700 (PDT)
-In-Reply-To: <5027B04D.3090703@gmail.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:53216 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750852Ab2HLONc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Aug 2012 10:13:32 -0400
+In-Reply-To: <CAO9zADxPQc9vqdhOeXj1Du=TeV_k5pRtBV9jyVLz-zk0bYFk_w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 12, 2012 at 9:31 AM, Daniel Mack <zonque@gmail.com> wrote:
-> On 11.08.2012 19:36, Justin Piszcz wrote:
->> Hello,
+On Sun, Aug 12, 2012 at 9:51 AM, Justin Piszcz <jpiszcz@lucidpixels.com> wrote:
+> On Sun, Aug 12, 2012 at 9:10 AM, Eric Sandeen <sandeen@sandeen.net> wrote:
+>> On 8/10/12 11:14 PM, Justin Piszcz wrote:
+>>> On Fri, Aug 10, 2012 at 7:07 PM, Justin Piszcz
+>>>>
+>>>> Hi,
+>>>>
+>>>> Found the root cause, the 3.5.1 kernel cannot mount my ext4 filesystem
+>>>> (60TB).
 >>
->> I upgrade to each new kernel release and with 3.5.1 (from 3.4) I can no
->> longer mount my 60TB ext4 volume.
->> If I boot back to 3.4, it works fine.
+>> You are a brave man running ext4 at 60T, but thank you for testing :)
 >>
->> Details here:
->> https://lkml.org/lkml/2012/8/10/205
+>> Backing out 8aeb00ff85ad25453765dd339b408c0087db1527 from 3.5.1
+>> (952fc18ef9ec707ebdc16c0786ec360295e5ff15 upstream) probably helps?
 >>
->> Anything I can do besides testing each 3.5-rcX to find where the regression
->> lies?
+>> From a quick look, I think that essentially has a :
+>>
+>> for (i = 0; i < ngroups; i++) {
+>>
+>>         for (j = 0; j < ngroups; j++) {
+>>
+>>         }
+>> }
+>>
+>> type nested loop going on; for a filesystem this big it's going to take almost
+>> literally forever, if I read it right.
+>>
+>> -Eric
 >
-> I'm not at all familiar with ext4 internals, but as always, an wasy way
-> is to bisect such a problem. Any change you can do that?
+> Hello,
 >
->   http://www.kernel.org/pub/software/scm/git/docs/git-bisect.html
+> It worked!! I can mount my filesystem now!
 >
+> I pulled down 3.5 and backed out that commit, I could not quickly find
+> a doc to do this, so I will add how to do that below:
 >
-> Daniel
+> 1. Clone Linux repo (3.5/stable as of this writing)
+> git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 >
+> 2. List commits:
+> git log
+>
+> 3. Show a specific commit
+> git show 8aeb00ff85ad25453765dd339b408c0087db1527
+>
+> 4. How to revert the commit:
+> git revert 8aeb00ff85ad25453765dd339b408c0087db1527
+>
+> # On branch master
+> nothing to commit (working directory clean)
 
-Hi,
+You didn't actually revert anything here, because your clone left
+you on "master" branch, which points at 3.5 (i.e. 3.5.0).   It does
+not contain the commit which is of interest to you.
 
-Thanks, will save this for the future-- would of done this but Eric
-Sandeen found the offending patch, I reverted it and I can mount the
-filesystem now.
+-------------
+linux-stable$git tag --contains 8aeb00ff
+v3.5.1
+linux-stable$git branch --contains 8aeb00ff
+  linux-3.5.y
+linux-stable$
+------------
 
-The bad commit was 8aeb00ff85ad25453765dd339b408c0087db1527 (per sandeen)
+The master branch in linux-stable is left pointing at one of the
+most recent mainline (i.e. non-stable) tags, and all of the stable
+content is on individual branches (type "git branch" to see them).
 
-Justin.
+So if you do a "git checkout linux-3.5.y"  and then do the revert,
+you will actually be testing what you wanted to test.
+
+Paul.
+--
+
+>
+> 5. Recompile, reboot, does it work?
+> # df -h
+> Filesystem      Size  Used Avail Use% Mounted on
+> /dev/sda1        61T   17T   44T  28% /r1
+> # uname -a
+> Linux p34 3.5.0 #1 SMP Sun Aug 12 09:42:41 EDT 2012 x86_64 GNU/Linux
+>
+> Yes!
+>
+> CC: Greg to see if this can be backed out for 3.5.2?
+>
+> Justin.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
