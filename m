@@ -1,56 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: check return value of blkdev_issue_flush()
-Date: Sun, 12 Aug 2012 23:38:41 -0400
-Message-ID: <1344829121-23739-2-git-send-email-tytso@mit.edu>
-References: <1344829121-23739-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <aedilger@gmail.com>
+Subject: Re: An idea for supporting large directories and readdir+stat workloads
+Date: Sun, 12 Aug 2012 23:11:32 -0600
+Message-ID: <B12EEBD6-6DA4-4D2C-A31F-B2F7FAFCD372@dilger.ca>
+References: <20120811212532.GB906@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: Andreas Dilger <aedilger@gmail.com>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Ted Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44329 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753120Ab2HMDip (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 12 Aug 2012 23:38:45 -0400
-In-Reply-To: <1344829121-23739-1-git-send-email-tytso@mit.edu>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:39303 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751074Ab2HMFLe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2012 01:11:34 -0400
+Received: by ghrr11 with SMTP id r11so2637260ghr.19
+        for <linux-ext4@vger.kernel.org>; Sun, 12 Aug 2012 22:11:34 -0700 (PDT)
+In-Reply-To: <20120811212532.GB906@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-blkdev_issue_flush() can fail; make sure the error gets properly
-propagated.
 
-This is a port of the equivalent ext3 patch from commit 44f4f729e7a1.
+On 2012-08-11, at 3:25 PM, Ted Ts'o wrote:
+> I was thinking about how to respond to Andreas's offer:
+> 
+> On Fri, Aug 10, 2012 at 05:14:12PM -0600, Andreas Dilger wrote:
+>> We have a patch to fix the 2-level htree and 2GB directory size limits
+>> already, in case that is of interest to anyone.
+> 
+> where in theory, I'd be interested, but there have been enough other
+> performance problems with really large directories that it was never
+> been clear to me it would be a huge win, and given the many other
+> changes queued up, I was hesitant.
+> 
+> ... and then I started thinking about this while I was in the shower,
+> and I think I've come up with a really good solution to the problem.
+> What if we also integrated the proposed extension that you guys have
+> designed for storing additional metadata in the directory, and then
+> for files that do not have hard links, we keep a copy of all of the fs
+> metadata required for stat(2) in the directory?
+> 
+> This would speed up the readdir() + stat(2) workload, which has always
+> been the major problem, in the common case where a file is linked to
+> via only a single directory.  If a file gets hard-linked, we will need
+> to drop the copy in the directory and then make sure the fields in the
+> inode table are up-to-date.  But if we do this, I think it would be a
+> huge improvement for ext4.
+> 
+> What do folks think?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/fsync.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+Essentially, this is storing the inode in the directory.  What might be
+possible is to have the directory leaf block point be the same thing as
+the inode table block, and then use an xattr in the inode to hold the
+parent directory number and filename as the "dirent".
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 2a1dcea..323eb15 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -203,7 +203,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct inode *inode = file->f_mapping->host;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
--	int ret;
-+	int ret, err;
- 	tid_t commit_tid;
- 	bool needs_barrier = false;
- 
-@@ -255,8 +255,11 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 		needs_barrier = true;
- 	jbd2_log_start_commit(journal, commit_tid);
- 	ret = jbd2_log_wait_commit(journal, commit_tid);
--	if (needs_barrier)
--		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-+	if (needs_barrier) {
-+		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-+		if (!ret)
-+			ret = err;
-+	}
-  out:
- 	mutex_unlock(&inode->i_mutex);
- 	trace_ext4_sync_file_exit(inode, ret);
--- 
-1.7.12.rc0.22.gcdd159b
+We are actually already storing the Lustre parent FID and filename in an
+xattr in the inode as a mechanism for doing inode->path generation on the
+fly, but this could replace the directory entry entirely.  It is possible
+to have multiple links to a file by having multiple xattr entries on the
+inode, and if some inode is renamed to another directory then the xattr
+is changed.  If there are a lot of hard links to a single file, then it
+is possible that an external xattr block would be needed, but in the
+overwhelmingly common case of a single link it can be stored in the inode.
+
+The htree index would be used to reference the various inode table blocks.  Each inode in that block would check the xattr for entries for the parent
+directory that is doing readdir/lookup, and would otherwise be ignored if
+the parent inode does not match.
+
+
+> P.S.  We might need to add a special case hack for the SELINUX sid,
+> and put it in the extended directory entry as well, since otherwise
+> every single stat operation will need to go to the inode table just to
+> read the SELINUX extended attribute.  But I don't really care about
+> that, since my personal answer to SELINUX has been "just say no".  But
+> I do know there are enough people using it that we probably do need to
+> accomodate those poor folks....
+
+I think that by the time we store all of the "stat" attributes into the
+directory it would essentially duplicate the inode, and increase overhead
+instead of reducing it.  Every inode update would likely require also
+updating the directory (mtime, ctime, etc).
+
+Cheers, Andreas
+
+
+
+
 
