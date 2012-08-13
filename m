@@ -1,58 +1,80 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 01/35 v3] libext2fs: add
- EXT4_FEATURE_INCOMPAT_INLINE_DATA flag
-Date: Mon, 13 Aug 2012 15:44:04 +0800
-Message-ID: <20120813074404.GA21093@gmail.com>
-References: <1341150538-32047-1-git-send-email-wenqing.lz@taobao.com>
- <1341150538-32047-2-git-send-email-wenqing.lz@taobao.com>
- <20120807182214.GA29423@thunk.org>
+Subject: Re: [PATCH 07/36 v4] libext2fs: add inline_data file
+Date: Mon, 13 Aug 2012 16:07:50 +0800
+Message-ID: <20120813080750.GB21093@gmail.com>
+References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
+ <1343735309-30579-8-git-send-email-wenqing.lz@taobao.com>
+ <20120807184002.GB29928@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:34715 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751797Ab2HMHfN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2012 03:35:13 -0400
-Received: by pbbrr13 with SMTP id rr13so6830053pbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2012 00:35:12 -0700 (PDT)
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:61152 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751797Ab2HMH7A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2012 03:59:00 -0400
+Received: by ghrr11 with SMTP id r11so2700392ghr.19
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2012 00:58:59 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20120807182214.GA29423@thunk.org>
+In-Reply-To: <20120807184002.GB29928@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 07, 2012 at 02:22:14PM -0400, Theodore Ts'o wrote:
-> On Sun, Jul 01, 2012 at 09:48:24PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > Add EXT4_FEATURE_INCOMPAT_INLINE_DATA flag to support inline
-> > data feature.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Aug 07, 2012 at 02:40:02PM -0400, Theodore Ts'o wrote:
+> One major comment about the library functions.  The reason why we have
+> functions of the form ext2fs_foo(), ext2fs_foo2(), ext2fs_foo3(),
+> etc. is to preserve backwards compatibility of the ABI.  In general,
+> ext2fs_foo2() will have an extra parameter which wasn't in
+> ext2fs_foo(), and ext2fs_foo2() will have a superset of the
+> functionality of ext2fs_foo().  If later we need to add to add another
+> parameter to further extend the functionality of the function, we
+> might have an ext2fs_foo3(), which again will be a supserset of the
+> functionality of ext2fs_foo2().   
 > 
-> I've pulled in the part of this patch which renames
-> INCOMPAT_INLINEDATA to INCOMPAT_INLINE_DATA to the next branch.
+> So in general, we only need to implement ext2fs_fooN(), and then
+> ext2fs_fooX where 0 <= X <= N simply call ext2fs_fooN with the extra
+> parameters defaulted out (usually to 0 or NULL).
 > 
-> As far as actually adding this feature to
-> EXT2_LIB_FEATURE_INCOMPAT_SUPP, I have two comments.  In general, it's
-> best to add this to the patch series at the very end, so that if
-> someone is bisecting e2fsprogs, there's no chance that they end up
-> with the feature only partially supported.
+> It also follows that when we create a new function, there's no need to
+> do this.  So the fact that you have an ext2fs_inlinedata_iterate()
+> which just calls ext2fs_inline_data_iterate2() is not something you
+> need to do.
 > 
-> If the development of the patch is going to take a long time, what I
-> have done in the past is to add the feature to
-> EXT2_LIB_SOFTSUPP_INCOMPAT and EXt2_LIB_SOFTSUPP_RO_COMPAT.  This
-> allows dumpe2fs and debugfs to recognize the file system, which is
-> handy for debugging and development.  But it doesn't allow e2fsck to
-> try to check or repair file systems with the feature enabled, since
-> usually e2fsck support is one of the last things to be coded up.
+> More seriously, ext2fs_inline_data_iterate3() has an implementation
+> which is completely different from that of
+> ext2fs_inline_data_iterate2(), and that's an immediate red flag.  This
+> means that these two functions are semantically different, and so they
+> should have fundamentally different names --- or you need to make
+> ext2fs_inline_data_iterate3() a strict superset of the functionality
+> of ext2fs_inline_data_iterate2().
 > 
-> Then when we're ready to turn on the feature and fully support things,
-> we'll have a patch which adds the feature to
-> EXT2_LIB_FEATURE_INCOMPAT_SUPP, and remove it from the SOFTSUPP mask.
+> Also, I note that there are a number of patches which basically do
+> this:
+> 
+> -	retval = ext2fs_dir_iterate2(current_fs, inode_num, 0,
+> -				    0, rmdir_proc, &rds);
+> +	if (ext2fs_has_inline_data(current_fs, inode_num))
+> +		retval = ext2fs_inline_data_iterate2(current_fs, inode_num, 0,
+> +						     0, rmdir_proc, &rds);
+> +	else
+> +		retval = ext2fs_dir_iterate2(current_fs, inode_num, 0,
+> +					    0, rmdir_proc, &rds);
+> 
+> The much better thing to do is to make ext2fs_dir_iterate2() check to
+> see if the inode has inline data, and if so, to call
+> ext2fs_inline_data_iterate2() directly.   This has a couple of benefits.
+> 
+> The first is it will reduce the number of patches we need to apply.
+> More importantly, it means that existing programs that don't know
+> about inline data, but who happen to use ext2fs_dir_iterate(), will be
+> able to work automatically, without requiring code changes.  It's also
+> much cleaner from a conceptual point of view, since the
+> ext2fs_dir_iterate abstraction shouldn't need to expose to the user
+> whether the directory data is inline or in a separate data block.
 
-Thanks for teaching me. :-)
+Thanks for patient explanation.  I will fix the patches according to
+your advice.
 
 Regards,
 Zheng
