@@ -1,41 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: An idea for supporting large directories and readdir+stat
- workloads
-Date: Mon, 13 Aug 2012 10:39:41 -0400
-Message-ID: <20120813143941.GC32484@thunk.org>
-References: <20120811212532.GB906@thunk.org>
- <B12EEBD6-6DA4-4D2C-A31F-B2F7FAFCD372@dilger.ca>
- <20120813143607.GB32484@thunk.org>
+Subject: Re: [PATCH V5 00/23] ext4: Add inline data support.
+Date: Mon, 13 Aug 2012 11:04:45 -0400
+Message-ID: <20120813150445.GC13072@thunk.org>
+References: <1341070917-4889-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <aedilger@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44414 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44431 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751046Ab2HMOjn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Aug 2012 10:39:43 -0400
+	id S1751438Ab2HMPEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Aug 2012 11:04:47 -0400
 Content-Disposition: inline
-In-Reply-To: <20120813143607.GB32484@thunk.org>
+In-Reply-To: <1341070917-4889-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 13, 2012 at 10:36:07AM -0400, Theodore Ts'o wrote:
-> Field		Size
-> 
-> ino		 4
+I had an idea which I think would make inline directories more
+efficient, although it wouldn't be a backwards compatible change with
+the existing patch sets to date.
 
-Silly me, we don't need actually need to store the inode a second
-time, since that's already in the struct ext4_dir_entry.
+We don't actually need to store the entry for '.', since we know what
+that should be, and we could just store the parent directory in a
+4-byte entry.  By not storing the full directory entries for "." and
+"..", we would save 20 bytes, which for a 256 byte inode where only
+120 bytes or so are available for the inline directory, is pretty
+significant.  (We can just synthesize them for the benefit of readdir
+and lookup --- and I'm pretty sure the VFS is doing its own synthesis
+for "." and possibly ".." already as far as lookup is concerned.)
 
-> dev		 4
+What do you think?
 
-... and we only need to store the device if this is a block or
-character device, so we could actually use the i_size field below to
-store the dev_t for devices inodes.
-
-So this would shrink the size of the "compact inode" that would be
-stored in the directory entry down from 62 bytes to 58 bytes.
-
-						- Ted
+					- Ted
