@@ -1,90 +1,183 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: An idea for supporting large directories and readdir+stat workloads
-Date: Sun, 12 Aug 2012 23:11:32 -0600
-Message-ID: <B12EEBD6-6DA4-4D2C-A31F-B2F7FAFCD372@dilger.ca>
-References: <20120811212532.GB906@thunk.org>
-Mime-Version: 1.0 (Apple Message framework v1084)
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH v2] ext4: dynamical adjust the length of zero-out chunk
+Date: Mon, 13 Aug 2012 14:55:47 +0800
+Message-ID: <20120813065547.GA20973@gmail.com>
+References: <1342075703-4537-1-git-send-email-wenqing.lz@taobao.com>
+ <4FFEE402.7090601@redhat.com>
+ <7B794B69-EF6C-4279-83D7-EA47E35CD54C@dilger.ca>
+ <20120813032243.GB13072@thunk.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Andreas Dilger <aedilger@gmail.com>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Ted Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Zach Brown <zab@zabbo.net>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:39303 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751074Ab2HMFLe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2012 01:11:34 -0400
-Received: by ghrr11 with SMTP id r11so2637260ghr.19
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Aug 2012 22:11:34 -0700 (PDT)
-In-Reply-To: <20120811212532.GB906@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:55268 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219Ab2HMGq5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Aug 2012 02:46:57 -0400
+Received: by pbbrr13 with SMTP id rr13so6767693pbb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 12 Aug 2012 23:46:57 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20120813032243.GB13072@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-On 2012-08-11, at 3:25 PM, Ted Ts'o wrote:
-> I was thinking about how to respond to Andreas's offer:
+On Sun, Aug 12, 2012 at 11:22:43PM -0400, Theodore Ts'o wrote:
+> On Thu, Jul 12, 2012 at 10:51:12AM -0600, Andreas Dilger wrote:
+> > 
+> > It would make sense to use the s_raid_stripe_width as the default value for
+> > this parameter.  The other thing we need to pay attention to is that the
+> > growth of the extent zeroing be done on a RAID or erase-block aligned manner.
+> > Otherwise, this might cause extra IO that doesn't benefit the application.
 > 
-> On Fri, Aug 10, 2012 at 05:14:12PM -0600, Andreas Dilger wrote:
->> We have a patch to fix the 2-level htree and 2GB directory size limits
->> already, in case that is of interest to anyone.
+> Well.... it really depends on the workload.  If you have a workload
+> which is doing random writes into an uninitialized region of memory,
+> on a RAID device you're going to be doing read/modify/write cycles
+> anyway.  By using a larger zero-out chunk parameter, it avoids the
+> excess metadata operations, and it avoids fragmenting the extent tree.
 > 
-> where in theory, I'd be interested, but there have been enough other
-> performance problems with really large directories that it was never
-> been clear to me it would be a huge win, and given the many other
-> changes queued up, I was hesitant.
+> The patch that sent out, "ext4: collapse a single extent tree block
+> into the inode if possible" will help out in at least some cases,
+> hopefully the most common ones, but using a larger zero-out size can
+> also help address this situation.
 > 
-> ... and then I started thinking about this while I was in the shower,
-> and I think I've come up with a really good solution to the problem.
-> What if we also integrated the proposed extension that you guys have
-> designed for storing additional metadata in the directory, and then
-> for files that do not have hard links, we keep a copy of all of the fs
-> metadata required for stat(2) in the directory?
+> My larger concern with this patch is that 1MB writes are not free, and
+> turning a 4k random write into a 1MB write is going to be noticeable.
+> I've changed the default from 1MB to 256k, just to be more
+> conservative, but need to do some benchmarking to make sure we
+> understand what the best number will be on a variety of common
+> hardware in use by our users.
 > 
-> This would speed up the readdir() + stat(2) workload, which has always
-> been the major problem, in the common case where a file is linked to
-> via only a single directory.  If a file gets hard-linked, we will need
-> to drop the copy in the directory and then make sure the fields in the
-> inode table are up-to-date.  But if we do this, I think it would be a
-> huge improvement for ext4.
+> I also reworded the commit description slightly, and this is what I
+> currently have in my tree.  What do people think?
+
+Hi Ted,
+
+Thanks for your reviewing, and it looks good to me.  BTW, do we need to
+add some descriptions for this tuning parameter in documentation?
+
+Regards,
+Zheng
+
+> commit 5b9401f6f5afbce4cacdd01cc7c74780cc084aa3
+> Author: Zheng Liu <wenqing.lz@taobao.com>
+> Date:   Sun Aug 12 23:08:58 2012 -0400
 > 
-> What do folks think?
-
-Essentially, this is storing the inode in the directory.  What might be
-possible is to have the directory leaf block point be the same thing as
-the inode table block, and then use an xattr in the inode to hold the
-parent directory number and filename as the "dirent".
-
-We are actually already storing the Lustre parent FID and filename in an
-xattr in the inode as a mechanism for doing inode->path generation on the
-fly, but this could replace the directory entry entirely.  It is possible
-to have multiple links to a file by having multiple xattr entries on the
-inode, and if some inode is renamed to another directory then the xattr
-is changed.  If there are a lot of hard links to a single file, then it
-is possible that an external xattr block would be needed, but in the
-overwhelmingly common case of a single link it can be stored in the inode.
-
-The htree index would be used to reference the various inode table blocks.  Each inode in that block would check the xattr for entries for the parent
-directory that is doing readdir/lookup, and would otherwise be ignored if
-the parent inode does not match.
-
-
-> P.S.  We might need to add a special case hack for the SELINUX sid,
-> and put it in the extended directory entry as well, since otherwise
-> every single stat operation will need to go to the inode table just to
-> read the SELINUX extended attribute.  But I don't really care about
-> that, since my personal answer to SELINUX has been "just say no".  But
-> I do know there are enough people using it that we probably do need to
-> accomodate those poor folks....
-
-I think that by the time we store all of the "stat" attributes into the
-directory it would essentially duplicate the inode, and increase overhead
-instead of reducing it.  Every inode update would likely require also
-updating the directory (mtime, ctime, etc).
-
-Cheers, Andreas
-
-
-
-
-
+>     ext4: make the zero-out chunk size tunable
+>     
+>     Currently in ext4 the length of zero-out chunk is set to 7.  But it is
+>     too short so that it will cause a lot of fragmentation of extent when
+>     we use fallocate to preallocate some uninitialized extents and the
+>     workload frequently does some uninitialized extent conversions.  Thus,
+>     we allow it to be tunable via sysfs and set an initial default value
+>     of 32, so instead of creating uninitalized extents smaller than
+>     256k (assuming a 4k block size), they will be zeroed out instead.
+>     
+>     CC: Zach Brown <zab@zabbo.net>
+>     CC: Andreas Dilger <adilger@dilger.ca>
+>     Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 7c0841e..f9024a6 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1271,6 +1271,9 @@ struct ext4_sb_info {
+>  	unsigned long s_sectors_written_start;
+>  	u64 s_kbytes_written;
+>  
+> +	/* the size of zero-out chunk */
+> +	unsigned int s_extent_zeroout_len;
+> +
+>  	unsigned int s_log_groups_per_flex;
+>  	struct flex_groups *s_flex_groups;
+>  
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 92fac2f..10f0afd 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3084,7 +3084,6 @@ out:
+>  	return err ? err : map->m_len;
+>  }
+>  
+> -#define EXT4_EXT_ZERO_LEN 7
+>  /*
+>   * This function is called by ext4_ext_map_blocks() if someone tries to write
+>   * to an uninitialized extent. It may result in splitting the uninitialized
+> @@ -3110,6 +3109,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  					   struct ext4_map_blocks *map,
+>  					   struct ext4_ext_path *path)
+>  {
+> +	struct ext4_sb_info *sbi;
+>  	struct ext4_extent_header *eh;
+>  	struct ext4_map_blocks split_map;
+>  	struct ext4_extent zero_ex;
+> @@ -3124,6 +3124,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		"block %llu, max_blocks %u\n", inode->i_ino,
+>  		(unsigned long long)map->m_lblk, map->m_len);
+>  
+> +	sbi = EXT4_SB(inode->i_sb);
+>  	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+>  		inode->i_sb->s_blocksize_bits;
+>  	if (eof_block < map->m_lblk + map->m_len)
+> @@ -3223,8 +3224,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	 */
+>  	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
+>  
+> -	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
+> -	if (ee_len <= 2*EXT4_EXT_ZERO_LEN &&
+> +	/* If extent has less than 2*s_extent_zeroout_len zerout directly */
+> +	if (ee_len <= (2 * sbi->s_extent_zeroout_len) &&
+>  	    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+>  		err = ext4_ext_zeroout(inode, ex);
+>  		if (err)
+> @@ -3250,7 +3251,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	split_map.m_len = map->m_len;
+>  
+>  	if (allocated > map->m_len) {
+> -		if (allocated <= EXT4_EXT_ZERO_LEN &&
+> +		if (allocated <= sbi->s_extent_zeroout_len &&
+>  		    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+>  			/* case 3 */
+>  			zero_ex.ee_block =
+> @@ -3264,7 +3265,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  			split_map.m_lblk = map->m_lblk;
+>  			split_map.m_len = allocated;
+>  		} else if ((map->m_lblk - ee_block + map->m_len <
+> -			   EXT4_EXT_ZERO_LEN) &&
+> +			   sbi->s_extent_zeroout_len) &&
+>  			   (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+>  			/* case 2 */
+>  			if (map->m_lblk != ee_block) {
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 5896dcb..4a7092b 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2541,6 +2541,7 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+>  EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
+>  EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
+>  EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
+> +EXT4_RW_ATTR_SBI_UI(extent_zeroout_len, s_extent_zeroout_len);
+>  EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
+>  
+>  static struct attribute *ext4_attrs[] = {
+> @@ -2556,6 +2557,7 @@ static struct attribute *ext4_attrs[] = {
+>  	ATTR_LIST(mb_stream_req),
+>  	ATTR_LIST(mb_group_prealloc),
+>  	ATTR_LIST(max_writeback_mb_bump),
+> +	ATTR_LIST(extent_zeroout_len),
+>  	ATTR_LIST(trigger_fs_error),
+>  	NULL,
+>  };
+> @@ -3752,6 +3754,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  
+>  	sbi->s_stripe = ext4_get_stripe_size(sbi);
+>  	sbi->s_max_writeback_mb_bump = 128;
+> +	sbi->s_extent_zeroout_len = 16;
+>  
+>  	/*
+>  	 * set up enough so that it can read an inode
