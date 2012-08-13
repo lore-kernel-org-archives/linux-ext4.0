@@ -1,58 +1,67 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: don't load the block bitmap for block groups which
- have no space
-Date: Mon, 13 Aug 2012 13:51:16 -0500
-Message-ID: <50294CA4.90100@redhat.com>
-References: <20120809181059.A5BAA11FC69@bugzilla.kernel.org> <1344622885-14982-1-git-send-email-tytso@mit.edu> <50292500.1070807@redhat.com> <20120813184916.GF32484@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 16583] ext4: delayed block allocation failed and application
+ not respond any more
+Date: Mon, 13 Aug 2012 19:34:25 +0000 (UTC)
+Message-ID: <20120813193425.7199511FB49@bugzilla.kernel.org>
+References: <bug-16583-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30588 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:38664 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752091Ab2HMSvT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Aug 2012 14:51:19 -0400
-In-Reply-To: <20120813184916.GF32484@thunk.org>
+	id S1751805Ab2HMTe2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Aug 2012 15:34:28 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 90D6C20227
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2012 19:34:27 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 05B2620214
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Aug 2012 19:34:26 +0000 (UTC)
+In-Reply-To: <bug-16583-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8/13/12 1:49 PM, Theodore Ts'o wrote:
-> On Mon, Aug 13, 2012 at 11:02:08AM -0500, Eric Sandeen wrote:
->>
->> Looks ok to me; I think this just further optimizes what was done
->> in
->>
->> 8a57d9d61a6e361c7bb159dda797672c1df1a691
->> ext4: check for a good block group before loading buddy pages
->>
->> correct?
-> 
-> Yes, that's right; it's a further optimization.
-> 
-> I can think of an additional optimization where if we are reading the
-> block bitmap for block group N, and the block bitmap for block group
-> N+1 hasn't been read before (so we don't have buddy bitmap stats), and
-> the block bitmap for bg N+1 is adjacent for bg N, we should read both
-> at the same time.  (And this could be generalized for N+2, N+3, etc.)
-> 
-> I'm not entirely sure whether it's worth the effort, but I suspect for
-> very full file systems, it might be very well be.  This is a more
-> general case of the problem where most people only benchmark mostly
-> empty file systems, and my experience has been that above 70-80%
-> utilization, our performance starts to fall off.  And while disk space
-> is cheap, it's not _that_ cheap, and there are always customers who
-> insist on using file systems up to a utilization of 99%, and expect
-> the same performance as when the file system was freshly formated.  :-(
+https://bugzilla.kernel.org/show_bug.cgi?id=16583
 
-I did some tests w/ very large filesystems, fallocating 1T at a time until
-full.  ext4 tended to fall down pretty badly towards the end.  Anything that
-can reduce the time it takes to find free blocks as a very large filesystem
-fills would probably be useful....
 
--eric
+Theodore Tso <tytso@mit.edu> changed:
 
-> 	    	 	     	     	 - Ted
-> 
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
+
+
+
+--- Comment #3 from Theodore Tso <tytso@mit.edu>  2012-08-13 19:34:25 ---
+Also, in the original bug report, (which was against an usptream kernel,
+2.6.35) note:
+
+EXT4-fs (dm-6): warning: mounting fs with errors, running e2fsck is recommended
+
+If this means the file system was mounted with inconsistencies noted in the
+past.
+
+And sure enough...
+
+EXT4-fs error (device dm-6): ext4_ext_search_left: inode #3510: (comm
+flush-254:6) ix (42117) != EXT_FIRST_INDEX (0) (depth 1)!
+
+... is a file system inconsistency. 
+
+The second reporter, Loredan, was using a Red Hat modified 2.6.32 kernel, and
+the RHEL 2.6.32 kernel is significantly different from upstream.  I will note
+that it wasn't clear whether the file system was being grown or shrunk, but in
+the more typical case of growing the file system, in general you should resize
+the LVM first, and *then* run resize2fs to resize the filesystem to use the
+newly enlarged LV.
+
+Regards,
+
+-- Ted
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
