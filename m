@@ -1,191 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v4] ext4: make the zero-out chunk size tunable
-Date: Tue, 14 Aug 2012 11:15:33 -0400
-Message-ID: <1344957333-19412-1-git-send-email-tytso@mit.edu>
-References: <1344957203-19171-1-git-send-email-tytso@mit.edu>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, Zach Brown <zab@zabbo.net>,
-	Andreas Dilger <adilger@dilger.ca>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH V5 00/23] ext4: Add inline data support.
+Date: Tue, 14 Aug 2012 11:19:26 -0400
+Message-ID: <20120814151926.GA19364@thunk.org>
+References: <1341070917-4889-1-git-send-email-tm@tao.ma>
+ <20120813150445.GC13072@thunk.org>
+ <5029F88F.7090106@tao.ma>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44647 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44652 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751765Ab2HNPPh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2012 11:15:37 -0400
-In-Reply-To: <1344957203-19171-1-git-send-email-tytso@mit.edu>
+	id S1752380Ab2HNPTd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2012 11:19:33 -0400
+Content-Disposition: inline
+In-Reply-To: <5029F88F.7090106@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Aug 14, 2012 at 03:04:47PM +0800, Tao Ma wrote:
+> As andreas said in another e-mail, that would make the codes a little
+> complex. So in general, in my previous version, I just tried to refactor
+> most of the codes so that they can work for both inline inode and dir
+> blocks. But if these changes are merged, we have to re-write all of the
+> codes that are currently shared, such as ext4_find_entry, empty_dir,
+> ext4_add_entry etc.
 
-Currently in ext4 the length of zero-out chunk is set to 7 file system
-blocks.  But if an inode has uninitailized extents from using
-fallocate to preallocate space, and the workload issues many random
-writes, this can cause a fragmented extent tree that will
-unnecessarily grow the extent tree.
+Well, we may not need to rewrite as much as you think.  For one thing,
+as I mentioned, I don't think the VFS passes '.' and '..' lookup
+requests down to the file system anyway, and even if it did, you could
+just have a function which checks for '.' and '..' and returns the
+correct value if necessary.  So I think you wouldn't need to rewrite
+all of these functions, since the fundamental layout of the directory
+wouldn't be changing.  It's just that we're skipping the '.' and '..'
+entries, and the "standard" directory layout would be starting 4 bytes
+later (after the '..' inode number).
 
-So create a new sysfs tunable, extent_max_zeroout_kb, which controls
-the maximum size where blocks will be zeroed out instead of creating a
-new uninitialized extent.  The default of this has been sent to 32kb.
+So it's probably worth taking a look to see how much of an increase in
+complexity would actually be involved.
 
-CC: Zach Brown <zab@zabbo.net>
-CC: Andreas Dilger <adilger@dilger.ca>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- Documentation/ABI/testing/sysfs-fs-ext4 | 13 +++++++++++++
- fs/ext4/ext4.h                          |  3 +++
- fs/ext4/extents.c                       | 25 +++++++++++++------------
- fs/ext4/super.c                         |  3 +++
- 4 files changed, 32 insertions(+), 12 deletions(-)
+Regards,
 
-diff --git a/Documentation/ABI/testing/sysfs-fs-ext4 b/Documentation/ABI/testing/sysfs-fs-ext4
-index f22ac08..c631253 100644
---- a/Documentation/ABI/testing/sysfs-fs-ext4
-+++ b/Documentation/ABI/testing/sysfs-fs-ext4
-@@ -96,3 +96,16 @@ Contact:	"Theodore Ts'o" <tytso@mit.edu>
- Description:
- 		The maximum number of megabytes the writeback code will
- 		try to write out before move on to another inode.
-+
-+What:		/sys/fs/ext4/<disk>/extent_max_zeroout_kb
-+Date:		August 2012
-+Contact:	"Theodore Ts'o" <tytso@mit.edu>
-+Description:
-+		The maximum number of kilobytes which will be zeroed
-+		out in preference to creating a new uninitialized
-+		extent when manipulating an inode's extent tree.  Note
-+		that using a larger value will increase the
-+		variability of time necessary to complete a random
-+		write operation (since a 4k random write might turn
-+		into a much larger write due to the zeroout
-+		operation).
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7c0841e..0df5ee1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1271,6 +1271,9 @@ struct ext4_sb_info {
- 	unsigned long s_sectors_written_start;
- 	u64 s_kbytes_written;
- 
-+	/* the size of zero-out chunk */
-+	unsigned int s_extent_max_zeroout_kb;
-+
- 	unsigned int s_log_groups_per_flex;
- 	struct flex_groups *s_flex_groups;
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 92fac2f..769151d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3084,7 +3084,6 @@ out:
- 	return err ? err : map->m_len;
- }
- 
--#define EXT4_EXT_ZERO_LEN 7
- /*
-  * This function is called by ext4_ext_map_blocks() if someone tries to write
-  * to an uninitialized extent. It may result in splitting the uninitialized
-@@ -3110,13 +3109,14 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 					   struct ext4_map_blocks *map,
- 					   struct ext4_ext_path *path)
- {
-+	struct ext4_sb_info *sbi;
- 	struct ext4_extent_header *eh;
- 	struct ext4_map_blocks split_map;
- 	struct ext4_extent zero_ex;
- 	struct ext4_extent *ex;
- 	ext4_lblk_t ee_block, eof_block;
- 	unsigned int ee_len, depth;
--	int allocated;
-+	int allocated, max_zeroout = 0;
- 	int err = 0;
- 	int split_flag = 0;
- 
-@@ -3124,6 +3124,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		"block %llu, max_blocks %u\n", inode->i_ino,
- 		(unsigned long long)map->m_lblk, map->m_len);
- 
-+	sbi = EXT4_SB(inode->i_sb);
- 	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
- 		inode->i_sb->s_blocksize_bits;
- 	if (eof_block < map->m_lblk + map->m_len)
-@@ -3223,9 +3224,12 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	 */
- 	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
- 
--	/* If extent has less than 2*EXT4_EXT_ZERO_LEN zerout directly */
--	if (ee_len <= 2*EXT4_EXT_ZERO_LEN &&
--	    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
-+	if (EXT4_EXT_MAY_ZEROOUT & split_flag)
-+		max_zeroout = sbi->s_extent_max_zeroout_kb >>
-+			inode->i_sb->s_blocksize_bits;
-+
-+	/* If extent is less than s_max_zeroout_kb, zeroout directly */
-+	if (max_zeroout && (ee_len <= max_zeroout)) {
- 		err = ext4_ext_zeroout(inode, ex);
- 		if (err)
- 			goto out;
-@@ -3249,9 +3253,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	split_map.m_lblk = map->m_lblk;
- 	split_map.m_len = map->m_len;
- 
--	if (allocated > map->m_len) {
--		if (allocated <= EXT4_EXT_ZERO_LEN &&
--		    (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
-+	if (max_zeroout && (allocated > map->m_len)) {
-+		if (allocated <= max_zeroout) {
- 			/* case 3 */
- 			zero_ex.ee_block =
- 					 cpu_to_le32(map->m_lblk);
-@@ -3263,9 +3266,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 				goto out;
- 			split_map.m_lblk = map->m_lblk;
- 			split_map.m_len = allocated;
--		} else if ((map->m_lblk - ee_block + map->m_len <
--			   EXT4_EXT_ZERO_LEN) &&
--			   (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
-+		} else if (map->m_lblk - ee_block + map->m_len < max_zeroout) {
- 			/* case 2 */
- 			if (map->m_lblk != ee_block) {
- 				zero_ex.ee_block = ex->ee_block;
-@@ -3285,7 +3286,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	}
- 
- 	allocated = ext4_split_extent(handle, inode, path,
--				       &split_map, split_flag, 0);
-+				      &split_map, split_flag, 0);
- 	if (allocated < 0)
- 		err = allocated;
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5896dcb..e7ccbe5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2541,6 +2541,7 @@ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
- EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
- EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
- EXT4_RW_ATTR_SBI_UI(max_writeback_mb_bump, s_max_writeback_mb_bump);
-+EXT4_RW_ATTR_SBI_UI(extent_max_zeroout_kb, s_extent_max_zeroout_kb);
- EXT4_ATTR(trigger_fs_error, 0200, NULL, trigger_test_error);
- 
- static struct attribute *ext4_attrs[] = {
-@@ -2556,6 +2557,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(mb_stream_req),
- 	ATTR_LIST(mb_group_prealloc),
- 	ATTR_LIST(max_writeback_mb_bump),
-+	ATTR_LIST(extent_max_zeroout_kb),
- 	ATTR_LIST(trigger_fs_error),
- 	NULL,
- };
-@@ -3752,6 +3754,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sbi->s_stripe = ext4_get_stripe_size(sbi);
- 	sbi->s_max_writeback_mb_bump = 128;
-+	sbi->s_extent_max_zeroout_kb = 32;
- 
- 	/*
- 	 * set up enough so that it can read an inode
--- 
-1.7.12.rc0.22.gcdd159b
-
+					- Ted
