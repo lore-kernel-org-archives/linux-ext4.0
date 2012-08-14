@@ -1,45 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V5 00/23] ext4: Add inline data support.
-Date: Tue, 14 Aug 2012 11:19:26 -0400
-Message-ID: <20120814151926.GA19364@thunk.org>
-References: <1341070917-4889-1-git-send-email-tm@tao.ma>
- <20120813150445.GC13072@thunk.org>
- <5029F88F.7090106@tao.ma>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 43354] Corruption on a small loopback ext4 file system with
+ Linux 3.4
+Date: Tue, 14 Aug 2012 15:28:25 +0000 (UTC)
+Message-ID: <20120814152825.1794411FC6D@bugzilla.kernel.org>
+References: <bug-43354-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44652 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752380Ab2HNPTd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2012 11:19:33 -0400
-Content-Disposition: inline
-In-Reply-To: <5029F88F.7090106@tao.ma>
+Received: from mail.kernel.org ([198.145.19.201]:42487 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751524Ab2HNP22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2012 11:28:28 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 2E14220275
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2012 15:28:27 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 1964320256
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2012 15:28:25 +0000 (UTC)
+In-Reply-To: <bug-43354-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 14, 2012 at 03:04:47PM +0800, Tao Ma wrote:
-> As andreas said in another e-mail, that would make the codes a little
-> complex. So in general, in my previous version, I just tried to refactor
-> most of the codes so that they can work for both inline inode and dir
-> blocks. But if these changes are merged, we have to re-write all of the
-> codes that are currently shared, such as ext4_find_entry, empty_dir,
-> ext4_add_entry etc.
+https://bugzilla.kernel.org/show_bug.cgi?id=43354
 
-Well, we may not need to rewrite as much as you think.  For one thing,
-as I mentioned, I don't think the VFS passes '.' and '..' lookup
-requests down to the file system anyway, and even if it did, you could
-just have a function which checks for '.' and '..' and returns the
-correct value if necessary.  So I think you wouldn't need to rewrite
-all of these functions, since the fundamental layout of the directory
-wouldn't be changing.  It's just that we're skipping the '.' and '..'
-entries, and the "standard" directory layout would be starting 4 bytes
-later (after the '..' inode number).
 
-So it's probably worth taking a look to see how much of an increase in
-complexity would actually be involved.
+Jan Kara <jack@suse.cz> changed:
 
-Regards,
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+         AssignedTo|fs_ext4@kernel-bugs.osdl.or |jack@suse.cz
+                   |g                           |
 
-					- Ted
+
+
+
+--- Comment #7 from Jan Kara <jack@suse.cz>  2012-08-14 15:28:24 ---
+Ok, thanks for verification. I'll close this bug then.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
