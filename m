@@ -1,44 +1,32 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43354] Corruption on a small loopback ext4 file system with
- Linux 3.4
-Date: Tue, 14 Aug 2012 15:28:25 +0000 (UTC)
-Message-ID: <20120814152825.1794411FC6D@bugzilla.kernel.org>
-References: <bug-43354-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: tests: remove unused temporary files for MMP tests
+Date: Tue, 14 Aug 2012 11:34:05 -0400
+Message-ID: <20120814153405.GA24577@thunk.org>
+References: <1344457296-27609-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:42487 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751524Ab2HNP22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2012 11:28:28 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2E14220275
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2012 15:28:27 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 1964320256
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Aug 2012 15:28:25 +0000 (UTC)
-In-Reply-To: <bug-43354-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44655 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751524Ab2HNPeK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2012 11:34:10 -0400
+Content-Disposition: inline
+In-Reply-To: <1344457296-27609-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43354
+On Wed, Aug 08, 2012 at 10:21:36AM -0000, Andreas Dilger wrote:
+> The MMP tests need to be run on a real disk instead of tmpfs, since
+> the MMP block access is using O_DIRECT.  As such, they create their
+> own test files in the local testing directory instead of using the
+> temporary file created in /tmp by the test_one script.  Delete the
+> tempfs file before clobbering TMPFILE, otherwise it will leave the
+> unused file in /tmp after the test is completed.
+> 
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
+Thanks, applied.
 
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-         AssignedTo|fs_ext4@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
-
-
-
-
---- Comment #7 from Jan Kara <jack@suse.cz>  2012-08-14 15:28:24 ---
-Ok, thanks for verification. I'll close this bug then.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
