@@ -1,70 +1,77 @@
-From: Marti Raudsepp <marti@juffo.org>
-Subject: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
-Date: Wed, 15 Aug 2012 21:33:29 +0300
-Message-ID: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: libcom_err DSO version bump needed for 1.42?
+Date: Wed, 15 Aug 2012 17:48:12 -0400
+Message-ID: <k0h5eu$f6u$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Kernel hackers <linux-kernel@vger.kernel.org>,
-	ext4 hackers <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig2A21E1EDBDFBED850110FBCB"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from plane.gmane.org ([80.91.229.3]:53128 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752144Ab2HOVuN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Aug 2012 17:50:13 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1T1lTY-0002iM-HT
+	for linux-ext4@vger.kernel.org; Wed, 15 Aug 2012 23:50:04 +0200
+Received: from d67-193-214-242.home3.cgocable.net ([67.193.214.242])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Aug 2012 23:50:04 +0200
+Received: from brian by d67-193-214-242.home3.cgocable.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Aug 2012 23:50:04 +0200
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi list,
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig2A21E1EDBDFBED850110FBCB
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-I was moving and deleting some files between two of my ext4 partitions
-when it suddenly crashed and dropped me into an kernel oops screen
-(below). I'm using ext4 on kernel 3.5.1 (Arch Linux). Both likely
-suspect file systems are stored on LVM2, mounted with
-data=writeback,errors=remount-ro,noatime
+Hi,
 
-EXT4-fs (sda3): mounted filesystem with writeback data mode. Opts: (null)
-EXT4-fs (dm-1): mounted filesystem with writeback data mode. Opts:
-errors=remount-ro
-EXT4-fs (dm-0): mounted filesystem with writeback data mode. Opts:
-errors=remount-ro
+I noticed when trying to upgrade my e2fsprogs RPM set from a 1.41.12ish
+release to a 1.42.3ish release only e2fsprogs and e2fsprogs-libs got
+upgraded and libcom_err didn't get upgraded despite there being ABI
+differences between 1.41.12 and 1.42.3.  This results in the following
+type of error:
 
-I can't be bothered to transcribe all those 64-bit pointer values, but
-here's the human-readable parts (screen shot links below):
+# e2fsck
+e2fsck: symbol lookup error: e2fsck: undefined symbol: set_com_err_gettex=
+t
+# mke2fs=20
+mke2fs: symbol lookup error: mke2fs: undefined symbol: set_com_err_gettex=
+t
 
-BUG: unable to handle kernel NULL pointer dereference at 000...00028
-IP: [...] ext4_ext_remove_space+0xaa4/0xef0 [ext4]
-PGD ... PUD ... PMD 0
-Oops: 0000 [#1] PREEMPT SMP
-CPU 2
-Modules linked in: [... bazillion modules ...]
+This appears to be due to the addition of set_com_err_gettext()  (in
+4259052093da329907e255b11bf3e799872828c7) during the 1.42 development
+cycle.
 
-Pid: 3687, comm: rm Tainted: G    C    3.5.1-1-ARCH #1 System
-manufacturer System Product Name/M3A76-CM
-RIP: 0010:[...] [...] ext4_ext_remove_space
-[... CPU register dump ...]
-Process rm (pid: 3687, threadinfo ..., task ...)
-Call Trace:
- [...] ext4_ext_truncate+0x183/0x1c0 [ext]
- [...] ? ext4_mark_inode_dirty+0x7e/0x230 [ext4]
- [...] ext4_truncate+0x135/0x140 [ext4]
- [...] ext4_evict_inode+0x40f/0x4e0 [ext4]
- [...] evict+0xb8/0x1b0
- [...] iput+0x105/0x210
- [...] do_unlinkat+0x1b/0x50
- [...] ? flip_close+0x66/0xa0
- [...] sys_unlinkat+0x1b/0x50
- [...] system_call_fastpath+0x16/0x1b
-Code: [...]
-RIP [...] ext4_ext_remove_space+0xaa4/0xef0 [ext4]
-CR2: 000...00028
+Since this addition introduces an ABI incompatibility in libcom_err,
+isn't the process supposed to be to increase the SO's version so that
+the tools find the proper version of the library and also so that it
+gets upgraded accordingly by RPM with it's autoprovides/requires bits?
 
-Taint flag C is caused by the staging r8712u driver (Realtek USB Wi-Fi
-adapter). But I wasn't even using it today, so I doubt that had
-anything to do with it.
+Cheers,
+b.
 
-Some "screen shots" taken with a webcam (warning: CSI "zoom & enhance"
-technology required)
-http://ompldr.org/vZjQ3dw
-http://ompldr.org/vZjQ3eg
-http://ompldr.org/vZjQ4MA
-http://ompldr.org/vZjQ3eQ
-http://ompldr.org/vZjQ3eA
 
-Regards,
-Marti
+--------------enig2A21E1EDBDFBED850110FBCB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAlAsGR0ACgkQl3EQlGLyuXD/wACdEQTuhmfeO1dmHQx37DoZJQzN
+zFoAnRP83b1pQ9kDohnWwRfYX21ad6wh
+=esan
+-----END PGP SIGNATURE-----
+
+--------------enig2A21E1EDBDFBED850110FBCB--
+
