@@ -1,65 +1,83 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: ext4fs error "ext4_mb_generate_buddy:741:group 16, 8160 clusters
- in bitmap, 4064 in gd" (with repro)
-Date: Wed, 15 Aug 2012 11:17:57 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1208151116530.4904@dhcp-1-248.brq.redhat.com>
-References: <50238A29.3060808@redhat.com> <20120809170640.GA6607@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: don't write superblock when unmounting an ro
+ filesystem
+Date: Wed, 15 Aug 2012 14:14:03 +0200
+Message-ID: <20120815121403.GA29223@quack.suse.cz>
+References: <500F1C28.8010800@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	"Linux Kernel Mailinlinux-ext4@vger.kernel.orgg List"
-	<linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47805 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44306 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751463Ab2HOJS5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Aug 2012 05:18:57 -0400
-In-Reply-To: <20120809170640.GA6607@thunk.org>
+	id S1750781Ab2HOMOF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Aug 2012 08:14:05 -0400
+Content-Disposition: inline
+In-Reply-To: <500F1C28.8010800@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 9 Aug 2012, Theodore Ts'o wrote:
-
-> Date: Thu, 9 Aug 2012 13:06:40 -0400
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: Paolo Bonzini <pbonzini@redhat.com>,
->     "Linux Kernel Mailinlinux-ext4@vger.kernel.orgg List"
->     <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-> Subject: Re: ext4fs error
->     "ext4_mb_generate_buddy:741:group 16, 8160 clusters in bitmap, 4064 in gd"
->      (with repro)
+On Tue 24-07-12 17:05:28, Eric Sandeen wrote:
+> This sequence:
 > 
-> On Thu, Aug 09, 2012 at 12:00:09PM +0200, Paolo Bonzini wrote:
-> > Here is how to reproduce it.  It happens during fstrim.  I found other
-> > occurrences of the error in the mailing list, but they were not related
-> > to trim so they may be something different.
-> > 
-> > modprobe scsi_debug dev_size_mb=256 lbpws=1
-> > dd if=/dev/zero of=/dev/sdb bs=1M      
-> > fdisk /dev/sdb
-> >  >> create a new partition accepting all defaults
-> > fdisk -lu /dev/sdb|tail -1
-> >  >> should show: /dev/sdb1     57      524285      262114+  83  Linux
-> > 
-> > mkfs.ext4 /dev/sdb1
-> > mkdir test
-> > mount /dev/sdb1 test
-> > fstrim ./test
+> # truncate --size=65536 fsfile
+> # losetup --offset 65536 /dev/loop0 fsfile 
+> # mkfs.ext4 /dev/loop0 
+> # losetup -d /dev/loop0
+> # mount -o loop,ro,offset=65536 fsfile  mnt/
+> # umount mnt
+> # dmesg | tail
 > 
-> I can confirm that this accurately reproduces file system corruption
-> using a 3.5 kernel.  It looks like some block allocation bitmap blocks
-> is getting trimmed when it shouldn't have been.  Lukas, can you take a
-> look at this?
+> results in an IO error when unmounting the RO filesystem:
 > 
-> 					- Ted
+> [  312.386074] SELinux: initialized (dev loop1, type ext4), uses xattr
+> [  318.020828] Buffer I/O error on device loop1, logical block 196608
+> [  318.027024] lost page write due to I/O error on loop1
+> [  318.032088] JBD2: Error -5 detected when updating journal superblock for loop1-8.
+  Ted, did this patch fall through cracks? I've ported the fix to JBD and
+added it to my tree. I plan to send it to Linus in a few days. Also I've
+CC'd stable since this is a bit annoying regression.
 
-Hi Ted,
+								Honza
 
-sorry for the delay, I've just got back from my vacation. I'll take
-a look at it.
-
-Thanks!
--Lukas
+> This behavior changed with:
+> 
+> commit 24bcc89c7e7c64982e6192b4952a0a92379fc341
+> Author: Jan Kara <jack@suse.cz>
+> Date:   Tue Mar 13 15:41:04 2012 -0400
+> 
+>     jbd2: split updating of journal superblock and marking journal empty
+> 
+> which lost some of the magic in jbd2_journal_update_superblock() which
+> used to test for a journal with no outstanding transactions.
+> 
+> I'm not sure if the following is quite the right approach, but it fixes
+> it for me.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> p.s. no idea why this only happens if I use a loop device with an offset!
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index e9a3c4c..987ec76 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1354,6 +1354,11 @@ static void jbd2_mark_journal_empty(journal_t *journal)
+>  
+>  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+>  	read_lock(&journal->j_state_lock);
+> +	/* Is it already empty? */
+> +	if (sb->s_start == 0) {
+> +		read_unlock(&journal->j_state_lock);
+> +		return;
+> +	}
+>  	jbd_debug(1, "JBD2: Marking journal as empty (seq %d)\n",
+>  		  journal->j_tail_sequence);
+>  
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
