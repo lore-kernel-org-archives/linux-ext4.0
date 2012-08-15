@@ -1,60 +1,65 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH V5 00/23] ext4: Add inline data support.
-Date: Tue, 14 Aug 2012 20:51:40 -0600
-Message-ID: <C51423EF-8C77-40E3-AD8F-0366EB4096E4@dilger.ca>
-References: <1341070917-4889-1-git-send-email-tm@tao.ma> <20120813150445.GC13072@thunk.org> <5029F88F.7090106@tao.ma> <20120814151926.GA19364@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Tao Ma <tm@tao.ma>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [Bug 27912] Set 'err' in ext4_init_fs() if kset_create_and_add()
+ fails
+Date: Tue, 14 Aug 2012 23:03:34 -0400
+Message-ID: <20120815030334.GC31873@thunk.org>
+References: <bug-27912-13602@https.bugzilla.kernel.org/>
+ <20120814155552.9E6C111FC70@bugzilla.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail111c7-2520.megamailservers.com ([69.49.98.21]:43840 "EHLO
-	mail111c7.megamailservers.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751251Ab2HOCvl convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Aug 2012 22:51:41 -0400
-In-Reply-To: <20120814151926.GA19364@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:44752 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751800Ab2HODDh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Aug 2012 23:03:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20120814155552.9E6C111FC70@bugzilla.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-08-14, at 9:19, Theodore Ts'o <tytso@mit.edu> wrote:
+On Tue, Aug 14, 2012 at 03:55:52PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+> https://bugzilla.kernel.org/show_bug.cgi?id=27912
 
-> On Tue, Aug 14, 2012 at 03:04:47PM +0800, Tao Ma wrote:
->> As andreas said in another e-mail, that would make the codes a little
->> complex. So in general, in my previous version, I just tried to refactor
->> most of the codes so that they can work for both inline inode and dir
->> blocks. But if these changes are merged, we have to re-write all of the
->> codes that are currently shared, such as ext4_find_entry, empty_dir,
->> ext4_add_entry etc.
-> 
-> Well, we may not need to rewrite as much as you think.  For one thing,
-> as I mentioned, I don't think the VFS passes '.' and '..' lookup
-> requests down to the file system anyway, and even if it did, you could
-> just have a function which checks for '.' and '..' and returns the
-> correct value if necessary.
+Actually, this wasn't quite fixed.  Here's a fix which I'll include in
+the ext4 tree....
 
-Actually, NFS can submit lookups for ".." for path linkage IIRC, since we had to implement a patch to fix this for ext4 and Lustre at one time.
+						- Ted
 
-> So I think you wouldn't need to rewrite
-> all of these functions, since the fundamental layout of the directory
-> wouldn't be changing.  It's just that we're skipping the '.' and '..'
-> entries, and the "standard" directory layout would be starting 4 bytes
-> later (after the '..' inode number).
+>From b0f1e9fa10363b60334ba7837080da91de425be0 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Tue, 14 Aug 2012 23:02:17 -0400
+Subject: [PATCH] ext4: return an error if kset_create_and_add fails in
+ ext4_init_fs()
 
-Agreed, the "." and ".." lookups are already special cases in the lookup code.
+In the very unlikely case that kset_create_and_add() fails when the
+ext4.ko module is being loaded (or during kernel startup) set err so
+that it's clear that the module load failed.
 
-Cheers, Andreas
+https://bugzilla.kernel.org/show_bug.cgi?id=27912
 
-> So it's probably worth taking a look to see how much of an increase in
-> complexity would actually be involved.
-> 
-> Regards,
-> 
->                    - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/super.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e7ccbe5..603023b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5281,8 +5281,10 @@ static int __init ext4_init_fs(void)
+ 	if (err)
+ 		goto out6;
+ 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+-	if (!ext4_kset)
++	if (!ext4_kset) {
++		err = -ENOMEM;
+ 		goto out5;
++	}
+ 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+ 
+ 	err = ext4_init_feat_adverts();
+-- 
+1.7.12.rc0.22.gcdd159b
+
