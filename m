@@ -1,51 +1,70 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH] jbd2: don't write superblock when unmounting an ro filesystem
-Date: Wed, 15 Aug 2012 12:25:15 -0500
-Message-ID: <502BDB7B.6030404@redhat.com>
-References: <500F1C28.8010800@redhat.com> <20120815121403.GA29223@quack.suse.cz>
+From: Marti Raudsepp <marti@juffo.org>
+Subject: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
+Date: Wed, 15 Aug 2012 21:33:29 +0300
+Message-ID: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55072 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755653Ab2HORZV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Aug 2012 13:25:21 -0400
-In-Reply-To: <20120815121403.GA29223@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+To: Kernel hackers <linux-kernel@vger.kernel.org>,
+	ext4 hackers <linux-ext4@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 8/15/12 7:14 AM, Jan Kara wrote:
-> On Tue 24-07-12 17:05:28, Eric Sandeen wrote:
->> This sequence:
->>
->> # truncate --size=65536 fsfile
->> # losetup --offset 65536 /dev/loop0 fsfile
->> # mkfs.ext4 /dev/loop0
->> # losetup -d /dev/loop0
->> # mount -o loop,ro,offset=65536 fsfile  mnt/
->> # umount mnt
->> # dmesg | tail
->>
->> results in an IO error when unmounting the RO filesystem:
->>
->> [  312.386074] SELinux: initialized (dev loop1, type ext4), uses xattr
->> [  318.020828] Buffer I/O error on device loop1, logical block 196608
->> [  318.027024] lost page write due to I/O error on loop1
->> [  318.032088] JBD2: Error -5 detected when updating journal superblock for loop1-8.
->    Ted, did this patch fall through cracks? I've ported the fix to JBD and
-> added it to my tree. I plan to send it to Linus in a few days. Also I've
-> CC'd stable since this is a bit annoying regression.
->
-> 								Honza
+Hi list,
 
+I was moving and deleting some files between two of my ext4 partitions
+when it suddenly crashed and dropped me into an kernel oops screen
+(below). I'm using ext4 on kernel 3.5.1 (Arch Linux). Both likely
+suspect file systems are stored on LVM2, mounted with
+data=writeback,errors=remount-ro,noatime
 
-Thanks for doing both of those things, Jan.
+EXT4-fs (sda3): mounted filesystem with writeback data mode. Opts: (null)
+EXT4-fs (dm-1): mounted filesystem with writeback data mode. Opts:
+errors=remount-ro
+EXT4-fs (dm-0): mounted filesystem with writeback data mode. Opts:
+errors=remount-ro
 
-BTW this happens on loop because mount -o,ro apparently sets up the loop 
-device itself as readonly.
+I can't be bothered to transcribe all those 64-bit pointer values, but
+here's the human-readable parts (screen shot links below):
 
--Eric
+BUG: unable to handle kernel NULL pointer dereference at 000...00028
+IP: [...] ext4_ext_remove_space+0xaa4/0xef0 [ext4]
+PGD ... PUD ... PMD 0
+Oops: 0000 [#1] PREEMPT SMP
+CPU 2
+Modules linked in: [... bazillion modules ...]
+
+Pid: 3687, comm: rm Tainted: G    C    3.5.1-1-ARCH #1 System
+manufacturer System Product Name/M3A76-CM
+RIP: 0010:[...] [...] ext4_ext_remove_space
+[... CPU register dump ...]
+Process rm (pid: 3687, threadinfo ..., task ...)
+Call Trace:
+ [...] ext4_ext_truncate+0x183/0x1c0 [ext]
+ [...] ? ext4_mark_inode_dirty+0x7e/0x230 [ext4]
+ [...] ext4_truncate+0x135/0x140 [ext4]
+ [...] ext4_evict_inode+0x40f/0x4e0 [ext4]
+ [...] evict+0xb8/0x1b0
+ [...] iput+0x105/0x210
+ [...] do_unlinkat+0x1b/0x50
+ [...] ? flip_close+0x66/0xa0
+ [...] sys_unlinkat+0x1b/0x50
+ [...] system_call_fastpath+0x16/0x1b
+Code: [...]
+RIP [...] ext4_ext_remove_space+0xaa4/0xef0 [ext4]
+CR2: 000...00028
+
+Taint flag C is caused by the staging r8712u driver (Realtek USB Wi-Fi
+adapter). But I wasn't even using it today, so I doubt that had
+anything to do with it.
+
+Some "screen shots" taken with a webcam (warning: CSI "zoom & enhance"
+technology required)
+http://ompldr.org/vZjQ3dw
+http://ompldr.org/vZjQ3eg
+http://ompldr.org/vZjQ4MA
+http://ompldr.org/vZjQ3eQ
+http://ompldr.org/vZjQ3eA
+
+Regards,
+Marti
