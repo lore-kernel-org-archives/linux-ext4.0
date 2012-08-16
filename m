@@ -1,9 +1,9 @@
 From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: [PATCH 0/8] remove lock and unlock super
-Date: Thu, 16 Aug 2012 11:59:19 +0200
-Message-ID: <502CC477.4060005@gmail.com>
+Subject: [PATCH 3/8] ext3: remove lock/unlock super
+Date: Thu, 16 Aug 2012 12:00:26 +0200
+Message-ID: <502CC4BA.3040702@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -14,29 +14,77 @@ To: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:64266 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757061Ab2HPKGy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 06:06:54 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+From: Marco Stornelli <marco.stornelli@gmail.com>
 
-I'm trying to remove the functions lock_super/unlock_super and to push 
-the lock into each single fs. Currently these fs use these functions: 
-ext3, ext4, fat, hpfs, exofs, sysv, ufs. At the moment I used the more 
-conservative approach, I created a new mutex s_lock in the private sb 
-info for each fs, so nothing change but a couple of notes:
+Replaced lock and unlock super with a new fs mutex s_lock.
 
-1) exofs/hpfs: they use lock_super only in one function so the lock 
-seems completely not needed and I removed it, do you see collateral effect?
+Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
+---
 
-2) fat/ufs: they have already got functions to lock the fs with a mutex, 
-I don't know at the moment if a general review of the code can give us 
-the possibility to "merge" the locks.
-
-Bugs, comments, review are welcome especially from fs maintainers. Maybe 
-this work can be a first cleaning, after that each fs can adjust its 
-lock policy.
-
-The patch is against 3.6-rc1.
-
-Marco
+diff -Nurp linux-3.6-rc1-orig/fs/ext3/ext3.h linux-3.6-rc1/fs/ext3/ext3.h
+--- linux-3.6-rc1-orig/fs/ext3/ext3.h	2012-08-16 09:37:31.000000000 +0200
++++ linux-3.6-rc1/fs/ext3/ext3.h	2012-08-16 09:46:39.000000000 +0200
+@@ -672,6 +672,7 @@ struct ext3_sb_info {
+ 	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+ 	int s_jquota_fmt;			/* Format of quota to use */
+ #endif
++	struct mutex s_lock;
+ };
+  static inline spinlock_t *
+diff -Nurp linux-3.6-rc1-orig/fs/ext3/super.c linux-3.6-rc1/fs/ext3/super.c
+--- linux-3.6-rc1-orig/fs/ext3/super.c	2012-08-16 09:37:31.000000000 +0200
++++ linux-3.6-rc1/fs/ext3/super.c	2012-08-16 09:49:11.000000000 +0200
+@@ -1939,6 +1939,7 @@ static int ext3_fill_super (struct super
+ 	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
++	mutex_init(&sbi->s_lock);
+  	/* per fileystem reservation list head & lock */
+ 	spin_lock_init(&sbi->s_rsv_window_lock);
+@@ -2582,11 +2583,11 @@ out:
+ static int ext3_unfreeze(struct super_block *sb)
+ {
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+-		lock_super(sb);
++		mutex_lock(&EXT3_SB(sb)->s_lock);
+ 		/* Reser the needs_recovery flag before the fs is unlocked. */
+ 		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+-		unlock_super(sb);
++		mutex_unlock(&EXT3_SB(sb)->s_lock);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
+ 	}
+ 	return 0;
+@@ -2606,7 +2607,7 @@ static int ext3_remount (struct super_bl
+ #endif
+  	/* Store the original options */
+-	lock_super(sb);
++	mutex_lock(&EXT3_SB(sb)->s_lock);
+ 	old_sb_flags = sb->s_flags;
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
+ 	old_opts.s_resuid = sbi->s_resuid;
+@@ -2712,7 +2713,7 @@ static int ext3_remount (struct super_bl
+ 		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
+ 			kfree(old_opts.s_qf_names[i]);
+ #endif
+-	unlock_super(sb);
++	mutex_unlock(&EXT3_SB(sb)->s_lock);
+  	if (enable_quota)
+ 		dquot_resume(sb, -1);
+@@ -2732,7 +2733,7 @@ restore_opts:
+ 		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+ 	}
+ #endif
+-	unlock_super(sb);
++	mutex_unlock(&EXT3_SB(sb)->s_lock);
+ 	return err;
+ }
+ 
