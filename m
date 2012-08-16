@@ -1,338 +1,91 @@
-From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: [PATCH 8/8] ufs: remove lock/unlock super
-Date: Thu, 16 Aug 2012 12:06:21 +0200
-Message-ID: <502CC61D.40800@gmail.com>
+From: Fengguang Wu <fengguang.wu@intel.com>
+Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
+Date: Thu, 16 Aug 2012 19:10:51 +0800
+Message-ID: <20120816111051.GA16036@localhost>
+References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+ <20120816024654.GB3781@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
-	Andrew Morton <akpm@linux-foundation.org>,
-	adilger.kernel@dilger.ca, tytso@mit.edu,
-	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
-	Al Viro <viro@ZenIV.linux.org.uk>, hch@infradead.org,
-	dushistov@mail.ru, osd-dev@open-osd.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>, Marti Raudsepp <marti@juffo.org>,
+	Kernel hackers <linux-kernel@vger.kernel.org>,
+	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-we0-f174.google.com ([74.125.82.174]:38318 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752756Ab2HPKMt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 06:12:49 -0400
+Received: from mga11.intel.com ([192.55.52.93]:45645 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751213Ab2HPLgZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Aug 2012 07:36:25 -0400
+Content-Disposition: inline
+In-Reply-To: <20120816024654.GB3781@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Marco Stornelli <marco.stornelli@gmail.com>
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2432,6 +2432,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+>  
+>  	/* the header must be checked already in ext4_ext_remove_space() */
+>  	ext_debug("truncate since %u in leaf to %u\n", start, end);
+> +	if (!path[depth].p_hdr && !path[depth].p_bh) {
+> +		EXT4_ERROR_INODE(inode, "depth %d", depth);
+> +		BUG_ON(1);
+> +	}
+>  	if (!path[depth].p_hdr)
+>  		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
+>  	eh = path[depth].p_hdr;
+> @@ -2730,6 +2734,10 @@ cont:
+>  		/* this is index block */
+>  		if (!path[i].p_hdr) {
+>  			ext_debug("initialize header\n");
+> +			if (!path[i].p_hdr && !path[i].p_bh) {
+> +				EXT4_ERROR_INODE(inode, "i=%d", i);
+> +				BUG_ON(1);
+> +			}
+>  			path[i].p_hdr = ext_block_hdr(path[i].p_bh);
+>  		}
+>  
 
-Replaced lock and unlock super with a new fs mutex s_lock.
+Here is the dmesg. BTW, it seems 3.5.0 don't have this issue.
 
-Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
----
+[  640.266836] EXT4-fs error (device md0): ext4_ext_remove_space:2694: inode #12: comm rm: i=1
+[  640.275701] ------------[ cut here ]------------
+[  640.276684] kernel BUG at /c/wfg/tip/fs/ext4/extents.c:2695!
+[  640.276684] invalid opcode: 0000 [#1] SMP
+[  640.276684] Modules linked in:
+[  640.276684] CPU 7
+[  640.276684] Pid: 4079, comm: rm Not tainted 3.6.0-rc1+ #3 Supermicro X7DW3/X7DWN
+[  640.276684] RIP: 0010:[<ffffffff811f8980>]  [<ffffffff811f8980>] ext4_ext_remove_space+0x86e/0xbee
+[  640.276684] RSP: 0018:ffff88021e749cb8  EFLAGS: 00010287
+[  640.276684] RAX: ffff880221072000 RBX: ffff88020fc680d0 RCX: 0000000000000092
+[  640.276684] RDX: 0000000000003c3c RSI: 0000000000000092 RDI: ffff880221073800
+[  640.276684] RBP: ffff88021e749d98 R08: ffffffff81f6ea88 R09: 0000000000000000
+[  640.276684] R10: ffffffff81f19a30 R11: 0000000000000647 R12: ffff880222385840
+[  640.276684] R13: 0000000000000001 R14: 0000000000000001 R15: ffff880222385870
+[  640.276684] FS:  00007f4461203700(0000) GS:ffff88022f5c0000(0000) knlGS:0000000000000000
+[  640.276684] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[  640.276684] CR2: 00007f4460cf761d CR3: 000000022115c000 CR4: 00000000000007e0
+[  640.276684] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  640.276684] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[  640.276684] Process rm (pid: 4079, threadinfo ffff88021e748000, task ffff8802236d2e80)
+[  640.276684] Stack:
+[  640.276684]  ffffffff819caec0 ffff880220901390 ffff88020fc680d0 ffff880220901390
+[  640.276684]  ffff88020fc25750 0000000000790000 ffff88021e749d38 ffffffff811d6b05
+[  640.276684]  8000880200000000 ffff88020fc68000 ffff880221072000 ffff8802223858a0
+[  640.276684] Call Trace:
+[  640.276684]  [<ffffffff811d6b05>] ? ext4_mark_iloc_dirty+0x47a/0x557
+[  640.276684]  [<ffffffff811fa6ab>] ext4_ext_truncate+0xd8/0x176
+[  640.276684]  [<ffffffff811d6de8>] ? ext4_mark_inode_dirty+0x17e/0x1c0
+[  640.276684]  [<ffffffff811d4934>] ext4_truncate+0x7a/0xca
+[  640.276684]  [<ffffffff811d8aa2>] ext4_evict_inode+0x2e9/0x422
+[  640.276684]  [<ffffffff81163e17>] evict+0xae/0x163
+[  640.276684]  [<ffffffff811640c4>] iput+0x1bb/0x1c3
+[  640.276684]  [<ffffffff8115a2ca>] do_unlinkat+0x102/0x157
+[  640.276684]  [<ffffffff813d550e>] ? trace_hardirqs_on_thunk+0x3a/0x3c
+[  640.276684]  [<ffffffff8115bf97>] sys_unlinkat+0x22/0x2d
+[  640.276684]  [<ffffffff81985229>] system_call_fastpath+0x16/0x1b
+[  640.276684] Code: 75 33 49 8b 47 28 48 85 c0 75 22 45 89 e9 49 c7 c0 ce e8 d2 81 31 c9 ba 86 0a 00 00 48 c7 c6 80 fb 9c 81 48 89 df e8 eb 6c ff ff <0f> 0b 48 8b 40 28 49 89 47 20 49 8b 47 18 48 85 c0 75 1f 49 8b
+[  640.276684] RIP  [<ffffffff811f8980>] ext4_ext_remove_space+0x86e/0xbee
+[  640.276684]  RSP <ffff88021e749cb8>
+[  640.530999] ---[ end trace e00762202fd8e8a0 ]---
 
-diff -Nurp linux-3.6-rc1-orig/fs/ufs/balloc.c linux-3.6-rc1/fs/ufs/balloc.c
---- linux-3.6-rc1-orig/fs/ufs/balloc.c	2012-08-16 09:37:36.000000000 +0200
-+++ linux-3.6-rc1/fs/ufs/balloc.c	2012-08-16 10:25:31.000000000 +0200
-@@ -54,7 +54,7 @@ void ufs_free_fragments(struct inode *in
- 	if (ufs_fragnum(fragment) + count > uspi->s_fpg)
- 		ufs_error (sb, "ufs_free_fragments", "internal error");
- 	
--	lock_super(sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 	
- 	cgno = ufs_dtog(uspi, fragment);
- 	bit = ufs_dtogd(uspi, fragment);
-@@ -118,12 +118,12 @@ void ufs_free_fragments(struct inode *in
- 		ubh_sync_block(UCPI_UBH(ucpi));
- 	ufs_mark_sb_dirty(sb);
- 	
--	unlock_super (sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	UFSD("EXIT\n");
- 	return;
- 
- failed:
--	unlock_super (sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	UFSD("EXIT (FAILED)\n");
- 	return;
- }
-@@ -155,7 +155,7 @@ void ufs_free_blocks(struct inode *inode
- 		goto failed;
- 	}
- 
--	lock_super(sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 	
- do_more:
- 	overflow = 0;
-@@ -215,12 +215,12 @@ do_more:
- 	}
- 
- 	ufs_mark_sb_dirty(sb);
--	unlock_super (sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	UFSD("EXIT\n");
- 	return;
- 
- failed_unlock:
--	unlock_super (sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- failed:
- 	UFSD("EXIT (FAILED)\n");
- 	return;
-@@ -361,7 +361,7 @@ u64 ufs_new_fragments(struct inode *inod
- 	usb1 = ubh_get_usb_first(uspi);
- 	*err = -ENOSPC;
- 
--	lock_super (sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 	tmp = ufs_data_ptr_to_cpu(sb, p);
- 
- 	if (count + ufs_fragnum(fragment) > uspi->s_fpb) {
-@@ -382,19 +382,19 @@ u64 ufs_new_fragments(struct inode *inod
- 				  "fragment %llu, tmp %llu\n",
- 				  (unsigned long long)fragment,
- 				  (unsigned long long)tmp);
--			unlock_super(sb);
-+			mutex_unlock(&UFS_SB(sb)->s_lock);
- 			return INVBLOCK;
- 		}
- 		if (fragment < UFS_I(inode)->i_lastfrag) {
- 			UFSD("EXIT (ALREADY ALLOCATED)\n");
--			unlock_super (sb);
-+			mutex_unlock(&UFS_SB(sb)->s_lock);
- 			return 0;
- 		}
- 	}
- 	else {
- 		if (tmp) {
- 			UFSD("EXIT (ALREADY ALLOCATED)\n");
--			unlock_super(sb);
-+			mutex_unlock(&UFS_SB(sb)->s_lock);
- 			return 0;
- 		}
- 	}
-@@ -403,7 +403,7 @@ u64 ufs_new_fragments(struct inode *inod
- 	 * There is not enough space for user on the device
- 	 */
- 	if (!capable(CAP_SYS_RESOURCE) && ufs_freespace(uspi, UFS_MINFREE) <= 0) {
--		unlock_super (sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		UFSD("EXIT (FAILED)\n");
- 		return 0;
- 	}
-@@ -428,7 +428,7 @@ u64 ufs_new_fragments(struct inode *inod
- 			ufs_clear_frags(inode, result + oldcount,
- 					newcount - oldcount, locked_page != NULL);
- 		}
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		UFSD("EXIT, result %llu\n", (unsigned long long)result);
- 		return result;
- 	}
-@@ -443,7 +443,7 @@ u64 ufs_new_fragments(struct inode *inod
- 						fragment + count);
- 		ufs_clear_frags(inode, result + oldcount, newcount - oldcount,
- 				locked_page != NULL);
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		UFSD("EXIT, result %llu\n", (unsigned long long)result);
- 		return result;
- 	}
-@@ -481,7 +481,7 @@ u64 ufs_new_fragments(struct inode *inod
- 		*err = 0;
- 		UFS_I(inode)->i_lastfrag = max(UFS_I(inode)->i_lastfrag,
- 						fragment + count);
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		if (newcount < request)
- 			ufs_free_fragments (inode, result + newcount, request - newcount);
- 		ufs_free_fragments (inode, tmp, oldcount);
-@@ -489,7 +489,7 @@ u64 ufs_new_fragments(struct inode *inod
- 		return result;
- 	}
- 
--	unlock_super(sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	UFSD("EXIT (FAILED)\n");
- 	return 0;
- }		
-diff -Nurp linux-3.6-rc1-orig/fs/ufs/ialloc.c linux-3.6-rc1/fs/ufs/ialloc.c
---- linux-3.6-rc1-orig/fs/ufs/ialloc.c	2012-08-16 09:37:36.000000000 +0200
-+++ linux-3.6-rc1/fs/ufs/ialloc.c	2012-08-16 10:27:38.000000000 +0200
-@@ -71,11 +71,11 @@ void ufs_free_inode (struct inode * inod
- 	
- 	ino = inode->i_ino;
- 
--	lock_super (sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 
- 	if (!((ino > 1) && (ino < (uspi->s_ncg * uspi->s_ipg )))) {
- 		ufs_warning(sb, "ufs_free_inode", "reserved inode or nonexistent inode %u\n", ino);
--		unlock_super (sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		return;
- 	}
- 	
-@@ -83,7 +83,7 @@ void ufs_free_inode (struct inode * inod
- 	bit = ufs_inotocgoff (ino);
- 	ucpi = ufs_load_cylinder (sb, cg);
- 	if (!ucpi) {
--		unlock_super (sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		return;
- 	}
- 	ucg = ubh_get_ucg(UCPI_UBH(ucpi));
-@@ -117,7 +117,7 @@ void ufs_free_inode (struct inode * inod
- 		ubh_sync_block(UCPI_UBH(ucpi));
- 	
- 	ufs_mark_sb_dirty(sb);
--	unlock_super (sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	UFSD("EXIT\n");
- }
- 
-@@ -197,7 +197,7 @@ struct inode *ufs_new_inode(struct inode
- 	uspi = sbi->s_uspi;
- 	usb1 = ubh_get_usb_first(uspi);
- 
--	lock_super (sb);
-+	mutex_lock(&sbi->s_lock);
- 
- 	/*
- 	 * Try to place the inode in its parent directory
-@@ -333,20 +333,20 @@ cg_found:
- 		brelse(bh);
- 	}
- 
--	unlock_super (sb);
-+	mutex_unlock(&sbi->s_lock);
- 
- 	UFSD("allocating inode %lu\n", inode->i_ino);
- 	UFSD("EXIT\n");
- 	return inode;
- 
- fail_remove_inode:
--	unlock_super(sb);
-+	mutex_unlock(&sbi->s_lock);
- 	clear_nlink(inode);
- 	iput(inode);
- 	UFSD("EXIT (FAILED): err %d\n", err);
- 	return ERR_PTR(err);
- failed:
--	unlock_super (sb);
-+	mutex_unlock(&sbi->s_lock);
- 	make_bad_inode(inode);
- 	iput (inode);
- 	UFSD("EXIT (FAILED): err %d\n", err);
-diff -Nurp linux-3.6-rc1-orig/fs/ufs/super.c linux-3.6-rc1/fs/ufs/super.c
---- linux-3.6-rc1-orig/fs/ufs/super.c	2012-08-16 09:37:36.000000000 +0200
-+++ linux-3.6-rc1/fs/ufs/super.c	2012-08-16 11:18:38.000000000 +0200
-@@ -699,7 +699,7 @@ static int ufs_sync_fs(struct super_bloc
- 	unsigned flags;
- 
- 	lock_ufs(sb);
--	lock_super(sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 
- 	UFSD("ENTER\n");
- 
-@@ -717,7 +717,7 @@ static int ufs_sync_fs(struct super_bloc
- 	ufs_put_cstotal(sb);
- 
- 	UFSD("EXIT\n");
--	unlock_super(sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	unlock_ufs(sb);
- 
- 	return 0;
-@@ -805,6 +805,7 @@ static int ufs_fill_super(struct super_b
- 	}
- #endif
- 	mutex_init(&sbi->mutex);
-+	mutex_init(&sbi->s_lock);
- 	spin_lock_init(&sbi->work_lock);
- 	INIT_DELAYED_WORK(&sbi->sync_work, delayed_sync_fs);
- 	/*
-@@ -1280,7 +1281,7 @@ static int ufs_remount (struct super_blo
- 	unsigned flags;
- 
- 	lock_ufs(sb);
--	lock_super(sb);
-+	mutex_lock(&UFS_SB(sb)->s_lock);
- 	uspi = UFS_SB(sb)->s_uspi;
- 	flags = UFS_SB(sb)->s_flags;
- 	usb1 = ubh_get_usb_first(uspi);
-@@ -1294,7 +1295,7 @@ static int ufs_remount (struct super_blo
- 	new_mount_opt = 0;
- 	ufs_set_opt (new_mount_opt, ONERROR_LOCK);
- 	if (!ufs_parse_options (data, &new_mount_opt)) {
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		unlock_ufs(sb);
- 		return -EINVAL;
- 	}
-@@ -1302,14 +1303,14 @@ static int ufs_remount (struct super_blo
- 		new_mount_opt |= ufstype;
- 	} else if ((new_mount_opt & UFS_MOUNT_UFSTYPE) != ufstype) {
- 		printk("ufstype can't be changed during remount\n");
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		unlock_ufs(sb);
- 		return -EINVAL;
- 	}
- 
- 	if ((*mount_flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY)) {
- 		UFS_SB(sb)->s_mount_opt = new_mount_opt;
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		unlock_ufs(sb);
- 		return 0;
- 	}
-@@ -1334,7 +1335,7 @@ static int ufs_remount (struct super_blo
- #ifndef CONFIG_UFS_FS_WRITE
- 		printk("ufs was compiled with read-only support, "
- 		"can't be mounted as read-write\n");
--		unlock_super(sb);
-+		mutex_unlock(&UFS_SB(sb)->s_lock);
- 		unlock_ufs(sb);
- 		return -EINVAL;
- #else
-@@ -1344,13 +1345,13 @@ static int ufs_remount (struct super_blo
- 		    ufstype != UFS_MOUNT_UFSTYPE_SUNx86 &&
- 		    ufstype != UFS_MOUNT_UFSTYPE_UFS2) {
- 			printk("this ufstype is read-only supported\n");
--			unlock_super(sb);
-+			mutex_unlock(&UFS_SB(sb)->s_lock);
- 			unlock_ufs(sb);
- 			return -EINVAL;
- 		}
- 		if (!ufs_read_cylinder_structures(sb)) {
- 			printk("failed during remounting\n");
--			unlock_super(sb);
-+			mutex_unlock(&UFS_SB(sb)->s_lock);
- 			unlock_ufs(sb);
- 			return -EPERM;
- 		}
-@@ -1358,7 +1359,7 @@ static int ufs_remount (struct super_blo
- #endif
- 	}
- 	UFS_SB(sb)->s_mount_opt = new_mount_opt;
--	unlock_super(sb);
-+	mutex_unlock(&UFS_SB(sb)->s_lock);
- 	unlock_ufs(sb);
- 	return 0;
- }
-diff -Nurp linux-3.6-rc1-orig/fs/ufs/ufs.h linux-3.6-rc1/fs/ufs/ufs.h
---- linux-3.6-rc1-orig/fs/ufs/ufs.h	2012-08-16 09:37:36.000000000 +0200
-+++ linux-3.6-rc1/fs/ufs/ufs.h	2012-08-16 10:24:05.000000000 +0200
-@@ -24,6 +24,7 @@ struct ufs_sb_info {
- 	int work_queued; /* non-zero if the delayed work is queued */
- 	struct delayed_work sync_work; /* FS sync delayed work */
- 	spinlock_t work_lock; /* protects sync_work and work_queued */
-+	struct mutex s_lock;
- };
- 
- struct ufs_inode_info {
-
-
+Thanks,
+Fengguang
