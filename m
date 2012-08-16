@@ -1,12 +1,11 @@
-From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: Re: [PATCH 2/8] exofs: remove lock/unlock super
-Date: Thu, 16 Aug 2012 18:09:22 +0200
-Message-ID: <502D1B32.7020005@gmail.com>
-References: <502CC4AA.6040702@gmail.com> <1345119652.3393.220.camel@sauron.fi.intel.com> <502CE840.4060802@panasas.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/8] ext3: remove lock/unlock super
+Date: Thu, 16 Aug 2012 18:39:04 +0200
+Message-ID: <20120816163904.GA17526@quack.suse.cz>
+References: <502CC4BA.3040702@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: dedekind1@gmail.com, bhalevy@tonian.com, jack@suse.cz,
+Content-Type: text/plain; charset=us-ascii
+Cc: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
 	Andrew Morton <akpm@linux-foundation.org>,
 	adilger.kernel@dilger.ca, tytso@mit.edu,
 	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
@@ -15,40 +14,85 @@ Cc: dedekind1@gmail.com, bhalevy@tonian.com, jack@suse.cz,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <502CE840.4060802@panasas.com>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Marco Stornelli <marco.stornelli@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <502CC4BA.3040702@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Il 16/08/2012 14:32, Boaz Harrosh ha scritto:
-> On 08/16/2012 03:20 PM, Artem Bityutskiy wrote:
->
->> On Thu, 2012-08-16 at 12:00 +0200, Marco Stornelli wrote:
->>> From: Marco Stornelli <marco.stornelli@gmail.com>
->>>
->>> Remove lock and unlock super operation.
->>>
->>> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
->>
->> Acked-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
->>
->
->
-> Are you sure? It used to be that exofs_sync_fs() could be called
-> concurrently.
->
-> What about two "bash -c sync" calls or a sync and an unmount
-> in parallel. anything protecting that?
->
-> If so then sure, but please let me test first.
-> Boaz
->
-> .
->
+On Thu 16-08-12 12:00:26, Marco Stornelli wrote:
+> From: Marco Stornelli <marco.stornelli@gmail.com>
+> 
+> Replaced lock and unlock super with a new fs mutex s_lock.
+  Hum, is the lock needed at all? Remount & unfreeze both run with s_umount
+held for writing. Thus we already have exclusion between these two calls.
+The same seems to hold for ext4 BTW.
 
-Yes Boaz, I agree, it's the reason I asked for a comments for exofs and 
-hpfs. The only reason to have a lock here is to serialize operations in 
-parallel on the same super block.
-
-Marco
+								Honza
+> 
+> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
+> ---
+> 
+> diff -Nurp linux-3.6-rc1-orig/fs/ext3/ext3.h linux-3.6-rc1/fs/ext3/ext3.h
+> --- linux-3.6-rc1-orig/fs/ext3/ext3.h	2012-08-16 09:37:31.000000000 +0200
+> +++ linux-3.6-rc1/fs/ext3/ext3.h	2012-08-16 09:46:39.000000000 +0200
+> @@ -672,6 +672,7 @@ struct ext3_sb_info {
+>  	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+>  	int s_jquota_fmt;			/* Format of quota to use */
+>  #endif
+> +	struct mutex s_lock;
+>  };
+>   static inline spinlock_t *
+> diff -Nurp linux-3.6-rc1-orig/fs/ext3/super.c linux-3.6-rc1/fs/ext3/super.c
+> --- linux-3.6-rc1-orig/fs/ext3/super.c	2012-08-16 09:37:31.000000000 +0200
+> +++ linux-3.6-rc1/fs/ext3/super.c	2012-08-16 09:49:11.000000000 +0200
+> @@ -1939,6 +1939,7 @@ static int ext3_fill_super (struct super
+>  	sbi->s_gdb_count = db_count;
+>  	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+>  	spin_lock_init(&sbi->s_next_gen_lock);
+> +	mutex_init(&sbi->s_lock);
+>   	/* per fileystem reservation list head & lock */
+>  	spin_lock_init(&sbi->s_rsv_window_lock);
+> @@ -2582,11 +2583,11 @@ out:
+>  static int ext3_unfreeze(struct super_block *sb)
+>  {
+>  	if (!(sb->s_flags & MS_RDONLY)) {
+> -		lock_super(sb);
+> +		mutex_lock(&EXT3_SB(sb)->s_lock);
+>  		/* Reser the needs_recovery flag before the fs is unlocked. */
+>  		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+>  		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+> -		unlock_super(sb);
+> +		mutex_unlock(&EXT3_SB(sb)->s_lock);
+>  		journal_unlock_updates(EXT3_SB(sb)->s_journal);
+>  	}
+>  	return 0;
+> @@ -2606,7 +2607,7 @@ static int ext3_remount (struct super_bl
+>  #endif
+>   	/* Store the original options */
+> -	lock_super(sb);
+> +	mutex_lock(&EXT3_SB(sb)->s_lock);
+>  	old_sb_flags = sb->s_flags;
+>  	old_opts.s_mount_opt = sbi->s_mount_opt;
+>  	old_opts.s_resuid = sbi->s_resuid;
+> @@ -2712,7 +2713,7 @@ static int ext3_remount (struct super_bl
+>  		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
+>  			kfree(old_opts.s_qf_names[i]);
+>  #endif
+> -	unlock_super(sb);
+> +	mutex_unlock(&EXT3_SB(sb)->s_lock);
+>   	if (enable_quota)
+>  		dquot_resume(sb, -1);
+> @@ -2732,7 +2733,7 @@ restore_opts:
+>  		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+>  	}
+>  #endif
+> -	unlock_super(sb);
+> +	mutex_unlock(&EXT3_SB(sb)->s_lock);
+>  	return err;
+>  }
+>  
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
