@@ -1,13 +1,13 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
 Subject: Re: [PATCH 2/8] exofs: remove lock/unlock super
-Date: Thu, 16 Aug 2012 16:23:18 +0300
-Message-ID: <502CF446.9010107@panasas.com>
-References: <502CC4AA.6040702@gmail.com>  <1345119652.3393.220.camel@sauron.fi.intel.com>  <502CE840.4060802@panasas.com> <1345122611.3393.225.camel@sauron.fi.intel.com> <502CF259.9040300@panasas.com>
+Date: Thu, 16 Aug 2012 16:23:54 +0300
+Message-ID: <502CF46A.4040507@panasas.com>
+References: <502CC4AA.6040702@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Marco Stornelli <marco.stornelli@gmail.com>, <bhalevy@tonian.com>,
-	<jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+Cc: <bhalevy@tonian.com>, <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
 	<adilger.kernel@dilger.ca>, <tytso@mit.edu>,
 	<hirofumi@mail.parknet.co.jp>, <mikulas@artax.karlin.mff.cuni.cz>,
 	Al Viro <viro@ZenIV.linux.org.uk>, <hch@infradead.org>,
@@ -15,72 +15,43 @@ Cc: Marco Stornelli <marco.stornelli@gmail.com>, <bhalevy@tonian.com>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	<linux-ext4@vger.kernel.org>,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: <dedekind1@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:36937 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932326Ab2HPNXx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 09:23:53 -0400
-In-Reply-To: <502CF259.9040300@panasas.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Marco Stornelli <marco.stornelli@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <502CC4AA.6040702@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 08/16/2012 04:15 PM, Boaz Harrosh wrote:
+On 08/16/2012 01:00 PM, Marco Stornelli wrote:
 
-> On 08/16/2012 04:10 PM, Artem Bityutskiy wrote:
+> From: Marco Stornelli <marco.stornelli@gmail.com>
 > 
->> On Thu, 2012-08-16 at 15:32 +0300, Boaz Harrosh wrote:
->>> On 08/16/2012 03:20 PM, Artem Bityutskiy wrote:
->>>
->>>> On Thu, 2012-08-16 at 12:00 +0200, Marco Stornelli wrote:
->>>>> From: Marco Stornelli <marco.stornelli@gmail.com>
->>>>>
->>>>> Remove lock and unlock super operation.
->>>>>
->>>>> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
->>>>
->>>> Acked-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
->>>>
->>>
->>>
->>> Are you sure? It used to be that exofs_sync_fs() could be called
->>> concurrently.
->>>
->>> What about two "bash -c sync" calls or a sync and an unmount
->>> in parallel. anything protecting that?
->>>
->>> If so then sure, but please let me test first.
->>
->> Umm, actually we will probably end up writing the same twice without the
->> lock. 
->>
-> 
-> 
-> No we are not allowed to run exofs_sync_fs() concurrently because it uses
-> a per-alllocated scratch buffer to do it's stuff so you can end up with data
-> corruption on disk.
+> Remove lock and unlock super operation.
 > 
 
 
-I take that back. We kmalloc. (We used to not too).
+ACK-by: Boaz Harrosh <bharrosh@panasas.com>
 
-In theory the counter in question could change mid flight and the IOs can
-be submitted out of order, But the chance for that is very very slim. So
-It's fine. It's a deprecated counter anyway, so I'm OK to drop it.
+> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 
-I'll completely remove it the next time I increment the sb version
-number. 
-
-Thanks
-Boaz
-
-> And we cannot use a spin-lock because we might sleep in ore_write()
-> 
-> There are some optimizations I can do here, but lets for now just do
-> the sb->s_lock thing, and I might decide to completely revamp the
-> all thing later.
-> 
-> Thanks
-> Boaz
+> ---
+> diff -Nurp linux-3.6-rc1-orig/fs/exofs/super.c linux-3.6-rc1/fs/exofs/super.c
+> --- linux-3.6-rc1-orig/fs/exofs/super.c	2012-08-16 09:37:31.000000000 +0200
+> +++ linux-3.6-rc1/fs/exofs/super.c	2012-08-16 09:45:31.000000000 +0200
+> @@ -384,8 +384,6 @@ static int exofs_sync_fs(struct super_bl
+>  	if (unlikely(ret))
+>  		goto out;
+>  -	lock_super(sb);
+> -
+>  	ios->length = offsetof(struct exofs_fscb, s_dev_table_oid);
+>  	memset(fscb, 0, ios->length);
+>  	fscb->s_nextid = cpu_to_le64(sbi->s_nextid);
+> @@ -403,8 +401,6 @@ static int exofs_sync_fs(struct super_bl
+>  	else
+>  		sb->s_dirt = 0;
+>  -
+> -	unlock_super(sb);
+>  out:
+>  	EXOFS_DBGMSG("s_nextid=0x%llx ret=%d\n", _LLU(sbi->s_nextid), ret);
+>  	ore_put_io_state(ios);
 
 
