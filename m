@@ -1,7 +1,7 @@
 From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: [PATCH 1/8] vfs: remove lock and unlock functions for super block
-Date: Thu, 16 Aug 2012 11:59:53 +0200
-Message-ID: <502CC499.4030109@gmail.com>
+Subject: [PATCH 4/8] ext4: remove lock/unlock super
+Date: Thu, 16 Aug 2012 12:02:21 +0200
+Message-ID: <502CC52D.20003@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -14,67 +14,111 @@ To: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	linux-ext4@vger.kernel.org,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:41094 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752816Ab2HPKIu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 06:08:50 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Marco Stornelli <marco.stornelli@gmail.com>
 
-Remove lock_super and unlock_super from VFS.
+Replaced lock and unlock super with a new fs mutex s_lock.
 
 Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 ---
 
-diff -Nurp linux-3.6-rc1-orig/fs/super.c linux-3.6-rc1/fs/super.c
---- linux-3.6-rc1-orig/fs/super.c	2012-08-16 09:37:35.000000000 +0200
-+++ linux-3.6-rc1/fs/super.c	2012-08-16 09:43:46.000000000 +0200
-@@ -186,15 +186,8 @@ static struct super_block *alloc_super(s
- 		spin_lock_init(&s->s_inode_lru_lock);
- 		INIT_LIST_HEAD(&s->s_mounts);
- 		init_rwsem(&s->s_umount);
--		mutex_init(&s->s_lock);
- 		lockdep_set_class(&s->s_umount, &type->s_umount_key);
- 		/*
--		 * The locking rules for s_lock are up to the
--		 * filesystem. For example ext3fs has different
--		 * lock ordering than usbfs:
--		 */
--		lockdep_set_class(&s->s_lock, &type->s_lock_key);
--		/*
- 		 * sget() can have s_umount recursion.
- 		 *
- 		 * When it cannot find a suitable sb, it allocates a new
-@@ -400,22 +393,6 @@ bool grab_super_passive(struct super_blo
- 	return false;
+diff -Nurp linux-3.6-rc1-orig/fs/ext4/ext4.h linux-3.6-rc1/fs/ext4/ext4.h
+--- linux-3.6-rc1-orig/fs/ext4/ext4.h	2012-08-16 09:37:31.000000000 +0200
++++ linux-3.6-rc1/fs/ext4/ext4.h	2012-08-16 09:50:40.000000000 +0200
+@@ -1293,6 +1293,8 @@ struct ext4_sb_info {
+ 	/* Reference to checksum algorithm driver via cryptoapi */
+ 	struct crypto_shash *s_chksum_driver;
+ 
++	struct mutex s_lock;
++
+ 	/* Precomputed FS UUID checksum for seeding other checksums */
+ 	__u32 s_csum_seed;
+ };
+diff -Nurp linux-3.6-rc1-orig/fs/ext4/super.c linux-3.6-rc1/fs/ext4/super.c
+--- linux-3.6-rc1-orig/fs/ext4/super.c	2012-08-16 09:37:32.000000000 +0200
++++ linux-3.6-rc1/fs/ext4/super.c	2012-08-16 09:54:30.000000000 +0200
+@@ -861,7 +861,7 @@ static void ext4_put_super(struct super_
+ 	flush_workqueue(sbi->dio_unwritten_wq);
+ 	destroy_workqueue(sbi->dio_unwritten_wq);
+ 
+-	lock_super(sb);
++	mutex_lock(&sbi->s_lock);
+ 	if (sbi->s_journal) {
+ 		err = jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+@@ -928,7 +928,7 @@ static void ext4_put_super(struct super_
+ 	 * Now that we are completely done shutting down the
+ 	 * superblock, we need to actually destroy the kobject.
+ 	 */
+-	unlock_super(sb);
++	mutex_unlock(&sbi->s_lock);
+ 	kobject_put(&sbi->s_kobj);
+ 	wait_for_completion(&sbi->s_kobj_unregister);
+ 	if (sbi->s_chksum_driver)
+@@ -3718,6 +3718,7 @@ static int ext4_fill_super(struct super_
+ 	sbi->s_gdb_count = db_count;
+ 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
+ 	spin_lock_init(&sbi->s_next_gen_lock);
++	mutex_init(&sbi->s_lock);
+ 
+ 	init_timer(&sbi->s_err_report);
+ 	sbi->s_err_report.function = print_daily_error_info;
+@@ -4519,11 +4520,11 @@ static int ext4_unfreeze(struct super_bl
+ 	if (sb->s_flags & MS_RDONLY)
+ 		return 0;
+ 
+-	lock_super(sb);
++	mutex_lock(&EXT4_SB(sb)->s_lock);
+ 	/* Reset the needs_recovery flag before the fs is unlocked. */
+ 	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 	ext4_commit_super(sb, 1);
+-	unlock_super(sb);
++	mutex_unlock(&EXT4_SB(sb)->s_lock);
+ 	return 0;
  }
- -/*
-- * Superblock locking.  We really ought to get rid of these two.
-- */
--void lock_super(struct super_block * sb)
--{
--	mutex_lock(&sb->s_lock);
--}
--
--void unlock_super(struct super_block * sb)
--{
--	mutex_unlock(&sb->s_lock);
--}
--
--EXPORT_SYMBOL(lock_super);
--EXPORT_SYMBOL(unlock_super);
--
- /**
-  *	generic_shutdown_super	-	common helper for ->kill_sb()
-  *	@sb: superblock to kill
+ 
+@@ -4559,7 +4560,7 @@ static int ext4_remount(struct super_blo
+ 	char *orig_data = kstrdup(data, GFP_KERNEL);
+ 
+ 	/* Store the original options */
+-	lock_super(sb);
++	mutex_lock(&sbi->s_lock);
+ 	old_sb_flags = sb->s_flags;
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
+ 	old_opts.s_mount_opt2 = sbi->s_mount_opt2;
+@@ -4701,7 +4702,7 @@ static int ext4_remount(struct super_blo
+ 	if (sbi->s_journal == NULL)
+ 		ext4_commit_super(sb, 1);
+ 
+-	unlock_super(sb);
++	mutex_unlock(&sbi->s_lock);
+ #ifdef CONFIG_QUOTA
+ 	/* Release old quota file names */
+ 	for (i = 0; i < MAXQUOTAS; i++)
+@@ -4715,7 +4716,7 @@ static int ext4_remount(struct super_blo
+ 					EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+ 			err = ext4_enable_quotas(sb);
+ 			if (err) {
+-				lock_super(sb);
++				mutex_lock(&sbi->s_lock);
+ 				goto restore_opts;
+ 			}
+ 		}
+@@ -4744,7 +4745,7 @@ restore_opts:
+ 		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+ 	}
+ #endif
+-	unlock_super(sb);
++	mutex_unlock(&sbi->s_lock);
+ 	kfree(orig_data);
+ 	return err;
+ }
 
-diff -Nurp linux-3.6-rc1-orig/include/linux/fs.h linux-3.6-rc1/include/linux/fs.h
---- linux-3.6-rc1-orig/include/linux/fs.h	2012-08-16 11:38:42.000000000 +0200
-+++ linux-3.6-rc1/include/linux/fs.h	2012-08-16 09:45:18.000000000 +0200
-@@ -1504,7 +1504,6 @@ struct super_block {
- 	unsigned long		s_magic;
- 	struct dentry		*s_root;
- 	struct rw_semaphore	s_umount;
--	struct mutex		s_lock;
- 	int			s_count;
- 	atomic_t		s_active;
- #ifdef CONFIG_SECURITY
+
