@@ -1,91 +1,188 @@
-From: Fengguang Wu <fengguang.wu@intel.com>
-Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
-Date: Thu, 16 Aug 2012 19:10:51 +0800
-Message-ID: <20120816111051.GA16036@localhost>
-References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
- <20120816024654.GB3781@thunk.org>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: Re: libcom_err DSO version bump needed for 1.42?
+Date: Thu, 16 Aug 2012 08:01:35 -0400
+Message-ID: <502CE11F.6090605@interlinx.bc.ca>
+References: <k0h5eu$f6u$1@ger.gmane.org> <20120816014735.GA3781@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Marti Raudsepp <marti@juffo.org>,
-	Kernel hackers <linux-kernel@vger.kernel.org>,
-	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig1666727E0C739FC896138652"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:45645 "EHLO mga11.intel.com"
+Received: from plane.gmane.org ([80.91.229.3]:47666 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751213Ab2HPLgZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2012 07:36:25 -0400
-Content-Disposition: inline
-In-Reply-To: <20120816024654.GB3781@thunk.org>
+	id S1752574Ab2HPMBs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Aug 2012 08:01:48 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1T1ylm-00044h-F1
+	for linux-ext4@vger.kernel.org; Thu, 16 Aug 2012 14:01:46 +0200
+Received: from d67-193-214-242.home3.cgocable.net ([67.193.214.242])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2012 14:01:46 +0200
+Received: from brian by d67-193-214-242.home3.cgocable.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2012 14:01:46 +0200
+In-Reply-To: <20120816014735.GA3781@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2432,6 +2432,10 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->  
->  	/* the header must be checked already in ext4_ext_remove_space() */
->  	ext_debug("truncate since %u in leaf to %u\n", start, end);
-> +	if (!path[depth].p_hdr && !path[depth].p_bh) {
-> +		EXT4_ERROR_INODE(inode, "depth %d", depth);
-> +		BUG_ON(1);
-> +	}
->  	if (!path[depth].p_hdr)
->  		path[depth].p_hdr = ext_block_hdr(path[depth].p_bh);
->  	eh = path[depth].p_hdr;
-> @@ -2730,6 +2734,10 @@ cont:
->  		/* this is index block */
->  		if (!path[i].p_hdr) {
->  			ext_debug("initialize header\n");
-> +			if (!path[i].p_hdr && !path[i].p_bh) {
-> +				EXT4_ERROR_INODE(inode, "i=%d", i);
-> +				BUG_ON(1);
-> +			}
->  			path[i].p_hdr = ext_block_hdr(path[i].p_bh);
->  		}
->  
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig1666727E0C739FC896138652
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-Here is the dmesg. BTW, it seems 3.5.0 don't have this issue.
+On 12-08-15 09:47 PM, Theodore Ts'o wrote:
+>
 
-[  640.266836] EXT4-fs error (device md0): ext4_ext_remove_space:2694: inode #12: comm rm: i=1
-[  640.275701] ------------[ cut here ]------------
-[  640.276684] kernel BUG at /c/wfg/tip/fs/ext4/extents.c:2695!
-[  640.276684] invalid opcode: 0000 [#1] SMP
-[  640.276684] Modules linked in:
-[  640.276684] CPU 7
-[  640.276684] Pid: 4079, comm: rm Not tainted 3.6.0-rc1+ #3 Supermicro X7DW3/X7DWN
-[  640.276684] RIP: 0010:[<ffffffff811f8980>]  [<ffffffff811f8980>] ext4_ext_remove_space+0x86e/0xbee
-[  640.276684] RSP: 0018:ffff88021e749cb8  EFLAGS: 00010287
-[  640.276684] RAX: ffff880221072000 RBX: ffff88020fc680d0 RCX: 0000000000000092
-[  640.276684] RDX: 0000000000003c3c RSI: 0000000000000092 RDI: ffff880221073800
-[  640.276684] RBP: ffff88021e749d98 R08: ffffffff81f6ea88 R09: 0000000000000000
-[  640.276684] R10: ffffffff81f19a30 R11: 0000000000000647 R12: ffff880222385840
-[  640.276684] R13: 0000000000000001 R14: 0000000000000001 R15: ffff880222385870
-[  640.276684] FS:  00007f4461203700(0000) GS:ffff88022f5c0000(0000) knlGS:0000000000000000
-[  640.276684] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[  640.276684] CR2: 00007f4460cf761d CR3: 000000022115c000 CR4: 00000000000007e0
-[  640.276684] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  640.276684] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[  640.276684] Process rm (pid: 4079, threadinfo ffff88021e748000, task ffff8802236d2e80)
-[  640.276684] Stack:
-[  640.276684]  ffffffff819caec0 ffff880220901390 ffff88020fc680d0 ffff880220901390
-[  640.276684]  ffff88020fc25750 0000000000790000 ffff88021e749d38 ffffffff811d6b05
-[  640.276684]  8000880200000000 ffff88020fc68000 ffff880221072000 ffff8802223858a0
-[  640.276684] Call Trace:
-[  640.276684]  [<ffffffff811d6b05>] ? ext4_mark_iloc_dirty+0x47a/0x557
-[  640.276684]  [<ffffffff811fa6ab>] ext4_ext_truncate+0xd8/0x176
-[  640.276684]  [<ffffffff811d6de8>] ? ext4_mark_inode_dirty+0x17e/0x1c0
-[  640.276684]  [<ffffffff811d4934>] ext4_truncate+0x7a/0xca
-[  640.276684]  [<ffffffff811d8aa2>] ext4_evict_inode+0x2e9/0x422
-[  640.276684]  [<ffffffff81163e17>] evict+0xae/0x163
-[  640.276684]  [<ffffffff811640c4>] iput+0x1bb/0x1c3
-[  640.276684]  [<ffffffff8115a2ca>] do_unlinkat+0x102/0x157
-[  640.276684]  [<ffffffff813d550e>] ? trace_hardirqs_on_thunk+0x3a/0x3c
-[  640.276684]  [<ffffffff8115bf97>] sys_unlinkat+0x22/0x2d
-[  640.276684]  [<ffffffff81985229>] system_call_fastpath+0x16/0x1b
-[  640.276684] Code: 75 33 49 8b 47 28 48 85 c0 75 22 45 89 e9 49 c7 c0 ce e8 d2 81 31 c9 ba 86 0a 00 00 48 c7 c6 80 fb 9c 81 48 89 df e8 eb 6c ff ff <0f> 0b 48 8b 40 28 49 89 47 20 49 8b 47 18 48 85 c0 75 1f 49 8b
-[  640.276684] RIP  [<ffffffff811f8980>] ext4_ext_remove_space+0x86e/0xbee
-[  640.276684]  RSP <ffff88021e749cb8>
-[  640.530999] ---[ end trace e00762202fd8e8a0 ]---
+Hi Ted,
 
-Thanks,
-Fengguang
+> There's a distinction which needs to be made between adding a new
+> symbol to a DSO, and making an incompatible chnage to the ABI of an
+> existing symbol of a DSO.  The former doesn't break any existing
+> programs (although you need to make sure you have a sufficiently new
+> version of the library for executables which use the newer symbols).
+> The latter does break previously existing programs that were linked
+> against the DSO.
+
+Ahhh.  That's a fair point.
+
+> It is indeed up to packaging systems to do the right thing vis-a-vis
+> having the correct dependencies in their packages.  Debian/dpkg does
+> this automatically.  Note the current set of dependencies for the
+> e2fsprogs package in Debian:
+>=20
+> Pre-Depends: e2fslibs (=3D 1.42.5-1), libblkid1 (>=3D 2.17.2), libc6 (>=
+=3D 2.11), libcomerr2 (>=3D 1.42~WIP-2011-10-05-1), libss2 (>=3D 1.34-1),=
+ libuuid1 (>=3D 2.16), util-linux (>=3D 2.15~rc1-1)
+>=20
+> It does this by maintaining a list of symbols and the version when it
+> was first introduced.
+
+I see.  I am familiar with Debian's packaging but have not really delved
+into it's shared symbol dependency handling.  That is indeed
+interesting.  Funny enough, I was thinking about something along those
+lines (albeit in respect of RPM dependencies) independently while I was
+working through this issue -- that is tracking the symbols from release
+to release automagically.
+
+> Debian has packaging tools which will examine all of the symbols used
+> by the executables in a package, compare it against the .symbols file
+> for the library, and then determine the appropriate minimum version
+> needed for that library, and insert it into the package.
+
+Yeah.  It is neat.  On a bit of a tangent (which we don't have to get
+into here.  I am sure I can research it independently if I really feel a
+need to know) given what's in the *.symbols files, I can't see how those
+tools track an ABI change though.  There's no function "signature" to
+compare.  Maybe they leave ABI changes up to the developer to recognize
+and bump the DSO manually.
+
+> If another package uses libcomerr2, but doesn't use the new
+> set_com_err_gettext() function, then the versioned dependency for that
+> package might be for an older version of libcomerr2.  And all of this
+> is done automgically by the Debian dpkg tools.  Cool!!
+
+It is cool, yes.
+
+> Unfortunately, RPM doesn't seem to do this automatically.
+
+At the same level of granularity, it seems you are correct.  But RPM
+does have automatic shared library dependency processing.  RPM's
+automatic shared library dependency information calculations are based
+entirely off of DSO versions (i.e. e2fsprogs Depends on
+libcom_err.so.2()(64bit) -- which is calculated automatically by RPM),
+which is why I thought that bumping the DSO would solve the RPM
+packaging problems.  Well, it would solve them, but as you point out,
+adding a symbol may not necessarily be enough reason to bump the DSO
+version -- packaging problems aside.
+
+> It looks
+> like you have to explicitly specify these dependencies in the spec
+> file.  Currently the e2fsprogs spec file for Fedora seems to mandate
+> that e2fslibs must match the version of e2fsprogs exactly, while any
+> version of libcomerr2 will do.
+
+Well, yes, that's what the spec mandates.  But RPM's automatic shared
+library dependency processor will insert an implicit "Depends:
+libcom_err.so.2()(64bit)", so not really *any* libcommerr2, but yes, any
+DSO version 2 libcommerr2 will do.
+
+> If we were to change the DSO version number, it would break older
+> executables that didn't use this new symbol,
+
+Yeah.  This is usually solved by allowing multiple versions of the
+shared library to co-exist.  i.e. libcomm_err.so.2 and libcomm_err.so.3,
+etc.  But that requires packaging libraries with their DSO version in
+the name.  i.e. package names libcommerr2, libcommerr3, etc.  The
+libcommerr2 package would install libcomm_err.so.2 and the libcommerr3
+package would install libcomm_err.so.3 and both could co-exist.
+
+> and given that the
+> dependency management in the RPM spec file is all horribly manual,
+
+Well, not _all_ manual.  There is the above mentioned automatic DSO
+dependency information that matches library RPMs to tool RPMs.  That is,
+*if* the DSO version were bumped, this would all just automatically work
+with RPM even without having to specify manual dependencies.  Again,
+which is why simply bumping the DSO looked so inviting to me.
+
+> it
+> wouldn't help you, since you'd have to manually adjust the dependency
+> in the spec file anyway.
+
+Well, again, no, per the above.
+
+But to be clear, I am not necessarily using RPM's weakness (as compared
+to Debian's dpkg that is, in tracking shared library versions) here as a
+case to bump the libcommerr2 DSO, but just trying to clear up the
+[mis-]perceptions of RPM's ability with regard to automatically
+providing shared library dependency tracking.  It can do it.  It just
+depends on DSO version bumping, even for adding new symbols to the librar=
+y.
+
+> Anyway, this is a packaging bug, and Debian provides a worked example
+> about how this can be done completely automatically, without needing
+> any special handling by the release engineer.
+
+Yeah.
+
+> Why RPM doesn't follow
+> Debian's lead by having an automated system
+
+Well, it does.  It's just not as granular as Debian's and seems to
+expect that additions to a DSO will cause a DSO version bump.  I wonder
+what the RPM developers' perspective on this is, especially given that
+Debian has provided a working example of how simply adding symbols and
+not bumping the DSO version can still work with packaging.
+
+> is not something I've ever
+> understood (but there's a reason why I use Debian and not
+> Fedora.... and it's not just the abomination which is GNOME 3 / GNOME O=
+S).
+
+Oh lord.  Don't get me started on the abomination which is GNOME 3.  :-)
+ Fortunately Cinnamon brings back some level of usability to GNOME 3
+with it's new/replacement shell.
+
+Cheers,
+b.
+
+
+--------------enig1666727E0C739FC896138652
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAlAs4R8ACgkQl3EQlGLyuXCkMACgrY1tOQdDOAkzb81D4+cP3wru
+/ogAoI5intmN+qQk9E8NDEebh2QuKD3B
+=M6je
+-----END PGP SIGNATURE-----
+
+--------------enig1666727E0C739FC896138652--
+
