@@ -1,13 +1,13 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 1/8] vfs: remove lock and unlock functions for super block
-Date: Thu, 16 Aug 2012 15:26:40 +0300
-Message-ID: <502CE700.3070709@panasas.com>
-References: <502CC499.4030109@gmail.com>
+Subject: Re: [PATCH 2/8] exofs: remove lock/unlock super
+Date: Thu, 16 Aug 2012 15:32:00 +0300
+Message-ID: <502CE840.4060802@panasas.com>
+References: <502CC4AA.6040702@gmail.com> <1345119652.3393.220.camel@sauron.fi.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: <bhalevy@tonian.com>, <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Cc: Marco Stornelli <marco.stornelli@gmail.com>, <bhalevy@tonian.com>,
+	<jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
 	<adilger.kernel@dilger.ca>, <tytso@mit.edu>,
 	<hirofumi@mail.parknet.co.jp>, <mikulas@artax.karlin.mff.cuni.cz>,
 	Al Viro <viro@ZenIV.linux.org.uk>, <hch@infradead.org>,
@@ -15,82 +15,35 @@ Cc: <bhalevy@tonian.com>, <jack@suse.cz>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
 	<linux-ext4@vger.kernel.org>,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: Marco Stornelli <marco.stornelli@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <502CC499.4030109@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: <dedekind1@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from natasha.panasas.com ([67.152.220.90]:34384 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754121Ab2HPMdC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 08:33:02 -0400
+In-Reply-To: <1345119652.3393.220.camel@sauron.fi.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 08/16/2012 12:59 PM, Marco Stornelli wrote:
+On 08/16/2012 03:20 PM, Artem Bityutskiy wrote:
 
-> From: Marco Stornelli <marco.stornelli@gmail.com>
+> On Thu, 2012-08-16 at 12:00 +0200, Marco Stornelli wrote:
+>> From: Marco Stornelli <marco.stornelli@gmail.com>
+>>
+>> Remove lock and unlock super operation.
+>>
+>> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 > 
-> Remove lock_super and unlock_super from VFS.
+> Acked-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 > 
-> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 
 
-You can't remove the lock here. After this patch the tree will
-not compile, and will not be bisectable. You must move this patch
-to be last.
+Are you sure? It used to be that exofs_sync_fs() could be called
+concurrently.
 
-Each patch should leave the tree compileable and with out any
-regressions.
+What about two "bash -c sync" calls or a sync and an unmount
+in parallel. anything protecting that?
 
+If so then sure, but please let me test first.
 Boaz
 
-> ---
-> 
-> diff -Nurp linux-3.6-rc1-orig/fs/super.c linux-3.6-rc1/fs/super.c
-> --- linux-3.6-rc1-orig/fs/super.c	2012-08-16 09:37:35.000000000 +0200
-> +++ linux-3.6-rc1/fs/super.c	2012-08-16 09:43:46.000000000 +0200
-> @@ -186,15 +186,8 @@ static struct super_block *alloc_super(s
->  		spin_lock_init(&s->s_inode_lru_lock);
->  		INIT_LIST_HEAD(&s->s_mounts);
->  		init_rwsem(&s->s_umount);
-> -		mutex_init(&s->s_lock);
->  		lockdep_set_class(&s->s_umount, &type->s_umount_key);
->  		/*
-> -		 * The locking rules for s_lock are up to the
-> -		 * filesystem. For example ext3fs has different
-> -		 * lock ordering than usbfs:
-> -		 */
-> -		lockdep_set_class(&s->s_lock, &type->s_lock_key);
-> -		/*
->  		 * sget() can have s_umount recursion.
->  		 *
->  		 * When it cannot find a suitable sb, it allocates a new
-> @@ -400,22 +393,6 @@ bool grab_super_passive(struct super_blo
->  	return false;
->  }
->  -/*
-> - * Superblock locking.  We really ought to get rid of these two.
-> - */
-> -void lock_super(struct super_block * sb)
-> -{
-> -	mutex_lock(&sb->s_lock);
-> -}
-> -
-> -void unlock_super(struct super_block * sb)
-> -{
-> -	mutex_unlock(&sb->s_lock);
-> -}
-> -
-> -EXPORT_SYMBOL(lock_super);
-> -EXPORT_SYMBOL(unlock_super);
-> -
->  /**
->   *	generic_shutdown_super	-	common helper for ->kill_sb()
->   *	@sb: superblock to kill
-> 
-> diff -Nurp linux-3.6-rc1-orig/include/linux/fs.h linux-3.6-rc1/include/linux/fs.h
-> --- linux-3.6-rc1-orig/include/linux/fs.h	2012-08-16 11:38:42.000000000 +0200
-> +++ linux-3.6-rc1/include/linux/fs.h	2012-08-16 09:45:18.000000000 +0200
-> @@ -1504,7 +1504,6 @@ struct super_block {
->  	unsigned long		s_magic;
->  	struct dentry		*s_root;
->  	struct rw_semaphore	s_umount;
-> -	struct mutex		s_lock;
->  	int			s_count;
->  	atomic_t		s_active;
->  #ifdef CONFIG_SECURITY
