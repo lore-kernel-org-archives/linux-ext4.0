@@ -1,37 +1,42 @@
-From: Javier Marcet <jmarcet@gmail.com>
-Subject: Re: Far too long mount time
-Date: Thu, 16 Aug 2012 11:53:15 +0200
-Message-ID: <CAAnFQG__2EzkTSki7VqqOKKQhQOej71_cOeJHyqu2PX6KMn0Vw@mail.gmail.com>
-References: <CAAnFQG_O051svcCZftDefebVEds+P1zAceteh=B18HOqmoqitg@mail.gmail.com>
- <CAAnFQG9esXovsAYkCS5Lw5JGpc5dW2PLccvYjN7NvaHLQDqGmA@mail.gmail.com> <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca>
+From: Marco Stornelli <marco.stornelli@gmail.com>
+Subject: [PATCH 0/8] remove lock and unlock super
+Date: Thu, 16 Aug 2012 11:59:19 +0200
+Message-ID: <502CC477.4060005@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linux Ext4 Mailing List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:52730 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755893Ab2HPJxg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 05:53:36 -0400
-Received: by obbuo13 with SMTP id uo13so3451152obb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2012 02:53:36 -0700 (PDT)
-In-Reply-To: <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
+	Andrew Morton <akpm@linux-foundation.org>,
+	adilger.kernel@dilger.ca, tytso@mit.edu,
+	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
+	Al Viro <viro@ZenIV.linux.org.uk>, hch@infradead.org,
+	dushistov@mail.ru, osd-dev@open-osd.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 16, 2012 at 11:09 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+Hi all,
 
-> It is a bit strange that _mounting_ uses 92% CPU.  Hmm, there was a bug
-> reported for 3.5.1, see "Re: Upgraded from 3.4 to 3.5.1 kernel: machine
-> does not boot", and reverting the patch with git commit hash
-> "8aeb00ff85ad25453765dd339b408c0087db1527" resolved the problem.  This
-> slowdown was only seen with larger devices.
+I'm trying to remove the functions lock_super/unlock_super and to push 
+the lock into each single fs. Currently these fs use these functions: 
+ext3, ext4, fat, hpfs, exofs, sysv, ufs. At the moment I used the more 
+conservative approach, I created a new mutex s_lock in the private sb 
+info for each fs, so nothing change but a couple of notes:
 
-Thanks a lot Andreas, that commit was the cause. Reverting it:
+1) exofs/hpfs: they use lock_super only in one function so the lock 
+seems completely not needed and I removed it, do you see collateral effect?
 
-$ time mount /mnt/raid
-0.00s user 0.03s system 5% cpu 0.511 total
+2) fat/ufs: they have already got functions to lock the fs with a mutex, 
+I don't know at the moment if a general review of the code can give us 
+the possibility to "merge" the locks.
 
+Bugs, comments, review are welcome especially from fs maintainers. Maybe 
+this work can be a first cleaning, after that each fs can adjust its 
+lock policy.
 
--- 
-Javier Marcet <jmarcet@gmail.com>
+The patch is against 3.6-rc1.
+
+Marco
