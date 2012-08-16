@@ -1,81 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Test 272 fails for ext3
-Date: Thu, 16 Aug 2012 11:37:57 +0200
-Message-ID: <20120816093757.GA11519@quack.suse.cz>
-References: <20120816092808.GA9057@quack.suse.cz>
+From: Javier Marcet <jmarcet@gmail.com>
+Subject: Re: Far too long mount time
+Date: Thu, 16 Aug 2012 11:53:15 +0200
+Message-ID: <CAAnFQG__2EzkTSki7VqqOKKQhQOej71_cOeJHyqu2PX6KMn0Vw@mail.gmail.com>
+References: <CAAnFQG_O051svcCZftDefebVEds+P1zAceteh=B18HOqmoqitg@mail.gmail.com>
+ <CAAnFQG9esXovsAYkCS5Lw5JGpc5dW2PLccvYjN7NvaHLQDqGmA@mail.gmail.com> <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="rwEMma7ioTxnRzrJ"
-Cc: dmonakhov@openvz.org, linux-ext4@vger.kernel.org
-To: xfs@oss.sgi.com
+Content-Type: text/plain; charset=UTF-8
+Cc: Linux Ext4 Mailing List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40104 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754750Ab2HPJh7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2012 05:37:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20120816092808.GA9057@quack.suse.cz>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:52730 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755893Ab2HPJxg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 05:53:36 -0400
+Received: by obbuo13 with SMTP id uo13so3451152obb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2012 02:53:36 -0700 (PDT)
+In-Reply-To: <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Aug 16, 2012 at 11:09 AM, Andreas Dilger <adilger@dilger.ca> wrote:
 
---rwEMma7ioTxnRzrJ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+> It is a bit strange that _mounting_ uses 92% CPU.  Hmm, there was a bug
+> reported for 3.5.1, see "Re: Upgraded from 3.4 to 3.5.1 kernel: machine
+> does not boot", and reverting the patch with git commit hash
+> "8aeb00ff85ad25453765dd339b408c0087db1527" resolved the problem.  This
+> slowdown was only seen with larger devices.
 
-  Hello,
+Thanks a lot Andreas, that commit was the cause. Reverting it:
 
-  I was looking into why test 272 from xfstests fails for ext3 and the
-reason is that ext3 does not support direct IO to file with enabled data
-journalling (open returns EINVAL because ->direct_IO callback is not
-specified). So I was thinking how to accomodate this fact in the test -
-the best I found was to just check using xfs_io whether O_DIRECT open
-succeeds and perform the test only in that case. Attached patch does this
-or do people have other ideas?
+$ time mount /mnt/raid
+0.00s user 0.03s system 5% cpu 0.511 total
 
-								Honza
 
-PS: Sending again with correct list address. I'm sorry for unnecessary email.
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---rwEMma7ioTxnRzrJ
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-Make-test-272-work-for-ext3.patch"
-
->From 529429c8497314ef956e470fdb9b94bfe797df69 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Thu, 16 Aug 2012 11:14:35 +0200
-Subject: [PATCH] Make test 272 work for ext3
-
-ext3 does not support direct IO for files with data journalling. This
-confuses test 272. Make the test check whether open succeeds and perform
-the writing only if it does.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- 272 |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/272 b/272
-index 26dfa3b..e39c52b 100755
---- a/272
-+++ b/272
-@@ -52,6 +52,12 @@ _workout()
- 		    
- 			echo "OP write_opt: $write_opt 4M, \
- chattr_opt: $chattr_opt"
-+			if [ "$write_opt" = "oflag=direct" ]; then
-+				# Some filesystems don't support direct IO
-+				# in some cases, check for that
-+				xfs_io -F -d -f -c "" $SCRATCH_MNT/file.$idx \
-+					>> $seq.full 2>&1 || continue
-+			fi
- 			dd if=/dev/zero of=$SCRATCH_MNT/file.$idx \
- 				bs=1M count=4 $write_opt \
- 				>> $seq.full 2>&1 || exit
--- 
-1.7.1
-
-
---rwEMma7ioTxnRzrJ--
+Javier Marcet <jmarcet@gmail.com>
