@@ -1,22 +1,24 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Test 272 fails for ext3
-Date: Thu, 16 Aug 2012 11:28:08 +0200
-Message-ID: <20120816092808.GA9057@quack.suse.cz>
+Date: Thu, 16 Aug 2012 11:37:57 +0200
+Message-ID: <20120816093757.GA11519@quack.suse.cz>
+References: <20120816092808.GA9057@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="XsQoSWH+UP9D9v3l"
+Content-Type: multipart/mixed; boundary="rwEMma7ioTxnRzrJ"
 Cc: dmonakhov@openvz.org, linux-ext4@vger.kernel.org
-To: xfstests@oss.sgi.com
+To: xfs@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39761 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:40104 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756178Ab2HPJ2K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2012 05:28:10 -0400
+	id S1754750Ab2HPJh7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Aug 2012 05:37:59 -0400
 Content-Disposition: inline
+In-Reply-To: <20120816092808.GA9057@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---XsQoSWH+UP9D9v3l
+--rwEMma7ioTxnRzrJ
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
@@ -31,11 +33,13 @@ succeeds and perform the test only in that case. Attached patch does this
 or do people have other ideas?
 
 								Honza
+
+PS: Sending again with correct list address. I'm sorry for unnecessary email.
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
 
---XsQoSWH+UP9D9v3l
+--rwEMma7ioTxnRzrJ
 Content-Type: text/x-patch; charset=us-ascii
 Content-Disposition: attachment; filename="0001-Make-test-272-work-for-ext3.patch"
 
@@ -74,4 +78,4 @@ index 26dfa3b..e39c52b 100755
 1.7.1
 
 
---XsQoSWH+UP9D9v3l--
+--rwEMma7ioTxnRzrJ--
