@@ -1,59 +1,77 @@
-From: =?UTF-8?Q?Maciej_=C5=BBenczykowski?= <maze@google.com>
-Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
-Date: Thu, 16 Aug 2012 15:44:32 -0700
-Message-ID: <CANP3RGfwQCJu7TLF4KXAJ-qPrHQDbuPzRCd72O41CUi2G1azJg@mail.gmail.com>
-References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
-	<20120816024654.GB3781@thunk.org>
-	<20120816111051.GA16036@localhost>
-	<20120816152513.GA31346@thunk.org>
-	<CANP3RGdMfM0tZbaJS9dFetRhXoGtyS0Nx4hZER_Qv0a061X_dQ@mail.gmail.com>
-	<20120816211948.GF31346@thunk.org>
-	<CANP3RGd62=voh5T6NACyFE-NqX=Huk1hkewSakPs67vC+uuTuw@mail.gmail.com>
-	<20120816222629.GG31346@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Test 272 fails for ext3
+Date: Fri, 17 Aug 2012 08:48:58 +1000
+Message-ID: <20120816224858.GY2877@dastard>
+References: <20120816092808.GA9057@quack.suse.cz>
+	<20120816093757.GA11519@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	=?UTF-8?Q?Maciej_=C5=BBenczykowski?= <maze@google.com>,
-	Fengguang Wu <fengguang.wu@intel.com>,
-	Marti Raudsepp <marti@juffo.org>,
-	Kernel hackers <linux-kernel@vger.kernel.org>,
-	ext4 hackers <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:44698 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751475Ab2HPWoe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 18:44:34 -0400
-Received: by ggdk6 with SMTP id k6so3506689ggd.19
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Aug 2012 15:44:33 -0700 (PDT)
-In-Reply-To: <20120816222629.GG31346@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, dmonakhov@openvz.org, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <20120816093757.GA11519@quack.suse.cz>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-> Thanks, that's really helpful.   I can say that using a 4MB journal and
-> running fsstress is _not_ enough to trigger the problem.
->
-> Looking more closely at what might be needed to trigger the bug, 'i'
-> gets left uninitialized when err is set to -EAGAIN, and that happens
-> when ext4_ext_truncate_extend_restart() is unable to extend the
-> journal transaction.  But that also means we need to be deleting a
-> sufficiently large enough file that the blocks span multiple block
-> groups (which is why we need to extend the transaction, so we can
-> modify more bitmap blocks) at the point when there is no more room in
-> the journal, so we have to close the current transaction, and then
-> retry it again with a new journal handle in a new transaction.
->
-> So that implies that untaring a bunch of kernels probably won't be
-> sufficient, since the files will be too small.  What we probably will
-> need to do is to fill a large file system with lots of large files,
-> use a small journal, and then try to do an rm -rf.
->
->                                              - Ted
+On Thu, Aug 16, 2012 at 11:37:57AM +0200, Jan Kara wrote:
+>   Hello,
+> 
+>   I was looking into why test 272 from xfstests fails for ext3 and the
+> reason is that ext3 does not support direct IO to file with enabled data
+> journalling (open returns EINVAL because ->direct_IO callback is not
+> specified). So I was thinking how to accomodate this fact in the test -
+> the best I found was to just check using xfs_io whether O_DIRECT open
+> succeeds and perform the test only in that case. Attached patch does this
+> or do people have other ideas?
 
-My suggestion of untarring kernels was to cause the big multi gigabyte
-files created later on to be massively fragmented, and thus have tons
-of extents and a relatively deep extent tree.
-But maybe that's not needed to trigger this bug, if as you say, it is
-caused by the absolute number of disks blocks being freed and not by
-the size/depth/complexity of the extent tree.
-My knowledge of the internals of ext4 is pretty much non-existent. ;-)
- In this case I'm just an end user.
+
+# ext3 doesn't support direct IO in journalling mode
+ext3_write_opt_list="iflag=noatime conv=notrunc conv=fsync"
+ext4_write_opt_list="iflag=noatime conv=notrunc conv=fsync oflag=direct"
+
+if [ $FSTYP = "ext3" ]; then
+	write_opt_list="$ext3_write_opt_list"
+else
+	write_opt_list="$ext4_write_opt_list"
+fi
+
+.....
+> diff --git a/272 b/272
+> index 26dfa3b..e39c52b 100755
+> --- a/272
+> +++ b/272
+> @@ -52,6 +52,12 @@ _workout()
+>  		    
+>  			echo "OP write_opt: $write_opt 4M, \
+>  chattr_opt: $chattr_opt"
+> +			if [ "$write_opt" = "oflag=direct" ]; then
+> +				# Some filesystems don't support direct IO
+> +				# in some cases, check for that
+> +				xfs_io -F -d -f -c "" $SCRATCH_MNT/file.$idx \
+> +					>> $seq.full 2>&1 || continue
+> +			fi
+
+That only fixes one of the two places that does direct IO on a
+jounralled file. The above will fix both...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
