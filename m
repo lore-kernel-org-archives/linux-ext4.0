@@ -1,98 +1,86 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/8] ext3: remove lock/unlock super
-Date: Thu, 16 Aug 2012 18:39:04 +0200
-Message-ID: <20120816163904.GA17526@quack.suse.cz>
-References: <502CC4BA.3040702@gmail.com>
+From: Marc MERLIN <marc@merlins.org>
+Subject: Re: du -s src is a lot slower on SSD than spinning disk in the same laptop
+Date: Thu, 16 Aug 2012 10:55:40 -0700
+Message-ID: <20120816175540.GH8802@merlins.org>
+References: <20120725154521.GA3398@merlins.org> <alpine.LFD.2.00.1207252023080.4340@(none)> <20120726033223.GA5884@thunk.org> <20120726065412.GB20315@merlins.org> <20120801053042.GG12695@merlins.org> <20120816075004.GE8802@merlins.org> <502CC2A2.4010506@shiftmail.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
-	Andrew Morton <akpm@linux-foundation.org>,
-	adilger.kernel@dilger.ca, tytso@mit.edu,
-	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
-	Al Viro <viro@ZenIV.linux.org.uk>, hch@infradead.org,
-	dushistov@mail.ru, osd-dev@open-osd.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: Marco Stornelli <marco.stornelli@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Spelic <spelic@shiftmail.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from magic.merlins.org ([209.81.13.136]:58117 "EHLO
+	mail1.merlins.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932814Ab2HPRzm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 13:55:42 -0400
 Content-Disposition: inline
-In-Reply-To: <502CC4BA.3040702@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <502CC2A2.4010506@shiftmail.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 16-08-12 12:00:26, Marco Stornelli wrote:
-> From: Marco Stornelli <marco.stornelli@gmail.com>
+On Thu, Aug 16, 2012 at 11:51:30AM +0200, Spelic wrote:
+> On 08/16/12 09:50, Marc MERLIN wrote:
+> >On Tue, Jul 31, 2012 at 10:30:42PM -0700, Marc MERLIN wrote:
+> >>How can ntfs via fuse be the fastest?
+> >To provide closure to this thread.
+> >
+> >I owed everyone an update, which I just finished typing:
+> >http://marc.merlins.org/perso/linux/post_2012-08-15_The-tale-of-SSDs_-Crucial-C300-early-Death_-Samsung-830-extreme-random-IO-slowness_-and-settling-with-OCZ-Vertex-4.html
 > 
-> Replaced lock and unlock super with a new fs mutex s_lock.
-  Hum, is the lock needed at all? Remount & unfreeze both run with s_umount
-held for writing. Thus we already have exclusion between these two calls.
-The same seems to hold for ext4 BTW.
+> Hello,
+> reading your article a few ideas came to my mind.
+> 
+> Firstly, for the Crucial, I haven't read much about that bug, but would 
+> leaving the last 20% of the drive free (make an empty partition there 
+> and then fstrim it and leave it empty) help with that bug? Maybe the 
+> garbage collection algorithm hasn't got enough free blocks to shuffle 
+> data around. I am interested because Crucial would be my prime choice 
+> for what I read around. When it resuscitated did you try to TRIM it 
+> wholly to try regain performances? I don't know if you still have it around.
+ 
+The drive was still mostly dead, it didn't work long enough for me to try to
+reformat it. I RMA'ed it and haven't used the replacement yet because I
+don't have data I don't care about enough :)
 
-								Honza
+> Secondly, for the Samsung 830:
+> The random access slowness is reproducible also without dm-crypt it 
+> seems to me. This benchmark of yours was NOT on dm-crypt, correct?
+> http://www.spinics.net/lists/linux-btrfs/msg18238.html
+
+Correct.
+
+> In your  fio benchmarks, e.g.
+> http://www.spinics.net/lists/linux-btrfs/msg18204.html
+> I noticed how the iodepth is at 64
 > 
-> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
-> ---
+> The Samsung SSD has a bug on high IO depths:
 > 
-> diff -Nurp linux-3.6-rc1-orig/fs/ext3/ext3.h linux-3.6-rc1/fs/ext3/ext3.h
-> --- linux-3.6-rc1-orig/fs/ext3/ext3.h	2012-08-16 09:37:31.000000000 +0200
-> +++ linux-3.6-rc1/fs/ext3/ext3.h	2012-08-16 09:46:39.000000000 +0200
-> @@ -672,6 +672,7 @@ struct ext3_sb_info {
->  	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
->  	int s_jquota_fmt;			/* Format of quota to use */
->  #endif
-> +	struct mutex s_lock;
->  };
->   static inline spinlock_t *
-> diff -Nurp linux-3.6-rc1-orig/fs/ext3/super.c linux-3.6-rc1/fs/ext3/super.c
-> --- linux-3.6-rc1-orig/fs/ext3/super.c	2012-08-16 09:37:31.000000000 +0200
-> +++ linux-3.6-rc1/fs/ext3/super.c	2012-08-16 09:49:11.000000000 +0200
-> @@ -1939,6 +1939,7 @@ static int ext3_fill_super (struct super
->  	sbi->s_gdb_count = db_count;
->  	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
->  	spin_lock_init(&sbi->s_next_gen_lock);
-> +	mutex_init(&sbi->s_lock);
->   	/* per fileystem reservation list head & lock */
->  	spin_lock_init(&sbi->s_rsv_window_lock);
-> @@ -2582,11 +2583,11 @@ out:
->  static int ext3_unfreeze(struct super_block *sb)
->  {
->  	if (!(sb->s_flags & MS_RDONLY)) {
-> -		lock_super(sb);
-> +		mutex_lock(&EXT3_SB(sb)->s_lock);
->  		/* Reser the needs_recovery flag before the fs is unlocked. */
->  		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
->  		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
-> -		unlock_super(sb);
-> +		mutex_unlock(&EXT3_SB(sb)->s_lock);
->  		journal_unlock_updates(EXT3_SB(sb)->s_journal);
->  	}
->  	return 0;
-> @@ -2606,7 +2607,7 @@ static int ext3_remount (struct super_bl
->  #endif
->   	/* Store the original options */
-> -	lock_super(sb);
-> +	mutex_lock(&EXT3_SB(sb)->s_lock);
->  	old_sb_flags = sb->s_flags;
->  	old_opts.s_mount_opt = sbi->s_mount_opt;
->  	old_opts.s_resuid = sbi->s_resuid;
-> @@ -2712,7 +2713,7 @@ static int ext3_remount (struct super_bl
->  		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
->  			kfree(old_opts.s_qf_names[i]);
->  #endif
-> -	unlock_super(sb);
-> +	mutex_unlock(&EXT3_SB(sb)->s_lock);
->   	if (enable_quota)
->  		dquot_resume(sb, -1);
-> @@ -2732,7 +2733,7 @@ restore_opts:
->  		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
->  	}
->  #endif
-> -	unlock_super(sb);
-> +	mutex_unlock(&EXT3_SB(sb)->s_lock);
->  	return err;
->  }
->  
+> http://www.bit-tech.net/hardware/2011/09/29/samsung-ssd-830-256gb-review/3
+> http://www.bit-tech.net/hardware/2011/09/29/samsung-ssd-830-256gb-review/5
+> already at 32 behaves bad.
+> 
+> Please do
+> echo 1 > /sys/block/sdX/device/queue_depth
+ 
+Sorry, I don't have the drives anymore, so I can't, but between you and me
+if the drive fails to perform after as much work I put in it, as in its
+default configuration on windows 7, that's pretty damn sad.
+
+Point being that those things should kind of "just work", like the Crucial
+(before sudden death) and the OCZ.
+I spent too many hours of my life trying to get the damn drive to perform,
+and if it takes even more kernel and IO experts to kind of get the drive to
+work (assuming it would have, and at this point I'm not certain), then it's
+crap in my book (also you can't tune half that stuff on windows for the
+primary users who would buy that drive).
+
+You are welcome to order one though and try your own tests and post them
+here. Worst case, you can return it if it sucks for you too.
+
+I just added the screeshot of the windows benchmarks if that helps.
+
+Marc
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+"A mouse is a device used to point at the xterm you want to type in" - A.S.R.
+Microsoft is to operating systems ....
+                                      .... what McDonalds is to gourmet cooking
+Home page: http://marc.merlins.org/  
