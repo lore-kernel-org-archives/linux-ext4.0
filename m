@@ -1,12 +1,12 @@
 From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: Re: [PATCH 1/8] vfs: remove lock and unlock functions for super block
-Date: Thu, 16 Aug 2012 18:05:04 +0200
-Message-ID: <502D1A30.4010109@gmail.com>
-References: <502CC499.4030109@gmail.com> <502CE700.3070709@panasas.com>
+Subject: Re: [PATCH 2/8] exofs: remove lock/unlock super
+Date: Thu, 16 Aug 2012 18:09:22 +0200
+Message-ID: <502D1B32.7020005@gmail.com>
+References: <502CC4AA.6040702@gmail.com> <1345119652.3393.220.camel@sauron.fi.intel.com> <502CE840.4060802@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: bhalevy@tonian.com, jack@suse.cz,
+Cc: dedekind1@gmail.com, bhalevy@tonian.com, jack@suse.cz,
 	Andrew Morton <akpm@linux-foundation.org>,
 	adilger.kernel@dilger.ca, tytso@mit.edu,
 	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
@@ -16,38 +16,39 @@ Cc: bhalevy@tonian.com, jack@suse.cz,
 	linux-ext4@vger.kernel.org,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
 To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:65167 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752403Ab2HPQLf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Aug 2012 12:11:35 -0400
-In-Reply-To: <502CE700.3070709@panasas.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <502CE840.4060802@panasas.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Il 16/08/2012 14:26, Boaz Harrosh ha scritto:
-> On 08/16/2012 12:59 PM, Marco Stornelli wrote:
+Il 16/08/2012 14:32, Boaz Harrosh ha scritto:
+> On 08/16/2012 03:20 PM, Artem Bityutskiy wrote:
 >
->> From: Marco Stornelli <marco.stornelli@gmail.com>
+>> On Thu, 2012-08-16 at 12:00 +0200, Marco Stornelli wrote:
+>>> From: Marco Stornelli <marco.stornelli@gmail.com>
+>>>
+>>> Remove lock and unlock super operation.
+>>>
+>>> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 >>
->> Remove lock_super and unlock_super from VFS.
+>> Acked-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 >>
->> Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 >
 >
-> You can't remove the lock here. After this patch the tree will
-> not compile, and will not be bisectable. You must move this patch
-> to be last.
+> Are you sure? It used to be that exofs_sync_fs() could be called
+> concurrently.
 >
-> Each patch should leave the tree compileable and with out any
-> regressions.
+> What about two "bash -c sync" calls or a sync and an unmount
+> in parallel. anything protecting that?
 >
+> If so then sure, but please let me test first.
 > Boaz
 >
+> .
+>
 
-Yep, you're right. I'll resend it in the right order at the end of first 
-review.
-
-Thanks,
+Yes Boaz, I agree, it's the reason I asked for a comments for exofs and 
+hpfs. The only reason to have a lock here is to serialize operations in 
+parallel on the same super block.
 
 Marco
