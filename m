@@ -1,71 +1,96 @@
-From: Artem Bityutskiy <dedekind1@gmail.com>
-Subject: Re: [PATCH 2/8] exofs: remove lock/unlock super
-Date: Thu, 16 Aug 2012 15:20:52 +0300
-Message-ID: <1345119652.3393.220.camel@sauron.fi.intel.com>
-References: <502CC4AA.6040702@gmail.com>
-Reply-To: dedekind1@gmail.com
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 1/8] vfs: remove lock and unlock functions for super block
+Date: Thu, 16 Aug 2012 15:26:40 +0300
+Message-ID: <502CE700.3070709@panasas.com>
+References: <502CC499.4030109@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-6sBgPhYtD9+LrspW8toj"
-Cc: bharrosh@panasas.com, bhalevy@tonian.com, jack@suse.cz,
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: <bhalevy@tonian.com>, <jack@suse.cz>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	adilger.kernel@dilger.ca, tytso@mit.edu,
-	hirofumi@mail.parknet.co.jp, mikulas@artax.karlin.mff.cuni.cz,
-	Al Viro <viro@ZenIV.linux.org.uk>, hch@infradead.org,
-	dushistov@mail.ru, osd-dev@open-osd.org,
+	<adilger.kernel@dilger.ca>, <tytso@mit.edu>,
+	<hirofumi@mail.parknet.co.jp>, <mikulas@artax.karlin.mff.cuni.cz>,
+	Al Viro <viro@ZenIV.linux.org.uk>, <hch@infradead.org>,
+	<dushistov@mail.ru>, <osd-dev@open-osd.org>,
 	Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
+	<linux-ext4@vger.kernel.org>,
 	Linux FS Devel <linux-fsdevel@vger.kernel.org>
 To: Marco Stornelli <marco.stornelli@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:32458 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753855Ab2HPMQL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Aug 2012 08:16:11 -0400
-In-Reply-To: <502CC4AA.6040702@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <502CC499.4030109@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On 08/16/2012 12:59 PM, Marco Stornelli wrote:
 
---=-6sBgPhYtD9+LrspW8toj
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-On Thu, 2012-08-16 at 12:00 +0200, Marco Stornelli wrote:
 > From: Marco Stornelli <marco.stornelli@gmail.com>
->=20
-> Remove lock and unlock super operation.
->=20
+> 
+> Remove lock_super and unlock_super from VFS.
+> 
 > Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
 
-Acked-by: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
 
---=20
-Best Regards,
-Artem Bityutskiy
+You can't remove the lock here. After this patch the tree will
+not compile, and will not be bisectable. You must move this patch
+to be last.
 
---=-6sBgPhYtD9+LrspW8toj
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
+Each patch should leave the tree compileable and with out any
+regressions.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
+Boaz
 
-iQIcBAABAgAGBQJQLOWkAAoJECmIfjd9wqK0YtwQALU8zaQcyw0iF+l0kRBOJdh7
-QvEvo3bbRDhXieFpp8gn5HqI1g+2p0ulegntnRAAWWFb8umErTfP+/djgB+IlYVK
-EHBZ/dEqlIzfEsRDgswCH9L3jxc1CAu1VbbWykS3RbRB8bx0NUzKqRNW46iB+gsj
-RYmovyS6NG6usdoa5SdBIwpVhm9Q2y/+ENdEbfAkS0mmsWa2tPxR3qy7znyuzjHw
-CG+BGIJZ6mJMaCryl53opN0zfQ11ehBoy7A/i1UcdEgdA5RFKEV8Q2nfy5GJ6ofA
-zZ9u6GeSX7otBcPjFU/8sLYX3PNvFiWHtHCAWTSt8EacbO5Kpf9qsw+TDyCr/CBK
-o+AxXFOLup3p893ZVtUb3MQOuMOqKoCfzLQx/54iF2Tejo53ww5r4JCpdRHxTqdB
-PHlzmCf1KLZ8tcA4EYxV6eo8pBWEQUr8Qme69B/9ZgzfyitvEVoWKl6alEUnxDF7
-0RwPfqRO/bqpmUR9+hrMRn1jftB0w5cFqjpngmBz6Qekqzl6qFrRjdDfY0yNIp8z
-NkYQRFY9mJiK0uzpwkCSU+enS0bBzlh7pyPrci0XS8QNfGR/zNeqGCnxk8otNUr+
-rXhmS7YhERr22Uf4JH039dPyaIL6EnnbnYzteneHkQiYtfHyqhsegDXgmeliadXT
-G1ny+BUbsmV8cdDLlqMT
-=yzKf
------END PGP SIGNATURE-----
-
---=-6sBgPhYtD9+LrspW8toj--
-
+> ---
+> 
+> diff -Nurp linux-3.6-rc1-orig/fs/super.c linux-3.6-rc1/fs/super.c
+> --- linux-3.6-rc1-orig/fs/super.c	2012-08-16 09:37:35.000000000 +0200
+> +++ linux-3.6-rc1/fs/super.c	2012-08-16 09:43:46.000000000 +0200
+> @@ -186,15 +186,8 @@ static struct super_block *alloc_super(s
+>  		spin_lock_init(&s->s_inode_lru_lock);
+>  		INIT_LIST_HEAD(&s->s_mounts);
+>  		init_rwsem(&s->s_umount);
+> -		mutex_init(&s->s_lock);
+>  		lockdep_set_class(&s->s_umount, &type->s_umount_key);
+>  		/*
+> -		 * The locking rules for s_lock are up to the
+> -		 * filesystem. For example ext3fs has different
+> -		 * lock ordering than usbfs:
+> -		 */
+> -		lockdep_set_class(&s->s_lock, &type->s_lock_key);
+> -		/*
+>  		 * sget() can have s_umount recursion.
+>  		 *
+>  		 * When it cannot find a suitable sb, it allocates a new
+> @@ -400,22 +393,6 @@ bool grab_super_passive(struct super_blo
+>  	return false;
+>  }
+>  -/*
+> - * Superblock locking.  We really ought to get rid of these two.
+> - */
+> -void lock_super(struct super_block * sb)
+> -{
+> -	mutex_lock(&sb->s_lock);
+> -}
+> -
+> -void unlock_super(struct super_block * sb)
+> -{
+> -	mutex_unlock(&sb->s_lock);
+> -}
+> -
+> -EXPORT_SYMBOL(lock_super);
+> -EXPORT_SYMBOL(unlock_super);
+> -
+>  /**
+>   *	generic_shutdown_super	-	common helper for ->kill_sb()
+>   *	@sb: superblock to kill
+> 
+> diff -Nurp linux-3.6-rc1-orig/include/linux/fs.h linux-3.6-rc1/include/linux/fs.h
+> --- linux-3.6-rc1-orig/include/linux/fs.h	2012-08-16 11:38:42.000000000 +0200
+> +++ linux-3.6-rc1/include/linux/fs.h	2012-08-16 09:45:18.000000000 +0200
+> @@ -1504,7 +1504,6 @@ struct super_block {
+>  	unsigned long		s_magic;
+>  	struct dentry		*s_root;
+>  	struct rw_semaphore	s_umount;
+> -	struct mutex		s_lock;
+>  	int			s_count;
+>  	atomic_t		s_active;
+>  #ifdef CONFIG_SECURITY
