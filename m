@@ -1,85 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix kernel BUG on large-scale rm -rf commands
-Date: Fri, 17 Aug 2012 09:50:17 -0400
-Message-ID: <1345211417-26968-1-git-send-email-tytso@mit.edu>
-References: <20120817131558.GA11439@thunk.org>
+Subject: Re: Far too long mount time
+Date: Fri, 17 Aug 2012 09:55:06 -0400
+Message-ID: <20120817135506.GC11439@thunk.org>
+References: <CAAnFQG_O051svcCZftDefebVEds+P1zAceteh=B18HOqmoqitg@mail.gmail.com>
+ <CAAnFQG9esXovsAYkCS5Lw5JGpc5dW2PLccvYjN7NvaHLQDqGmA@mail.gmail.com>
+ <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca>
+ <1345126608.22142.59.camel@cwalton-XPS-8300>
+ <20120816144219.GB29410@thunk.org>
+ <20120816185337.GB31346@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Javier Marcet <jmarcet@gmail.com>,
+	Linux Ext4 Mailing List <linux-ext4@vger.kernel.org>,
+	jpiszcz@lucidpixels.com
+To: Calvin Walton <calvin.walton@kepstin.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45243 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45252 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751417Ab2HQNuY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Aug 2012 09:50:24 -0400
-In-Reply-To: <20120817131558.GA11439@thunk.org>
+	id S1752240Ab2HQNzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Aug 2012 09:55:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20120816185337.GB31346@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 968dee7722: "ext4: fix hole punch failure when depth is greater
-than 0" introduced a regression in v3.5.1/v3.6-rc1 which caused kernel
-crashes when users ran run "rm -rf" on large directory hierarchy on
-ext4 filesystems on RAID devices:
+On Thu, Aug 16, 2012 at 02:53:37PM -0400, Theodore Ts'o wrote:
+> This patch should solve the problem (as an alternative to reverting
+> 8aeb00ff85a).
+> 
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 603023b..055c65b 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3129,6 +3129,10 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
+>  	ext4_group_t		i, ngroups = ext4_get_groups_count(sb);
+>  	int			s, j, count = 0;
+>  
+> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_BIGALLOC))
+> +		return (ext4_bg_has_super(sb, grp) + ext4_bg_num_gdb(sb, i) +
+                                                                        ^^^
 
-    BUG: unable to handle kernel NULL pointer dereference at 0000000000=
-000028
+This should be "grp"; stupid typo on my part.
 
-    Process rm (pid: 18229, threadinfo ffff8801276bc000, task ffff88012=
-3631710)
-    Call Trace:
-     [<ffffffff81236483>] ? __ext4_handle_dirty_metadata+0x83/0x110
-     [<ffffffff812353d3>] ext4_ext_truncate+0x193/0x1d0
-     [<ffffffff8120a8cf>] ? ext4_mark_inode_dirty+0x7f/0x1f0
-     [<ffffffff81207e05>] ext4_truncate+0xf5/0x100
-     [<ffffffff8120cd51>] ext4_evict_inode+0x461/0x490
-     [<ffffffff811a1312>] evict+0xa2/0x1a0
-     [<ffffffff811a1513>] iput+0x103/0x1f0
-     [<ffffffff81196d84>] do_unlinkat+0x154/0x1c0
-     [<ffffffff8118cc3a>] ? sys_newfstatat+0x2a/0x40
-     [<ffffffff81197b0b>] sys_unlinkat+0x1b/0x50
-     [<ffffffff816135e9>] system_call_fastpath+0x16/0x1b
-    Code: 8b 4d 20 0f b7 41 02 48 8d 04 40 48 8d 04 81 49 89 45 18 0f b=
-7 49 02 48 83 c1 01 49 89 4d 00 e9 ae f8 ff ff 0f 1f 00 49 8b 45 28 <48=
-> 8b 40 28 49 89 45 20 e9 85 f8 ff ff 0f 1f 80 00 00 00
+This patch with the fix-up will be pushed to Linus shortly and tagged
+for the stable tree.
 
-    RIP  [<ffffffff81233164>] ext4_ext_remove_space+0xa34/0xdf0
-
-This could be reproduced as follows:
-
-The problem in commit 968dee7722 was that caused the variable 'i' to
-be left uninitialized if the truncate required more space than was
-available in the journal.  This resulted in the function
-ext4_ext_truncate_extend_restart() returning -EAGAIN, which caused
-ext4_ext_remove_space() to restart the truncate operation after
-starting a new jbd2 handle.
-
-Reported-by: Maciej =C5=BBenczykowski <maze@google.com>
-Reported-by: Marti Raudsepp <marti@juffo.org>
-Tested-by: Fengguang Wu <fengguang.wu@intel.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/extents.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index cd0c7ed..aabbb3f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2662,6 +2662,7 @@ cont:
- 		}
- 		path[0].p_depth =3D depth;
- 		path[0].p_hdr =3D ext_inode_hdr(inode);
-+		i =3D 0;
-=20
- 		if (ext4_ext_check(inode, path[0].p_hdr, depth)) {
- 			err =3D -EIO;
---=20
-1.7.12.rc0.22.gcdd159b
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     	       	      	     	     	- Ted
