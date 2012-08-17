@@ -1,53 +1,46 @@
-From: TAZZ BOURNE <tazz.bourne@gmail.com>
-Subject: I NEVER KNEW THAT THERE ARE STILL REAL LOAN FIRM ONLINE
-Date: Fri, 17 Aug 2012 21:16:58 +0100
-Message-ID: <CAFZ6xiqT6Upzyho1A3HkCnH5Oksh=LCUcvYrR-A4RuDS-d07qQ@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
+Date: Fri, 17 Aug 2012 16:34:38 -0400
+Message-ID: <20120817203438.GA573@thunk.org>
+References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+ <20120816024654.GB3781@thunk.org>
+ <20120816111051.GA16036@localhost>
+ <20120816152513.GA31346@thunk.org>
+ <20120817060110.GA28786@localhost>
+ <20120817131558.GA11439@thunk.org>
+ <20120817174841.GA4519@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs@oss.sgi.com, ext4 hackers <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:62078 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758838Ab2HQURB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Aug 2012 16:17:01 -0400
-Received: by yhmm54 with SMTP id m54so4343113yhm.19
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Aug 2012 13:17:00 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:45340 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756436Ab2HQUex (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Aug 2012 16:34:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20120817174841.GA4519@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello friend i want to inform you that there is still genuine lenders
-on the internet, though it is not that easy, am Tazz Bourne i am an
-Australian, i don=92t know if you have been using ANSWERS.YAHOO.COM if
-you are, do you took notice of a post some times ago by one Mr.
-Andrian Ramirez from Spain who is talking of how to find a legitimate
-lender? and even make mention of one oceanic wave lenders limited who
-he said help him and his company out when they where in financial
-crises on how they can meet up with the stock market and then i was
-searching for a legitimate lender here in Australia who can lend me
-loan to buy a house but all i they keep saying was that i have to give
-them some document of all my properties as a collateral and i don=92t
-have any thing to give them as collateral, it was then i decided to
-ask where i could get a loan online when Mr Adrian Ramirez answers my
-questions and i wrote oceanic wave lenders limited through their email
-addresses and they ask me to contact an insurance company but before
-then they already told me that i am going to pay for the insurance
-charges, why all other fees will be paid by them it was then i first
-get discourage and i contacted Mr Andrian Ramirez and ask him if this
-is real and he should guarantee me that i won=92t be scammed and he
-guaranteed me so i went on with the insurance company and paid all
- the fees they ask me to pay and my loan was insured, after then my loa=
-n
-was approved by the loan firm and was transfer swiftly to my bank
-account in Australia, one good thing about them is that they give
-yearly benefit to all their customer=92s that has contributed to their
-success, if you need a loan, i advise you write them through this
-Email address:oceanic_lenders@w.cn big thanks to Mr. Andrian
-Ramirez and oceanic wave lenders limited for given me the opportunity
-of having my own House here in Australia if any one want to write me
-this is my email address:tazz.bourne@gmail.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Fri, Aug 17, 2012 at 01:48:41PM -0400, Christoph Hellwig wrote:
+> 
+> Can you submit this for xfstests?
+> 
+
+This is actually something I wanted to ask you guys about.  There are
+a series of ext4-specific tests that I could potentially add, but I
+wasn't sure how welcome they would be in xfstests.  Assuming that
+ext4-specific tests would be welcome, is there a number range for
+these ext4-specific tests that I should use?
+
+BTW, we have an extension to xfstests that we've been using inside
+Google where Google-internal tests have a "g" prefix (i.e., g001,
+g002, etc.).  That way we didn't need to worry about conflicts between
+newly added upstream xfstests, and ones which were added internally.
+Would it make sense to start using some kind of prefix such as "e001"
+for ext2/3/4 specific tests?
+
+Regards,
+
+						- Ted
