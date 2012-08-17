@@ -1,94 +1,70 @@
-From: Fengguang Wu <fengguang.wu@intel.com>
-Subject: Re: ext4 write performance regression in 3.6-rc1 on RAID0/5
-Date: Fri, 17 Aug 2012 22:25:26 +0800
-Message-ID: <20120817142526.GA1059@localhost>
-References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
- <20120816024654.GB3781@thunk.org>
- <20120816111051.GA16036@localhost>
- <20120816152513.GA31346@thunk.org>
- <20120817060915.GB28786@localhost>
- <20120817134039.GB11439@thunk.org>
+From: "Justin Piszcz" <jpiszcz@lucidpixels.com>
+Subject: RE: Far too long mount time
+Date: Fri, 17 Aug 2012 10:48:07 -0400
+Message-ID: <018901cd7c87$515904b0$f40b0e10$@lucidpixels.com>
+References: <CAAnFQG_O051svcCZftDefebVEds+P1zAceteh=B18HOqmoqitg@mail.gmail.com> <CAAnFQG9esXovsAYkCS5Lw5JGpc5dW2PLccvYjN7NvaHLQDqGmA@mail.gmail.com> <0F24AF1B-39C9-4300-862B-B9E84A21E34C@dilger.ca> <1345126608.22142.59.camel@cwalton-XPS-8300> <20120816144219.GB29410@thunk.org> <20120816185337.GB31346@thunk.org> <20120817135506.GC11439@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux RAID <linux-raid@vger.kernel.org>, NeilBrown <neilb@suse.de>,
-	Li Shaohua <shli@fusionio.com>
-To: Theodore Ts'o <tytso@mit.edu>, Marti Raudsepp <marti@juffo.org>,
-	Kernel hackers <linux-kernel@vger.kernel.org>,
-	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com,
-	"Shi, Alex" <alex.shi@intel.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-raid-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120817134039.GB11439@thunk.org>
-Sender: linux-raid-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "'Andreas Dilger'" <adilger@dilger.ca>,
+	"'Javier Marcet'" <jmarcet@gmail.com>,
+	"'Linux Ext4 Mailing List'" <linux-ext4@vger.kernel.org>
+To: "'Theodore Ts'o'" <tytso@mit.edu>,
+	"'Calvin Walton'" <calvin.walton@kepstin.ca>, <ap@solarrain.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:49620 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758060Ab2HQOsK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Aug 2012 10:48:10 -0400
+Received: by yenl14 with SMTP id l14so4040404yen.19
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Aug 2012 07:48:09 -0700 (PDT)
+In-Reply-To: <20120817135506.GC11439@thunk.org>
+Content-Language: en-us
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-[CC md list]
 
-On Fri, Aug 17, 2012 at 09:40:39AM -0400, Theodore Ts'o wrote:
-> On Fri, Aug 17, 2012 at 02:09:15PM +0800, Fengguang Wu wrote:
-> > Ted,
-> > 
-> > I find ext4 write performance dropped by 3.3% on average in the
-> > 3.6-rc1 merge window. xfs and btrfs are fine.
-> > 
-> > Two machines are tested. The performance regression happens in the
-> > lkp-nex04 machine, which is equipped with 12 SSD drives. lkp-st02 does
-> > not see regression, which is equipped with HDD drives. I'll continue
-> > to repeat the tests and report variations.
-> 
-> Hmm... I've checked out the commits in "git log v3.5..v3.6-rc1 --
-> fs/ext4 fs/jbd2" and I don't see anything that I would expect would
-> cause that.  The are the lock elimination changes for Direct I/O
-> overwrites, but that shouldn't matter for your tests which are
-> measuring buffered writes, correct?
-> 
-> Is there any chance you could do me a favor and do a git bisect
-> restricted to commits involving fs/ext4 and fs/jbd2?
 
-I noticed that the regressions all happen in the RAID0/RAID5 cases.
-So it may be some interactions between the RAID/ext4 code?
+-----Original Message-----
+From: Theodore Ts'o [mailto:tytso@mit.edu] 
+Sent: Friday, August 17, 2012 9:55 AM
+To: Calvin Walton
+Cc: Andreas Dilger; Javier Marcet; Linux Ext4 Mailing List;
+jpiszcz@lucidpixels.com
+Subject: Re: Far too long mount time
 
-I'll try to get some ext2/3 numbers, which should have less changes on the fs side.
+On Thu, Aug 16, 2012 at 02:53:37PM -0400, Theodore Ts'o wrote:
+> This patch should solve the problem (as an alternative to reverting
+> 8aeb00ff85a).
 
-wfg@bee /export/writeback% ./compare -g ext4 lkp-nex04/*/*-{3.5.0,3.6.0-rc1+}     
-                   3.5.0                3.6.0-rc1+
-------------------------  ------------------------
-                  720.62        -1.5%       710.16  lkp-nex04/JBOD-12HDD-thresh=1000M/ext4-100dd-1-3.5.0
-                  706.04        -0.0%       705.86  lkp-nex04/JBOD-12HDD-thresh=1000M/ext4-10dd-1-3.5.0
-                  702.86        -0.2%       701.74  lkp-nex04/JBOD-12HDD-thresh=1000M/ext4-1dd-1-3.5.0
-                  702.41        -0.0%       702.06  lkp-nex04/JBOD-12HDD-thresh=1000M/ext4-1dd-2-3.5.0
-                  779.52        +6.5%       830.11  lkp-nex04/JBOD-12HDD-thresh=100M/ext4-100dd-1-3.5.0
-                  646.70        +4.9%       678.59  lkp-nex04/JBOD-12HDD-thresh=100M/ext4-10dd-1-3.5.0
-                  704.49        +2.6%       723.00  lkp-nex04/JBOD-12HDD-thresh=100M/ext4-1dd-1-3.5.0
-                  704.21        +1.2%       712.47  lkp-nex04/JBOD-12HDD-thresh=100M/ext4-1dd-2-3.5.0
-                  705.26        -1.2%       696.61  lkp-nex04/JBOD-12HDD-thresh=8G/ext4-100dd-1-3.5.0
-                  703.37        +0.1%       703.76  lkp-nex04/JBOD-12HDD-thresh=8G/ext4-10dd-1-3.5.0
-                  701.66        -0.1%       700.83  lkp-nex04/JBOD-12HDD-thresh=8G/ext4-1dd-1-3.5.0
-                  701.17        +0.0%       701.36  lkp-nex04/JBOD-12HDD-thresh=8G/ext4-1dd-2-3.5.0
-                  675.08       -10.5%       604.29  lkp-nex04/RAID0-12HDD-thresh=1000M/ext4-100dd-1-3.5.0
-                  676.52        -2.7%       658.38  lkp-nex04/RAID0-12HDD-thresh=1000M/ext4-10dd-1-3.5.0
-                  512.70        +4.0%       533.22  lkp-nex04/RAID0-12HDD-thresh=1000M/ext4-1dd-1-3.5.0
-                  524.61        -0.3%       522.90  lkp-nex04/RAID0-12HDD-thresh=1000M/ext4-1dd-2-3.5.0
-                  709.76       -15.7%       598.44  lkp-nex04/RAID0-12HDD-thresh=100M/ext4-100dd-1-3.5.0
-                  681.39        -2.1%       667.25  lkp-nex04/RAID0-12HDD-thresh=100M/ext4-10dd-1-3.5.0
-                  524.16        +0.8%       528.25  lkp-nex04/RAID0-12HDD-thresh=100M/ext4-1dd-2-3.5.0
-                  699.77       -19.2%       565.54  lkp-nex04/RAID0-12HDD-thresh=8G/ext4-100dd-1-3.5.0
-                  675.79        -1.9%       663.17  lkp-nex04/RAID0-12HDD-thresh=8G/ext4-10dd-1-3.5.0
-                  484.84        -7.4%       448.83  lkp-nex04/RAID0-12HDD-thresh=8G/ext4-1dd-1-3.5.0
-                  470.40        -3.2%       455.31  lkp-nex04/RAID0-12HDD-thresh=8G/ext4-1dd-2-3.5.0
-                  167.97       -38.7%       103.03  lkp-nex04/RAID5-12HDD-thresh=1000M/ext4-100dd-1-3.5.0
-                  243.67        -9.1%       221.41  lkp-nex04/RAID5-12HDD-thresh=1000M/ext4-10dd-1-3.5.0
-                  248.98       +12.2%       279.33  lkp-nex04/RAID5-12HDD-thresh=1000M/ext4-1dd-1-3.5.0
-                  208.45       +14.1%       237.86  lkp-nex04/RAID5-12HDD-thresh=1000M/ext4-1dd-2-3.5.0
-                   71.18       -34.2%        46.82  lkp-nex04/RAID5-12HDD-thresh=100M/ext4-100dd-1-3.5.0
-                  145.84        -7.3%       135.25  lkp-nex04/RAID5-12HDD-thresh=100M/ext4-10dd-1-3.5.0
-                  255.22        +6.7%       272.35  lkp-nex04/RAID5-12HDD-thresh=100M/ext4-1dd-1-3.5.0
-                  243.09       +20.7%       293.30  lkp-nex04/RAID5-12HDD-thresh=100M/ext4-1dd-2-3.5.0
-                  209.24       -23.6%       159.96  lkp-nex04/RAID5-12HDD-thresh=8G/ext4-100dd-1-3.5.0
-                  243.73       -10.9%       217.28  lkp-nex04/RAID5-12HDD-thresh=8G/ext4-10dd-1-3.5.0
-                  214.25        +5.6%       226.32  lkp-nex04/RAID5-12HDD-thresh=8G/ext4-1dd-1-3.5.0
-                  207.16       +13.4%       234.98  lkp-nex04/RAID5-12HDD-thresh=8G/ext4-1dd-2-3.5.0
-                17572.12        -1.9%     17240.05  TOTAL write_bw
+This should be "grp"; stupid typo on my part.
 
-Thanks,
-Fengguang
+This patch with the fix-up will be pushed to Linus shortly and tagged
+for the stable tree.
+
+--
+
+Hi Theo,
+
+Found the patch here:
+http://www.spinics.net/lists/linux-ext4/msg33498.html
+
+Patched against the fresh+stable 3.5.1 tree:
+
+p34:/usr/src/linux-3.5.1# patch -p1 < ../tso.patch
+patching file fs/ext4/super.c
+Hunk #1 succeeded at 3109 (offset -20 lines).
+p34:/usr/src/linux-3.5.1#
+
+Rebooted, but we have a problem, my 60TB RAID-6 is now a 46TB RAID-6?
+I am rebooting back into the 3.5.1+earlier reverted patch.
+
+p34:~# uptime; uname -a ; df -h | grep /r1
+ 10:46:51 up 0 min,  1 user,  load average: 1.04, 0.27, 0.09
+Linux p34 3.5.1 #5 SMP Fri Aug 17 10:24:22 EDT 2012 x86_64 GNU/Linux
+/dev/sda1        46T  1.5T   45T   4% /r1
+p34:~#
+
+Justin.
+
