@@ -1,54 +1,60 @@
-From: Josef Bacik <jbacik@fusionio.com>
-Subject: Re: [PATCH] jbd: Fix assertion failure in commit code due to lacking
- transaction credits
-Date: Fri, 17 Aug 2012 08:48:14 -0400
-Message-ID: <20120817124814.GC2133@localhost.localdomain>
-References: <1345154672-22795-1-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
+Date: Fri, 17 Aug 2012 09:15:58 -0400
+Message-ID: <20120817131558.GA11439@thunk.org>
+References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+ <20120816024654.GB3781@thunk.org>
+ <20120816111051.GA16036@localhost>
+ <20120816152513.GA31346@thunk.org>
+ <20120817060110.GA28786@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Josef Bacik <JBacik@fusionio.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Marti Raudsepp <marti@juffo.org>,
+	Kernel hackers <linux-kernel@vger.kernel.org>,
+	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com
+To: Fengguang Wu <fengguang.wu@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.fusionio.com ([66.114.96.31]:57781 "EHLO mx2.fusionio.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750854Ab2HQMsR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Aug 2012 08:48:17 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:45231 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751829Ab2HQNQE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Aug 2012 09:16:04 -0400
 Content-Disposition: inline
-In-Reply-To: <1345154672-22795-1-git-send-email-jack@suse.cz>
+In-Reply-To: <20120817060110.GA28786@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 16, 2012 at 04:04:32PM -0600, Jan Kara wrote:
-> ext3 users of data=journal mode with blocksize < pagesize were occasionally
-> hitting assertion failure in journal_commit_transaction() checking whether the
-> transaction has at least as many credits reserved as buffers attached.  The
-> core of the problem is that when a file gets truncated, buffers that still need
-> checkpointing or that are attached to the committing transaction are left with
-> buffer_mapped set. When this happens to buffers beyond i_size attached to a
-> page stradding i_size, subsequent write extending the file will see these
-> buffers and as they are mapped (but underlying blocks were freed) things go
-> awry from here.
-> 
-> The assertion failure just coincidentally (and in this case luckily as we would
-> start corrupting filesystem) triggers due to journal_head not being properly
-> cleaned up as well.
-> 
-> Under some rare circumstances this bug could even hit data=ordered mode users.
-> There the assertion won't trigger and we would end up corrupting the
-> filesystem.
-> 
-> We fix the problem by unmapping buffers if possible (in lots of cases we just
-> need a buffer attached to a transaction as a place holder but it must not be
-> written out anyway). And in one case, we just have to bite the bullet and wait
-> for transaction commit to finish.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Thanks Fengguang:
 
-You are my hero Jan
+For the record, I was able to find my own easy repro, last night using
+only a 220 meg partition:
 
-Reviewed-by: Josef Bacik <jbacik@fusionio.com>
+# mke2fs -t ext4 -b 1024 -J size=1 /dev/vdc
+# mount -t ext2 /dev/vdc /vdc
+# mkdir /vdc/a
+# cd /vdc/a
+# seq 1 210000  | xargs -n 1 fallocate -l 1m
+# seq 1 2 210000  | xargs /bin/rm
+# mkdir /vdc/b
+# cd /vdc/b
+# seq 1 103 | xargs -n 1 fallocate -l 1g
+# cd /
+# umount /vdc
+# mount -t ext4 -o commit=10000 /dev/vdc /vdc
+# rm -rf /vdc/b
 
-Thanks,
+For future reference, there are a couple of things that are of
+interest to ext4 developers when trying to create repro's:
 
-Josef
+1)  The use of mounting with ext2 to speed up the setup.
+
+2)  The first two "seq ... | xargs ..." commands to create a very
+fragmented file system.
+
+3) Using a 1k block size file system to stress the extent tree code
+and htree directory (since its easier to make larger tree structure).
+
+4)  The use of the mount option commit=10000 to test what happens when
+the journal is full (without using a nice, fast device such as RAID array
+or without burning write cycles on an expensive flash device.)
+
+						- Ted
