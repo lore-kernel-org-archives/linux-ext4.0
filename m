@@ -1,77 +1,60 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Test 272 fails for ext3
-Date: Fri, 17 Aug 2012 08:48:58 +1000
-Message-ID: <20120816224858.GY2877@dastard>
-References: <20120816092808.GA9057@quack.suse.cz>
-	<20120816093757.GA11519@quack.suse.cz>
+From: Fengguang Wu <fengguang.wu@intel.com>
+Subject: Re: NULL pointer dereference in ext4_ext_remove_space on 3.5.1
+Date: Fri, 17 Aug 2012 14:01:10 +0800
+Message-ID: <20120817060110.GA28786@localhost>
+References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+ <20120816024654.GB3781@thunk.org>
+ <20120816111051.GA16036@localhost>
+ <20120816152513.GA31346@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, dmonakhov@openvz.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>, Marti Raudsepp <marti@juffo.org>,
+	Kernel hackers <linux-kernel@vger.kernel.org>,
+	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:62264 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754386Ab2HQGBO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Aug 2012 02:01:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20120816093757.GA11519@quack.suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120816152513.GA31346@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 16, 2012 at 11:37:57AM +0200, Jan Kara wrote:
->   Hello,
+On Thu, Aug 16, 2012 at 11:25:13AM -0400, Theodore Ts'o wrote:
+> On Thu, Aug 16, 2012 at 07:10:51PM +0800, Fengguang Wu wrote:
+> > 
+> > Here is the dmesg. BTW, it seems 3.5.0 don't have this issue.
 > 
->   I was looking into why test 272 from xfstests fails for ext3 and the
-> reason is that ext3 does not support direct IO to file with enabled data
-> journalling (open returns EINVAL because ->direct_IO callback is not
-> specified). So I was thinking how to accomodate this fact in the test -
-> the best I found was to just check using xfs_io whether O_DIRECT open
-> succeeds and perform the test only in that case. Attached patch does this
-> or do people have other ideas?
+> Fengguang,
+> 
+> It sounds like you have a (at least fairly) reliable reproduction for
+> this problem?  Is it something you can share?  It would be good to get
 
+Right, it can be easily reproduced here. I'm running these writeback
+performance tests:
 
-# ext3 doesn't support direct IO in journalling mode
-ext3_write_opt_list="iflag=noatime conv=notrunc conv=fsync"
-ext4_write_opt_list="iflag=noatime conv=notrunc conv=fsync oflag=direct"
+        https://github.com/fengguang/writeback-tests
 
-if [ $FSTYP = "ext3" ]; then
-	write_opt_list="$ext3_write_opt_list"
-else
-	write_opt_list="$ext4_write_opt_list"
-fi
+Which is basically doing N parallel dd writes to JBOD/RAID arrays on
+various filesystems. It seems that the RAID test can reliably trigger
+the problem.
 
-.....
-> diff --git a/272 b/272
-> index 26dfa3b..e39c52b 100755
-> --- a/272
-> +++ b/272
-> @@ -52,6 +52,12 @@ _workout()
->  		    
->  			echo "OP write_opt: $write_opt 4M, \
->  chattr_opt: $chattr_opt"
-> +			if [ "$write_opt" = "oflag=direct" ]; then
-> +				# Some filesystems don't support direct IO
-> +				# in some cases, check for that
-> +				xfs_io -F -d -f -c "" $SCRATCH_MNT/file.$idx \
-> +					>> $seq.full 2>&1 || continue
-> +			fi
+> this into our test suites, since it was _not_ something that was
+> caught by xfstests, apparently.
+> 
+> Can you see if this patch addresses it?  (The first two patch hunks
+> are the same debugging additions I had posted before.)
+> 
+> It looks like the responsible commit is 968dee7722: "ext4: fix hole
+> punch failure when depth is greater than 0".  I had thought this patch
+> was low risk if you weren't using the new punch ioctl, but it turns
+> out it did make a critical change in the non-punch (i.e., truncate)
+> code path, which is what the addition of "i = 0;" in the patch below
+> addresses.
 
-That only fixes one of the two places that does direct IO on a
-jounralled file. The above will fix both...
+Yes, I'm sure the patch fixed the bug. With the fix, the writeback
+tests have run flawlessly for a dozen hours without any problem.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Thanks,
+Fengguang
