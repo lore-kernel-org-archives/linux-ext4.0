@@ -1,26 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: don't write superblock when unmounting an ro
- filesystem
-Date: Sat, 18 Aug 2012 14:45:04 -0400
-Message-ID: <20120818184504.GA5382@thunk.org>
-References: <500F1C28.8010800@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: [PATCH] respect HAVE_MALLOC_H
+Date: Sat, 18 Aug 2012 18:17:41 -0400
+Message-ID: <1345328261-3004-1-git-send-email-vapier@gentoo.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45502 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750895Ab2HRSpT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Aug 2012 14:45:19 -0400
-Content-Disposition: inline
-In-Reply-To: <500F1C28.8010800@redhat.com>
+Received: from smtp.gentoo.org ([140.211.166.183]:60287 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753490Ab2HRWRk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Aug 2012 18:17:40 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id C3CD11B4004
+	for <linux-ext4@vger.kernel.org>; Sat, 18 Aug 2012 22:17:39 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Applied, thanks.  I updated the reproduction instructions so that they
-wored correctly.  (i.e., by removing the offset, and changing the size
-to 1g).
+Most places respect this define, but this one doesn't.
 
-					- Ted
+Reported-by: Dmitri Bogomolov <4glitch@gmail.com>
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ util/symlinks.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/util/symlinks.c b/util/symlinks.c
+index f3a632a..abb33f8 100644
+--- a/util/symlinks.c
++++ b/util/symlinks.c
+@@ -8,7 +8,9 @@
+ #endif
+ #include <stdio.h>
+ #include <stdlib.h>
++#ifdef HAVE_MALLOC_H
+ #include <malloc.h>
++#endif
+ #include <string.h>
+ #include <fcntl.h>
+ #include <sys/param.h>
+-- 
+1.7.9.7
+
