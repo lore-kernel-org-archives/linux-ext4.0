@@ -1,29 +1,37 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix trivial typo in the comment for
- extents.c/ext4_split_unwritten_extents
-Date: Sat, 18 Aug 2012 22:39:27 -0400
-Message-ID: <20120819023927.GC15763@thunk.org>
-References: <50023BD4.2050809@gmail.com>
+From: Eric Sandeen <esandeen@redhat.com>
+Subject: Re: [PATCH] jbd2: don't write superblock when unmounting an ro filesystem
+Date: Sun, 19 Aug 2012 14:54:07 -0400 (EDT)
+Message-ID: <F02DAB7A-6BE5-4C74-9D69-3615CC3ADC63@redhat.com>
+References: <500F1C28.8010800@redhat.com> <20120818184504.GA5382@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Wang Sheng-Hui <shhuiw@gmail.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45556 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752952Ab2HSCjc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Aug 2012 22:39:32 -0400
-Content-Disposition: inline
-In-Reply-To: <50023BD4.2050809@gmail.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:44970 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752224Ab2HSSyN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Aug 2012 14:54:13 -0400
+In-Reply-To: <20120818184504.GA5382@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 15, 2012 at 11:41:08AM +0800, Wang Sheng-Hui wrote:
-> Put the sign '/' to the right position.
+On Aug 18, 2012, at 11:45 AM, "Theodore Ts'o" <tytso@mit.edu> wrote:
+
+> Applied, thanks.  I updated the reproduction instructions so that they
+> wored correctly.  (i.e., by removing the offset, and changing the size
+> to 1g).
 > 
-> Signed-off-by: Wang Sheng-Hui <shhuiw@gmail.com>
+Thanks, sorry about that really messed up commit message.  :(
 
-Applied, thanks.
+-Eric
 
-					- Ted
+>                    - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
