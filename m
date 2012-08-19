@@ -1,41 +1,55 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: [PATCH] respect HAVE_MALLOC_H
-Date: Sat, 18 Aug 2012 18:17:41 -0400
-Message-ID: <1345328261-3004-1-git-send-email-vapier@gentoo.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:60287 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753490Ab2HRWRk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Aug 2012 18:17:40 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id C3CD11B4004
-	for <linux-ext4@vger.kernel.org>; Sat, 18 Aug 2012 22:17:39 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Add invalidatepage_range address space operation
+Date: Sat, 18 Aug 2012 20:57:27 -0400
+Message-ID: <20120819005727.GA15763@thunk.org>
+References: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	hughd@google.com, linux-mmc@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1343376074-28034-1-git-send-email-lczerner@redhat.com>
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Most places respect this define, but this one doesn't.
+On Fri, Jul 27, 2012 at 10:00:59AM +0200, Lukas Czerner wrote:
+> This set of patches are aimed to allow truncate_inode_pages_range() handle
+> ranges which are not aligned at the end of the page. Currently it will
+> hit BUG_ON() when the end of the range is not aligned. Punch hole feature
+> however can benefit from this ability saving file systems some work not
+> forcing them to implement their own invalidate code to handle unaligned
+> ranges.
+> 
+> In order for this to work we need however new address space operation
+> invalidatepage_range which should be able to handle page invalidation with
+> offset and length specified.
+> 
+> patch 01:	Implements the new invalidatepage_range address space
+> 		operation in the mm layer
+> patch 02 - 05:	Wire the new invalidatepage_range aop to the ext4, xfs and
+> 		ocfs2 file system (which are currently the only file
+> 		systems supporting punch hole) and implement this
+> 		functionality for jbd2 as well.
+> patch 06:	Change truncate_inode_pages_range() to handle unaligned
+> 		ranges.
+> patch 07 - 15:	Ext4 specific changes which take benefit from the
+> 		previous truncate_inode_pages_range() change. Not all
+> 		are realated specifically to this change, but all are
+> 		related to the punch hole feature.
 
-Reported-by: Dmitri Bogomolov <4glitch@gmail.com>
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
----
- util/symlinks.c |    2 ++
- 1 file changed, 2 insertions(+)
+What's the current status of this patch series?
 
-diff --git a/util/symlinks.c b/util/symlinks.c
-index f3a632a..abb33f8 100644
---- a/util/symlinks.c
-+++ b/util/symlinks.c
-@@ -8,7 +8,9 @@
- #endif
- #include <stdio.h>
- #include <stdlib.h>
-+#ifdef HAVE_MALLOC_H
- #include <malloc.h>
-+#endif
- #include <string.h>
- #include <fcntl.h>
- #include <sys/param.h>
--- 
-1.7.9.7
+I haven't seen much if any comment from the mm folks and the xfs/ocfs2
+folks.  I've incorporated the patches into the unstable portion of the
+ext4 tree so I can do some testing (some minor changes to the ext4
+patches were needed to rebase the patch series to the 3.6-rc1-based
+ext4 dev tree, but nothing major).  However, I don't want to include
+this into the ext4 tree for merging into linux-next unless we get
+general agreement from the maintainers of the other trees that are
+affected by this patch series.
 
+Thansk,
+
+						- Ted
