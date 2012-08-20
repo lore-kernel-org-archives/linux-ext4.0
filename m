@@ -1,230 +1,259 @@
 From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH 06/15] mm: teach truncate_inode_pages_range() to handle
- non page aligned ranges
-Date: Sun, 19 Aug 2012 21:52:48 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1208192144260.2390@eggly.anvils>
-References: <1343376074-28034-1-git-send-email-lczerner@redhat.com> <1343376074-28034-7-git-send-email-lczerner@redhat.com>
+Subject: Re: [PATCH 01/15] mm: add invalidatepage_range address space
+ operation
+Date: Sun, 19 Aug 2012 22:24:24 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1208192153020.2390@eggly.anvils>
+References: <1343376074-28034-1-git-send-email-lczerner@redhat.com> <1343376074-28034-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	tytso@mit.edu, linux-mmc@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>
 To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:63794 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752147Ab2HTEx0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Aug 2012 00:53:26 -0400
-Received: by pbbrr13 with SMTP id rr13so6403461pbb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Aug 2012 21:53:26 -0700 (PDT)
-In-Reply-To: <1343376074-28034-7-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+In-Reply-To: <1343376074-28034-2-git-send-email-lczerner@redhat.com>
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Fri, 27 Jul 2012, Lukas Czerner wrote:
 
-> This commit changes truncate_inode_pages_range() so it can handle non
-> page aligned regions of the truncate. Currently we can hit BUG_ON when
-> the end of the range is not page aligned, but we can handle unaligned
-> start of the range.
+> Currently there is no way to truncate partial page where the end
+> truncate point is not at the end of the page. This is because it was not
+> needed and the functionality was enough for file system truncate
+> operation to work properly. However more file systems now support punch
+> hole feature and it can benefit from mm supporting truncating page just
+> up to the certain point.
 > 
-> Being able to handle non page aligned regions of the page can help file
-> system punch_hole implementations and save some work, because once we're
-> holding the page we might as well deal with it right away.
+> Specifically, with this functionality truncate_inode_pages_range() can
+> be changed so it supports truncating partial page at the end of the
+> range (currently it will BUG_ON() if 'end' is not at the end of the
+> page).
 > 
-> In order for this to work correctly, called must register
-> invalidatepage_range address space operation, or rely solely on the
-> block_invalidatepage_range. That said it will BUG_ON() if caller
-> implements invalidatepage(), does not implement invalidatepage_range()
-> and use truncate_inode_pages_range() with unaligned end of the range.
+> This commit add new address space operation invalidatepage_range which
+> allows specifying length of bytes to invalidate, rather than assuming
+> truncate to the end of the page. It also introduce
+> block_invalidatepage_range() and do_invalidatepage)range() functions for
+> exactly the same reason.
 > 
-> This was based on the code provided by Hugh Dickins with some small
-> changes to make use of do_invalidatepage_range().
+> The caller does not have to implement both aops (invalidatepage and
+> invalidatepage_range) and the latter is preferred. The old method will be
+> used only if invalidatepage_range is not implemented by the caller.
 > 
 > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > Cc: Andrew Morton <akpm@linux-foundation.org>
 > Cc: Hugh Dickins <hughd@google.com>
 
-Acked-by: Hugh Dickins <hughd@google.com>
-
-This looks good to me.  I like the way you provide the same args
-to do_invalidatepage_range() as to zero_user_segment():
-
-		zero_user_segment(page, partial_start, top);
-		if (page_has_private(page))
-			do_invalidatepage_range(page, partial_start, top);
-
-Unfortunately, that is not what patches 01-05 are expecting...
-
-Hugh
+Needs some rework.
 
 > ---
->  mm/truncate.c |   77 +++++++++++++++++++++++++++++++++++++--------------------
->  1 files changed, 50 insertions(+), 27 deletions(-)
+
+Documentation/filesystems/Locking
+Documentation/filesystems/netfs-api.txt
+Documentation/filesystems/vfs.txt
+   all have something to say about invalidatepage().  I should think
+   you can leave the netfs-api.txt one alone, but the other two ought
+   now to comment on invalidatepage_range() too.  Can perfectly well be
+   left to a separate patch, following on a little later if you prefer.
+
+>  fs/buffer.c                 |   23 ++++++++++++++++++++++-
+>  include/linux/buffer_head.h |    2 ++
+>  include/linux/fs.h          |    2 ++
+>  include/linux/mm.h          |    2 ++
+>  mm/truncate.c               |   30 ++++++++++++++++++++++++++----
+>  5 files changed, 54 insertions(+), 5 deletions(-)
 > 
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index c7062c8..5937f30 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -1457,13 +1457,27 @@ static void discard_buffer(struct buffer_head * bh)
+>   */
+>  void block_invalidatepage(struct page *page, unsigned long offset)
+>  {
+> +	block_invalidatepage_range(page, offset, PAGE_CACHE_SIZE);
+
+Okay, fine, that fits with patch 06 where the third arg is endoffset.
+
+> +}
+> +EXPORT_SYMBOL(block_invalidatepage);
+> +
+> +void block_invalidatepage_range(struct page *page, unsigned long offset,
+> +				unsigned long length)
+
+Length?  No, patch 06 is passing endoffset.
+
+> +{
+>  	struct buffer_head *head, *bh, *next;
+>  	unsigned int curr_off = 0;
+> +	unsigned long stop = length + offset;
+
+So here you are adding together two offsets.
+
+>  
+>  	BUG_ON(!PageLocked(page));
+>  	if (!page_has_buffers(page))
+>  		goto out;
+>  
+> +	/*
+> +	 * Check for overflow
+> +	 */
+> +	if (stop < length)
+> +		stop = PAGE_CACHE_SIZE;
+
+And this is weird, even if length were a length: though such wraparound
+is conceivable, a far more likely overflow would be stop > PAGE_CACHE_SIZE.
+
+> +
+>  	head = page_buffers(page);
+>  	bh = head;
+>  	do {
+> @@ -1471,6 +1485,12 @@ void block_invalidatepage(struct page *page, unsigned long offset)
+>  		next = bh->b_this_page;
+>  
+>  		/*
+> +		 * Are we still fully in range ?
+> +		 */
+> +		if (next_off > stop)
+> +			goto out;
+
+Disillusioned, I didn't stop to think about this one.
+
+> +
+> +		/*
+>  		 * is this block fully invalidated?
+>  		 */
+>  		if (offset <= curr_off)
+> @@ -1489,7 +1509,8 @@ void block_invalidatepage(struct page *page, unsigned long offset)
+>  out:
+>  	return;
+>  }
+> -EXPORT_SYMBOL(block_invalidatepage);
+> +EXPORT_SYMBOL(block_invalidatepage_range);
+> +
+>  
+>  /*
+>   * We attach and possibly dirty the buffers atomically wrt
+> diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+> index 458f497..9d55645 100644
+> --- a/include/linux/buffer_head.h
+> +++ b/include/linux/buffer_head.h
+> @@ -194,6 +194,8 @@ extern int buffer_heads_over_limit;
+>   * address_spaces.
+>   */
+>  void block_invalidatepage(struct page *page, unsigned long offset);
+> +void block_invalidatepage_range(struct page *page, unsigned long offset,
+> +				unsigned long length);
+
+See comments on fs.h.
+
+>  int block_write_full_page(struct page *page, get_block_t *get_block,
+>  				struct writeback_control *wbc);
+>  int block_write_full_page_endio(struct page *page, get_block_t *get_block,
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 8fabb03..b9eaf0c 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -620,6 +620,8 @@ struct address_space_operations {
+>  	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
+>  	sector_t (*bmap)(struct address_space *, sector_t);
+>  	void (*invalidatepage) (struct page *, unsigned long);
+> +	void (*invalidatepage_range) (struct page *, unsigned long,
+> +				      unsigned long);
+
+It may turn out to be bad advice, given how invalidatepage() already
+takes an unsigned long, but I'd be tempted to make both of these args
+unsigned int, since that helps to make it clearer that they're intended
+to be offsets within a page, in the range 0..PAGE_CACHE_SIZE.
+
+(partial_start, partial_end and top in truncate_inode_pages_range()
+are all unsigned int.)
+
+Andrew is very keen on naming arguments in prototypes,
+and I think there is an especially strong case for it here.
+
+>  	int (*releasepage) (struct page *, gfp_t);
+>  	void (*freepage)(struct page *);
+>  	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
+> diff --git a/include/linux/mm.h b/include/linux/mm.h
+> index f9f279c..2db6a29 100644
+> --- a/include/linux/mm.h
+> +++ b/include/linux/mm.h
+> @@ -998,6 +998,8 @@ struct page *get_dump_page(unsigned long addr);
+>  
+>  extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+>  extern void do_invalidatepage(struct page *page, unsigned long offset);
+> +extern void do_invalidatepage_range(struct page *page, unsigned long offset,
+> +				    unsigned long length);
+
+Likewise; ah, good, you named them... but then passed the wrong thing.
+
+>  
+>  int __set_page_dirty_nobuffers(struct page *page);
+>  int __set_page_dirty_no_writeback(struct page *page);
 > diff --git a/mm/truncate.c b/mm/truncate.c
-> index e29e5ea..1f6ea8b 100644
+> index 75801ac..e29e5ea 100644
 > --- a/mm/truncate.c
 > +++ b/mm/truncate.c
-> @@ -71,14 +71,6 @@ void do_invalidatepage_range(struct page *page, unsigned long offset,
+> @@ -39,14 +39,36 @@
+>   */
+>  void do_invalidatepage(struct page *page, unsigned long offset)
+>  {
+> +	do_invalidatepage_range(page, offset, PAGE_CACHE_SIZE);
+
+Good.
+
+> +}
+> +
+> +void do_invalidatepage_range(struct page *page, unsigned long offset,
+> +			     unsigned long length)
+
+Not so good.
+
+> +{
+> +	void (*invalidatepage_range)(struct page *, unsigned long,
+> +				     unsigned long);
+>  	void (*invalidatepage)(struct page *, unsigned long);
+> +
+> +	/*
+> +	 * Try invalidatepage_range first
+> +	 */
+> +	invalidatepage_range = page->mapping->a_ops->invalidatepage_range;
+> +	if (invalidatepage_range)
+> +		(*invalidatepage_range)(page, offset, length);
+> +
+> +	/*
+> +	 * When only invalidatepage is registered length must be
+> +	 * PAGE_CACHE_SIZE
+> +	 */
+>  	invalidatepage = page->mapping->a_ops->invalidatepage;
+> +	if (invalidatepage) {
+> +		BUG_ON(length != PAGE_CACHE_SIZE);
+> +		(*invalidatepage)(page, offset);
+
+So if a filesystem were to declare both invalidatepage_range() and
+invalidatepage(), it would call them both?  That seems odd, and differs
+from what you said in the commit message, though probably would not matter.
+
+> +	}
+>  #ifdef CONFIG_BLOCK
+> -	if (!invalidatepage)
+> -		invalidatepage = block_invalidatepage;
+> +	if (!invalidatepage_range && !invalidatepage)
+> +		block_invalidatepage_range(page, offset, length);
 >  #endif
+> -	if (invalidatepage)
+> -		(*invalidatepage)(page, offset);
 >  }
 >  
-> -static inline void truncate_partial_page(struct page *page, unsigned partial)
-> -{
-> -	zero_user_segment(page, partial, PAGE_CACHE_SIZE);
-> -	cleancache_invalidate_page(page->mapping, page);
-> -	if (page_has_private(page))
-> -		do_invalidatepage(page, partial);
-> -}
-> -
->  /*
->   * This cancels just the dirty bit on the kernel page itself, it
->   * does NOT actually remove dirty bits on any mmap's that may be
-> @@ -212,8 +204,8 @@ int invalidate_inode_page(struct page *page)
->   * @lend: offset to which to truncate
->   *
->   * Truncate the page cache, removing the pages that are between
-> - * specified offsets (and zeroing out partial page
-> - * (if lstart is not page aligned)).
-> + * specified offsets (and zeroing out partial pages
-> + * if lstart or lend + 1 is not page aligned).
->   *
->   * Truncate takes two passes - the first pass is nonblocking.  It will not
->   * block on page locks and it will not block on writeback.  The second pass
-> @@ -224,35 +216,44 @@ int invalidate_inode_page(struct page *page)
->   * We pass down the cache-hot hint to the page freeing code.  Even if the
->   * mapping is large, it is probably the case that the final pages are the most
->   * recently touched, and freeing happens in ascending file offset order.
-> + *
-> + * Note that it is able to handle cases where lend + 1 is not page aligned.
-> + * However in order for this to work caller have to register
-> + * invalidatepage_range address space operation or rely solely on
-> + * block_invalidatepage_range(). That said, do_invalidatepage_range() will
-> + * BUG_ON() if caller implements invalidatapage(), does not implement
-                                    invalidatepage()
-> + * invalidatepage_range() and uses truncate_inode_pages_range() with lend + 1
-> + * unaligned to the page cache size.
->   */
->  void truncate_inode_pages_range(struct address_space *mapping,
->  				loff_t lstart, loff_t lend)
->  {
-> -	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
-> -	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
-> +	pgoff_t start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-> +	pgoff_t end = (lend + 1) >> PAGE_CACHE_SHIFT;
-> +	unsigned int partial_start = lstart & (PAGE_CACHE_SIZE - 1);
-> +	unsigned int partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
->  	struct pagevec pvec;
->  	pgoff_t index;
-> -	pgoff_t end;
->  	int i;
->  
->  	cleancache_invalidate_inode(mapping);
->  	if (mapping->nrpages == 0)
->  		return;
->  
-> -	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
-> -	end = (lend >> PAGE_CACHE_SHIFT);
-> +	if (lend == -1)
-> +		end = -1;	/* unsigned, so actually very big */
->  
->  	pagevec_init(&pvec, 0);
->  	index = start;
-> -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
-> -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> +	while (index < end && pagevec_lookup(&pvec, mapping, index,
-> +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
->  		mem_cgroup_uncharge_start();
->  		for (i = 0; i < pagevec_count(&pvec); i++) {
->  			struct page *page = pvec.pages[i];
->  
->  			/* We rely upon deletion not changing page->index */
->  			index = page->index;
-> -			if (index > end)
-> +			if (index >= end)
->  				break;
->  
->  			if (!trylock_page(page))
-> @@ -271,27 +272,51 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  		index++;
->  	}
->  
-> -	if (partial) {
-> +	if (partial_start) {
->  		struct page *page = find_lock_page(mapping, start - 1);
->  		if (page) {
-> +			unsigned int top = PAGE_CACHE_SIZE;
-> +			if (start > end) {
-> +				top = partial_end;
-> +				partial_end = 0;
-> +			}
-> +			wait_on_page_writeback(page);
-> +			zero_user_segment(page, partial_start, top);
-> +			cleancache_invalidate_page(mapping, page);
-> +			if (page_has_private(page))
-> +				do_invalidatepage_range(page, partial_start,
-> +							top);
-> +			unlock_page(page);
-> +			page_cache_release(page);
-> +		}
-> +	}
-> +	if (partial_end) {
-> +		struct page *page = find_lock_page(mapping, end);
-> +		if (page) {
->  			wait_on_page_writeback(page);
-> -			truncate_partial_page(page, partial);
-> +			zero_user_segment(page, 0, partial_end);
-> +			cleancache_invalidate_page(mapping, page);
-> +			if (page_has_private(page))
-> +				do_invalidatepage_range(page, 0,
-> +							partial_end);
->  			unlock_page(page);
->  			page_cache_release(page);
->  		}
->  	}
-> +	if (start >= end)
-> +		return;
->  
->  	index = start;
->  	for ( ; ; ) {
->  		cond_resched();
->  		if (!pagevec_lookup(&pvec, mapping, index,
-> -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
->  			if (index == start)
->  				break;
->  			index = start;
->  			continue;
->  		}
-> -		if (index == start && pvec.pages[0]->index > end) {
-> +		if (index == start && pvec.pages[0]->index >= end) {
->  			pagevec_release(&pvec);
->  			break;
->  		}
-> @@ -301,7 +326,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  
->  			/* We rely upon deletion not changing page->index */
->  			index = page->index;
-> -			if (index > end)
-> +			if (index >= end)
->  				break;
->  
->  			lock_page(page);
-> @@ -646,10 +671,8 @@ void truncate_pagecache_range(struct inode *inode, loff_t lstart, loff_t lend)
->  	 * This rounding is currently just for example: unmap_mapping_range
->  	 * expands its hole outwards, whereas we want it to contract the hole
->  	 * inwards.  However, existing callers of truncate_pagecache_range are
-> -	 * doing their own page rounding first; and truncate_inode_pages_range
-> -	 * currently BUGs if lend is not pagealigned-1 (it handles partial
-> -	 * page at start of hole, but not partial page at end of hole).  Note
-> -	 * unmap_mapping_range allows holelen 0 for all, and we allow lend -1.
-> +	 * doing their own page rounding first.  Note that unmap_mapping_range
-> +	 * allows holelen 0 for all, and we allow lend -1 for end of file.
->  	 */
->  
->  	/*
+>  static inline void truncate_partial_page(struct page *page, unsigned partial)
 > -- 
 > 1.7.7.6
-> 
-> 
+
+Patches 02-05 look as if they suffer from the same defect;
+I didn't look at the later ones, they may well be unaffected.
+
+I can see that your series would change less if we were declare that
+01 is right and 06 is wrong; but I find consistency with zero_user_segment
+too appealing, and the strange "stop" stuff here too unappealing.
+
+Hugh
