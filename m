@@ -1,19 +1,21 @@
 From: Hugh Dickins <hughd@google.com>
 Subject: Re: [PATCH 06/15] mm: teach truncate_inode_pages_range() to handle
  non page aligned ranges
-Date: Mon, 20 Aug 2012 08:47:51 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1208200812110.25681@eggly.anvils>
+Date: Mon, 20 Aug 2012 08:53:12 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1208200851500.25707@eggly.anvils>
 References: <1343376074-28034-1-git-send-email-lczerner@redhat.com> <1343376074-28034-7-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1208192144260.2390@eggly.anvils> <alpine.LFD.2.00.1208201221360.3975@vpn-8-6.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, linux-mm@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
+Cc: Hugh Dickins <hughd@google.com>, linux-fsdevel@vger.kernel.org,
+    linux-ext4@vger.kernel.org, tytso@mit.edu, linux-mm@kvack.org,
+    Andrew Morton <akpm@linux-foundation.org>
 To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <alpine.LFD.2.00.1208201221360.3975@vpn-8-6.rdu.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
+
+Urrgh, now I messed up trying to correct linux-mm: resend to fix.
 
 On Mon, 20 Aug 2012, Lukas Czerner wrote:
 > On Sun, 19 Aug 2012, Hugh Dickins wrote:
@@ -68,3 +70,9 @@ I do not think it's a good idea to be lenient about out-of-range args
 there: that approach has already wasted time.
 
 Hugh
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
