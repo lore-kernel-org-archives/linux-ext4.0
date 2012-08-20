@@ -1,119 +1,54 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH 07/15] ext4: Take i_mutex before punching hole
-Date: Sun, 19 Aug 2012 22:45:08 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1208192224390.2390@eggly.anvils>
-References: <1343376074-28034-1-git-send-email-lczerner@redhat.com> <1343376074-28034-8-git-send-email-lczerner@redhat.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, linux-mmc@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1343376074-28034-8-git-send-email-lczerner@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Curtis Jones <curtis.jones@gmail.com>
+Subject: Can't resize2fs - combination of flex_bg and !resize_inode
+Date: Mon, 20 Aug 2012 03:18:35 -0400
+Message-ID: <0FB0C67C-CF56-4589-857F-8B57BC25AB7D@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.0 \(1485\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:61671 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755292Ab2HTHSi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Aug 2012 03:18:38 -0400
+Received: by yhmm54 with SMTP id m54so4841903yhm.19
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Aug 2012 00:18:38 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 27 Jul 2012, Lukas Czerner wrote:
+Hi. I hope this is the right list for ext4-related user questions. If not, please point me in the right direction.
 
-> Currently the allocation might happen in the punched range after the
-> truncation and before the releasing the space of the range. This would
-> lead to blocks being unallocated under the mapped buffer heads resulting
-> in nasty bugs.
-> 
-> With this commit we take i_mutex before going to do anything in the
-> ext4_ext_punch_hole() preventing any write to happen while the hole
-> punching is in progress. This will also allow us to ditch the writeout
-> of dirty pages withing the range.
-> 
-> This commit was based on code provided by Zheng Liu, thanks!
+I recently set up my first software raid with mdadm and after adding more disks to the raid I am unable to resize the filesystem to the full size of the raid. I created a single (~16TB) filesystem on /dev/md0 via:
 
-I'm glad you have found that i_mutex really is needed here: it had
-worried me that it was not taken, but I could only raise a concern,
-didn't really know one way or the other.
+	mkfs.ext4 -v -b 4096 -t huge -E stride=128,stripe-width=256 /dev/md0
 
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c |   26 ++++++++++----------------
->  1 files changed, 10 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 91341ec..2d6a216 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4755,9 +4755,11 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	loff_t first_page_offset, last_page_offset;
->  	int credits, err = 0;
->  
-> +	mutex_lock(&inode->i_mutex);
-> +
->  	/* No need to punch hole beyond i_size */
->  	if (offset >= inode->i_size)
-> -		return 0;
-> +		goto out1;
+I then waited painfully for a couple of days as all of the data from the old raid copied over to the new raid; I moved over the disks and grew the raid and then finally I:
 
-Note that this is wrong, but there is no reason why it should be you
-to fix it in this patchset.  Blocks may have been fallocated beyond
-i_size, and they should be removed when a hole is punched there.
+	resize2fs -p /dev/md0
 
-It's on the ext4 TODO list to be fixed, so don't worry about it:
-unless your changes happen to make it trivial to fix at the same time.
+Which informs me that
 
->  
->  	/*
->  	 * If the hole extends beyond i_size, set the hole
-> @@ -4775,18 +4777,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	first_page_offset = first_page << PAGE_CACHE_SHIFT;
->  	last_page_offset = last_page << PAGE_CACHE_SHIFT;
->  
-> -	/*
-> -	 * Write out all dirty pages to avoid race conditions
-> -	 * Then release them.
-> -	 */
-> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> -		err = filemap_write_and_wait_range(mapping,
-> -			offset, offset + length - 1);
-> -
-> -		if (err)
-> -			return err;
-> -	}
-> -
+	resize2fs 1.42 (29-Nov-2011)
+	resize2fs: /dev/md0: The combination of flex_bg and !resize_inode features is not supported by resize2fs
 
-It's not clear to me why that's now safe to remove: a little more comment
-in the commit would be good; but so long as it's clear to ext4 developers,
-don't try to make it clear to me - that would take far too long!
+I lack any understanding of exactly what these two features are for or why the combination is troublesome, so against my better judgement I tried to add resize_inode:
 
-Hugh
+	tune2fs -O +resize_inode /dev/md0
 
->  	/* Now release the pages */
->  	if (last_page_offset > first_page_offset) {
->  		truncate_pagecache_range(inode, first_page_offset,
-> @@ -4798,12 +4788,14 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  
->  	credits = ext4_writepage_trans_blocks(inode);
->  	handle = ext4_journal_start(inode, credits);
-> -	if (IS_ERR(handle))
-> -		return PTR_ERR(handle);
-> +	if (IS_ERR(handle)) {
-> +		err = PTR_ERR(handle);
-> +		goto out1;
-> +	}
->  
->  	err = ext4_orphan_add(handle, inode);
->  	if (err)
-> -		goto out;
-> +		goto out1;
->  
->  	/*
->  	 * Now we need to zero out the non-page-aligned data in the
-> @@ -4893,6 +4885,8 @@ out:
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> +out1:
-> +	mutex_unlock(&inode->i_mutex);
->  	return err;
->  }
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-> -- 
-> 1.7.7.6
+But I got shot down:
+
+	Setting filesystem feature 'resize_inode' not supported.
+
+And I'm not brave enough to try to remove flex_bg as I really don't want to do anything that might put my data at risk. I'm running Ubuntu 12.04 with the 3.5.1 kernel:
+
+	Linux critter 3.5.1-030501-generic #201208091310 SMP Thu Aug 9 17:11:48 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
+
+While I await any suggestions, I'm going to look at a more up-to-date versions of these tools. Please let me know if I need to provide any more information. I *really* would like to find out that there's a way to resize the fs without having to recreate the fs. Copying all of this data off and back on would be painful.
+
+Any help would be appreciated.
+
+Thanks.
+
+--
+Curtis Jones
+
