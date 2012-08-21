@@ -1,62 +1,41 @@
-From: Hugh Dickins <hughd@google.com>
-Subject: Re: [PATCH 01/15] mm: add invalidatepage_range address space
- operation
-Date: Tue, 21 Aug 2012 11:59:42 -0700 (PDT)
-Message-ID: <alpine.LSU.2.00.1208211144550.2178@eggly.anvils>
-References: <1343376074-28034-1-git-send-email-lczerner@redhat.com> <1343376074-28034-2-git-send-email-lczerner@redhat.com> <alpine.LSU.2.00.1208192153020.2390@eggly.anvils> <5033a999.0f403a0a.19c3.ffff95deSMTPIN_ADDED@mx.google.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 32182] EXT4-fs error: bad header/extent
+Date: Tue, 21 Aug 2012 20:33:31 +0000 (UTC)
+Message-ID: <20120821203331.4E54611FC6C@bugzilla.kernel.org>
+References: <bug-32182-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-    linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <5033a999.0f403a0a.19c3.ffff95deSMTPIN_ADDED@mx.google.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:52526 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753230Ab2HUUdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:33:36 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 92D0A203CD
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Aug 2012 20:33:35 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 9AC8620337
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Aug 2012 20:33:32 +0000 (UTC)
+In-Reply-To: <bug-32182-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 21 Aug 2012, Lukas Czerner wrote:
-> On Sun, 19 Aug 2012, Hugh Dickins wrote:
-> > > --- a/include/linux/fs.h
-> > > +++ b/include/linux/fs.h
-> > > @@ -620,6 +620,8 @@ struct address_space_operations {
-> > >  	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
-> > >  	sector_t (*bmap)(struct address_space *, sector_t);
-> > >  	void (*invalidatepage) (struct page *, unsigned long);
-> > > +	void (*invalidatepage_range) (struct page *, unsigned long,
-> > > +				      unsigned long);
-> > 
-> > It may turn out to be bad advice, given how invalidatepage() already
-> > takes an unsigned long, but I'd be tempted to make both of these args
-> > unsigned int, since that helps to make it clearer that they're intended
-> > to be offsets within a page, in the range 0..PAGE_CACHE_SIZE.
-> > 
-> > (partial_start, partial_end and top in truncate_inode_pages_range()
-> > are all unsigned int.)
-> 
-> Hmm, this does not seem right. I can see that PAGE_CACHE_SIZE
-> (PAGE_SIZE) can be defined as unsigned long, or am I missing
-> something ?
+https://bugzilla.kernel.org/show_bug.cgi?id=32182
 
-They would be defined as unsigned long so that they can be used in
-masks like ~(PAGE_SIZE - 1), and behave as expected on addresses,
-without needing casts to be added all over.
 
-We do not (currently!) expect PAGE_SIZE or PAGE_CACHE_SIZE to grow
-beyond an unsigned int - but indeed they can be larger than what's
-held in an unsigned short (look no further than ia64 or ppc64).
 
-For more reassurance, see include/linux/highmem.h, which declares
-zero_user_segments() and others: unsigned int (well, unsigned with
-the int implicit) for offsets within a page.
 
-Hugh
 
-> > 
-> > Andrew is very keen on naming arguments in prototypes,
-> > and I think there is an especially strong case for it here.
+--- Comment #14 from Peter Hanecak <hany+kernel.org@hany.sk>  2012-08-21 20:33:30 ---
+Reboot + fsck was done quite a lot of times since it started occuring. Some
+bugs do get found and fixed but the message never goes away. I have no further
+info to open new bug.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Any suggestions as to what I might try to either fix the inode or compile some
+more information so as to file bug report? Thanks in advance.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
