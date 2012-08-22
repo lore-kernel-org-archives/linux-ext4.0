@@ -1,18 +1,18 @@
-From: NeilBrown <neilb@suse.de>
+From: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 Subject: Re: ext4 write performance regression in 3.6-rc1 on RAID0/5
-Date: Wed, 22 Aug 2012 16:00:25 +1000
-Message-ID: <20120822160025.272188d1@notabene.brown>
+Date: Wed, 22 Aug 2012 14:31:00 +0800
+Message-ID: <20120822063100.GH2570@yliu-dev.sh.intel.com>
 References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
-	<20120816024654.GB3781@thunk.org>
-	<20120816111051.GA16036@localhost>
-	<20120816152513.GA31346@thunk.org>
-	<20120817060915.GB28786@localhost>
-	<20120817134039.GB11439@thunk.org>
-	<20120817142526.GA1059@localhost>
-	<20120822035702.GF2570@yliu-dev.sh.intel.com>
+ <20120816024654.GB3781@thunk.org>
+ <20120816111051.GA16036@localhost>
+ <20120816152513.GA31346@thunk.org>
+ <20120817060915.GB28786@localhost>
+ <20120817134039.GB11439@thunk.org>
+ <20120817142526.GA1059@localhost>
+ <20120822035702.GF2570@yliu-dev.sh.intel.com>
+ <20120822160025.272188d1@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/doLWNd9A289=bYVeFpiGDTq"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
 Cc: Fengguang Wu <fengguang.wu@intel.com>,
 	Li Shaohua <shli@fusionio.com>, Theodore Ts'o <tytso@mit.edu>,
 	Marti Raudsepp <marti@juffo.org>,
@@ -20,62 +20,50 @@ Cc: Fengguang Wu <fengguang.wu@intel.com>,
 	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com,
 	"Shi, Alex" <alex.shi@intel.com>, linux-fsdevel@vger.kernel.org,
 	linux RAID <linux-raid@vger.kernel.org>
-To: Yuanhan Liu <yuanhan.liu@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120822035702.GF2570@yliu-dev.sh.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:28097 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752109Ab2HVGaw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Aug 2012 02:30:52 -0400
+Content-Disposition: inline
+In-Reply-To: <20120822160025.272188d1@notabene.brown>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/doLWNd9A289=bYVeFpiGDTq
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, Aug 22, 2012 at 04:00:25PM +1000, NeilBrown wrote:
+> On Wed, 22 Aug 2012 11:57:02 +0800 Yuanhan Liu <yuanhan.liu@linux.intel.com>
+> wrote:
+> 
+> >  
+> > -#define NR_STRIPES		256
+> > +#define NR_STRIPES		1024
+> 
+> Changing one magic number into another magic number might help your case, but
+> it not really a general solution.
 
-On Wed, 22 Aug 2012 11:57:02 +0800 Yuanhan Liu <yuanhan.liu@linux.intel.com>
-wrote:
+Agreed.
 
-> =20
-> -#define NR_STRIPES		256
-> +#define NR_STRIPES		1024
+> 
+> Possibly making sure that max_nr_stripes is at least some multiple of the
+> chunk size might make sense, but I wouldn't want to see a very large multiple.
+> 
+> I thing the problems with RAID5 are deeper than that.  Hopefully I'll figure
+> out exactly what the best fix is soon - I'm trying to look into it.
+> 
+> I don't think the size of the cache is a big part of the solution.  I think
+> correct scheduling of IO is the real answer.
 
-Changing one magic number into another magic number might help your case, b=
-ut
-it not really a general solution.
+Yes, it should not be. But with less max_nr_stripes, the chance to get a
+full strip write is less, and maybe that's the reason why the chance to
+block at get_active_strip() is more; and also, the reading is more.
 
-Possibly making sure that max_nr_stripes is at least some multiple of the
-chunk size might make sense, but I wouldn't want to see a very large multip=
-le.
+The perfect case would be there are no reading; setting max_nr_stripes
+to 32768(the max we get set now), you will find the reading is quite
+less(almost zero, please see the iostat I attached in former email).
 
-I thing the problems with RAID5 are deeper than that.  Hopefully I'll figure
-out exactly what the best fix is soon - I'm trying to look into it.
-
-I don't think the size of the cache is a big part of the solution.  I think
-correct scheduling of IO is the real answer.
+Anyway, I do agree this should not be the big part of the solution. If
+we can handle those stripes faster, I guess 256 would be enough.
 
 Thanks,
-NeilBrown
-
-
-
---Sig_/doLWNd9A289=bYVeFpiGDTq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUDR1gznsnt1WYoG5AQIvMBAAnwqYNlar29oqFwn2sT2XzxABU10uA6SW
-px7PJihjVfckygzmPTIibCXb7CdDnKUflXvdTi6YP+ZUEjAmbKVg4OQwkkpZcFoz
-Xevjdk+SyvSAYZFpiZFqgTpWV8XySW1HO8hfC8aagB3mEKYwd7pLaT0SF5Arer9P
-e91hUF3SR4Kvytoig45Ucf6KiXHBghbJ6oU2ARGFKWLv4yrOdR/WKs8z9nvGmDHL
-HMvXY2FONYtxevJ1nWPUp1/gk0cbkpfd/qrZhGopKok/ezQ6CDm4/WpQZZ04dYF9
-cQ0ML57fJT8gR9deSIHKyiu89xVgItFoa5YQpa7gZMyk/9Cr1bierN4OCe8YDV2E
-9gydeFhw1kbWDUEotPhr5Tk2qazjZg1Kt26Ea0zxBetJNX1jwTPaRnsPFyUMsGCj
-WUYQ3pBLLUrcec3kJcVz77+HN78AtvoxDE/ZKC35OrlAU0Lh5T3qJ8dThx31jM8C
-wAqABoqPDeqBUKCe+OA7SRxugvXrpolZ5JH+mGywl3Cp1PHQ7J4G0tHCImHLme+r
-9gMrj6uCVacof/W+g+of0n2fKYC1AekxrRcyRXmzZi4AEla06kCy+DOv0ipb99if
-FaJORbwfZjcd3dOKp+jZg+6UFKWiZ+Clhs5muS2ejkVlagcI/ByP6W53R6EsA8Ds
-Bei+hDYJNEw=
-=6+qx
------END PGP SIGNATURE-----
-
---Sig_/doLWNd9A289=bYVeFpiGDTq--
+Yuanhan Liu
