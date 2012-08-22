@@ -1,229 +1,81 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 8/8 v2] ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
-Date: Wed, 22 Aug 2012 14:05:45 +0800
-Message-ID: <1345615545-26133-9-git-send-email-wenqing.lz@taobao.com>
-References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Hugh Dickins <hughd@google.com>, Jie Liu <jeff.liu@oracle.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:52243 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757146Ab2HVF4E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Aug 2012 01:56:04 -0400
-In-Reply-To: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: NeilBrown <neilb@suse.de>
+Subject: Re: ext4 write performance regression in 3.6-rc1 on RAID0/5
+Date: Wed, 22 Aug 2012 16:00:25 +1000
+Message-ID: <20120822160025.272188d1@notabene.brown>
+References: <CABRT9RAOhaxcYdCxMn5neJ9WT85r=h=7WgZ2dmLaOs-MMqDW9A@mail.gmail.com>
+	<20120816024654.GB3781@thunk.org>
+	<20120816111051.GA16036@localhost>
+	<20120816152513.GA31346@thunk.org>
+	<20120817060915.GB28786@localhost>
+	<20120817134039.GB11439@thunk.org>
+	<20120817142526.GA1059@localhost>
+	<20120822035702.GF2570@yliu-dev.sh.intel.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/doLWNd9A289=bYVeFpiGDTq"; protocol="application/pgp-signature"
+Cc: Fengguang Wu <fengguang.wu@intel.com>,
+	Li Shaohua <shli@fusionio.com>, Theodore Ts'o <tytso@mit.edu>,
+	Marti Raudsepp <marti@juffo.org>,
+	Kernel hackers <linux-kernel@vger.kernel.org>,
+	ext4 hackers <linux-ext4@vger.kernel.org>, maze@google.com,
+	"Shi, Alex" <alex.shi@intel.com>, linux-fsdevel@vger.kernel.org,
+	linux RAID <linux-raid@vger.kernel.org>
+To: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120822035702.GF2570@yliu-dev.sh.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+--Sig_/doLWNd9A289=bYVeFpiGDTq
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This patch makes ext4 really support SEEK_DATA/SEEK_HOLE flags.  Extent-based
-and block-based files are implemented together because ext4_map_blocks hides
-this difference.
+On Wed, 22 Aug 2012 11:57:02 +0800 Yuanhan Liu <yuanhan.liu@linux.intel.com>
+wrote:
 
-CC: Hugh Dickins <hughd@google.com>
-CC: Jie Liu <jeff.liu@oracle.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
-[I notice that Jeff has an implementation of SEEK_DATA/SEEK_HOLE for ext4. So
-Cc' to Jeff]
+> =20
+> -#define NR_STRIPES		256
+> +#define NR_STRIPES		1024
 
-[Cc' to Hugh because tmpfs's folks are thinking about whether add this feature
-or not]
+Changing one magic number into another magic number might help your case, b=
+ut
+it not really a general solution.
 
- fs/ext4/ext4.h     |    1 +
- fs/ext4/file.c     |  153 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/indirect.c |    1 -
- 3 files changed, 152 insertions(+), 3 deletions(-)
+Possibly making sure that max_nr_stripes is at least some multiple of the
+chunk size might make sense, but I wouldn't want to see a very large multip=
+le.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f1d5087..149851b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2398,6 +2398,7 @@ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			   struct ext4_map_blocks *map, int flags);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
-+
- /* move_extent.c */
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 3b0e3bd..cfdf774 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -285,6 +285,145 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	return dquot_file_open(inode, filp);
- }
- 
-+static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	struct ext4_map_blocks map;
-+	struct extent_status es;
-+	ext4_lblk_t start_block, end_block, len, delblk;
-+	loff_t dataoff, isize;
-+	int blkbits;
-+	int ret = 0;
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	blkbits = inode->i_sb->s_blocksize_bits;
-+	isize = i_size_read(inode);
-+	start_block = offset >> blkbits;
-+	end_block = isize >> blkbits;
-+	len = isize - offset + 1;
-+
-+	do {
-+		map.m_lblk = start_block;
-+		map.m_len = len >> blkbits;
-+
-+		ret = ext4_map_blocks(NULL, inode, &map, 0);
-+
-+		if (ret > 0) {
-+			dataoff = start_block << blkbits;
-+			break;
-+		} else {
-+			/* search in extent status */
-+			es.start = start_block;
-+			down_read(&EXT4_I(inode)->i_data_sem);
-+			delblk = ext4_es_find_extent(inode, &es);
-+			up_read(&EXT4_I(inode)->i_data_sem);
-+
-+			if (start_block >= es.start &&
-+			    start_block < es.start + es.len) {
-+				dataoff = start_block << blkbits;
-+				break;
-+			}
-+
-+			start_block++;
-+
-+			/*
-+			 * currently hole punching doesn't change the size of
-+			 * file.  So after hole punching, maybe there has a
-+			 * hole at the end of file.
-+			 */
-+			if (start_block > end_block) {
-+				dataoff = -ENXIO;
-+				break;
-+			}
-+		}
-+	} while (1);
-+
-+	mutex_unlock(&inode->i_mutex);
-+	return dataoff;
-+}
-+
-+static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+	struct ext4_map_blocks map;
-+	struct extent_status es;
-+	ext4_lblk_t start_block, end_block, len, delblk;
-+	loff_t holeoff, isize;
-+	int blkbits;
-+	int ret = 0;
-+
-+	mutex_lock(&inode->i_mutex);
-+
-+	blkbits = inode->i_sb->s_blocksize_bits;
-+	isize = i_size_read(inode);
-+	start_block = offset >> blkbits;
-+	end_block = isize >> blkbits;
-+	len = isize - offset + 1;
-+
-+	do {
-+		map.m_lblk = start_block;
-+		map.m_len = len >> blkbits;
-+
-+		ret = ext4_map_blocks(NULL, inode, &map, 0);
-+
-+		if (ret > 0) {
-+			/* skip this extent */
-+			start_block += ret;
-+			if (start_block > end_block) {
-+				holeoff = isize;
-+				break;
-+			}
-+		} else {
-+			/* search in extent status */
-+			es.start = start_block;
-+			down_read(&EXT4_I(inode)->i_data_sem);
-+			delblk = ext4_es_find_extent(inode, &es);
-+			up_read(&EXT4_I(inode)->i_data_sem);
-+
-+			if (start_block >= es.start &&
-+			    start_block < es.start + es.len) {
-+				/* skip this delay extent */
-+				start_block = es.start + es.len;
-+				continue;
-+			}
-+
-+			holeoff = start_block << blkbits;
-+			break;
-+		}
-+	} while (1);
-+
-+	mutex_unlock(&inode->i_mutex);
-+	return holeoff;
-+}
-+
-+static loff_t ext4_seek_data_hole(struct file *file, loff_t offset,
-+				  int origin, loff_t maxsize)
-+{
-+	struct inode *inode = file->f_mapping->host;
-+
-+	BUG_ON((origin != SEEK_DATA) && (origin != SEEK_HOLE));
-+
-+	if (offset >= i_size_read(inode))
-+		return -ENXIO;
-+
-+	if (offset < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
-+		return -EINVAL;
-+	if (offset > maxsize)
-+		return -EINVAL;
-+
-+	switch (origin) {
-+	case SEEK_DATA:
-+		return ext4_seek_data(file, offset, maxsize);
-+	case SEEK_HOLE:
-+		return ext4_seek_hole(file, offset, maxsize);
-+	default:
-+		ext4_error(inode->i_sb, "Unknown origin");
-+	}
-+
-+	return -EINVAL;
-+}
-+
- /*
-  * ext4_llseek() handles both block-mapped and extent-mapped maxbytes values
-  * by calling generic_file_llseek_size() with the appropriate maxbytes
-@@ -300,8 +439,18 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
- 	else
- 		maxbytes = inode->i_sb->s_maxbytes;
- 
--	return generic_file_llseek_size(file, offset, origin,
--					maxbytes, i_size_read(inode));
-+	switch (origin) {
-+	case SEEK_END:
-+	case SEEK_CUR:
-+	case SEEK_SET:
-+		return generic_file_llseek_size(file, offset, origin,
-+						maxbytes, i_size_read(inode));
-+	case SEEK_DATA:
-+	case SEEK_HOLE:
-+		return ext4_seek_data_hole(file, offset, origin, maxbytes);
-+	}
-+
-+	return -EINVAL;
- }
- 
- const struct file_operations ext4_file_operations = {
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 9db67b1..9917c42 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1502,4 +1502,3 @@ out_stop:
- 	ext4_journal_stop(handle);
- 	trace_ext4_truncate_exit(inode);
- }
+I thing the problems with RAID5 are deeper than that.  Hopefully I'll figure
+out exactly what the best fix is soon - I'm trying to look into it.
+
+I don't think the size of the cache is a big part of the solution.  I think
+correct scheduling of IO is the real answer.
+
+Thanks,
+NeilBrown
+
+
+
+--Sig_/doLWNd9A289=bYVeFpiGDTq
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUDR1gznsnt1WYoG5AQIvMBAAnwqYNlar29oqFwn2sT2XzxABU10uA6SW
+px7PJihjVfckygzmPTIibCXb7CdDnKUflXvdTi6YP+ZUEjAmbKVg4OQwkkpZcFoz
+Xevjdk+SyvSAYZFpiZFqgTpWV8XySW1HO8hfC8aagB3mEKYwd7pLaT0SF5Arer9P
+e91hUF3SR4Kvytoig45Ucf6KiXHBghbJ6oU2ARGFKWLv4yrOdR/WKs8z9nvGmDHL
+HMvXY2FONYtxevJ1nWPUp1/gk0cbkpfd/qrZhGopKok/ezQ6CDm4/WpQZZ04dYF9
+cQ0ML57fJT8gR9deSIHKyiu89xVgItFoa5YQpa7gZMyk/9Cr1bierN4OCe8YDV2E
+9gydeFhw1kbWDUEotPhr5Tk2qazjZg1Kt26Ea0zxBetJNX1jwTPaRnsPFyUMsGCj
+WUYQ3pBLLUrcec3kJcVz77+HN78AtvoxDE/ZKC35OrlAU0Lh5T3qJ8dThx31jM8C
+wAqABoqPDeqBUKCe+OA7SRxugvXrpolZ5JH+mGywl3Cp1PHQ7J4G0tHCImHLme+r
+9gMrj6uCVacof/W+g+of0n2fKYC1AekxrRcyRXmzZi4AEla06kCy+DOv0ipb99if
+FaJORbwfZjcd3dOKp+jZg+6UFKWiZ+Clhs5muS2ejkVlagcI/ByP6W53R6EsA8Ds
+Bei+hDYJNEw=
+=6+qx
+-----END PGP SIGNATURE-----
+
+--Sig_/doLWNd9A289=bYVeFpiGDTq--
