@@ -1,548 +1,325 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 2/8 v2] ext4: add operations on extent status tree
-Date: Wed, 22 Aug 2012 14:05:39 +0800
-Message-ID: <1345615545-26133-3-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 7/8 v2] ext4: reimplement ext4_find_delay_alloc_range on extent status tree
+Date: Wed, 22 Aug 2012 14:05:44 +0800
+Message-ID: <1345615545-26133-8-git-send-email-wenqing.lz@taobao.com>
 References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Lukas Czerner <lczerner@redhat.com>,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	Allison Henderson <achender@linux.vnet.ibm.com>,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:52243 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756832Ab2HVFzt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Aug 2012 01:55:49 -0400
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:40491 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757134Ab2HVF4B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Aug 2012 01:56:01 -0400
 In-Reply-To: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This patch adds operations on a extent status tree.
+ext4_find_delay_alloc_range is reimplemented on extent status tree.
 
-CC: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
-v2 <- v1:
- - add a BUG_ON to do a sanity check in extent_status_end()
- - fix off-by-one problem in extent_status_end() according to Lukas's comment
- - add more detailed comments in ext4_es_find_extent()
- - try to lookup in extent tree cache firstly in ext4_es_find_extent()
- - rename ext4_es_add_space to ext4_es_insert_extent
- - rename ext4_es_remove_space to ext4_es_remove_extent
+ fs/ext4/ext4.h         |    4 --
+ fs/ext4/ext4_extents.h |    3 +-
+ fs/ext4/extents.c      |  112 +++++------------------------------------------
+ fs/ext4/inode.c        |   53 +----------------------
+ 4 files changed, 14 insertions(+), 158 deletions(-)
 
-Hi Lukas,
-
-I have fix some problems according to your advices, but there still has a little
-comments that haven't be applied.  I introduce my point of view in here.  I
-don't change es_debug functions because I see that ext_debug() is defined in
-ext4_extents.h.  So I think that maybe we should keep es_debug(), and it is
-consistent with extent tree.  Meanwhile I don't remove es_debug() in
-ext4_es_remove_extent, although later we will add a tracepoint in this function
-because IMO they ared used by different purposes.  One is used for debugging,
-and another is used for observing the status of filesystem.  What do you think?
-
-Regards,
-Zheng
-
- fs/ext4/Makefile         |    2 +-
- fs/ext4/extents_status.c |  434 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/extents_status.h |   20 ++
- 3 files changed, 455 insertions(+), 1 deletions(-)
- create mode 100644 fs/ext4/extents_status.c
-
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 56fd8f86..41f22be 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -7,7 +7,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
- ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
- 		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
- 		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
--		mmp.o indirect.o
-+		mmp.o indirect.o extents_status.o
- 
- ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-new file mode 100644
-index 0000000..ccb7e2b
---- /dev/null
-+++ b/fs/ext4/extents_status.c
-@@ -0,0 +1,434 @@
-+/*
-+ *  fs/ext4/extents_status.c
-+ *
-+ * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
-+ * Modified by
-+ *	Allison Henderson <achender@linux.vnet.ibm.com>
-+ *	Zheng Liu <wenqing.lz@taobao.com>
-+ *
-+ * Ext4 extents status tree core functions.
-+ */
-+#include <linux/rbtree.h>
-+#include "ext4.h"
-+#include "extents_status.h"
-+#include "ext4_extents.h"
-+
-+/*
-+ * extents status tree implementation for ext4.
-+ *
-+ *
-+ * ==========================================================================
-+ * Extents status encompass delayed extents and extent locks
-+ *
-+ * 1. Why delayed extent implementation ?
-+ *
-+ * Without delayed extent, ext4 identifies a delayed extent by looking up
-+ * page cache, this has several deficiencies - complicated, buggy, and
-+ * inefficient code.
-+ *
-+ * FIEMAP, SEEK_HOLE/DATA, bigalloc, punch hole and writeout all need to know if
-+ * a block or a range of blocks are belonged to a delayed extent.
-+ *
-+ * Let us have a look at how they do without delayed extents implementation.
-+ *   --	FIEMAP
-+ *	FIEMAP looks up page cache to identify delayed allocations from holes.
-+ *
-+ *   --	SEEK_HOLE/DATA
-+ *	SEEK_HOLE/DATA has the same problem as FIEMAP.
-+ *
-+ *   --	bigalloc
-+ *	bigalloc looks up page cache to figure out if a block is already
-+ *	under delayed allocation or not to determine whether quota reserving
-+ *	is needed for the cluster.
-+ *
-+ *   -- punch hole
-+ *	punch hole looks up page cache to identify a delayed extent.
-+ *
-+ *   --	writeout
-+ *	Writeout looks up whole page cache to see if a buffer is mapped, If
-+ *	there are not very many delayed buffers, then it is time comsuming.
-+ *
-+ * With delayed extents implementation, FIEMAP, SEEK_HOLE/DATA, bigalloc and
-+ * writeout can figure out if a block or a range of blocks is under delayed
-+ * allocation(belonged to a delayed extent) or not by searching the delayed
-+ * extent tree.
-+ *
-+ *
-+ * ==========================================================================
-+ * 2. ext4 delayed extents impelmentation
-+ *
-+ *   --	delayed extent
-+ *	A delayed extent is a range of blocks which are contiguous logically and
-+ *	under delayed allocation.  Unlike extent in ext4, delayed extent in ext4
-+ *	is a in-memory struct, there is no corresponding on-disk data.  There is
-+ *	no limit on length of delayed extent, so a delayed extent can contain as
-+ *	many blocks as they are contiguous logically.
-+ *
-+ *   --	delayed extent tree
-+ *	Every inode has a delayed extent tree and all under delayed allocation
-+ *	blocks are added to the tree as dealyed extents.  Delayed extents in
-+ *	the tree are ordered by logical block no.
-+ *
-+ *   --	operations on a delayed extent tree
-+ *	There are three operations on a delayed extent tree: find next delayed
-+ *	extent, adding a space(a range of blocks) and removing a space.
-+ *
-+ *   --	race on a delayed extent tree
-+ *	Delayed extent tree is protected inode->i_data_sem like extent tree.
-+ *
-+ *
-+ * ==========================================================================
-+ * 3. performance analysis
-+ *   --	overhead
-+ *	1. Apart from operations on a delayed extent tree, we need to
-+ *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
-+ *	extent tree, this can have impact on parallel read-write and write-write
-+ *
-+ *	2. There is a cache extent for write access, so if writes are not very
-+ *	random, adding space operaions are in O(1) time.
-+ *
-+ *   --	gain
-+ *	3. Code is much simpler, more readable, more maintainable and
-+ *      more efficient.
-+ */
-+
-+static struct kmem_cache *ext4_es_cachep;
-+
-+int __init ext4_init_es(void)
-+{
-+	ext4_es_cachep = KMEM_CACHE(extent_status, SLAB_RECLAIM_ACCOUNT);
-+	if (ext4_es_cachep == NULL)
-+		return -ENOMEM;
-+	return 0;
-+}
-+
-+void ext4_exit_es(void)
-+{
-+	if (ext4_es_cachep)
-+		kmem_cache_destroy(ext4_es_cachep);
-+}
-+
-+void ext4_es_init_tree(struct ext4_es_tree *tree)
-+{
-+	tree->root = RB_ROOT;
-+	tree->cache_es = NULL;
-+}
-+
-+#ifdef ES_DEBUG__
-+static void ext4_es_print_tree(struct inode *inode)
-+{
-+	struct ext4_es_tree *tree;
-+	struct rb_node *node;
-+
-+	printk(KERN_DEBUG "status extents for inode %lu:", inode->i_ino);
-+	tree = &EXT4_I(inode)->i_es_tree;
-+	node = rb_first(&tree->root);
-+	while (node) {
-+		struct extent_status *es;
-+		es = rb_entry(node, struct extent_status, rb_node);
-+		printk(KERN_DEBUG " [%u/%u)", es->start, es->len);
-+		node = rb_next(node);
-+	}
-+	printk(KERN_DEBUG "\n");
-+}
-+#else
-+#define ext4_es_print_tree(inode)
-+#endif
-+
-+static inline ext4_lblk_t extent_status_end(struct extent_status *es)
-+{
-+	BUG_ON(es->start + es->len < es->start);
-+	return es->start + es->len - 1;
-+}
-+
-+/*
-+ * search through the tree for an delayed_extent with a given offset.  If
-+ * it can't be found, try to find next extent.
-+ */
-+static struct extent_status *__es_tree_search(struct rb_root *root,
-+						ext4_lblk_t offset)
-+{
-+	struct rb_node *node = root->rb_node;
-+	struct extent_status *es = NULL;
-+
-+	while (node) {
-+		es = rb_entry(node, struct extent_status, rb_node);
-+		if (offset < es->start)
-+			node = node->rb_left;
-+		else if (offset > extent_status_end(es))
-+			node = node->rb_right;
-+		else
-+			return es;
-+	}
-+
-+	if (es && offset < es->start)
-+		return es;
-+
-+	if (es && offset > extent_status_end(es)) {
-+		node = rb_next(&es->rb_node);
-+		return node ? rb_entry(node, struct extent_status, rb_node) :
-+			      NULL;
-+	}
-+
-+	return NULL;
-+}
-+
-+/*
-+ * ext4_es_find_extent: find the 1st delayed extent covering @es->start
-+ * if it exists, otherwise, the next extent after @es->start.
-+ *
-+ * @inode: the inode which owns delayed extents
-+ * @es: delayed extent that we found
-+ *
-+ * Returns the first block of the next extent after es, otherwise
-+ * EXT_MAX_BLOCKS if no delay extent is found.
-+ * Delayed extent is returned via @es.
-+ */
-+ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
-+{
-+	struct ext4_es_tree *tree = NULL;
-+	struct extent_status *es1 = NULL;
-+	struct rb_node *node;
-+	ext4_lblk_t ret = EXT_MAX_BLOCKS;
-+
-+	tree = &EXT4_I(inode)->i_es_tree;
-+
-+	/* find delay extent in cache */
-+	if (tree->cache_es) {
-+		es1 = tree->cache_es;
-+		if (in_range(es->start, es1->start, es1->len)) {
-+			es_debug("%u cached by [%u/%u)\n",
-+				 es->start, es1->start, es1->len);
-+			goto out;
-+		}
-+	}
-+
-+	es->len = 0;
-+	es1 = __es_tree_search(&tree->root, es->start);
-+
-+out:
-+	if (es1) {
-+		tree->cache_es = es1;
-+		es->start = es1->start;
-+		es->len = es1->len;
-+		node = rb_next(&es1->rb_node);
-+		if (node) {
-+			es1 = rb_entry(node, struct extent_status, rb_node);
-+			ret = es1->start;
-+		}
-+	}
-+
-+	return ret;
-+}
-+
-+static struct extent_status *
-+ext4_es_alloc_extent(ext4_lblk_t start, ext4_lblk_t len)
-+{
-+	struct extent_status *es;
-+	es = kmem_cache_alloc(ext4_es_cachep, GFP_NOFS);
-+	if (es == NULL)
-+		return NULL;
-+	es->start = start;
-+	es->len = len;
-+	return es;
-+}
-+
-+static void ext4_es_free_extent(struct extent_status *es)
-+{
-+	kmem_cache_free(ext4_es_cachep, es);
-+}
-+
-+static void ext4_es_try_to_merge_left(struct ext4_es_tree *tree,
-+				      struct extent_status *es)
-+{
-+	struct extent_status *es1;
-+	struct rb_node *node;
-+
-+	node = rb_prev(&es->rb_node);
-+	if (!node)
-+		return;
-+
-+	es1 = rb_entry(node, struct extent_status, rb_node);
-+	if (es->start == extent_status_end(es1) + 1) {
-+		es1->len += es->len;
-+		rb_erase(&es->rb_node, &tree->root);
-+		if (es == tree->cache_es)
-+			tree->cache_es = es1;
-+		ext4_es_free_extent(es);
-+	}
-+}
-+
-+static void ext4_es_try_to_merge_right(struct ext4_es_tree *tree,
-+				       struct extent_status *es)
-+{
-+	struct extent_status *es1;
-+	struct rb_node *node;
-+
-+	node = rb_next(&es->rb_node);
-+	if (!node)
-+		return;
-+
-+	es1 = rb_entry(node, struct extent_status, rb_node);
-+	if (es1->start == extent_status_end(es) + 1) {
-+		es->len += es1->len;
-+		rb_erase(node, &tree->root);
-+		if (es1 == tree->cache_es)
-+			tree->cache_es = es;
-+		ext4_es_free_extent(es1);
-+	}
-+}
-+
-+/*
-+ * ext4_es_insert_extent: adds a space to a delayed extent tree.
-+ * Caller holds inode->i_data_sem.
-+ *
-+ * ext4_es_insert_extent is callyed by ext4_dealyed_write_begin and
-+ * ext4_es_remove_extent.
-+ *
-+ * Return 0 on success, error code on failure.
-+ */
-+int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t offset,
-+			  ext4_lblk_t len)
-+{
-+	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
-+	struct rb_node **p = &tree->root.rb_node;
-+	struct rb_node *parent = NULL;
-+	struct extent_status *es;
-+	ext4_lblk_t end = offset + len - 1;
-+
-+	BUG_ON(end < offset);
-+
-+	es = tree->cache_es;
-+	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
-+		 offset, len, inode->i_ino);
-+
-+	if (es && offset == (extent_status_end(es) + 1)) {
-+		es_debug("cached by [%u/%u)\n", es->start, es->len);
-+		es->len += len;
-+		ext4_es_try_to_merge_right(tree, es);
-+		goto out;
-+	} else if (es && es->start == end + 1) {
-+		es_debug("cached by [%u/%u)\n", es->start, es->len);
-+		es->start = offset;
-+		es->len += len;
-+		ext4_es_try_to_merge_left(tree, es);
-+		goto out;
-+	} else if (es && in_range(offset, es->start, es->len)) {
-+		es_debug("cached by [%u/%u)\n", es->start, es->len);
-+		goto out;
-+	}
-+
-+	while (*p) {
-+		parent = *p;
-+		es = rb_entry(parent, struct extent_status, rb_node);
-+
-+		if (offset < es->start) {
-+			if (es->start == end + 1) {
-+				es->len += len;
-+				es->start = offset;
-+				goto out;
-+			}
-+			p = &(*p)->rb_left;
-+		} else if (offset > extent_status_end(es)) {
-+			if (offset == extent_status_end(es) + 1) {
-+				es->len += len;
-+				goto out;
-+			}
-+			p = &(*p)->rb_right;
-+		} else
-+			goto out;
-+	}
-+
-+	es = ext4_es_alloc_extent(offset, len);
-+	if (!es)
-+		return -ENOMEM;
-+	rb_link_node(&es->rb_node, parent, p);
-+	rb_insert_color(&es->rb_node, &tree->root);
-+
-+out:
-+	tree->cache_es = es;
-+	ext4_es_print_tree(inode);
-+
-+	return 0;
-+}
-+
-+/*
-+ * ext4_es_remove_extent() removes a space from a delayed extent tree.
-+ * Caller holds inode->i_data_sem.
-+ *
-+ * Return 0 on success, error code on failure.
-+ */
-+int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t offset,
-+			  ext4_lblk_t len)
-+{
-+	struct rb_node *node;
-+	struct ext4_es_tree *tree;
-+	struct extent_status *es;
-+	struct extent_status orig_es;
-+	ext4_lblk_t len1, len2, end;
-+
-+	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
-+		 offset, len, inode->i_ino);
-+
-+	end = offset + len - 1;
-+	BUG_ON(end < offset);
-+	tree = &EXT4_I(inode)->i_es_tree;
-+	es = __es_tree_search(&tree->root, offset);
-+	if (!es)
-+		goto out;
-+
-+	/* Simply invalidate cache_es. */
-+	tree->cache_es = NULL;
-+
-+	orig_es.start = es->start;
-+	orig_es.len = es->len;
-+	len1 = offset > es->start ? offset - es->start : 0;
-+	len2 = extent_status_end(es) > end ?
-+	       extent_status_end(es) - end : 0;
-+	if (len1 > 0)
-+		es->len = len1;
-+	if (len2 > 0) {
-+		if (len1 > 0) {
-+			int err;
-+			err = ext4_es_insert_extent(inode, end + 1, len2);
-+			if (err) {
-+				es->start = orig_es.start;
-+				es->len = orig_es.len;
-+				return err;
-+			}
-+		} else {
-+			es->start = end + 1;
-+			es->len = len2;
-+		}
-+		goto out;
-+	}
-+
-+	if (len1 > 0) {
-+		node = rb_next(&es->rb_node);
-+		if (!node)
-+			es = rb_entry(node, struct extent_status, rb_node);
-+		else
-+			es = NULL;
-+	}
-+
-+	while (es && extent_status_end(es) <= end) {
-+		node = rb_next(&es->rb_node);
-+		rb_erase(&es->rb_node, &tree->root);
-+		ext4_es_free_extent(es);
-+		if (!node) {
-+			es = NULL;
-+			break;
-+		}
-+		es = rb_entry(node, struct extent_status, rb_node);
-+	}
-+
-+	if (es && es->start < end + 1) {
-+		len1 = extent_status_end(es) - end;
-+		es->start = end + 1;
-+		es->len = len1;
-+	}
-+
-+out:
-+	ext4_es_print_tree(inode);
-+	return 0;
-+}
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 8be2ab9..077f82d 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -11,6 +11,15 @@
- #ifndef _EXT4_EXTENTS_STATUS_H
- #define _EXT4_EXTENTS_STATUS_H
- 
-+/*
-+ * Turn on ES_DEBUG__ to get lots of info about extent status operations.
-+ */
-+#ifdef ES_DEBUG__
-+#define es_debug(fmt, ...)	printk(fmt, ##__VA_ARGS__)
-+#else
-+#define es_debug(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
-+#endif
-+
- struct extent_status {
- 	struct rb_node rb_node;
- 	ext4_lblk_t start;	/* first block extent covers */
-@@ -22,4 +31,15 @@ struct ext4_es_tree {
- 	struct extent_status *cache_es;	/* recently accessed extent */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 66c592e..f1d5087 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2431,14 +2431,10 @@ enum ext4_state_bits {
+ 				 * never, ever appear in a buffer_head's state
+ 				 * flag. See EXT4_MAP_FROM_CLUSTER to see where
+ 				 * this is used. */
+-	BH_Da_Mapped,	/* Delayed allocated block that now has a mapping. This
+-			 * flag is set when ext4_map_blocks is called on a
+-			 * delayed allocated block to get its real mapping. */
  };
  
-+extern int __init ext4_init_es(void);
-+extern void ext4_exit_es(void);
-+extern void ext4_es_init_tree(struct ext4_es_tree *tree);
-+
-+extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t start,
-+				 ext4_lblk_t len);
-+extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t start,
-+				 ext4_lblk_t len);
-+extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
-+				struct extent_status *es);
-+
- #endif /* _EXT4_EXTENTS_STATUS_H */
+ BUFFER_FNS(Uninit, uninit)
+ TAS_BUFFER_FNS(Uninit, uninit)
+-BUFFER_FNS(Da_Mapped, da_mapped)
+ 
+ /*
+  * Add new method to test wether block and inode bitmaps are properly
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index cb1b2c9..603bb11 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -314,7 +314,6 @@ extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
+ 							struct ext4_ext_path *);
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *);
+ extern int ext4_ext_check_inode(struct inode *inode);
+-extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
+-				      int search_hint_reverse);
++extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ #endif /* _EXT4_EXTENTS */
+ 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 44cda82..f12d7e8 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3405,115 +3405,27 @@ out:
+ /**
+  * ext4_find_delalloc_range: find delayed allocated block in the given range.
+  *
+- * Goes through the buffer heads in the range [lblk_start, lblk_end] and returns
+- * whether there are any buffers marked for delayed allocation. It returns '1'
+- * on the first delalloc'ed buffer head found. If no buffer head in the given
+- * range is marked for delalloc, it returns 0.
+- * lblk_start should always be <= lblk_end.
+- * search_hint_reverse is to indicate that searching in reverse from lblk_end to
+- * lblk_start might be more efficient (i.e., we will likely hit the delalloc'ed
+- * block sooner). This is useful when blocks are truncated sequentially from
+- * lblk_start towards lblk_end.
++ * Return 1 if there is a delalloc block in the range, otherwise 0.
+  */
+ static int ext4_find_delalloc_range(struct inode *inode,
+ 				    ext4_lblk_t lblk_start,
+-				    ext4_lblk_t lblk_end,
+-				    int search_hint_reverse)
++				    ext4_lblk_t lblk_end)
+ {
+-	struct address_space *mapping = inode->i_mapping;
+-	struct buffer_head *head, *bh = NULL;
+-	struct page *page;
+-	ext4_lblk_t i, pg_lblk;
+-	pgoff_t index;
+-
+-	if (!test_opt(inode->i_sb, DELALLOC))
+-		return 0;
+-
+-	/* reverse search wont work if fs block size is less than page size */
+-	if (inode->i_blkbits < PAGE_CACHE_SHIFT)
+-		search_hint_reverse = 0;
+-
+-	if (search_hint_reverse)
+-		i = lblk_end;
+-	else
+-		i = lblk_start;
+-
+-	index = i >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-
+-	while ((i >= lblk_start) && (i <= lblk_end)) {
+-		page = find_get_page(mapping, index);
+-		if (!page)
+-			goto nextpage;
+-
+-		if (!page_has_buffers(page))
+-			goto nextpage;
+-
+-		head = page_buffers(page);
+-		if (!head)
+-			goto nextpage;
+-
+-		bh = head;
+-		pg_lblk = index << (PAGE_CACHE_SHIFT -
+-						inode->i_blkbits);
+-		do {
+-			if (unlikely(pg_lblk < lblk_start)) {
+-				/*
+-				 * This is possible when fs block size is less
+-				 * than page size and our cluster starts/ends in
+-				 * middle of the page. So we need to skip the
+-				 * initial few blocks till we reach the 'lblk'
+-				 */
+-				pg_lblk++;
+-				continue;
+-			}
+-
+-			/* Check if the buffer is delayed allocated and that it
+-			 * is not yet mapped. (when da-buffers are mapped during
+-			 * their writeout, their da_mapped bit is set.)
+-			 */
+-			if (buffer_delay(bh) && !buffer_da_mapped(bh)) {
+-				page_cache_release(page);
+-				trace_ext4_find_delalloc_range(inode,
+-						lblk_start, lblk_end,
+-						search_hint_reverse,
+-						1, i);
+-				return 1;
+-			}
+-			if (search_hint_reverse)
+-				i--;
+-			else
+-				i++;
+-		} while ((i >= lblk_start) && (i <= lblk_end) &&
+-				((bh = bh->b_this_page) != head));
+-nextpage:
+-		if (page)
+-			page_cache_release(page);
+-		/*
+-		 * Move to next page. 'i' will be the first lblk in the next
+-		 * page.
+-		 */
+-		if (search_hint_reverse)
+-			index--;
+-		else
+-			index++;
+-		i = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-	}
++	struct extent_status es;
+ 
+-	trace_ext4_find_delalloc_range(inode, lblk_start, lblk_end,
+-					search_hint_reverse, 0, 0);
+-	return 0;
++	es.start = lblk_start;
++	ext4_es_find_extent(inode, &es);
++	return (es.start + es.len) >= lblk_end && es.start <= lblk_start;
+ }
+ 
+-int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk,
+-			       int search_hint_reverse)
++int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	ext4_lblk_t lblk_start, lblk_end;
+ 	lblk_start = lblk & (~(sbi->s_cluster_ratio - 1));
+ 	lblk_end = lblk_start + sbi->s_cluster_ratio - 1;
+ 
+-	return ext4_find_delalloc_range(inode, lblk_start, lblk_end,
+-					search_hint_reverse);
++	return ext4_find_delalloc_range(inode, lblk_start, lblk_end);
+ }
+ 
+ /**
+@@ -3574,7 +3486,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
+ 		lblk_from = lblk_start & (~(sbi->s_cluster_ratio - 1));
+ 		lblk_to = lblk_from + c_offset - 1;
+ 
+-		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
++		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to))
+ 			allocated_clusters--;
+ 	}
+ 
+@@ -3584,7 +3496,7 @@ get_reserved_cluster_alloc(struct inode *inode, ext4_lblk_t lblk_start,
+ 		lblk_from = lblk_start + num_blks;
+ 		lblk_to = lblk_from + (sbi->s_cluster_ratio - c_offset) - 1;
+ 
+-		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to, 0))
++		if (ext4_find_delalloc_range(inode, lblk_from, lblk_to))
+ 			allocated_clusters--;
+ 	}
+ 
+@@ -3868,7 +3780,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
+ 		if (!newex.ee_start_lo && !newex.ee_start_hi) {
+ 			if ((sbi->s_cluster_ratio > 1) &&
+-			    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
++			    ext4_find_delalloc_cluster(inode, map->m_lblk))
+ 				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+ 
+ 			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+@@ -3956,7 +3868,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	if ((sbi->s_cluster_ratio > 1) &&
+-	    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
++	    ext4_find_delalloc_cluster(inode, map->m_lblk))
+ 		map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+ 
+ 	/*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index aa04aa6..e1416c1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -484,49 +484,6 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
+ }
+ 
+ /*
+- * Sets the BH_Da_Mapped bit on the buffer heads corresponding to the given map.
+- */
+-static void set_buffers_da_mapped(struct inode *inode,
+-				   struct ext4_map_blocks *map)
+-{
+-	struct address_space *mapping = inode->i_mapping;
+-	struct pagevec pvec;
+-	int i, nr_pages;
+-	pgoff_t index, end;
+-
+-	index = map->m_lblk >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
+-	end = (map->m_lblk + map->m_len - 1) >>
+-		(PAGE_CACHE_SHIFT - inode->i_blkbits);
+-
+-	pagevec_init(&pvec, 0);
+-	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, index,
+-					  min(end - index + 1,
+-					      (pgoff_t)PAGEVEC_SIZE));
+-		if (nr_pages == 0)
+-			break;
+-		for (i = 0; i < nr_pages; i++) {
+-			struct page *page = pvec.pages[i];
+-			struct buffer_head *bh, *head;
+-
+-			if (unlikely(page->mapping != mapping) ||
+-			    !PageDirty(page))
+-				break;
+-
+-			if (page_has_buffers(page)) {
+-				bh = head = page_buffers(page);
+-				do {
+-					set_buffer_da_mapped(bh);
+-					bh = bh->b_this_page;
+-				} while (bh != head);
+-			}
+-			index++;
+-		}
+-		pagevec_release(&pvec);
+-	}
+-}
+-
+-/*
+  * The ext4_map_blocks() function tries to look up the requested blocks,
+  * and returns if the blocks are already mapped.
+  *
+@@ -661,13 +618,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
+ 		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+ 
+-		/* If we have successfully mapped the delayed allocated blocks,
+-		 * set the BH_Da_Mapped bit on them. Its important to do this
+-		 * under the protection of i_data_sem.
+-		 */
+ 		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+ 			int ret;
+-			set_buffers_da_mapped(inode, map);
+ delayed_mapped:
+ 			/* delayed allocation blocks has been allocated */
+ 			ret = ext4_es_remove_extent(inode, map->m_lblk,
+@@ -1325,7 +1277,6 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 		if ((offset <= curr_off) && (buffer_delay(bh))) {
+ 			to_release++;
+ 			clear_buffer_delay(bh);
+-			clear_buffer_da_mapped(bh);
+ 		}
+ 		curr_off = next_off;
+ 	} while ((bh = bh->b_this_page) != head);
+@@ -1338,7 +1289,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 		lblk = (page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits)) +
+ 			((num_clusters - 1) << sbi->s_cluster_bits);
+ 		if (sbi->s_cluster_ratio == 1 ||
+-		    !ext4_find_delalloc_cluster(inode, lblk, 1))
++		    !ext4_find_delalloc_cluster(inode, lblk))
+ 			ext4_da_release_space(inode, 1);
+ 
+ 		num_clusters--;
+@@ -1444,8 +1395,6 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 						clear_buffer_delay(bh);
+ 						bh->b_blocknr = pblock;
+ 					}
+-					if (buffer_da_mapped(bh))
+-						clear_buffer_da_mapped(bh);
+ 					if (buffer_unwritten(bh) ||
+ 					    buffer_mapped(bh))
+ 						BUG_ON(bh->b_blocknr != pblock);
 -- 
 1.7.4.1
 
