@@ -1,50 +1,70 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 46361] ext4 partition mount takes long time with 3.5.1+ kernel
-Date: Thu, 23 Aug 2012 19:16:43 +0000 (UTC)
-Message-ID: <20120823191643.BFE0411FC6C@bugzilla.kernel.org>
-References: <bug-46361-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Dump file inode information from ext2/3 partition
+Date: Thu, 23 Aug 2012 15:39:04 -0400
+Message-ID: <20120823193904.GA6234@thunk.org>
+References: <CAD6i1fJF5wcX2dj2P8mUR4J5Qz3x58CiSfzubYoy0b1ZcRYcRw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Prashant Shah <pshah.mumbai@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:58501 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751960Ab2HWTQt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Aug 2012 15:16:49 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BBAD020515
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Aug 2012 19:16:46 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id C3A1820563
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Aug 2012 19:16:43 +0000 (UTC)
-In-Reply-To: <bug-46361-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46423 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934223Ab2HWTjQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Aug 2012 15:39:16 -0400
+Content-Disposition: inline
+In-Reply-To: <CAD6i1fJF5wcX2dj2P8mUR4J5Qz3x58CiSfzubYoy0b1ZcRYcRw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=46361
+On Thu, Aug 23, 2012 at 07:43:29PM +0530, Prashant Shah wrote:
+> 
+> We wrote a small tool to dump file inode information from ext2/3
+> partition as an assignment related to learning about file systems.
+> 
+> https://github.com/prashants/tools/tree/master/ext
+> https://github.com/prashants/tools/blob/master/ext/ext3dump.c
+> 
+> I am not sure if there is any future use for it other than for
+> learning purposes.
 
+I hope it was enjoyable learning how to access an ext2/3 filesystem
+directly!
 
-Theodore Tso <tytso@mit.edu> changed:
+Some comments about your code:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |tytso@mit.edu
-         Resolution|                            |CODE_FIX
+*) It requires that the file system be mounted (so you can get the
+   inode number), and then it accesses the file directly through the
+   block device.  This is a no-no, since the block might not have been
+   flushed out to disk yet if it was a newly created file.
 
+*) You don't check that the inode number that you got by using
+   open()/stat() is from the same file system that you are accessing
+   via the block device.
 
+*) You don't check to see if the filesystem feature flags are as you
+   expect; this utility will blow up pretty spectacularly on an ext4
+   file system.
 
+If you want to see how a better version of this functionality can be
+built, please see the "debugfs" program which is part of e2fsprogs.
+It uses the libext2fs libraries, and is a much more robust program for
+direct access to a file system via the block device for debugging
+purposes.
 
---- Comment #6 from Theodore Tso <tytso@mit.edu>  2012-08-23 19:16:43 ---
-This was fixed in commit 0548bbb85337e532ca2ed697c3e9b227ff2ed4b4 which hit
-mainline in v3.6-rc3.  It will hopefully be in the next stable release, v3.5.3,
-but that hasn't been released yet.
+If you want to see a more user-friendly interface, please take a look
+at the e2tools package.  It also uses the libext2fs library which is
+distributed as part of e2fsprogs (and installed on pretty much all
+Linux distributions), and is a more polished way of accessing a file
+directly meant to be used by end users --- as opposed to debugfs,
+which is really meant for file system engineers.
 
-Please try cherry-picking that fix, and let me know if that doesn't fix it.  If
-it doesn't, we can reopen this bug and I'll take a closer look.  But I'm 99.9%
-sure this should fix things for you.
+So debugfs is more powerful, but you can also do severe harm to the
+file system if you open the filesystem read/write and you start
+messing with it.  At the same time, debugfs is also a more interesting
+if you are a student who wants to get a much better understanding of
+the underlying file system format.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Regards,
+
+						- Ted
