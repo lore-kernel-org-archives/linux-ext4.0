@@ -1,70 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Dump file inode information from ext2/3 partition
-Date: Thu, 23 Aug 2012 15:39:04 -0400
-Message-ID: <20120823193904.GA6234@thunk.org>
-References: <CAD6i1fJF5wcX2dj2P8mUR4J5Qz3x58CiSfzubYoy0b1ZcRYcRw@mail.gmail.com>
+From: "Zimbra." <mesterhazy.anita@atif.hu>
+Subject: Newsletter.
+Date: Thu, 23 Aug 2012 23:21:28 +0200 (CEST)
+Message-ID: <1199778512.131011.1345756888635.JavaMail.root@rs2.atif.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Prashant Shah <pshah.mumbai@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46423 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934223Ab2HWTjQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Aug 2012 15:39:16 -0400
-Content-Disposition: inline
-In-Reply-To: <CAD6i1fJF5wcX2dj2P8mUR4J5Qz3x58CiSfzubYoy0b1ZcRYcRw@mail.gmail.com>
+Received: from rs2.atif.hu ([193.225.132.4]:48291 "EHLO rs2.atif.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932073Ab2HWVaQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Aug 2012 17:30:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 23, 2012 at 07:43:29PM +0530, Prashant Shah wrote:
-> 
-> We wrote a small tool to dump file inode information from ext2/3
-> partition as an assignment related to learning about file systems.
-> 
-> https://github.com/prashants/tools/tree/master/ext
-> https://github.com/prashants/tools/blob/master/ext/ext3dump.c
-> 
-> I am not sure if there is any future use for it other than for
-> learning purposes.
 
-I hope it was enjoyable learning how to access an ext2/3 filesystem
-directly!
 
-Some comments about your code:
 
-*) It requires that the file system be mounted (so you can get the
-   inode number), and then it accesses the file directly through the
-   block device.  This is a no-no, since the block might not have been
-   flushed out to disk yet if it was a newly created file.
 
-*) You don't check that the inode number that you got by using
-   open()/stat() is from the same file system that you are accessing
-   via the block device.
+This mail is from Zimbra Administrator we wish to bring to your notice =
+the Condition of your email account.
 
-*) You don't check to see if the filesystem feature flags are as you
-   expect; this utility will blow up pretty spectacularly on an ext4
-   file system.
+We have just noticed that you have exceeded your email Database limit o=
+f 500 MB quota and your email IP is causing conflict because it is been=
+ accessed in different server location. You need to Upgrade and expand =
+your email quota limit before you can continue to use your email.
 
-If you want to see how a better version of this functionality can be
-built, please see the "debugfs" program which is part of e2fsprogs.
-It uses the libext2fs libraries, and is a much more robust program for
-direct access to a file system via the block device for debugging
-purposes.
+Update your email quota limit to 2.6 GB, use the below web link:
 
-If you want to see a more user-friendly interface, please take a look
-at the e2tools package.  It also uses the libext2fs library which is
-distributed as part of e2fsprogs (and installed on pretty much all
-Linux distributions), and is a more polished way of accessing a file
-directly meant to be used by end users --- as opposed to debugfs,
-which is really meant for file system engineers.
 
-So debugfs is more powerful, but you can also do severe harm to the
-file system if you open the filesystem read/write and you start
-messing with it.  At the same time, debugfs is also a more interesting
-if you are a student who wants to get a much better understanding of
-the underlying file system format.
+https://docs.google.com/spreadsheet/viewform?formkey=3DdFRGbU1iYU0tdm1q=
+eWlCSDhLZjZVOFE6MQ
 
-Regards,
 
-						- Ted
+=46ailure to do this will result to email deactivation within 24hours
+
+Thank you for your understanding.
+
+Copyright 2012 =C2=A9 Inc. Zimbra Help Desk.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
