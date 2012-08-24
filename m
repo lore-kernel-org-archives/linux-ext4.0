@@ -1,45 +1,43 @@
-From: "Zimbra." <mesterhazy.anita@atif.hu>
-Subject: Newsletter.
-Date: Thu, 23 Aug 2012 23:21:28 +0200 (CEST)
-Message-ID: <1199778512.131011.1345756888635.JavaMail.root@rs2.atif.hu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 45941] BUG: soft lockup - CPU#1 stuck for 21s! [kworker/1:1:64]
+ BUG: soft lockup - CPU#4 stuck for 22s! [flush-252:0:384]
+Date: Fri, 24 Aug 2012 10:05:12 +0000 (UTC)
+Message-ID: <20120824100512.C818411FC6D@bugzilla.kernel.org>
+References: <bug-45941-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rs2.atif.hu ([193.225.132.4]:48291 "EHLO rs2.atif.hu"
+Received: from mail.kernel.org ([198.145.19.201]:49688 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932073Ab2HWVaQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Aug 2012 17:30:16 -0400
+	id S1755659Ab2HXKFS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Aug 2012 06:05:18 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9FDAB2036B
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Aug 2012 10:05:14 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id BEAD020353
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Aug 2012 10:05:13 +0000 (UTC)
+In-Reply-To: <bug-45941-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=45941
 
 
 
 
-This mail is from Zimbra Administrator we wish to bring to your notice =
-the Condition of your email account.
 
-We have just noticed that you have exceeded your email Database limit o=
-f 500 MB quota and your email IP is causing conflict because it is been=
- accessed in different server location. You need to Upgrade and expand =
-your email quota limit before you can continue to use your email.
+--- Comment #3 from Loris Luise <loris.luise@gmail.com>  2012-08-24 10:05:12 ---
+I made 2 modifications on the server running linux and currently no more soft
+lockup has happened
 
-Update your email quota limit to 2.6 GB, use the below web link:
+1) removed irqbalance daemon from ubuntu server
+2) unchecked "Synchronize guest time with host" from VM setting (VMWare esx)
 
+Modification 1) most probably solved the problem.
 
-https://docs.google.com/spreadsheet/viewform?formkey=3DdFRGbU1iYU0tdm1q=
-eWlCSDhLZjZVOFE6MQ
-
-
-=46ailure to do this will result to email deactivation within 24hours
-
-Thank you for your understanding.
-
-Copyright 2012 =C2=A9 Inc. Zimbra Help Desk.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
