@@ -1,76 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [Bug 38642] New: ext4 timestamp format unable to uniquely
- represent times
-Date: Sat, 25 Aug 2012 12:01:05 -0400
-Message-ID: <20120825160105.GA6111@thunk.org>
-References: <bug-38642-13602@https.bugzilla.kernel.org/>
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Subject: Re: [PATCH]:dir.c patch
+Date: Sat, 25 Aug 2012 23:36:09 +0200
+Message-ID: <50394549.5070308@fastmail.fm>
+References: <CAGh4K3+7+4E0rt1Lwu-z1n-XrDtaiE4Vk82S0a98GVo4VnDA7Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Christopher Sacchi <chris.sacchi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46816 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755606Ab2HYRve (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Aug 2012 13:51:34 -0400
-Content-Disposition: inline
-In-Reply-To: <bug-38642-13602@https.bugzilla.kernel.org/>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:40468 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751016Ab2HYVgM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 25 Aug 2012 17:36:12 -0400
+In-Reply-To: <CAGh4K3+7+4E0rt1Lwu-z1n-XrDtaiE4Vk82S0a98GVo4VnDA7Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 01, 2011 at 03:05:38PM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+On 08/25/2012 10:37 PM, Christopher Sacchi wrote:
+> Here is a non-style issue dir.c-patch, and as far as I can see from
+> the lines of code, the compilation errors weren't about what I put in.
+> This patch fixes a "break" statement inside an "if" statement, as
+> obviously not correct.
+
+Why should that not be correct? It breaks the while(1) loop?
+
+> Here's the patch for the kernel version v3.6.0rc3:
 > 
-> The presence of the extra bits in the ext4 timestamps implies a desire to
-> represent file times to sub-second accuracy. Unfortunately, standard posix
-> timestamps are not uniformly 1 SI second long, due to the presence of leap
-> seconds. For example, the Posix timestamp 1230768000 corresponds to the UTC
-> times "2008-12-31 23:59:60" and "2009-01-01 00:00:00".
-> 
-> Since there are only 30 bits in the nanosecond field, ext4 cannot accurately
-> keep track of file times during a leap second.
+> --
+> Signed-off-by: Christopher P. Sacchi <chris.sacchi@gmail.com>
+> --- dir.c	2012-08-25 15:47:24.260443900 -0400
+> +++ dir.c	2012-08-25 16:02:05.458845600 -0400
+> @@ -580,7 +580,6 @@ static int ext4_dx_readdir(struct file *
+>  				return ret;
+>  			if (ret == 0) {
+>  				filp->f_pos = ext4_get_htree_eof(filp);
+> -				break;
 
-This is something which is fundamentally true with how time is handled
-by Linux and POSIX systems in general.  The gettimeofday(2) function
-will not return values greater than or equal to 10**6 in the tv_usec
-field.  Instead, the tv_sec field will simply not change during the
-leapsecond, and tv_usec field will cycle from 999999 to 0.
+So ext4_htree_fill_tree() did not return more entries and the while(1)
+loop shall be stopped?
 
-The kernel doesn't do anything special for leap seconds at all; it
-doesn't know about them.  Since ext4 file system driver is in the
-kernel, the same is logically true for ext4.  The ext4 driver will
-call the internal equivalent of gettimeofday(2), and we will never get
-subsecond values which are larger than 999999 usecs.  Hence, the fact
-that we have only 30 bits of nanonsecond fields is fine.
 
-Regards,
-
-      	     	  	      	      	 - Ted
-
-P.S.  It is the responsibility of ntp to forcibly adjust the system
-clock and create a discontinuity in the times returned by time(2) and
-gettimeofday(2) during the leap second.  It's because of this that all
-manner of computer malfunctions can happen during the leap second.  In
-particular, distributed systems which rely on the time stamp to
-enforce uniqueness can go completely haywire (since most software used
-by distributed systems have no idea that a leapsecond is coming and
-make no allowances for it --- this includes time-based UUIDs created
-by libuuid, BTW, which *is* being used by open source distributed
-systems, at least two of which can create tens of thousands of UUID's
-per second, and hence the chance of collisions are extremely high
-during the leap second).
-
-For this reason, Google internally uses ntp servers which perform a
-"leap smear" during the 24 hours before the leap second.  During that
-time, Google's ntp slows down the system clock and spreads out the
-leapsecond across the entire day.  This allows us to avoid the
-discontinuity problem, although it means that Google's ntp servers are
-not compatible with the rest of the ntp servers on the network during
-the day before the leap second.
-
-(This is one of the reasons why people should NOT try using any NTP
-servers they might find in Google's DNS, BTW, since it is incompatible
-with all other NTP servers during the day before the leap second, and
-bad things will happen if you associate with "leap smear" ntp servers
-and normal ntp servers at the same time.  The other reason is it is an
-unadvertised and unsupported service, for Google's internal use only,
-and as such there is no SLA --- it can disappear at any time.)
+Cheers,
+Bernd
