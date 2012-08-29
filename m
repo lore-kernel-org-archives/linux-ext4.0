@@ -1,201 +1,40 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH 3/3] ext4: reimplement uninit extent optimization for
- move_extent_per_page
-Date: Wed, 29 Aug 2012 17:24:34 +0900
-Message-ID: <503DD1C2.8080303@rs.jp.nec.com>
-References: <1346170903-7563-1-git-send-email-dmonakhov@openvz.org> <1346170903-7563-3-git-send-email-dmonakhov@openvz.org>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: query about truncate and orphan list
+Date: Wed, 29 Aug 2012 14:52:22 +0530
+Message-ID: <CAOiN93=uvi37EMuOYvd+Nr2up=giPikL+sLEOFTpqOzyHi+Tfw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([202.32.8.215]:50707 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751998Ab2H2IbR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Aug 2012 04:31:17 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id q7T8VGJ5009894
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2012 17:31:16 +0900 (JST)
-In-Reply-To: <1346170903-7563-3-git-send-email-dmonakhov@openvz.org>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:38327 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750745Ab2H2JWX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Aug 2012 05:22:23 -0400
+Received: by vcbfk26 with SMTP id fk26so348468vcb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Aug 2012 02:22:23 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Dmitry,
+I have a query about orphan list and truncate.
+Currently these steps are performed in ext4_ext_truncate():
+a) Start journal handle.
+b) add inode to orphan list.
+c) i_disksize is updated and inode is mark dirty.
+d) actual truncate happen.
+e) remove inode from orphan list.
+f) handle stop.
 
-(2012/08/29 1:21), Dmitry Monakhov wrote:
-> Uninitialized extent may became initialized(parallel writeback task)
-> at any moment after we drop i_data_sem, so we have to recheck extent's
-> state after we hold page's lock and i_data_sem.
->
-> If we about to change page's mapping we must hold page's lock in order to
-> serialize other users.
-> ---
->   fs/ext4/move_extent.c |   96 ++++++++++++++++++++++++++++++++++++++++++++-----
->   1 files changed, 87 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index c5ca317..b62defa 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -629,6 +629,42 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
->   }
->   
->   /**
-> + * mext_check_range_coverage - Check that all extents in range has the same type
-> + *
-> + * @inode:		inode in question
-> + * @from:		block offset of inode
-> + * @count:		block count to be checked
-> + * @uninit:		extents expected to be uninitialized
-> + * @err:		pointer to save error value
-> + *
-> + * Return 1 if all extents in range has expected type, and zero otherwise.
-> + */
-> +int mext_check_range_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
-> +			  int uninit, int *err)
-> +{
-> +	struct ext4_ext_path *path = NULL;
-> +	struct ext4_extent *ext;
-> +	ext4_lblk_t last = from;
+If system crash during step d) will i_disksize is actually updated on disk?
+AFAIK i_disksize might be updated on the journal but not on its
+original location because the transaction is not commited yet.
 
-ext4_lblk_t last = from + count;
+If this is the case than what is the use of re-starting truncate
+operation while processing orphan inode list?
 
-> +	while (from < last) {
-> +		*err = get_ext_path(inode, from, &path);
-> +		if (*err)
-> +			return 0;
-> +		ext = path[ext_depth(inode)].p_ext;
-> +		if (!ext) {
-> +			ext4_ext_drop_refs(path);
-> +			return 0;
-> +		}
-> +		if (uninit != ext4_ext_is_uninitialized(ext)) {
-> +			ext4_ext_drop_refs(path);
-> +			return 0;
-> +		}
-> +		from += ext4_ext_get_actual_len(ext);
-> +		ext4_ext_drop_refs(path);
-> +	}
-> +	return 1;
-> +}
-> +
-> +/**
->    * mext_replace_branches - Replace original extents with new extents
->    *
->    * @handle:		journal handle
-> @@ -663,9 +699,6 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
->   	int replaced_count = 0;
->   	int dext_alen;
->   
-> -	/* Protect extent trees against block allocations via delalloc */
-> -	double_down_write_data_sem(orig_inode, donor_inode);
-> -
->   	/* Get the original extent for the block "orig_off" */
->   	*err = get_ext_path(orig_inode, orig_off, &orig_path);
->   	if (*err)
-> @@ -764,8 +797,6 @@ out:
->   	ext4_ext_invalidate_cache(orig_inode);
->   	ext4_ext_invalidate_cache(donor_inode);
->   
-> -	double_up_write_data_sem(orig_inode, donor_inode);
-> -
->   	return replaced_count;
->   }
->   
-> @@ -807,10 +838,6 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
->   	int replaced_count = 0;
->   	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
->   
-> -	/*
-> -	 * It needs twice the amount of ordinary journal buffers because
-> -	 * inode and donor_inode may change each different metadata blocks.
-> -	 */
->   	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
->   
->   	if (segment_eq(get_fs(), KERNEL_DS))
-> @@ -819,6 +846,55 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
->   	orig_blk_offset = orig_page_offset * blocks_per_page +
->   		data_offset_in_page;
->   
-> +	/*
-> +	 * If orig extent was uninitialized, but it can become initialized at any
-> +	 * time after i_data_sem was dropped, in order to serialize with delalloc
-> +	 * we have recheck extent while we hold page's lock, if it is still the
-> +	 * case data copy is not necessery, just swap data blocks between orig
-> +	 * and donor.
-> +	 */
-> +	if (uninit) {
-> +		handle = ext4_journal_start(orig_inode, jblocks);
-> +		if (!handle) {
-> +			*err = -ENOMEM;
-> +			return 0;
-> +		}
+PS: Also, there is function ext4_ext_truncate_extend_restart which may
+commit the current transaction
+in which case i_disksize would be updated but I am assuming there are
+enough free journal blocks.
 
-It would be better we use IS_ERR(handle) 
-because ext4_journal_start() can return various error values.
-
-
-> +		page = find_or_create_page(mapping,orig_page_offset, GFP_NOFS);
-
-You might want to put a white space after "mapping,".
-
-
-> +		if (!page) {
-> +			ext4_journal_stop(handle);
-> +			*err = -ENOMEM;
-> +			return 0;
-> +		}
-> +		double_down_write_data_sem(orig_inode, donor_inode);
-> +		/* If any of extents in range became initialized we have to
-> +		 * fallback to data copying */
-> +		if (!mext_check_range_coverage(orig_inode, orig_blk_offset,
-> +					   block_len_in_page, 1, err) ||
-> +		    !mext_check_range_coverage(donor_inode, orig_blk_offset,
-> +					   block_len_in_page, 1, &err2)) {
-> +			double_up_write_data_sem(orig_inode, donor_inode);
-> +			unlock_page(page);
-> +			page_cache_release(page);
-> +			ext4_journal_stop(handle);
-> +			if (*err || err2)
-> +				goto out;
-> +			goto data_copy;
-> +		}
-> +		if (!try_to_release_page(page, 0))
-> +			goto drop_data_sem;
-> +
-> +		if (!PageUptodate(page)) {
-> +			zero_user(page, 0, PAGE_SIZE);
-> +			SetPageUptodate(page);
-> +		}
-> +		replaced_count = mext_replace_branches(handle, orig_inode,
-> +						donor_inode, orig_blk_offset,
-> +						block_len_in_page, err);
-> +	drop_data_sem:
-> +		double_up_write_data_sem(orig_inode, donor_inode);
-> +		goto drop_page;
-> +	}
-> +data_copy:
->   	offs = (long long)orig_blk_offset << orig_inode->i_blkbits;
->   
->   	/* Calculate data_size */
-> @@ -884,9 +960,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
->   	if (ext4_journal_extend(handle, jblocks) < 0)
->   		goto write_end;
->   
-> +	double_down_write_data_sem(orig_inode, donor_inode);
->   	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
->   					orig_blk_offset, block_len_in_page,
->   					&err2);
-> +	double_up_write_data_sem(orig_inode, donor_inode);
->   	if (err2) {
->   		if (replaced_count) {
->   			block_len_in_page = replaced_count;
->
-
-Regards,
-Akira Fujita
-
-
-
+Thanks,
+Ashish
