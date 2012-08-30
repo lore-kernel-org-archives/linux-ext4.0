@@ -1,27 +1,37 @@
-From: "Mrs. Helen Wong" <info@yahoo.com>
-Subject: Business Proposal
-Date: Thu, 30 Aug 2012 08:56:34 +0100
-Message-ID: <b1021b$2hvaia@hermes-dos.uned.es>
-Reply-To: <helenwong011@yahoo.co.jp>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 44731] ext4 deadlock under heavy io?
+Date: Thu, 30 Aug 2012 08:18:51 +0000 (UTC)
+Message-ID: <20120830081851.30BD711F991@bugzilla.kernel.org>
+References: <bug-44731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hermes-dos.uned.es ([62.204.192.102]:9697 "EHLO
-	hermes-dos.uned.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752267Ab2H3IG0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Aug 2012 04:06:26 -0400
+Received: from mail.kernel.org ([198.145.19.201]:43893 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752584Ab2H3IS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Aug 2012 04:18:59 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 129982021C
+	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 08:18:58 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 3D7A020297
+	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 08:18:57 +0000 (UTC)
+In-Reply-To: <bug-44731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greetings to you,
+https://bugzilla.kernel.org/show_bug.cgi?id=44731
 
-I am Mrs.Helen Wong, from Shanghai Banking Corporation Limited. (China)I
-have a business proposal of USD$30,000,000 (Thirty Million United States
-Dollars Only)for you to transact with me
 
-Contact me via my email address: mrshelenwong001@yahoo.co.jp
 
-Mrs. Helen Wong
+
+
+--- Comment #10 from Jan Kara <jack@suse.cz>  2012-08-30 08:18:50 ---
+Yeah, Mirek, to better diagnose your problem, I need sysrq-w output when the
+system is hung.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
