@@ -1,22 +1,22 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 44731] ext4 deadlock under heavy io?
-Date: Thu, 30 Aug 2012 08:18:51 +0000 (UTC)
-Message-ID: <20120830081851.30BD711F991@bugzilla.kernel.org>
+Date: Thu, 30 Aug 2012 09:06:52 +0000 (UTC)
+Message-ID: <20120830090652.B717B11FB3C@bugzilla.kernel.org>
 References: <bug-44731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:43893 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.19.201]:44698 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752584Ab2H3IS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Aug 2012 04:18:59 -0400
+	id S1753062Ab2H3JHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Aug 2012 05:07:01 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 129982021C
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 08:18:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 783232027B
+	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 09:07:00 +0000 (UTC)
 Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 3D7A020297
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 08:18:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 252F62029B
+	for <linux-ext4@vger.kernel.org>; Thu, 30 Aug 2012 09:06:55 +0000 (UTC)
 In-Reply-To: <bug-44731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -27,9 +27,12 @@ https://bugzilla.kernel.org/show_bug.cgi?id=44731
 
 
 
---- Comment #10 from Jan Kara <jack@suse.cz>  2012-08-30 08:18:50 ---
-Yeah, Mirek, to better diagnose your problem, I need sysrq-w output when the
-system is hung.
+--- Comment #11 from Mirek Rusin <mirek@me.com>  2012-08-30 09:06:52 ---
+It should happen sometime today, will let you know, on ubuntu it's just:
+
+     echo w > /proc/sysrq-trigger
+
+as root, right?
 
 -- 
 Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
