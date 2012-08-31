@@ -1,39 +1,109 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 hung tasks in linux-stable 3.0.41
-Date: Fri, 31 Aug 2012 13:59:03 -0400
-Message-ID: <20120831175903.GB6342@thunk.org>
-References: <50406B29.1090403@profihost.ag>
- <20120831092859.GB19786@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Stefan Priebe - Profihost AG <s.priebe@profihost.ag>,
-	stable@vger.kernel.org, Greg KH <gregkh@linuxfoundation.org>,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48166 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754378Ab2HaR7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 31 Aug 2012 13:59:10 -0400
-Content-Disposition: inline
-In-Reply-To: <20120831092859.GB19786@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 02/15 v2] jbd2: implement jbd2_journal_invalidatepage_range
+Date: Fri, 31 Aug 2012 18:21:38 -0400
+Message-ID: <1346451711-1931-3-git-send-email-lczerner@redhat.com>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+        linux-mm@kvack.org, Lukas Czerner <lczerner@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 31, 2012 at 11:28:59AM +0200, Jan Kara wrote:
-> > 
-> > Is this problem known? Or is there a fix for 3.0.X available?
->   From a quick look, processes are waiting for IO so it may be that your
-> disk is just loaded... Did it start happening after some change? Or do you
-> experience unexpectedly low performance?
+mm now supports invalidatepage_range address space operation and there
+are two file system using jbd2 also implementing punch hole feature
+which can benefit from this. We need to implement the same thing for
+jbd2 layer in order to allow those file system take benefit of this
+functionality.
 
-All of the processes waiting for I/O are waiting for a directory
-block.  This makes me suspicious that perhaps an interrupt or I/O
-request got lost.
+With new function jbd2_journal_invalidatepage_range() we can now specify
+length to invalidate, rather than assuming invalidate to the end of the
+page.
 
-Is this a repeatable failure, and is the stack traces always the same?
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/jbd2/journal.c     |    1 +
+ fs/jbd2/transaction.c |   19 +++++++++++++++++--
+ include/linux/jbd2.h  |    2 ++
+ 3 files changed, 20 insertions(+), 2 deletions(-)
 
-If so, you might want to try running badblocks on the device and make
-sure that hardware issues have been ruled out.
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e149b99..e4618e9 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -86,6 +86,7 @@ EXPORT_SYMBOL(jbd2_journal_force_commit_nested);
+ EXPORT_SYMBOL(jbd2_journal_wipe);
+ EXPORT_SYMBOL(jbd2_journal_blocks_per_page);
+ EXPORT_SYMBOL(jbd2_journal_invalidatepage);
++EXPORT_SYMBOL(jbd2_journal_invalidatepage_range);
+ EXPORT_SYMBOL(jbd2_journal_try_to_free_buffers);
+ EXPORT_SYMBOL(jbd2_journal_force_commit);
+ EXPORT_SYMBOL(jbd2_journal_file_inode);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index fb1ab953..65c1374 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1993,10 +1993,20 @@ zap_buffer_unlocked:
+  *
+  */
+ void jbd2_journal_invalidatepage(journal_t *journal,
+-		      struct page *page,
+-		      unsigned long offset)
++				 struct page *page,
++				 unsigned long offset)
++{
++	jbd2_journal_invalidatepage_range(journal, page, offset,
++					  PAGE_CACHE_SIZE - offset);
++}
++
++void jbd2_journal_invalidatepage_range(journal_t *journal,
++				       struct page *page,
++				       unsigned int offset,
++				       unsigned int length)
+ {
+ 	struct buffer_head *head, *bh, *next;
++	unsigned int stop = offset + length;
+ 	unsigned int curr_off = 0;
+ 	int may_free = 1;
+ 
+@@ -2005,6 +2015,8 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+ 	if (!page_has_buffers(page))
+ 		return;
+ 
++	BUG_ON(stop > PAGE_CACHE_SIZE || stop < length);
++
+ 	/* We will potentially be playing with lists other than just the
+ 	 * data lists (especially for journaled data mode), so be
+ 	 * cautious in our locking. */
+@@ -2014,6 +2026,9 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+ 		unsigned int next_off = curr_off + bh->b_size;
+ 		next = bh->b_this_page;
+ 
++		if (next_off > stop)
++			return;
++
+ 		if (offset <= curr_off) {
+ 			/* This block is wholly outside the truncation point */
+ 			lock_buffer(bh);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 3efc43f..21288fa 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1101,6 +1101,8 @@ extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
+ extern void	 journal_sync_buffer (struct buffer_head *);
+ extern void	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned long);
++extern void	 jbd2_journal_invalidatepage_range(journal_t *, struct page *,
++						   unsigned int, unsigned int);
+ extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+-- 
+1.7.7.6
 
-     	  	   	       	    	  - Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
