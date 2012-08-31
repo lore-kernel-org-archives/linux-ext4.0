@@ -1,292 +1,245 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 01/15 v2] mm: add invalidatepage_range address space operation
-Date: Fri, 31 Aug 2012 18:21:37 -0400
-Message-ID: <1346451711-1931-2-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 03/15 v2] ext4: implement invalidatepage_range aop
+Date: Fri, 31 Aug 2012 18:21:39 -0400
+Message-ID: <1346451711-1931-4-git-send-email-lczerner@redhat.com>
 References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
-        linux-mm@kvack.org, Lukas Czerner <lczerner@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>
+        linux-mm@kvack.org, Lukas Czerner <lczerner@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently there is no way to truncate partial page where the end
-truncate point is not at the end of the page. This is because it was not
-needed and the functionality was enough for file system truncate
-operation to work properly. However more file systems now support punch
-hole feature and it can benefit from mm supporting truncating page just
-up to the certain point.
+mm now supports invalidatepage_range address space operation which is
+useful to allow truncating page range which is not aligned to the end of
+the page. This will help in punch hole implementation once
+truncate_inode_pages_range() is modify to allow this as well.
 
-Specifically, with this functionality truncate_inode_pages_range() can
-be changed so it supports truncating partial page at the end of the
-range (currently it will BUG_ON() if 'end' is not at the end of the
-page).
-
-This commit add new address space operation invalidatepage_range which
-allows specifying length of bytes to invalidate, rather than assuming
-truncate to the end of the page. It also introduce
-block_invalidatepage_range() and do_invalidatepage)range() functions for
-exactly the same reason.
-
-The caller does not have to implement both aops (invalidatepage and
-invalidatepage_range) and the latter is preferred. The old method will be
-used only if invalidatepage_range is not implemented by the caller.
+With this commit ext4 now register only invalidatepage_range. Also
+change the respective tracepoint to print length of the range.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Hugh Dickins <hughd@google.com>
 ---
- Documentation/filesystems/Locking |   17 ++++++++++++---
- Documentation/filesystems/vfs.txt |   17 +++++++++++++-
- fs/buffer.c                       |   30 ++++++++++++++++++++++++++-
- include/linux/buffer_head.h       |    2 +
- include/linux/fs.h                |    2 +
- include/linux/mm.h                |    2 +
- mm/truncate.c                     |   40 +++++++++++++++++++++++++++++++++---
- 7 files changed, 99 insertions(+), 11 deletions(-)
+ fs/ext4/inode.c             |   57 ++++++++++++++++++++++++++++++-------------
+ include/trace/events/ext4.h |   15 +++++++----
+ 2 files changed, 49 insertions(+), 23 deletions(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index e540a24..c137fce 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -193,7 +193,9 @@ prototypes:
- 				loff_t pos, unsigned len, unsigned copied,
- 				struct page *page, void *fsdata);
- 	sector_t (*bmap)(struct address_space *, sector_t);
--	int (*invalidatepage) (struct page *, unsigned long);
-+	void (*invalidatepage) (struct page *, unsigned long);
-+	void (*invalidatepage_range) (struct page *, unsigned int,
-+				      unsigned int);
- 	int (*releasepage) (struct page *, int);
- 	void (*freepage)(struct page *);
- 	int (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
-@@ -221,6 +223,7 @@ write_begin:		locks the page		yes
- write_end:		yes, unlocks		yes
- bmap:
- invalidatepage:		yes
-+invalidatepage_range:	yes
- releasepage:		yes
- freepage:		yes
- direct_IO:
-@@ -314,9 +317,15 @@ filesystems and by the swapper. The latter will eventually go away.  Please,
- keep it that way and don't breed new callers.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dff171c..244579d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -131,7 +131,8 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+ 						   new_size);
+ }
  
- 	->invalidatepage() is called when the filesystem must attempt to drop
--some or all of the buffers from the page when it is being truncated.  It
--returns zero on success.  If ->invalidatepage is zero, the kernel uses
--block_invalidatepage() instead.
-+some or all of the buffers from the page when it is being truncated. If
-+->invalidatepage is zero, the kernel uses block_invalidatepage_range()
-+instead.
-+
-+	->invalidatepage_range() serves the same purpose as ->invalidatepage()
-+except that range within the page to invalidate can be specified. This should
-+be preferred operation over the ->invalidatepage(). If ->invalidatepage_range()
-+is zero, the kernel tries to use ->invalidatepage(), if it is zero as well the
-+kernel uses block_invalidatepage_range() instead.
+-static void ext4_invalidatepage(struct page *page, unsigned long offset);
++static void ext4_invalidatepage_range(struct page *page, unsigned int offset,
++				      unsigned int length);
+ static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
+ 				   struct buffer_head *bh_result, int create);
+ static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode);
+@@ -1291,20 +1292,27 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
+ }
  
- 	->releasepage() is called when the kernel is about to try to drop the
- buffers from the page in preparation for freeing it.  It returns zero to
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 2ee133e..c7d7da8 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -560,7 +560,7 @@ struct address_space_operations
- -------------------------------
- 
- This describes how the VFS can manipulate mapping of a file to page cache in
--your filesystem. As of kernel 2.6.22, the following members are defined:
-+your filesystem. The following members are defined:
- 
- struct address_space_operations {
- 	int (*writepage)(struct page *page, struct writeback_control *wbc);
-@@ -577,7 +577,9 @@ struct address_space_operations {
- 				loff_t pos, unsigned len, unsigned copied,
- 				struct page *page, void *fsdata);
- 	sector_t (*bmap)(struct address_space *, sector_t);
--	int (*invalidatepage) (struct page *, unsigned long);
-+	void (*invalidatepage) (struct page *, unsigned long);
-+	void (*invalidatepage_range) (struct page *, unsigned int,
-+				      unsigned int);
- 	int (*releasepage) (struct page *, int);
- 	void (*freepage)(struct page *);
- 	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
-@@ -705,6 +707,17 @@ struct address_space_operations {
-         calling the ->releasepage function, but in this case the
-         release MUST succeed.
- 
-+  invalidatepage_range:  If a page has PagePrivate set, then
-+	invalidatepage_range will be called when part or all of the page
-+	is to be removed from the address space.  This generally corresponds
-+	to either a truncation, punch hole or a complete invalidateion of
-+	the address space. Any private data associated with the page should
-+	be updated to reflect this.  If offset is 0 and length is
-+	PAGE_CACHE_SIZE, then the private data should be released, because
-+	the page must be able to be completely discarded.  This may be done
-+	by calling the ->releasepage function, but in this case the release
-+	MUST succeed.
-+
-   releasepage: releasepage is called on PagePrivate pages to indicate
-         that the page should be freed if possible.  ->releasepage
-         should remove any private data from the page and clear the
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 58e2e7b..180c109 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1451,13 +1451,34 @@ static void discard_buffer(struct buffer_head * bh)
-  */
- void block_invalidatepage(struct page *page, unsigned long offset)
+ static void ext4_da_page_release_reservation(struct page *page,
+-					     unsigned long offset)
++					     unsigned int offset,
++					     unsigned int length)
  {
-+	block_invalidatepage_range(page, offset, PAGE_CACHE_SIZE - offset);
-+}
-+EXPORT_SYMBOL(block_invalidatepage);
-+
-+/**
-+ * block_invalidatepage_range() - invalidate all of a buffers within the
-+ * 				  specified range of the buffer-backed page.
-+ *
-+ * @page: the page which is affected
-+ * @offset: start of the range
-+ * @length: length of the range
-+ */
-+void block_invalidatepage_range(struct page *page, unsigned int offset,
-+				unsigned int length)
-+{
- 	struct buffer_head *head, *bh, *next;
+ 	int to_release = 0;
+ 	struct buffer_head *head, *bh;
  	unsigned int curr_off = 0;
-+	unsigned int stop = length + offset;
+ 	struct inode *inode = page->mapping->host;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	unsigned int stop = offset + length;
+ 	int num_clusters;
  
- 	BUG_ON(!PageLocked(page));
- 	if (!page_has_buffers(page))
- 		goto out;
- 
-+	/*
-+	 * Check for overflow
-+	 */
 +	BUG_ON(stop > PAGE_CACHE_SIZE || stop < length);
 +
  	head = page_buffers(page);
  	bh = head;
  	do {
-@@ -1465,6 +1486,12 @@ void block_invalidatepage(struct page *page, unsigned long offset)
- 		next = bh->b_this_page;
+ 		unsigned int next_off = curr_off + bh->b_size;
  
- 		/*
-+		 * Are we still fully in range ?
-+		 */
 +		if (next_off > stop)
-+			goto out;
++			break;
 +
-+		/*
- 		 * is this block fully invalidated?
- 		 */
- 		if (offset <= curr_off)
-@@ -1483,7 +1510,8 @@ void block_invalidatepage(struct page *page, unsigned long offset)
+ 		if ((offset <= curr_off) && (buffer_delay(bh))) {
+ 			to_release++;
+ 			clear_buffer_delay(bh);
+@@ -2637,7 +2645,9 @@ static int ext4_da_write_end(struct file *file,
+ 	return ret ? ret : copied;
+ }
+ 
+-static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
++static void ext4_da_invalidatepage_range(struct page *page,
++					 unsigned int offset,
++					 unsigned int length)
+ {
+ 	/*
+ 	 * Drop reserved blocks
+@@ -2646,10 +2656,10 @@ static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
+ 	if (!page_has_buffers(page))
+ 		goto out;
+ 
+-	ext4_da_page_release_reservation(page, offset);
++	ext4_da_page_release_reservation(page, offset, length);
+ 
  out:
+-	ext4_invalidatepage(page, offset);
++	ext4_invalidatepage_range(page, offset, length);
+ 
  	return;
  }
--EXPORT_SYMBOL(block_invalidatepage);
-+EXPORT_SYMBOL(block_invalidatepage_range);
-+
- 
- /*
-  * We attach and possibly dirty the buffers atomically wrt
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 458f497..2e7f5ab 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -194,6 +194,8 @@ extern int buffer_heads_over_limit;
-  * address_spaces.
-  */
- void block_invalidatepage(struct page *page, unsigned long offset);
-+void block_invalidatepage_range(struct page *page, unsigned int offset,
-+				unsigned int length);
- int block_write_full_page(struct page *page, get_block_t *get_block,
- 				struct writeback_control *wbc);
- int block_write_full_page_endio(struct page *page, get_block_t *get_block,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index aa11047..d80de28 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -626,6 +626,8 @@ struct address_space_operations {
- 	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
- 	sector_t (*bmap)(struct address_space *, sector_t);
- 	void (*invalidatepage) (struct page *, unsigned long);
-+	void (*invalidatepage_range) (struct page *, unsigned int,
-+				      unsigned int);
- 	int (*releasepage) (struct page *, gfp_t);
- 	void (*freepage)(struct page *);
- 	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 311be90..9f616fd 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1027,6 +1027,8 @@ struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
- extern void do_invalidatepage(struct page *page, unsigned long offset);
-+extern void do_invalidatepage_range(struct page *page, unsigned int offset,
-+				    unsigned int length);
- 
- int __set_page_dirty_nobuffers(struct page *page);
- int __set_page_dirty_no_writeback(struct page *page);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 75801ac..b22efdf 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -39,14 +39,46 @@
-  */
- void do_invalidatepage(struct page *page, unsigned long offset)
- {
-+	do_invalidatepage_range(page, offset, PAGE_CACHE_SIZE - offset);
-+}
-+
-+
-+/**
-+ * do_invalidatepage_range - invalidate range of the page
-+ *
-+ * @page: the page which is affected
-+ * @offset: start of the range to invalidate
-+ * @length: length of the range to invalidate
-+  */
-+void do_invalidatepage_range(struct page *page, unsigned int offset,
-+			     unsigned int length)
-+{
-+	void (*invalidatepage_range)(struct page *, unsigned int,
-+				     unsigned int);
- 	void (*invalidatepage)(struct page *, unsigned long);
-+
-+	/*
-+	 * Try invalidatepage_range first
-+	 */
-+	invalidatepage_range = page->mapping->a_ops->invalidatepage_range;
-+	if (invalidatepage_range) {
-+		(*invalidatepage_range)(page, offset, length);
-+		return;
-+	}
-+
-+	/*
-+	 * When only invalidatepage is registered length + offset must be
-+	 * PAGE_CACHE_SIZE
-+	 */
- 	invalidatepage = page->mapping->a_ops->invalidatepage;
-+	if (invalidatepage) {
-+		BUG_ON(length + offset != PAGE_CACHE_SIZE);
-+		(*invalidatepage)(page, offset);
-+	}
- #ifdef CONFIG_BLOCK
--	if (!invalidatepage)
--		invalidatepage = block_invalidatepage;
-+	if (!invalidatepage_range && !invalidatepage)
-+		block_invalidatepage_range(page, offset, length);
- #endif
--	if (invalidatepage)
--		(*invalidatepage)(page, offset);
+@@ -2775,47 +2785,60 @@ ext4_readpages(struct file *file, struct address_space *mapping,
+ 	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
  }
  
- static inline void truncate_partial_page(struct page *page, unsigned partial)
+-static void ext4_invalidatepage_free_endio(struct page *page, unsigned long offset)
++static void ext4_invalidatepage_free_endio(struct page *page,
++					   unsigned int offset,
++					   unsigned int length)
+ {
+ 	struct buffer_head *head, *bh;
+ 	unsigned int curr_off = 0;
++	unsigned int stop = offset + length;
+ 
+ 	if (!page_has_buffers(page))
+ 		return;
++
++	BUG_ON(stop > PAGE_CACHE_SIZE || stop < length);
++
+ 	head = bh = page_buffers(page);
+ 	do {
++		unsigned int next_off = curr_off + bh->b_size;
++
++		if (next_off > stop)
++			return;
++
+ 		if (offset <= curr_off && test_clear_buffer_uninit(bh)
+ 					&& bh->b_private) {
+ 			ext4_free_io_end(bh->b_private);
+ 			bh->b_private = NULL;
+ 			bh->b_end_io = NULL;
+ 		}
+-		curr_off = curr_off + bh->b_size;
++		curr_off = next_off;
+ 		bh = bh->b_this_page;
+ 	} while (bh != head);
+ }
+ 
+-static void ext4_invalidatepage(struct page *page, unsigned long offset)
++static void ext4_invalidatepage_range(struct page *page, unsigned int offset,
++				      unsigned int length)
+ {
+ 	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
+ 
+-	trace_ext4_invalidatepage(page, offset);
++	trace_ext4_invalidatepage_range(page, offset, length);
+ 
+ 	/*
+ 	 * free any io_end structure allocated for buffers to be discarded
+ 	 */
+ 	if (ext4_should_dioread_nolock(page->mapping->host))
+-		ext4_invalidatepage_free_endio(page, offset);
++		ext4_invalidatepage_free_endio(page, offset, length);
+ 	/*
+ 	 * If it's a full truncate we just forget about the pending dirtying
+ 	 */
+-	if (offset == 0)
++	if (offset == 0 && length == PAGE_CACHE_SIZE)
+ 		ClearPageChecked(page);
+ 
+ 	if (journal)
+-		jbd2_journal_invalidatepage(journal, page, offset);
++		jbd2_journal_invalidatepage_range(journal, page,
++						  offset, length);
+ 	else
+-		block_invalidatepage(page, offset);
++		block_invalidatepage_range(page, offset, length);
+ }
+ 
+ static int ext4_releasepage(struct page *page, gfp_t wait)
+@@ -3187,7 +3210,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_ordered_write_end,
+ 	.bmap			= ext4_bmap,
+-	.invalidatepage		= ext4_invalidatepage,
++	.invalidatepage_range	= ext4_invalidatepage_range,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
+ 	.migratepage		= buffer_migrate_page,
+@@ -3202,7 +3225,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_writeback_write_end,
+ 	.bmap			= ext4_bmap,
+-	.invalidatepage		= ext4_invalidatepage,
++	.invalidatepage_range	= ext4_invalidatepage_range,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
+ 	.migratepage		= buffer_migrate_page,
+@@ -3218,7 +3241,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.write_end		= ext4_journalled_write_end,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+ 	.bmap			= ext4_bmap,
+-	.invalidatepage		= ext4_invalidatepage,
++	.invalidatepage_range	= ext4_invalidatepage_range,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+@@ -3233,7 +3256,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
+ 	.bmap			= ext4_bmap,
+-	.invalidatepage		= ext4_da_invalidatepage,
++	.invalidatepage_range	= ext4_da_invalidatepage_range,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
+ 	.migratepage		= buffer_migrate_page,
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 69d8a69..ee7e11a 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -450,14 +450,15 @@ DEFINE_EVENT(ext4__page_op, ext4_releasepage,
+ 	TP_ARGS(page)
+ );
+ 
+-TRACE_EVENT(ext4_invalidatepage,
+-	TP_PROTO(struct page *page, unsigned long offset),
++TRACE_EVENT(ext4_invalidatepage_range,
++	TP_PROTO(struct page *page, unsigned int offset, unsigned int length),
+ 
+-	TP_ARGS(page, offset),
++	TP_ARGS(page, offset, length),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	pgoff_t, index			)
+-		__field(	unsigned long, offset		)
++		__field(	unsigned int, offset		)
++		__field(	unsigned int, length		)
+ 		__field(	ino_t,	ino			)
+ 		__field(	dev_t,	dev			)
+ 
+@@ -466,14 +467,16 @@ TRACE_EVENT(ext4_invalidatepage,
+ 	TP_fast_assign(
+ 		__entry->index	= page->index;
+ 		__entry->offset	= offset;
++		__entry->length	= length;
+ 		__entry->ino	= page->mapping->host->i_ino;
+ 		__entry->dev	= page->mapping->host->i_sb->s_dev;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu page_index %lu offset %lu",
++	TP_printk("dev %d,%d ino %lu page_index %lu offset %u length %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+-		  (unsigned long) __entry->index, __entry->offset)
++		  (unsigned long) __entry->index,
++		  __entry->offset, __entry->length)
+ );
+ 
+ TRACE_EVENT(ext4_discard_blocks,
 -- 
 1.7.7.6
 
