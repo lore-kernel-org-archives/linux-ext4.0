@@ -1,61 +1,60 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 00/15 v2] Add invalidatepage_range address space operation
-Date: Fri, 31 Aug 2012 18:21:36 -0400
-Message-ID: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH 05/15 v2] ocfs2: implement invalidatepage_range aop
+Date: Fri, 31 Aug 2012 18:21:41 -0400
+Message-ID: <1346451711-1931-6-git-send-email-lczerner@redhat.com>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
-        linux-mm@kvack.org
+        linux-mm@kvack.org, Lukas Czerner <lczerner@redhat.com>,
+        ocfs2-devel@oss.oracle.com
 To: linux-fsdevel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-This set of patches are aimed to allow truncate_inode_pages_range() handle
-ranges which are not aligned at the end of the page. Currently it will
-hit BUG_ON() when the end of the range is not aligned. Punch hole feature
-however can benefit from this ability saving file systems some work not
-forcing them to implement their own invalidate code to handle unaligned
-ranges.
+mm now supports invalidatepage_range address space operation which is
+useful to allow truncating page range which is not aligned to the end of
+the page. This will help in punch hole implementation once
+truncate_inode_pages_range() is modify to allow this as well.
 
-In order for this to work we need however new address space operation
-invalidatepage_range which should be able to handle page invalidation with
-offset and length specified.
+With this commit ocfs2 now register only invalidatepage_range.
 
-patch 01:	Implements the new invalidatepage_range address space
-		operation in the mm layer
-patch 02 - 05:	Wire the new invalidatepage_range aop to the ext4, xfs and
-		ocfs2 file system (which are currently the only file
-		systems supporting punch hole not counting tmpfs which has
-		its own method) and implement this
-		functionality for jbd2 as well.
-patch 06:	Change truncate_inode_pages_range() to handle unaligned
-		ranges.
-patch 07 - 15:	Ext4 specific changes which take benefit from the
-		previous truncate_inode_pages_range() change. Not all
-		are realated specifically to this change, but all are
-		related to the punch hole feature.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: ocfs2-devel@oss.oracle.com
+---
+ fs/ocfs2/aops.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-v2: Change invalidatepage_range lenght and offset argument to be 'unsigned int'
-    Fix range provided to do_invalidatepage_range() in truncate_inode_pages_range()
-
-Thanks!
--Lukas
-
-
-[PATCH 01/15 v2] mm: add invalidatepage_range address space operation
-[PATCH 02/15 v2] jbd2: implement jbd2_journal_invalidatepage_range
-[PATCH 03/15 v2] ext4: implement invalidatepage_range aop
-[PATCH 04/15 v2] xfs: implement invalidatepage_range aop
-[PATCH 05/15 v2] ocfs2: implement invalidatepage_range aop
-[PATCH 06/15 v2] mm: teach truncate_inode_pages_range() to handle non
-[PATCH 07/15 v2] ext4: Take i_mutex before punching hole
-[PATCH 08/15 v2] Revert "ext4: remove no longer used functions in
-[PATCH 09/15 v2] Revert "ext4: fix fsx truncate failure"
-[PATCH 10/15 v2] ext4: use ext4_zero_partial_blocks in punch_hole
-[PATCH 11/15 v2] ext4: remove unused discard_partial_page_buffers
-[PATCH 12/15 v2] ext4: remove unused code from ext4_remove_blocks()
-[PATCH 13/15 v2] ext4: update ext4_ext_remove_space trace point
-[PATCH 14/15 v2] ext4: make punch hole code path work with bigalloc
-[PATCH 15/15 v2] ext4: Allow punch hole with bigalloc enabled
+diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+index 6577432..a101232 100644
+--- a/fs/ocfs2/aops.c
++++ b/fs/ocfs2/aops.c
+@@ -603,11 +603,12 @@ static void ocfs2_dio_end_io(struct kiocb *iocb,
+  * from ext3.  PageChecked() bits have been removed as OCFS2 does not
+  * do journalled data.
+  */
+-static void ocfs2_invalidatepage(struct page *page, unsigned long offset)
++static void ocfs2_invalidatepage_range(struct page *page, unsigned int offset,
++				       unsigned int length)
+ {
+ 	journal_t *journal = OCFS2_SB(page->mapping->host->i_sb)->journal->j_journal;
+ 
+-	jbd2_journal_invalidatepage(journal, page, offset);
++	jbd2_journal_invalidatepage_range(journal, page, offset, length);
+ }
+ 
+ static int ocfs2_releasepage(struct page *page, gfp_t wait)
+@@ -2091,7 +2092,7 @@ const struct address_space_operations ocfs2_aops = {
+ 	.write_end		= ocfs2_write_end,
+ 	.bmap			= ocfs2_bmap,
+ 	.direct_IO		= ocfs2_direct_IO,
+-	.invalidatepage		= ocfs2_invalidatepage,
++	.invalidatepage_range	= ocfs2_invalidatepage_range,
+ 	.releasepage		= ocfs2_releasepage,
+ 	.migratepage		= buffer_migrate_page,
+ 	.is_partially_uptodate	= block_is_partially_uptodate,
+-- 
+1.7.7.6
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
