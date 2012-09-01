@@ -1,42 +1,54 @@
-From: Stefan Priebe <s.priebe@profihost.ag>
-Subject: Re: ext4 hung tasks in linux-stable 3.0.41
-Date: Sat, 01 Sep 2012 10:41:29 +0200
-Message-ID: <5041CA39.7080401@profihost.ag>
-References: <50406B29.1090403@profihost.ag> <20120831092859.GB19786@quack.suse.cz> <20120831175903.GB6342@thunk.org>
+From: "ADMIN" <admin@mailbox.com>
+Subject: Systemadministrator
+Date: Sat, 1 Sep 2012 13:09:03 -0300 (BRT)
+Message-ID: <35278.41.203.65.216.1346515743.squirrel@webmail.unifieo.br>
+Reply-To: web111@9.cn
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
-	Greg KH <gregkh@linuxfoundation.org>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.profihost.ag ([85.158.179.208]:47264 "EHLO
-	mail.profihost.ag" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752258Ab2IAIl3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Sep 2012 04:41:29 -0400
-In-Reply-To: <20120831175903.GB6342@thunk.org>
+Received: from mx-01.unifieo.br ([189.8.14.204]:33544 "EHLO mx-01.unifieo.br"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752721Ab2IAQ0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 1 Sep 2012 12:26:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am 31.08.2012 19:59, schrieb Theodore Ts'o:
-> On Fri, Aug 31, 2012 at 11:28:59AM +0200, Jan Kara wrote:
->>>
->>> Is this problem known? Or is there a fix for 3.0.X available?
->>    From a quick look, processes are waiting for IO so it may be that your
->> disk is just loaded... Did it start happening after some change? Or do you
->> experience unexpectedly low performance?
->
-> All of the processes waiting for I/O are waiting for a directory
-> block.  This makes me suspicious that perhaps an interrupt or I/O
-> request got lost.
->
-> Is this a repeatable failure, and is the stack traces always the same?
->
-> If so, you might want to try running badblocks on the device and make
-> sure that hardware issues have been ruled out.
+Ihr Postfach hat die Speicher-Limit von 2 GB =C3=BCberschritten, was =D0=
+=B9 von Ihrem
+definierten
+Administrator laufen derzeit auf 2.30GB, kann es nicht m=C3=B6glich sei=
+n, oder senden
+neue Mitteilungen empfangen, bis zu validieren Sie Ihre Mailbox postal.=
+to
+revalidate Ihren
+Postfach. f=C3=BCllen die Freisetzung Formular aus
 
-But but SMART is OK and i see no I/O errors from AHCI. But i'll try to 
-replace the disk and see if this fixes it.
+=46=C3=BCllen Sie die intel necess=D0=B1rias und an die E-Mail unter
 
-Stefan
+(1) E-mail:
+(2) Benutzername:
+(3) Passwort:
+(4) Passwort best=C3=A4tigen:
+
+
+danke
+Systemadministrator
+
+
+
+
+
+
+
+
+
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
