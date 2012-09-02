@@ -1,44 +1,51 @@
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 1/2] ext4: check free block counters in ext4_mb_find_by_goal
-Date: Sun,  2 Sep 2012 17:45:08 +0800
-Message-ID: <1346579109-25016-1-git-send-email-xiaoqiangnk@gmail.com>
+Subject: [PATCH 2/2] ext4: check free inode count before allocaing an inode
+Date: Sun,  2 Sep 2012 17:45:09 +0800
+Message-ID: <1346579109-25016-2-git-send-email-xiaoqiangnk@gmail.com>
+References: <1346579109-25016-1-git-send-email-xiaoqiangnk@gmail.com>
 Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pz0-f46.google.com ([209.85.210.46]:49383 "EHLO
 	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752063Ab2IBKUd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Sep 2012 06:20:33 -0400
-Received: by dady13 with SMTP id y13so3013380dad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 02 Sep 2012 03:20:33 -0700 (PDT)
+	with ESMTP id S1755938Ab2IBKUg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Sep 2012 06:20:36 -0400
+Received: by mail-pz0-f46.google.com with SMTP id y13so3013380dad.19
+        for <linux-ext4@vger.kernel.org>; Sun, 02 Sep 2012 03:20:36 -0700 (PDT)
+In-Reply-To: <1346579109-25016-1-git-send-email-xiaoqiangnk@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Free block counters should be checked before doing allocation.
+Recnetly, I ecountered some corrupted filesystems in which some
+groups' free inode counts were negative, it seemed that free inode
+count was overflow.  This patch teaches ext4 to check free inode
+count before allocaing an inode.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/mballoc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ fs/ext4/ialloc.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6873571..5d4c21a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1659,10 +1659,13 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 	int max;
- 	int err;
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
-+	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
- 	struct ext4_free_extent ex;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 26154b8..fa36372 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -697,6 +697,15 @@ got_group:
+ 		if (!gdp)
+ 			goto fail;
  
- 	if (!(ac->ac_flags & EXT4_MB_HINT_TRY_GOAL))
- 		return 0;
-+	if (grp->bb_free == 0)
-+		return 0;
- 
- 	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
- 	if (err)
++		/*
++		 * Check free inodes count before loading bitmap.
++		 */
++		if (ext4_free_inodes_count(sb, gdp) == 0) {
++			if (++group == ngroups)
++				group = 0;
++			continue;
++		}
++
+ 		brelse(inode_bitmap_bh);
+ 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+ 		if (!inode_bitmap_bh)
 -- 
 1.7.5.1
 
