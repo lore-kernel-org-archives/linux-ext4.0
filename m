@@ -1,171 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] ext4: grow the s_flex_groups array as needed when resizing
-Date: Sun,  2 Sep 2012 00:51:23 -0400
-Message-ID: <1346561485-6413-4-git-send-email-tytso@mit.edu>
-References: <1346561485-6413-1-git-send-email-tytso@mit.edu>
-Cc: xiaoqiangnk@gmail.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: [PATCH 1/2] ext4: check free block counters in ext4_mb_find_by_goal
+Date: Sun,  2 Sep 2012 17:45:08 +0800
+Message-ID: <1346579109-25016-1-git-send-email-xiaoqiangnk@gmail.com>
+Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48377 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752170Ab2IBHjX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 2 Sep 2012 03:39:23 -0400
-In-Reply-To: <1346561485-6413-1-git-send-email-tytso@mit.edu>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:49383 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752063Ab2IBKUd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Sep 2012 06:20:33 -0400
+Received: by dady13 with SMTP id y13so3013380dad.19
+        for <linux-ext4@vger.kernel.org>; Sun, 02 Sep 2012 03:20:33 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously, we allocated the s_flex_groups array to the maximum size
-that the file system could be resized.  There was two problems with
-this approach.  First, it wasted memory in the common case where the
-file system was not resized.  Secondly, once we start allowing online
-resizing using the meta_bg scheme, there is no maximum size that the
-file system can be resized.  So instead, we need to grow the
-s_flex_groups at inline resize time.
+Free block counters should be checked before doing allocation.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 ---
- fs/ext4/ext4.h   |  3 +++
- fs/ext4/resize.c | 14 +++++++++-----
- fs/ext4/super.c  | 48 +++++++++++++++++++++++++++++++++++-------------
- 3 files changed, 47 insertions(+), 18 deletions(-)
+ fs/ext4/mballoc.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0df5ee1..464cff7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1276,6 +1276,7 @@ struct ext4_sb_info {
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6873571..5d4c21a 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1659,10 +1659,13 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+ 	int max;
+ 	int err;
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
++	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
+ 	struct ext4_free_extent ex;
  
- 	unsigned int s_log_groups_per_flex;
- 	struct flex_groups *s_flex_groups;
-+	ext4_group_t s_flex_groups_allocated;
+ 	if (!(ac->ac_flags & EXT4_MB_HINT_TRY_GOAL))
+ 		return 0;
++	if (grp->bb_free == 0)
++		return 0;
  
- 	/* workqueue for dio unwritten */
- 	struct workqueue_struct *dio_unwritten_wq;
-@@ -2055,6 +2056,8 @@ extern void ext4_superblock_csum_set(struct super_block *sb,
- extern void *ext4_kvmalloc(size_t size, gfp_t flags);
- extern void *ext4_kvzalloc(size_t size, gfp_t flags);
- extern void ext4_kvfree(void *ptr);
-+extern int ext4_alloc_flex_bg_array(struct super_block *sb,
-+				    ext4_group_t ngroup);
- extern __printf(4, 5)
- void __ext4_error(struct super_block *, const char *, unsigned int,
- 		  const char *, ...);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index e3f5f53..2ec7ece 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1498,6 +1498,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
  	if (err)
- 		goto out;
- 
-+	err = ext4_alloc_flex_bg_array(sb, input->group + 1);
-+	if (err)
-+		return err;
-+
- 	flex_gd.count = 1;
- 	flex_gd.groups = input;
- 	flex_gd.bg_flags = &bg_flags;
-@@ -1657,7 +1661,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	unsigned long n_desc_blocks;
- 	unsigned long o_desc_blocks;
- 	unsigned long desc_blocks;
--	int err = 0, flexbg_size = 1;
-+	int err = 0, flexbg_size = 1 << sbi->s_log_groups_per_flex;
- 
- 	o_blocks_count = ext4_blocks_count(es);
- 
-@@ -1716,14 +1720,14 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 			goto out;
- 	}
- 
--	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
--	    es->s_log_groups_per_flex)
--		flexbg_size = 1 << es->s_log_groups_per_flex;
--
- 	o_blocks_count = ext4_blocks_count(es);
- 	if (o_blocks_count == n_blocks_count)
- 		goto out;
- 
-+	err = ext4_alloc_flex_bg_array(sb, n_group + 1);
-+	if (err)
-+		return err;
-+
- 	flex_gd = alloc_flex_gd(flexbg_size);
- 	if (flex_gd == NULL) {
- 		err = -ENOMEM;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b875ff5..81ff13d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1925,15 +1925,45 @@ done:
- 	return res;
- }
- 
-+int ext4_alloc_flex_bg_array(struct super_block *sb, ext4_group_t ngroup)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct flex_groups *new_groups;
-+	int size;
-+
-+	if (!sbi->s_log_groups_per_flex)
-+		return 0;
-+
-+	size = ext4_flex_group(sbi, ngroup - 1) + 1;
-+	if (size <= sbi->s_flex_groups_allocated)
-+		return 0;
-+
-+	size = roundup_pow_of_two(size * sizeof(struct flex_groups));
-+	new_groups = ext4_kvzalloc(size, GFP_KERNEL);
-+	if (!new_groups) {
-+		ext4_msg(sb, KERN_ERR, "not enough memory for %u flex groups",
-+			 size / sizeof(struct flex_groups));
-+		return -ENOMEM;
-+	}
-+
-+	if (sbi->s_flex_groups) {
-+		memcpy(new_groups, sbi->s_flex_groups,
-+		       (sbi->s_flex_groups_allocated *
-+			sizeof(struct flex_groups)));
-+		ext4_kvfree(sbi->s_flex_groups);
-+	}
-+	sbi->s_flex_groups = new_groups;
-+	sbi->s_flex_groups_allocated = size / sizeof(struct flex_groups);
-+	return 0;
-+}
-+
- static int ext4_fill_flex_info(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_group_desc *gdp = NULL;
--	ext4_group_t flex_group_count;
- 	ext4_group_t flex_group;
- 	unsigned int groups_per_flex = 0;
--	size_t size;
--	int i;
-+	int i, err;
- 
- 	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
- 	if (sbi->s_log_groups_per_flex < 1 || sbi->s_log_groups_per_flex > 31) {
-@@ -1942,17 +1972,9 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 	}
- 	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
- 
--	/* We allocate both existing and potentially added groups */
--	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
--			((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) + 1) <<
--			      EXT4_DESC_PER_BLOCK_BITS(sb))) / groups_per_flex;
--	size = flex_group_count * sizeof(struct flex_groups);
--	sbi->s_flex_groups = ext4_kvzalloc(size, GFP_KERNEL);
--	if (sbi->s_flex_groups == NULL) {
--		ext4_msg(sb, KERN_ERR, "not enough memory for %u flex groups",
--			 flex_group_count);
-+	err = ext4_alloc_flex_bg_array(sb, sbi->s_groups_count);
-+	if (err)
- 		goto failed;
--	}
- 
- 	for (i = 0; i < sbi->s_groups_count; i++) {
- 		gdp = ext4_get_group_desc(sb, i, NULL);
 -- 
-1.7.12.rc0.22.gcdd159b
+1.7.5.1
 
