@@ -1,57 +1,195 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] ext4: avoid duplicate writes of the backup bg descriptor blocks
-Date: Sun,  2 Sep 2012 00:51:22 -0400
-Message-ID: <1346561485-6413-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/5] ext4: grow the s_group_info array as needed
+Date: Sun,  2 Sep 2012 00:51:24 -0400
+Message-ID: <1346561485-6413-5-git-send-email-tytso@mit.edu>
 References: <1346561485-6413-1-git-send-email-tytso@mit.edu>
-Cc: xiaoqiangnk@gmail.com, "Theodore Ts'o" <tytso@mit.edu>,
-	stable@vger.kernel.org
+Cc: xiaoqiangnk@gmail.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48346 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48349 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751089Ab2IBFxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 2 Sep 2012 01:53:20 -0400
+	id S1751089Ab2IBFxd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 2 Sep 2012 01:53:33 -0400
 In-Reply-To: <1346561485-6413-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Previously we allocated the s_group_info array with enough space for
+any future possible growth of the file system via online resize.  This
+is unfortunate because it wastes memory, and it doesn't work for the
+meta_bg scheme, since there is no limit based on the number of
+reserved gdt blocks.  So add the code to grow the s_group_info array
+as needed.
 
-The resize code was needlessly writing the backup block group
-descriptor blocks multiple times (once per block group) during an
-online resize.
-
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/resize.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h    |  3 +++
+ fs/ext4/mballoc.c | 79 +++++++++++++++++++++++++++----------------------------
+ fs/ext4/resize.c  |  8 ++++++
+ 3 files changed, 50 insertions(+), 40 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 464cff7..8b6902c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1233,6 +1233,7 @@ struct ext4_sb_info {
+ 	spinlock_t s_md_lock;
+ 	unsigned short *s_mb_offsets;
+ 	unsigned int *s_mb_maxs;
++	unsigned int s_group_info_size;
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+@@ -1971,6 +1972,8 @@ extern void ext4_exit_mballoc(void);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     struct buffer_head *bh, ext4_fsblk_t block,
+ 			     unsigned long count, int flags);
++extern int ext4_mb_alloc_groupinfo(struct super_block *sb,
++				   ext4_group_t ngroups);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6873571..2102c20 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -24,6 +24,7 @@
+ #include "ext4_jbd2.h"
+ #include "mballoc.h"
+ #include <linux/debugfs.h>
++#include <linux/log2.h>
+ #include <linux/slab.h>
+ #include <trace/events/ext4.h>
+ 
+@@ -2163,6 +2164,39 @@ static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
+ 	return cachep;
+ }
+ 
++/*
++ * Allocate the top-level s_group_info array for the specified number
++ * of groups
++ */
++int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	unsigned size;
++	struct ext4_group_info ***new_groupinfo;
++
++	size = (ngroups + EXT4_DESC_PER_BLOCK(sb) - 1) >>
++		EXT4_DESC_PER_BLOCK_BITS(sb);
++	if (size <= sbi->s_group_info_size)
++		return 0;
++
++	size = roundup_pow_of_two(sizeof(*sbi->s_group_info) * size);
++	new_groupinfo = ext4_kvzalloc(size, GFP_KERNEL);
++	if (!new_groupinfo) {
++		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
++		return -ENOMEM;
++	}
++	if (sbi->s_group_info) {
++		memcpy(new_groupinfo, sbi->s_group_info,
++		       sbi->s_group_info_size * sizeof(*sbi->s_group_info));
++		ext4_kvfree(sbi->s_group_info);
++	}
++	sbi->s_group_info = new_groupinfo;
++	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
++	ext4_debug("allocated s_groupinfo array for %d meta_bg's\n", 
++		   sbi->s_group_info_size);
++	return 0;
++}
++
+ /* Create and initialize ext4_group_info data for the given group. */
+ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+@@ -2252,49 +2286,14 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+ 	ext4_group_t i;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_super_block *es = sbi->s_es;
+-	int num_meta_group_infos;
+-	int num_meta_group_infos_max;
+-	int array_size;
++	int err;
+ 	struct ext4_group_desc *desc;
+ 	struct kmem_cache *cachep;
+ 
+-	/* This is the number of blocks used by GDT */
+-	num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -
+-				1) >> EXT4_DESC_PER_BLOCK_BITS(sb);
+-
+-	/*
+-	 * This is the total number of blocks used by GDT including
+-	 * the number of reserved blocks for GDT.
+-	 * The s_group_info array is allocated with this value
+-	 * to allow a clean online resize without a complex
+-	 * manipulation of pointer.
+-	 * The drawback is the unused memory when no resize
+-	 * occurs but it's very low in terms of pages
+-	 * (see comments below)
+-	 * Need to handle this properly when META_BG resizing is allowed
+-	 */
+-	num_meta_group_infos_max = num_meta_group_infos +
+-				le16_to_cpu(es->s_reserved_gdt_blocks);
++	err = ext4_mb_alloc_groupinfo(sb, ngroups);
++	if (err)
++		return err;
+ 
+-	/*
+-	 * array_size is the size of s_group_info array. We round it
+-	 * to the next power of two because this approximation is done
+-	 * internally by kmalloc so we can have some more memory
+-	 * for free here (e.g. may be used for META_BG resize).
+-	 */
+-	array_size = 1;
+-	while (array_size < sizeof(*sbi->s_group_info) *
+-	       num_meta_group_infos_max)
+-		array_size = array_size << 1;
+-	/* An 8TB filesystem with 64-bit pointers requires a 4096 byte
+-	 * kmalloc. A 128kb malloc should suffice for a 256TB filesystem.
+-	 * So a two level scheme suffices for now. */
+-	sbi->s_group_info = ext4_kvzalloc(array_size, GFP_KERNEL);
+-	if (sbi->s_group_info == NULL) {
+-		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
+-		return -ENOMEM;
+-	}
+ 	sbi->s_buddy_cache = new_inode(sb);
+ 	if (sbi->s_buddy_cache == NULL) {
+ 		ext4_msg(sb, KERN_ERR, "can't get new inode");
+@@ -2322,7 +2321,7 @@ err_freebuddy:
+ 	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
+ 	while (i-- > 0)
+ 		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
+-	i = num_meta_group_infos;
++	i = sbi->s_group_info_size;
+ 	while (i-- > 0)
+ 		kfree(sbi->s_group_info[i]);
+ 	iput(sbi->s_buddy_cache);
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 724e250..e3f5f53 100644
+index 2ec7ece..39ff8ee 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -1353,13 +1353,15 @@ exit_journal:
- 		err = err2;
+@@ -1502,6 +1502,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	if (err)
+ 		return err;
  
- 	if (!err) {
--		int i;
-+		int gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
-+		int gdb_num_end = ((group + flex_gd->count - 1) /
-+				   EXT4_DESC_PER_BLOCK(sb));
++	err = ext4_mb_alloc_groupinfo(sb, input->group + 1);
++	if (err)
++		goto out;
 +
- 		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
- 			       sizeof(struct ext4_super_block));
--		for (i = 0; i < flex_gd->count; i++, group++) {
-+		for (; gdb_num <= gdb_num_end; gdb_num++) {
- 			struct buffer_head *gdb_bh;
--			int gdb_num;
--			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
+ 	flex_gd.count = 1;
+ 	flex_gd.groups = input;
+ 	flex_gd.bg_flags = &bg_flags;
+@@ -1728,6 +1732,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 	if (err)
+ 		return err;
+ 
++	err = ext4_mb_alloc_groupinfo(sb, n_group + 1);
++	if (err)
++		goto out;
 +
- 			gdb_bh = sbi->s_group_desc[gdb_num];
- 			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
- 				       gdb_bh->b_size);
+ 	flex_gd = alloc_flex_gd(flexbg_size);
+ 	if (flex_gd == NULL) {
+ 		err = -ENOMEM;
 -- 
 1.7.12.rc0.22.gcdd159b
 
