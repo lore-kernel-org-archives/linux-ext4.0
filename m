@@ -1,82 +1,72 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and 64bits features
-Date: Sun, 2 Sep 2012 18:31:19 +0800
-Message-ID: <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and
+ 64bits features
+Date: Sun, 2 Sep 2012 20:50:05 -0400
+Message-ID: <20120903005005.GA4324@thunk.org>
 References: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com>
+ <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:63809 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755938Ab2IBKbk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Sep 2012 06:31:40 -0400
-Received: by vbbff1 with SMTP id ff1so4530357vbb.19
-        for <linux-ext4@vger.kernel.org>; Sun, 02 Sep 2012 03:31:40 -0700 (PDT)
-In-Reply-To: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48486 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755419Ab2ICAuK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 2 Sep 2012 20:50:10 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Sun, Sep 02, 2012 at 06:31:19PM +0800, Yongqiang Yang wrote:
+> Hi Ted,
+> 
+>     I noticed that you send out the patch enabling resizing on
+> filesystems with meta_bg and 64bits, so I send out the corresponding
+> patch on e2fsprogs.  Unfortunately, there is still a bug in e2fsprogs
+> as my last email says.
 
-    I noticed that you send out the patch enabling resizing on
-filesystems with meta_bg and 64bits, so I send out the corresponding
-patch on e2fsprogs.  Unfortunately, there is still a bug in e2fsprogs
-as my last email says.
+Great, thanks, I'll take a look at it.  I've made some changes of my
+own in resize2fs to enable using meta_bg && flex_bg && !resize_inode,
+but it isn't fully done yet, so I hadn't sent them out.  (I must have
+missed your initial patch to resize2fs to enable things for testing
+purposes, but it's not that hard.)
 
-Thanks,
-Yongqiang.
+I'm guessing you must have only tested relatively small increases in
+the file system size when you were developing your kernel patch set.
+I was doing tests using a 1k block size with "mke2fs -t ext4 -b 1024
+-O meta_bg,64bit,^resize_inode /dev/vdd 256000" and then growing the
+file system from 243M to 5G, which increased the number of meta_bg's
+from 2 to 40 meta_bg's.  I also tried using the MKE2FS_FIRST_META_BG
+environment variable to emulate a file system which was originally
+grown using resize_inode scheme, and then later converted over to the
+meta_bg scheme.  All of this flushed out a number of bugs in your
+original patch series, which I've fixed up.
 
-On Sun, Sep 2, 2012 at 5:52 PM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
-> This patch supports online-resizing for meata_bg and 64bits features.
->
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-> ---
->  resize/main.c   |    5 +++--
->  resize/online.c |    6 +++---
->  2 files changed, 6 insertions(+), 5 deletions(-)
->
-> diff --git a/resize/main.c b/resize/main.c
-> index ffefe01..b3a7840 100644
-> --- a/resize/main.c
-> +++ b/resize/main.c
-> @@ -324,9 +324,10 @@ int main (int argc, char ** argv)
->          * This is something we should fix eventually, though.
->          */
->         if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
-> -           !(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE)) {
-> +           !(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-> +           !(fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)) {
->                 com_err(program_name, 0, _("%s: The combination of flex_bg "
-> -                                          "and\n\t!resize_inode features "
-> +                                          "and\n\t!resize_inode and !meta_bg features "
->                                            "is not supported by resize2fs.\n"),
->                         device_name);
->                 exit(1);
-> diff --git a/resize/online.c b/resize/online.c
-> index 966ea1e..e7891bd 100644
-> --- a/resize/online.c
-> +++ b/resize/online.c
-> @@ -56,9 +56,9 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
->                 EXT2_DESC_PER_BLOCK(fs->super));
->         printf("old_desc_blocks = %lu, new_desc_blocks = %lu\n",
->                fs->desc_blocks, new_desc_blocks);
-> -       if (!(fs->super->s_feature_compat &
-> -             EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-> -           new_desc_blocks != fs->desc_blocks) {
-> +       if (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE) &&
-> +           new_desc_blocks != fs->desc_blocks &&
-> +           !(fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)) {
->                 com_err(program_name, 0,
->                         _("Filesystem does not support online resizing"));
->                 exit(1);
-> --
-> 1.7.5.1
->
+Anyway, the reason why I haven't released the changes I had made to
+resize2fs is I know there are still some fixes needed so that we can
+transition a file system from resize_inode to meta_bg once we run out
+of reserved gdt blocks, and I need to test what happens with file
+systems that are greater than 16TB --- so far, my testing has been
+with smaller file systems, and since I was still finding things to
+fix, I haven't progressed yet to testing really big file systems.
 
+We will probably also want to advertise a flag indicating that the
+kernel will support meta_bg resizing, and then allow mke2fs to use
+meta_bg by default (even for file systems < 16TB) since it has much
+less overhead and doesn't have the fixed limits that the original
+resize_inode has.
 
+So there is still some work that we need to do to improve the online
+resizing, but what we have so far is a very good start, and your
+patches definitely helped to push us forward.  My apologies for not
+having the time to really seriously finish things up until now, but
+hopefully we'll be able to get something fully robust and tested soon
+(realistically speaking, looking at the likely release schedules for
+the kernel and e2fsprogs, I'm shooting for getting this all done
+before the end of the year).
 
--- 
-Best Wishes
-Yongqiang Yang
+Regards,
+
+					- Ted
