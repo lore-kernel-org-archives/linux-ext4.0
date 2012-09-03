@@ -1,53 +1,210 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: Use s_csum_seed instead of i_csum_seed for xattr
- block csum.
-Date: Mon, 03 Sep 2012 13:37:48 +0800
-Message-ID: <5044422C.9020702@tao.ma>
-References: <1340547236-2838-1-git-send-email-tm@tao.ma> <5044208B.2080008@tao.ma> <20120903033905.GC5066@thunk.org>
+From: Kristian Nielsen <knielsen@knielsen-hq.org>
+Subject: [ext3/4] PROBLEM: fdatasync not syncing appended data (w/test program)
+Date: Mon, 03 Sep 2012 10:45:15 +0200
+Message-ID: <87k3wb8pgk.fsf@frigg.knielsen-hq.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Darrick J. Wong" <djwong@us.ibm.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy11-pub.bluehost.com ([173.254.64.10]:51719 "HELO
-	oproxy11-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755096Ab2ICFhx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Sep 2012 01:37:53 -0400
-In-Reply-To: <20120903033905.GC5066@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: multipart/mixed; boundary="=-=-="
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 09/03/2012 11:39 AM, Theodore Ts'o wrote:
-> On Mon, Sep 03, 2012 at 11:14:19AM +0800, Tao Ma wrote:
->> Hi Ted,
->> 	As the corresponding kernel change has been merged, can this patch be
->> merged to the e2fsporgs also?
-> 
-> Hi Tao,
-> 
-> I folded your change into the metadata checksum patches before I
-> applied them to the next branch (and which is now included in the
-> master branch).  So if you use the master/next branch, it should be
-> fully in sync with the kernel implementation of metadata checksum.
-> This was along with a number of other cleanups that I did to collapse
-> related patches before they got fully applied into e2fsprogs.
-oh, yeah, I found it after I sent this e-mail.
-> 
-> I have run xfstests with metadata checksum enabled in the kernel with
-> the development branch of e2fsprogs, and it passes, so I'm fairly
-> confident they are in sync.
-cool. I will use it+inline_data to test the new inline data kernel.
-> 
-> One of the questions that we should consider in the near future is
-> when to cut a e2fsprogs 1.43 release.  Things which we might want to
-> consider adding before we cut 1.43 include the changes to fully
-> support online resize for 64-bit file systems, and possibly the inline
-> data patches, if we are confident in the e2fsprogs changes and that
-> the format of inline data is ready to be cast into concrete.
-Sure, I have finished the new inline data patches(your suggestion of the
-new "..") and run the xfstests on it. Hope the patch set can be sent
-this week.
+--=-=-=
 
-Thanks
-Tao
+It appears that ext3 and ext4 fdatasync() does not fully sync data to
+disk. Specifically, when new data is written at the end (so that the file
+length is increased), not all of the new data is synced by fdatasync().
+
+It looks as if the problem is when the new data fits in the last allocated
+page for the file - then ext3/4 flushes the new data page to disk, but _not_
+the new metadata with the longer file size.
+
+This seems in violation of how fdatasync() is supposed to perform, ie. from
+the Linux man page:
+
+  fdatasync() ... does not flush modified metadata unless that metadata is
+  needed in order to allow a subsequent data retrieval to be correctly
+  handled ...
+
+  For example, changes to st_atime or st_mtime ... do not require flushing ...
+
+  On the other hand, a change to the file size (st_size, as made by say
+  ftruncate(2)), would require a metadata flush.
+
+It also causes real problems - it was found because it causes silent data
+corruption on ext3/ext4 of MySQL/MariaDB in case of a crash. XFS appears not
+to be affected.
+
+To reproduce, I run code like this (full test program attached) with disk
+cache disabled, and pull the power plug:
+
+  for (seq = 0; seq < COUNT; ++seq)
+  {
+    snprintf(buf, sizeof(buf), "%7d\n", seq);
+    write(append_fd, buf, RECSIZE);
+    fdatasync(append_fd);
+    memcpy(buf2 + (seq * RECSIZE) % BLOCKSIZE, buf, RECSIZE);
+    pwrite(inplace_fd, buf2, BLOCKSIZE, 0);
+    fdatasync(inplace_fd);
+  }
+
+The append_fd is a new file that is appended to in each write; the inplace_fd
+is a pre-allocated file that does not change size. After a crash the two files
+should always be in sync (or append_fd can be one record ahead). But on ext3
+and ext4, append_fd typically lacks several records. This does not happen on
+XFS, or if fdatasync(append_fd) is replaced with fsync(append_fd).
+
+I also tested this in kvm, and used strace on the host process to see exactly
+which writes the guest does. Each fdatasync(append_fd) causes a flush to disk
+of the data page of append_fd, but not of the inode (or journal) page. So even
+if fdatasync() is by design not suitable for appending data to a file, there
+still seems to be a bug, though then a performance rather than a correctness
+bug: there is no reason to flush the new data block if the increased file
+length is not flushed also.
+
+I tested the following kernels, all show the problem:
+
+  Linux vm-lucid-amd64 2.6.32-39-server #86-Ubuntu SMP Mon Feb 13 23:15:11 UTC 2012 x86_64 GNU/Linux
+  Linux thor 2.6.32-42-generic #95-Ubuntu SMP Wed Jul 25 15:57:54 UTC 2012 i686 GNU/Linux
+  Linux archie 3.6.0-rc2-DEB #175 SMP PREEMPT Fri Aug 17 05:00:46 IST 2012 x86_64 GNU/Linux
+
+Googling turned up this patch, which may be relevant (but I am not
+sufficiently familiar with the ext3/ext4 code to really know):
+
+    http://osdir.com/ml/file-systems.ext4/2008-02/msg00128.html
+
+To run the test program, just `gcc ext4bug-minimal.c && ./a.out`. After crash,
+the last record in each file can be compared with eg.
+
+    tail -1 append.log
+    perl -lne '$x = $_ if $_ > $x; END {print $x}' inplace.log 
+
+Please let me know if there is any additional information that I can supply to
+help.
+
+(BTW, the problem is fixed/worked-around in MariaDB by using fsync() instead
+of fdatasync() when a file is extended.)
+
+ - Kristian.
+
+
+--=-=-=
+Content-Type: text/x-csrc
+Content-Disposition: inline; filename=ext4bug-minimal.c
+Content-Description: Program to reproduce fdatasync bug in ext3/4
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define BLOCKSIZE 4096
+#define RECSIZE 8
+#define COUNT 1000000
+
+static void
+do_test(int append_fd, int inplace_fd, int use_fdatasync)
+{
+  char buf[RECSIZE+1];
+  char buf2[BLOCKSIZE];
+  int seq;
+  int res;
+
+  memset(buf2, 0, sizeof(buf2));
+  for (seq = 0; seq < COUNT; ++seq)
+  {
+    printf("Adding log entry %d...\n", seq);
+    snprintf(buf, sizeof(buf), "%7d\n", seq);
+
+    res = write(append_fd, buf, RECSIZE);
+    if (res != RECSIZE)
+    {
+      fprintf(stderr, "Unexpected return %d from write() (errno=%d: %s)\n",
+              res, errno, strerror(errno));
+      exit(1);
+    }
+    res = use_fdatasync ? fdatasync(append_fd) : fsync(append_fd);
+    if (res)
+    {
+      fprintf(stderr, "Error in fdatasync() of append file (errno=%d: %s)\n",
+              errno, strerror(errno));
+      exit(1);
+    }
+
+    memcpy(buf2 + (seq * RECSIZE) % BLOCKSIZE, buf, RECSIZE);
+    res = pwrite(inplace_fd, buf2, BLOCKSIZE, 0);
+    if (res != BLOCKSIZE)
+    {
+      fprintf(stderr, "Unexpected return %d from pwrite() (errno=%d: %s)\n",
+              res, errno, strerror(errno));
+      exit(1);
+    }
+    res = fdatasync(inplace_fd);
+    if (res)
+    {
+      fprintf(stderr, "Error in fdatasync() of inplace file (errno=%d: %s)\n",
+              errno, strerror(errno));
+      exit(1);
+    }
+  }
+}
+
+int
+main(int argc, char *argv[])
+{
+  int append_fd, inplace_fd;
+  int res;
+  int use_fdatasync = 1;
+  unsigned char buf[BLOCKSIZE];
+
+  if (argc > 1 && !strcmp("--fsync", argv[1]))
+    use_fdatasync = 0;
+
+  append_fd = open("append.log", O_WRONLY|O_CREAT|O_TRUNC, 0666);
+  if (append_fd < 0)
+  {
+    fprintf(stderr, "Failed to open append file: %d: %s\n",
+            errno, strerror(errno));
+    exit(1);
+  }
+  res = fsync(append_fd);
+  if (res)
+  {
+    fprintf(stderr, "Failed initial fsync() of append file: %d: %s\n",
+            errno, strerror(errno));
+    exit(1);
+  }
+  inplace_fd = open("inplace.log", O_WRONLY|O_CREAT, 0666);
+  if (inplace_fd < 0)
+  {
+    fprintf(stderr, "Failed to open inplace file: %d: %s\n",
+            errno, strerror(errno));
+    exit(1);
+  }
+  memset(buf, 0, BLOCKSIZE);
+  res = write(inplace_fd, buf, BLOCKSIZE);
+  if (res != BLOCKSIZE)
+  {
+    fprintf(stderr, "Failed to initialise inplace file, write() returns %d "
+            "errno=%d: %s\n", res, errno, strerror(errno));
+    exit(1);
+  }
+  res = fsync(inplace_fd);
+  if (res)
+  {
+    fprintf(stderr, "Failed initial fsync() of inplace file: %d: %s\n",
+            errno, strerror(errno));
+    exit(1);
+  }
+
+  do_test(append_fd, inplace_fd, use_fdatasync);
+
+  return 0;
+}
+
+--=-=-=--
