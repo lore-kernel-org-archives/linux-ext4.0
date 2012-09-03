@@ -1,53 +1,37 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH] ext4: serialize unlocked dio reads with truncate
-Date: Mon,  3 Sep 2012 20:40:48 +0400
-Message-ID: <1346690448-16917-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and
+ 64bits features
+Date: Mon, 3 Sep 2012 12:45:25 -0400
+Message-ID: <20120903164525.GD5066@thunk.org>
+References: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com>
+ <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:61867 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752562Ab2ICQkx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Sep 2012 12:40:53 -0400
-Received: by lagy9 with SMTP id y9so3644096lag.19
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Sep 2012 09:40:52 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:48624 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756406Ab2ICQp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Sep 2012 12:45:27 -0400
+Content-Disposition: inline
+In-Reply-To: <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current serialization will works only for DIO which holds
-i_mutex, but nonlocked DIO following race is possable:
+On Sun, Sep 02, 2012 at 06:31:19PM +0800, Yongqiang Yang wrote:
+> Hi Ted,
+> 
+>     I noticed that you send out the patch enabling resizing on
+> filesystems with meta_bg and 64bits, so I send out the corresponding
+> patch on e2fsprogs.  Unfortunately, there is still a bug in e2fsprogs
+> as my last email says.
 
-dio_nolock_read_task            truncate_task
-				->ext4_setattr()
-				 ->inode_dio_wait()
-->ext4_ext_direct_IO
-  ->ext4_ind_direct_IO
-    ->__blockdev_direct_IO
-      ->ext4_get_block
-				 ->truncate_setsize()
-				 ->ext4_truncate()
-				 #alloc truncated blocks
-				 #to other inode
-      ->submit_io()
-     #INFORMATION LEAK
+The following two patches were sufficient for me to resize a test file
+system from 14 TB to 18 TB.  We still need to handle automatic
+enabling of the meta_bg flag in resize2fs, but this should be
+sufficient for more adventurous folks to test the online resize
+patches.  (Note that I also posted a v2 version of patch 5/5 which
+fixed a number of 64-bit overflow bugs that I found in my testing.)
 
-In order to serialize with unlocked DIO reads we have to
-rearange wait sequance
-1) update i_size first
-2) wait for outstanding DIO requests
-3) and only after that truncate inode blocks
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d12d30e..ee534ab 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4304,8 +4304,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	}
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
--		inode_dio_wait(inode);
+      	       	  	 	       	      - Ted
