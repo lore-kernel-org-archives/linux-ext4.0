@@ -1,39 +1,85 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [ext3/4] PROBLEM: fdatasync not syncing appended data (w/test
- program)
-Date: Mon, 3 Sep 2012 15:57:56 +0200
-Message-ID: <20120903135756.GI21109@quack.suse.cz>
-References: <87k3wb8pgk.fsf@frigg.knielsen-hq.org>
+Subject: [PATCH] ext3: Fix fdatasync() for files with only i_size changes
+Date: Mon, 3 Sep 2012 18:04:19 +0200
+Message-ID: <20120903160419.GK21109@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Kristian Nielsen <knielsen@knielsen-hq.org>
+Cc: Kristian Nielsen <knielsen@knielsen-hq.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53428 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:34236 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756482Ab2ICN57 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Sep 2012 09:57:59 -0400
+	id S1753519Ab2ICQEV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Sep 2012 12:04:21 -0400
 Content-Disposition: inline
-In-Reply-To: <87k3wb8pgk.fsf@frigg.knielsen-hq.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 03-09-12 10:45:15, Kristian Nielsen wrote:
-> It appears that ext3 and ext4 fdatasync() does not fully sync data to
-> disk. Specifically, when new data is written at the end (so that the file
-> length is increased), not all of the new data is synced by fdatasync().
-> 
-> It looks as if the problem is when the new data fits in the last allocated
-> page for the file - then ext3/4 flushes the new data page to disk, but _not_
-> the new metadata with the longer file size.
-  Thanks for the detailed analysis. This is indeed a genuine bug. While
-fixing some fsync issues I introduced (or better didn't fix) this problem.
-The culprit is that we forget to update i_datasync_tid when we change only
-inode size. Thus inode is not forced to disk during fdatasync(). I will send
-fixes for this in a moment.
+Code tracking when transaction needs to be committed on fdatasync(2) forgets
+to handle a situation when only inode's i_size is changed. Thus in such
+situations fdatasync(2) doesn't force transaction with new i_size to disk
+and that can result in wrong i_size after a crash.
 
-								Honza
+Fix the issue by updating inode's i_datasync_tid whenever its size is
+updated.
+
+Reported-by: Kristian Nielsen <knielsen@knielsen-hq.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/inode.c |   17 ++++++++++++++---
+ 1 files changed, 14 insertions(+), 3 deletions(-)
+
+ I'll push this to Linus and -stable soon if xfstests pass and noone
+objects.
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index a075973..ff574b4 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -3072,6 +3072,8 @@ static int ext3_do_update_inode(handle_t *handle,
+ 	struct ext3_inode_info *ei = EXT3_I(inode);
+ 	struct buffer_head *bh = iloc->bh;
+ 	int err = 0, rc, block;
++	int need_datasync = 0;
++	__le32 disksize;
+ 	uid_t i_uid;
+ 	gid_t i_gid;
+ 
+@@ -3113,7 +3115,11 @@ again:
+ 		raw_inode->i_gid_high = 0;
+ 	}
+ 	raw_inode->i_links_count = cpu_to_le16(inode->i_nlink);
+-	raw_inode->i_size = cpu_to_le32(ei->i_disksize);
++	disksize = cpu_to_le32(ei->i_disksize);
++	if (disksize != raw_inode->i_size) {
++		need_datasync = 1;
++		raw_inode->i_size = disksize;
++	}
+ 	raw_inode->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
+ 	raw_inode->i_ctime = cpu_to_le32(inode->i_ctime.tv_sec);
+ 	raw_inode->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
+@@ -3129,8 +3135,11 @@ again:
+ 	if (!S_ISREG(inode->i_mode)) {
+ 		raw_inode->i_dir_acl = cpu_to_le32(ei->i_dir_acl);
+ 	} else {
+-		raw_inode->i_size_high =
+-			cpu_to_le32(ei->i_disksize >> 32);
++		disksize = cpu_to_le32(ei->i_disksize >> 32);
++		if (disksize != raw_inode->i_size_high) {
++			raw_inode->i_size_high = disksize;
++			need_datasync = 1;
++		}
+ 		if (ei->i_disksize > 0x7fffffffULL) {
+ 			struct super_block *sb = inode->i_sb;
+ 			if (!EXT3_HAS_RO_COMPAT_FEATURE(sb,
+@@ -3183,6 +3192,8 @@ again:
+ 	ext3_clear_inode_state(inode, EXT3_STATE_NEW);
+ 
+ 	atomic_set(&ei->i_sync_tid, handle->h_transaction->t_tid);
++	if (need_datasync)
++		atomic_set(&ei->i_datasync_tid, handle->h_transaction->t_tid);
+ out_brelse:
+ 	brelse (bh);
+ 	ext3_std_error(inode->i_sb, err);
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
