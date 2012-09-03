@@ -1,47 +1,80 @@
-From: darxus@chaosreigns.com
-Subject: Weird filesystem corruption from wayland / radeon / chromium
-Date: Mon, 3 Sep 2012 18:02:13 -0400
-Message-ID: <20120903220213.GE19158@chaosreigns.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and
+ 64bits features
+Date: Mon, 3 Sep 2012 19:00:30 -0400
+Message-ID: <20120903230030.GF5066@thunk.org>
+References: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com>
+ <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
+ <20120903164525.GD5066@thunk.org>
+ <50451AD9.30006@vbcl.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Kai Grosshaus <kai@vbcl.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from panic.chaosreigns.com ([64.71.152.40]:54355 "EHLO
-	panic.chaosreigns.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753826Ab2ICWJY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Sep 2012 18:09:24 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:48672 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753845Ab2ICXAj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Sep 2012 19:00:39 -0400
 Content-Disposition: inline
+In-Reply-To: <50451AD9.30006@vbcl.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[732715.730069] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0: ix (10742) != EXT_FIRST_INDEX (0)
-[  496.347230] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0:ix (10742) != EXT_FIRST_INDEX (0)
+On Mon, Sep 03, 2012 at 11:02:17PM +0200, Kai Grosshaus wrote:
+> 
+> is offline resizeing possible with this patch without online resize
+> kernel patches (i use 3.2.0) with this features?
+> 
+> Filesystem features:      has_journal ext_attr dir_index filetype
+> needs_recovery meta_bg extent 64bit flex_bg sparse_super large_file
+> huge_file uninit_bg dir_nlink extra_isize
+> 
+> I had no luck offline resizing my 24TB fs with e2fstools version
+> 1.42 and 1.42.5.
 
-Same search_left... argument?  Same inode?
+No, offline resizing for 64-bit file systems (and file systems with
+meta_bg) hasn't been implemented yet.  It's on the todo list, but the
+main issue is that for many of the ext4 developers, our employers
+don't require the use of large RAID arrays, so the development has
+been somewhat delayed between my work responsibilities and organizing
+the kernel summit last week in San Diego.  Yongqiang's patches were
+posted for review quite some time ago, but I knew they needed some
+review and reworking, and it just didn't rise to the top of the
+priority heap until now.
 
-$ sudo find . -inum 21374007 -print
-./home/darxus/.cache/chromium/Default/Cache/data_3
+(I'm technically on vacation this week in Santa Fe, and hacking online
+resizing for ext4 is fun, so I've been using the early morning and
+late nights to finally get around to making forward progress for
+online resize.  :-)
 
-My post about it to the wayland mailing list: http://lists.freedesktop.org/archives/wayland-devel/2012-September/005201.html
+Technically, off-line shrink for meta_bg/64-bit file systems is easy,
+and off-line growth isn't fundamentally hard, but it simply requires
+teaching resize2fs about the new meta_bg and flex_bg formats.  It's
+probably only a week or so, full-time, by someone who really
+understands the code in question.  The only problem is the only person
+who understands that code deeply is me, and I've just been completely
+swamped these last couple of months.  Hopefully, now that the kernel
+summit is behind me, I'll have a bit more time to work on off-line
+resize, as well as reviewing the many other patches for ext4 which
+have been submitted in the past few months (i.e., the extent status
+tree, which enables SEEK_HOLE and fixing the bigalloc ENOSPC problem
+with delalloc bufferred writes, and the inline data patches).
 
-This happened running wayland with xwayland (X.org running as a rootless
-wayland client) using RAOF's modified Radeon DDX (X driver).  I was
-running chromium this time it happened, there is some possibility I had
-not run chromium since the last time it happened and did run it then,
-I'm not sure.
+I suspect that for people who really want to be able to grow their
+large 64-bit ext4 file systems, the best path forward will be for me
+to backport the on-line resizing (for enlarging 64-bit file systems)
+patches to 3.2.x, once I'm convinced we've shaken out all of the bugs
+and they are well-tested.
 
-What is the significance of this file?  What does the error mean?
+Technically, they wouldn't be material for the 3.2.x stable branch
+since they're not a bugfix, but if some distro using 3.2 is willing to
+sponsor them, we could make the case that since one or more distro's
+are willing to use them in shipping product, they should be in 3.2.x.
+(Or I could just abuse the fact that no one is currently actively
+enforcing rules around the criteria for stable tree patches, but that
+would just be bad kernel developer citizenship.  :-)
 
-It seems like this shouldn't be possible.  What could be causing it?
-Someone mentioned this could be the result of something "scribbling over
-kernel memory".  Do these errors, and their similarity, provide any
-insight into how to track it down?
+Regards,
 
-The errors were three months apart.  They corresponded to filesystem
-corruption.  Because of that I didn't run xwayland for the three months
-between.
-
--- 
-"When we remember we are all mad, the mysteries of life disappear and
-life stands explained." - Mark Twain
-http://www.ChaosReigns.com
+					- Ted
