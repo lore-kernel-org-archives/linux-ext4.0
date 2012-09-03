@@ -1,72 +1,85 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and
- 64bits features
-Date: Sun, 2 Sep 2012 20:50:05 -0400
-Message-ID: <20120903005005.GA4324@thunk.org>
-References: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com>
- <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH] ext4: Use s_csum_seed instead of i_csum_seed for xattr
+ block csum.
+Date: Mon, 03 Sep 2012 11:14:19 +0800
+Message-ID: <5044208B.2080008@tao.ma>
+References: <1340547236-2838-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Darrick J. Wong" <djwong@us.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48486 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755419Ab2ICAuK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 2 Sep 2012 20:50:10 -0400
-Content-Disposition: inline
-In-Reply-To: <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com>
+Received: from oproxy12-pub.bluehost.com ([50.87.16.10]:51452 "HELO
+	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755010Ab2ICDOY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Sep 2012 23:14:24 -0400
+In-Reply-To: <1340547236-2838-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 02, 2012 at 06:31:19PM +0800, Yongqiang Yang wrote:
-> Hi Ted,
+Hi Ted,
+	As the corresponding kernel change has been merged, can this patch be
+merged to the e2fsporgs also?
+
+Thanks
+Tao
+On 06/24/2012 10:13 PM, Tao Ma wrote:
+> From: Tao Ma <boyu.mt@taobao.com>
 > 
->     I noticed that you send out the patch enabling resizing on
-> filesystems with meta_bg and 64bits, so I send out the corresponding
-> patch on e2fsprogs.  Unfortunately, there is still a bug in e2fsprogs
-> as my last email says.
+> In xattr block operation, we use h_refcount to indicate whether the
+> xattr block is shared among many inodes. And xattr block csum uses
+> s_csum_seed if it is shared and i_csum_seed if it belongs to
+> one inode. But this has a problem. So consider the block is shared
+> first bewteen inode A and B, and B has some xattr update and CoW
+> the xattr block. When it updates the *old* xattr block(because
+> of the h_refcount change) and calls ext4_xattr_release_block, we
+> has no idea that inode A is the real owner of the *old* xattr
+> block and we can't use the i_csum_seed of inode A either in xattr
+> block csum calculation. And I don't think we have an easy way to
+> find inode A.
+> 
+> So this patch just removes the tricky i_csum_seed and we now uses
+> s_csum_seed every time for the xattr block csum. The corresponding
+> patch for the e2fsprogs will be sent in another patch.
+> 
+> This is spotted by xfstests 117.
+> 
+> Cc: Darrick J. Wong <djwong@us.ibm.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/xattr.c |   11 ++++-------
+>  1 files changed, 4 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index e56c9ed..2cdb98d 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -127,19 +127,16 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
+>  				    struct ext4_xattr_header *hdr)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> -	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	__u32 csum, old;
+>  
+>  	old = hdr->h_checksum;
+>  	hdr->h_checksum = 0;
+> -	if (le32_to_cpu(hdr->h_refcount) != 1) {
+> -		block_nr = cpu_to_le64(block_nr);
+> -		csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
+> -				   sizeof(block_nr));
+> -	} else
+> -		csum = ei->i_csum_seed;
+> +	block_nr = cpu_to_le64(block_nr);
+> +	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&block_nr,
+> +			   sizeof(block_nr));
+>  	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
+>  			   EXT4_BLOCK_SIZE(inode->i_sb));
+> +
+>  	hdr->h_checksum = old;
+>  	return cpu_to_le32(csum);
+>  }
+> 
 
-Great, thanks, I'll take a look at it.  I've made some changes of my
-own in resize2fs to enable using meta_bg && flex_bg && !resize_inode,
-but it isn't fully done yet, so I hadn't sent them out.  (I must have
-missed your initial patch to resize2fs to enable things for testing
-purposes, but it's not that hard.)
-
-I'm guessing you must have only tested relatively small increases in
-the file system size when you were developing your kernel patch set.
-I was doing tests using a 1k block size with "mke2fs -t ext4 -b 1024
--O meta_bg,64bit,^resize_inode /dev/vdd 256000" and then growing the
-file system from 243M to 5G, which increased the number of meta_bg's
-from 2 to 40 meta_bg's.  I also tried using the MKE2FS_FIRST_META_BG
-environment variable to emulate a file system which was originally
-grown using resize_inode scheme, and then later converted over to the
-meta_bg scheme.  All of this flushed out a number of bugs in your
-original patch series, which I've fixed up.
-
-Anyway, the reason why I haven't released the changes I had made to
-resize2fs is I know there are still some fixes needed so that we can
-transition a file system from resize_inode to meta_bg once we run out
-of reserved gdt blocks, and I need to test what happens with file
-systems that are greater than 16TB --- so far, my testing has been
-with smaller file systems, and since I was still finding things to
-fix, I haven't progressed yet to testing really big file systems.
-
-We will probably also want to advertise a flag indicating that the
-kernel will support meta_bg resizing, and then allow mke2fs to use
-meta_bg by default (even for file systems < 16TB) since it has much
-less overhead and doesn't have the fixed limits that the original
-resize_inode has.
-
-So there is still some work that we need to do to improve the online
-resizing, but what we have so far is a very good start, and your
-patches definitely helped to push us forward.  My apologies for not
-having the time to really seriously finish things up until now, but
-hopefully we'll be able to get something fully robust and tested soon
-(realistically speaking, looking at the likely release schedules for
-the kernel and e2fsprogs, I'm shooting for getting this all done
-before the end of the year).
-
-Regards,
-
-					- Ted
