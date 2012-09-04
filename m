@@ -1,89 +1,105 @@
-From: =?ISO-8859-1?Q?Kai_Gro=DFhaus?= <kai@grosshaus.org>
-Subject: Re: [PATCH] resize2fs: support online-resizing for meta_bg and  64bits
- features
-Date: Tue, 04 Sep 2012 01:33:29 +0200
-Message-ID: <50453E49.40309@grosshaus.org>
-References: <1346579549-25122-1-git-send-email-xiaoqiangnk@gmail.com> <CAGBYx2bobtLQmtexLtVCXSQBpK5-4-4q3MHS3bXcew=iKRhqig@mail.gmail.com> <20120903164525.GD5066@thunk.org> <50451AD9.30006@vbcl.de> <20120903230030.GF5066@thunk.org>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH 2/2] resize2fs: fix overhead calculation for meta_bg file systems
+Date: Tue, 4 Sep 2012 09:59:55 +0800
+Message-ID: <CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com>
+References: <20120903164525.GD5066@thunk.org> <1346690758-21072-1-git-send-email-tytso@mit.edu>
+ <1346690758-21072-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Kevin Liao <kevinlia@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.vbcl.de ([94.230.50.52]:43117 "EHLO mail.vbcl.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754144Ab2IDAAV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Sep 2012 20:00:21 -0400
-In-Reply-To: <20120903230030.GF5066@thunk.org>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:55281 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754388Ab2IDCAS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Sep 2012 22:00:18 -0400
+Received: by lagy9 with SMTP id y9so3863144lag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Sep 2012 19:00:17 -0700 (PDT)
+In-Reply-To: <1346690758-21072-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04.09.2012 01:00, Theodore Ts'o wrote:
-> On Mon, Sep 03, 2012 at 11:02:17PM +0200, Kai Grosshaus wrote:
->> is offline resizeing possible with this patch without online resize
->> kernel patches (i use 3.2.0) with this features?
->>
->> Filesystem features:      has_journal ext_attr dir_index filetype
->> needs_recovery meta_bg extent 64bit flex_bg sparse_super large_file
->> huge_file uninit_bg dir_nlink extra_isize
->>
->> I had no luck offline resizing my 24TB fs with e2fstools version
->> 1.42 and 1.42.5.
-> No, offline resizing for 64-bit file systems (and file systems with
-> meta_bg) hasn't been implemented yet.  It's on the todo list, but the
-> main issue is that for many of the ext4 developers, our employers
-> don't require the use of large RAID arrays, so the development has
-> been somewhat delayed between my work responsibilities and organizing
-> the kernel summit last week in San Diego.  Yongqiang's patches were
-> posted for review quite some time ago, but I knew they needed some
-> review and reworking, and it just didn't rise to the top of the
-> priority heap until now.
+Hi Kevin,
+
+  Ted has sent out the patches on online resizing for meta_bg and
+64bits, so you can have a try again. It seems that the bug in
+e2fsprogs has been fixed.
+
+Yongqiang.
+
+On Tue, Sep 4, 2012 at 12:45 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> The file system overhead calculation in calculate_minimum_resize_size
+> was incorrect meta_bg file systems.  This caused the minimum size to
+> underflow for very large file systems, which threw resize2fs into a
+> loop generally lasted longer than the user's patience.
 >
-> (I'm technically on vacation this week in Santa Fe, and hacking online
-> resizing for ext4 is fun, so I've been using the early morning and
-> late nights to finally get around to making forward progress for
-> online resize.  :-)
-
-interesting what you call fun ;) But thx, i appreciate your work!
-
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  resize/resize2fs.c | 25 ++++++++++++++++++++++++-
+>  1 file changed, 24 insertions(+), 1 deletion(-)
 >
-> Technically, off-line shrink for meta_bg/64-bit file systems is easy,
-> and off-line growth isn't fundamentally hard, but it simply requires
-> teaching resize2fs about the new meta_bg and flex_bg formats.  It's
-> probably only a week or so, full-time, by someone who really
-> understands the code in question.  The only problem is the only person
-> who understands that code deeply is me, and I've just been completely
-> swamped these last couple of months.  Hopefully, now that the kernel
-> summit is behind me, I'll have a bit more time to work on off-line
-> resize, as well as reviewing the many other patches for ext4 which
-> have been submitted in the past few months (i.e., the extent status
-> tree, which enables SEEK_HOLE and fixing the bigalloc ENOSPC problem
-> with delalloc bufferred writes, and the inline data patches).
+> diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+> index dc2805d..1dce498 100644
+> --- a/resize/resize2fs.c
+> +++ b/resize/resize2fs.c
+> @@ -1890,6 +1890,8 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs)
+>         blk64_t grp, data_needed, last_start;
+>         blk64_t overhead = 0;
+>         int num_of_superblocks = 0;
+> +       blk64_t super_overhead = 0;
+> +       int old_desc_blocks;
+>         int extra_groups = 0;
+>         int flexbg_size = 1 << fs->super->s_log_groups_per_flex;
 >
-> I suspect that for people who really want to be able to grow their
-> large 64-bit ext4 file systems, the best path forward will be for me
-> to backport the on-line resizing (for enlarging 64-bit file systems)
-> patches to 3.2.x, once I'm convinced we've shaken out all of the bugs
-> and they are well-tested.
+> @@ -1909,15 +1911,36 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs)
+>          * we need to figure out how many backup superblocks we have so we can
+>          * account for that in the metadata
+>          */
+> +       if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+> +               old_desc_blocks = fs->super->s_first_meta_bg;
+> +       else
+> +               old_desc_blocks = fs->desc_blocks +
+> +                       fs->super->s_reserved_gdt_blocks;
+> +
+>         for (grp = 0; grp < fs->group_desc_count; grp++) {
+> +               blk64_t super_blk, old_desc_blk, new_desc_blk;
+> +               int has_super;
+> +
+> +               ext2fs_super_and_bgd_loc2(fs, grp, &super_blk,
+> +                                         &old_desc_blk, &new_desc_blk, 0);
+> +               has_super = ((grp == 0) || super_blk);
+> +               if (has_super)
+> +                       super_overhead++;
+> +               if (old_desc_blk)
+> +                       super_overhead += old_desc_blocks;
+> +               else if (new_desc_blk)
+> +                       super_overhead++;
+>                 if (ext2fs_bg_has_super(fs, grp))
+>                         num_of_superblocks++;
+> +
+>         }
+> +       printf("super overhead is %llu, old algorithm was %llu\n",
+> +              super_overhead, SUPER_OVERHEAD(fs) * num_of_superblocks);
 >
-> Technically, they wouldn't be material for the 3.2.x stable branch
-> since they're not a bugfix, but if some distro using 3.2 is willing to
-> sponsor them, we could make the case that since one or more distro's
-> are willing to use them in shipping product, they should be in 3.2.x.
-> (Or I could just abuse the fact that no one is currently actively
-> enforcing rules around the criteria for stable tree patches, but that
-> would just be bad kernel developer citizenship.  :-)
+>         /* calculate how many blocks are needed for data */
+>         data_needed = ext2fs_blocks_count(fs->super) -
+>                 ext2fs_free_blocks_count(fs->super);
+> -       data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
+> +       data_needed -= super_overhead;
+>         data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
+>
+>         if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_FLEX_BG) {
+> --
+> 1.7.12.rc0.22.gcdd159b
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I didn't want to press on it, but thx for the detailed response. Ill 
-stay tuned here to read about the progress. But could you do me the 
-favor and answer me an additional question.
 
-If i create a fs with the kernel, e2fsprog versions and the features i 
-mentioned, could i grow it in future when the work on e2fsprogs is done. 
-I mean recreating the fs is no option for me ;)
 
-thx a lot and have a good vacation,
-
-Regards,
-Kai Grosshaus
-
+-- 
+Best Wishes
+Yongqiang Yang
