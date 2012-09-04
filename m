@@ -1,71 +1,62 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/4] ext4: serialize truncate with owerwrite DIO workers
-Date: Tue,  4 Sep 2012 21:36:54 +0400
-Message-ID: <1346780214-29845-4-git-send-email-dmonakhov@openvz.org>
-References: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org>
-Cc: jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH, RFC] ext3: don't clear orphan list on ro mount with errors
+Date: Tue, 04 Sep 2012 13:51:57 -0500
+Message-ID: <50464DCD.2020209@redhat.com>
+References: <503BC685.7090707@redhat.com> <503BCAE0.7010900@redhat.com> <20120828080225.GB5146@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:45228 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932439Ab2IDRpT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Sep 2012 13:45:19 -0400
-Received: by lagy9 with SMTP id y9so4351773lag.19
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Sep 2012 10:45:17 -0700 (PDT)
-In-Reply-To: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org>
+Received: from mx1.redhat.com ([209.132.183.28]:24370 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752219Ab2IDSvy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Sep 2012 14:51:54 -0400
+In-Reply-To: <20120828080225.GB5146@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara have spotted interesting issue:
-There are  potential data corruption issue with  direct IO overwrites
-racing with truncate:
- Like:
-  dio write                      truncate_task
-  ->ext4_ext_direct_IO
-   ->overwrite == 1
-    ->down_read(&EXT4_I(inode)->i_data_sem);
-    ->mutex_unlock(&inode->i_mutex);
-                               ->ext4_setattr()
-                                ->inode_dio_wait()
-                                ->truncate_setsize()
-                                ->ext4_truncate()
-                                 ->down_write(&EXT4_I(inode)->i_data_sem);
-    ->__blockdev_direct_IO
-     ->ext4_get_block
-     ->submit_io()
-    ->up_read(&EXT4_I(inode)->i_data_sem);
-                                 # truncate data blocks, allocate them to
-                                 # other inode - bad stuff happens because
-                                 # dio is still in flight.
+On 8/28/12 3:02 AM, Jan Kara wrote:
+> On Mon 27-08-12 14:30:40, Eric Sandeen wrote:
+>> When we have a filesystem with an orphan inode list *and* in error
+>> state, things behave differently if:
+>>
+>> 1) e2fsck -p is done prior to mount: e2fsck fixes things and exits
+>>    happily (barring other significant problems)
+>>
+>> vs.
+>>
+>> 2) mount is done first, then e2fsck -p: due to the orphan inode
+>>    list removal, more errors are found and e2fsck exits with
+>>    UNEXPECTED INCONSISTENCY.
+>>
+>> The 2nd case above, on the root filesystem, has the tendency to halt
+>> the boot process, which is unfortunate.
+>>
+>> The situation can be improved by not clearing the orphan
+>> inode list when the fs is mounted readonly.
+>   Yeah, makes sense. I've added the patch to my tree. Thanks.
+> 
+> 								Honza
 
-In order to serialize with truncate dio worker should grab extra i_dio_count
-reference before drop i_mutex.
+After a little more investigation, I'm now wondering if this is really
+worth doing.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+e2fsck zaps the orphan list just like the kernel does:
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5a75908..9725acb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3035,6 +3035,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		overwrite = *((int *)iocb->private);
- 
- 		if (overwrite) {
-+			atomic_inc(&inode->i_dio_count);
- 			down_read(&EXT4_I(inode)->i_data_sem);
- 			mutex_unlock(&inode->i_mutex);
- 		}
-@@ -3134,6 +3135,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		if (overwrite) {
- 			up_read(&EXT4_I(inode)->i_data_sem);
- 			mutex_lock(&inode->i_mutex);
-+			inode_dio_done(inode);
- 		}
- 
- 		return ret;
--- 
-1.7.7.6
+         * If the filesystem contains errors, don't run the orphan
+         * list, since the orphan list can't be trusted; and we're
+         * going to be running a full e2fsck run anyway...
 
+and my 1) and 2) differences above were due to testing an older version
+of e2fsck which didn't properly propagate the error flag.  (Sorry...)
+
+Since upstream e2fsck will _also_ ignore the orphan inode list, there's
+probably no great reason for preserving it on a readonly mount after all,
+unless it's just to minimize changes when mounting RO (which may be a
+sufficient reason, I suppose).  So feel free to take it or leave it,
+I guess.
+
+Thanks,
+-Eric
