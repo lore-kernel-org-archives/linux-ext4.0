@@ -1,73 +1,117 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH, RFC] ext3: don't clear orphan list on ro mount with
- errors
-Date: Tue, 4 Sep 2012 23:27:06 +0200
-Message-ID: <20120904212706.GA10636@quack.suse.cz>
-References: <503BC685.7090707@redhat.com>
- <503BCAE0.7010900@redhat.com>
- <20120828080225.GB5146@quack.suse.cz>
- <50464DCD.2020209@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 01/15 v2] mm: add invalidatepage_range address space
+ operation
+Date: Tue, 4 Sep 2012 16:43:16 -0700
+Message-ID: <20120904164316.6e058cbe.akpm@linux-foundation.org>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+	<1346451711-1931-2-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:55029 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751032Ab2IDV1I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Sep 2012 17:27:08 -0400
-Content-Disposition: inline
-In-Reply-To: <50464DCD.2020209@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ tytso@mit.edu, hughd@google.com, linux-mm@kvack.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1346451711-1931-2-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 04-09-12 13:51:57, Eric Sandeen wrote:
-> On 8/28/12 3:02 AM, Jan Kara wrote:
-> > On Mon 27-08-12 14:30:40, Eric Sandeen wrote:
-> >> When we have a filesystem with an orphan inode list *and* in error
-> >> state, things behave differently if:
-> >>
-> >> 1) e2fsck -p is done prior to mount: e2fsck fixes things and exits
-> >>    happily (barring other significant problems)
-> >>
-> >> vs.
-> >>
-> >> 2) mount is done first, then e2fsck -p: due to the orphan inode
-> >>    list removal, more errors are found and e2fsck exits with
-> >>    UNEXPECTED INCONSISTENCY.
-> >>
-> >> The 2nd case above, on the root filesystem, has the tendency to halt
-> >> the boot process, which is unfortunate.
-> >>
-> >> The situation can be improved by not clearing the orphan
-> >> inode list when the fs is mounted readonly.
-> >   Yeah, makes sense. I've added the patch to my tree. Thanks.
-> > 
-> > 								Honza
-> 
-> After a little more investigation, I'm now wondering if this is really
-> worth doing.
-> 
-> e2fsck zaps the orphan list just like the kernel does:
-> 
->          * If the filesystem contains errors, don't run the orphan
->          * list, since the orphan list can't be trusted; and we're
->          * going to be running a full e2fsck run anyway...
-> 
-> and my 1) and 2) differences above were due to testing an older version
-> of e2fsck which didn't properly propagate the error flag.  (Sorry...)
-> 
-> Since upstream e2fsck will _also_ ignore the orphan inode list, there's
-> probably no great reason for preserving it on a readonly mount after all,
-> unless it's just to minimize changes when mounting RO (which may be a
-> sufficient reason, I suppose).  So feel free to take it or leave it,
-> I guess.
-  Since I've already pushed this to Linus and minimizing changes on RO
-filesystem makes sense anyway, I'll leave the patch in... Thanks for the
-update.
+On Fri, 31 Aug 2012 18:21:37 -0400
+Lukas Czerner <lczerner@redhat.com> wrote:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Currently there is no way to truncate partial page where the end
+> truncate point is not at the end of the page. This is because it was not
+> needed and the functionality was enough for file system truncate
+> operation to work properly. However more file systems now support punch
+> hole feature and it can benefit from mm supporting truncating page just
+> up to the certain point.
+> 
+> Specifically, with this functionality truncate_inode_pages_range() can
+> be changed so it supports truncating partial page at the end of the
+> range (currently it will BUG_ON() if 'end' is not at the end of the
+> page).
+> 
+> This commit add new address space operation invalidatepage_range which
+> allows specifying length of bytes to invalidate, rather than assuming
+> truncate to the end of the page. It also introduce
+> block_invalidatepage_range() and do_invalidatepage)range() functions for
+> exactly the same reason.
+> 
+> The caller does not have to implement both aops (invalidatepage and
+> invalidatepage_range) and the latter is preferred. The old method will be
+> used only if invalidatepage_range is not implemented by the caller.
+> 
+> ...
+>
+> +/**
+> + * do_invalidatepage_range - invalidate range of the page
+> + *
+> + * @page: the page which is affected
+> + * @offset: start of the range to invalidate
+> + * @length: length of the range to invalidate
+> +  */
+> +void do_invalidatepage_range(struct page *page, unsigned int offset,
+> +			     unsigned int length)
+> +{
+> +	void (*invalidatepage_range)(struct page *, unsigned int,
+> +				     unsigned int);
+>  	void (*invalidatepage)(struct page *, unsigned long);
+> +
+> +	/*
+> +	 * Try invalidatepage_range first
+> +	 */
+> +	invalidatepage_range = page->mapping->a_ops->invalidatepage_range;
+> +	if (invalidatepage_range) {
+> +		(*invalidatepage_range)(page, offset, length);
+> +		return;
+> +	}
+> +
+> +	/*
+> +	 * When only invalidatepage is registered length + offset must be
+> +	 * PAGE_CACHE_SIZE
+> +	 */
+>  	invalidatepage = page->mapping->a_ops->invalidatepage;
+> +	if (invalidatepage) {
+> +		BUG_ON(length + offset != PAGE_CACHE_SIZE);
+> +		(*invalidatepage)(page, offset);
+> +	}
+>  #ifdef CONFIG_BLOCK
+> -	if (!invalidatepage)
+> -		invalidatepage = block_invalidatepage;
+> +	if (!invalidatepage_range && !invalidatepage)
+> +		block_invalidatepage_range(page, offset, length);
+>  #endif
+> -	if (invalidatepage)
+> -		(*invalidatepage)(page, offset);
+>  }
+
+This interface is ...  strange.  If the caller requests a
+non-page-aligned invalidateion against an fs which doesn't implement
+->invalidatepage_range then the kernel goes BUG.  So the caller must
+know beforehand that the underlying fs _does_ implement
+->invalidatepage_range.
+
+For practical purposes, this implies that invalidation of a
+non-page-aligned region will only be performed by fs code, because the
+fs implicitly knows that it implements ->invalidatepage_range.
+
+However this function isn't exported to modules, so scratch that.
+
+So how is calling code supposed to determine whether it can actually
+_use_ this interface?
+
+
+
+Also...  one would obviously like to see the old ->invalidatepage() get
+removed entirely.  But about 20 filesystems implement
+->invalidatepage() and implementation of ->invalidatepage_range() is
+non-trivial and actually unnecessary.
+
+So I dunno.  Perhaps we should keep ->invalidatepage() and
+->invalidatepage_range() completely separate.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
