@@ -1,50 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] resize2fs: fix overhead calculation for meta_bg file
- systems
-Date: Mon, 3 Sep 2012 22:14:12 -0400
-Message-ID: <20120904021412.GG5066@thunk.org>
-References: <20120903164525.GD5066@thunk.org>
- <1346690758-21072-1-git-send-email-tytso@mit.edu>
- <1346690758-21072-2-git-send-email-tytso@mit.edu>
- <CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com>
+Subject: Re: Weird filesystem corruption from wayland / radeon / chromium
+Date: Mon, 3 Sep 2012 23:29:19 -0400
+Message-ID: <20120904032919.GJ5066@thunk.org>
+References: <20120903220213.GE19158@chaosreigns.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kevin Liao <kevinlia@gmail.com>,
-	Anssi Hannula <anssi.hannula@iki.fi>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: darxus@chaosreigns.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48683 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48694 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756580Ab2IDCOT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Sep 2012 22:14:19 -0400
+	id S1756621Ab2IDD3W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Sep 2012 23:29:22 -0400
 Content-Disposition: inline
-In-Reply-To: <CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com>
+In-Reply-To: <20120903220213.GE19158@chaosreigns.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 04, 2012 at 09:59:55AM +0800, Yongqiang Yang wrote:
-> Hi Kevin,
+On Mon, Sep 03, 2012 at 06:02:13PM -0400, darxus@chaosreigns.com wrote:
+> [732715.730069] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0: ix (10742) != EXT_FIRST_INDEX (0)
+> [  496.347230] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0:ix (10742) != EXT_FIRST_INDEX (0)
 > 
->   Ted has sent out the patches on online resizing for meta_bg and
-> 64bits, so you can have a try again. It seems that the bug in
-> e2fsprogs has been fixed.
+> What is the significance of this file?  What does the error mean?
 
-Make sure you use the latest version of the kernel patches that I just
-sent out.  There quite a number of bugs in the Yongqiang's original
-patch set which I tripped over while I was testing 64-bit resize ---
-and please note that there are definitely still rough edges
-(especially for in cases where the file system was created < 16TB, but
-with the 64-bit feature and resize_inode features enabled).  There may
-also be bugs for the straightforward case of resizing very large file
-systems.
+The error means that the metadata associated with one of Chromium's
+cache files had gotten corrected.  You say you saw this exact same
+error separated in time by three months.  Between those three months,
+was the file system corruption fixed by an e2fsck run?
 
-So while I very much appreciate users giving the code a try and
-sending us feedback, please do think twice before using this code on
-file systems with data that hasn't been backed up recently.  (Of
-course, being good System Administrators you are all keeping --- and
-verifying --- regular backups, right?  :-)
+If not, the fact that you are getting this message twice isn't
+surprising.  The e2fsck program *should* have been run at each reboot,
+but this error may have required manual intervention to fix up.
 
-Regards,
+If you did run e2fsck, and the file system corruptions was fixed
+between the two times that you saw the EXT4-fs error message, then
+that is very interesting.  I would discount scribbling over kernel
+memory, since it would be pretty unusual that the exact same inode and
+the exact same block had gotten corrupted in exactly the same way.  It
+could be a bug in the graphics driver, perhaps triggered by the way
+Wayland is using said graphics driver.
 
-						- Ted
+That also seems fairly hard to credit, so I'm going to hope you didn't
+actually run e2fsck to fix the file system corruption....
+
+	     	       	       	    	   - Ted
