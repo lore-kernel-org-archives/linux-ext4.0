@@ -1,46 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Weird filesystem corruption from wayland / radeon / chromium
-Date: Mon, 3 Sep 2012 23:29:19 -0400
-Message-ID: <20120904032919.GJ5066@thunk.org>
-References: <20120903220213.GE19158@chaosreigns.com>
+From: Kristian Nielsen <knielsen@knielsen-hq.org>
+Subject: Re: [ext3/4] PROBLEM: fdatasync not syncing appended data (w/test program)
+Date: Tue, 04 Sep 2012 08:07:25 +0200
+Message-ID: <87mx165nj6.fsf@frigg.knielsen-hq.org>
+References: <87k3wb8pgk.fsf@frigg.knielsen-hq.org>
+	<20120903135756.GI21109@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: darxus@chaosreigns.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48694 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756621Ab2IDD3W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Sep 2012 23:29:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20120903220213.GE19158@chaosreigns.com>
+Received: from 0106ds1-hvi.0.fullrate.dk ([90.184.84.98]:24276 "EHLO
+	mail.knielsen-hq.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754886Ab2IDGH3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Sep 2012 02:07:29 -0400
+In-Reply-To: <20120903135756.GI21109@quack.suse.cz> (Jan Kara's message of
+	"Mon, 3 Sep 2012 15:57:56 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 03, 2012 at 06:02:13PM -0400, darxus@chaosreigns.com wrote:
-> [732715.730069] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0: ix (10742) != EXT_FIRST_INDEX (0)
-> [  496.347230] EXT4-fs error (device sda1): ext4_ext_search_left:1275: inode #21374007: comm flush-8:0:ix (10742) != EXT_FIRST_INDEX (0)
-> 
-> What is the significance of this file?  What does the error mean?
+Jan Kara <jack@suse.cz> writes:
 
-The error means that the metadata associated with one of Chromium's
-cache files had gotten corrected.  You say you saw this exact same
-error separated in time by three months.  Between those three months,
-was the file system corruption fixed by an e2fsck run?
+> On Mon 03-09-12 10:45:15, Kristian Nielsen wrote:
+>> It appears that ext3 and ext4 fdatasync() does not fully sync data to
+>> disk. Specifically, when new data is written at the end (so that the file
+>> length is increased), not all of the new data is synced by fdatasync().
 
-If not, the fact that you are getting this message twice isn't
-surprising.  The e2fsck program *should* have been run at each reboot,
-but this error may have required manual intervention to fix up.
+> The culprit is that we forget to update i_datasync_tid when we change only
+> inode size. Thus inode is not forced to disk during fdatasync(). I will send
+> fixes for this in a moment.
 
-If you did run e2fsck, and the file system corruptions was fixed
-between the two times that you saw the EXT4-fs error message, then
-that is very interesting.  I would discount scribbling over kernel
-memory, since it would be pretty unusual that the exact same inode and
-the exact same block had gotten corrupted in exactly the same way.  It
-could be a bug in the graphics driver, perhaps triggered by the way
-Wayland is using said graphics driver.
+Cool, thanks for the quick response! Glad that we get this fixed.
 
-That also seems fairly hard to credit, so I'm going to hope you didn't
-actually run e2fsck to fix the file system corruption....
-
-	     	       	       	    	   - Ted
+ - Kristian.
