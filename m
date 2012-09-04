@@ -1,115 +1,129 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: serialize unlocked dio reads with truncate
-Date: Tue, 4 Sep 2012 15:52:14 +0200
-Message-ID: <20120904135214.GB8656@quack.suse.cz>
-References: <1346690448-16917-1-git-send-email-dmonakhov@openvz.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/15 v2] jbd2: implement
+ jbd2_journal_invalidatepage_range
+Date: Tue, 4 Sep 2012 10:52:13 -0400
+Message-ID: <20120904145213.GA26656@fieldses.org>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+ <1346451711-1931-3-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, hughd@google.com, linux-mm@kvack.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57504 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:40824 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756762Ab2IDNwR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Sep 2012 09:52:17 -0400
+	id S1756758Ab2IDOwP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Sep 2012 10:52:15 -0400
 Content-Disposition: inline
-In-Reply-To: <1346690448-16917-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1346451711-1931-3-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 03-09-12 20:40:48, Dmitry Monakhov wrote:
-> Current serialization will works only for DIO which holds
-> i_mutex, but nonlocked DIO following race is possable:
+On Fri, Aug 31, 2012 at 06:21:38PM -0400, Lukas Czerner wrote:
+> mm now supports invalidatepage_range address space operation and there
+> are two file system using jbd2 also implementing punch hole feature
+> which can benefit from this. We need to implement the same thing for
+> jbd2 layer in order to allow those file system take benefit of this
+> functionality.
 > 
-> dio_nolock_read_task            truncate_task
-> 				->ext4_setattr()
-> 				 ->inode_dio_wait()
-> ->ext4_ext_direct_IO
->   ->ext4_ind_direct_IO
->     ->__blockdev_direct_IO
->       ->ext4_get_block
-> 				 ->truncate_setsize()
-> 				 ->ext4_truncate()
-> 				 #alloc truncated blocks
-> 				 #to other inode
->       ->submit_io()
->      #INFORMATION LEAK
-  Right, that looks like a bug. Just isn't the "unlocked DIO" also
-problematic because if we have enough aggressive readers, callers doing
-inode_dio_wait() are waiting forever (I've just tried that with the value
-of forever == several minutes).
-
-  Also there is similar data exposure possible when direct IO read races
-with block allocation, isn't it?
-
-  Hum, and there seems to be also potential data corruption issue with
-direct IO overwrites racing with truncate:
-Like:
- dio write                      truncate_task
- ->ext4_ext_direct_IO
-  ->overwrite == 1
-   ->down_read(&EXT4_I(inode)->i_data_sem);
-   ->mutex_unlock(&inode->i_mutex);
- 				->ext4_setattr()
- 				 ->inode_dio_wait()
- 				 ->truncate_setsize()
- 				 ->ext4_truncate()
-				  ->down_write(&EXT4_I(inode)->i_data_sem);
-   ->__blockdev_direct_IO
-    ->ext4_get_block
-    ->submit_io()
-   ->up_read(&EXT4_I(inode)->i_data_sem);
- 				  # truncate data blocks, allocate them to
- 				  # other inode - bad stuff happens because
-				  # dio is still in flight.
-
-  Anyway your patch makes things better so I'm fine with it (feel free to
-add Reviewed-by: Jan Kara <jack@suse.cz>). Just it seems direct IO locking
-is rather broken in general...
-
-								Honza
-
-> In order to serialize with unlocked DIO reads we have to
-> rearange wait sequance
-  ^^^ rearrange  ^^^ sequence
-
-> 1) update i_size first
-> 2) wait for outstanding DIO requests
-> 3) and only after that truncate inode blocks
+> With new function jbd2_journal_invalidatepage_range() we can now specify
+> length to invalidate, rather than assuming invalidate to the end of the
+> page.
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 > ---
->  fs/ext4/inode.c |    3 +--
->  1 files changed, 1 insertions(+), 2 deletions(-)
+>  fs/jbd2/journal.c     |    1 +
+>  fs/jbd2/transaction.c |   19 +++++++++++++++++--
+>  include/linux/jbd2.h  |    2 ++
+>  3 files changed, 20 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d12d30e..ee534ab 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4304,8 +4304,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  	}
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index e149b99..e4618e9 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -86,6 +86,7 @@ EXPORT_SYMBOL(jbd2_journal_force_commit_nested);
+>  EXPORT_SYMBOL(jbd2_journal_wipe);
+>  EXPORT_SYMBOL(jbd2_journal_blocks_per_page);
+>  EXPORT_SYMBOL(jbd2_journal_invalidatepage);
+> +EXPORT_SYMBOL(jbd2_journal_invalidatepage_range);
+>  EXPORT_SYMBOL(jbd2_journal_try_to_free_buffers);
+>  EXPORT_SYMBOL(jbd2_journal_force_commit);
+>  EXPORT_SYMBOL(jbd2_journal_file_inode);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index fb1ab953..65c1374 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1993,10 +1993,20 @@ zap_buffer_unlocked:
+>   *
+>   */
+>  void jbd2_journal_invalidatepage(journal_t *journal,
+> -		      struct page *page,
+> -		      unsigned long offset)
+> +				 struct page *page,
+> +				 unsigned long offset)
+> +{
+> +	jbd2_journal_invalidatepage_range(journal, page, offset,
+> +					  PAGE_CACHE_SIZE - offset);
+> +}
+> +
+> +void jbd2_journal_invalidatepage_range(journal_t *journal,
+> +				       struct page *page,
+> +				       unsigned int offset,
+> +				       unsigned int length)
+>  {
+>  	struct buffer_head *head, *bh, *next;
+> +	unsigned int stop = offset + length;
+>  	unsigned int curr_off = 0;
+>  	int may_free = 1;
 >  
->  	if (attr->ia_valid & ATTR_SIZE) {
-> -		inode_dio_wait(inode);
-> -
->  		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
->  			struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> @@ -2005,6 +2015,8 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+>  	if (!page_has_buffers(page))
+>  		return;
 >  
-> @@ -4355,6 +4353,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  	if (attr->ia_valid & ATTR_SIZE) {
->  		if (attr->ia_size != i_size_read(inode))
->  			truncate_setsize(inode, attr->ia_size);
-> +		inode_dio_wait(inode);
->  		ext4_truncate(inode);
->  	}
+> +	BUG_ON(stop > PAGE_CACHE_SIZE || stop < length);
+
+This misses e.g. length == (unsigned int)(-1), offset = 1.  Could make
+it obvious with:
+
+	BUG_ON(offset > PAGE_CACHE_SIZE || length > PAGE_CACHE_SIZE);
+	BUG_ON(stop > PAGE_CACHE_SIZE);
+
+Or is that overkill?
+
+--b.
+
+> +
+>  	/* We will potentially be playing with lists other than just the
+>  	 * data lists (especially for journaled data mode), so be
+>  	 * cautious in our locking. */
+> @@ -2014,6 +2026,9 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+>  		unsigned int next_off = curr_off + bh->b_size;
+>  		next = bh->b_this_page;
 >  
+> +		if (next_off > stop)
+> +			return;
+> +
+>  		if (offset <= curr_off) {
+>  			/* This block is wholly outside the truncation point */
+>  			lock_buffer(bh);
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 3efc43f..21288fa 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1101,6 +1101,8 @@ extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
+>  extern void	 journal_sync_buffer (struct buffer_head *);
+>  extern void	 jbd2_journal_invalidatepage(journal_t *,
+>  				struct page *, unsigned long);
+> +extern void	 jbd2_journal_invalidatepage_range(journal_t *, struct page *,
+> +						   unsigned int, unsigned int);
+>  extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+>  extern int	 jbd2_journal_stop(handle_t *);
+>  extern int	 jbd2_journal_flush (journal_t *);
 > -- 
 > 1.7.7.6
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
