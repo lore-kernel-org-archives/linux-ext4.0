@@ -1,131 +1,92 @@
-From: Kevin Liao <kevinlia@gmail.com>
-Subject: Re: [PATCH 2/2] resize2fs: fix overhead calculation for meta_bg file systems
-Date: Wed, 5 Sep 2012 14:50:32 +0800
-Message-ID: <CAF_MivFVADiG7Td_Y9Bx9=Y4YOB-rWm=977Hq=7fpVd1nobSVg@mail.gmail.com>
-References: <20120903164525.GD5066@thunk.org>
-	<1346690758-21072-1-git-send-email-tytso@mit.edu>
-	<1346690758-21072-2-git-send-email-tytso@mit.edu>
-	<CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com>
-	<20120904021412.GG5066@thunk.org>
-	<CAF_MivFMtFvTN9Gwdjk+imenuUHOcO3vbeha6nt+eqovRK3VXw@mail.gmail.com>
-	<CAGBYx2ZyNgG5jk+19E+wA9J5UKym9OBOEUryr3Zkis+uMfvRxw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Anssi Hannula <anssi.hannula@iki.fi>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+From: "NPC toner chips" <sherry@npc-tonerchips.com>
+Subject: Re; new toner  chips  for Samsung with EXP,DOM,EUR,CHN version,
+ Samsung MLT-101S,-ML-2165W/SF-760P/SCX-3405FW
+Date: Wed, 5 Sep 2012 16:43:28 +0800
+Message-ID: <504710B2.1BB258.32546@m13-236.163.com>
+Reply-To: "NPC toner chips" <sherry@printercolorltd.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: Quoted-Printable
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:44833 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751211Ab2IEGuc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 02:50:32 -0400
-Received: by ggdk6 with SMTP id k6so24655ggd.19
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Sep 2012 23:50:32 -0700 (PDT)
-In-Reply-To: <CAGBYx2ZyNgG5jk+19E+wA9J5UKym9OBOEUryr3Zkis+uMfvRxw@mail.gmail.com>
+Received: from m14-110.vip.163.com ([220.181.14.110]:42994 "EHLO
+	m14-110.vip.163.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752623Ab2IEIne (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 04:43:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/9/5 Yongqiang Yang <xiaoqiangnk@gmail.com>:
-> On Wed, Sep 5, 2012 at 2:32 PM, Kevin Liao <kevinlia@gmail.com> wrote:
->> 2012/9/4 Theodore Ts'o <tytso@mit.edu>:
->>> On Tue, Sep 04, 2012 at 09:59:55AM +0800, Yongqiang Yang wrote:
->>>> Hi Kevin,
->>>>
->>>>   Ted has sent out the patches on online resizing for meta_bg and
->>>> 64bits, so you can have a try again. It seems that the bug in
->>>> e2fsprogs has been fixed.
->>>
->>> Make sure you use the latest version of the kernel patches that I just
->>> sent out.  There quite a number of bugs in the Yongqiang's original
->>> patch set which I tripped over while I was testing 64-bit resize ---
->>> and please note that there are definitely still rough edges
->>> (especially for in cases where the file system was created < 16TB, but
->>> with the 64-bit feature and resize_inode features enabled).  There may
->>> also be bugs for the straightforward case of resizing very large file
->>> systems.
->>>
->>> So while I very much appreciate users giving the code a try and
->>> sending us feedback, please do think twice before using this code on
->>> file systems with data that hasn't been backed up recently.  (Of
->>> course, being good System Administrators you are all keeping --- and
->>> verifying --- regular backups, right?  :-)
->>>
->>> Regards,
->>>
->>>                                                 - Ted
->>
->> I had done some simple and quick test. The following is the result.
->>
->> Kernel: 3.4.7 + 5 patches
->> e2fsprogs: 1.42.5 + 2 patches
->>
->> The format command I used is:
->> mke2fs -t ext4 -m0 -b 4096 -F -O 64bit,meta_bg,^resize_inode /dev/md0 nnnn
->>
->> Case 1: Simplly resize
->> 1st step: resize from 14T to 18T => ok
->> 2nd step: resize from 18T to 20T => ok (calculate_minimum_resize_size
->> issue gone)
->> 3rd step: resize from 20T to 21T => ok
->>
->> Case 2: case 1 + file read-write (just like Anssi did)
->> 1st step: resize from 14T to 20T (5368709120 blocks) => ok
->> 2nd step: resize from 20T to 5368709170 blocks => same kernel bug_on
->>
->> Case 3: case 2 + Yongqiang's 2 patches
->> 1st step: resize from 14T to 20T (5368709120 blocks) => ok
->> 2nd step: resize from 20T to 5368709170 blocks => ok
->>
->> Basically I think the resize funtionality should be ok. However I also
->> observe some performance drop. That is, the time needed for mke2fs,
->> mount and e2fsck are longer than before. Here is some detailed data:
->>
->> For 12TB with 64bit,meta_bg,^resize_inode
->> mke2fs: 54.699s
->> mount: 12.108s
->> e2fsck: 1m52.027s
->>
->> For 12TB without 64bit,meta_bg,^resize_inode
-> Did you mean without 64bit and without meta_bg OR with without 64bit
-> and with meta_bg?
->
-> I am guessing you meant without 64bit and without meta_bg, am I right?
-> Yongqiang.
+Dear  Manager ,
 
-What I mean with 64bit,meta_bg,^resize_inode is to use the following
-format command
-mke2fs -t ext4 -m0 -b 4096 -F -O 64bit,meta_bg,^resize_inode /dev/md0 3758096384
+How are you?
+=20
+=20
+I have some new toner  chips  for Samsung with EXP,DOM,EUR,CHN version=
+ for below:
+Samsung MLT-101S------ML-2165W/SF-760P/SCX-3405FW	1.5K
+Samsung MLT-103S-----ML-2950/2951/2955/2956/SCX-4728/47291.5K
+Samsung MLT-103L----ML-2950/2951/2955/2956/SCX-4728/47292.5K
+HP CF280A----HP Laserjet 400M/401DN 2.7K
+HP CF280X---HP Laserjet 400M/402DN 6.9K
+HP CE390A---HP Laserjet  4555/4555/4555dn 10K
+HP CE390X---HP Laserjet  4555/4555/4556dn 24K
 
-And without 64bit,meta_bg,^resize_inode means
-mke2fs -t ext4 -m0 -b 4096 -F /dev/md0 3758096384
+Kyocera TK-1100/TK-1102/TK-1103/TK-1104
+Kyocera TK-1130/TK-1132/TK-1133/TK-1134
+Kyocera TK-1140/TK-1142/TK-1143/TK-1144
+Utax CD5130/5135
+Utax CD5230/5235
 
-Regards,
-Kevin Liao
+OKI B411/B431
+OKI C310/C330/C530
+OKI C810/C820/C830
+OKI C710/C711
+OKI C910/C930
+OKI C9650
+OKI B930
+OKI C9655
+OKI ES3640
+our quality warranty is 100% return and replacement.
+ if there is any quality problem,we will do the replacement for you di=
+rectly in your next order without asking you to send back to save your=
+ cost for small quantity
+if for big quantity of defectives,we will need you to send back with t=
+he shipping cost paid us,after checking the quality problem,we will do=
+ the replacement or do the refund for you
+and our quality guarantee has been stated clearly on our website of ww=
+w.printercolorltd.com ,www.toner-cartridge-chip.com.cn as well as our =
+aliexpress store
+we are an second year golden manufacturer on www.alibaba.com .You can =
+check our certificate  for export right ,export company Identity numbe=
+r,registered certificate with our government and customs  on our websi=
+te of http://www.toner-cartridge-chip.com.cn/column/208392025/Certific=
+ates.html,.,you can trust us.our website is www.toner-cartridge-chip.c=
+om.cn and www.printercolorltd.com=20
+if your quantity is 10,000PCS,we can give you free delivery.And if you=
+r quantity is 5000PCS,we can pay for 50% shipping cost for you!
+I am looking forward to your reply!
+Best wishes!
+yours,
+Sherry
+Sales Manager
+Company:NPC, Nanchang Printer Color Technology Co., LtD               =
+                                 =20
+Address: Room 602,Unit 1,Building 3,Hongcheng Road No.589,Nanchang Cit=
+y,Jiangxi province ,China
+ Tel:86-0791-86207670  Fax:86-0791-86207670
+Mobile:0086-13576261899
+Post code:330046
+MSN: sherry@printercolorltd.com,admin@printercolorltd.com
+Skype:sherryhuang000001
+Email: sherry@printercolorltd.com,admin@printercolorltd.com,=20
+Web:http://printercolorltd.en.alibaba.com/
+http://www.printercolorltd.com
+www.toner-cartridge-chip.com.cn
 
->> mke2fs: 39.763s
->> mount: 0.897s
->> e2fsck: 1m17.554s
->>
->> For 20TB with 64bit,meta_bg,^resize_inode
->> mke2fs: 1m25.090s
->> mount: 19.992s
->> e2fsck: 2m55.048s
->>
->> For 20TB without 64bit,meta_bg,^resize_inode
->> mke2fs: 1m3.660s
->> mount: 1.458s
->> e2fsck: 1m56.055s
->>
->> Yongqiang had told me previously that it may be caused by using
->> meta_bg. I am still wondering is there anything we can do to improve
->> the peroformance? Thanks a lot.
->>
->> Regards,
->> Kevin Liao
->
->
->
-> --
-> Best Wishes
-> Yongqiang Yang
+online shop:http://www.aliexpress.com/store/401088
+
+CERTIFICATE:http://www.toner-cartridge-chip.com.cn/column/208392025/Ce=
+rtificates.html=20
+golden member:http://en.trade2cn.com/companyShop/11090211243708n.html;=
+jsessionid=3DD66F7EB010C669C88801D1AF46803D3B
+=20
+
