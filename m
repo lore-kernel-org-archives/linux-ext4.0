@@ -1,90 +1,126 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 4/4] ext4: serialize truncate with owerwrite DIO workers
-Date: Wed, 05 Sep 2012 20:59:09 +0400
-Message-ID: <87y5ko76ea.fsf@openvz.org>
-References: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org> <1346780214-29845-4-git-send-email-dmonakhov@openvz.org> <20120905154920.GF18051@quack.suse.cz>
+Subject: Re: [PATCH 1/4] ext4: serialize dio nonlocked reads with defrag workers
+Date: Wed, 05 Sep 2012 21:09:10 +0400
+Message-ID: <87vcfs75xl.fsf@openvz.org>
+References: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org> <20120905154719.GE18051@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, jack@suse.cz
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:44563 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752001Ab2IEQ7N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 12:59:13 -0400
-Received: by lagy9 with SMTP id y9so475811lag.19
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Sep 2012 09:59:11 -0700 (PDT)
-In-Reply-To: <20120905154920.GF18051@quack.suse.cz>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:37690 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754193Ab2IERJO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 13:09:14 -0400
+Received: by lbbgj3 with SMTP id gj3so528451lbb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Sep 2012 10:09:12 -0700 (PDT)
+In-Reply-To: <20120905154719.GE18051@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 5 Sep 2012 17:49:20 +0200, Jan Kara <jack@suse.cz> wrote:
-> On Tue 04-09-12 21:36:54, Dmitry Monakhov wrote:
-> > Jan Kara have spotted interesting issue:
-> > There are  potential data corruption issue with  direct IO overwrites
-> > racing with truncate:
-> >  Like:
-> >   dio write                      truncate_task
-> >   ->ext4_ext_direct_IO
-> >    ->overwrite == 1
-> >     ->down_read(&EXT4_I(inode)->i_data_sem);
-> >     ->mutex_unlock(&inode->i_mutex);
-> >                                ->ext4_setattr()
-> >                                 ->inode_dio_wait()
-> >                                 ->truncate_setsize()
-> >                                 ->ext4_truncate()
-> >                                  ->down_write(&EXT4_I(inode)->i_data_sem);
-> >     ->__blockdev_direct_IO
-> >      ->ext4_get_block
-> >      ->submit_io()
-> >     ->up_read(&EXT4_I(inode)->i_data_sem);
-> >                                  # truncate data blocks, allocate them to
-> >                                  # other inode - bad stuff happens because
-> >                                  # dio is still in flight.
+On Wed, 5 Sep 2012 17:47:19 +0200, Jan Kara <jack@suse.cz> wrote:
+> On Tue 04-09-12 21:36:51, Dmitry Monakhov wrote:
+> > Inode's block defrag and ext4_change_inode_journal_flag() may
+> > affect nonlocked DIO reads result, so proper synchronization
+> > required.
 > > 
-> > In order to serialize with truncate dio worker should grab extra i_dio_count
-> > reference before drop i_mutex.
->   Thanks for the patch. You can add:
-> Reviewed-by: Jan Kara <jack@suse.cz>
-I'm Sorry, but unfortunately in two line patch i've done one mistake :( 
-because inode_dio_done() should be before i_mutex will be retaken
-otherwise following deadlock happen
-
-ext4_setattr                       ext4_direct_io
-                                   mutex_unlock
-                                   atomic_inc(inode->i_dio_count)
-  mutex_lock(i_mutex)
-  inode_dio_wait(inode)  ->BLOCK
-                        DEADLOCK<- mutex_lock(i_mutex)
-                                   inode_dio_done()
-
-So i'll add your review sing to updated version if you don't mind.
-> 								Honza
+> > - add missed inode_dio_wait() calls where appropriate
+> > - recheck ext4_should_dioread_nolock under extra i_dio_count reference.
+> > 
 > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> > ---
-> >  fs/ext4/inode.c |    2 ++
-> >  1 files changed, 2 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 5a75908..9725acb 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -3035,6 +3035,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> >  		overwrite = *((int *)iocb->private);
-> >  
-> >  		if (overwrite) {
-> > +			atomic_inc(&inode->i_dio_count);
-> >  			down_read(&EXT4_I(inode)->i_data_sem);
+> ...
+> > diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> > index 830e1b2..ba40309 100644
+> > --- a/fs/ext4/indirect.c
+> > +++ b/fs/ext4/indirect.c
+> > @@ -812,10 +812,22 @@ retry:
+> >  			ext4_flush_completed_IO(inode);
 > >  			mutex_unlock(&inode->i_mutex);
 > >  		}
-> > @@ -3134,6 +3135,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> >  		if (overwrite) {
-> >  			up_read(&EXT4_I(inode)->i_data_sem);
-> >  			mutex_lock(&inode->i_mutex);
+> > +		/*
+> > +		 * Inode's locking behaviour may change due to number
+> > +		 * of reasons, in order to be shure that nolock dioreads
+> 					      ^^^ sure
+> > +		 * is still allowed we have to recheck inode's flags
+> > +		 * while i_dio_count > 0
+> > +		 */
+> > +		atomic_inc(&inode->i_dio_count);
+> > +		if (!unlikely(ext4_should_dioread_nolock(inode))) {
 > > +			inode_dio_done(inode);
-> >  		}
+> > +			goto retry;
+> > +		}
+>   Umm, to make this reliable, you need a smp_mb() between atomic_inc() and
+> ext4_should_dioread_nolock(). Otherwise the i_state test could be reordered
+> before the atomic_inc()... Similarly you need the barriers around all other
+> pairs working with i_dio_count and i_state.
+Ohh, you right. It looks reasonable to grab down_read(i_data_sem) here.
+> 
+> Frankly, I'm not very happy with this solution. It's getting ugly rather
+> quickly. IMHO dioread_nolock should be just ripped out and replaced with
+> proper range locking (if we want the scalability). But this is mostly Ted's
+> decision...
+> 
+> 								Honza
+> 
+> >  		ret = __blockdev_direct_IO(rw, iocb, inode,
+> >  				 inode->i_sb->s_bdev, iov,
+> >  				 offset, nr_segs,
+> >  				 ext4_get_block, NULL, NULL, 0);
+> > +		inode_dio_done(inode);
+> >  	} else {
+> >  		ret = blockdev_direct_IO(rw, iocb, inode, iov,
+> >  				 offset, nr_segs, ext4_get_block);
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index d12d30e..58ef61a 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -4741,6 +4741,10 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+> >  			return err;
+> >  	}
 > >  
-> >  		return ret;
+> > +	/* Wait for all existing dio workers */
+> > +	ext4_set_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
+> > +	inode_dio_wait(inode);
+> > +
+> >  	jbd2_journal_lock_updates(journal);
+> >  
+> >  	/*
+> > @@ -4760,6 +4764,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+> >  	ext4_set_aops(inode);
+> >  
+> >  	jbd2_journal_unlock_updates(journal);
+> > +	ext4_clear_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
+> >  
+> >  	/* Finally we can mark the inode as dirty. */
+> >  
+> > diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> > index c5826c6..a6a4278 100644
+> > --- a/fs/ext4/move_extent.c
+> > +++ b/fs/ext4/move_extent.c
+> > @@ -1213,6 +1213,14 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+> >  	ret1 = mext_inode_double_lock(orig_inode, donor_inode);
+> >  	if (ret1 < 0)
+> >  		return ret1;
+> > +	/* Protect inodes against DIO workers
+> > +	 * - Disable dio nonlock reads, so all new dio workers will block
+> > +	 *   on i_mutex.
+> > +	 * - wait for existing DIO in flight */
+> > +	ext4_set_inode_state(orig_inode, EXT4_STATE_DIOREAD_LOCK);
+> > +	ext4_set_inode_state(donor_inode, EXT4_STATE_DIOREAD_LOCK);
+> > +	inode_dio_wait(orig_inode);
+> > +	inode_dio_wait(donor_inode);
+> >  
+> >  	/* Protect extent tree against block allocations via delalloc */
+> >  	double_down_write_data_sem(orig_inode, donor_inode);
+> > @@ -1412,6 +1420,8 @@ out:
+> >  		kfree(holecheck_path);
+> >  	}
+> >  	double_up_write_data_sem(orig_inode, donor_inode);
+> > +	ext4_clear_inode_state(orig_inode, EXT4_STATE_DIOREAD_LOCK);
+> > +	ext4_clear_inode_state(donor_inode, EXT4_STATE_DIOREAD_LOCK);
+> >  	ret2 = mext_inode_double_unlock(orig_inode, donor_inode);
+> >  
+> >  	if (ret1)
 > > -- 
 > > 1.7.7.6
 > > 
