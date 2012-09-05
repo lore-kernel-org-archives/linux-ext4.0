@@ -1,56 +1,35 @@
-From: David Sterba <dave@jikos.cz>
-Subject: Re: [PATCH 1/2 RESEND] vfs: re-implement
- writeback_inodes_sb(_nr)_if_idle() and rename them
-Date: Wed, 5 Sep 2012 17:54:04 +0200
-Message-ID: <20120905155403.GL17430@twin.jikos.cz>
-References: <503DB3E8.1000308@cn.fujitsu.com>
-Reply-To: dave@jikos.cz
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 01/15 v2] mm: add invalidatepage_range address space
+ operation
+Date: Wed, 5 Sep 2012 11:56:48 -0400
+Message-ID: <20120905155648.GA15985@infradead.org>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
+ <1346451711-1931-2-git-send-email-lczerner@redhat.com>
+ <20120904164316.6e058cbe.akpm@linux-foundation.org>
+ <alpine.LFD.2.00.1209051002310.509@new-host-2>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>,
-	viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>
-To: Miao Xie <miaox@cn.fujitsu.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, hughd@google.com, linux-mm@kvack.org
+To: Luk?? Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:50299
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753156Ab2IEP4w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 11:56:52 -0400
 Content-Disposition: inline
-In-Reply-To: <503DB3E8.1000308@cn.fujitsu.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.LFD.2.00.1209051002310.509@new-host-2>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 29, 2012 at 02:17:12PM +0800, Miao Xie wrote:
-> writeback_inodes_sb(_nr)_if_idle() is re-implemented by replacing down_read()
-> with down_read_trylock() because
-> - If ->s_umount is write locked, then the sb is not idle. That is
->   writeback_inodes_sb(_nr)_if_idle() needn't wait for the lock.
-> - writeback_inodes_sb(_nr)_if_idle() grabs s_umount lock when it want to start
->   writeback, it may bring us deadlock problem when doing umount.
->   (Ex. Btrfs has such a problem, see the following URL
->        http://marc.info/?l=linux-btrfs&m=133540923510561&w=2)
-> 
-> The name of these two functions is cumbersome, so rename them to
-> try_to_writeback_inodes_sb(_nr).
-> 
-> This idea came from Christoph Hellwig.
-> Some code is from the patch of Kamal Mostafa.
-> 
-> Signed-off-by: Miao Xie <miaox@cn.fujitsu.com>
-Tested-by: David Sterba <dsterba@suse.cz>
+On Wed, Sep 05, 2012 at 10:36:00AM -0400, Luk?? Czerner wrote:
+> However if we would want to keep ->invalidatepage_range() and
+> ->invalidatepage() completely separate then we would have to have
+> separate truncate_inode_pages_range() and truncate_pagecache_range()
+> as well for the separation to actually matter. And IMO this would be
+> much worse...
 
-> ---
-> Many users who use btrfs met the deadlock problem caused by writeback_inodes_sb(_nr)_if_idle(),
-> so I send this patch again and hope it will be received as soon as possible if nobody objects.
+What's the problem with simply changing the ->invalidatepage prototype
+to always pass the range and updating all instances for it?
 
-Yes please, this makes testing of the 'autodefrag' mount option hard as
-the deadlock occurs frequently upon umount (when there's a background
-snapshot cleanup in progress).
-
->From the user's POV, the autodefrag improves performance, it's not yet
-on by default until it proves to be stable, the deadlocks were standing
-in the way for long.
-
-thanks,
-david
