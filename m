@@ -1,106 +1,160 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/4] ext4: serialize truncate with owerwrite DIO workers
-Date: Wed, 5 Sep 2012 21:05:43 +0200
-Message-ID: <20120905190543.GL18051@quack.suse.cz>
-References: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org>
- <1346780214-29845-4-git-send-email-dmonakhov@openvz.org>
- <20120905154920.GF18051@quack.suse.cz>
- <87y5ko76ea.fsf@openvz.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] xfstests 285: verify extN statfs f_blocks
+Date: Wed, 05 Sep 2012 17:20:14 -0500
+Message-ID: <5047D01E.1070104@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:33068 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:42045 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754322Ab2IETFp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Sep 2012 15:05:45 -0400
-Content-Disposition: inline
-In-Reply-To: <87y5ko76ea.fsf@openvz.org>
+	id S1755078Ab2IEWUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Sep 2012 18:20:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 05-09-12 20:59:09, Dmitry Monakhov wrote:
-> On Wed, 5 Sep 2012 17:49:20 +0200, Jan Kara <jack@suse.cz> wrote:
-> > On Tue 04-09-12 21:36:54, Dmitry Monakhov wrote:
-> > > Jan Kara have spotted interesting issue:
-> > > There are  potential data corruption issue with  direct IO overwrites
-> > > racing with truncate:
-> > >  Like:
-> > >   dio write                      truncate_task
-> > >   ->ext4_ext_direct_IO
-> > >    ->overwrite == 1
-> > >     ->down_read(&EXT4_I(inode)->i_data_sem);
-> > >     ->mutex_unlock(&inode->i_mutex);
-> > >                                ->ext4_setattr()
-> > >                                 ->inode_dio_wait()
-> > >                                 ->truncate_setsize()
-> > >                                 ->ext4_truncate()
-> > >                                  ->down_write(&EXT4_I(inode)->i_data_sem);
-> > >     ->__blockdev_direct_IO
-> > >      ->ext4_get_block
-> > >      ->submit_io()
-> > >     ->up_read(&EXT4_I(inode)->i_data_sem);
-> > >                                  # truncate data blocks, allocate them to
-> > >                                  # other inode - bad stuff happens because
-> > >                                  # dio is still in flight.
-> > > 
-> > > In order to serialize with truncate dio worker should grab extra i_dio_count
-> > > reference before drop i_mutex.
-> >   Thanks for the patch. You can add:
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> I'm Sorry, but unfortunately in two line patch i've done one mistake :( 
-> because inode_dio_done() should be before i_mutex will be retaken
-> otherwise following deadlock happen
-> 
-> ext4_setattr                       ext4_direct_io
->                                    mutex_unlock
->                                    atomic_inc(inode->i_dio_count)
->   mutex_lock(i_mutex)
->   inode_dio_wait(inode)  ->BLOCK
->                         DEADLOCK<- mutex_lock(i_mutex)
->                                    inode_dio_done()
-> 
-> So i'll add your review sing to updated version if you don't mind.
-  Sure. I should have noticed that as well...
+extN can report f_blocks in statfs in 2 different ways, based
+on whether or not metadata overhead is counted.  This has broken
+in the past, so here's a test for it.
 
-								Honza 
+It looks at dumpe2fs output to get total blocks and free blocks
+right after mkfs.  The difference should be, by definition, the
+exact amount of metadata overhead.
 
-> > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> > > ---
-> > >  fs/ext4/inode.c |    2 ++
-> > >  1 files changed, 2 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > > index 5a75908..9725acb 100644
-> > > --- a/fs/ext4/inode.c
-> > > +++ b/fs/ext4/inode.c
-> > > @@ -3035,6 +3035,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> > >  		overwrite = *((int *)iocb->private);
-> > >  
-> > >  		if (overwrite) {
-> > > +			atomic_inc(&inode->i_dio_count);
-> > >  			down_read(&EXT4_I(inode)->i_data_sem);
-> > >  			mutex_unlock(&inode->i_mutex);
-> > >  		}
-> > > @@ -3134,6 +3135,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
-> > >  		if (overwrite) {
-> > >  			up_read(&EXT4_I(inode)->i_data_sem);
-> > >  			mutex_lock(&inode->i_mutex);
-> > > +			inode_dio_done(inode);
-> > >  		}
-> > >  
-> > >  		return ret;
-> > > -- 
-> > > 1.7.7.6
-> > > 
-> > -- 
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+It then compares this to what's reported via stat -f for f_blocks.
+For "minix" df, it should be exactly equal to the total blocks,
+and for "bsd" df, it should be total blocks less overhead.
+
+It tests that the latter is accurate to within a 1% tolerance.
+
+Today the journal doesn't count as overhead in the statfs call;
+this should be fixed kernelside but for many filesystems it'll be
+within the threshold anyway.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+diff --git a/285 b/285
+new file mode 100755
+index 0000000..cda8531
+--- /dev/null
++++ b/285
+@@ -0,0 +1,97 @@
++#! /bin/bash
++# FS QA Test No. 286
++#
++# Test overhead & df output for extN filesystems
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++# creator
++owner=sandeen@redhat.com
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    cd /
++    rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# real QA test starts here
++
++# Modify as appropriate.
++_supported_fs ext2 ext3 ext4
++_supported_os Linux
++_require_scratch
++
++rm -f $seq.full
++
++_scratch_mkfs >> $seq.full 2>&1
++
++TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
++		| awk '/Block count:/{print $3}'`
++
++FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
++		| awk '/Free blocks:/{print $3}'`
++
++# nb: kernels today don't count journal blocks  as overhead, but should.
++# For most fileystems this will still be within tolerance.
++OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
++
++#  bsddf|minixdf
++#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
++#         behaviour is to return in the f_blocks field the total number of
++#         blocks of the filesystem, while the bsddf  behaviour  (which  is
++#         the default) is to subtract the overhead blocks used by the ext2
++#         filesystem and not available for file storage.
++
++# stat -f output looks like; we get f_blocks from that, which
++# varies depending on the df mount options used below:
++
++# Filesystem           4K-blocks      Used Available Use% Mounted on
++# /dev/sda8              2405312   2208933    196379  92% /
++
++_scratch_mount "-o minixdf"
++MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
++umount $SCRATCH_MNT
++
++_scratch_mount "-o bsddf"
++BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
++umount $SCRATCH_MNT
++
++echo "Overhead is $OVERHEAD out of $TOTAL_BLOCKS" >> $seq.full
++echo "BSD blocks $BSD_F_BLOCKS" >> $seq.full
++echo "MINIX blocks $MINIX_F_BLOCKS" >> $seq.full
++
++# minix should be exactly equal (hence 0)
++_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
++# bsd should be within ... we'll say 1%
++_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
++
++# success, all done
++status=0
++exit
+diff --git a/285.out b/285.out
+new file mode 100644
+index 0000000..2075e21
+--- /dev/null
++++ b/285.out
+@@ -0,0 +1,3 @@
++QA output created by 285
++minix f_blocks is in range
++bsd f_blocks is in range
+diff --git a/group b/group
+index 104ed35..0b33178 100644
+--- a/group
++++ b/group
+@@ -403,3 +403,4 @@ deprecated
+ 282 dump ioctl auto quick
+ 283 dump ioctl auto quick
+ 284 auto
++285 auto
+
