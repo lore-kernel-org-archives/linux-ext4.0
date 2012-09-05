@@ -1,47 +1,106 @@
-From: Marc MERLIN <marc@merlins.org>
-Subject: Re: ext4 crash with 3.5.2 in ext4_ext_remove_space
-Date: Wed, 5 Sep 2012 10:53:02 -0700
-Message-ID: <20120905175302.GH6955@merlins.org>
-References: <20120725154521.GA3398@merlins.org> <alpine.LFD.2.00.1207252023080.4340@(none)> <20120726033223.GA5884@thunk.org> <20120726065412.GB20315@merlins.org> <20120801053042.GG12695@merlins.org> <20120816075004.GE8802@merlins.org> <502CC2A2.4010506@shiftmail.org> <20120816175540.GH8802@merlins.org> <20120905165210.GD6955@merlins.org> <alpine.LFD.2.00.1209051349470.509@new-host-2>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/4] ext4: serialize truncate with owerwrite DIO workers
+Date: Wed, 5 Sep 2012 21:05:43 +0200
+Message-ID: <20120905190543.GL18051@quack.suse.cz>
+References: <1346780214-29845-1-git-send-email-dmonakhov@openvz.org>
+ <1346780214-29845-4-git-send-email-dmonakhov@openvz.org>
+ <20120905154920.GF18051@quack.suse.cz>
+ <87y5ko76ea.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from magic.merlins.org ([209.81.13.136]:52864 "EHLO
-	mail1.merlins.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754164Ab2IERxE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Sep 2012 13:53:04 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:33068 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754322Ab2IETFp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Sep 2012 15:05:45 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1209051349470.509@new-host-2>
+In-Reply-To: <87y5ko76ea.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 05, 2012 at 01:50:54PM -0400, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> Hi,
->=20
-> I believe that this has been fixed with v3.6-rc1-5-g89a4e48 and it
-> was marked for stable release as well.
+On Wed 05-09-12 20:59:09, Dmitry Monakhov wrote:
+> On Wed, 5 Sep 2012 17:49:20 +0200, Jan Kara <jack@suse.cz> wrote:
+> > On Tue 04-09-12 21:36:54, Dmitry Monakhov wrote:
+> > > Jan Kara have spotted interesting issue:
+> > > There are  potential data corruption issue with  direct IO overwrites
+> > > racing with truncate:
+> > >  Like:
+> > >   dio write                      truncate_task
+> > >   ->ext4_ext_direct_IO
+> > >    ->overwrite == 1
+> > >     ->down_read(&EXT4_I(inode)->i_data_sem);
+> > >     ->mutex_unlock(&inode->i_mutex);
+> > >                                ->ext4_setattr()
+> > >                                 ->inode_dio_wait()
+> > >                                 ->truncate_setsize()
+> > >                                 ->ext4_truncate()
+> > >                                  ->down_write(&EXT4_I(inode)->i_data_sem);
+> > >     ->__blockdev_direct_IO
+> > >      ->ext4_get_block
+> > >      ->submit_io()
+> > >     ->up_read(&EXT4_I(inode)->i_data_sem);
+> > >                                  # truncate data blocks, allocate them to
+> > >                                  # other inode - bad stuff happens because
+> > >                                  # dio is still in flight.
+> > > 
+> > > In order to serialize with truncate dio worker should grab extra i_dio_count
+> > > reference before drop i_mutex.
+> >   Thanks for the patch. You can add:
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> I'm Sorry, but unfortunately in two line patch i've done one mistake :( 
+> because inode_dio_done() should be before i_mutex will be retaken
+> otherwise following deadlock happen
+> 
+> ext4_setattr                       ext4_direct_io
+>                                    mutex_unlock
+>                                    atomic_inc(inode->i_dio_count)
+>   mutex_lock(i_mutex)
+>   inode_dio_wait(inode)  ->BLOCK
+>                         DEADLOCK<- mutex_lock(i_mutex)
+>                                    inode_dio_done()
+> 
+> So i'll add your review sing to updated version if you don't mind.
+  Sure. I should have noticed that as well...
 
-Cool, thanks for letting me know.
+								Honza 
 
-I'll keep the e2image on hand just in case, and just fsck the filesyste=
-m
-before mounting it.
-
-Thanks,
-Marc
---=20
-"A mouse is a device used to point at the xterm you want to type in" - =
-A.S.R.
-Microsoft is to operating systems ....
-                                      .... what McDonalds is to gourmet=
- cooking
-Home page: http://marc.merlins.org/ =20
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > > ---
+> > >  fs/ext4/inode.c |    2 ++
+> > >  1 files changed, 2 insertions(+), 0 deletions(-)
+> > > 
+> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > index 5a75908..9725acb 100644
+> > > --- a/fs/ext4/inode.c
+> > > +++ b/fs/ext4/inode.c
+> > > @@ -3035,6 +3035,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+> > >  		overwrite = *((int *)iocb->private);
+> > >  
+> > >  		if (overwrite) {
+> > > +			atomic_inc(&inode->i_dio_count);
+> > >  			down_read(&EXT4_I(inode)->i_data_sem);
+> > >  			mutex_unlock(&inode->i_mutex);
+> > >  		}
+> > > @@ -3134,6 +3135,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+> > >  		if (overwrite) {
+> > >  			up_read(&EXT4_I(inode)->i_data_sem);
+> > >  			mutex_lock(&inode->i_mutex);
+> > > +			inode_dio_done(inode);
+> > >  		}
+> > >  
+> > >  		return ret;
+> > > -- 
+> > > 1.7.7.6
+> > > 
+> > -- 
+> > Jan Kara <jack@suse.cz>
+> > SUSE Labs, CR
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
