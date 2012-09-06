@@ -1,186 +1,169 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests 285: verify extN statfs f_blocks
-Date: Thu, 06 Sep 2012 09:20:10 -0500
-Message-ID: <5048B11A.3070709@redhat.com>
-References: <5047D01E.1070104@redhat.com> <CA+dCu8936Jrwi2tVh6Yx10-Nb8jSZOx+m+Ho34oVYY1sJsh=Yw@mail.gmail.com>
+From: Anssi Hannula <anssi.hannula@iki.fi>
+Subject: Re: [PATCH 2/2] resize2fs: fix overhead calculation for meta_bg file
+ systems
+Date: Thu, 06 Sep 2012 17:22:40 +0300
+Message-ID: <5048B1B0.1050605@iki.fi>
+References: <20120903164525.GD5066@thunk.org> <1346690758-21072-1-git-send-email-tytso@mit.edu> <1346690758-21072-2-git-send-email-tytso@mit.edu> <CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com> <20120904021412.GG5066@thunk.org> <504634D6.20608@iki.fi> <CAGBYx2ZRUdY1CFVnpqB-3LOr5Gs5Cs7UBv2SDxXW9Xqps_m6vQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: guaneryu@gmail.com
+Cc: Theodore Ts'o <tytso@mit.edu>, Kevin Liao <kevinlia@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12143 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755458Ab2IFOUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Sep 2012 10:20:12 -0400
-In-Reply-To: <CA+dCu8936Jrwi2tVh6Yx10-Nb8jSZOx+m+Ho34oVYY1sJsh=Yw@mail.gmail.com>
+Received: from mail-gw-out1.cc.tut.fi ([130.230.160.32]:48730 "EHLO
+	mail-gw-out1.cc.tut.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756024Ab2IFOWm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Sep 2012 10:22:42 -0400
+In-Reply-To: <CAGBYx2ZRUdY1CFVnpqB-3LOr5Gs5Cs7UBv2SDxXW9Xqps_m6vQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/6/12 3:49 AM, Eryu Guan wrote:
-> On Thu, Sep 6, 2012 at 6:20 AM, Eric Sandeen <sandeen@redhat.com> wrote:
->> extN can report f_blocks in statfs in 2 different ways, based
->> on whether or not metadata overhead is counted.  This has broken
->> in the past, so here's a test for it.
->>
->> It looks at dumpe2fs output to get total blocks and free blocks
->> right after mkfs.  The difference should be, by definition, the
->> exact amount of metadata overhead.
->>
->> It then compares this to what's reported via stat -f for f_blocks.
->> For "minix" df, it should be exactly equal to the total blocks,
->> and for "bsd" df, it should be total blocks less overhead.
->>
->> It tests that the latter is accurate to within a 1% tolerance.
->>
->> Today the journal doesn't count as overhead in the statfs call;
->> this should be fixed kernelside but for many filesystems it'll be
->> within the threshold anyway.
->>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->> ---
->>
->> diff --git a/285 b/285
->> new file mode 100755
->> index 0000000..cda8531
->> --- /dev/null
->> +++ b/285
->> @@ -0,0 +1,97 @@
->> +#! /bin/bash
->> +# FS QA Test No. 286
+05.09.2012 05:10, Yongqiang Yang kirjoitti:
+> Hi Anssi,
+
+Hi,
+
+> The bug was fixed for a while, please check the patches:
+> [PATCH 1/2] ext4: teach resize report old blocks count correctly
+> [PATCH 2/2] ext4: ignore last group without enough space when resizing
 > 
-> The Test No. should be 285 here?
+> Please have a try!!!
 
-Oh, yes. I figure I'll have to renumber before commit anyway ;)
+Confirmed that with these patches the simple test passes :)
 
->> +#
->> +# Test overhead & df output for extN filesystems
->> +#
->> +#-----------------------------------------------------------------------
->> +# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
->> +#
->> +# This program is free software; you can redistribute it and/or
->> +# modify it under the terms of the GNU General Public License as
->> +# published by the Free Software Foundation.
->> +#
->> +# This program is distributed in the hope that it would be useful,
->> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
->> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
->> +# GNU General Public License for more details.
->> +#
->> +# You should have received a copy of the GNU General Public License
->> +# along with this program; if not, write the Free Software Foundation,
->> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->> +#-----------------------------------------------------------------------
->> +#
->> +# creator
->> +owner=sandeen@redhat.com
->> +
->> +seq=`basename $0`
->> +echo "QA output created by $seq"
->> +
->> +here=`pwd`
->> +tmp=/tmp/$$
->> +status=1       # failure is the default!
->> +trap "_cleanup; exit \$status" 0 1 2 3 15
->> +
->> +_cleanup()
->> +{
->> +    cd /
->> +    rm -f $tmp.*
->> +}
->> +
->> +# get standard environment, filters and checks
->> +. ./common.rc
->> +. ./common.filter
->> +
->> +# real QA test starts here
->> +
->> +# Modify as appropriate.
->> +_supported_fs ext2 ext3 ext4
->> +_supported_os Linux
->> +_require_scratch
->> +
->> +rm -f $seq.full
->> +
->> +_scratch_mkfs >> $seq.full 2>&1
->> +
->> +TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
->> +               | awk '/Block count:/{print $3}'`
->> +
->> +FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
->> +               | awk '/Free blocks:/{print $3}'`
-> 
-> I guess TOTAL_BLOCKS and FREE_BLOCKS will be wrong when testing ext4
-> on RHEL5 which has a separate dumpe4fs for ext4.
-
-dumpe2fs would fail, yes ... I don't know if we really want to special case rhel5's
-weirdness in xfstests or not ...
-
--Eric
 
 > Thanks,
-> Eryu Guan
->> +
->> +# nb: kernels today don't count journal blocks  as overhead, but should.
->> +# For most fileystems this will still be within tolerance.
->> +OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
->> +
->> +#  bsddf|minixdf
->> +#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
->> +#         behaviour is to return in the f_blocks field the total number of
->> +#         blocks of the filesystem, while the bsddf  behaviour  (which  is
->> +#         the default) is to subtract the overhead blocks used by the ext2
->> +#         filesystem and not available for file storage.
->> +
->> +# stat -f output looks like; we get f_blocks from that, which
->> +# varies depending on the df mount options used below:
->> +
->> +# Filesystem           4K-blocks      Used Available Use% Mounted on
->> +# /dev/sda8              2405312   2208933    196379  92% /
->> +
->> +_scratch_mount "-o minixdf"
->> +MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
->> +umount $SCRATCH_MNT
->> +
->> +_scratch_mount "-o bsddf"
->> +BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
->> +umount $SCRATCH_MNT
->> +
->> +echo "Overhead is $OVERHEAD out of $TOTAL_BLOCKS" >> $seq.full
->> +echo "BSD blocks $BSD_F_BLOCKS" >> $seq.full
->> +echo "MINIX blocks $MINIX_F_BLOCKS" >> $seq.full
->> +
->> +# minix should be exactly equal (hence 0)
->> +_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
->> +# bsd should be within ... we'll say 1%
->> +_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
->> +
->> +# success, all done
->> +status=0
->> +exit
->> diff --git a/285.out b/285.out
->> new file mode 100644
->> index 0000000..2075e21
->> --- /dev/null
->> +++ b/285.out
->> @@ -0,0 +1,3 @@
->> +QA output created by 285
->> +minix f_blocks is in range
->> +bsd f_blocks is in range
->> diff --git a/group b/group
->> index 104ed35..0b33178 100644
->> --- a/group
->> +++ b/group
->> @@ -403,3 +403,4 @@ deprecated
->>  282 dump ioctl auto quick
->>  283 dump ioctl auto quick
->>  284 auto
->> +285 auto
+> Yongqiang.
+> 
+> On Wed, Sep 5, 2012 at 1:05 AM, Anssi Hannula <anssi.hannula@iki.fi> wrote:
+>> 04.09.2012 05:14, Theodore Ts'o kirjoitti:
+>>> On Tue, Sep 04, 2012 at 09:59:55AM +0800, Yongqiang Yang wrote:
+>>>> Hi Kevin,
+>>>>
+>>>>   Ted has sent out the patches on online resizing for meta_bg and
+>>>> 64bits, so you can have a try again. It seems that the bug in
+>>>> e2fsprogs has been fixed.
+>>>
+>>> Make sure you use the latest version of the kernel patches that I just
+>>> sent out.  There quite a number of bugs in the Yongqiang's original
+>>> patch set which I tripped over while I was testing 64-bit resize ---
+>>> and please note that there are definitely still rough edges
+>>> (especially for in cases where the file system was created < 16TB, but
+>>> with the 64-bit feature and resize_inode features enabled).  There may
+>>> also be bugs for the straightforward case of resizing very large file
+>>> systems.
+>>
+>> Indeed, I hit a BUG_ON() on resize from 8589934590 blocks to 8589934640
+>> blocks (4k):
+>>  [  676.140165] ------------[ cut here ]------------
+>>  [  676.150026] kernel BUG at fs/ext4/resize.c:255!
+>>  [  676.150026] invalid opcode: 0000 [#1] SMP
+>>  [  676.150026] CPU 0
+>>  [  676.150026] Modules linked in:[  676.150026]  dm_snapshot dm_zero
+>> af_packet dm_mod joydev hid_generic ppdev snd_intel8x0 snd_ac97_codec
+>> ac97_bus usbhid microcode e1000 snd_pcm snd_page_alloc snd_timer hid
+>> i2c_piix4 i2c_core button snd soundcore ac parport_pc parport processor
+>> evdev ipv6 autofs4 ext4 crc16 jbd2 ohci_hcd sd_mod crc_t10dif usbcore
+>> usb_common sr_mod ata_piix ahci libahci libata scsi_mod [last unloaded:
+>> nf_defrag_ipv4]
+>>
+>>  [  676.150026] Pid: 1793, comm: resize2fs Not tainted
+>> 3.5.3-server-2anssi.9.ext4.10.2 #1 innotek GmbH VirtualBox
+>>  [  676.150026] RIP: 0010:[<ffffffffa014e9bc>]  [<ffffffffa014e9bc>]
+>> ext4_resize_fs+0x94c/0xa30 [ext4]
+>>  [  676.150026] RSP: 0018:ffff880046eedd18  EFLAGS: 00010246
+>>  [  676.150026] RAX: 0000000000040001 RBX: ffff88005b799800 RCX:
+>> 0000000000000001
+>>  [  676.150026] RDX: 0000000000081bf1 RSI: 0000000000040001 RDI:
+>> ffff88005b068000
+>>  [  676.150026] RBP: ffff880046eeddd8 R08: 0000000200000003 R09:
+>> 0000000000000000
+>>  [  676.150026] R10: 0000000000000000 R11: 0000000080042000 R12:
+>> 0000000000040001
+>>  [  676.150026] R13: ffff880037fb5e20 R14: 0000000000000000 R15:
+>> ffff88005b068000
+>>  [  676.150026] FS:  00007fb43e067740(0000) GS:ffff88005fc00000(0000)
+>> knlGS:0000000000000000
+>>  [  676.150026] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>>  [  676.150026] CR2: 00007fd905261178 CR3: 0000000044993000 CR4:
+>> 00000000000006f0
+>>  [  676.150026] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+>> 0000000000000000
+>>  [  676.150026] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
+>> 0000000000000400
+>>  [  676.150026] Process resize2fs (pid: 1793, threadinfo
+>> ffff880046eec000, task ffff880053f824c0)
+>>  [  676.150026] Stack:
+>>  [  676.150026]  ffff880046eedda8 ffffffff8117971e 0000000f53529c40
+>> 0000000000000000
+>>  [  676.150026]  000000020000002f 0000000000000000 0000000200000030
+>> ffff88005b20e990
+>>  [  676.150026]  0000000100000001 ffff880000000001 0000000200000000
+>> 0000000200000000
+>>  [  676.150026] Call Trace:
+>>  [  676.150026]  [<ffffffff8117971e>] ? do_last+0x2ee/0x9f0
+>>  [  676.150026]  [<ffffffffa012e05f>] ext4_ioctl+0x9af/0xbc0 [ext4]
+>>  [  676.150026]  [<ffffffff8117db6f>] do_vfs_ioctl+0x8f/0x4e0
+>>  [  676.150026]  [<ffffffff8117e051>] sys_ioctl+0x91/0xa0
+>>  [  676.150026]  [<ffffffff8147d0bd>] system_call_fastpath+0x1a/0x1f
+>>  [  676.150026] Code: c7 c1 60 2c 17 a0 ba 0c 07 00 00 48 c7 c6 9b e8 16
+>> a0 4c 89 e7 31 c0 e8 b3 80 ff ff c7 85 6c ff ff ff ea ff ff ff e9 4c f8
+>> ff ff <0f> 0b 8b 55 a4 8b 45 a0 f7 da 44 31 e0 85 c2 0f 84 6c fb ff ff
+>>  [  676.150026] RIP  [<ffffffffa014e9bc>] ext4_resize_fs+0x94c/0xa30 [ext4]
+>>  [  676.150026]  RSP <ffff880046eedd18>
+>>  [  676.788513] ---[ end trace fbf2bd5a59c2ab99 ]---
+>>
+>> This is BUG_ON(src_group >= group_data[0].group + flex_gd->count);
+>>
+>> I was using the below basic test script which uses a virtual large
+>> volume in LVM (e2fsprogs is 1.42.5, except for resize2fs):
+>>
+>> #!/bin/bash -ex
+>>
+>> VG=delta
+>> LV=ext4test
+>> LVSIZE=40T
+>> MOUNTPOINT="/mnt/iso"
+>> RESIZE2FS=/root/resize2fs
+>>
+>> INITIAL_SIZE_K=4294967295
+>> NEW_BLOCKS=8589934590
+>>
+>> lvcreate -l 100%FREE -V "$LVSIZE" -n "$LV" "$VG"
+>> mkfs.ext4 -O meta_bg,64bit,^resize_inode "/dev/$VG/$LV" "$INITIAL_SIZE_K"
+>>
+>> mount "/dev/$VG/$LV" "$MOUNTPOINT"
+>>
+>> mkdir "$MOUNTPOINT/test"
+>> for file in 1 2; do
+>>         dd if=/dev/urandom bs=1M count=50 of="$MOUNTPOINT/test/$file"
+>> done
+>> md5sum $MOUNTPOINT/test/* > $MOUNTPOINT/MD5SUM
+>>
+>> for N in $NEW_BLOCKS $((NEW_BLOCKS + 50)); do
+>>         $RESIZE2FS "/dev/$VG/$LV" "$N"
+>>
+>>         umount "$MOUNTPOINT"
+>>         fsck.ext4 -nvf "/dev/$VG/$LV"
+>>         mount "/dev/$VG/$LV" "$MOUNTPOINT"
+>>         md5sum -c "$MOUNTPOINT/MD5SUM"
+>> done
+>>
+>>
+>>
+>>> So while I very much appreciate users giving the code a try and
+>>> sending us feedback, please do think twice before using this code on
+>>> file systems with data that hasn't been backed up recently.  (Of
+>>> course, being good System Administrators you are all keeping --- and
+>>> verifying --- regular backups, right?  :-)
 >>
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Anssi Hannula
+> 
+> 
+> 
 
+
+-- 
+Anssi Hannula
