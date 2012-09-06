@@ -1,160 +1,186 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests 285: verify extN statfs f_blocks
-Date: Wed, 05 Sep 2012 17:20:14 -0500
-Message-ID: <5047D01E.1070104@redhat.com>
+From: Marc MERLIN <marc@merlins.org>
+Subject: Re: ext4 crash with 3.5.2 in ext4_ext_remove_space
+Date: Wed, 5 Sep 2012 21:24:26 -0700
+Message-ID: <20120906042426.GC26051@merlins.org>
+References: <20120725154521.GA3398@merlins.org>
+ <alpine.LFD.2.00.1207252023080.4340@(none)>
+ <20120726033223.GA5884@thunk.org>
+ <20120726065412.GB20315@merlins.org>
+ <20120801053042.GG12695@merlins.org>
+ <20120816075004.GE8802@merlins.org>
+ <502CC2A2.4010506@shiftmail.org>
+ <20120816175540.GH8802@merlins.org>
+ <20120905165210.GD6955@merlins.org>
+ <alpine.LFD.2.00.1209051349470.509@new-host-2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42045 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755078Ab2IEWUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Sep 2012 18:20:17 -0400
+Received: from magic.merlins.org ([209.81.13.136]:59245 "EHLO
+	mail1.merlins.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750762Ab2IFEY3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Sep 2012 00:24:29 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1209051349470.509@new-host-2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-extN can report f_blocks in statfs in 2 different ways, based
-on whether or not metadata overhead is counted.  This has broken
-in the past, so here's a test for it.
+On Wed, Sep 05, 2012 at 01:50:54PM -0400, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> Hi,
+>=20
+> I believe that this has been fixed with v3.6-rc1-5-g89a4e48 and it
+> was marked for stable release as well.
 
-It looks at dumpe2fs output to get total blocks and free blocks
-right after mkfs.  The difference should be, by definition, the
-exact amount of metadata overhead.
+If that helps, it was indeed a single orphaned inode. After clearing it=
+,=20
+I was able to mount the partition without problems.
 
-It then compares this to what's reported via stat -f for f_blocks.
-For "minix" df, it should be exactly equal to the total blocks,
-and for "bsd" df, it should be total blocks less overhead.
+gargamel:~# e2fsck -y /dev/mapper/dshelf2-space
+e2fsck 1.42.5 (29-Jul-2012)
+/dev/mapper/dshelf2-space: recovering journal
+Clearing orphaned inode 92668757 (uid=3D1002, gid=3D8, mode=3D0100660, =
+size=3D6574695342)
+/dev/mapper/dshelf2-space: clean, 16987882/114098176 files, 426716110/4=
+56392704 blocks
 
-It tests that the latter is accurate to within a 1% tolerance.
+Cheers,
+Marc
 
-Today the journal doesn't count as overhead in the statfs call;
-this should be fixed kernelside but for many filesystems it'll be
-within the threshold anyway.
+> -Lukas
+>=20
+> On Wed, 5 Sep 2012, Marc MERLIN wrote:
+>=20
+> > Date: Wed, 5 Sep 2012 09:52:10 -0700
+> > From: Marc MERLIN <marc@merlins.org>
+> > To: linux-ext4@vger.kernel.org
+> > Subject: ext4 crash with 3.5.2 in ext4_ext_remove_space
+> >=20
+> > I get a crash when mounting a filesystem.
+> > I'm making an image now with e2image -r before I run e2fsck on it.
+> >=20
+> > Is there anything else you'd like me to do?
+> >=20
+> > [13090.175424] BUG: unable to handle kernel NULL pointer dereferenc=
+e at 0000000000000028
+> > [13090.184897] IP: [<ffffffff8119b92f>] ext4_ext_remove_space+0x83d=
+/0xb51
+> > [13090.192927] PGD 1120d7067 PUD 1123ac067 PMD 0=20
+> > [13090.198469] Oops: 0000 [#1] PREEMPT SMP=20
+> > [13090.203508] CPU 1=20
+> > [13090.205368] Modules linked in:[13090.209508]  ppdev lp tun autof=
+s4 raid456 async_raid6_recov async_pq raid6_pq async_xor xor async_memc=
+py async_tx sata_mv kl5kusb105 ftdi_sio keyspan nfsd nfs lockd fscache =
+auth_rpcgss nfs_acl sunrpc ipt_REJECT xt_state xt_tcpudp xt_LOG iptable=
+_mangle iptable_filter deflate ctr twofish_generic twofish_x86_64_3way =
+twofish_x86_64 twofish_common camellia_generic camellia_x86_64 serpent_=
+sse2_x86_64 lrw serpent_generic xts gf128mul cast5 des_generic xcbc rmd=
+160 sha512_generic crypto_null af_key xfrm_algo blowfish_generic blowfi=
+sh_x86_64 blowfish_common dm_crypt dm_mirror dm_region_hash dm_log aes_=
+x86_64 fuse lm85 hwmon_vid dm_snapshot dm_mod iptable_nat ip_tables nf_=
+conntrack_ftp ipt_MASQUERADE nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 x_=
+tables nf_conntrack sg st snd_pcm_oss snd_mixer_oss snd_hda_codec_hdmi =
+snd_hda_codec_realtek rc_ati_x10 ati_remote rc_core pl2303 usbserial i9=
+15 snd_hda_intel snd_cmipci snd_hda_codec gameport drm_kms_helper dr!
+>  m !
+> >  snd_opl3_lib snd_mpu401_uart eeepc_wmi asus_wmi
+> >  i2c_algo_bit[13090.315877]  sparse_keymap rfkill snd_hwdep snd_seq=
+_midi acpi_cpufreq snd_seq_midi_event mperf kvm_intel kvm processor snd=
+_seq snd_pcm pci_hotplug ehci_hcd wmi parport_pc xhci_hcd microcode but=
+ton video sata_sil24 parport snd_rawmidi snd_timer usbcore crc32c_intel=
+ ghash_clmulni_intel i2c_i801 snd_seq_device cryptd evdev snd lpc_ich m=
+ei i2c_core pcspkr snd_page_alloc thermal_sys usb_common soundcore core=
+temp r8169 mii tpm_tis tpm tpm_bios [last unloaded: kl5kusb105]
+> >=20
+> > [13090.370146] Pid: 9658, comm: mount Not tainted 3.5.2-amd64-preem=
+pt-noide-20120903 #1 System manufacturer System Product Name/P8H67-M PR=
+O
+> > [13090.387559] RIP: 0010:[<ffffffff8119b92f>]  [<ffffffff8119b92f>]=
+ ext4_ext_remove_space+0x83d/0xb51
+> > [13090.398254] RSP: 0018:ffff88012b4c7a18  EFLAGS: 00010246
+> > [13090.406241] RAX: 0000000000000000 RBX: ffff8800a41fb4e8 RCX: fff=
+f8800a41fb450
+> > [13090.416102] RDX: 0000000000000001 RSI: 0000000000000002 RDI: 000=
+000001b340000
+> > [13090.426003] RBP: ffff88012b4c7af8 R08: 000000001b340000 R09: fff=
+f88008ae6f6e0
+> > [13090.435920] R10: ffff880000000000 R11: 0000000000000000 R12: fff=
+f8801156e86f0
+> > [13090.445782] R13: 0000000000000000 R14: ffff8801156e86c0 R15: 000=
+0000000000000
+> > [13090.455627] FS:  0000000000000000(0000) GS:ffff88013fa80000(0063=
+) knlGS:00000000f75ae750
+> > [13090.466451] CS:  0010 DS: 002b ES: 002b CR0: 000000008005003b
+> > [13090.475010] CR2: 0000000000000028 CR3: 0000000115614000 CR4: 000=
+00000000407e0
+> > [13090.484921] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 000=
+0000000000000
+> > [13090.494802] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 000=
+0000000000400
+> > [13090.504649] Process mount (pid: 9658, threadinfo ffff88012b4c600=
+0, task ffff88008d91c4c0)
+> > [13090.515567] Stack:
+> > [13090.520209]  ffff88012b4c7a28 ffffffff81175f65 ffff88012b4c7a88 =
+ffffffff81179c44
+> > [13090.530426]  ffff880100001000 00000000fffffff5 ffffffffa41fb438 =
+ffff8801156e8748
+> > [13090.540694]  00000000000a77ff ffff8800a41fb438 0000000008007800 =
+ffff880122e67800
+> > [13090.551124] Call Trace:
+> > [13090.556238]  [<ffffffff81175f65>] ? brelse+0xe/0x10
+> > [13090.564018]  [<ffffffff81179c44>] ? ext4_mark_iloc_dirty+0x51c/0=
+x581
+> > [13090.573175]  [<ffffffff8119d51c>] ext4_ext_truncate+0xcd/0x179
+> > [13090.581856]  [<ffffffff81132b1c>] ? __inode_wait_for_writeback+0=
+x67/0xa9
+> > [13090.591316]  [<ffffffff81177e74>] ext4_truncate+0x9c/0xdf
+> > [13090.599434]  [<ffffffff8117b721>] ext4_evict_inode+0x1e9/0x2d6
+> > [13090.608273]  [<ffffffff811282e3>] evict+0xa8/0x162
+> > [13090.615846]  [<ffffffff81128588>] iput+0x1b3/0x1bb
+> > [13090.623284]  [<ffffffff8119570d>] ext4_fill_super+0x214b/0x256b
+> > [13090.631785]  [<ffffffff8128f835>] ? vsnprintf+0x1ce/0x421
+> > [13090.639778]  [<ffffffff8113f9b2>] ? set_blocksize+0x36/0x86
+> > [13090.647864]  [<ffffffff811169ae>] mount_bdev+0x14b/0x1ad
+> > [13090.655707]  [<ffffffff811935c2>] ? ext4_calculate_overhead+0x24=
+7/0x247
+> > [13090.664876]  [<ffffffff8112ada7>] ? alloc_vfsmnt+0xa6/0x198
+> > [13090.672989]  [<ffffffff81184d5f>] ext4_mount+0x10/0x12
+> > [13090.680564]  [<ffffffff81117390>] mount_fs+0x64/0x150
+> > [13090.687944]  [<ffffffff810e5439>] ? __alloc_percpu+0xb/0xd
+> > [13090.695702]  [<ffffffff8112b156>] vfs_kern_mount+0x64/0xde
+> > [13090.703435]  [<ffffffff8112b544>] do_kern_mount+0x48/0xda
+> > [13090.711023]  [<ffffffff8112ce32>] do_mount+0x6a1/0x704
+> > [13090.718294]  [<ffffffff810e1181>] ? memdup_user+0x38/0x60
+> > [13090.725767]  [<ffffffff810e11df>] ? strndup_user+0x36/0x4c
+> > [13090.733260]  [<ffffffff8114ffaa>] compat_sys_mount+0x208/0x242
+> > [13090.741047]  [<ffffffff814b0b06>] sysenter_dispatch+0x7/0x21
+> > [13090.748612] Code: ff 4c 63 65 b8 4d 6b e4 30 4c 03 65 b0 e9 fd 0=
+0 00 00 48 63 55 b8 4c 6b e2 30 4c 03 65 b0 49 83 7c 24 20 00 75 0e 49 =
+8b 44 24 28 <48> 8b 40 28 49 89 44 24 20 49 8b 44 24 18 48 85 c0 75 22 =
+49 8b=20
+> > [13090.772841] RIP  [<ffffffff8119b92f>] ext4_ext_remove_space+0x83=
+d/0xb51
+> > [13090.781438]  RSP <ffff88012b4c7a18>
+> > [13090.786758] CR2: 0000000000000028
+> > [13090.804674] ---[ end trace 880c73500bb7f09f ]---
+> > [13090.810808] Kernel panic - not syncing: Fatal exception
+> > [13090.817346] panic occurred, switching back to text console
+> > [13090.824556] Rebooting in 20 seconds..
+> > [13110.758740] ACPI MEMORY or I/O RESET_REG.
+> >=20
+>=20
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/285 b/285
-new file mode 100755
-index 0000000..cda8531
---- /dev/null
-+++ b/285
-@@ -0,0 +1,97 @@
-+#! /bin/bash
-+# FS QA Test No. 286
-+#
-+# Test overhead & df output for extN filesystems
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@redhat.com
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+# real QA test starts here
-+
-+# Modify as appropriate.
-+_supported_fs ext2 ext3 ext4
-+_supported_os Linux
-+_require_scratch
-+
-+rm -f $seq.full
-+
-+_scratch_mkfs >> $seq.full 2>&1
-+
-+TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
-+		| awk '/Block count:/{print $3}'`
-+
-+FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
-+		| awk '/Free blocks:/{print $3}'`
-+
-+# nb: kernels today don't count journal blocks  as overhead, but should.
-+# For most fileystems this will still be within tolerance.
-+OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
-+
-+#  bsddf|minixdf
-+#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
-+#         behaviour is to return in the f_blocks field the total number of
-+#         blocks of the filesystem, while the bsddf  behaviour  (which  is
-+#         the default) is to subtract the overhead blocks used by the ext2
-+#         filesystem and not available for file storage.
-+
-+# stat -f output looks like; we get f_blocks from that, which
-+# varies depending on the df mount options used below:
-+
-+# Filesystem           4K-blocks      Used Available Use% Mounted on
-+# /dev/sda8              2405312   2208933    196379  92% /
-+
-+_scratch_mount "-o minixdf"
-+MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
-+umount $SCRATCH_MNT
-+
-+_scratch_mount "-o bsddf"
-+BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
-+umount $SCRATCH_MNT
-+
-+echo "Overhead is $OVERHEAD out of $TOTAL_BLOCKS" >> $seq.full
-+echo "BSD blocks $BSD_F_BLOCKS" >> $seq.full
-+echo "MINIX blocks $MINIX_F_BLOCKS" >> $seq.full
-+
-+# minix should be exactly equal (hence 0)
-+_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
-+# bsd should be within ... we'll say 1%
-+_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/285.out b/285.out
-new file mode 100644
-index 0000000..2075e21
---- /dev/null
-+++ b/285.out
-@@ -0,0 +1,3 @@
-+QA output created by 285
-+minix f_blocks is in range
-+bsd f_blocks is in range
-diff --git a/group b/group
-index 104ed35..0b33178 100644
---- a/group
-+++ b/group
-@@ -403,3 +403,4 @@ deprecated
- 282 dump ioctl auto quick
- 283 dump ioctl auto quick
- 284 auto
-+285 auto
-
+--=20
+"A mouse is a device used to point at the xterm you want to type in" - =
+A.S.R.
+Microsoft is to operating systems ....
+                                      .... what McDonalds is to gourmet=
+ cooking
+Home page: http://marc.merlins.org/
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
