@@ -1,42 +1,42 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 43305] Deleting a folder with 500 000 small files causes
- deadlock in start_this_handle.irsa.7
-Date: Thu,  6 Sep 2012 14:59:02 +0000 (UTC)
-Message-ID: <20120906145902.1DFF211F864@bugzilla.kernel.org>
-References: <bug-43305-13602@https.bugzilla.kernel.org/>
+From: "MR.TAN WONG" <subaru04@m6.gyao.ne.jp>
+Subject: (unknown)
+Date: Thu, 06 Sep 2012 21:23:36 +0900
+Message-ID: <20120906122336.00006812.0125@m6.gyao.ne.jp>
+Reply-To: <tan.wong222@yahoo.com.hk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: Text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+To: <info.rowanc@yahoo.com.ph>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:58174 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757216Ab2IFO7L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Sep 2012 10:59:11 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A0FA3204B5
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Sep 2012 14:59:06 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 20433204A8
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Sep 2012 14:59:02 +0000 (UTC)
-In-Reply-To: <bug-43305-13602@https.bugzilla.kernel.org/>
+Received: from ms-fb03.so-net.ne.jp ([202.238.84.143]:30779 "EHLO
+	ms-fb03.so-net.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752895Ab2IFPUn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Sep 2012 11:20:43 -0400
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=43305
+DQpGUk9NOk1SLlRBTiBXT05HDQoNCih0YW4ud29uZzIyMkB5YWhvby5jb20uaGspTGV0IG1lIHN0
+YXJ0IGJ5IGludHJvZHVjaW5nIG15c2VsZi4gSSBhbSBNci4gVGFuIFdvbmcgZGlyZWN0b3Igb2Yg
+b3BlcmF0aW9ucyBvZiB0aGUgSGFuZyBTZW5nIEJhbmsgTHRkLiBJIGhhdmUgYW4gb2JzY3VyZWQg
+YnVzaW5lc3Mgc3VnZ2VzdGlvbiBmb3IgeW91LiBUaGF0IHdpbGwgYmUgYSBncmVhdCBiZW5lZml0
+IGZvciB5b3UgYW5kIG1lLiBJdCBpbnZvbHZlIHRoZSB0cmFuc2ZlciBvZiBUd2VudHkgRm91ciBt
+aWxsaW9ucyBGaXZlIEh1bmRyZWQgVGhvdXNhbmQgVW5pdGVkIFN0YXRlIERvbGxhcigkMjQsNTAw
+LDAwMCwwMCkgZGVwb3NpdCBpbiBteSBiYW5rIFNvLCBUd2VudHkgRm91ciBtaWxsaW9ucyBGaXZl
+IEh1bmRyZWQgVGhvdXNhbmQgVW5pdGVkIFN0YXRlIERvbGxhcigkMjQsNTAwLDAwMCwwMCkgaXMg
+c3RpbGwgbHlpbmcgaW4gbXkgYmFuayBhbmQgbm8gb25lIHdpbGwgZXZlciBjb21lIGZvcndhcmQg
+dG8gY2xhaW0gaXQuIFdoYXQgYm90aGVycyBtZSBtb3N0IGlzIHRoYXQgYWNjb3JkaW5nIHRvIHRo
+ZSBsYXdzIG9mIG15IGNvdW50cnkgYXQgdGhlIGV4cGlyYXRpb24gOHllYXJzIHRoZSBmdW5kcyB3
+aWxsIHJldmVydCB0byB0aGUgb3duZXJzaGlwIG9mIHRoZSBIb25nIEtvbmcgR292ZXJubWVudCBp
+ZiBub2JvZHkgYXBwbGllcyB0byBjbGFpbSB0aGUgZnVuZHMuIEFnYWluc3QgdGhpcyBiYWNrZHJv
+cCwgbXkgc3VnZ2VzdGlvbiB0byB5b3UgaXMgdGhhdCBJIHdpbGwgbGlrZSB5b3UgYXMgYSBmb3Jl
+aWduZXIgdG8gc3RhbmQgYXMgdGhlIG5leHQgb2Yga2luIHRvIE1ham9yIEZhZGkgQmFzZW0gc28g
+dGhhdCB5b3Ugd2lsbCBiZSBhYmxlIHRvIHJlY2VpdmUgaGlzIGZ1bmRzLlRyYW5zZmVyLiBTaG91
+bGQgeW91IGJlIGludGVyZXN0ZWQgcGxlYXNlIHNlbmQgbWUgeW91ciBmdWxsIG5hbWVzIGFuZCBj
+dXJyZW50IHJlc2lkZW50aWFsIGFkZHJlc3MgYW5kIEkgd2lsbCBwcmVmZXIgeW91IHRvIHJlYWNo
+IG1lIG9uIHRoaXMgZW1haWwgYWRkcmVzcyAodGFuLndvbmcyMjJAeWFob28uY29tLmhrKSB3aGlj
+aCBpcyBteSBwcml2YXRlIGVtYWlsIGFkZHJlc3MgYW5kIGZpbmFsbHkgYWZ0ZXIgdGhhdCBJIHNo
+YWxsIHByb3ZpZGUgeW91IHdpdGggbW9yZSBkZXRhaWxzIG9mIHRoaXMgb3BlcmF0aW9uLllvdXIg
+ZWFybGllc3QgcmVzcG9uc2UgdG8gdGhpcyBsZXR0ZXIgd2lsbCBiZSBhcHByZWNpYXRlZC4gS2lu
+ZCBSZWdhcmRzLCBNci5UYW4gV29uZy4NCg==
 
-
-Alan <alan@lxorguk.ukuu.org.uk> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-                 CC|                            |alan@lxorguk.ukuu.org.uk
-         Resolution|                            |INSUFFICIENT_DATA
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
