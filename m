@@ -1,44 +1,186 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: [PATCH 1/2 v2] ext4: check free block counters in ext4_mb_find_by_goal
-Date: Thu,  6 Sep 2012 21:16:54 +0800
-Message-ID: <1346937415-2866-1-git-send-email-xiaoqiangnk@gmail.com>
-Cc: tytso@mit.edu, Yongqiang Yang <xiaoqiangnk@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] xfstests 285: verify extN statfs f_blocks
+Date: Thu, 06 Sep 2012 09:20:10 -0500
+Message-ID: <5048B11A.3070709@redhat.com>
+References: <5047D01E.1070104@redhat.com> <CA+dCu8936Jrwi2tVh6Yx10-Nb8jSZOx+m+Ho34oVYY1sJsh=Yw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: guaneryu@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:39117 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751020Ab2IFNw0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Sep 2012 09:52:26 -0400
-Received: by pbbrr13 with SMTP id rr13so2536070pbb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Sep 2012 06:52:26 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:12143 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755458Ab2IFOUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Sep 2012 10:20:12 -0400
+In-Reply-To: <CA+dCu8936Jrwi2tVh6Yx10-Nb8jSZOx+m+Ho34oVYY1sJsh=Yw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Free block counters should be checked before doing allocation.
+On 9/6/12 3:49 AM, Eryu Guan wrote:
+> On Thu, Sep 6, 2012 at 6:20 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+>> extN can report f_blocks in statfs in 2 different ways, based
+>> on whether or not metadata overhead is counted.  This has broken
+>> in the past, so here's a test for it.
+>>
+>> It looks at dumpe2fs output to get total blocks and free blocks
+>> right after mkfs.  The difference should be, by definition, the
+>> exact amount of metadata overhead.
+>>
+>> It then compares this to what's reported via stat -f for f_blocks.
+>> For "minix" df, it should be exactly equal to the total blocks,
+>> and for "bsd" df, it should be total blocks less overhead.
+>>
+>> It tests that the latter is accurate to within a 1% tolerance.
+>>
+>> Today the journal doesn't count as overhead in the statfs call;
+>> this should be fixed kernelside but for many filesystems it'll be
+>> within the threshold anyway.
+>>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>> ---
+>>
+>> diff --git a/285 b/285
+>> new file mode 100755
+>> index 0000000..cda8531
+>> --- /dev/null
+>> +++ b/285
+>> @@ -0,0 +1,97 @@
+>> +#! /bin/bash
+>> +# FS QA Test No. 286
+> 
+> The Test No. should be 285 here?
 
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
----
- fs/ext4/mballoc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+Oh, yes. I figure I'll have to renumber before commit anyway ;)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 6873571..5d4c21a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1659,10 +1659,13 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 	int max;
- 	int err;
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
-+	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
- 	struct ext4_free_extent ex;
- 
- 	if (!(ac->ac_flags & EXT4_MB_HINT_TRY_GOAL))
- 		return 0;
-+	if (grp->bb_free == 0)
-+		return 0;
- 
- 	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
- 	if (err)
--- 
-1.7.5.1
+>> +#
+>> +# Test overhead & df output for extN filesystems
+>> +#
+>> +#-----------------------------------------------------------------------
+>> +# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
+>> +#
+>> +# This program is free software; you can redistribute it and/or
+>> +# modify it under the terms of the GNU General Public License as
+>> +# published by the Free Software Foundation.
+>> +#
+>> +# This program is distributed in the hope that it would be useful,
+>> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+>> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+>> +# GNU General Public License for more details.
+>> +#
+>> +# You should have received a copy of the GNU General Public License
+>> +# along with this program; if not, write the Free Software Foundation,
+>> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+>> +#-----------------------------------------------------------------------
+>> +#
+>> +# creator
+>> +owner=sandeen@redhat.com
+>> +
+>> +seq=`basename $0`
+>> +echo "QA output created by $seq"
+>> +
+>> +here=`pwd`
+>> +tmp=/tmp/$$
+>> +status=1       # failure is the default!
+>> +trap "_cleanup; exit \$status" 0 1 2 3 15
+>> +
+>> +_cleanup()
+>> +{
+>> +    cd /
+>> +    rm -f $tmp.*
+>> +}
+>> +
+>> +# get standard environment, filters and checks
+>> +. ./common.rc
+>> +. ./common.filter
+>> +
+>> +# real QA test starts here
+>> +
+>> +# Modify as appropriate.
+>> +_supported_fs ext2 ext3 ext4
+>> +_supported_os Linux
+>> +_require_scratch
+>> +
+>> +rm -f $seq.full
+>> +
+>> +_scratch_mkfs >> $seq.full 2>&1
+>> +
+>> +TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
+>> +               | awk '/Block count:/{print $3}'`
+>> +
+>> +FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
+>> +               | awk '/Free blocks:/{print $3}'`
+> 
+> I guess TOTAL_BLOCKS and FREE_BLOCKS will be wrong when testing ext4
+> on RHEL5 which has a separate dumpe4fs for ext4.
+
+dumpe2fs would fail, yes ... I don't know if we really want to special case rhel5's
+weirdness in xfstests or not ...
+
+-Eric
+
+> Thanks,
+> Eryu Guan
+>> +
+>> +# nb: kernels today don't count journal blocks  as overhead, but should.
+>> +# For most fileystems this will still be within tolerance.
+>> +OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
+>> +
+>> +#  bsddf|minixdf
+>> +#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
+>> +#         behaviour is to return in the f_blocks field the total number of
+>> +#         blocks of the filesystem, while the bsddf  behaviour  (which  is
+>> +#         the default) is to subtract the overhead blocks used by the ext2
+>> +#         filesystem and not available for file storage.
+>> +
+>> +# stat -f output looks like; we get f_blocks from that, which
+>> +# varies depending on the df mount options used below:
+>> +
+>> +# Filesystem           4K-blocks      Used Available Use% Mounted on
+>> +# /dev/sda8              2405312   2208933    196379  92% /
+>> +
+>> +_scratch_mount "-o minixdf"
+>> +MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
+>> +umount $SCRATCH_MNT
+>> +
+>> +_scratch_mount "-o bsddf"
+>> +BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
+>> +umount $SCRATCH_MNT
+>> +
+>> +echo "Overhead is $OVERHEAD out of $TOTAL_BLOCKS" >> $seq.full
+>> +echo "BSD blocks $BSD_F_BLOCKS" >> $seq.full
+>> +echo "MINIX blocks $MINIX_F_BLOCKS" >> $seq.full
+>> +
+>> +# minix should be exactly equal (hence 0)
+>> +_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
+>> +# bsd should be within ... we'll say 1%
+>> +_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
+>> +
+>> +# success, all done
+>> +status=0
+>> +exit
+>> diff --git a/285.out b/285.out
+>> new file mode 100644
+>> index 0000000..2075e21
+>> --- /dev/null
+>> +++ b/285.out
+>> @@ -0,0 +1,3 @@
+>> +QA output created by 285
+>> +minix f_blocks is in range
+>> +bsd f_blocks is in range
+>> diff --git a/group b/group
+>> index 104ed35..0b33178 100644
+>> --- a/group
+>> +++ b/group
+>> @@ -403,3 +403,4 @@ deprecated
+>>  282 dump ioctl auto quick
+>>  283 dump ioctl auto quick
+>>  284 auto
+>> +285 auto
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
