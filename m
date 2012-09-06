@@ -1,183 +1,126 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2/2] resize2fs: fix overhead calculation for meta_bg file systems
-Date: Fri, 7 Sep 2012 00:19:57 +0800
-Message-ID: <CAGBYx2YKSLZPoCkmKdr1HeAF90kznYu+fBPiBDg1E0vw31L_yg@mail.gmail.com>
-References: <20120903164525.GD5066@thunk.org> <1346690758-21072-1-git-send-email-tytso@mit.edu>
- <1346690758-21072-2-git-send-email-tytso@mit.edu> <CAGBYx2a8J1ZvWDjgv3snTCE59nqurF_sGYJ0pxSy2anXjzfBRg@mail.gmail.com>
- <20120904021412.GG5066@thunk.org> <504634D6.20608@iki.fi> <CAGBYx2ZRUdY1CFVnpqB-3LOr5Gs5Cs7UBv2SDxXW9Xqps_m6vQ@mail.gmail.com>
- <5048B1B0.1050605@iki.fi>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47151] New: provide a file system block size of 8KB for certain
+ SSDs.
+Date: Thu,  6 Sep 2012 20:34:16 +0000 (UTC)
+Message-ID: <bug-47151-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Kevin Liao <kevinlia@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Anssi Hannula <anssi.hannula@iki.fi>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:38561 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758782Ab2IFQUU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Sep 2012 12:20:20 -0400
-Received: by lbbgj3 with SMTP id gj3so1259173lbb.19
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Sep 2012 09:20:19 -0700 (PDT)
-In-Reply-To: <5048B1B0.1050605@iki.fi>
+Received: from mail.kernel.org ([198.145.19.201]:42278 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933069Ab2IFUeU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Sep 2012 16:34:20 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 53157203E4
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Sep 2012 20:34:19 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 30A42203B9
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Sep 2012 20:34:18 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for your testing.
+https://bugzilla.kernel.org/show_bug.cgi?id=47151
 
-Yongqiang.
-
-On Thu, Sep 6, 2012 at 10:22 PM, Anssi Hannula <anssi.hannula@iki.fi> wrote:
-> 05.09.2012 05:10, Yongqiang Yang kirjoitti:
->> Hi Anssi,
->
-> Hi,
->
->> The bug was fixed for a while, please check the patches:
->> [PATCH 1/2] ext4: teach resize report old blocks count correctly
->> [PATCH 2/2] ext4: ignore last group without enough space when resizing
->>
->> Please have a try!!!
->
-> Confirmed that with these patches the simple test passes :)
->
->
->> Thanks,
->> Yongqiang.
->>
->> On Wed, Sep 5, 2012 at 1:05 AM, Anssi Hannula <anssi.hannula@iki.fi> wrote:
->>> 04.09.2012 05:14, Theodore Ts'o kirjoitti:
->>>> On Tue, Sep 04, 2012 at 09:59:55AM +0800, Yongqiang Yang wrote:
->>>>> Hi Kevin,
->>>>>
->>>>>   Ted has sent out the patches on online resizing for meta_bg and
->>>>> 64bits, so you can have a try again. It seems that the bug in
->>>>> e2fsprogs has been fixed.
->>>>
->>>> Make sure you use the latest version of the kernel patches that I just
->>>> sent out.  There quite a number of bugs in the Yongqiang's original
->>>> patch set which I tripped over while I was testing 64-bit resize ---
->>>> and please note that there are definitely still rough edges
->>>> (especially for in cases where the file system was created < 16TB, but
->>>> with the 64-bit feature and resize_inode features enabled).  There may
->>>> also be bugs for the straightforward case of resizing very large file
->>>> systems.
->>>
->>> Indeed, I hit a BUG_ON() on resize from 8589934590 blocks to 8589934640
->>> blocks (4k):
->>>  [  676.140165] ------------[ cut here ]------------
->>>  [  676.150026] kernel BUG at fs/ext4/resize.c:255!
->>>  [  676.150026] invalid opcode: 0000 [#1] SMP
->>>  [  676.150026] CPU 0
->>>  [  676.150026] Modules linked in:[  676.150026]  dm_snapshot dm_zero
->>> af_packet dm_mod joydev hid_generic ppdev snd_intel8x0 snd_ac97_codec
->>> ac97_bus usbhid microcode e1000 snd_pcm snd_page_alloc snd_timer hid
->>> i2c_piix4 i2c_core button snd soundcore ac parport_pc parport processor
->>> evdev ipv6 autofs4 ext4 crc16 jbd2 ohci_hcd sd_mod crc_t10dif usbcore
->>> usb_common sr_mod ata_piix ahci libahci libata scsi_mod [last unloaded:
->>> nf_defrag_ipv4]
->>>
->>>  [  676.150026] Pid: 1793, comm: resize2fs Not tainted
->>> 3.5.3-server-2anssi.9.ext4.10.2 #1 innotek GmbH VirtualBox
->>>  [  676.150026] RIP: 0010:[<ffffffffa014e9bc>]  [<ffffffffa014e9bc>]
->>> ext4_resize_fs+0x94c/0xa30 [ext4]
->>>  [  676.150026] RSP: 0018:ffff880046eedd18  EFLAGS: 00010246
->>>  [  676.150026] RAX: 0000000000040001 RBX: ffff88005b799800 RCX:
->>> 0000000000000001
->>>  [  676.150026] RDX: 0000000000081bf1 RSI: 0000000000040001 RDI:
->>> ffff88005b068000
->>>  [  676.150026] RBP: ffff880046eeddd8 R08: 0000000200000003 R09:
->>> 0000000000000000
->>>  [  676.150026] R10: 0000000000000000 R11: 0000000080042000 R12:
->>> 0000000000040001
->>>  [  676.150026] R13: ffff880037fb5e20 R14: 0000000000000000 R15:
->>> ffff88005b068000
->>>  [  676.150026] FS:  00007fb43e067740(0000) GS:ffff88005fc00000(0000)
->>> knlGS:0000000000000000
->>>  [  676.150026] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>>  [  676.150026] CR2: 00007fd905261178 CR3: 0000000044993000 CR4:
->>> 00000000000006f0
->>>  [  676.150026] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->>> 0000000000000000
->>>  [  676.150026] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
->>> 0000000000000400
->>>  [  676.150026] Process resize2fs (pid: 1793, threadinfo
->>> ffff880046eec000, task ffff880053f824c0)
->>>  [  676.150026] Stack:
->>>  [  676.150026]  ffff880046eedda8 ffffffff8117971e 0000000f53529c40
->>> 0000000000000000
->>>  [  676.150026]  000000020000002f 0000000000000000 0000000200000030
->>> ffff88005b20e990
->>>  [  676.150026]  0000000100000001 ffff880000000001 0000000200000000
->>> 0000000200000000
->>>  [  676.150026] Call Trace:
->>>  [  676.150026]  [<ffffffff8117971e>] ? do_last+0x2ee/0x9f0
->>>  [  676.150026]  [<ffffffffa012e05f>] ext4_ioctl+0x9af/0xbc0 [ext4]
->>>  [  676.150026]  [<ffffffff8117db6f>] do_vfs_ioctl+0x8f/0x4e0
->>>  [  676.150026]  [<ffffffff8117e051>] sys_ioctl+0x91/0xa0
->>>  [  676.150026]  [<ffffffff8147d0bd>] system_call_fastpath+0x1a/0x1f
->>>  [  676.150026] Code: c7 c1 60 2c 17 a0 ba 0c 07 00 00 48 c7 c6 9b e8 16
->>> a0 4c 89 e7 31 c0 e8 b3 80 ff ff c7 85 6c ff ff ff ea ff ff ff e9 4c f8
->>> ff ff <0f> 0b 8b 55 a4 8b 45 a0 f7 da 44 31 e0 85 c2 0f 84 6c fb ff ff
->>>  [  676.150026] RIP  [<ffffffffa014e9bc>] ext4_resize_fs+0x94c/0xa30 [ext4]
->>>  [  676.150026]  RSP <ffff880046eedd18>
->>>  [  676.788513] ---[ end trace fbf2bd5a59c2ab99 ]---
->>>
->>> This is BUG_ON(src_group >= group_data[0].group + flex_gd->count);
->>>
->>> I was using the below basic test script which uses a virtual large
->>> volume in LVM (e2fsprogs is 1.42.5, except for resize2fs):
->>>
->>> #!/bin/bash -ex
->>>
->>> VG=delta
->>> LV=ext4test
->>> LVSIZE=40T
->>> MOUNTPOINT="/mnt/iso"
->>> RESIZE2FS=/root/resize2fs
->>>
->>> INITIAL_SIZE_K=4294967295
->>> NEW_BLOCKS=8589934590
->>>
->>> lvcreate -l 100%FREE -V "$LVSIZE" -n "$LV" "$VG"
->>> mkfs.ext4 -O meta_bg,64bit,^resize_inode "/dev/$VG/$LV" "$INITIAL_SIZE_K"
->>>
->>> mount "/dev/$VG/$LV" "$MOUNTPOINT"
->>>
->>> mkdir "$MOUNTPOINT/test"
->>> for file in 1 2; do
->>>         dd if=/dev/urandom bs=1M count=50 of="$MOUNTPOINT/test/$file"
->>> done
->>> md5sum $MOUNTPOINT/test/* > $MOUNTPOINT/MD5SUM
->>>
->>> for N in $NEW_BLOCKS $((NEW_BLOCKS + 50)); do
->>>         $RESIZE2FS "/dev/$VG/$LV" "$N"
->>>
->>>         umount "$MOUNTPOINT"
->>>         fsck.ext4 -nvf "/dev/$VG/$LV"
->>>         mount "/dev/$VG/$LV" "$MOUNTPOINT"
->>>         md5sum -c "$MOUNTPOINT/MD5SUM"
->>> done
->>>
->>>
->>>
->>>> So while I very much appreciate users giving the code a try and
->>>> sending us feedback, please do think twice before using this code on
->>>> file systems with data that hasn't been backed up recently.  (Of
->>>> course, being good System Administrators you are all keeping --- and
->>>> verifying --- regular backups, right?  :-)
->>>
->>> --
->>> Anssi Hannula
->>
->>
->>
->
->
-> --
-> Anssi Hannula
+           Summary: provide a file system block size of 8KB for certain
+                    SSDs.
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.4.6-2.10-default
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: enhancement
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: estellnb@elstel.org
+        Regression: No
 
 
+Sandisk support says that its 480GB SSDs have a block size of 8KB instead of
+the usual 4KB. Thus in order to use that SSD we would have to format with a
+block size of 8KB. As SSDs get bigger and bigger it is likely that also other
+vendors will sell SSDs with a block size of 8KB. Please look forward to
+supporting an ext4 blocksize of 8KB!
+
+# mkfs.ext4 -b 8192 test.disk 
+Warning: blocksize 8192 not usable on most systems.
+mke2fs 1.42.4 (12-June-2012)
+test.disk is not a block special device.
+Proceed anyway? (y,n) y
+mkfs.ext4: 8192-byte blocks too big for system (max 4096)
+Proceed anyway? (y,n) y
+Warning: 8192-byte blocks too big for system (max 4096), forced to continue
+Discarding device blocks: done                            
+Filesystem label=
+OS type: Linux
+Block size=8192 (log=3)
+Fragment size=8192 (log=3)
+Stride=0 blocks, Stripe width=0 blocks
+1280 inodes, 1280 blocks
+64 blocks (5.00%) reserved for the super user
+First data block=0
+1 block group
+65528 blocks per group, 65528 fragments per group
+1280 inodes per group
+
+Allocating group tables: done                            
+Writing inode tables: done                            
+
+Filesystem too small for a journal
+Writing superblocks and filesystem accounting information: done
+
+# mount -o loop test.disk /mnt/
+mount: wrong fs type, bad option, bad superblock on /dev/loop0,
+       missing codepage or helper program, or other error
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so
+# dmesg | tail
+[ 2020.657698] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:44:d8:84:61:8c:33:86:dd
+SRC=fe80:0000:0000:0000:46d8:84ff:fe61:8c33
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=227 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=187 
+[ 2020.657874] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:44:d8:84:61:8c:33:86:dd
+SRC=fe80:0000:0000:0000:46d8:84ff:fe61:8c33
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=227 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=187 
+[ 2020.696054] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:44:d8:84:61:8c:33:86:dd
+SRC=fe80:0000:0000:0000:46d8:84ff:fe61:8c33
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=227 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=187 
+[ 2020.992554] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:44:d8:84:61:8c:33:86:dd
+SRC=fe80:0000:0000:0000:46d8:84ff:fe61:8c33
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=431 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=391 
+[ 2045.224133] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:44:d8:84:61:8c:33:86:dd
+SRC=fe80:0000:0000:0000:46d8:84ff:fe61:8c33
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=142 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=102 
+[ 2188.427869] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:00:1b:63:2f:5e:93:86:dd
+SRC=fe80:0000:0000:0000:021b:63ff:fe2f:5e93
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=111 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=71 
+[ 2188.429149] SFW2-INext-DROP-DEFLT IN=eth0 OUT=
+MAC=33:33:00:00:00:fb:00:80:77:d8:ee:7d:86:dd
+SRC=fe80:0000:0000:0000:0280:77ff:fed8:ee7d
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=485 TC=0 HOPLIMIT=1 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=445 
+[ 2192.171020] EXT4-fs (loop0): bad block size 8192
+[ 2193.769124] SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=
+SRC=fe80:0000:0000:0000:02a0:ccff:fed9:b3da
+DST=ff02:0000:0000:0000:0000:0000:0000:00fb LEN=84 TC=0 HOPLIMIT=255 FLOWLBL=0
+PROTO=UDP SPT=5353 DPT=5353 LEN=44 
+[ 2246.621356] EXT4-fs (loop0): bad block size 8192
 
 -- 
-Best Wishes
-Yongqiang Yang
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
