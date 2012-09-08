@@ -1,52 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: How to query ext2/3/4 total fs size while mounted?
-Date: Fri, 7 Sep 2012 20:39:27 -0400
-Message-ID: <20120908003927.GE2542@thunk.org>
-References: <CAMU1PDg-WrH9TS-U9SfeMfV2FTBz7Md+7PR1k55aMTFVq=7NiA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mike Fleetwood <mike.fleetwood@googlemail.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: [PATCH] ext4: fix possible non-initialized variable
+Date: Sat,  8 Sep 2012 09:49:37 -0300
+Message-ID: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
+Cc: Carlos Maiolino <cmaiolino@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49405 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757129Ab2IHAjb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Sep 2012 20:39:31 -0400
-Content-Disposition: inline
-In-Reply-To: <CAMU1PDg-WrH9TS-U9SfeMfV2FTBz7Md+7PR1k55aMTFVq=7NiA@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33081 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752489Ab2IHMt4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 8 Sep 2012 08:49:56 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q88Cnua1024404
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Sep 2012 08:49:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 07, 2012 at 09:12:49PM +0100, Mike Fleetwood wrote:
-> 
-> Is it safe to read the super block off disk using ext2fs_open() or by
-> running dumpe2fs for a mounted file system?  What if the file system has
-> just been resized?  Are there any other methods for querying the total
-> file system size?
+htree_dirblock_to_tree() declares a non-initialized 'err' variable, which is
+passed as a reference to another functions expecting them to set this variable
+with thei error codes.
+It's passed to ext4_bread(), which then passes it to ext4_getblk(). If
+ext4_map_blocks() returns 0 due to a lookup failure, leaving the ext4_getblk()
+buffer_head uninitialized, it will make ext4_getblk() return to ext4_bread()
+without initialize the 'err' variable, and ext4_bread() will return to
+htree_dirblock_to_tree() with this variable still uninitialized.
+htree_dirblock_to_tree() will pass this variable with garbage back to
+ext4_htree_fill_tree(), which expects a number of directory entries added to the
+rb-tree. which, in case, might return a fake non-zero value due the garbage left
+in the 'err' variable, leading the kernel to an Oops in ext4_dx_readdir(), once
+this is expecting a filled rb-tree node, when in turn it will have a NULL-ed
+one, causing an invalid page request when trying to get a fname struct from
+this NULL-ed rb-tree node in this line:
 
-Yes, it would be safe to read the superblock off a mounted disk.
-There is always going to be a race if someone is resizing the file
-system as you read the file system, but that's true for the statfs
-system call as well.
+fname = rb_entry(info->curr_node, struct fname, rb_hash);
 
-There's no way that parted can stop someone else from kicking off a
-online resize between the time you display information about the
-partition table and their contents and the user types in another
-command.
+The patch itself initializes the err variable in htree_dirblock_to_tree() to
+avoid usage mistakes by the called functions, and also fix ext4_getblk() to
+return a initialized 'err' variable when ext4_map_blocks() fails a
+lookup.
 
-Well, you could freeze the file system, but if another process is
-writing huge amounts of data at the time, freezing the file system for
-long periods of time could cause the system to run into significant
-memory problems (since it can't clean memory pages so they can be
-dropped to make room for more modified pages, leading to OOM kills).
+Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+---
+ fs/ext4/inode.c | 2 +-
+ fs/ext4/namei.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Probably the best thing you can do, if this is really important to
-you, is to snapshot the state of the file systems, then when the user
-enters a command, in quick succession, freeze the file system, double
-check to make sure nothing has changed, and if it hasn't, update the
-partition table (this is most important if you are shrinking the
-partition), and then unfreeze the file system.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dff171c..80fae26 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -723,7 +723,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ {
+ 	struct ext4_map_blocks map;
+ 	struct buffer_head *bh;
+-	int fatal = 0, err;
++	int fatal = 0, err = 0;
+ 
+ 	J_ASSERT(handle != NULL || create == 0);
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2a42cc0..262f863 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -839,7 +839,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ {
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de, *top;
+-	int err, count = 0;
++	int err = 0, count = 0;
+ 
+ 	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
+ 							(unsigned long)block));
+-- 
+1.7.11.4
 
-Cheers,
-
-						- Ted
