@@ -1,72 +1,33 @@
-From: Mike Thompson <mpthompson@gmail.com>
-Subject: Re: Tracking down suspend/resume ext3/mmc issues on imx233
-Date: Sat, 8 Sep 2012 09:17:42 -0700
-Message-ID: <CAEOSq-PV+7c2nvu3uauOLJcV7WKa1jmd-df0a1H0qY5K4CM5MA@mail.gmail.com>
-References: <CAEOSq-O3SfuAEhMsjX1y1ZgQuWBKef+XZzMR1b4yJhKhaRdymA@mail.gmail.com>
-	<20120907060552.GL26709@S2101-09.ap.freescale.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux-Arm-Kernel <linux-arm-kernel@lists.infradead.org>,
-	linux-ext4@vger.kernel.org, linux-mmc@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Shawn Guo <shawn.guo@linaro.org>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-In-Reply-To: <20120907060552.GL26709@S2101-09.ap.freescale.net>
-Sender: linux-mmc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/7] ext4: Bunch of DIO/AIO fixes
+Date: Sun,  9 Sep 2012 21:27:07 +0400
+Message-ID: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:37543 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751885Ab2IIR1U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 9 Sep 2012 13:27:20 -0400
+Received: by lagy9 with SMTP id y9so659795lag.19
+        for <linux-ext4@vger.kernel.org>; Sun, 09 Sep 2012 10:27:18 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I figured the source of my problem.  Normally, the Linux kernel will
-treat mmc cards as removed during suspend.  This is in case the card
-is swapped by the user during the suspend.  However, on the OLinuXino
-the mmc device is the root file system  If the Linux kernel treats the
-mmc card as removed the frozen tasks with open file handles to the
-root filesystem device (such as the journal tasks) will fail when they
-are thawed during resume.  This is the problem I was seeing.
+There are number of races exist caused by lack of synchronization
+between DIO workers and truncate/fsync/punch_hole routines
+This patch series try to optimize and fix existing DIO/AIO code
 
-Fortunately, there is already a specific kernel config setting
-CONFIG_MMC_UNSAFE_RESUME that needs to be set for systems such as the
-OLinuXino that uses the mmc device for the root filesystem.  I
-overlooked this config setting and spent half a day trying to figure
-out the source of the file system errors on resume.  Next time I'll do
-a better job of looking through related config settings before trying
-to debug an issue that is probably already dealt with.
+TOC:
+# first one is simply a cleanup
+ext4: ext4_inode_info diet
+# Cleanup and bug fixes
+ext4: completed_io locking cleanup
+ext4: serialize dio nonlocked reads with defrag workers V2
+ext4: fsync should wait for DIO writers
+ext4: serialize unlocked dio reads with truncate
+ext4: endless truncate due to nonlocked dio readers V2
+ext4: serialize truncate with owerwrite DIO workers V2
 
-Mike
-
-On Thu, Sep 6, 2012 at 11:05 PM, Shawn Guo <shawn.guo@linaro.org> wrote:
-> Copy a few more lists to get wider audience ...
->
-> Regards,
-> Shawn
->
-> On Thu, Sep 06, 2012 at 10:03:35PM -0700, Mike Thompson wrote:
->> I'm working on adding power management support for the imx233 on
->> 3.6-rc2.  In general I'm working on porting the pm.c file from the
->> Freescale 2.6.35 kernel for both "standby" and "mem" suspend/resume.
->> I'm making pretty good progress on porting the code, but I'm running
->> into an issue outside the immediate code I'm working on.
->>
->> ...
->>
->> The first reported error is in the ext3 filesystem buffer code where
->> the file system buffers aren't being filled by the underlying block
->> device.  At least that's how I'm interpreting the portion of the ext3
->> file system code that is failing.  However, the mmc device is
->> correctly reporting finding p1 and p2 partitions on the device which
->> it would indicate the partition data is being read from the SD card.
->>
->> I'm hoping others might have suggestions on how I should go about
->> tracking down why the ext3 file system can no longer read from the mmc
->> device upon resume.  For instance, useful places to put some tracing
->> code to understand what might be failing, or how to determine what
->> differences there might be before suspend and after resume that might
->> point to the failure.
->>
->> Thanks,
->>
->> Mike Thompson
->>
->> _______________________________________________
->> linux-arm-kernel mailing list
->> linux-arm-kernel@lists.infradead.org
->> http://lists.infradead.org/mailman/listinfo/linux-arm-kernel
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
