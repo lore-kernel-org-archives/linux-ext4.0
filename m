@@ -1,142 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/7] ext4: serialize dio nolocked reads with defrag
- workers V2
-Date: Mon, 10 Sep 2012 12:00:52 +0200
-Message-ID: <20120910100052.GH22903@quack.suse.cz>
-References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
- <1347211634-11509-4-git-send-email-dmonakhov@openvz.org>
- <20120910093126.GE22903@quack.suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 2/7] ext4: completed_io locking cleanup
+Date: Mon, 10 Sep 2012 14:19:52 +0400
+Message-ID: <87ehmagoxj.fsf@openvz.org>
+References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org> <1347211634-11509-3-git-send-email-dmonakhov@openvz.org> <20120910092312.GD22903@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44679 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751315Ab2IJKAy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Sep 2012 06:00:54 -0400
-Content-Disposition: inline
-In-Reply-To: <20120910093126.GE22903@quack.suse.cz>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:34834 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752462Ab2IJKTz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2012 06:19:55 -0400
+Received: by lbbgj3 with SMTP id gj3so1060560lbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 03:19:53 -0700 (PDT)
+In-Reply-To: <20120910092312.GD22903@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 10-09-12 11:31:26, Jan Kara wrote:
-> On Sun 09-09-12 21:27:10, Dmitry Monakhov wrote:
-> > Inode's block defrag and ext4_change_inode_journal_flag() may
-> > affect nonlocked DIO reads result, so proper synchronization
-> > required.
+On Mon, 10 Sep 2012 11:23:12 +0200, Jan Kara <jack@suse.cz> wrote:
+> On Sun 09-09-12 21:27:09, Dmitry Monakhov wrote:
+> > Current unwritten extent conversion state-machine is very fuzzy.
+> > - By unknown reason it want perform conversion under i_mutex. What for?
+> >   All this games with mutex_trylock result in following deadlock
+> >    truncate:                          kworker:
+> >     ext4_setattr                       ext4_end_io_work
+> >     mutex_lock(i_mutex)
+> >     inode_dio_wait(inode)  ->BLOCK
+> >                              DEADLOCK<- mutex_trylock()
+> >                                         inode_dio_done()
+> >   #TEST_CASE1_BEGIN
+> >   MNT=/mnt_scrach
+> >   unlink $MNT/file
+> >   fallocate -l $((1024*1024*1024)) $MNT/file
+> >   aio-stress -I 100000 -O -s 100m -n -t 1 -c 10 -o 2 -o 3 $MNT/file
+> >   sleep 2
+> >   truncate -s 0 $MNT/file
+> >   #TEST_CASE1_END
 > > 
-> > - Add missed inode_dio_wait() calls where appropriate
-> > - Check inode state under extra i_dio_count reference.
+> > This patch makes state machine simple and clean:
 > > 
-> > Changes from V1:
-> > - add missed memory bariers
-> > - move DIOREAD_LOCK state check out from generic should_dioread_nolock
-> >   otherwise it will affect existing DIO readers.
->   Looks good. Just maybe I would rename ext4_inode_dio_wait() to
-> ext4_inode_block_unlocked_dio(). Anyway you can add:
-> Reviewed-by: Jan Kara <jack@suse.cz>
-  Oh, I found one more thing:
+> > (1) ext4_flush_completed_IO is responsible for handling all pending
+> >     end_io from ei->i_completed_io_list(per inode list)
+> >     NOTE1: i_completed_io_lock is acquired only once
+> >     NOTE2: i_mutex is not required because it does not protect
+> >            any data guarded by i_mutex
+>   Removing of i_mutex might be OK but you really need to add more
+> justification (both into the changelog and end_io code) than just "it does
+> not protect any data guarded by i_mutex". So far i_mutex is supposed to
+> protect all modifications of extent tree, now that won't be true anymore.
+> We have i_data_sem protecting extent tree as well but that is acquired for
+> single extent operation only so it cannot be used for guarding "global
+> properties of the extent tree" - e.g. if end_io code would race with
+> truncate it could happen that end_io would create some extents beyond EOF.
+> Now maybe that cannot happen because of other synchronization mechanisms
+> (e.g. inode_dio_wait(), or waiting for PageWriteback while invalidating
+> page cache - although extra care needs to be taken when extents straddle
+> i_size and there can be IO running on the part of the extent before
+> i_size). So I don't immediaetly see a problem but please add more
+> justification to convince me (and future readers of the code) here...
+Ok you right. Actually I've already tried to figure out correct BUG_ON
+condition to spot extent beyond EOF, but this condition is not trivial
+and need justification. My current assumption:
+  Since EXT4_GET_BLOCKS_UNINIT_EXT is used only then file size is not 
+  changed it seems to be correct to prohibit
+  ext4_convert_unwritten_extents() to handle blocks beyond
+  EXT4_I(inode)->i_disksize (inode->i_size is not suitable here
+  because truncate may already reduce it, and now wait for existing dio)
 
-> > +/* Wait for existing dio workers
-> > + * Disable DIO read nolock optimization, so new dioreaders will
-> > + * be forced to grab i_mutex
-> > +*/
-> > +void ext4_inode_dio_wait(struct inode *inode, int resume_readers)
-> > +{
-> > +	ext4_set_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
-> > +	smp_mb();
-> > +	inode_dio_wait(inode);
-> > +	if (resume_readers)
-> > +		ext4_set_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
-> > +}
-> > +
- I've just now noticed the resume_readers argument.
-a) You probably meant to call ext4_clear_inode_state() when that argument
-is set?
-b) You need a smp_mb() before clearing DIOREAD_LOCK?
-c) Please remove the resume_readers argument and make a separate function
-from that. That new function could be called:
-ext4_inode_unblock_unlocked_dio().
-
-								Honza
-
-> >  /*
-> >   * O_DIRECT for ext3 (or indirect map) based files
-> >   *
-> > @@ -810,10 +823,20 @@ retry:
-> >  		if (unlikely(!list_empty(&ei->i_completed_io_list)))
-> >  			ext4_flush_completed_IO(inode);
-> >  
-> > +		/* Nolock dioread optimization may be dynamically disabled.
-> > +		 * Check inode's state while holding extra i_dio_count ref. */
-> > +		atomic_inc(&inode->i_dio_count);
-> > +		smp_mb();
-> > +		if (!unlikely(ext4_test_inode_state(inode,
-> > +						    EXT4_STATE_DIOREAD_LOCK))) {
-> > +			inode_dio_done(inode);
-> > +			goto retry;
-> > +		}
-> >  		ret = __blockdev_direct_IO(rw, iocb, inode,
-> >  				 inode->i_sb->s_bdev, iov,
-> >  				 offset, nr_segs,
-> >  				 ext4_get_block, NULL, NULL, 0);
-> > +		inode_dio_done(inode);
-> >  	} else {
-> >  		ret = blockdev_direct_IO(rw, iocb, inode, iov,
-> >  				 offset, nr_segs, ext4_get_block);
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 762b955..ffb4a27 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -4720,6 +4720,9 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
-> >  			return err;
-> >  	}
-> >  
-> > +	/* Wait for all existing dio workers */
-> > +	ext4_inode_dio_wait(inode, 0);
-> > +
-> >  	jbd2_journal_lock_updates(journal);
-> >  
-> >  	/*
-> > @@ -4739,6 +4742,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
-> >  	ext4_set_aops(inode);
-> >  
-> >  	jbd2_journal_unlock_updates(journal);
-> > +	ext4_clear_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
-> >  
-> >  	/* Finally we can mark the inode as dirty. */
-> >  
-> > diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> > index c5826c6..aea0e7a 100644
-> > --- a/fs/ext4/move_extent.c
-> > +++ b/fs/ext4/move_extent.c
-> > @@ -1214,6 +1214,9 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
-> >  	if (ret1 < 0)
-> >  		return ret1;
-> >  
-> > +	/* Wait for all existing dio workers */
-> > +	ext4_inode_dio_wait(orig_inode, 0);
-> > +	ext4_inode_dio_wait(donor_inode, 0);
-> >  	/* Protect extent tree against block allocations via delalloc */
-> >  	double_down_write_data_sem(orig_inode, donor_inode);
-> >  	/* Check the filesystem environment whether move_extent can be done */
-> > @@ -1412,6 +1415,8 @@ out:
-> >  		kfree(holecheck_path);
-> >  	}
-> >  	double_up_write_data_sem(orig_inode, donor_inode);
-> > +	ext4_clear_inode_state(orig_inode, EXT4_STATE_DIOREAD_LOCK);
-> > +	ext4_clear_inode_state(donor_inode, EXT4_STATE_DIOREAD_LOCK);
-> >  	ret2 = mext_inode_double_unlock(orig_inode, donor_inode);
-> >  
-> >  	if (ret1)
-> > -- 
-> > 1.7.7.6
-> > 
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+As a naive word in my defence i should say that blocks beyond EOF issue easily
+triggered on current kernel via xfstests, but not happen w/ my patch-queue. 
