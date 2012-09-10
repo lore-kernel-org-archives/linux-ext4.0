@@ -1,120 +1,112 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix possible non-initialized variable
-Date: Mon, 10 Sep 2012 09:51:35 -0500
-Message-ID: <504DFE77.6070205@redhat.com>
-References: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
+From: Matt Sealey <matt@genesi-usa.com>
+Subject: Re: Tracking down suspend/resume ext3/mmc issues on imx233
+Date: Mon, 10 Sep 2012 10:11:48 -0500
+Message-ID: <CAKGA1bnug8nqcideOBZyLQZmiVo=G5L3aRHq4k4SNZyH132Y=g@mail.gmail.com>
+References: <CAEOSq-O3SfuAEhMsjX1y1ZgQuWBKef+XZzMR1b4yJhKhaRdymA@mail.gmail.com>
+ <20120907060552.GL26709@S2101-09.ap.freescale.net> <CAEOSq-PV+7c2nvu3uauOLJcV7WKa1jmd-df0a1H0qY5K4CM5MA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1830 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753100Ab2IJOvg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Sep 2012 10:51:36 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8AEpacq024711
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 10:51:36 -0400
-In-Reply-To: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Shawn Guo <shawn.guo@linaro.org>,
+	Linux-Arm-Kernel <linux-arm-kernel@lists.infradead.org>,
+	linux-ext4@vger.kernel.org, linux-mmc@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Mike Thompson <mpthompson@gmail.com>
+Return-path: <linux-mmc-owner@vger.kernel.org>
+In-Reply-To: <CAEOSq-PV+7c2nvu3uauOLJcV7WKa1jmd-df0a1H0qY5K4CM5MA@mail.gmail.com>
+Sender: linux-mmc-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 9/8/12 7:49 AM, Carlos Maiolino wrote:
-> htree_dirblock_to_tree() declares a non-initialized 'err' variable, which is
-> passed as a reference to another functions expecting them to set this variable
-> with thei error codes.
-> It's passed to ext4_bread(), which then passes it to ext4_getblk(). If
-> ext4_map_blocks() returns 0 due to a lookup failure, leaving the ext4_getblk()
-> buffer_head uninitialized, it will make ext4_getblk() return to ext4_bread()
-> without initialize the 'err' variable, and ext4_bread() will return to
-> htree_dirblock_to_tree() with this variable still uninitialized.
-> htree_dirblock_to_tree() will pass this variable with garbage back to
-> ext4_htree_fill_tree(), which expects a number of directory entries added to the
-> rb-tree. which, in case, might return a fake non-zero value due the garbage left
-> in the 'err' variable, leading the kernel to an Oops in ext4_dx_readdir(), once
-> this is expecting a filled rb-tree node, when in turn it will have a NULL-ed
-> one, causing an invalid page request when trying to get a fname struct from
-> this NULL-ed rb-tree node in this line:
-> 
-> fname = rb_entry(info->curr_node, struct fname, rb_hash);
-> 
-> The patch itself initializes the err variable in htree_dirblock_to_tree() to
-> avoid usage mistakes by the called functions, and also fix ext4_getblk() to
-> return a initialized 'err' variable when ext4_map_blocks() fails a
-> lookup.
-> 
-> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
-> ---
->  fs/ext4/inode.c | 2 +-
->  fs/ext4/namei.c | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index dff171c..80fae26 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -723,7 +723,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
->  {
->  	struct ext4_map_blocks map;
->  	struct buffer_head *bh;
-> -	int fatal = 0, err;
-> +	int fatal = 0, err = 0;
->  
->  	J_ASSERT(handle != NULL || create == 0);
+Wouldn't it be better if the root filesystem was marked as
+non-removable in the device tree - or in the case of a truly removable
+card, just marked in the MMC subsystem - and the MMC subsystem skipped
+the "it could be removed" for suspend/resume operations?
 
-I'm afraid this doesn't fix it.  So now err is init to 0, but then:
+Whether you can or you cannot remove an SD memory device or eMMC
+controller, having an option that marked "DANGEROUS" that says "MMC
+layer will assume that all cards stayed in their respective slots
+during the suspend" implies that on a system such as the
+numbering-more-than-I-can-count embedded devices here with eMMC and
+any number greater than zero SD card slots (most of them having at
+least two), ALL of them are treated as unsafe resume, when in fact
+only one of them might be.
 
-        err = ext4_map_blocks(handle, inode, &map,
-                              create ? EXT4_GET_BLOCKS_CREATE : 0);
+My use cases here are usually boot from eMMC or boot from external SD
+card (Snowball, Efika MX but one SD card slot is usually not needed to
+go through the unsafe-resume process, all FSL i.MX boards since MX51
+Babbage through the new MX6 boards, Pandaboard, Beagleboard). Just
+because it's possible to boot from external, removable SD card
+shouldn't mean we all have to configure our kernels explicitly to go
+through a strange and unusual path for suspend and resume which leaves
+ALL cards 'mounted' unecessarily over suspend/resume, especially in
+the common case where eMMC is also not the ONLY boot medium (PATA,
+SATA, non-eMMC flash) and eMMC or SD *MAY* only be the root filesystem
+(as opposed to *WILL*)
 
-so err is immediately reset to whatever ext4_map_blocks returns, which might be 0.
-If so, we don't go down this case:
+??
 
-        if (err < 0)
-                *errp = err;
-
-and we do go down this case,
-
-        if (err <= 0)
-                return NULL;
-
-in which case we return with *errp unset.
-
-It needs something like this, though maybe this could be made prettier/clearer.
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dff171c..25fe8bf 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -732,11 +732,11 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	err = ext4_map_blocks(handle, inode, &map,
- 			      create ? EXT4_GET_BLOCKS_CREATE : 0);
- 
-+	*errp = 0;
- 	if (err < 0)
- 		*errp = err;
- 	if (err <= 0)
- 		return NULL;
--	*errp = 0;
- 
- 	bh = sb_getblk(inode->i_sb, map.m_pblk);
- 	if (!bh) {
+-- 
+Matt Sealey <matt@genesi-usa.com>
+Product Development Analyst, Genesi USA, Inc.
 
 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 2a42cc0..262f863 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -839,7 +839,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
->  {
->  	struct buffer_head *bh;
->  	struct ext4_dir_entry_2 *de, *top;
-> -	int err, count = 0;
-> +	int err = 0, count = 0;
->  
->  	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
->  							(unsigned long)block));
-> 
-
+On Sat, Sep 8, 2012 at 11:17 AM, Mike Thompson <mpthompson@gmail.com> wrote:
+> I figured the source of my problem.  Normally, the Linux kernel will
+> treat mmc cards as removed during suspend.  This is in case the card
+> is swapped by the user during the suspend.  However, on the OLinuXino
+> the mmc device is the root file system  If the Linux kernel treats the
+> mmc card as removed the frozen tasks with open file handles to the
+> root filesystem device (such as the journal tasks) will fail when they
+> are thawed during resume.  This is the problem I was seeing.
+>
+> Fortunately, there is already a specific kernel config setting
+> CONFIG_MMC_UNSAFE_RESUME that needs to be set for systems such as the
+> OLinuXino that uses the mmc device for the root filesystem.  I
+> overlooked this config setting and spent half a day trying to figure
+> out the source of the file system errors on resume.  Next time I'll do
+> a better job of looking through related config settings before trying
+> to debug an issue that is probably already dealt with.
+>
+> Mike
+>
+> On Thu, Sep 6, 2012 at 11:05 PM, Shawn Guo <shawn.guo@linaro.org> wrote:
+>> Copy a few more lists to get wider audience ...
+>>
+>> Regards,
+>> Shawn
+>>
+>> On Thu, Sep 06, 2012 at 10:03:35PM -0700, Mike Thompson wrote:
+>>> I'm working on adding power management support for the imx233 on
+>>> 3.6-rc2.  In general I'm working on porting the pm.c file from the
+>>> Freescale 2.6.35 kernel for both "standby" and "mem" suspend/resume.
+>>> I'm making pretty good progress on porting the code, but I'm running
+>>> into an issue outside the immediate code I'm working on.
+>>>
+>>> ...
+>>>
+>>> The first reported error is in the ext3 filesystem buffer code where
+>>> the file system buffers aren't being filled by the underlying block
+>>> device.  At least that's how I'm interpreting the portion of the ext3
+>>> file system code that is failing.  However, the mmc device is
+>>> correctly reporting finding p1 and p2 partitions on the device which
+>>> it would indicate the partition data is being read from the SD card.
+>>>
+>>> I'm hoping others might have suggestions on how I should go about
+>>> tracking down why the ext3 file system can no longer read from the mmc
+>>> device upon resume.  For instance, useful places to put some tracing
+>>> code to understand what might be failing, or how to determine what
+>>> differences there might be before suspend and after resume that might
+>>> point to the failure.
+>>>
+>>> Thanks,
+>>>
+>>> Mike Thompson
+>>>
+>>> _______________________________________________
+>>> linux-arm-kernel mailing list
+>>> linux-arm-kernel@lists.infradead.org
+>>> http://lists.infradead.org/mailman/listinfo/linux-arm-kernel
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
