@@ -1,34 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Tracking down suspend/resume ext3/mmc issues on imx233
-Date: Mon, 10 Sep 2012 12:33:45 -0400
-Message-ID: <20120910163345.GB3942@thunk.org>
-References: <CAEOSq-O3SfuAEhMsjX1y1ZgQuWBKef+XZzMR1b4yJhKhaRdymA@mail.gmail.com>
- <20120907060552.GL26709@S2101-09.ap.freescale.net>
- <CAEOSq-PV+7c2nvu3uauOLJcV7WKa1jmd-df0a1H0qY5K4CM5MA@mail.gmail.com>
- <CAKGA1bnug8nqcideOBZyLQZmiVo=G5L3aRHq4k4SNZyH132Y=g@mail.gmail.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH] ext4: fix possible non-initialized variable
+Date: Mon, 10 Sep 2012 13:35:58 -0300
+Message-ID: <20120910163558.GA11282@andromeda.usersys.redhat.com>
+References: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
+ <504DFE77.6070205@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mike Thompson <mpthompson@gmail.com>,
-	Shawn Guo <shawn.guo@linaro.org>,
-	Linux-Arm-Kernel <linux-arm-kernel@lists.infradead.org>,
-	linux-ext4@vger.kernel.org, linux-mmc@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Matt Sealey <matt@genesi-usa.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44373 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752063Ab2IJQgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Sep 2012 12:36:03 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8AGa2Ro022157
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 12:36:02 -0400
+Received: from andromeda.usersys.redhat.com (ovpn-113-109.phx2.redhat.com [10.3.113.109])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q8AGZxJo024746
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 12:36:01 -0400
 Content-Disposition: inline
-In-Reply-To: <CAKGA1bnug8nqcideOBZyLQZmiVo=G5L3aRHq4k4SNZyH132Y=g@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <504DFE77.6070205@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 10:11:48AM -0500, Matt Sealey wrote:
-> Wouldn't it be better if the root filesystem was marked as
-> non-removable in the device tree - or in the case of a truly removable
-> card, just marked in the MMC subsystem - and the MMC subsystem skipped
-> the "it could be removed" for suspend/resume operations?
+> I'm afraid this doesn't fix it.  So now err is init to 0, but then:
+> 
+>         err = ext4_map_blocks(handle, inode, &map,
+>                               create ? EXT4_GET_BLOCKS_CREATE : 0);
+> 
+> so err is immediately reset to whatever ext4_map_blocks returns, which might be 0.
+> If so, we don't go down this case:
+> 
+>         if (err < 0)
+>                 *errp = err;
+> 
+> and we do go down this case,
+> 
+>         if (err <= 0)
+>                 return NULL;
+> 
+> in which case we return with *errp unset.
+> 
+> It needs something like this, though maybe this could be made prettier/clearer.
+> 
+> +	*errp = 0;
+>  	if (err < 0)
+>  		*errp = err;
+>  	if (err <= 0)
+>  		return NULL;
+> -	*errp = 0;
 
-I agree, this makes a lot of sense.  If the root file system
-disappears, you're toasted either way, so it's fair to assume that the
-device on which the root file system is located should is
-non-removable.
-
-						- Ted
+Agreed. just initializing err variable into ext4_getblk() won't ensure *errp
+will be filled with 'err' content. Thanks. I'll wait for some extra inputs and
+see if is there anything else people have in mind, then release a v2 patch
+-- 
+--Carlos
