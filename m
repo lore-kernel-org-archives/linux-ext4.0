@@ -1,59 +1,65 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: fix possible non-initialized variable
-Date: Mon, 10 Sep 2012 13:35:58 -0300
-Message-ID: <20120910163558.GA11282@andromeda.usersys.redhat.com>
-References: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
- <504DFE77.6070205@redhat.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] tests: kill debugfs on interrupted MMP test
+Date: Mon, 10 Sep 2012 13:04:47 -0600
+Message-ID: <1347303887-5513-1-git-send-email-adilger@dilger.ca>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: "linux-ext4, Andreas Dilger" <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44373 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752063Ab2IJQgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Sep 2012 12:36:03 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8AGa2Ro022157
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 12:36:02 -0400
-Received: from andromeda.usersys.redhat.com (ovpn-113-109.phx2.redhat.com [10.3.113.109])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q8AGZxJo024746
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 12:36:01 -0400
-Content-Disposition: inline
-In-Reply-To: <504DFE77.6070205@redhat.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:53159 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754203Ab2IJTF2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2012 15:05:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> I'm afraid this doesn't fix it.  So now err is init to 0, but then:
-> 
->         err = ext4_map_blocks(handle, inode, &map,
->                               create ? EXT4_GET_BLOCKS_CREATE : 0);
-> 
-> so err is immediately reset to whatever ext4_map_blocks returns, which might be 0.
-> If so, we don't go down this case:
-> 
->         if (err < 0)
->                 *errp = err;
-> 
-> and we do go down this case,
-> 
->         if (err <= 0)
->                 return NULL;
-> 
-> in which case we return with *errp unset.
-> 
-> It needs something like this, though maybe this could be made prettier/clearer.
-> 
-> +	*errp = 0;
->  	if (err < 0)
->  		*errp = err;
->  	if (err <= 0)
->  		return NULL;
-> -	*errp = 0;
+If the f_mmp test is interrupted during its test run, then it can
+leave debugfs busy-looping in the background.  Since f_mmp is a
+relatively long-running test, and is likely to be running during
+a parallel test run, this can happen fairly often.
 
-Agreed. just initializing err variable into ext4_getblk() won't ensure *errp
-will be filled with 'err' content. Thanks. I'll wait for some extra inputs and
-see if is there anything else people have in mind, then release a v2 patch
+Set a signal trap for the f_mmp test script being killed, so that
+the background debugfs command will always be killed by the test.
+
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+tests/f_mmp/script | 10 +++++++++-
+1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/tests/f_mmp/script b/tests/f_mmp/script
+index 1b0ff79..c1f13fc 100644
+--- a/tests/f_mmp/script
++++ b/tests/f_mmp/script
+@@ -19,10 +19,18 @@ if [ "$status" != 0 ] ; then
+	return $status
+fi
+
++kill_debugfs() {
++	trap 0
++	PID=$(ps -o pid,command | awk "/debugfs -w $TMPFILE/ { print \$1 }" |
++	      grep -v awk)
++	[ "x$PID" != "x" ] && kill -9 $PID
++}
++
+# this will cause debugfs to create the $test_name.mark file once it has
+# passed the MMP startup, then continue reading input until it is killed
+MARKFILE=$test_name.new
+rm -f $MARKFILE
++trap kill_debugfs EXIT
+echo "set mmp sequence to EXT2_MMP_SEQ_FSCK..." >> $test_name.log
+( { echo dump_mmp; echo "dump_inode <2> $MARKFILE"; cat /dev/zero; } |
+	$DEBUGFS -w $TMPFILE >> $test_name.log 2>&1 & ) > /dev/null 2>&1 &
+@@ -32,7 +40,7 @@ while [ ! -e $MARKFILE ]; do
+done
+rm -f $MARKFILE
+echo "kill debugfs abruptly (simulates e2fsck failure) ..." >> $test_name.log
+-killall -9 debugfs >> $test_name.log
++kill_debugfs
+
+
+echo "e2fsck (should fail mmp_seq = EXT2_MMP_SEQ_FSCK) ..." >> $test_name.log
 -- 
---Carlos
+1.7.11.1
+
