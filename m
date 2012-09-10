@@ -1,122 +1,79 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH 07/15 v2] ext4: Take i_mutex before punching hole
-Date: Mon, 10 Sep 2012 17:30:53 +0530
-Message-ID: <CAOiN93kKVxYeS5f0_nR3RpdX7sv+EJNA-T4jq7amFS5LQGqfnw@mail.gmail.com>
-References: <1346451711-1931-1-git-send-email-lczerner@redhat.com>
-	<1346451711-1931-8-git-send-email-lczerner@redhat.com>
+From: Terry <td3201@gmail.com>
+Subject: Re: ext4 won't mount - fsck required - 2nd fsck in less than a week
+Date: Mon, 10 Sep 2012 08:48:46 -0500
+Message-ID: <CAHSRzpDmw30Z4XqpjcY1DWAv_D701C163fiWJDoWyaLpHPhaMg@mail.gmail.com>
+References: <CAHSRzpC4bnZs1G8BHcuQL6Bf9cKiVb15Ha0sybRdkpwUZbdMKQ@mail.gmail.com>
+	<20120910024709.GA3439@thunk.org>
+	<CAHSRzpDzz4TnQDjunkh3tVHwk5dQHbgEXYCaDE7FOr=U0EZwAw@mail.gmail.com>
+	<CAHSRzpDATS+yMDyw6Wts2DMjyDpJx0rVB5M8QLpKxPFUwHWzXA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	hughd@google.com, linux-mm@kvack.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1346451711-1931-8-git-send-email-lczerner@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:39277 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752121Ab2IJNss (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Sep 2012 09:48:48 -0400
+Received: by lagy9 with SMTP id y9so1108305lag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 06:48:46 -0700 (PDT)
+In-Reply-To: <CAHSRzpDATS+yMDyw6Wts2DMjyDpJx0rVB5M8QLpKxPFUwHWzXA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 1, 2012 at 3:51 AM, Lukas Czerner <lczerner@redhat.com> wrote:
-> Currently the allocation might happen in the punched range after the
-> truncation and before the releasing the space of the range. This would
-> lead to blocks being unallocated under the mapped buffer heads resulting
-> in nasty bugs.
+On Sun, Sep 9, 2012 at 10:18 PM, Terry <td3201@gmail.com> wrote:
+> On Sun, Sep 9, 2012 at 9:53 PM, Terry <td3201@gmail.com> wrote:
+>> On Sun, Sep 9, 2012 at 9:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>>> On Sun, Sep 09, 2012 at 09:34:10PM -0500, Terry wrote:
+>>>>
+>>>> As the subject says, we have a 15 TB fsck drive that won't mount with
+>>>> these errors:
+>>>>
+>>>> Sep 9 20:02:20 narf kernel: EXT4-fs (dm-9): ext4_check_descriptors:
+>>>> Inode bitmap for group 3200 not in group (block 4161027887)!
+>>>> Sep 9 20:02:20 narf kernel: EXT4-fs (dm-9): group descriptors corrupted!
+>>>
+>>> These indicate a very basic file system corruption where the block
+>>> group descriptors are corrupted.  E2fsck will complain immediately
+>>> upon seeing this sort of fs inconsistency, and the first thing it will
+>>> try to do is fix it.
+>>>
+>>>> We did a proactive fsck on Tuesday of last week because it was
+>>>> starting to give filesystem errors. It ran through and mounted fine.
+>>>>
+>>>> The filesystem lives on an equallogic SAN spread across 36 drives.
+>>>> Could this be something with the physical layer or is it not abnormal
+>>>> to have to run multiple rounds of fsck to fully fix an issue?
+>>>
+>>> This is most probably a hardware problem; normally e2fsck will fix
+>>> file system corruptions (and certainly problems such as corrupt block
+>>> group scriptors) in a single pass.  If e2fsck finished and the file
+>>> system mounted fine last week, and now you're getting this kind of
+>>> error, it basically screams some kind of physical layer problem, or
+>>> perhaps a bad hard drive, or perhaps the SAN disk is getting
+>>> incorrectly written to by some other system, etc.
+>>>
+>>>                                      - Ted
+>>
+>> Thanks for the reply.  It is part of a RHEL cluster but we did not
+>> have any situations where multiple systems mounted the filesystem.  It
+>> is a an old SAN so perhaps we have a physical issue. We'll see what it
+>> happens with this pass.
 >
-> With this commit we take i_mutex before going to do anything in the
-> ext4_ext_punch_hole() preventing any write to happen while the hole
-> punching is in progress. This will also allow us to ditch the writeout
-> of dirty pages withing the range.
->
-> This commit was based on code provided by Zheng Liu, thanks!
->
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext4/extents.c |   26 ++++++++++----------------
->  1 files changed, 10 insertions(+), 16 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index aabbb3f..f920383 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4769,9 +4769,11 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->         loff_t first_page_offset, last_page_offset;
->         int credits, err = 0;
->
-> +       mutex_lock(&inode->i_mutex);
-> +
->         /* No need to punch hole beyond i_size */
->         if (offset >= inode->i_size)
-> -               return 0;
-> +               goto out1;
->
->         /*
->          * If the hole extends beyond i_size, set the hole
-> @@ -4789,18 +4791,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->         first_page_offset = first_page << PAGE_CACHE_SHIFT;
->         last_page_offset = last_page << PAGE_CACHE_SHIFT;
->
-> -       /*
-> -        * Write out all dirty pages to avoid race conditions
-> -        * Then release them.
-> -        */
-> -       if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> -               err = filemap_write_and_wait_range(mapping,
-> -                       offset, offset + length - 1);
-> -
-> -               if (err)
-> -                       return err;
-> -       }
-> -
+> While I am waiting for fsck to finish, another thought. This
+> filesystem contains a lot of small files. 35,867,642 files to be
+> exact.  Anything else I should check or know to ensure a smooth
+> operation for these types of filesystems?  I formatted them with
+> standard RHEL 6 options.
 
-Removing above code will cause a problem in case the file has all its
-data in memory and nothing has been committed on disk. If punch hole
-is issued for such a file, as there are no extents present, EIO would
-be returned from ext4_ext_rm_leaf. So, even though blocks would be
-removed from memory, the end result will be error EIO.
+FSCK completed fixing a lot of things.  The file system then mounted
+without any errors.  We are still getting these types of errors in
+/var/log/messages:
 
->         /* Now release the pages */
->         if (last_page_offset > first_page_offset) {
->                 truncate_pagecache_range(inode, first_page_offset,
+Sep 10 08:40:49 narf kernel: EXT4-fs error (device dm-6):
+ext4_dx_find_entry: bad entry in directory #743966900: directory entry
+across blocks - block=2975876794offset=0(946176), inode=1414751737,
+rec_len=45724, name_len=206
 
-To avoid this, you can add a check after the call to truncate_pagecache_range.
-if(!inode->i_blocks)
-  return 0;
-
-> @@ -4812,12 +4802,14 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->
->         credits = ext4_writepage_trans_blocks(inode);
->         handle = ext4_journal_start(inode, credits);
-> -       if (IS_ERR(handle))
-> -               return PTR_ERR(handle);
-> +       if (IS_ERR(handle)) {
-> +               err = PTR_ERR(handle);
-> +               goto out1;
-> +       }
->
->         err = ext4_orphan_add(handle, inode);
->         if (err)
-> -               goto out;
-> +               goto out1;
->
->         /*
->          * Now we need to zero out the non-page-aligned data in the
-> @@ -4907,6 +4899,8 @@ out:
->         inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->         ext4_mark_inode_dirty(handle, inode);
->         ext4_journal_stop(handle);
-> +out1:
-> +       mutex_unlock(&inode->i_mutex);
->         return err;
->  }
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-> --
-> 1.7.7.6
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thoughts?
