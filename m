@@ -1,83 +1,120 @@
-From: Terry <td3201@gmail.com>
-Subject: Re: ext4 won't mount - fsck required - 2nd fsck in less than a week
-Date: Mon, 10 Sep 2012 08:56:53 -0500
-Message-ID: <CAHSRzpC1SKr08yS0EvEAkS4JpoiAfZ0ab+PHkZwED02mrVbc-A@mail.gmail.com>
-References: <CAHSRzpC4bnZs1G8BHcuQL6Bf9cKiVb15Ha0sybRdkpwUZbdMKQ@mail.gmail.com>
-	<20120910024709.GA3439@thunk.org>
-	<CAHSRzpDzz4TnQDjunkh3tVHwk5dQHbgEXYCaDE7FOr=U0EZwAw@mail.gmail.com>
-	<CAHSRzpDATS+yMDyw6Wts2DMjyDpJx0rVB5M8QLpKxPFUwHWzXA@mail.gmail.com>
-	<CAHSRzpDmw30Z4XqpjcY1DWAv_D701C163fiWJDoWyaLpHPhaMg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: fix possible non-initialized variable
+Date: Mon, 10 Sep 2012 09:51:35 -0500
+Message-ID: <504DFE77.6070205@redhat.com>
+References: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:36553 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752862Ab2IJN4z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Sep 2012 09:56:55 -0400
-Received: by lbbgj3 with SMTP id gj3so1196600lbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 06:56:53 -0700 (PDT)
-In-Reply-To: <CAHSRzpDmw30Z4XqpjcY1DWAv_D701C163fiWJDoWyaLpHPhaMg@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1830 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753100Ab2IJOvg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Sep 2012 10:51:36 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8AEpacq024711
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Sep 2012 10:51:36 -0400
+In-Reply-To: <1347108577-6239-1-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 8:48 AM, Terry <td3201@gmail.com> wrote:
-> On Sun, Sep 9, 2012 at 10:18 PM, Terry <td3201@gmail.com> wrote:
->> On Sun, Sep 9, 2012 at 9:53 PM, Terry <td3201@gmail.com> wrote:
->>> On Sun, Sep 9, 2012 at 9:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->>>> On Sun, Sep 09, 2012 at 09:34:10PM -0500, Terry wrote:
->>>>>
->>>>> As the subject says, we have a 15 TB fsck drive that won't mount with
->>>>> these errors:
->>>>>
->>>>> Sep 9 20:02:20 narf kernel: EXT4-fs (dm-9): ext4_check_descriptors:
->>>>> Inode bitmap for group 3200 not in group (block 4161027887)!
->>>>> Sep 9 20:02:20 narf kernel: EXT4-fs (dm-9): group descriptors corrupted!
->>>>
->>>> These indicate a very basic file system corruption where the block
->>>> group descriptors are corrupted.  E2fsck will complain immediately
->>>> upon seeing this sort of fs inconsistency, and the first thing it will
->>>> try to do is fix it.
->>>>
->>>>> We did a proactive fsck on Tuesday of last week because it was
->>>>> starting to give filesystem errors. It ran through and mounted fine.
->>>>>
->>>>> The filesystem lives on an equallogic SAN spread across 36 drives.
->>>>> Could this be something with the physical layer or is it not abnormal
->>>>> to have to run multiple rounds of fsck to fully fix an issue?
->>>>
->>>> This is most probably a hardware problem; normally e2fsck will fix
->>>> file system corruptions (and certainly problems such as corrupt block
->>>> group scriptors) in a single pass.  If e2fsck finished and the file
->>>> system mounted fine last week, and now you're getting this kind of
->>>> error, it basically screams some kind of physical layer problem, or
->>>> perhaps a bad hard drive, or perhaps the SAN disk is getting
->>>> incorrectly written to by some other system, etc.
->>>>
->>>>                                      - Ted
->>>
->>> Thanks for the reply.  It is part of a RHEL cluster but we did not
->>> have any situations where multiple systems mounted the filesystem.  It
->>> is a an old SAN so perhaps we have a physical issue. We'll see what it
->>> happens with this pass.
->>
->> While I am waiting for fsck to finish, another thought. This
->> filesystem contains a lot of small files. 35,867,642 files to be
->> exact.  Anything else I should check or know to ensure a smooth
->> operation for these types of filesystems?  I formatted them with
->> standard RHEL 6 options.
->
-> FSCK completed fixing a lot of things.  The file system then mounted
-> without any errors.  We are still getting these types of errors in
-> /var/log/messages:
->
-> Sep 10 08:40:49 narf kernel: EXT4-fs error (device dm-6):
-> ext4_dx_find_entry: bad entry in directory #743966900: directory entry
-> across blocks - block=2975876794offset=0(946176), inode=1414751737,
-> rec_len=45724, name_len=206
->
-> Thoughts?
+On 9/8/12 7:49 AM, Carlos Maiolino wrote:
+> htree_dirblock_to_tree() declares a non-initialized 'err' variable, which is
+> passed as a reference to another functions expecting them to set this variable
+> with thei error codes.
+> It's passed to ext4_bread(), which then passes it to ext4_getblk(). If
+> ext4_map_blocks() returns 0 due to a lookup failure, leaving the ext4_getblk()
+> buffer_head uninitialized, it will make ext4_getblk() return to ext4_bread()
+> without initialize the 'err' variable, and ext4_bread() will return to
+> htree_dirblock_to_tree() with this variable still uninitialized.
+> htree_dirblock_to_tree() will pass this variable with garbage back to
+> ext4_htree_fill_tree(), which expects a number of directory entries added to the
+> rb-tree. which, in case, might return a fake non-zero value due the garbage left
+> in the 'err' variable, leading the kernel to an Oops in ext4_dx_readdir(), once
+> this is expecting a filled rb-tree node, when in turn it will have a NULL-ed
+> one, causing an invalid page request when trying to get a fname struct from
+> this NULL-ed rb-tree node in this line:
+> 
+> fname = rb_entry(info->curr_node, struct fname, rb_hash);
+> 
+> The patch itself initializes the err variable in htree_dirblock_to_tree() to
+> avoid usage mistakes by the called functions, and also fix ext4_getblk() to
+> return a initialized 'err' variable when ext4_map_blocks() fails a
+> lookup.
+> 
+> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+> ---
+>  fs/ext4/inode.c | 2 +-
+>  fs/ext4/namei.c | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index dff171c..80fae26 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -723,7 +723,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+>  {
+>  	struct ext4_map_blocks map;
+>  	struct buffer_head *bh;
+> -	int fatal = 0, err;
+> +	int fatal = 0, err = 0;
+>  
+>  	J_ASSERT(handle != NULL || create == 0);
 
-Hold that thought.  This is another filesystem.  Let me fix that one
-then come back to this problem if it still exists.
+I'm afraid this doesn't fix it.  So now err is init to 0, but then:
+
+        err = ext4_map_blocks(handle, inode, &map,
+                              create ? EXT4_GET_BLOCKS_CREATE : 0);
+
+so err is immediately reset to whatever ext4_map_blocks returns, which might be 0.
+If so, we don't go down this case:
+
+        if (err < 0)
+                *errp = err;
+
+and we do go down this case,
+
+        if (err <= 0)
+                return NULL;
+
+in which case we return with *errp unset.
+
+It needs something like this, though maybe this could be made prettier/clearer.
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dff171c..25fe8bf 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -732,11 +732,11 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	err = ext4_map_blocks(handle, inode, &map,
+ 			      create ? EXT4_GET_BLOCKS_CREATE : 0);
+ 
++	*errp = 0;
+ 	if (err < 0)
+ 		*errp = err;
+ 	if (err <= 0)
+ 		return NULL;
+-	*errp = 0;
+ 
+ 	bh = sb_getblk(inode->i_sb, map.m_pblk);
+ 	if (!bh) {
+
+
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 2a42cc0..262f863 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -839,7 +839,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+>  {
+>  	struct buffer_head *bh;
+>  	struct ext4_dir_entry_2 *de, *top;
+> -	int err, count = 0;
+> +	int err = 0, count = 0;
+>  
+>  	dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
+>  							(unsigned long)block));
+> 
+
