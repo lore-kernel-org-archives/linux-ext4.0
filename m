@@ -1,54 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 won't mount - fsck required - 2nd fsck in less than a week
-Date: Tue, 11 Sep 2012 13:16:39 -0500
-Message-ID: <504F8007.7070208@redhat.com>
-References: <CAHSRzpC4bnZs1G8BHcuQL6Bf9cKiVb15Ha0sybRdkpwUZbdMKQ@mail.gmail.com> <20120910024709.GA3439@thunk.org> <CAHSRzpDzz4TnQDjunkh3tVHwk5dQHbgEXYCaDE7FOr=U0EZwAw@mail.gmail.com> <CAHSRzpDATS+yMDyw6Wts2DMjyDpJx0rVB5M8QLpKxPFUwHWzXA@mail.gmail.com> <CAHSRzpDmw30Z4XqpjcY1DWAv_D701C163fiWJDoWyaLpHPhaMg@mail.gmail.com> <CAHSRzpC1SKr08yS0EvEAkS4JpoiAfZ0ab+PHkZwED02mrVbc-A@mail.gmail.com> <CAHSRzpC8OaMqhYtVuQdet8niRfnvCVwMHi9a6u8fmHdBsy1y2w@mail.gmail.com> <20120911170041.GB763@thunk.org> <CAHSRzpCFs1GdcMkNcXpoN0Q5MnGwQuonETTv8k9kELZwSe=sWw@mail.gmail.com> <20120911180646.GC763@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 4/7] ext4: fsync should wait for DIO writers
+Date: Wed, 12 Sep 2012 13:40:01 +0800
+Message-ID: <20120912054001.GA3149@gmail.com>
+References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
+ <1347211634-11509-5-git-send-email-dmonakhov@openvz.org>
+ <20120910095135.GF22903@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Terry <td3201@gmail.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, wenqing.lz@taobao.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23775 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752121Ab2IKSQn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Sep 2012 14:16:43 -0400
-In-Reply-To: <20120911180646.GC763@thunk.org>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:36876 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752398Ab2ILF3m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Sep 2012 01:29:42 -0400
+Received: by dady13 with SMTP id y13so742996dad.19
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2012 22:29:42 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20120910095135.GF22903@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/11/12 1:06 PM, Theodore Ts'o wrote:
-> On Tue, Sep 11, 2012 at 12:07:14PM -0500, Terry wrote:
->>
->> RHEL 6.3 with kernel 2.6.32-279.5.2.el6.x86_64
+On Mon, Sep 10, 2012 at 11:51:35AM +0200, Jan Kara wrote:
+> On Sun 09-09-12 21:27:11, Dmitry Monakhov wrote:
+> > fsync and punch_hole are the places where we have to wait for all
+> > existing writers (writeback, aio, dio), but currently we simply
+> > flush pended end_io request which is not sufficient.
+>   Why not? I guess you mean the fact that there can be DIO in flight for
+> which end_io() was not called so it is not queued in the queue? But that is
+> OK - we have not yet called aio_complete() for that IO so for userspace the
+> write has not happened yet. Thus there's no need to flush it to disk -
+> fsync() does not say anything about writes in progress while fsync is
+> called.
 > 
-> I'll let Eric or Lukas comment, but as far as I know the ext4 in the
-> RHEL 6 kernels has been quite stable (there are a lot of bug fixes
-> that have been backported to the RHEL 6 kernel, and while it doesn't
-> have some of the newer ext4 features, it doesn't have any of the more
-> exciting bugs that might come with the newer features :-).
-> 
-> So I really would strongly suspect the SAN or the SAN-attached storage
-> as being flaky, causing the file system corruptions which is leading
-> to the kernel and e2fsck complaining.
+> > Even more i_mutex is not holded while punch_hole which obviously
+> > result in dangerous data corruption due to write-after-free.
+>   Yes, that's a bug. I also noticed that but didn't get to fixing it (I'm
+> actually working on a more long term fix using range locking but that's
+> more of a research project so having somehow fixed at least the most
+> blatant locking problems is good).
 
-Right, ext4 is default in RHEL6 and well tended.  We'll let support look
-at the case, and see what's going on.  But I'd certainly troubleshoot
-the san as well, esp. to be sure HA is set up properly and not mounting
-it twice on 2 nodes etc.
+Hi Jan,
 
--Eric
+Could you please share more detailed information about range locking
+with me?  Actually, the goal of extent status tree is to implement a
+range locking in ext4 [1], and I am working on it.  So I think that
+you have some good ideas to share with me. :-)
 
+1. http://www.spinics.net/lists/linux-ext4/msg32661.html
 
-> Regards,
-> 
-> 						- Ted
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+If you have some problems, please let me know.  Thanks!
 
+Regards,
+Zheng
