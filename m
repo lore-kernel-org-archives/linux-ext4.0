@@ -1,32 +1,45 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
 Subject: Re: Ongoing data reorganization/defragmentation?
-Date: Wed, 12 Sep 2012 11:35:53 -0600
-Message-ID: <080474D2-A9F0-42F2-A114-82766127B7BC@dilger.ca>
+Date: Wed, 12 Sep 2012 14:15:17 -0400 (EDT)
+Message-ID: <alpine.LFD.2.00.1209121411410.2222@new-host-2>
 References: <5050BA08.80709@bytefortress.de>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "norritt@t-online.de" <norritt@t-online.de>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: norritt@t-online.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail129c7-2520.megamailservers.com ([69.49.98.24]:52898 "EHLO
-	mail129c7.megamailservers.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754954Ab2ILRf6 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Sep 2012 13:35:58 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:41063 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761061Ab2ILSPV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Sep 2012 14:15:21 -0400
 In-Reply-To: <5050BA08.80709@bytefortress.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-09-12, at 10:36, norritt@t-online.de wrote:
+On Wed, 12 Sep 2012, norritt@t-online.de wrote:
 
+> Date: Wed, 12 Sep 2012 18:36:24 +0200
+> From: norritt@t-online.de
+> To: linux-ext4@vger.kernel.org
+> Subject: Ongoing data reorganization/defragmentation?
+> 
 > Ongoing data reorganization/defragmentation?
 > 
-> I also know from the ext4 dcumentation, that ext4 is written to support online defragmentation. I've read several rumours on forums and blogs that indicate ext4 is doing some kind of "ongoing data reorganisations or defragmentation" in the background, in case the mechanisms to prevent fragmentation in the first place failed for some reason (i.e. when a fs is running out of free space). I did not find any credible information to back up these claims, that ext4 is actively reorganizing data, but I didn't find any information that prove these claims wrong either.
+> In my efforts to optimize an ext4 for usage on SSDs, I have found information
+> on the web about ext4 I've not been able to verify.
 > 
-> So my question is, does ext4 reorganize data when it encounters fragmented files? If so, is there a way to disable that feature which would not do any good on SSDs? Is there anything else to consider when using ext4 on SSDs, except the things I mentioned above?
+> From what I've found out it's a good idea to:
+> - mount with noatime, discard (if drive supports trim)
 
-No, there is no such background reorganization happening of allocated files. With "delalloc" there is batching of block allocations to try and optimize the initial block selection, but it is static after this time. 
+The -o discard option might be tricky since some devices still
+handles it quite badly and you can experience big performance drops
+(http://people.redhat.com/lczerner/discard/ although it is somewhat
+outdated already). But you might to try to see yourself if it does
+not hurt your performance.
 
-Cheers, Andreas
+The other option would be to use batched discard with fstrim (see
+fstrim from util-linux) and run it once per (day, week, month).
+
+Thanks!
+-Lukas
+
