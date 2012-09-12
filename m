@@ -1,56 +1,99 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 4/7] ext4: fsync should wait for DIO writers
-Date: Wed, 12 Sep 2012 13:40:01 +0800
-Message-ID: <20120912054001.GA3149@gmail.com>
-References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
- <1347211634-11509-5-git-send-email-dmonakhov@openvz.org>
- <20120910095135.GF22903@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, wenqing.lz@taobao.com
-To: Jan Kara <jack@suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: remove unused function ext4_ext_check_cache
+Date: Wed, 12 Sep 2012 09:52:41 -0400
+Message-ID: <1347457961-16182-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:36876 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752398Ab2ILF3m (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Sep 2012 01:29:42 -0400
-Received: by dady13 with SMTP id y13so742996dad.19
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Sep 2012 22:29:42 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20120910095135.GF22903@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:50838 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758828Ab2ILNwq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Sep 2012 09:52:46 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 11:51:35AM +0200, Jan Kara wrote:
-> On Sun 09-09-12 21:27:11, Dmitry Monakhov wrote:
-> > fsync and punch_hole are the places where we have to wait for all
-> > existing writers (writeback, aio, dio), but currently we simply
-> > flush pended end_io request which is not sufficient.
->   Why not? I guess you mean the fact that there can be DIO in flight for
-> which end_io() was not called so it is not queued in the queue? But that is
-> OK - we have not yet called aio_complete() for that IO so for userspace the
-> write has not happened yet. Thus there's no need to flush it to disk -
-> fsync() does not say anything about writes in progress while fsync is
-> called.
-> 
-> > Even more i_mutex is not holded while punch_hole which obviously
-> > result in dangerous data corruption due to write-after-free.
->   Yes, that's a bug. I also noticed that but didn't get to fixing it (I'm
-> actually working on a more long term fix using range locking but that's
-> more of a research project so having somehow fixed at least the most
-> blatant locking problems is good).
+Remove unused function ext4_ext_check_cache() and merge the code back to
+the ext4_ext_in_cache().
 
-Hi Jan,
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/extents.c |   48 +++++++++---------------------------------------
+ 1 files changed, 9 insertions(+), 39 deletions(-)
 
-Could you please share more detailed information about range locking
-with me?  Actually, the goal of extent status tree is to implement a
-range locking in ext4 [1], and I am working on it.  So I think that
-you have some good ideas to share with me. :-)
-
-1. http://www.spinics.net/lists/linux-ext4/msg32661.html
-
-If you have some problems, please let me know.  Thanks!
-
-Regards,
-Zheng
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index aabbb3f..d635dd6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2092,13 +2092,10 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ }
+ 
+ /*
+- * ext4_ext_check_cache()
++ * ext4_ext_in_cache()
+  * Checks to see if the given block is in the cache.
+  * If it is, the cached extent is stored in the given
+- * cache extent pointer.  If the cached extent is a hole,
+- * this routine should be used instead of
+- * ext4_ext_in_cache if the calling function needs to
+- * know the size of the hole.
++ * cache extent pointer.
+  *
+  * @inode: The files inode
+  * @block: The block to look for in the cache
+@@ -2107,8 +2104,10 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+  *
+  * Return 0 if cache is invalid; 1 if the cache is valid
+  */
+-static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
+-	struct ext4_ext_cache *ex){
++static int
++ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
++			struct ext4_extent *ex)
++{
+ 	struct ext4_ext_cache *cex;
+ 	struct ext4_sb_info *sbi;
+ 	int ret = 0;
+@@ -2125,7 +2124,9 @@ static int ext4_ext_check_cache(struct inode *inode, ext4_lblk_t block,
+ 		goto errout;
+ 
+ 	if (in_range(block, cex->ec_block, cex->ec_len)) {
+-		memcpy(ex, cex, sizeof(struct ext4_ext_cache));
++		ex->ee_block = cpu_to_le32(cex->ec_block);
++		ext4_ext_store_pblock(ex, cex->ec_start);
++		ex->ee_len = cpu_to_le16(cex->ec_len);
+ 		ext_debug("%u cached by %u:%u:%llu\n",
+ 				block,
+ 				cex->ec_block, cex->ec_len, cex->ec_start);
+@@ -2138,37 +2139,6 @@ errout:
+ }
+ 
+ /*
+- * ext4_ext_in_cache()
+- * Checks to see if the given block is in the cache.
+- * If it is, the cached extent is stored in the given
+- * extent pointer.
+- *
+- * @inode: The files inode
+- * @block: The block to look for in the cache
+- * @ex:    Pointer where the cached extent will be stored
+- *         if it contains block
+- *
+- * Return 0 if cache is invalid; 1 if the cache is valid
+- */
+-static int
+-ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+-			struct ext4_extent *ex)
+-{
+-	struct ext4_ext_cache cex;
+-	int ret = 0;
+-
+-	if (ext4_ext_check_cache(inode, block, &cex)) {
+-		ex->ee_block = cpu_to_le32(cex.ec_block);
+-		ext4_ext_store_pblock(ex, cex.ec_start);
+-		ex->ee_len = cpu_to_le16(cex.ec_len);
+-		ret = 1;
+-	}
+-
+-	return ret;
+-}
+-
