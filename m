@@ -1,137 +1,136 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 4/9] ext4: punch_hole should wait for DIO writers
-Date: Thu, 13 Sep 2012 11:13:27 -0400 (EDT)
-Message-ID: <alpine.LFD.2.00.1209131107190.10526@dhcp-196-88.bos.redhat.com>
-References: <1347548474-31897-1-git-send-email-dmonakhov@openvz.org> <1347548474-31897-5-git-send-email-dmonakhov@openvz.org>
+Subject: Re: [PATCH 07/15 v2] ext4: Take i_mutex before punching hole
+Date: Thu, 13 Sep 2012 11:15:03 -0400 (EDT)
+Message-ID: <alpine.LFD.2.00.1209131113450.15781@dhcp-196-88.bos.redhat.com>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com> <1346451711-1931-8-git-send-email-lczerner@redhat.com> <CAOiN93kKVxYeS5f0_nR3RpdX7sv+EJNA-T4jq7amFS5LQGqfnw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54814 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750748Ab2IMPNj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Sep 2012 11:13:39 -0400
-In-Reply-To: <1347548474-31897-5-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+	linux-mm@kvack.org
+To: Ashish Sangwan <ashishsangwan2@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAOiN93kKVxYeS5f0_nR3RpdX7sv+EJNA-T4jq7amFS5LQGqfnw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 13 Sep 2012, Dmitry Monakhov wrote:
+On Mon, 10 Sep 2012, Ashish Sangwan wrote:
 
-> Date: Thu, 13 Sep 2012 19:01:09 +0400
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
-> To: linux-ext4@vger.kernel.org
-> Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
->     Dmitry Monakhov <dmonakhov@openvz.org>
-> Subject: [PATCH 4/9] ext4: punch_hole should wait for DIO writers
+> Date: Mon, 10 Sep 2012 17:30:53 +0530
+> From: Ashish Sangwan <ashishsangwan2@gmail.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
+>     hughd@google.com, linux-mm@kvack.org
+> Subject: Re: [PATCH 07/15 v2] ext4: Take i_mutex before punching hole
 > 
-> punch_hole are the places where we have to wait for all existing writers
-> (writeback, aio, dio), but currently we simply flush pended end_io request
-> which is not sufficient. Even more i_mutex is not holded while punch_hole
-> which obviously result in dangerous data corruption due to
-> access-after-free issue.
+> On Sat, Sep 1, 2012 at 3:51 AM, Lukas Czerner <lczerner@redhat.com> wrote:
+> > Currently the allocation might happen in the punched range after the
+> > truncation and before the releasing the space of the range. This would
+> > lead to blocks being unallocated under the mapped buffer heads resulting
+> > in nasty bugs.
+> >
+> > With this commit we take i_mutex before going to do anything in the
+> > ext4_ext_punch_hole() preventing any write to happen while the hole
+> > punching is in progress. This will also allow us to ditch the writeout
+> > of dirty pages withing the range.
+> >
+> > This commit was based on code provided by Zheng Liu, thanks!
+> >
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  fs/ext4/extents.c |   26 ++++++++++----------------
+> >  1 files changed, 10 insertions(+), 16 deletions(-)
+> >
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index aabbb3f..f920383 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -4769,9 +4769,11 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+> >         loff_t first_page_offset, last_page_offset;
+> >         int credits, err = 0;
+> >
+> > +       mutex_lock(&inode->i_mutex);
+> > +
+> >         /* No need to punch hole beyond i_size */
+> >         if (offset >= inode->i_size)
+> > -               return 0;
+> > +               goto out1;
+> >
+> >         /*
+> >          * If the hole extends beyond i_size, set the hole
+> > @@ -4789,18 +4791,6 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+> >         first_page_offset = first_page << PAGE_CACHE_SHIFT;
+> >         last_page_offset = last_page << PAGE_CACHE_SHIFT;
+> >
+> > -       /*
+> > -        * Write out all dirty pages to avoid race conditions
+> > -        * Then release them.
+> > -        */
+> > -       if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+> > -               err = filemap_write_and_wait_range(mapping,
+> > -                       offset, offset + length - 1);
+> > -
+> > -               if (err)
+> > -                       return err;
+> > -       }
+> > -
 > 
-> This patch performs following changes:
-> - Guard punch_hole with i_mutex
-> - Block all new dio readers in order to prevent information leak caused by
->   read-after-free pattern.
-> - punch_hole now wait for all writers in flight
->   NOTE: XXX write-after-free race is still possible because there is
->         no easy way to stop writeback while punch_hole is in progress.
+> Removing above code will cause a problem in case the file has all its
+> data in memory and nothing has been committed on disk. If punch hole
+> is issued for such a file, as there are no extents present, EIO would
+> be returned from ext4_ext_rm_leaf. So, even though blocks would be
+> removed from memory, the end result will be error EIO.
+> 
+> >         /* Now release the pages */
+> >         if (last_page_offset > first_page_offset) {
+> >                 truncate_pagecache_range(inode, first_page_offset,
+> 
+> To avoid this, you can add a check after the call to truncate_pagecache_range.
+> if(!inode->i_blocks)
+>   return 0;
 
-Hi Dimitry,
+Thanks for pointing this out. However Dimitry has better fix for
+this with some additional changes so I am dropping this particular
+patch.
 
-Just FYI, I am carrying the punch hole i_mutex in the patch set "Add
-invalidatepage_range address space operation" but I am more than
-happy to drop it and let your patch fix this instead.
+(see "ext4: punch_hole should wait for DIO writers")
 
 Thanks!
 -Lukas
 
-
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/extents.c |   41 +++++++++++++++++++++++++----------------
->  1 files changed, 25 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 44e33b0..0e94485 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4814,9 +4814,22 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	loff_t first_page_offset, last_page_offset;
->  	int credits, err = 0;
->  
-> +	/*
-> +	 * Write out all dirty pages to avoid race conditions
-> +	 * Then release them.
-> +	 */
-> +	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +		err = filemap_write_and_wait_range(mapping,
-> +			offset, offset + length - 1);
-> +
-> +		if (err)
-> +			return err;
-> +	}
-> +
-> +	mutex_lock(&inode->i_mutex);
->  	/* No need to punch hole beyond i_size */
->  	if (offset >= inode->i_size)
-> -		return 0;
-> +		goto out_mutex;
->  
->  	/*
->  	 * If the hole extends beyond i_size, set the hole
-> @@ -4834,31 +4847,23 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	first_page_offset = first_page << PAGE_CACHE_SHIFT;
->  	last_page_offset = last_page << PAGE_CACHE_SHIFT;
->  
-> -	/*
-> -	 * Write out all dirty pages to avoid race conditions
-> -	 * Then release them.
-> -	 */
-> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> -		err = filemap_write_and_wait_range(mapping,
-> -			offset, offset + length - 1);
-> -
-> -		if (err)
-> -			return err;
-> -	}
-> -
->  	/* Now release the pages */
->  	if (last_page_offset > first_page_offset) {
->  		truncate_pagecache_range(inode, first_page_offset,
->  					 last_page_offset - 1);
->  	}
->  
-> -	/* finish any pending end_io work */
-> +	/* Wait all existing dio workers, newcomers will block on i_mutex */
-> +	ext4_inode_block_unlocked_dio(inode);
-> +	inode_dio_wait(inode);
->  	ext4_flush_completed_IO(inode);
->  
->  	credits = ext4_writepage_trans_blocks(inode);
->  	handle = ext4_journal_start(inode, credits);
-> -	if (IS_ERR(handle))
-> -		return PTR_ERR(handle);
-> +	if (IS_ERR(handle)) {
-> +		err = PTR_ERR(handle);
-> +		goto out_dio;
-> +	}
->  
->  	err = ext4_orphan_add(handle, inode);
->  	if (err)
-> @@ -4952,6 +4957,10 @@ out:
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> +out_dio:
-> +	ext4_inode_resume_unlocked_dio(inode);
-> +out_mutex:
-> +	mutex_unlock(&inode->i_mutex);
->  	return err;
->  }
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+> > @@ -4812,12 +4802,14 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+> >
+> >         credits = ext4_writepage_trans_blocks(inode);
+> >         handle = ext4_journal_start(inode, credits);
+> > -       if (IS_ERR(handle))
+> > -               return PTR_ERR(handle);
+> > +       if (IS_ERR(handle)) {
+> > +               err = PTR_ERR(handle);
+> > +               goto out1;
+> > +       }
+> >
+> >         err = ext4_orphan_add(handle, inode);
+> >         if (err)
+> > -               goto out;
+> > +               goto out1;
+> >
+> >         /*
+> >          * Now we need to zero out the non-page-aligned data in the
+> > @@ -4907,6 +4899,8 @@ out:
+> >         inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+> >         ext4_mark_inode_dirty(handle, inode);
+> >         ext4_journal_stop(handle);
+> > +out1:
+> > +       mutex_unlock(&inode->i_mutex);
+> >         return err;
+> >  }
+> >  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+> > --
+> > 1.7.7.6
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
