@@ -1,77 +1,52 @@
-From: Brad Figg <brad.figg@canonical.com>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: Ubuntu Ext4 regression testing
-Date: Wed, 12 Sep 2012 17:41:21 -0700
-Message-ID: <50512BB1.5010605@canonical.com>
-References: <50511241.2090603@canonical.com> <5051142D.1050603@redhat.com> <5051177E.6000903@canonical.com> <505126D4.5030106@redhat.com>
+Date: Wed, 12 Sep 2012 20:51:22 -0500
+Message-ID: <50513C1A.9020504@redhat.com>
+References: <50511241.2090603@canonical.com> <5051142D.1050603@redhat.com> <5051177E.6000903@canonical.com> <505126D4.5030106@redhat.com> <50512BB1.5010605@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
+To: Brad Figg <brad.figg@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:44225 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751927Ab2IMAl1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Sep 2012 20:41:27 -0400
-In-Reply-To: <505126D4.5030106@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1648 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751681Ab2IMBv1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Sep 2012 21:51:27 -0400
+In-Reply-To: <50512BB1.5010605@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/12/2012 05:20 PM, Eric Sandeen wrote:
-> On 9/12/12 6:15 PM, Brad Figg wrote:
->> I'm going to be doing some new runs so anything I find will be reported.
+On 9/12/12 7:41 PM, Brad Figg wrote:
+
+> Eric,
 > 
-> Dave Chinner also pointed out that i.e.
+> Thanks for taking the time to point this out. We will adjust our testing accordingly.
+> We initially tried to run xfstest against ext2, ext3, ext4, xfs and btrfs. We are also
+> trying to get these tests to run on several different kernel versions as you can
+> see from our test results. We were running into issues on different kernels and various
+> file-systems while getting our act together, we did this as a band-aid.
+
+I see.
+
+> I accept that we have some things to learn w.r.t. running this test suite. We will work
+> to run the xfstests "as is" without any outside "intelligence". We do recognise that
+> is a dynamic set of tests that people are adding to regularly.
 > 
-> http://kernel.ubuntu.com/beta/testing/test-results/statler.2012-09-11_22-42-47/xfstests/default/control
-> 
-> seems to redefine, re-group, exclude etc various tests, and is taking "intelligence" out of the test suite itself.
-> 
-> I'd be wary of that; xfstests is dynamic - things get fixed, tests get added, groups changed, etc.
-> 
-> If you hard code for example "this test is for xfs" somewhere else, you might miss updates which add coverage.
-> 
-> Another example :
-> 
-> 	    #'197' : ['xfs'],# This test is only valid on 32 bit machines
-> 
-> but the test handles that gracefully:
-> 
-> bitsperlong=`src/feature -w`
-> if [ "$bitsperlong" -ne 32 ]; then
->         _notrun "This test is only valid on 32 bit machines"
-> fi
-> 
-> In general any test should be runnable; it may then issue 'not run' for some reason or other, but there's no harm in it - not as much harm as skipping regression tests because some config file got out of date...
-> 
-> and:
-> 
-> 	    #'275' : ['generic'] # ext4 fails
-> 
-> but I just fixed that one up, and it should pass now.  Who will update the 3rd party config?
-> 
-> Failing tests absolutely should be run as well.  That information is as valuable as passing tests.  The goal is getting a complete picture, not just a series of "pass" results.  :)
-> 
-> -Eric
+> I am not attempting to get just a series of "pass" results. If that were my goal
+> I could accomplish it much easier and would not have engaged with the community
+> on the mailing list. We want to help where we can and will accept constructive
+> criticism.
+
+Sorry, it sounds like I came across too strong there - it was just a little worrying to see failing or problematic tests disabled or otherwise artificially restricted.
+
+I'm actually very excited to see you setting up ongoing, public testing using xfstests, I think it'll be a great benefit, especially if there's a way to see a particular test's results across several kernel versions and/or filesystems and/or architectures, so that patterns of failure can emerge.
+
+If you find that xfstests is missing some feature or behavior which would facilitate testing in the automated environment, please do let us know what you need - or send patches.  :)
+
+Thanks,
+-Eric
+
+> Brad
 > 
 
-Eric,
-
-Thanks for taking the time to point this out. We will adjust our testing accordingly.
-We initially tried to run xfstest against ext2, ext3, ext4, xfs and btrfs. We are also
-trying to get these tests to run on several different kernel versions as you can
-see from our test results. We were running into issues on different kernels and various
-file-systems while getting our act together, we did this as a band-aid.
-
-I accept that we have some things to learn w.r.t. running this test suite. We will work
-to run the xfstests "as is" without any outside "intelligence". We do recognise that
-is a dynamic set of tests that people are adding to regularly.
-
-I am not attempting to get just a series of "pass" results. If that were my goal
-I could accomplish it much easier and would not have engaged with the community
-on the mailing list. We want to help where we can and will accept constructive
-criticism.
-
-Brad
--- 
-Brad Figg brad.figg@canonical.com http://www.canonical.com
