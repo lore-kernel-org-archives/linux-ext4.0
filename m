@@ -1,89 +1,195 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/5] resize2fs: grow uninit_bg file systems more efficiently
-Date: Thu, 13 Sep 2012 18:49:20 -0400
-Message-ID: <1347576560-5820-6-git-send-email-tytso@mit.edu>
-References: <1347576560-5820-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/9] ext4: grow the s_group_info array as needed
+Date: Thu, 13 Sep 2012 18:49:11 -0400
+Message-ID: <1347576556-5725-5-git-send-email-tytso@mit.edu>
+References: <1347576556-5725-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50587 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50585 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750871Ab2IMXGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750708Ab2IMXGP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 13 Sep 2012 19:06:15 -0400
-In-Reply-To: <1347576560-5820-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <1347576556-5725-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the uninit_bg feature is enabled and the kernel supports
-lazy_itable_init, skip zeroing the inode table so that the resize
-operation can go much more quickly.  Also set the itable_unused fields
-so that the first e2fsck after the resize will run faster.
+Previously we allocated the s_group_info array with enough space for
+any future possible growth of the file system via online resize.  This
+is unfortunate because it wastes memory, and it doesn't work for the
+meta_bg scheme, since there is no limit based on the number of
+reserved gdt blocks.  So add the code to grow the s_group_info array
+as needed.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- resize/resize2fs.c | 28 +++++++++++++++++++++++++---
- 1 file changed, 25 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |  3 +++
+ fs/ext4/mballoc.c | 79 +++++++++++++++++++++++++++----------------------------
+ fs/ext4/resize.c  |  8 ++++++
+ 3 files changed, 50 insertions(+), 40 deletions(-)
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 85de144..861acff 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -62,6 +62,8 @@ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
- 				 ((blk) < (ext2fs_inode_table_loc((fs), (i)) + \
- 					   (fs)->inode_blocks_per_group)))
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 464cff7..8b6902c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1233,6 +1233,7 @@ struct ext4_sb_info {
+ 	spinlock_t s_md_lock;
+ 	unsigned short *s_mb_offsets;
+ 	unsigned int *s_mb_maxs;
++	unsigned int s_group_info_size;
  
-+int lazy_itable_init;
+ 	/* tunables */
+ 	unsigned long s_stripe;
+@@ -1971,6 +1972,8 @@ extern void ext4_exit_mballoc(void);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     struct buffer_head *bh, ext4_fsblk_t block,
+ 			     unsigned long count, int flags);
++extern int ext4_mb_alloc_groupinfo(struct super_block *sb,
++				   ext4_group_t ngroups);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6873571..2102c20 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -24,6 +24,7 @@
+ #include "ext4_jbd2.h"
+ #include "mballoc.h"
+ #include <linux/debugfs.h>
++#include <linux/log2.h>
+ #include <linux/slab.h>
+ #include <trace/events/ext4.h>
+ 
+@@ -2163,6 +2164,39 @@ static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
+ 	return cachep;
+ }
+ 
++/*
++ * Allocate the top-level s_group_info array for the specified number
++ * of groups
++ */
++int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	unsigned size;
++	struct ext4_group_info ***new_groupinfo;
 +
- /*
-  * This is the top-level routine which does the dirty deed....
-  */
-@@ -480,6 +482,8 @@ retry:
- 
- 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
- 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-+	if (access("/sys/fs/ext4/features/lazy_itable_init", F_OK) == 0)
-+		lazy_itable_init = 1;
- 	adj = old_fs->group_desc_count;
- 	max_group = fs->group_desc_count - adj;
- 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
-@@ -494,8 +498,14 @@ retry:
- 		adjblocks = 0;
- 
- 		ext2fs_bg_flags_zap(fs, i);
--		if (csum_flag)
--			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT | EXT2_BG_INODE_ZEROED);
-+		if (csum_flag) {
-+			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT);
-+			if (!lazy_itable_init)
-+				ext2fs_bg_flags_set(fs, i,
-+						    EXT2_BG_INODE_ZEROED);
-+			ext2fs_bg_itable_unused_set(fs, i,
-+					fs->super->s_inodes_per_group);
-+		}
- 
- 		numblocks = ext2fs_group_blocks_count(fs, i);
- 		if ((i < fs->group_desc_count - 1) && csum_flag)
-@@ -608,7 +618,19 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk64_t new_size)
- 	}
- 
- 	/*
--	 * Initialize the new block group descriptors
-+	 * If we are using uninit_bg (aka GDT_CSUM) and the kernel
-+	 * supports lazy inode initialization, we can skip
-+	 * initializing the inode table.
-+	 */
-+	if (lazy_itable_init &&
-+	    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
-+		retval = 0;
-+		goto errout;
++	size = (ngroups + EXT4_DESC_PER_BLOCK(sb) - 1) >>
++		EXT4_DESC_PER_BLOCK_BITS(sb);
++	if (size <= sbi->s_group_info_size)
++		return 0;
++
++	size = roundup_pow_of_two(sizeof(*sbi->s_group_info) * size);
++	new_groupinfo = ext4_kvzalloc(size, GFP_KERNEL);
++	if (!new_groupinfo) {
++		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
++		return -ENOMEM;
 +	}
++	if (sbi->s_group_info) {
++		memcpy(new_groupinfo, sbi->s_group_info,
++		       sbi->s_group_info_size * sizeof(*sbi->s_group_info));
++		ext4_kvfree(sbi->s_group_info);
++	}
++	sbi->s_group_info = new_groupinfo;
++	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
++	ext4_debug("allocated s_groupinfo array for %d meta_bg's\n", 
++		   sbi->s_group_info_size);
++	return 0;
++}
 +
-+	/*
-+	 * Initialize the inode table
- 	 */
- 	retval = ext2fs_get_array(fs->blocksize, fs->inode_blocks_per_group,
- 				&rfs->itable_buf);
+ /* Create and initialize ext4_group_info data for the given group. */
+ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+@@ -2252,49 +2286,14 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+ 	ext4_group_t i;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_super_block *es = sbi->s_es;
+-	int num_meta_group_infos;
+-	int num_meta_group_infos_max;
+-	int array_size;
++	int err;
+ 	struct ext4_group_desc *desc;
+ 	struct kmem_cache *cachep;
+ 
+-	/* This is the number of blocks used by GDT */
+-	num_meta_group_infos = (ngroups + EXT4_DESC_PER_BLOCK(sb) -
+-				1) >> EXT4_DESC_PER_BLOCK_BITS(sb);
+-
+-	/*
+-	 * This is the total number of blocks used by GDT including
+-	 * the number of reserved blocks for GDT.
+-	 * The s_group_info array is allocated with this value
+-	 * to allow a clean online resize without a complex
+-	 * manipulation of pointer.
+-	 * The drawback is the unused memory when no resize
+-	 * occurs but it's very low in terms of pages
+-	 * (see comments below)
+-	 * Need to handle this properly when META_BG resizing is allowed
+-	 */
+-	num_meta_group_infos_max = num_meta_group_infos +
+-				le16_to_cpu(es->s_reserved_gdt_blocks);
++	err = ext4_mb_alloc_groupinfo(sb, ngroups);
++	if (err)
++		return err;
+ 
+-	/*
+-	 * array_size is the size of s_group_info array. We round it
+-	 * to the next power of two because this approximation is done
+-	 * internally by kmalloc so we can have some more memory
+-	 * for free here (e.g. may be used for META_BG resize).
+-	 */
+-	array_size = 1;
+-	while (array_size < sizeof(*sbi->s_group_info) *
+-	       num_meta_group_infos_max)
+-		array_size = array_size << 1;
+-	/* An 8TB filesystem with 64-bit pointers requires a 4096 byte
+-	 * kmalloc. A 128kb malloc should suffice for a 256TB filesystem.
+-	 * So a two level scheme suffices for now. */
+-	sbi->s_group_info = ext4_kvzalloc(array_size, GFP_KERNEL);
+-	if (sbi->s_group_info == NULL) {
+-		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
+-		return -ENOMEM;
+-	}
+ 	sbi->s_buddy_cache = new_inode(sb);
+ 	if (sbi->s_buddy_cache == NULL) {
+ 		ext4_msg(sb, KERN_ERR, "can't get new inode");
+@@ -2322,7 +2321,7 @@ err_freebuddy:
+ 	cachep = get_groupinfo_cache(sb->s_blocksize_bits);
+ 	while (i-- > 0)
+ 		kmem_cache_free(cachep, ext4_get_group_info(sb, i));
+-	i = num_meta_group_infos;
++	i = sbi->s_group_info_size;
+ 	while (i-- > 0)
+ 		kfree(sbi->s_group_info[i]);
+ 	iput(sbi->s_buddy_cache);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 3f5c67b..f288933 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1507,6 +1507,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	if (err)
+ 		return err;
+ 
++	err = ext4_mb_alloc_groupinfo(sb, input->group + 1);
++	if (err)
++		goto out;
++
+ 	flex_gd.count = 1;
+ 	flex_gd.groups = input;
+ 	flex_gd.bg_flags = &bg_flags;
+@@ -1732,6 +1736,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 	if (err)
+ 		return err;
+ 
++	err = ext4_mb_alloc_groupinfo(sb, n_group + 1);
++	if (err)
++		goto out;
++
+ 	flex_gd = alloc_flex_gd(flexbg_size);
+ 	if (flex_gd == NULL) {
+ 		err = -ENOMEM;
 -- 
 1.7.12.rc0.22.gcdd159b
 
