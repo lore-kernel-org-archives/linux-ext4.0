@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/9] ext4: don't copy non-existent gdt blocks when resizing
-Date: Thu, 13 Sep 2012 18:49:08 -0400
-Message-ID: <1347576556-5725-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/9] ext4: avoid duplicate writes of the backup bg descriptor blocks
+Date: Thu, 13 Sep 2012 18:49:09 -0400
+Message-ID: <1347576556-5725-3-git-send-email-tytso@mit.edu>
 References: <1347576556-5725-1-git-send-email-tytso@mit.edu>
 Cc: Yongqiang Yang <xiaoqiangnk@gmail.com>,
 	"Theodore Ts'o" <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50571 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50570 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751599Ab2IMWtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751074Ab2IMWtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 13 Sep 2012 18:49:19 -0400
 In-Reply-To: <1347576556-5725-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -17,42 +17,41 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Yongqiang Yang <xiaoqiangnk@gmail.com>
 
-The resize code was copying blocks at the beginning of each block
-group in order to copy the superblock and block group descriptor table
-(gdt) blocks.  This was, unfortunately, being done even for block
-groups that did not have super blocks or gdt blocks.  This is a
-complete waste of perfectly good I/O bandwidth, to skip writing those
-blocks for sparse bg's.
+The resize code was needlessly writing the backup block group
+descriptor blocks multiple times (once per block group) during an
+online resize.
 
 Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/resize.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/ext4/resize.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 591f4bd..a0ee26c 100644
+index a0ee26c..365d800 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -456,6 +456,9 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		gdblocks = ext4_bg_num_gdb(sb, group);
- 		start = ext4_group_first_block_no(sb, group);
+@@ -1358,13 +1358,15 @@ exit_journal:
+ 		err = err2;
  
-+		if (!ext4_bg_has_super(sb, group))
-+			goto handle_itb;
+ 	if (!err) {
+-		int i;
++		int gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
++		int gdb_num_end = ((group + flex_gd->count - 1) /
++				   EXT4_DESC_PER_BLOCK(sb));
 +
- 		/* Copy all of the GDT blocks into the backup in this group */
- 		for (j = 0, block = start + 1; j < gdblocks; j++, block++) {
- 			struct buffer_head *gdb;
-@@ -498,6 +501,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 				goto out;
- 		}
- 
-+handle_itb:
- 		/* Initialize group tables of the grop @group */
- 		if (!(bg_flags[i] & EXT4_BG_INODE_ZEROED))
- 			goto handle_bb;
+ 		update_backups(sb, sbi->s_sbh->b_blocknr, (char *)es,
+ 			       sizeof(struct ext4_super_block));
+-		for (i = 0; i < flex_gd->count; i++, group++) {
++		for (; gdb_num <= gdb_num_end; gdb_num++) {
+ 			struct buffer_head *gdb_bh;
+-			int gdb_num;
+-			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
++
+ 			gdb_bh = sbi->s_group_desc[gdb_num];
+ 			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
+ 				       gdb_bh->b_size);
 -- 
 1.7.12.rc0.22.gcdd159b
 
