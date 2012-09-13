@@ -1,97 +1,124 @@
-From: Brad Figg <brad.figg@canonical.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Ubuntu Ext4 regression testing
-Date: Wed, 12 Sep 2012 19:17:50 -0700
-Message-ID: <5051424E.8090502@canonical.com>
-References: <50511241.2090603@canonical.com> <5051142D.1050603@redhat.com> <5051177E.6000903@canonical.com> <505126D4.5030106@redhat.com> <50512BB1.5010605@canonical.com> <50513C1A.9020504@redhat.com> <50513F22.3040201@canonical.com> <50514061.2050801@redhat.com>
+Date: Wed, 12 Sep 2012 22:18:18 -0400
+Message-ID: <20120913021818.GA27544@thunk.org>
+References: <50511241.2090603@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Brad Figg <brad.figg@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:44448 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752848Ab2IMCRy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Sep 2012 22:17:54 -0400
-In-Reply-To: <50514061.2050801@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50381 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751890Ab2IMCSc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Sep 2012 22:18:32 -0400
+Content-Disposition: inline
+In-Reply-To: <50511241.2090603@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/12/2012 07:09 PM, Eric Sandeen wrote:
-> On 9/12/12 9:04 PM, Brad Figg wrote:
->> On 09/12/2012 06:51 PM, Eric Sandeen wrote:
->>> On 9/12/12 7:41 PM, Brad Figg wrote:
->>>
->>>> Eric,
->>>>
->>>> Thanks for taking the time to point this out. We will adjust our testing accordingly.
->>>> We initially tried to run xfstest against ext2, ext3, ext4, xfs and btrfs. We are also
->>>> trying to get these tests to run on several different kernel versions as you can
->>>> see from our test results. We were running into issues on different kernels and various
->>>> file-systems while getting our act together, we did this as a band-aid.
->>>
->>> I see.
->>>
->>>> I accept that we have some things to learn w.r.t. running this test suite. We will work
->>>> to run the xfstests "as is" without any outside "intelligence". We do recognise that
->>>> is a dynamic set of tests that people are adding to regularly.
->>>>
->>>> I am not attempting to get just a series of "pass" results. If that were my goal
->>>> I could accomplish it much easier and would not have engaged with the community
->>>> on the mailing list. We want to help where we can and will accept constructive
->>>> criticism.
->>>
->>> Sorry, it sounds like I came across too strong there - it was just a little worrying to see failing or problematic tests disabled or otherwise artificially restricted.
->>>
->>> I'm actually very excited to see you setting up ongoing, public testing using xfstests, I think it'll be a great benefit, especially if there's a way to see a particular test's results across several kernel versions and/or filesystems and/or architectures, so that patterns of failure can emerge.
->>>
->>> If you find that xfstests is missing some feature or behavior which would facilitate testing in the automated environment, please do let us know what you need - or send patches.  :)
->>>
->>> Thanks,
->>> -Eric
->>>
->>>> Brad
->>>>
->>>
->>
->> No harm, no foul. We really don't mind constructive criticism. We are also
->> eager to get this setup and running. We will try to contribute more than
->> just running tests.
+On Wed, Sep 12, 2012 at 03:52:49PM -0700, Brad Figg wrote:
 > 
-> Just running them and publishing results is definitely useful.
-> 
->> I do want to point out that we are using the xfstests which is a snapshot
->> in autotest. We do also look at the latest xfstests in the official xfstests
->> repo and add it in when we see a delta. We will also work with the autotest
->> maintainers to stay more up-to-date with xfstests.
-> 
-> Ah, I didn't know that autotest had a snapshot.  I wonder if there's a way to
-> tease that back out, and pull down xfstests from git daily.
-> 
-> FWIW, it's a little confusing - we have 2 repos:
-> 
-> git://oss.sgi.com/xfs/cmds/xfstests.git
-> git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
-> 
-> the one on kernel.org is where most rapid development seems to happen, and changes get pulled over to sgi.  Sometimes, it goes the other way.
-> 
-> Did autotest make any changes to what's upstream?
-> 
-> -Eric
-> 
->> Thanks,
->> Brad
->>
-> 
+> The Ubuntu kernel team has been putting some automated testing
+> infrastructure in place. We are very interested in engaging with
+> the appropriate upstream developers. We have been running the
+> xfstests that come as part of the autotest testing framework.
+> Some of these tests fail or never complete when run against an
+> Ext4 file-system.
 
-No, it seems to be an unmodified snapshot. As long as it's kept up-to-date,
-which is something we have a vested interest in seeing is done, I'm fine
-with this. We then take this (autotest) and also roll it into our QA team
-for even more testing. They will also be making their testing results public.
+Looking at your web page, it looks like xfstests is passing w/o any
+problems for the set of tests that you are running with the 3.5 and
+3.2 kernels.
 
-I grabbed from the oss.sgi repository. If one is more "authoritative" or
-one you'd rather see us use, just let me/us know.
+The failures that you are seeing with 3.0 kernel looks funny; it looks
+like you are running the tests one at a time, and after the file
+system got corrupted with the fsstress run with test #13, your test
+framework isn't repairing the file system with e2fsck -fy, so all of
+the tests afterwards failed because the file system was corrupted.  As
+to why the test failed with 3.0, it's probably some problem we didn't
+get backported to 3.0 for some reason.  Quite frankly that's not
+something I really worry about --- as far as I'm concerned, if it
+can't be trivially backported as part of the stable@kernel.org
+process, or after the stable coverage is finished, it's the distro's
+responsibility to backport patches to their
+old/antique/stable/enterprise/LTS kernels --- it's why the
+distributions get paid the big bucks.  :-)
 
-Brad
--- 
-Brad Figg brad.figg@canonical.com http://www.canonical.com
+Also, I noted that some of your failures on the older distributions
+was due to missing userspace programs that were not installed on the
+System Under Test (for example, "chacl").
+
+
+As far as how I do my testing, I generally use "./check -g quick" or
+"./check -g auto" --- where "-g auto" takes a lot longer, and there
+are some known failure depending on specific set of mount options and
+how the file system is created.
+
+Here is my baseline that I had at the start of the 3.6 development
+cycle.  (There are some test failures that are on my todo list to
+investigate more closely, but I keep a baseline to make sure things
+don't regress.)
+
+I have a script which handles doing all of this automatically using
+KVM, with a single command I can run which takes a built kernel, runs
+it using KVM, and passes the configuration options via the boot
+command-line to a set of shell scripts run out of /etc/rc.local which
+then runs xfstests in the various file system configurations.
+
+							- Ted
+
+
+BEGIN TEST: Ext4 4k block Sat Jul 28 16:04:48 EDT 2012
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277
+Passed all 67 tests
+END TEST: Ext4 4k block Sat Jul 28 16:33:53 EDT 2012
+
+# This is a good way to test using ext4 for ext3 file systems
+BEGIN TEST: Ext4 4k block w/nodelalloc and no extents Sat Jul 28 16:34:03 EDT 2012
+MKFS_OPTIONS  -- -q -O ^extents,^flex_bg,^uninit_bg /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,nodelalloc /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 215 219 221 225 230 235 236 237 240 245 246 247 248 249 257 258 263 271 277
+Passed all 60 tests
+END TEST: Ext4 4k block w/nodelalloc and no extents Sat Jul 28 16:55:23 EDT 2012
+
+# We care about this in Google, which is why I run it
+BEGIN TEST: Ext4 4k block w/ no journal Sat Jul 28 16:55:26 EDT 2012
+MKFS_OPTIONS  -- -q -O ^has_journal /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,noload /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277
+Passed all 67 tests
+END TEST: Ext4 4k block w/ no journal Sat Jul 28 17:15:07 EDT 2012
+
+# This is useful for testing page size != block size --- a big deal with
+# architectures that have 16k pages, such as Power PC or Itanium with a
+# 4k block --- we test for it using x86 and 1k blocks / 4k pages.
+BEGIN TEST: Ext4 1k block Sat Jul 28 17:15:16 EDT 2012
+MKFS_OPTIONS  -- -q -b 1024 /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277
+Failures: 020
+END TEST: Ext4 1k block Sat Jul 28 18:18:25 EDT 2012
+
+# Useful for PCIe attached flash devices
+BEGIN TEST: Ext4 4k block w/dioread_nolock Sat Jul 28 18:38:55 EDT 2012
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,dioread_nolock /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277
+Failures: 091 263
+END TEST: Ext4 4k block w/dioread_nolock Sat Jul 28 19:07:38 EDT 2012
+
+BEGIN TEST: Ext4 4k block w/data=journal Sat Jul 28 19:07:45 EDT 2012
+MKFS_OPTIONS  -- -q /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity,data=journal /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277
+Failures: 223
+END TEST: Ext4 4k block w/data=journal Sat Jul 28 19:33:26 EDT 2012
+
+BEGIN TEST: Ext4 4k block w/bigalloc Sat Jul 28 19:33:35 EDT 2012
+MKFS_OPTIONS  -- -q -O bigalloc /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 257 258 263 271 277
+Failures: 015 219 235
+END TEST: Ext4 4k block w/bigalloc Sat Jul 28 19:52:41 EDT 2012
