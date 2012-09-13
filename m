@@ -1,61 +1,57 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 6/7] ext4: endless truncate due to nonlocked dio readers
- V2
-Date: Thu, 13 Sep 2012 20:57:26 +0800
-Message-ID: <20120913125726.GA32155@gmail.com>
-References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
- <1347211634-11509-7-git-send-email-dmonakhov@openvz.org>
- <20120913104136.GB11330@gmail.com>
- <20120913120736.GA4328@quack.suse.cz>
+From: "norritt" <norritt@t-online.de>
+Subject: Re: Ongoing data reorganization/defragmentation?
+Date: Thu, 13 Sep 2012 14:54:27 +0200
+Message-ID: <5051D783.4000300@cube.nornet.local>
+References: <5050BA08.80709@bytefortress.de> <alpine.LFD.2.00.1209121411410.2222@new-host-2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, wenqing.lz@taobao.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=windows-1252;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: norritt@t-online.de
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:54877 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757877Ab2IMMrD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Sep 2012 08:47:03 -0400
-Received: by dady13 with SMTP id y13so1685392dad.19
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Sep 2012 05:47:02 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20120913120736.GA4328@quack.suse.cz>
+Received: from mailout07.t-online.de ([194.25.134.83]:36589 "EHLO
+	mailout07.t-online.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757913Ab2IMMzU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Sep 2012 08:55:20 -0400
+In-Reply-To: <alpine.LFD.2.00.1209121411410.2222@new-host-2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 13, 2012 at 02:07:36PM +0200, Jan Kara wrote:
->   Hello,
-> 
-> On Thu 13-09-12 18:41:36, Zheng Liu wrote:
-> > Could you please provide more detailed workload to convince me?  I
-> > am thinking about whether we really need to disable dioread_nolock
-> > feature in here.  In our benchmarks, we don't see this problem.
->   I just did:
-> 
-> # Create file
-> dd if=/dev/zero of=/mnt/file bs=1M count=30
-> sync
-> # Start 10 DIO dio readers in parallel reading the file in a loop
-> for (( i = 0; i < 10; i++ )); do
->   while true; do
->     dd if=/mnt/file bs=4k iflag=direct of=/dev/null
->   done &
-> done
-> sleep 1
-> 
-> # Try to truncate the file - never finishes.
-> truncate -s 16 /mnt/file
-> 
-> It is pretty easy to hit this. Besides being a DOS attack vector (but I
-> won't be too concerned about this - there are plenty of ways how local
-> process can screw you) I can easily imagine some application to get bitten
-> by this. 
+On 12.09.2012 20:15, Luk=E1=9A Czerner wrote:
+> On Wed, 12 Sep 2012, norritt@t-online.de wrote:
+>
+>  From what I've found out it's a good idea to:
+> - mount with noatime, discard (if drive supports trim)
+> The -o discard option might be tricky since some devices still
+> handles it quite badly and you can experience big performance drops
+> (http://people.redhat.com/lczerner/discard/ although it is somewhat
+> outdated already). But you might to try to see yourself if it does
+> not hurt your performance.
+>
+> The other option would be to use batched discard with fstrim (see
+> fstrim from util-linux) and run it once per (day, week, month).
+>
+> Thanks!
+> -Lukas
+>
 
-Hi Jan,
+Hi  Luk=E1=9A,
+thank you for pointing out the performance issue with the discard mount=
+=20
+option, I hadn't read about that yet. As far is I know I'm using a quit=
+e=20
+special SSD (SanDisk, with a SanDisk controller), where most other SSDs=
+=20
+on the market seem to be based on Marvell, Sandforce or Indilinx=20
+controllers. I saw that you were using SSDs from various vendors for=20
+your benchmarking tests. Was a model with SanDisk controller among the=20
+drives you tested? Would postmark data about disks with SanDisk=20
+controller be of interest to you?
 
-Thanks for your explanation, but in my desktop I cannot reproduce this
-problem.  The size of `file' is 16.  Am I missing something?
-
-Regards,
-Zheng
+Regards Nor
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
