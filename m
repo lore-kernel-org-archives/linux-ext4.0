@@ -1,289 +1,75 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 12/23] ext4: Let ext4_readdir handle inline data.
-Date: Fri, 14 Sep 2012 19:25:00 +0800
-Message-ID: <1347621911-4104-12-git-send-email-tm@tao.ma>
-References: <1347621512-3660-1-git-send-email-tm@tao.ma>
- <1347621911-4104-1-git-send-email-tm@tao.ma>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:33924 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753208Ab2INLeJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:34:09 -0400
-Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
-	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.76)
-	(envelope-from <tm@tao.ma>)
-	id 1TCU1a-0001sO-Mm
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:31 -0600
-In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 01/15 v2] mm: add invalidatepage_range address space
+ operation
+Date: Fri, 14 Sep 2012 09:21:19 -0400 (EDT)
+Message-ID: <alpine.LFD.2.00.1209140919580.2455@dhcp-196-88.bos.redhat.com>
+References: <1346451711-1931-1-git-send-email-lczerner@redhat.com> <1346451711-1931-2-git-send-email-lczerner@redhat.com> <20120904164316.6e058cbe.akpm@linux-foundation.org> <alpine.LFD.2.00.1209051002310.509@new-host-2> <20120905155648.GA15985@infradead.org>
+ <alpine.LFD.2.00.1209051234570.18459@new-host-2>
+Mime-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="-1463810303-1375738350-1347628884=:2455"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, hughd@google.com, linux-mm@kvack.org
+To: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.1209051234570.18459@new-host-2>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Tao Ma <boyu.mt@taobao.com>
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-For "." and "..", we just call filldir by ourselves
-instead of iterating the real dir entry.
+---1463810303-1375738350-1347628884=:2455
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/dir.c    |   25 +++++-----
- fs/ext4/ext4.h   |   12 +++++
- fs/ext4/inline.c |  136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.h  |    9 ++++
- 4 files changed, 169 insertions(+), 13 deletions(-)
+On Wed, 5 Sep 2012, Luká¨ Czerner wrote:
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 7c9d08b..b8d877f 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -27,23 +27,11 @@
- #include <linux/slab.h>
- #include <linux/rbtree.h>
- #include "ext4.h"
--
--static unsigned char ext4_filetype_table[] = {
--	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
--};
-+#include "xattr.h"
- 
- static int ext4_dx_readdir(struct file *filp,
- 			   void *dirent, filldir_t filldir);
- 
--static unsigned char get_dtype(struct super_block *sb, int filetype)
--{
--	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
--	    (filetype >= EXT4_FT_MAX))
--		return DT_UNKNOWN;
--
--	return (ext4_filetype_table[filetype]);
--}
--
- /**
-  * Check if the given dir-inode refers to an htree-indexed directory
-  * (or a directory which chould potentially get coverted to use htree
-@@ -68,6 +56,9 @@ static int is_dx_dir(struct inode *inode)
-  * Return 0 if the directory entry is OK, and 1 if there is a problem
-  *
-  * Note: this is the opposite of what ext2 and ext3 historically returned...
-+ *
-+ * bh passed here can be an inode block or a dir data block, depending
-+ * on the inode inline data flag.
-  */
- int __ext4_check_dir_entry(const char *function, unsigned int line,
- 			   struct inode *dir, struct file *filp,
-@@ -124,6 +115,14 @@ static int ext4_readdir(struct file *filp,
- 	int ret = 0;
- 	int dir_has_error = 0;
- 
-+	if (ext4_has_inline_data(inode)) {
-+		int has_inline_data = 1;
-+		ret = ext4_read_inline_dir(filp, dirent, filldir,
-+					   &has_inline_data);
-+		if (has_inline_data)
-+			return ret;
-+	}
-+
- 	if (is_dx_dir(inode)) {
- 		err = ext4_dx_readdir(filp, dirent, filldir);
- 		if (err != ERR_BAD_DX_DIR) {
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index dd31b05..c7cd07e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1957,6 +1957,18 @@ static inline void ext4_update_dx_flag(struct inode *inode)
- 				     EXT4_FEATURE_COMPAT_DIR_INDEX))
- 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
- }
-+static unsigned char ext4_filetype_table[] = {
-+	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
-+};
-+
-+static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
-+{
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
-+	    (filetype >= EXT4_FT_MAX))
-+		return DT_UNKNOWN;
-+
-+	return ext4_filetype_table[filetype];
-+}
- 
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 5a17543..8270265 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1282,6 +1282,142 @@ out:
- 	return ret;
- }
- 
-+int ext4_read_inline_dir(struct file *filp,
-+			 void *dirent, filldir_t filldir,
-+			 int *has_inline_data)
-+{
-+	int error = 0;
-+	unsigned int offset, parent_ino;
-+	int i, stored;
-+	struct ext4_dir_entry_2 *de;
-+	struct super_block *sb;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	int ret, inline_size = 0;
-+	struct ext4_iloc iloc;
-+	void *dir_buf = NULL;
-+
-+	ret = ext4_get_inode_loc(inode, &iloc);
-+	if (ret)
-+		return ret;
-+
-+	down_read(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode)) {
-+		up_read(&EXT4_I(inode)->xattr_sem);
-+		*has_inline_data = 0;
-+		goto out;
-+	}
-+
-+	inline_size = ext4_get_inline_size(inode);
-+	dir_buf = kmalloc(inline_size, GFP_NOFS);
-+	if (!dir_buf) {
-+		ret = -ENOMEM;
-+		up_read(&EXT4_I(inode)->xattr_sem);
-+		goto out;
-+	}
-+
-+	ret = ext4_read_inline_data(inode, dir_buf, inline_size, &iloc);
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	if (ret < 0)
-+		goto out;
-+
-+	sb = inode->i_sb;
-+	stored = 0;
-+	parent_ino = le32_to_cpu(((struct ext4_dir_entry_2 *)dir_buf)->inode);
-+
-+	while (!error && !stored && filp->f_pos < inode->i_size) {
-+revalidate:
-+		/*
-+		 * If the version has changed since the last call to
-+		 * readdir(2), then we might be pointing to an invalid
-+		 * dirent right now.  Scan from the start of the inline
-+		 * dir to make sure.
-+		 */
-+		if (filp->f_version != inode->i_version) {
-+			for (i = 0;
-+			     i < inode->i_size && i < offset;) {
-+				if (!i) {
-+					/* skip "." and ".." if needed. */
-+					i += EXT4_INLINE_DOTDOT_SIZE;
-+					continue;
-+				}
-+				de = (struct ext4_dir_entry_2 *)
-+					(dir_buf + i);
-+				/* It's too expensive to do a full
-+				 * dirent test each time round this
-+				 * loop, but we do have to test at
-+				 * least that it is non-zero.  A
-+				 * failure will be detected in the
-+				 * dirent test below. */
-+				if (ext4_rec_len_from_disk(de->rec_len,
-+					inline_size) < EXT4_DIR_REC_LEN(1))
-+					break;
-+				i += ext4_rec_len_from_disk(de->rec_len,
-+							    inline_size);
-+			}
-+			offset = i;
-+			filp->f_pos = offset;
-+			filp->f_version = inode->i_version;
-+		}
-+
-+		while (!error && filp->f_pos < inode->i_size) {
-+			if (filp->f_pos == 0) {
-+				error = filldir(dirent, ".", 1, 0, inode->i_ino,
-+						DT_DIR);
-+				if (error)
-+					break;
-+				stored++;
-+
-+				error = filldir(dirent, "..", 2, 0, parent_ino,
-+						DT_DIR);
-+				if (error)
-+					break;
-+				stored++;
-+
-+				filp->f_pos = offset = EXT4_INLINE_DOTDOT_SIZE;
-+				continue;
-+			}
-+
-+			de = (struct ext4_dir_entry_2 *)(dir_buf + offset);
-+			if (ext4_check_dir_entry(inode, filp, de,
-+						 iloc.bh, dir_buf,
-+						 inline_size, offset)) {
-+				ret = stored;
-+				goto out;
-+			}
-+			offset += ext4_rec_len_from_disk(de->rec_len,
-+							 inline_size);
-+			if (le32_to_cpu(de->inode)) {
-+				/* We might block in the next section
-+				 * if the data destination is
-+				 * currently swapped out.  So, use a
-+				 * version stamp to detect whether or
-+				 * not the directory has been modified
-+				 * during the copy operation.
-+				 */
-+				u64 version = filp->f_version;
-+
-+				error = filldir(dirent, de->name,
-+						de->name_len,
-+						filp->f_pos,
-+						le32_to_cpu(de->inode),
-+						get_dtype(sb, de->file_type));
-+				if (error)
-+					break;
-+				if (version != filp->f_version)
-+					goto revalidate;
-+				stored++;
-+			}
-+			filp->f_pos += ext4_rec_len_from_disk(de->rec_len,
-+							      inline_size);
-+		}
-+		offset = 0;
-+	}
-+out:
-+	kfree(dir_buf);
-+	brelse(iloc.bh);
-+	return ret;
-+}
-+
- /*
-  * Try to create the inline data for the new dir.
-  * If it succeeds, return 0, otherwise return the error.
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 6fecf7b..7162662 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -168,6 +168,9 @@ extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
- extern int ext4_try_create_inline_dir(handle_t *handle,
- 				      struct inode *parent,
- 				      struct inode *inode);
-+extern int ext4_read_inline_dir(struct file *filp,
-+				void *dirent, filldir_t filldir,
-+				int *has_inline_data);
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
-@@ -345,6 +348,12 @@ static inline int ext4_try_create_inline_dir(handle_t *handle,
- {
- 	return 0;
- }
-+static inline int ext4_read_inline_dir(struct file *filp,
-+				       void *dirent, filldir_t filldir,
-+				       int *has_inline_data)
-+{
-+	return 0;
-+}
- # endif  /* CONFIG_EXT4_FS_XATTR */
- 
- #ifdef CONFIG_EXT4_FS_SECURITY
--- 
-1.7.1
+> Date: Wed, 5 Sep 2012 12:42:54 -0400 (EDT)
+> From: Luká¨ Czerner <lczerner@redhat.com>
+> To: Christoph Hellwig <hch@infradead.org>
+> Cc: Luk?? Czerner <lczerner@redhat.com>,
+>     Andrew Morton <akpm@linux-foundation.org>, linux-fsdevel@vger.kernel.org,
+>     linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+>     linux-mm@kvack.org
+> Subject: Re: [PATCH 01/15 v2] mm: add invalidatepage_range address space
+>     operation
+> 
+> On Wed, 5 Sep 2012, Christoph Hellwig wrote:
+> 
+> > Date: Wed, 5 Sep 2012 11:56:48 -0400
+> > From: Christoph Hellwig <hch@infradead.org>
+> > To: Luk?? Czerner <lczerner@redhat.com>
+> > Cc: Andrew Morton <akpm@linux-foundation.org>, linux-fsdevel@vger.kernel.org,
+> >     linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+> >     linux-mm@kvack.org
+> > Subject: Re: [PATCH 01/15 v2] mm: add invalidatepage_range address space
+> >     operation
+> > 
+> > On Wed, Sep 05, 2012 at 10:36:00AM -0400, Luk?? Czerner wrote:
+> > > However if we would want to keep ->invalidatepage_range() and
+> > > ->invalidatepage() completely separate then we would have to have
+> > > separate truncate_inode_pages_range() and truncate_pagecache_range()
+> > > as well for the separation to actually matter. And IMO this would be
+> > > much worse...
+> > 
+> > What's the problem with simply changing the ->invalidatepage prototype
+> > to always pass the range and updating all instances for it?
+> > 
+> 
+> The problem is that it would require me to implement this
+> functionality for _all_ the file systems, because it is not just
+> about changing the prototype, but also changing the implementation to
+> be able to handle unaligned end of the range. This change would
+> involve 20 file systems.
+> 
+> It is not impossible though... so if people think that it's the
+> right way to go, then I guess it can be done.
+> 
+> -Lukas
 
+Are there still any objections or comments about this ?
+
+-Lukas
+---1463810303-1375738350-1347628884=:2455--
