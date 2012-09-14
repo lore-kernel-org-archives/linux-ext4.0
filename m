@@ -1,164 +1,154 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 15/23] ext4: make ext4_delete_entry generic.
-Date: Fri, 14 Sep 2012 19:25:03 +0800
-Message-ID: <1347621911-4104-15-git-send-email-tm@tao.ma>
+Subject: [PATCH V6 14/23] ext4: let ext4_find_entry handle inline data.
+Date: Fri, 14 Sep 2012 19:25:02 +0800
+Message-ID: <1347621911-4104-14-git-send-email-tm@tao.ma>
 References: <1347621512-3660-1-git-send-email-tm@tao.ma>
  <1347621911-4104-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:33697 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752436Ab2INLeJ (ORCPT
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:45285 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753167Ab2INLeJ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:34:09 -0400
 Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TCU1d-0001sO-Tg
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:34 -0600
+	id 1TCU1c-0001sO-R1
+	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:33 -0600
 In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Currently ext4_delete_entry is used only for dir entry
-removing from a dir block. So let us create a new function
-ext4_generic_delete_entry and this function takes a entry_buf
-and a buf_size so that it can be used for inline data.
+Create a new ext4_find_inline_entry to handle the case
+of inline data.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h  |    7 +++++
- fs/ext4/namei.c |   72 +++++++++++++++++++++++++++++++++++--------------------
- 2 files changed, 53 insertions(+), 26 deletions(-)
+ fs/ext4/inline.c |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |   10 +++++++++-
+ fs/ext4/xattr.h  |   12 ++++++++++++
+ 3 files changed, 69 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c91116c..1ffe00a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2095,6 +2095,13 @@ extern int search_dir(struct buffer_head *bh,
- 		      const struct qstr *d_name,
- 		      unsigned int offset,
- 		      struct ext4_dir_entry_2 **res_dir);
-+extern int ext4_generic_delete_entry(handle_t *handle,
-+				     struct inode *dir,
-+				     struct ext4_dir_entry_2 *de_del,
-+				     struct buffer_head *bh,
-+				     void *entry_buf,
-+				     int buf_size,
-+				     int csum_size);
- 
- /* resize.c */
- extern int ext4_group_add(struct super_block *sb,
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index edcfee4..371c1a2 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2037,37 +2037,29 @@ cleanup:
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8270265..f205d09 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1456,6 +1456,54 @@ out:
+ 	return ret;
  }
  
- /*
-- * ext4_delete_entry deletes a directory entry by merging it with the
-- * previous entry
-+ * ext4_generic_delete_entry deletes a directory entry by merging it
-+ * with the previous entry
-  */
--static int ext4_delete_entry(handle_t *handle,
--			     struct inode *dir,
--			     struct ext4_dir_entry_2 *de_del,
--			     struct buffer_head *bh)
-+int ext4_generic_delete_entry(handle_t *handle,
-+			      struct inode *dir,
-+			      struct ext4_dir_entry_2 *de_del,
-+			      struct buffer_head *bh,
-+			      void *entry_buf,
-+			      int buf_size,
-+			      int csum_size)
- {
- 	struct ext4_dir_entry_2 *de, *pde;
- 	unsigned int blocksize = dir->i_sb->s_blocksize;
--	int csum_size = 0;
--	int i, err;
--
--	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
--				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
--		csum_size = sizeof(struct ext4_dir_entry_tail);
-+	int i;
- 
- 	i = 0;
- 	pde = NULL;
--	de = (struct ext4_dir_entry_2 *) bh->b_data;
--	while (i < bh->b_size - csum_size) {
-+	de = (struct ext4_dir_entry_2 *)entry_buf;
-+	while (i < buf_size - csum_size) {
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 					 bh->b_data, bh->b_size, i))
- 			return -EIO;
- 		if (de == de_del)  {
--			BUFFER_TRACE(bh, "get_write_access");
--			err = ext4_journal_get_write_access(handle, bh);
--			if (unlikely(err)) {
--				ext4_std_error(dir->i_sb, err);
--				return err;
--			}
- 			if (pde)
- 				pde->rec_len = ext4_rec_len_to_disk(
- 					ext4_rec_len_from_disk(pde->rec_len,
-@@ -2078,12 +2070,6 @@ static int ext4_delete_entry(handle_t *handle,
- 			else
- 				de->inode = 0;
- 			dir->i_version++;
--			BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
--			err = ext4_handle_dirty_dirent_node(handle, dir, bh);
--			if (unlikely(err)) {
--				ext4_std_error(dir->i_sb, err);
--				return err;
--			}
- 			return 0;
- 		}
- 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
-@@ -2093,6 +2079,40 @@ static int ext4_delete_entry(handle_t *handle,
- 	return -ENOENT;
- }
- 
-+static int ext4_delete_entry(handle_t *handle,
-+			     struct inode *dir,
-+			     struct ext4_dir_entry_2 *de_del,
-+			     struct buffer_head *bh)
++struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data)
 +{
-+	int err, csum_size = 0;
++	int ret;
++	struct ext4_iloc iloc;
++	void *inline_start;
++	int inline_size;
 +
-+	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
-+				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-+		csum_size = sizeof(struct ext4_dir_entry_tail);
++	if (ext4_get_inode_loc(dir, &iloc))
++		return NULL;
 +
-+	BUFFER_TRACE(bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, bh);
-+	if (unlikely(err))
++	down_read(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir)) {
++		*has_inline_data = 0;
++		goto out;
++	}
++
++	inline_start = (void *)ext4_raw_inode(&iloc)->i_block +
++						EXT4_INLINE_DOTDOT_SIZE;
++	inline_size = EXT4_MIN_INLINE_DATA_SIZE - EXT4_INLINE_DOTDOT_SIZE;
++	ret = search_dir(iloc.bh, inline_start, inline_size,
++			 dir, d_name, 0, res_dir);
++	if (ret == 1)
++		goto out_find;
++	if (ret < 0)
 +		goto out;
 +
-+	err = ext4_generic_delete_entry(handle, dir, de_del,
-+					bh, bh->b_data,
-+					dir->i_sb->s_blocksize, csum_size);
-+	if (err)
++	if (ext4_get_inline_size(dir) == EXT4_MIN_INLINE_DATA_SIZE)
 +		goto out;
 +
-+	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
-+	if (unlikely(err))
-+		goto out;
++	inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
++	inline_size = ext4_get_inline_size(dir) - EXT4_MIN_INLINE_DATA_SIZE;
 +
-+	return 0;
++	ret = search_dir(iloc.bh, inline_start, inline_size,
++			 dir, d_name, 0, res_dir);
++	if (ret == 1)
++		goto out_find;
++
 +out:
-+	if (err != -ENOENT)
-+		ext4_std_error(dir->i_sb, err);
-+	return err;
++	brelse(iloc.bh);
++	iloc.bh = NULL;
++out_find:
++	up_read(&EXT4_I(dir)->xattr_sem);
++	return iloc.bh;
 +}
 +
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index d3fc040..edcfee4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1113,7 +1113,6 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 			  d_name, offset, res_dir);
+ }
+ 
+-
  /*
-  * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
-  * since this indicates that nlinks count was previously 1.
+  *	ext4_find_entry()
+  *
+@@ -1148,6 +1147,15 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 	namelen = d_name->len;
+ 	if (namelen > EXT4_NAME_LEN)
+ 		return NULL;
++
++	if (ext4_has_inline_data(dir)) {
++		int has_inline_data = 1;
++		ret = ext4_find_inline_entry(dir, d_name, res_dir,
++					     &has_inline_data);
++		if (has_inline_data)
++			return ret;
++	}
++
+ 	if ((namelen <= 2) && (name[0] == '.') &&
+ 	    (name[1] == '.' || name[1] == '\0')) {
+ 		/*
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 7162662..01ab0b7 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -171,6 +171,10 @@ extern int ext4_try_create_inline_dir(handle_t *handle,
+ extern int ext4_read_inline_dir(struct file *filp,
+ 				void *dirent, filldir_t filldir,
+ 				int *has_inline_data);
++extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data);
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -354,6 +358,14 @@ static inline int ext4_read_inline_dir(struct file *filp,
+ {
+ 	return 0;
+ }
++
++struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data)
++{
++	return NULL;
++}
+ # endif  /* CONFIG_EXT4_FS_XATTR */
+ 
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.1
 
