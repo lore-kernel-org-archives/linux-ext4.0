@@ -1,193 +1,147 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 02/23] ext4: export inline xattr functions.
-Date: Fri, 14 Sep 2012 19:24:50 +0800
-Message-ID: <1347621911-4104-2-git-send-email-tm@tao.ma>
+Subject: [PATCH V6 16/23] ext4: let ext4_delete_entry handle inline data.
+Date: Fri, 14 Sep 2012 19:25:04 +0800
+Message-ID: <1347621911-4104-16-git-send-email-tm@tao.ma>
 References: <1347621512-3660-1-git-send-email-tm@tao.ma>
  <1347621911-4104-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:50340 "HELO
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:56886 "HELO
 	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754657Ab2INLZV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:25:21 -0400
+	with SMTP id S1752222Ab2INLeI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:34:08 -0400
 Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TCU1Q-0001sO-30
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:20 -0600
+	id 1TCU1f-0001sO-03
+	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:35 -0600
 In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Inline data needs some inline xattr functions, so export them
-from fs/ext4/xattr.c so that inline.c can uses them.
-
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/xattr.c |   39 +++++-------------------------------
- fs/ext4/xattr.h |   57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 63 insertions(+), 33 deletions(-)
+ fs/ext4/inline.c |   55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c  |    8 +++++++
+ fs/ext4/xattr.h  |   13 ++++++++++++
+ 3 files changed, 76 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 2cdb98d..dfcb156 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -61,11 +61,6 @@
- #include "xattr.h"
- #include "acl.h"
- 
--#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
--#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
--#define BFIRST(bh) ENTRY(BHDR(bh)+1)
--#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
--
- #ifdef EXT4_XATTR_DEBUG
- # define ea_idebug(inode, f...) do { \
- 		printk(KERN_DEBUG "inode %s:%lu: ", \
-@@ -312,7 +307,7 @@ cleanup:
- 	return error;
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index f205d09..21c8957 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1504,6 +1504,61 @@ out_find:
+ 	return iloc.bh;
  }
  
--static int
-+int
- ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 		     void *buffer, size_t buffer_size)
++int ext4_delete_inline_entry(handle_t *handle,
++			     struct inode *dir,
++			     struct ext4_dir_entry_2 *de_del,
++			     struct buffer_head *bh,
++			     int *has_inline_data)
++{
++	int err, inline_size;
++	struct ext4_iloc iloc;
++	void *inline_start;
++
++	err = ext4_get_inode_loc(dir, &iloc);
++	if (err)
++		return err;
++
++	down_write(&EXT4_I(dir)->xattr_sem);
++	if (!ext4_has_inline_data(dir)) {
++		*has_inline_data = 0;
++		goto out;
++	}
++
++	if ((void *)de_del - ((void *)ext4_raw_inode(&iloc)->i_block) <
++		EXT4_MIN_INLINE_DATA_SIZE) {
++		inline_start = (void *)ext4_raw_inode(&iloc)->i_block +
++					EXT4_INLINE_DOTDOT_SIZE;
++		inline_size = EXT4_MIN_INLINE_DATA_SIZE -
++				EXT4_INLINE_DOTDOT_SIZE;
++	} else {
++		inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
++		inline_size = ext4_get_inline_size(dir) -
++				EXT4_MIN_INLINE_DATA_SIZE;
++	}
++
++	err = ext4_journal_get_write_access(handle, bh);
++	if (err)
++		goto out;
++
++	err = ext4_generic_delete_entry(handle, dir, de_del, bh,
++					inline_start, inline_size, 0);
++	if (err)
++		goto out;
++
++	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
++	err = ext4_mark_inode_dirty(handle, dir);
++	if (unlikely(err))
++		goto out;
++
++	ext4_show_inline_dir(dir, iloc.bh, inline_start, inline_size);
++out:
++	up_write(&EXT4_I(dir)->xattr_sem);
++	brelse(iloc.bh);
++	if (err != -ENOENT)
++		ext4_std_error(dir->i_sb, err);
++	return err;
++}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
  {
-@@ -581,21 +576,6 @@ static size_t ext4_xattr_free_space(struct ext4_xattr_entry *last,
- 	return (*min_offs - ((void *)last - base) - sizeof(__u32));
- }
+ 	int ret;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 371c1a2..bdb7403 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2086,6 +2086,14 @@ static int ext4_delete_entry(handle_t *handle,
+ {
+ 	int err, csum_size = 0;
  
--struct ext4_xattr_info {
--	int name_index;
--	const char *name;
--	const void *value;
--	size_t value_len;
--};
--
--struct ext4_xattr_search {
--	struct ext4_xattr_entry *first;
--	void *base;
--	void *end;
--	struct ext4_xattr_entry *here;
--	int not_found;
--};
--
- static int
- ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
- {
-@@ -950,14 +930,8 @@ bad_block:
- #undef header
- }
- 
--struct ext4_xattr_ibody_find {
--	struct ext4_xattr_search s;
--	struct ext4_iloc iloc;
--};
--
--static int
--ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
--		      struct ext4_xattr_ibody_find *is)
-+int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-+			  struct ext4_xattr_ibody_find *is)
- {
- 	struct ext4_xattr_ibody_header *header;
- 	struct ext4_inode *raw_inode;
-@@ -985,10 +959,9 @@ ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	return 0;
- }
- 
--static int
--ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
--		     struct ext4_xattr_info *i,
--		     struct ext4_xattr_ibody_find *is)
-+int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-+			 struct ext4_xattr_info *i,
-+			 struct ext4_xattr_ibody_find *is)
- {
- 	struct ext4_xattr_ibody_header *header;
- 	struct ext4_xattr_search *s = &is->s;
++	if (ext4_has_inline_data(dir)) {
++		int has_inline_data = 1;
++		err = ext4_delete_inline_entry(handle, dir, de_del, bh,
++					       &has_inline_data);
++		if (has_inline_data)
++			return err;
++	}
++
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 91f31ca..8c61a41 100644
+index 01ab0b7..62a242a 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -65,6 +65,32 @@ struct ext4_xattr_entry {
- 		EXT4_I(inode)->i_extra_isize))
- #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
- 
-+#define BHDR(bh) ((struct ext4_xattr_header *)((bh)->b_data))
-+#define ENTRY(ptr) ((struct ext4_xattr_entry *)(ptr))
-+#define BFIRST(bh) ENTRY(BHDR(bh)+1)
-+#define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
-+
-+
-+struct ext4_xattr_info {
-+	int name_index;
-+	const char *name;
-+	const void *value;
-+	size_t value_len;
-+};
-+
-+struct ext4_xattr_search {
-+	struct ext4_xattr_entry *first;
-+	void *base;
-+	void *end;
-+	struct ext4_xattr_entry *here;
-+	int not_found;
-+};
-+
-+struct ext4_xattr_ibody_find {
-+	struct ext4_xattr_search s;
-+	struct ext4_iloc iloc;
-+};
-+
- # ifdef CONFIG_EXT4_FS_XATTR
- 
- extern const struct xattr_handler ext4_xattr_user_handler;
-@@ -90,6 +116,15 @@ extern void ext4_exit_xattr(void);
- 
- extern const struct xattr_handler *ext4_xattr_handlers[];
- 
-+extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-+				 struct ext4_xattr_ibody_find *is);
-+extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
-+				const char *name,
-+				void *buffer, size_t buffer_size);
-+extern int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-+				struct ext4_xattr_info *i,
-+				struct ext4_xattr_ibody_find *is);
-+
+@@ -175,6 +175,11 @@ extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+ 					const struct qstr *d_name,
+ 					struct ext4_dir_entry_2 **res_dir,
+ 					int *has_inline_data);
++extern int ext4_delete_inline_entry(handle_t *handle,
++				    struct inode *dir,
++				    struct ext4_dir_entry_2 *de_del,
++				    struct buffer_head *bh,
++				    int *has_inline_data);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -143,6 +178,28 @@ ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 
- #define ext4_xattr_handlers	NULL
- 
-+static inline int
-+ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-+		      struct ext4_xattr_ibody_find *is)
+@@ -366,6 +371,14 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+ {
+ 	return NULL;
+ }
++static inline int ext4_delete_inline_entry(handle_t *handle,
++					   struct inode *dir,
++					   struct ext4_dir_entry_2 *de_del,
++					   struct buffer_head *bh,
++					   int *has_inline_data)
 +{
-+	return -EOPNOTSUPP;
++	return 0;
 +}
-+
-+static inline int
-+ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-+		     struct ext4_xattr_info *i,
-+		     struct ext4_xattr_ibody_find *is)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
-+				const char *name,
-+				void *buffer, size_t buffer_size)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
  # endif  /* CONFIG_EXT4_FS_XATTR */
  
  #ifdef CONFIG_EXT4_FS_SECURITY
