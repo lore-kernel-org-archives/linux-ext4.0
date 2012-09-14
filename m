@@ -1,245 +1,151 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 05/23] ext4: Add normal write support for inline data.
-Date: Fri, 14 Sep 2012 19:24:53 +0800
-Message-ID: <1347621911-4104-5-git-send-email-tm@tao.ma>
+Subject: [PATCH V6 07/23] ext4: Add delalloc support for inline data.
+Date: Fri, 14 Sep 2012 19:24:55 +0800
+Message-ID: <1347621911-4104-7-git-send-email-tm@tao.ma>
 References: <1347621512-3660-1-git-send-email-tm@tao.ma>
  <1347621911-4104-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:38733 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757046Ab2INLZZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:25:25 -0400
+Received: from oproxy12-pub.bluehost.com ([50.87.16.10]:49536 "HELO
+	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757897Ab2INLZ0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:25:26 -0400
 Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TCU1T-0001sO-7O
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:23 -0600
+	id 1TCU1V-0001sO-Cy
+	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:25 -0600
 In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-For a normal write case(not journalled write, not delayed allocation),
-we write to the inline if the file is small and convert it to an extent
-based file when the write is larger than the max inline size.
+For delayed allocation mode, we write to inline data if the file
+is small enough. And in case of we write to some offset larger
+than the inline size, the 1st page is dirtied, so that
+ext4_da_writepages can handle the conversion. When the 1st page
+is initialized with blocks, the inline part is removed.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h    |   11 +++
- fs/ext4/extents.c |    9 ++-
- fs/ext4/inline.c  |  232 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inode.c   |   59 +++++++++-----
- fs/ext4/xattr.h   |   26 ++++++
- 5 files changed, 316 insertions(+), 21 deletions(-)
+ fs/ext4/ext4.h   |    4 +
+ fs/ext4/inline.c |  177 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c  |   63 ++++++++++++++++---
+ fs/ext4/xattr.h  |   27 ++++++++
+ 4 files changed, 262 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e5ca52f..80d5cb4 100644
+index 80d5cb4..ea64a6c 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1984,8 +1984,19 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
- struct buffer_head *ext4_bread(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-+int ext4_get_block_write(struct inode *inode, sector_t iblock,
-+			 struct buffer_head *bh_result, int create);
+@@ -1988,6 +1988,8 @@ int ext4_get_block_write(struct inode *inode, sector_t iblock,
+ 			 struct buffer_head *bh_result, int create);
  int ext4_get_block(struct inode *inode, sector_t iblock,
  				struct buffer_head *bh_result, int create);
-+int walk_page_buffers(handle_t *handle,
-+			     struct buffer_head *head,
-+			     unsigned from,
-+			     unsigned to,
-+			     int *partial,
-+			     int (*fn)(handle_t *handle,
-+				       struct buffer_head *bh));
-+int do_journal_get_write_access(handle_t *handle,
-+				struct buffer_head *bh);
++int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
++			   struct buffer_head *bh, int create);
+ int walk_page_buffers(handle_t *handle,
+ 			     struct buffer_head *head,
+ 			     unsigned from,
+@@ -1997,6 +1999,8 @@ int walk_page_buffers(handle_t *handle,
+ 				       struct buffer_head *bh));
+ int do_journal_get_write_access(handle_t *handle,
+ 				struct buffer_head *bh);
++#define FALL_BACK_TO_NONDELALLOC 1
++#define CONVERT_INLINE_DATA	 2
  
  extern struct inode *ext4_iget(struct super_block *, unsigned long);
  extern int  ext4_write_inode(struct inode *, struct writeback_control *);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index aabbb3f..416f31d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -41,6 +41,7 @@
- #include <asm/uaccess.h>
- #include <linux/fiemap.h>
- #include "ext4_jbd2.h"
-+#include "xattr.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -2256,7 +2257,13 @@ int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int nrblocks,
- int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- {
- 	int index;
--	int depth = ext_depth(inode);
-+	int depth;
-+
-+	/* If we are converting the inline data, only one is needed here. */
-+	if (ext4_has_inline_data(inode))
-+		return 1;
-+
-+	depth = ext_depth(inode);
- 
- 	if (chunk)
- 		index = depth * 2;
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 6843fbc..50c3e95 100644
+index fc42ed0..7787173 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -14,6 +14,7 @@
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "xattr.h"
-+#include "truncate.h"
- 
- #define EXT4_XATTR_SYSTEM_DATA	"data"
- #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
-@@ -510,6 +511,237 @@ int ext4_readpage_inline(struct inode *inode, struct page *page)
- 	return ret >= 0 ? 0 : ret;
+@@ -765,6 +765,183 @@ ext4_journalled_write_inline_data(struct inode *inode,
+ 	return iloc.bh;
  }
  
-+static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
-+					      struct inode *inode,
-+					      unsigned flags)
++/*
++ * Try to make the page cache and handle ready for the inline data case.
++ * We can call this function in 2 cases:
++ * 1. The inode is created and the first write exceeds inline size. We can
++ *    clear the inode state safely.
++ * 2. The inode has inline data, then we need to read the data, make it
++ *    update and dirty so that ext4_da_writepages can handle it. We don't
++ *    need to start the journal since the file's metatdata isn't changed now.
++ */
++static int ext4_da_convert_inline_data_to_extent(struct address_space *mapping,
++						 struct inode *inode,
++						 unsigned flags,
++						 void **fsdata)
 +{
-+	int ret, needed_blocks;
-+	handle_t *handle = NULL;
-+	int retries = 0, sem_held = 0;
-+	struct page *page = NULL;
-+	unsigned from, to;
-+	struct ext4_iloc iloc;
-+
-+	if (!ext4_has_inline_data(inode)) {
-+		/*
-+		 * clear the flag so that no new write
-+		 * will trap here again.
-+		 */
-+		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-+		return 0;
-+	}
-+
-+	needed_blocks = ext4_writepage_trans_blocks(inode);
-+
-+	ret = ext4_get_inode_loc(inode, &iloc);
-+	if (ret)
-+		return ret;
-+
-+retry:
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		handle = NULL;
-+		goto out;
-+	}
-+
-+	/* We cannot recurse into the filesystem as the transaction is already
-+	 * started */
-+	flags |= AOP_FLAG_NOFS;
++	int ret = 0, inline_size;
++	struct page *page;
 +
 +	page = grab_cache_page_write_begin(mapping, 0, flags);
-+	if (!page) {
-+		ret = -ENOMEM;
-+		goto out;
-+	}
++	if (!page)
++		return -ENOMEM;
 +
-+	down_write(&EXT4_I(inode)->xattr_sem);
-+	sem_held = 1;
-+	/* If some one has already done this for us, just exit. */
++	down_read(&EXT4_I(inode)->xattr_sem);
 +	if (!ext4_has_inline_data(inode)) {
-+		ret = 0;
++		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
 +		goto out;
 +	}
 +
-+	from = 0;
-+	to = ext4_get_inline_size(inode);
++	inline_size = ext4_get_inline_size(inode);
++
 +	if (!PageUptodate(page)) {
 +		ret = ext4_read_inline_page(inode, page);
 +		if (ret < 0)
 +			goto out;
 +	}
 +
-+	ret = ext4_destroy_inline_data_nolock(handle, inode);
-+	if (ret)
-+		goto out;
-+
-+	if (ext4_should_dioread_nolock(inode))
-+		ret = __block_write_begin(page, from, to, ext4_get_block_write);
-+	else
-+		ret = __block_write_begin(page, from, to, ext4_get_block);
-+
-+	if (!ret && ext4_should_journal_data(inode)) {
-+		ret = walk_page_buffers(handle, page_buffers(page),
-+				from, to, NULL, do_journal_get_write_access);
-+	}
-+
++	ret = __block_write_begin(page, 0, inline_size,
++				  ext4_da_get_block_prep);
 +	if (ret) {
-+		unlock_page(page);
-+		page_cache_release(page);
-+		ext4_orphan_add(handle, inode);
-+		up_write(&EXT4_I(inode)->xattr_sem);
-+		sem_held = 0;
-+		ext4_journal_stop(handle);
-+		handle = NULL;
 +		ext4_truncate_failed_write(inode);
-+		/*
-+		 * If truncate failed early the inode might
-+		 * still be on the orphan list; we need to
-+		 * make sure the inode is removed from the
-+		 * orphan list in that case.
-+		 */
-+		if (inode->i_nlink)
-+			ext4_orphan_del(NULL, inode);
++		goto out;
 +	}
 +
-+	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
++	SetPageDirty(page);
++	SetPageUptodate(page);
++	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	*fsdata = (void *)CONVERT_INLINE_DATA;
 +
-+	block_commit_write(page, from, to);
 +out:
++	up_read(&EXT4_I(inode)->xattr_sem);
 +	if (page) {
 +		unlock_page(page);
 +		page_cache_release(page);
 +	}
-+	if (sem_held)
-+		up_write(&EXT4_I(inode)->xattr_sem);
-+	if (handle)
-+		ext4_journal_stop(handle);
-+	brelse(iloc.bh);
 +	return ret;
 +}
 +
 +/*
-+ * Try to write data in the inode.
-+ * If the inode has inline data, check whether the new write can be
-+ * in the inode also. If not, create the page the handle, move the data
-+ * to the page make it update and let the later codes create extent for it.
++ * Prepare the write for the inline data.
++ * If the the data can be written into the inode, we just read
++ * the page and make it uptodate, and start the journal.
++ * Otherwise read the page, makes it dirty so that it can be
++ * handle in writepages(the i_disksize update is left to the
++ * normal ext4_da_write_end).
 + */
-+int ext4_try_to_write_inline_data(struct address_space *mapping,
-+				  struct inode *inode,
-+				  loff_t pos, unsigned len,
-+				  unsigned flags,
-+				  struct page **pagep)
++int ext4_da_write_inline_data_begin(struct address_space *mapping,
++				    struct inode *inode,
++				    loff_t pos, unsigned len,
++				    unsigned flags,
++				    struct page **pagep,
++				    void **fsdata)
 +{
-+	int ret;
++	int ret, inline_size;
 +	handle_t *handle;
 +	struct page *page;
 +	struct ext4_iloc iloc;
-+
-+	if (pos + len > ext4_get_max_inline_size(inode))
-+		goto convert;
 +
 +	ret = ext4_get_inode_loc(inode, &iloc);
 +	if (ret)
 +		return ret;
 +
-+	/*
-+	 * The possible write could happen in the inode,
-+	 * so try to reserve the space in inode first.
-+	 */
 +	handle = ext4_journal_start(inode, 1);
 +	if (IS_ERR(handle)) {
 +		ret = PTR_ERR(handle);
@@ -247,17 +153,27 @@ index 6843fbc..50c3e95 100644
 +		goto out;
 +	}
 +
-+	ret = ext4_prepare_inline_data(handle, inode, pos + len);
-+	if (ret && ret != -ENOSPC)
-+		goto out;
++	inline_size = ext4_get_max_inline_size(inode);
 +
-+	/* We don't have space in inline inode, so convert it to extent. */
-+	if (ret == -ENOSPC) {
-+		ext4_journal_stop(handle);
-+		brelse(iloc.bh);
-+		goto convert;
++	ret = -ENOSPC;
++	if (inline_size >= pos + len) {
++		ret = ext4_prepare_inline_data(handle, inode, pos + len);
++		if (ret && ret != -ENOSPC)
++			goto out;
 +	}
 +
++	if (ret == -ENOSPC) {
++		ret = ext4_da_convert_inline_data_to_extent(mapping,
++							    inode,
++							    flags,
++							    fsdata);
++		goto out;
++	}
++
++	/*
++	 * We cannot recurse into the filesystem as the transaction
++	 * is already started.
++	 */
 +	flags |= AOP_FLAG_NOFS;
 +
 +	page = grab_cache_page_write_begin(mapping, 0, flags);
@@ -266,116 +182,161 @@ index 6843fbc..50c3e95 100644
 +		goto out;
 +	}
 +
-+	*pagep = page;
 +	down_read(&EXT4_I(inode)->xattr_sem);
 +	if (!ext4_has_inline_data(inode)) {
 +		ret = 0;
-+		unlock_page(page);
-+		page_cache_release(page);
-+		goto out_up_read;
++		goto out_release_page;
 +	}
 +
 +	if (!PageUptodate(page)) {
 +		ret = ext4_read_inline_page(inode, page);
 +		if (ret < 0)
-+			goto out_up_read;
++			goto out_release_page;
 +	}
 +
-+	ret = 1;
-+	handle = NULL;
-+out_up_read:
 +	up_read(&EXT4_I(inode)->xattr_sem);
++	*pagep = page;
++	handle = NULL;
++	brelse(iloc.bh);
++	return 1;
++out_release_page:
++	up_read(&EXT4_I(inode)->xattr_sem);
++	unlock_page(page);
++	page_cache_release(page);
 +out:
 +	if (handle)
 +		ext4_journal_stop(handle);
 +	brelse(iloc.bh);
 +	return ret;
-+convert:
-+	return ext4_convert_inline_data_to_extent(mapping,
-+						  inode, flags);
 +}
 +
-+int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
-+			       unsigned copied, struct page *page)
++int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
++				  unsigned len, unsigned copied,
++				  struct page *page)
 +{
-+	int ret;
-+	void *kaddr;
-+	struct ext4_iloc iloc;
++	int i_size_changed = 0;
 +
-+	if (unlikely(copied < len)) {
-+		if (!PageUptodate(page)) {
-+			copied = 0;
-+			goto out;
-+		}
++	copied = ext4_write_inline_data_end(inode, pos, len, copied, page);
++
++	/*
++	 * No need to use i_size_read() here, the i_size
++	 * cannot change under us because we hold i_mutex.
++	 *
++	 * But it's important to update i_size while still holding page lock:
++	 * page writeout could otherwise come in and zero beyond i_size.
++	 */
++	if (pos+copied > inode->i_size) {
++		i_size_write(inode, pos+copied);
++		i_size_changed = 1;
 +	}
++	unlock_page(page);
++	page_cache_release(page);
 +
-+	ret = ext4_get_inode_loc(inode, &iloc);
-+	if (ret) {
-+		ext4_std_error(inode->i_sb, ret);
-+		copied = 0;
-+		goto out;
-+	}
++	/*
++	 * Don't mark the inode dirty under page lock. First, it unnecessarily
++	 * makes the holding time of page lock longer. Second, it forces lock
++	 * ordering of page lock and transaction start for journaling
++	 * filesystems.
++	 */
++	if (i_size_changed)
++		mark_inode_dirty(inode);
 +
-+	down_write(&EXT4_I(inode)->xattr_sem);
-+	BUG_ON(!ext4_has_inline_data(inode));
-+
-+	kaddr = kmap_atomic(page);
-+	ext4_write_inline_data(inode, &iloc, kaddr, pos, len);
-+	kunmap_atomic(kaddr);
-+	SetPageUptodate(page);
-+	/* clear page dirty so that writepages wouldn't work for us. */
-+	ClearPageDirty(page);
-+
-+	up_write(&EXT4_I(inode)->xattr_sem);
-+	brelse(iloc.bh);
-+out:
 +	return copied;
 +}
-+
-+
+ 
  int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
  {
- 	int ret;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index acb329b..de11f32 100644
+index 7a6d11a..0b56fb0 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -799,7 +799,7 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 	return NULL;
- }
- 
--static int walk_page_buffers(handle_t *handle,
-+int walk_page_buffers(handle_t *handle,
- 			     struct buffer_head *head,
- 			     unsigned from,
- 			     unsigned to,
-@@ -855,8 +855,8 @@ static int walk_page_buffers(handle_t *handle,
-  * is elevated.  We'll still have enough credits for the tiny quotafile
-  * write.
+@@ -1816,7 +1816,19 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 	 * file system block.
+ 	 */
+ 	down_read((&EXT4_I(inode)->i_data_sem));
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++	if (ext4_has_inline_data(inode)) {
++		/*
++		 * We will soon create blocks for this page, and let
++		 * us pretend as if the blocks aren't allocated yet.
++		 * In case of clusters, we have to handle the work
++		 * of mapping from cluster so that the reserved space
++		 * is calculated properly.
++		 */
++		if ((EXT4_SB(inode->i_sb)->s_cluster_ratio > 1) &&
++		    ext4_find_delalloc_cluster(inode, map->m_lblk, 0))
++			map->m_flags |= EXT4_MAP_FROM_CLUSTER;
++		retval = 0;
++	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+ 	else
+ 		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
+@@ -1863,8 +1875,8 @@ out_unlock:
+  * We also have b_blocknr = physicalblock mapping unwritten extent and b_bdev
+  * initialized properly.
   */
--static int do_journal_get_write_access(handle_t *handle,
--				       struct buffer_head *bh)
-+int do_journal_get_write_access(handle_t *handle,
-+				struct buffer_head *bh)
+-static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+-				  struct buffer_head *bh, int create)
++int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
++			   struct buffer_head *bh, int create)
  {
- 	int dirty = buffer_dirty(bh);
- 	int ret;
-@@ -879,8 +879,6 @@ static int do_journal_get_write_access(handle_t *handle,
+ 	struct ext4_map_blocks map;
+ 	int ret = 0;
+@@ -2138,7 +2150,8 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
+  * mpage_da_map_and_submit to map a single contiguous memory region
+  * and then write them.
+  */
+-static int write_cache_pages_da(struct address_space *mapping,
++static int write_cache_pages_da(handle_t *handle,
++				struct address_space *mapping,
+ 				struct writeback_control *wbc,
+ 				struct mpage_da_data *mpd,
+ 				pgoff_t *done_index)
+@@ -2217,6 +2230,17 @@ static int write_cache_pages_da(struct address_space *mapping,
+ 			wait_on_page_writeback(page);
+ 			BUG_ON(PageWriteback(page));
+ 
++			/*
++			 * If we have inline data and arrive here, it means that
++			 * we will soon create the block for the 1st page, so
++			 * we'd better clear the inline data here.
++			 */
++			if (ext4_has_inline_data(inode)) {
++				BUG_ON(ext4_test_inode_state(inode,
++						EXT4_STATE_MAY_INLINE_DATA));
++				ext4_destroy_inline_data(handle, inode);
++			}
++
+ 			if (mpd->next_page != page->index)
+ 				mpd->first_page = page->index;
+ 			mpd->next_page = page->index + 1;
+@@ -2423,7 +2447,8 @@ retry:
+ 		 * contiguous region of logical blocks that need
+ 		 * blocks to be allocated by ext4 and submit them.
+ 		 */
+-		ret = write_cache_pages_da(mapping, wbc, &mpd, &done_index);
++		ret = write_cache_pages_da(handle, mapping,
++					   wbc, &mpd, &done_index);
+ 		/*
+ 		 * If we have a contiguous extent of pages and we
+ 		 * haven't done the I/O yet, map the blocks and submit
+@@ -2487,7 +2512,6 @@ out_writepages:
  	return ret;
  }
  
--static int ext4_get_block_write(struct inode *inode, sector_t iblock,
--		   struct buffer_head *bh_result, int create);
- static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 			    loff_t pos, unsigned len, unsigned flags,
- 			    struct page **pagep, void **fsdata)
-@@ -903,6 +901,17 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
- 
+-#define FALL_BACK_TO_NONDELALLOC 1
+ static int ext4_nonda_switch(struct super_block *sb)
+ {
+ 	s64 free_blocks, dirty_blocks;
+@@ -2541,6 +2565,19 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 	*fsdata = (void *)0;
+ 	trace_ext4_da_write_begin(inode, pos, len, flags);
++
 +	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
-+		ret = ext4_try_to_write_inline_data(mapping, inode, pos, len,
-+						    flags, pagep);
++		ret = ext4_da_write_inline_data_begin(mapping, inode,
++						      pos, len, flags,
++						      pagep, fsdata);
 +		if (ret < 0)
 +			goto out;
 +		if (ret == 1) {
@@ -385,130 +346,78 @@ index acb329b..de11f32 100644
 +	}
 +
  retry:
- 	handle = ext4_journal_start(inode, needed_blocks);
- 	if (IS_ERR(handle)) {
-@@ -920,6 +929,7 @@ retry:
- 		ret = -ENOMEM;
- 		goto out;
- 	}
-+
- 	*pagep = page;
- 
- 	if (ext4_should_dioread_nolock(inode))
-@@ -984,7 +994,12 @@ static int ext4_generic_write_end(struct file *file,
- 	struct inode *inode = mapping->host;
- 	handle_t *handle = ext4_journal_current_handle();
- 
--	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	if (ext4_has_inline_data(inode))
-+		copied = ext4_write_inline_data_end(inode, pos, len,
-+						    copied, page);
-+	else
-+		copied = block_write_end(file, mapping, pos,
-+					 len, copied, page, fsdata);
- 
  	/*
- 	 * No need to use i_size_read() here, the i_size
-@@ -2863,7 +2878,7 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
-  * We allocate an uinitialized extent if blocks haven't been allocated.
-  * The extent will be converted to initialized after the IO is complete.
-  */
--static int ext4_get_block_write(struct inode *inode, sector_t iblock,
-+int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create)
- {
- 	ext4_debug("ext4_get_block_write: inode %lu, create flag %d\n",
-@@ -3811,7 +3826,8 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
- 	if (*magic == cpu_to_le32(EXT4_XATTR_MAGIC)) {
- 		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
- 		ext4_find_inline_data(inode);
--	}
-+	} else
-+		EXT4_I(inode)->i_inline_off = 0;
- }
- 
- struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
-@@ -3980,17 +3996,19 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 				 ei->i_file_acl);
- 		ret = -EIO;
- 		goto bad_inode;
--	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
--		if (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--		    (S_ISLNK(inode->i_mode) &&
--		     !ext4_inode_is_fast_symlink(inode)))
--			/* Validate extent which is part of inode */
--			ret = ext4_ext_check_inode(inode);
--	} else if (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--		   (S_ISLNK(inode->i_mode) &&
--		    !ext4_inode_is_fast_symlink(inode))) {
--		/* Validate block references which are part of inode */
--		ret = ext4_ind_check_inode(inode);
-+	} else if (!ext4_has_inline_data(inode)) {
-+		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
-+			if ((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+			    (S_ISLNK(inode->i_mode) &&
-+			     !ext4_inode_is_fast_symlink(inode))))
-+				/* Validate extent which is part of inode */
-+				ret = ext4_ext_check_inode(inode);
-+		} else if (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+			   (S_ISLNK(inode->i_mode) &&
-+			    !ext4_inode_is_fast_symlink(inode))) {
-+			/* Validate block references which are part of inode */
-+			ret = ext4_ind_check_inode(inode);
-+		}
- 	}
- 	if (ret)
- 		goto bad_inode;
-@@ -4173,9 +4191,10 @@ static int ext4_do_update_inode(handle_t *handle,
- 				cpu_to_le32(new_encode_dev(inode->i_rdev));
- 			raw_inode->i_block[2] = 0;
+ 	 * With delayed allocation, we don't log the i_disksize update
+@@ -2642,10 +2679,10 @@ static int ext4_da_write_end(struct file *file,
+ 	 * changes.  So let's piggyback the i_disksize mark_inode_dirty
+ 	 * into that.
+ 	 */
+-
+ 	new_i_size = pos + copied;
+ 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
+-		if (ext4_da_should_update_i_disksize(page, end)) {
++		if (ext4_has_inline_data(inode) ||
++		    ext4_da_should_update_i_disksize(page, end)) {
+ 			down_write(&EXT4_I(inode)->i_data_sem);
+ 			if (new_i_size > EXT4_I(inode)->i_disksize) {
+ 				/*
+@@ -2666,8 +2703,16 @@ static int ext4_da_write_end(struct file *file,
+ 			ext4_mark_inode_dirty(handle, inode);
  		}
--	} else
-+	} else if (!ext4_has_inline_data(inode)) {
- 		for (block = 0; block < EXT4_N_BLOCKS; block++)
- 			raw_inode->i_block[block] = ei->i_data[block];
-+	}
- 
- 	raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
- 	if (ei->i_extra_isize) {
+ 	}
+-	ret2 = generic_write_end(file, mapping, pos, len, copied,
++
++	if (write_mode != CONVERT_INLINE_DATA &&
++	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) &&
++	    ext4_has_inline_data(inode))
++		ret2 = ext4_da_write_inline_data_end(inode, pos, len, copied,
++						     page);
++	else
++		ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
++
+ 	copied = ret2;
+ 	if (ret2 < 0)
+ 		ret = ret2;
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 0586cb0..7d9bf51 100644
+index 91df676..24c6289 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -141,6 +141,15 @@ extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
- extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
- 
- extern int ext4_readpage_inline(struct inode *inode, struct page *page);
-+extern int ext4_try_to_write_inline_data(struct address_space *mapping,
-+					 struct inode *inode,
-+					 loff_t pos, unsigned len,
-+					 unsigned flags,
-+					 struct page **pagep);
-+extern int ext4_write_inline_data_end(struct inode *inode,
-+				      loff_t pos, unsigned len,
-+				      unsigned copied,
-+				      struct page *page);
+@@ -154,6 +154,15 @@ extern struct buffer_head *
+ ext4_journalled_write_inline_data(struct inode *inode,
+ 				  unsigned len,
+ 				  struct page *page);
++extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
++					   struct inode *inode,
++					   loff_t pos, unsigned len,
++					   unsigned flags,
++					   struct page **pagep,
++					   void **fsdata);
++extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
++					 unsigned len, unsigned copied,
++					 struct page *page);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -261,6 +270,23 @@ static inline int ext4_readpage_inline(struct inode *inode, struct page *page)
+@@ -299,6 +308,24 @@ ext4_journalled_write_inline_data(struct inode *inode,
  {
- 	return 0;
+ 	return NULL;
  }
 +
-+static inline int ext4_try_to_write_inline_data(struct address_space *mapping,
-+						struct inode *inode,
-+						loff_t pos, unsigned len,
-+						unsigned flags,
-+						struct page **pagep)
++static inline int
++ext4_da_write_inline_data_begin(struct address_space *mapping,
++				struct inode *inode,
++				loff_t pos, unsigned len,
++				unsigned flags,
++				struct page **pagep,
++				void **fsdata)
 +{
 +	return 0;
 +}
 +
-+static inline int ext4_write_inline_data_end(struct inode *inode,
-+					     loff_t pos, unsigned len,
-+					     unsigned copied,
-+					     struct page *page)
++static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
++						unsigned len, unsigned copied,
++						struct page *page)
 +{
 +	return 0;
 +}
