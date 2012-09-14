@@ -1,123 +1,108 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 22/23] ext4: let fallocate handle inline data correctly.
-Date: Fri, 14 Sep 2012 19:25:10 +0800
-Message-ID: <1347621911-4104-22-git-send-email-tm@tao.ma>
+Subject: [PATCH V6 13/23] ext4: Create a new function search_dir.
+Date: Fri, 14 Sep 2012 19:25:01 +0800
+Message-ID: <1347621911-4104-13-git-send-email-tm@tao.ma>
 References: <1347621512-3660-1-git-send-email-tm@tao.ma>
  <1347621911-4104-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy12-pub.bluehost.com ([50.87.16.10]:46164 "HELO
-	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752918Ab2INLeJ (ORCPT
+Received: from oproxy9.bluehost.com ([69.89.24.6]:36435 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752944Ab2INLeJ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:34:09 -0400
 Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TCU1l-0001sO-Do
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:41 -0600
+	id 1TCU1b-0001sO-OJ
+	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:32 -0600
 In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-If we are punching hole in a file, we will return ENOTSUPP.
-As for the fallocation of some extents, we will convert the
-inline data to a normal extent based file first.
+search_dirblock is used to search a dir block, but the code is
+almost the same for searching an inline dir.
+
+So create a new fuction search_dir and let search_dirblock
+call it.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/extents.c |    4 ++++
- fs/ext4/inline.c  |   39 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.h   |    5 +++++
- 3 files changed, 48 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h  |    7 +++++++
+ fs/ext4/namei.c |   26 +++++++++++++++++++-------
+ 2 files changed, 26 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index fc52ad9..e7b72b3 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4379,6 +4379,10 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
- 		return ext4_punch_hole(file, offset, len);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c7cd07e..c91116c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2088,6 +2088,13 @@ extern int ext4_orphan_add(handle_t *, struct inode *);
+ extern int ext4_orphan_del(handle_t *, struct inode *);
+ extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 				__u32 start_minor_hash, __u32 *next_hash);
++extern int search_dir(struct buffer_head *bh,
++		      char *search_buf,
++		      int buf_size,
++		      struct inode *dir,
++		      const struct qstr *d_name,
++		      unsigned int offset,
++		      struct ext4_dir_entry_2 **res_dir);
  
-+	ret = ext4_convert_inline_data(inode);
-+	if (ret)
-+		return ret;
-+
- 	trace_ext4_fallocate_enter(inode, offset, len, mode);
- 	map.m_lblk = offset >> blkbits;
- 	/*
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index bff1f23..d98eb46 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1837,3 +1837,42 @@ out:
- 	ext4_journal_stop(handle);
- 	return;
- }
-+
-+int ext4_convert_inline_data(struct inode *inode)
-+{
-+	int error, needed_blocks;
-+	handle_t *handle;
-+	struct ext4_iloc iloc;
-+
-+	if (!ext4_has_inline_data(inode)) {
-+		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-+		return 0;
-+	}
-+
-+	needed_blocks = ext4_writepage_trans_blocks(inode);
-+
-+	iloc.bh = NULL;
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
-+		return error;
-+
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle)) {
-+		error = PTR_ERR(handle);
-+		goto out_free;
-+	}
-+
-+	down_write(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode)) {
-+		up_write(&EXT4_I(inode)->xattr_sem);
-+		goto out;
-+	}
-+
-+	error = ext4_convert_inline_data_nolock(handle, inode, &iloc);
-+	up_write(&EXT4_I(inode)->xattr_sem);
-+out:
-+	ext4_journal_stop(handle);
-+out_free:
-+	brelse(iloc.bh);
-+	return error;
-+}
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 0aef19e..9a7986c 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -192,6 +192,7 @@ extern int ext4_try_to_evict_inline_data(handle_t *handle,
- 					 int needed);
- extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+ /* resize.c */
+ extern int ext4_group_add(struct super_block *sb,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 9491ecc..d3fc040 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1063,11 +1063,13 @@ static inline int ext4_match (int len, const char * const name,
+ /*
+  * Returns 0 if not found, -1 on failure, and 1 on success
+  */
+-static inline int search_dirblock(struct buffer_head *bh,
+-				  struct inode *dir,
+-				  const struct qstr *d_name,
+-				  unsigned int offset,
+-				  struct ext4_dir_entry_2 ** res_dir)
++int search_dir(struct buffer_head *bh,
++	       char *search_buf,
++	       int buf_size,
++	       struct inode *dir,
++	       const struct qstr *d_name,
++	       unsigned int offset,
++	       struct ext4_dir_entry_2 **res_dir)
+ {
+ 	struct ext4_dir_entry_2 * de;
+ 	char * dlimit;
+@@ -1075,8 +1077,8 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 	const char *name = d_name->name;
+ 	int namelen = d_name->len;
  
-+extern int ext4_convert_inline_data(struct inode *inode);
- # else  /* CONFIG_EXT4_FS_XATTR */
- 
- static inline int
-@@ -418,6 +419,10 @@ static inline void ext4_inline_data_truncate(struct inode *inode,
- 	return;
+-	de = (struct ext4_dir_entry_2 *) bh->b_data;
+-	dlimit = bh->b_data + dir->i_sb->s_blocksize;
++	de = (struct ext4_dir_entry_2 *)search_buf;
++	dlimit = search_buf + buf_size;
+ 	while ((char *) de < dlimit) {
+ 		/* this code is executed quadratically often */
+ 		/* do minimal checking `by hand' */
+@@ -1101,6 +1103,16 @@ static inline int search_dirblock(struct buffer_head *bh,
+ 	return 0;
  }
  
-+static int int ext4_convert_inline_data(struct inode *inode)
++static inline int search_dirblock(struct buffer_head *bh,
++				  struct inode *dir,
++				  const struct qstr *d_name,
++				  unsigned int offset,
++				  struct ext4_dir_entry_2 **res_dir)
 +{
-+	return 0;
++	return search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
++			  d_name, offset, res_dir);
 +}
- # endif  /* CONFIG_EXT4_FS_XATTR */
++
  
- #ifdef CONFIG_EXT4_FS_SECURITY
+ /*
+  *	ext4_find_entry()
 -- 
 1.7.1
 
