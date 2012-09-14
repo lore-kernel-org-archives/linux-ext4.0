@@ -1,211 +1,204 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V6 10/23] ext4: Create __ext4_insert_dentry for dir entry insertion.
-Date: Fri, 14 Sep 2012 19:24:58 +0800
-Message-ID: <1347621911-4104-10-git-send-email-tm@tao.ma>
+Subject: [PATCH V6 04/23] ext4: Add read support for inline data.
+Date: Fri, 14 Sep 2012 19:24:52 +0800
+Message-ID: <1347621911-4104-4-git-send-email-tm@tao.ma>
 References: <1347621512-3660-1-git-send-email-tm@tao.ma>
  <1347621911-4104-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:59445 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1758278Ab2INLZ3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:25:29 -0400
+Received: from oproxy12-pub.bluehost.com ([50.87.16.10]:52332 "HELO
+	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1756966Ab2INLZX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 07:25:23 -0400
 Received: from [182.92.247.2] (port=60014 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TCU1Y-0001sO-IY
-	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:28 -0600
+	id 1TCU1S-0001sO-5u
+	for linux-ext4@vger.kernel.org; Fri, 14 Sep 2012 05:25:22 -0600
 In-Reply-To: <1347621911-4104-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-The old add_dirent_to_buf handles all the work related to the
-work of adding dir entry to a dir block. Now we have inline data,
-so create 2 new function __ext4_find_dest_de and __ext4_insert_dentry
-that do the real work and let add_dirent_to_buf call them.
+Let readpage and readpages handle the case when we
+want to read an inlined file.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h  |   15 ++++++++
- fs/ext4/namei.c |  105 ++++++++++++++++++++++++++++++++++---------------------
- 2 files changed, 80 insertions(+), 40 deletions(-)
+ fs/ext4/inline.c |   61 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c  |   31 ++++++++++++++++++++++++++-
+ fs/ext4/xattr.h  |    7 ++++++
+ 3 files changed, 98 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 69c2c96..53e51f3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1937,6 +1937,21 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
-+extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+			     struct buffer_head *bh,
-+			     void *buf, int buf_size,
-+			     const char *name, int namelen,
-+			     struct ext4_dir_entry_2 **dest_de);
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen);
-+static inline void ext4_update_dx_flag(struct inode *inode)
-+{
-+	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
-+				     EXT4_FEATURE_COMPAT_DIR_INDEX))
-+		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
-+}
- 
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index cb9b2b8..bea5083 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1049,13 +1049,6 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- 	dx_set_count(entries, count + 1);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index aaa4461..6843fbc 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -449,6 +449,67 @@ out:
+ 	return error;
  }
  
--static void ext4_update_dx_flag(struct inode *inode)
--{
--	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
--				     EXT4_FEATURE_COMPAT_DIR_INDEX))
--		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
--}
--
- /*
-  * NOTE! unlike strncmp, ext4_match returns 1 for success, 0 for failure.
-  *
-@@ -1555,6 +1548,63 @@ errout:
- 	return NULL;
- }
- 
-+int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+		      struct buffer_head *bh,
-+		      void *buf, int buf_size,
-+		      const char *name, int namelen,
-+		      struct ext4_dir_entry_2 **dest_de)
++static int ext4_read_inline_page(struct inode *inode, struct page *page)
 +{
-+	struct ext4_dir_entry_2 *de;
-+	unsigned short reclen = EXT4_DIR_REC_LEN(namelen);
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
++	void *kaddr;
++	int ret = 0;
++	size_t len;
++	struct ext4_iloc iloc;
 +
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size - reclen;
-+	while ((char *) de <= top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		if (ext4_match(namelen, name, de))
-+			return -EEXIST;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		if ((de->inode ? rlen - nlen : rlen) >= reclen)
-+			break;
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
++	BUG_ON(!PageLocked(page));
++	BUG_ON(!ext4_has_inline_data(inode));
++	BUG_ON(page->index);
++
++	if (!EXT4_I(inode)->i_inline_off) {
++		ext4_warning(inode->i_sb, "inode %lu doesn't have inline data.",
++			     inode->i_ino);
++		goto out;
 +	}
-+	if ((char *) de > top)
-+		return -ENOSPC;
 +
-+	*dest_de = de;
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		goto out;
++
++	len = min_t(size_t, ext4_get_inline_size(inode), i_size_read(inode));
++	kaddr = kmap_atomic(page);
++	ret = ext4_read_inline_data(inode, kaddr, len, &iloc);
++	flush_dcache_page(page);
++	kunmap_atomic(kaddr);
++	zero_user_segment(page, len, PAGE_CACHE_SIZE);
++	SetPageUptodate(page);
++	brelse(iloc.bh);
++
++out:
++	return ret;
++}
++
++int ext4_readpage_inline(struct inode *inode, struct page *page)
++{
++	int ret = 0;
++
++	down_read(&EXT4_I(inode)->xattr_sem);
++	if (!ext4_has_inline_data(inode)) {
++		up_read(&EXT4_I(inode)->xattr_sem);
++		return -EAGAIN;
++	}
++
++	/*
++	 * Current inline data can only exist in the 1st page,
++	 * So for all the other pages, just set them uptodate.
++	 */
++	if (!page->index)
++		ret = ext4_read_inline_page(inode, page);
++	else if (!PageUptodate(page)) {
++		zero_user_segment(page, 0, PAGE_CACHE_SIZE);
++		SetPageUptodate(page);
++	}
++
++	up_read(&EXT4_I(inode)->xattr_sem);
++
++	unlock_page(page);
++	return ret >= 0 ? 0 : ret;
++}
++
+ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
+ {
+ 	int ret;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 084053a..acb329b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -680,6 +680,9 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 	int ret = 0, started = 0;
+ 	int dio_credits;
+ 
++	if (ext4_has_inline_data(inode))
++		return -ERANGE;
++
+ 	map.m_lblk = iblock;
+ 	map.m_len = bh->b_size >> inode->i_blkbits;
+ 
+@@ -2719,6 +2722,12 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
+ 	journal_t *journal;
+ 	int err;
+ 
++	/*
++	 * XXX: Can we arrive here for a inline file? Maybe not.
++	 */
++	if (ext4_has_inline_data(inode))
++		return 0;
++
+ 	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY) &&
+ 			test_opt(inode->i_sb, DELALLOC)) {
+ 		/*
+@@ -2764,14 +2773,30 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
+ 
+ static int ext4_readpage(struct file *file, struct page *page)
+ {
++	int ret = -EAGAIN;
++	struct inode *inode = page->mapping->host;
++
+ 	trace_ext4_readpage(page);
+-	return mpage_readpage(page, ext4_get_block);
++
++	if (ext4_has_inline_data(inode))
++		ret = ext4_readpage_inline(inode, page);
++
++	if (ret == -EAGAIN)
++		return mpage_readpage(page, ext4_get_block);
++
++	return ret;
+ }
+ 
+ static int
+ ext4_readpages(struct file *file, struct address_space *mapping,
+ 		struct list_head *pages, unsigned nr_pages)
+ {
++	struct inode *inode = mapping->host;
++
++	/* If the file has inline data, no need to do readpages. */
++	if (ext4_has_inline_data(inode))
++		return 0;
++
+ 	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+ }
+ 
+@@ -3151,6 +3176,10 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 	if (ext4_should_journal_data(inode))
+ 		return 0;
+ 
++	/* Let buffer I/O handle the inline data case. */
++	if (ext4_has_inline_data(inode))
++		return 0;
++
+ 	trace_ext4_direct_IO_enter(inode, offset, iov_length(iov, nr_segs), rw);
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 		ret = ext4_ext_direct_IO(rw, iocb, iov, offset, nr_segs);
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 8c51edf..0586cb0 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -139,6 +139,8 @@ extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
+ extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+ 				 unsigned int len);
+ extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
++
++extern int ext4_readpage_inline(struct inode *inode, struct page *page);
+ # else  /* CONFIG_EXT4_FS_XATTR */
+ 
+ static inline int
+@@ -254,6 +256,11 @@ static inline int ext4_destroy_inline_data(handle_t *handle,
+ {
+ 	return 0;
+ }
++
++static inline int ext4_readpage_inline(struct inode *inode, struct page *page)
++{
 +	return 0;
 +}
-+
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen)
-+{
-+
-+	int nlen, rlen;
-+
-+	nlen = EXT4_DIR_REC_LEN(de->name_len);
-+	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+	if (de->inode) {
-+		struct ext4_dir_entry_2 *de1 =
-+				(struct ext4_dir_entry_2 *)((char *)de + nlen);
-+		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, buf_size);
-+		de->rec_len = ext4_rec_len_to_disk(nlen, buf_size);
-+		de = de1;
-+	}
-+	de->file_type = EXT4_FT_UNKNOWN;
-+	de->inode = cpu_to_le32(inode->i_ino);
-+	ext4_set_de_type(inode->i_sb, de, inode->i_mode);
-+	de->name_len = namelen;
-+	memcpy(de->name, name, namelen);
-+}
- /*
-  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
-  * it points to a directory entry which is guaranteed to be large
-@@ -1570,12 +1620,10 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
- 	int		namelen = dentry->d_name.len;
--	unsigned int	offset = 0;
- 	unsigned int	blocksize = dir->i_sb->s_blocksize;
- 	unsigned short	reclen;
--	int		nlen, rlen, err;
--	char		*top;
- 	int		csum_size = 0;
-+	int		err;
+ # endif  /* CONFIG_EXT4_FS_XATTR */
  
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
- 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-@@ -1583,23 +1631,11 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 
- 	reclen = EXT4_DIR_REC_LEN(namelen);
- 	if (!de) {
--		de = (struct ext4_dir_entry_2 *)bh->b_data;
--		top = bh->b_data + (blocksize - csum_size) - reclen;
--		while ((char *) de <= top) {
--			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
--						 bh->b_size, offset))
--				return -EIO;
--			if (ext4_match(namelen, name, de))
--				return -EEXIST;
--			nlen = EXT4_DIR_REC_LEN(de->name_len);
--			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--			if ((de->inode? rlen - nlen: rlen) >= reclen)
--				break;
--			de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
--			offset += rlen;
--		}
--		if ((char *) de > top)
--			return -ENOSPC;
-+		err = ext4_find_dest_de(dir, inode,
-+					bh, bh->b_data, blocksize - csum_size,
-+					name, namelen, &de);
-+		if (err)
-+			return err;
- 	}
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh);
-@@ -1609,19 +1645,8 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	}
- 
- 	/* By now the buffer is marked for journaling */
--	nlen = EXT4_DIR_REC_LEN(de->name_len);
--	rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--	if (de->inode) {
--		struct ext4_dir_entry_2 *de1 = (struct ext4_dir_entry_2 *)((char *)de + nlen);
--		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, blocksize);
--		de->rec_len = ext4_rec_len_to_disk(nlen, blocksize);
--		de = de1;
--	}
--	de->file_type = EXT4_FT_UNKNOWN;
--	de->inode = cpu_to_le32(inode->i_ino);
--	ext4_set_de_type(dir->i_sb, de, inode->i_mode);
--	de->name_len = namelen;
--	memcpy(de->name, name, namelen);
-+	ext4_insert_dentry(inode, de, blocksize, name, namelen);
-+
- 	/*
- 	 * XXX shouldn't update any times until successful
- 	 * completion of syscall, but too many callers depend
+ #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.1
 
