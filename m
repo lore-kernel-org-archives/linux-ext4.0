@@ -1,58 +1,68 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/7] ext4: ext4_inode_info diet
-Date: Sat, 15 Sep 2012 11:53:06 -0400
-Message-ID: <20120915155306.GA5446@thunk.org>
-References: <1347211634-11509-1-git-send-email-dmonakhov@openvz.org>
- <1347211634-11509-2-git-send-email-dmonakhov@openvz.org>
- <20120913105022.GE11330@gmail.com>
- <871ui65g2r.fsf@openvz.org>
+Subject: Re: [v2] ext4: fix possible non-initialized variable
+Date: Sat, 15 Sep 2012 14:30:23 -0400
+Message-ID: <20120915183023.GA9895@thunk.org>
+References: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	jack@suse.cz, wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: linux-ext4@vger.kernel.org
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50826 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:50830 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750926Ab2IOR1h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Sep 2012 13:27:37 -0400
+	id S1754458Ab2IOSaa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Sep 2012 14:30:30 -0400
 Content-Disposition: inline
-In-Reply-To: <871ui65g2r.fsf@openvz.org>
+In-Reply-To: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 13, 2012 at 03:15:40PM +0400, Dmitry Monakhov wrote:
-> Current buffer.c API layering looks sub-optimal
-> 
-> ->xxx_fs_routine: May create different contexts
->    ->generic_buffer_methods(inode, bh..)
->      ->xxx_fs_get_block(inode, bh,...): There is no efficient way to pass fscontext 
-> Both xxx_fs_routine and xxx_fs_get_block are fs specific, but
-> the only way to pass fscontext down to get_block is to pass it by
-> attaching it to inode, which make it implicit serialization point.
-> 
-> I just want to add fsprivate argument to get_block_t callback similar
-> write_begin/write_end and iocb->private, so filesystem will able to pass
-> it to it's get_block callback.
+On Mon, Sep 10, 2012 at 11:55:48AM -0000, Carlos Maiolino wrote:
+> htree_dirblock_to_tree() declares a non-initialized 'err' variable,
+> which is passed as a reference to another functions expecting them
+> to set this variable with thei error codes.  It's passed to
+> ext4_bread(), which then passes it to ext4_getblk(). If
+> ext4_map_blocks() returns 0 due to a lookup failure, leaving the
+> ext4_getblk() buffer_head uninitialized, it will make ext4_getblk()
+> return to ext4_bread() without initialize the 'err' variable, and
+> ext4_bread() will return to htree_dirblock_to_tree() with this
+> variable still uninitialized.
 
-If we're going to change the function prototype for get_block_t, it
-might also be good to fix a long-standing ugliness with this interface
-which is that the get_block() interface does two very different things
-when bh->b_size is greater a single block.  If b_size is a greater a
-block, then instead of bh being a "real" buffer_head, it's a pseudo
-map_bh.  This is annoying because map_bh is generally allocated on the
-stack, but most of the fields are unused, since it's not really a
-_real_ buffer_head, but just a countainer for a handful of fields used
-by the AIO/DIO and mpage.c functions.
+Hi Carlos,
 
-Instead of changing get_block(), which would require lots of changes
-all over the kernel, what I'd suggest doing instead is creating a new
-function which I'd propose calling get_map() which fills in a new
-structure which replaces map_bh, and which includes the aio_dio
-structure.  It could be made mandatory for the few file systems which
-support DIO, but that way we don't havec to change the dozens of other
-file systems which don't use the DIO code paths.
+Thanks for noticing this problem!
+
+In the case where there is no block mapping for a particular block,
+ext4_bread() can return NULL, and with your patch, *err will now be
+zero instead of some uninitialized value.  That's an improvement, and
+in the case of htree_dirblock_to_tree(), when we return 0 as an
+"error", the caller will do the right thing.
+
+But there are other places where when ext4_bread() returns NULL with
+err set to 0, the function ends up returning err, i.e., in ext4_add_entry:
+
+		bh = ext4_bread(handle, dir, block, 0, &retval);
+		if(!bh)
+			return retval;
+
+... which will cause the caller of ext4_add_entry() to think that the
+function had succeeded.
+
+In the case of directories, there is never supposed to "holes" in
+directories, so the right thing to do is to check to see if err = 0
+and in that case to call ext4_error() to mark the file system as being
+inconsistent, and then returning some kind of error like -EIO.
+
+So your patch is an improvement, but I'm worried that there were cases
+where we had been returning some uninitialized, non-zero stack
+garbage, we had been serendipously treating the case of a directory
+hole as an "error", now we we consider that situation as a "success"
+even though the calling function (such as ext4_add_entry) had not
+completed its processing.  Which is a very long-winded way of saying
+that we need to audit all of the functions which call ext4_bread() so
+that they do the right thing when ext4_bread() returns NULL and err is
+set to zero.
 
 Regards,
 
-					- Ted
+						- Ted
