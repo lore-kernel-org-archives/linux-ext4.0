@@ -1,47 +1,33 @@
-From: Anatol Pomozov <anatol.pomozov@gmail.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
 Subject: Re: ext4_orphan_del() sleeps in non-journal mode
-Date: Fri, 14 Sep 2012 19:15:05 -0700
-Message-ID: <CAOMFOmVRRt2UQEZC=_ZYz+wHN=BaCG1DjD0tWv=Ad2DCus5Syw@mail.gmail.com>
+Date: Sat, 15 Sep 2012 14:06:21 +0400
+Message-ID: <87zk4rwqg2.fsf@openvz.org>
 References: <CAOMFOmWB4yxj65N2x5+KREmiQBdPoWsTiA7EBW6ONPBOyFo11w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Anatol Pomozov <anatol.pomozov@gmail.com>,
+	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:62814 "EHLO
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:51592 "EHLO
 	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752490Ab2IOCPI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Sep 2012 22:15:08 -0400
-Received: by lbbgj3 with SMTP id gj3so3169775lbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Sep 2012 19:15:05 -0700 (PDT)
+	with ESMTP id S1751976Ab2IOKGZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Sep 2012 06:06:25 -0400
+Received: by lbbgj3 with SMTP id gj3so3285265lbb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Sep 2012 03:06:23 -0700 (PDT)
 In-Reply-To: <CAOMFOmWB4yxj65N2x5+KREmiQBdPoWsTiA7EBW6ONPBOyFo11w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-BTW if we had a compile flag that turns off journal code in ext4 we
-might add a stub functions
-
-#ifdef CONFIG_EXT4_JOURNAL
-
-ext4_orphan_add() { ...the code... }
-
-#else
-
-/* a stub here */
-
-ext4_orphan_add() { no-op function }
-
-#end
-
-On Fri, Sep 14, 2012 at 2:06 PM, Anatol Pomozov
-<anatol.pomozov@gmail.com> wrote:
+On Fri, 14 Sep 2012 14:06:10 -0700, Anatol Pomozov <anatol.pomozov@gmail.com> wrote:
 > Hi,
->
+> 
 > I am debugging one issue that happens on our servers. We use ext4 with
 > non-journaling mode (2.6.34 kernel) and when we try to use
 > asynchronous IO we see following oops in dmesg:
->
+Strange.. I can't find the exact place there ext4_end_io_dio 
+invokes ext4_orphan_del(). Can you please post the place you are
+talking about.
+> 
 > <3>[ 3983.762966] bad: scheduling from the idle thread!
 > <4>[ 3983.762968] Pid: 0, comm: swapper
 > <4>[ 3983.762970] Call Trace:
@@ -81,21 +67,21 @@ On Fri, Sep 14, 2012 at 2:06 PM, Anatol Pomozov
 > <4>[ 3983.763094]  [<ffffffff81b45c62>] start_kernel+0x3b7/0x3c3
 > <4>[ 3983.763097]  [<ffffffff81b45331>] x86_64_start_reservations+0x141/0x145
 > <4>[ 3983.763101]  [<ffffffff81b4544c>] x86_64_start_kernel+0x117/0x11e
->
->
->
+> 
+> 
+> 
 > So the problem is that ext4_orphan_del() wants to sleep in softirq
 > context. I started debugging and here are some questions.
->
+> 
 > The first question is why ext4_orphan_del() sleeps in no-journal mode
 > at all. It gets mutex to manipulate with i_orphan list but this list
 > is used only in journaling mode. In non-journal mode (in my case) both
 > ext4_orphan_del() and ext4_orphan_add() should be no-op.
->
+> 
 > ext4_orphan_del() gets mutex in no-journal mode when it is called with
 > NULL as a first parameter. There are 10 places in fs/ext4 where it
 > happens:
->
+> 
 > $ git grep "ext4_orphan_del(NULL"
 > fs/ext4/indirect.c:845:                         ext4_orphan_del(NULL, inode);
 > fs/ext4/inode.c:249:            ext4_orphan_del(NULL, inode);
@@ -108,12 +94,12 @@ On Fri, Sep 14, 2012 at 2:06 PM, Anatol Pomozov
 > ext4_orphan_del(NULL, inode);
 > fs/ext4/inode.c:4365:           ext4_orphan_del(NULL, inode);
 > fs/ext4/migrate.c:516:          ext4_orphan_del(NULL, tmp_inode);
->
->
+> 
+> 
 > There was a change that fixes ext4_orphan_del(NULL) issue in
 > ext4_setattr for no-journal mode 3d287de3b828 . And I think we should
 > fix all other places as well.
->
+> 
 > There are several possible solutions for this issue:
 > 1) Pass handle received by ext4_journal_current_handle() or similar.
 > Why do we pass NULL at all when we can use the handle? I see that in
@@ -125,8 +111,12 @@ On Fri, Sep 14, 2012 at 2:06 PM, Anatol Pomozov
 > 3) Inside ext4_orphan_del() and ext4_orphan_add() check if journal is
 > enabled. Do nothing if this is no-journal mode. What is the best way
 > to check no-journal mode? Is it just "if (EXT4_SB(sb)->s_journal) ..."
->
+> 
 > It seems that #1 is the best way.
->
+> 
 > PS once this no-journal issue will be clarified I'll take a look at
 > sleeping issue in journaling mode.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
