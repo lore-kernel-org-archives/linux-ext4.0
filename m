@@ -1,68 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [v2] ext4: fix possible non-initialized variable
-Date: Sat, 15 Sep 2012 14:30:23 -0400
-Message-ID: <20120915183023.GA9895@thunk.org>
-References: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
+From: Anatol Pomozov <anatol.pomozov@gmail.com>
+Subject: Re: ext4_orphan_del() sleeps in non-journal mode
+Date: Sat, 15 Sep 2012 15:28:19 -0700
+Message-ID: <CAOMFOmWh3CVdREk5uyPCxwFQBTopiqainfGYxC6HijieM1rEWA@mail.gmail.com>
+References: <CAOMFOmWB4yxj65N2x5+KREmiQBdPoWsTiA7EBW6ONPBOyFo11w@mail.gmail.com>
+	<87zk4rwqg2.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:50830 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754458Ab2IOSaa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 15 Sep 2012 14:30:30 -0400
-Content-Disposition: inline
-In-Reply-To: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:63604 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751490Ab2IOW2V (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Sep 2012 18:28:21 -0400
+Received: by lbbgj3 with SMTP id gj3so3489728lbb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Sep 2012 15:28:19 -0700 (PDT)
+In-Reply-To: <87zk4rwqg2.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 11:55:48AM -0000, Carlos Maiolino wrote:
-> htree_dirblock_to_tree() declares a non-initialized 'err' variable,
-> which is passed as a reference to another functions expecting them
-> to set this variable with thei error codes.  It's passed to
-> ext4_bread(), which then passes it to ext4_getblk(). If
-> ext4_map_blocks() returns 0 due to a lookup failure, leaving the
-> ext4_getblk() buffer_head uninitialized, it will make ext4_getblk()
-> return to ext4_bread() without initialize the 'err' variable, and
-> ext4_bread() will return to htree_dirblock_to_tree() with this
-> variable still uninitialized.
+D'oh, sorry.
 
-Hi Carlos,
+I did not realize that it is our local modification that calls
+ext4_orphan_del(NULL) from ext4_end_io_dio. So please ignore the issue
+"ext4_orphan_del sleeps in softirq context".
 
-Thanks for noticing this problem!
+But the other more general issue "ext4_orphan_del sleeps in no-journal
+mode" still applies. As Dmitry mentioned in this commit 3d287de3b828
+such sleep might degrade performance. In no-journal mode we do not
+need to manipulate with i_orphan list and no reason to take the mutex.
 
-In the case where there is no block mapping for a particular block,
-ext4_bread() can return NULL, and with your patch, *err will now be
-zero instead of some uninitialized value.  That's an improvement, and
-in the case of htree_dirblock_to_tree(), when we return 0 as an
-"error", the caller will do the right thing.
+I checked all ext4_orphan_del(NULL,...) usages and some of them look
+good for me, e.g.
 
-But there are other places where when ext4_bread() returns NULL with
-err set to 0, the function ends up returning err, i.e., in ext4_add_entry:
+		handle = ext4_journal_start(inode, 2);
+		if (IS_ERR(handle)) {
+			if (inode->i_nlink)
+				ext4_orphan_del(NULL, inode);
 
-		bh = ext4_bread(handle, dir, block, 0, &retval);
-		if(!bh)
-			return retval;
+In this example we take handle and important thing to note here is
+that IS_ERR(handle) can be true only in journal mode when starting
+journal failed. In non-journal mode ext4_journal_start() *always*
+returns a fake handle that is non-error (see ext4_get_nojournal). So
+the example above never sleeps in ext4_orphan_del().
 
-... which will cause the caller of ext4_add_entry() to think that the
-function had succeeded.
+But there are other examples where sleep might happen (at current HEAD
+3f0c3c8fe):
 
-In the case of directories, there is never supposed to "holes" in
-directories, so the right thing to do is to check to see if err = 0
-and in that case to call ext4_error() to mark the file system as being
-inconsistent, and then returning some kind of error like -EIO.
+inode.c:281
+inode.c:956
+inode.c:1069
+inode.c:1111
+inode.c:1177
 
-So your patch is an improvement, but I'm worried that there were cases
-where we had been returning some uninitialized, non-zero stack
-garbage, we had been serendipously treating the case of a directory
-hole as an "error", now we we consider that situation as a "success"
-even though the calling function (such as ext4_add_entry) had not
-completed its processing.  Which is a very long-winded way of saying
-that we need to audit all of the functions which call ext4_bread() so
-that they do the right thing when ext4_bread() returns NULL and err is
-set to zero.
-
-Regards,
-
-						- Ted
+I think we need to fix these 5 places. In all other cases we check
+IS_ERR(handle) and thus do not call ext4_orphan_del() in no-journal
+mode.
