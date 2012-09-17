@@ -1,43 +1,57 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 00/36 v4] e2fsprogs: make e2fsprogs support inline data
-Date: Mon, 17 Sep 2012 10:04:21 +0800
-Message-ID: <20120917020421.GA16320@gmail.com>
-References: <1343735309-30579-1-git-send-email-wenqing.lz@taobao.com>
- <20120917010645.GB15224@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: tests: kill debugfs on interrupted MMP test
+Date: Sun, 16 Sep 2012 22:03:33 -0400
+Message-ID: <20120917020333.GC15224@thunk.org>
+References: <1347303887-5513-1-git-send-email-adilger@dilger.ca>
+ <20120917011206.GA11666@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:39629 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752068Ab2IQBxy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Sep 2012 21:53:54 -0400
-Received: by dady13 with SMTP id y13so561788dad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 16 Sep 2012 18:53:53 -0700 (PDT)
+Received: from li9-11.members.linode.com ([67.18.176.11]:51001 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752224Ab2IQCDh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 16 Sep 2012 22:03:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20120917010645.GB15224@thunk.org>
+In-Reply-To: <20120917011206.GA11666@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 16, 2012 at 09:06:45PM -0400, Theodore Ts'o wrote:
-> On Tue, Jul 31, 2012 at 07:47:53PM +0800, Zheng Liu wrote:
-> > Hi list,
+On Sun, Sep 16, 2012 at 09:12:06PM -0400, Theodore Ts'o wrote:
+> On Mon, Sep 10, 2012 at 09:04:47AM -0000, Andreas Dilger wrote:
+> > If the f_mmp test is interrupted during its test run, then it can
+> > leave debugfs busy-looping in the background.  Since f_mmp is a
+> > relatively long-running test, and is likely to be running during
+> > a parallel test run, this can happen fairly often.
 > > 
-> > Here is v4 for making e2fsprogs support inline data.
+> > Set a signal trap for the f_mmp test script being killed, so that
+> > the background debugfs command will always be killed by the test.
+> > 
+> > Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 > 
-> Hi Zheng,
-> 
-> I see Tao Ma has released a new set of kernel patches for inline data.
-> 
-> Is there an updated version for the e2fsprogs patches that I should
-> use when testing/evaluating the inline data patch?
+> Thanks, applied.
 
-Hi Ted,
+Oops, I'm going to guess you didn't test your patch after making a
+last minute change to it.  I had to make the following change to the
+f_mmp script to fix a problem where kill would complain about a
+non-existing process id (because it was triyng to kill the already
+exited awk process):
 
-Sorry about that.  Now mke2fs, tune2fs, and e2fsck has an updated
-version for e2fsprogs, but there still has some works to be done
-in debugfs.  I could finish it at this week, and send it out.
+diff --git a/tests/f_mmp/script b/tests/f_mmp/script
+index c1f13fc..d921672 100644
+--- a/tests/f_mmp/script
++++ b/tests/f_mmp/script
+@@ -21,8 +21,8 @@ fi
+ 
+ kill_debugfs() {
+ 	trap 0
+-	PID=$(ps -o pid,command | awk "/debugfs -w $TMPFILE/ { print \$1 }" |
+-	      grep -v awk)
++	PID=$(ps -o pid,command | grep -v awk |
++		awk "/debugfs -w $TMPFILE/ { print \$1 }")
+ 	[ "x$PID" != "x" ] && kill -9 $PID
+ }
+ 
 
-Regards,
-Zheng
+						- Ted
