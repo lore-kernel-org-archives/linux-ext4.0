@@ -1,52 +1,54 @@
 From: Ben Myers <bpm@sgi.com>
-Subject: Re: Anyone have test cases for SEEK_HOLE/SEEK_DATA?
-Date: Tue, 18 Sep 2012 14:03:45 -0500
-Message-ID: <20120918190345.GU3274@sgi.com>
-References: <nsxa9wojdcd.fsf@closure.thunk.org>
- <20120918064039.GS11511@dastard>
- <50588898.6050802@sgi.com>
- <20120918181556.GC28689@thunk.org>
- <20120918182841.GA3343@sgi.com>
- <20120918184201.GD28689@thunk.org>
+Subject: Re: Test 272 fails for ext3
+Date: Tue, 18 Sep 2012 16:26:40 -0500
+Message-ID: <20120918212640.GW3274@sgi.com>
+References: <20120816092808.GA9057@quack.suse.cz>
+ <20120816093757.GA11519@quack.suse.cz>
+ <20120816224858.GY2877@dastard>
+ <20120820162212.GA17354@quack.suse.cz>
+ <20120820210638.GA4591@quack.suse.cz>
+ <20120820224941.GG19235@dastard>
+ <20120821080338.GA7537@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Mark Tinguely <tinguely@sgi.com>, xfs@oss.sgi.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+	dmonakhov@openvz.org, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from relay2.sgi.com ([192.48.179.30]:42500 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754802Ab2IRV0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Sep 2012 17:26:44 -0400
 Content-Disposition: inline
-In-Reply-To: <20120918184201.GD28689@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20120821080338.GA7537@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hey Ted,
-
-On Tue, Sep 18, 2012 at 02:42:01PM -0400, Theodore Ts'o wrote:
-> On Tue, Sep 18, 2012 at 01:28:41PM -0500, Ben Myers wrote:
-> > Your impression is just a few days out of date.  See:
+On Tue, Aug 21, 2012 at 10:03:39AM +0200, Jan Kara wrote:
+> On Tue 21-08-12 08:49:41, Dave Chinner wrote:
+> > On Mon, Aug 20, 2012 at 11:06:38PM +0200, Jan Kara wrote:
+> > ....
+> > > --- a/272
+> > > +++ b/272
+> > > @@ -32,15 +32,18 @@ tmp=/tmp/$$
+> > >  status=1	# failure is the default!
+> > >  trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
+> > >  
+> > > +write_opt_list="iflag=noatime conv=notrunc conv=fsync oflag=direct"
+> > > +if [ $FSTYP = "ext3" ]; then
+> > > +	# ext3 doesn't support direct IO in journalling mode
+> > > +	write_opt_list="iflag=noatime conv=notrunc conv=fsync"
+> > > +fi
 > > 
-> > http://oss.sgi.com/archives/xfs/2012-09/msg00156.html
-> 
-> On a unrelated note, has there been any thought about potentially
-> setting up a separate mailing list dedicated for xfstests?
+> > Seems like asking for trouble duplicating the common options.
+> > 
+> > # ext3 doesn't support direct IO in journalling mode
+> > write_opt_list="iflag=noatime conv=notrunc conv=fsync
+> > [ $FSTYP = "ext4" ] && write_opt_list="$write_opt_list oflag=direct"
+> > 
+> > Otherwise looks fine.
+> > 
+> > Reviewed-by: Dave Chinner <dchinner@redhat.com>
+>   OK, I've updated the test as you suggested. Result is attached.
 
-You might even be the first person to suggest that.  ;)
-
-> I'm not
-> subscribed to the xfs mailing list, mainly because I was trying to
-> avoid adding yet another high volume mailing list to my inbox
-> (although to be fair, I guess it's only 25 messages per day even on
-> the busiest days), and so I've missed out on review of Dave's changes
-> to break out the tests into hierarchies, etc.  I wonder if there are
-> other xfstests users that aren't yet subscribed to the xfs mailing
-> list who would if there was a separate mailing list.
-> 
-> Not a big deal; if people really don't want a separate mailing list, I
-> guess I could subscribe to the xfs list as well...
-
-I think it's worth discussing and I'm not resistant to a separate list.  But
-like you said, xfs@oss.sgi.com isn't extremely high volume.  Maybe a filter for
-xfstests in the subject would be good enough for your purposes?
-
-Regards,
-	Ben
+Committed to git://oss.sgi.com/xfs/cmds/xfstests.git, master branch.
