@@ -1,49 +1,63 @@
-From: Mark Tinguely <tinguely@sgi.com>
-Subject: Re: Anyone have test cases for SEEK_HOLE/SEEK_DATA?
-Date: Tue, 18 Sep 2012 09:43:36 -0500
-Message-ID: <50588898.6050802@sgi.com>
-References: <nsxa9wojdcd.fsf@closure.thunk.org> <20120918064039.GS11511@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20120918064039.GS11511@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Anatol Pomozov <anatol.pomozov@gmail.com>
+Subject: [PATCH] Make orphan functions no-op in no-journal mode
+Date: Tue, 18 Sep 2012 08:53:05 -0700
+Message-ID: <1347983585-22940-1-git-send-email-anatol.pomozov@gmail.com>
+References: <1347904037-24229-1-git-send-email-anatol.pomozov@gmail.com>
+Cc: Anatol Pomozov <anatol.pomozov@gmail.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vb0-f74.google.com ([209.85.212.74]:65226 "EHLO
+	mail-vb0-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757332Ab2IRPxP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Sep 2012 11:53:15 -0400
+Received: by vbis24 with SMTP id s24so843274vbi.1
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 08:53:14 -0700 (PDT)
+In-Reply-To: <1347904037-24229-1-git-send-email-anatol.pomozov@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/18/12 01:40, Dave Chinner wrote:
-> On Mon, Sep 17, 2012 at 10:04:34PM -0400, Theodore Ts'o wrote:
->>
->> Does anyone have test cases for SEEK_HOLE/SEEK_DATA handy?  As near as I
->> can tell xfstests doesn't have any tests for SEEK_HOLE/SEEK_DATA
->> functionality, and I was hoping someone had some test programs and test
->> sets already written.
->
-> Perhaps a cc to xfs@oss.sgi.com so the xfstests maintainers see the
-> question would be a sensible idea?
->
-> As it is, there are tests pending check-in that test
-> seek-data/seek-hole functionality - they were used to verify the
-> unwritten extent aware XFS implementation that recently went into
-> the kernel....
->
-> Cheers,
->
-> Dave.
+Instead of checking whether the handle is valid, we check if journal is
+enabled. This avoids using shared mutext usage in all cases when
+ext4_orphan_del(NULL,..) is called in no-journal mode (i.e. in error
+path).
 
-xfstest 285 and 286 (I believe these tests were only in the OSS version 
-and not in the kernel.org developers version of xfstests).
+Signed-off-by: Anatol Pomozov <anatol.pomozov@gmail.com>
+---
+ fs/ext4/namei.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-There is rough version of another test that I got directly from Jeff 
-Lui, the person who wrote the SEEK_HOLE/SEEK_DATA feature in XFS. This 
-version tests the advance features of SEEK_HOLE/SEEK_DATA.
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2a42cc0..341ab7e 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2362,7 +2362,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 	struct ext4_iloc iloc;
+ 	int err = 0, rc;
+ 
+-	if (!ext4_handle_valid(handle))
++	if (!EXT4_SB(sb)->s_journal)
+ 		return 0;
+ 
+ 	mutex_lock(&EXT4_SB(sb)->s_orphan_lock);
+@@ -2436,8 +2436,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 	struct ext4_iloc iloc;
+ 	int err = 0;
+ 
+-	/* ext4_handle_valid() assumes a valid handle_t pointer */
+-	if (handle && !ext4_handle_valid(handle))
++	if (!EXT4_SB(inode->i_sb)->s_journal)
+ 		return 0;
+ 
+ 	mutex_lock(&EXT4_SB(inode->i_sb)->s_orphan_lock);
+@@ -2456,7 +2455,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+ 	 * transaction handle with which to update the orphan list on
+ 	 * disk, but we still need to remove the inode from the linked
+ 	 * list in memory. */
+-	if (sbi->s_journal && !handle)
++	if (!handle)
+ 		goto out;
+ 
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+-- 
+1.7.12
 
-Ben asked me about this advanced test when he committed the advance 
-features of SEEK_HOLE/SEEK_DATA to the XFS OSS tree. To the best of my 
-knowledge, this test has not been submitted as an xfstest so we could 
-not add it then.
-
---Mark Tinguely.
