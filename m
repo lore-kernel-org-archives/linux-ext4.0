@@ -1,52 +1,49 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [v2] ext4: fix possible non-initialized variable
-Date: Tue, 18 Sep 2012 09:51:55 -0300
-Message-ID: <20120918125155.GA30408@andromeda.usersys.redhat.com>
-References: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
- <20120915183023.GA9895@thunk.org>
- <505739F8.9050305@redhat.com>
- <50574226.3020908@redhat.com>
- <20120917153701.GA5510@thunk.org>
- <20120917182604.GA1959@andromeda.usersys.redhat.com>
- <20120918035931.GB32195@thunk.org>
+From: Mark Tinguely <tinguely@sgi.com>
+Subject: Re: Anyone have test cases for SEEK_HOLE/SEEK_DATA?
+Date: Tue, 18 Sep 2012 09:43:36 -0500
+Message-ID: <50588898.6050802@sgi.com>
+References: <nsxa9wojdcd.fsf@closure.thunk.org> <20120918064039.GS11511@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8115 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932097Ab2IRMv6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Sep 2012 08:51:58 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8ICpwQl004923
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 08:51:58 -0400
-Received: from andromeda.usersys.redhat.com (vpn1-7-14.gru2.redhat.com [10.97.7.14])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q8ICptSx026267
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 08:51:58 -0400
-Content-Disposition: inline
-In-Reply-To: <20120918035931.GB32195@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120918064039.GS11511@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 17, 2012 at 11:59:31PM -0400, Theodore Ts'o wrote:
-> On Mon, Sep 17, 2012 at 03:26:04PM -0300, Carlos Maiolino wrote:
-> > 
-> > based on this conversation, is there anything else I should do to have this
-> > patch accepted?
-> 
-> OK, I've applied this patch to my tree.  However, I would really
-> appreciate if you could indeed review the callers for ext4_bread() and
-> ext3_bread() and send patches for ext3 and ext4 as you have suggested,
-> thanks!!
-> 
-On my todo list.
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 09/18/12 01:40, Dave Chinner wrote:
+> On Mon, Sep 17, 2012 at 10:04:34PM -0400, Theodore Ts'o wrote:
+>>
+>> Does anyone have test cases for SEEK_HOLE/SEEK_DATA handy?  As near as I
+>> can tell xfstests doesn't have any tests for SEEK_HOLE/SEEK_DATA
+>> functionality, and I was hoping someone had some test programs and test
+>> sets already written.
+>
+> Perhaps a cc to xfs@oss.sgi.com so the xfstests maintainers see the
+> question would be a sensible idea?
+>
+> As it is, there are tests pending check-in that test
+> seek-data/seek-hole functionality - they were used to verify the
+> unwritten extent aware XFS implementation that recently went into
+> the kernel....
+>
+> Cheers,
+>
+> Dave.
 
--- 
---Carlos
+xfstest 285 and 286 (I believe these tests were only in the OSS version 
+and not in the kernel.org developers version of xfstests).
+
+There is rough version of another test that I got directly from Jeff 
+Lui, the person who wrote the SEEK_HOLE/SEEK_DATA feature in XFS. This 
+version tests the advance features of SEEK_HOLE/SEEK_DATA.
+
+Ben asked me about this advanced test when he committed the advance 
+features of SEEK_HOLE/SEEK_DATA to the XFS OSS tree. To the best of my 
+knowledge, this test has not been submitted as an xfstest so we could 
+not add it then.
+
+--Mark Tinguely.
