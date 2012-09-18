@@ -1,34 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [v2] ext4: fix possible non-initialized variable
-Date: Mon, 17 Sep 2012 23:59:31 -0400
-Message-ID: <20120918035931.GB32195@thunk.org>
-References: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
- <20120915183023.GA9895@thunk.org>
- <505739F8.9050305@redhat.com>
- <50574226.3020908@redhat.com>
- <20120917153701.GA5510@thunk.org>
- <20120917182604.GA1959@andromeda.usersys.redhat.com>
+Subject: Re: [PATCH RFC 1/2] ext4: speed-up truncate/unlink
+Date: Tue, 18 Sep 2012 00:10:06 -0400
+Message-ID: <20120918041006.GC32195@thunk.org>
+References: <CAA0+VHzw55=4X43GK9RkRK_q4qmzR8KyqrrFidQMCPb6r4nPeA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Andrey Sidorov <qrxd43@motorola.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51220 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:51224 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932657Ab2IRD7e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Sep 2012 23:59:34 -0400
+	id S1750846Ab2IREKK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Sep 2012 00:10:10 -0400
 Content-Disposition: inline
-In-Reply-To: <20120917182604.GA1959@andromeda.usersys.redhat.com>
+In-Reply-To: <CAA0+VHzw55=4X43GK9RkRK_q4qmzR8KyqrrFidQMCPb6r4nPeA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 17, 2012 at 03:26:04PM -0300, Carlos Maiolino wrote:
-> 
-> based on this conversation, is there anything else I should do to have this
-> patch accepted?
+On Tue, Sep 18, 2012 at 01:00:30AM +0400, Andrey Sidorov wrote:
+> Do not iterate over data blocks scanning for bh's to forget as they're
+> never exist. This improves time taken by unlink / truncate syscall.
+> Tested by continuously truncating file that is being written by dd.
+> Another test is rm -rf of linux tree while tar unpacks it. With
+> ordered data mode condition unlikely(!tbh) was always met in
+> ext4_free_blocks. With journal data mode tbh was found only few times,
+> so optimisation is also possible.
 
-OK, I've applied this patch to my tree.  However, I would really
-appreciate if you could indeed review the callers for ext4_bread() and
-ext3_bread() and send patches for ext3 and ext4 as you have suggested,
-thanks!!
+Thanks for this patch.  It's good you did the testing, although from a
+theoretical point of view I'm sure it's sound because the only case
+where journal=data mode will there be data blocks in the buffer cache.
+In the other cases, the data is cached in the page cache, so it's a
+waste of time looking up the blocks so they can be bforgotten.
+
+The one thing which is missing from your patch is a Signed-off-by:
+footer.  This has a specific legal meaning.  See:
+
+	http://elinux.org/Developer_Certificate_Of_Origin
+
+You don't need to resend this patch, though; just reply with an
+acknowledgement that you agree to add your DCO to the patch:
+
+Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
+
+
+Thanks for contributing to the ext4 file system!
 
 						- Ted
