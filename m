@@ -1,50 +1,58 @@
-From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: Re: [PATCH RFC 1/2] ext4: speed-up truncate/unlink
-Date: Tue, 18 Sep 2012 14:17:09 -0400
-Message-ID: <CAA0+VHxM6s7dmmeEf6CsF+5YxaUhv1zgQ3Q-ZNbwADFu8UeftQ@mail.gmail.com>
-References: <CAA0+VHzw55=4X43GK9RkRK_q4qmzR8KyqrrFidQMCPb6r4nPeA@mail.gmail.com>
-	<20120918041006.GC32195@thunk.org>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: Anyone have test cases for SEEK_HOLE/SEEK_DATA?
+Date: Tue, 18 Sep 2012 13:20:15 -0500
+Message-ID: <5058BB5F.5050506@sandeen.net>
+References: <nsxa9wojdcd.fsf@closure.thunk.org> <20120918064039.GS11511@dastard> <50588898.6050802@sgi.com> <20120918181556.GC28689@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 7bit
+Cc: Mark Tinguely <tinguely@sgi.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og108.obsmtp.com ([64.18.0.186]:60804 "EHLO
-	exprod5og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751490Ab2IRSRM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Sep 2012 14:17:12 -0400
-Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.176.130.20])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id q8IIJQJN025265
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 14:19:26 -0400 (EDT)
-Received: from mail-vb0-f46.google.com (mail-vb0-f46.google.com [209.85.212.46])
-	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id q8IIJ5SG025066
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 14:19:26 -0400 (EDT)
-Received: by mail-vb0-f46.google.com with SMTP id ff1so189371vbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 18 Sep 2012 11:17:09 -0700 (PDT)
-In-Reply-To: <20120918041006.GC32195@thunk.org>
+Received: from sandeen.net ([63.231.237.45]:42108 "EHLO mail.sandeen.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753344Ab2IRSUR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Sep 2012 14:20:17 -0400
+In-Reply-To: <20120918181556.GC28689@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 18, 2012 at 12:10 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> The one thing which is missing from your patch is a Signed-off-by:
-> footer.  This has a specific legal meaning.  See:
->
->         http://elinux.org/Developer_Certificate_Of_Origin
->
-> You don't need to resend this patch, though; just reply with an
-> acknowledgement that you agree to add your DCO to the patch:
->
-> Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
->
->
-> Thanks for contributing to the ext4 file system!
->
->                                                 - Ted
+On 9/18/12 1:15 PM, Theodore Ts'o wrote:
+> On Tue, Sep 18, 2012 at 09:43:36AM -0500, Mark Tinguely wrote:
+>> xfstest 285 and 286 (I believe these tests were only in the OSS
+>> version and not in the kernel.org developers version of xfstests).
+> 
+> Hi Mark,
+> 
+> Could you clarify what the relationship is between the OSS xfstests
+> tree and the one on kernel.org?  Is the OSS tree always ahead of the
+> kernel.org tree (i.e., are the commits in the OSS tree a superset of
+> the ones in the kernel.org tree)?
+> 
+> I had been under the impression that commits flowed from the
+> kernel.org tree to the OSS tree, but it sounds like I was misinformed
+> on that point?
 
-Hi Ted,
+That was more or less correct at one point, but we recently decided to
+ditch the kernel.org repos and let sgi manage a single repo on oss.sgi.com
+going forward, just to simplify things.
 
-Yes, please add
-Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
+We just reached that agreement and haven't really communicated it yet
+I guess.
 
-Thanks!
+So going forward, stick with the one on oss.sgi.com.
+
+Thanks,
+-Eric
+
+> Thanks,
+> 
+> 						- Ted
+> 
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
+> 
+
