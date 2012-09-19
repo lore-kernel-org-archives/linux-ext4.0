@@ -1,33 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RFC 1/2] ext4: speed-up truncate/unlink
-Date: Wed, 19 Sep 2012 14:16:44 -0400
-Message-ID: <20120919181644.GA28470@thunk.org>
-References: <CAA0+VHzw55=4X43GK9RkRK_q4qmzR8KyqrrFidQMCPb6r4nPeA@mail.gmail.com>
- <20120918041006.GC32195@thunk.org>
- <CAA0+VHxM6s7dmmeEf6CsF+5YxaUhv1zgQ3Q-ZNbwADFu8UeftQ@mail.gmail.com>
+Subject: Re: [RFC][PATCH 2/8 v2] ext4: add operations on extent status tree
+Date: Wed, 19 Sep 2012 14:34:52 -0400
+Message-ID: <20120919183452.GB28470@thunk.org>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+ <1345615545-26133-3-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andrey Sidorov <qrxd43@motorola.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51561 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932929Ab2ISSQt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Sep 2012 14:16:49 -0400
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAA0+VHxM6s7dmmeEf6CsF+5YxaUhv1zgQ3Q-ZNbwADFu8UeftQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1345615545-26133-3-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 18, 2012 at 02:17:09PM -0400, Andrey Sidorov wrote:
-> 
-> Yes, please add
-> Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
+On Wed, Aug 22, 2012 at 02:05:39PM +0800, Zheng Liu wrote:
+> + * 3. performance analysis
+> + *   --	overhead
+> + *	1. Apart from operations on a delayed extent tree, we need to
+> + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
+> + *	extent tree, this can have impact on parallel read-write and write-write
 
-Thanks, applied.
+I'm working on going through this patch set now, and I'm not sure this
+is worth holding back on this patch series, but I am really concerned
+about the performance impact of this....  it would definitely show up
+on some of the scalability testing that Eric Whitney had been doing,
+for example.
 
-I am interested in your proposed patch 2/2 as well, but it's going to
-require more detailed review, and it sounds like you were planning on
-doing some work to better handle corner cases as well?
+Given that operations on the delayed extent tree should be fast,
+instead of using a mutex, any reason why we can't just add a new
+spinlock (I'm not even sure we need a rw_spinlock here) to the
+ext4_inode_info structure and use that to serialize operations on the
+delayed extent tree?
 
 						- Ted
