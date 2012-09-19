@@ -1,110 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix online resizing when the # of block groups is constant
-Date: Wed, 19 Sep 2012 00:56:52 -0400
-Message-ID: <1348030612-15508-1-git-send-email-tytso@mit.edu>
-References: <20120919035132.GB18707@thunk.org>
-Cc: dan.carpenter@oracle.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Adrian Sandu <dexter@d3xt3r01.tk>
+Subject: possible bug ?
+Date: Wed, 19 Sep 2012 17:44:13 +0300
+Message-ID: <CAEG-z2-5=hYOZ+ZwUAE5ULQPJ2kjZ5WMv9EoTpx=c+Mik6_9ug@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51435 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752324Ab2ISE45 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Sep 2012 00:56:57 -0400
-In-Reply-To: <20120919035132.GB18707@thunk.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:35332 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752637Ab2ISOoe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Sep 2012 10:44:34 -0400
+Received: by pbbrr13 with SMTP id rr13so2622514pbb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2012 07:44:33 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 1c6bd7173d66b3 introduced a regression where an online resize
-operation which did not change the number of block groups would fail,
-i.e:
+Hi people,
 
-	mke2fs -t /dev/vdc 60000
-	mount /dev/vdc
-	resize2fs /dev/vdc 60001
+While trying to delete a couple of files today, I got into this lil'
+thingy. It first happened in mc, then at a reboot.
 
-This was due to a bug in the logic regarding when to try converting
-the filesystem to use meta_bg.
+[   48.770178] IP: [<ffffffff811d6424>] ext4_ext_remove_space+0x9f4/0xe00
+[   48.770178] PGD 11d365067 PUD 11d1e8067 PMD 0
+[   48.770178] Oops: 0000 [#1] SMP
+[   48.770178] CPU 3
+[   48.770178] Modules linked in: ir_lirc_codec lirc_dev
+ir_mce_kbd_decoder ir_sanyo_decoder ir_sony_decoder nvidia(PO)
+ir_jvc_decoder ir_rc6_decoder rt2800usb rt2800lib crc_ccitt rt2x00usb
+rt2x00lib ir_rc5_decoder snd_usb_audio ir_nec_decoder option
+rc_rc6_mce nuvoton_cir rc_core snd_hwdep snd_usbmidi_lib snd_rawmidi
+usb_wwan r8712u(C) usbserial
+[   48.770178]
+[   48.770178] Pid: 1465, comm: mount Tainted: P         C O
+3.4.9-gentoo #1 To Be Filled By O.E.M. To Be Filled By O.E.M./ION3D-HT
+[   48.922060] RIP: 0010:[<ffffffff811d6424>]  [<ffffffff811d6424>]
+ext4_ext_remove_space+0x9f4/0xe00
+[   48.922060] RSP: 0018:ffff88011a5b19d8  EFLAGS: 00010246
+[   48.922060] RAX: 0000000000000000 RBX: ffff88011d9c01b0 RCX: 0000000000000002
+[   48.922060] RDX: 0000000000000001 RSI: 0000000000000001 RDI: 000000000e590f51
+[   48.922060] RBP: ffff88011a5b1ae8 R08: 000000001d1bf000 R09: ffff88011d9c0180
+[   48.922060] R10: ffffffff811d5ddc R11: 0000000000000001 R12: 0000000000000000
+[   48.922060] R13: ffff88011bab9550 R14: 0000000000000000 R15: 0000000000000001
+[   48.922060] FS:  00007f0a3714d740(0000) GS:ffff880123d80000(0000)
+knlGS:0000000000000000
+[   48.922060] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[   48.922060] CR2: 0000000000000028 CR3: 000000011b704000 CR4: 00000000000007e0
+[   48.922060] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[   48.922060] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[   48.922060] Process mount (pid: 1465, threadinfo ffff88011a5b0000,
+task ffff88011b417000)
+[   48.922060] Stack:
+[   48.922060]  0000000000001111 ffff88011bab9550 ffff88011bab94a0
+ffff88011a5b1a98
+[   48.922060]  ffff88011ae16e00 ffff880116f37a28 ffffffff1a5b1a68
+ffff88011a4b8000
+[   48.922060]  000000011ec37000 0000000000000000 ffff88011bab94a0
+ffff88011daf3c00
+[   48.922060] Call Trace:
+[   48.922060]  [<ffffffff811d8953>] ext4_ext_truncate+0x1b3/0x1f0
+[   48.922060]  [<ffffffff811cb1ec>] ? ext4_journal_start_sb+0x7c/0x1b0
+[   48.922060]  [<ffffffff811ac878>] ext4_truncate+0xb8/0xf0
+[   48.922060]  [<ffffffff811b13f0>] ext4_evict_inode+0x3a0/0x4a0
+[   48.922060]  [<ffffffff8112f3d7>] evict+0xa7/0x1b0
+[   48.922060]  [<ffffffff8112f5eb>] iput+0x10b/0x210
+[   48.922060]  [<ffffffff811cf367>] ext4_fill_super+0x28f7/0x2a40
+[   48.922060]  [<ffffffff810dcabe>] ? register_shrinker+0x4e/0x60
+[   48.922060]  [<ffffffff811192f2>] mount_bdev+0x1a2/0x1e0
+[   48.922060]  [<ffffffff811cca70>] ? ext4_calculate_overhead+0x3c0/0x3c0
+[   48.922060]  [<ffffffff81112424>] ? __kmalloc_track_caller+0x54/0x160
+[   48.922060]  [<ffffffff811c3cd0>] ext4_mount+0x10/0x20
+[   48.922060]  [<ffffffff8111a073>] mount_fs+0x43/0x1c0
+[   48.922060]  [<ffffffff810ebe2b>] ? __alloc_percpu+0xb/0x10
+[   48.922060]  [<ffffffff81132baa>] vfs_kern_mount+0x6a/0x100
+[   48.922060]  [<ffffffff81133400>] do_kern_mount+0x50/0x100
+[   48.922060]  [<ffffffff81135020>] do_mount+0x520/0x7f0
+[   48.922060]  [<ffffffff810e6e77>] ? memdup_user+0x47/0x90
+[   48.922060]  [<ffffffff810e6f13>] ? strndup_user+0x53/0x70
+[   48.922060]  [<ffffffff81135420>] sys_mount+0x90/0xe0
+[   48.922060]  [<ffffffff815e43a2>] system_call_fastpath+0x16/0x1b
+[   48.922060] Code: 8d 04 40 48 8d 04 81 48 89 43 18 0f b7 49 02 48
+83 c1 01 48 85 c0 48 89 0b 0f 85 c8 f8 ff ff 0f 0b 66 0f 1f 44 00 00
+48 8b 43 28 <48> 8b 40 28 48 89 43 20 e9 91 f8 ff ff 0f 1f 80 00 00 00
+00 44
+[   48.922060] RIP  [<ffffffff811d6424>] ext4_ext_remove_space+0x9f4/0xe00
+[   48.922060]  RSP <ffff88011a5b19d8>
+[   48.922060] CR2: 0000000000000028
+[   48.922862] ---[ end trace d17fa9fb727ed36f ]---
 
-Also fix up a number of other minor issues with the online resizing
-code: (a) Fix a sparse warning; (b) only check to make sure the device
-is large enough once, instead of multiple times through the resize
-loop.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/resize.c | 36 ++++++++++++++----------------------
- 1 file changed, 14 insertions(+), 22 deletions(-)
-
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 3c9367b..ee985ca 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1772,23 +1772,18 @@ static int ext4_convert_meta_bg(struct super_block *sb, struct inode *inode)
- 	handle_t *handle;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
--	struct ext4_inode_info *ei = 0;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	ext4_fsblk_t nr;
- 	int i, ret, err = 0;
- 	int credits = 1;
- 
- 	ext4_msg(sb, KERN_INFO, "Converting file system to meta_bg");
--	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RESIZE_INODE)) {
-+	if (inode) {
- 		if (es->s_reserved_gdt_blocks) {
- 			ext4_error(sb, "Unexpected non-zero "
- 				   "s_reserved_gdt_blocks");
- 			return -EPERM;
- 		}
--		if (!inode) {
--			ext4_error(sb, "Unexpected NULL resize_inode");
--			return -EPERM;
--		}
--		ei = EXT4_I(inode);
- 
- 		/* Do a quick sanity check of the resize inode */
- 		if (inode->i_blocks != 1 << (inode->i_blkbits - 9))
-@@ -1873,12 +1868,19 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	int err = 0, flexbg_size = 1 << sbi->s_log_groups_per_flex;
- 	int meta_bg;
- 
-+	/* See if the device is actually as big as what was requested */
-+	bh = sb_bread(sb, n_blocks_count - 1);
-+	if (!bh) {
-+		ext4_warning(sb, "can't read last block, resize aborted");
-+		return -ENOSPC;
-+	}
-+	brelse(bh);
-+
- retry:
- 	o_blocks_count = ext4_blocks_count(es);
- 
--	if (test_opt(sb, DEBUG))
--		ext4_msg(sb, KERN_DEBUG, "resizing filesystem from %llu "
--		       "to %llu blocks", o_blocks_count, n_blocks_count);
-+	ext4_msg(sb, KERN_INFO, "resizing filesystem from %llu "
-+		 "to %llu blocks", o_blocks_count, n_blocks_count);
- 
- 	if (n_blocks_count < o_blocks_count) {
- 		/* On-line shrinking not supported */
-@@ -1922,7 +1924,7 @@ retry:
- 		}
- 	}
- 
--	if ((!resize_inode && !meta_bg) || n_group == o_group) {
-+	if ((!resize_inode && !meta_bg) || n_blocks_count == o_blocks_count) {
- 		err = ext4_convert_meta_bg(sb, resize_inode);
- 		if (err)
- 			goto out;
-@@ -1937,14 +1939,6 @@ retry:
- 		}
- 	}
- 
--	/* See if the device is actually as big as what was requested */
--	bh = sb_bread(sb, n_blocks_count - 1);
--	if (!bh) {
--		ext4_warning(sb, "can't read last block, resize aborted");
--		return -ENOSPC;
--	}
--	brelse(bh);
+Any ideas ? I'm updating to 3.5.4 ( latest in gentoo's ~amd64  )
