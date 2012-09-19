@@ -1,52 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Ubuntu Ext4 regression testing
-Date: Tue, 18 Sep 2012 23:41:02 -0400
-Message-ID: <20120919034102.GA18707@thunk.org>
-References: <50511241.2090603@canonical.com>
- <20120913021818.GA27544@thunk.org>
- <50514A08.80903@canonical.com>
+Subject: Re: ext4: convert file system to meta_bg if needed during resizing
+Date: Tue, 18 Sep 2012 23:51:32 -0400
+Message-ID: <20120919035132.GB18707@thunk.org>
+References: <20120918114634.GA12383@elgon.mountain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Brad Figg <brad.figg@canonical.com>
+Cc: linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+	Fengguang Wu <fengguang.wu@intel.com>
+To: Dan Carpenter <dan.carpenter@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51424 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:51429 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754149Ab2ISDlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Sep 2012 23:41:13 -0400
+	id S1752212Ab2ISDvg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Sep 2012 23:51:36 -0400
 Content-Disposition: inline
-In-Reply-To: <50514A08.80903@canonical.com>
+In-Reply-To: <20120918114634.GA12383@elgon.mountain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 12, 2012 at 07:50:48PM -0700, Brad Figg wrote:
-> 
-> Thanks, this is very helpful. I wouldn't mind seeing your script if you
-> feel like sharing it.
+On Tue, Sep 18, 2012 at 02:46:35PM +0300, Dan Carpenter wrote:
+>   1775          struct ext4_inode_info *ei = 0;
+>                                         ^^^^^^
+> Sparse is going to complain.  Not sure why Fengguang hasn't emailed you.
 
-I've checked in the scripts into my xfstests-bld repository.  You can
-get the repository here:
+>   1791                  ei = EXT4_I(inode);
+>                         ^^^^^^^^^^^^^^^^^^
+> We only set "ei" if EXT4_FEATURE_COMPAT_RESIZE_INODE.
+> ...
 
-	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+>   1829                  nr = le32_to_cpu(ei->i_data[EXT4_DIND_BLOCK]);
+>                                          ^^^^^^^^^^
+> Null deref.  Perhaps inode implies EXT4_FEATURE_COMPAT_RESIZE_INODE?
 
-This is how I build xfstests and its dependencies hermetically, so
-that even if you are forced (as I was for a while) to build on an
-ancient enterprise or LTS distribution, it will build cleanly.
-(Xfstests requires the libraries in xfsprogs newer than what was
-shipped with LTS 10.04, and I'd guess RHEL 6 and definitely RHEL 5.)
+Inode does imply EXT4_FEATURE_COMPAT_RESIZE_INODE, but I should make
+the code cleaner.
 
-The scripts that run in the VM can be found in the directory
-kvm-autorun; they are installed into a file system built using
-debootstrap.  The scripts I use to kick off kvm in the host OS can be
-found in the directory kvm-xfstests.
+Thanks for pointing this out.
 
-Sorry for the delay; it took me a while to get things packaged up
-cleanly.  Unfortunately I can't just ship you the root_fs.img due of
-GPL licensing issues (figuring what all of the necessary source files
-that I'd have to ship that correspond to the application image is a
-huge pain in the ass).  One of these days I'll create a shell script
-that runs debootsrap and automatically sets up the root_fs.img for the
-VM for people building the VM while running Debian or Ubuntu ---
-unless someone beats me to it first (hint, hint :-).
-
-          	      	      	       	     - Ted
+							- Ted
