@@ -1,40 +1,110 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: convert file system to meta_bg if needed during resizing
-Date: Tue, 18 Sep 2012 23:51:32 -0400
-Message-ID: <20120919035132.GB18707@thunk.org>
-References: <20120918114634.GA12383@elgon.mountain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-	Fengguang Wu <fengguang.wu@intel.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [PATCH] ext4: fix online resizing when the # of block groups is constant
+Date: Wed, 19 Sep 2012 00:56:52 -0400
+Message-ID: <1348030612-15508-1-git-send-email-tytso@mit.edu>
+References: <20120919035132.GB18707@thunk.org>
+Cc: dan.carpenter@oracle.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51429 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:51435 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752212Ab2ISDvg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Sep 2012 23:51:36 -0400
-Content-Disposition: inline
-In-Reply-To: <20120918114634.GA12383@elgon.mountain>
+	id S1752324Ab2ISE45 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Sep 2012 00:56:57 -0400
+In-Reply-To: <20120919035132.GB18707@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 18, 2012 at 02:46:35PM +0300, Dan Carpenter wrote:
->   1775          struct ext4_inode_info *ei = 0;
->                                         ^^^^^^
-> Sparse is going to complain.  Not sure why Fengguang hasn't emailed you.
+Commit 1c6bd7173d66b3 introduced a regression where an online resize
+operation which did not change the number of block groups would fail,
+i.e:
 
->   1791                  ei = EXT4_I(inode);
->                         ^^^^^^^^^^^^^^^^^^
-> We only set "ei" if EXT4_FEATURE_COMPAT_RESIZE_INODE.
-> ...
+	mke2fs -t /dev/vdc 60000
+	mount /dev/vdc
+	resize2fs /dev/vdc 60001
 
->   1829                  nr = le32_to_cpu(ei->i_data[EXT4_DIND_BLOCK]);
->                                          ^^^^^^^^^^
-> Null deref.  Perhaps inode implies EXT4_FEATURE_COMPAT_RESIZE_INODE?
+This was due to a bug in the logic regarding when to try converting
+the filesystem to use meta_bg.
 
-Inode does imply EXT4_FEATURE_COMPAT_RESIZE_INODE, but I should make
-the code cleaner.
+Also fix up a number of other minor issues with the online resizing
+code: (a) Fix a sparse warning; (b) only check to make sure the device
+is large enough once, instead of multiple times through the resize
+loop.
 
-Thanks for pointing this out.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/resize.c | 36 ++++++++++++++----------------------
+ 1 file changed, 14 insertions(+), 22 deletions(-)
 
-							- Ted
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 3c9367b..ee985ca 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1772,23 +1772,18 @@ static int ext4_convert_meta_bg(struct super_block *sb, struct inode *inode)
+ 	handle_t *handle;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+-	struct ext4_inode_info *ei = 0;
++	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	ext4_fsblk_t nr;
+ 	int i, ret, err = 0;
+ 	int credits = 1;
+ 
+ 	ext4_msg(sb, KERN_INFO, "Converting file system to meta_bg");
+-	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RESIZE_INODE)) {
++	if (inode) {
+ 		if (es->s_reserved_gdt_blocks) {
+ 			ext4_error(sb, "Unexpected non-zero "
+ 				   "s_reserved_gdt_blocks");
+ 			return -EPERM;
+ 		}
+-		if (!inode) {
+-			ext4_error(sb, "Unexpected NULL resize_inode");
+-			return -EPERM;
+-		}
+-		ei = EXT4_I(inode);
+ 
+ 		/* Do a quick sanity check of the resize inode */
+ 		if (inode->i_blocks != 1 << (inode->i_blkbits - 9))
+@@ -1873,12 +1868,19 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 	int err = 0, flexbg_size = 1 << sbi->s_log_groups_per_flex;
+ 	int meta_bg;
+ 
++	/* See if the device is actually as big as what was requested */
++	bh = sb_bread(sb, n_blocks_count - 1);
++	if (!bh) {
++		ext4_warning(sb, "can't read last block, resize aborted");
++		return -ENOSPC;
++	}
++	brelse(bh);
++
+ retry:
+ 	o_blocks_count = ext4_blocks_count(es);
+ 
+-	if (test_opt(sb, DEBUG))
+-		ext4_msg(sb, KERN_DEBUG, "resizing filesystem from %llu "
+-		       "to %llu blocks", o_blocks_count, n_blocks_count);
++	ext4_msg(sb, KERN_INFO, "resizing filesystem from %llu "
++		 "to %llu blocks", o_blocks_count, n_blocks_count);
+ 
+ 	if (n_blocks_count < o_blocks_count) {
+ 		/* On-line shrinking not supported */
+@@ -1922,7 +1924,7 @@ retry:
+ 		}
+ 	}
+ 
+-	if ((!resize_inode && !meta_bg) || n_group == o_group) {
++	if ((!resize_inode && !meta_bg) || n_blocks_count == o_blocks_count) {
+ 		err = ext4_convert_meta_bg(sb, resize_inode);
+ 		if (err)
+ 			goto out;
+@@ -1937,14 +1939,6 @@ retry:
+ 		}
+ 	}
+ 
+-	/* See if the device is actually as big as what was requested */
+-	bh = sb_bread(sb, n_blocks_count - 1);
+-	if (!bh) {
+-		ext4_warning(sb, "can't read last block, resize aborted");
+-		return -ENOSPC;
+-	}
+-	brelse(bh);
