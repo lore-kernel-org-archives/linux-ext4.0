@@ -1,51 +1,56 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 0/4] ioengine: File based ioengines
-Date: Wed, 19 Sep 2012 21:40:30 +0200
-Message-ID: <505A1FAE.10704@kernel.dk>
-References: <1348082576-10528-1-git-send-email-dmonakhov@openvz.org>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [v2] ext4: fix possible non-initialized variable
+Date: Wed, 19 Sep 2012 17:10:57 -0300
+Message-ID: <20120919201057.GA23237@andromeda.usersys.redhat.com>
+References: <1347314148-17463-1-git-send-email-cmaiolino@redhat.com>
+ <20120915183023.GA9895@thunk.org>
+ <505739F8.9050305@redhat.com>
+ <50574226.3020908@redhat.com>
+ <20120917153701.GA5510@thunk.org>
+ <20120917182604.GA1959@andromeda.usersys.redhat.com>
+ <20120918035931.GB32195@thunk.org>
+ <20120918125155.GA30408@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, fio@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from merlin.infradead.org ([205.233.59.134]:58212 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750851Ab2ISTkf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Sep 2012 15:40:35 -0400
-In-Reply-To: <1348082576-10528-1-git-send-email-dmonakhov@openvz.org>
+Received: from mx1.redhat.com ([209.132.183.28]:45462 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751454Ab2ISULD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Sep 2012 16:11:03 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8JKB3bh007018
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2012 16:11:03 -0400
+Received: from andromeda.usersys.redhat.com (vpn1-7-46.gru2.redhat.com [10.97.7.46])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q8JKAwxX023064
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Sep 2012 16:11:02 -0400
+Content-Disposition: inline
+In-Reply-To: <20120918125155.GA30408@andromeda.usersys.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-09-19 21:22, Dmitry Monakhov wrote:
-> Fio is very cool tool for generating various io patterns.
-> And I use it as a base io-loader for xfsstress framework
-> 
-> I've prepared two file-based ioengines which allow to generate
-> interesting io patterns. 'falloc' is more generic and may be useful
-> for many cases, other 'e4defrag' is more specific but still
-> usfull. It would be nice to have this engines in-tree if possible.
-> 
-> TOC:
->  # fixes for external engines
->  export file_lookup_open
->  ioengine: allow several external ioengines
->  # file based ioengines
->  ioengine: Add fallocate ioengine
->  ioengine: Add e4defrag ioengine
+> > OK, I've applied this patch to my tree.  However, I would really
+> > appreciate if you could indeed review the callers for ext4_bread() and
+> > ext3_bread() and send patches for ext3 and ext4 as you have suggested,
+> > thanks!!
+> > 
+> On my todo list.
+> > 						- Ted
+Ted,
 
-This looks nifty, especially the fallocate engine. I've added the
-patchset, thanks a lot.
+In case of ext4_add_entry() I'm supposing to make the function call ext4_error()
+and return -EIO in the case where ext4_bread() returns NULL and err is 0'ed,
+does that matches with your thoughts or is there a better way to handle with
+this?
+I'm talking about ext4_add_entry() behavious mainly as an example to better
+understand how we should handle these situations. In case of ext4_add_entry(),
+based on our discussions ext4_bread() should not fail once dir entries should
+not have HOLES, so, a NULL return should indicate a on-disk corruption or an I/O
+error.
 
-Care to send a bit more careful documentation on both of them? The
-commit message for fallocate is good, something like that in the HOWTO
-would be useful. Bonus points for updating the man page, too! And
-e4defrag seems largely undocumented. Some comments in the sample files
-(which are great to have, btw) would be nice too.
-
-Will also want wiring up on options.c, the ioengine part, now that they
-are in tree.
+Does that makes sense?
 
 -- 
-Jens Axboe
-
+--Carlos
