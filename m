@@ -1,54 +1,52 @@
-From: Ben Myers <bpm@sgi.com>
-Subject: Re: Test 272 fails for ext3
-Date: Tue, 18 Sep 2012 16:26:40 -0500
-Message-ID: <20120918212640.GW3274@sgi.com>
-References: <20120816092808.GA9057@quack.suse.cz>
- <20120816093757.GA11519@quack.suse.cz>
- <20120816224858.GY2877@dastard>
- <20120820162212.GA17354@quack.suse.cz>
- <20120820210638.GA4591@quack.suse.cz>
- <20120820224941.GG19235@dastard>
- <20120821080338.GA7537@quack.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Ubuntu Ext4 regression testing
+Date: Tue, 18 Sep 2012 23:41:02 -0400
+Message-ID: <20120919034102.GA18707@thunk.org>
+References: <50511241.2090603@canonical.com>
+ <20120913021818.GA27544@thunk.org>
+ <50514A08.80903@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	dmonakhov@openvz.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Brad Figg <brad.figg@canonical.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:42500 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754802Ab2IRV0o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Sep 2012 17:26:44 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:51424 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754149Ab2ISDlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Sep 2012 23:41:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20120821080338.GA7537@quack.suse.cz>
+In-Reply-To: <50514A08.80903@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 21, 2012 at 10:03:39AM +0200, Jan Kara wrote:
-> On Tue 21-08-12 08:49:41, Dave Chinner wrote:
-> > On Mon, Aug 20, 2012 at 11:06:38PM +0200, Jan Kara wrote:
-> > ....
-> > > --- a/272
-> > > +++ b/272
-> > > @@ -32,15 +32,18 @@ tmp=/tmp/$$
-> > >  status=1	# failure is the default!
-> > >  trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
-> > >  
-> > > +write_opt_list="iflag=noatime conv=notrunc conv=fsync oflag=direct"
-> > > +if [ $FSTYP = "ext3" ]; then
-> > > +	# ext3 doesn't support direct IO in journalling mode
-> > > +	write_opt_list="iflag=noatime conv=notrunc conv=fsync"
-> > > +fi
-> > 
-> > Seems like asking for trouble duplicating the common options.
-> > 
-> > # ext3 doesn't support direct IO in journalling mode
-> > write_opt_list="iflag=noatime conv=notrunc conv=fsync
-> > [ $FSTYP = "ext4" ] && write_opt_list="$write_opt_list oflag=direct"
-> > 
-> > Otherwise looks fine.
-> > 
-> > Reviewed-by: Dave Chinner <dchinner@redhat.com>
->   OK, I've updated the test as you suggested. Result is attached.
+On Wed, Sep 12, 2012 at 07:50:48PM -0700, Brad Figg wrote:
+> 
+> Thanks, this is very helpful. I wouldn't mind seeing your script if you
+> feel like sharing it.
 
-Committed to git://oss.sgi.com/xfs/cmds/xfstests.git, master branch.
+I've checked in the scripts into my xfstests-bld repository.  You can
+get the repository here:
+
+	git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+
+This is how I build xfstests and its dependencies hermetically, so
+that even if you are forced (as I was for a while) to build on an
+ancient enterprise or LTS distribution, it will build cleanly.
+(Xfstests requires the libraries in xfsprogs newer than what was
+shipped with LTS 10.04, and I'd guess RHEL 6 and definitely RHEL 5.)
+
+The scripts that run in the VM can be found in the directory
+kvm-autorun; they are installed into a file system built using
+debootstrap.  The scripts I use to kick off kvm in the host OS can be
+found in the directory kvm-xfstests.
+
+Sorry for the delay; it took me a while to get things packaged up
+cleanly.  Unfortunately I can't just ship you the root_fs.img due of
+GPL licensing issues (figuring what all of the necessary source files
+that I'd have to ship that correspond to the application image is a
+huge pain in the ass).  One of these days I'll create a shell script
+that runs debootsrap and automatically sets up the root_fs.img for the
+VM for people building the VM while running Debian or Ubuntu ---
+unless someone beats me to it first (hint, hint :-).
+
+          	      	      	       	     - Ted
