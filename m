@@ -1,105 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix potential deadlock in ext4_nonda_switch()
-Date: Wed, 19 Sep 2012 23:23:10 -0400
-Message-ID: <1348111390-23083-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Don't calc checksum in update_backups in online resize.
+Date: Thu, 20 Sep 2012 14:33:43 +0800
+Message-ID: <1348122823-4930-1-git-send-email-tm@tao.ma>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:51660 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751929Ab2ITDXN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Sep 2012 23:23:13 -0400
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:58164 "HELO
+	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751011Ab2ITGdz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Sep 2012 02:33:55 -0400
+Received: from [42.120.72.160] (port=51344 helo=tma-laptop1.taobao.ali.com)
+	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.76)
+	(envelope-from <tm@tao.ma>)
+	id 1TEaKg-0005Mi-Fs
+	for linux-ext4@vger.kernel.org; Thu, 20 Sep 2012 00:33:55 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ext4_nonda_switch(), if the file system is getting full we used to
-call writeback_inodes_sb_if_idle().  The problem is that we can be
-holding i_mutex already, and this causes a potential deadlock when
-writeback_inodes_sb_if_idle() when it tries to take s_umount.  (See
-lockdep output below).
+From: Tao Ma <boyu.mt@taobao.com>
 
-As it turns out we don't need need to hold s_umount; the fact that we
-are in the middle of the write(2) system call will keep the superblock
-pinned.  So we can just call writeback_inodes_sb() directly without
-taking s_umount first.
+update_backups is used to backup all the metadata blocks, so we should
+not take it for granted that 'data' is pointed to a super block and use
+ext4_superblock_csum_set to calculate the checksum there. In case
+the data is a group descriptor block, it will corrupt the last group
+descriptor. And e2fsck will complain it.
 
-   [ INFO: possible circular locking dependency detected ]
-   3.6.0-rc1-00042-gce894ca #367 Not tainted
-   -------------------------------------------------------
-   dd/8298 is trying to acquire lock:
-    (&type->s_umount_key#18){++++..}, at: [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
+As all the metadata checksum should already be OK when we do the backup,
+remove the wrong ext4_superblock_csum_set and it should be just fine.
 
-   but task is already holding lock:
-    (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
-
-   which lock already depends on the new lock.
-
-   2 locks held by dd/8298:
-    #0:  (sb_writers#2){.+.+.+}, at: [<c01ddcc5>] generic_file_aio_write+0x56/0xd3
-    #1:  (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
-
-   stack backtrace:
-   Pid: 8298, comm: dd Not tainted 3.6.0-rc1-00042-gce894ca #367
-   Call Trace:
-    [<c015b79c>] ? console_unlock+0x345/0x372
-    [<c06d62a1>] print_circular_bug+0x190/0x19d
-    [<c019906c>] __lock_acquire+0x86d/0xb6c
-    [<c01999db>] ? mark_held_locks+0x5c/0x7b
-    [<c0199724>] lock_acquire+0x66/0xb9
-    [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
-    [<c06db935>] down_read+0x28/0x58
-    [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
-    [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
-    [<c026f3b2>] ext4_nonda_switch+0xe1/0xf4
-    [<c0271ece>] ext4_da_write_begin+0x27/0x193
-    [<c01dcdb0>] generic_file_buffered_write+0xc8/0x1bb
-    [<c01ddc47>] __generic_file_aio_write+0x1dd/0x205
-    [<c01ddce7>] generic_file_aio_write+0x78/0xd3
-    [<c026d336>] ext4_file_write+0x480/0x4a6
-    [<c0198c1d>] ? __lock_acquire+0x41e/0xb6c
-    [<c0180944>] ? sched_clock_cpu+0x11a/0x13e
-    [<c01967e9>] ? trace_hardirqs_off+0xb/0xd
-    [<c018099f>] ? local_clock+0x37/0x4e
-    [<c0209f2c>] do_sync_write+0x67/0x9d
-    [<c0209ec5>] ? wait_on_retry_sync_kiocb+0x44/0x44
-    [<c020a7b9>] vfs_write+0x7b/0xe6
-    [<c020a9a6>] sys_write+0x3b/0x64
-    [<c06dd4bd>] syscall_call+0x7/0xb
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
+Reported-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inode.c   | 4 ++--
- fs/fs-writeback.c | 1 +
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/resize.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0a9a89e..d4c60f2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2449,8 +2449,8 @@ static int ext4_nonda_switch(struct super_block *sb)
- 	 * Even if we don't switch but are nearing capacity,
- 	 * start pushing delalloc when 1/2 of free blocks are dirty.
- 	 */
--	if (free_blocks < 2 * dirty_blocks)
--		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
-+	if ((free_blocks < 2 * dirty_blocks) && writeback_in_progress(sb->s_bdi))
-+		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 41f6ef6..019d528 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -970,8 +970,6 @@ static void update_backups(struct super_block *sb,
+ 		goto exit_err;
+ 	}
  
- 	return 0;
- }
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index be3efc4..5602d73 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -63,6 +63,7 @@ int writeback_in_progress(struct backing_dev_info *bdi)
- {
- 	return test_bit(BDI_writeback_running, &bdi->state);
- }
-+EXPORT_SYMBOL(writeback_in_progress);
- 
- static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
- {
--- 
-1.7.12.rc0.22.gcdd159b
-
+-	ext4_superblock_csum_set(sb, (struct ext4_super_block *)data);
