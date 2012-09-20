@@ -1,113 +1,52 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH] e2fsprogs: Fix reserved blocks calculation for mke2fs
- -m 50%
-Date: Thu, 20 Sep 2012 10:05:06 +0900
-Message-ID: <505A6BC2.4080803@rs.jp.nec.com>
-References: <503F4B71.7090001@rs.jp.nec.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47731] Null pointer dereference at strchr
+Date: Thu, 20 Sep 2012 01:21:11 +0000 (UTC)
+Message-ID: <20120920012111.5D7DA11FAE2@bugzilla.kernel.org>
+References: <bug-47731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:52202 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751025Ab2ITBLe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Sep 2012 21:11:34 -0400
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id q8K1BXbu000683
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Sep 2012 10:11:33 +0900 (JST)
-In-Reply-To: <503F4B71.7090001@rs.jp.nec.com>
+Received: from mail.kernel.org ([198.145.19.201]:53890 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750913Ab2ITBVO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Sep 2012 21:21:14 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9F37E20287
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Sep 2012 01:21:13 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id B58052027F
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Sep 2012 01:21:12 +0000 (UTC)
+In-Reply-To: <bug-47731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+https://bugzilla.kernel.org/show_bug.cgi?id=47731
 
-Could you check this patch?
 
-(2012/08/30 20:16), Akira Fujita wrote:
-> mke2fs -m option can set reserved blocks ratio up to 50%.
-> But if the last BG is not big enough to support the necessary data
-> structures, reserved blocks ratio can exceed 50%
-> and we never succeed in e2fsck with that FS.
-> This bug happens on ext2, ext3 and ext4.
-> 
-> To fix this, the patch recalculates reserved blocks count
-> if FS blocks count is changed in mke2fs because of
-> the last BG's size.
-> 
-> Steps to reproduce:
-> 
-> 1. Create a FS which has the overhead for the last BG
->     and specify 50 % for reserved blocks ratio
->   # mke2fs -m 50 -t ext4 DEV 1025M
-> 
->   mke2fs 1.42.5 (29-Jul-2012)
->   warning: 256 blocks unused.
-> 
->   Filesystem label=
->   OS type: Linux
->   Block size=4096 (log=2)
->   Fragment size=4096 (log=2)
->   Stride=0 blocks, Stripe width=0 blocks
->   656640 inodes, 2621440 blocks
->   1310848 blocks (50.00%) reserved for the super user
->   ~~~~~~~ <-- Reserved blocks exceed 50% of FS blocks count!
-> 
-> 2. e2fsck outputs filesystem corruption
->   # e2fsck DEV
-> 
->   e2fsck 1.42.5 (29-Jul-2012)
->   Corruption found in superblock.  (r_blocks_count = 1310848).
-> 
->   The superblock could not be read or does not describe a correct ext2
->   filesystem.  If the device is valid and it really contains an ext2
->   filesystem (and not swap or ufs or something else), then the superblock
->   is corrupt, and you might try running e2fsck with an alternate superblock:
->       e2fsck -b 32768 <device>
-> 
-> 
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.ne.com>
-> ---
->   lib/ext2fs/initialize.c |    9 +++++++++
->   1 files changed, 9 insertions(+), 0 deletions(-)
-> diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-> index 5a6f8ea..3567722 100644
-> --- a/lib/ext2fs/initialize.c
-> +++ b/lib/ext2fs/initialize.c
-> @@ -101,6 +101,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
->   	unsigned	reserved_inos;
->   	char		*buf = 0;
->   	char		c;
-> +	double		reserved_ratio;
->   
->   	if (!param || !ext2fs_blocks_count(param))
->   		return EXT2_ET_INVALID_ARGUMENT;
-> @@ -391,6 +392,14 @@ ipg_retry:
->   	if (rem && (rem < overhead+50)) {
->   		ext2fs_blocks_count_set(super, ext2fs_blocks_count(super) -
->   					rem);
-> +		/*
-> +		 * If blocks count is changed, we need to recalculate
-> +		 * reserved blocks count not to exceed 50%.
-> +		 */
-> +		reserved_ratio = 100.0 * ext2fs_r_blocks_count(param) /
-> +			ext2fs_blocks_count(param);
-> +		ext2fs_r_blocks_count_set(super, reserved_ratio *
-> +			ext2fs_blocks_count(super) / 100.0);
->   
->   		goto retry;
->   	}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu>  2012-09-20 01:21:10 ---
+Is this repeatable?   I'm having a lot of trouble figuring out the stack trace,
+since strchr isn't used anywhere in the code path involved with printing the
+ext4 mount options while returning the contents of /proc/mounts (which is
+obviously what is going on).
+
+The only strchr that looks even vaguely possible is the one used by
+seq_escape() in fs/seq_file, which is called by mangle() and which is called by
+show_vfsmnt() in fs/namespace.c.   But the stack trace doesn't look consistent
+with that, either.   Part of the problem is between the inline functions, and
+the function pointers used by show_vfsmnt, the stack dump in the OOPS message
+can be quite misleading.
 
 -- 
-Akira Fujita <a-fujita@rs.jp.nec.com>
-
-The First Fundamental Software Development Group,
-Platform Division, NEC Software Tohoku, Ltd.
-
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
