@@ -1,274 +1,105 @@
-From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: [PATCH V2] ext4: speed-up releasing blocks on commit
-Date: Fri, 21 Sep 2012 00:11:19 -0400
-Message-ID: <20120921041119.GA4310@qrxd43-motbuntu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47731] Null pointer dereference at strchr
+Date: Fri, 21 Sep 2012 04:21:34 +0000 (UTC)
+Message-ID: <20120921042134.CCF2911FA29@bugzilla.kernel.org>
+References: <bug-47731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og107.obsmtp.com ([64.18.0.184]:51619 "EHLO
-	exprod5og107.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750968Ab2IUEL1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 00:11:27 -0400
-Received: from il93mgrg01.am.mot-mobility.com ([10.176.129.42])
-	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q8L42L2o002174
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 00:02:21 -0400 (EDT)
-Received: from mail-qc0-f174.google.com (mail-qc0-f174.google.com [209.85.216.174])
-	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q8L42KK6002171
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 00:02:21 -0400 (EDT)
-Received: by qcro28 with SMTP id o28so2302551qcr.19
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Sep 2012 21:11:25 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail.kernel.org ([198.145.19.201]:34568 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751309Ab2IUEVi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Sep 2012 00:21:38 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9FF7820210
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 04:21:36 +0000 (UTC)
+Received: from bugzilla.kernel.org (unknown [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id A2A6C20200
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 04:21:35 +0000 (UTC)
+In-Reply-To: <bug-47731-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Improve mb_free_blocks speed by clearing bits all at once instead of going one by one.
-Rebuild buddy bitmap by going up only once per range instead of once per block.
-For example, for 60G file commit callback time drops from 2.7s to 5ms.
-This is especially good for non-preemptive kernels as there is no rescheduling during release.
+https://bugzilla.kernel.org/show_bug.cgi?id=47731
 
-Signed-off-by: Andrey Sidorov <qrxd43@motorola.com>
 
----
- mballoc.c |  197 ++++++++++++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 136 insertions(+), 61 deletions(-)
 
-Index: linux-3.6-rc6/fs/ext4/mballoc.c
-===================================================================
---- linux-3.6-rc6.orig/fs/ext4/mballoc.c	2012-09-20 23:35:41.608663578 -0400
-+++ linux-3.6-rc6/fs/ext4/mballoc.c	2012-09-20 23:36:00.816190042 -0400
-@@ -397,6 +397,12 @@ static inline void mb_clear_bit(int bit,
- 	ext4_clear_bit(bit, addr);
- }
- 
-+static inline int mb_test_and_clear_bit(int bit, void *addr)
-+{
-+	addr = mb_correct_addr_and_bit(&bit, addr);
-+	return ext4_test_and_clear_bit(bit, addr);
-+}
-+
- static inline int mb_find_next_zero_bit(void *addr, int max, int start)
- {
- 	int fix = 0, ret, tmpmax;
-@@ -756,6 +762,24 @@ void ext4_mb_generate_buddy(struct super
- 	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
- }
- 
-+static void mb_regenerate_buddy(struct ext4_buddy *e4b)
-+{
-+	int count;
-+	int order = 1;
-+	void *buddy;
-+
-+	while ((buddy = mb_find_buddy(e4b, order++, &count))) {
-+		ext4_set_bits(buddy, 0, count);
-+	}
-+	e4b->bd_info->bb_fragments = 0;
-+	memset(e4b->bd_info->bb_counters, 0,
-+		sizeof(*e4b->bd_info->bb_counters) *
-+		(e4b->bd_sb->s_blocksize_bits + 2));
-+
-+	ext4_mb_generate_buddy(e4b->bd_sb, e4b->bd_buddy,
-+		e4b->bd_bitmap, e4b->bd_group);
-+}
-+
- /* The buddy information is attached the buddy cache inode
-  * for convenience. The information regarding each group
-  * is loaded via ext4_mb_load_buddy. The information involve
-@@ -1236,6 +1260,33 @@ static void mb_clear_bits(void *bm, int
- 	}
- }
- 
-+/* clear bits in given range
-+ * will return first found zero bit if any, -1 otherwise
-+ */
-+static int mb_test_and_clear_bits(void *bm, int cur, int len)
-+{
-+	__u32 *addr;
-+	int zero_bit = -1;
-+
-+	len = cur + len;
-+	while (cur < len) {
-+		if ((cur & 31) == 0 && (len - cur) >= 32) {
-+			/* fast path: clear whole word at once */
-+			addr = bm + (cur >> 3);
-+			if (*addr != (__u32)(-1) && zero_bit == -1)
-+				zero_bit = cur + mb_find_next_zero_bit(addr, 32, 0);
-+			*addr = 0;
-+			cur += 32;
-+			continue;
-+		}
-+		if (!mb_test_and_clear_bit(cur, bm) && zero_bit == -1)
-+			zero_bit = cur;
-+		cur++;
-+	}
-+
-+	return zero_bit;
-+}
-+
- void ext4_set_bits(void *bm, int cur, int len)
- {
- 	__u32 *addr;
-@@ -1254,17 +1305,57 @@ void ext4_set_bits(void *bm, int cur, in
- 	}
- }
- 
-+static inline int mb_buddy_adjust_border(int* bit, void* bitmap, int side)
-+{
-+	if (mb_test_bit(*bit + side, bitmap)) {
-+		mb_clear_bit(*bit, bitmap);
-+		(*bit) -= side;
-+		return 1;
-+	}
-+	else {
-+		mb_set_bit(*bit += side, bitmap);
-+		return -1;
-+	}
-+}
-+
-+static void mb_buddy_mark_free(struct ext4_buddy *e4b, int first, int last)
-+{
-+	int max;
-+	int order = 1;
-+	void *buddy = mb_find_buddy(e4b, order, &max);
-+
-+	while (buddy) {
-+		void *buddy2;
-+
-+		if (first & 1)
-+			e4b->bd_info->bb_counters[order] += mb_buddy_adjust_border(&first, buddy, -1);
-+		if (!(last & 1))
-+			e4b->bd_info->bb_counters[order] += mb_buddy_adjust_border(&last, buddy, 1);
-+		if (first > last)
-+			break;
-+		order++;
-+
-+		if (first == last || !(buddy2 = mb_find_buddy(e4b, order, &max))) {
-+			mb_clear_bits(buddy, first, last - first + 1);
-+			e4b->bd_info->bb_counters[order - 1] += last - first + 1;
-+			break;
-+		}
-+		first >>= 1;
-+		last >>= 1;
-+		buddy = buddy2;
-+	}
-+}
-+
- static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			  int first, int count)
- {
--	int block = 0;
--	int max = 0;
--	int order;
--	void *buddy;
--	void *buddy2;
-+	int left_is_free = 0;
-+	int right_is_free = 0;
-+	int block;
-+	int last = first + count - 1;
- 	struct super_block *sb = e4b->bd_sb;
- 
--	BUG_ON(first + count > (sb->s_blocksize << 3));
-+	BUG_ON(last >= (sb->s_blocksize << 3));
- 	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
- 	mb_check_buddy(e4b);
- 	mb_free_blocks_double(inode, e4b, first, count);
-@@ -1273,67 +1364,51 @@ static void mb_free_blocks(struct inode
- 	if (first < e4b->bd_info->bb_first_free)
- 		e4b->bd_info->bb_first_free = first;
- 
--	/* let's maintain fragments counter */
-+	/* access memory sequentially: check left neighbour,
-+	 * clear range and then check right neighbour
-+	 */
- 	if (first != 0)
--		block = !mb_test_bit(first - 1, e4b->bd_bitmap);
--	if (first + count < EXT4_SB(sb)->s_mb_maxs[0])
--		max = !mb_test_bit(first + count, e4b->bd_bitmap);
--	if (block && max)
-+		left_is_free = !mb_test_bit(first - 1, e4b->bd_bitmap);
-+	block = mb_test_and_clear_bits(e4b->bd_bitmap, first, count);
-+	if (last + 1 < EXT4_SB(sb)->s_mb_maxs[0])
-+		right_is_free = !mb_test_bit(last + 1, e4b->bd_bitmap);
-+
-+	if (unlikely(block != -1)) {
-+		ext4_fsblk_t blocknr;
-+
-+		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
-+		blocknr += EXT4_C2B(EXT4_SB(sb), block);
-+		ext4_grp_locked_error(sb, e4b->bd_group,
-+							inode ? inode->i_ino : 0,
-+							blocknr,
-+							"freeing already freed block "
-+							"(bit %u)", block);
-+		mb_regenerate_buddy(e4b);
-+		goto done;
-+	}
-+
-+	/* let's maintain fragments counter */
-+	if (left_is_free && right_is_free)
- 		e4b->bd_info->bb_fragments--;
--	else if (!block && !max)
-+	else if (!left_is_free && !right_is_free)
- 		e4b->bd_info->bb_fragments++;
- 
--	/* let's maintain buddy itself */
--	while (count-- > 0) {
--		block = first++;
--		order = 0;
--
--		if (!mb_test_bit(block, e4b->bd_bitmap)) {
--			ext4_fsblk_t blocknr;
--
--			blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
--			blocknr += EXT4_C2B(EXT4_SB(sb), block);
--			ext4_grp_locked_error(sb, e4b->bd_group,
--					      inode ? inode->i_ino : 0,
--					      blocknr,
--					      "freeing already freed block "
--					      "(bit %u)", block);
--		}
--		mb_clear_bit(block, e4b->bd_bitmap);
--		e4b->bd_info->bb_counters[order]++;
--
--		/* start of the buddy */
--		buddy = mb_find_buddy(e4b, order, &max);
-+	/* check if neighbours are to be coaleasced and
-+	 * adjust bitmap bb_counters appropriately
-+	 */
-+	if (first & 1) {
-+		first += !left_is_free;
-+		e4b->bd_info->bb_counters[0] += left_is_free ? -1 : 1;
-+	}
-+	if (!(last & 1)) {
-+		last -= !right_is_free;
-+		e4b->bd_info->bb_counters[0] += right_is_free ? -1 : 1;
-+	}
- 
--		do {
--			block &= ~1UL;
--			if (mb_test_bit(block, buddy) ||
--					mb_test_bit(block + 1, buddy))
--				break;
--
--			/* both the buddies are free, try to coalesce them */
--			buddy2 = mb_find_buddy(e4b, order + 1, &max);
--
--			if (!buddy2)
--				break;
--
--			if (order > 0) {
--				/* for special purposes, we don't set
--				 * free bits in bitmap */
--				mb_set_bit(block, buddy);
--				mb_set_bit(block + 1, buddy);
--			}
--			e4b->bd_info->bb_counters[order]--;
--			e4b->bd_info->bb_counters[order]--;
-+	if (first <= last)
-+		mb_buddy_mark_free(e4b, first >> 1, last >> 1);
- 
--			block = block >> 1;
--			order++;
--			e4b->bd_info->bb_counters[order]++;
+
+
+--- Comment #3 from Brad Figg <brad.figg@canonical.com>  2012-09-21 04:21:34 ---
+After many, many runs of xfstests I have encountered this same oops.
+
+
+Sep 20 23:46:19 rizzo jenkins: run xfstest 234
+Sep 20 23:46:20 rizzo kernel: [46589.656011] EXT4-fs (sdb2): mounted filesystem
+with ordered data mode. Opts: acl,user_xattr,usrquota,grpquota
+Sep 20 23:46:20 rizzo kernel: [46589.674369] EXT4-fs (sdb2): re-mounted. Opts:
+(null)
+Sep 20 23:46:20 rizzo kernel: [46589.682388] EXT4-fs (sdb2): re-mounted. Opts:
+(null)
+Sep 20 23:46:20 rizzo kernel: [46590.133061] BUG: unable to handle kernel NULL
+pointer dereference at 0000001a
+Sep 20 23:46:20 rizzo kernel: [46590.133482] IP: [<c12d908f>] strchr+0xf/0x30
+Sep 20 23:46:20 rizzo kernel: [46590.133728] *pdpt = 0000000026347001 *pde =
+0000000000000000 
+Sep 20 23:46:20 rizzo kernel: [46590.134069] Oops: 0000 [#1] SMP 
+Sep 20 23:46:20 rizzo kernel: [46590.134262] Modules linked in: quota_v2
+quota_tree dm_multipath scsi_dh vesafb coretemp kvm_intel kvm joydev gpio_ich
+microcode i7core_edac hid_generic edac_core dcdbas lpc_ich lp mac_hid
+acpi_power_meter parport usbhid hid mpt2sas scsi_transport_sas raid_class bnx2
+Sep 20 23:46:20 rizzo kernel: [46590.135782] 
+Sep 20 23:46:20 rizzo kernel: [46590.135861] Pid: 23450, comm: setquota Not
+tainted 3.5.0-15-generic #22~precise1-Ubuntu Dell Inc. PowerEdge R310/05XKKK
+Sep 20 23:46:20 rizzo kernel: [46590.136498] EIP: 0060:[<c12d908f>] EFLAGS:
+00010246 CPU: 3
+Sep 20 23:46:20 rizzo kernel: [46590.136805] EIP is at strchr+0xf/0x30
+Sep 20 23:46:20 rizzo kernel: [46590.137007] EAX: 00003d3d EBX: c1603be4 ECX:
+00180000 EDX: 0000003d
+Sep 20 23:46:20 rizzo kernel: [46590.137362] ESI: 0000001a EDI: 00380800 EBP:
+da22beac ESP: da22bea8
+Sep 20 23:46:20 rizzo kernel: [46590.137718]  DS: 007b ES: 007b FS: 00d8 GS:
+00e0 SS: 0068
+Sep 20 23:46:20 rizzo kernel: [46590.138023] CR0: 8005003b CR2: 0000001a CR3:
+130a0000 CR4: 000007f0
+Sep 20 23:46:20 rizzo kernel: [46590.138376] DR0: 00000000 DR1: 00000000 DR2:
+00000000 DR3: 00000000
+Sep 20 23:46:20 rizzo kernel: [46590.138733] DR6: ffff0ff0 DR7: 00000400
+Sep 20 23:46:20 rizzo kernel: [46590.138969] Process setquota (pid: 23450,
+ti=da22a000 task=f6582610 task.ti=da22a000)
+Sep 20 23:46:20 rizzo kernel: [46590.139473] Stack:
+Sep 20 23:46:20 rizzo kernel: [46590.139592]  0000002c da22bef4 c11e8057
+f779b480 c17b8975 0000002c c17b8597 00000034
+Sep 20 23:46:20 rizzo kernel: [46590.140123]  0000002c ca024400 eeb29400
+8c02c010 eeb2d000 00000000 2cd6d558 f779b480
+Sep 20 23:46:20 rizzo kernel: [46590.149809]  eeb2d000 f779b480 00000000
+da22befc c11e85e2 da22bf1c c1189e66 f6d6d550
+Sep 20 23:46:20 rizzo kernel: [46590.169372] Call Trace:
+Sep 20 23:46:20 rizzo kernel: [46590.178912]  [<c11e8057>]
+_ext4_show_options+0xf7/0x670
+Sep 20 23:46:20 rizzo kernel: [46590.188682]  [<c11e85e2>]
+ext4_show_options+0x12/0x20
+Sep 20 23:46:20 rizzo kernel: [46590.198181]  [<c1189e66>]
+show_vfsmnt+0xc6/0x110
+Sep 20 23:46:20 rizzo kernel: [46590.207743]  [<c116ca70>] m_show+0x10/0x20
+Sep 20 23:46:20 rizzo kernel: [46590.216361]  [<c11709e3>] seq_read+0x203/0x380
+Sep 20 23:46:20 rizzo kernel: [46590.225585]  [<c115343c>] vfs_read+0x8c/0x160
+Sep 20 23:46:20 rizzo kernel: [46590.234509]  [<c11707e0>] ?
+seq_lseek+0x170/0x170
+Sep 20 23:46:20 rizzo kernel: [46590.243111]  [<c115354d>] sys_read+0x3d/0x70
+Sep 20 23:46:20 rizzo kernel: [46590.251658]  [<c15e759f>]
+sysenter_do_call+0x12/0x28
+Sep 20 23:46:20 rizzo kernel: [46590.259959] Code: 19 c0 0c 01 8b 75 f8 8b 7d
+fc 89 ec 5d c3 8d b4 26 00 00 00 00 8d bc 27 00 00 00 00 55 89 e5 56 66 66 66
+66 90 89 c6 89 d0 88 c4 <ac> 38 e0 74 09 84 c0 75 f7 be 01 00 00 00 89 f0 48 5e
+5d c3 8d 
+Sep 20 23:46:20 rizzo kernel: [46590.286078] EIP: [<c12d908f>] strchr+0xf/0x30
+SS:ESP 0068:da22bea8
+Sep 20 23:46:20 rizzo kernel: [46590.294730] CR2: 000000000000001a
+Sep 20 23:46:20 rizzo kernel: [46590.316231] ---[ end trace d04680d177f087ac
+]---
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
