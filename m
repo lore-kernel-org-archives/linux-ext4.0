@@ -1,123 +1,41 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: fix potential deadlock in ext4_nonda_switch()
-Date: Fri, 21 Sep 2012 17:12:05 -0500
-Message-ID: <505CE635.6060101@redhat.com>
+Date: Fri, 21 Sep 2012 19:59:12 -0400
+Message-ID: <20120921235912.GA27207@thunk.org>
 References: <1348111390-23083-1-git-send-email-tytso@mit.edu>
+ <505CE635.6060101@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	stable@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31535 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757105Ab2IUWMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Sep 2012 18:12:10 -0400
-In-Reply-To: <1348111390-23083-1-git-send-email-tytso@mit.edu>
+Received: from li9-11.members.linode.com ([67.18.176.11]:51975 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753217Ab2IUX7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Sep 2012 19:59:20 -0400
+Content-Disposition: inline
+In-Reply-To: <505CE635.6060101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/19/12 10:23 PM, Theodore Ts'o wrote:
-> In ext4_nonda_switch(), if the file system is getting full we used to
-> call writeback_inodes_sb_if_idle().  The problem is that we can be
-> holding i_mutex already, and this causes a potential deadlock when
-> writeback_inodes_sb_if_idle() when it tries to take s_umount.  (See
-> lockdep output below).
+On Fri, Sep 21, 2012 at 05:12:05PM -0500, Eric Sandeen wrote:
+> > -	if (free_blocks < 2 * dirty_blocks)
+> > -		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
+> > +	if ((free_blocks < 2 * dirty_blocks) && writeback_in_progress(sb->s_bdi))
+> > +		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
 > 
-> As it turns out we don't need need to hold s_umount; the fact that we
-> are in the middle of the write(2) system call will keep the superblock
-> pinned.  So we can just call writeback_inodes_sb() directly without
-> taking s_umount first.
+> Looks to me like this inverts the logic.
 > 
->    [ INFO: possible circular locking dependency detected ]
->    3.6.0-rc1-00042-gce894ca #367 Not tainted
->    -------------------------------------------------------
->    dd/8298 is trying to acquire lock:
->     (&type->s_umount_key#18){++++..}, at: [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
+> We used to write back if idle, now we fire it off if it's already underway.
 > 
->    but task is already holding lock:
->     (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
+> Shouldn't it be:
 > 
->    which lock already depends on the new lock.
-> 
->    2 locks held by dd/8298:
->     #0:  (sb_writers#2){.+.+.+}, at: [<c01ddcc5>] generic_file_aio_write+0x56/0xd3
->     #1:  (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
-> 
->    stack backtrace:
->    Pid: 8298, comm: dd Not tainted 3.6.0-rc1-00042-gce894ca #367
->    Call Trace:
->     [<c015b79c>] ? console_unlock+0x345/0x372
->     [<c06d62a1>] print_circular_bug+0x190/0x19d
->     [<c019906c>] __lock_acquire+0x86d/0xb6c
->     [<c01999db>] ? mark_held_locks+0x5c/0x7b
->     [<c0199724>] lock_acquire+0x66/0xb9
->     [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
->     [<c06db935>] down_read+0x28/0x58
->     [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
->     [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
->     [<c026f3b2>] ext4_nonda_switch+0xe1/0xf4
->     [<c0271ece>] ext4_da_write_begin+0x27/0x193
->     [<c01dcdb0>] generic_file_buffered_write+0xc8/0x1bb
->     [<c01ddc47>] __generic_file_aio_write+0x1dd/0x205
->     [<c01ddce7>] generic_file_aio_write+0x78/0xd3
->     [<c026d336>] ext4_file_write+0x480/0x4a6
->     [<c0198c1d>] ? __lock_acquire+0x41e/0xb6c
->     [<c0180944>] ? sched_clock_cpu+0x11a/0x13e
->     [<c01967e9>] ? trace_hardirqs_off+0xb/0xd
->     [<c018099f>] ? local_clock+0x37/0x4e
->     [<c0209f2c>] do_sync_write+0x67/0x9d
->     [<c0209ec5>] ? wait_on_retry_sync_kiocb+0x44/0x44
->     [<c020a7b9>] vfs_write+0x7b/0xe6
->     [<c020a9a6>] sys_write+0x3b/0x64
->     [<c06dd4bd>] syscall_call+0x7/0xb
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/ext4/inode.c   | 4 ++--
->  fs/fs-writeback.c | 1 +
->  2 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 0a9a89e..d4c60f2 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2449,8 +2449,8 @@ static int ext4_nonda_switch(struct super_block *sb)
->  	 * Even if we don't switch but are nearing capacity,
->  	 * start pushing delalloc when 1/2 of free blocks are dirty.
->  	 */
-> -	if (free_blocks < 2 * dirty_blocks)
-> -		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
-> +	if ((free_blocks < 2 * dirty_blocks) && writeback_in_progress(sb->s_bdi))
+> +	if ((free_blocks < 2 * dirty_blocks) && !writeback_in_progress(sb->s_bdi))
 > +		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
 
-Looks to me like this inverts the logic.
+Oops, nice catch.  Thanks for the review!!
 
-We used to write back if idle, now we fire it off if it's already underway.
+I've added the missing '!' to the patch.
 
-Shouldn't it be:
-
-+	if ((free_blocks < 2 * dirty_blocks) && !writeback_in_progress(sb->s_bdi))
-+		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
-
--Eric
-
->  
->  	return 0;
->  }
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index be3efc4..5602d73 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -63,6 +63,7 @@ int writeback_in_progress(struct backing_dev_info *bdi)
->  {
->  	return test_bit(BDI_writeback_running, &bdi->state);
->  }
-> +EXPORT_SYMBOL(writeback_in_progress);
->  
->  static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
->  {
-> 
-
+     	   					- Ted
