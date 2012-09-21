@@ -1,59 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 47731] Null pointer dereference at strchr
-Date: Fri, 21 Sep 2012 04:42:33 +0000 (UTC)
-Message-ID: <20120921044233.122FC11FA29@bugzilla.kernel.org>
-References: <bug-47731-13602@https.bugzilla.kernel.org/>
+From: Andrey Sidorov <qrxd43@motorola.com>
+Subject: Re: [PATCH V2] ext4: speed-up releasing blocks on commit
+Date: Fri, 21 Sep 2012 00:43:49 -0400
+Message-ID: <CAA0+VHzz-q4moP5P7U4fgru7wqwDwHJyVO1SmTz0NNHwTvGkxQ@mail.gmail.com>
+References: <20120921041119.GA4310@qrxd43-motbuntu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:34862 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751500Ab2IUEmg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Sep 2012 00:42:36 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A2B8020273
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 04:42:35 +0000 (UTC)
-Received: from bugzilla.kernel.org (unknown [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id E2B4D2025C
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 04:42:33 +0000 (UTC)
-In-Reply-To: <bug-47731-13602@https.bugzilla.kernel.org/>
+Received: from exprod5og110.obsmtp.com ([64.18.0.20]:43431 "EHLO
+	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751109Ab2IUEnw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 00:43:52 -0400
+Received: from il93mgrg01.am.mot-mobility.com ([10.176.130.20])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q8L4Yjge025809
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 00:34:46 -0400 (EDT)
+Received: from mail-vc0-f174.google.com (mail-vc0-f174.google.com [209.85.220.174])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q8L4YNEP025634
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 00:34:45 -0400 (EDT)
+Received: by mail-vc0-f174.google.com with SMTP id fo13so3502881vcb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Sep 2012 21:43:50 -0700 (PDT)
+In-Reply-To: <20120921041119.GA4310@qrxd43-motbuntu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=47731
+On Fri, Sep 21, 2012 at 12:11 AM, Andrey Sidorov <qrxd43@motorola.com>
+wrote:
+>
+> Improve mb_free_blocks speed by clearing bits all at once instead of going
+> one by one.
+> Rebuild buddy bitmap by going up only once per range instead of once per
+> block.
+> For example, for 60G file commit callback time drops from 2.7s to 5ms.
+> This is especially good for non-preemptive kernels as there is no
+> rescheduling during release.
 
-
-
-
-
---- Comment #4 from Brad Figg <brad.figg@canonical.com>  2012-09-21 04:42:32 ---
-$ uname -a
-Linux rizzo 3.5.0-15-generic #22~precise1-Ubuntu SMP Wed Sep 19 22:07:48 UTC
-2012 i686 i686 i386 GNU/Linux
-
-
-
-$ sudo parted /dev/sdb print
-Model: SEAGATE ST3300657SS (scsi)
-Disk /dev/sdb: 300GB
-Sector size (logical/physical): 512B/512B
-Partition Table: gpt
-
-Number  Start   End     Size    File system  Name  Flags
- 1      1049kB  21.0GB  21.0GB  ext4         p1
- 2      21.0GB  41.9GB  21.0GB  ext4         p2
- 3      41.9GB  62.9GB  21.0GB  ext4         p3
- 4      62.9GB  83.9GB  21.0GB  ext4         p4
- 5      83.9GB  84.4GB  523MB                p5
- 6      84.4GB  84.9GB  523MB                p6
-
-
-$ sudo TEST_DEV=/dev/sdb1 TEST_DIR=/mnt/xfstests_test_dir
-SCRATCH_MNT=/mnt/xfstests_scratch_mnt SCRATCH_DEV=/dev/sdb2 ./check -g auto -x
-dangerous
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+I realised that current implementation garbles bb_free, bb_counters
+and bb_fragments upon double free. I think simplest and the only
+reliable way to recover is rebuild buddy off bitmap and that's what I
+did.
+Tested it with AGGRESSIVE_CHECK defined and mb_check_buddy running at
+each invocation. I've also injected bit flips into mb_free_blocks to
+ensure regeneration is successful.
