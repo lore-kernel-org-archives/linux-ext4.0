@@ -1,113 +1,123 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [v2] ext4: fix possible non-initialized variable
-Date: Fri, 21 Sep 2012 16:14:49 -0300
-Message-ID: <20120921191449.GA18336@andromeda.usersys.redhat.com>
-References: <20120915183023.GA9895@thunk.org>
- <505739F8.9050305@redhat.com>
- <50574226.3020908@redhat.com>
- <20120917153701.GA5510@thunk.org>
- <20120917182604.GA1959@andromeda.usersys.redhat.com>
- <20120918035931.GB32195@thunk.org>
- <20120918125155.GA30408@andromeda.usersys.redhat.com>
- <20120919201057.GA23237@andromeda.usersys.redhat.com>
- <20120919204100.GF28470@thunk.org>
- <505A8678.4060402@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: fix potential deadlock in ext4_nonda_switch()
+Date: Fri, 21 Sep 2012 17:12:05 -0500
+Message-ID: <505CE635.6060101@redhat.com>
+References: <1348111390-23083-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37783 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31535 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756608Ab2IUTOy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Sep 2012 15:14:54 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q8LJEsO3014204
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 15:14:54 -0400
-Received: from andromeda.usersys.redhat.com (ovpn-113-28.phx2.redhat.com [10.3.113.28])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q8LJEoax009305
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 15:14:53 -0400
-Content-Disposition: inline
-In-Reply-To: <505A8678.4060402@redhat.com>
+	id S1757105Ab2IUWMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Sep 2012 18:12:10 -0400
+In-Reply-To: <1348111390-23083-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 19, 2012 at 09:59:04PM -0500, Eric Sandeen wrote:
-> On 9/19/12 3:41 PM, Theodore Ts'o wrote:
-> > On Wed, Sep 19, 2012 at 05:10:57PM -0300, Carlos Maiolino wrote:
-> >> Ted,
-> >>
-> >> In case of ext4_add_entry() I'm supposing to make the function call ext4_error()
-> >> and return -EIO in the case where ext4_bread() returns NULL and err is 0'ed,
-> >> does that matches with your thoughts or is there a better way to handle with
-> >> this?
-> > 
-> > Yeah, that's about it.  The real issue is EIO isn't really the right
-> > errno code, but we don't have a better one.  I've considered trying to
-> > propose adding a new EFSCORRUPT errno value, just so that the error
-> > message that eventually gets displayed back to the user via an
-> > application error message is more obvious, but I haven't had the
-> > energy to see if we can get it past the fsdevel shed-painting
-> > process.
+On 9/19/12 10:23 PM, Theodore Ts'o wrote:
+> In ext4_nonda_switch(), if the file system is getting full we used to
+> call writeback_inodes_sb_if_idle().  The problem is that we can be
+> holding i_mutex already, and this causes a potential deadlock when
+> writeback_inodes_sb_if_idle() when it tries to take s_umount.  (See
+> lockdep output below).
 > 
-> FWIW, xfs used to have a custom "EFSCORRUPTED" errno, but we ditched in
-> favor of a standard but seldom-used "EUCLEAN" (structure needs cleaning).
-> Doesn't seem like too bad a choice.
+> As it turns out we don't need need to hold s_umount; the fact that we
+> are in the middle of the write(2) system call will keep the superblock
+> pinned.  So we can just call writeback_inodes_sb() directly without
+> taking s_umount first.
 > 
-> -Eric
+>    [ INFO: possible circular locking dependency detected ]
+>    3.6.0-rc1-00042-gce894ca #367 Not tainted
+>    -------------------------------------------------------
+>    dd/8298 is trying to acquire lock:
+>     (&type->s_umount_key#18){++++..}, at: [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
 > 
-Not a bad idea really.
+>    but task is already holding lock:
+>     (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
+> 
+>    which lock already depends on the new lock.
+> 
+>    2 locks held by dd/8298:
+>     #0:  (sb_writers#2){.+.+.+}, at: [<c01ddcc5>] generic_file_aio_write+0x56/0xd3
+>     #1:  (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
+> 
+>    stack backtrace:
+>    Pid: 8298, comm: dd Not tainted 3.6.0-rc1-00042-gce894ca #367
+>    Call Trace:
+>     [<c015b79c>] ? console_unlock+0x345/0x372
+>     [<c06d62a1>] print_circular_bug+0x190/0x19d
+>     [<c019906c>] __lock_acquire+0x86d/0xb6c
+>     [<c01999db>] ? mark_held_locks+0x5c/0x7b
+>     [<c0199724>] lock_acquire+0x66/0xb9
+>     [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
+>     [<c06db935>] down_read+0x28/0x58
+>     [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
+>     [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
+>     [<c026f3b2>] ext4_nonda_switch+0xe1/0xf4
+>     [<c0271ece>] ext4_da_write_begin+0x27/0x193
+>     [<c01dcdb0>] generic_file_buffered_write+0xc8/0x1bb
+>     [<c01ddc47>] __generic_file_aio_write+0x1dd/0x205
+>     [<c01ddce7>] generic_file_aio_write+0x78/0xd3
+>     [<c026d336>] ext4_file_write+0x480/0x4a6
+>     [<c0198c1d>] ? __lock_acquire+0x41e/0xb6c
+>     [<c0180944>] ? sched_clock_cpu+0x11a/0x13e
+>     [<c01967e9>] ? trace_hardirqs_off+0xb/0xd
+>     [<c018099f>] ? local_clock+0x37/0x4e
+>     [<c0209f2c>] do_sync_write+0x67/0x9d
+>     [<c0209ec5>] ? wait_on_retry_sync_kiocb+0x44/0x44
+>     [<c020a7b9>] vfs_write+0x7b/0xe6
+>     [<c020a9a6>] sys_write+0x3b/0x64
+>     [<c06dd4bd>] syscall_call+0x7/0xb
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/inode.c   | 4 ++--
+>  fs/fs-writeback.c | 1 +
+>  2 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 0a9a89e..d4c60f2 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2449,8 +2449,8 @@ static int ext4_nonda_switch(struct super_block *sb)
+>  	 * Even if we don't switch but are nearing capacity,
+>  	 * start pushing delalloc when 1/2 of free blocks are dirty.
+>  	 */
+> -	if (free_blocks < 2 * dirty_blocks)
+> -		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
+> +	if ((free_blocks < 2 * dirty_blocks) && writeback_in_progress(sb->s_bdi))
+> +		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
 
-I've found some functions properly handling the problem (i.e !bh and !err), but
-some of them not. I'm thinking in fix functions with missing hole handlers and
-after that think about a 'default directory hole handler' for this, instead of
-make each function work on a specific way.
+Looks to me like this inverts the logic.
 
-What you guys think?
-> >> I'm talking about ext4_add_entry() behavious mainly as an example to
-> >> better understand how we should handle these situations. In case of
-> >> ext4_add_entry(), based on our discussions ext4_bread() should not
-> >> fail once dir entries should not have HOLES, so, a NULL return
-> >> should indicate a on-disk corruption or an I/O error.
-> > 
-> > Well, a NULL return indicates that there is a hole in that particular
-> > inode.  If err=0, then it's a hole.  Whether or not a hole is an
-> > actual file system corruption is up to the caller of ext4_bread() to
-> > determine.  In the case of directories, holes are an example file
-> > system corruption, so for the code in fs/ext4/namei.c, the appropriate
-> > thing to do would be to call ext4_error() and then return an error to
-> > abort the operation.
-> > 
-> > There is an argument to be made that if the file system is mounted
-> > with errors=continue, in this case we could just try to ignore the
-> > hole, and try to recover as best we can.  But that's going to be quite
-> > tricky to implement, and I'm not at all convinced it's worth the extra
-> > complexity to implement.  I could imagine someone who had a very high
-> > requirement for "zero downtime" who might argue for this, but then we
-> > would need to make sure the fallback code really was bulletproof.  If
-> > we pursued this option, then the EIO or EFSCORRUPT error code would
-> > only be returned in the errors=remount-ro case.
-> > 
-> > (This is the sort of thing which is what customers pay $$$ for IBM's
-> > mainframe in zOS.  Whether or not this is really needed for ext4 and
-> > Linux, even for an enterprise product, is a different sort of
-> > question.  I wouldn't object to someone who tried to make the
-> > errors=continue behaviour to recover in a clean and safe way, but the
-> > code would have to be very clearly documented, tested, and carefully
-> > reviewed.)
-> > 
-> > 						- Ted
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
+We used to write back if idle, now we fire it off if it's already underway.
+
+Shouldn't it be:
+
++	if ((free_blocks < 2 * dirty_blocks) && !writeback_in_progress(sb->s_bdi))
++		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
+
+-Eric
+
+>  
+>  	return 0;
+>  }
+> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> index be3efc4..5602d73 100644
+> --- a/fs/fs-writeback.c
+> +++ b/fs/fs-writeback.c
+> @@ -63,6 +63,7 @@ int writeback_in_progress(struct backing_dev_info *bdi)
+>  {
+>  	return test_bit(BDI_writeback_running, &bdi->state);
+>  }
+> +EXPORT_SYMBOL(writeback_in_progress);
+>  
+>  static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
+>  {
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
---Carlos
