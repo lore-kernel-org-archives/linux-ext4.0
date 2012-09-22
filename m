@@ -1,130 +1,288 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 02/21 v5] libext2fs: add function to check inline_data flag for an inode
-Date: Sat, 22 Sep 2012 12:00:50 +0800
-Message-ID: <1348286469-31690-3-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 03/21 v5] libext2fs: add functions to operate extend attribute
+Date: Sat, 22 Sep 2012 12:00:51 +0800
+Message-ID: <1348286469-31690-4-git-send-email-wenqing.lz@taobao.com>
 References: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
 Cc: tytso@mit.edu, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:45480 "EHLO
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:34114 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752683Ab2IVDvC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 23:51:02 -0400
-Received: by pbbrr4 with SMTP id rr4so3873835pbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 20:51:01 -0700 (PDT)
+	with ESMTP id S1752806Ab2IVDvE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 23:51:04 -0400
+Received: by pbbrr4 with SMTP id rr4so3873873pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 20:51:03 -0700 (PDT)
 In-Reply-To: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-A new file called `inline_data.c' is created, and a function called
-`ext2fs_inode_has_inline_data' is defined to check whether an inode
-has inline data or not.
+We need to define some functions to operate extend attribte due to inline data
+needs to change it.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/Makefile.in   |    8 ++++++++
- lib/ext2fs/Makefile.pq   |    1 +
- lib/ext2fs/ext2fs.h      |    3 +++
- lib/ext2fs/inline_data.c |   30 ++++++++++++++++++++++++++++++
- 4 files changed, 42 insertions(+), 0 deletions(-)
- create mode 100644 lib/ext2fs/inline_data.c
+ lib/ext2fs/ext2_ext_attr.h |   30 ++++++++
+ lib/ext2fs/ext2fs.h        |   13 ++++
+ lib/ext2fs/ext_attr.c      |  169 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 212 insertions(+), 0 deletions(-)
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 8930fdb..7201fa2 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -59,6 +59,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	ind_block.o \
- 	initialize.o \
- 	inline.o \
-+	inline_data.o \
- 	inode.o \
- 	io_manager.o \
- 	ismounted.o \
-@@ -132,6 +133,7 @@ SRCS= ext2_err.c \
- 	$(srcdir)/ind_block.c \
- 	$(srcdir)/initialize.c \
- 	$(srcdir)/inline.c \
-+	$(srcdir)/inline_data.c	\
- 	$(srcdir)/inode.c \
- 	$(srcdir)/inode_io.c \
- 	$(srcdir)/imager.c \
-@@ -743,6 +745,12 @@ inline.o: $(srcdir)/inline.c $(top_builddir)/lib/config.h \
-  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
-+inline_data.o: $(srcdir)/inline_data.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
-+ $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-+ $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
- inode.o: $(srcdir)/inode.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fsP.h \
-diff --git a/lib/ext2fs/Makefile.pq b/lib/ext2fs/Makefile.pq
-index 2f7b654..89082a7 100644
---- a/lib/ext2fs/Makefile.pq
-+++ b/lib/ext2fs/Makefile.pq
-@@ -27,6 +27,7 @@ OBJS= 	alloc.obj \
- 	icount.obj \
- 	initialize.obj \
- 	inline.obj \
-+	inline_data.obj \
- 	inode.obj \
- 	ismounted.obj \
- 	link.obj \
+diff --git a/lib/ext2fs/ext2_ext_attr.h b/lib/ext2fs/ext2_ext_attr.h
+index bbb0aaa..de60097 100644
+--- a/lib/ext2fs/ext2_ext_attr.h
++++ b/lib/ext2fs/ext2_ext_attr.h
+@@ -15,6 +15,10 @@
+ /* Maximum number of references to one attribute block */
+ #define EXT2_EXT_ATTR_REFCOUNT_MAX	1024
+ 
++/* Name indexes */
++#define EXT4_EXT_ATTR_INDEX_SYSTEM	7
++#define EXT4_EXT_ATTR_SYSTEM_DATA	"data"
++
+ struct ext2_ext_attr_header {
+ 	__u32	h_magic;	/* magic number for identification */
+ 	__u32	h_refcount;	/* reference count */
+@@ -25,6 +29,10 @@ struct ext2_ext_attr_header {
+ 	__u32	h_reserved[3];	/* zero right now */
+ };
+ 
++struct ext2_ext_attr_ibody_header {
++	__u32	h_magic;
++};
++
+ struct ext2_ext_attr_entry {
+ 	__u8	e_name_len;	/* length of name */
+ 	__u8	e_name_index;	/* attribute name index */
+@@ -57,6 +65,28 @@ struct ext2_ext_attr_entry {
+ #define EXT2_XATTR_SIZE(size) \
+ 	(((size) + EXT2_EXT_ATTR_ROUND) & ~EXT2_EXT_ATTR_ROUND)
+ 
++#define IHDR(inode) \
++	((struct ext2_ext_attr_ibody_header *) \
++		((void *)inode + \
++		EXT2_GOOD_OLD_INODE_SIZE + \
++		inode->i_extra_isize))
++#define IFIRST(hdr) ((struct ext2_ext_attr_entry *)((hdr)+1))
++
++struct ext2_ext_attr_info {
++	int name_index;
++	const char *name;
++	const void *value;
++	size_t value_len;
++};
++
++struct ext2_ext_attr_search {
++	struct ext2_ext_attr_entry *first;
++	void *base;
++	void *end;
++	struct ext2_ext_attr_entry *here;
++	int not_found;
++};
++
+ #ifdef __KERNEL__
+ # ifdef CONFIG_EXT2_FS_EXT_ATTR
+ extern int ext2_get_ext_attr(struct inode *, const char *, char *, size_t, int);
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 1cd53f0..8714f58 100644
+index 8714f58..b076c3c 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -1320,6 +1320,9 @@ extern errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
- extern ext2_ino_t ext2fs_get_icount_size(ext2_icount_t icount);
- errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *);
+@@ -1132,6 +1132,19 @@ extern errcode_t ext2fs_adjust_ea_refcount3(ext2_filsys fs, blk64_t blk,
+ 					   char *block_buf,
+ 					   int adjust, __u32 *newcount,
+ 					   ext2_ino_t inum);
++extern errcode_t ext2fs_ibody_find_ext_attr(ext2_filsys fs,
++					    struct ext2_inode_large *inode,
++					    struct ext2_ext_attr_info *i,
++					    struct ext2_ext_attr_search *s);
++extern errcode_t ext2fs_find_entry_ext_attr(struct ext2_ext_attr_entry **pentry,
++					    int name_index, const char *name,
++					    size_t size, int sorted);
++extern errcode_t ext2fs_set_entry_ext_attr(struct ext2_ext_attr_info *i,
++					   struct ext2_ext_attr_search *s);
++extern int ext2fs_ibody_get_ext_attr(ext2_filsys fs,
++				     struct ext2_inode_large *inode,
++				     int name_index, const char *name,
++				     void *buffer, size_t buf_len);
  
-+/* inline_data.c */
-+extern int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino);
+ /* extent.c */
+ extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 9649a14..c663f31 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -186,3 +186,172 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 	return ext2fs_adjust_ea_refcount2(fs, blk, block_buf, adjust,
+ 					  newcount);
+ }
 +
- /* inode.c */
- extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
- extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-new file mode 100644
-index 0000000..0341ee3
---- /dev/null
-+++ b/lib/ext2fs/inline_data.c
-@@ -0,0 +1,30 @@
-+/*
-+ * inline_data.c --- data in inode
-+ *
-+ * Copyright (C) 2012 Zheng Liu <wenqing.lz@taobao.com>
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+
-+#include "ext2_fs.h"
-+
-+#include "ext2fs.h"
-+#include "ext2fsP.h"
-+
-+int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino)
++errcode_t ext2fs_find_entry_ext_attr(struct ext2_ext_attr_entry **pentry,
++				     int name_index, const char *name,
++				     size_t size, int sorted)
 +{
-+	struct ext2_inode inode;
-+	errcode_t retval;
++	struct ext2_ext_attr_entry *entry;
++	size_t name_len;
++	int cmp;
 +
-+	retval = ext2fs_read_inode(fs, ino, &inode);
-+	if (retval)
++	name_len = strlen(name);
++	for (entry = *pentry; !EXT2_EXT_IS_LAST_ENTRY(entry);
++	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
++		cmp = name_index - entry->e_name_index;
++		if (!cmp)
++			cmp = name_len - entry->e_name_len;
++		if (!cmp)
++			cmp = memcmp(name, EXT2_EXT_ATTR_NAME(entry),
++				     name_len);
++		if (!cmp)
++			break;
++	}
++	*pentry = entry;
++
++	return cmp;
++}
++
++errcode_t ext2fs_ibody_find_ext_attr(ext2_filsys fs,
++				     struct ext2_inode_large *inode,
++				     struct ext2_ext_attr_info *i,
++				     struct ext2_ext_attr_search *s)
++{
++	struct ext2_ext_attr_ibody_header *header;
++	int error;
++
++	if (inode->i_extra_isize == 0)
 +		return 0;
++	header = IHDR(inode);
++	s->base = s->first = IFIRST(header);
++	s->here = s->first;
++	s->end = (void *)inode + EXT2_INODE_SIZE(fs->super);
++	error = ext2fs_find_entry_ext_attr(&s->here, i->name_index,
++					   i->name, s->end -
++					   (void *)s->base, 0);
++	s->not_found = error;
++	return 0;
++}
 +
-+	return (inode.i_flags & EXT4_INLINE_DATA_FL);
++extern int ext2fs_ibody_get_ext_attr(ext2_filsys fs,
++				     struct ext2_inode_large *inode,
++				     int name_index, const char *name,
++				     void *buffer, size_t buf_len)
++{
++	struct ext2_ext_attr_ibody_header *header;
++	struct ext2_ext_attr_entry *entry;
++	size_t size;
++	void *end;
++	int error;
++
++	header = IHDR(inode);
++	entry = IFIRST(header);
++	end = (void *)inode + EXT2_INODE_SIZE(fs->super);
++	error = ext2fs_find_entry_ext_attr(&entry, name_index, name,
++					   end - (void *)entry, 0);
++	if (error)
++		return error;
++	size = ext2fs_le32_to_cpu(entry->e_value_size);
++	if (buffer) {
++		if (size > buf_len)
++			return error;
++		memcpy(buffer, (void *)IFIRST(header) +
++		       ext2fs_le16_to_cpu(entry->e_value_offs), size);
++	}
++	error = size;
++
++	return error;
++}
++
++errcode_t ext2fs_set_entry_ext_attr(struct ext2_ext_attr_info *i,
++				    struct ext2_ext_attr_search *s)
++{
++	struct ext2_ext_attr_entry *last;
++	size_t free, min_offs = s->end - s->base, name_len = strlen(i->name);
++
++	last = s->first;
++	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
++		if (!last->e_value_block && last->e_value_size) {
++			size_t offs = ext2fs_le16_to_cpu(last->e_value_offs);
++			if (offs < min_offs)
++				min_offs = offs;
++		}
++	}
++	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
++	if (!s->not_found) {
++		if (!s->here->e_value_block & s->here->e_value_size) {
++			size_t size = ext2fs_le32_to_cpu(s->here->e_value_size);
++			free += EXT2_EXT_ATTR_SIZE(size);
++		}
++		free += EXT2_EXT_ATTR_LEN(name_len);
++	}
++	if (i->value) {
++		if (free < EXT2_EXT_ATTR_SIZE(i->value_len) ||
++		    free < EXT2_EXT_ATTR_LEN(name_len) +
++			   EXT2_EXT_ATTR_SIZE(i->value_len))
++			return -1;
++	}
++	if (i->value && s->not_found) {
++		size_t size = EXT2_EXT_ATTR_LEN(name_len);
++		size_t rest = (void *)last - (void *)s->here + sizeof(__u32);
++		memmove((void *)s->here + size, s->here, rest);
++		memset(s->here, 0, size);
++		s->here->e_name_index = i->name_index;
++		s->here->e_name_len = name_len;
++		memcpy(EXT2_EXT_ATTR_NAME(s->here),
++		       EXT2_EXT_ATTR_NAME(i), name_len);
++	} else {
++		if (!s->here->e_value_block && s->here->e_value_size) {
++			void *first_val = s->base + min_offs;
++			size_t offs = ext2fs_le16_to_cpu(s->here->e_value_offs);
++			void *val = s->base + offs;
++			size_t size = EXT2_EXT_ATTR_SIZE(
++				ext2fs_le32_to_cpu(s->here->e_value_size));
++
++			if (i->value && size == EXT2_EXT_ATTR_SIZE(i->value_len)) {
++				s->here->e_value_size =
++					ext2fs_cpu_to_le32(i->value_len);
++				memset(val + size - EXT2_EXT_ATTR_PAD, 0,
++					EXT2_EXT_ATTR_PAD);
++				memcpy(val, i->value, i->value_len);
++				return 0;
++			}
++
++			memmove(first_val + size, first_val, val - first_val);
++			memset(first_val, 0, size);
++			s->here->e_value_size = 0;
++			s->here->e_value_offs = 0;
++			min_offs += size;
++
++			last = s->first;
++			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
++				size_t o = ext2fs_le16_to_cpu(last->e_value_offs);
++				if (!last->e_value_block &&
++				    last->e_value_size && o < offs)
++					last->e_value_offs =
++						ext2fs_cpu_to_le16(o + size);
++				last = EXT2_EXT_ATTR_NEXT(last);
++			}
++		}
++		if (!i->value) {
++			size_t size = EXT2_EXT_ATTR_LEN(name_len);
++			last = (struct ext2_ext_attr_entry *)last - size;
++			memmove(s->here, (void *)s->here + size,
++				(void *)last - (void *)s->here + sizeof(__u32));
++			memset(last, 0, size);
++		}
++	}
++
++	if (i->value) {
++		s->here->e_value_size = ext2fs_cpu_to_le32(i->value_len);
++		if (i->value_len) {
++			size_t size = EXT2_EXT_ATTR_SIZE(i->value_len);
++			void *val = s->base + min_offs - size;
++			s->here->e_value_offs = ext2fs_cpu_to_le16(min_offs - size);
++			memset(val + size - EXT2_EXT_ATTR_PAD, 0,
++				EXT2_EXT_ATTR_PAD);
++			memcpy(val, i->value, i->value_len);
++		}
++	}
++	return 0;
 +}
 -- 
 1.7.4.1
