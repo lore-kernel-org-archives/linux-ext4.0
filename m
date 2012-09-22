@@ -1,57 +1,313 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 11/21 v5] debugfs: handle inline_data feature in bmap command
-Date: Sat, 22 Sep 2012 12:00:59 +0800
-Message-ID: <1348286469-31690-12-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 09/21 v5] libext2fs: handle inline data in read/write function
+Date: Sat, 22 Sep 2012 12:00:57 +0800
+Message-ID: <1348286469-31690-10-git-send-email-wenqing.lz@taobao.com>
 References: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
 Cc: tytso@mit.edu, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:45480 "EHLO
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:34114 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753152Ab2IVDvT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 23:51:19 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rr4so3873835pbb.19
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 20:51:19 -0700 (PDT)
+	with ESMTP id S1752976Ab2IVDvP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Sep 2012 23:51:15 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr4so3873873pbb.19
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Sep 2012 20:51:15 -0700 (PDT)
 In-Reply-To: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-If an inode has inline data, bmap command will return the physical block of this
-inode.
+Ext2fs_read/write_inline_data functions copy inline_data from/to user's buffer
+directly.  When we want to write some data to a file with inline_data,
+ext2fs_try_to_write_inline_data is called.  In this function, it firstly check
+the length of data.  If the data can be saved in innode, this function will
+create a new extend attribute to record information of inline_data, and copy all
+data into this inode.
+
+The following commands in debugfs can handle inline_data feature after
+applying this patch:
+	- dump
+	- cat
+	- rdump
+	- write
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/bmap.c |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+ lib/ext2fs/ext2_err.et.in |    3 +
+ lib/ext2fs/ext2fs.h       |    7 ++
+ lib/ext2fs/fileio.c       |   19 +++++-
+ lib/ext2fs/inline_data.c  |  170 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 198 insertions(+), 1 deletions(-)
 
-diff --git a/lib/ext2fs/bmap.c b/lib/ext2fs/bmap.c
-index 16d51e0..4746a1f 100644
---- a/lib/ext2fs/bmap.c
-+++ b/lib/ext2fs/bmap.c
-@@ -264,6 +264,21 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
- 		block_buf = buf;
- 	}
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index 537d840..17de695 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -476,6 +476,9 @@ ec	EXT2_ET_UNKNOWN_CSUM,
+ ec	EXT2_ET_MMP_CSUM_INVALID,
+ 	"MMP block checksum does not match MMP block"
  
-+	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
-+		unsigned long group, block, offset;
++ec	EXT2_ET_INLINE_DATA_NO_SPACE,
++	"No free space in inline data"
 +
-+		group = (ino - 1) / EXT2_INODES_PER_GROUP(fs->super);
-+		if (group > fs->group_desc_count)
-+			return EXT2_ET_BAD_INODE_NUM;
-+		offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
-+			 EXT2_INODE_SIZE(fs->super);
-+		block = offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
-+		if (!ext2fs_inode_table_loc(fs, (unsigned) group))
-+			return EXT2_ET_MISSING_INODE_TABLE;
-+		*phys_blk = ext2fs_inode_table_loc(fs, group) + block;
-+		goto done;
+ ec	EXT2_ET_BAD_EXTRA_SIZE,
+ 	"Bad inode extra isizevalue"
+ 
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 779eca5..801e2dd 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1347,6 +1347,13 @@ extern errcode_t ext2fs_inline_data_mkdir(ext2_filsys fs, ext2_ino_t parent,
+ 					  ext2_ino_t ino, const char *name);
+ extern errcode_t ext2fs_convert_inline_data(ext2_filsys fs, ext2_ino_t ino,
+ 					    void *priv_data);
++extern errcode_t ext2fs_read_inline_data(ext2_filsys fs, ext2_ino_t ino,
++					 char *buf);
++extern errcode_t ext2fs_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
++					  char *buf);
++extern errcode_t ext2fs_try_to_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
++						 const void *buf, unsigned int nbytes,
++						 unsigned int *written);
+ 
+ /* inode.c */
+ extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 1f7002c..d751666 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -163,7 +163,8 @@ static errcode_t sync_buffer_position(ext2_file_t file)
+ 
+ 	b = file->pos / file->fs->blocksize;
+ 	if (b != file->blockno) {
+-		retval = ext2fs_file_flush(file);
++		if (!ext2fs_inode_has_inline_data(file->fs, file->ino))
++			retval = ext2fs_file_flush(file);
+ 		if (retval)
+ 			return retval;
+ 		file->flags &= ~EXT2_FILE_BUF_VALID;
+@@ -186,6 +187,12 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
+ 	ext2_filsys	fs = file->fs;
+ 	errcode_t	retval;
+ 
++	/* We first handle inline_data */
++	if (file->inode.i_flags & EXT4_INLINE_DATA_FL) {
++		retval = ext2fs_read_inline_data(fs, file->ino, file->buf);
++		return retval;
 +	}
 +
- 	if (inode->i_flags & EXT4_EXTENTS_FL) {
- 		retval = ext2fs_extent_open2(fs, ino, inode, &handle);
+ 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
+ 		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
+ 				     BMAP_BUFFER, 0, file->blockno, 0,
+@@ -280,6 +287,16 @@ errcode_t ext2fs_file_write(ext2_file_t file, const void *buf,
+ 	if (!(file->flags & EXT2_FILE_WRITE))
+ 		return EXT2_ET_FILE_RO;
+ 
++	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_INLINE_DATA) {
++		retval = ext2fs_try_to_write_inline_data(fs, file->ino, buf,
++							 nbytes, written);
++		if (!retval)
++			return retval;
++		if (retval != EXT2_ET_INLINE_DATA_NO_SPACE)
++			return retval;
++		retval = 0;
++	}
++
+ 	while (nbytes > 0) {
+ 		retval = sync_buffer_position(file);
  		if (retval)
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index ef7b216..a847b68 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -24,6 +24,7 @@ static int ext2fs_iget_extra_inode(ext2_filsys fs, struct ext2_inode_large *inod
+ 				    struct inline_data *data);
+ static void *ext2fs_get_inline_xattr_pos(struct ext2_inode_large *inode,
+ 					 struct inline_data *data);
++static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *inode);
+ static void ext2fs_inline_data_finish_convert(ext2_filsys fs, ext2_ino_t ino,
+ 					      char *target, void *buf,
+ 					      int inline_size);
+@@ -314,6 +315,73 @@ out:
+ 	return retval & BLOCK_ERROR ? ctx->errcode : 0;
+ }
+ 
++errcode_t ext2fs_read_inline_data(ext2_filsys fs, ext2_ino_t ino, char *buf)
++{
++	struct ext2_inode_large *inode;
++	struct inline_data data;
++	errcode_t retval = 0;
++	int inline_size;
++
++	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	if (retval)
++		return retval;
++
++	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
++					EXT2_INODE_SIZE(fs->super));
++	if (retval)
++		goto err;
++
++	retval = ext2fs_iget_extra_inode(fs, inode, &data);
++	if (retval)
++		goto err;
++
++	inline_size = data.inline_size;
++
++	memcpy(buf, (void *)inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
++	if (inline_size > EXT4_MIN_INLINE_DATA_SIZE)
++		memcpy(buf + EXT4_MIN_INLINE_DATA_SIZE,
++		       ext2fs_get_inline_xattr_pos(inode, &data),
++		       inline_size - EXT4_MIN_INLINE_DATA_SIZE);
++
++err:
++	ext2fs_free_mem(&inode);
++	return retval;
++}
++
++errcode_t ext2fs_write_inline_data(ext2_filsys fs, ext2_ino_t ino, char *buf)
++{
++	struct ext2_inode_large *inode;
++	struct inline_data data;
++	errcode_t retval = 0;
++	int inline_size;
++
++	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	if (retval)
++		return retval;
++
++	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
++					EXT2_INODE_SIZE(fs->super));
++	if (retval)
++		goto err;
++
++	retval = ext2fs_iget_extra_inode(fs, inode, &data);
++	if (retval)
++		goto err;
++
++	inline_size = data.inline_size;
++
++	memcpy((void *)inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
++	if (inline_size > EXT4_MIN_INLINE_DATA_SIZE)
++		memcpy(ext2fs_get_inline_xattr_pos(inode, &data),
++		       buf + EXT4_MIN_INLINE_DATA_SIZE,
++		       inline_size - EXT4_MIN_INLINE_DATA_SIZE);
++
++	retval = ext2fs_write_inode_full(fs, ino, (void *)inode,
++					 EXT2_INODE_SIZE(fs->super));
++err:
++	ext2fs_free_mem(&inode);
++	return retval;
++}
+ errcode_t ext2fs_convert_inline_data(ext2_filsys fs,
+ 				     ext2_ino_t  ino,
+ 				     void *priv_data)
+@@ -519,3 +587,105 @@ out:
+ 	ext2fs_free_mem(&inode);
+ 	return retval;
+ }
++
++static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *inode)
++{
++	struct ext2_ext_attr_entry *entry;
++	struct ext2_ext_attr_ibody_header *header;
++	struct inline_data data;
++	errcode_t retval = 0;
++	int free, min_offs;
++
++	min_offs = EXT2_INODE_SIZE(fs->super) -
++		   EXT2_GOOD_OLD_INODE_SIZE -
++		   inode->i_extra_isize -
++		   sizeof(struct ext2_ext_attr_ibody_header);
++
++	header = IHDR(inode);
++	entry = IFIRST(header);
++
++	for (; !EXT2_EXT_IS_LAST_ENTRY(entry);
++	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
++		if (!entry->e_value_block && entry->e_value_size) {
++			size_t offs = ext2fs_le16_to_cpu(entry->e_value_offs);
++			if (offs < min_offs)
++				min_offs = offs;
++		}
++	}
++	free = min_offs -
++		((void *)entry - (void *)IFIRST(header)) - sizeof(__u32);
++
++	/*
++	 * We try to get inline data offset, but maybe it doesn't be
++	 * created.  So we ignore this error.
++	 */
++	retval = ext2fs_iget_extra_inode(fs, inode, &data);
++	if (retval && retval != EXT2_ET_BAD_EXT_ATTR_MAGIC)
++		return 0;
++
++	if (data.inline_off) {
++		entry = (struct ext2_ext_attr_entry *)
++			((void *)inode + data.inline_off);
++		free += ext2fs_le32_to_cpu(entry->e_value_size);
++		goto out;
++	}
++
++	free -= EXT2_EXT_ATTR_LEN(strlen(EXT4_EXT_ATTR_SYSTEM_DATA));
++
++	if (free > EXT2_EXT_ATTR_ROUND)
++		free = EXT2_EXT_ATTR_SIZE(free - EXT2_EXT_ATTR_ROUND);
++	else
++		free = 0;
++
++out:
++	return free + EXT4_MIN_INLINE_DATA_SIZE;
++}
++
++errcode_t ext2fs_try_to_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
++					  const void *buf, unsigned int nbytes,
++					  unsigned int *written)
++{
++	struct ext2_inode_large *inode;
++	struct inline_data data;
++	errcode_t retval = 0;
++	int inline_size = 0;
++
++	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
++	if (retval)
++		return retval;
++	retval = ext2fs_read_inode_full(fs, ino, (void *)inode,
++					EXT2_INODE_SIZE(fs->super));
++	if (retval)
++		goto out;
++
++	if (nbytes > ext2fs_get_max_inline_size(fs, inode)) {
++		retval = EXT2_ET_INLINE_DATA_NO_SPACE;
++		goto out;
++	}
++
++	retval = ext2fs_create_inline_data(fs, inode, nbytes);
++	if (retval)
++		goto out;
++
++	retval = ext2fs_iget_extra_inode(fs, inode, &data);
++	if (retval)
++		goto out;
++
++	inline_size = data.inline_size;
++
++	memcpy((void *)inode->i_block, buf, EXT4_MIN_INLINE_DATA_SIZE);
++	if (inline_size > EXT4_MIN_INLINE_DATA_SIZE)
++		memcpy(ext2fs_get_inline_xattr_pos(inode, &data),
++		       buf + EXT4_MIN_INLINE_DATA_SIZE,
++		       inline_size - EXT4_MIN_INLINE_DATA_SIZE);
++
++	inode->i_flags &= ~EXT4_EXTENTS_FL;
++	inode->i_flags |= EXT4_INLINE_DATA_FL;
++
++	retval = ext2fs_write_inode_full(fs, ino, (void *)inode,
++					 EXT2_INODE_SIZE(fs->super));
++
++out:
++	ext2fs_free_mem(&inode);
++	return retval;
++}
 -- 
 1.7.4.1
 
