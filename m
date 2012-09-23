@@ -1,139 +1,112 @@
-From: zwu.kernel@gmail.com
-Subject: [RFC v2 10/10] vfs: add documentation
-Date: Sun, 23 Sep 2012 20:56:35 +0800
-Message-ID: <1348404995-14372-11-git-send-email-zwu.kernel@gmail.com>
-References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
-	viro@zeniv.linux.org.uk, cmm@us.ibm.com, tytso@mit.edu,
-	marco.stornelli@gmail.com, david@fromorbit.com,
-	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 1/6] xfstest: add fio git submodule
+Date: Sun, 23 Sep 2012 23:24:31 +0400
+Message-ID: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
+References: <a>
+Cc: xfs@oss.sgi.com, hch@lst.de, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:59473 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753529Ab2IWTYl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Sep 2012 15:24:41 -0400
+In-Reply-To: <a>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+FIO is very flexible io generator, i would call it IO swiss knife.
+Currently we have tonnes of hardcoded application which reproduces
+some predefined scenario. This approach has obvious dissadvantages
+1) Lack of flexability: once written it is hard to modify it in future
+2) Code base is large, many routines written again and again
 
-Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+At the same time add new fio based tast is just add simle INI file.
+This greatly simplify code review. I do beleve that some day we will
+replace most of hardcoded io binaries with fio.
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- Documentation/filesystems/hot_tracking.txt |  106 ++++++++++++++++++++++++++++
- 1 files changed, 106 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/hot_tracking.txt
+ .gitmodules                  |    3 +++
+ common.config                |    3 +++
+ src/Makefile                 |    8 +++++---
+ src/aio-dio-regress/Makefile |    4 ++--
+ src/fio                      |    1 +
+ 5 files changed, 14 insertions(+), 5 deletions(-)
+ create mode 100644 .gitmodules
+ create mode 160000 src/fio
 
-diff --git a/Documentation/filesystems/hot_tracking.txt b/Documentation/filesystems/hot_tracking.txt
+diff --git a/.gitmodules b/.gitmodules
 new file mode 100644
-index 0000000..340df45
+index 0000000..f0481ea
 --- /dev/null
-+++ b/Documentation/filesystems/hot_tracking.txt
-@@ -0,0 +1,106 @@
-+Hot Data Tracking
++++ b/.gitmodules
+@@ -0,0 +1,3 @@
++[submodule "src/fio"]
++	path = src/fio
++	url = git://git.kernel.dk/fio.git
+diff --git a/common.config b/common.config
+index 7bed1c5..25cddb4 100644
+--- a/common.config
++++ b/common.config
+@@ -138,6 +138,9 @@ export DF_PROG="`set_prog_path df`"
+ [ "$DF_PROG" = "" ] && _fatal "df not found"
+ [ "$HOSTOS" = "Linux" ] && export DF_PROG="$DF_PROG -T"
+ 
++export FIO_PROG="`set_prog_path $PWD/src/fio/fio`"
++[ "$FIO_PROG" = "" ] && _fatal "fio not found"
 +
-+Introduction
-+-------------------------------------------------------------------------------
+ export XFS_LOGPRINT_PROG="`set_prog_path xfs_logprint`"
+ export XFS_REPAIR_PROG="`set_prog_path xfs_repair`"
+ export XFS_CHECK_PROG="`set_prog_path xfs_check`"
+diff --git a/src/Makefile b/src/Makefile
+index 67250ee..255bdd4 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -52,16 +52,18 @@ LLDLIBS += $(LIBGDBM)
+ endif
+ 
+ ifeq ($(HAVE_AIO), true)
+-SUBDIRS += aio-dio-regress
++SUBDIRS += aio-dio-regress \
++		fio
 +
-+  The feature adds experimental support for tracking data temperature
-+information in VFS layer.  Essentially, this means maintaining some key
-+stats(like number of reads/writes, last read/write time, frequency of
-+reads/writes), then distilling those numbers down to a single
-+"temperature" value that reflects what data is "hot," and using that
-+temperature to move data to SSDs.
-+
-+  The long-term goal of the feature is to allow some FSs,
-+e.g. Btrfs to intelligently utilize SSDs in a heterogenous volume.
-+Incidentally, this project has been motivated by
-+the Project Ideas page on the Btrfs wiki.
-+
-+  Of course, users are warned not to run this code outside of development
-+environments. These patches are EXPERIMENTAL, and as such they might eat
-+your data and/or memory. That said, the code should be relatively safe
-+when the hottrack mount option are disabled.
-+
-+Motivation
-+-------------------------------------------------------------------------------
-+
-+  The overall goal of enabling hot data relocation to SSD has been
-+motivated by the Project Ideas page on the Btrfs wiki at
-+<https://btrfs.wiki.kernel.org/index.php/Project_ideas>.
-+It will divide into two steps. VFS provide hot data tracking function
-+while specific FS will provide hot data relocation function.
-+So as the first step of this goal, it is hoped that the patchset
-+for hot data tracking will eventually mature into VFS.
-+
-+  This is essentially the traditional cache argument: SSD is fast and
-+expensive; HDD is cheap but slow. ZFS, for example, can already take
-+advantage of SSD caching. Btrfs should also be able to take advantage of
-+hybrid storage without many broad, sweeping changes to existing code.
-+
-+Main Parts Description
-+-------------------------------------------------------------------------------
-+
-+These include the following parts:
-+    * Hooks in existing vfs functions to track data access frequency
-+    * New rbtrees for tracking access frequency of inodes and sub-file
-+ranges (hot_rb.c)
-+    The relationship between super_block and rbtree is as below:
-+super_block->s_hotinfo.hot_inode_tree
-+    In include/linux/fs.h, one struct hot_info s_hotinfo is added to
-+super_block struct. Each FS instance can find hot tracking info
-+s_hotinfo via its super_block. In this hot_info, it store a lot of hot
-+tracking info such as hot_inode_tree, inode and range hash list, etc.
-+    * A hash list for indexing data by its temperature (hot_hash.c)
-+    * A debugfs interface for dumping data from the rbtrees (hot_debugfs.c)
-+    * A background kthread for updating inode heat info
-+    * Mount options for enabling temperature tracking(-o hottrack,
-+default mean disabled) (hot_track.c)
-+    * An ioctl to retrieve the frequency information collected for a certain
-+file
-+    * Ioctls to enable/disable frequency tracking per inode.
-+
-+Git Development Tree
-+-------------------------------------------------------------------------------
-+
-+  The feature is still on development and review, so if you're interested,
-+you can pull from the git repository at the following location:
-+  https://github.com/wuzhy/kernel.git hot_tracking
-+  git://github.com/wuzhy/kernel.git hot_tracking
-+
-+Usage Example
-+-------------------------------------------------------------------------------
-+To use hot tracking, you should mount like this:
-+
-+$ mount -o hottrack /dev/sdb /mnt
-+[ 1505.894078] device label test devid 1 transid 29 /dev/sdb
-+[ 1505.952977] btrfs: disk space caching is enabled
-+[ 1506.069678] vfs: turning on hot data tracking
-+
-+Mount debugfs at first:
-+
-+$ mount -t debugfs none /sys/kernel/debug
-+$ ls -l /sys/kernel/debug/vfs_hotdata/
-+total 0
-+drwxr-xr-x 2 root root 0 Aug  8 04:40 sdb
-+$ ls -l /sys/kernel/debug/vfs_hotdata/sdb
-+total 0
-+-rw-r--r-- 1 root root 0 Aug  8 04:40 inode_data
-+-rw-r--r-- 1 root root 0 Aug  8 04:40 range_data
-+
-+View information about hot tracking from debugfs:
-+
-+$ echo "hot tracking test" > /mnt/file
-+$ cat /sys/kernel/debug/hot_track/sdb/inode_data
-+inode #279, reads 0, writes 1, avg read time 18446744073709551615,
-+avg write time 5251566408153596, temp 109
-+$ cat /sys/kernel/debug/hot_track/sdb/range_data
-+inode #279, range start 0 (range len 1048576) reads 0, writes 1,
-+avg read time 18446744073709551615, avg write time 1128690176623144209, temp 64
-+
-+$ echo "hot data tracking test" >> /mnt/file
-+$ cat /sys/kernel/debug/hot_track/sdb/inode_data
-+inode #279, reads 0, writes 2, avg read time 18446744073709551615,
-+avg write time 4923343766042451, temp 109
-+$ cat /sys/kernel/debug/hot_track/sdb/range_data
-+inode #279, range start 0 (range len 1048576) reads 0, writes 2,
-+avg read time 18446744073709551615, avg write time 1058147040842596150, temp 64
-+
+ endif
+ 
+ CFILES = $(TARGETS:=.c)
+ LDIRT = $(TARGETS)
+ 
+ 
+-default: depend $(TARGETS) $(SUBDIRS)
++default: .depend $(TARGETS) $(SUBDIRS)
+ 
+-depend: .dep
++.depend: .dep
+ 
+ include $(BUILDRULES)
+ 
+diff --git a/src/aio-dio-regress/Makefile b/src/aio-dio-regress/Makefile
+index 79dd55d..fcead9a 100644
+--- a/src/aio-dio-regress/Makefile
++++ b/src/aio-dio-regress/Makefile
+@@ -8,9 +8,9 @@ LDIRT = $(TARGETS)
+ 
+ LLDLIBS = -laio -lpthread
+ 
+-default: depend $(TARGETS)
++default: .depend $(TARGETS)
+ 
+-depend: .dep
++.depend: .dep
+ 
+ include $(BUILDRULES)
+ 
+diff --git a/src/fio b/src/fio
+new file mode 160000
+index 0000000..e12d280
+--- /dev/null
++++ b/src/fio
+@@ -0,0 +1 @@
++Subproject commit e12d2800f811cb64d376cfdaed9a1257f3fa9c99
 -- 
-1.7.6.5
+1.7.7.6
+
