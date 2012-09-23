@@ -1,112 +1,54 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/6] xfstest: add fio git submodule
-Date: Sun, 23 Sep 2012 23:24:31 +0400
-Message-ID: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/6] xfstest: add configurable load factors
+Date: Sun, 23 Sep 2012 23:24:32 +0400
+Message-ID: <1348428276-13161-2-git-send-email-dmonakhov@openvz.org>
 References: <a>
+ <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
 Cc: xfs@oss.sgi.com, hch@lst.de, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:59473 "EHLO
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:54528 "EHLO
 	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753529Ab2IWTYl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Sep 2012 15:24:41 -0400
-In-Reply-To: <a>
+	with ESMTP id S1753853Ab2IWTYn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Sep 2012 15:24:43 -0400
+In-Reply-To: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-FIO is very flexible io generator, i would call it IO swiss knife.
-Currently we have tonnes of hardcoded application which reproduces
-some predefined scenario. This approach has obvious dissadvantages
-1) Lack of flexability: once written it is hard to modify it in future
-2) Code base is large, many routines written again and again
+Most stress test has probable behaviour, the longer test run the
+larger corner cases will be cover. It is reasonable to allow
+user to provide some sort of system load factor.
+This patch introduce two global variables
+LOAD_FACTOR: Usually means factor number of running tasks
+TIME_FACTOR: Usually means factor of run time, or number of operations
+If not speficied both variables defined to 1, so original behaviour
+preserved.
 
-At the same time add new fio based tast is just add simle INI file.
-This greatly simplify code review. I do beleve that some day we will
-replace most of hardcoded io binaries with fio.
+TODO: Change all stress tests to use this variables
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- .gitmodules                  |    3 +++
- common.config                |    3 +++
- src/Makefile                 |    8 +++++---
- src/aio-dio-regress/Makefile |    4 ++--
- src/fio                      |    1 +
- 5 files changed, 14 insertions(+), 5 deletions(-)
- create mode 100644 .gitmodules
- create mode 160000 src/fio
+ common.config |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/.gitmodules b/.gitmodules
-new file mode 100644
-index 0000000..f0481ea
---- /dev/null
-+++ b/.gitmodules
-@@ -0,0 +1,3 @@
-+[submodule "src/fio"]
-+	path = src/fio
-+	url = git://git.kernel.dk/fio.git
 diff --git a/common.config b/common.config
-index 7bed1c5..25cddb4 100644
+index 25cddb4..a24b915 100644
 --- a/common.config
 +++ b/common.config
-@@ -138,6 +138,9 @@ export DF_PROG="`set_prog_path df`"
- [ "$DF_PROG" = "" ] && _fatal "df not found"
- [ "$HOSTOS" = "Linux" ] && export DF_PROG="$DF_PROG -T"
+@@ -255,5 +255,13 @@ if [ ! -z "$SCRATCH_MNT" -a ! -d "$SCRATCH_MNT" ]; then
+     exit 1
+ fi
  
-+export FIO_PROG="`set_prog_path $PWD/src/fio/fio`"
-+[ "$FIO_PROG" = "" ] && _fatal "fio not found"
++if [ -z "$LOAD_FACTOR" ]; then
++    LOAD_FACTOR=1
++fi
 +
- export XFS_LOGPRINT_PROG="`set_prog_path xfs_logprint`"
- export XFS_REPAIR_PROG="`set_prog_path xfs_repair`"
- export XFS_CHECK_PROG="`set_prog_path xfs_check`"
-diff --git a/src/Makefile b/src/Makefile
-index 67250ee..255bdd4 100644
---- a/src/Makefile
-+++ b/src/Makefile
-@@ -52,16 +52,18 @@ LLDLIBS += $(LIBGDBM)
- endif
- 
- ifeq ($(HAVE_AIO), true)
--SUBDIRS += aio-dio-regress
-+SUBDIRS += aio-dio-regress \
-+		fio
++if [ -z "$TIME_FACTOR" ]; then
++    TIME_FACTOR=1
++fi
 +
- endif
- 
- CFILES = $(TARGETS:=.c)
- LDIRT = $(TARGETS)
- 
- 
--default: depend $(TARGETS) $(SUBDIRS)
-+default: .depend $(TARGETS) $(SUBDIRS)
- 
--depend: .dep
-+.depend: .dep
- 
- include $(BUILDRULES)
- 
-diff --git a/src/aio-dio-regress/Makefile b/src/aio-dio-regress/Makefile
-index 79dd55d..fcead9a 100644
---- a/src/aio-dio-regress/Makefile
-+++ b/src/aio-dio-regress/Makefile
-@@ -8,9 +8,9 @@ LDIRT = $(TARGETS)
- 
- LLDLIBS = -laio -lpthread
- 
--default: depend $(TARGETS)
-+default: .depend $(TARGETS)
- 
--depend: .dep
-+.depend: .dep
- 
- include $(BUILDRULES)
- 
-diff --git a/src/fio b/src/fio
-new file mode 160000
-index 0000000..e12d280
---- /dev/null
-+++ b/src/fio
-@@ -0,0 +1 @@
-+Subproject commit e12d2800f811cb64d376cfdaed9a1257f3fa9c99
+ # make sure this script returns success
+ /bin/true
 -- 
 1.7.7.6
 
