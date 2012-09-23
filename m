@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v2 06/10] vfs: enable hot data tracking
-Date: Sun, 23 Sep 2012 20:56:31 +0800
-Message-ID: <1348404995-14372-7-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v2 10/10] vfs: add documentation
+Date: Sun, 23 Sep 2012 20:56:35 +0800
+Message-ID: <1348404995-14372-11-git-send-email-zwu.kernel@gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -17,171 +17,123 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Miscellaneous features that implement hot data tracking
-and generally make the hot data functions a bit more friendly.
-
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/direct-io.c               |   10 ++++++++++
- include/linux/hot_tracking.h |   11 +++++++++++
- mm/filemap.c                 |    8 ++++++++
- mm/page-writeback.c          |   21 +++++++++++++++++++++
- mm/readahead.c               |    9 +++++++++
- 5 files changed, 59 insertions(+), 0 deletions(-)
+ Documentation/filesystems/hot_tracking.txt |  106 ++++++++++++++++++++++++++++
+ 1 files changed, 106 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/hot_tracking.txt
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index f86c720..3773f44 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -37,6 +37,7 @@
- #include <linux/uio.h>
- #include <linux/atomic.h>
- #include <linux/prefetch.h>
-+#include "hot_tracking.h"
- 
- /*
-  * How many user pages to map in one call to get_user_pages().  This determines
-@@ -1297,6 +1298,15 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 	prefetch(bdev->bd_queue);
- 	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
- 
-+	/* Hot data tracking */
-+	if (TRACK_THIS_INODE(iocb->ki_filp->f_mapping->host)
-+			&& iov_length(iov, nr_segs) > 0) {
-+		hot_rb_update_freqs(iocb->ki_filp->f_mapping->host,
-+				(u64)offset,
-+				(u64)iov_length(iov, nr_segs),
-+				rw & WRITE);
-+	}
+diff --git a/Documentation/filesystems/hot_tracking.txt b/Documentation/filesystems/hot_tracking.txt
+new file mode 100644
+index 0000000..340df45
+--- /dev/null
++++ b/Documentation/filesystems/hot_tracking.txt
+@@ -0,0 +1,106 @@
++Hot Data Tracking
 +
- 	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
- 				     nr_segs, get_block, end_io,
- 				     submit_io, flags);
-diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
-index 635ffb6..bc41f94 100644
---- a/include/linux/hot_tracking.h
-+++ b/include/linux/hot_tracking.h
-@@ -28,6 +28,14 @@
-  */
- #define HOT_MOUNT_HOT_TRACK		(1 << 0)
- 
-+/* Hot data tracking -- guard macros */
-+#define TRACKING_HOT_TRACK(root) \
-+		(root->s_hotinfo.mount_opt & HOT_MOUNT_HOT_TRACK)
++Introduction
++-------------------------------------------------------------------------------
 +
-+#define TRACK_THIS_INODE(inode) \
-+		((TRACKING_HOT_TRACK(inode->i_sb)) && \
-+		!(inode->i_flags & S_NOHOTDATATRACK))
++  The feature adds experimental support for tracking data temperature
++information in VFS layer.  Essentially, this means maintaining some key
++stats(like number of reads/writes, last read/write time, frequency of
++reads/writes), then distilling those numbers down to a single
++"temperature" value that reflects what data is "hot," and using that
++temperature to move data to SSDs.
 +
- /* A tree that sits on the hot_info */
- struct hot_inode_tree {
- 	struct rb_root map;
-@@ -135,4 +143,7 @@ struct hot_info {
- 	struct hot_hash_head heat_range_hl[HEAT_HASH_SIZE];
- };
- 
-+extern void hot_rb_update_freqs(struct inode *inode,
-+				u64 start, u64 len, int rw);
++  The long-term goal of the feature is to allow some FSs,
++e.g. Btrfs to intelligently utilize SSDs in a heterogenous volume.
++Incidentally, this project has been motivated by
++the Project Ideas page on the Btrfs wiki.
 +
- #endif  /* _LINUX_HOTTRACK_H */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 3843445..8b1ecff 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -33,6 +33,7 @@
- #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
- #include <linux/memcontrol.h>
- #include <linux/cleancache.h>
-+#include <linux/hot_tracking.h>
- #include "internal.h"
- 
- /*
-@@ -1224,6 +1225,13 @@ readpage:
- 		 * PG_error will be set again if readpage fails.
- 		 */
- 		ClearPageError(page);
++  Of course, users are warned not to run this code outside of development
++environments. These patches are EXPERIMENTAL, and as such they might eat
++your data and/or memory. That said, the code should be relatively safe
++when the hottrack mount option are disabled.
 +
-+		/* Hot data tracking */
-+		if (TRACK_THIS_INODE(filp->f_mapping->host))
-+			hot_rb_update_freqs(filp->f_mapping->host,
-+				(u64)page->index << PAGE_CACHE_SHIFT,
-+				PAGE_CACHE_SIZE, 0);
++Motivation
++-------------------------------------------------------------------------------
 +
- 		/* Start the actual read. The read will unlock the page. */
- 		error = mapping->a_ops->readpage(filp, page);
- 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 5ad5ce2..552c861 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -35,6 +35,7 @@
- #include <linux/buffer_head.h> /* __set_page_dirty_buffers */
- #include <linux/pagevec.h>
- #include <linux/timer.h>
-+#include <linux/hot_tracking.h>
- #include <trace/events/writeback.h>
- 
- /*
-@@ -1895,13 +1896,33 @@ EXPORT_SYMBOL(generic_writepages);
- int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
- {
- 	int ret;
-+	pgoff_t start = 0;
-+	u64 prev_count = 0, count = 0;
- 
- 	if (wbc->nr_to_write <= 0)
- 		return 0;
++  The overall goal of enabling hot data relocation to SSD has been
++motivated by the Project Ideas page on the Btrfs wiki at
++<https://btrfs.wiki.kernel.org/index.php/Project_ideas>.
++It will divide into two steps. VFS provide hot data tracking function
++while specific FS will provide hot data relocation function.
++So as the first step of this goal, it is hoped that the patchset
++for hot data tracking will eventually mature into VFS.
 +
-+	/* Hot data tracking */
-+	if (TRACK_THIS_INODE(mapping->host)
-+		&& wbc->range_cyclic) {
-+		start = mapping->writeback_index << PAGE_CACHE_SHIFT;
-+		prev_count = (u64)wbc->nr_to_write;
-+	}
++  This is essentially the traditional cache argument: SSD is fast and
++expensive; HDD is cheap but slow. ZFS, for example, can already take
++advantage of SSD caching. Btrfs should also be able to take advantage of
++hybrid storage without many broad, sweeping changes to existing code.
 +
- 	if (mapping->a_ops->writepages)
- 		ret = mapping->a_ops->writepages(mapping, wbc);
- 	else
- 		ret = generic_writepages(mapping, wbc);
++Main Parts Description
++-------------------------------------------------------------------------------
 +
-+	/* Hot data tracking */
-+	if (TRACK_THIS_INODE(mapping->host)
-+		&& wbc->range_cyclic) {
-+		count = prev_count - (u64)wbc->nr_to_write;
-+		if (count)
-+			hot_rb_update_freqs(mapping->host, (u64)start,
-+					count * PAGE_CACHE_SIZE, 1);
-+	}
++These include the following parts:
++    * Hooks in existing vfs functions to track data access frequency
++    * New rbtrees for tracking access frequency of inodes and sub-file
++ranges (hot_rb.c)
++    The relationship between super_block and rbtree is as below:
++super_block->s_hotinfo.hot_inode_tree
++    In include/linux/fs.h, one struct hot_info s_hotinfo is added to
++super_block struct. Each FS instance can find hot tracking info
++s_hotinfo via its super_block. In this hot_info, it store a lot of hot
++tracking info such as hot_inode_tree, inode and range hash list, etc.
++    * A hash list for indexing data by its temperature (hot_hash.c)
++    * A debugfs interface for dumping data from the rbtrees (hot_debugfs.c)
++    * A background kthread for updating inode heat info
++    * Mount options for enabling temperature tracking(-o hottrack,
++default mean disabled) (hot_track.c)
++    * An ioctl to retrieve the frequency information collected for a certain
++file
++    * Ioctls to enable/disable frequency tracking per inode.
 +
- 	return ret;
- }
- 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index ea8f8fa..7010fc4 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -19,6 +19,7 @@
- #include <linux/pagemap.h>
- #include <linux/syscalls.h>
- #include <linux/file.h>
-+#include <linux/hot_tracking.h>
- 
- /*
-  * Initialise a struct file's readahead state.  Assumes that the caller has
-@@ -138,6 +139,14 @@ static int read_pages(struct address_space *mapping, struct file *filp,
- out:
- 	blk_finish_plug(&plug);
- 
-+	/* Hot data tracking */
-+	if (TRACK_THIS_INODE(mapping->host) && nr_pages > 0) {
-+		u64 start = (u64)(list_entry(pages->prev,
-+				struct page, lru)->index) << PAGE_CACHE_SHIFT;
-+		hot_rb_update_freqs(mapping->host, start,
-+				(u64)nr_pages * PAGE_CACHE_SIZE, 0);
-+	}
++Git Development Tree
++-------------------------------------------------------------------------------
 +
- 	return ret;
- }
- 
++  The feature is still on development and review, so if you're interested,
++you can pull from the git repository at the following location:
++  https://github.com/wuzhy/kernel.git hot_tracking
++  git://github.com/wuzhy/kernel.git hot_tracking
++
++Usage Example
++-------------------------------------------------------------------------------
++To use hot tracking, you should mount like this:
++
++$ mount -o hottrack /dev/sdb /mnt
++[ 1505.894078] device label test devid 1 transid 29 /dev/sdb
++[ 1505.952977] btrfs: disk space caching is enabled
++[ 1506.069678] vfs: turning on hot data tracking
++
++Mount debugfs at first:
++
++$ mount -t debugfs none /sys/kernel/debug
++$ ls -l /sys/kernel/debug/vfs_hotdata/
++total 0
++drwxr-xr-x 2 root root 0 Aug  8 04:40 sdb
++$ ls -l /sys/kernel/debug/vfs_hotdata/sdb
++total 0
++-rw-r--r-- 1 root root 0 Aug  8 04:40 inode_data
++-rw-r--r-- 1 root root 0 Aug  8 04:40 range_data
++
++View information about hot tracking from debugfs:
++
++$ echo "hot tracking test" > /mnt/file
++$ cat /sys/kernel/debug/hot_track/sdb/inode_data
++inode #279, reads 0, writes 1, avg read time 18446744073709551615,
++avg write time 5251566408153596, temp 109
++$ cat /sys/kernel/debug/hot_track/sdb/range_data
++inode #279, range start 0 (range len 1048576) reads 0, writes 1,
++avg read time 18446744073709551615, avg write time 1128690176623144209, temp 64
++
++$ echo "hot data tracking test" >> /mnt/file
++$ cat /sys/kernel/debug/hot_track/sdb/inode_data
++inode #279, reads 0, writes 2, avg read time 18446744073709551615,
++avg write time 4923343766042451, temp 109
++$ cat /sys/kernel/debug/hot_track/sdb/range_data
++inode #279, range start 0 (range len 1048576) reads 0, writes 2,
++avg read time 18446744073709551615, avg write time 1058147040842596150, temp 64
++
 -- 
 1.7.6.5
