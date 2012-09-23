@@ -1,61 +1,86 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: Tracking down suspend/resume ext3/mmc issues on imx233
-Date: Sat, 22 Sep 2012 21:59:13 +0200
-Message-ID: <20120922195912.GA25644@elf.ucw.cz>
-References: <CAEOSq-O3SfuAEhMsjX1y1ZgQuWBKef+XZzMR1b4yJhKhaRdymA@mail.gmail.com>
- <20120907060552.GL26709@S2101-09.ap.freescale.net>
- <CAEOSq-PV+7c2nvu3uauOLJcV7WKa1jmd-df0a1H0qY5K4CM5MA@mail.gmail.com>
- <CAKGA1bnug8nqcideOBZyLQZmiVo=G5L3aRHq4k4SNZyH132Y=g@mail.gmail.com>
- <20120910163345.GB3942@thunk.org>
- <20120919232349.GA24132@elf.ucw.cz>
- <20120920000110.GA16672@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Matt Sealey <matt@genesi-usa.com>,
-	Mike Thompson <mpthompson@gmail.com>,
-	Shawn Guo <shawn.guo@linaro.org>,
-	Linux-Arm-Kernel <linux-arm-kernel@lists.infradead.org>,
-	linux-ext4@vger.kernel.org, linux-mmc@vger.kernel.org,
-	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>
-Return-path: <linux-mmc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20120920000110.GA16672@thunk.org>
-Sender: linux-mmc-owner@vger.kernel.org
+From: zwu.kernel@gmail.com
+Subject: [RFC v2 00/10] vfs: hot data tracking
+Date: Sun, 23 Sep 2012 20:56:25 +0800
+Message-ID: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
+	viro@zeniv.linux.org.uk, cmm@us.ibm.com, tytso@mit.edu,
+	marco.stornelli@gmail.com, david@fromorbit.com,
+	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi!
+From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-On Wed 2012-09-19 20:01:10, Theodore Ts'o wrote:
-> On Thu, Sep 20, 2012 at 01:23:49AM +0200, Pavel Machek wrote:
-> > 
-> > I'm not sure I agree.
-> > 
-> > If you treat root fs as removable, you'll get "crash". You'll need to
-> > replay the journal, but data is safe.
-> > 
-> > If you treat it as non-removable, and someone manages to remove it,
-> > mount, and reinsert, you'll get silent data corruption.
-> 
-> We could detect this case; if the file system gets mounted, the last
-> mount time will change.  So one of the things we could do is have the
-> file system code freeze the file system at suspend time, so the file
-> system is consistent (which will reduce the probability of data loss
-> if the system never comes back up after the suspend), and save the
-> last mount time and last write time in memory.  When the system comes
-> back from resume, have the file system code check the last mount and
-> last write time, and if they have changed, it can refuse the resume
-> and abort the system to avoid data corruption.  It would require
-> making ext3/ext4 suspend-aware, but it would be doable, if we really
-> wanted to support this.
+NOTE:
 
-Yes please; I'd love to see this done.
+  The patchset is currently post out mainly to make sure
+it is going in the correct direction and hope to get some
+helpful comments from other guys.
+  For more infomation, please check hot_tracking.txt in Documentation
 
-We used to do sync() to get filesystem in consistent state, and I
-believe that these days we are doing filesystem freeze; but code
-validating the last mount time is certainly missing.
+TODO List:
 
-Looking forward,
-									Pavel
+ 1.) Need to do scalability or performance tests.
+ 2.) Turn some Micro into be tunable
+       TIME_TO_KICK, and HEAT_UPDATE_DELAY
+ 3.) Rafactor hot_hash_is_aging()
+       If you just made the timeout value a timespec and compared
+     the _timespecs_, you would be doing a lot fewer conversions.
+ 4.) Cleanup some unnecessary lock protect
+ 5.) Add more comments to explain how to calc temperature
+       How to "read" the avg read/write time (nanoseconds,
+     microseconds, jiffies....??)
+ 6.) Make updating tempreture more parallel
+ 7.) How to save the file tempreture among the umount to be able to
+     preserve the file tempreture after reboot
+ 8.) Add one new ioctl inteface to set temperature value.
+
+Ben Chociej, Matt Lupfer and Conor Scott originally wrote this code to
+ be very btrfs-specific.  I've taken their code and attempted to
+make it more generic and integrate it at the VFS level.
+
+Changelog from v1:
+ 1.) Reduce new files and put all in fs/hot_tracking.[ch] [Dave Chinner]
+ 2.) The first three patches can probably just be flattened into one.
+					[Marco Stornelli , Dave Chinner]
+
+Zhi Yong Wu (10):
+  vfs: introduce private rb structures
+  vfs: add support for updating access frequency
+  vfs: add one new mount option '-o hottrack'
+  vfs: add init and exit support
+  vfs: introduce one hash table
+  vfs: enable hot data tracking
+  vfs: fork one kthread to update data temperature
+  vfs: add 3 new ioctl interfaces
+  vfs: add debugfs support
+  vfs: add documentation
+
+ Documentation/filesystems/hot_tracking.txt |  106 ++
+ fs/Makefile                                |    2 +-
+ fs/compat_ioctl.c                          |    8 +
+ fs/dcache.c                                |    2 +
+ fs/direct-io.c                             |   10 +
+ fs/hot_tracking.c                          | 1563 ++++++++++++++++++++++++++++
+ fs/hot_tracking.h                          |  163 +++
+ fs/ioctl.c                                 |  130 +++
+ fs/namespace.c                             |   10 +
+ fs/super.c                                 |   11 +
+ include/linux/fs.h                         |   15 +
+ include/linux/hot_tracking.h               |  164 +++
+ mm/filemap.c                               |    8 +
+ mm/page-writeback.c                        |   21 +
+ mm/readahead.c                             |    9 +
+ 15 files changed, 2221 insertions(+), 1 deletions(-)
+ create mode 100644 Documentation/filesystems/hot_tracking.txt
+ create mode 100644 fs/hot_tracking.c
+ create mode 100644 fs/hot_tracking.h
+ create mode 100644 include/linux/hot_tracking.h
+
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+1.7.6.5
+
