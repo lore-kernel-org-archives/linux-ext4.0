@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v2 03/10] vfs: add one new mount option '-o hottrack'
-Date: Sun, 23 Sep 2012 20:56:28 +0800
-Message-ID: <1348404995-14372-4-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v2 06/10] vfs: enable hot data tracking
+Date: Sun, 23 Sep 2012 20:56:31 +0800
+Message-ID: <1348404995-14372-7-git-send-email-zwu.kernel@gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -17,133 +17,171 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Introduce one new mount option '-o hottrack',
-and add its parsing support.
-  Its usage looks like:
-   mount -o hottrack
-   mount -o nouser,hottrack
-   mount -o nouser,hottrack,loop
-   mount -o hottrack,nouser
+  Miscellaneous features that implement hot data tracking
+and generally make the hot data functions a bit more friendly.
 
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/hot_tracking.c            |   34 ++++++++++++++++++++++++++++++++++
- fs/hot_tracking.h            |    1 +
- fs/super.c                   |    5 +++++
- include/linux/hot_tracking.h |    7 +++++++
- 4 files changed, 47 insertions(+), 0 deletions(-)
+ fs/direct-io.c               |   10 ++++++++++
+ include/linux/hot_tracking.h |   11 +++++++++++
+ mm/filemap.c                 |    8 ++++++++
+ mm/page-writeback.c          |   21 +++++++++++++++++++++
+ mm/readahead.c               |    9 +++++++++
+ 5 files changed, 59 insertions(+), 0 deletions(-)
 
-diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
-index 52ed926..f97e8a6 100644
---- a/fs/hot_tracking.c
-+++ b/fs/hot_tracking.c
-@@ -465,6 +465,40 @@ void hot_rb_update_freqs(struct inode *inode, u64 start,
- }
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index f86c720..3773f44 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -37,6 +37,7 @@
+ #include <linux/uio.h>
+ #include <linux/atomic.h>
+ #include <linux/prefetch.h>
++#include "hot_tracking.h"
  
  /*
-+ * Regular mount options parser for -hottrack option.
-+ * return false if no -hottrack is specified;
-+ * otherwise return true. And the -hottrack will be
-+ * removed from options.
-+ */
-+bool hot_track_parse_options(char *options)
-+{
-+	long len;
-+	char *p;
-+	static char opts_hot[] = "hottrack";
-+
-+	if (!options)
-+		return false;
-+
-+	p = strstr(options, opts_hot);
-+	if (!p)
-+		return false;
-+
-+	while (p) {
-+		len = options + strlen(options) - (p + strlen(opts_hot));
-+		if (len == 0) {
-+			options[0] = '\0';
-+			break;
-+		}
-+
-+		memmove(p, p + strlen(opts_hot) + 1, len);
-+		p = strstr(options, opts_hot);
+  * How many user pages to map in one call to get_user_pages().  This determines
+@@ -1297,6 +1298,15 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+ 	prefetch(bdev->bd_queue);
+ 	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
+ 
++	/* Hot data tracking */
++	if (TRACK_THIS_INODE(iocb->ki_filp->f_mapping->host)
++			&& iov_length(iov, nr_segs) > 0) {
++		hot_rb_update_freqs(iocb->ki_filp->f_mapping->host,
++				(u64)offset,
++				(u64)iov_length(iov, nr_segs),
++				rw & WRITE);
 +	}
 +
-+	printk(KERN_INFO "vfs: turning on hot data tracking\n");
-+	return true;
-+}
-+
-+/*
-  * Initialize kmem cache for hot_inode_item
-  * and hot_range_item
-  */
-diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
-index 2ba29e4..6bd09eb 100644
---- a/fs/hot_tracking.h
-+++ b/fs/hot_tracking.h
-@@ -37,6 +37,7 @@ void hot_rb_free_hot_inode_item(struct hot_inode_item *he);
- void hot_rb_update_freqs(struct inode *inode, u64 start, u64 len,
- 			int rw);
- 
-+bool hot_track_parse_options(char *options);
- void __init hot_track_cache_init(void);
- 
- #endif /* __HOT_TRACKING__ */
-diff --git a/fs/super.c b/fs/super.c
-index 0902cfa..7eb3b0c 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -34,6 +34,7 @@
- #include <linux/cleancache.h>
- #include <linux/fsnotify.h>
- #include <linux/lockdep.h>
-+#include "hot_tracking.h"
- #include "internal.h"
- 
- 
-@@ -1125,6 +1126,7 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
- 	struct dentry *root;
- 	struct super_block *sb;
- 	char *secdata = NULL;
-+	bool hottrack = false;
- 	int error = -ENOMEM;
- 
- 	if (data && !(type->fs_flags & FS_BINARY_MOUNTDATA)) {
-@@ -1137,6 +1139,9 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
- 			goto out_free_secdata;
- 	}
- 
-+	if (data && hot_track_parse_options(data))
-+		hottrack = true;
-+
- 	root = type->mount(type, flags, name, data);
- 	if (IS_ERR(root)) {
- 		error = PTR_ERR(root);
+ 	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
+ 				     nr_segs, get_block, end_io,
+ 				     submit_io, flags);
 diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
-index a566f91..bb2a41c 100644
+index 635ffb6..bc41f94 100644
 --- a/include/linux/hot_tracking.h
 +++ b/include/linux/hot_tracking.h
-@@ -20,6 +20,11 @@
- #include <linux/rbtree.h>
- #include <linux/kref.h>
+@@ -28,6 +28,14 @@
+  */
+ #define HOT_MOUNT_HOT_TRACK		(1 << 0)
  
-+/*
-+ * Flags for hot data tracking mount options.
-+ */
-+#define HOT_MOUNT_HOT_TRACK		(1 << 0)
++/* Hot data tracking -- guard macros */
++#define TRACKING_HOT_TRACK(root) \
++		(root->s_hotinfo.mount_opt & HOT_MOUNT_HOT_TRACK)
++
++#define TRACK_THIS_INODE(inode) \
++		((TRACKING_HOT_TRACK(inode->i_sb)) && \
++		!(inode->i_flags & S_NOHOTDATATRACK))
 +
  /* A tree that sits on the hot_info */
  struct hot_inode_tree {
  	struct rb_root map;
-@@ -89,6 +94,8 @@ struct hot_range_item {
+@@ -135,4 +143,7 @@ struct hot_info {
+ 	struct hot_hash_head heat_range_hl[HEAT_HASH_SIZE];
  };
  
- struct hot_info {
-+	unsigned long mount_opt;
++extern void hot_rb_update_freqs(struct inode *inode,
++				u64 start, u64 len, int rw);
 +
- 	/* red-black tree that keeps track of fs-wide hot data */
- 	struct hot_inode_tree hot_inode_tree;
- };
+ #endif  /* _LINUX_HOTTRACK_H */
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 3843445..8b1ecff 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -33,6 +33,7 @@
+ #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
+ #include <linux/memcontrol.h>
+ #include <linux/cleancache.h>
++#include <linux/hot_tracking.h>
+ #include "internal.h"
+ 
+ /*
+@@ -1224,6 +1225,13 @@ readpage:
+ 		 * PG_error will be set again if readpage fails.
+ 		 */
+ 		ClearPageError(page);
++
++		/* Hot data tracking */
++		if (TRACK_THIS_INODE(filp->f_mapping->host))
++			hot_rb_update_freqs(filp->f_mapping->host,
++				(u64)page->index << PAGE_CACHE_SHIFT,
++				PAGE_CACHE_SIZE, 0);
++
+ 		/* Start the actual read. The read will unlock the page. */
+ 		error = mapping->a_ops->readpage(filp, page);
+ 
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 5ad5ce2..552c861 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -35,6 +35,7 @@
+ #include <linux/buffer_head.h> /* __set_page_dirty_buffers */
+ #include <linux/pagevec.h>
+ #include <linux/timer.h>
++#include <linux/hot_tracking.h>
+ #include <trace/events/writeback.h>
+ 
+ /*
+@@ -1895,13 +1896,33 @@ EXPORT_SYMBOL(generic_writepages);
+ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ {
+ 	int ret;
++	pgoff_t start = 0;
++	u64 prev_count = 0, count = 0;
+ 
+ 	if (wbc->nr_to_write <= 0)
+ 		return 0;
++
++	/* Hot data tracking */
++	if (TRACK_THIS_INODE(mapping->host)
++		&& wbc->range_cyclic) {
++		start = mapping->writeback_index << PAGE_CACHE_SHIFT;
++		prev_count = (u64)wbc->nr_to_write;
++	}
++
+ 	if (mapping->a_ops->writepages)
+ 		ret = mapping->a_ops->writepages(mapping, wbc);
+ 	else
+ 		ret = generic_writepages(mapping, wbc);
++
++	/* Hot data tracking */
++	if (TRACK_THIS_INODE(mapping->host)
++		&& wbc->range_cyclic) {
++		count = prev_count - (u64)wbc->nr_to_write;
++		if (count)
++			hot_rb_update_freqs(mapping->host, (u64)start,
++					count * PAGE_CACHE_SIZE, 1);
++	}
++
+ 	return ret;
+ }
+ 
+diff --git a/mm/readahead.c b/mm/readahead.c
+index ea8f8fa..7010fc4 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -19,6 +19,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/syscalls.h>
+ #include <linux/file.h>
++#include <linux/hot_tracking.h>
+ 
+ /*
+  * Initialise a struct file's readahead state.  Assumes that the caller has
+@@ -138,6 +139,14 @@ static int read_pages(struct address_space *mapping, struct file *filp,
+ out:
+ 	blk_finish_plug(&plug);
+ 
++	/* Hot data tracking */
++	if (TRACK_THIS_INODE(mapping->host) && nr_pages > 0) {
++		u64 start = (u64)(list_entry(pages->prev,
++				struct page, lru)->index) << PAGE_CACHE_SHIFT;
++		hot_rb_update_freqs(mapping->host, start,
++				(u64)nr_pages * PAGE_CACHE_SIZE, 0);
++	}
++
+ 	return ret;
+ }
+ 
 -- 
 1.7.6.5
