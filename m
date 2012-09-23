@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v2 09/10] vfs: add debugfs support
-Date: Sun, 23 Sep 2012 20:56:34 +0800
-Message-ID: <1348404995-14372-10-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v2 07/10] vfs: fork one kthread to update data temperature
+Date: Sun, 23 Sep 2012 20:56:32 +0800
+Message-ID: <1348404995-14372-8-git-send-email-zwu.kernel@gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -17,599 +17,667 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Add a /sys/kernel/debug/hot_track/<device_name>/ directory for each
-volume that contains two files. The first, `inode_data', contains the
-heat information for inodes that have been brought into the hot data map
-structures. The second, `range_data', contains similar information for
-subfile ranges.
+  Fork and run one kernel kthread to calculate
+that temperature based on some metrics kept
+in custom frequency data structs, and store
+the info in the hash table.
 
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/hot_tracking.c |  466 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/hot_tracking.h |   40 +++++
- fs/namespace.c    |    6 +
- 3 files changed, 512 insertions(+), 0 deletions(-)
+ fs/hot_tracking.c            |  467 +++++++++++++++++++++++++++++++++++++++++-
+ fs/hot_tracking.h            |   78 +++++++
+ include/linux/hot_tracking.h |    3 +
+ 3 files changed, 542 insertions(+), 6 deletions(-)
 
 diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
-index fd11695..6aeabad 100644
+index 5f96442..fd11695 100644
 --- a/fs/hot_tracking.c
 +++ b/fs/hot_tracking.c
-@@ -22,6 +22,9 @@
+@@ -17,6 +17,8 @@
+ #include <linux/spinlock.h>
+ #include <linux/hardirq.h>
+ #include <linux/hash.h>
++#include <linux/kthread.h>
++#include <linux/freezer.h>
  #include <linux/fs.h>
  #include <linux/blkdev.h>
  #include <linux/types.h>
-+#include <linux/debugfs.h>
-+#include <linux/vmalloc.h>
-+#include <linux/limits.h>
- #include "hot_tracking.h"
- 
- /* kmem_cache pointers for slab caches */
-@@ -29,6 +32,13 @@ static struct kmem_cache *hot_inode_item_cache;
+@@ -27,7 +29,12 @@ static struct kmem_cache *hot_inode_item_cache;
  static struct kmem_cache *hot_range_item_cache;
  static struct kmem_cache *hot_hash_node_cache;
  
-+/* list to keep track of each mounted volumes debugfs_vol_data */
-+static struct list_head hot_debugfs_vol_data_list;
-+/* lock for debugfs_vol_data_list */
-+static spinlock_t hot_debugfs_data_list_lock;
-+/* pointer to top level debugfs dentry */
-+static struct dentry *hot_debugfs_root_dentry;
++static struct task_struct *hot_track_temperature_update_kthread;
 +
- static struct task_struct *hot_track_temperature_update_kthread;
- 
  static void hot_hash_node_init(void *_node);
-@@ -1004,6 +1014,460 @@ static int hot_hash_temperature_update_kthread(void *arg)
- 	return 0;
++static int hot_hash_is_aging(struct hot_freq_data *freq_data);
++static void hot_hash_update_hash_table(struct hot_freq_data *freq_data,
++                        struct hot_info *root);
+ 
+ /*
+  * Initialize the inode tree. Should be called for each new inode
+@@ -456,9 +463,13 @@ static struct hot_inode_item *hot_rb_update_inode_freq(struct inode *inode,
+ 		write_unlock(&hitree->lock);
+ 	}
+ 
+-	spin_lock(&he->lock);
+-	hot_rb_update_freq(&he->hot_freq_data, rw);
+-	spin_unlock(&he->lock);
++	if (!hot_track_temperature_update_kthread
++		|| hot_track_temperature_update_kthread->pid != current->pid) {
++		spin_lock(&he->lock);
++		hot_rb_update_freq(&he->hot_freq_data, rw);
++		spin_unlock(&he->lock);
++		hot_hash_update_hash_table(&he->hot_freq_data, root);
++	}
+ 
+ out:
+ 	return he;
+@@ -505,9 +516,14 @@ static bool hot_rb_update_range_freq(struct hot_inode_item *he,
+ 			write_unlock(&hrtree->lock);
+ 		}
+ 
+-		spin_lock(&hr->lock);
+-		hot_rb_update_freq(&hr->hot_freq_data, rw);
+-		spin_unlock(&hr->lock);
++		if (!hot_track_temperature_update_kthread
++			|| hot_track_temperature_update_kthread->pid != current->pid) {
++			spin_lock(&hr->lock);
++			hot_rb_update_freq(&hr->hot_freq_data, rw);
++			spin_unlock(&hr->lock);
++			hot_hash_update_hash_table(&hr->hot_freq_data, root);
++		}
++
+ 		hot_rb_free_hot_range_item(hr);
+ 	}
+ 
+@@ -515,6 +531,58 @@ out:
+ 	return ret;
  }
  
-+static int hot_debugfs_copy(struct debugfs_vol_data *data, char *msg, int len)
++/* Walk the hot_inode_tree, locking as necessary */
++static struct hot_inode_item
++*hot_rb_find_next_hot_inode(struct hot_info *root,
++			u64 objectid)
 +{
-+	struct lstring *debugfs_log = data->debugfs_log;
-+	uint new_log_alloc_size;
-+	char *new_log;
-+	static char err_msg[] = "No more memory!\n";
++	struct rb_node *node;
++	struct rb_node *prev;
++	struct hot_inode_item *entry;
 +
-+	if (len >= data->log_alloc_size - debugfs_log->len) {
-+		/* Not enough room in the log buffer for the new message. */
-+		/* Allocate a bigger buffer. */
-+		new_log_alloc_size = data->log_alloc_size + LOG_PAGE_SIZE;
-+		new_log = vmalloc(new_log_alloc_size);
++	read_lock(&root->hot_inode_tree.lock);
 +
-+		if (new_log) {
-+			memcpy(new_log, debugfs_log->str, debugfs_log->len);
-+			memset(new_log + debugfs_log->len, 0,
-+				new_log_alloc_size - debugfs_log->len);
-+			vfree(debugfs_log->str);
-+			debugfs_log->str = new_log;
-+			data->log_alloc_size = new_log_alloc_size;
-+		} else {
-+			WARN_ON(1);
-+			if (data->log_alloc_size - debugfs_log->len) {
-+				strlcpy(debugfs_log->str +
-+				debugfs_log->len,
-+				err_msg,
-+				data->log_alloc_size - debugfs_log->len);
-+				debugfs_log->len +=
-+				min((typeof(debugfs_log->len))
-+				sizeof(err_msg),
-+				((typeof(debugfs_log->len))
-+				data->log_alloc_size - debugfs_log->len));
++	node = root->hot_inode_tree.map.rb_node;
++	prev = NULL;
++	while (node) {
++		prev = node;
++		entry = rb_entry(node, struct hot_inode_item, rb_node);
++
++		if (objectid < entry->i_ino)
++			node = node->rb_left;
++		else if (objectid > entry->i_ino)
++			node = node->rb_right;
++		else
++			break;
++	}
++
++	if (!node) {
++		while (prev) {
++			entry = rb_entry(prev, struct hot_inode_item, rb_node);
++			if (objectid <= entry->i_ino) {
++				node = prev;
++				break;
 +			}
-+			return 0;
++			prev = rb_next(prev);
 +		}
 +	}
 +
-+	memcpy(debugfs_log->str + debugfs_log->len, data->log_work_buff, len);
-+	debugfs_log->len += (unsigned long) len;
++	if (node) {
++		entry = rb_entry(node, struct hot_inode_item, rb_node);
++		/*
++		  * increase reference count to prevent pruning while
++		  * caller is using the hot_inode_item
++		  */
++		kref_get(&entry->refs);
 +
-+	return len;
-+}
-+
-+/* Returns the number of bytes written to the log. */
-+static int hot_debugfs_log(struct debugfs_vol_data *data, const char *fmt, ...)
-+{
-+	struct lstring *debugfs_log = data->debugfs_log;
-+	va_list args;
-+	int len;
-+	static char trunc_msg[] =
-+			"The next message has been truncated.\n";
-+
-+	if (debugfs_log->str == NULL)
-+		return -1;
-+
-+	spin_lock(&data->log_lock);
-+
-+	va_start(args, fmt);
-+	len = vsnprintf(data->log_work_buff,
-+			sizeof(data->log_work_buff), fmt, args);
-+	va_end(args);
-+
-+	if (len >= sizeof(data->log_work_buff)) {
-+		hot_debugfs_copy(data, trunc_msg, sizeof(trunc_msg));
++		read_unlock(&root->hot_inode_tree.lock);
++		return entry;
 +	}
 +
-+	len = hot_debugfs_copy(data, data->log_work_buff, len);
-+	spin_unlock(&data->log_lock);
-+
-+	return len;
++	read_unlock(&root->hot_inode_tree.lock);
++	return NULL;
 +}
 +
-+/* initialize a log corresponding to a fs volume */
-+static int hot_debugfs_log_init(struct debugfs_vol_data *data)
-+{
-+	int err = 0;
-+	struct lstring *debugfs_log = data->debugfs_log;
-+
-+	spin_lock(&data->log_lock);
-+	debugfs_log->str = vmalloc(INIT_LOG_ALLOC_SIZE);
-+	if (debugfs_log->str) {
-+		memset(debugfs_log->str, 0, INIT_LOG_ALLOC_SIZE);
-+		data->log_alloc_size = INIT_LOG_ALLOC_SIZE;
-+	} else {
-+		err = -ENOMEM;
-+	}
-+	spin_unlock(&data->log_lock);
-+
-+	return err;
-+}
-+
-+/* free a log corresponding to a fs volume */
-+static void hot_debugfs_log_exit(struct debugfs_vol_data *data)
-+{
-+	struct lstring *debugfs_log = data->debugfs_log;
-+
-+	spin_lock(&data->log_lock);
-+	vfree(debugfs_log->str);
-+	debugfs_log->str = NULL;
-+	debugfs_log->len = 0;
-+	spin_unlock(&data->log_lock);
-+}
-+
-+/* debugfs open file override from fops table */
-+static int __hot_debugfs_open(struct inode *inode, struct file *file)
-+{
-+	if (inode->i_private)
-+		file->private_data = inode->i_private;
-+
-+	return 0;
-+}
-+
-+static void __hot_debugfs_print_range_freq_data(
-+			struct hot_inode_item *hot_inode,
-+			struct hot_range_item *hot_range,
-+			struct debugfs_vol_data *data,
+ /* main function to update access frequency from read/writepage(s) hooks */
+ void hot_rb_update_freqs(struct inode *inode, u64 start,
+ 			u64 len, int rw)
+@@ -534,6 +602,65 @@ void hot_rb_update_freqs(struct inode *inode, u64 start,
+ }
+ 
+ /*
++ * take hot range that is now cold and remove from indexes and clean up
++ * any memory associted, involves removing hot range from rb tree, and
++ * heat hash lists, and freeing up all memory.
++ */
++static void hot_rb_remove_range_data(struct hot_inode_item *hot_inode,
++			struct hot_range_item *hr,
 +			struct hot_info *root)
 +{
-+	struct hot_freq_data *freq_data;
-+	u64 start;
-+	u64 len;
++	/* remove range from rb tree */
++	hot_rb_remove_hot_range_item(&hot_inode->hot_range_tree, hr);
 +
-+	freq_data = &hot_range->hot_freq_data;
++	/* remove range from hash list */
++	spin_lock(&hr->heat_node->lock);
++	write_lock(&hr->heat_node->hlist->rwlock);
++	hlist_del(&hr->heat_node->hashnode);
++	write_unlock(&hr->heat_node->hlist->rwlock);
++	spin_unlock(&hr->heat_node->lock);
 +
-+	spin_lock(&hot_range->lock);
-+	start = hot_range->start;
-+	len = hot_range->len;
-+	spin_unlock(&hot_range->lock);
-+
-+	/* Always lock hot_inode_item first */
-+	spin_lock(&hot_inode->lock);
-+	spin_lock(&hot_range->lock);
-+	hot_debugfs_log(data, "inode #%lu, range start " \
-+			"%llu (range len %llu) reads %u, writes %u, "
-+			"avg read time %llu, avg write time %llu, temp %u\n",
-+			hot_inode->i_ino,
-+			hot_range->start,
-+			hot_range->len,
-+			freq_data->nr_reads,
-+			freq_data->nr_writes,
-+			freq_data->avg_delta_reads,
-+			freq_data->avg_delta_writes,
-+			freq_data->last_temperature);
-+	spin_unlock(&hot_range->lock);
-+	spin_unlock(&hot_inode->lock);
++	/*free up memory */
++	kfree(hr->heat_node);
++	hot_rb_free_hot_range_item(hr);
 +}
 +
-+/*
-+ * take the inode, find ranges associated with inode
-+ * and print each range data struct
-+ */
-+static void __hot_debugfs_walk_range_tree(struct hot_inode_item *hot_inode,
-+				struct debugfs_vol_data *data,
-+				struct hot_info *root)
++/* Update temperatures for each range item for aging purposes */
++static void hot_rb_update_range_data(struct hot_inode_item *hot_inode,
++					struct hot_info *root)
 +{
 +	struct hot_range_tree *inode_range_tree;
 +	struct rb_node *node;
++	struct rb_node *old_node;
 +	struct hot_range_item *current_range;
++	int range_is_aging;
 +
 +	inode_range_tree = &hot_inode->hot_range_tree;
-+	read_lock(&inode_range_tree->lock);
++	write_lock(&inode_range_tree->lock);
 +	node = rb_first(&inode_range_tree->map);
-+
 +	/* Walk the hot_range_tree for inode */
 +	while (node) {
 +		current_range = rb_entry(node, struct hot_range_item, rb_node);
-+		__hot_debugfs_print_range_freq_data(hot_inode,
-+						current_range, data, root);
++		hot_hash_update_hash_table(&current_range->hot_freq_data, root);
++		old_node = node;
 +		node = rb_next(node);
++
++		spin_lock(&current_range->lock);
++		range_is_aging = hot_hash_is_aging(&current_range->hot_freq_data);
++		spin_unlock(&current_range->lock);
++
++		if (range_is_aging) {
++			if (atomic_read(
++			&current_range->heat_node->refs.refcount) <= 1)
++				hot_rb_remove_range_data(hot_inode,
++						current_range, root);
++		}
 +	}
-+	read_unlock(&inode_range_tree->lock);
++
++	write_unlock(&inode_range_tree->lock);
 +}
 +
-+/* Print frequency data for each freq data to log */
-+static void __hot_debugfs_print_inode_freq_data(
-+				struct hot_inode_item *hot_inode,
-+				struct debugfs_vol_data *data,
-+				struct hot_info *root)
++/*
+  * Initialize hash node.
+  */
+ static void hot_hash_node_init(void *_node)
+@@ -575,6 +702,308 @@ static void hot_hash_table_init(struct hot_info *root)
+ 	}
+ }
+ 
++static void hot_hash_node_free(struct hlist_head *head)
 +{
-+	struct hot_freq_data *freq_data = &hot_inode->hot_freq_data;
++	struct hlist_node *pos = NULL, *pos2 = NULL;
++	struct hot_hash_node *heatnode = NULL;
 +
-+	spin_lock(&hot_inode->lock);
-+	hot_debugfs_log(data, "inode #%lu, reads %u, writes %u, " \
-+		"avg read time %llu, avg write time %llu, temp %u\n",
-+		hot_inode->i_ino,
-+		freq_data->nr_reads,
-+		freq_data->nr_writes,
-+		freq_data->avg_delta_reads,
-+		freq_data->avg_delta_writes,
-+		freq_data->last_temperature);
-+	spin_unlock(&hot_inode->lock);
++	hlist_for_each_safe(pos, pos2, head) {
++			heatnode = hlist_entry(pos,
++					struct hot_hash_node,
++					hashnode);
++			hlist_del(pos);
++			kfree(heatnode);
++	}
++
 +}
 +
-+/* debugfs read file override from fops table */
-+static ssize_t __hot_debugfs_range_read(struct file *file, char __user *user,
-+					size_t count, loff_t *ppos)
++static void hot_hash_table_free(struct hot_info *root)
 +{
-+	int err = 0;
-+	struct hot_info *root;
++	int i;
++
++	/* Free node/range heat hash lists */
++	for (i = 0; i < HEAT_HASH_SIZE; i++) {
++		hot_hash_node_free(&root->heat_inode_hl[i].hashhead);
++		hot_hash_node_free(&root->heat_range_hl[i].hashhead);
++	}
++}
++
++static u64 hot_hash_shift(u64 counter, u32 bits, bool shift_dir)
++{
++	if (shift_dir)
++		return counter << bits;
++	else
++		return counter >> bits;
++}
++
++/*
++ * hot_hash_calc_temperature() is responsible for distilling the six heat
++ * criteria, which are described in detail in hot_hash.h) down into a single
++ * temperature value for the data, which is an integer between 0
++ * and HEAT_MAX_VALUE.
++ *
++ * To accomplish this, the raw values from the hot_freq_data structure
++ * are shifted various ways in order to make the temperature calculation more
++ * or less sensitive to each value.
++ *
++ * Once this calibration has happened, we do some additional normalization and
++ * make sure that everything fits nicely in a u32. From there, we take a very
++ * rudimentary kind of "average" of each of the values, where the *_COEFF_POWER
++ * values act as weights for the average.
++ *
++ * Finally, we use the HEAT_HASH_BITS value, which determines the size of the
++ * heat hash list, to normalize the temperature to the proper granularity.
++ */
++int hot_hash_calc_temperature(struct hot_freq_data *freq_data)
++{
++	u64 result = 0;
++
++	struct timespec ckt = current_kernel_time();
++	u64 cur_time = timespec_to_ns(&ckt);
++
++	u32 nrr_heat = (u32)hot_hash_shift((u64)freq_data->nr_reads,
++					NRR_MULTIPLIER_POWER, true);
++	u32 nrw_heat = (u32)hot_hash_shift((u64)freq_data->nr_writes,
++					NRW_MULTIPLIER_POWER, true);
++
++	u64 ltr_heat =
++	hot_hash_shift((cur_time - timespec_to_ns(&freq_data->last_read_time)),
++			LTR_DIVIDER_POWER, false);
++	u64 ltw_heat =
++	hot_hash_shift((cur_time - timespec_to_ns(&freq_data->last_write_time)),
++			LTW_DIVIDER_POWER, false);
++
++	u64 avr_heat =
++		hot_hash_shift((((u64) -1) - freq_data->avg_delta_reads),
++			AVR_DIVIDER_POWER, false);
++	u64 avw_heat =
++		hot_hash_shift((((u64) -1) - freq_data->avg_delta_writes),
++			AVW_DIVIDER_POWER, false);
++
++	/* ltr_heat is now guaranteed to be u32 safe */
++	if (ltr_heat >= hot_hash_shift((u64) 1, 32, true))
++		ltr_heat = 0;
++	else
++		ltr_heat = hot_hash_shift((u64) 1, 32, true) - ltr_heat;
++
++	/* ltw_heat is now guaranteed to be u32 safe */
++	if (ltw_heat >= hot_hash_shift((u64) 1, 32, true))
++		ltw_heat = 0;
++	else
++		ltw_heat = hot_hash_shift((u64) 1, 32, true) - ltw_heat;
++
++	/* avr_heat is now guaranteed to be u32 safe */
++	if (avr_heat >= hot_hash_shift((u64) 1, 32, true))
++		avr_heat = (u32) -1;
++
++	/* avw_heat is now guaranteed to be u32 safe */
++	if (avw_heat >= hot_hash_shift((u64) 1, 32, true))
++		avw_heat = (u32) -1;
++
++	nrr_heat = (u32)hot_hash_shift((u64)nrr_heat,
++				(3 - NRR_COEFF_POWER), false);
++	nrw_heat = (u32)hot_hash_shift((u64)nrw_heat,
++				(3 - NRW_COEFF_POWER), false);
++	ltr_heat = hot_hash_shift(ltr_heat, (3 - LTR_COEFF_POWER), false);
++	ltw_heat = hot_hash_shift(ltw_heat, (3 - LTW_COEFF_POWER), false);
++	avr_heat = hot_hash_shift(avr_heat, (3 - AVR_COEFF_POWER), false);
++	avw_heat = hot_hash_shift(avw_heat, (3 - AVW_COEFF_POWER), false);
++
++	result = nrr_heat + nrw_heat + (u32) ltr_heat +
++			(u32) ltw_heat + (u32) avr_heat + (u32) avw_heat;
++
++	return result >> (32 - HEAT_HASH_BITS);
++}
++
++static int hot_hash_is_aging(struct hot_freq_data *freq_data)
++{
++	int ret = 0;
++	struct timespec ckt = current_kernel_time();
++
++	u64 cur_time = timespec_to_ns(&ckt);
++	u64 last_read_ns =
++		(cur_time - timespec_to_ns(&freq_data->last_read_time));
++	u64 last_write_ns =
++		(cur_time - timespec_to_ns(&freq_data->last_write_time));
++	u64 kick_ns = TIME_TO_KICK * (u64)1000000000;
++
++	if ((last_read_ns > kick_ns) && (last_write_ns > kick_ns))
++		ret = 1;
++
++	return ret;
++}
++
++/*
++ * Calc a new temperature and, if necessary, move the heat_node corresponding
++ * to this inode or range to the proper hashlist with the new temperature
++ */
++static void hot_hash_update_hash_table(struct hot_freq_data *freq_data,
++			struct hot_info *root)
++{
++	int temperature = 0;
++	int moved = 0;
++	struct hot_hash_head *buckets, *current_bucket = NULL;
++	struct hot_inode_item *he;
++	struct hot_range_item *hr;
++
++	if (freq_data->flags & FREQ_DATA_TYPE_INODE) {
++		he = hot_freq_data_get_he(freq_data);
++		buckets = root->heat_inode_hl;
++
++		spin_lock(&he->lock);
++		temperature = hot_hash_calc_temperature(freq_data);
++		freq_data->last_temperature = temperature;
++		spin_unlock(&he->lock);
++
++		if (he == NULL)
++			return;
++
++		spin_lock(&he->heat_node->lock);
++		if (he->heat_node->hlist == NULL) {
++			current_bucket = buckets + temperature;
++			moved = 1;
++		} else {
++			write_lock(&he->heat_node->hlist->rwlock);
++			current_bucket = he->heat_node->hlist;
++			if (current_bucket->temperature != temperature) {
++				hlist_del(&he->heat_node->hashnode);
++				current_bucket = buckets + temperature;
++				moved = 1;
++			}
++			write_unlock(&he->heat_node->hlist->rwlock);
++		}
++
++		if (moved) {
++			write_lock(&current_bucket->rwlock);
++			hlist_add_head(&he->heat_node->hashnode,
++					&current_bucket->hashhead);
++			he->heat_node->hlist = current_bucket;
++			write_unlock(&current_bucket->rwlock);
++		}
++		spin_unlock(&he->heat_node->lock);
++	} else if (freq_data->flags & FREQ_DATA_TYPE_RANGE) {
++		hr = hot_freq_data_get_hr(freq_data);
++		buckets = root->heat_range_hl;
++
++		spin_lock(&hr->lock);
++		temperature = hot_hash_calc_temperature(freq_data);
++		freq_data->last_temperature = temperature;
++		spin_unlock(&hr->lock);
++
++		if (hr == NULL)
++			return;
++
++		spin_lock(&hr->heat_node->lock);
++		if (hr->heat_node->hlist == NULL) {
++			current_bucket = buckets + temperature;
++			moved = 1;
++		} else {
++			write_lock(&hr->heat_node->hlist->rwlock);
++			current_bucket = hr->heat_node->hlist;
++			if (current_bucket->temperature != temperature) {
++				hlist_del(&hr->heat_node->hashnode);
++				current_bucket = buckets + temperature;
++				moved = 1;
++			}
++			write_unlock(&hr->heat_node->hlist->rwlock);
++		}
++
++		if (moved) {
++			write_lock(&current_bucket->rwlock);
++			hlist_add_head(&hr->heat_node->hashnode,
++					&current_bucket->hashhead);
++			hr->heat_node->hlist = current_bucket;
++			write_unlock(&current_bucket->rwlock);
++		}
++		spin_unlock(&hr->heat_node->lock);
++	}
++}
++
++/*
++ * Update temperatures for each hot inode item and
++ * hot range item for aging purposes
++ */
++static void hot_hash_temperature_update_iterator(struct hot_info *root)
++{
 +	struct hot_inode_item *current_hot_inode;
-+	struct debugfs_vol_data *data;
-+	struct lstring *debugfs_log;
++	struct hot_inode_tree *hot_inode_tree;
 +	unsigned long inode_num;
 +
-+	data = (struct debugfs_vol_data *) file->private_data;
-+	root = &(data->sb->s_hotinfo);
-+
-+	if (!data->debugfs_log) {
-+		/* initialize debugfs log corresponding to this volume*/
-+		debugfs_log = kmalloc(sizeof(struct lstring),
-+				GFP_KERNEL | GFP_NOFS);
-+		debugfs_log->str = NULL,
-+		debugfs_log->len = 0;
-+		data->debugfs_log = debugfs_log;
-+		hot_debugfs_log_init(data);
-+	}
-+
-+	if ((unsigned long) *ppos > 0) {
-+		/* caller is continuing a previous read, don't walk tree */
-+		if ((unsigned long) *ppos >= data->debugfs_log->len)
-+			goto clean_up;
-+
-+		goto print_to_user;
-+	}
++	hot_inode_tree = &root->hot_inode_tree;
 +
 +	/* walk the inode tree */
 +	current_hot_inode = hot_rb_find_next_hot_inode(root, 0);
-+
 +	while (current_hot_inode) {
-+		/* walk ranges, print data to debugfs log */
-+		__hot_debugfs_walk_range_tree(current_hot_inode, data, root);
++		hot_hash_update_hash_table(
++			&current_hot_inode->hot_freq_data, root);
++		hot_rb_update_range_data(current_hot_inode, root);
 +		inode_num = current_hot_inode->i_ino;
 +		hot_rb_free_hot_inode_item(current_hot_inode);
 +		current_hot_inode = hot_rb_find_next_hot_inode(root,
 +							inode_num + 1);
 +	}
-+
-+print_to_user:
-+	if (data->debugfs_log->len) {
-+		err = simple_read_from_buffer(user, count, ppos,
-+						data->debugfs_log->str,
-+						data->debugfs_log->len);
-+	}
-+
-+	return err;
-+
-+clean_up:
-+	/* Reader has finished the file, clean up */
-+	hot_debugfs_log_exit(data);
-+	kfree(data->debugfs_log);
-+	data->debugfs_log = NULL;
-+
-+	return 0;
 +}
 +
-+/* debugfs read file override from fops table */
-+static ssize_t __hot_debugfs_inode_read(struct file *file, char __user *user,
-+					size_t count, loff_t *ppos)
++/* Determine if there is hot data tracking to be enabled */
++static bool hot_hash_global_hot_track(void)
 +{
-+	int err = 0;
++	struct super_block *sb;
++	bool ret = false;
++
++	spin_lock(&sb_lock);
++	list_for_each_entry(sb, &super_blocks, s_list) {
++		if (hlist_unhashed(&sb->s_instances))
++			continue;
++		if (sb->s_hotinfo.mount_opt & HOT_MOUNT_HOT_TRACK)
++			ret = true;
++	}
++	spin_unlock(&sb_lock);
++
++	return ret;
++}
++
++/*
++ * kthread iterates each hot_inode_item and hot_range_item
++ * and update temperatures to be shifted in heat hash table
++ * for purposes of relocation and such hot file detection
++ */
++static int hot_hash_temperature_update_kthread(void *arg)
++{
++	struct super_block *sb;
 +	struct hot_info *root;
-+	struct hot_inode_item *current_hot_inode;
-+	struct debugfs_vol_data *data;
-+	struct lstring *debugfs_log;
-+	unsigned long inode_num;
++	unsigned long delay;
 +
-+	data = (struct debugfs_vol_data *) file->private_data;
-+	root = &(data->sb->s_hotinfo);
-+
-+	if (!data->debugfs_log) {
-+		/* initialize debugfs log corresponding to this volume */
-+		debugfs_log = kmalloc(sizeof(struct lstring),
-+					GFP_KERNEL | GFP_NOFS);
-+		debugfs_log->str = NULL,
-+		debugfs_log->len = 0;
-+		data->debugfs_log = debugfs_log;
-+		hot_debugfs_log_init(data);
-+	}
-+
-+	if ((unsigned long) *ppos > 0) {
-+		/* caller is continuing a previous read, don't walk tree */
-+		if ((unsigned long) *ppos >= data->debugfs_log->len)
-+			goto clean_up;
-+
-+		goto print_to_user;
-+	}
-+
-+	/* walk the inode tree */
-+	current_hot_inode = hot_rb_find_next_hot_inode(root, 0);
-+
-+	while (current_hot_inode) {
-+		/* walk ranges, print data to debugfs log */
-+		__hot_debugfs_print_inode_freq_data(current_hot_inode,
-+							data, root);
-+		inode_num = current_hot_inode->i_ino;
-+		hot_rb_free_hot_inode_item(current_hot_inode);
-+		current_hot_inode = hot_rb_find_next_hot_inode(root,
-+								inode_num + 1);
-+	}
-+
-+print_to_user:
-+	if (data->debugfs_log->len) {
-+		err = simple_read_from_buffer(user, count, ppos,
-+					data->debugfs_log->str,
-+					data->debugfs_log->len);
-+	}
-+
-+	return err;
-+
-+clean_up:
-+	/* reader has finished the file, clean up */
-+	hot_debugfs_log_exit(data);
-+	kfree(data->debugfs_log);
-+	data->debugfs_log = NULL;
-+
-+	return 0;
-+}
-+
-+/* fops to override for printing range data */
-+static const struct file_operations hot_debugfs_range_fops = {
-+	.read = __hot_debugfs_range_read,
-+	.open = __hot_debugfs_open,
-+};
-+
-+/* fops to override for printing inode data */
-+static const struct file_operations hot_debugfs_inode_fops = {
-+	.read = __hot_debugfs_inode_read,
-+	.open = __hot_debugfs_open,
-+};
-+
-+/* initialize debugfs at module init */
-+int hot_debugfs_init(void)
-+{
-+	hot_debugfs_root_dentry = debugfs_create_dir(DEBUGFS_ROOT_NAME, NULL);
-+	/*init list of debugfs data list */
-+	INIT_LIST_HEAD(&hot_debugfs_vol_data_list);
-+	/*init lock to list of debugfs data list */
-+	spin_lock_init(&hot_debugfs_data_list_lock);
-+	if (!hot_debugfs_root_dentry)
-+		goto debugfs_error;
-+
-+	return 0;
-+
-+debugfs_error:
-+	return -EIO;
-+}
-+
-+/*
-+ * on each volume mount, initialize the debugfs dentries and associated
-+ * structures (debugfs_vol_data and debugfs_log)
-+ */
-+static int hot_debugfs_volume_init(const char *uuid, struct super_block *sb)
-+{
-+	struct dentry *debugfs_volume_entry = NULL;
-+	struct dentry *debugfs_range_entry = NULL;
-+	struct dentry *debugfs_inode_entry = NULL;
-+	struct debugfs_vol_data *range_data = NULL;
-+	struct debugfs_vol_data *inode_data = NULL;
-+	size_t dev_name_length = strlen(uuid);
-+	char dev[NAME_MAX];
-+
-+	if (!hot_debugfs_root_dentry)
-+		goto debugfs_error;
-+
-+	/* create debugfs folder for this volume by mounted dev name */
-+	memcpy(dev, uuid + DEV_NAME_CHOP, dev_name_length - DEV_NAME_CHOP + 1);
-+	debugfs_volume_entry = debugfs_create_dir(dev, hot_debugfs_root_dentry);
-+
-+	if (!debugfs_volume_entry)
-+		goto debugfs_error;
-+
-+	/* malloc and initialize debugfs_vol_data for range_data */
-+	range_data = kmalloc(sizeof(struct debugfs_vol_data),
-+				GFP_KERNEL | GFP_NOFS);
-+	memset(range_data, 0, sizeof(struct debugfs_vol_data));
-+	range_data->debugfs_log = NULL;
-+	range_data->sb = sb;
-+	spin_lock_init(&range_data->log_lock);
-+	range_data->log_alloc_size = 0;
-+
-+	/* malloc and initialize debugfs_vol_data for inode_data */
-+	inode_data = kmalloc(sizeof(struct debugfs_vol_data),
-+				GFP_KERNEL | GFP_NOFS);
-+	memset(inode_data, 0, sizeof(struct debugfs_vol_data));
-+	inode_data->debugfs_log = NULL;
-+	inode_data->sb = sb;
-+	spin_lock_init(&inode_data->log_lock);
-+	inode_data->log_alloc_size = 0;
-+
-+	/*
-+	 * add debugfs_vol_data for inode data and range data for
-+	 * volume to list
-+	 */
-+	range_data->de = debugfs_volume_entry;
-+	inode_data->de = debugfs_volume_entry;
-+	spin_lock(&hot_debugfs_data_list_lock);
-+	list_add(&range_data->node, &hot_debugfs_vol_data_list);
-+	list_add(&inode_data->node, &hot_debugfs_vol_data_list);
-+	spin_unlock(&hot_debugfs_data_list_lock);
-+
-+	/* create debugfs range_data file */
-+	debugfs_range_entry = debugfs_create_file("range_data",
-+				S_IFREG | S_IRUSR | S_IWUSR | S_IRUGO,
-+				debugfs_volume_entry,
-+				(void *) range_data,
-+				&hot_debugfs_range_fops);
-+	if (!debugfs_range_entry)
-+		goto debugfs_error;
-+
-+	/* create debugfs inode_data file */
-+	debugfs_inode_entry = debugfs_create_file("inode_data",
-+				S_IFREG | S_IRUSR | S_IWUSR | S_IRUGO,
-+				debugfs_volume_entry,
-+				(void *) inode_data,
-+				&hot_debugfs_inode_fops);
-+
-+	if (!debugfs_inode_entry)
-+		goto debugfs_error;
-+
-+	return 0;
-+
-+debugfs_error:
-+	kfree(range_data);
-+	kfree(inode_data);
-+
-+	return -EIO;
-+}
-+
-+/*
-+ * find volume mounted (match by superblock) and remove
-+ * debugfs dentry
-+ */
-+static void hot_debugfs_volume_exit(struct super_block *sb)
-+{
-+	struct list_head *head;
-+	struct list_head *pos;
-+	struct debugfs_vol_data *data;
-+
-+	spin_lock(&hot_debugfs_data_list_lock);
-+	head = &hot_debugfs_vol_data_list;
-+	/* must clean up memory assicatied with superblock */
-+	list_for_each(pos, head)
-+	{
-+		data = list_entry(pos, struct debugfs_vol_data, node);
-+		if (data->sb == sb) {
-+			list_del(pos);
-+			debugfs_remove_recursive(data->de);
-+			kfree(data);
-+			data = NULL;
++	do {
++		spin_lock(&sb_lock);
++		list_for_each_entry(sb, &super_blocks, s_list) {
++			if (hlist_unhashed(&sb->s_instances))
++				continue;
++			delay = HZ * HEAT_UPDATE_DELAY;
++			root = &sb->s_hotinfo;
++			if (mutex_trylock(
++				&root->hot_data_update_kthread_mutex)) {
++				hot_hash_temperature_update_iterator(root);
++				mutex_unlock(
++					&root->hot_data_update_kthread_mutex);
++			}
++			if (unlikely(freezing(current))) {
++				__refrigerator(true);
++			} else {
++				set_current_state(TASK_INTERRUPTIBLE);
++				if (!kthread_should_stop()) {
++					spin_unlock(&sb_lock);
++					schedule_timeout(delay);
++					spin_lock(&sb_lock);
++				}
++				__set_current_state(TASK_RUNNING);
++			}
 +		}
-+	}
-+	spin_unlock(&hot_debugfs_data_list_lock);
++		spin_unlock(&sb_lock);
++	} while (!kthread_should_stop() || !hot_hash_global_hot_track());
++
++	return 0;
 +}
 +
  /*
   * Regular mount options parser for -hottrack option.
   * return false if no -hottrack is specified;
-@@ -1086,6 +1550,7 @@ void hot_track_init(struct super_block *sb, const char *name)
+@@ -625,6 +1054,30 @@ void __init hot_track_cache_init(void)
+ }
+ 
+ /*
++ * Fork and initialize kthread for each new mount point that
++ * periodically goes through hot inodes and hot ranges and ages them
++ * based on frequency of access
++ */
++static void hot_track_fork_temperature_update_kthread(void)
++{
++	if (hot_track_temperature_update_kthread)
++		return;
++
++	hot_track_temperature_update_kthread =
++		kthread_run(hot_hash_temperature_update_kthread, NULL,
++					"hot_temperature_update_kthread");
++	if (IS_ERR(hot_track_temperature_update_kthread))
++		kthread_stop(hot_track_temperature_update_kthread);
++}
++
++/* Stop the kthread to do temperature updates for all filesystems */
++static void hot_track_stop_temperature_update_kthread(void)
++{
++	if (hot_track_temperature_update_kthread)
++		kthread_stop(hot_track_temperature_update_kthread);
++}
++
++/*
+  * Initialize the data structures for hot data tracking.
+  */
+ void hot_track_init(struct super_block *sb, const char *name)
+@@ -632,11 +1085,13 @@ void hot_track_init(struct super_block *sb, const char *name)
+ 	sb->s_hotinfo.mount_opt |= HOT_MOUNT_HOT_TRACK;
  	hot_rb_inode_tree_init(&sb->s_hotinfo.hot_inode_tree);
  	hot_hash_table_init(&sb->s_hotinfo);
- 	hot_track_fork_temperature_update_kthread();
-+	hot_debugfs_volume_init(name, sb);
++	hot_track_fork_temperature_update_kthread();
  }
  
  void hot_track_exit(struct super_block *sb)
-@@ -1094,4 +1559,5 @@ void hot_track_exit(struct super_block *sb)
- 	hot_track_stop_temperature_update_kthread();
+ {
+ 	sb->s_hotinfo.mount_opt &= ~HOT_MOUNT_HOT_TRACK;
++	hot_track_stop_temperature_update_kthread();
  	hot_hash_table_free(&sb->s_hotinfo);
  	hot_rb_inode_tree_free(&sb->s_hotinfo);
-+	hot_debugfs_volume_exit(sb);
  }
 diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
-index 1b6c694..fa1eb9b 100644
+index 3a8d398..1b6c694 100644
 --- a/fs/hot_tracking.h
 +++ b/fs/hot_tracking.h
-@@ -97,9 +97,47 @@
-         ((struct hot_range_item *) container_of(x, \
-         struct hot_range_item, hot_freq_data))
+@@ -27,6 +27,76 @@
  
-+/* size of log to vmalloc */
-+#define INIT_LOG_ALLOC_SIZE (PAGE_SIZE * 10)
-+#define LOG_PAGE_SIZE (PAGE_SIZE * 10)
+ #define FREQ_POWER 4
+ 
++/*
++ * time to quit keeping track of
++ * tracking data (seconds)
++ */
++#define TIME_TO_KICK 400
++
++/* set how often to update temperatures (seconds) */
++#define HEAT_UPDATE_DELAY 400
 +
 +/*
-+ * number of chars of device name of chop off
-+ * for making debugfs folder e.g. /dev/sda -> sda
++ * The following comments explain what exactly comprises a unit of heat.
++ *
++ * Each of six values of heat are calculated and combined in order to form an
++ * overall temperature for the data:
++ *
++ * NRR - number of reads since mount
++ * NRW - number of writes since mount
++ * LTR - time elapsed since last read (ns)
++ * LTW - time elapsed since last write (ns)
++ * AVR - average delta between recent reads (ns)
++ * AVW - average delta between recent writes (ns)
++ *
++ * These values are divided (right-shifted) according to the *_DIVIDER_POWER
++ * values defined below to bring the numbers into a reasonable range. You can
++ * modify these values to fit your needs. However, each heat unit is a u32 and
++ * thus maxes out at 2^32 - 1. Therefore, you must choose your dividers quite
++ * carefully or else they could max out or be stuck at zero quite easily.
++ *
++ * (E.g., if you chose AVR_DIVIDER_POWER = 0, nothing less than 4s of atime
++ * delta would bring the temperature above zero, ever.)
++ *
++ * Finally, each value is added to the overall temperature between 0 and 8
++ * times, depending on its *_COEFF_POWER value. Note that the coefficients are
++ * also actually implemented with shifts, so take care to treat these values
++ * as powers of 2. (I.e., 0 means we'll add it to the temp once; 1 = 2x, etc.)
 + */
-+#define DEV_NAME_CHOP 5
++
++/* NRR/NRW heat unit = 2^X accesses */
++#define NRR_MULTIPLIER_POWER 20
++#define NRR_COEFF_POWER 0
++#define NRW_MULTIPLIER_POWER 20
++#define NRW_COEFF_POWER 0
++
++/* LTR/LTW heat unit = 2^X ns of age */
++#define LTR_DIVIDER_POWER 30
++#define LTR_COEFF_POWER 1
++#define LTW_DIVIDER_POWER 30
++#define LTW_COEFF_POWER 1
 +
 +/*
-+ * Name for VFS data in debugfs directory
-+ * e.g. /sys/kernel/debug/hot_track
++ * AVR/AVW cold unit = 2^X ns of average delta
++ * AVR/AVW heat unit = HEAT_MAX_VALUE - cold unit
++ *
++ * E.g., data with an average delta between 0 and 2^X ns
++ * will have a cold value of 0, which means a heat value
++ * equal to HEAT_MAX_VALUE.
 + */
-+#define DEBUGFS_ROOT_NAME "hot_track"
++#define AVR_DIVIDER_POWER 40
++#define AVR_COEFF_POWER 0
++#define AVW_DIVIDER_POWER 40
++#define AVW_COEFF_POWER 0
++
++/* macros to wrap container_of()'s for hot data structs */
++#define hot_freq_data_get_he(x) \
++        ((struct hot_inode_item *) container_of(x, \
++        struct hot_inode_item, hot_freq_data))
++#define hot_freq_data_get_hr(x) \
++        ((struct hot_range_item *) container_of(x, \
++        struct hot_range_item, hot_freq_data))
 +
  struct hot_info;
  struct inode;
  
-+/* log to output to userspace in debugfs files */
-+struct lstring {
-+	char *str;
-+	unsigned long len;
-+};
-+
-+/*
-+ * debugfs_vol_data is a struct of items
-+ * that is passed to the debugfs
-+ */
-+struct debugfs_vol_data {
-+	/* protected by hot_debugfs_data_list_lock */
-+	struct list_head node;
-+	struct lstring *debugfs_log;
-+	struct super_block *sb;
-+	struct dentry *de;
-+	/* protects debugfs_log */
-+	spinlock_t log_lock;
-+	char log_work_buff[1024];
-+	uint log_alloc_size;
-+};
-+
- struct hot_inode_item
- *hot_rb_lookup_hot_inode_item(struct hot_inode_tree *tree,
- 				unsigned long inode_num);
-@@ -115,6 +153,8 @@ void hot_rb_update_freqs(struct inode *inode, u64 start, u64 len,
-  */
- int hot_hash_calc_temperature(struct hot_freq_data *freq_data);
+@@ -37,6 +107,14 @@ void hot_rb_free_hot_inode_item(struct hot_inode_item *he);
+ void hot_rb_update_freqs(struct inode *inode, u64 start, u64 len,
+ 			int rw);
  
-+int hot_debugfs_init(void);
++/*
++ * Returns a value from 0 to HEAT_MAX_VALUE
++ * indicating the temperature of the
++ * file (and consequently its bucket number
++ * in hash list) (see hot_hash.c)
++ */
++int hot_hash_calc_temperature(struct hot_freq_data *freq_data);
 +
  bool hot_track_parse_options(char *options);
  void __init hot_track_cache_init(void);
  void hot_track_init(struct super_block *sb, const char *name);
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 55006c8..6cea6c0 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -2629,6 +2629,12 @@ void __init mnt_init(void)
- 	fs_kobj = kobject_create_and_add("fs", NULL);
- 	if (!fs_kobj)
- 		printk(KERN_WARNING "%s: kobj create error\n", __func__);
+diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
+index bc41f94..1ec90a6 100644
+--- a/include/linux/hot_tracking.h
++++ b/include/linux/hot_tracking.h
+@@ -141,6 +141,9 @@ struct hot_info {
+ 
+ 	/* hash map of range temperature */
+ 	struct hot_hash_head heat_range_hl[HEAT_HASH_SIZE];
 +
-+	err = hot_debugfs_init();
-+	if (err)
-+		printk(KERN_WARNING "%s: sysfs_init error: %d\n",
-+			__func__, err);
-+
- 	init_rootfs();
- 	init_mount_tree();
- }
++	/* protects hot data items while being iterated and updated */
++	struct mutex hot_data_update_kthread_mutex;
+ };
+ 
+ extern void hot_rb_update_freqs(struct inode *inode,
 -- 
 1.7.6.5
