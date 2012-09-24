@@ -1,54 +1,160 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
-Date: Mon, 24 Sep 2012 12:45:04 +0800
-Message-ID: <20120924044504.GD6196@gmail.com>
-References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
- <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
- <20120919190541.GE28470@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
+Date: Mon, 24 Sep 2012 14:03:42 +0400
+Message-ID: <87lifzd9fl.fsf@openvz.org>
+References: <a> <1348428276-13161-1-git-send-email-dmonakhov@openvz.org> <505FD0A9.3090601@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+	xfs@oss.sgi.com, hch@lst.de
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:37815 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751379Ab2IXEea (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 00:34:30 -0400
-Content-Disposition: inline
-In-Reply-To: <20120919190541.GE28470@thunk.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:43364 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751181Ab2IXKDs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 06:03:48 -0400
+In-Reply-To: <505FD0A9.3090601@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 19, 2012 at 03:05:41PM -0400, Theodore Ts'o wrote:
-> On Wed, Aug 22, 2012 at 02:05:40PM +0800, Zheng Liu wrote:
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 3e0851e..353b1fd 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -944,6 +944,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
-> >  	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
-> >  	INIT_LIST_HEAD(&ei->i_prealloc_list);
-> >  	spin_lock_init(&ei->i_prealloc_lock);
-> > +	ext4_es_init_tree(&ei->i_es_tree);
-> >  	ei->i_reserved_data_blocks = 0;
-> >  	ei->i_reserved_meta_blocks = 0;
-> >  	ei->i_allocated_meta_blocks = 0;
+On Sun, 23 Sep 2012 22:16:57 -0500, Eric Sandeen <sandeen@redhat.com> wrote:
+> On 9/23/12 2:24 PM, Dmitry Monakhov wrote:
+> > FIO is very flexible io generator, i would call it IO swiss knife.
+> > Currently we have tonnes of hardcoded application which reproduces
+> > some predefined scenario. This approach has obvious dissadvantages
+> > 1) Lack of flexability: once written it is hard to modify it in future
+> > 2) Code base is large, many routines written again and again
+> > 
+> > At the same time add new fio based tast is just add simle INI file.
+> > This greatly simplify code review. I do beleve that some day we will
+> > replace most of hardcoded io binaries with fio.
 > 
-> This patch hunk immediately me ask, "so when does the extent_status
-> tree get freed?"  And I believe the answer is that currently, since it
-> only tracks delayed extents (and we're not using it for locking
-> purposes), by the time we have evicted the inode and are ready to call
-> ext4_clear_inode(), we should have released all of the nodes in the
-> ext4_es_tree.   Is that correct?
+> The submodule approach is interesting, but I wonder - we have quite a few
+> dependencies on other binaries already; what are the pros and cons of creating
+> this as a git submodule vs. simply expecting fio to be installed on the
+> system like any of the other dependencies we have today?
+Pro:
+ P1) allow to specify exact commit as a submodule HEAD this guarantee
+     that we will have known version and functionality regardless to
+     distribution package manager (which are known to be very conservative)
+ P2) Prevent duplicating of source code (fsstress.c/aio-stress.c and
+     etc).  If some one want to add new feature to submodule he
+     simply push it to official submodule repo and move submodule HEAD
+     In that both parties(submodule maintainer and project maintainer)
+     will benefit because new features will be available to every
+     submodule user
+Cons:
+ C1) New dependencies
+ C2) Learn people how to work with submodules
+
+I'll not assume (C2) as a serious argument because this is just one more
+git's command. For most users should just add new option to clone:
+git clone --recursive git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+
+(C1) Is not big deal in case of Fio because we already depends from
+libaio.
+
+(P2) Makes xfstest coverage larger because all new tests which use new 
+     submodules functionality will start to work by default (today it
+      silently ignored). As i already told fio is under rapid
+     development Jens Axboe does very good job so (P2) really works for
+     me, new features i need for xfstets was reviewed and accepted by Jens
+http://git.kernel.dk/?p=fio.git;a=commit;h=8b28bd41375930664a0ff9ff9b101a88ac416ac5
+http://git.kernel.dk/?p=fio.git;a=commit;h=9c25d2e3f498707c4fd5a4bb0adf9867ecb17768
+http://git.kernel.dk/?p=fio.git;a=commit;h=e615ceafbe3962a35b7a7e06a0c8f4e2c0652c65
+
 > 
-> If so, we might want to think about adding a sanity check to make sure
-> that by the time we are done with the inode in ext4_evict_inode()
-> (after we have forced writeback), the ext4_es_tree is empty.  Agreed?
-
-Yes, I agree with you.  I will add a sanity check. :-)
-
-Regards,
-Zheng
+> (I package fio for Fedora, is it not commonly available on other
+> distros?)
+> 
+> -Eric
+> 
+> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> > ---
+> >  .gitmodules                  |    3 +++
+> >  common.config                |    3 +++
+> >  src/Makefile                 |    8 +++++---
+> >  src/aio-dio-regress/Makefile |    4 ++--
+> >  src/fio                      |    1 +
+> >  5 files changed, 14 insertions(+), 5 deletions(-)
+> >  create mode 100644 .gitmodules
+> >  create mode 160000 src/fio
+> > 
+> > diff --git a/.gitmodules b/.gitmodules
+> > new file mode 100644
+> > index 0000000..f0481ea
+> > --- /dev/null
+> > +++ b/.gitmodules
+> > @@ -0,0 +1,3 @@
+> > +[submodule "src/fio"]
+> > +	path = src/fio
+> > +	url = git://git.kernel.dk/fio.git
+> > diff --git a/common.config b/common.config
+> > index 7bed1c5..25cddb4 100644
+> > --- a/common.config
+> > +++ b/common.config
+> > @@ -138,6 +138,9 @@ export DF_PROG="`set_prog_path df`"
+> >  [ "$DF_PROG" = "" ] && _fatal "df not found"
+> >  [ "$HOSTOS" = "Linux" ] && export DF_PROG="$DF_PROG -T"
+> >  
+> > +export FIO_PROG="`set_prog_path $PWD/src/fio/fio`"
+> > +[ "$FIO_PROG" = "" ] && _fatal "fio not found"
+> > +
+> >  export XFS_LOGPRINT_PROG="`set_prog_path xfs_logprint`"
+> >  export XFS_REPAIR_PROG="`set_prog_path xfs_repair`"
+> >  export XFS_CHECK_PROG="`set_prog_path xfs_check`"
+> > diff --git a/src/Makefile b/src/Makefile
+> > index 67250ee..255bdd4 100644
+> > --- a/src/Makefile
+> > +++ b/src/Makefile
+> > @@ -52,16 +52,18 @@ LLDLIBS += $(LIBGDBM)
+> >  endif
+> >  
+> >  ifeq ($(HAVE_AIO), true)
+> > -SUBDIRS += aio-dio-regress
+> > +SUBDIRS += aio-dio-regress \
+> > +		fio
+> > +
+> >  endif
+> >  
+> >  CFILES = $(TARGETS:=.c)
+> >  LDIRT = $(TARGETS)
+> >  
+> >  
+> > -default: depend $(TARGETS) $(SUBDIRS)
+> > +default: .depend $(TARGETS) $(SUBDIRS)
+> >  
+> > -depend: .dep
+> > +.depend: .dep
+> >  
+> >  include $(BUILDRULES)
+> >  
+> > diff --git a/src/aio-dio-regress/Makefile b/src/aio-dio-regress/Makefile
+> > index 79dd55d..fcead9a 100644
+> > --- a/src/aio-dio-regress/Makefile
+> > +++ b/src/aio-dio-regress/Makefile
+> > @@ -8,9 +8,9 @@ LDIRT = $(TARGETS)
+> >  
+> >  LLDLIBS = -laio -lpthread
+> >  
+> > -default: depend $(TARGETS)
+> > +default: .depend $(TARGETS)
+> >  
+> > -depend: .dep
+> > +.depend: .dep
+> >  
+> >  include $(BUILDRULES)
+> >  
+> > diff --git a/src/fio b/src/fio
+> > new file mode 160000
+> > index 0000000..e12d280
+> > --- /dev/null
+> > +++ b/src/fio
+> > @@ -0,0 +1 @@
+> > +Subproject commit e12d2800f811cb64d376cfdaed9a1257f3fa9c99
+> > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
