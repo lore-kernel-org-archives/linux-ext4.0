@@ -1,384 +1,129 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 3/4] ext4: basic bug shield for move_extent_per_page
-Date: Mon, 24 Sep 2012 16:23:53 +0400
-Message-ID: <1348489434-22778-4-git-send-email-dmonakhov@openvz.org>
-References: <1348489434-22778-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, a-fujita@rs.jp.nec.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:53200 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755203Ab2IXMYF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 08:24:05 -0400
-Received: by mail-lb0-f174.google.com with SMTP id gj3so6602162lbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 05:24:04 -0700 (PDT)
-In-Reply-To: <1348489434-22778-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
+Date: Mon, 24 Sep 2012 16:38:00 +0400
+Message-ID: <87txun1tqv.fsf@openvz.org>
+References: <a> <1348428276-13161-1-git-send-email-dmonakhov@openvz.org> <505FD0A9.3090601@redhat.com> <87lifzd9fl.fsf@openvz.org> <20120924113718.GK20960@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, hch@lst.de
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20120924113718.GK20960@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The move_extent_per_page function is just one big peace of crap.
-this is the most buggy peace of code i've ever seen
+On Mon, 24 Sep 2012 21:37:18 +1000, Dave Chinner <david@fromorbit.com> wrote:
+> On Mon, Sep 24, 2012 at 02:03:42PM +0400, Dmitry Monakhov wrote:
+> > On Sun, 23 Sep 2012 22:16:57 -0500, Eric Sandeen <sandeen@redhat.com> wrote:
+> > > On 9/23/12 2:24 PM, Dmitry Monakhov wrote:
+> > > > FIO is very flexible io generator, i would call it IO swiss knife.
+> > > > Currently we have tonnes of hardcoded application which reproduces
+> > > > some predefined scenario. This approach has obvious dissadvantages
+> > > > 1) Lack of flexability: once written it is hard to modify it in future
+> > > > 2) Code base is large, many routines written again and again
+> > > > 
+> > > > At the same time add new fio based tast is just add simle INI file.
+> > > > This greatly simplify code review. I do beleve that some day we will
+> > > > replace most of hardcoded io binaries with fio.
+> > > 
+> > > The submodule approach is interesting, but I wonder - we have quite a few
+> > > dependencies on other binaries already; what are the pros and cons of creating
+> > > this as a git submodule vs. simply expecting fio to be installed on the
+> > > system like any of the other dependencies we have today?
+> > Pro:
+> >  P1) allow to specify exact commit as a submodule HEAD this guarantee
+> >      that we will have known version and functionality regardless to
+> >      distribution package manager (which are known to be very conservative)
+> 
+> You haven't provided a method to do this in this patch. All
+> you've provided is a submodule that tracks the fio tree head.
+> All this needs to be properly documented in the README file, at
+> minimum.
+> 
+> And conservative is good, too. I don't want tests to fail because of
+> rapid changes in the fio tree causing regressions in fio itself. The
+> tools that xfstests depends on need to be stable and relatively
+> unchanging, because we're not testing them - we're testing the
+> filesystem. The less the environemnt changes around the things we're
+> actually supposed to be regression testing, the better.
+Yes, but we do not have to advance submodule update unless we need it.
+Project may goes forward but we still can use old commit if needed.
+> 
+> >  P2) Prevent duplicating of source code (fsstress.c/aio-stress.c and
+> >      etc).  If some one want to add new feature to submodule he
+> >      simply push it to official submodule repo and move submodule HEAD
+> >      In that both parties(submodule maintainer and project maintainer)
+> >      will benefit because new features will be available to every
+> >      submodule user
+> > Cons:
+> >  C1) New dependencies
+> >  C2) Learn people how to work with submodules
+> > 
+> > I'll not assume (C2) as a serious argument because this is just one more
+> > git's command. For most users should just add new option to clone:
+> > git clone --recursive git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+> 
+> Doesn't work for me. I keep local mirrors of all git trees that I
+> use regularly and update them by cron jobs so that I don't have to
+> go to the internet for every local tree that I clone or update.
+> 
+> That's particularly important for me because I'm a *long* way from
+> the US or Europe and cloning from scratch over the internet takes a
+> long time and suck up a lot of bandwidth. I don't even allow my test
+> machines to access the internet - they only know about the local
+> network and mirrors. I'd have to overide the fio submodule URL in
+> the xfstests repository on every test machine, and that gets messy
+> in a hurry.
+> 
+> Also, we distribute xfstests as a tarball, and there has been talk of
+> proper packaging (rpm/deb) as well. In those cases, the git
+> submodule approach does not work as we have to depend on the distro
+> supplied fio packages...
+Yes, if this is mandatory. it makes packaging harder but not too
+complex.
+> 
+> > (C1) Is not big deal in case of Fio because we already depends from
+> > libaio.
+> 
+> There's also a fio version dependency. i.e. _require_fio has to
+> detect whether the currently installed fio is of sufficiently recent
+> version for the tests to run.
+> 
+> > (P2) Makes xfstest coverage larger because all new tests which use new 
+> >      submodules functionality will start to work by default (today it
+> >       silently ignored). As i already told fio is under rapid
+> >      development Jens Axboe does very good job so (P2) really works for
+> >      me, new features i need for xfstets was reviewed and accepted by Jens
+> > http://git.kernel.dk/?p=fio.git;a=commit;h=8b28bd41375930664a0ff9ff9b101a88ac416ac5
+> > http://git.kernel.dk/?p=fio.git;a=commit;h=9c25d2e3f498707c4fd5a4bb0adf9867ecb17768
+> > http://git.kernel.dk/?p=fio.git;a=commit;h=e615ceafbe3962a35b7a7e06a0c8f4e2c0652c65
+> 
+> For me, that's not a "pro" - that's a "con" as i explained above.
+> 
+> > > (I package fio for Fedora, is it not commonly available on other
+> > > distros?)
+> 
+> Available for Debian, which means all it's derivatives also have it.
+> 
+> In short, I'd prefer we continue to use package level dependencies
+> detected through configure/_require_foo infrastructure than using
+> source tree level dependencies. Package level dependencies are much,
+> much easier to manage for most people and don't require everyone to
+> have internet access on the machines that xfstests is being built
+> on....
+Ok i'll go back to _require_fio $VER approach, but it is reasonable to
+add prep script which will fetch or install all necessary packages
+so user can explicitly run it if internet is available.
 
-Non-full list of bugs:
-1) uninitialized extent optimization does not hold page's lock,
-   and simply replace brunches after that writeback code goes
-   crazy because block mapping changed under it's feets
-   kernel BUG at fs/ext4/inode.c:1434!  ( 288'th xfstress)
-
-2) uninitialized extent may became initialized right after we
-   drop i_data_sem, so extent state must be rechecked
-
-3) Locked pages goes uptodate via following sequence:
-   ->readpage(page); lock_page(page); use_that_page(page)
-   But after readpage() one may invalidate it because it is
-   uptodate and unlocked (reclaimer does that)
-   As result kernel bug at include/linux/buffer_head.c:133!
-
-4) We call write_begin() with already opened stansaction which
-   result in following deadlock:
-->move_extent_per_page()
-  ->ext4_journal_start()-> hold journal transaction
-  ->write_begin()
-    ->ext4_da_write_begin()
-      ->ext4_nonda_switch()
-        ->writeback_inodes_sb_if_idle()  --> will wait for journal_stop()
-
-5) try_to_release_page() may fail and it does fail if one of page's bh was
-   pinned by journal
-
-6) If we about to change page's mapping we MUST hold it's lock during entire
-   remapping procedure, this is true for both pages(original and donor one)
-
-Fixes:
-
-- Avoid (1) and (2) simply by temproraly drop uninitialized extent handling
-  optimization, this will be reimplemented later.
-
-- Fix (3) by manually forcing page to uptodate state w/o dropping it's lock
-
-- Fix (4) by rearranging existing locking:
-  from: journal_start(); ->write_begin
-  to: write_begin(); journal_extend()
-- Fix (5) simply by checking retvalue
-- Fix (6) by locking both (original and donor one) pages during extent swap
-  with help of mext_page_double_lock()
-
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/move_extent.c |  251 ++++++++++++++++++++++++++++++++++---------------
- 1 files changed, 176 insertions(+), 75 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 0aa2ad7..f416f83 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -736,6 +736,117 @@ out:
- }
- 
- /**
-+ * mext_page_double_lock - Grab and lock pages on both @inode1 and @inode2
-+ *
-+ * @inode1:	the inode structure
-+ * @inode2:	the inode structure
-+ * @index:	page index
-+ * @page:	result page vector
-+ *
-+ * Grab two locked pages for inode's by inode order
-+ */
-+static int
-+mext_page_double_lock(struct inode *inode1, struct inode *inode2,
-+		      pgoff_t index, struct page *page[2])
-+{
-+	struct address_space *mapping[2];
-+	unsigned fl = AOP_FLAG_NOFS;
-+
-+	BUG_ON(!inode1 || !inode2);
-+	if (inode1 < inode2) {
-+		mapping[0] = inode1->i_mapping;
-+		mapping[1] = inode2->i_mapping;
-+	} else {
-+		mapping[0] = inode2->i_mapping;
-+		mapping[1] = inode1->i_mapping;
-+	}
-+
-+	page[0] = grab_cache_page_write_begin(mapping[0], index, fl);
-+	if (!page[0])
-+		return -ENOMEM;
-+
-+	page[1] = grab_cache_page_write_begin(mapping[1], index, fl);
-+	if (!page[1]) {
-+		unlock_page(page[0]);
-+		page_cache_release(page[0]);
-+		return -ENOMEM;
-+	}
-+
-+	if (inode1 > inode2) {
-+		struct page *tmp;
-+		tmp = page[0];
-+		page[0] = page[1];
-+		page[1] = tmp;
-+	}
-+	return 0;
-+}
-+
-+/* Force page buffers uptodate w/o dropping page's lock */
-+static int
-+mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
-+{
-+	struct inode *inode = page->mapping->host;
-+	sector_t block;
-+	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
-+	unsigned int blocksize, block_start, block_end;
-+	int i, err,  nr = 0, partial = 0;
-+	BUG_ON(!PageLocked(page));
-+	BUG_ON(PageWriteback(page));
-+
-+	if (PageUptodate(page))
-+		return 0;
-+
-+	blocksize = 1 << inode->i_blkbits;
-+	if (!page_has_buffers(page))
-+		create_empty_buffers(page, blocksize, 0);
-+
-+	head = page_buffers(page);
-+	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	for(bh = head, block_start = 0; bh != head || !block_start;
-+	    block++, block_start = block_end, bh = bh->b_this_page) {
-+		block_end = block_start + blocksize;
-+		if (block_end <= from || block_start >= to) {
-+			if (!buffer_uptodate(bh))
-+				partial = 1;
-+			continue;
-+		}
-+		if (buffer_uptodate(bh))
-+			continue;
-+		if (!buffer_mapped(bh)) {
-+			int err = 0;
-+			err = ext4_get_block(inode, block, bh, 0);
-+			if (err) {
-+				SetPageError(page);
-+				return err;
-+			}
-+			if (!buffer_mapped(bh)) {
-+				zero_user(page, block_start, blocksize);
-+				if (!err)
-+					set_buffer_uptodate(bh);
-+				continue;
-+			}
-+		}
-+		arr[nr++] = bh;
-+	}
-+	/* No io required */
-+	if (!nr)
-+		goto out;
-+
-+	for (i = 0; i < nr; i++) {
-+		bh = arr[i];
-+		if (!bh_uptodate_or_lock(bh)) {
-+			err = bh_submit_read(bh);
-+			if (err)
-+				return err;
-+		}
-+	}
-+out:
-+	if (!partial)
-+		SetPageUptodate(page);
-+	return 0;
-+}
-+
-+/**
-  * move_extent_per_page - Move extent data per page
-  *
-  * @o_filp:			file structure of original file
-@@ -757,26 +868,24 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 		  int block_len_in_page, int uninit, int *err)
- {
- 	struct inode *orig_inode = o_filp->f_dentry->d_inode;
--	struct address_space *mapping = orig_inode->i_mapping;
--	struct buffer_head *bh;
--	struct page *page = NULL;
--	const struct address_space_operations *a_ops = mapping->a_ops;
-+	struct page *pagep[2] = {NULL, NULL};
- 	handle_t *handle;
- 	ext4_lblk_t orig_blk_offset;
- 	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
- 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
- 	unsigned int w_flags = 0;
- 	unsigned int tmp_data_size, data_size, replaced_size;
--	void *fsdata;
--	int i, jblocks;
--	int err2 = 0;
-+	int err2, jblocks, retries = 0;
- 	int replaced_count = 0;
-+	int from = data_offset_in_page << orig_inode->i_blkbits;
- 	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
- 
- 	/*
- 	 * It needs twice the amount of ordinary journal buffers because
- 	 * inode and donor_inode may change each different metadata blocks.
- 	 */
-+again:
-+	*err = 0;
- 	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
- 	handle = ext4_journal_start(orig_inode, jblocks);
- 	if (IS_ERR(handle)) {
-@@ -790,19 +899,6 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	orig_blk_offset = orig_page_offset * blocks_per_page +
- 		data_offset_in_page;
- 
--	/*
--	 * If orig extent is uninitialized one,
--	 * it's not necessary force the page into memory
--	 * and then force it to be written out again.
--	 * Just swap data blocks between orig and donor.
--	 */
--	if (uninit) {
--		replaced_count = mext_replace_branches(handle, orig_inode,
--						donor_inode, orig_blk_offset,
--						block_len_in_page, err);
--		goto out2;
--	}
--
- 	offs = (long long)orig_blk_offset << orig_inode->i_blkbits;
- 
- 	/* Calculate data_size */
-@@ -824,75 +920,80 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 
- 	replaced_size = data_size;
- 
--	*err = a_ops->write_begin(o_filp, mapping, offs, data_size, w_flags,
--				 &page, &fsdata);
-+	*err = mext_page_double_lock(orig_inode, donor_inode, orig_page_offset,
-+				     pagep);
- 	if (unlikely(*err < 0))
--		goto out;
-+		goto stop_journal;
- 
--	if (!PageUptodate(page)) {
--		mapping->a_ops->readpage(o_filp, page);
--		lock_page(page);
-+	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
-+	if (*err)
-+		goto unlock_pages;
-+
-+	/* At this point all buffers in range are uptodate, old mapping layout
-+	 * is no longer required, try to drop it now. */
-+	if ((page_has_private(pagep[0]) && !try_to_release_page(pagep[0], 0)) ||
-+	    (page_has_private(pagep[1]) && !try_to_release_page(pagep[1], 0))) {
-+		*err = -EBUSY;
-+		goto unlock_pages;
- 	}
- 
--	/*
--	 * try_to_release_page() doesn't call releasepage in writeback mode.
--	 * We should care about the order of writing to the same file
--	 * by multiple move extent processes.
--	 * It needs to call wait_on_page_writeback() to wait for the
--	 * writeback of the page.
--	 */
--	wait_on_page_writeback(page);
--
--	/* Release old bh and drop refs */
--	try_to_release_page(page, 0);
--
- 	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
--					orig_blk_offset, block_len_in_page,
--					&err2);
--	if (err2) {
-+					orig_blk_offset, block_len_in_page, err);
-+	if (*err) {
- 		if (replaced_count) {
- 			block_len_in_page = replaced_count;
- 			replaced_size =
- 				block_len_in_page << orig_inode->i_blkbits;
- 		} else
--			goto out;
-+			goto unlock_pages;
- 	}
-+	/* Perform all necessary steps similar write_begin()/write_end()
-+	 * but keeping in mind that i_size will not change */
-+	*err = __block_write_begin(pagep[0], from, from + replaced_size,
-+				   ext4_get_block);
-+	if (!*err)
-+		*err = block_commit_write(pagep[0], from, from + replaced_size);
- 
--	if (!page_has_buffers(page))
--		create_empty_buffers(page, 1 << orig_inode->i_blkbits, 0);
--
--	bh = page_buffers(page);
--	for (i = 0; i < data_offset_in_page; i++)
--		bh = bh->b_this_page;
--
--	for (i = 0; i < block_len_in_page; i++) {
--		*err = ext4_get_block(orig_inode,
--				(sector_t)(orig_blk_offset + i), bh, 0);
--		if (*err < 0)
--			goto out;
--
--		if (bh->b_this_page != NULL)
--			bh = bh->b_this_page;
--	}
--
--	*err = a_ops->write_end(o_filp, mapping, offs, data_size, replaced_size,
--			       page, fsdata);
--	page = NULL;
--
--out:
--	if (unlikely(page)) {
--		if (PageLocked(page))
--			unlock_page(page);
--		page_cache_release(page);
--		ext4_journal_stop(handle);
--	}
--out2:
-+	if (unlikely(*err < 0))
-+		goto repair_branches;
-+
-+	/* Even in case of data=writeback it is reasonable to pin
-+	 * inode to transaction, to prevent unexpected data loss */
-+	*err = ext4_jbd2_file_inode(handle, orig_inode);
-+
-+unlock_pages:
-+	unlock_page(pagep[0]);
-+	page_cache_release(pagep[0]);
-+	unlock_page(pagep[1]);
-+	page_cache_release(pagep[1]);
-+stop_journal:
- 	ext4_journal_stop(handle);
--
--	if (err2)
--		*err = err2;
--
-+	/* Buffer was busy because probably is pinned to journal transaction,
-+	 * force transaction commit may help to free it. */
-+	if (*err == -EBUSY && ext4_should_retry_alloc(orig_inode->i_sb,
-+						      &retries))
-+		goto again;
- 	return replaced_count;
-+
-+repair_branches:
-+	/*
-+	 * This should never ever happen!
-+	 * Extents are swapped already, but we are not able to copy data.
-+	 * Try to swap extents to it's original places
-+	 */
-+	double_down_write_data_sem(orig_inode, donor_inode);
-+	replaced_count = mext_replace_branches(handle, donor_inode, orig_inode,
-+					       orig_blk_offset,
-+					       block_len_in_page, &err2);
-+	double_up_write_data_sem(orig_inode, donor_inode);
-+	if (replaced_count != block_len_in_page) {
-+		EXT4_ERROR_INODE_BLOCK(orig_inode,(sector_t)(orig_blk_offset),
-+				       "Unable to copy data block,"
-+				       " data will be lost.");
-+		*err = -EIO;
-+	}
-+	replaced_count = 0;
-+	goto unlock_pages;
- }
- 
- /**
--- 
-1.7.7.6
-
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
