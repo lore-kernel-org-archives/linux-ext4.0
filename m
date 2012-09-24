@@ -1,51 +1,46 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 08/10] ext4: endless truncate due to nonlocked dio readers V2
-Date: Mon, 24 Sep 2012 15:44:18 +0400
-Message-ID: <1348487060-19598-9-git-send-email-dmonakhov@openvz.org>
-References: <1348487060-19598-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, jack@suse.cz, lczerner@redhat.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:62207 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754735Ab2IXLom (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 07:44:42 -0400
-Received: by mail-lb0-f174.google.com with SMTP id gj3so6549540lbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 04:44:42 -0700 (PDT)
-In-Reply-To: <1348487060-19598-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
+Date: Mon, 24 Sep 2012 08:23:04 -0400
+Message-ID: <CAGpXXZ+LGZcoztAcEND46ndhmGbKHjVmykAU4d11Jsf7B_L53Q@mail.gmail.com>
+References: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org> <505FD0A9.3090601@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	hch@lst.de, xfs@oss.sgi.com
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <505FD0A9.3090601@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-If we have enough aggressive DIO readers, truncate and other dio
-waiters will wait forever inside inode_dio_wait(). It is reasonable
-to disable nonlock DIO read optimization during truncate.
+On Sun, Sep 23, 2012 at 11:16 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> (I package fio for Fedora, is it not commonly available on other
+> distros?)
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/inode.c |    8 ++++++--
- 1 files changed, 6 insertions(+), 2 deletions(-)
+opensuse has it in the benchmarking repo, but not in the main release
+repos.  If it is getting regular updates and users will want to have
+the latest version, it makes sense for opensuse to leave it that way.
+This discussion may change that.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 32e9701..d3f86e7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4330,9 +4330,13 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (attr->ia_valid & ATTR_SIZE) {
- 		if (attr->ia_size != inode->i_size) {
- 			truncate_setsize(inode, attr->ia_size);
--			/* Inode size will be reduced, wait for dio in flight */
--			if (orphan)
-+			/* Inode size will be reduced, wait for dio in flight.
-+			 * Temproraly disable unlocked DIO to prevent livelock */
-+			if (orphan) {
-+				ext4_inode_block_unlocked_dio(inode);
- 				inode_dio_wait(inode);
-+				ext4_inode_resume_unlocked_dio(inode);
-+			}
- 		}
- 		ext4_truncate(inode);
- 	}
--- 
-1.7.7.6
+As of a year ago, xfstests dependencies could all be met from the main
+repos.  (see howto http://en.opensuse.org/SDB:XFStests)
 
+I believe a basic set of xfstests is run as part of the QA process for
+every factory build (factory is similar to rawhide).  At least it was
+during 12.1 pre-release testing a year ago.
+http://openqa.opensuse.org/results/
+
+Not a huge deal, but having xfstests tests which depend on fio would
+either mean opensuse dropping those tests that depend on fio from its
+routine QA testing, or it would mean adding fio to the main distro.
+
+How far into xfstests is fio likely to integrate?  If it is to become
+a core tool and it is not going to be provided by xfstests itself, I
+can try to submit fio to factory.  It will just have to kept new
+enough to satisfy xfstests version requirements.
+
+I do hope that if the distro has to provide a fio package, then
+xfstests only depend on the version, not the git check-in.
+
+Greg
