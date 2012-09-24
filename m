@@ -1,125 +1,57 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
-Date: Mon, 24 Sep 2012 21:37:18 +1000
-Message-ID: <20120924113718.GK20960@dastard>
-References: <a>
- <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
- <505FD0A9.3090601@redhat.com>
- <87lifzd9fl.fsf@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, hch@lst.de
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 00/10] ext4: Bunch of DIO/AIO fixes V3
+Date: Mon, 24 Sep 2012 15:44:10 +0400
+Message-ID: <1348487060-19598-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, jack@suse.cz, lczerner@redhat.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:55867 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753611Ab2IXLhX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 24 Sep 2012 07:37:23 -0400
-Content-Disposition: inline
-In-Reply-To: <87lifzd9fl.fsf@openvz.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:52474 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250Ab2IXLo3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 07:44:29 -0400
+Received: by lbbgj3 with SMTP id gj3so6549331lbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 04:44:28 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 24, 2012 at 02:03:42PM +0400, Dmitry Monakhov wrote:
-> On Sun, 23 Sep 2012 22:16:57 -0500, Eric Sandeen <sandeen@redhat.com> wrote:
-> > On 9/23/12 2:24 PM, Dmitry Monakhov wrote:
-> > > FIO is very flexible io generator, i would call it IO swiss knife.
-> > > Currently we have tonnes of hardcoded application which reproduces
-> > > some predefined scenario. This approach has obvious dissadvantages
-> > > 1) Lack of flexability: once written it is hard to modify it in future
-> > > 2) Code base is large, many routines written again and again
-> > > 
-> > > At the same time add new fio based tast is just add simle INI file.
-> > > This greatly simplify code review. I do beleve that some day we will
-> > > replace most of hardcoded io binaries with fio.
-> > 
-> > The submodule approach is interesting, but I wonder - we have quite a few
-> > dependencies on other binaries already; what are the pros and cons of creating
-> > this as a git submodule vs. simply expecting fio to be installed on the
-> > system like any of the other dependencies we have today?
-> Pro:
->  P1) allow to specify exact commit as a submodule HEAD this guarantee
->      that we will have known version and functionality regardless to
->      distribution package manager (which are known to be very conservative)
+There are number of races exist caused by lack of synchronization
+between DIO workers in flight and truncate/fsync/punch_hole routines
+This patch series try to optimize and fix existing DIO/AIO code
 
-You haven't provided a method to do this in this patch. All
-you've provided is a submodule that tracks the fio tree head.
-All this needs to be properly documented in the README file, at
-minimum.
+I observe significant performance improvements for big SMP hosts
+performind DIO for single file.
 
-And conservative is good, too. I don't want tests to fail because of
-rapid changes in the fio tree causing regressions in fio itself. The
-tools that xfstests depends on need to be stable and relatively
-unchanging, because we're not testing them - we're testing the
-filesystem. The less the environemnt changes around the things we're
-actually supposed to be regression testing, the better.
+Testcases which helps me to catch this type of bugs was posted here
+http://www.spinics.net/lists/linux-fsdevel/msg58312.html
+or available on my github repo:
+https://github.com/dmonakhov/xfstests/tree/ce8e3adab629b2a9be8ba2e73db7dad49eb46614
+plese run 286,287,288
 
->  P2) Prevent duplicating of source code (fsstress.c/aio-stress.c and
->      etc).  If some one want to add new feature to submodule he
->      simply push it to official submodule repo and move submodule HEAD
->      In that both parties(submodule maintainer and project maintainer)
->      will benefit because new features will be available to every
->      submodule user
-> Cons:
->  C1) New dependencies
->  C2) Learn people how to work with submodules
-> 
-> I'll not assume (C2) as a serious argument because this is just one more
-> git's command. For most users should just add new option to clone:
-> git clone --recursive git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+TOC:
+# first two are cleanups
+ext4: ext4_inode_info diet
+ext4: give i_aiodio_unwritten more appropriate name
+# Cleanup and bug fixes
+ext4: fix unwritten counter leakage
+ext4: completed_io locking cleanup V3
+ext4: serialize dio nonlocked reads with defrag workers V3
+ext4: punch_hole should wait for DIO writers
+ext4: serialize unlocked dio reads with truncate
+ext4: endless truncate due to nonlocked dio readers V2
+ext4: serialize truncate with owerwrite DIO workers V2
+ext4: fix ext_remove_space for punch_hole case
 
-Doesn't work for me. I keep local mirrors of all git trees that I
-use regularly and update them by cron jobs so that I don't have to
-go to the internet for every local tree that I clone or update.
+Changes from V2:
+ Fix use-after-free for queued end_io_work.
 
-That's particularly important for me because I'm a *long* way from
-the US or Europe and cloning from scratch over the internet takes a
-long time and suck up a lot of bandwidth. I don't even allow my test
-machines to access the internet - they only know about the local
-network and mirrors. I'd have to overide the fio submodule URL in
-the xfstests repository on every test machine, and that gets messy
-in a hurry.
-
-Also, we distribute xfstests as a tarball, and there has been talk of
-proper packaging (rpm/deb) as well. In those cases, the git
-submodule approach does not work as we have to depend on the distro
-supplied fio packages...
-
-> (C1) Is not big deal in case of Fio because we already depends from
-> libaio.
-
-There's also a fio version dependency. i.e. _require_fio has to
-detect whether the currently installed fio is of sufficiently recent
-version for the tests to run.
-
-> (P2) Makes xfstest coverage larger because all new tests which use new 
->      submodules functionality will start to work by default (today it
->       silently ignored). As i already told fio is under rapid
->      development Jens Axboe does very good job so (P2) really works for
->      me, new features i need for xfstets was reviewed and accepted by Jens
-> http://git.kernel.dk/?p=fio.git;a=commit;h=8b28bd41375930664a0ff9ff9b101a88ac416ac5
-> http://git.kernel.dk/?p=fio.git;a=commit;h=9c25d2e3f498707c4fd5a4bb0adf9867ecb17768
-> http://git.kernel.dk/?p=fio.git;a=commit;h=e615ceafbe3962a35b7a7e06a0c8f4e2c0652c65
-
-For me, that's not a "pro" - that's a "con" as i explained above.
-
-> > (I package fio for Fedora, is it not commonly available on other
-> > distros?)
-
-Available for Debian, which means all it's derivatives also have it.
-
-In short, I'd prefer we continue to use package level dependencies
-detected through configure/_require_foo infrastructure than using
-source tree level dependencies. Package level dependencies are much,
-much easier to manage for most people and don't require everyone to
-have internet access on the machines that xfstests is being built
-on....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+ fs/ext4/ext4.h        |   33 ++++++++++---
+ fs/ext4/extents.c     |   88 +++++++++++++++++++++++-------------
+ fs/ext4/file.c        |    9 ---
+ fs/ext4/fsync.c       |   85 -----------------------------------
+ fs/ext4/indirect.c    |   19 ++++++-
+ fs/ext4/inode.c       |   49 ++++++++------------
+ fs/ext4/move_extent.c |    8 +++
+ fs/ext4/page-io.c     |  121 +++++++++++++++++++++++++++++---------------------
+ fs/ext4/super.c       |    3 -
+ 10 files changed, 201 insertions(+), 216 deletions(-)
