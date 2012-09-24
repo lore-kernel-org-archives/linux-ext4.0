@@ -1,28 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 v2] ext4: check free block counters in
- ext4_mb_find_by_goal
-Date: Sun, 23 Sep 2012 23:11:37 -0400
-Message-ID: <20120924031137.GA2129@thunk.org>
-References: <1346937415-2866-1-git-send-email-xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] ext4: remove static from struct match_token used in
+ token2str
+Date: Sun, 23 Sep 2012 22:59:35 -0400
+Message-ID: <20120924025935.GA27627@thunk.org>
+References: <1348276860-21705-1-git-send-email-herton.krzesinski@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52104 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753884Ab2IYSd0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Sep 2012 14:33:26 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Herton Ronaldo Krzesinski <herton.krzesinski@canonical.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1346937415-2866-1-git-send-email-xiaoqiangnk@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1348276860-21705-1-git-send-email-herton.krzesinski@canonical.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 06, 2012 at 09:16:54PM +0800, Yongqiang Yang wrote:
-> Free block counters should be checked before doing allocation.
+On Fri, Sep 21, 2012 at 10:21:00PM -0300, Herton Ronaldo Krzesinski wrote:
+> There is no reason to use static there, and it will cause issues when
+> reading /proc/fs/ext4/<partition>/options concurrently.
 > 
-> Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> Signed-off-by: Herton Ronaldo Krzesinski <herton.krzesinski@canonical.com>
+> Cc: stable@vger.kernel.org # 3.4+
 
-Thanks, applied.
+Herton,
 
-						- Ted
+Thanks for finding the bug fix!  I changed the commit descipription
+slightly and have applied your patch to the ext4 tree.
+
+	     	  	       	     	    - Ted
+
+ext4: fix crash when accessing /proc/mounts concurrently
+
+From: Herton Ronaldo Krzesinski <herton.krzesinski@canonical.com>
+
+The crash was caused by a variable being erronously declared static in
+token2str().
+
+In addition to /proc/mounts, the problem can also be easily replicated
+by accessing /proc/fs/ext4/<partition>/options in parallel:
+
+$ cat /proc/fs/ext4/<partition>/options > options.txt
+
+... and then running the following command in two different terminals:
+
+$ while diff /proc/fs/ext4/<partition>/options options.txt; do true; done
+
+This is also the cause of the following a crash while running xfstests
+#234, as reported in the following bug reports:
+
+	https://bugs.launchpad.net/bugs/1053019
+	https://bugzilla.kernel.org/show_bug.cgi?id=47731
+
+Signed-off-by: Herton Ronaldo Krzesinski <herton.krzesinski@canonical.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Brad Figg <brad.figg@canonical.com>
+Cc: stable@vger.kernel.org
