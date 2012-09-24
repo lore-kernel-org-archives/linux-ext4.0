@@ -1,126 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
-Date: Sun, 23 Sep 2012 22:16:57 -0500
-Message-ID: <505FD0A9.3090601@redhat.com>
-References: <a> <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC][PATCH 2/8 v2] ext4: add operations on extent status tree
+Date: Mon, 24 Sep 2012 11:35:09 +0800
+Message-ID: <20120924033509.GB6196@gmail.com>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+ <1345615545-26133-3-git-send-email-wenqing.lz@taobao.com>
+ <20120919184114.GC28470@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, hch@lst.de
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+	Lukas Czerner <lczerner@redhat.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6975 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754766Ab2IXDRJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Sep 2012 23:17:09 -0400
-In-Reply-To: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:60104 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754918Ab2IXDYf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Sep 2012 23:24:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20120919184114.GC28470@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/23/12 2:24 PM, Dmitry Monakhov wrote:
-> FIO is very flexible io generator, i would call it IO swiss knife.
-> Currently we have tonnes of hardcoded application which reproduces
-> some predefined scenario. This approach has obvious dissadvantages
-> 1) Lack of flexability: once written it is hard to modify it in future
-> 2) Code base is large, many routines written again and again
+On Wed, Sep 19, 2012 at 02:41:14PM -0400, Theodore Ts'o wrote:
+> On Wed, Aug 22, 2012 at 02:05:39PM +0800, Zheng Liu wrote:
+> > + * Extents status encompass delayed extents and extent locks
 > 
-> At the same time add new fio based tast is just add simle INI file.
-> This greatly simplify code review. I do beleve that some day we will
-> replace most of hardcoded io binaries with fio.
-
-The submodule approach is interesting, but I wonder - we have quite a few
-dependencies on other binaries already; what are the pros and cons of creating
-this as a git submodule vs. simply expecting fio to be installed on the
-system like any of the other dependencies we have today?
-
-(I package fio for Fedora, is it not commonly available on other
-distros?)
-
--Eric
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  .gitmodules                  |    3 +++
->  common.config                |    3 +++
->  src/Makefile                 |    8 +++++---
->  src/aio-dio-regress/Makefile |    4 ++--
->  src/fio                      |    1 +
->  5 files changed, 14 insertions(+), 5 deletions(-)
->  create mode 100644 .gitmodules
->  create mode 160000 src/fio
+> I've looked over this patch set, and as near as I can tell, we aren't
+> (yet) using the extents status structure to do extent-level locking.
+> I could imagine using that in the future so we aren't using i_data_sem
+> to lock out the entire tree, so block allocations could happen in
+> parallel, but that's not here yet.
 > 
-> diff --git a/.gitmodules b/.gitmodules
-> new file mode 100644
-> index 0000000..f0481ea
-> --- /dev/null
-> +++ b/.gitmodules
-> @@ -0,0 +1,3 @@
-> +[submodule "src/fio"]
-> +	path = src/fio
-> +	url = git://git.kernel.dk/fio.git
-> diff --git a/common.config b/common.config
-> index 7bed1c5..25cddb4 100644
-> --- a/common.config
-> +++ b/common.config
-> @@ -138,6 +138,9 @@ export DF_PROG="`set_prog_path df`"
->  [ "$DF_PROG" = "" ] && _fatal "df not found"
->  [ "$HOSTOS" = "Linux" ] && export DF_PROG="$DF_PROG -T"
->  
-> +export FIO_PROG="`set_prog_path $PWD/src/fio/fio`"
-> +[ "$FIO_PROG" = "" ] && _fatal "fio not found"
-> +
->  export XFS_LOGPRINT_PROG="`set_prog_path xfs_logprint`"
->  export XFS_REPAIR_PROG="`set_prog_path xfs_repair`"
->  export XFS_CHECK_PROG="`set_prog_path xfs_check`"
-> diff --git a/src/Makefile b/src/Makefile
-> index 67250ee..255bdd4 100644
-> --- a/src/Makefile
-> +++ b/src/Makefile
-> @@ -52,16 +52,18 @@ LLDLIBS += $(LIBGDBM)
->  endif
->  
->  ifeq ($(HAVE_AIO), true)
-> -SUBDIRS += aio-dio-regress
-> +SUBDIRS += aio-dio-regress \
-> +		fio
-> +
->  endif
->  
->  CFILES = $(TARGETS:=.c)
->  LDIRT = $(TARGETS)
->  
->  
-> -default: depend $(TARGETS) $(SUBDIRS)
-> +default: .depend $(TARGETS) $(SUBDIRS)
->  
-> -depend: .dep
-> +.depend: .dep
->  
->  include $(BUILDRULES)
->  
-> diff --git a/src/aio-dio-regress/Makefile b/src/aio-dio-regress/Makefile
-> index 79dd55d..fcead9a 100644
-> --- a/src/aio-dio-regress/Makefile
-> +++ b/src/aio-dio-regress/Makefile
-> @@ -8,9 +8,9 @@ LDIRT = $(TARGETS)
->  
->  LLDLIBS = -laio -lpthread
->  
-> -default: depend $(TARGETS)
-> +default: .depend $(TARGETS)
->  
-> -depend: .dep
-> +.depend: .dep
->  
->  include $(BUILDRULES)
->  
-> diff --git a/src/fio b/src/fio
-> new file mode 160000
-> index 0000000..e12d280
-> --- /dev/null
-> +++ b/src/fio
-> @@ -0,0 +1 @@
-> +Subproject commit e12d2800f811cb64d376cfdaed9a1257f3fa9c99
-> 
+> Is there something I'm missing, or was something else meant by "extent
+> locks" here?
 
+Hi Ted,
+
+In my plan, the first step for extent status tree is only to record
+delay extent in memory.  It can simplify the implementation of fiemap
+and bigalloc, and introduce lseek SEEK_DATA/SEEK_HOLE support.  That is
+all I want to finish in first step.  I am very glad to see that these
+patches has been applied into dev branch even though it still has some
+problems.  I will look at these problem ASAP.
+
+Indeed, in this patch set, extent-level locking is still not used
+because that is my next step in my plan [1].  I will try to use it
+after these patches are fully tested and applied.  Thanks.
+
+1. http://www.spinics.net/lists/linux-fsdevel/msg56291.html
+
+Regards,
+Zheng
