@@ -1,151 +1,384 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 4/4] ext4: reimplement uninit extent optimization for move_extent_per_page V2
-Date: Mon, 24 Sep 2012 16:23:54 +0400
-Message-ID: <1348489434-22778-5-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 3/4] ext4: basic bug shield for move_extent_per_page
+Date: Mon, 24 Sep 2012 16:23:53 +0400
+Message-ID: <1348489434-22778-4-git-send-email-dmonakhov@openvz.org>
 References: <1348489434-22778-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, a-fujita@rs.jp.nec.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:50631 "EHLO
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:53200 "EHLO
 	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755223Ab2IXMYH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 08:24:07 -0400
-Received: by mail-lb0-f174.google.com with SMTP id gj3so6602143lbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 05:24:06 -0700 (PDT)
+	with ESMTP id S1755203Ab2IXMYF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 08:24:05 -0400
+Received: by mail-lb0-f174.google.com with SMTP id gj3so6602162lbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 05:24:04 -0700 (PDT)
 In-Reply-To: <1348489434-22778-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Uninitialized extent may became initialized(parallel writeback task)
-at any moment after we drop i_data_sem, so we have to recheck extent's
-state after we hold page's lock and i_data_sem.
+The move_extent_per_page function is just one big peace of crap.
+this is the most buggy peace of code i've ever seen
 
-If we about to change page's mapping we must hold page's lock in order to
-serialize other users.
-Changes from V1 in response to Akira's comments:
-- fix last block mistype
-- Rerutn inital error code
+Non-full list of bugs:
+1) uninitialized extent optimization does not hold page's lock,
+   and simply replace brunches after that writeback code goes
+   crazy because block mapping changed under it's feets
+   kernel BUG at fs/ext4/inode.c:1434!  ( 288'th xfstress)
+
+2) uninitialized extent may became initialized right after we
+   drop i_data_sem, so extent state must be rechecked
+
+3) Locked pages goes uptodate via following sequence:
+   ->readpage(page); lock_page(page); use_that_page(page)
+   But after readpage() one may invalidate it because it is
+   uptodate and unlocked (reclaimer does that)
+   As result kernel bug at include/linux/buffer_head.c:133!
+
+4) We call write_begin() with already opened stansaction which
+   result in following deadlock:
+->move_extent_per_page()
+  ->ext4_journal_start()-> hold journal transaction
+  ->write_begin()
+    ->ext4_da_write_begin()
+      ->ext4_nonda_switch()
+        ->writeback_inodes_sb_if_idle()  --> will wait for journal_stop()
+
+5) try_to_release_page() may fail and it does fail if one of page's bh was
+   pinned by journal
+
+6) If we about to change page's mapping we MUST hold it's lock during entire
+   remapping procedure, this is true for both pages(original and donor one)
+
+Fixes:
+
+- Avoid (1) and (2) simply by temproraly drop uninitialized extent handling
+  optimization, this will be reimplemented later.
+
+- Fix (3) by manually forcing page to uptodate state w/o dropping it's lock
+
+- Fix (4) by rearranging existing locking:
+  from: journal_start(); ->write_begin
+  to: write_begin(); journal_extend()
+- Fix (5) simply by checking retvalue
+- Fix (6) by locking both (original and donor one) pages during extent swap
+  with help of mext_page_double_lock()
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/move_extent.c |   81 ++++++++++++++++++++++++++++++++++++++++++++++---
- 1 files changed, 76 insertions(+), 5 deletions(-)
+ fs/ext4/move_extent.c |  251 ++++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 176 insertions(+), 75 deletions(-)
 
 diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index f416f83..cbcca98 100644
+index 0aa2ad7..f416f83 100644
 --- a/fs/ext4/move_extent.c
 +++ b/fs/ext4/move_extent.c
-@@ -595,6 +595,43 @@ mext_calc_swap_extents(struct ext4_extent *tmp_dext,
+@@ -736,6 +736,117 @@ out:
  }
  
  /**
-+ * mext_check_coverage - Check that all extents in range has the same type
++ * mext_page_double_lock - Grab and lock pages on both @inode1 and @inode2
 + *
-+ * @inode:		inode in question
-+ * @from:		block offset of inode
-+ * @count:		block count to be checked
-+ * @uninit:		extents expected to be uninitialized
-+ * @err:		pointer to save error value
++ * @inode1:	the inode structure
++ * @inode2:	the inode structure
++ * @index:	page index
++ * @page:	result page vector
 + *
-+ * Return 1 if all extents in range has expected type, and zero otherwise.
++ * Grab two locked pages for inode's by inode order
 + */
 +static int
-+mext_check_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
-+			  int uninit, int *err)
++mext_page_double_lock(struct inode *inode1, struct inode *inode2,
++		      pgoff_t index, struct page *page[2])
 +{
-+	struct ext4_ext_path *path = NULL;
-+	struct ext4_extent *ext;
-+	ext4_lblk_t last = from + count;
-+	while (from < last) {
-+		*err = get_ext_path(inode, from, &path);
-+		if (*err)
-+			return 0;
-+		ext = path[ext_depth(inode)].p_ext;
-+		if (!ext) {
-+			ext4_ext_drop_refs(path);
-+			return 0;
-+		}
-+		if (uninit != ext4_ext_is_uninitialized(ext)) {
-+			ext4_ext_drop_refs(path);
-+			return 0;
-+		}
-+		from += ext4_ext_get_actual_len(ext);
-+		ext4_ext_drop_refs(path);
++	struct address_space *mapping[2];
++	unsigned fl = AOP_FLAG_NOFS;
++
++	BUG_ON(!inode1 || !inode2);
++	if (inode1 < inode2) {
++		mapping[0] = inode1->i_mapping;
++		mapping[1] = inode2->i_mapping;
++	} else {
++		mapping[0] = inode2->i_mapping;
++		mapping[1] = inode1->i_mapping;
 +	}
-+	return 1;
++
++	page[0] = grab_cache_page_write_begin(mapping[0], index, fl);
++	if (!page[0])
++		return -ENOMEM;
++
++	page[1] = grab_cache_page_write_begin(mapping[1], index, fl);
++	if (!page[1]) {
++		unlock_page(page[0]);
++		page_cache_release(page[0]);
++		return -ENOMEM;
++	}
++
++	if (inode1 > inode2) {
++		struct page *tmp;
++		tmp = page[0];
++		page[0] = page[1];
++		page[1] = tmp;
++	}
++	return 0;
++}
++
++/* Force page buffers uptodate w/o dropping page's lock */
++static int
++mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
++{
++	struct inode *inode = page->mapping->host;
++	sector_t block;
++	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
++	unsigned int blocksize, block_start, block_end;
++	int i, err,  nr = 0, partial = 0;
++	BUG_ON(!PageLocked(page));
++	BUG_ON(PageWriteback(page));
++
++	if (PageUptodate(page))
++		return 0;
++
++	blocksize = 1 << inode->i_blkbits;
++	if (!page_has_buffers(page))
++		create_empty_buffers(page, blocksize, 0);
++
++	head = page_buffers(page);
++	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
++	for(bh = head, block_start = 0; bh != head || !block_start;
++	    block++, block_start = block_end, bh = bh->b_this_page) {
++		block_end = block_start + blocksize;
++		if (block_end <= from || block_start >= to) {
++			if (!buffer_uptodate(bh))
++				partial = 1;
++			continue;
++		}
++		if (buffer_uptodate(bh))
++			continue;
++		if (!buffer_mapped(bh)) {
++			int err = 0;
++			err = ext4_get_block(inode, block, bh, 0);
++			if (err) {
++				SetPageError(page);
++				return err;
++			}
++			if (!buffer_mapped(bh)) {
++				zero_user(page, block_start, blocksize);
++				if (!err)
++					set_buffer_uptodate(bh);
++				continue;
++			}
++		}
++		arr[nr++] = bh;
++	}
++	/* No io required */
++	if (!nr)
++		goto out;
++
++	for (i = 0; i < nr; i++) {
++		bh = arr[i];
++		if (!bh_uptodate_or_lock(bh)) {
++			err = bh_submit_read(bh);
++			if (err)
++				return err;
++		}
++	}
++out:
++	if (!partial)
++		SetPageUptodate(page);
++	return 0;
 +}
 +
 +/**
-  * mext_replace_branches - Replace original extents with new extents
+  * move_extent_per_page - Move extent data per page
   *
-  * @handle:		journal handle
-@@ -629,9 +666,6 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+  * @o_filp:			file structure of original file
+@@ -757,26 +868,24 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 		  int block_len_in_page, int uninit, int *err)
+ {
+ 	struct inode *orig_inode = o_filp->f_dentry->d_inode;
+-	struct address_space *mapping = orig_inode->i_mapping;
+-	struct buffer_head *bh;
+-	struct page *page = NULL;
+-	const struct address_space_operations *a_ops = mapping->a_ops;
++	struct page *pagep[2] = {NULL, NULL};
+ 	handle_t *handle;
+ 	ext4_lblk_t orig_blk_offset;
+ 	long long offs = orig_page_offset << PAGE_CACHE_SHIFT;
+ 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
+ 	unsigned int w_flags = 0;
+ 	unsigned int tmp_data_size, data_size, replaced_size;
+-	void *fsdata;
+-	int i, jblocks;
+-	int err2 = 0;
++	int err2, jblocks, retries = 0;
  	int replaced_count = 0;
- 	int dext_alen;
++	int from = data_offset_in_page << orig_inode->i_blkbits;
+ 	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
  
--	/* Protect extent trees against block allocations via delalloc */
--	double_down_write_data_sem(orig_inode, donor_inode);
--
- 	/* Get the original extent for the block "orig_off" */
- 	*err = get_ext_path(orig_inode, orig_off, &orig_path);
- 	if (*err)
-@@ -730,8 +764,6 @@ out:
- 	ext4_ext_invalidate_cache(orig_inode);
- 	ext4_ext_invalidate_cache(donor_inode);
+ 	/*
+ 	 * It needs twice the amount of ordinary journal buffers because
+ 	 * inode and donor_inode may change each different metadata blocks.
+ 	 */
++again:
++	*err = 0;
+ 	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
+ 	handle = ext4_journal_start(orig_inode, jblocks);
+ 	if (IS_ERR(handle)) {
+@@ -790,19 +899,6 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	orig_blk_offset = orig_page_offset * blocks_per_page +
+ 		data_offset_in_page;
  
--	double_up_write_data_sem(orig_inode, donor_inode);
+-	/*
+-	 * If orig extent is uninitialized one,
+-	 * it's not necessary force the page into memory
+-	 * and then force it to be written out again.
+-	 * Just swap data blocks between orig and donor.
+-	 */
+-	if (uninit) {
+-		replaced_count = mext_replace_branches(handle, orig_inode,
+-						donor_inode, orig_blk_offset,
+-						block_len_in_page, err);
+-		goto out2;
+-	}
 -
+ 	offs = (long long)orig_blk_offset << orig_inode->i_blkbits;
+ 
+ 	/* Calculate data_size */
+@@ -824,75 +920,80 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 
+ 	replaced_size = data_size;
+ 
+-	*err = a_ops->write_begin(o_filp, mapping, offs, data_size, w_flags,
+-				 &page, &fsdata);
++	*err = mext_page_double_lock(orig_inode, donor_inode, orig_page_offset,
++				     pagep);
+ 	if (unlikely(*err < 0))
+-		goto out;
++		goto stop_journal;
+ 
+-	if (!PageUptodate(page)) {
+-		mapping->a_ops->readpage(o_filp, page);
+-		lock_page(page);
++	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
++	if (*err)
++		goto unlock_pages;
++
++	/* At this point all buffers in range are uptodate, old mapping layout
++	 * is no longer required, try to drop it now. */
++	if ((page_has_private(pagep[0]) && !try_to_release_page(pagep[0], 0)) ||
++	    (page_has_private(pagep[1]) && !try_to_release_page(pagep[1], 0))) {
++		*err = -EBUSY;
++		goto unlock_pages;
+ 	}
+ 
+-	/*
+-	 * try_to_release_page() doesn't call releasepage in writeback mode.
+-	 * We should care about the order of writing to the same file
+-	 * by multiple move extent processes.
+-	 * It needs to call wait_on_page_writeback() to wait for the
+-	 * writeback of the page.
+-	 */
+-	wait_on_page_writeback(page);
+-
+-	/* Release old bh and drop refs */
+-	try_to_release_page(page, 0);
+-
+ 	replaced_count = mext_replace_branches(handle, orig_inode, donor_inode,
+-					orig_blk_offset, block_len_in_page,
+-					&err2);
+-	if (err2) {
++					orig_blk_offset, block_len_in_page, err);
++	if (*err) {
+ 		if (replaced_count) {
+ 			block_len_in_page = replaced_count;
+ 			replaced_size =
+ 				block_len_in_page << orig_inode->i_blkbits;
+ 		} else
+-			goto out;
++			goto unlock_pages;
+ 	}
++	/* Perform all necessary steps similar write_begin()/write_end()
++	 * but keeping in mind that i_size will not change */
++	*err = __block_write_begin(pagep[0], from, from + replaced_size,
++				   ext4_get_block);
++	if (!*err)
++		*err = block_commit_write(pagep[0], from, from + replaced_size);
+ 
+-	if (!page_has_buffers(page))
+-		create_empty_buffers(page, 1 << orig_inode->i_blkbits, 0);
+-
+-	bh = page_buffers(page);
+-	for (i = 0; i < data_offset_in_page; i++)
+-		bh = bh->b_this_page;
+-
+-	for (i = 0; i < block_len_in_page; i++) {
+-		*err = ext4_get_block(orig_inode,
+-				(sector_t)(orig_blk_offset + i), bh, 0);
+-		if (*err < 0)
+-			goto out;
+-
+-		if (bh->b_this_page != NULL)
+-			bh = bh->b_this_page;
+-	}
+-
+-	*err = a_ops->write_end(o_filp, mapping, offs, data_size, replaced_size,
+-			       page, fsdata);
+-	page = NULL;
+-
+-out:
+-	if (unlikely(page)) {
+-		if (PageLocked(page))
+-			unlock_page(page);
+-		page_cache_release(page);
+-		ext4_journal_stop(handle);
+-	}
+-out2:
++	if (unlikely(*err < 0))
++		goto repair_branches;
++
++	/* Even in case of data=writeback it is reasonable to pin
++	 * inode to transaction, to prevent unexpected data loss */
++	*err = ext4_jbd2_file_inode(handle, orig_inode);
++
++unlock_pages:
++	unlock_page(pagep[0]);
++	page_cache_release(pagep[0]);
++	unlock_page(pagep[1]);
++	page_cache_release(pagep[1]);
++stop_journal:
+ 	ext4_journal_stop(handle);
+-
+-	if (err2)
+-		*err = err2;
+-
++	/* Buffer was busy because probably is pinned to journal transaction,
++	 * force transaction commit may help to free it. */
++	if (*err == -EBUSY && ext4_should_retry_alloc(orig_inode->i_sb,
++						      &retries))
++		goto again;
  	return replaced_count;
++
++repair_branches:
++	/*
++	 * This should never ever happen!
++	 * Extents are swapped already, but we are not able to copy data.
++	 * Try to swap extents to it's original places
++	 */
++	double_down_write_data_sem(orig_inode, donor_inode);
++	replaced_count = mext_replace_branches(handle, donor_inode, orig_inode,
++					       orig_blk_offset,
++					       block_len_in_page, &err2);
++	double_up_write_data_sem(orig_inode, donor_inode);
++	if (replaced_count != block_len_in_page) {
++		EXT4_ERROR_INODE_BLOCK(orig_inode,(sector_t)(orig_blk_offset),
++				       "Unable to copy data block,"
++				       " data will be lost.");
++		*err = -EIO;
++	}
++	replaced_count = 0;
++	goto unlock_pages;
  }
  
-@@ -924,7 +956,46 @@ again:
- 				     pagep);
- 	if (unlikely(*err < 0))
- 		goto stop_journal;
-+	/*
-+	 * If orig extent was uninitialized it can become initialized at any time
-+	 * after i_data_sem was dropped, in order to serialize with delalloc
-+	 * we have recheck extent while we hold page's lock, if it is still the
-+	 * case data copy is not necessary, just swap data blocks between orig
-+	 * and donor.
-+	 */
-+	if (uninit) {
-+		double_down_write_data_sem(orig_inode, donor_inode);
-+		/* If any of extents in range became initialized we have to
-+		 * fallback to data copying */
-+		uninit = mext_check_coverage(orig_inode, orig_blk_offset,
-+					     block_len_in_page, 1, err);
-+		if (*err)
-+			goto drop_data_sem;
- 
-+		uninit &= mext_check_coverage(donor_inode, orig_blk_offset,
-+					      block_len_in_page, 1, err);
-+		if (*err)
-+			goto drop_data_sem;
-+
-+		if (!uninit) {
-+			double_up_write_data_sem(orig_inode, donor_inode);
-+			goto data_copy;
-+		}
-+		if ((page_has_private(pagep[0]) &&
-+		     !try_to_release_page(pagep[0], 0)) ||
-+		    (page_has_private(pagep[1]) &&
-+		     !try_to_release_page(pagep[1], 0))) {
-+			*err = -EBUSY;
-+			goto drop_data_sem;
-+		}
-+		replaced_count = mext_replace_branches(handle, orig_inode,
-+						donor_inode, orig_blk_offset,
-+						block_len_in_page, err);
-+	drop_data_sem:
-+		double_up_write_data_sem(orig_inode, donor_inode);
-+		goto unlock_pages;
-+	}
-+data_copy:
- 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
- 	if (*err)
- 		goto unlock_pages;
+ /**
 -- 
 1.7.7.6
 
