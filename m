@@ -1,46 +1,37 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [PATCH 1/6] xfstest: add fio git submodule
-Date: Mon, 24 Sep 2012 08:23:04 -0400
-Message-ID: <CAGpXXZ+LGZcoztAcEND46ndhmGbKHjVmykAU4d11Jsf7B_L53Q@mail.gmail.com>
-References: <1348428276-13161-1-git-send-email-dmonakhov@openvz.org> <505FD0A9.3090601@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	hch@lst.de, xfs@oss.sgi.com
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <505FD0A9.3090601@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 0/4] ext4: ioc_move_ext fixes
+Date: Mon, 24 Sep 2012 16:23:50 +0400
+Message-ID: <1348489434-22778-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, a-fujita@rs.jp.nec.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:50631 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754475Ab2IXMYB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2012 08:24:01 -0400
+Received: by lbbgj3 with SMTP id gj3so6602143lbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 05:24:00 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 23, 2012 at 11:16 PM, Eric Sandeen <sandeen@redhat.com> wrote:
-> (I package fio for Fedora, is it not commonly available on other
-> distros?)
+Currenty EXT4_IOC_MOVE_EXT is very dangerous call because anyone who
+has write perm is able to call it and trigger kernel panic. Even more
+all kernel since v2.6.30-6558-g748de67 are affected, so current
+Debian and Redhat server solutions are dangerous.
 
-opensuse has it in the benchmarking repo, but not in the main release
-repos.  If it is getting regular updates and users will want to have
-the latest version, it makes sense for opensuse to leave it that way.
-This discussion may change that.
+Tests are available here:
+http://www.spinics.net/lists/linux-fsdevel/msg58316.html
+Or here:
+https://github.com/dmonakhov/xfstests/tree/ce8e3adab629b2a9be8ba2e73db7dad49eb46614
+288'th test
 
-As of a year ago, xfstests dependencies could all be met from the main
-repos.  (see howto http://en.opensuse.org/SDB:XFStests)
+This patchset attempt to close all known bugs, so it survived after
+all tests i know.
 
-I believe a basic set of xfstests is run as part of the QA process for
-every factory build (factory is similar to rawhide).  At least it was
-during 12.1 pre-release testing a year ago.
-http://openqa.opensuse.org/results/
+TOC:
+ext4: move_extent code cleanup
+ext4: online defrag is not supported for journaled files
+ext4: basic bug shield for move_extent_per_page V2
+ext4: reimplement uninit extent optimization for move_extent_per_page V2
 
-Not a huge deal, but having xfstests tests which depend on fio would
-either mean opensuse dropping those tests that depend on fio from its
-routine QA testing, or it would mean adding fio to the main distro.
-
-How far into xfstests is fio likely to integrate?  If it is to become
-a core tool and it is not going to be provided by xfstests itself, I
-can try to submit fio to factory.  It will just have to kept new
-enough to satisfy xfstests version requirements.
-
-I do hope that if the distro has to provide a fio package, then
-xfstests only depend on the version, not the git check-in.
-
-Greg
