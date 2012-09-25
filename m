@@ -1,220 +1,268 @@
-From: Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH] ext4: ext4_bread usage audit
-Date: Tue, 25 Sep 2012 08:38:00 +0200
-Message-ID: <40876F63-B2FD-4C58-B39E-5409EE4BAFA8@whamcloud.com>
-References: <1348512100-23323-1-git-send-email-cmaiolino@redhat.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Carlos Maiolino <cmaiolino@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:60002 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750862Ab2IYGiD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 02:38:03 -0400
-Received: by wibhr7 with SMTP id hr7so132797wib.1
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Sep 2012 23:38:01 -0700 (PDT)
-In-Reply-To: <1348512100-23323-1-git-send-email-cmaiolino@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC v2 01/10] vfs: introduce private rb structures
+Date: Tue, 25 Sep 2012 17:37:29 +1000
+Message-ID: <20120925073729.GA29154@dastard>
+References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
+ <1348404995-14372-2-git-send-email-zwu.kernel@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	cmm@us.ibm.com, tytso@mit.edu, marco.stornelli@gmail.com,
+	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: zwu.kernel@gmail.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1348404995-14372-2-git-send-email-zwu.kernel@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2012-09-24, at 20:41, Carlos Maiolino <cmaiolino@redhat.com> wrote:
+On Sun, Sep 23, 2012 at 08:56:26PM +0800, zwu.kernel@gmail.com wrote:
+> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+> 
+>   One root structure hot_info is defined, is hooked
+> up in super_block, and will be used to hold rb trees
+> root, hash list root and some other information, etc.
+>   Adds hot_inode_tree struct to keep track of
+> frequently accessed files, and be keyed by {inode, offset}.
+> Trees contain hot_inode_items representing those files
+> and ranges.
+>   Having these trees means that vfs can quickly determine the
+> temperature of some data by doing some calculations on the
+> hot_freq_data struct that hangs off of the tree item.
+>   Define two items hot_inode_item and hot_range_item,
+> one of them represents one tracked file
+> to keep track of its access frequency and the tree of
+> ranges in this file, while the latter represents
+> a file range of one inode.
+>   Each of the two structures contains a hot_freq_data
+> struct with its frequency of access metrics (number of
+> {reads, writes}, last {read,write} time, frequency of
+> {reads,writes}).
+>   Also, each hot_inode_item contains one hot_range_tree
+> struct which is keyed by {inode, offset, length}
+> and used to keep track of all the ranges in this file.
+> 
+> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-> Audit the usage of ext4_bread() due a possible misinterpretion of its return
-> value.
-> Focused on directory blocks, a NULL value returned from ext4_bread() means a
-> hole, which cannot exist into a directory inode. It can pass undetected after a
-> fix in an uninitialized error variable.
-> 
-> The (now) initialized variable into ext4_getblk() may lead to a zero'ed return
-> value of ext4_bread() to its callers, which can make the caller do not detect
-> the hole in the directory inode.
-> 
-> This checks for directory holes when buffer_head and error value are both
-> zero'ed returning -EIO to their callers
-> 
-> Some ext4_bread callers do not needed any changes either because they already
-> had its own hole detector paths or because these are deprecaded (like
-> dx_show_entries)
+Just a coupl eof minor formatting things first up - I'll have more
+comments as I get deeper into the series.
 
-Note that in the "errors=continue" case, it is desirable to allow the Filesystem to continue even if a hole is found in the directory, at least for non-htree directories, since it is possible the the entry being looked up is in a different block. 
+....
+> +/*
+> + * Initialize the inode tree. Should be called for each new inode
+> + * access or other user of the hot_inode interface.
+> + */
+> +static void hot_rb_inode_tree_init(struct hot_inode_tree *tree)
 
-> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
-> ---
-> fs/ext4/namei.c | 80 +++++++++++++++++++++++++++++++++++++++++++++++++--------
-> 1 file changed, 69 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 2a42cc0..1d5619b 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -67,6 +67,11 @@ static struct buffer_head *ext4_append(handle_t *handle,
->            bh = NULL;
->        }
->    }
-> +    if (!bh && !(*err)) {
-> +        *err = -EIO;
-> +        ext4_error(inode->i_sb, "Directory hole detected on inode %lu\n",
-> +               inode->i_ino);
-> +    }
->    return bh;
-> }
-> 
-> @@ -696,8 +701,11 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
->        frame->entries = entries;
->        frame->at = at;
->        if (!indirect--) return frame;
-> -        if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err)))
-> +        if (!(bh = ext4_bread (NULL,dir, dx_get_block(at), 0, err))) {
+The names of these are a bit clunky. You probably don't need the
+"_rb_" in the function name. i.e. hot_inode_tree_init() is
+sufficient, and if we every want to change in the tree type we don't
+have to rename every single function...
 
-Please keep the original code style, do not Di the assignment inside the if() check.  That is incorrect in several places in this patch. 
+.....
+> +/*
+> + * Initialize a new hot_inode_item structure. The new structure is
+> + * returned with a reference count of one and needs to be
+> + * freed using free_inode_item()
+> + */
+> +void hot_rb_inode_item_init(void *_item)
+> +{
 
-> +            if (!(*err))
-> +                *err = ERR_BAD_DX_DIR;
->            goto fail2;
-> +        }
->        at = entries = ((struct dx_node *) bh->b_data)->entries;
-> 
->        if (!buffer_verified(bh) &&
-> @@ -807,8 +815,15 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
->     */
->    while (num_frames--) {
->        if (!(bh = ext4_bread(NULL, dir, dx_get_block(p->at),
-> -                      0, &err)))
-> +                      0, &err))) {
-> +            if (!err) {
-> +                ext4_error(dir->i_sb,
-> +                       "Directory hole detected on inode %lu\n",
-> +                       dir->i_ino);
-> +                return -EIO;
-> +            }
->            return err; /* Failure */
-> +        }
-> 
->        if (!buffer_verified(bh) &&
->            !ext4_dx_csum_verify(dir,
-> @@ -843,8 +858,14 @@ static int htree_dirblock_to_tree(struct file *dir_file,
-> 
->    dxtrace(printk(KERN_INFO "In htree dirblock_to_tree: block %lu\n",
->                            (unsigned long)block));
-> -    if (!(bh = ext4_bread (NULL, dir, block, 0, &err)))
-> +    if (!(bh = ext4_bread (NULL, dir, block, 0, &err))) {
-> +        if (!err) {
-> +            err = -EIO;
-> +            ext4_error(dir->i_sb, "Directory hole detected on inode %lu\n",
-> +                                   dir->i_ino);
-> +        }
->        return err;
-> +    }
-> 
->    if (!buffer_verified(bh) &&
->        !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-> @@ -1267,8 +1288,15 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
->        return NULL;
->    do {
->        block = dx_get_block(frame->at);
-> -        if (!(bh = ext4_bread(NULL, dir, block, 0, err)))
-> +        if (!(bh = ext4_bread(NULL, dir, block, 0, err))) {
-> +            if (!(*err)) {
-> +                *err = -EIO;
-> +                ext4_error(dir->i_sb,
-> +                       "Directory hole detected on inode %lu\n",
-> +                       dir->i_ino);
-> +            }
->            goto errout;
-> +        }
-> 
->        if (!buffer_verified(bh) &&
->            !ext4_dirent_csum_verify(dir,
-> @@ -1801,9 +1829,15 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
->    }
->    blocks = dir->i_size >> sb->s_blocksize_bits;
->    for (block = 0; block < blocks; block++) {
-> -        bh = ext4_bread(handle, dir, block, 0, &retval);
-> -        if(!bh)
-> +        if (!(bh = ext4_bread(handle, dir, block, 0, &retval))) {
-> +            if (!retval) {
-> +                retval = -EIO;
-> +                ext4_error(inode->i_sb,
-> +                       "Directory hole detected on inode %lu\n",
-> +                       inode->i_ino);
-> +            }
->            return retval;
-> +        }
->        if (!buffer_verified(bh) &&
->            !ext4_dirent_csum_verify(dir,
->                (struct ext4_dir_entry *)bh->b_data))
-> @@ -1860,8 +1894,15 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
->    entries = frame->entries;
->    at = frame->at;
-> 
-> -    if (!(bh = ext4_bread(handle,dir, dx_get_block(frame->at), 0, &err)))
-> +    if (!(bh = ext4_bread(handle,dir, dx_get_block(frame->at), 0, &err))) {
-> +        if (!err) {
-> +            err = -EIO;
-> +            ext4_error(dir->i_sb,
-> +                   "Directory hole detected on inode %lu\n",
-> +                   dir->i_ino);
-> +        }
->        goto cleanup;
-> +    }
-> 
->    if (!buffer_verified(bh) &&
->        !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-> @@ -2199,9 +2240,15 @@ retry:
->    inode->i_op = &ext4_dir_inode_operations;
->    inode->i_fop = &ext4_dir_operations;
->    inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
-> -    dir_block = ext4_bread(handle, inode, 0, 1, &err);
-> -    if (!dir_block)
-> +    if (!(dir_block = ext4_bread(handle, inode, 0, 1, &err))) {
-> +        if (!err) {
-> +            err = -EIO;
-> +            ext4_error(inode->i_sb,
-> +                   "Directory hole detected on inode %lu\n",
-> +                   inode->i_ino);
-> +        }
->        goto out_clear_inode;
-> +    }
->    BUFFER_TRACE(dir_block, "get_write_access");
->    err = ext4_journal_get_write_access(handle, dir_block);
->    if (err)
-> @@ -2318,6 +2365,11 @@ static int empty_dir(struct inode *inode)
->                    EXT4_ERROR_INODE(inode,
->                        "error %d reading directory "
->                        "lblock %u", err, lblock);
-> +                else
-> +                                ext4_warning(inode->i_sb,
-> +                        "bad directory (dir #%lu) - no data block",
-> +                        inode->i_ino);
+The usual naming convention for slab initialiser functions is to use
+a suffix of "_once" to indicate it is only ever called once per
+slab object instantiation, not every time the object is allocated
+fom the slab. See, for example, inode_init_once() and
+inode_init_always().
+
+so, that would make this function hot_inode_item_init_once().
+
+....
+> +/* init hot_inode_item and hot_range_item kmem cache */
+> +static int __init hot_rb_item_cache_init(void)
+> +{
+> +	hot_inode_item_cache = kmem_cache_create("hot_inode_item",
+> +			sizeof(struct hot_inode_item), 0,
+> +			SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD,
+> +			hot_rb_inode_item_init);
+> +	if (!hot_inode_item_cache)
+> +		goto inode_err;
 > +
->                offset += sb->s_blocksize;
->                continue;
->            }
-> @@ -2826,9 +2878,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->                goto end_rename;
->        }
->        retval = -EIO;
-> -        dir_bh = ext4_bread(handle, old_inode, 0, 0, &retval);
-> -        if (!dir_bh)
-> +        if(!(dir_bh = ext4_bread(handle, old_inode, 0, 0, &retval))) {
-> +            if (!retval) {
-> +                retval = -EIO;
-> +                ext4_error(old_inode->i_sb,
-> +                       "Directory hole detected on inode %lu\n",
-> +                       old_inode->i_ino);
-> +            }
->            goto end_rename;
-> +        }
->        if (!buffer_verified(dir_bh) &&
->            !ext4_dirent_csum_verify(old_inode,
->                (struct ext4_dir_entry *)dir_bh->b_data))
-> -- 
-> 1.7.11.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +	hot_range_item_cache = kmem_cache_create("hot_range_item",
+> +					sizeof(struct hot_range_item), 0,
+> +					SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD,
+> +					hot_rb_range_item_init);
+> +	if (!hot_range_item_cache)
+> +		goto range_err;
+> +
+> +	return 0;
+> +
+> +range_err:
+> +	kmem_cache_destroy(hot_inode_item_cache);
+> +inode_err:
+> +	return -ENOMEM;
+> +}
+> +
+> +/*
+> + * Initialize kmem cache for hot_inode_item
+> + * and hot_range_item
+> + */
+> +void __init hot_track_cache_init(void)
+> +{
+> +	if (hot_rb_item_cache_init())
+> +		return;
+
+No real need to have a hot_rb_item_cache_init() function here - just
+open code it all in the hot_track_cache_init() function.
+
+> +}
+> diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
+> new file mode 100644
+> index 0000000..269b67a
+> --- /dev/null
+> +++ b/fs/hot_tracking.h
+> @@ -0,0 +1,27 @@
+> +/*
+> + * fs/hot_tracking.h
+> + *
+> + * Copyright (C) 2012 IBM Corp. All rights reserved.
+> + * Written by Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+> + *            Ben Chociej <bchociej@gmail.com>
+> + *
+> + * This program is free software; you can redistribute it and/or
+> + * modify it under the terms of the GNU General Public
+> + * License v2 as published by the Free Software Foundation.
+> + */
+> +
+> +#ifndef __HOT_TRACKING__
+> +#define __HOT_TRACKING__
+> +
+> +#include <linux/rbtree.h>
+> +#include <linux/hot_tracking.h>
+> +
+> +/* values for hot_freq_data flags */
+> +/* freq data struct is for an inode */
+> +#define FREQ_DATA_TYPE_INODE (1 << 0)
+> +/* freq data struct is for a range */
+> +#define FREQ_DATA_TYPE_RANGE (1 << 1)
+
+The comments are redundant - the name of the object documents it's
+use sufficiently.  ie.
+
+/* values for hot_freq_data flags */
+#define FREQ_DATA_TYPE_INODE (1 << 0)
+#define FREQ_DATA_TYPE_RANGE (1 << 1)
+
+is just fine by itself.
+
+....
+> +/* A frequency data struct holds values that are used to
+> + * determine temperature of files and file ranges. These structs
+> + * are members of hot_inode_item and hot_range_item
+> + */
+
+/*
+ * This is a
+ * multiline comment. ;)
+ */
+
+> +struct hot_freq_data {
+> +	struct timespec last_read_time;
+> +	struct timespec last_write_time;
+> +	u32 nr_reads;
+> +	u32 nr_writes;
+> +	u64 avg_delta_reads;
+> +	u64 avg_delta_writes;
+> +	u8 flags;
+> +	u32 last_temperature;
+
+may as well make the flags a u32 - the compiler will ues that much
+space anyway as it aligned the u32 last_temperature variable after
+it.
+
+> +};
+> +
+> +/* An item representing an inode and its access frequency */
+> +struct hot_inode_item {
+> +	/* node for hot_inode_tree rb_tree */
+> +	struct rb_node rb_node;
+> +	/* tree of ranges in this inode */
+> +	struct hot_range_tree hot_range_tree;
+> +	/* frequency data for this inode */
+> +	struct hot_freq_data hot_freq_data;
+> +	/* inode number, copied from inode */
+> +	unsigned long i_ino;
+> +	/* used to check for errors in ref counting */
+> +	u8 in_tree;
+> +	/* protects hot_freq_data, i_no, in_tree */
+> +	spinlock_t lock;
+> +	/* prevents kfree */
+> +	struct kref refs;
+
+It's hard to see the code in the commentsi, and some of comments are
+redundant.. It's easier to read if you do this:
+
+struct hot_inode_item {
+	struct rb_node node;			/* hot_inode_tree index */
+	struct hot_range_tree hot_range_tree;	/* tree of ranges */
+	struct hot_freq_data hot_freq_data;	/* frequency data */
+	unsigned long i_ino;			/* inode number from inode */
+	u8 in_tree;				/* ref counting check */
+	spinlock_t lock;			/* protects object data */
+	struct kref refs;			/* prevents kfree */
+}
+
+Also: 
+	- i_ino really needs to be a 64 bit quantity as some
+	  filesystems can use 64 bit inode numbers even on 32
+	  bit systems (e.g. XFS).
+	- in_tree can be u32 or a flags field if it is boolean. if
+	  it is just debug, then maybe it can be removed whenteh
+	  code is ready for commit.
+
+> +};
+> +
+> +/*
+> + * An item representing a range inside of an inode whose frequency
+> + * is being tracked
+> + */
+> +struct hot_range_item {
+> +	/* node for hot_range_tree rb_tree */
+> +	struct rb_node rb_node;
+> +	/* frequency data for this range */
+> +	struct hot_freq_data hot_freq_data;
+> +	/* the hot_inode_item associated with this hot_range_item */
+> +	struct hot_inode_item *hot_inode;
+> +	/* starting offset of this range */
+> +	u64 start;
+> +	/* length of this range */
+> +	u64 len;
+
+What units?
+	u64 start;	/* start offset in bytes */
+	u64 len		/* length in bytes */
+
+> +	/* used to check for errors in ref counting */
+> +	u8 in_tree;
+> +	/* protects hot_freq_data, start, len, and in_tree */
+> +	spinlock_t lock;
+> +	/* prevents kfree */
+> +	struct kref refs;
+> +};
+> +
+> +struct hot_info {
+> +	/* red-black tree that keeps track of fs-wide hot data */
+> +	struct hot_inode_tree hot_inode_tree;
+> +};
+
+The comment is redundant...
+
+Cheers,
+
+Dave.
+
+-- 
+Dave Chinner
+david@fromorbit.com
