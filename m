@@ -1,7 +1,7 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
 Subject: Re: [RFC v2 01/10] vfs: introduce private rb structures
-Date: Tue, 25 Sep 2012 15:57:51 +0800
-Message-ID: <CAEH94LhDoSmfL6dPGLiiQ_2p9QjHkhOz1Cg608tcYJHqmkGJXA@mail.gmail.com>
+Date: Tue, 25 Sep 2012 16:00:03 +0800
+Message-ID: <CAEH94Lje4PmkCWwDvuJ_ymuGVuZYhMmj3aNLi12mjUAzE+VCSw@mail.gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
 	<1348404995-14372-2-git-send-email-zwu.kernel@gmail.com>
 	<20120925073729.GA29154@dastard>
@@ -15,10 +15,10 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:60550 "EHLO
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:44928 "EHLO
 	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753571Ab2IYH5x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 03:57:53 -0400
+	with ESMTP id S1753573Ab2IYIAG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 04:00:06 -0400
 In-Reply-To: <20120925073729.GA29154@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -54,8 +54,7 @@ On Tue, Sep 25, 2012 at 3:37 PM, Dave Chinner <david@fromorbit.com> wrote:
 >
 > Just a coupl eof minor formatting things first up - I'll have more
 > comments as I get deeper into the series.
-All comments are very reasonable, and will be applied.
-thanks for your review.
+OK, very look forward to seeing more on other patches, indeed thanks again.
 
 >
 > ....
