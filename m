@@ -1,115 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Release of e2fsprogs 1.42.6
-Date: Sun, 23 Sep 2012 23:38:25 -0400
-Message-ID: <nsxipb46qfi.fsf@closure.thunk.org>
+Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
+Date: Tue, 25 Sep 2012 16:59:21 -0400
+Message-ID: <20120925205921.GA8625@thunk.org>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+ <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
+ <20120919190541.GE28470@thunk.org>
+ <20120925124252.GA1518@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52111 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753944Ab2IYSdb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Sep 2012 14:33:31 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120925124252.GA1518@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Sep 25, 2012 at 08:42:52PM +0800, Zheng Liu wrote:
+> > If so, we might want to think about adding a sanity check to make sure
+> > that by the time we are done with the inode in ext4_evict_inode()
+> > (after we have forced writeback), the ext4_es_tree is empty.  Agreed?
+> 
+> Today I revise this patch again, and I find extent_status_tree is freed
+> in ext4_clear_inode().  So maybe I don't think that we need to check
+> this tree to be freed in ext4_evict_inode().  This change is in this
+> patch '[RFC][PATCH 4/8 v2] ext4: let ext4 maintain extent status tree'.
+> What's your opinion?
 
-I've released e2fsprogs 1.42.6 in all of the usual places; it's tagged
-in the git trees on git.kernel.org, github, sourceforge, and
-code.google.com, and available for ftp at:
+When you say "revise this patch again", does that mean that you would
+like to submit a new set of patch series with changes?  Or just that
+you are looking at this patch set again?
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.42.6
+It's certainly true that ext4_evict_inode() will call
+ext4_clear_inode(), so it's not a question of worrying about a memory
+leak.  I was thinking more about doing this as a cheap sanity check
+for the data structure.  By the time we call ext4_evict_inode(), the
+mm layer all writeback should be complete.  Hence, all of the entries
+to the tree _should_ have been removed by the time we call
+ext4_evict_inode().
 
-and
+I don't know if this is going to change as you start using this data
+structure for other purposes (such as locking a range of pages), but
+if I understand how things are currently working, it _should_ be the
+case that when ext4_evict_inode() calls ext4_clear_inode(), the call
+to ext4_es_remove_extent() should be a no-op, since all of the nodes
+in the extent status tree should have been released by then.  If it
+isn't, then either I'm not understanding the code, or there's a bug in
+the code.
 
-http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.42.6.tar.gz
-
-The major improvement in e2fsprogs 1.42.6 is enabling online resizing
-for file systems larger than 16TB or which have the 64bit feature
-enable.  This requires kernel patches that will be in 3.7.
-
-In addition, I've released the first 1.43 WIP snapshot.   It has all of
-the fixes of 1.42.6, plus support for metadata checksums.
-
-                                               - Ted
-
-E2fsprogs 1.43-WIP (September 22, 2012)
-=======================================
-
-Add support for the ext4 metadata checksum feature.
-
-Check to make sure file system features which can not be supported by
-HURD are not enabled if the file system is created to be
-HURD-compatible.
-
-
-Programmer's Notes
-------------------
-
-Reduce the use of libc functions in libext2fs that may not be present
-in the boot loader environment, at least for those functions that are
-needed by boot loadsers such as yaboot.
-
-Support for the MMP feature can now be disabled at compile time.
-
-
-E2fsprogs 1.42.6 (September 21, 2012)
-=====================================
-
-When mke2fs creates file systems with lazy itable initialization, the
-progress updates for writing the inode table happens so quickly that
-on a serial console, the time to write the progress updates can be the
-bottleneck.  So mke2fs will now only update its progress indicators
-once a second.
-
-Resize2fs will skip initializing the inode tables if the kernel
-supports lazy_itable_init, which speeds up growing off-line growth of
-uninit_bg file systems significantly.  Resize2fs will now also
-correctly set the itable_unused field in the block group descriptor to
-speed up the first e2fsck after the file system is grown.
-
-Resize2fs has been fixed so that on-line resizing of meta_bg file
-systems work correctly.  This is needed to grow file system which are
-larger than 16T.
-
-Resize2fs will now correctly handle resizing file systems to 16TB on
-32-bit file systems when "16TB" is specified on the command line.
-
-Fix mke2fs so that it will be careful to set the reserved blocks ratio
-larger than 50%; this can happen when creating small file systems and
-when the last block group is dropped because there are not enough
-blocks to support the metadata blocks in the last block group.
-
-Fixed spelling mistake in debugfs's help message.
-
-Fixed a potential seg fault in e2fsck when there is an I/O error while
-reading the superblock.
-
-Fixed various Debian Packaging Issues (Addresses Debian Bug #677497)
-
-Updated/fixed various man pages.  (Addresses Sourceforge Bug:
-#3559210)
-
-Programmer's Notes
-------------------
-
-The configure option --enable-relative-symlink was broken so that it
-needed to be --enable-symlink-relative-symlinks.  We will support both
-for at least two years, but then the worng configure option will be
-removed.
-
-Fixed a regression introduced in 1.42.5 so the link order for
-e2fsprogs' libraries will be correct for both static and shared
-linking.  (Addresses Sourceforge Bug: #3554345)
-
-Add support for e2fsprogs to be compiled using clang/LLVM.
-
-Fix portability problems on non-Linux systems: avoid compile failures
-on systems that don't have malloc.h
-
-Fix f_mmp regression test suite so that debugfs gets killed if the
-test is interrupted.
-
-
-
-
+						- Ted
