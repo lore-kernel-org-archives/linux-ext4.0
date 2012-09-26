@@ -1,50 +1,35 @@
-From: Tao Ma <tm@tao.ma>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: Only call update_backups if necessary in online
  resize.
-Date: Wed, 26 Sep 2012 11:51:01 +0800
-Message-ID: <50627BA5.60106@tao.ma>
-References: <1348498817-3598-1-git-send-email-tm@tao.ma> <20120926033935.GD11468@thunk.org>
+Date: Wed, 26 Sep 2012 00:03:49 -0400
+Message-ID: <20120926040349.GG11468@thunk.org>
+References: <1348498817-3598-1-git-send-email-tm@tao.ma>
+ <20120926033935.GD11468@thunk.org>
+ <50627BA5.60106@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy12-pub.bluehost.com ([50.87.16.10]:51778 "HELO
-	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751808Ab2IZDvH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 23:51:07 -0400
-In-Reply-To: <20120926033935.GD11468@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52400 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750776Ab2IZEDx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Sep 2012 00:03:53 -0400
+Content-Disposition: inline
+In-Reply-To: <50627BA5.60106@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/26/2012 11:39 AM, Theodore Ts'o wrote:
-> On Mon, Sep 24, 2012 at 11:00:17PM +0800, Tao Ma wrote:
->> @@ -1355,8 +1356,16 @@ exit_journal:
->>  			int gdb_num;
->>  			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
->>  			gdb_bh = sbi->s_group_desc[gdb_num];
->> -			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
->> -				       gdb_bh->b_size);
->> +			/*
->> +			 * only backup the group descriptor block
->> +			 * which hasn't been updated before.
->> +			 */
->> +			if (old_gdb != gdb_bh->b_blocknr) {
->> +				update_backups(sb, gdb_bh->b_blocknr,
->> +					       gdb_bh->b_data,
->> +					       gdb_bh->b_size);
->> +				old_gdb = gdb_bh->b_blocknr;
->> +			}
->>  		}
->>  	}
-> 
-> Don't we also need to add a call to update_backups() at the end of the
-> loop so we update the backup block descriptors for the very last set
-> of block groups?
-Why?  If it isn't the same as the previous one, it will be updated. If
-it is the same, it don't need to be updated. I don't see what your mean
-here.
+On Wed, Sep 26, 2012 at 11:51:01AM +0800, Tao Ma wrote:
+> Why?  If it isn't the same as the previous one, it will be updated. If
+> it is the same, it don't need to be updated. I don't see what your mean
+> here.
 
-Thanks
-Tao
+Oh, I see; sorry, I was just looking at the patch and not the file
+with the changes in context.  I thought you were updating the backup
+descriptors after modifying the last block group in the meta_bg group,
+but that was my confusion.
+
+Yes, your patch looks good and I will apply it, thanks!!
+
+     	  	      	       	      - Ted
