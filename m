@@ -1,77 +1,160 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
-Date: Wed, 26 Sep 2012 11:24:26 +0800
-Message-ID: <20120926032426.GA496@gmail.com>
-References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
- <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
- <20120919190541.GE28470@thunk.org>
- <20120925124252.GA1518@gmail.com>
- <20120925205921.GA8625@thunk.org>
- <20120926020955.GA4101@gmail.com>
- <20120926024745.GA11468@thunk.org>
+From: Zhi Yong Wu <zwu.kernel@gmail.com>
+Subject: Re: [RFC v2 01/10] vfs: introduce private rb structures
+Date: Wed, 26 Sep 2012 11:20:27 +0800
+Message-ID: <CAEH94Lhys9T+FGOzS=xzp8pD0SVn8TOv4gXx31B+6pXsg=3wOw@mail.gmail.com>
+References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
+	<1348404995-14372-2-git-send-email-zwu.kernel@gmail.com>
+	<20120925102059.GB2456@ram-ThinkPad-T61>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	cmm@us.ibm.com, tytso@mit.edu, marco.stornelli@gmail.com,
+	david@fromorbit.com, stroetmann@ontolinux.com, diegocg@gmail.com,
+	chris@csamuel.org, Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: Ram Pai <linuxram@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:36448 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751359Ab2IZDNu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 23:13:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20120926024745.GA11468@thunk.org>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:44699 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751410Ab2IZDU3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 23:20:29 -0400
+In-Reply-To: <20120925102059.GB2456@ram-ThinkPad-T61>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 25, 2012 at 10:47:45PM -0400, Theodore Ts'o wrote:
-> On Wed, Sep 26, 2012 at 10:09:55AM +0800, Zheng Liu wrote:
-> > On Tue, Sep 25, 2012 at 04:59:21PM -0400, Theodore Ts'o wrote:
-> > > On Tue, Sep 25, 2012 at 08:42:52PM +0800, Zheng Liu wrote:
-> > > > > If so, we might want to think about adding a sanity check to make sure
-> > > > > that by the time we are done with the inode in ext4_evict_inode()
-> > > > > (after we have forced writeback), the ext4_es_tree is empty.  Agreed?
-> > > > 
-> > > > Today I revise this patch again, and I find extent_status_tree is freed
-> > > > in ext4_clear_inode().  So maybe I don't think that we need to check
-> > > > this tree to be freed in ext4_evict_inode().  This change is in this
-> > > > patch '[RFC][PATCH 4/8 v2] ext4: let ext4 maintain extent status tree'.
-> > > > What's your opinion?
-> > > 
-> > > When you say "revise this patch again", does that mean that you would
-> > > like to submit a new set of patch series with changes?  Or just that
-> > > you are looking at this patch set again?
-> > 
-> > Yes, I prepare to submit a new patch set.
-> 
-> Well, note that the merge window is opening *soon*.  I haven't yet
-> moved the master branch, so I can update the patch set, but I'm going
-> to need it soon.
-> 
-> Can you let me know what changes you need to make?  If it is to add
-> new features or new sanity checks, does it make sense to simply make
-> it as new commits to existing patch set?  Or are there fundamental
-> problems with the current set, that would be better to fix in the
-> current set of commits?  (Or is it just minor stylistic/spelling
-> fixes?)
-> 
-> Thanks!!
+On Tue, Sep 25, 2012 at 6:20 PM, Ram Pai <linuxram@us.ibm.com> wrote:
+> On Sun, Sep 23, 2012 at 08:56:26PM +0800, zwu.kernel@gmail.com wrote:
+>> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+>>
+>>   One root structure hot_info is defined, is hooked
+>> up in super_block, and will be used to hold rb trees
+>> root, hash list root and some other information, etc.
+>>   Adds hot_inode_tree struct to keep track of
+>> frequently accessed files, and be keyed by {inode, offset}.
+>> Trees contain hot_inode_items representing those files
+>> and ranges.
+>>   Having these trees means that vfs can quickly determine the
+>> temperature of some data by doing some calculations on the
+>> hot_freq_data struct that hangs off of the tree item.
+>>   Define two items hot_inode_item and hot_range_item,
+>> one of them represents one tracked file
+>> to keep track of its access frequency and the tree of
+>> ranges in this file, while the latter represents
+>> a file range of one inode.
+>>   Each of the two structures contains a hot_freq_data
+>> struct with its frequency of access metrics (number of
+>> {reads, writes}, last {read,write} time, frequency of
+>> {reads,writes}).
+>>   Also, each hot_inode_item contains one hot_range_tree
+>> struct which is keyed by {inode, offset, length}
+>> and used to keep track of all the ranges in this file.
+>>
+>> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+>> ---
+>> +
+> ..snip..
+>
+>> +/* A tree that sits on the hot_info */
+>> +struct hot_inode_tree {
+>> +     struct rb_root map;
+>> +     rwlock_t lock;
+>> +};
+>> +
+>> +/* A tree of ranges for each inode in the hot_inode_tree */
+>> +struct hot_range_tree {
+>> +     struct rb_root map;
+>> +     rwlock_t lock;
+>> +};
+>
+> Can as well have a generic datastructure called hot_tree instead
+> of having two different datastructure which basically are the same.
+OK.
+>
+>> +
+>> +/* A frequency data struct holds values that are used to
+>> + * determine temperature of files and file ranges. These structs
+>> + * are members of hot_inode_item and hot_range_item
+>> + */
+>> +struct hot_freq_data {
+>> +     struct timespec last_read_time;
+>> +     struct timespec last_write_time;
+>> +     u32 nr_reads;
+>> +     u32 nr_writes;
+>> +     u64 avg_delta_reads;
+>> +     u64 avg_delta_writes;
+>> +     u8 flags;
+>> +     u32 last_temperature;
+>> +};
+>> +
+>> +/* An item representing an inode and its access frequency */
+>> +struct hot_inode_item {
+>> +     /* node for hot_inode_tree rb_tree */
+>> +     struct rb_node rb_node;
+>> +     /* tree of ranges in this inode */
+>> +     struct hot_range_tree hot_range_tree;
+>> +     /* frequency data for this inode */
+>> +     struct hot_freq_data hot_freq_data;
+>> +     /* inode number, copied from inode */
+>> +     unsigned long i_ino;
+>> +     /* used to check for errors in ref counting */
+>> +     u8 in_tree;
+>> +     /* protects hot_freq_data, i_no, in_tree */
+>> +     spinlock_t lock;
+>> +     /* prevents kfree */
+>> +     struct kref refs;
+>> +};
+>> +
+>> +/*
+>> + * An item representing a range inside of an inode whose frequency
+>> + * is being tracked
+>> + */
+>> +struct hot_range_item {
+>> +     /* node for hot_range_tree rb_tree */
+>> +     struct rb_node rb_node;
+>> +     /* frequency data for this range */
+>> +     struct hot_freq_data hot_freq_data;
+>> +     /* the hot_inode_item associated with this hot_range_item */
+>> +     struct hot_inode_item *hot_inode;
+>> +     /* starting offset of this range */
+>> +     u64 start;
+>> +     /* length of this range */
+>> +     u64 len;
+>> +     /* used to check for errors in ref counting */
+>> +     u8 in_tree;
+>> +     /* protects hot_freq_data, start, len, and in_tree */
+>> +     spinlock_t lock;
+>> +     /* prevents kfree */
+>> +     struct kref refs;
+>> +};
+>
+> might as well have just one generic datastructure called hot_item with
+> all the common fields and then have
+>
+>         struct hot_inode_item  {
+>                 struct hot_item hot_inode;
+>                 struct hot_tree hot_range_tree;
+>                 unsigned long i_ino;
+>         }
+>
+>         and
+>
+>         struct hot_range_item {
+>                 struct hot_item hot_range;
+>                 u64 start;
+>                 u64 len;        /* length of this range */
+>         }
+>
+> This should help you eliminate some duplicate code as well.
+OK, i will try to apply them. thanks.
+>
+>
+> RP
+>
 
-In new patch set, there is three changes as beblow:
 
-1. add a sanity check in ext4_evict_inode()
-2. fix a bug in ext4_find_delalloc_range().  This bug is reported by
-xfstest #230 when we enable bigalloc feature.
-3. Add a new rwlock to protect extent status tree.
 
-So I think that we can only add a sanity check and fix the bigalloc bug,
-and then apply this patch set because the changes are minor.  For adding
-a new lock to protect extent status tree, we can add this feature in a
-new patch.  If you think it is OK, I can generate a new patch set, do
-some tests using xfstest, and submit it as soon as possible.  What's
-your opinion?
-
+-- 
 Regards,
-Zheng
+
+Zhi Yong Wu
