@@ -1,49 +1,71 @@
-From: Kevin Liao <kevinliao@qnap.com>
-Subject: Re: [PATCH] ext4: Only call update_backups if necessary in online resize.
-Date: Wed, 26 Sep 2012 13:26:14 +0800
-Message-ID: <CAOoaTqUvBbJnKRcxe6RTL8fw1Q76B7Dtqqa3T37X2qgOk4ugTQ@mail.gmail.com>
-References: <1348498817-3598-1-git-send-email-tm@tao.ma>
-	<20120926033935.GD11468@thunk.org>
-	<50627BA5.60106@tao.ma>
-	<20120926040349.GG11468@thunk.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
+Date: Wed, 26 Sep 2012 16:00:47 +0800
+Message-ID: <20120926080047.GA15618@gmail.com>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+ <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
+ <20120919190541.GE28470@thunk.org>
+ <20120925124252.GA1518@gmail.com>
+ <20120925205921.GA8625@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:56287 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751045Ab2IZF0P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Sep 2012 01:26:15 -0400
-Received: by pbbrr4 with SMTP id rr4so1307235pbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Sep 2012 22:26:15 -0700 (PDT)
-In-Reply-To: <20120926040349.GG11468@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120925205921.GA8625@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2012/9/26 Theodore Ts'o <tytso@mit.edu>
->
-> On Wed, Sep 26, 2012 at 11:51:01AM +0800, Tao Ma wrote:
-> > Why?  If it isn't the same as the previous one, it will be updated. If
-> > it is the same, it don't need to be updated. I don't see what your mean
-> > here.
->
-> Oh, I see; sorry, I was just looking at the patch and not the file
-> with the changes in context.  I thought you were updating the backup
-> descriptors after modifying the last block group in the meta_bg group,
-> but that was my confusion.
->
-> Yes, your patch looks good and I will apply it, thanks!!
->
->                                       - Ted
+On Tue, Sep 25, 2012 at 04:59:21PM -0400, Theodore Ts'o wrote:
+> On Tue, Sep 25, 2012 at 08:42:52PM +0800, Zheng Liu wrote:
+> > > If so, we might want to think about adding a sanity check to make sure
+> > > that by the time we are done with the inode in ext4_evict_inode()
+> > > (after we have forced writeback), the ext4_es_tree is empty.  Agreed?
+> > 
+> > Today I revise this patch again, and I find extent_status_tree is freed
+> > in ext4_clear_inode().  So maybe I don't think that we need to check
+> > this tree to be freed in ext4_evict_inode().  This change is in this
+> > patch '[RFC][PATCH 4/8 v2] ext4: let ext4 maintain extent status tree'.
+> > What's your opinion?
+> 
+> When you say "revise this patch again", does that mean that you would
+> like to submit a new set of patch series with changes?  Or just that
+> you are looking at this patch set again?
+> 
+> It's certainly true that ext4_evict_inode() will call
+> ext4_clear_inode(), so it's not a question of worrying about a memory
+> leak.  I was thinking more about doing this as a cheap sanity check
+> for the data structure.  By the time we call ext4_evict_inode(), the
+> mm layer all writeback should be complete.  Hence, all of the entries
+> to the tree _should_ have been removed by the time we call
+> ext4_evict_inode().
+> 
+> I don't know if this is going to change as you start using this data
+> structure for other purposes (such as locking a range of pages), but
+> if I understand how things are currently working, it _should_ be the
+> case that when ext4_evict_inode() calls ext4_clear_inode(), the call
+> to ext4_es_remove_extent() should be a no-op, since all of the nodes
+> in the extent status tree should have been released by then.  If it
+> isn't, then either I'm not understanding the code, or there's a bug in
+> the code.
 
 Hi Ted,
 
-Is this patch should be merged with your previous patches about meta_bg
-online resize on 9/14?
-
-[PATCH 2/9] avoid duplicate writes of the backup bg descriptor blocks
-[PATCH 5/9] add online resizing support for meta_bg and 64-bit file systems
+When I try to add a BUG_ON in ext4_evict_inode() to ensure that extent
+status tree is empty, I will get an error, which reports that the tree
+is not empty.  I find that there still has some dirty pages when we
+call ext4_evict_inode() because vfs doesn't write all dirty pages back.
+In iput_final(), we firstly call ext4_drop_inode().  If the return value
+is true, we won't call write_inode_now() to do a writeback.  It means
+that we write some data to a file and remove it immediately, and then
+all dirty pages that aren't during writeback progress won't be written.
+These pages will be truncated in ext4_evict_inode().  Thus, the extent
+status tree is possible not to be empty when we call ext4_evict_inode().
+So we cannot add a sanity check in this function.  Am I missing something?
 
 Regards,
-Kevin Liao
+Zheng
