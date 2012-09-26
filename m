@@ -1,41 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Only call update_backups if necessary in online
- resize.
-Date: Wed, 26 Sep 2012 09:57:53 -0400
-Message-ID: <20120926135753.GH11468@thunk.org>
-References: <1348498817-3598-1-git-send-email-tm@tao.ma>
- <20120926033935.GD11468@thunk.org>
- <50627BA5.60106@tao.ma>
- <20120926040349.GG11468@thunk.org>
- <CAOoaTqUvBbJnKRcxe6RTL8fw1Q76B7Dtqqa3T37X2qgOk4ugTQ@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 08/10] ext4: endless truncate due to nonlocked dio
+ readers V2
+Date: Wed, 26 Sep 2012 16:05:38 +0200
+Message-ID: <20120926140538.GH10145@quack.suse.cz>
+References: <1348487060-19598-1-git-send-email-dmonakhov@openvz.org>
+ <1348487060-19598-9-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Kevin Liao <kevinliao@qnap.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	lczerner@redhat.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52469 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756247Ab2IZN56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2012 09:57:58 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:41723 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756152Ab2IZOFk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Sep 2012 10:05:40 -0400
 Content-Disposition: inline
-In-Reply-To: <CAOoaTqUvBbJnKRcxe6RTL8fw1Q76B7Dtqqa3T37X2qgOk4ugTQ@mail.gmail.com>
+In-Reply-To: <1348487060-19598-9-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 26, 2012 at 01:26:14PM +0800, Kevin Liao wrote:
-> 
-> Is this patch should be merged with your previous patches about meta_bg
-> online resize on 9/14?
-> 
-> [PATCH 2/9] avoid duplicate writes of the backup bg descriptor blocks
-> [PATCH 5/9] add online resizing support for meta_bg and 64-bit file systems
+On Mon 24-09-12 15:44:18, Dmitry Monakhov wrote:
+> If we have enough aggressive DIO readers, truncate and other dio
+> waiters will wait forever inside inode_dio_wait(). It is reasonable
+> to disable nonlock DIO read optimization during truncate.
+  Umm, actually this is a problem with any inode_dio_wait() call in ext4,
+isn't it? So I'd just create ext4_inode_dio_wait() doing
+	ext4_inode_block_unlocked_dio(inode);
+	inode_dio_wait(inode);
+	ext4_inode_resume_unlocked_dio(inode);
 
-It would be, except that those patches are now in the "master" branch
-of the ext4 git tree, which is an implicit promise on my part not to
-rebase or change the commit.  This allows people to build git trees
-based on the "master" branch.  Commits between "master" and "dev" are
-still subject to change, although I am pretty happen with them at that
-point, so it will general be only to fix bugs in the patches, or to
-adjust the commit descrpition, etc.
+and use it instead of inode_dio_wait().
 
-						- Ted
+								Honza
+ 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/inode.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 32e9701..d3f86e7 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4330,9 +4330,13 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>  	if (attr->ia_valid & ATTR_SIZE) {
+>  		if (attr->ia_size != inode->i_size) {
+>  			truncate_setsize(inode, attr->ia_size);
+> -			/* Inode size will be reduced, wait for dio in flight */
+> -			if (orphan)
+> +			/* Inode size will be reduced, wait for dio in flight.
+> +			 * Temproraly disable unlocked DIO to prevent livelock */
+                           ^^ Temporarily
+
+> +			if (orphan) {
+> +				ext4_inode_block_unlocked_dio(inode);
+>  				inode_dio_wait(inode);
+> +				ext4_inode_resume_unlocked_dio(inode);
+> +			}
+>  		}
+>  		ext4_truncate(inode);
+>  	}
+> -- 
+> 1.7.7.6
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
