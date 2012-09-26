@@ -1,70 +1,77 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v2 03/10] vfs: add one new mount option '-o hottrack'
-Date: Wed, 26 Sep 2012 10:56:08 +0800
-Message-ID: <CAEH94Li+-nz58P=SwNDq5itDR+PqLhhmqEzMGgO219CyC4RRKA@mail.gmail.com>
-References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
-	<1348404995-14372-4-git-send-email-zwu.kernel@gmail.com>
-	<20120925092819.GC29154@dastard>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
+Date: Wed, 26 Sep 2012 11:24:26 +0800
+Message-ID: <20120926032426.GA496@gmail.com>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+ <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
+ <20120919190541.GE28470@thunk.org>
+ <20120925124252.GA1518@gmail.com>
+ <20120925205921.GA8625@thunk.org>
+ <20120926020955.GA4101@gmail.com>
+ <20120926024745.GA11468@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	cmm@us.ibm.com, tytso@mit.edu, marco.stornelli@gmail.com,
-	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:60435 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751051Ab2IZC4K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 22:56:10 -0400
-In-Reply-To: <20120925092819.GC29154@dastard>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:36448 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751359Ab2IZDNu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2012 23:13:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20120926024745.GA11468@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 25, 2012 at 5:28 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Sun, Sep 23, 2012 at 08:56:28PM +0800, zwu.kernel@gmail.com wrote:
->> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
->>
->>   Introduce one new mount option '-o hottrack',
->> and add its parsing support.
->>   Its usage looks like:
->>    mount -o hottrack
->>    mount -o nouser,hottrack
->>    mount -o nouser,hottrack,loop
->>    mount -o hottrack,nouser
->
-> I think that this option parsing should be done by the filesystem,
-> even though the tracking functionality is in the VFS. That way ony
-> the filesystems that can use the tracking information will turn it
-> on, rather than being able to turn it on for everything regardless
-> of whether it is useful or not.
->
-> Along those lines, just using a normal superblock flag to indicate
-> it is active (e.g. MS_HOT_INODE_TRACKING in sb->s_flags) means you
-> don't need to allocate the sb->s_hot_info structure just to be able
-> to check whether we are tracking hot inodes or not.
->
-> This then means the hot inode tracking for the superblock can be
-> initialised by the filesystem as part of it's fill_super method,
-> along with the filesystem specific code that will use the hot
-> tracking information the VFS gathers....
-I can see what you mean, but don't know if other guys also agree with this.
-If so, all FS specific code which use hot tracking feature wll have to add
-the same chunk of code in it fill_super method. Is it good?
+On Tue, Sep 25, 2012 at 10:47:45PM -0400, Theodore Ts'o wrote:
+> On Wed, Sep 26, 2012 at 10:09:55AM +0800, Zheng Liu wrote:
+> > On Tue, Sep 25, 2012 at 04:59:21PM -0400, Theodore Ts'o wrote:
+> > > On Tue, Sep 25, 2012 at 08:42:52PM +0800, Zheng Liu wrote:
+> > > > > If so, we might want to think about adding a sanity check to make sure
+> > > > > that by the time we are done with the inode in ext4_evict_inode()
+> > > > > (after we have forced writeback), the ext4_es_tree is empty.  Agreed?
+> > > > 
+> > > > Today I revise this patch again, and I find extent_status_tree is freed
+> > > > in ext4_clear_inode().  So maybe I don't think that we need to check
+> > > > this tree to be freed in ext4_evict_inode().  This change is in this
+> > > > patch '[RFC][PATCH 4/8 v2] ext4: let ext4 maintain extent status tree'.
+> > > > What's your opinion?
+> > > 
+> > > When you say "revise this patch again", does that mean that you would
+> > > like to submit a new set of patch series with changes?  Or just that
+> > > you are looking at this patch set again?
+> > 
+> > Yes, I prepare to submit a new patch set.
+> 
+> Well, note that the merge window is opening *soon*.  I haven't yet
+> moved the master branch, so I can update the patch set, but I'm going
+> to need it soon.
+> 
+> Can you let me know what changes you need to make?  If it is to add
+> new features or new sanity checks, does it make sense to simply make
+> it as new commits to existing patch set?  Or are there fundamental
+> problems with the current set, that would be better to fix in the
+> current set of commits?  (Or is it just minor stylistic/spelling
+> fixes?)
+> 
+> Thanks!!
 
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
+In new patch set, there is three changes as beblow:
 
+1. add a sanity check in ext4_evict_inode()
+2. fix a bug in ext4_find_delalloc_range().  This bug is reported by
+xfstest #230 when we enable bigalloc feature.
+3. Add a new rwlock to protect extent status tree.
 
+So I think that we can only add a sanity check and fix the bigalloc bug,
+and then apply this patch set because the changes are minor.  For adding
+a new lock to protect extent status tree, we can add this feature in a
+new patch.  If you think it is OK, I can generate a new patch set, do
+some tests using xfstest, and submit it as soon as possible.  What's
+your opinion?
 
--- 
 Regards,
-
-Zhi Yong Wu
+Zheng
