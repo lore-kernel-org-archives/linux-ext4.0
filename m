@@ -1,54 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
-Date: Tue, 25 Sep 2012 23:37:40 -0400
-Message-ID: <20120926033740.GC11468@thunk.org>
-References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
- <1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
- <20120919190541.GE28470@thunk.org>
- <20120925124252.GA1518@gmail.com>
- <20120925205921.GA8625@thunk.org>
- <20120926020955.GA4101@gmail.com>
- <20120926024745.GA11468@thunk.org>
- <20120926032426.GA496@gmail.com>
+Subject: Re: [PATCH] ext4: Only call update_backups if necessary in online
+ resize.
+Date: Tue, 25 Sep 2012 23:39:35 -0400
+Message-ID: <20120926033935.GD11468@thunk.org>
+References: <1348498817-3598-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Yongqiang Yang <xiaoqiangnk@gmail.com>,
-	Allison Henderson <achender@linux.vnet.ibm.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52385 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751107Ab2IZDji (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Sep 2012 23:39:38 -0400
 Content-Disposition: inline
-In-Reply-To: <20120926032426.GA496@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1348498817-3598-1-git-send-email-tm@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 26, 2012 at 11:24:26AM +0800, Zheng Liu wrote:
-> > Can you let me know what changes you need to make?  If it is to add
-> > new features or new sanity checks, does it make sense to simply make
-> > it as new commits to existing patch set?  Or are there fundamental
-> > problems with the current set, that would be better to fix in the
-> > current set of commits?  (Or is it just minor stylistic/spelling
-> > fixes?)
-> > 
-> > Thanks!!
-> 
-> In new patch set, there is three changes as beblow:
-> 
-> 1. add a sanity check in ext4_evict_inode()
-> 2. fix a bug in ext4_find_delalloc_range().  This bug is reported by
-> xfstest #230 when we enable bigalloc feature.
-> 3. Add a new rwlock to protect extent status tree.
-> 
-> So I think that we can only add a sanity check and fix the bigalloc bug,
-> and then apply this patch set because the changes are minor.  For adding
-> a new lock to protect extent status tree, we can add this feature in a
-> new patch.  If you think it is OK, I can generate a new patch set, do
-> some tests using xfstest, and submit it as soon as possible.  What's
-> your opinion?
+On Mon, Sep 24, 2012 at 11:00:17PM +0800, Tao Ma wrote:
+> @@ -1355,8 +1356,16 @@ exit_journal:
+>  			int gdb_num;
+>  			gdb_num = group / EXT4_BLOCKS_PER_GROUP(sb);
+>  			gdb_bh = sbi->s_group_desc[gdb_num];
+> -			update_backups(sb, gdb_bh->b_blocknr, gdb_bh->b_data,
+> -				       gdb_bh->b_size);
+> +			/*
+> +			 * only backup the group descriptor block
+> +			 * which hasn't been updated before.
+> +			 */
+> +			if (old_gdb != gdb_bh->b_blocknr) {
+> +				update_backups(sb, gdb_bh->b_blocknr,
+> +					       gdb_bh->b_data,
+> +					       gdb_bh->b_size);
+> +				old_gdb = gdb_bh->b_blocknr;
+> +			}
+>  		}
+>  	}
 
-Do you think you can get me the patches by the end of the week?  If
-so, that should work.
+Don't we also need to add a call to update_backups() at the end of the
+loop so we update the backup block descriptors for the very last set
+of block groups?
 
-Thanks!!
+Thanks,
 
 						- Ted
