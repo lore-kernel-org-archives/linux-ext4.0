@@ -1,12 +1,12 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v2 02/10] vfs: add support for updating access frequency
-Date: Thu, 27 Sep 2012 10:30:05 +0800
-Message-ID: <CAEH94LhvN4YFE-=j+5JD9JRdEmsbQ3OOx86WTkWT_4Eyf29u4w@mail.gmail.com>
+Subject: Re: [RFC v2 03/10] vfs: add one new mount option '-o hottrack'
+Date: Thu, 27 Sep 2012 10:30:41 +0800
+Message-ID: <CAEH94Lgwhgfd1j9wHrrdkhO4jhWG2_KUgCDfrVeyTK5DUc+aLA@mail.gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
-	<1348404995-14372-3-git-send-email-zwu.kernel@gmail.com>
-	<20120925091739.GB29154@dastard>
-	<CAEH94Lg5haGMh0rkiv27tchthhFGk0o-+FAGiJ5zvPTcO8QbwA@mail.gmail.com>
-	<20120927021919.GJ15236@dastard>
+	<1348404995-14372-4-git-send-email-zwu.kernel@gmail.com>
+	<20120925092819.GC29154@dastard>
+	<CAEH94Li+-nz58P=SwNDq5itDR+PqLhhmqEzMGgO219CyC4RRKA@mail.gmail.com>
+	<20120927022045.GK15236@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -17,30 +17,46 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120927021919.GJ15236@dastard>
+In-Reply-To: <20120927022045.GK15236@dastard>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 27, 2012 at 10:19 AM, Dave Chinner <david@fromorbit.com> wrote:
-> On Wed, Sep 26, 2012 at 10:53:07AM +0800, Zhi Yong Wu wrote:
->> On Tue, Sep 25, 2012 at 5:17 PM, Dave Chinner <david@fromorbit.com> wrote:
->> > On Sun, Sep 23, 2012 at 08:56:27PM +0800, zwu.kernel@gmail.com wrote:
->> > I note that the code will always insert range items of a length
->> > RANGE_SIZE. This means you have a fixed object granularity and hence
->> > you have no need for a range based search. That is, you could use a
->> > radix tree where each entry in the radix tree points directly to the
->> > range object similar to how the page cache uses a radix tree for
->> > indexing pages. That brings the possibility of lockless range item
->> > lookups....
->> Great suggestion, but can we temporarily put it in TODO list? because
->> it will bring one big code change.
+On Thu, Sep 27, 2012 at 10:20 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Wed, Sep 26, 2012 at 10:56:08AM +0800, Zhi Yong Wu wrote:
+>> On Tue, Sep 25, 2012 at 5:28 PM, Dave Chinner <david@fromorbit.com> wrote:
+>> > On Sun, Sep 23, 2012 at 08:56:28PM +0800, zwu.kernel@gmail.com wrote:
+>> >> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+>> >>
+>> >>   Introduce one new mount option '-o hottrack',
+>> >> and add its parsing support.
+>> >>   Its usage looks like:
+>> >>    mount -o hottrack
+>> >>    mount -o nouser,hottrack
+>> >>    mount -o nouser,hottrack,loop
+>> >>    mount -o hottrack,nouser
+>> >
+>> > I think that this option parsing should be done by the filesystem,
+>> > even though the tracking functionality is in the VFS. That way ony
+>> > the filesystems that can use the tracking information will turn it
+>> > on, rather than being able to turn it on for everything regardless
+>> > of whether it is useful or not.
+>> >
+>> > Along those lines, just using a normal superblock flag to indicate
+>> > it is active (e.g. MS_HOT_INODE_TRACKING in sb->s_flags) means you
+>> > don't need to allocate the sb->s_hot_info structure just to be able
+>> > to check whether we are tracking hot inodes or not.
+>> >
+>> > This then means the hot inode tracking for the superblock can be
+>> > initialised by the filesystem as part of it's fill_super method,
+>> > along with the filesystem specific code that will use the hot
+>> > tracking information the VFS gathers....
+>> I can see what you mean, but don't know if other guys also agree with this.
+>> If so, all FS specific code which use hot tracking feature wll have to add
+>> the same chunk of code in it fill_super method. Is it good?
 >
-> Sure. I just wanted to point out that there are better choices for
-> indexing fixed size elements than rb-trees and why it might make
-> sense to use a different type of tree.
-Got it, thanks. Moreover, it should also be better to use radix tree
-to hold hot_inode, not only hot_range.
-
+> Most filesystems will only need to add 3-4 lines of code to their
+> existing parser, so it's not a big deal I think...
+OK, i try to do it. thanks a lot.
 >
 > Cheers,
 >
