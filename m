@@ -1,47 +1,57 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/3] ext4: add block-based file punching hole support
-Date: Fri, 28 Sep 2012 22:25:59 +0800
-Message-ID: <20120928142559.GB9473@gmail.com>
-References: <1345695941-15053-1-git-send-email-wenqing.lz@taobao.com>
- <1345695941-15053-2-git-send-email-wenqing.lz@taobao.com>
- <20120928131215.GB13352@thunk.org>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: ext4_bread usage audit
+Date: Thu, 27 Sep 2012 15:29:39 +0200
+Message-ID: <AEF10200-E1C9-4E43-81E2-7B31B144A062@dilger.ca>
+References: <1348512100-23323-1-git-send-email-cmaiolino@redhat.com> <20120926034240.GE11468@thunk.org> <50627B01.6070306@redhat.com> <20120926141417.GA3485@andromeda.usersys.redhat.com>
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Lukas Czerner <lczerner@redhat.com>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:62222 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757898Ab2I1OPT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 10:15:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20120928131215.GB13352@thunk.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:44582 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758319Ab2I1Oxc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 10:53:32 -0400
+In-Reply-To: <20120926141417.GA3485@andromeda.usersys.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 28, 2012 at 09:12:15AM -0400, Theodore Ts'o wrote:
-> On Thu, Aug 23, 2012 at 12:25:39PM +0800, Zheng Liu wrote:
-> > I run xfstests to do some tests, and I got an error from xfstests #
-> > 255.  The failure reason is that block-based file in ext4 cannot
-> > support fallocate(2) to allocate an unwritten blocks.  I am not sure
-> > whether we should change # 255 in xfstests or not.  So Cc' to Dave
-> > Chinner to get some feedbacks.
+On 2012-09-26, at 4:14 PM, Carlos Maiolino wrote:
+> In regards to the coding style of if conditionals, I just followed the coding
+> style of most places in the code, I also changed some of the if conditionals to
+> match the rest of the code. i.e.:
 > 
-> Zheng,
+> if(!(bh = ext4_bread())) {
+> 	do_something();
+> }
 > 
-> I gave these patches a quick try and I'm seeing many more failures
-> than just test #255.  Tests 75, 91, 112, 215, and 263 are also
-> failing, and I don't think it's all due to punch being supported w/o
-> fallocate support.
+> if you take a look at the code, most if conditionals regarding the calls to
+> ext4_bread() are in the above coding style. I just followed it, but, I'm not
+> against change that to another one, but agree the above looks better and save
+> some code lines.
 
-Hi Ted,
+The reason that having assignments in conditionals is bad is that it allows
+hard-to-find bugs to be in the code:
 
-Thanks for sharing this information with me.  I will look at these
-patches after patch series of extent status tree gets stable and submit
-to the mailing list.
+        if ((bh == ext4_bread())
 
-Regards,
-Zheng
+and
+
+        if ((bh = ext4_bread())
+
+look very similar to the reader, but the use of extra "()" around the
+assignment quiets any compiler warnings about incorrect assignments.
+In this specific case you _do_ want the assignment to bh, but in many
+other cases you do not:
+
+        if (bh = NULL)
+
+would set bh to NULL instead of comparing it, and is IMHO bad coding style.
+
+Cheers, Andreas
+
+
+
+
+
