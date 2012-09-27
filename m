@@ -1,41 +1,87 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix potential deadlock in ext4_nonda_switch()
-Date: Thu, 27 Sep 2012 16:14:01 -0400
-Message-ID: <20120927201401.GA9585@thunk.org>
-References: <1348111390-23083-1-git-send-email-tytso@mit.edu>
- <505CE635.6060101@redhat.com>
- <20120921235912.GA27207@thunk.org>
- <87ipaziduh.fsf@openvz.org>
- <20120927180949.GA6862@thunk.org>
- <87fw63ib68.fsf@openvz.org>
+From: Hugh Dickins <hughd@google.com>
+Subject: [PATCH next/mmotm] ext4: fix cache_es after merge_left
+Date: Thu, 27 Sep 2012 13:31:28 -0700 (PDT)
+Message-ID: <alpine.LSU.2.00.1209271324060.2184@eggly.anvils>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52746 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753287Ab2I0UOF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Sep 2012 16:14:05 -0400
-Content-Disposition: inline
-In-Reply-To: <87fw63ib68.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Zheng Liu <wenqing.lz@taobao.com>,
+	Yongqiang Yang <xiaoqiangnk@gmail.com>,
+	Allison Henderson <achender@linux.vnet.ibm.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Ah, you're right.  I *can* easily see the problem; somehow I just
-didn't notice it, but when I look back at my test logs, it's
-definitely there.  I thought sb_start_write() took s_umount, but it
-doesn't, because it was trying to solve the exact same lock ordering
-problem.  Drat....
+Kernel build with CONFIG_DEBUG_SLAB or CONFIG_SLUB_DEBUG slub_debug=FPZ
+gives me kernel BUG at fs/ext4/extents_status.c:142!  That's the
+BUG_ON(es->start + es->len < es->start) in extent_status_end() called
+from ext4_es_insert_extent().  tree->cache_es has been freed and poisoned.
 
-Unfortunately, there doesn't seem to be a good solution here.  The two
-options I see is either (a) create another version of
-writeback_inodes_sb() which doesn't have the WARN_ON check in
-fs/fs-writeback.c (the warning is a false positive, since there are
-other mechanisms which protect the superblock from being unmounted
-while the write system call is in progress), or (b) call
-writeback_inodes_sb() out of a workqueue.
+This comes from when ext4_es_try_to_merge_left() merges es into leftward
+es1, but ext4_es_insert_extent()'s out then updates cache_es to the freed
+extent_status.  ext4_es_try_to_merge_right() does not pose a problem.
 
-		      	       - Ted
+Change ext4_es_try_to_merge_left() to return whichever extent_status
+should be recorded in tree->cache_es.  Remove cache_es update from
+both of them, leaving that to ext4_es_insert_extent()'s out label.
+
+Signed-off-by: Hugh Dickins <hughd@google.com>
+---
+ fs/ext4/extents_status.c |   15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+--- mmotm/fs/ext4/extents_status.c	2012-09-26 10:15:29.340071552 -0700
++++ linux/fs/ext4/extents_status.c	2012-09-27 11:52:59.284937056 -0700
+@@ -244,24 +244,24 @@ static void ext4_es_free_extent(struct e
+ 	kmem_cache_free(ext4_es_cachep, es);
+ }
+ 
+-static void ext4_es_try_to_merge_left(struct ext4_es_tree *tree,
+-				      struct extent_status *es)
++static struct extent_status *
++ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
+ {
+ 	struct extent_status *es1;
+ 	struct rb_node *node;
+ 
+ 	node = rb_prev(&es->rb_node);
+ 	if (!node)
+-		return;
++		return es;
+ 
+ 	es1 = rb_entry(node, struct extent_status, rb_node);
+ 	if (es->start == extent_status_end(es1) + 1) {
+ 		es1->len += es->len;
+ 		rb_erase(&es->rb_node, &tree->root);
+-		if (es == tree->cache_es)
+-			tree->cache_es = es1;
+ 		ext4_es_free_extent(es);
++		es = es1;	/* Caller will update tree->cache_es to this */
+ 	}
++	return es;
+ }
+ 
+ static void ext4_es_try_to_merge_right(struct ext4_es_tree *tree,
+@@ -278,9 +278,8 @@ static void ext4_es_try_to_merge_right(s
+ 	if (es1->start == extent_status_end(es) + 1) {
+ 		es->len += es1->len;
+ 		rb_erase(node, &tree->root);
+-		if (es1 == tree->cache_es)
+-			tree->cache_es = es;
+ 		ext4_es_free_extent(es1);
++		/* Caller will update tree->cache_es to es */
+ 	}
+ }
+ 
+@@ -318,7 +317,7 @@ int ext4_es_insert_extent(struct inode *
+ 		es_debug("cached by [%u/%u)\n", es->start, es->len);
+ 		es->start = offset;
+ 		es->len += len;
+-		ext4_es_try_to_merge_left(tree, es);
++		es = ext4_es_try_to_merge_left(tree, es);
+ 		goto out;
+ 	} else if (es && in_range(offset, es->start, es->len)) {
+ 		es_debug("cached by [%u/%u)\n", es->start, es->len);
