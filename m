@@ -1,68 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH, RFC] ext4: don't clear orphan list on ro mount with errors
-Date: Wed, 26 Sep 2012 23:32:27 -0500
-Message-ID: <5063D6DB.2000305@redhat.com>
-References: <503BC685.7090707@redhat.com> <503BCA24.7050100@redhat.com> <20120927033211.GE15707@thunk.org>
+From: Zhi Yong Wu <zwu.kernel@gmail.com>
+Subject: Re: [RFC v2 03/10] vfs: add one new mount option '-o hottrack'
+Date: Thu, 27 Sep 2012 13:25:34 +0800
+Message-ID: <CAEH94LimEZcAFKFMVNUzBcTeDxvkgeD3jCO3AgmkEKXVE4ym+A@mail.gmail.com>
+References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
+	<1348404995-14372-4-git-send-email-zwu.kernel@gmail.com>
+	<20120925092819.GC29154@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42117 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751277Ab2I0Ecb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Sep 2012 00:32:31 -0400
-In-Reply-To: <20120927033211.GE15707@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	cmm@us.ibm.com, tytso@mit.edu, marco.stornelli@gmail.com,
+	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20120925092819.GC29154@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 9/26/12 10:32 PM, Theodore Ts'o wrote:
-> On Mon, Aug 27, 2012 at 02:27:32PM -0500, Eric Sandeen wrote:
->> When we have a filesystem with an orphan inode list *and* in error
->> state, things behave differently if:
+On Tue, Sep 25, 2012 at 5:28 PM, Dave Chinner <david@fromorbit.com> wrote:
+> On Sun, Sep 23, 2012 at 08:56:28PM +0800, zwu.kernel@gmail.com wrote:
+>> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 >>
->> 1) e2fsck -p is done prior to mount: e2fsck fixes things and exits
->>    happily (barring other significant problems)
->>
->> vs.
->>
->> 2) mount is done first, then e2fsck -p: due to the orphan inode
->>    list removal, more errors are found and e2fsck exits with
->>    UNEXPECTED INCONSISTENCY.
->>
->> The 2nd case above, on the root filesystem, has the tendency to halt
->> the boot process, which is unfortunate.
->>
->> The situation can be improved by not clearing the orphan
->> inode list when the fs is mounted readonly.
->>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> I've applied this commit since I agree with Jan's observation that if
-> the file system is mounted read-only, we should try to minimize
-> changes to it if it contains errors.  I have modified the commit
-> description though:
+>>   Introduce one new mount option '-o hottrack',
+>> and add its parsing support.
+>>   Its usage looks like:
+>>    mount -o hottrack
+>>    mount -o nouser,hottrack
+>>    mount -o nouser,hottrack,loop
+>>    mount -o hottrack,nouser
+>
+> I think that this option parsing should be done by the filesystem,
+> even though the tracking functionality is in the VFS. That way ony
+> the filesystems that can use the tracking information will turn it
+> on, rather than being able to turn it on for everything regardless
+> of whether it is useful or not.
+>
+> Along those lines, just using a normal superblock flag to indicate
+> it is active (e.g. MS_HOT_INODE_TRACKING in sb->s_flags) means you
+> don't need to allocate the sb->s_hot_info structure just to be able
+If we don't allocate one sb->s_hot_info, where will those hash list
+head and btree roots locate?
 
-Fair enough, thanks.
-
--Eric
-
-> ext4: don't clear orphan list on ro mount with errors
-> 
-> From: Eric Sandeen <sandeen@redhat.com>
-> 
-> If the file system contains errors and it is being mounted read-only,
-> don't clear the orphan list.  We should minimize changes to the file
-> system if it is mounted read-only.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> 						- Ted
+> to check whether we are tracking hot inodes or not.
+>
+> This then means the hot inode tracking for the superblock can be
+> initialised by the filesystem as part of it's fill_super method,
+> along with the filesystem specific code that will use the hot
+> tracking information the VFS gathers....
+>
+> Cheers,
+>
+> Dave.
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> Dave Chinner
+> david@fromorbit.com
 
+
+
+-- 
+Regards,
+
+Zhi Yong Wu
