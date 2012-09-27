@@ -1,40 +1,34 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/6] xfstests: add fio requirement V2
-Date: Thu, 27 Sep 2012 10:19:59 +1000
-Message-ID: <20120927001959.GE15236@dastard>
-References: <1348496601-32637-1-git-send-email-dmonakhov@openvz.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: use kmem_cache_zalloc instead of
+ kmem_cache_alloc/memset
+Date: Wed, 26 Sep 2012 20:52:47 -0400
+Message-ID: <20120927005247.GA15707@thunk.org>
+References: <CAPgLHd_3++6=n+4qbimZprbgfn83ps3j+Fe543OZBr61DVs=vA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	hch@lst.de, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: adilger.kernel@dilger.ca, yongjun_wei@trendmicro.com.cn,
+	linux-ext4@vger.kernel.org
+To: Wei Yongjun <weiyj.lk@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:52597 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752686Ab2I0AxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Sep 2012 20:53:00 -0400
 Content-Disposition: inline
-In-Reply-To: <1348496601-32637-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAPgLHd_3++6=n+4qbimZprbgfn83ps3j+Fe543OZBr61DVs=vA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 24, 2012 at 06:23:16PM +0400, Dmitry Monakhov wrote:
-> FIO is very flexible io generator, i would call it IO swiss knife.
-> Currently we have tonns of hardcoded application which reproduces
-> some predefined scenario. This approach has obvious dissadvantages
-> 1) Lack of flexability: one written it is hard to modify it in future
-> 2) Code base is large, many routines written again and again
+On Tue, Aug 28, 2012 at 09:39:40PM +0800, Wei Yongjun wrote:
+> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 > 
-> At the same time add new fio based tast is just add simle INI file.
-> This greatly simplify code review. I do beleve that some day we will
-> replace most of hardcoded io binaries with fio.
+> Using kmem_cache_zalloc() instead of kmem_cache_alloc() and memset().
 > 
-> One who is planning to run $FIO_PROG should first check that system
-> contains appropriate version which is able to handle jobfile
-> for example:  _require_fio 286-job.fio
+> spatch with a semantic match is used to found this problem.
+> (http://coccinelle.lip6.fr/)
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-Looks good.
+Applied, thanks!
 
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
-
--- 
-Dave Chinner
-david@fromorbit.com
+					- Ted
