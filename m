@@ -1,10 +1,10 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v2 03/10] vfs: add one new mount option '-o hottrack'
-Date: Thu, 27 Sep 2012 13:25:34 +0800
-Message-ID: <CAEH94LimEZcAFKFMVNUzBcTeDxvkgeD3jCO3AgmkEKXVE4ym+A@mail.gmail.com>
+Subject: Re: [RFC v2 05/10] vfs: introduce one hash table
+Date: Thu, 27 Sep 2012 14:23:16 +0800
+Message-ID: <CAEH94Liftb9zhTt=5TFUOay=aAQ+MA6YXsQWWt0Kn+F8U2MJNg@mail.gmail.com>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
-	<1348404995-14372-4-git-send-email-zwu.kernel@gmail.com>
-	<20120925092819.GC29154@dastard>
+	<1348404995-14372-6-git-send-email-zwu.kernel@gmail.com>
+	<20120927034310.GM15236@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -14,41 +14,110 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20120925092819.GC29154@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:45256 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751475Ab2I0GXT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Sep 2012 02:23:19 -0400
+In-Reply-To: <20120927034310.GM15236@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 25, 2012 at 5:28 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Sun, Sep 23, 2012 at 08:56:28PM +0800, zwu.kernel@gmail.com wrote:
+On Thu, Sep 27, 2012 at 11:43 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Sun, Sep 23, 2012 at 08:56:30PM +0800, zwu.kernel@gmail.com wrote:
 >> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 >>
->>   Introduce one new mount option '-o hottrack',
->> and add its parsing support.
->>   Its usage looks like:
->>    mount -o hottrack
->>    mount -o nouser,hottrack
->>    mount -o nouser,hottrack,loop
->>    mount -o hottrack,nouser
+>>   Adds a hash table structure which contains
+>> a lot of hash list and is used to efficiently
+>> look up the data temperature of a file or its
+>> ranges.
+>>   In each hash list of hash table, the hash node
+>> will keep track of temperature info.
 >
-> I think that this option parsing should be done by the filesystem,
-> even though the tracking functionality is in the VFS. That way ony
-> the filesystems that can use the tracking information will turn it
-> on, rather than being able to turn it on for everything regardless
-> of whether it is useful or not.
+> So, let me see if I've got the relationship straight:
 >
-> Along those lines, just using a normal superblock flag to indicate
-> it is active (e.g. MS_HOT_INODE_TRACKING in sb->s_flags) means you
-> don't need to allocate the sb->s_hot_info structure just to be able
-If we don't allocate one sb->s_hot_info, where will those hash list
-head and btree roots locate?
+> - sb->s_hot_info.hot_inode_tree indexes hot_inode_items, one per inode
+>
+> - hot_inode_item contains access frequency data for that inode
+>
+> - hot_inode_item holds a heat hash node to index the access
+>   frequency data for that inode
+>
+> - hot_inode_item.hot_range_tree indexes hot_range_items for that inode
+>
+> - hot_range_item contains access frequency data for that range
+>
+> - hot_range_item holds a heat hash node to index the access
+>   frequency data for that range
+>
+> - sb->s_hot_info.heat_inode_hl indexes per-inode heat hash nodes
+>
+> - sb->s_hot_info.heat_range_hl indexes per-range heat hash nodes
+Correct.
+>
+> How about some ascii art? :) Just looking at the hot inode item case
+> (the range item case is the same pattern, though), we have:
+>
+>
+> heat_inode_hl           hot_inode_tree
+>     |                         |
+>     |                         V
+>     |           +-------hot_inode_item-------+
+> +---+           |       frequency data       |
+> |               V            ^               V
+> | ...<--hot_inode_item-->... |    ...<--hot_inode_item-->....
+> |       frequency data       |          frequency data
+> |               ^            |               ^
+> |               |            |               |
+> |               |            |               |
+> +------>hot_hash_node-->hot_hash_node-->hot_hash_node-->....
+Great, can we put them in hot_tracking.txt in Documentation?
+>
+>
+> There's no actual data stored in the hot_hash_node, just pointer
+> back to the frequency data, a hlist_node and a pointer to the
+> hashlist head. IOWs, I agree with Ram that this does not need to
+> exist and just embedding a hlist_node inside the hot_inode_item is
+> all that is needed. i.e:
+>
+> heat_inode_hl           hot_inode_tree
+>     |                         |
+>     |                         V
+>     |           +-------hot_inode_item-------+
+>     |           |       frequency data       |
+> +---+           |       hlist_node           |
+> |               V            ^ |             V
+> | ...<--hot_inode_item-->... | |  ...<--hot_inode_item-->....
+> |       frequency data       | |        frequency data
+> +------>hlist_node-----------+ +------->hlist_node--->.....
+>
+> There's no need for separate allocations, initialisations, locks and
+> reference counting - all that is already in the hot_inode_item. The
+> items have the same lifecycle limitations - a hot_hash_node must be
+> torn down before the frequency data it points to is freed. Finally,
+> there's no difference in how you move it between lists.
+How will you know if one hot_inode_item should be moved between lists
+when its freq data is changed?
+>
+> Indeed, calling it a hash is wrong - there's not hashing at all
+> - it keeping an array of list where each entry corresponds to a
+> specific temperature. It is a *heat map*, not a hash list. i.e.
+> inode_heat_map, not heat_inode_hl. HEAT_MAP_SIZE, not HASH_SIZE.
+OK.
+>
+> As it is, there aren't any users of the heat maps that are generated
+> in this patch set - it's not even exported to userspace or to
+> debugfs, so I'm not sure how it will be used yet. How are these heat
+> maps going to be used by filesystems, Zhi?
+In hot_hash_calc_temperature(), you can see that one hot_inode or
+hot_range's freq data will be distilled into one temperature value,
+then it will be inserted to the heat map based on its temperature.
+When the file corresponding to the inode or range got hotter or cold,
+its location will be changed in the heat map based on its new
+temperature in hot_hash_update_hash_table().
 
-> to check whether we are tracking hot inodes or not.
->
-> This then means the hot inode tracking for the superblock can be
-> initialised by the filesystem as part of it's fill_super method,
-> along with the filesystem specific code that will use the hot
-> tracking information the VFS gathers....
+And the user will retrieve those freq data and temperature info via
+debugfs or ioctl interfaces.
 >
 > Cheers,
 >
