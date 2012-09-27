@@ -1,46 +1,59 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: jbd2: Fix assertion failure in commit code due to lacking
- transaction credits
-Date: Wed, 26 Sep 2012 23:13:06 -0400
-Message-ID: <20120927031306.GA16520@thunk.org>
-References: <1345494123-4500-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH, RFC] ext4: don't clear orphan list on ro mount with
+ errors
+Date: Wed, 26 Sep 2012 23:32:11 -0400
+Message-ID: <20120927033211.GE15707@thunk.org>
+References: <503BC685.7090707@redhat.com>
+ <503BCA24.7050100@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Josef Bacik <jbacik@fusionio.com>
-To: Jan Kara <jack@suse.cz>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52630 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:52637 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753769Ab2I0DNK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2012 23:13:10 -0400
+	id S1753682Ab2I0DcR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Sep 2012 23:32:17 -0400
 Content-Disposition: inline
-In-Reply-To: <1345494123-4500-1-git-send-email-jack@suse.cz>
+In-Reply-To: <503BCA24.7050100@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 20, 2012 at 10:22:03AM -0000, Jan Kara wrote:
-> ext4 users of data=journal mode with blocksize < pagesize were occasionally
-> hitting assertion failure in jbd2_journal_commit_transaction() checking whether
-> the transaction has at least as many credits reserved as buffers attached.  The
-> core of the problem is that when a file gets truncated, buffers that still need
-> checkpointing or that are attached to the committing transaction are left with
-> buffer_mapped set. When this happens to buffers beyond i_size attached to a
-> page stradding i_size, subsequent write extending the file will see these
-> buffers and as they are mapped (but underlying blocks were freed) things go
-> awry from here.
+On Mon, Aug 27, 2012 at 02:27:32PM -0500, Eric Sandeen wrote:
+> When we have a filesystem with an orphan inode list *and* in error
+> state, things behave differently if:
 > 
-> The assertion failure just coincidentally (and in this case luckily as we would
-> start corrupting filesystem) triggers due to journal_head not being properly
-> cleaned up as well.
+> 1) e2fsck -p is done prior to mount: e2fsck fixes things and exits
+>    happily (barring other significant problems)
 > 
-> We fix the problem by unmapping buffers if possible (in lots of cases we just
-> need a buffer attached to a transaction as a place holder but it must not be
-> written out anyway). And in one case, we just have to bite the bullet and wait
-> for transaction commit to finish.
+> vs.
 > 
-> CC: Josef Bacik <jbacik@fusionio.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> 2) mount is done first, then e2fsck -p: due to the orphan inode
+>    list removal, more errors are found and e2fsck exits with
+>    UNEXPECTED INCONSISTENCY.
+> 
+> The 2nd case above, on the root filesystem, has the tendency to halt
+> the boot process, which is unfortunate.
+> 
+> The situation can be improved by not clearing the orphan
+> inode list when the fs is mounted readonly.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Applied, thanks!
+I've applied this commit since I agree with Jan's observation that if
+the file system is mounted read-only, we should try to minimize
+changes to it if it contains errors.  I have modified the commit
+description though:
+
+ext4: don't clear orphan list on ro mount with errors
+
+From: Eric Sandeen <sandeen@redhat.com>
+
+If the file system contains errors and it is being mounted read-only,
+don't clear the orphan list.  We should minimize changes to the file
+system if it is mounted read-only.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
 						- Ted
