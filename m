@@ -1,11 +1,11 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC v2 06/10] vfs: enable hot data tracking
-Date: Thu, 27 Sep 2012 16:59:53 +1000
-Message-ID: <20120927065953.GQ15236@dastard>
+Subject: Re: [RFC v2 07/10] vfs: fork one kthread to update data temperature
+Date: Thu, 27 Sep 2012 17:01:17 +1000
+Message-ID: <20120927070117.GR15236@dastard>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
- <1348404995-14372-7-git-send-email-zwu.kernel@gmail.com>
- <20120927035425.GN15236@dastard>
- <CAEH94LgxOLhyP50hyjQxsECZP1knkYB+11N4=UtJ4mTb5Bmm1g@mail.gmail.com>
+ <1348404995-14372-8-git-send-email-zwu.kernel@gmail.com>
+ <20120927040357.GO15236@dastard>
+ <CAEH94LgMXNZ_6Cs-YbhWVocO6jWb+Xq8=xgooimCFGnFbuEw5Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -15,63 +15,29 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: Zhi Yong Wu <zwu.kernel@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAEH94LgxOLhyP50hyjQxsECZP1knkYB+11N4=UtJ4mTb5Bmm1g@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <CAEH94LgMXNZ_6Cs-YbhWVocO6jWb+Xq8=xgooimCFGnFbuEw5Q@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 27, 2012 at 02:28:12PM +0800, Zhi Yong Wu wrote:
-> On Thu, Sep 27, 2012 at 11:54 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Sun, Sep 23, 2012 at 08:56:31PM +0800, zwu.kernel@gmail.com wrote:
+On Thu, Sep 27, 2012 at 02:54:22PM +0800, Zhi Yong Wu wrote:
+> On Thu, Sep 27, 2012 at 12:03 PM, Dave Chinner <david@fromorbit.com> wrote:
+> > On Sun, Sep 23, 2012 at 08:56:32PM +0800, zwu.kernel@gmail.com wrote:
 > >> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 > >>
-> >>   Miscellaneous features that implement hot data tracking
-> >> and generally make the hot data functions a bit more friendly.
-> >>
-> >> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-> >> ---
-> >>  fs/direct-io.c               |   10 ++++++++++
-> >>  include/linux/hot_tracking.h |   11 +++++++++++
-> >>  mm/filemap.c                 |    8 ++++++++
-> >>  mm/page-writeback.c          |   21 +++++++++++++++++++++
-> >>  mm/readahead.c               |    9 +++++++++
-> >>  5 files changed, 59 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> >> index f86c720..3773f44 100644
-> >> --- a/fs/direct-io.c
-> >> +++ b/fs/direct-io.c
-> >> @@ -37,6 +37,7 @@
-> >>  #include <linux/uio.h>
-> >>  #include <linux/atomic.h>
-> >>  #include <linux/prefetch.h>
-> >> +#include "hot_tracking.h"
-> >>
-> >>  /*
-> >>   * How many user pages to map in one call to get_user_pages().  This determines
-> >> @@ -1297,6 +1298,15 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
-> >>       prefetch(bdev->bd_queue);
-> >>       prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
-> >>
-> >> +     /* Hot data tracking */
-> >> +     if (TRACK_THIS_INODE(iocb->ki_filp->f_mapping->host)
-> >> +                     && iov_length(iov, nr_segs) > 0) {
-> >> +             hot_rb_update_freqs(iocb->ki_filp->f_mapping->host,
-> >> +                             (u64)offset,
-> >> +                             (u64)iov_length(iov, nr_segs),
-> >> +                             rw & WRITE);
-> >> +     }
+> >>   Fork and run one kernel kthread to calculate
+> >> that temperature based on some metrics kept
+> >> in custom frequency data structs, and store
+> >> the info in the hash table.
 > >
-> > That's a bit messy. I'd prefer a static inline function that hides
-> > all this. e.g.
-> Do you think of moving the condition into hot_inode_udate_freqs(), not
-> adding another new function?
+> > No new kthreads, please. Use a per-superblock workqueue and a struct
+> > delayed_work to run periodic work on each superblock.
+> If no new kthread is created, which kthread will work on these
+> delayed_work tasks?
 
-Moving it into hot_inode_udate_freqs() will add a function call
-overhead even when tracking is not enabled. a static inline function
-will just result in no extra overhead other than the if
-statement....
+One of the kworker threads that service the workqueue
+infrastructure.
 
 Cheers,
 
