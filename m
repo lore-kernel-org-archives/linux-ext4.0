@@ -1,59 +1,113 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH, RFC] ext4: don't clear orphan list on ro mount with
- errors
-Date: Wed, 26 Sep 2012 23:32:11 -0400
-Message-ID: <20120927033211.GE15707@thunk.org>
-References: <503BC685.7090707@redhat.com>
- <503BCA24.7050100@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC v2 05/10] vfs: introduce one hash table
+Date: Thu, 27 Sep 2012 13:43:10 +1000
+Message-ID: <20120927034310.GM15236@dastard>
+References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
+ <1348404995-14372-6-git-send-email-zwu.kernel@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	cmm@us.ibm.com, tytso@mit.edu, marco.stornelli@gmail.com,
+	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: zwu.kernel@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:52637 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753682Ab2I0DcR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2012 23:32:17 -0400
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:56129 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753682Ab2I0DnP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Sep 2012 23:43:15 -0400
 Content-Disposition: inline
-In-Reply-To: <503BCA24.7050100@redhat.com>
+In-Reply-To: <1348404995-14372-6-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 27, 2012 at 02:27:32PM -0500, Eric Sandeen wrote:
-> When we have a filesystem with an orphan inode list *and* in error
-> state, things behave differently if:
+On Sun, Sep 23, 2012 at 08:56:30PM +0800, zwu.kernel@gmail.com wrote:
+> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 > 
-> 1) e2fsck -p is done prior to mount: e2fsck fixes things and exits
->    happily (barring other significant problems)
-> 
-> vs.
-> 
-> 2) mount is done first, then e2fsck -p: due to the orphan inode
->    list removal, more errors are found and e2fsck exits with
->    UNEXPECTED INCONSISTENCY.
-> 
-> The 2nd case above, on the root filesystem, has the tendency to halt
-> the boot process, which is unfortunate.
-> 
-> The situation can be improved by not clearing the orphan
-> inode list when the fs is mounted readonly.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>   Adds a hash table structure which contains
+> a lot of hash list and is used to efficiently
+> look up the data temperature of a file or its
+> ranges.
+>   In each hash list of hash table, the hash node
+> will keep track of temperature info.
 
-I've applied this commit since I agree with Jan's observation that if
-the file system is mounted read-only, we should try to minimize
-changes to it if it contains errors.  I have modified the commit
-description though:
+So, let me see if I've got the relationship straight:
 
-ext4: don't clear orphan list on ro mount with errors
+- sb->s_hot_info.hot_inode_tree indexes hot_inode_items, one per inode
 
-From: Eric Sandeen <sandeen@redhat.com>
+- hot_inode_item contains access frequency data for that inode
 
-If the file system contains errors and it is being mounted read-only,
-don't clear the orphan list.  We should minimize changes to the file
-system if it is mounted read-only.
+- hot_inode_item holds a heat hash node to index the access
+  frequency data for that inode
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+- hot_inode_item.hot_range_tree indexes hot_range_items for that inode
 
-						- Ted
+- hot_range_item contains access frequency data for that range
+
+- hot_range_item holds a heat hash node to index the access
+  frequency data for that range
+
+- sb->s_hot_info.heat_inode_hl indexes per-inode heat hash nodes
+
+- sb->s_hot_info.heat_range_hl indexes per-range heat hash nodes
+
+How about some ascii art? :) Just looking at the hot inode item case
+(the range item case is the same pattern, though), we have:
+
+
+heat_inode_hl		hot_inode_tree
+    |			      |
+    |			      V
+    |		+-------hot_inode_item-------+
++---+		|	frequency data       |
+|		V            ^               V
+| ...<--hot_inode_item-->... |	  ...<--hot_inode_item-->....
+|	frequency data	     |		frequency data
+|		^	     |		     ^
+|		|	     |		     |
+|		|	     |		     |
++------>hot_hash_node-->hot_hash_node-->hot_hash_node-->....
+
+
+There's no actual data stored in the hot_hash_node, just pointer
+back to the frequency data, a hlist_node and a pointer to the
+hashlist head. IOWs, I agree with Ram that this does not need to
+exist and just embedding a hlist_node inside the hot_inode_item is
+all that is needed. i.e:
+
+heat_inode_hl		hot_inode_tree
+    |			      |
+    |			      V
+    |		+-------hot_inode_item-------+
+    |		|	frequency data       |
++---+		|	hlist_node           |
+|		V            ^ |             V
+| ...<--hot_inode_item-->... | |  ...<--hot_inode_item-->....
+|	frequency data	     | |	frequency data
++------>hlist_node-----------+ +------->hlist_node--->.....
+
+There's no need for separate allocations, initialisations, locks and
+reference counting - all that is already in the hot_inode_item. The
+items have the same lifecycle limitations - a hot_hash_node must be
+torn down before the frequency data it points to is freed. Finally,
+there's no difference in how you move it between lists.
+
+Indeed, calling it a hash is wrong - there's not hashing at all
+- it keeping an array of list where each entry corresponds to a
+specific temperature. It is a *heat map*, not a hash list. i.e.
+inode_heat_map, not heat_inode_hl. HEAT_MAP_SIZE, not HASH_SIZE.
+
+As it is, there aren't any users of the heat maps that are generated
+in this patch set - it's not even exported to userspace or to
+debugfs, so I'm not sure how it will be used yet. How are these heat
+maps going to be used by filesystems, Zhi?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
