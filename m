@@ -1,9 +1,9 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC v2 05/10] vfs: introduce one hash table
-Date: Thu, 27 Sep 2012 13:43:10 +1000
-Message-ID: <20120927034310.GM15236@dastard>
+Subject: Re: [RFC v2 06/10] vfs: enable hot data tracking
+Date: Thu, 27 Sep 2012 13:54:25 +1000
+Message-ID: <20120927035425.GN15236@dastard>
 References: <1348404995-14372-1-git-send-email-zwu.kernel@gmail.com>
- <1348404995-14372-6-git-send-email-zwu.kernel@gmail.com>
+ <1348404995-14372-7-git-send-email-zwu.kernel@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -13,97 +13,93 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	stroetmann@ontolinux.com, diegocg@gmail.com, chris@csamuel.org,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: zwu.kernel@gmail.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:56129 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753682Ab2I0DnP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Sep 2012 23:43:15 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1348404995-14372-6-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1348404995-14372-7-git-send-email-zwu.kernel@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Sep 23, 2012 at 08:56:30PM +0800, zwu.kernel@gmail.com wrote:
+On Sun, Sep 23, 2012 at 08:56:31PM +0800, zwu.kernel@gmail.com wrote:
 > From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 > 
->   Adds a hash table structure which contains
-> a lot of hash list and is used to efficiently
-> look up the data temperature of a file or its
-> ranges.
->   In each hash list of hash table, the hash node
-> will keep track of temperature info.
+>   Miscellaneous features that implement hot data tracking
+> and generally make the hot data functions a bit more friendly.
+> 
+> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+> ---
+>  fs/direct-io.c               |   10 ++++++++++
+>  include/linux/hot_tracking.h |   11 +++++++++++
+>  mm/filemap.c                 |    8 ++++++++
+>  mm/page-writeback.c          |   21 +++++++++++++++++++++
+>  mm/readahead.c               |    9 +++++++++
+>  5 files changed, 59 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/direct-io.c b/fs/direct-io.c
+> index f86c720..3773f44 100644
+> --- a/fs/direct-io.c
+> +++ b/fs/direct-io.c
+> @@ -37,6 +37,7 @@
+>  #include <linux/uio.h>
+>  #include <linux/atomic.h>
+>  #include <linux/prefetch.h>
+> +#include "hot_tracking.h"
+>  
+>  /*
+>   * How many user pages to map in one call to get_user_pages().  This determines
+> @@ -1297,6 +1298,15 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
+>  	prefetch(bdev->bd_queue);
+>  	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
+>  
+> +	/* Hot data tracking */
+> +	if (TRACK_THIS_INODE(iocb->ki_filp->f_mapping->host)
+> +			&& iov_length(iov, nr_segs) > 0) {
+> +		hot_rb_update_freqs(iocb->ki_filp->f_mapping->host,
+> +				(u64)offset,
+> +				(u64)iov_length(iov, nr_segs),
+> +				rw & WRITE);
+> +	}
 
-So, let me see if I've got the relationship straight:
+That's a bit messy. I'd prefer a static inline function that hides
+all this. e.g.
 
-- sb->s_hot_info.hot_inode_tree indexes hot_inode_items, one per inode
+track_hot_inode_ranges(inode, offset, length, rw)
+{
+	if (inode->i_sb->s_flags & MS_HOT_TRACKING)
+		hot_inode_freq_update(inode, offset, length, rw);
+}
 
-- hot_inode_item contains access frequency data for that inode
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 5ad5ce2..552c861 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -35,6 +35,7 @@
+>  #include <linux/buffer_head.h> /* __set_page_dirty_buffers */
+>  #include <linux/pagevec.h>
+>  #include <linux/timer.h>
+> +#include <linux/hot_tracking.h>
+>  #include <trace/events/writeback.h>
+>  
+>  /*
+> @@ -1895,13 +1896,33 @@ EXPORT_SYMBOL(generic_writepages);
+>  int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+>  {
+>  	int ret;
+> +	pgoff_t start = 0;
+> +	u64 prev_count = 0, count = 0;
+>  
+>  	if (wbc->nr_to_write <= 0)
+>  		return 0;
+> +
+> +	/* Hot data tracking */
+> +	if (TRACK_THIS_INODE(mapping->host)
+> +		&& wbc->range_cyclic) {
+> +		start = mapping->writeback_index << PAGE_CACHE_SHIFT;
+> +		prev_count = (u64)wbc->nr_to_write;
+> +	}
 
-- hot_inode_item holds a heat hash node to index the access
-  frequency data for that inode
-
-- hot_inode_item.hot_range_tree indexes hot_range_items for that inode
-
-- hot_range_item contains access frequency data for that range
-
-- hot_range_item holds a heat hash node to index the access
-  frequency data for that range
-
-- sb->s_hot_info.heat_inode_hl indexes per-inode heat hash nodes
-
-- sb->s_hot_info.heat_range_hl indexes per-range heat hash nodes
-
-How about some ascii art? :) Just looking at the hot inode item case
-(the range item case is the same pattern, though), we have:
-
-
-heat_inode_hl		hot_inode_tree
-    |			      |
-    |			      V
-    |		+-------hot_inode_item-------+
-+---+		|	frequency data       |
-|		V            ^               V
-| ...<--hot_inode_item-->... |	  ...<--hot_inode_item-->....
-|	frequency data	     |		frequency data
-|		^	     |		     ^
-|		|	     |		     |
-|		|	     |		     |
-+------>hot_hash_node-->hot_hash_node-->hot_hash_node-->....
-
-
-There's no actual data stored in the hot_hash_node, just pointer
-back to the frequency data, a hlist_node and a pointer to the
-hashlist head. IOWs, I agree with Ram that this does not need to
-exist and just embedding a hlist_node inside the hot_inode_item is
-all that is needed. i.e:
-
-heat_inode_hl		hot_inode_tree
-    |			      |
-    |			      V
-    |		+-------hot_inode_item-------+
-    |		|	frequency data       |
-+---+		|	hlist_node           |
-|		V            ^ |             V
-| ...<--hot_inode_item-->... | |  ...<--hot_inode_item-->....
-|	frequency data	     | |	frequency data
-+------>hlist_node-----------+ +------->hlist_node--->.....
-
-There's no need for separate allocations, initialisations, locks and
-reference counting - all that is already in the hot_inode_item. The
-items have the same lifecycle limitations - a hot_hash_node must be
-torn down before the frequency data it points to is freed. Finally,
-there's no difference in how you move it between lists.
-
-Indeed, calling it a hash is wrong - there's not hashing at all
-- it keeping an array of list where each entry corresponds to a
-specific temperature. It is a *heat map*, not a hash list. i.e.
-inode_heat_map, not heat_inode_hl. HEAT_MAP_SIZE, not HASH_SIZE.
-
-As it is, there aren't any users of the heat maps that are generated
-in this patch set - it's not even exported to userspace or to
-debugfs, so I'm not sure how it will be used yet. How are these heat
-maps going to be used by filesystems, Zhi?
+Why only wbc->range_cyclic? This won't record things like
+synchronous writes or fsync-triggered writes, are are far more
+likely to be to hot ranges in a file...
 
 Cheers,
 
