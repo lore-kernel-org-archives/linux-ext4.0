@@ -1,65 +1,52 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 11/11] ext4: fix ext_remove_space for punch_hole case
-Date: Fri, 28 Sep 2012 19:44:11 +0400
-Message-ID: <1348847051-6746-12-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 08/11] ext4: endless truncate due to nonlocked dio readers V2
+Date: Fri, 28 Sep 2012 19:44:08 +0400
+Message-ID: <1348847051-6746-9-git-send-email-dmonakhov@openvz.org>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, lczerner@redhat.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f46.google.com ([209.85.215.46]:44001 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758375Ab2I1Pof (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:35 -0400
-Received: by lagh6 with SMTP id h6so1128089lag.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:34 -0700 (PDT)
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:35250 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758470Ab2I1Poa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:30 -0400
+Received: by mail-bk0-f46.google.com with SMTP id jk13so3591549bkc.19
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:29 -0700 (PDT)
 In-Reply-To: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Inode is allowed to have empty leaf only if it this is blockless inode.
+If we have enough aggressive DIO readers, truncate and other dio
+waiters will wait forever inside inode_dio_wait(). It is reasonable
+to disable nonlock DIO read optimization during truncate.
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |   16 +++++++++-------
- 1 files changed, 9 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a1d16eb..5ed6e86 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2589,7 +2589,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 	struct ext4_ext_path *path = NULL;
- 	ext4_fsblk_t partial_cluster = 0;
- 	handle_t *handle;
--	int i = 0, err;
-+	int i = 0, err = 0;
- 
- 	ext_debug("truncate since %u to %u\n", start, end);
- 
-@@ -2621,12 +2621,16 @@ again:
- 			return PTR_ERR(path);
- 		}
- 		depth = ext_depth(inode);
-+		/* Leaf not may not exist only if inode has no blocks at all */
- 		ex = path[depth].p_ext;
- 		if (!ex) {
--			ext4_ext_drop_refs(path);
--			kfree(path);
--			path = NULL;
--			goto cont;
-+			if (depth) {
-+				EXT4_ERROR_INODE(inode,
-+						 "path[%d].p_hdr == NULL",
-+						 depth);
-+				err = -EIO;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 583cb3f..c40a98d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4305,9 +4305,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (attr->ia_valid & ATTR_SIZE) {
+ 		if (attr->ia_size != inode->i_size) {
+ 			truncate_setsize(inode, attr->ia_size);
+-			/* Inode size will be reduced, wait for dio in flight */
+-			if (orphan)
++			/* Inode size will be reduced, wait for dio in flight.
++			 * Temporarily disable dioread_nolock to prevent
++			 * livelock. */
++			if (orphan) {
++				ext4_inode_block_unlocked_dio(inode);
+ 				inode_dio_wait(inode);
++				ext4_inode_resume_unlocked_dio(inode);
 +			}
-+			goto out;
  		}
- 
- 		ee_block = le32_to_cpu(ex->ee_block);
-@@ -2658,8 +2662,6 @@ again:
- 				goto out;
- 		}
+ 		ext4_truncate(inode);
  	}
--cont:
+-- 
+1.7.7.6
+
