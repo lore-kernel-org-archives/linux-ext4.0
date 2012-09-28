@@ -1,109 +1,132 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 02/11] ext4: give i_aiodio_unwritten more appropriate name
-Date: Fri, 28 Sep 2012 19:44:02 +0400
-Message-ID: <1348847051-6746-3-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 01/11] ext4: ext4_inode_info diet
+Date: Fri, 28 Sep 2012 19:44:01 +0400
+Message-ID: <1348847051-6746-2-git-send-email-dmonakhov@openvz.org>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, lczerner@redhat.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:35250 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758247Ab2I1PoV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:21 -0400
-Received: by mail-bk0-f46.google.com with SMTP id jk13so3591549bkc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:20 -0700 (PDT)
+Received: from mail-la0-f46.google.com ([209.85.215.46]:61221 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758246Ab2I1PoU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:20 -0400
+Received: by lagh6 with SMTP id h6so1127961lag.19
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:19 -0700 (PDT)
 In-Reply-To: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-AIO/DIO prefix is wrong because it account unwritten extents which
-also may be scheduled from buffered write endio
+Generic inode has unused i_private pointer which may be used as cur_aio_dio
+storage.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+TODO: If cur_aio_dio will be passed as an argument to get_block_t this allow
+      to have concurent AIO_DIO requests.
+
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/ext4.h    |    4 ++--
- fs/ext4/file.c    |    6 +++---
- fs/ext4/page-io.c |    2 +-
- fs/ext4/super.c   |    2 +-
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ fs/ext4/ext4.h    |   12 ++++++++++--
+ fs/ext4/extents.c |    4 ++--
+ fs/ext4/inode.c   |    6 +++---
+ fs/ext4/super.c   |    1 -
+ 4 files changed, 15 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 42be3ae..0d393dc 100644
+index 6f37c11..42be3ae 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -917,7 +917,7 @@ struct ext4_inode_info {
+@@ -917,8 +917,6 @@ struct ext4_inode_info {
  	struct list_head i_completed_io_list;
  	spinlock_t i_completed_io_lock;
  	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
--	atomic_t i_aiodio_unwritten; /* Nr. of inflight conversions pending */
-+	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
+-	/* current io_end structure for async DIO write*/
+-	ext4_io_end_t *cur_aio_dio;
+ 	atomic_t i_aiodio_unwritten; /* Nr. of inflight conversions pending */
  
  	spinlock_t i_block_reservation_lock;
- 
-@@ -1337,7 +1337,7 @@ static inline void ext4_set_io_unwritten_flag(struct inode *inode,
- {
- 	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
- 		io_end->flag |= EXT4_IO_END_UNWRITTEN;
--		atomic_inc(&EXT4_I(inode)->i_aiodio_unwritten);
-+		atomic_inc(&EXT4_I(inode)->i_unwritten);
+@@ -1343,6 +1341,16 @@ static inline void ext4_set_io_unwritten_flag(struct inode *inode,
  	}
  }
  
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index cfdf774..40c02c6 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -55,11 +55,11 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
- 	return 0;
- }
- 
--static void ext4_aiodio_wait(struct inode *inode)
-+static void ext4_unwritten_wait(struct inode *inode)
- {
- 	wait_queue_head_t *wq = ext4_ioend_wq(inode);
- 
--	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_aiodio_unwritten) == 0));
-+	wait_event(*wq, (atomic_read(&EXT4_I(inode)->i_unwritten) == 0));
- }
- 
++static inline ext4_io_end_t *ext4_inode_aio(struct inode *inode)
++{
++	return inode->i_private;
++}
++
++static inline void ext4_inode_aio_set(struct inode *inode, ext4_io_end_t *io)
++{
++	inode->i_private = io;
++}
++
  /*
-@@ -116,7 +116,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 				 "performance will be poor.",
- 				 inode->i_ino, current->comm);
- 		mutex_lock(ext4_aio_mutex(inode));
--		ext4_aiodio_wait(inode);
-+		ext4_unwritten_wait(inode);
- 	}
+  * Inode dynamic state flags
+  */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c29379d..e9549f9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3530,7 +3530,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ {
+ 	int ret = 0;
+ 	int err = 0;
+-	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
++	ext4_io_end_t *io = ext4_inode_aio(inode);
  
- 	BUG_ON(iocb->ki_pos != pos);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index dcdeef1..de77e31 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -113,7 +113,7 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
- 	if (io->flag & EXT4_IO_END_DIRECT)
- 		inode_dio_done(inode);
- 	/* Wake up anyone waiting on unwritten extent conversion */
--	if (atomic_dec_and_test(&EXT4_I(inode)->i_aiodio_unwritten))
-+	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
- 		wake_up_all(ext4_ioend_wq(io->inode));
- 	return ret;
- }
+ 	ext_debug("ext4_ext_handle_uninitialized_extents: inode %lu, logical "
+ 		  "block %llu, max_blocks %u, flags %x, allocated %u\n",
+@@ -3788,7 +3788,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	unsigned int allocated = 0, offset = 0;
+ 	unsigned int allocated_clusters = 0;
+ 	struct ext4_allocation_request ar;
+-	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
++	ext4_io_end_t *io = ext4_inode_aio(inode);
+ 	ext4_lblk_t cluster_offset;
+ 
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ad568b8..3a28cf7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3028,7 +3028,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 		 * hook to the iocb.
+  		 */
+ 		iocb->private = NULL;
+-		EXT4_I(inode)->cur_aio_dio = NULL;
++		ext4_inode_aio_set(inode, NULL);
+ 		if (!is_sync_kiocb(iocb)) {
+ 			ext4_io_end_t *io_end =
+ 				ext4_init_io_end(inode, GFP_NOFS);
+@@ -3045,7 +3045,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 			 * is a unwritten extents needs to be converted
+ 			 * when IO is completed.
+ 			 */
+-			EXT4_I(inode)->cur_aio_dio = iocb->private;
++			ext4_inode_aio_set(inode, io_end);
+ 		}
+ 
+ 		if (overwrite)
+@@ -3065,7 +3065,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 						 NULL,
+ 						 DIO_LOCKING);
+ 		if (iocb->private)
+-			EXT4_I(inode)->cur_aio_dio = NULL;
++			ext4_inode_aio_set(inode, NULL);
+ 		/*
+ 		 * The io_end structure takes a reference to the inode,
+ 		 * that structure needs to be destroyed and the
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b5dfff8..f2d928c 100644
+index d5f4c97..b5dfff8 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -970,7 +970,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+@@ -967,7 +967,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->jinode = NULL;
+ 	INIT_LIST_HEAD(&ei->i_completed_io_list);
+ 	spin_lock_init(&ei->i_completed_io_lock);
+-	ei->cur_aio_dio = NULL;
  	ei->i_sync_tid = 0;
  	ei->i_datasync_tid = 0;
  	atomic_set(&ei->i_ioend_count, 0);
--	atomic_set(&ei->i_aiodio_unwritten, 0);
-+	atomic_set(&ei->i_unwritten, 0);
- 
- 	return &ei->vfs_inode;
- }
 -- 
 1.7.7.6
 
