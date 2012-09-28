@@ -1,7 +1,7 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 07/11] ext4: serialize unlocked dio reads with truncate
-Date: Fri, 28 Sep 2012 19:44:07 +0400
-Message-ID: <1348847051-6746-8-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 03/11] ext4: fix unwritten counter leakage
+Date: Fri, 28 Sep 2012 19:44:03 +0400
+Message-ID: <1348847051-6746-4-git-send-email-dmonakhov@openvz.org>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, lczerner@redhat.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
@@ -9,69 +9,107 @@ To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-la0-f46.google.com ([209.85.215.46]:61221 "EHLO
 	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758375Ab2I1Po2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:28 -0400
+	with ESMTP id S1758258Ab2I1PoW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 11:44:22 -0400
 Received: by mail-la0-f46.google.com with SMTP id h6so1127961lag.19
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:28 -0700 (PDT)
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2012 08:44:21 -0700 (PDT)
 In-Reply-To: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current serialization will works only for DIO which holds
-i_mutex, but nonlocked DIO following race is possible:
+ext4_set_io_unwritten_flag() will increment i_unwritten counter, so
+once we mark end_io with EXT4_END_IO_UNWRITTEN we have to revert it back
+on error path.
 
-dio_nolock_read_task            truncate_task
-				->ext4_setattr()
-				 ->inode_dio_wait()
-->ext4_ext_direct_IO
-  ->ext4_ind_direct_IO
-    ->__blockdev_direct_IO
-      ->ext4_get_block
-				 ->truncate_setsize()
-				 ->ext4_truncate()
-				 #alloc truncated blocks
-				 #to other inode
-      ->submit_io()
-     #INFORMATION LEAK
+ - add missed error checks to prevent counter leakage
+ - ext4_end_io_nolock() will clear EXT4_END_IO_UNWRITTEN flag to signal
+   that conversion finished.
+ - add BUG_ON to ext4_free_end_io() to prevent similar leakage in future.
 
-In order to serialize with unlocked DIO reads we have to
-rearrange wait sequence
-1) update i_size first
-2) if i_size about to be reduced wait for outstanding DIO requests
-3) and only after that truncate inode blocks
+Visible effect of this bug is that unaligned aio_stress may deadlock
 
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/inode.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/extents.c |   21 ++++++++++++++-------
+ fs/ext4/page-io.c |    6 +++++-
+ 2 files changed, 19 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index da52855..583cb3f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4255,7 +4255,6 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e9549f9..69e2d13 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3545,6 +3545,8 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 	if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+ 		ret = ext4_split_unwritten_extents(handle, inode, map,
+ 						   path, flags);
++		if (ret <= 0)
++			goto out;
+ 		/*
+ 		 * Flag the inode(non aio case) or end_io struct (aio case)
+ 		 * that this IO needs to conversion to written when IO is
+@@ -3790,6 +3792,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	struct ext4_allocation_request ar;
+ 	ext4_io_end_t *io = ext4_inode_aio(inode);
+ 	ext4_lblk_t cluster_offset;
++	int set_unwritten = 0;
+ 
+ 	ext_debug("blocks %u/%u requested for inode %lu\n",
+ 		  map->m_lblk, map->m_len, inode->i_ino);
+@@ -4012,13 +4015,8 @@ got_allocated_blocks:
+ 		 * For non asycn direct IO case, flag the inode state
+ 		 * that we need to perform conversion when IO is done.
+ 		 */
+-		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
+-			if (io)
+-				ext4_set_io_unwritten_flag(inode, io);
+-			else
+-				ext4_set_inode_state(inode,
+-						     EXT4_STATE_DIO_UNWRITTEN);
+-		}
++		if ((flags & EXT4_GET_BLOCKS_PRE_IO))
++			set_unwritten = 1;
+ 		if (ext4_should_dioread_nolock(inode))
+ 			map->m_flags |= EXT4_MAP_UNINIT;
  	}
+@@ -4030,6 +4028,15 @@ got_allocated_blocks:
+ 	if (!err)
+ 		err = ext4_ext_insert_extent(handle, inode, path,
+ 					     &newex, flags);
++
++	if (!err && set_unwritten) {
++		if (io)
++			ext4_set_io_unwritten_flag(inode, io);
++		else
++			ext4_set_inode_state(inode,
++					     EXT4_STATE_DIO_UNWRITTEN);
++	}
++
+ 	if (err && free_on_err) {
+ 		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
+ 			EXT4_FREE_BLOCKS_NO_QUOT_UPDATE : 0;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index de77e31..9970022 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -71,6 +71,8 @@ void ext4_free_io_end(ext4_io_end_t *io)
+ 	int i;
  
- 	if (attr->ia_valid & ATTR_SIZE) {
--		inode_dio_wait(inode);
+ 	BUG_ON(!io);
++	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
++
+ 	if (io->page)
+ 		put_page(io->page);
+ 	for (i = 0; i < io->num_io_pages; i++)
+@@ -94,6 +96,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+ 	ssize_t size = io->size;
+ 	int ret = 0;
  
- 		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
- 			struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -4304,8 +4303,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
++	BUG_ON(!(io->flag & EXT4_IO_END_UNWRITTEN));
++
+ 	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
+ 		   "list->prev 0x%p\n",
+ 		   io, inode->i_ino, io->list.next, io->list.prev);
+@@ -106,7 +110,7 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
+ 			 "(inode %lu, offset %llu, size %zd, error %d)",
+ 			 inode->i_ino, offset, size, ret);
  	}
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
--		if (attr->ia_size != i_size_read(inode))
-+		if (attr->ia_size != inode->i_size) {
- 			truncate_setsize(inode, attr->ia_size);
-+			/* Inode size will be reduced, wait for dio in flight */
-+			if (orphan)
-+				inode_dio_wait(inode);
-+		}
- 		ext4_truncate(inode);
- 	}
- 
--- 
-1.7.7.6
-
