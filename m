@@ -1,91 +1,150 @@
-From: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Subject: Re: [PATCH 2.6.33.y 14/40] ext4: Fix possible lost inode write in no
- journal mode
-Date: Fri, 28 Sep 2012 11:21:16 +0800
-Message-ID: <CAGBYx2Z8J8ktFCjx5Jr9PmBP2q1w_2Cz45gAen9gLXFqM7XZjw@mail.gmail.com>
-References: <1275393807-14369-1-git-send-email-tytso@mit.edu>
- <1275393807-14369-14-git-send-email-tytso@mit.edu> <CAGBYx2Z=JuVzJTMWxO1KFUR7LnJ1zSUfd-2SLhkfPc64q0nmvA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH v2] ext4: fix potential deadlock in ext4_nonda_switch()
+Date: Thu, 27 Sep 2012 23:31:21 -0400
+Message-ID: <20120928033121.GA13352@thunk.org>
+References: <alpine.LSU.2.00.1209271334560.2226@eggly.anvils>
+ <20120927212708.GA10044@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: stable@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:59265 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754916Ab2I1DVi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Sep 2012 23:21:38 -0400
-In-Reply-To: <CAGBYx2Z=JuVzJTMWxO1KFUR7LnJ1zSUfd-2SLhkfPc64q0nmvA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Hugh Dickins <hughd@google.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dmitry Monakhov <dmonakhov@openvz.org>, stable@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20120927212708.GA10044@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I got it!
+I've found a much simpler way of fixing this, by using
+down_read_trylock().  In the very unlikely case where s_umount is
+contended, we can just skip kicking the writeback thread.
 
-Thanks,
-Yongqiang.
-On Fri, Sep 28, 2012 at 11:08 AM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
-> Hi Curt,
->
-> In journal mode, IMHO the case you described also happens. Could you
-> shed light on journal mode case?
->
-> Thanks,
-> Yongqiang.
->
-> On Tue, Jun 1, 2010 at 8:03 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->> From: Curt Wohlgemuth <curtw@google.com>
->>
->> commit 8b472d739b2ddd8ab7fb278874f696cd95b25a5e upstream (as of v2.6.34-rc6)
->>
->> In the no-journal case, ext4_write_inode() will fetch the bh and call
->> sync_dirty_buffer() on it.  However, if the bh has already been
->> written and the bh reclaimed for some other purpose, AND if the inode
->> is the only one in the inode table block in use, then
->> ext4_get_inode_loc() will not read the inode table block from disk,
->> but as an optimization, fill the block with zero's assuming that its
->> caller will copy in the on-disk version of the inode.  This is not
->> done by ext4_write_inode(), so the contents of the inode can simply
->> get lost.  The fix is to use __ext4_get_inode_loc() with in_mem set to
->> 0, instead of ext4_get_inode_loc().  Long term the API needs to be
->> fixed so it's obvious why latter is not safe.
->>
->> Addresses-Google-Bug: #2526446
->>
->> Signed-off-by: Curt Wohlgemuth <curtw@google.com>
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> ---
->>  fs/ext4/inode.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index ff04c74..28152f8 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -5204,7 +5204,7 @@ int ext4_write_inode(struct inode *inode, int wait)
->>         } else {
->>                 struct ext4_iloc iloc;
->>
->> -               err = ext4_get_inode_loc(inode, &iloc);
->> +               err = __ext4_get_inode_loc(inode, &iloc, 0);
->>                 if (err)
->>                         return err;
->>                 if (wait)
->> --
->> 1.6.6.1.1.g974db.dirty
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Best Wishes
-> Yongqiang Yang
+	      	       	    	    	- Ted
 
+>From 51ad3407a91ab090d1772b63329bd3b7f2210eb0 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Thu, 27 Sep 2012 23:12:48 -0400
+Subject: [PATCH v2] ext4: fix potential deadlock in ext4_nonda_switch()
 
+In ext4_nonda_switch(), if the file system is getting full we used to
+call writeback_inodes_sb_if_idle().  The problem is that we can be
+holding i_mutex already, and this causes a potential deadlock when
+writeback_inodes_sb_if_idle() when it tries to take s_umount.  (See
+lockdep output below).
 
+As it turns out we don't need need to hold s_umount; the fact that we
+are in the middle of the write(2) system call will keep the superblock
+pinned.  Unfortunately writeback_inodes_sb() checks to make sure
+s_umount is taken, and the VFS uses a different mechanism for making
+sure the file system doesn't get unmounted out from under us.  The
+simplest way of dealing with this is to just simply grab s_umount
+using a trylock, and skip kicking the writeback flusher thread in the
+very unlikely case that we can't take a read lock on s_umount without
+blocking.
+
+Also, we now check the cirteria for kicking the writeback thread
+before we decide to whether to fall back to non-delayed writeback, so
+if there are any outstanding delayed allocation writes, we try to get
+them resolved as soon as possible.
+
+   [ INFO: possible circular locking dependency detected ]
+   3.6.0-rc1-00042-gce894ca #367 Not tainted
+   -------------------------------------------------------
+   dd/8298 is trying to acquire lock:
+    (&type->s_umount_key#18){++++..}, at: [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
+
+   but task is already holding lock:
+    (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
+
+   which lock already depends on the new lock.
+
+   2 locks held by dd/8298:
+    #0:  (sb_writers#2){.+.+.+}, at: [<c01ddcc5>] generic_file_aio_write+0x56/0xd3
+    #1:  (&sb->s_type->i_mutex_key#8){+.+...}, at: [<c01ddcce>] generic_file_aio_write+0x5f/0xd3
+
+   stack backtrace:
+   Pid: 8298, comm: dd Not tainted 3.6.0-rc1-00042-gce894ca #367
+   Call Trace:
+    [<c015b79c>] ? console_unlock+0x345/0x372
+    [<c06d62a1>] print_circular_bug+0x190/0x19d
+    [<c019906c>] __lock_acquire+0x86d/0xb6c
+    [<c01999db>] ? mark_held_locks+0x5c/0x7b
+    [<c0199724>] lock_acquire+0x66/0xb9
+    [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
+    [<c06db935>] down_read+0x28/0x58
+    [<c02277d4>] ? writeback_inodes_sb_if_idle+0x28/0x46
+    [<c02277d4>] writeback_inodes_sb_if_idle+0x28/0x46
+    [<c026f3b2>] ext4_nonda_switch+0xe1/0xf4
+    [<c0271ece>] ext4_da_write_begin+0x27/0x193
+    [<c01dcdb0>] generic_file_buffered_write+0xc8/0x1bb
+    [<c01ddc47>] __generic_file_aio_write+0x1dd/0x205
+    [<c01ddce7>] generic_file_aio_write+0x78/0xd3
+    [<c026d336>] ext4_file_write+0x480/0x4a6
+    [<c0198c1d>] ? __lock_acquire+0x41e/0xb6c
+    [<c0180944>] ? sched_clock_cpu+0x11a/0x13e
+    [<c01967e9>] ? trace_hardirqs_off+0xb/0xd
+    [<c018099f>] ? local_clock+0x37/0x4e
+    [<c0209f2c>] do_sync_write+0x67/0x9d
+    [<c0209ec5>] ? wait_on_retry_sync_kiocb+0x44/0x44
+    [<c020a7b9>] vfs_write+0x7b/0xe6
+    [<c020a9a6>] sys_write+0x3b/0x64
+    [<c06dd4bd>] syscall_call+0x7/0xb
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/inode.c   | 17 ++++++++++-------
+ fs/fs-writeback.c |  1 +
+ 2 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0a9a89e..4ea396f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2437,6 +2437,16 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 	free_blocks  = EXT4_C2B(sbi,
+ 		percpu_counter_read_positive(&sbi->s_freeclusters_counter));
+ 	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyclusters_counter);
++	/*
++	 * Start pushing delalloc when 1/2 of free blocks are dirty.
++	 */
++	if (dirty_blocks && (free_blocks < 2 * dirty_blocks) &&
++	    !writeback_in_progress(sb->s_bdi) &&
++	    down_read_trylock(&sb->s_umount)) {
++		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
++		up_read(&sb->s_umount);
++	}
++
+ 	if (2 * free_blocks < 3 * dirty_blocks ||
+ 		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
+ 		/*
+@@ -2445,13 +2455,6 @@ static int ext4_nonda_switch(struct super_block *sb)
+ 		 */
+ 		return 1;
+ 	}
+-	/*
+-	 * Even if we don't switch but are nearing capacity,
+-	 * start pushing delalloc when 1/2 of free blocks are dirty.
+-	 */
+-	if (free_blocks < 2 * dirty_blocks)
+-		writeback_inodes_sb_if_idle(sb, WB_REASON_FS_FREE_SPACE);
+-
+ 	return 0;
+ }
+ 
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index be3efc4..5602d73 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -63,6 +63,7 @@ int writeback_in_progress(struct backing_dev_info *bdi)
+ {
+ 	return test_bit(BDI_writeback_running, &bdi->state);
+ }
++EXPORT_SYMBOL(writeback_in_progress);
+ 
+ static inline struct backing_dev_info *inode_to_bdi(struct inode *inode)
+ {
 -- 
-Best Wishes
-Yongqiang Yang
+1.7.12.rc0.22.gcdd159b
