@@ -1,54 +1,47 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [ext4:dev 47/50] fs/ext4/indirect.c:1799 ext4_ind_punch_hole()
- warn: inconsistent returns mutex:&inode->i_mutex: locked (1710) unlocked
- (1799)
-Date: Fri, 28 Sep 2012 22:23:20 +0800
-Message-ID: <20120928142320.GA9473@gmail.com>
-References: <20120928060719.GA15218@localhost>
- <20120928132055.GC13352@thunk.org>
+Subject: Re: [PATCH 1/3] ext4: add block-based file punching hole support
+Date: Fri, 28 Sep 2012 22:25:59 +0800
+Message-ID: <20120928142559.GB9473@gmail.com>
+References: <1345695941-15053-1-git-send-email-wenqing.lz@taobao.com>
+ <1345695941-15053-2-git-send-email-wenqing.lz@taobao.com>
+ <20120928131215.GB13352@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Fengguang Wu <fengguang.wu@intel.com>,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	kernel-janitors@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
+	Lukas Czerner <lczerner@redhat.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:35782 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756714Ab2I1OMk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 10:12:40 -0400
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:62222 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757898Ab2I1OPT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2012 10:15:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20120928132055.GC13352@thunk.org>
+In-Reply-To: <20120928131215.GB13352@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 28, 2012 at 09:20:55AM -0400, Theodore Ts'o wrote:
-> On Fri, Sep 28, 2012 at 02:07:19PM +0800, Fengguang Wu wrote:
-> > Hi Zheng,
-> > 
-> > FYI, there are new smatch warnings show up in
-> > 
-> > tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-> > head:   b2f1a8e5612e2488a3995ec06b422b44651d088b
-> > commit: 3e1b02687146ddefa8e53c2a5e13d3bd87b16b09 [47/50] ext4: add support for hole punching non-extent-mapped files
+On Fri, Sep 28, 2012 at 09:12:15AM -0400, Theodore Ts'o wrote:
+> On Thu, Aug 23, 2012 at 12:25:39PM +0800, Zheng Liu wrote:
+> > I run xfstests to do some tests, and I got an error from xfstests #
+> > 255.  The failure reason is that block-based file in ext4 cannot
+> > support fallocate(2) to allocate an unwritten blocks.  I am not sure
+> > whether we should change # 255 in xfstests or not.  So Cc' to Dave
+> > Chinner to get some feedbacks.
 > 
-> I'm going to be dropping the indirect punch hole patches from the ext4
-> dev tree, based on the number of xfstests failures that I found in my
-> overnight testing.
+> Zheng,
 > 
-> I had hoped the changes were small and localized, and wouldn't cause
-> problems if the punch hole feature wasn't used, but at this point,
-> given that many distributions are starting to use the ext4 file system
-> for legacy ext3 file systems, my judgement is that the risks are too
-> great for the upcoming merge window; so this will probably need to
-> wait for the next development cycle.
+> I gave these patches a quick try and I'm seeing many more failures
+> than just test #255.  Tests 75, 91, 112, 215, and 263 are also
+> failing, and I don't think it's all due to punch being supported w/o
+> fallocate support.
 
 Hi Ted,
 
-These patches would need to do more tests, and I will look at them in
-next development cycle.  I am not sure whether indirect punch hole is
-really useful for us or not.  What do you think about this feature?
-Thanks
+Thanks for sharing this information with me.  I will look at these
+patches after patch series of extent status tree gets stable and submit
+to the mailing list.
 
 Regards,
 Zheng
