@@ -1,45 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 47151] provide a file system block size of 8KB for certain
- SSDs.
-Date: Sat, 29 Sep 2012 12:22:20 +0000 (UTC)
-Message-ID: <20120929122220.E1A8F11FC6D@bugzilla.kernel.org>
-References: <bug-47151-13602@https.bugzilla.kernel.org/>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Fwd: [RFC][PATCH 3/8 v2] ext4: initialize extent status tree
+Date: Sat, 29 Sep 2012 21:24:47 +0800
+Message-ID: <CANWLp00=ja-Aymve_VGWWpecPjmSH00LA9RG8deTzXdzmuW4nA@mail.gmail.com>
+References: <1345615545-26133-1-git-send-email-wenqing.lz@taobao.com>
+	<1345615545-26133-4-git-send-email-wenqing.lz@taobao.com>
+	<20120919190541.GE28470@thunk.org>
+	<20120925124252.GA1518@gmail.com>
+	<20120925205921.GA8625@thunk.org>
+	<20120926020955.GA4101@gmail.com>
+	<20120926024745.GA11468@thunk.org>
+	<20120926032426.GA496@gmail.com>
+	<20120926033740.GC11468@thunk.org>
+	<20120928072714.GA8544@gmail.com>
+	<20120928174233.GB887@thunk.org>
+	<CANWLp02F=qDXY_KbhAziPkBe8qGKV6oN3XtSdc5bWOkbDG684g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:52604 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754080Ab2I2MWZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Sep 2012 08:22:25 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 09F9D20217
-	for <linux-ext4@vger.kernel.org>; Sat, 29 Sep 2012 12:22:24 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id A66AA201E7
-	for <linux-ext4@vger.kernel.org>; Sat, 29 Sep 2012 12:22:22 +0000 (UTC)
-In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CANWLp02F=qDXY_KbhAziPkBe8qGKV6oN3XtSdc5bWOkbDG684g@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=47151
+[Sorry, I got an delivery error when the original mail is sent to the
+mailing list.  Cc' to them]
 
-
-
-
-
---- Comment #5 from Elmar Stellnberger <estellnb@elstel.org>  2012-09-29 12:22:20 ---
-Sorry, I don`t have such a device handy and could not get anyone to directly
-attend the report who has.
-
-Veronika B. from support@sandisk.com writes:
+On Saturday, September 29, 2012, Theodore Ts'o wrote:
 >
-> The only drive currently produced by SanDisk with 8K alignment is the
-> Extreme SSD of 480GB. Only the drives with this capacity will be aligned
-> to 8K.
+> On Fri, Sep 28, 2012 at 03:27:14PM +0800, Zheng Liu wrote:
+> >
+> > Until now, I have fixed the bigalloc bug that is reported by xfstest
+> > #230, and merged Hugh's patch.  But I do really think that this patch
+> > set couldn't be applied at this merge window because the change is not
+> > *minor*, and it still needs to do more tests.  That would be great if
+> > you can keep this patch set in dev branch at this merge window.  Thanks!
+>
+> The dev branch is the set of patches that are planned to go to Linus
+> during the next merge window, so if we drop it from the merge window,
+> I would drop it from the dev branch and put it in the "unstable"
+> portion of the patch series.
+>
+> It would be a shame to drop it since this provides the SEEK_HOLE
+> capability, though.  Can you say more about which change is not minor?
+> The change to fix the bigalloc bug?   Or the whole patch series?
+>
 >
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Hi Ted,
+
+When I try to fix the bigalloc bug, some code that operates on extent
+status tree and  maintains its status are changed when I do some
+changes in ext4_find_delalloc_range().  So that quite has a lot of
+changes I thought in the whole patch series.  So I think that we'd
+better drop this patch set from dev branch.  Thanks.
+
+Regards,
+Zheng
