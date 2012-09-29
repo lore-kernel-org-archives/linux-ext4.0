@@ -1,31 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 07/11] ext4: serialize unlocked dio reads with truncate
-Date: Sat, 29 Sep 2012 15:43:48 +0400
-Message-ID: <87626xawaz.fsf@openvz.org>
-References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org> <1348847051-6746-8-git-send-email-dmonakhov@openvz.org> <20120929044904.GA2583@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47151] provide a file system block size of 8KB for certain
+ SSDs.
+Date: Sat, 29 Sep 2012 12:22:20 +0000 (UTC)
+Message-ID: <20120929122220.E1A8F11FC6D@bugzilla.kernel.org>
+References: <bug-47151-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, lczerner@redhat.com
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:40366 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753770Ab2I2Lnv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Sep 2012 07:43:51 -0400
-Received: by lbon3 with SMTP id n3so2793373lbo.19
-        for <linux-ext4@vger.kernel.org>; Sat, 29 Sep 2012 04:43:49 -0700 (PDT)
-In-Reply-To: <20120929044904.GA2583@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:52604 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754080Ab2I2MWZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Sep 2012 08:22:25 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 09F9D20217
+	for <linux-ext4@vger.kernel.org>; Sat, 29 Sep 2012 12:22:24 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id A66AA201E7
+	for <linux-ext4@vger.kernel.org>; Sat, 29 Sep 2012 12:22:22 +0000 (UTC)
+In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 29 Sep 2012 00:49:04 -0400, "Theodore Ts'o" <tytso@mit.edu> wrote:
-> On Fri, Sep 28, 2012 at 07:44:07PM +0400, Dmitry Monakhov wrote:
-> >  	if (attr->ia_valid & ATTR_SIZE) {
-> > -		if (attr->ia_size != i_size_read(inode))
-> > +		if (attr->ia_size != inode->i_size) {
-> 
-> Why this change?   Why are you not using i_size_read() here?
-Since we hold i_mutex no one is able to change i_size, and it
-is safe to access it directly.
-> 
->     	 	       	       	   - Ted
+https://bugzilla.kernel.org/show_bug.cgi?id=47151
+
+
+
+
+
+--- Comment #5 from Elmar Stellnberger <estellnb@elstel.org>  2012-09-29 12:22:20 ---
+Sorry, I don`t have such a device handy and could not get anyone to directly
+attend the report who has.
+
+Veronika B. from support@sandisk.com writes:
+>
+> The only drive currently produced by SanDisk with 8K alignment is the
+> Extreme SSD of 480GB. Only the drives with this capacity will be aligned
+> to 8K.
+>
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
