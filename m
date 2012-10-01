@@ -1,42 +1,140 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 47151] provide a file system block size of 8KB for certain
- SSDs.
-Date: Mon,  1 Oct 2012 14:56:41 +0000 (UTC)
-Message-ID: <20121001145641.1527411FC25@bugzilla.kernel.org>
-References: <bug-47151-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 01/11] ext4: ext4_inode_info diet
+Date: Mon, 1 Oct 2012 18:28:12 +0200
+Message-ID: <20121001162812.GA32092@quack.suse.cz>
+References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
+ <1348847051-6746-2-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	lczerner@redhat.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:37074 "EHLO mail.kernel.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43647 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751193Ab2JAO4s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Oct 2012 10:56:48 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 6789F20345
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Oct 2012 14:56:43 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id B27A52033F
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Oct 2012 14:56:41 +0000 (UTC)
-In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
+	id S1752473Ab2JAQ2O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2012 12:28:14 -0400
+Content-Disposition: inline
+In-Reply-To: <1348847051-6746-2-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=47151
+On Fri 28-09-12 19:44:01, Dmitry Monakhov wrote:
+> Generic inode has unused i_private pointer which may be used as cur_aio_dio
+> storage.
+> 
+> TODO: If cur_aio_dio will be passed as an argument to get_block_t this allow
+>       to have concurent AIO_DIO requests.
+> 
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
+								Honza
 
-
-
-
---- Comment #7 from Eric Sandeen <sandeen@redhat.com>  2012-10-01 14:56:40 ---
-As Alan alluded to, blocks size > page size is not a trivial problem, so this
-isn't likely to happen any time soon.  I just wanted to clarify whether a
-device was really shipping that would require it for 4k page systems.
-
-Thanks,
--Eric
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> ---
+>  fs/ext4/ext4.h    |   12 ++++++++++--
+>  fs/ext4/extents.c |    4 ++--
+>  fs/ext4/inode.c   |    6 +++---
+>  fs/ext4/super.c   |    1 -
+>  4 files changed, 15 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 6f37c11..42be3ae 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -917,8 +917,6 @@ struct ext4_inode_info {
+>  	struct list_head i_completed_io_list;
+>  	spinlock_t i_completed_io_lock;
+>  	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
+> -	/* current io_end structure for async DIO write*/
+> -	ext4_io_end_t *cur_aio_dio;
+>  	atomic_t i_aiodio_unwritten; /* Nr. of inflight conversions pending */
+>  
+>  	spinlock_t i_block_reservation_lock;
+> @@ -1343,6 +1341,16 @@ static inline void ext4_set_io_unwritten_flag(struct inode *inode,
+>  	}
+>  }
+>  
+> +static inline ext4_io_end_t *ext4_inode_aio(struct inode *inode)
+> +{
+> +	return inode->i_private;
+> +}
+> +
+> +static inline void ext4_inode_aio_set(struct inode *inode, ext4_io_end_t *io)
+> +{
+> +	inode->i_private = io;
+> +}
+> +
+>  /*
+>   * Inode dynamic state flags
+>   */
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index c29379d..e9549f9 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3530,7 +3530,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+>  {
+>  	int ret = 0;
+>  	int err = 0;
+> -	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+> +	ext4_io_end_t *io = ext4_inode_aio(inode);
+>  
+>  	ext_debug("ext4_ext_handle_uninitialized_extents: inode %lu, logical "
+>  		  "block %llu, max_blocks %u, flags %x, allocated %u\n",
+> @@ -3788,7 +3788,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  	unsigned int allocated = 0, offset = 0;
+>  	unsigned int allocated_clusters = 0;
+>  	struct ext4_allocation_request ar;
+> -	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
+> +	ext4_io_end_t *io = ext4_inode_aio(inode);
+>  	ext4_lblk_t cluster_offset;
+>  
+>  	ext_debug("blocks %u/%u requested for inode %lu\n",
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ad568b8..3a28cf7 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3028,7 +3028,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>  		 * hook to the iocb.
+>   		 */
+>  		iocb->private = NULL;
+> -		EXT4_I(inode)->cur_aio_dio = NULL;
+> +		ext4_inode_aio_set(inode, NULL);
+>  		if (!is_sync_kiocb(iocb)) {
+>  			ext4_io_end_t *io_end =
+>  				ext4_init_io_end(inode, GFP_NOFS);
+> @@ -3045,7 +3045,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>  			 * is a unwritten extents needs to be converted
+>  			 * when IO is completed.
+>  			 */
+> -			EXT4_I(inode)->cur_aio_dio = iocb->private;
+> +			ext4_inode_aio_set(inode, io_end);
+>  		}
+>  
+>  		if (overwrite)
+> @@ -3065,7 +3065,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>  						 NULL,
+>  						 DIO_LOCKING);
+>  		if (iocb->private)
+> -			EXT4_I(inode)->cur_aio_dio = NULL;
+> +			ext4_inode_aio_set(inode, NULL);
+>  		/*
+>  		 * The io_end structure takes a reference to the inode,
+>  		 * that structure needs to be destroyed and the
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index d5f4c97..b5dfff8 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -967,7 +967,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+>  	ei->jinode = NULL;
+>  	INIT_LIST_HEAD(&ei->i_completed_io_list);
+>  	spin_lock_init(&ei->i_completed_io_lock);
+> -	ei->cur_aio_dio = NULL;
+>  	ei->i_sync_tid = 0;
+>  	ei->i_datasync_tid = 0;
+>  	atomic_set(&ei->i_ioend_count, 0);
+> -- 
+> 1.7.7.6
+> 
