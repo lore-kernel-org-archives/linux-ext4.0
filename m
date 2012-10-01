@@ -1,131 +1,167 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 03/11] ext4: fix unwritten counter leakage
-Date: Mon, 1 Oct 2012 18:37:12 +0200
-Message-ID: <20121001163712.GB32092@quack.suse.cz>
+Subject: Re: [PATCH 06/11] ext4: serialize dio nonlocked reads with defrag
+ workers V3
+Date: Mon, 1 Oct 2012 18:39:48 +0200
+Message-ID: <20121001163948.GC32092@quack.suse.cz>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
- <1348847051-6746-4-git-send-email-dmonakhov@openvz.org>
+ <1348847051-6746-7-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	lczerner@redhat.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43858 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43936 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753112Ab2JAQhP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Oct 2012 12:37:15 -0400
+	id S1752827Ab2JAQju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2012 12:39:50 -0400
 Content-Disposition: inline
-In-Reply-To: <1348847051-6746-4-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1348847051-6746-7-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-09-12 19:44:03, Dmitry Monakhov wrote:
-> ext4_set_io_unwritten_flag() will increment i_unwritten counter, so
-> once we mark end_io with EXT4_END_IO_UNWRITTEN we have to revert it back
-> on error path.
+On Fri 28-09-12 19:44:06, Dmitry Monakhov wrote:
+> Inode's block defrag and ext4_change_inode_journal_flag() may
+> affect nonlocked DIO reads result, so proper synchronization
+> required.
 > 
->  - add missed error checks to prevent counter leakage
->  - ext4_end_io_nolock() will clear EXT4_END_IO_UNWRITTEN flag to signal
->    that conversion finished.
->  - add BUG_ON to ext4_free_end_io() to prevent similar leakage in future.
-> 
-> Visible effect of this bug is that unaligned aio_stress may deadlock
+> - Add missed inode_dio_wait() calls where appropriate
+> - Check inode state under extra i_dio_count reference.
   Looks good. You can add:
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > 
+> Changes from V2:
+> - fix mistype in condition
+> Changes from V1:
+> - add missed memory bariers
+> - move DIOREAD_LOCK state check out from generic should_dioread_nolock
+>   otherwise it will affect existing DIO readers.
+> 
 > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 > ---
->  fs/ext4/extents.c |   21 ++++++++++++++-------
->  fs/ext4/page-io.c |    6 +++++-
->  2 files changed, 19 insertions(+), 8 deletions(-)
+>  fs/ext4/ext4.h        |   17 +++++++++++++++++
+>  fs/ext4/indirect.c    |   14 ++++++++++++++
+>  fs/ext4/inode.c       |    5 +++++
+>  fs/ext4/move_extent.c |    8 ++++++++
+>  4 files changed, 44 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e9549f9..69e2d13 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3545,6 +3545,8 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
->  	if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
->  		ret = ext4_split_unwritten_extents(handle, inode, map,
->  						   path, flags);
-> +		if (ret <= 0)
-> +			goto out;
->  		/*
->  		 * Flag the inode(non aio case) or end_io struct (aio case)
->  		 * that this IO needs to conversion to written when IO is
-> @@ -3790,6 +3792,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	struct ext4_allocation_request ar;
->  	ext4_io_end_t *io = ext4_inode_aio(inode);
->  	ext4_lblk_t cluster_offset;
-> +	int set_unwritten = 0;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 9c3d004..885dc79 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1363,6 +1363,8 @@ enum {
+>  	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
+>  	EXT4_STATE_NEWENTRY,		/* File just added to dir */
+>  	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
+> +	EXT4_STATE_DIOREAD_LOCK,	/* Disable support for dio read
+> +					   nolocking */
+>  };
 >  
->  	ext_debug("blocks %u/%u requested for inode %lu\n",
->  		  map->m_lblk, map->m_len, inode->i_ino);
-> @@ -4012,13 +4015,8 @@ got_allocated_blocks:
->  		 * For non asycn direct IO case, flag the inode state
->  		 * that we need to perform conversion when IO is done.
->  		 */
-> -		if ((flags & EXT4_GET_BLOCKS_PRE_IO)) {
-> -			if (io)
-> -				ext4_set_io_unwritten_flag(inode, io);
-> -			else
-> -				ext4_set_inode_state(inode,
-> -						     EXT4_STATE_DIO_UNWRITTEN);
-> -		}
-> +		if ((flags & EXT4_GET_BLOCKS_PRE_IO))
-> +			set_unwritten = 1;
->  		if (ext4_should_dioread_nolock(inode))
->  			map->m_flags |= EXT4_MAP_UNINIT;
+>  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+> @@ -2471,6 +2473,21 @@ static inline void set_bitmap_uptodate(struct buffer_head *bh)
+>  	set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
+>  }
+>  
+> +/*
+> + * Disable DIO read nolock optimization, so new dioreaders will be forced
+> + * to grab i_mutex
+> + */
+> +static inline void ext4_inode_block_unlocked_dio(struct inode *inode)
+> +{
+> +	ext4_set_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
+> +	smp_mb();
+> +}
+> +static inline void ext4_inode_resume_unlocked_dio(struct inode *inode)
+> +{
+> +	smp_mb();
+> +	ext4_clear_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
+> +}
+> +
+>  #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
+>  
+>  /* For ioend & aio unwritten conversion wait queues */
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index ebc7d83..9e6cdb6 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -811,11 +811,25 @@ retry:
+>  		if (unlikely(!list_empty(&ei->i_completed_io_list)))
+>  			ext4_flush_completed_IO(inode);
+>  
+> +		/*
+> +		 * Nolock dioread optimization may be dynamically disabled
+> +		 * via ext4_inode_block_unlocked_dio(). Check inode's state
+> +		 * while holding extra i_dio_count ref.
+> +		 */
+> +		atomic_inc(&inode->i_dio_count);
+> +		smp_mb();
+> +		if (unlikely(ext4_test_inode_state(inode,
+> +						    EXT4_STATE_DIOREAD_LOCK))) {
+> +			inode_dio_done(inode);
+> +			goto locked;
+> +		}
+>  		ret = __blockdev_direct_IO(rw, iocb, inode,
+>  				 inode->i_sb->s_bdev, iov,
+>  				 offset, nr_segs,
+>  				 ext4_get_block, NULL, NULL, 0);
+> +		inode_dio_done(inode);
+>  	} else {
+> +locked:
+>  		ret = blockdev_direct_IO(rw, iocb, inode, iov,
+>  				 offset, nr_segs, ext4_get_block);
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 1ea34e5..da52855 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4692,6 +4692,10 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  			return err;
 >  	}
-> @@ -4030,6 +4028,15 @@ got_allocated_blocks:
->  	if (!err)
->  		err = ext4_ext_insert_extent(handle, inode, path,
->  					     &newex, flags);
-> +
-> +	if (!err && set_unwritten) {
-> +		if (io)
-> +			ext4_set_io_unwritten_flag(inode, io);
-> +		else
-> +			ext4_set_inode_state(inode,
-> +					     EXT4_STATE_DIO_UNWRITTEN);
-> +	}
-> +
->  	if (err && free_on_err) {
->  		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
->  			EXT4_FREE_BLOCKS_NO_QUOT_UPDATE : 0;
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index de77e31..9970022 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -71,6 +71,8 @@ void ext4_free_io_end(ext4_io_end_t *io)
->  	int i;
 >  
->  	BUG_ON(!io);
-> +	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
+> +	/* Wait for all existing dio workers */
+> +	ext4_inode_block_unlocked_dio(inode);
+> +	inode_dio_wait(inode);
 > +
->  	if (io->page)
->  		put_page(io->page);
->  	for (i = 0; i < io->num_io_pages; i++)
-> @@ -94,6 +96,8 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
->  	ssize_t size = io->size;
->  	int ret = 0;
+>  	jbd2_journal_lock_updates(journal);
 >  
-> +	BUG_ON(!(io->flag & EXT4_IO_END_UNWRITTEN));
+>  	/*
+> @@ -4711,6 +4715,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  	ext4_set_aops(inode);
+>  
+>  	jbd2_journal_unlock_updates(journal);
+> +	ext4_inode_resume_unlocked_dio(inode);
+>  
+>  	/* Finally we can mark the inode as dirty. */
+>  
+> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> index c2e47da..0aaaf12 100644
+> --- a/fs/ext4/move_extent.c
+> +++ b/fs/ext4/move_extent.c
+> @@ -1325,6 +1325,12 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>  	/* Protect orig and donor inodes against a truncate */
+>  	mext_inode_double_lock(orig_inode, donor_inode);
+>  
+> +	/* Wait for all existing dio workers */
+> +	ext4_inode_block_unlocked_dio(orig_inode);
+> +	ext4_inode_block_unlocked_dio(donor_inode);
+> +	inode_dio_wait(orig_inode);
+> +	inode_dio_wait(donor_inode);
 > +
->  	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
->  		   "list->prev 0x%p\n",
->  		   io, inode->i_ino, io->list.next, io->list.prev);
-> @@ -106,7 +110,7 @@ int ext4_end_io_nolock(ext4_io_end_t *io)
->  			 "(inode %lu, offset %llu, size %zd, error %d)",
->  			 inode->i_ino, offset, size, ret);
+>  	/* Protect extent tree against block allocations via delalloc */
+>  	double_down_write_data_sem(orig_inode, donor_inode);
+>  	/* Check the filesystem environment whether move_extent can be done */
+> @@ -1523,6 +1529,8 @@ out:
+>  		kfree(holecheck_path);
 >  	}
-> -
-> +	io->flag &= ~EXT4_IO_END_UNWRITTEN;
->  	if (io->iocb)
->  		aio_complete(io->iocb, io->result, 0);
+>  	double_up_write_data_sem(orig_inode, donor_inode);
+> +	ext4_inode_resume_unlocked_dio(orig_inode);
+> +	ext4_inode_resume_unlocked_dio(donor_inode);
+>  	mext_inode_double_unlock(orig_inode, donor_inode);
 >  
+>  	return ret;
 > -- 
 > 1.7.7.6
 > 
