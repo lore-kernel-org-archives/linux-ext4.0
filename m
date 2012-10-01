@@ -1,145 +1,188 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/11] ext4: punch_hole should wait for DIO writers V2
-Date: Mon, 1 Oct 2012 18:46:46 +0200
-Message-ID: <20121001164646.GE32092@quack.suse.cz>
+Subject: Re: [PATCH 04/11] ext4: completed_io locking cleanup V4
+Date: Mon, 1 Oct 2012 20:38:33 +0200
+Message-ID: <20121001183833.GF32092@quack.suse.cz>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
- <1348847051-6746-11-git-send-email-dmonakhov@openvz.org>
+ <1348847051-6746-5-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	lczerner@redhat.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44102 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:47880 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753276Ab2JAQqs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Oct 2012 12:46:48 -0400
+	id S1751455Ab2JASig (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2012 14:38:36 -0400
 Content-Disposition: inline
-In-Reply-To: <1348847051-6746-11-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1348847051-6746-5-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-09-12 19:44:10, Dmitry Monakhov wrote:
-> punch_hole is the place where we have to wait for all existing writers
-> (writeback, aio, dio), but currently we simply flush pended end_io request
-> which is not sufficient. Other issue is that punch_hole performed w/o i_mutex
-> held which obviously result in dangerous data corruption due to
-> write-after-free.
+On Fri 28-09-12 19:44:04, Dmitry Monakhov wrote:
+  Couple of language fixes:
+> Current unwritten extent conversion state-machine is very fuzzy.
+> - By unknown reason it want perform conversion under i_mutex. What for?
+    ^^ For               ^^^^^^^^ I'd just make it "performs"
+>   My diagnosis:
+>   We already protect extent tree with i_data_sem, truncate and punch_hole
+>   should wait for DIO, so the only data we have to protect is end_io->flags
+>   modification, but only flush_completed_IO and end_io_work modified this
+                                                                       ^^ these
+>   flags and we can serialize them via i_completed_io_lock.
 > 
-> This patch performs following changes:
-> - Guard punch_hole with i_mutex
-> - Recheck inode flags under i_mutex
-> - Block all new dio readers in order to prevent information leak caused by
->   read-after-free pattern.
-> - punch_hole now wait for all writers in flight
->   NOTE: XXX write-after-free race is still possible because new dirty pages
->   may appear due to mmap(), and currently there is no easy way to stop
->   writeback while punch_hole is in progress.
-  The patch looks good. Just one nit: The label 'out' in
-ext4_ext_punch_hole() is now named contrary to common scheme where 'out' is
-the outermost of labels. So renaming that to something like 'out_orphan'
-would be good. Besides this you can add:
-  Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
+>   Currently all this games with mutex_trylock result in following deadlock
+                  ^^^ these                              ^ the
+>    truncate:                          kworker:
+>     ext4_setattr                       ext4_end_io_work
+>     mutex_lock(i_mutex)
+>     inode_dio_wait(inode)  ->BLOCK
+>                              DEADLOCK<- mutex_trylock()
+>                                         inode_dio_done()
+>   #TEST_CASE1_BEGIN
+>   MNT=/mnt_scrach
+>   unlink $MNT/file
+>   fallocate -l $((1024*1024*1024)) $MNT/file
+>   aio-stress -I 100000 -O -s 100m -n -t 1 -c 10 -o 2 -o 3 $MNT/file
+>   sleep 2
+>   truncate -s 0 $MNT/file
+>   #TEST_CASE1_END
 > 
-> Changes from V1:
->   Add flag checks once we hold i_mutex
+> Or use 286's xfstests https://github.com/dmonakhov/xfstests/blob/devel/286
+> 
+> This patch makes state machine simple and clean:
+> 
+> (1) xxx_end_io schedule final extent conversion simply by calling
+>     ext4_add_complete_io(), which append it to ei->i_completed_io_list
+>     NOTE1: because of (2A) work should be queued only if
+>     ->i_completed_io_list was empty, otherwise it work is scheduled already.
+                                                 ^^ remove this
+> 
+> (2) ext4_flush_completed_IO is responsible for handling all pending
+>     end_io from ei->i_completed_io_list
+>     Flushing sequange consist of following stages:
+               ^^ sequence ^ consists
+>     A) LOCKED: Atomically drain completed_io_list to local_list
+>     B) Perform extents conversion
+>     C) LOCKED: move conveted io's to to_free list for final deletion
+                      ^^ converted
+>        	     This logic depends on context which we was called from.
+                                                            ^^ were
+>     D) Final end_io context destruction
+>     NOTE1: i_mutex is no longer required because end_io->flags modification
+>     protected by ei->ext4_complete_io_lock
+      ^^ is protected
+> 
+> Full list of changes:
+> - Move all completion end_io related routines to page-io.c in order to improve
+>   logic locality
+> - Move open coded logic from various xx_end_xx routines to ext4_add_complete_io()
+> - remove EXT4_IO_END_FSYNC
+> - Improve SMP scalability by removing useless i_mutex which does not
+>   protect io->flags anymore.
+> - Reduce lock contention on i_completed_io_lock by optimizing list walk.
+> - Rename ext4_end_io_nolock to end4_end_io and make it static
+> - Check flush completion status to ext4_ext_punch_hole(). Because it is
+>   not good idea to punch blocks from corrupted inode.
+> 
+> Changes since V3 (in request to Jan's comments):
+>   Fall back to active flush_completed_IO() approach in order to prevent
+>   performance issues with nolocked DIO reads.
+> Changes since V2:
+>   Fix use-after-free caused by race truncate vs end_io_work
 > 
 > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 > ---
->  fs/ext4/extents.c |   50 +++++++++++++++++++++++++++++++++-----------------
->  1 files changed, 33 insertions(+), 17 deletions(-)
+>  fs/ext4/ext4.h     |    3 +-
+>  fs/ext4/extents.c  |    4 +-
+>  fs/ext4/fsync.c    |   81 -------------------------
+>  fs/ext4/indirect.c |    6 +-
+>  fs/ext4/inode.c    |   25 +-------
+>  fs/ext4/page-io.c  |  171 ++++++++++++++++++++++++++++++++++------------------
+>  6 files changed, 121 insertions(+), 169 deletions(-)
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 70ba122..a1d16eb 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4568,9 +4568,29 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	loff_t first_page_offset, last_page_offset;
->  	int credits, err = 0;
->  
-> +	/*
-> +	 * Write out all dirty pages to avoid race conditions
-> +	 * Then release them.
-> +	 */
-> +	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +		err = filemap_write_and_wait_range(mapping,
-> +			offset, offset + length - 1);
+...
+> +static int ext4_do_flush_completed_IO(struct inode *inode,
+> +				      ext4_io_end_t *work_io)
+> +{
+> +	ext4_io_end_t *io;
+> +	struct list_head unwritten, complete, to_free;
+> +	unsigned long flags;
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +	int err, ret = 0;
 > +
-> +		if (err)
-> +			return err;
+> +	INIT_LIST_HEAD(&complete);
+> +	INIT_LIST_HEAD(&to_free);
+> +
+> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> +	dump_completed_IO(inode);
+> +	list_replace_init(&ei->i_completed_io_list, &unwritten);
+> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> +
+> +	while (!list_empty(&unwritten)) {
+> +		io = list_entry(unwritten.next, ext4_io_end_t, list);
+> +		BUG_ON(!(io->flag & EXT4_IO_END_UNWRITTEN));
+> +		list_del_init(&io->list);
+> +
+> +		err = ext4_end_io(io);
+> +		if (unlikely(!ret && err))
+> +			ret = err;
+> +
+> +		list_add_tail(&io->list, &complete);
 > +	}
-> +
-> +	mutex_lock(&inode->i_mutex);
-> +	/* Need recheck file flags under mutex */
-> +	/* It's not possible punch hole on append only file */
-> +	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-> +		return -EPERM;
-> +	if (IS_SWAPFILE(inode))
-> +		return -ETXTBSY;
-> +
->  	/* No need to punch hole beyond i_size */
->  	if (offset >= inode->i_size)
-> -		return 0;
-> +		goto out_mutex;
->  
->  	/*
->  	 * If the hole extends beyond i_size, set the hole
-> @@ -4588,33 +4608,25 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
->  	first_page_offset = first_page << PAGE_CACHE_SHIFT;
->  	last_page_offset = last_page << PAGE_CACHE_SHIFT;
->  
-> -	/*
-> -	 * Write out all dirty pages to avoid race conditions
-> -	 * Then release them.
-> -	 */
-> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> -		err = filemap_write_and_wait_range(mapping,
-> -			offset, offset + length - 1);
-> -
-> -		if (err)
-> -			return err;
-> -	}
-> -
->  	/* Now release the pages */
->  	if (last_page_offset > first_page_offset) {
->  		truncate_pagecache_range(inode, first_page_offset,
->  					 last_page_offset - 1);
+> +	/* It is important to update all flags for all end_io in one shot w/o
+> +	 * dropping the lock.*/
+  Why? It would seem that once io structures are moved from
+i_completed_io_list, they are unreachable by anyone else?
+
+> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> +	while (!list_empty(&complete)) {
+> +		io = list_entry(complete.next, ext4_io_end_t, list);
+> +		io->flag &= ~EXT4_IO_END_UNWRITTEN;
+> +		/* end_io context can not be destroyed now because it still
+> +		 * used by queued worker. Worker thread will destroy it later */
+> +		if (io->flag & EXT4_IO_END_QUEUED)
+> +			list_del_init(&io->list);
+> +		else
+> +			list_move(&io->list, &to_free);
+> +	}
+> +	/* If we are called from worker context, it is time to clear queued
+> +	 * flag, and destroy it's end_io if it was converted already */
+> +	if (work_io) {
+> +		work_io->flag &= ~EXT4_IO_END_QUEUED;
+> +		if (!(work_io->flag & EXT4_IO_END_UNWRITTEN))
+> +			list_add_tail(&work_io->list, &to_free);
 >  	}
->  
-> -	/* finish any pending end_io work */
-> +	/* Wait all existing dio workers, newcomers will block on i_mutex */
-> +	ext4_inode_block_unlocked_dio(inode);
-> +	inode_dio_wait(inode);
->  	err = ext4_flush_completed_IO(inode);
->  	if (err)
-> -		return err;
-> +		goto out_dio;
->  
->  	credits = ext4_writepage_trans_blocks(inode);
->  	handle = ext4_journal_start(inode, credits);
-> -	if (IS_ERR(handle))
-> -		return PTR_ERR(handle);
-> +	if (IS_ERR(handle)) {
-> +		err = PTR_ERR(handle);
-> +		goto out_dio;
+> -	list_del_init(&io->list);
+>  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> -	(void) ext4_end_io_nolock(io);
+> -	mutex_unlock(&inode->i_mutex);
+> -free:
+> -	ext4_free_io_end(io);
+> +
+> +	while (!list_empty(&to_free)) {
+> +		io = list_entry(to_free.next, ext4_io_end_t, list);
+> +		list_del_init(&io->list);
+> +		ext4_free_io_end(io);
 > +	}
->  
->  
->  	/*
-> @@ -4706,6 +4718,10 @@ out:
->  	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
->  	ext4_mark_inode_dirty(handle, inode);
->  	ext4_journal_stop(handle);
-> +out_dio:
-> +	ext4_inode_resume_unlocked_dio(inode);
-> +out_mutex:
-> +	mutex_unlock(&inode->i_mutex);
->  	return err;
+> +	return ret;
+> +}
+> +
+> +/*
+> + * work on completed aio dio IO, to convert unwritten extents to extents
+> + */
+> +static void ext4_end_io_work(struct work_struct *work)
+> +{
+> +	ext4_io_end_t *io = container_of(work, ext4_io_end_t, work);
+> +	ext4_do_flush_completed_IO(io->inode, io);
+> +}
+> +
+> +int ext4_flush_completed_IO(struct inode *inode)
+> +{
+> +	return ext4_do_flush_completed_IO(inode, NULL);
 >  }
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-> -- 
-> 1.7.7.6
-> 
+  Also it seems that when ext4_flush_completed_IO() is called, workqueue
+can have several IO structures queued in its local lists thus we miss them
+here and don't properly wait for all conversions?
+
+								Honza
