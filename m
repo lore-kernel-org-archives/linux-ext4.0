@@ -1,65 +1,44 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH REGRESSION FIX] ext4: fix mtime update in nodelalloc
- mode
-Date: Mon, 1 Oct 2012 11:32:13 +0200
-Message-ID: <20121001093213.GB22800@quack.suse.cz>
-References: <20120930195124.GF18169@1wt.eu>
- <20120930195002.GA30441@elie.Belkin>
- <20120930195341.GC4780@thunk.org>
- <20120930203026.GD4780@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47151] provide a file system block size of 8KB for certain
+ SSDs.
+Date: Mon,  1 Oct 2012 14:50:13 +0000 (UTC)
+Message-ID: <20121001145013.1200F11FC25@bugzilla.kernel.org>
+References: <bug-47151-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jonathan Nieder <jrnieder-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Willy Tarreau <w@1wt.eu>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
-	stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20120930203026.GD4780-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:36880 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751548Ab2JAOuP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2012 10:50:15 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 905432023D
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Oct 2012 14:50:14 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id A682420216
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Oct 2012 14:50:13 +0000 (UTC)
+In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 30-09-12 16:30:26, Ted Tso wrote:
-> The rewritten commit description:
-> 
-> ext4: fix mtime update in nodelalloc mode
-> 
-> Commits 5e8830dc85d0 and 41c4d25f78c0 introduced a regression into
-> 3.6-rc1 for ext4 in nodealloc mode, such that mtime updates would not
-> take place for files modified via mmap if the page was already in the
-> page cache.  This would also affect ext3 file systems mounted using
-> the ext4 file system driver.
-> 
-> The problem was that ext4_page_mkwrite() had a shortcut which would
-> avoid calling __block_page_mkwrite() under some circumstances, and the
-> above two commit transferred the responsibility of calling
-> file_update_time() to __block_page_mkwrite --- which woudln't get
-> called in some circumstances.
-> 
-> Since __block_page_mkwrite() only has three callers,
-> block_page_mkwrite(), ext4_page_mkwrite, and nilfs_page_mkwrite(), the
-> best way to solve this is to move the responsibility for calling
-> file_update_time() to its caller.
-> 
-> This problem was found via xfstests #215 with a file system mounted
-> with -o nodelalloc.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> Cc: KONISHI Ryusuke <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>
-> Cc: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> 
-> Note: If this gets pushed to Linus before the merge window opens, I'll
-> drop the cc of stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, since the regression was
-> introduced in 3.6-rc1.
-  Ah, good catch. Thanks for fixing this. I agree with the fix so you can
-add:
-  Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=47151
 
-								Honza
---
-To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+
+--- Comment #6 from Eric Sandeen <sandeen@redhat.com>  2012-10-01 14:50:12 ---
+Ok, at this point we have no evidence that larger fs block sizes will be
+required for this SSD.  That email from sandisk doesn't really tell us a whole
+lot, simply saying "8k alignment" isn't terribly informative.  Is that the
+minimum alignment, the physical alignment, etc.  I think someone will need to
+get their hands on a device to see what it really advertises.  Scouting around
+the web I've not seen any indication that this device has an 8k logical
+blocksize; if it did there would surely be some noisy reviews out there about
+how it doesn't work on x86 linux today, I think.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
