@@ -1,167 +1,61 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 06/11] ext4: serialize dio nonlocked reads with defrag
- workers V3
-Date: Mon, 1 Oct 2012 18:39:48 +0200
-Message-ID: <20121001163948.GC32092@quack.suse.cz>
+Subject: Re: [PATCH 08/11] ext4: endless truncate due to nonlocked dio
+ readers V2
+Date: Mon, 1 Oct 2012 18:41:17 +0200
+Message-ID: <20121001164117.GD32092@quack.suse.cz>
 References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
- <1348847051-6746-7-git-send-email-dmonakhov@openvz.org>
+ <1348847051-6746-9-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	lczerner@redhat.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43936 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43964 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752827Ab2JAQju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Oct 2012 12:39:50 -0400
+	id S1752827Ab2JAQlS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Oct 2012 12:41:18 -0400
 Content-Disposition: inline
-In-Reply-To: <1348847051-6746-7-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1348847051-6746-9-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-09-12 19:44:06, Dmitry Monakhov wrote:
-> Inode's block defrag and ext4_change_inode_journal_flag() may
-> affect nonlocked DIO reads result, so proper synchronization
-> required.
-> 
-> - Add missed inode_dio_wait() calls where appropriate
-> - Check inode state under extra i_dio_count reference.
-  Looks good. You can add:
+On Fri 28-09-12 19:44:08, Dmitry Monakhov wrote:
+> If we have enough aggressive DIO readers, truncate and other dio
+> waiters will wait forever inside inode_dio_wait(). It is reasonable
+> to disable nonlock DIO read optimization during truncate.
+  OK, as per our previous discussion I agree. So you can add:
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > 
-> Changes from V2:
-> - fix mistype in condition
-> Changes from V1:
-> - add missed memory bariers
-> - move DIOREAD_LOCK state check out from generic should_dioread_nolock
->   otherwise it will affect existing DIO readers.
-> 
 > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 > ---
->  fs/ext4/ext4.h        |   17 +++++++++++++++++
->  fs/ext4/indirect.c    |   14 ++++++++++++++
->  fs/ext4/inode.c       |    5 +++++
->  fs/ext4/move_extent.c |    8 ++++++++
->  4 files changed, 44 insertions(+), 0 deletions(-)
+>  fs/ext4/inode.c |    9 +++++++--
+>  1 files changed, 7 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 9c3d004..885dc79 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1363,6 +1363,8 @@ enum {
->  	EXT4_STATE_DIO_UNWRITTEN,	/* need convert on dio done*/
->  	EXT4_STATE_NEWENTRY,		/* File just added to dir */
->  	EXT4_STATE_DELALLOC_RESERVED,	/* blks already reserved for delalloc */
-> +	EXT4_STATE_DIOREAD_LOCK,	/* Disable support for dio read
-> +					   nolocking */
->  };
->  
->  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
-> @@ -2471,6 +2473,21 @@ static inline void set_bitmap_uptodate(struct buffer_head *bh)
->  	set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
->  }
->  
-> +/*
-> + * Disable DIO read nolock optimization, so new dioreaders will be forced
-> + * to grab i_mutex
-> + */
-> +static inline void ext4_inode_block_unlocked_dio(struct inode *inode)
-> +{
-> +	ext4_set_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
-> +	smp_mb();
-> +}
-> +static inline void ext4_inode_resume_unlocked_dio(struct inode *inode)
-> +{
-> +	smp_mb();
-> +	ext4_clear_inode_state(inode, EXT4_STATE_DIOREAD_LOCK);
-> +}
-> +
->  #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
->  
->  /* For ioend & aio unwritten conversion wait queues */
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index ebc7d83..9e6cdb6 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -811,11 +811,25 @@ retry:
->  		if (unlikely(!list_empty(&ei->i_completed_io_list)))
->  			ext4_flush_completed_IO(inode);
->  
-> +		/*
-> +		 * Nolock dioread optimization may be dynamically disabled
-> +		 * via ext4_inode_block_unlocked_dio(). Check inode's state
-> +		 * while holding extra i_dio_count ref.
-> +		 */
-> +		atomic_inc(&inode->i_dio_count);
-> +		smp_mb();
-> +		if (unlikely(ext4_test_inode_state(inode,
-> +						    EXT4_STATE_DIOREAD_LOCK))) {
-> +			inode_dio_done(inode);
-> +			goto locked;
-> +		}
->  		ret = __blockdev_direct_IO(rw, iocb, inode,
->  				 inode->i_sb->s_bdev, iov,
->  				 offset, nr_segs,
->  				 ext4_get_block, NULL, NULL, 0);
-> +		inode_dio_done(inode);
->  	} else {
-> +locked:
->  		ret = blockdev_direct_IO(rw, iocb, inode, iov,
->  				 offset, nr_segs, ext4_get_block);
->  
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 1ea34e5..da52855 100644
+> index 583cb3f..c40a98d 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -4692,6 +4692,10 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  			return err;
+> @@ -4305,9 +4305,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>  	if (attr->ia_valid & ATTR_SIZE) {
+>  		if (attr->ia_size != inode->i_size) {
+>  			truncate_setsize(inode, attr->ia_size);
+> -			/* Inode size will be reduced, wait for dio in flight */
+> -			if (orphan)
+> +			/* Inode size will be reduced, wait for dio in flight.
+> +			 * Temporarily disable dioread_nolock to prevent
+> +			 * livelock. */
+> +			if (orphan) {
+> +				ext4_inode_block_unlocked_dio(inode);
+>  				inode_dio_wait(inode);
+> +				ext4_inode_resume_unlocked_dio(inode);
+> +			}
+>  		}
+>  		ext4_truncate(inode);
 >  	}
->  
-> +	/* Wait for all existing dio workers */
-> +	ext4_inode_block_unlocked_dio(inode);
-> +	inode_dio_wait(inode);
-> +
->  	jbd2_journal_lock_updates(journal);
->  
->  	/*
-> @@ -4711,6 +4715,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  	ext4_set_aops(inode);
->  
->  	jbd2_journal_unlock_updates(journal);
-> +	ext4_inode_resume_unlocked_dio(inode);
->  
->  	/* Finally we can mark the inode as dirty. */
->  
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index c2e47da..0aaaf12 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -1325,6 +1325,12 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
->  	/* Protect orig and donor inodes against a truncate */
->  	mext_inode_double_lock(orig_inode, donor_inode);
->  
-> +	/* Wait for all existing dio workers */
-> +	ext4_inode_block_unlocked_dio(orig_inode);
-> +	ext4_inode_block_unlocked_dio(donor_inode);
-> +	inode_dio_wait(orig_inode);
-> +	inode_dio_wait(donor_inode);
-> +
->  	/* Protect extent tree against block allocations via delalloc */
->  	double_down_write_data_sem(orig_inode, donor_inode);
->  	/* Check the filesystem environment whether move_extent can be done */
-> @@ -1523,6 +1529,8 @@ out:
->  		kfree(holecheck_path);
->  	}
->  	double_up_write_data_sem(orig_inode, donor_inode);
-> +	ext4_inode_resume_unlocked_dio(orig_inode);
-> +	ext4_inode_resume_unlocked_dio(donor_inode);
->  	mext_inode_double_unlock(orig_inode, donor_inode);
->  
->  	return ret;
 > -- 
 > 1.7.7.6
 > 
