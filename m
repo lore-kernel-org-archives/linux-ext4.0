@@ -1,65 +1,51 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH 2/2] ext3: ext3_bread usage audit
-Date: Tue, 2 Oct 2012 11:27:23 -0300
-Message-ID: <20121002142723.GA2323@andromeda.usersys.redhat.com>
-References: <1349121055-8168-1-git-send-email-cmaiolino@redhat.com>
- <1349121055-8168-3-git-send-email-cmaiolino@redhat.com>
- <20121002135513.GE22777@quack.suse.cz>
+From: "Holger Hoffstaette" <holger.hoffstaette@googlemail.com>
+Subject: Re: Repeatable ext4 oops with 3.6.0 (regression)
+Date: Tue, 02 Oct 2012 16:31:57 +0200
+Message-ID: <pan.2012.10.02.14.31.57.530230@googlemail.com>
+References: <pan.2012.10.02.11.19.55.793436@googlemail.com> <20121002133642.GD22777@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29727 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:53573 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753653Ab2JBO11 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Oct 2012 10:27:27 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q92ERRCB019669
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2012 10:27:27 -0400
-Received: from andromeda.usersys.redhat.com (ovpn-113-65.phx2.redhat.com [10.3.113.65])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q92EROdi020255
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2012 10:27:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20121002135513.GE22777@quack.suse.cz>
+	id S1751447Ab2JBOdP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Oct 2012 10:33:15 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1TJ3Wm-0007GU-WA
+	for linux-ext4@vger.kernel.org; Tue, 02 Oct 2012 16:32:53 +0200
+Received: from p54876660.dip.t-dialin.net ([84.135.102.96])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2012 16:32:52 +0200
+Received: from holger.hoffstaette by p54876660.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2012 16:32:52 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan
-On Tue, Oct 02, 2012 at 03:55:13PM +0200, Jan Kara wrote:
-> On Mon 01-10-12 16:50:55, Carlos Maiolino wrote:
-> > This is the ext3 version of the same patch applied to Ext4, where such goal is
-> > to audit the usage of ext3_bread() due a possible misinterpretion of its return
-> > value.
-> > 
-> > Focused on directory blocks, a NULL value returned from ext3_bread() means a
-> > hole, which cannot exist into a directory inode. It can pass undetected after a
-> > fix in an uninitialized error variable.
-> > 
-> > The (now) initialized variable into ext3_getblk() may lead to a zero'ed return
-> > value of ext3_bread() to its callers, which can make the caller do not detect
-> > the hole in the directory inode.
-> > 
-> > This checks for directory holes when buffer_head and error value are both
-> > zero'ed returning -EIO to their callers
-> > 
-> > Some ext3_bread() callers do not needed any changes either because they already
-> > had its own hole detector paths or because these are deprecaded (like
-> > dx_show_entries)
->   Umm, can you wrap the check for hole + error message in a helper function
-> like ext3_dir_bread() please? That would save us quite some dupplication..
-> Thanks!
->
-I thought about a kind of handler too, but haven't done something like that by
-Ted's suggestion. Please see thread
-http://marc.info/?l=linux-ext4&m=134827512716575&w=2
+On Tue, 02 Oct 2012 15:36:42 +0200, Jan Kara wrote:
 
-But I can work on a kind of wrapper for ext3 if this is ok for you and send a V2
-version of this patch.
+>   Thanks for report! Can you please attach here full dmesg after the oops
+> happens - the output from syslog seems to be partially filtered which
+> makes things unnecessarily hard... Thanks!
 
-Cheers,
-Carlos  
+The output was cut from /var/log/messages since the machine hung and that file
+was intact. Following are dmesg from the reboot after the crash and after
+that is the full messages file from the crash I just reproduced; this time
+gthumb "properly" segfaulted (15:49:32), but the kernel still started to
+tumble and hung a few seconds later. Produced even more fireworks this
+time. :)
 
--- 
---Carlos
+(..after several posting attempts..)
+
+I'm reading this through gmane and the files are apparently too big for
+posting, so I put them here: http://hoho.dyndns.org/~holger/ext4-oops-3.6.0/
+
+Just let me know if you need anything else.
+
+Holger
+
+
