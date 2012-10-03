@@ -1,42 +1,182 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 48251] Sorting directory entries
-Date: Wed,  3 Oct 2012 16:53:26 +0000 (UTC)
-Message-ID: <20121003165326.DDFCE11FB05@bugzilla.kernel.org>
-References: <bug-48251-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: fix ext4_flush_completed_IO wait semantics
+Date: Wed,  3 Oct 2012 22:43:27 +0400
+Message-ID: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, jack@suse.cz, Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:47030 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932623Ab2JCQxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Oct 2012 12:53:30 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5819E20534
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Oct 2012 16:53:29 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id E1D5120530
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Oct 2012 16:53:26 +0000 (UTC)
-In-Reply-To: <bug-48251-13602@https.bugzilla.kernel.org/>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:48210 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964997Ab2JCSnb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2012 14:43:31 -0400
+Received: by lbon3 with SMTP id n3so6499992lbo.19
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Oct 2012 11:43:30 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=48251
+BUG #1) All places where we call ext4_flush_completed_IO are broken
+    because buffered io and DIO/AIO goes through three stages
+    1) submitted io,
+    2) completed io (in i_completed_io_list) conversion pended
+    3) finished  io (conversion done)
+    And by calling ext4_flush_completed_IO we will flush only
+    requests which were in (2) stage, which is wrong because:
+     1) punch_hole and truncate _must_ wait for all outstanding unwritten io
+      regardless to it's state.
+     2) fsync and nolock_dio_read should also wait because there is
+        a time window between end_page_writeback() and ext4_add_complete_io()
+        As result integrity fsync is broken in case of buffered write
+        to fallocated region:
+        fsync                                      blkdev_completion
+	 ->filemap_write_and_wait_range
+                                                   ->ext4_end_bio
+                                                     ->end_page_writeback
+          <-- filemap_write_and_wait_range return
+	 ->ext4_flush_completed_IO
+   	 sees empty i_completed_io_list but pended
+   	 conversion still exist
+                                                     ->ext4_add_complete_io
 
+BUG #2) Race window becomes wider due to 'ext4: completed_io locking cleanup V4'
 
-Pavel Samsonov <tux2002@front.ru> changed:
+This patch make following changes:
+1) ext4_flush_completed_io() now first try to flush completed io and when
+   wait for any outstanding unwritten io via ext4_unwritten_wait()
+2) Rename function to more appropriate name.
+3) Assert that all callers of ext4_flush_unwritten_io should hold i_mutex to
+   prevent endless wait
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/ext4.h     |    3 ++-
+ fs/ext4/extents.c  |    6 +++---
+ fs/ext4/file.c     |    2 +-
+ fs/ext4/fsync.c    |    2 +-
+ fs/ext4/indirect.c |    8 +++++---
+ fs/ext4/page-io.c  |   10 ++++++----
+ 6 files changed, 18 insertions(+), 13 deletions(-)
 
-
-
-
---- Comment #2 from Pavel Samsonov <tux2002@front.ru>  2012-10-03 16:53:26 ---
-Thanks, I give with you help needed result.
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1be2b44..3ab2539 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1947,7 +1947,7 @@ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
+ 
+ /* fsync.c */
+ extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
+-extern int ext4_flush_completed_IO(struct inode *);
++extern int ext4_flush_unwritten_io(struct inode *);
+ 
+ /* hash.c */
+ extern int ext4fs_dirhash(const char *name, int len, struct
+@@ -2371,6 +2371,7 @@ extern const struct file_operations ext4_dir_operations;
+ extern const struct inode_operations ext4_file_inode_operations;
+ extern const struct file_operations ext4_file_operations;
+ extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
++extern void ext4_unwritten_wait(struct inode *inode);
+ 
+ /* namei.c */
+ extern const struct inode_operations ext4_dir_inode_operations;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c1fcf48..1c94cca 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4268,7 +4268,7 @@ void ext4_ext_truncate(struct inode *inode)
+ 	 * finish any pending end_io work so we won't run the risk of
+ 	 * converting any truncated blocks to initialized later
+ 	 */
+-	ext4_flush_completed_IO(inode);
++	ext4_flush_unwritten_io(inode);
+ 
+ 	/*
+ 	 * probably first extent we're gonna free will be last in block
+@@ -4847,10 +4847,10 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 
+ 	/* Wait all existing dio workers, newcomers will block on i_mutex */
+ 	ext4_inode_block_unlocked_dio(inode);
+-	inode_dio_wait(inode);
+-	err = ext4_flush_completed_IO(inode);
++	err = ext4_flush_unwritten_io(inode);
+ 	if (err)
+ 		goto out_dio;
++	inode_dio_wait(inode);
+ 
+ 	credits = ext4_writepage_trans_blocks(inode);
+ 	handle = ext4_journal_start(inode, credits);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 39335bd..ca6f07a 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -55,7 +55,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
+ 	return 0;
+ }
+ 
+-static void ext4_unwritten_wait(struct inode *inode)
++void ext4_unwritten_wait(struct inode *inode)
+ {
+ 	wait_queue_head_t *wq = ext4_ioend_wq(inode);
+ 
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 4600008..be1d89f 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -138,7 +138,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	if (inode->i_sb->s_flags & MS_RDONLY)
+ 		goto out;
+ 
+-	ret = ext4_flush_completed_IO(inode);
++	ret = ext4_flush_unwritten_io(inode);
+ 	if (ret < 0)
+ 		goto out;
+ 
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 8d849da..37cd5a4 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -807,9 +807,11 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 
+ retry:
+ 	if (rw == READ && ext4_should_dioread_nolock(inode)) {
+-		if (unlikely(!list_empty(&ei->i_completed_io_list)))
+-			ext4_flush_completed_IO(inode);
+-
++		if (unlikely(!atomic_read(&EXT4_I(inode)->i_unwritten))) {
++			mutex_lock(&inode->i_mutex);
++			ext4_flush_unwritten_io(inode);
++			mutex_unlock(&inode->i_mutex);
++		}
+ 		/*
+ 		 * Nolock dioread optimization may be dynamically disabled
+ 		 * via ext4_inode_block_unlocked_dio(). Check inode's state
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 5b24c40..1f5df21 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -189,8 +189,6 @@ static int ext4_do_flush_completed_IO(struct inode *inode,
+ 
+ 		list_add_tail(&io->list, &complete);
+ 	}
+-	/* It is important to update all flags for all end_io in one shot w/o
+-	 * dropping the lock.*/
+ 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+ 	while (!list_empty(&complete)) {
+ 		io = list_entry(complete.next, ext4_io_end_t, list);
+@@ -228,9 +226,13 @@ static void ext4_end_io_work(struct work_struct *work)
+ 	ext4_do_flush_completed_IO(io->inode, io);
+ }
+ 
+-int ext4_flush_completed_IO(struct inode *inode)
++int ext4_flush_unwritten_io(struct inode *inode)
+ {
+-	return ext4_do_flush_completed_IO(inode, NULL);
++	int ret;
++	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex));
++	ret = ext4_do_flush_completed_IO(inode, NULL);
++	ext4_unwritten_wait(inode);
++	return ret;
+ }
+ 
+ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.7.6
+
