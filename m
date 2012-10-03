@@ -1,51 +1,201 @@
-From: "Holger Hoffstaette" <holger.hoffstaette@googlemail.com>
-Subject: Re: Repeatable ext4 oops with 3.6.0 (regression)
-Date: Tue, 02 Oct 2012 16:31:57 +0200
-Message-ID: <pan.2012.10.02.14.31.57.530230@googlemail.com>
-References: <pan.2012.10.02.11.19.55.793436@googlemail.com> <20121002133642.GD22777@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: [PATCH 2/2] ext3: ext3_bread usage audit [V2]
+Date: Tue,  2 Oct 2012 23:59:23 -0300
+Message-ID: <1349233163-16178-1-git-send-email-cmaiolino@redhat.com>
+References: <1349121055-8168-3-git-send-email-cmaiolino@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:53573 "EHLO plane.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:2019 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751447Ab2JBOdP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Oct 2012 10:33:15 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1TJ3Wm-0007GU-WA
-	for linux-ext4@vger.kernel.org; Tue, 02 Oct 2012 16:32:53 +0200
-Received: from p54876660.dip.t-dialin.net ([84.135.102.96])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2012 16:32:52 +0200
-Received: from holger.hoffstaette by p54876660.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2012 16:32:52 +0200
+	id S1752479Ab2JCC5p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Oct 2012 22:57:45 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q932vjU8009835
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2012 22:57:45 -0400
+Received: from hades.maiolino.org.com (ovpn-113-21.phx2.redhat.com [10.3.113.21])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q932vhiP018711
+	for <linux-ext4@vger.kernel.org>; Tue, 2 Oct 2012 22:57:44 -0400
+In-Reply-To: <1349121055-8168-3-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 02 Oct 2012 15:36:42 +0200, Jan Kara wrote:
+This is the ext3 version of the same patch applied to Ext4, where such goal is
+to audit the usage of ext3_bread() due a possible misinterpretion of its return
+value.
 
->   Thanks for report! Can you please attach here full dmesg after the oops
-> happens - the output from syslog seems to be partially filtered which
-> makes things unnecessarily hard... Thanks!
+Focused on directory blocks, a NULL value returned from ext3_bread() means a
+hole, which cannot exist into a directory inode. It can pass undetected after a
+fix in an uninitialized error variable.
 
-The output was cut from /var/log/messages since the machine hung and that file
-was intact. Following are dmesg from the reboot after the crash and after
-that is the full messages file from the crash I just reproduced; this time
-gthumb "properly" segfaulted (15:49:32), but the kernel still started to
-tumble and hung a few seconds later. Produced even more fireworks this
-time. :)
+The (now) initialized variable into ext3_getblk() may lead to a zero'ed return
+value of ext3_bread() to its callers, which can make the caller do not detect
+the hole in the directory inode.
 
-(..after several posting attempts..)
+This checks for directory holes when buffer_head and error value are both
+zero'ed returning -EIO to their callers
 
-I'm reading this through gmane and the files are apparently too big for
-posting, so I put them here: http://hoho.dyndns.org/~holger/ext4-oops-3.6.0/
+Some ext3_bread() callers do not needed any changes either because they already
+had its own hole detector paths or because these are deprecaded (like
+dx_show_entries)
 
-Just let me know if you need anything else.
+V2: It adds a wrapper function ext3_dir_bread() to check for directory holes
+when reading blocks for a directory inode, and callers of ext3_bread() to read
+directory blocks were replaced by this wrapper.
 
-Holger
+Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+---
+ fs/ext3/namei.c | 36 +++++++++++++++++++-----------------
+ fs/ext3/namei.h | 19 +++++++++++++++++++
+ 2 files changed, 38 insertions(+), 17 deletions(-)
 
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 7f6c938..0eecf4d 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -46,8 +46,7 @@ static struct buffer_head *ext3_append(handle_t *handle,
+ 
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ 
+-	bh = ext3_bread(handle, inode, *block, 1, err);
+-	if (bh) {
++	if ((bh = ext3_dir_bread(handle, inode, *block, 1, err))) {
+ 		inode->i_size += inode->i_sb->s_blocksize;
+ 		EXT3_I(inode)->i_disksize = inode->i_size;
+ 		*err = ext3_journal_get_write_access(handle, bh);
+@@ -339,8 +338,10 @@ dx_probe(struct qstr *entry, struct inode *dir,
+ 	u32 hash;
+ 
+ 	frame->bh = NULL;
+-	if (!(bh = ext3_bread (NULL,dir, 0, 0, err)))
++	if (!(bh = ext3_dir_bread(NULL, dir, 0, 0, err))) {
++		*err = ERR_BAD_DX_DIR;
+ 		goto fail;
++	}
+ 	root = (struct dx_root *) bh->b_data;
+ 	if (root->info.hash_version != DX_HASH_TEA &&
+ 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
+@@ -436,8 +437,10 @@ dx_probe(struct qstr *entry, struct inode *dir,
+ 		frame->entries = entries;
+ 		frame->at = at;
+ 		if (!indirect--) return frame;
+-		if (!(bh = ext3_bread (NULL,dir, dx_get_block(at), 0, err)))
++		if (!(bh = ext3_dir_bread(NULL, dir, dx_get_block(at), 0, err))) {
++			*err = ERR_BAD_DX_DIR;
+ 			goto fail2;
++		}
+ 		at = entries = ((struct dx_node *) bh->b_data)->entries;
+ 		if (dx_get_limit(entries) != dx_node_limit (dir)) {
+ 			ext3_warning(dir->i_sb, __func__,
+@@ -535,8 +538,8 @@ static int ext3_htree_next_block(struct inode *dir, __u32 hash,
+ 	 * block so no check is necessary
+ 	 */
+ 	while (num_frames--) {
+-		if (!(bh = ext3_bread(NULL, dir, dx_get_block(p->at),
+-				      0, &err)))
++		if (!(bh = ext3_dir_bread(NULL, dir, dx_get_block(p->at),
++					  0, &err)))
+ 			return err; /* Failure */
+ 		p++;
+ 		brelse (p->bh);
+@@ -562,7 +565,8 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	int err = 0, count = 0;
+ 
+ 	dxtrace(printk("In htree dirblock_to_tree: block %d\n", block));
+-	if (!(bh = ext3_bread (NULL, dir, block, 0, &err)))
++
++	if (!(bh = ext3_dir_bread(NULL, dir, block, 0, &err)))
+ 		return err;
+ 
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+@@ -976,7 +980,7 @@ static struct buffer_head * ext3_dx_find_entry(struct inode *dir,
+ 		return NULL;
+ 	do {
+ 		block = dx_get_block(frame->at);
+-		if (!(bh = ext3_bread (NULL,dir, block, 0, err)))
++		if (!(bh = ext3_dir_bread (NULL, dir, block, 0, err)))
+ 			goto errout;
+ 
+ 		retval = search_dirblock(bh, dir, entry,
+@@ -1458,9 +1462,9 @@ static int ext3_add_entry (handle_t *handle, struct dentry *dentry,
+ 	}
+ 	blocks = dir->i_size >> sb->s_blocksize_bits;
+ 	for (block = 0; block < blocks; block++) {
+-		bh = ext3_bread(handle, dir, block, 0, &retval);
+-		if(!bh)
++		if (!(bh = ext3_dir_bread(handle, dir, block, 0, &retval)))
+ 			return retval;
++
+ 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
+ 		if (retval != -ENOSPC)
+ 			return retval;
+@@ -1500,7 +1504,7 @@ static int ext3_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 	entries = frame->entries;
+ 	at = frame->at;
+ 
+-	if (!(bh = ext3_bread(handle,dir, dx_get_block(frame->at), 0, &err)))
++	if (!(bh = ext3_dir_bread(handle, dir, dx_get_block(frame->at), 0, &err)))
+ 		goto cleanup;
+ 
+ 	BUFFER_TRACE(bh, "get_write_access");
+@@ -1790,8 +1794,7 @@ retry:
+ 	inode->i_op = &ext3_dir_inode_operations;
+ 	inode->i_fop = &ext3_dir_operations;
+ 	inode->i_size = EXT3_I(inode)->i_disksize = inode->i_sb->s_blocksize;
+-	dir_block = ext3_bread (handle, inode, 0, 1, &err);
+-	if (!dir_block)
++	if (!(dir_block = ext3_dir_bread(handle, inode, 0, 1, &err)))
+ 		goto out_clear_inode;
+ 
+ 	BUFFER_TRACE(dir_block, "get_write_access");
+@@ -1859,7 +1862,7 @@ static int empty_dir (struct inode * inode)
+ 
+ 	sb = inode->i_sb;
+ 	if (inode->i_size < EXT3_DIR_REC_LEN(1) + EXT3_DIR_REC_LEN(2) ||
+-	    !(bh = ext3_bread (NULL, inode, 0, 0, &err))) {
++	    !(bh = ext3_dir_bread(NULL, inode, 0, 0, &err))) {
+ 		if (err)
+ 			ext3_error(inode->i_sb, __func__,
+ 				   "error %d reading directory #%lu offset 0",
+@@ -1890,9 +1893,8 @@ static int empty_dir (struct inode * inode)
+ 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
+ 			err = 0;
+ 			brelse (bh);
+-			bh = ext3_bread (NULL, inode,
+-				offset >> EXT3_BLOCK_SIZE_BITS(sb), 0, &err);
+-			if (!bh) {
++			if (!(bh = ext3_dir_bread (NULL, inode,
++				offset >> EXT3_BLOCK_SIZE_BITS(sb), 0, &err))) {
+ 				if (err)
+ 					ext3_error(sb, __func__,
+ 						   "error %d reading directory"
+diff --git a/fs/ext3/namei.h b/fs/ext3/namei.h
+index f2ce2b0..46304d8 100644
+--- a/fs/ext3/namei.h
++++ b/fs/ext3/namei.h
+@@ -6,3 +6,22 @@
+ */
+ 
+ extern struct dentry *ext3_get_parent(struct dentry *child);
++
++static inline struct buffer_head *ext3_dir_bread(handle_t *handle,
++						 struct inode *inode,
++						 int block, int create,
++						 int *err)
++{
++	struct buffer_head *bh;
++
++	bh = ext3_bread(handle, inode, block, create, err);
++
++	if (!bh && !(*err)) {
++		*err = -EIO;
++		ext3_error(inode->i_sb, __func__,
++			   "Directory hole detected on inode %lu\n",
++			   inode->i_ino);
++		return NULL;
++	}
++	return bh;
++}
+-- 
+1.7.11.4
 
