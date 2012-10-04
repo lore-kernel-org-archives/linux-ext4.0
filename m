@@ -1,84 +1,76 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix ext4_flush_completed_IO wait semantics
-Date: Thu, 4 Oct 2012 12:11:06 +0200
-Message-ID: <20121004101106.GC4641@quack.suse.cz>
-References: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH 2/2] ext3: ext3_bread usage audit [V2]
+Date: Thu, 4 Oct 2012 14:47:43 -0300
+Message-ID: <20121004174743.GA17353@andromeda.usersys.redhat.com>
+References: <1349121055-8168-3-git-send-email-cmaiolino@redhat.com>
+ <1349233163-16178-1-git-send-email-cmaiolino@redhat.com>
+ <20121004124212.GG4641@quack.suse.cz>
+ <20121004130244.GI4641@quack.suse.cz>
+ <20121004135746.GA3296@andromeda.usersys.redhat.com>
+ <20121004142900.GJ4641@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56580 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:55148 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752496Ab2JDKLJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Oct 2012 06:11:09 -0400
+	id S932214Ab2JDRrr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Oct 2012 13:47:47 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q94HllH1026643
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Oct 2012 13:47:47 -0400
+Received: from andromeda.usersys.redhat.com (ovpn-113-129.phx2.redhat.com [10.3.113.129])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q94HlhbK026016
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Oct 2012 13:47:46 -0400
 Content-Disposition: inline
-In-Reply-To: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <20121004142900.GJ4641@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 03-10-12 22:43:27, Dmitry Monakhov wrote:
-> BUG #1) All places where we call ext4_flush_completed_IO are broken
->     because buffered io and DIO/AIO goes through three stages
->     1) submitted io,
->     2) completed io (in i_completed_io_list) conversion pended
->     3) finished  io (conversion done)
->     And by calling ext4_flush_completed_IO we will flush only
->     requests which were in (2) stage, which is wrong because:
->      1) punch_hole and truncate _must_ wait for all outstanding unwritten io
->       regardless to it's state.
->      2) fsync and nolock_dio_read should also wait because there is
->         a time window between end_page_writeback() and ext4_add_complete_io()
->         As result integrity fsync is broken in case of buffered write
->         to fallocated region:
->         fsync                                      blkdev_completion
-> 	 ->filemap_write_and_wait_range
->                                                    ->ext4_end_bio
->                                                      ->end_page_writeback
->           <-- filemap_write_and_wait_range return
-> 	 ->ext4_flush_completed_IO
->    	 sees empty i_completed_io_list but pended
->    	 conversion still exist
->                                                      ->ext4_add_complete_io
-> 
-> BUG #2) Race window becomes wider due to 'ext4: completed_io locking cleanup V4'
-> 
-> This patch make following changes:
-> 1) ext4_flush_completed_io() now first try to flush completed io and when
->    wait for any outstanding unwritten io via ext4_unwritten_wait()
-> 2) Rename function to more appropriate name.
-> 3) Assert that all callers of ext4_flush_unwritten_io should hold i_mutex to
->    prevent endless wait
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-  This patch looks good except for:
+On Thu, Oct 04, 2012 at 04:29:00PM +0200, Jan Kara wrote:
+> On Thu 04-10-12 10:57:46, Carlos Maiolino wrote:
+> > On Thu, Oct 04, 2012 at 03:02:44PM +0200, Jan Kara wrote:
+> > > On Thu 04-10-12 14:42:12, Jan Kara wrote:
+> > > > On Tue 02-10-12 23:59:23, Carlos Maiolino wrote:
+> > > > > This is the ext3 version of the same patch applied to Ext4, where such goal is
+> > > > > to audit the usage of ext3_bread() due a possible misinterpretion of its return
+> > > > > value.
+> > > > > 
+> > > > > Focused on directory blocks, a NULL value returned from ext3_bread() means a
+> > > > > hole, which cannot exist into a directory inode. It can pass undetected after a
+> > > > > fix in an uninitialized error variable.
+> > > > > 
+> > > > > The (now) initialized variable into ext3_getblk() may lead to a zero'ed return
+> > > > > value of ext3_bread() to its callers, which can make the caller do not detect
+> > > > > the hole in the directory inode.
+> > > > > 
+> > > > > This checks for directory holes when buffer_head and error value are both
+> > > > > zero'ed returning -EIO to their callers
+> > > > > 
+> > > > > Some ext3_bread() callers do not needed any changes either because they already
+> > > > > had its own hole detector paths or because these are deprecaded (like
+> > > > > dx_show_entries)
+> > > > > 
+> > > > > V2: It adds a wrapper function ext3_dir_bread() to check for directory holes
+> > > > > when reading blocks for a directory inode, and callers of ext3_bread() to read
+> > > > > directory blocks were replaced by this wrapper.
+> > > > > 
+> > > > > Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+> > > >   Oh, I see you already sent V2. Thanks. I've put the patch to my tree.
+> > >   Umm, after checking - any reason why you didn't convert also ext3_bread()
+> > > in dir.c and ext3_bread() in ext3_rename()?
+> > > 
+> > I didn't convert some calls for ext3_bread() - like ext3_readdir() -
+> > because those really don't care about the err value, only about if bh is
+> > valid or not. I can change this if you want, not a problem from my point.
+>   Right. I've converted the call in ext3_rename() because there it seems
+> useful. In ext3_readdir() calling ext3_bread() is better because we want
+> to be able to read the faulty directory.
 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 8d849da..37cd5a4 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -807,9 +807,11 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
->  
->  retry:
->  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> -		if (unlikely(!list_empty(&ei->i_completed_io_list)))
-> -			ext4_flush_completed_IO(inode);
-> -
-> +		if (unlikely(!atomic_read(&EXT4_I(inode)->i_unwritten))) {
-  This condition which seems to be inverted...
+K, so I don't need to send a V3?
 
-> +			mutex_lock(&inode->i_mutex);
-> +			ext4_flush_unwritten_io(inode);
-> +			mutex_unlock(&inode->i_mutex);
-> +		}
->  		/*
->  		 * Nolock dioread optimization may be dynamically disabled
->  		 * via ext4_inode_block_unlocked_dio(). Check inode's state
-
-  After fixing that, you can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-									Honza
+cheers
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--Carlos
