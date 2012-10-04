@@ -1,61 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Repeatable ext4 oops with 3.6.0 (regression)
-Date: Thu, 4 Oct 2012 13:34:25 -0400
-Message-ID: <20121004173425.GA15405@thunk.org>
-References: <pan.2012.10.02.11.19.55.793436@googlemail.com>
- <20121002133642.GD22777@quack.suse.cz>
- <pan.2012.10.02.14.31.57.530230@googlemail.com>
- <20121004130119.GH4641@quack.suse.cz>
- <506DABDD.7090105@googlemail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 48301] New: Kernel panic when try delete really big file
+ (3,3TB)
+Date: Thu,  4 Oct 2012 05:43:46 +0000 (UTC)
+Message-ID: <bug-48301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, linux-mm@kvack.org
-To: Holger =?iso-8859-1?Q?Hoffst=E4tte?= <holger.hoffstaette@googlemail.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <506DABDD.7090105@googlemail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:35525 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754042Ab2JDFnu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Oct 2012 01:43:50 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 43792202CA
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Oct 2012 05:43:49 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 7EA00202C6
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Oct 2012 05:43:47 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 04, 2012 at 05:31:41PM +0200, Holger Hoffst=E4tte wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=48301
 
-> So armed with multiple running shells I finally managed to save the dme=
-sg
-> to NFS. It doesn't get any more complete than this and again shows the
-> ext4 stacktrace from before. So maybe it really is generic kmem corrupt=
-ion
-> and ext4 looking at symlinks/inodes is just the victim.
+           Summary: Kernel panic when try delete really big file (3,3TB)
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.4.9
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: zdenek@zdvorak.eu
+        Regression: No
 
-That certainly seems to be the case.  As near as I can tell from the
-stack trace, you're doing a readdir(), and the crash is happening in
-ext4_htree_store_dirent() --- the stack address to ext4_follow_link()
-makes no sense given the rest of the strack trace, and anyway,
-ext4_follow_link() doesn't do any memory allocation.
 
-So that means this:
-> [  106.643048]  [<c0236ed9>] ext4_htree_store_dirent+0x29/0x110
+I try test filesystem ext4 mounted as / on RAID5 (4*2TB).
+Create about 3,3TB file by "ddrescue /dev/zero /mnt/zero-file
+after that try delete this file "rm /mnt/zero-file"....
 
-Almost certainly corresponds to the following call to kzalloc:
+system print bugtrace and after that not respond, unable to reboot. 
+After manual restart, unable to boot (kernel panic when try mount / ).
 
-	/* Create and allocate the fname structure */
-	len =3D sizeof(struct fname) + dirent->name_len + 1;
-	new_fn =3D kzalloc(len, GFP_KERNEL);
+Solved by boot actual systemrescueCD and after 1 minutes filesystem
+successfully mounted, after next manual restart, standard os boot ok.
 
-dirent->name_len is a unsigned char, and struct fname is around 48
-bytes or so.  So len is never going to be larger than 300 bytes, and
-never smaller than 48 bytes, which is certainly valid input as far as
-kzalloc() is concerned.
+Sorry for english.
 
-So it's very likely that the crash in __kmalloc() is probably caused
-by the internal slab/slub data structures getting scrambled.
+Thanks
+Zdvori
 
-Regards,
-
-					- Ted
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
