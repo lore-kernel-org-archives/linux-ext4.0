@@ -1,26 +1,38 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix ext4_flush_completed_IO wait semantics
-Date: Wed, 3 Oct 2012 14:55:58 -0400
-Message-ID: <20121003185558.GB5160@thunk.org>
-References: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 48301] Kernel panic when try delete really big file (3,3TB)
+Date: Thu,  4 Oct 2012 05:44:24 +0000 (UTC)
+Message-ID: <20121004054424.598DE11FC3E@bugzilla.kernel.org>
+References: <bug-48301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53635 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751132Ab2JCT3O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Oct 2012 15:29:14 -0400
-Content-Disposition: inline
-In-Reply-To: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
+Received: from mail.kernel.org ([198.145.19.201]:35567 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755917Ab2JDFo0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Oct 2012 01:44:26 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C2ED4202CA
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Oct 2012 05:44:25 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 5B9FF202C7
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Oct 2012 05:44:24 +0000 (UTC)
+In-Reply-To: <bug-48301-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Are you planning on updating the 'ext4: completed_io locking cleanup
-V4' patch series, or is this an additional patch that should be tacked
-on to it?
+https://bugzilla.kernel.org/show_bug.cgi?id=48301
 
-Thanks,
 
-						- Ted
+
+
+
+--- Comment #1 from Zdenek Zdvorak <zdenek@zdvorak.eu>  2012-10-04 05:44:24 ---
+Created an attachment (id=82021)
+ --> (https://bugzilla.kernel.org/attachment.cgi?id=82021)
+DMESG, system info
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
