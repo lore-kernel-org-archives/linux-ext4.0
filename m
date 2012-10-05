@@ -1,66 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 48431] New: ext4_fill_super() reports success even if
- ext4_mb_init() fails
-Date: Fri,  5 Oct 2012 12:19:07 +0000 (UTC)
-Message-ID: <bug-48431-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix ext4_flush_completed_IO wait semantics
+Date: Fri, 5 Oct 2012 08:40:27 -0400
+Message-ID: <20121005124027.GA21358@thunk.org>
+References: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:56210 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932193Ab2JEMTM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 08:19:12 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9E8C42045B
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Oct 2012 12:19:11 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 96BC220453
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Oct 2012 12:19:09 +0000 (UTC)
+Received: from li9-11.members.linode.com ([67.18.176.11]:53954 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932491Ab2JEMkc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Oct 2012 08:40:32 -0400
+Content-Disposition: inline
+In-Reply-To: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=48431
+On Wed, Oct 03, 2012 at 10:43:27PM +0400, Dmitry Monakhov wrote:
+> -int ext4_flush_completed_IO(struct inode *inode)
+> +int ext4_flush_unwritten_io(struct inode *inode)
+>  {
+> -	return ext4_do_flush_completed_IO(inode, NULL);
+> +	int ret;
+> +	WARN_ON_ONCE(!mutex_is_locked(&inode->i_mutex));
+> +	ret = ext4_do_flush_completed_IO(inode, NULL);
+> +	ext4_unwritten_wait(inode);
+> +	return ret;
+>  }
+>  
 
-           Summary: ext4_fill_super() reports success even if
-                    ext4_mb_init() fails
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.6
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: eugene.shatokhin@rosalab.ru
-        Regression: No
+This WARN_ON is triggering on the truncate path...
 
+------------[ cut here ]------------
+WARNING: at /usr/projects/linux/ext4/fs/ext4/page-io.c:232 ext4_flush_unwritten_io+0x2d/0x4c()
+Hardware name: Bochs
+Modules linked in:
+Pid: 1907, comm: findfs Not tainted 3.6.0-rc1-00071-gb1edc6d #441
+Call Trace:
+ [<c0159cb3>] warn_slowpath_common+0x68/0x7d
+ [<c0272ebd>] ? ext4_flush_unwritten_io+0x2d/0x4c
+ [<c0159cdc>] warn_slowpath_null+0x14/0x18
+ [<c0272ebd>] ext4_flush_unwritten_io+0x2d/0x4c
+ [<c028fa09>] ext4_ext_truncate+0x21/0x174
+ [<c0270cbb>] ? ext4_mark_inode_dirty+0x172/0x1a9
+ [<c026ed9e>] ext4_truncate+0x7b/0xb9
+ [<c0272414>] ext4_evict_inode+0x1ec/0x2e3
+ [<c021a724>] evict+0x94/0x135
+ [<c021a939>] iput+0x174/0x17a
+ [<c02122bd>] do_unlinkat+0xc8/0x106
+ [<c06d8b5e>] ? restore_all+0xf/0xf
+ [<c0199909>] ? trace_hardirqs_on_caller+0x103/0x154
+ [<c02138f0>] sys_unlink+0x15/0x17
+ [<c06d8b25>] syscall_call+0x7/0xb
+---[ end trace cdd8306e94494df8 ]---
 
-Created an attachment (id=82361)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=82361)
-The patch to fix the problem
+							- Ted
 
-If ext4_mb_init() called from ext4_fill_super() (fs/ext4/super.c:3980 in the
-current ext4 git tree) fails and returns error code, ext4_fill_super() still
-returns 0. 
-
-This happens because the return value of ext4_mb_init() is not assigned to
-'ret' in the error path. So the previous value of 'ret' (0) is returned from
-ext4_fill_super().
-
-This problem leads to a kernel oops in mount_fs() when the latter tries to
-access the struct dentry that the mount() callback returns ("sb = root->d_sb;"
-in fs/super.c:1180).
-
-The problem has been revealed with the help of the fault simulation facilities
-provided by KEDR Framework.
-
-Attached is a trivial patch that fixes the problem.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
