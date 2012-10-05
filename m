@@ -1,46 +1,35 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 47151] provide a file system block size of 8KB for certain
- SSDs.
-Date: Fri,  5 Oct 2012 17:30:55 +0000 (UTC)
-Message-ID: <20121005173055.7E6A411FC3E@bugzilla.kernel.org>
-References: <bug-47151-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: freeze_bdev hangs
+Date: Fri, 05 Oct 2012 12:33:26 -0500
+Message-ID: <506F19E6.8030005@redhat.com>
+References: <CAD6i1f+fzh-z+Xr6V2gHBzq4kmJzPcfre91g=q6fJ7P_5nY0Zw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Prashant Shah <pshah.mumbai@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:37995 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:33974 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750965Ab2JERa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 13:30:59 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 005112050F
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Oct 2012 17:30:58 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 856CE20540
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Oct 2012 17:30:55 +0000 (UTC)
-In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
+	id S1750965Ab2JERd2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Oct 2012 13:33:28 -0400
+In-Reply-To: <CAD6i1f+fzh-z+Xr6V2gHBzq4kmJzPcfre91g=q6fJ7P_5nY0Zw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=47151
+On 10/5/12 6:58 AM, Prashant Shah wrote:
+> Hi,
+> 
+> I am writing a filter driver for ext3 in which it replaces the block
+> device request queue 'make_request_fn' with the driver custom
+> function. Calling freeze_bdev() or freeze_super() before replacing the
+> 'make_request_fn' hangs the kernel. What am I doing wrong ? Will this
+> method work ?
 
+I haven't looked at your custom code, but freeze has changed a bit lately,
+and "hangs" is a very vague description
 
-Elmar Stellnberger <estellnb@elstel.org> changed:
+For starters I'd try a sysrq-w when the system "hangs" and see where things
+are at, that would offer you some clues.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |REOPENED
-         Resolution|WILL_NOT_FIX                |
-
-
-
-
---- Comment #9 from Elmar Stellnberger <estellnb@elstel.org>  2012-10-05 17:30:55 ---
-No, there seem to be plenty of users requiring it: my first search for 'SSD 8K
-file system block size' has produced an immediate hit at place #1:
-http://forums.gentoo.org/viewtopic-t-935946.html?sid=6b0893c88505b69270c47558ff641326
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+-Eric
