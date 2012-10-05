@@ -1,51 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] e2freefrag: use 64-bit rbtree bitmaps
-Date: Thu,  4 Oct 2012 23:44:54 -0400
-Message-ID: <1349408695-11661-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 05/11] ext4: remove ext4_end_io()
+Date: Fri, 5 Oct 2012 00:28:16 -0400
+Message-ID: <20121005042816.GD11723@thunk.org>
+References: <1348847051-6746-1-git-send-email-dmonakhov@openvz.org>
+ <1348847051-6746-6-git-send-email-dmonakhov@openvz.org>
+ <CAOMFOmVyqmmepkVOYSjz7kYtqGb0ogpyOzMYAX4KiA9JKBMKaQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
+	jack@suse.cz, lczerner@redhat.com
+To: Anatol Pomozov <anatol.pomozov@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53926 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53925 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751021Ab2JEH3P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 03:29:15 -0400
+	id S1752369Ab2JEH3O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Oct 2012 03:29:14 -0400
+Content-Disposition: inline
+In-Reply-To: <CAOMFOmVyqmmepkVOYSjz7kYtqGb0ogpyOzMYAX4KiA9JKBMKaQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Enable the use of 64-bit bitmaps, so e2freefrag will work on file
-systems with the 64-bit feature enabled.  In addition, enable the
-rbtree-based bitmaps, which significantly saves the amount of memory
-required (from 97 megs to 1.7 megs for an empty 3T file system) at the
-cost of additional CPU overhead (but we will claw back some of the
-additional CPU overhead in the next commit).
+I ended up dropping this patch since it doesn't make any difference to
+the generated code (gcc will take a static function which is only used
+in one place, and inline it) and it makes a bit more understandable to
+have ext4_end_io() as a separate function.
 
-Addresses-Google-Bug: 7269948
+> > +               /* Wake up anyone waiting on unwritten extent conversion */
+> > +               if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
+> > +                       wake_up_all(ext4_ioend_wq(io->inode));
+> 
+> Should we use "inode" instead of "io->inode"?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- misc/e2freefrag.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+I agree it would be a bit cleaner/more readable, but again it won't
+make a difference to the generated assembly, and while we oculd do
+this in the original code in ext4_end_io(), I'm trying to put this
+patch series to bed so I can push it to Linus, and since we're now not
+touching the code, it's not worth it to clean this up now.  We can
+take of this later....
 
-diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-index 30af43e..58f1ff5 100644
---- a/misc/e2freefrag.c
-+++ b/misc/e2freefrag.c
-@@ -249,13 +249,14 @@ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
- static void open_device(char *device_name, ext2_filsys *fs)
- {
- 	int retval;
--	int flag = EXT2_FLAG_FORCE;
-+	int flag = EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
- 
- 	retval = ext2fs_open(device_name, flag, 0, 0, unix_io_manager, fs);
- 	if (retval) {
- 		com_err(device_name, retval, "while opening filesystem");
- 		exit(1);
- 	}
-+	(*fs)->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
- }
- #endif
- 
--- 
-1.7.12.rc0.22.gcdd159b
-
+						- Ted
