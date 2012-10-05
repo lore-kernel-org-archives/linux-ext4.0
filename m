@@ -1,32 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix ext4_flush_completed_IO wait semantics
-Date: Fri, 5 Oct 2012 00:20:59 -0400
-Message-ID: <20121005042059.GC11723@thunk.org>
-References: <1349289807-18811-1-git-send-email-dmonakhov@openvz.org>
- <20121004101106.GC4641@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] e2freefrag: use 64-bit rbtree bitmaps
+Date: Thu,  4 Oct 2012 23:44:54 -0400
+Message-ID: <1349408695-11661-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:53924 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:53926 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751021Ab2JEH3O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 03:29:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20121004101106.GC4641@quack.suse.cz>
+	id S1751021Ab2JEH3P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Oct 2012 03:29:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 04, 2012 at 12:11:06PM +0200, Jan Kara wrote:
-> >  retry:
-> >  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> > -		if (unlikely(!list_empty(&ei->i_completed_io_list)))
-> > -			ext4_flush_completed_IO(inode);
-> > -
-> > +		if (unlikely(!atomic_read(&EXT4_I(inode)->i_unwritten))) {
->   This condition which seems to be inverted...
+Enable the use of 64-bit bitmaps, so e2freefrag will work on file
+systems with the 64-bit feature enabled.  In addition, enable the
+rbtree-based bitmaps, which significantly saves the amount of memory
+required (from 97 megs to 1.7 megs for an empty 3T file system) at the
+cost of additional CPU overhead (but we will claw back some of the
+additional CPU overhead in the next commit).
 
-Nice catch, thanks!  I've fixed this in my tree.
+Addresses-Google-Bug: 7269948
 
-     	    	   	      	      - Ted
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/e2freefrag.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+index 30af43e..58f1ff5 100644
+--- a/misc/e2freefrag.c
++++ b/misc/e2freefrag.c
+@@ -249,13 +249,14 @@ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
+ static void open_device(char *device_name, ext2_filsys *fs)
+ {
+ 	int retval;
+-	int flag = EXT2_FLAG_FORCE;
++	int flag = EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
+ 
+ 	retval = ext2fs_open(device_name, flag, 0, 0, unix_io_manager, fs);
+ 	if (retval) {
+ 		com_err(device_name, retval, "while opening filesystem");
+ 		exit(1);
+ 	}
++	(*fs)->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
+ }
+ #endif
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
+
