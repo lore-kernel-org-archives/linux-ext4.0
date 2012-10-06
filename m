@@ -1,75 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] Fix makefiles to compile e2freefrag with profiling
-Date: Fri,  5 Oct 2012 22:04:12 -0400
-Message-ID: <1349489052-18657-3-git-send-email-tytso@mit.edu>
-References: <1349408695-11661-2-git-send-email-tytso@mit.edu>
- <1349489052-18657-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Marco Stornelli <marco.stornelli@gmail.com>
+Subject: [PATCH 2/8] ext3: drop lock/unlock super
+Date: Sat, 06 Oct 2012 12:39:20 +0200
+Message-ID: <50700A58.3050609@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54077 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752042Ab2JFCEP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 22:04:15 -0400
-In-Reply-To: <1349489052-18657-1-git-send-email-tytso@mit.edu>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:54333 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750745Ab2JFKqA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Oct 2012 06:46:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Also fix a bug caused by a stray continuation backslash which caused
-the e2fsck/Makefile to fail when profiling is enabled.
+Removed lock/unlock super.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- e2fsck/Makefile.in | 2 +-
- misc/Makefile.in   | 8 +++++++-
- 2 files changed, 8 insertions(+), 2 deletions(-)
+ fs/ext3/super.c |    6 ------
+ 1 files changed, 0 insertions(+), 6 deletions(-)
 
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index a52bbe1..87b71bd 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -28,7 +28,7 @@ STATIC_DEPLIBS= $(DEPSTATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) \
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 17ae5c8..29e7971 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2578,11 +2578,9 @@ out:
+ static int ext3_unfreeze(struct super_block *sb)
+ {
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+-		lock_super(sb);
+ 		/* Reser the needs_recovery flag before the fs is unlocked. */
+ 		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
+-		unlock_super(sb);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
+ 	}
+ 	return 0;
+@@ -2602,7 +2600,6 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ #endif
  
- PROFILED_LIBS= $(PROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
- 	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
--	       $(PROFILED_LIBE2P) $(LIBINTL) \
-+	       $(PROFILED_LIBE2P) $(LIBINTL)
- PROFILED_DEPLIBS= $(DEPPROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
- 		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
- 		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 0692126..575a6d5 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -72,6 +72,7 @@ PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
- 			profiled/ismounted.o
- PROFILED_BLKID_OBJS=	profiled/blkid.o
- PROFILED_FILEFRAG_OBJS=	profiled/filefrag.o
-+PROFILED_E2FREEFRAG_OBJS= profiled/e2freefrag.o
- PROFILED_E2UNDO_OBJS=	profiled/e2undo.o
- PROFILED_E4DEFRAG_OBJS=	profiled/e4defrag.o
- 
-@@ -107,7 +108,7 @@ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
- @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
- 	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
- 	logsave.profiled filefrag.profiled uuidgen.profiled uuidd.profiled \
--	e2image.profiled e4defrag.profiled
-+	e2image.profiled e4defrag.profiled e2freefrag.profiled
- 
- profiled:
- @PROFILE_CMT@	$(E) "	MKDIR $@"
-@@ -319,6 +320,11 @@ e2freefrag: $(E2FREEFRAG_OBJS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2freefrag $(E2FREEFRAG_OBJS) $(LIBS)
- 
-+e2freefrag.profiled: $(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_DEPLIBS)
-+	$(E) "	LD $@"
-+	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2freefrag.profiled \
-+		$(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_LIBS)
-+
- filefrag: $(FILEFRAG_OBJS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) 
--- 
-1.7.12.rc0.22.gcdd159b
-
+ 	/* Store the original options */
+-	lock_super(sb);
+ 	old_sb_flags = sb->s_flags;
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
+ 	old_opts.s_resuid = sbi->s_resuid;
+@@ -2708,8 +2705,6 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ 		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
+ 			kfree(old_opts.s_qf_names[i]);
+ #endif
+-	unlock_super(sb);
