@@ -1,173 +1,80 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/3] libext2fs: remove pointless indirection in rbtree
- bitmaps
-Date: Sat, 06 Oct 2012 10:52:38 -0500
-Message-ID: <507053C6.2010809@redhat.com>
-References: <1349408695-11661-2-git-send-email-tytso@mit.edu> <1349489052-18657-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 3/3] Fix makefiles to compile e2freefrag with profiling
+Date: Sat, 06 Oct 2012 10:54:48 -0500
+Message-ID: <50705448.8050907@redhat.com>
+References: <1349408695-11661-2-git-send-email-tytso@mit.edu> <1349489052-18657-1-git-send-email-tytso@mit.edu> <1349489052-18657-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32458 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46167 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755943Ab2JFPwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 6 Oct 2012 11:52:41 -0400
-In-Reply-To: <1349489052-18657-1-git-send-email-tytso@mit.edu>
+	id S1754199Ab2JFPyv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Oct 2012 11:54:51 -0400
+In-Reply-To: <1349489052-18657-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On 10/5/12 9:04 PM, Theodore Ts'o wrote:
-> The code was previously allocating a single 4 or 8 byte pointer for
-> the rcursor and wcursor fields in the ext2fs_rb_private structure;
-> this added two extra memory allocations (which could fail), and extra
-> indirections, for no good reason.  Removing the extra indirection also
-> makes the code more readable, so it's all upside and no downside.
+> Also fix a bug caused by a stray continuation backslash which caused
+> the e2fsck/Makefile to fail when profiling is enabled.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-Makes sense to me!
 
 Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
 > ---
->  lib/ext2fs/blkmap64_rb.c | 46 +++++++++++++++++++---------------------------
->  1 file changed, 19 insertions(+), 27 deletions(-)
+>  e2fsck/Makefile.in | 2 +-
+>  misc/Makefile.in   | 8 +++++++-
+>  2 files changed, 8 insertions(+), 2 deletions(-)
 > 
-> diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-> index c9006f8..900c0d3 100644
-> --- a/lib/ext2fs/blkmap64_rb.c
-> +++ b/lib/ext2fs/blkmap64_rb.c
-> @@ -38,8 +38,8 @@ struct bmap_rb_extent {
+> diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+> index a52bbe1..87b71bd 100644
+> --- a/e2fsck/Makefile.in
+> +++ b/e2fsck/Makefile.in
+> @@ -28,7 +28,7 @@ STATIC_DEPLIBS= $(DEPSTATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) \
 >  
->  struct ext2fs_rb_private {
->  	struct rb_root root;
-> -	struct bmap_rb_extent **wcursor;
-> -	struct bmap_rb_extent **rcursor;
-> +	struct bmap_rb_extent *wcursor;
-> +	struct bmap_rb_extent *rcursor;
->  #ifdef BMAP_STATS_OPS
->  	__u64 mark_hit;
->  	__u64 test_hit;
-> @@ -148,10 +148,10 @@ inline
->  static void rb_free_extent(struct ext2fs_rb_private *bp,
->  			   struct bmap_rb_extent *ext)
->  {
-> -	if (*bp->wcursor == ext)
-> -		*bp->wcursor = NULL;
-> -	if (*bp->rcursor == ext)
-> -		*bp->rcursor = NULL;
-> +	if (bp->wcursor == ext)
-> +		bp->wcursor = NULL;
-> +	if (bp->rcursor == ext)
-> +		bp->rcursor = NULL;
->  	ext2fs_free_mem(&ext);
->  }
+>  PROFILED_LIBS= $(PROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
+>  	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
+> -	       $(PROFILED_LIBE2P) $(LIBINTL) \
+> +	       $(PROFILED_LIBE2P) $(LIBINTL)
+>  PROFILED_DEPLIBS= $(DEPPROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
+>  		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
+>  		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
+> diff --git a/misc/Makefile.in b/misc/Makefile.in
+> index 0692126..575a6d5 100644
+> --- a/misc/Makefile.in
+> +++ b/misc/Makefile.in
+> @@ -72,6 +72,7 @@ PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
+>  			profiled/ismounted.o
+>  PROFILED_BLKID_OBJS=	profiled/blkid.o
+>  PROFILED_FILEFRAG_OBJS=	profiled/filefrag.o
+> +PROFILED_E2FREEFRAG_OBJS= profiled/e2freefrag.o
+>  PROFILED_E2UNDO_OBJS=	profiled/e2undo.o
+>  PROFILED_E4DEFRAG_OBJS=	profiled/e4defrag.o
 >  
-> @@ -165,14 +165,8 @@ static errcode_t rb_alloc_private_data (ext2fs_generic_bitmap bitmap)
->  		return retval;
+> @@ -107,7 +108,7 @@ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+>  @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
+>  	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
+>  	logsave.profiled filefrag.profiled uuidgen.profiled uuidd.profiled \
+> -	e2image.profiled e4defrag.profiled
+> +	e2image.profiled e4defrag.profiled e2freefrag.profiled
 >  
->  	bp->root = RB_ROOT;
-> -	retval = ext2fs_get_mem(sizeof(struct bmap_rb_extent *), &bp->rcursor);
-> -	if (retval)
-> -		return retval;
-> -	retval = ext2fs_get_mem(sizeof(struct bmap_rb_extent *), &bp->wcursor);
-> -	if (retval)
-> -		return retval;
-> -	*bp->rcursor = NULL;
-> -	*bp->wcursor = NULL;
-> +	bp->rcursor = NULL;
-> +	bp->wcursor = NULL;
+>  profiled:
+>  @PROFILE_CMT@	$(E) "	MKDIR $@"
+> @@ -319,6 +320,11 @@ e2freefrag: $(E2FREEFRAG_OBJS)
+>  	$(E) "	LD $@"
+>  	$(Q) $(CC) $(ALL_LDFLAGS) -o e2freefrag $(E2FREEFRAG_OBJS) $(LIBS)
 >  
->  #ifdef BMAP_STATS_OPS
->  	bp->test_hit = 0;
-> @@ -215,8 +209,6 @@ static void rb_free_bmap(ext2fs_generic_bitmap bitmap)
->  	bp = (struct ext2fs_rb_private *) bitmap->private;
->  
->  	rb_free_tree(&bp->root);
-> -	ext2fs_free_mem(&bp->rcursor);
-> -	ext2fs_free_mem(&bp->wcursor);
->  	ext2fs_free_mem(&bp);
->  	bp = 0;
->  }
-> @@ -235,8 +227,8 @@ static errcode_t rb_copy_bmap(ext2fs_generic_bitmap src,
->  
->  	src_bp = (struct ext2fs_rb_private *) src->private;
->  	dest_bp = (struct ext2fs_rb_private *) dest->private;
-> -	*src_bp->rcursor = NULL;
-> -	*dest_bp->rcursor = NULL;
-> +	src_bp->rcursor = NULL;
-> +	dest_bp->rcursor = NULL;
->  
->  	src_node = ext2fs_rb_first(&src_bp->root);
->  	while (src_node) {
-> @@ -299,8 +291,8 @@ static errcode_t rb_resize_bmap(ext2fs_generic_bitmap bmap,
->  	}
->  
->  	bp = (struct ext2fs_rb_private *) bmap->private;
-> -	*bp->rcursor = NULL;
-> -	*bp->wcursor = NULL;
-> +	bp->rcursor = NULL;
-> +	bp->wcursor = NULL;
->  
->  	/* truncate tree to new_real_end size */
->  	rb_truncate(new_real_end, &bp->root);
-> @@ -319,7 +311,7 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
->  	struct rb_node **n = &bp->root.rb_node;
->  	struct bmap_rb_extent *ext;
->  
-> -	rcursor = *bp->rcursor;
-> +	rcursor = bp->rcursor;
->  	if (!rcursor)
->  		goto search_tree;
->  
-> @@ -342,7 +334,7 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
->  		}
->  	}
->  
-> -	rcursor = *bp->wcursor;
-> +	rcursor = bp->wcursor;
->  	if (!rcursor)
->  		goto search_tree;
->  
-> @@ -359,7 +351,7 @@ search_tree:
->  		else if (bit >= (ext->start + ext->count))
->  			n = &(*n)->rb_right;
->  		else {
-> -			*bp->rcursor = ext;
-> +			bp->rcursor = ext;
->  			return 1;
->  		}
->  	}
-> @@ -376,7 +368,7 @@ static int rb_insert_extent(__u64 start, __u64 count,
->  	struct bmap_rb_extent *ext;
->  	int retval = 0;
->  
-> -	ext = *bp->wcursor;
-> +	ext = bp->wcursor;
->  	if (ext) {
->  		if (start >= ext->start &&
->  		    start <= (ext->start + ext->count)) {
-> @@ -419,7 +411,7 @@ got_extent:
->  	new_node = &new_ext->node;
->  	ext2fs_rb_link_node(new_node, parent, n);
->  	ext2fs_rb_insert_color(new_node, root);
-> -	*bp->wcursor = new_ext;
-> +	bp->wcursor = new_ext;
->  
->  	node = ext2fs_rb_prev(new_node);
->  	if (node) {
-> @@ -745,8 +737,8 @@ static void rb_clear_bmap(ext2fs_generic_bitmap bitmap)
->  	bp = (struct ext2fs_rb_private *) bitmap->private;
->  
->  	rb_free_tree(&bp->root);
-> -	*bp->rcursor = NULL;
-> -	*bp->wcursor = NULL;
-> +	bp->rcursor = NULL;
-> +	bp->wcursor = NULL;
->  }
->  
->  #ifdef BMAP_STATS
+> +e2freefrag.profiled: $(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_DEPLIBS)
+> +	$(E) "	LD $@"
+> +	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2freefrag.profiled \
+> +		$(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_LIBS)
+> +
+>  filefrag: $(FILEFRAG_OBJS)
+>  	$(E) "	LD $@"
+>  	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) 
 > 
 
