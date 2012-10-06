@@ -1,121 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] libext2fs: further optimize rb_test_bit
-Date: Fri,  5 Oct 2012 22:04:11 -0400
-Message-ID: <1349489052-18657-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] Fix makefiles to compile e2freefrag with profiling
+Date: Fri,  5 Oct 2012 22:04:12 -0400
+Message-ID: <1349489052-18657-3-git-send-email-tytso@mit.edu>
 References: <1349408695-11661-2-git-send-email-tytso@mit.edu>
  <1349489052-18657-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:54079 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:54077 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753914Ab2JFCET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Oct 2012 22:04:19 -0400
+	id S1752042Ab2JFCEP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Oct 2012 22:04:15 -0400
 In-Reply-To: <1349489052-18657-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Profiling shows that rb_test_bit() is now calling ext2fs_rb_next() a
-lot, and this function is now the hot spot when running e2freefrag.
-If we cache the results of ext2fs_rb_next(), we can eliminate those
-extra calls, which further speeds up both e2freefrag and e2fsck by
-reducing the amount of CPU time spent in userspace.
+Also fix a bug caused by a stray continuation backslash which caused
+the e2fsck/Makefile to fail when profiling is enabled.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/blkmap64_rb.c | 23 +++++++++++++++++++----
- 1 file changed, 19 insertions(+), 4 deletions(-)
+ e2fsck/Makefile.in | 2 +-
+ misc/Makefile.in   | 8 +++++++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 900c0d3..40d982f 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -40,6 +40,7 @@ struct ext2fs_rb_private {
- 	struct rb_root root;
- 	struct bmap_rb_extent *wcursor;
- 	struct bmap_rb_extent *rcursor;
-+	struct bmap_rb_extent *rcursor_next;
- #ifdef BMAP_STATS_OPS
- 	__u64 mark_hit;
- 	__u64 test_hit;
-@@ -152,6 +153,8 @@ static void rb_free_extent(struct ext2fs_rb_private *bp,
- 		bp->wcursor = NULL;
- 	if (bp->rcursor == ext)
- 		bp->rcursor = NULL;
-+	if (bp->rcursor_next == ext)
-+		bp->rcursor_next = NULL;
- 	ext2fs_free_mem(&ext);
- }
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index a52bbe1..87b71bd 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -28,7 +28,7 @@ STATIC_DEPLIBS= $(DEPSTATIC_LIBQUOTA) $(STATIC_LIBEXT2FS) \
  
-@@ -166,6 +169,7 @@ static errcode_t rb_alloc_private_data (ext2fs_generic_bitmap bitmap)
+ PROFILED_LIBS= $(PROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
+ 	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
+-	       $(PROFILED_LIBE2P) $(LIBINTL) \
++	       $(PROFILED_LIBE2P) $(LIBINTL)
+ PROFILED_DEPLIBS= $(DEPPROFILED_LIBQUOTA) $(PROFILED_LIBEXT2FS) \
+ 		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
+ 		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 0692126..575a6d5 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -72,6 +72,7 @@ PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
+ 			profiled/ismounted.o
+ PROFILED_BLKID_OBJS=	profiled/blkid.o
+ PROFILED_FILEFRAG_OBJS=	profiled/filefrag.o
++PROFILED_E2FREEFRAG_OBJS= profiled/e2freefrag.o
+ PROFILED_E2UNDO_OBJS=	profiled/e2undo.o
+ PROFILED_E4DEFRAG_OBJS=	profiled/e4defrag.o
  
- 	bp->root = RB_ROOT;
- 	bp->rcursor = NULL;
-+	bp->rcursor_next = NULL;
- 	bp->wcursor = NULL;
+@@ -107,7 +108,7 @@ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+ @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
+ 	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
+ 	logsave.profiled filefrag.profiled uuidgen.profiled uuidd.profiled \
+-	e2image.profiled e4defrag.profiled
++	e2image.profiled e4defrag.profiled e2freefrag.profiled
  
- #ifdef BMAP_STATS_OPS
-@@ -306,7 +310,7 @@ static errcode_t rb_resize_bmap(ext2fs_generic_bitmap bmap,
- inline static int
- rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
- {
--	struct bmap_rb_extent *rcursor, *next_ext;
-+	struct bmap_rb_extent *rcursor, *next_ext = NULL;
- 	struct rb_node *parent = NULL, *next;
- 	struct rb_node **n = &bp->root.rb_node;
- 	struct bmap_rb_extent *ext;
-@@ -322,9 +326,15 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
- 		return 1;
- 	}
+ profiled:
+ @PROFILE_CMT@	$(E) "	MKDIR $@"
+@@ -319,6 +320,11 @@ e2freefrag: $(E2FREEFRAG_OBJS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2freefrag $(E2FREEFRAG_OBJS) $(LIBS)
  
--	next = ext2fs_rb_next(&rcursor->node);
--	if (next) {
--		next_ext = ext2fs_rb_entry(next, struct bmap_rb_extent, node);
-+	next_ext = bp->rcursor_next;
-+	if (!next_ext) {
-+		next = ext2fs_rb_next(&rcursor->node);
-+		if (next)
-+			next_ext = ext2fs_rb_entry(next, struct bmap_rb_extent,
-+						   node);
-+		bp->rcursor_next = next_ext;
-+	}
-+	if (next_ext) {
- 		if ((bit >= rcursor->start + rcursor->count) &&
- 		    (bit < next_ext->start)) {
- #ifdef BMAP_STATS_OPS
-@@ -333,6 +343,8 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
- 			return 0;
- 		}
- 	}
-+	bp->rcursor = NULL;
-+	bp->rcursor_next = NULL;
- 
- 	rcursor = bp->wcursor;
- 	if (!rcursor)
-@@ -352,6 +364,7 @@ search_tree:
- 			n = &(*n)->rb_right;
- 		else {
- 			bp->rcursor = ext;
-+			bp->rcursor_next = 0;
- 			return 1;
- 		}
- 	}
-@@ -368,6 +381,7 @@ static int rb_insert_extent(__u64 start, __u64 count,
- 	struct bmap_rb_extent *ext;
- 	int retval = 0;
- 
-+	bp->rcursor_next = NULL;
- 	ext = bp->wcursor;
- 	if (ext) {
- 		if (start >= ext->start &&
-@@ -738,6 +752,7 @@ static void rb_clear_bmap(ext2fs_generic_bitmap bitmap)
- 
- 	rb_free_tree(&bp->root);
- 	bp->rcursor = NULL;
-+	bp->rcursor_next = NULL;
- 	bp->wcursor = NULL;
- }
- 
++e2freefrag.profiled: $(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_DEPLIBS)
++	$(E) "	LD $@"
++	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2freefrag.profiled \
++		$(PROFILED_E2FREEFRAG_OBJS) $(PROFILED_LIBS)
++
+ filefrag: $(FILEFRAG_OBJS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o filefrag $(FILEFRAG_OBJS) 
 -- 
 1.7.12.rc0.22.gcdd159b
 
