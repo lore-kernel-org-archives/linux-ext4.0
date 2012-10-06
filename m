@@ -1,57 +1,173 @@
-From: Marco Stornelli <marco.stornelli@gmail.com>
-Subject: [PATCH 2/8] ext3: drop lock/unlock super
-Date: Sat, 06 Oct 2012 12:39:20 +0200
-Message-ID: <50700A58.3050609@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/3] libext2fs: remove pointless indirection in rbtree
+ bitmaps
+Date: Sat, 06 Oct 2012 10:52:38 -0500
+Message-ID: <507053C6.2010809@redhat.com>
+References: <1349408695-11661-2-git-send-email-tytso@mit.edu> <1349489052-18657-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Linux FS Devel <linux-fsdevel@vger.kernel.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:54333 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750745Ab2JFKqA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Oct 2012 06:46:00 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:32458 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755943Ab2JFPwl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 6 Oct 2012 11:52:41 -0400
+In-Reply-To: <1349489052-18657-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Removed lock/unlock super.
+On 10/5/12 9:04 PM, Theodore Ts'o wrote:
+> The code was previously allocating a single 4 or 8 byte pointer for
+> the rcursor and wcursor fields in the ext2fs_rb_private structure;
+> this added two extra memory allocations (which could fail), and extra
+> indirections, for no good reason.  Removing the extra indirection also
+> makes the code more readable, so it's all upside and no downside.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Signed-off-by: Marco Stornelli <marco.stornelli@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/super.c |    6 ------
- 1 files changed, 0 insertions(+), 6 deletions(-)
+Makes sense to me!
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 17ae5c8..29e7971 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2578,11 +2578,9 @@ out:
- static int ext3_unfreeze(struct super_block *sb)
- {
- 	if (!(sb->s_flags & MS_RDONLY)) {
--		lock_super(sb);
- 		/* Reser the needs_recovery flag before the fs is unlocked. */
- 		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
--		unlock_super(sb);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
- 	}
- 	return 0;
-@@ -2602,7 +2600,6 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
- #endif
- 
- 	/* Store the original options */
--	lock_super(sb);
- 	old_sb_flags = sb->s_flags;
- 	old_opts.s_mount_opt = sbi->s_mount_opt;
- 	old_opts.s_resuid = sbi->s_resuid;
-@@ -2708,8 +2705,6 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
- 		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
- 			kfree(old_opts.s_qf_names[i]);
- #endif
--	unlock_super(sb);
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+> ---
+>  lib/ext2fs/blkmap64_rb.c | 46 +++++++++++++++++++---------------------------
+>  1 file changed, 19 insertions(+), 27 deletions(-)
+> 
+> diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+> index c9006f8..900c0d3 100644
+> --- a/lib/ext2fs/blkmap64_rb.c
+> +++ b/lib/ext2fs/blkmap64_rb.c
+> @@ -38,8 +38,8 @@ struct bmap_rb_extent {
+>  
+>  struct ext2fs_rb_private {
+>  	struct rb_root root;
+> -	struct bmap_rb_extent **wcursor;
+> -	struct bmap_rb_extent **rcursor;
+> +	struct bmap_rb_extent *wcursor;
+> +	struct bmap_rb_extent *rcursor;
+>  #ifdef BMAP_STATS_OPS
+>  	__u64 mark_hit;
+>  	__u64 test_hit;
+> @@ -148,10 +148,10 @@ inline
+>  static void rb_free_extent(struct ext2fs_rb_private *bp,
+>  			   struct bmap_rb_extent *ext)
+>  {
+> -	if (*bp->wcursor == ext)
+> -		*bp->wcursor = NULL;
+> -	if (*bp->rcursor == ext)
+> -		*bp->rcursor = NULL;
+> +	if (bp->wcursor == ext)
+> +		bp->wcursor = NULL;
+> +	if (bp->rcursor == ext)
+> +		bp->rcursor = NULL;
+>  	ext2fs_free_mem(&ext);
+>  }
+>  
+> @@ -165,14 +165,8 @@ static errcode_t rb_alloc_private_data (ext2fs_generic_bitmap bitmap)
+>  		return retval;
+>  
+>  	bp->root = RB_ROOT;
+> -	retval = ext2fs_get_mem(sizeof(struct bmap_rb_extent *), &bp->rcursor);
+> -	if (retval)
+> -		return retval;
+> -	retval = ext2fs_get_mem(sizeof(struct bmap_rb_extent *), &bp->wcursor);
+> -	if (retval)
+> -		return retval;
+> -	*bp->rcursor = NULL;
+> -	*bp->wcursor = NULL;
+> +	bp->rcursor = NULL;
+> +	bp->wcursor = NULL;
+>  
+>  #ifdef BMAP_STATS_OPS
+>  	bp->test_hit = 0;
+> @@ -215,8 +209,6 @@ static void rb_free_bmap(ext2fs_generic_bitmap bitmap)
+>  	bp = (struct ext2fs_rb_private *) bitmap->private;
+>  
+>  	rb_free_tree(&bp->root);
+> -	ext2fs_free_mem(&bp->rcursor);
+> -	ext2fs_free_mem(&bp->wcursor);
+>  	ext2fs_free_mem(&bp);
+>  	bp = 0;
+>  }
+> @@ -235,8 +227,8 @@ static errcode_t rb_copy_bmap(ext2fs_generic_bitmap src,
+>  
+>  	src_bp = (struct ext2fs_rb_private *) src->private;
+>  	dest_bp = (struct ext2fs_rb_private *) dest->private;
+> -	*src_bp->rcursor = NULL;
+> -	*dest_bp->rcursor = NULL;
+> +	src_bp->rcursor = NULL;
+> +	dest_bp->rcursor = NULL;
+>  
+>  	src_node = ext2fs_rb_first(&src_bp->root);
+>  	while (src_node) {
+> @@ -299,8 +291,8 @@ static errcode_t rb_resize_bmap(ext2fs_generic_bitmap bmap,
+>  	}
+>  
+>  	bp = (struct ext2fs_rb_private *) bmap->private;
+> -	*bp->rcursor = NULL;
+> -	*bp->wcursor = NULL;
+> +	bp->rcursor = NULL;
+> +	bp->wcursor = NULL;
+>  
+>  	/* truncate tree to new_real_end size */
+>  	rb_truncate(new_real_end, &bp->root);
+> @@ -319,7 +311,7 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
+>  	struct rb_node **n = &bp->root.rb_node;
+>  	struct bmap_rb_extent *ext;
+>  
+> -	rcursor = *bp->rcursor;
+> +	rcursor = bp->rcursor;
+>  	if (!rcursor)
+>  		goto search_tree;
+>  
+> @@ -342,7 +334,7 @@ rb_test_bit(struct ext2fs_rb_private *bp, __u64 bit)
+>  		}
+>  	}
+>  
+> -	rcursor = *bp->wcursor;
+> +	rcursor = bp->wcursor;
+>  	if (!rcursor)
+>  		goto search_tree;
+>  
+> @@ -359,7 +351,7 @@ search_tree:
+>  		else if (bit >= (ext->start + ext->count))
+>  			n = &(*n)->rb_right;
+>  		else {
+> -			*bp->rcursor = ext;
+> +			bp->rcursor = ext;
+>  			return 1;
+>  		}
+>  	}
+> @@ -376,7 +368,7 @@ static int rb_insert_extent(__u64 start, __u64 count,
+>  	struct bmap_rb_extent *ext;
+>  	int retval = 0;
+>  
+> -	ext = *bp->wcursor;
+> +	ext = bp->wcursor;
+>  	if (ext) {
+>  		if (start >= ext->start &&
+>  		    start <= (ext->start + ext->count)) {
+> @@ -419,7 +411,7 @@ got_extent:
+>  	new_node = &new_ext->node;
+>  	ext2fs_rb_link_node(new_node, parent, n);
+>  	ext2fs_rb_insert_color(new_node, root);
+> -	*bp->wcursor = new_ext;
+> +	bp->wcursor = new_ext;
+>  
+>  	node = ext2fs_rb_prev(new_node);
+>  	if (node) {
+> @@ -745,8 +737,8 @@ static void rb_clear_bmap(ext2fs_generic_bitmap bitmap)
+>  	bp = (struct ext2fs_rb_private *) bitmap->private;
+>  
+>  	rb_free_tree(&bp->root);
+> -	*bp->rcursor = NULL;
+> -	*bp->wcursor = NULL;
+> +	bp->rcursor = NULL;
+> +	bp->wcursor = NULL;
+>  }
+>  
+>  #ifdef BMAP_STATS
+> 
+
