@@ -1,118 +1,62 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: fix error handling in ext4_fill_super()
-Date: Mon,  8 Oct 2012 14:32:54 +0200
-Message-ID: <1349699574-32194-1-git-send-email-lczerner@redhat.com>
-References: <alpine.LFD.2.00.1210081424290.25096@localhost>
-Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: fix possible memory leak in ext4_xattr_set_acl()
+Date: Mon, 8 Oct 2012 14:36:32 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1210081435240.25096@localhost>
+References: <1349694672-16992-1-git-send-email-eugene.shatokhin@rosalab.ru>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Eugene Shatokhin <eugene.shatokhin@rosalab.ru>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49773 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21620 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752083Ab2JHMdB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Oct 2012 08:33:01 -0400
-In-Reply-To: <alpine.LFD.2.00.1210081424290.25096@localhost>
+	id S1750810Ab2JHMgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Oct 2012 08:36:37 -0400
+In-Reply-To: <1349694672-16992-1-git-send-email-eugene.shatokhin@rosalab.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are some places in ext4_fill_super() where we would not return
-proper error code if something fails. The confusion is caused probably
-due to the fact that we have two "kind-of" return variables 'ret'and
-'err'.
+On Mon, 8 Oct 2012, Eugene Shatokhin wrote:
 
-'ret' is used to return error code from ext4_fill_super() where err is
-used to store return values from other functions within ext4_fill_super().
-However some places were missing the obligatory 'ret = err'. We could
-put the assignment where it is missing, but we can have better "future
-proof" solution. Or we could convert the code to use just one, but it
-would require more rewrites.
+> Date: Mon,  8 Oct 2012 15:11:12 +0400
+> From: Eugene Shatokhin <eugene.shatokhin@rosalab.ru>
+> To: linux-ext4@vger.kernel.org
+> Cc: Eugene Shatokhin <eugene.shatokhin@rosalab.ru>
+> Subject: [PATCH] ext4: fix possible memory leak in ext4_xattr_set_acl()
+> 
+> In ext4_xattr_set_acl(), if ext4_journal_start() returns an error,
+> posix_acl_release() will not be called for 'acl' which may result
+> in a memory leak.
+> 
+> This patch fixes that.
+> 
+> Signed-off-by: Eugene Shatokhin <eugene.shatokhin@rosalab.ru>
+> ---
+>  fs/ext4/acl.c |    6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index a5c29bb..8535c45 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -410,8 +410,10 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+>  
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+> -	if (IS_ERR(handle))
+> -		return PTR_ERR(handle);
+> +	if (IS_ERR(handle)) {
+> +		error = PTR_ERR(handle);
+> +		goto release_and_out;
+> +	}
+>  	error = ext4_set_acl(handle, inode, type, acl);
+>  	ext4_journal_stop(handle);
+>  	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+> 
 
-This commit fixes the problem by returning value from 'err' variable if
-it is set and 'ret' otherwise in error handling branch of the
-ext4_fill_super(). The reasoning is that 'ret' value is often set to
-default "-EINVAL" or explicit value, where 'err' is used to store
-return value from other functions and should be otherwise zero.
+Looks good.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/super.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 69c55d4..c02c676 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3223,7 +3223,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned int i;
- 	int needs_recovery, has_huge_files, has_bigalloc;
- 	__u64 blocks_count;
--	int err;
-+	int err = 0;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
- 	ext4_group_t first_not_zeroed;
- 
-@@ -3252,6 +3252,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
- 		*cp = '!';
- 
-+	/* -EINVAL is default */
- 	ret = -EINVAL;
- 	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
- 	if (!blocksize) {
-@@ -3629,7 +3630,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			 " too large to mount safely on this system");
- 		if (sizeof(sector_t) < 8)
- 			ext4_msg(sb, KERN_WARNING, "CONFIG_LBDAF not enabled");
--		ret = err;
- 		goto failed_mount;
- 	}
- 
-@@ -3737,7 +3737,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 	if (err) {
- 		ext4_msg(sb, KERN_ERR, "insufficient memory");
--		ret = err;
- 		goto failed_mount3;
- 	}
- 
-@@ -3863,8 +3862,8 @@ no_journal:
- 	if (es->s_overhead_clusters)
- 		sbi->s_overhead = le32_to_cpu(es->s_overhead_clusters);
- 	else {
--		ret = ext4_calculate_overhead(sb);
--		if (ret)
-+		err = ext4_calculate_overhead(sb);
-+		if (err)
- 			goto failed_mount_wq;
- 	}
- 
-@@ -3876,6 +3875,7 @@ no_journal:
- 		alloc_workqueue("ext4-dio-unwritten", WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
- 	if (!EXT4_SB(sb)->dio_unwritten_wq) {
- 		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
-+		ret = -ENOMEM;
- 		goto failed_mount_wq;
- 	}
- 
-@@ -3978,8 +3978,8 @@ no_journal:
- 	/* Enable quota usage during mount. */
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA) &&
- 	    !(sb->s_flags & MS_RDONLY)) {
--		ret = ext4_enable_quotas(sb);
--		if (ret)
-+		err = ext4_enable_quotas(sb);
-+		if (err)
- 			goto failed_mount7;
- 	}
- #endif  /* CONFIG_QUOTA */
-@@ -4050,7 +4050,7 @@ out_fail:
- 	kfree(sbi);
- out_free_orig:
- 	kfree(orig_data);
--	return ret;
-+	return err ? err : ret;
- }
- 
- /*
--- 
-1.7.7.6
-
+Thanks for catching that.
+-Lukas
