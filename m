@@ -1,37 +1,54 @@
-From: Prashant Shah <pshah.mumbai@gmail.com>
-Subject: Re: freeze_bdev hangs
-Date: Tue, 9 Oct 2012 10:43:27 +0530
-Message-ID: <CAD6i1fKRjwaGmOyT9-1=N0zBhXMHkc-vtCj=jKNL+fYpwdqt9A@mail.gmail.com>
-References: <CAD6i1f+fzh-z+Xr6V2gHBzq4kmJzPcfre91g=q6fJ7P_5nY0Zw@mail.gmail.com>
- <506F19E6.8030005@redhat.com> <CAD6i1fJbfiBnTu1ttisMr96PzaTWCLAsvmTjx7OevfPcAGd7-A@mail.gmail.com>
- <507319B0.8040202@redhat.com> <CAD6i1fJTsowSKmzxyz6V4xjLQ9y-H6MC1MT-5cOb05EQwP0KEg@mail.gmail.com>
+From: Zhao Hongjiang <zhaohongjiang37-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH] ext2: fix return values on parse_options() failure
+Date: Tue, 09 Oct 2012 13:44:36 +0800
+Message-ID: <5073B9C4.9070009@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:51672 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752216Ab2JIFNu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2012 01:13:50 -0400
-Received: by mail-ee0-f46.google.com with SMTP id b15so3207169eek.19
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Oct 2012 22:13:48 -0700 (PDT)
-In-Reply-To: <CAD6i1fJTsowSKmzxyz6V4xjLQ9y-H6MC1MT-5cOb05EQwP0KEg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>
+To: jack-AlSwsSmVLrQ@public.gmane.org
+Return-path: <containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/containers/>
+List-Post: <mailto:containers-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+List-Help: <mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/containers>,
+	<mailto:containers-request-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org?subject=subscribe>
+Sender: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+Errors-To: containers-bounces-cunTk1MwBs9QetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+From: Zhao Hongjiang <zhaohongjiang-hv44wF8Li93QT0dZR+AlfA@public.gmane.org>
 
->> Anyway, did you try the suggestions I offered to track down your original
->> question about the freeze deadlock?
->
-> I am not facing any deadlocks on 2.6.18 but was facing it on 3.x.
-> freeze_bdev() and thaw_bdev() work correctly on 2.6.18. I will try it
-> again on 3.x and confirm.
->
+parse_options() in ext2 should return 0 when parse the mount options fails.
 
-I tested it on 3.x and freeze_bdev() / thaw_bdev() work correctly. It
-turns out I was doing something wrong related to sleeping/locks in the
-custom make_request_fn() that caused it to freeze.
+Signed-off-by: Zhao Hongjiang <zhaohongjiang-hv44wF8Li93QT0dZR+AlfA@public.gmane.org>
+---
+ fs/ext2/super.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-> Regards.
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 6c205d0..fa04d02 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -469,7 +469,7 @@ static int parse_options(char *options, struct super_block *sb)
+ 			uid = make_kuid(current_user_ns(), option);
+ 			if (!uid_valid(uid)) {
+ 				ext2_msg(sb, KERN_ERR, "Invalid uid value %d", option);
+-				return -1;
++				return 0;
+
+ 			}
+ 			sbi->s_resuid = uid;
+@@ -480,7 +480,7 @@ static int parse_options(char *options, struct super_block *sb)
+ 			gid = make_kgid(current_user_ns(), option);
+ 			if (!gid_valid(gid)) {
+ 				ext2_msg(sb, KERN_ERR, "Invalid gid value %d", option);
+-				return -1;
++				return 0;
+ 			}
+ 			sbi->s_resgid = gid;
+ 			break;
+-- 1.7.1
