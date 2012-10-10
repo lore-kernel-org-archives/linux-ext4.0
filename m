@@ -1,38 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: freeze_bdev hangs
-Date: Tue, 9 Oct 2012 23:49:15 +0200
-Message-ID: <20121009214915.GD27882@quack.suse.cz>
-References: <CAD6i1f+fzh-z+Xr6V2gHBzq4kmJzPcfre91g=q6fJ7P_5nY0Zw@mail.gmail.com>
- <506F19E6.8030005@redhat.com>
- <CAD6i1fJbfiBnTu1ttisMr96PzaTWCLAsvmTjx7OevfPcAGd7-A@mail.gmail.com>
- <20121008161926.GH9243@quack.suse.cz>
- <CAD6i1fKpWZVbL4gS1ui7GvF81S+SAduckXeWoApwH=KgKuiU9g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Prashant Shah <pshah.mumbai@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: only consult inode_dir_map if needed in pass4
+Date: Tue,  9 Oct 2012 22:55:55 -0400
+Message-ID: <1349837755-22303-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35533 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757050Ab2JIVtR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Oct 2012 17:49:17 -0400
-Content-Disposition: inline
-In-Reply-To: <CAD6i1fKpWZVbL4gS1ui7GvF81S+SAduckXeWoApwH=KgKuiU9g@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:54730 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750931Ab2JJIQF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Oct 2012 04:16:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 08-10-12 22:05:38, Prashant Shah wrote:
-> Hi,
-> 
-> On Mon, Oct 8, 2012 at 9:49 PM, Jan Kara <jack@suse.cz> wrote:
-> >   And what tool are you using for monitoring?
-> 
-> I am using printk(). A custom module that changes the make_request_fn
-> of the block device to a custom callback. In the callback I am
-> printing the request bio details and passing the bio back to the
-> original make_request_fn.
-  OK. There are several ways how I could imagine you hit ino == 0. Either
-someone is using direct IO or inode is a block device inode...
+In e2fsck_pass4(), we were consulting inode_dir_map using
+ext2fs_test_inode_bitmap2() for every single inode in the file system.
+However, there were many cases where we never needed the result of the
+test --- most notably if the inode is not in use.
 
-								Honza
+I was a bit surprised that GCC 4.7 with CFLAGS set to "-g -O2" wasn't
+able to optimize this out for us, but here is the pass 4 timing for an
+empty 3T file system before this patch:
+
+Pass 4: Memory used: 672k/772k (422k/251k), time:  3.67/ 3.66/ 0.00
+
+and afterwards, we see a 43% improvement:
+
+Pass 4: Memory used: 672k/772k (422k/251k), time:  2.09/ 2.08/ 0.00
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/pass4.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 1e63280..2d55180 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -123,7 +123,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 
+ 	/* Protect loop from wrap-around if s_inodes_count maxed */
+ 	for (i=1; i <= fs->super->s_inodes_count && i > 0; i++) {
+-		int isdir = ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i);
++		int isdir;
+ 
+ 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+ 			goto errout;
+@@ -157,6 +157,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 			ext2fs_icount_fetch(ctx->inode_count, i,
+ 					    &link_counted);
+ 		}
++		isdir = ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i);
+ 		if (isdir && (link_counted > EXT2_LINK_MAX))
+ 			link_counted = 1;
+ 		if (link_counted != link_count) {
+-- 
+1.7.12.rc0.22.gcdd159b
+
