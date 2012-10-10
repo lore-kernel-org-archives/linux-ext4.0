@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v3 13/13] vfs: add documentation
-Date: Wed, 10 Oct 2012 18:07:35 +0800
-Message-ID: <1349863655-29320-14-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v3 07/13] vfs: add function for updating map arrays
+Date: Wed, 10 Oct 2012 18:07:29 +0800
+Message-ID: <1349863655-29320-8-git-send-email-zwu.kernel@gmail.com>
 References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -9,201 +9,261 @@ Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	tytso@mit.edu, cmm@us.ibm.com,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- Documentation/filesystems/00-INDEX         |    2 +
- Documentation/filesystems/hot_tracking.txt |  165 ++++++++++++++++++++++++++++
- 2 files changed, 167 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/hot_tracking.txt
+ fs/hot_tracking.c |  153 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/hot_tracking.h |   60 +++++++++++++++++++++
+ 2 files changed, 213 insertions(+), 0 deletions(-)
 
-diff --git a/Documentation/filesystems/00-INDEX b/Documentation/filesystems/00-INDEX
-index 8c624a1..b68bdff 100644
---- a/Documentation/filesystems/00-INDEX
-+++ b/Documentation/filesystems/00-INDEX
-@@ -118,3 +118,5 @@ xfs.txt
- 	- info and mount options for the XFS filesystem.
- xip.txt
- 	- info on execute-in-place for file mappings.
-+hot_tracking.txt
-+	- info on hot data tracking in VFS layer
-diff --git a/Documentation/filesystems/hot_tracking.txt b/Documentation/filesystems/hot_tracking.txt
-new file mode 100644
-index 0000000..34dc232
---- /dev/null
-+++ b/Documentation/filesystems/hot_tracking.txt
-@@ -0,0 +1,165 @@
-+Hot Data Tracking
+diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
+index 08c42c5..717faa7 100644
+--- a/fs/hot_tracking.c
++++ b/fs/hot_tracking.c
+@@ -376,6 +376,159 @@ inline void hot_update_freqs(struct hot_info *root,
+ 	hot_inode_item_put(he);
+ }
+ 
++static u64 hot_raw_shift(u64 counter, u32 bits, bool dir)
++{
++	if (dir)
++		return counter << bits;
++	else
++		return counter >> bits;
++}
 +
-+September, 2012		Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
++/*
++ * hot_temperature_calculate() is responsible for distilling the six heat
++ * criteria, which are described in detail in hot_tracking.h) down into a single
++ * temperature value for the data, which is an integer between 0
++ * and HEAT_MAX_VALUE.
++ *
++ * To accomplish this, the raw values from the hot_freq_data structure
++ * are shifted various ways in order to make the temperature calculation more
++ * or less sensitive to each value.
++ *
++ * Once this calibration has happened, we do some additional normalization and
++ * make sure that everything fits nicely in a u32. From there, we take a very
++ * rudimentary kind of "average" of each of the values, where the *_COEFF_POWER
++ * values act as weights for the average.
++ *
++ * Finally, we use the HEAT_HASH_BITS value, which determines the size of the
++ * heat list array, to normalize the temperature to the proper granularity.
++ */
++int hot_temperature_calculate(struct hot_freq_data *freq_data)
++{
++	u64 result = 0;
 +
-+CONTENTS
++	struct timespec ckt = current_kernel_time();
++	u64 cur_time = timespec_to_ns(&ckt);
 +
-+1. Introduction
-+2. Motivation
-+3. The Design
-+4. Git Development Tree
-+5. Usage Example
++	u32 nrr_heat = (u32)hot_raw_shift((u64)freq_data->nr_reads,
++					NRR_MULTIPLIER_POWER, true);
++	u32 nrw_heat = (u32)hot_raw_shift((u64)freq_data->nr_writes,
++					NRW_MULTIPLIER_POWER, true);
 +
++	u64 ltr_heat =
++	hot_raw_shift((cur_time - timespec_to_ns(&freq_data->last_read_time)),
++			LTR_DIVIDER_POWER, false);
++	u64 ltw_heat =
++	hot_raw_shift((cur_time - timespec_to_ns(&freq_data->last_write_time)),
++			LTW_DIVIDER_POWER, false);
 +
-+1. Introduction
++	u64 avr_heat =
++	hot_raw_shift((((u64) -1) - freq_data->avg_delta_reads),
++			AVR_DIVIDER_POWER, false);
++	u64 avw_heat =
++	hot_raw_shift((((u64) -1) - freq_data->avg_delta_writes),
++			AVW_DIVIDER_POWER, false);
 +
-+  The feature adds experimental support for tracking data temperature
-+information in VFS layer.  Essentially, this means maintaining some key
-+stats(like number of reads/writes, last read/write time, frequency of
-+reads/writes), then distilling those numbers down to a single
-+"temperature" value that reflects what data is "hot," and using that
-+temperature to move data to SSDs.
++	/* ltr_heat is now guaranteed to be u32 safe */
++	if (ltr_heat >= hot_raw_shift((u64) 1, 32, true))
++		ltr_heat = 0;
++	else
++		ltr_heat = hot_raw_shift((u64) 1, 32, true) - ltr_heat;
 +
-+  The long-term goal of the feature is to allow some FSs,
-+e.g. Btrfs to intelligently utilize SSDs in a heterogenous volume.
-+Incidentally, this project has been motivated by
-+the Project Ideas page on the Btrfs wiki.
++	/* ltw_heat is now guaranteed to be u32 safe */
++	if (ltw_heat >= hot_raw_shift((u64) 1, 32, true))
++		ltw_heat = 0;
++	else
++		ltw_heat = hot_raw_shift((u64) 1, 32, true) - ltw_heat;
 +
-+  Of course, users are warned not to run this code outside of development
-+environments. These patches are EXPERIMENTAL, and as such they might eat
-+your data and/or memory. That said, the code should be relatively safe
-+when the hottrack mount option are disabled.
++	/* avr_heat is now guaranteed to be u32 safe */
++	if (avr_heat >= hot_raw_shift((u64) 1, 32, true))
++		avr_heat = (u32) -1;
 +
-+2. Motivation
++	/* avw_heat is now guaranteed to be u32 safe */
++	if (avw_heat >= hot_raw_shift((u64) 1, 32, true))
++		avw_heat = (u32) -1;
 +
-+  The overall goal of enabling hot data relocation to SSD has been
-+motivated by the Project Ideas page on the Btrfs wiki at
-+<https://btrfs.wiki.kernel.org/index.php/Project_ideas>.
-+It will divide into two steps. VFS provide hot data tracking function
-+while specific FS will provide hot data relocation function.
-+So as the first step of this goal, it is hoped that the patchset
-+for hot data tracking will eventually mature into VFS.
++	nrr_heat = (u32)hot_raw_shift((u64)nrr_heat,
++		(3 - NRR_COEFF_POWER), false);
++	nrw_heat = (u32)hot_raw_shift((u64)nrw_heat,
++		(3 - NRW_COEFF_POWER), false);
++	ltr_heat = hot_raw_shift(ltr_heat, (3 - LTR_COEFF_POWER), false);
++	ltw_heat = hot_raw_shift(ltw_heat, (3 - LTW_COEFF_POWER), false);
++	avr_heat = hot_raw_shift(avr_heat, (3 - AVR_COEFF_POWER), false);
++	avw_heat = hot_raw_shift(avw_heat, (3 - AVW_COEFF_POWER), false);
 +
-+  This is essentially the traditional cache argument: SSD is fast and
-+expensive; HDD is cheap but slow. ZFS, for example, can already take
-+advantage of SSD caching. Btrfs should also be able to take advantage of
-+hybrid storage without many broad, sweeping changes to existing code.
++	result = nrr_heat + nrw_heat + (u32) ltr_heat +
++		(u32) ltw_heat + (u32) avr_heat + (u32) avw_heat;
 +
++	return result >> (32 - HEAT_MAP_BITS);
++}
 +
-+3. The Design
++/*
++ * Calculate a new temperature and, if necessary,
++ * move the list_head corresponding to this inode or range
++ * to the proper list with the new temperature
++ */
++static void hot_map_array_update(struct hot_freq_data *freq_data,
++				struct hot_info *root)
++{
++	struct hot_map_head *buckets, *cur_bucket;
++	struct hot_comm_item *comm_item;
++	struct hot_inode_item *he;
++	struct hot_range_item *hr;
++	u32 temperature = 0;
 +
-+These include the following parts:
++	comm_item = container_of(freq_data,
++			struct hot_comm_item, hot_freq_data);
 +
-+    * Hooks in existing vfs functions to track data access frequency
++	if (freq_data->flags & FREQ_DATA_TYPE_INODE) {
++		he = container_of(comm_item,
++			struct hot_inode_item, hot_inode);
++		buckets = root->heat_inode_map;
 +
-+    * New rbtrees for tracking access frequency of inodes and sub-file
-+ranges (hot_rb.c)
-+    The relationship between super_block and rbtree is as below:
-+super_block->s_hotinfo.hot_inode_tree
-+    In include/linux/fs.h, one struct hot_info s_hotinfo is added to
-+super_block struct. Each FS instance can find hot tracking info
-+s_hotinfo via its super_block. In this hot_info, it store a lot of hot
-+tracking info such as hot_inode_tree, inode and range hash list, etc.
++		spin_lock(&he->hot_inode.lock);
++		temperature = hot_temperature_calculate(freq_data);
++		spin_unlock(&he->hot_inode.lock);
 +
-+    * A hash list for indexing data by its temperature (hot_hash.c)
++		if (he == NULL)
++			return;
 +
-+    * A debugfs interface for dumping data from the rbtrees (hot_debugfs.c)
++		spin_lock(&he->hot_inode.lock);
++		if (list_empty(&he->hot_inode.n_list)
++			|| (freq_data->last_temperature != temperature)) {
++			if (!list_empty(&he->hot_inode.n_list))
++				list_del_init(&he->hot_inode.n_list);
 +
-+    * A background kthread for updating inode heat info
++			cur_bucket = buckets + temperature;
++			list_add_tail(&he->hot_inode.n_list, &cur_bucket->node_list);
++			freq_data->last_temperature = temperature;
++		}
++		spin_unlock(&he->hot_inode.lock);
++	} else if (freq_data->flags & FREQ_DATA_TYPE_RANGE) {
++		hr = container_of(comm_item,
++			struct hot_range_item, hot_range);
++		buckets = root->heat_range_map;
 +
-+    * Mount options for enabling temperature tracking(-o hottrack,
-+default mean disabled) (hot_track.c)
-+    * An ioctl to retrieve the frequency information collected for a certain
-+file
-+    * Ioctls to enable/disable frequency tracking per inode.
++		spin_lock(&hr->hot_range.lock);
++		temperature = hot_temperature_calculate(freq_data);
++		spin_unlock(&hr->hot_range.lock);
 +
-+Let us see their relationship as below:
++		if (hr == NULL)
++			return;
 +
-+    * hot_info.hot_inode_tree indexes hot_inode_items, one per inode
++		spin_lock(&hr->hot_range.lock);
++		if (list_empty(&hr->hot_range.n_list)
++			|| (freq_data->last_temperature != temperature)) {
++			if (!list_empty(&hr->hot_range.n_list))
++				list_del_init(&hr->hot_range.n_list);
 +
-+    * hot_inode_item contains access frequency data for that inode
++			cur_bucket = buckets + temperature;
++			list_add_tail(&hr->hot_range.n_list, &cur_bucket->node_list);
++			freq_data->last_temperature = temperature;
++		}
++		spin_unlock(&hr->hot_range.lock);
++	}
++}
 +
-+    * hot_inode_item holds a heat hash node to index the access
-+frequency data for that inode
+ /*
+  * Initialize inode and range map arrays.
+  */
+diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
+index 42e0273..5a9517b 100644
+--- a/fs/hot_tracking.h
++++ b/fs/hot_tracking.h
+@@ -30,6 +30,64 @@
+ 
+ #define FREQ_POWER 4
+ 
++/*
++ * The following comments explain what exactly comprises a unit of heat.
++ *
++ * Each of six values of heat are calculated and combined in order to form an
++ * overall temperature for the data:
++ *
++ * NRR - number of reads since mount
++ * NRW - number of writes since mount
++ * LTR - time elapsed since last read (ns)
++ * LTW - time elapsed since last write (ns)
++ * AVR - average delta between recent reads (ns)
++ * AVW - average delta between recent writes (ns)
++ *
++ * These values are divided (right-shifted) according to the *_DIVIDER_POWER
++ * values defined below to bring the numbers into a reasonable range. You can
++ * modify these values to fit your needs. However, each heat unit is a u32 and
++ * thus maxes out at 2^32 - 1. Therefore, you must choose your dividers quite
++ * carefully or else they could max out or be stuck at zero quite easily.
++ *
++ * (E.g., if you chose AVR_DIVIDER_POWER = 0, nothing less than 4s of atime
++ * delta would bring the temperature above zero, ever.)
++ *
++ * Finally, each value is added to the overall temperature between 0 and 8
++ * times, depending on its *_COEFF_POWER value. Note that the coefficients are
++ * also actually implemented with shifts, so take care to treat these values
++ * as powers of 2. (I.e., 0 means we'll add it to the temp once; 1 = 2x, etc.)
++ */
 +
-+    * hot_inode_item.hot_range_tree indexes hot_range_items for that inode
++/* NRR/NRW heat unit = 2^X accesses */
++#define NRR_MULTIPLIER_POWER 20
++#define NRR_COEFF_POWER 0
++#define NRW_MULTIPLIER_POWER 20
++#define NRW_COEFF_POWER 0
 +
-+    * hot_range_item contains access frequency data for that range
++/* LTR/LTW heat unit = 2^X ns of age */
++#define LTR_DIVIDER_POWER 30
++#define LTR_COEFF_POWER 1
++#define LTW_DIVIDER_POWER 30
++#define LTW_COEFF_POWER 1
 +
-+    * hot_range_item holds a heat hash node to index the access
-+frequency data for that range
++/*
++ * AVR/AVW cold unit = 2^X ns of average delta
++ * AVR/AVW heat unit = HEAT_MAX_VALUE - cold unit
++ *
++ * E.g., data with an average delta between 0 and 2^X ns
++ * will have a cold value of 0, which means a heat value
++ * equal to HEAT_MAX_VALUE.
++ */
++#define AVR_DIVIDER_POWER 40
++#define AVR_COEFF_POWER 0
++#define AVW_DIVIDER_POWER 40
++#define AVW_COEFF_POWER 0
 +
-+    * hot_info.heat_inode_map indexes per-inode heat hash nodes
++struct hot_update_work {
++	struct work_struct work;
++	struct hot_info *hot_info;
++};
 +
-+    * hot_info.heat_range_map indexes per-range heat hash nodes
+ struct hot_inode_item
+ *hot_inode_item_find(struct hot_info *root, u64 ino);
+ void hot_inode_item_put(struct hot_inode_item *he);
+@@ -37,6 +95,8 @@ inline void hot_update_freqs(struct hot_info *root,
+                         struct inode *inode, u64 start,
+                         u64 len, int rw);
+ 
++int hot_temperature_calculate(struct hot_freq_data *freq_data);
 +
-+  How about some ascii art? :) Just looking at the hot inode item case
-+(the range item case is the same pattern, though), we have:
-+
-+heat_inode_map           hot_inode_tree
-+    |                         |
-+    |                         V
-+    |           +-------hot_comm_item--------+
-+    |           |       frequency data       |
-++---+           |        list_head           |
-+|               V            ^ |             V
-+| ...<--hot_comm_item-->...  | |  ...<--hot_comm_item-->...
-+|       frequency data       | |        frequency data
-++-------->list_head----------+ +--------->list_head--->.....
-+       hot_range_tree                  hot_range_tree
-+                                             |
-+             heat_range_map                  V
-+                   |           +-------hot_comm_item--------+
-+                   |           |       frequency data       |
-+               +---+           |        list_head           |
-+               |               V            ^ |             V
-+               | ...<--hot_comm_item-->...  | |  ...<--hot_comm_item-->...
-+               |       frequency data       | |        frequency data
-+               +-------->list_head----------+ +--------->list_head--->.....
-+
-+4. Git Development Tree
-+
-+  The feature is still on development and review, so if you're interested,
-+you can pull from the git repository at the following location:
-+  https://github.com/wuzhy/kernel.git hot_tracking
-+  git://github.com/wuzhy/kernel.git hot_tracking
-+
-+
-+5. Usage Example
-+
-+To use hot tracking, you should mount like this:
-+
-+$ mount -o hot_track /dev/sdb /mnt
-+[ 1505.894078] device label test devid 1 transid 29 /dev/sdb
-+[ 1505.952977] btrfs: disk space caching is enabled
-+[ 1506.069678] vfs: turning on hot data tracking
-+
-+Mount debugfs at first:
-+
-+$ mount -t debugfs none /sys/kernel/debug
-+$ ls -l /sys/kernel/debug/hot_track/
-+total 0
-+drwxr-xr-x 2 root root 0 Aug  8 04:40 sdb
-+$ ls -l /sys/kernel/debug/hot_track/sdb
-+total 0
-+-rw-r--r-- 1 root root 0 Aug  8 04:40 inode_data
-+-rw-r--r-- 1 root root 0 Aug  8 04:40 range_data
-+
-+View information about hot tracking from debugfs:
-+
-+$ echo "hot tracking test" > /mnt/file
-+$ cat /sys/kernel/debug/hot_track/sdb/inode_data
-+inode #279, reads 0, writes 1, avg read time 18446744073709551615,
-+avg write time 5251566408153596, temp 109
-+$ cat /sys/kernel/debug/hot_track/sdb/range_data
-+inode #279, range start 0 (range len 1048576) reads 0, writes 1,
-+avg read time 18446744073709551615, avg write time 1128690176623144209, temp 64
-+
-+$ echo "hot data tracking test" >> /mnt/file
-+$ cat /sys/kernel/debug/hot_track/sdb/inode_data
-+inode #279, reads 0, writes 2, avg read time 18446744073709551615,
-+avg write time 4923343766042451, temp 109
-+$ cat /sys/kernel/debug/hot_track/sdb/range_data
-+inode #279, range start 0 (range len 1048576) reads 0, writes 2,
-+avg read time 18446744073709551615, avg write time 1058147040842596150, temp 64
-+
+ void hot_track_init(struct super_block *sb);
+ void hot_track_exit(struct super_block *sb);
+ 
 -- 
 1.7.6.5
 
