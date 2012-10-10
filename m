@@ -1,55 +1,77 @@
-From: Andrey Sidorov <qrxd43@motorola.com>
-Subject: Re: A warning from 3.6+ with bigalloc and delalloc when running xfstest
-Date: Wed, 10 Oct 2012 13:02:52 -0400
-Message-ID: <CAA0+VHwL0u0h6sn=Z0FyHsqYi2ji=sUaQ9ZPJCQ9kEMOpQHarg@mail.gmail.com>
-References: <CANWLp03Kcp75CZPr6DubSExH9GhLUqaLf=xHvLiivprs=z2BvQ@mail.gmail.com>
-	<20121009054820.GA8028@thunk.org>
-	<20121009062931.GA29314@gmail.com>
-	<20121009135152.GA29156@thunk.org>
+From: David Sterba <dave@jikos.cz>
+Subject: Re: [RFC v3 01/13] btrfs: add one new mount option '-o hot_track'
+Date: Wed, 10 Oct 2012 18:28:42 +0200
+Message-ID: <20121010162842.GZ4405@twin.jikos.cz>
+References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+ <1349863655-29320-2-git-send-email-zwu.kernel@gmail.com>
+Reply-To: dave@jikos.cz
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og115.obsmtp.com ([64.18.0.246]:46525 "EHLO
-	exprod5og115.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755519Ab2JJRCz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Oct 2012 13:02:55 -0400
-Received: from il93mgrg01.am.mot-mobility.com ([10.176.130.20])
-	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q9AGrYYu023947
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 12:53:34 -0400 (EDT)
-Received: from mail-vc0-f174.google.com (mail-vc0-f174.google.com [209.85.220.174])
-	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q9AGrX0h023935
-	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 12:53:34 -0400 (EDT)
-Received: by mail-vc0-f174.google.com with SMTP id fo13so1025695vcb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 10:02:52 -0700 (PDT)
-In-Reply-To: <20121009135152.GA29156@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: zwu.kernel@gmail.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1349863655-29320-2-git-send-email-zwu.kernel@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 9, 2012 at 9:51 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+Hi,
 
-> It is indeed, something we need to fix, and it's part of the problem
-> where where the delayed allocation for bigalloc is completely screwed
-> up.  Part of the problem is when we write into a cluster which has not
-> yet been mapped in the extent tree, but which might (or might not)
-> have had other blocks in the cluster that have already been subject to
-> delayed allocation, we don't know whether to reserve clusters for the
-> purposes of doing the the delayed allocation accounting.  Fixing this
-> w/o the extent status tree means having to search the page cache and
-> for other pages in the cluster, which is not only painful, but tricky
-> from the perspective of lock ordering.
->
-> Unfortunately, I didn't notice this problem originally because I
-> hadn't been doing regular xfstests runs with bigalloc, and most of my
-> testing had been with direct I/O, where these issues didn't come up.
->
->                                 - Ted
+On Wed, Oct 10, 2012 at 06:07:23PM +0800, zwu.kernel@gmail.com wrote:
+> --- a/fs/btrfs/ctree.h
+> +++ b/fs/btrfs/ctree.h
+> @@ -1726,6 +1726,7 @@ struct btrfs_ioctl_defrag_range_args {
+>  #define BTRFS_MOUNT_CHECK_INTEGRITY	(1 << 20)
+>  #define BTRFS_MOUNT_CHECK_INTEGRITY_INCLUDING_EXTENT_DATA (1 << 21)
+>  #define BTRFS_MOUNT_PANIC_ON_FATAL_ERROR	(1 << 22)
+> +#define BTRFS_MOUNT_HOT_TRACK		(1 << 23)
 
-Hi Ted,
+Please don't forget to add new options to btrfs_show_options(),
+otherwise we can't tell what filesystems have hot tracking enabled.
 
-Does it mean I'd better turn off delalloc if I use bigalloc with linux 3.5.3?
+> --- a/fs/btrfs/super.c
+> +++ b/fs/btrfs/super.c
+> @@ -303,7 +304,7 @@ enum {
+>  	Opt_notreelog, Opt_ratio, Opt_flushoncommit, Opt_discard,
+>  	Opt_space_cache, Opt_clear_cache, Opt_user_subvol_rm_allowed,
+>  	Opt_enospc_debug, Opt_subvolrootid, Opt_defrag, Opt_inode_cache,
+> -	Opt_no_space_cache, Opt_recovery, Opt_skip_balance,
+> +	Opt_no_space_cache, Opt_recovery, Opt_skip_balance, Opt_hot_track,
 
-Regards,
-Andrey.
+Please add the new option to the end.
+
+>  	Opt_check_integrity, Opt_check_integrity_including_extent_data,
+>  	Opt_check_integrity_print_mask, Opt_fatal_errors,
+>  	Opt_err,
+> @@ -342,6 +343,7 @@ static match_table_t tokens = {
+>  	{Opt_no_space_cache, "nospace_cache"},
+>  	{Opt_recovery, "recovery"},
+>  	{Opt_skip_balance, "skip_balance"},
+> +	{Opt_hot_track, "hot_track"},
+
+(also this one)
+
+>  	{Opt_check_integrity, "check_int"},
+>  	{Opt_check_integrity_including_extent_data, "check_int_data"},
+>  	{Opt_check_integrity_print_mask, "check_int_print_mask=%d"},
+> @@ -553,6 +555,9 @@ int btrfs_parse_options(struct btrfs_root *root, char *options)
+>  		case Opt_skip_balance:
+>  			btrfs_set_opt(info->mount_opt, SKIP_BALANCE);
+>  			break;
+> +		case Opt_hot_track:
+
+It's a common patter in the surrounding code that a message is printed
+when enabling options, but the vfs prints its own, so I'm not sure if
+it's needed here as well. Just thinking, leave it as it is now.
+
+> +			btrfs_set_opt(info->mount_opt, HOT_TRACK);
+> +			break;
+>  #ifdef CONFIG_BTRFS_FS_CHECK_INTEGRITY
+>  		case Opt_check_integrity_including_extent_data:
+>  			printk(KERN_INFO "btrfs: enabling check integrity"
+
+david
