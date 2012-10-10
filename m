@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v3 09/13] vfs: add one wq to update map info periodically
-Date: Wed, 10 Oct 2012 18:07:31 +0800
-Message-ID: <1349863655-29320-10-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v3 04/13] vfs: add function for collecting raw access info
+Date: Wed, 10 Oct 2012 18:07:26 +0800
+Message-ID: <1349863655-29320-5-git-send-email-zwu.kernel@gmail.com>
 References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -9,180 +9,268 @@ Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	tytso@mit.edu, cmm@us.ibm.com,
 	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:34483 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754672Ab2JJKIw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Oct 2012 06:08:52 -0400
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <zwu.kernel@gmail.com>;
+	Wed, 10 Oct 2012 06:08:51 -0400
 In-Reply-To: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Add a per-superblock workqueue and a work_struct
- to run periodic work to update map info on each superblock.
+  Add some utils helpers to update access frequencies
+for one file or its range.
 
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/hot_tracking.c            |   94 ++++++++++++++++++++++++++++++++++++++++++
- fs/hot_tracking.h            |    3 +
- include/linux/hot_tracking.h |    2 +
- 3 files changed, 99 insertions(+), 0 deletions(-)
+ fs/hot_tracking.c            |  190 ++++++++++++++++++++++++++++++++++++++++++
+ fs/hot_tracking.h            |   12 +++
+ include/linux/hot_tracking.h |    4 +
+ 3 files changed, 206 insertions(+), 0 deletions(-)
 
 diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
-index a8dc599..f333c47 100644
+index 5fd993e..86c87c7 100644
 --- a/fs/hot_tracking.c
 +++ b/fs/hot_tracking.c
-@@ -15,6 +15,8 @@
- #include <linux/module.h>
- #include <linux/spinlock.h>
- #include <linux/hardirq.h>
-+#include <linux/kthread.h>
-+#include <linux/freezer.h>
- #include <linux/fs.h>
- #include <linux/blkdev.h>
- #include <linux/types.h>
-@@ -623,6 +625,88 @@ static void hot_map_array_exit(struct hot_info *root)
+@@ -174,6 +174,196 @@ static void hot_inode_tree_exit(struct hot_info *root)
+ 	}
  }
  
- /*
-+ * Update temperatures for each hot inode item and
-+ * hot range item for aging purposes
-+ */
-+static void hot_temperature_update_work(struct work_struct *work)
++struct hot_inode_item
++*hot_inode_item_find(struct hot_info *root, u64 ino)
 +{
-+	struct hot_update_work *hot_work =
-+			container_of(work, struct hot_update_work, work);
-+	struct hot_info *root = hot_work->hot_info;
-+	struct hot_inode_item *hi_nodes[8];
-+	unsigned long delay = HZ * HEAT_UPDATE_DELAY;
-+	u64 ino = 0;
-+	int i, n;
++	struct hot_inode_item *he;
++	int ret;
 +
-+	do {
-+		while (1) {
-+			spin_lock(&root->lock);
-+			n = radix_tree_gang_lookup(&root->hot_inode_tree,
-+					   (void **)hi_nodes, ino,
-+					   ARRAY_SIZE(hi_nodes));
-+			if (!n) {
-+				spin_unlock(&root->lock);
-+				break;
-+			}
++again:
++	spin_lock(&root->lock);
++	he = radix_tree_lookup(&root->hot_inode_tree, ino);
++	if (he) {
++		kref_get(&he->hot_inode.refs);
++		spin_unlock(&root->lock);
++		return he;
++	}
++	spin_unlock(&root->lock);
 +
-+			ino = hi_nodes[n - 1]->i_ino + 1;
-+			for (i = 0; i < n; i++) {
-+				kref_get(&hi_nodes[i]->hot_inode.refs);
-+				hot_map_array_update(
-+					&hi_nodes[i]->hot_inode.hot_freq_data, root);
-+				hot_range_update(hi_nodes[i], root);
-+				hot_inode_item_put(hi_nodes[i]);
-+			}
-+			spin_unlock(&root->lock);
-+		}
++	he = kmem_cache_zalloc(hot_inode_item_cachep,
++				GFP_KERNEL | GFP_NOFS);
++	if (!he)
++		return ERR_PTR(-ENOMEM);
 +
-+		if (unlikely(freezing(current))) {
-+			__refrigerator(true);
-+		} else {
-+			set_current_state(TASK_INTERRUPTIBLE);
-+			if (!kthread_should_stop()) {
-+				schedule_timeout(delay);
-+			}
-+			__set_current_state(TASK_RUNNING);
-+		}
-+	} while (!kthread_should_stop());
-+}
++	hot_inode_item_init(he, ino, &root->hot_inode_tree);
 +
-+static int hot_wq_init(struct hot_info *root)
-+{
-+	struct hot_update_work *hot_work;
-+	int ret = 0;
-+
-+	root->update_wq = alloc_workqueue(
-+		"hot_temperature_update", WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
-+	if (!root->update_wq) {
-+		printk(KERN_ERR "%s: failed to create "
-+			"temperature update workqueue\n",
-+			__func__);
-+		return 1;
++	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	if (ret) {
++		kmem_cache_free(hot_inode_item_cachep, he);
++		return ERR_PTR(ret);
 +	}
 +
-+	hot_work = kmalloc(sizeof(*hot_work), GFP_NOFS);
-+	if (hot_work) {
-+		hot_work->hot_info = root;
-+		INIT_WORK(&hot_work->work, hot_temperature_update_work);
-+		queue_work(root->update_wq, &hot_work->work);
-+	} else {
-+		printk(KERN_ERR "%s: failed to create update work\n",
-+				__func__);
-+		ret = 1;
++	spin_lock(&root->lock);
++	ret = radix_tree_insert(&root->hot_inode_tree, ino, he);
++	if (ret == -EEXIST) {
++		kmem_cache_free(hot_inode_item_cachep, he);
++		spin_unlock(&root->lock);
++		radix_tree_preload_end();
++		goto again;
 +	}
++	spin_unlock(&root->lock);
++	radix_tree_preload_end();
 +
-+	return ret;
++	kref_get(&he->hot_inode.refs);
++	return he;
 +}
 +
-+static void hot_wq_exit(struct workqueue_struct *wq)
++static struct hot_range_item
++*hot_range_item_find(struct hot_inode_item *he,
++			u32 start)
 +{
-+	flush_workqueue(wq);
-+	destroy_workqueue(wq);
++	struct hot_range_item *hr;
++	int ret;
++
++again:
++	spin_lock(&he->lock);
++	hr = radix_tree_lookup(&he->hot_range_tree, start);
++	if (hr) {
++		kref_get(&hr->hot_range.refs);
++		spin_unlock(&he->lock);
++		return hr;
++	}
++	spin_unlock(&he->lock);
++
++	hr = kmem_cache_zalloc(hot_range_item_cachep,
++				GFP_KERNEL | GFP_NOFS);
++	if (!hr)
++		return ERR_PTR(-ENOMEM);
++
++	hot_range_item_init(hr, start, he);
++
++	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
++	if (ret) {
++		kmem_cache_free(hot_range_item_cachep, hr);
++		return ERR_PTR(ret);
++	}
++
++	spin_lock(&he->lock);
++	ret = radix_tree_insert(&he->hot_range_tree, start, hr);
++	if (ret == -EEXIST) {
++		kmem_cache_free(hot_range_item_cachep, hr);
++		spin_unlock(&he->lock);
++		radix_tree_preload_end();
++		goto again;
++	}
++	spin_unlock(&he->lock);
++	radix_tree_preload_end();
++
++	kref_get(&hr->hot_range.refs);
++	return hr;
 +}
 +
 +/*
-  * Initialize kmem cache for hot_inode_item and hot_range_item.
-  */
- static int __init hot_cache_init(void)
-@@ -686,10 +770,19 @@ void hot_track_init(struct super_block *sb)
- 	hot_inode_tree_init(root);
- 	hot_map_array_init(root);
- 
-+	err = hot_wq_init(root);
-+	if (err)
-+		goto failed_wq;
++ * This function does the actual work of updating the frequency numbers,
++ * whatever they turn out to be. FREQ_POWER determines how many atime
++ * deltas we keep track of (as a power of 2). So, setting it to anything above
++ * 16ish is probably overkill. Also, the higher the power, the more bits get
++ * right shifted out of the timestamp, reducing precision, so take note of that
++ * as well.
++ *
++ * The caller should have already locked freq_data's parent's spinlock.
++ *
++ * FREQ_POWER, defined immediately below, determines how heavily to weight
++ * the current frequency numbers against the newest access. For example, a value
++ * of 4 means that the new access information will be weighted 1/16th (ie 2^-4)
++ * as heavily as the existing frequency info. In essence, this is a kludged-
++ * together version of a weighted average, since we can't afford to keep all of
++ * the information that it would take to get a _real_ weighted average.
++ */
++static u64 hot_average_update(struct timespec old_atime,
++		struct timespec cur_time, u64 old_avg)
++{
++	struct timespec delta_ts;
++	u64 new_avg;
++	u64 new_delta;
 +
- 	printk(KERN_INFO "vfs: turning on hot data tracking\n");
- 
- 	return;
- 
-+failed_wq:
-+	hot_map_array_exit(root);
-+	hot_inode_tree_exit(root);
-+	sb->hot_flags &= ~MS_HOT_TRACKING;
-+	kfree(root);
- failed_root:
- 	hot_cache_exit();
- }
-@@ -698,6 +791,7 @@ void hot_track_exit(struct super_block *sb)
- {
- 	struct hot_info *root = global_hot_tracking_info;
- 
-+	hot_wq_exit(root->update_wq);
- 	hot_map_array_exit(root);
- 	hot_inode_tree_exit(root);
- 	sb->hot_flags &= ~MS_HOT_TRACKING;
-diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
-index d19e64a..7a79a6d 100644
---- a/fs/hot_tracking.h
-+++ b/fs/hot_tracking.h
-@@ -36,6 +36,9 @@
-  */
- #define TIME_TO_KICK 400
- 
-+/* set how often to update temperatures (seconds) */
-+#define HEAT_UPDATE_DELAY 400
++	delta_ts = timespec_sub(cur_time, old_atime);
++	new_delta = timespec_to_ns(&delta_ts) >> FREQ_POWER;
++
++	new_avg = (old_avg << FREQ_POWER) - old_avg + new_delta;
++	new_avg = new_avg >> FREQ_POWER;
++
++	return new_avg;
++}
++
++static void hot_freq_data_update(struct hot_freq_data *freq_data, bool write)
++{
++	struct timespec cur_time = current_kernel_time();
++
++	if (write) {
++		freq_data->nr_writes += 1;
++		freq_data->avg_delta_writes = hot_average_update(
++				freq_data->last_write_time,
++				cur_time,
++				freq_data->avg_delta_writes);
++		freq_data->last_write_time = cur_time;
++	} else {
++		freq_data->nr_reads += 1;
++		freq_data->avg_delta_reads = hot_average_update(
++				freq_data->last_read_time,
++				cur_time,
++				freq_data->avg_delta_reads);
++		freq_data->last_read_time = cur_time;
++	}
++}
++
++/*
++ * Main function to update access frequency from read/writepage(s) hooks
++ */
++inline void hot_update_freqs(struct hot_info *root,
++			struct inode *inode, u64 start,
++			u64 len, int rw)
++{
++	struct hot_inode_item *he;
++	struct hot_range_item *hr;
++	u32 cur, end;
++
++	if (!TRACK_THIS_INODE(inode) || (len == 0))
++		return;
++
++	he = hot_inode_item_find(root, inode->i_ino);
++	if (IS_ERR(he)) {
++		WARN_ON(1);
++		return;
++	}
++
++	spin_lock(&he->hot_inode.lock);
++	hot_freq_data_update(&he->hot_inode.hot_freq_data, rw);
++	spin_unlock(&he->hot_inode.lock);
++
++	/*
++	 * Align ranges on RANGE_SIZE boundary
++	 * to prevent proliferation of range structs
++	 */
++	end = (start + len + RANGE_SIZE - 1) >> RANGE_BITS;
++	for (cur = (start >> RANGE_BITS); cur < end; cur++) {
++		hr = hot_range_item_find(he, cur);
++		if (IS_ERR(hr)) {
++			WARN_ON(1);
++			hot_inode_item_put(he);
++			return;
++		}
++
++		spin_lock(&hr->hot_range.lock);
++		hot_freq_data_update(&hr->hot_range.hot_freq_data, rw);
++		spin_unlock(&hr->hot_range.lock);
++
++		hot_range_item_put(hr);
++	}
++
++	hot_inode_item_put(he);
++}
 +
  /*
-  * The following comments explain what exactly comprises a unit of heat.
-  *
+  * Initialize kmem cache for hot_inode_item and hot_range_item.
+  */
+diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
+index 4e8aa77..37f69ee 100644
+--- a/fs/hot_tracking.h
++++ b/fs/hot_tracking.h
+@@ -19,6 +19,18 @@
+ /* values for hot_freq_data flags */
+ #define FREQ_DATA_TYPE_INODE (1 << 0)
+ #define FREQ_DATA_TYPE_RANGE (1 << 1)
++/* size of sub-file ranges */
++#define RANGE_BITS 20
++#define RANGE_SIZE (1 << RANGE_BITS)
++
++#define FREQ_POWER 4
++
++struct hot_inode_item
++*hot_inode_item_find(struct hot_info *root, u64 ino);
++void hot_inode_item_put(struct hot_inode_item *he);
++inline void hot_update_freqs(struct hot_info *root,
++                        struct inode *inode, u64 start,
++                        u64 len, int rw);
+ 
+ void hot_track_init(struct super_block *sb);
+ void hot_track_exit(struct super_block *sb);
 diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
-index 7114179..b37e0f8 100644
+index 13aa54b..1e0aed5 100644
 --- a/include/linux/hot_tracking.h
 +++ b/include/linux/hot_tracking.h
-@@ -84,6 +84,8 @@ struct hot_info {
+@@ -75,4 +75,8 @@ extern struct hot_info *global_hot_tracking_info;
+ extern void hot_track_init(struct super_block *sb);
+ extern void hot_track_exit(struct super_block *sb);
  
- 	/* map of range temperature */
- 	struct hot_map_head heat_range_map[HEAT_MAP_SIZE];
++extern inline void hot_update_freqs(struct hot_info *root,
++                        struct inode *inode, u64 start,
++                        u64 len, int rw);
 +
-+	struct workqueue_struct *update_wq;
- };
- 
- extern struct hot_info *global_hot_tracking_info;
+ #endif  /* _LINUX_HOTTRACK_H */
 -- 
 1.7.6.5
 
