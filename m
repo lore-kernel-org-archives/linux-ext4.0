@@ -1,80 +1,55 @@
-From: David Sterba <dave@jikos.cz>
-Subject: Re: [RFC v3 12/13] vfs: add debugfs support
-Date: Wed, 10 Oct 2012 18:53:18 +0200
-Message-ID: <20121010165318.GA4405@twin.jikos.cz>
-References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
- <1349863655-29320-13-git-send-email-zwu.kernel@gmail.com>
-Reply-To: dave@jikos.cz
+From: Andrey Sidorov <qrxd43@motorola.com>
+Subject: Re: A warning from 3.6+ with bigalloc and delalloc when running xfstest
+Date: Wed, 10 Oct 2012 13:02:52 -0400
+Message-ID: <CAA0+VHwL0u0h6sn=Z0FyHsqYi2ji=sUaQ9ZPJCQ9kEMOpQHarg@mail.gmail.com>
+References: <CANWLp03Kcp75CZPr6DubSExH9GhLUqaLf=xHvLiivprs=z2BvQ@mail.gmail.com>
+	<20121009054820.GA8028@thunk.org>
+	<20121009062931.GA29314@gmail.com>
+	<20121009135152.GA29156@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	david@fromorbit.com, dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: zwu.kernel@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from twin.jikos.cz ([89.185.236.188]:46086 "EHLO twin.jikos.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753421Ab2JJQxj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Oct 2012 12:53:39 -0400
-Content-Disposition: inline
-In-Reply-To: <1349863655-29320-13-git-send-email-zwu.kernel@gmail.com>
+Received: from exprod5og115.obsmtp.com ([64.18.0.246]:46525 "EHLO
+	exprod5og115.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755519Ab2JJRCz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Oct 2012 13:02:55 -0400
+Received: from il93mgrg01.am.mot-mobility.com ([10.176.130.20])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q9AGrYYu023947
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 12:53:34 -0400 (EDT)
+Received: from mail-vc0-f174.google.com (mail-vc0-f174.google.com [209.85.220.174])
+	by il93mgrg01.am.mot-mobility.com (8.14.3/8.14.3) with ESMTP id q9AGrX0h023935
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 12:53:34 -0400 (EDT)
+Received: by mail-vc0-f174.google.com with SMTP id fo13so1025695vcb.19
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 10:02:52 -0700 (PDT)
+In-Reply-To: <20121009135152.GA29156@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 10, 2012 at 06:07:34PM +0800, zwu.kernel@gmail.com wrote:
-> +static int hot_debugfs_log_init(struct debugfs_vol_data *data)
-> +{
-> +	int err = 0;
-> +	struct lstring *debugfs_log = data->debugfs_log;
-> +
-> +	spin_lock(&data->log_lock);
-> +	debugfs_log->str = vmalloc(INIT_LOG_ALLOC_SIZE);
+On Tue, Oct 9, 2012 at 9:51 AM, Theodore Ts'o <tytso@mit.edu> wrote:
 
-vmalloc __might_sleep(), do the allocation outside of the lock and assign
-the value inside. Also, you may use vzalloc and drop the following memset.
+> It is indeed, something we need to fix, and it's part of the problem
+> where where the delayed allocation for bigalloc is completely screwed
+> up.  Part of the problem is when we write into a cluster which has not
+> yet been mapped in the extent tree, but which might (or might not)
+> have had other blocks in the cluster that have already been subject to
+> delayed allocation, we don't know whether to reserve clusters for the
+> purposes of doing the the delayed allocation accounting.  Fixing this
+> w/o the extent status tree means having to search the page cache and
+> for other pages in the cluster, which is not only painful, but tricky
+> from the perspective of lock ordering.
+>
+> Unfortunately, I didn't notice this problem originally because I
+> hadn't been doing regular xfstests runs with bigalloc, and most of my
+> testing had been with direct I/O, where these issues didn't come up.
+>
+>                                 - Ted
 
-dmesg:
+Hi Ted,
 
-vfs: turning on hot data tracking
-BUG: sleeping function called from invalid context at mm/slab.c:3220
-in_atomic(): 1, irqs_disabled(): 0, pid: 3103, name: mc
-1 lock held by mc/3103:
- #0:  (&(&inode_data->log_lock)->rlock){+.+.+.}, at: [<ffffffff8118c656>] __hot_debugfs_comm_read+0x216/0x280
-Pid: 3103, comm: mc Tainted: G        W    3.6.0hottrack-default+ #208
-Call Trace:
- [<ffffffff8108068c>] __might_sleep+0xfc/0x130
- [<ffffffff8114f7c1>] kmem_cache_alloc_trace+0xe1/0x270
- [<ffffffff81142005>] __get_vm_area_node+0x95/0x1a0
- [<ffffffff8108630f>] ? local_clock+0x6f/0x80
- [<ffffffff8118c660>] ? __hot_debugfs_comm_read+0x220/0x280
- [<ffffffff8114283d>] __vmalloc_node_range+0x6d/0x200
- [<ffffffff8118c660>] ? __hot_debugfs_comm_read+0x220/0x280
- [<ffffffff8118b810>] ? hot_debugfs_log+0xe0/0xe0
- [<ffffffff81142a05>] __vmalloc_node+0x35/0x40
- [<ffffffff8118c660>] ? __hot_debugfs_comm_read+0x220/0x280
- [<ffffffff81142bcc>] vmalloc+0x2c/0x30
- [<ffffffff8118c660>] __hot_debugfs_comm_read+0x220/0x280
- [<ffffffff8191fd58>] ? __do_page_fault+0x238/0x590
- [<ffffffff810ab825>] ? trace_hardirqs_on_caller+0x155/0x1d0
- [<ffffffff8138d01e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
- [<ffffffff8118c6d5>] __hot_debugfs_inode_read+0x15/0x20
- [<ffffffff8115a19b>] vfs_read+0xcb/0x190
- [<ffffffff8115a2c2>] sys_read+0x62/0xb0
- [<ffffffff8138d01e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
- [<ffffffff81924979>] system_call_fastpath+0x16/0x1b
+Does it mean I'd better turn off delalloc if I use bigalloc with linux 3.5.3?
 
-> +	if (debugfs_log->str) {
-> +		memset(debugfs_log->str, 0, INIT_LOG_ALLOC_SIZE);
-> +		data->log_alloc_size = INIT_LOG_ALLOC_SIZE;
-> +	} else {
-> +		err = -ENOMEM;
-> +	}
-> +	spin_unlock(&data->log_lock);
-> +
-> +	return err;
-> +}
-
-I'm now playing with it, and haven't gone through the code yet,
-david
+Regards,
+Andrey.
