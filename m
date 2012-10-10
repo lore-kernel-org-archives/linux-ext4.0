@@ -1,93 +1,53 @@
-From: zwu.kernel@gmail.com
-Subject: [RFC v3 00/13] vfs: hot data tracking
-Date: Wed, 10 Oct 2012 18:07:22 +0800
-Message-ID: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
-	viro@zeniv.linux.org.uk, david@fromorbit.com, dave@jikos.cz,
-	tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47151] provide a file system block size of 8KB for certain
+ SSDs.
+Date: Wed, 10 Oct 2012 10:14:16 +0000 (UTC)
+Message-ID: <20121010101416.E61B311FB04@bugzilla.kernel.org>
+References: <bug-47151-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:37675 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755719Ab2JJKOY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Oct 2012 06:14:24 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E9B2C203C3
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 10:14:22 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 05D71203CC
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2012 10:14:22 +0000 (UTC)
+In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=47151
 
-NOTE:
 
-  The patchset is currently post out mainly to make sure
-it is going in the correct direction and hope to get some
-helpful comments from other guys.
-  For more infomation, please check hot_tracking.txt in Documentation
+Alan <alan@lxorguk.ukuu.org.uk> changed:
 
-TODO List:
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|REOPENED                    |RESOLVED
+         Resolution|                            |WILL_NOT_FIX
 
- 1.) Need to do scalability or performance tests.
- 2.) Turn some Micro into be tunable
-       TIME_TO_KICK, and HEAT_UPDATE_DELAY
- 3.) Rafactor hot_hash_is_aging()
-       If you just made the timeout value a timespec and compared
-     the _timespecs_, you would be doing a lot fewer conversions.
- 4.) Cleanup some unnecessary lock protect
- 5.) Add more comments to explain how to calc temperature
-       How to "read" the avg read/write time (nanoseconds,
-     microseconds, jiffies....??)
- 6.) Make updating tempreture more parallel
- 7.) How to save the file tempreture among the umount to be able to
-     preserve the file tempreture after reboot
- 8.) Add one new ioctl inteface to set temperature value.
 
-Ben Chociej, Matt Lupfer and Conor Scott originally wrote this code to
- be very btrfs-specific.  I've taken their code and attempted to
-make it more generic and integrate it at the VFS level.
 
-Changelog from v2:
- 1.) Converted to Radix trees, not RB-tree [Zhiyong, Dave Chinner]
- 2.) Added memory shrinker [Dave Chinner]
- 3.) Converted to one workqueue to update map info periodically [Dave Chinner]
- 4.) Cleanedup a lot of other issues [Dave Chinner]
 
-v1:
- 1.) Reduce new files and put all in fs/hot_tracking.[ch] [Dave Chinner]
- 2.) The first three patches can probably just be flattened into one.
-                                        [Marco Stornelli , Dave Chinner]
+--- Comment #15 from Alan <alan@lxorguk.ukuu.org.uk>  2012-10-10 10:14:16 ---
+I have talked to  folks in the SSD world and the view seems to be
 
-Zhi Yong Wu (13):
-  btrfs: add one new mount option '-o hot_track'
-  vfs: introduce private radix tree structures
-  vfs: Initialize and free main data structures
-  vfs: add function for collecting raw access info
-  vfs: add two map arrays
-  vfs: add hooks to enable hot data tracking
-  vfs: add function for updating map arrays
-  vfs: add aging function for old map info
-  vfs: add one wq to update map info periodically
-  vfs: register one memory shrinker
-  vfs: add 3 new ioctl interfaces
-  vfs: add debugfs support
-  vfs: add documentation
+- bigger than 4K block size is not a concern because the real device is just
+making up the disk block sizes anyway
+- alignment according to the identify data is important (and is a matter for
+fdisk etc)
+- this isn't particularly likely to change
 
- Documentation/filesystems/00-INDEX         |    2 +
- Documentation/filesystems/hot_tracking.txt |  165 ++++
- fs/Makefile                                |    2 +-
- fs/btrfs/ctree.h                           |    1 +
- fs/btrfs/super.c                           |   15 +-
- fs/compat_ioctl.c                          |    9 +
- fs/direct-io.c                             |    8 +
- fs/hot_tracking.c                          | 1321 ++++++++++++++++++++++++++++
- fs/hot_tracking.h                          |  155 ++++
- fs/ioctl.c                                 |  122 +++
- include/linux/fs.h                         |    4 +
- include/linux/hot_tracking.h               |  123 +++
- mm/filemap.c                               |    7 +
- mm/page-writeback.c                        |   13 +
- mm/readahead.c                             |    7 +
- 15 files changed, 1952 insertions(+), 2 deletions(-)
- create mode 100644 Documentation/filesystems/hot_tracking.txt
- create mode 100644 fs/hot_tracking.c
- create mode 100644 fs/hot_tracking.h
- create mode 100644 include/linux/hot_tracking.h
+So I think we should just close this as WONTFIX. Anyone who cares sufficiently
+and has a use case should instead submit patches.
 
 -- 
-1.7.6.5
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
