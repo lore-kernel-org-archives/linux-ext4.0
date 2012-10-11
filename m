@@ -1,61 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: Avoid underflow of in ext3_trim_fs()
-Date: Thu, 11 Oct 2012 13:04:49 +0200
-Message-ID: <20121011110449.GC16624@quack.suse.cz>
-References: <1349951318-25190-1-git-send-email-lczerner@redhat.com>
+From: Zhi Yong Wu <zwu.kernel@gmail.com>
+Subject: Re: [RFC v3 02/13] vfs: introduce private radix tree structures
+Date: Thu, 11 Oct 2012 21:35:47 +0800
+Message-ID: <CAEH94Lh8=Ww_wFH_Q6KkOFxbcZ9Tdh66M5yCe30aaSB-tUFg1Q@mail.gmail.com>
+References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+	<1349863655-29320-3-git-send-email-zwu.kernel@gmail.com>
+	<20121010153450.GY4405@twin.jikos.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: dave@jikos.cz, zwu.kernel@gmail.com, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
+	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
+	cmm@us.ibm.com, Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51703 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757537Ab2JKLEv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Oct 2012 07:04:51 -0400
-Content-Disposition: inline
-In-Reply-To: <1349951318-25190-1-git-send-email-lczerner@redhat.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:60379 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751446Ab2JKNft (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2012 09:35:49 -0400
+In-Reply-To: <20121010153450.GY4405@twin.jikos.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 11-10-12 12:28:38, Lukas Czerner wrote:
-> Currently if len argument in ext3_trim_fs() is smaller than one block,
-> the 'end' variable underflow. Avoid that by returning EINVAL if len is
-> smaller than file system block.
-> 
-> Also remove useless unlikely().
-  Thanks. I've added the patch to my tree.
+On Wed, Oct 10, 2012 at 11:34 PM, David Sterba <dave@jikos.cz> wrote:
+> On Wed, Oct 10, 2012 at 06:07:24PM +0800, zwu.kernel@gmail.com wrote:
+>> +void hot_track_init(struct super_block *sb)
+>> +{
+> ...
+>> +}
+>
+>> +void hot_track_exit(struct super_block *sb)
+>> +{
+>> +     hot_cache_exit();
+>> +}
+>
+> Needs to be exported if btrfs is built as a module, otherwise does not
+> link
+>
+>   LDS     arch/x86/boot/compressed/vmlinux.lds
+>   AS      arch/x86/boot/compressed/head_64.o
+>   CC      arch/x86/boot/compressed/misc.o
+>   CC      arch/x86/boot/compressed/string.o
+>   CC      arch/x86/boot/compressed/cmdline.o
+>   CC      arch/x86/boot/compressed/early_serial_console.o
+>   OBJCOPY arch/x86/boot/compressed/vmlinux.bin
+> ERROR: "hot_track_init" [fs/btrfs/btrfs.ko] undefined!
+> ERROR: "hot_track_exit" [fs/btrfs/btrfs.ko] undefined!
+> make[1]: *** [__modpost] Error 1
+> make: *** [modules] Error 2
+> make: *** Waiting for unfinished jobs....
+Sorry for late response at first. Great, thanks.
 
-								Honza
+>
+>
+> david
 
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  fs/ext3/balloc.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index 7320a66..22548f5 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -2101,8 +2101,9 @@ int ext3_trim_fs(struct super_block *sb, struct fstrim_range *range)
->  	end = start + (range->len >> sb->s_blocksize_bits) - 1;
->  	minlen = range->minlen >> sb->s_blocksize_bits;
->  
-> -	if (unlikely(minlen > EXT3_BLOCKS_PER_GROUP(sb)) ||
-> -	    unlikely(start >= max_blks))
-> +	if (minlen > EXT3_BLOCKS_PER_GROUP(sb) ||
-> +	    start >= max_blks ||
-> +	    range->len < sb->s_blocksize)
->  		return -EINVAL;
->  	if (end >= max_blks)
->  		end = max_blks - 1;
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Regards,
+
+Zhi Yong Wu
