@@ -1,34 +1,46 @@
-From: Peter Fordham <peter.fordham@gmail.com>
-Subject: Re: spinlocks in ext4
-Date: Thu, 11 Oct 2012 11:37:46 -0700
-Message-ID: <CAK5=ZRJt3KCQniUA+-E4kn_51nFvB34796wOoG4vrmzU5nfwOA@mail.gmail.com>
-References: <CAK5=ZRLQErM1dOT_Tuf-SC4-3VK_o6TRg-0k8A=iQGgFY6S+aw@mail.gmail.com>
-	<20121009005425.GB20682@thunk.org>
-	<20121009011036.GC20682@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47151] provide a file system block size of 8KB for certain
+ SSDs.
+Date: Thu, 11 Oct 2012 20:54:00 +0000 (UTC)
+Message-ID: <20121011205400.2D0AB11FA36@bugzilla.kernel.org>
+References: <bug-47151-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:39813 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759126Ab2JKShq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2012 14:37:46 -0400
-Received: by mail-ia0-f174.google.com with SMTP id y32so1469844iag.19
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2012 11:37:46 -0700 (PDT)
-In-Reply-To: <20121009011036.GC20682@thunk.org>
+Received: from mail.kernel.org ([198.145.19.201]:34689 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932891Ab2JKUyH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Oct 2012 16:54:07 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 1769D2049A
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2012 20:54:06 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 3E10520498
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2012 20:54:05 +0000 (UTC)
+In-Reply-To: <bug-47151-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 8 October 2012 18:10, Theodore Ts'o <tytso@mit.edu> wrote:
-> How expensive are memory barriers on ARM, anyway?
+https://bugzilla.kernel.org/show_bug.cgi?id=47151
 
-The performance monitors seem to be telling me that a DMB just after a
-store which misses in the L1 & L2, (causing an eviction of a clean
-line and a line-fill, I assume) takes over 100 cycles.
 
-I'm seeing a 20% slow down in ext4 performance when enabling SMP on my
-device. I'm starting to think there might be issues with the memory
-system.
 
--Pete
+
+
+--- Comment #16 from Elmar Stellnberger <estellnb@elstel.org>  2012-10-11 20:53:59 ---
+> the real device is just making up the disk block sizes anyway
+Yes, in our case it would make up a block size of 8KB
+
+> alignment according to the identify data is important 
+No, only for HDDs not for SSDs; here the alignment needs to fit
+the internal or exposed alignment of the SSD in order not to
+ruin it by a 2x or 4x-ing of all read-write cycles
+
+> this isn't particularly likely to change
+Yes, folks of any chat channel are not aware of these issues.
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
