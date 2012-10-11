@@ -1,7 +1,7 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
 Subject: Re: [RFC v3 01/13] btrfs: add one new mount option '-o hot_track'
-Date: Thu, 11 Oct 2012 21:41:01 +0800
-Message-ID: <CAEH94LiFvUfNA1vjJ37y3U0r0cw+k_w6hoboOXPO75=CQwoXSg@mail.gmail.com>
+Date: Thu, 11 Oct 2012 22:35:28 +0800
+Message-ID: <CAEH94LgJDhB+-mjhBScQnQybqYWE1rJ6ViuqeWNisLjC=8yMkA@mail.gmail.com>
 References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
 	<1349863655-29320-2-git-send-email-zwu.kernel@gmail.com>
 	<20121010162842.GZ4405@twin.jikos.cz>
@@ -12,9 +12,9 @@ To: dave@jikos.cz, zwu.kernel@gmail.com, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
 	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
 	cmm@us.ibm.com, Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20121010162842.GZ4405@twin.jikos.cz>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Thu, Oct 11, 2012 at 12:28 AM, David Sterba <dave@jikos.cz> wrote:
@@ -31,7 +31,6 @@ On Thu, Oct 11, 2012 at 12:28 AM, David Sterba <dave@jikos.cz> wrote:
 >
 > Please don't forget to add new options to btrfs_show_options(),
 > otherwise we can't tell what filesystems have hot tracking enabled.
-Great catch, thanks.
 >
 >> --- a/fs/btrfs/super.c
 >> +++ b/fs/btrfs/super.c
@@ -43,7 +42,11 @@ Great catch, thanks.
 >> +     Opt_no_space_cache, Opt_recovery, Opt_skip_balance, Opt_hot_track,
 >
 > Please add the new option to the end.
-OK.
+To be honest, it can't be added to the end, if you check Opt_err's
+pattern value, you will find it is NULL, it will cause match_one()
+return 1. So if we add Opt_hot_track to the end of this array, it will
+be covered by match_token(), so i prefer to add it to
+Opt_fatal_errors. Do you think of it?
 >
 >>       Opt_check_integrity, Opt_check_integrity_including_extent_data,
 >>       Opt_check_integrity_print_mask, Opt_fatal_errors,
@@ -55,7 +58,6 @@ OK.
 >> +     {Opt_hot_track, "hot_track"},
 >
 > (also this one)
-ditto.
 >
 >>       {Opt_check_integrity, "check_int"},
 >>       {Opt_check_integrity_including_extent_data, "check_int_data"},
@@ -69,7 +71,6 @@ ditto.
 > It's a common patter in the surrounding code that a message is printed
 > when enabling options, but the vfs prints its own, so I'm not sure if
 > it's needed here as well. Just thinking, leave it as it is now.
-OK
 >
 >> +                     btrfs_set_opt(info->mount_opt, HOT_TRACK);
 >> +                     break;
