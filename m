@@ -1,40 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 48751] ext3: ctime changes with no reason in 30 seconds after a
- file change
-Date: Sat, 13 Oct 2012 18:14:59 +0000 (UTC)
-Message-ID: <20121013181459.B5CDA11F9D1@bugzilla.kernel.org>
-References: <bug-48751-13602@https.bugzilla.kernel.org/>
+From: Andrey Sidorov <qrxd43@motorola.com>
+Subject: Re: A warning from 3.6+ with bigalloc and delalloc when running xfstest
+Date: Sat, 13 Oct 2012 14:29:48 -0400
+Message-ID: <CAA0+VHySFTOC53QGyt2aCk4vNq45dcfptEHN0vc+tLnZA0tgng@mail.gmail.com>
+References: <CANWLp03Kcp75CZPr6DubSExH9GhLUqaLf=xHvLiivprs=z2BvQ@mail.gmail.com>
+	<20121009054820.GA8028@thunk.org>
+	<20121009062931.GA29314@gmail.com>
+	<20121009135152.GA29156@thunk.org>
+	<CAA0+VHwL0u0h6sn=Z0FyHsqYi2ji=sUaQ9ZPJCQ9kEMOpQHarg@mail.gmail.com>
+	<20121011155708.GA9480@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: Andrey Sidorov <qrxd43@motorola.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:58158 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753971Ab2JMSPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Oct 2012 14:15:01 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 91DFD20249
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2012 18:15:00 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id BE39F201FD
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2012 18:14:59 +0000 (UTC)
-In-Reply-To: <bug-48751-13602@https.bugzilla.kernel.org/>
+Received: from exprod5og110.obsmtp.com ([64.18.0.20]:43726 "EHLO
+	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751362Ab2JMS3w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Oct 2012 14:29:52 -0400
+Received: from DE01MGRG01.AM.MOT-MOBILITY.COM ([10.176.130.20])
+	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id q9DIWCXj027254
+	for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2012 14:32:12 -0400 (EDT)
+Received: from mail-vb0-f46.google.com (mail-vb0-f46.google.com [209.85.212.46])
+	by DE01MGRG01.AM.MOT-MOBILITY.COM (8.14.3/8.14.3) with ESMTP id q9DIWBDO027236
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2012 14:32:12 -0400 (EDT)
+Received: by mail-vb0-f46.google.com with SMTP id ff1so4015380vbb.19
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2012 11:29:49 -0700 (PDT)
+In-Reply-To: <20121011155708.GA9480@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=48751
+On Thu, Oct 11, 2012 at 11:57 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> Hi Andrey,
+>
+> This warning is only triggered in a stress test case.  In our product
+> system we never meet this warning, certainly we have backported bigalloc
+> to 2.6.32 kernel, though.  So IMHO we needn't turn off delalloc.
+>
+> Regards,
+> Zheng
 
+Hi Zheng,
 
-Vladimir A. Pavlov <pv4@bk.ru> changed:
+I didn't see it as well, but wanted to be sure it won't break file
+system once occurred.
+Our use-case is mostly dio and pre-fallocated writes, so I think we'll be fine.
+Thanks!
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-           Platform|i386                        |IA-32
-
-
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Regards,
+Andrey.
