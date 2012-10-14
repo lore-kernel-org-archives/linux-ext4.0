@@ -1,59 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 16/21 v5] e2fsck: add problem descriptions and check
- inline data feature
-Date: Sun, 14 Oct 2012 09:22:10 -0400
-Message-ID: <20121014132210.GB6207@thunk.org>
-References: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
- <1348286469-31690-17-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: A warning from 3.6+ with bigalloc and delalloc when running
+ xfstest
+Date: Sat, 13 Oct 2012 22:18:34 -0400
+Message-ID: <20121014021834.GA4418@thunk.org>
+References: <CANWLp03Kcp75CZPr6DubSExH9GhLUqaLf=xHvLiivprs=z2BvQ@mail.gmail.com>
+ <20121009054820.GA8028@thunk.org>
+ <20121009062931.GA29314@gmail.com>
+ <20121009135152.GA29156@thunk.org>
+ <CAA0+VHwL0u0h6sn=Z0FyHsqYi2ji=sUaQ9ZPJCQ9kEMOpQHarg@mail.gmail.com>
+ <20121011155708.GA9480@gmail.com>
+ <CAA0+VHySFTOC53QGyt2aCk4vNq45dcfptEHN0vc+tLnZA0tgng@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Andrey Sidorov <qrxd43@motorola.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55436 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55435 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754167Ab2JNOlx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Oct 2012 10:41:53 -0400
+	id S1753737Ab2JNOlw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Oct 2012 10:41:52 -0400
 Content-Disposition: inline
-In-Reply-To: <1348286469-31690-17-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <CAA0+VHySFTOC53QGyt2aCk4vNq45dcfptEHN0vc+tLnZA0tgng@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Zheng,
+On Sat, Oct 13, 2012 at 02:29:48PM -0400, Andrey Sidorov wrote:
+> I didn't see it as well, but wanted to be sure it won't break file
+> system once occurred.
+> Our use-case is mostly dio and pre-fallocated writes, so I think we'll be fine.
+> Thanks!
 
-I was trying to apply these patches to the e2fsprogs pu branch, and as
-a matter of course, I ran checkpatch on the patch series.  The reason
-why it's useful is because it finds stuff like this:
-
-WARNING: trailing semicolon indicates no statements, indent implies otherwise
-#156: FILE: lib/ext2fs/inline_data.c:567:
-+     if (retval);
-+     	 return pass;
-
-ERROR: trailing statements should be on next line
-#156: FILE: lib/ext2fs/inline_data.c:567:
-+     if (retval);
-
-> +int ext2fs_inline_data_header_check(ext2_filsys fs, ext2_ino_t ino)
-> +{
-> +	struct ext2_inode_large *inode;
-> +	struct inline_data data;
-> +	errcode_t retval = 0;
-> +	int pass = 0;
-> +
-> +	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
-> +	if (retval);
-> +		return pass;
-
-This means the rest of ext2fs_inline_data_header_check() isn't getting
-executed, since the "return pass;" statement would get executed
-unconditionally.  I didn't try it, but I suspect "make gcc-wall"
-probably would have turned up this typo as well.
-
-I'll fix this in my tree on the pu branch; I'm still looking over the
-rest of the patches, but I thought it would be good to point this out
-first.
-
-Cheers,
+Yes, that will work just fine.  That in fact was the use case I was
+primarily interested in when I did the bigalloc work.  The main
+weaknesses come from using buffered writes with delayed allocation and
+when the disk is almost full.
 
 					- Ted
