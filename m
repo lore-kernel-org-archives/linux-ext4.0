@@ -1,47 +1,59 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: metadata_csum set but no space in dir leaf for checksum
-Date: Sun, 14 Oct 2012 10:55:08 -0400
-Message-ID: <20121014145508.GC6207@thunk.org>
-References: <20121013050554.9442.qmail@science.horizon.com>
- <65D4536C-0F58-4A26-A562-B665EC6CBBB2@dilger.ca>
+Subject: Re: [PATCH 16/21 v5] e2fsck: add problem descriptions and check
+ inline data feature
+Date: Sun, 14 Oct 2012 09:22:10 -0400
+Message-ID: <20121014132210.GB6207@thunk.org>
+References: <1348286469-31690-1-git-send-email-wenqing.lz@taobao.com>
+ <1348286469-31690-17-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: George Spelvin <linux@horizon.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:55443 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:55436 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754760Ab2JNOzN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Oct 2012 10:55:13 -0400
+	id S1754167Ab2JNOlx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Oct 2012 10:41:53 -0400
 Content-Disposition: inline
-In-Reply-To: <65D4536C-0F58-4A26-A562-B665EC6CBBB2@dilger.ca>
+In-Reply-To: <1348286469-31690-17-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 14, 2012 at 12:43:47AM -0600, Andreas Dilger wrote:
-> 
-> This means there was an existing directory block that was completely full and
-> could not have the checksum added.  It isn't harmful, the chance of having
-> silent corruption in this specific block is very small.
+Hi Zheng,
 
-Was this a freshly created ext4 file system with the metadata_csum
-checksum, or was this a previously existing ext4 file system where the
-metadata_csum feature was added later?
+I was trying to apply these patches to the e2fsprogs pu branch, and as
+a matter of course, I ran checkpatch on the patch series.  The reason
+why it's useful is because it finds stuff like this:
 
-I've pushed an update to the e2fsprogs repository which allows htree
-and "ls -c" to actually show us the directory leaf block checksums.
-Previously, they were hidden, which means that it's hard to tell
-whether a directory had all of its directory blocks properly
-checksummed or not.
+WARNING: trailing semicolon indicates no statements, indent implies otherwise
+#156: FILE: lib/ext2fs/inline_data.c:567:
++     if (retval);
++     	 return pass;
 
-> The message itself should be quieted though, since there isn't anything to be
-> helped by printing it continuously.  I guess there is something missing in
-> e2fsck that it doesn't add a checksum to this block, however.
+ERROR: trailing statements should be on next line
+#156: FILE: lib/ext2fs/inline_data.c:567:
++     if (retval);
 
-Either that, or somehow there is a case where the directory tail
-containing the checksum is getting overwritten, or a directory block
-isn't getting a checksum after a htree node split.  The e2fsprogs
-changes will hopefully make it easier for us to figure out what is
-going on.
+> +int ext2fs_inline_data_header_check(ext2_filsys fs, ext2_ino_t ino)
+> +{
+> +	struct ext2_inode_large *inode;
+> +	struct inline_data data;
+> +	errcode_t retval = 0;
+> +	int pass = 0;
+> +
+> +	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
+> +	if (retval);
+> +		return pass;
+
+This means the rest of ext2fs_inline_data_header_check() isn't getting
+executed, since the "return pass;" statement would get executed
+unconditionally.  I didn't try it, but I suspect "make gcc-wall"
+probably would have turned up this typo as well.
+
+I'll fix this in my tree on the pu branch; I'm still looking over the
+rest of the patches, but I thought it would be good to point this out
+first.
+
+Cheers,
 
 					- Ted
