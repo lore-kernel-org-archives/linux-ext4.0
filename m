@@ -1,146 +1,87 @@
-From: Anatol Pomozov <anatol.pomozov@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: Remove code duplication in ext4_get_block_write_nolock()
-Date: Mon, 15 Oct 2012 12:14:37 -0700
-Message-ID: <CAOMFOmUwydpp-J5HBjHSiVHDnOr+RC=SaXP9qeN+fBYj_S07ZA@mail.gmail.com>
-References: <1350328009-22740-1-git-send-email-anatol.pomozov@gmail.com>
-	<1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC v3 00/13] vfs: hot data tracking
+Date: Tue, 16 Oct 2012 07:42:17 +1100
+Message-ID: <20121015204217.GB2739@dastard>
+References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Anatol Pomozov <anatol.pomozov@gmail.com>
-To: tytso@mit.edu, wenqing.lz@taobao.com, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f46.google.com ([209.85.215.46]:55786 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754431Ab2JOTOj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2012 15:14:39 -0400
-Received: by mail-la0-f46.google.com with SMTP id h6so3648077lag.19
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2012 12:14:37 -0700 (PDT)
-In-Reply-To: <1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: zwu.kernel@gmail.com
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 15, 2012 at 12:06 PM, Anatol Pomozov
-<anatol.pomozov@gmail.com> wrote:
-> 729f52c6be51013 introduced function ext4_get_block_write_nolock() that
-> is very similar to _ext4_get_block(). Eliminate code duplication
-> by passing different flags to _ext4_get_block()
->
-> Tested: xfs tests
->
-> Signed-off-by: Anatol Pomozov <anatol.pomozov@gmail.com>
-> ---
->  fs/ext4/inode.c | 63 ++++++++++++++++++++++-----------------------------------
->  1 file changed, 24 insertions(+), 39 deletions(-)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b3c243b..9829c3d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -683,7 +683,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
->         map.m_lblk = iblock;
->         map.m_len = bh->b_size >> inode->i_blkbits;
->
-> -       if (flags && !handle) {
-> +       if (flags && !(flags | EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
->                 /* Direct IO write... */
->                 if (map.m_len > DIO_MAX_BLOCKS)
->                         map.m_len = DIO_MAX_BLOCKS;
-> @@ -880,6 +880,8 @@ static int do_journal_get_write_access(handle_t *handle,
->
->  static int ext4_get_block_write(struct inode *inode, sector_t iblock,
->                    struct buffer_head *bh_result, int create);
-> +static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-> +                  struct buffer_head *bh_result, int create);
->  static int ext4_write_begin(struct file *file, struct address_space *mapping,
->                             loff_t pos, unsigned len, unsigned flags,
->                             struct page **pagep, void **fsdata)
-> @@ -2850,29 +2852,12 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
->  }
->
->  static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-> -                  struct buffer_head *bh_result, int flags)
-> +                  struct buffer_head *bh_result, int create)
->  {
-> -       handle_t *handle = ext4_journal_current_handle();
-> -       struct ext4_map_blocks map;
-> -       int ret = 0;
-> -
-> -       ext4_debug("ext4_get_block_write_nolock: inode %lu, flag %d\n",
-> -                  inode->i_ino, flags);
-> -
-> -       flags = EXT4_GET_BLOCKS_NO_LOCK;
-> -
-> -       map.m_lblk = iblock;
-> -       map.m_len = bh_result->b_size >> inode->i_blkbits;
-> -
-> -       ret = ext4_map_blocks(handle, inode, &map, flags);
-> -       if (ret > 0) {
-> -               map_bh(bh_result, inode->i_sb, map.m_pblk);
-> -               bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
-> -                                       map.m_flags;
-> -               bh_result->b_size = inode->i_sb->s_blocksize * map.m_len;
-> -               ret = 0;
-> -       }
-> -       return ret;
-> +       ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
-> +                  inode->i_ino, create);
-> +       return _ext4_get_block(inode, iblock, bh_result,
-> +                              EXT4_GET_BLOCKS_NO_LOCK);
->  }
->
->  static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
-> @@ -3003,6 +2988,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
->         loff_t final_size = offset + count;
->         if (rw == WRITE && final_size <= inode->i_size) {
->                 int overwrite = 0;
-> +               get_block_t *get_block_func = NULL;
-> +               int dio_flags = 0;
->
->                 BUG_ON(iocb->private == NULL);
->
-> @@ -3056,22 +3043,20 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
->                         ext4_inode_aio_set(inode, io_end);
->                 }
->
-> -               if (overwrite)
-> -                       ret = __blockdev_direct_IO(rw, iocb, inode,
-> -                                                inode->i_sb->s_bdev, iov,
-> -                                                offset, nr_segs,
-> -                                                ext4_get_block_write_nolock,
-> -                                                ext4_end_io_dio,
-> -                                                NULL,
-> -                                                0);
-> -               else
-> -                       ret = __blockdev_direct_IO(rw, iocb, inode,
-> -                                                inode->i_sb->s_bdev, iov,
-> -                                                offset, nr_segs,
-> -                                                ext4_get_block_write,
-> -                                                ext4_end_io_dio,
-> -                                                NULL,
-> -                                                DIO_LOCKING);
-> +               if (overwrite) {
-> +                       get_block_func = ext4_get_block_write_nolock;
+On Wed, Oct 10, 2012 at 06:07:22PM +0800, zwu.kernel@gmail.com wrote:
+> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+> 
+> NOTE:
+> 
+>   The patchset is currently post out mainly to make sure
+> it is going in the correct direction and hope to get some
+> helpful comments from other guys.
+>   For more infomation, please check hot_tracking.txt in Documentation
+> 
+> TODO List:
 
-Ideally if block layer (function __blockdev_direct_IO) accepted some
-user-data (e.g. flag) and later passed it back to callback function
-(i.e. ext4_get_block_write). In this case we do not need two functions
-ext4_get_block_write/ext4_get_block_write_nolock.
+1) Fix OOM issues - the hot inode tracking caches grow very large
+and don't get trimmed under memory pressure. From slabtop, after
+creating roughly 24 million single byte files(*) on a machine with
+8GB RAM:
 
-> +               } else {
-> +                       get_block_func = ext4_get_block_write;
-> +                       dio_flags = DIO_LOCKING;
-> +               }
-> +               ret = __blockdev_direct_IO(rw, iocb, inode,
-> +                                        inode->i_sb->s_bdev, iov,
-> +                                        offset, nr_segs,
-> +                                        get_block_func,
-> +                                        ext4_end_io_dio,
-> +                                        NULL,
-> +                                        dio_flags);
-> +
->                 if (iocb->private)
->                         ext4_inode_aio_set(inode, NULL);
->                 /*
-> --
-> 1.8.0.rc1
->
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME                   
+23859510 23859476  99%    0.12K 795317       30   3181268K hot_range_item
+23859441 23859439  99%    0.16K 1037367       23   4149468K hot_inode_item
+572530 572530 100%    0.55K  81790        7    327160K radix_tree_node
+241706 241406  99%    0.22K  14218       17     56872K xfs_ili
+241206 241204  99%    1.06K  80402        3    321608K xfs_inode
+
+The inode tracking is trying to track all 24 million inodes even
+though they have been written only once, and there are only 240,000
+inodes in the cache at this point in time. That was the last update
+that slabtop got, so it is indicative of the impending OOM situation
+that occurred.
+
+> Changelog from v2:
+>  1.) Converted to Radix trees, not RB-tree [Zhiyong, Dave Chinner]
+>  2.) Added memory shrinker [Dave Chinner]
+
+I haven't looked at the shrinker, but clearly it is not working,
+otherwise the above OOM situation would not be occurring.
+
+Cheers,
+
+Dave.
+
+(*) Tested on an empty 17TB XFS filesystem with:
+
+$ sudo mkfs.xfs -f -l size=131072b,sunit=8 /dev/vdc
+meta-data=/dev/vdc               isize=256    agcount=17, agsize=268435455 blks
+         =                       sectsz=512   attr=2, projid32bit=0
+data     =                       bsize=4096   blocks=4563402735, imaxpct=5
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0
+log      =internal log           bsize=4096   blocks=131072, version=2
+         =                       sectsz=512   sunit=1 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+$ sudo mount -o logbsize=256k /dev/vdc /mnt/scratch
+$ sudo chmod 777 /mnt/scratch
+$ fs_mark  -D  10000  -S0  -n  100000  -s  1  -L  63  -d \
+/mnt/scratch/0  -d  /mnt/scratch/1  -d  /mnt/scratch/2  -d \
+/mnt/scratch/3  -d  /mnt/scratch/4  -d  /mnt/scratch/5  -d \
+/mnt/scratch/6  -d  /mnt/scratch/7
+.....
+     0     21600000            1      16679.3         12552262
+     0     22400000            1      15412.4         12588587
+     0     23200000            1      16367.6         14199322
+     0     24000000            1      15680.4         15741205
+<hangs here w/ OOM>
+
+-- 
+Dave Chinner
+david@fromorbit.com
