@@ -1,135 +1,146 @@
 From: Anatol Pomozov <anatol.pomozov@gmail.com>
-Subject: [PATCH 2/2] ext4: Remove code duplication in ext4_get_block_write_nolock()
-Date: Mon, 15 Oct 2012 12:06:49 -0700
-Message-ID: <1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
+Subject: Re: [PATCH 2/2] ext4: Remove code duplication in ext4_get_block_write_nolock()
+Date: Mon, 15 Oct 2012 12:14:37 -0700
+Message-ID: <CAOMFOmUwydpp-J5HBjHSiVHDnOr+RC=SaXP9qeN+fBYj_S07ZA@mail.gmail.com>
 References: <1350328009-22740-1-git-send-email-anatol.pomozov@gmail.com>
+	<1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Cc: Anatol Pomozov <anatol.pomozov@gmail.com>
 To: tytso@mit.edu, wenqing.lz@taobao.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f202.google.com ([209.85.217.202]:48416 "EHLO
-	mail-lb0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751940Ab2JOTHj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2012 15:07:39 -0400
-Received: by mail-lb0-f202.google.com with SMTP id l12so346084lbo.1
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2012 12:07:37 -0700 (PDT)
-In-Reply-To: <1350328009-22740-1-git-send-email-anatol.pomozov@gmail.com>
+Received: from mail-la0-f46.google.com ([209.85.215.46]:55786 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754431Ab2JOTOj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2012 15:14:39 -0400
+Received: by mail-la0-f46.google.com with SMTP id h6so3648077lag.19
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2012 12:14:37 -0700 (PDT)
+In-Reply-To: <1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-729f52c6be51013 introduced function ext4_get_block_write_nolock() that
-is very similar to _ext4_get_block(). Eliminate code duplication
-by passing different flags to _ext4_get_block()
+On Mon, Oct 15, 2012 at 12:06 PM, Anatol Pomozov
+<anatol.pomozov@gmail.com> wrote:
+> 729f52c6be51013 introduced function ext4_get_block_write_nolock() that
+> is very similar to _ext4_get_block(). Eliminate code duplication
+> by passing different flags to _ext4_get_block()
+>
+> Tested: xfs tests
+>
+> Signed-off-by: Anatol Pomozov <anatol.pomozov@gmail.com>
+> ---
+>  fs/ext4/inode.c | 63 ++++++++++++++++++++++-----------------------------------
+>  1 file changed, 24 insertions(+), 39 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index b3c243b..9829c3d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -683,7 +683,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+>         map.m_lblk = iblock;
+>         map.m_len = bh->b_size >> inode->i_blkbits;
+>
+> -       if (flags && !handle) {
+> +       if (flags && !(flags | EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
+>                 /* Direct IO write... */
+>                 if (map.m_len > DIO_MAX_BLOCKS)
+>                         map.m_len = DIO_MAX_BLOCKS;
+> @@ -880,6 +880,8 @@ static int do_journal_get_write_access(handle_t *handle,
+>
+>  static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+>                    struct buffer_head *bh_result, int create);
+> +static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
+> +                  struct buffer_head *bh_result, int create);
+>  static int ext4_write_begin(struct file *file, struct address_space *mapping,
+>                             loff_t pos, unsigned len, unsigned flags,
+>                             struct page **pagep, void **fsdata)
+> @@ -2850,29 +2852,12 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
+>  }
+>
+>  static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
+> -                  struct buffer_head *bh_result, int flags)
+> +                  struct buffer_head *bh_result, int create)
+>  {
+> -       handle_t *handle = ext4_journal_current_handle();
+> -       struct ext4_map_blocks map;
+> -       int ret = 0;
+> -
+> -       ext4_debug("ext4_get_block_write_nolock: inode %lu, flag %d\n",
+> -                  inode->i_ino, flags);
+> -
+> -       flags = EXT4_GET_BLOCKS_NO_LOCK;
+> -
+> -       map.m_lblk = iblock;
+> -       map.m_len = bh_result->b_size >> inode->i_blkbits;
+> -
+> -       ret = ext4_map_blocks(handle, inode, &map, flags);
+> -       if (ret > 0) {
+> -               map_bh(bh_result, inode->i_sb, map.m_pblk);
+> -               bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
+> -                                       map.m_flags;
+> -               bh_result->b_size = inode->i_sb->s_blocksize * map.m_len;
+> -               ret = 0;
+> -       }
+> -       return ret;
+> +       ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
+> +                  inode->i_ino, create);
+> +       return _ext4_get_block(inode, iblock, bh_result,
+> +                              EXT4_GET_BLOCKS_NO_LOCK);
+>  }
+>
+>  static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+> @@ -3003,6 +2988,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>         loff_t final_size = offset + count;
+>         if (rw == WRITE && final_size <= inode->i_size) {
+>                 int overwrite = 0;
+> +               get_block_t *get_block_func = NULL;
+> +               int dio_flags = 0;
+>
+>                 BUG_ON(iocb->private == NULL);
+>
+> @@ -3056,22 +3043,20 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>                         ext4_inode_aio_set(inode, io_end);
+>                 }
+>
+> -               if (overwrite)
+> -                       ret = __blockdev_direct_IO(rw, iocb, inode,
+> -                                                inode->i_sb->s_bdev, iov,
+> -                                                offset, nr_segs,
+> -                                                ext4_get_block_write_nolock,
+> -                                                ext4_end_io_dio,
+> -                                                NULL,
+> -                                                0);
+> -               else
+> -                       ret = __blockdev_direct_IO(rw, iocb, inode,
+> -                                                inode->i_sb->s_bdev, iov,
+> -                                                offset, nr_segs,
+> -                                                ext4_get_block_write,
+> -                                                ext4_end_io_dio,
+> -                                                NULL,
+> -                                                DIO_LOCKING);
+> +               if (overwrite) {
+> +                       get_block_func = ext4_get_block_write_nolock;
 
-Tested: xfs tests
+Ideally if block layer (function __blockdev_direct_IO) accepted some
+user-data (e.g. flag) and later passed it back to callback function
+(i.e. ext4_get_block_write). In this case we do not need two functions
+ext4_get_block_write/ext4_get_block_write_nolock.
 
-Signed-off-by: Anatol Pomozov <anatol.pomozov@gmail.com>
----
- fs/ext4/inode.c | 63 ++++++++++++++++++++++-----------------------------------
- 1 file changed, 24 insertions(+), 39 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b3c243b..9829c3d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -683,7 +683,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 	map.m_lblk = iblock;
- 	map.m_len = bh->b_size >> inode->i_blkbits;
- 
--	if (flags && !handle) {
-+	if (flags && !(flags | EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
- 		/* Direct IO write... */
- 		if (map.m_len > DIO_MAX_BLOCKS)
- 			map.m_len = DIO_MAX_BLOCKS;
-@@ -880,6 +880,8 @@ static int do_journal_get_write_access(handle_t *handle,
- 
- static int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create);
-+static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-+		   struct buffer_head *bh_result, int create);
- static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 			    loff_t pos, unsigned len, unsigned flags,
- 			    struct page **pagep, void **fsdata)
-@@ -2850,29 +2852,12 @@ static int ext4_get_block_write(struct inode *inode, sector_t iblock,
- }
- 
- static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
--		   struct buffer_head *bh_result, int flags)
-+		   struct buffer_head *bh_result, int create)
- {
--	handle_t *handle = ext4_journal_current_handle();
--	struct ext4_map_blocks map;
--	int ret = 0;
--
--	ext4_debug("ext4_get_block_write_nolock: inode %lu, flag %d\n",
--		   inode->i_ino, flags);
--
--	flags = EXT4_GET_BLOCKS_NO_LOCK;
--
--	map.m_lblk = iblock;
--	map.m_len = bh_result->b_size >> inode->i_blkbits;
--
--	ret = ext4_map_blocks(handle, inode, &map, flags);
--	if (ret > 0) {
--		map_bh(bh_result, inode->i_sb, map.m_pblk);
--		bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
--					map.m_flags;
--		bh_result->b_size = inode->i_sb->s_blocksize * map.m_len;
--		ret = 0;
--	}
--	return ret;
-+	ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
-+		   inode->i_ino, create);
-+	return _ext4_get_block(inode, iblock, bh_result,
-+			       EXT4_GET_BLOCKS_NO_LOCK);
- }
- 
- static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
-@@ -3003,6 +2988,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	loff_t final_size = offset + count;
- 	if (rw == WRITE && final_size <= inode->i_size) {
- 		int overwrite = 0;
-+		get_block_t *get_block_func = NULL;
-+		int dio_flags = 0;
- 
- 		BUG_ON(iocb->private == NULL);
- 
-@@ -3056,22 +3043,20 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 			ext4_inode_aio_set(inode, io_end);
- 		}
- 
--		if (overwrite)
--			ret = __blockdev_direct_IO(rw, iocb, inode,
--						 inode->i_sb->s_bdev, iov,
--						 offset, nr_segs,
--						 ext4_get_block_write_nolock,
--						 ext4_end_io_dio,
--						 NULL,
--						 0);
--		else
--			ret = __blockdev_direct_IO(rw, iocb, inode,
--						 inode->i_sb->s_bdev, iov,
--						 offset, nr_segs,
--						 ext4_get_block_write,
--						 ext4_end_io_dio,
--						 NULL,
--						 DIO_LOCKING);
-+		if (overwrite) {
-+			get_block_func = ext4_get_block_write_nolock;
-+		} else {
-+			get_block_func = ext4_get_block_write;
-+			dio_flags = DIO_LOCKING;
-+		}
-+		ret = __blockdev_direct_IO(rw, iocb, inode,
-+					 inode->i_sb->s_bdev, iov,
-+					 offset, nr_segs,
-+					 get_block_func,
-+					 ext4_end_io_dio,
-+					 NULL,
-+					 dio_flags);
-+
- 		if (iocb->private)
- 			ext4_inode_aio_set(inode, NULL);
- 		/*
--- 
-1.8.0.rc1
-
+> +               } else {
+> +                       get_block_func = ext4_get_block_write;
+> +                       dio_flags = DIO_LOCKING;
+> +               }
+> +               ret = __blockdev_direct_IO(rw, iocb, inode,
+> +                                        inode->i_sb->s_bdev, iov,
+> +                                        offset, nr_segs,
+> +                                        get_block_func,
+> +                                        ext4_end_io_dio,
+> +                                        NULL,
+> +                                        dio_flags);
+> +
+>                 if (iocb->private)
+>                         ext4_inode_aio_set(inode, NULL);
+>                 /*
+> --
+> 1.8.0.rc1
+>
