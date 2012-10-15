@@ -1,182 +1,42 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Checksum the block bitmap properly with bigalloc enabled.
-Date: Mon, 15 Oct 2012 21:01:33 +0800
-Message-ID: <1350306093-2995-1-git-send-email-tm@tao.ma>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix undefined bit shift result in
+ ext4_fill_flex_info
+Date: Mon, 15 Oct 2012 13:00:09 -0400
+Message-ID: <20121015170009.GA30787@thunk.org>
+References: <1349248307-31225-1-git-send-email-lczerner@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:55518 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752262Ab2JONBs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Oct 2012 09:01:48 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:55580 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753955Ab2JORAN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Oct 2012 13:00:13 -0400
+Content-Disposition: inline
+In-Reply-To: <1349248307-31225-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Tao Ma <boyu.mt@taobao.com>
+On Wed, Oct 03, 2012 at 09:11:47AM +0200, Lukas Czerner wrote:
+> The result of the bit shift expression in
+> '1 << sbi->s_log_groups_per_flex' can be undefined in the case that
+> s_log_groups_per_flex is 31 because the result of the shift is bigger
+> than INT_MAX. In reality this probably should not cause much problems
+> since we'll end up with INT_MIN which will then be converted into
+> 'unsigned int' type, but nevertheless according to the ISO C99 the
+> result is actually undefined.
+> 
+> Fix this by changing the left operand to 'unsigned int' type.
+> 
+> Note that the commit d50f2ab6f050311dbf7b8f5501b25f0bf64a439b already
+> tried to fix the undefined behaviour, but this was missed.
+> 
+> Thanks to Laszlo Ersek for pointing this out and suggesting the fix.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reported-by: Laszlo Ersek <lersek@redhat.com>
 
-In mke2fs, we only checksum the whole bitmap block and it is right.
-While in the kernel, we use EXT4_BLOCKS_PER_GROUP to indicate the
-size of the checksumed bitmap which is wrong when we enable bigalloc.
-The right size should be EXT4_CLUSTERS_PER_GROUP and this patch fixes
-it.
+Thanks, applied.
 
-Also as every caller of ext4_block_bitmap_csum_set and
-ext4_block_bitmap_csum_verify pass in EXT4_BLOCKS_PER_GROUP(sb)/8,
-we'd better removes this parameter and sets it in the function itself.
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/balloc.c  |    8 +++-----
- fs/ext4/bitmap.c  |    6 ++++--
- fs/ext4/ext4.h    |    4 ++--
- fs/ext4/ialloc.c  |    4 +---
- fs/ext4/mballoc.c |    9 +++------
- fs/ext4/resize.c  |    3 +--
- 6 files changed, 14 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1b50890..cf18217 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -174,8 +174,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		ext4_free_inodes_set(sb, gdp, 0);
- 		ext4_itable_unused_set(sb, gdp, 0);
- 		memset(bh->b_data, 0xff, sb->s_blocksize);
--		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
--					   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
- 		return;
- 	}
- 	memset(bh->b_data, 0, sb->s_blocksize);
-@@ -212,8 +211,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	 */
- 	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
- 			     sb->s_blocksize * 8, bh->b_data);
--	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
--				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
- 	ext4_group_desc_csum_set(sb, block_group, gdp);
- }
- 
-@@ -350,7 +348,7 @@ void ext4_validate_block_bitmap(struct super_block *sb,
- 		return;
- 	}
- 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
--			desc, bh, EXT4_BLOCKS_PER_GROUP(sb) / 8))) {
-+			desc, bh))) {
- 		ext4_unlock_group(sb, block_group);
- 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
- 		return;
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index 5c2d181..3285aa5 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -58,11 +58,12 @@ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
- 
- int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 				  struct ext4_group_desc *gdp,
--				  struct buffer_head *bh, int sz)
-+				  struct buffer_head *bh)
- {
- 	__u32 hi;
- 	__u32 provided, calculated;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int sz = EXT4_CLUSTERS_PER_GROUP(sb) / 8;
- 
- 	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-@@ -84,8 +85,9 @@ int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 
- void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
- 				struct ext4_group_desc *gdp,
--				struct buffer_head *bh, int sz)
-+				struct buffer_head *bh)
- {
-+	int sz = EXT4_CLUSTERS_PER_GROUP(sb) / 8;
- 	__u32 csum;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3ab2539..d6024d5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1882,10 +1882,10 @@ int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 				  struct buffer_head *bh, int sz);
- void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
- 				struct ext4_group_desc *gdp,
--				struct buffer_head *bh, int sz);
-+				struct buffer_head *bh);
- int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
- 				  struct ext4_group_desc *gdp,
--				  struct buffer_head *bh, int sz);
-+				  struct buffer_head *bh);
- 
- /* balloc.c */
- extern void ext4_validate_block_bitmap(struct super_block *sb,
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index fa36372..4facdd2 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -762,9 +762,7 @@ got:
- 			ext4_free_group_clusters_set(sb, gdp,
- 				ext4_free_clusters_after_init(sb, group, gdp));
- 			ext4_block_bitmap_csum_set(sb, group, gdp,
--						   block_bitmap_bh,
--						   EXT4_BLOCKS_PER_GROUP(sb) /
--						   8);
-+						   block_bitmap_bh);
- 			ext4_group_desc_csum_set(sb, group, gdp);
- 		}
- 		ext4_unlock_group(sb, group);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index f8b27bf..5804273 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2805,8 +2805,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	}
- 	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
- 	ext4_free_group_clusters_set(sb, gdp, len);
--	ext4_block_bitmap_csum_set(sb, ac->ac_b_ex.fe_group, gdp, bitmap_bh,
--				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	ext4_block_bitmap_csum_set(sb, ac->ac_b_ex.fe_group, gdp, bitmap_bh);
- 	ext4_group_desc_csum_set(sb, ac->ac_b_ex.fe_group, gdp);
- 
- 	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
-@@ -4666,8 +4665,7 @@ do_more:
- 
- 	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
- 	ext4_free_group_clusters_set(sb, gdp, ret);
--	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
--				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
- 	ext4_group_desc_csum_set(sb, block_group, gdp);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
-@@ -4811,8 +4809,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 	mb_free_blocks(NULL, &e4b, bit, count);
- 	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
- 	ext4_free_group_clusters_set(sb, desc, blk_free_count);
--	ext4_block_bitmap_csum_set(sb, block_group, desc, bitmap_bh,
--				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	ext4_block_bitmap_csum_set(sb, block_group, desc, bitmap_bh);
- 	ext4_group_desc_csum_set(sb, block_group, desc);
- 	ext4_unlock_group(sb, block_group);
- 	percpu_counter_add(&sbi->s_freeclusters_counter,
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 7a75e10..47bf06a 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1212,8 +1212,7 @@ static int ext4_set_bitmap_checksums(struct super_block *sb,
- 	bh = ext4_get_bitmap(sb, group_data->block_bitmap);
- 	if (!bh)
- 		return -EIO;
--	ext4_block_bitmap_csum_set(sb, group, gdp, bh,
--				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
-+	ext4_block_bitmap_csum_set(sb, group, gdp, bh);
- 	brelse(bh);
- 
- 	return 0;
--- 
-1.7.1
-
+					- Ted
