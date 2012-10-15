@@ -1,87 +1,48 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC v3 00/13] vfs: hot data tracking
-Date: Tue, 16 Oct 2012 07:42:17 +1100
-Message-ID: <20121015204217.GB2739@dastard>
-References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 47731] Null pointer dereference at strchr
+Date: Mon, 15 Oct 2012 21:18:33 +0000 (UTC)
+Message-ID: <20121015211833.9BFC111FC43@bugzilla.kernel.org>
+References: <bug-47731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: zwu.kernel@gmail.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:52202 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753491Ab2JOVSg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:18:36 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3C13D2024C
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2012 21:18:35 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id A62C020272
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Oct 2012 21:18:33 +0000 (UTC)
+In-Reply-To: <bug-47731-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 10, 2012 at 06:07:22PM +0800, zwu.kernel@gmail.com wrote:
-> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-> 
-> NOTE:
-> 
->   The patchset is currently post out mainly to make sure
-> it is going in the correct direction and hope to get some
-> helpful comments from other guys.
->   For more infomation, please check hot_tracking.txt in Documentation
-> 
-> TODO List:
+https://bugzilla.kernel.org/show_bug.cgi?id=47731
 
-1) Fix OOM issues - the hot inode tracking caches grow very large
-and don't get trimmed under memory pressure. From slabtop, after
-creating roughly 24 million single byte files(*) on a machine with
-8GB RAM:
 
-  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME                   
-23859510 23859476  99%    0.12K 795317       30   3181268K hot_range_item
-23859441 23859439  99%    0.16K 1037367       23   4149468K hot_inode_item
-572530 572530 100%    0.55K  81790        7    327160K radix_tree_node
-241706 241406  99%    0.22K  14218       17     56872K xfs_ili
-241206 241204  99%    1.06K  80402        3    321608K xfs_inode
+Florian Mickler <florian@mickler.org> changed:
 
-The inode tracking is trying to track all 24 million inodes even
-though they have been written only once, and there are only 240,000
-inodes in the cache at this point in time. That was the last update
-that slabtop got, so it is indicative of the impending OOM situation
-that occurred.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |florian@mickler.org
 
-> Changelog from v2:
->  1.) Converted to Radix trees, not RB-tree [Zhiyong, Dave Chinner]
->  2.) Added memory shrinker [Dave Chinner]
 
-I haven't looked at the shrinker, but clearly it is not working,
-otherwise the above OOM situation would not be occurring.
 
-Cheers,
 
-Dave.
+--- Comment #6 from Florian Mickler <florian@mickler.org>  2012-10-15 21:18:33 ---
+A patch referencing this bug report has been merged in Linux v3.7-rc1:
 
-(*) Tested on an empty 17TB XFS filesystem with:
+commit 50df9fd55e4271e89a7adf3b1172083dd0ca199d
+Author: Herton Ronaldo Krzesinski <herton.krzesinski@canonical.com>
+Date:   Sun Sep 23 22:49:12 2012 -0400
 
-$ sudo mkfs.xfs -f -l size=131072b,sunit=8 /dev/vdc
-meta-data=/dev/vdc               isize=256    agcount=17, agsize=268435455 blks
-         =                       sectsz=512   attr=2, projid32bit=0
-data     =                       bsize=4096   blocks=4563402735, imaxpct=5
-         =                       sunit=0      swidth=0 blks
-naming   =version 2              bsize=4096   ascii-ci=0
-log      =internal log           bsize=4096   blocks=131072, version=2
-         =                       sectsz=512   sunit=1 blks, lazy-count=1
-realtime =none                   extsz=4096   blocks=0, rtextents=0
-$ sudo mount -o logbsize=256k /dev/vdc /mnt/scratch
-$ sudo chmod 777 /mnt/scratch
-$ fs_mark  -D  10000  -S0  -n  100000  -s  1  -L  63  -d \
-/mnt/scratch/0  -d  /mnt/scratch/1  -d  /mnt/scratch/2  -d \
-/mnt/scratch/3  -d  /mnt/scratch/4  -d  /mnt/scratch/5  -d \
-/mnt/scratch/6  -d  /mnt/scratch/7
-.....
-     0     21600000            1      16679.3         12552262
-     0     22400000            1      15412.4         12588587
-     0     23200000            1      16367.6         14199322
-     0     24000000            1      15680.4         15741205
-<hangs here w/ OOM>
+    ext4: fix crash when accessing /proc/mounts concurrently
 
 -- 
-Dave Chinner
-david@fromorbit.com
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
