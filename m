@@ -1,102 +1,202 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v3 11/13] vfs: add 3 new ioctl interfaces
-Date: Tue, 16 Oct 2012 12:18:07 +0800
-Message-ID: <CAEH94Ljyxghk-M8_qtzyDNFAn6CbPbWY5UP3+9M4CdyPkKX_Kg@mail.gmail.com>
-References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-	<1349863655-29320-12-git-send-email-zwu.kernel@gmail.com>
-	<20121016031710.GD2864@dastard>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Checksum the block bitmap properly with bigalloc
+ enabled.
+Date: Tue, 16 Oct 2012 09:05:05 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1210160857310.20184@dhcp-1-104.brq.redhat.com>
+References: <1350306093-2995-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20121016031710.GD2864@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <tm@tao.ma>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51946 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754074Ab2JPHFL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Oct 2012 03:05:11 -0400
+In-Reply-To: <1350306093-2995-1-git-send-email-tm@tao.ma>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 16, 2012 at 11:17 AM, Dave Chinner <david@fromorbit.com> wrote:
-> On Wed, Oct 10, 2012 at 06:07:33PM +0800, zwu.kernel@gmail.com wrote:
->> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
->>
->>   FS_IOC_GET_HEAT_INFO: return a struct containing the various
->> metrics collected in btrfs_freq_data structs, and also return a
->
-> I think you mean hot_freq_data :P
-Yeah, sorry.
->
->> calculated data temperature based on those metrics. Optionally, retrieve
->> the temperature from the hot data hash list instead of recalculating it.
->
-> To get the heat info for a specific file you have to know what file
-> you want to get that info for, right?  I can see the usefulness of
-Yes.
-> asking for the heat data on a specific file, but how do you find the
-> hot files in the first place? i.e. the big question the user
-> interface needs to answer is "what files are hot?".
-We only tell the user what the files' temperatures are, not what files are hot.
-Their temperatures are in the output of debugfs.
->
-> Once userspace knows what the hottest files are, it can open them
-If the user need to know this type of info, it is easy for us to
-provide it. But i don't know what way the user hope to get it via.
-> and query the data via the above ioctl, but expecting userspace to
-> iterate millions of inodes in a filesystem to find hot files is very
-> inefficient.
->
-> FWIW, if you were to return file handles to the hottest files, then
-> the application could open and query them without even needing to
-> know the path name to them. This woul dbe exceedingly useful for
-> defragmentation programs, especially as that is the way xfs_fsr
-> already operates on candidate files.(*)
-ah.
->
-> IOWs, sometimes the pathname is irrelevant to the operations that
-> applications want to perform - all they care about having an
-> efficient method of finding the inode they want and getting a file
-> descriptor that points to the file. Given the heat map info fits
-> right in to the sort of operations defrag and data mover tools
-> already do, it kind of makes sense to optimise the interface towards
-> those uses....
->
-> (*) i.e. finds them via bulkstat which returns handle information
-> along with all the other inode data, then opens the file by handle
-> to do the defrag work....
-OK.
->
->>   FS_IOC_GET_HEAT_OPTS: return an integer representing the current
->> state of hot data tracking and migration:
->>
->> 0 = do nothing
->> 1 = track frequency of access
->>
->>   FS_IOC_SET_HEAT_OPTS: change the state of hot data tracking and
->> migration, as described above.
->
-> I can't see how this is a manageable interface. It is not
-> persistent, so after every filesystem mount you'd have to set the
-> flag on all your inodes again. Hence, for the moment, I'd suggest
-> that dropping per-inode tracking control until all the core issues
-> are sorted out....
-OK.
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Mon, 15 Oct 2012, Tao Ma wrote:
 
+> Date: Mon, 15 Oct 2012 21:01:33 +0800
+> From: Tao Ma <tm@tao.ma>
+> To: linux-ext4@vger.kernel.org
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH] ext4: Checksum the block bitmap properly with bigalloc
+>     enabled.
+> 
+> From: Tao Ma <boyu.mt@taobao.com>
+> 
+> In mke2fs, we only checksum the whole bitmap block and it is right.
+> While in the kernel, we use EXT4_BLOCKS_PER_GROUP to indicate the
+> size of the checksumed bitmap which is wrong when we enable bigalloc.
+> The right size should be EXT4_CLUSTERS_PER_GROUP and this patch fixes
+> it.
+> 
+> Also as every caller of ext4_block_bitmap_csum_set and
+> ext4_block_bitmap_csum_verify pass in EXT4_BLOCKS_PER_GROUP(sb)/8,
+> we'd better removes this parameter and sets it in the function itself.
 
+Looks good to me.
 
--- 
-Regards,
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-Zhi Yong Wu
+Thanks!
+-Lukas
+
+> 
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/balloc.c  |    8 +++-----
+>  fs/ext4/bitmap.c  |    6 ++++--
+>  fs/ext4/ext4.h    |    4 ++--
+>  fs/ext4/ialloc.c  |    4 +---
+>  fs/ext4/mballoc.c |    9 +++------
+>  fs/ext4/resize.c  |    3 +--
+>  6 files changed, 14 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 1b50890..cf18217 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -174,8 +174,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+>  		ext4_free_inodes_set(sb, gdp, 0);
+>  		ext4_itable_unused_set(sb, gdp, 0);
+>  		memset(bh->b_data, 0xff, sb->s_blocksize);
+> -		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
+> -					   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
+>  		return;
+>  	}
+>  	memset(bh->b_data, 0, sb->s_blocksize);
+> @@ -212,8 +211,7 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+>  	 */
+>  	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
+>  			     sb->s_blocksize * 8, bh->b_data);
+> -	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh,
+> -				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
+>  	ext4_group_desc_csum_set(sb, block_group, gdp);
+>  }
+>  
+> @@ -350,7 +348,7 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+>  		return;
+>  	}
+>  	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+> -			desc, bh, EXT4_BLOCKS_PER_GROUP(sb) / 8))) {
+> +			desc, bh))) {
+>  		ext4_unlock_group(sb, block_group);
+>  		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+>  		return;
+> diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
+> index 5c2d181..3285aa5 100644
+> --- a/fs/ext4/bitmap.c
+> +++ b/fs/ext4/bitmap.c
+> @@ -58,11 +58,12 @@ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+>  
+>  int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+>  				  struct ext4_group_desc *gdp,
+> -				  struct buffer_head *bh, int sz)
+> +				  struct buffer_head *bh)
+>  {
+>  	__u32 hi;
+>  	__u32 provided, calculated;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	int sz = EXT4_CLUSTERS_PER_GROUP(sb) / 8;
+>  
+>  	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+>  					EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+> @@ -84,8 +85,9 @@ int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+>  
+>  void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+>  				struct ext4_group_desc *gdp,
+> -				struct buffer_head *bh, int sz)
+> +				struct buffer_head *bh)
+>  {
+> +	int sz = EXT4_CLUSTERS_PER_GROUP(sb) / 8;
+>  	__u32 csum;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3ab2539..d6024d5 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1882,10 +1882,10 @@ int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+>  				  struct buffer_head *bh, int sz);
+>  void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+>  				struct ext4_group_desc *gdp,
+> -				struct buffer_head *bh, int sz);
+> +				struct buffer_head *bh);
+>  int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+>  				  struct ext4_group_desc *gdp,
+> -				  struct buffer_head *bh, int sz);
+> +				  struct buffer_head *bh);
+>  
+>  /* balloc.c */
+>  extern void ext4_validate_block_bitmap(struct super_block *sb,
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index fa36372..4facdd2 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -762,9 +762,7 @@ got:
+>  			ext4_free_group_clusters_set(sb, gdp,
+>  				ext4_free_clusters_after_init(sb, group, gdp));
+>  			ext4_block_bitmap_csum_set(sb, group, gdp,
+> -						   block_bitmap_bh,
+> -						   EXT4_BLOCKS_PER_GROUP(sb) /
+> -						   8);
+> +						   block_bitmap_bh);
+>  			ext4_group_desc_csum_set(sb, group, gdp);
+>  		}
+>  		ext4_unlock_group(sb, group);
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index f8b27bf..5804273 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2805,8 +2805,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+>  	}
+>  	len = ext4_free_group_clusters(sb, gdp) - ac->ac_b_ex.fe_len;
+>  	ext4_free_group_clusters_set(sb, gdp, len);
+> -	ext4_block_bitmap_csum_set(sb, ac->ac_b_ex.fe_group, gdp, bitmap_bh,
+> -				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +	ext4_block_bitmap_csum_set(sb, ac->ac_b_ex.fe_group, gdp, bitmap_bh);
+>  	ext4_group_desc_csum_set(sb, ac->ac_b_ex.fe_group, gdp);
+>  
+>  	ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+> @@ -4666,8 +4665,7 @@ do_more:
+>  
+>  	ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
+>  	ext4_free_group_clusters_set(sb, gdp, ret);
+> -	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh,
+> -				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +	ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
+>  	ext4_group_desc_csum_set(sb, block_group, gdp);
+>  	ext4_unlock_group(sb, block_group);
+>  	percpu_counter_add(&sbi->s_freeclusters_counter, count_clusters);
+> @@ -4811,8 +4809,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+>  	mb_free_blocks(NULL, &e4b, bit, count);
+>  	blk_free_count = blocks_freed + ext4_free_group_clusters(sb, desc);
+>  	ext4_free_group_clusters_set(sb, desc, blk_free_count);
+> -	ext4_block_bitmap_csum_set(sb, block_group, desc, bitmap_bh,
+> -				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +	ext4_block_bitmap_csum_set(sb, block_group, desc, bitmap_bh);
+>  	ext4_group_desc_csum_set(sb, block_group, desc);
+>  	ext4_unlock_group(sb, block_group);
+>  	percpu_counter_add(&sbi->s_freeclusters_counter,
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 7a75e10..47bf06a 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -1212,8 +1212,7 @@ static int ext4_set_bitmap_checksums(struct super_block *sb,
+>  	bh = ext4_get_bitmap(sb, group_data->block_bitmap);
+>  	if (!bh)
+>  		return -EIO;
+> -	ext4_block_bitmap_csum_set(sb, group, gdp, bh,
+> -				   EXT4_BLOCKS_PER_GROUP(sb) / 8);
+> +	ext4_block_bitmap_csum_set(sb, group, gdp, bh);
+>  	brelse(bh);
+>  
+>  	return 0;
+> 
