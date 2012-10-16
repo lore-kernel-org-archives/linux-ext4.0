@@ -1,7 +1,7 @@
 From: Adil Mujeeb <mujeeb.adil@gmail.com>
-Subject: [PATCH 08/10] ext4: ioctl: Fixed coding style issue
-Date: Wed, 17 Oct 2012 00:43:03 +0530
-Message-ID: <1350414785-7848-8-git-send-email-mujeeb.adil@gmail.com>
+Subject: [PATCH 07/10] ext4: inode: Fixed coding style issue
+Date: Wed, 17 Oct 2012 00:43:02 +0530
+Message-ID: <1350414785-7848-7-git-send-email-mujeeb.adil@gmail.com>
 References: <1350414785-7848-1-git-send-email-mujeeb.adil@gmail.com>
 Cc: Adil Mujeeb <mujeeb.adil@gmail.com>
 To: tytso@mit.edu, adilger.kernel@dilger.ca,
@@ -11,34 +11,37 @@ In-Reply-To: <1350414785-7848-1-git-send-email-mujeeb.adil@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Fixed checkpatch.pl reported issue
+Fixed coding style issue reported by checkpatch.pl
 
 Signed-off-by: Adil Mujeeb <mujeeb.adil@gmail.com>
 ---
- linux-3.7-rc1/fs/ext4/ioctl.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ linux-3.7-rc1/fs/ext4/inode.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/linux-3.7-rc1/fs/ext4/ioctl.c b/linux-3.7-rc1/fs/ext4/ioctl.c
-index 5747f52..a534615 100644
---- a/linux-3.7-rc1/fs/ext4/ioctl.c
-+++ b/linux-3.7-rc1/fs/ext4/ioctl.c
-@@ -194,7 +194,7 @@ setversion_out:
- 	}
- 	case EXT4_IOC_GROUP_EXTEND: {
- 		ext4_fsblk_t n_blocks_count;
--		int err, err2=0;
-+		int err, err2 = 0;
+diff --git a/linux-3.7-rc1/fs/ext4/inode.c b/linux-3.7-rc1/fs/ext4/inode.c
+index b3c243b..a174620 100644
+--- a/linux-3.7-rc1/fs/ext4/inode.c
++++ b/linux-3.7-rc1/fs/ext4/inode.c
+@@ -2880,7 +2880,7 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+ 			    bool is_async)
+ {
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+-        ext4_io_end_t *io_end = iocb->private;
++	ext4_io_end_t *io_end = iocb->private;
  
- 		err = ext4_resize_begin(sb);
- 		if (err)
-@@ -280,7 +280,7 @@ mext_out:
+ 	/* if not async direct IO or dio with 0 bytes write, just return */
+ 	if (!io_end || !size)
+@@ -3435,9 +3435,9 @@ static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+ 		zero_user(page, pos, range_to_discard);
  
- 	case EXT4_IOC_GROUP_ADD: {
- 		struct ext4_new_group_data input;
--		int err, err2=0;
-+		int err, err2 = 0;
+ 		err = 0;
+-		if (ext4_should_journal_data(inode)) {
++		if (ext4_should_journal_data(inode))
+ 			err = ext4_handle_dirty_metadata(handle, inode, bh);
+-		} else
++		else
+ 			mark_buffer_dirty(bh);
  
- 		err = ext4_resize_begin(sb);
- 		if (err)
+ 		BUFFER_TRACE(bh, "Partial buffer zeroed");
 -- 
 1.7.7.3
