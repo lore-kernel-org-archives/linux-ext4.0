@@ -1,113 +1,89 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 01/10] ext4: balloc: Fixed coding style issue
-Date: Wed, 17 Oct 2012 16:27:39 +0200 (CEST)
-Message-ID: <alpine.LFD.2.00.1210171609040.30534@dhcp-1-104.brq.redhat.com>
-References: <1350414785-7848-1-git-send-email-mujeeb.adil@gmail.com> <alpine.LFD.2.00.1210171359270.30534@dhcp-1-104.brq.redhat.com> <CAFLxGvzKGJ0-Mau+21sSi+A5WKtbvF=+YxrKxVFta0Ecx6y_Jg@mail.gmail.com>
- <CANBXnMkoFo1HdQZkOq0HR4aLX_LObXB2=mEpiHBwK2CSK_hCKA@mail.gmail.com>
+From: Volodymyr Mieshkov <volodymyr.mieshkov@ti.com>
+Subject: [PATCH] ext4: prevent kernel panic in case of uninitialized jinode
+Date: Wed, 17 Oct 2012 18:54:29 +0300
+Message-ID: <1350489269-30579-1-git-send-email-volodymyr.mieshkov@ti.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571107329-653617409-1350484062=:30534"
-Cc: richard -rw- weinberger <richard.weinberger@gmail.com>,
-	=?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Adil Mujeeb <mujeeb.adil@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47333 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757177Ab2JQO1n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2012 10:27:43 -0400
-In-Reply-To: <CANBXnMkoFo1HdQZkOq0HR4aLX_LObXB2=mEpiHBwK2CSK_hCKA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Volodymyr Mieshkov <volodymyr.mieshkov@ti.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+In some cases the kernel crash occurs during system suspend/resume.
+Here is an example of a crash dump:
 
---571107329-653617409-1350484062=:30534
-Content-Type: TEXT/PLAIN; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+[ 4095.041351] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+[ 4095.050689] pgd = c0004000
+[ 4095.053985] [00000000] *pgd=00000000
+[ 4095.058807] Internal error: Oops: 5 [#1] PREEMPT SMP
+[ 4095.064483] Modules linked in: wl12xx mac80211 pvrsrvkm_sgx540_120 cfg80211 compat [last unloaded: wl12xx_sdio]
+[ 4095.064575] CPU: 1    Tainted: G    B        (3.0.31-01807-gfac16a0 #1)
+[ 4095.064605] PC is at jbd2_journal_file_inode+0x38/0x118
+[ 4095.064666] LR is at mpage_da_map_and_submit+0x48c/0x618
+[ 4095.064697] pc : [<c01da5a8>]    lr : [<c01aeac0>]    psr: 60000013
+[ 4095.064697] sp : c6e07c80  ip : c6e07ca0  fp : c6e07c9c
+[ 4095.064727] r10: 00000001  r9 : c6e06000  r8 : 00000179
+[ 4095.064758] r7 : c6e07ca0  r6 : c73b8400  r5 : 00000000  r4 : c59a7d80
+[ 4095.064758] r3 : 00000038  r2 : 00000800  r1 : 00000000  r0 : c7754fc0
+[ 4095.064788] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment kernel
+[ 4095.064819] Control: 10c5387d  Table: 86cc804a  DAC: 00000015
+[ 4095.064849]
+[ 4095.064849] PC: 0xc01da528:
+[ 4095.064880] a528  0a000003 e3a05000 e1a00005 e24bd020 e89da9f0 e5951010 e3e06000 e14b22dc
+.....
+[ 4095.070373] 7fe0: c00a48ac 00000013 00000000 c6e07ff8 c00a48ac c00c0a94 84752f09 60772177
+[ 4095.070404] Backtrace:
+[ 4095.070465] [<c01da570>] (jbd2_journal_file_inode+0x0/0x118) from [<c01aeac0>] (mpage_da_map_and_submit+0x48c/0x618)
+[ 4095.070495]  r7:c6e07ca0 r6:c6e07d00 r5:c6e07d90 r4:c7754fc0
+[ 4095.070556] [<c01ae634>] (mpage_da_map_and_submit+0x0/0x618) from [<c01af40c>] (ext4_da_writepages+0x2a4/0x5c8)
+[ 4095.070617] [<c01af168>] (ext4_da_writepages+0x0/0x5c8) from [<c0112af4>] (do_writepages+0x34/0x40)
+[ 4095.070678] [<c0112ac0>] (do_writepages+0x0/0x40) from [<c01645a4>] (writeback_single_inode+0xd4/0x288)
+[ 4095.070709] [<c01644d0>] (writeback_single_inode+0x0/0x288) from [<c0164ed4>] (writeback_sb_inodes+0xb4/0x184)
+[ 4095.070770] [<c0164e20>] (writeback_sb_inodes+0x0/0x184) from [<c01655a0>] (writeback_inodes_wb+0xc4/0x13c)
+[ 4095.070831] [<c01654dc>] (writeback_inodes_wb+0x0/0x13c) from [<c01658f0>] (wb_writeback+0x2d8/0x464)
+[ 4095.070861] [<c0165618>] (wb_writeback+0x0/0x464) from [<c0165cb8>] (wb_do_writeback+0x23c/0x2c4)
+[ 4095.070922] [<c0165a7c>] (wb_do_writeback+0x0/0x2c4) from [<c0165df4>] (bdi_writeback_thread+0xb4/0x2dc)
+[ 4095.070953] [<c0165d40>] (bdi_writeback_thread+0x0/0x2dc) from [<c00c0b18>] (kthread+0x90/0x98)
+[ 4095.071014] [<c00c0a88>] (kthread+0x0/0x98) from [<c00a48ac>] (do_exit+0x0/0x72c)
+[ 4095.071044]  r7:00000013 r6:c00a48ac r5:c00c0a88 r4:c78c7ec4
+[ 4095.071105] Code: e89da8f0 e5963000 e3130002 1afffffa (e5913000)
+[ 4095.071166] ---[ end trace 7fe9f9b727e5cf78 ]---
+[ 4095.071197] Kernel panic - not syncing: Fatal exception
 
-On Wed, 17 Oct 2012, Adil Mujeeb wrote:
+The probably reason of such behaviour is an inode opened in READ mode
+has been marked as 'dirty' somehow and written back by ext4_da_writepages.
+Cause jinode == NULL it could lead to the kernel panic.
 
-> Date: Wed, 17 Oct 2012 19:35:40 +0530
-> From: Adil Mujeeb <mujeeb.adil@gmail.com>
-> To: richard -rw- weinberger <richard.weinberger@gmail.com>,
->     Lukáš Czerner <lczerner@redhat.com>
-> Subject: Re: [PATCH 01/10] ext4: balloc: Fixed coding style issue
-> 
-> Hi,
-> 
-> On Wed, Oct 17, 2012 at 5:43 PM, richard -rw- weinberger
-> <richard.weinberger@gmail.com> wrote:
-> > On Wed, Oct 17, 2012 at 2:05 PM, Lukáš Czerner <lczerner@redhat.com> wrote:
-> >> On Wed, 17 Oct 2012, Adil Mujeeb wrote:
-> >>
-> >>> Date: Wed, 17 Oct 2012 00:42:56 +0530
-> >>> From: Adil Mujeeb <mujeeb.adil@gmail.com>
-> >>> To: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-> >>>     linux-kernel@vger.kernel.org
-> >>> Cc: Adil Mujeeb <mujeeb.adil@gmail.com>
-> >>> Subject: [PATCH 01/10] ext4: balloc: Fixed coding style issue
-> >>>
-> >>> Fixed checkpatch.pl reported ERRORs
-> >>
-> >> Hi Adil,
-> >>
-> >> let me ask you something. How useful do you think those changes are ?
-> >> Have you learned anything by creating those patches ?
-> 
-> I am newbie. I just thought of starting with cleanup thing. I know
-> that from functionality point of view, I am not adding anything but
-> thought if it helps in coding guideline compliance and uniformity of
-> code.
-> Now I understand that this is not required. In future, I will avoid
-> submitting such patches.
+The patch prevents kernel panic and helps to investigate the problem
+providing an inode number.
 
-So you've learned something :). But seriously such patches are
-causing more problems than it solves. It's perfectly fine to clean
-up the code in the area you're changing anyway, but making coding
-style patches just for a sake of it is not usually useful. Moreover
-it is not useful for you as well, because you're not going to learn
-anything.
+The patch applies to the kernel version 3.0.46.
 
-There are plenty of real problem to be solved, but it actually
-involves reading and understanding the code first.
-
-Just for example:
-
- - get familiar with xfstests
- - there might still be problems with unified ext4 driver where
-   we might use options not suited for respective file system
- - there are still issues with bigalloc
- - I suspect that there will be some problems with file system >16TB
- - recently there has been some reports from bigzilla.kernel.org
- - or you can just read the code, trying to understand how it works
-   and soon or later you will find something to fix :) I am sure
-   about that.
-
-Maybe someone else have better suggestions...
-
-Good luck!
--Lukas
-
-> 
-> >>
-> >> Just to clarify why I am asking such weird questions. It's not one of
-> >> those sneer questions, I would really like to know.
-> >>>  linux-3.7-rc1/fs/ext4/balloc.c |    8 ++++----
-> >
-> > The really sad thing is that this patch does not even apply because
-> > the path is malformed.
-> 
-> I am sorry, seems I am missing something. I tried with my local repo
-> and it worked :(
-> Its not the right place to ask, so I'll look what went wrong with the patches.
-> 
-> Rgds,
-> Adil
-> 
-> >
-> > --
-> > Thanks,
-> > //richard
-> 
---571107329-653617409-1350484062=:30534--
+Signed-off-by: Volodymyr Mieshkov <volodymyr.mieshkov@ti.com>
+---
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 95af6f8..f1f9dd5 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -240,8 +240,15 @@ static inline int ext4_journal_force_commit(journal_t *journal)
+ 
+ static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
+ {
+-	if (ext4_handle_valid(handle))
++	if (ext4_handle_valid(handle)) {
++		if (unlikely(EXT4_I(inode)->jinode == NULL)) {
++			/* Should never happen */
++			WARN(true, "inode #%lu has NULL jinode\n",
++				inode->i_ino);
++			return 0;
++		}
+ 		return jbd2_journal_file_inode(handle, EXT4_I(inode)->jinode);
++	}
+ 	return 0;
+ }
+ 
+-- 
+1.7.0.4
