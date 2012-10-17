@@ -1,200 +1,114 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e4defrag: Add option -m mtab to e4defrag
-Date: Wed, 17 Oct 2012 12:06:58 -0500
-Message-ID: <507EE5B2.3000506@redhat.com>
-References: <1350492760-2106-1-git-send-email-ashish.sangwan2@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: metadata_csum set but no space in dir leaf for checksum
+Date: Wed, 17 Oct 2012 14:21:33 -0700
+Message-ID: <20121017212133.GA17360@blackbox.djwong.org>
+References: <20121017195130.GA29138@blackbox.djwong.org>
+ <1BE5D8B7-A3C7-4556-B553-F2016174F475@dilger.ca>
+Reply-To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: George Spelvin <linux@horizon.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1056 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757439Ab2JQRHC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Oct 2012 13:07:02 -0400
-In-Reply-To: <1350492760-2106-1-git-send-email-ashish.sangwan2@gmail.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:49824 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932289Ab2JQVVl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Oct 2012 17:21:41 -0400
+Content-Disposition: inline
+In-Reply-To: <1BE5D8B7-A3C7-4556-B553-F2016174F475@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/17/12 11:52 AM, Ashish Sangwan wrote:
-> Currently, e4defrag will not work on machines where /etc/mtab is not present
-> OR is empty.
-> This patch does 3 things:
-> a) Add option "-m mtab" to e4defrag so that user can specify any file to
-> be scanned for otbtaining mounted filesystems info.
+[accidentally dropped linux-ext4, oops...]
 
-Under what conditions would this be useful; i.e. when is mtab information
-ever in a file other than /etc/mtab?
-
-Thanks,
--Eric
-
-> b) If mtab option is not specified, first we try to scan /proc/mounts, if failed
-> to access this file, we try with /etc/mtab.
-> c) In function is_ext4, check if the varibale "mnt_type" is null before
-> calling strcmp, otherwise segfault would occur if mtab is empty. 
+On Wed, Oct 17, 2012 at 02:59:47PM -0600, Andreas Dilger wrote:
+> On 2012-10-17, at 1:51 PM, Darrick J. Wong wrote:
+> > So... I think that Mr. Spelvin's error message occurs when the regular hashed
+> > directory lookup functions fail and the code falls back to a linear search of
+> > all directory file blocks.  In this case, all blocks are treated as if they are
+> > individual arrays of dirents, hence the checksum verification code was
+> > expecting to find the checksum-storing dirent at the end of the block.  That's
+> > not true for internal nodes of the hash tree, so I think that gating them off
+> > will prevent the error messages from showing.
+> > 
+> > That said, using the fallback mode hints that the directory might have
+> > something wrong with it.  Does e2fsck -D not fix it?
+> > 
+> > But before you do that, does the following patch help?
+> > --
+> > Subject: [PATCH] ext4: Don't verify checksums of dx non-leaf nodes during fallback linear scan
+> > 
+> > During a directory entry lookup of a hashed directory, if the hash-based lookup
+> > functions fail and we fall back to a linear scan, don't try to verify the
+> > dirent checksum on the internal nodes of the hash tree because they don't store
+> > a checksum in a hidden dirent like the leaf nodes do.
 > 
-> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> ---
->  misc/e4defrag.8.in |   10 ++++++++++
->  misc/e4defrag.c    |   34 ++++++++++++++++++++++------------
->  2 files changed, 32 insertions(+), 12 deletions(-)
-> 
-> diff --git a/misc/e4defrag.8.in b/misc/e4defrag.8.in
-> index 75e1bc9..7090e51 100644
-> --- a/misc/e4defrag.8.in
-> +++ b/misc/e4defrag.8.in
-> @@ -9,6 +9,9 @@ e4defrag \- online defragmenter for ext4 filesystem
->  [
->  .B \-v
->  ]
-> +[
-> +.B \-m mtab
-> +]
->  .I target
->  \&...
->  .SH DESCRIPTION
-> @@ -57,6 +60,13 @@ is never defragmented.
->  .B \-v
->  Print error messages and the fragmentation count before and after defrag for
->  each file.
-> +.TP
-> +.B \-m mtab
-> +This option will specify the file to be scanned for obtaining mounted filesystems
-> +information. If this option is not specified, the default is to use
-> +.B /proc/mounts .
-> +If this file is not accessible, e4defrag will try to get required information from
-> +.B /etc/mtab
->  .SH NOTES
->  .B e4defrag
->  does not support swap file, files in lost+found directory, and files allocated
-> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-> index 4b31d03..3567e9f 100644
-> --- a/misc/e4defrag.c
-> +++ b/misc/e4defrag.c
-> @@ -123,6 +123,7 @@
->  #define NGMSG_FILE_OPEN		"Failed to open"
->  #define NGMSG_FILE_UNREG	"File is not regular file"
->  #define NGMSG_LOST_FOUND	"Can not process \"lost+found\""
-> +#define _PATH_PROC_MOUNTS       "/proc/mounts"
->  
->  /* Data type for filesystem-wide blocks number */
->  typedef unsigned long long ext4_fsblk_t;
-> @@ -262,10 +263,8 @@ static int fallocate64(int fd, int mode, loff_t offset, loff_t len)
->   * @dir_path_len:	the length of directory.
->   */
->  static int get_mount_point(const char *devname, char *mount_point,
-> -							int dir_path_len)
-> +			   int dir_path_len, const char *mtab)
->  {
-> -	/* Refer to /etc/mtab */
-> -	const char	*mtab = MOUNTED;
->  	FILE		*fp = NULL;
->  	struct mntent	*mnt = NULL;
->  	struct stat64	sb;
-> @@ -278,7 +277,7 @@ static int get_mount_point(const char *devname, char *mount_point,
->  
->  	fp = setmntent(mtab, "r");
->  	if (fp == NULL) {
-> -		perror("Couldn't access /etc/mtab");
-> +		printf("Couldn't access %s\n", mtab);
->  		return -1;
->  	}
->  
-> @@ -313,14 +312,12 @@ static int get_mount_point(const char *devname, char *mount_point,
->   *
->   * @file:		the file's name.
->   */
-> -static int is_ext4(const char *file, char *devname)
-> +static int is_ext4(const char *file, char *devname, const char *mtab)
->  {
->  	int 	maxlen = 0;
->  	int	len, ret;
->  	FILE	*fp = NULL;
->  	char	*mnt_type = NULL;
-> -	/* Refer to /etc/mtab */
-> -	const char	*mtab = MOUNTED;
->  	char	file_path[PATH_MAX + 1];
->  	struct mntent	*mnt = NULL;
->  	struct statfs64	fsbuf;
-> @@ -345,7 +342,7 @@ static int is_ext4(const char *file, char *devname)
->  
->  	fp = setmntent(mtab, "r");
->  	if (fp == NULL) {
-> -		perror("Couldn't access /etc/mtab");
-> +		printf("Couldn't access %s", mtab);
->  		return -1;
->  	}
->  
-> @@ -374,6 +371,10 @@ static int is_ext4(const char *file, char *devname)
->  	}
->  
->  	endmntent(fp);
-> +	if (mnt_type == NULL) {
-> +		printf("Could not get mount information from %s\n", mtab);
-> +		return -1;
-> +	}
->  	if (strcmp(mnt_type, FS_EXT4) == 0) {
->  		FREE(mnt_type);
->  		return 0;
-> @@ -1724,6 +1725,7 @@ int main(int argc, char *argv[])
->  	int	success_flag = 0;
->  	char	dir_name[PATH_MAX + 1];
->  	char	dev_name[PATH_MAX + 1];
-> +	char *mtab = NULL;
->  	struct stat64	buf;
->  	ext2_filsys fs = NULL;
->  
-> @@ -1731,7 +1733,7 @@ int main(int argc, char *argv[])
->  	if (argc == 1)
->  		goto out;
->  
-> -	while ((opt = getopt(argc, argv, "vc")) != EOF) {
-> +	while ((opt = getopt(argc, argv, "vcm:")) != EOF) {
->  		switch (opt) {
->  		case 'v':
->  			mode_flag |= DETAIL;
-> @@ -1739,11 +1741,19 @@ int main(int argc, char *argv[])
->  		case 'c':
->  			mode_flag |= STATISTIC;
->  			break;
-> +		case 'm':
-> +			mtab = optarg;
-> +			break;
->  		default:
->  			goto out;
->  		}
->  	}
-> -
-> +	if (!mtab) {
-> +		if (access(_PATH_PROC_MOUNTS, R_OK) == 0)
-> +			mtab = _PATH_PROC_MOUNTS;
-> +		else
-> +			mtab = _PATH_MOUNTED;
-> +	} 
->  	if (argc == optind)
->  		goto out;
->  
-> @@ -1797,7 +1807,7 @@ int main(int argc, char *argv[])
->  		if (S_ISBLK(buf.st_mode)) {
->  			/* Block device */
->  			strncpy(dev_name, argv[i], strnlen(argv[i], PATH_MAX));
-> -			if (get_mount_point(argv[i], dir_name, PATH_MAX) < 0)
-> +			if (get_mount_point(argv[i], dir_name, PATH_MAX, mtab) < 0)
->  				continue;
->  			if (lstat64(dir_name, &buf) < 0) {
->  				perror(NGMSG_FILE_INFO);
-> @@ -1833,7 +1843,7 @@ int main(int argc, char *argv[])
->  		 * filesystem type checked in get_mount_point()
->  		 */
->  		if (arg_type == FILENAME || arg_type == DIRNAME) {
-> -			if (is_ext4(argv[i], dev_name) < 0)
-> +			if (is_ext4(argv[i], dev_name, mtab) < 0)
->  				continue;
->  			if (realpath(argv[i], dir_name) == NULL) {
->  				perror("Couldn't get full path");
-> 
+> That raises the question of why there are no checksums in the htree index
+> blocks?  They should be considered metadata also, and corruption there can
+> also have a serious impact on usability (e.g. directing lookup to wrong leaf
+> block and returning -ENOENT when desired entry is not found).
 
+The htree indexes do have checksums; they're in the htree data structures.  The
+checksum covers both the dirent container and the htree index.  However, if the
+htree code decides to fall back to linear search and ignore the htree indices,
+then there doesn't seem to be much point in checksumming the indices. 
+
+Hmm, maybe it's time I update the ext4 wiki again. :)
+
+--D
+
+> 
+> Cheers, Andreas
+> 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > Reported-by: George Spelvin <linux@horizon.com>
+> > ---
+> > 
+> > fs/ext4/namei.c |   17 +++++++++++++++++
+> > 1 file changed, 17 insertions(+)
+> > 
+> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> > index 6d600a6..158a562 100644
+> > --- a/fs/ext4/namei.c
+> > +++ b/fs/ext4/namei.c
+> > @@ -1144,6 +1144,21 @@ static inline int search_dirblock(struct buffer_head *bh,
+> > 	return 0;
+> > }
+> > 
+> > +static int is_dx_internal_node(struct inode *dir, ext4_lblk_t block,
+> > +			       struct ext4_dir_entry *de)
+> > +{
+> > +	struct super_block *sb = dir->i_sb;
+> > +
+> > +	if (!is_dx(dir))
+> > +		return 0;
+> > +	if (block == 0)
+> > +		return 1;
+> > +	if (de->inode == 0 &&
+> > +	    ext4_rec_len_from_disk(de->rec_len, sb->s_blocksize) ==
+> > +			sb->s_blocksize)
+> > +		return 1;
+> > +	return 0;
+> > +}
+> > 
+> > /*
+> >  *	ext4_find_entry()
+> > @@ -1244,6 +1259,8 @@ restart:
+> > 			goto next;
+> > 		}
+> > 		if (!buffer_verified(bh) &&
+> > +		    !is_dx_internal_node(dir, block,
+> > +					 (struct ext4_dir_entry *)bh->b_data) &&
+> > 		    !ext4_dirent_csum_verify(dir,
+> > 				(struct ext4_dir_entry *)bh->b_data)) {
+> > 			EXT4_ERROR_INODE(dir, "checksumming directory "
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
