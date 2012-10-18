@@ -1,85 +1,159 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v3 00/13] vfs: hot data tracking
-Date: Thu, 18 Oct 2012 13:24:11 +0800
-Message-ID: <CAEH94Lj2pYVJmNpnsqgfKSXrx7KECSTcieQwv=V0NBZUrA1XYw@mail.gmail.com>
-References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
-	<20121015204217.GB2739@dastard>
-	<CAEH94Lgfev1qg2S+2-D5VMtVgSES3cFw0KmJSJr5HObyhA8sbg@mail.gmail.com>
-	<20121018042916.GP2739@dastard>
-	<CAEH94LhtzMkKTVD_yDvotDMwkfFZbXObYVCPAzpZOcNVqxDxpQ@mail.gmail.com>
-	<20121018051703.GR2739@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: Dave Chinner <david@fromorbit.com>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: [PATCH] e4defrag: Fix segfault when /etc/mtab is empty
+Date: Thu, 18 Oct 2012 12:06:14 +0530
+Message-ID: <1350542174-11565-1-git-send-email-ashish.sangwan2@gmail.com>
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org,
+	Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:54417 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753811Ab2JRFYN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2012 01:24:13 -0400
-In-Reply-To: <20121018051703.GR2739@dastard>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:58643 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752027Ab2JRGgp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2012 02:36:45 -0400
+Received: by mail-pa0-f46.google.com with SMTP id hz1so7987884pad.19
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Oct 2012 23:36:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 18, 2012 at 1:17 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Thu, Oct 18, 2012 at 12:44:47PM +0800, Zhi Yong Wu wrote:
->> On Thu, Oct 18, 2012 at 12:29 PM, Dave Chinner <david@fromorbit.com> wrote:
->> > On Wed, Oct 17, 2012 at 04:57:14PM +0800, Zhi Yong Wu wrote:
->> >> On Tue, Oct 16, 2012 at 4:42 AM, Dave Chinner <david@fromorbit.com> wrote:
->> >> > On Wed, Oct 10, 2012 at 06:07:22PM +0800, zwu.kernel@gmail.com wrote:
->> >> >> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
->> > ....
->> >> > (*) Tested on an empty 17TB XFS filesystem with:
->> >> >
->> >> > $ sudo mkfs.xfs -f -l size=131072b,sunit=8 /dev/vdc
->> >> > meta-data=/dev/vdc               isize=256    agcount=17, agsize=268435455 blks
->> >> >          =                       sectsz=512   attr=2, projid32bit=0
->> >> > data     =                       bsize=4096   blocks=4563402735, imaxpct=5
->> >> >          =                       sunit=0      swidth=0 blks
->> >> > naming   =version 2              bsize=4096   ascii-ci=0
->> >> > log      =internal log           bsize=4096   blocks=131072, version=2
->> >> >          =                       sectsz=512   sunit=1 blks, lazy-count=1
->> >> > realtime =none                   extsz=4096   blocks=0, rtextents=0
->> >> > $ sudo mount -o logbsize=256k /dev/vdc /mnt/scratch
->> >> > $ sudo chmod 777 /mnt/scratch
->> >> > $ fs_mark  -D  10000  -S0  -n  100000  -s  1  -L  63  -d \
->> >> > /mnt/scratch/0  -d  /mnt/scratch/1  -d  /mnt/scratch/2  -d \
->> >> > /mnt/scratch/3  -d  /mnt/scratch/4  -d  /mnt/scratch/5  -d \
->> >> > /mnt/scratch/6  -d  /mnt/scratch/7
->> >> > .....
->> >> >      0     21600000            1      16679.3         12552262
->> >> >      0     22400000            1      15412.4         12588587
->> >> >      0     23200000            1      16367.6         14199322
->> >> >      0     24000000            1      15680.4         15741205
->> >> > <hangs here w/ OOM>
->> >> ^^^^In this test, i haven't see you enable hot_track function via
->> >> mount, why did it meet OOM?
->> >
->> > I copied the wrong mount command. It was definitely enabled.
->> OK, BTW: fs_mark is the script written by you? After xfsprogs is
->> installed, i haven't found this command.
->
-> # apt-get install fsmark
-thanks. let me try.
->
-> Or get the source here:
->
-> http://sourceforge.net/projects/fsmark/
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
+Currently, e4defrag will not work on machines where /etc/mtab is not present
+OR is empty.
+This patch does 2 things:
+a) For obtaining mounted FS info, first we try to scan /proc/mounts,
+if failed to access this file, try with /etc/mtab.
+b) In function is_ext4, check if the varibale "mnt_type" is null before
+calling strcmp, otherwise segfault would occur.
 
+Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+---
+ misc/e4defrag.8.in |  6 +++++-
+ misc/e4defrag.c    | 26 ++++++++++++++++----------
+ 2 files changed, 21 insertions(+), 11 deletions(-)
 
-
+diff --git a/misc/e4defrag.8.in b/misc/e4defrag.8.in
+index 75e1bc9..a5401dc 100644
+--- a/misc/e4defrag.8.in
++++ b/misc/e4defrag.8.in
+@@ -31,7 +31,11 @@ reduces fragmentation of all files in it. If
+ is a device,
+ .B e4defrag
+ gets the mount point of it and reduces fragmentation of all files in this mount
+-point.
++point. Mount information is obtained by reading
++.B /proc/mounts.
++If this file is not accessible,  e4defrag will try to get required 
++information from
++.B /etc/mtab.
+ .SH OPTIONS
+ .TP
+ .B \-c
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 4b31d03..285d594 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -123,6 +123,7 @@
+ #define NGMSG_FILE_OPEN		"Failed to open"
+ #define NGMSG_FILE_UNREG	"File is not regular file"
+ #define NGMSG_LOST_FOUND	"Can not process \"lost+found\""
++#define _PATH_PROC_MOUNTS       "/proc/mounts"
+ 
+ /* Data type for filesystem-wide blocks number */
+ typedef unsigned long long ext4_fsblk_t;
+@@ -262,10 +263,8 @@ static int fallocate64(int fd, int mode, loff_t offset, loff_t len)
+  * @dir_path_len:	the length of directory.
+  */
+ static int get_mount_point(const char *devname, char *mount_point,
+-							int dir_path_len)
++			   int dir_path_len, const char *mtab)
+ {
+-	/* Refer to /etc/mtab */
+-	const char	*mtab = MOUNTED;
+ 	FILE		*fp = NULL;
+ 	struct mntent	*mnt = NULL;
+ 	struct stat64	sb;
+@@ -278,7 +277,7 @@ static int get_mount_point(const char *devname, char *mount_point,
+ 
+ 	fp = setmntent(mtab, "r");
+ 	if (fp == NULL) {
+-		perror("Couldn't access /etc/mtab");
++		printf("Couldn't access %s\n", mtab);
+ 		return -1;
+ 	}
+ 
+@@ -313,14 +312,12 @@ static int get_mount_point(const char *devname, char *mount_point,
+  *
+  * @file:		the file's name.
+  */
+-static int is_ext4(const char *file, char *devname)
++static int is_ext4(const char *file, char *devname, const char *mtab)
+ {
+ 	int 	maxlen = 0;
+ 	int	len, ret;
+ 	FILE	*fp = NULL;
+ 	char	*mnt_type = NULL;
+-	/* Refer to /etc/mtab */
+-	const char	*mtab = MOUNTED;
+ 	char	file_path[PATH_MAX + 1];
+ 	struct mntent	*mnt = NULL;
+ 	struct statfs64	fsbuf;
+@@ -345,7 +342,7 @@ static int is_ext4(const char *file, char *devname)
+ 
+ 	fp = setmntent(mtab, "r");
+ 	if (fp == NULL) {
+-		perror("Couldn't access /etc/mtab");
++		printf("Couldn't access %s", mtab);
+ 		return -1;
+ 	}
+ 
+@@ -374,6 +371,10 @@ static int is_ext4(const char *file, char *devname)
+ 	}
+ 
+ 	endmntent(fp);
++	if (mnt_type == NULL) {
++		printf("Could not get mount information from %s\n", mtab);
++		return -1;
++	}
+ 	if (strcmp(mnt_type, FS_EXT4) == 0) {
+ 		FREE(mnt_type);
+ 		return 0;
+@@ -1724,6 +1725,7 @@ int main(int argc, char *argv[])
+ 	int	success_flag = 0;
+ 	char	dir_name[PATH_MAX + 1];
+ 	char	dev_name[PATH_MAX + 1];
++	char *mtab = NULL;
+ 	struct stat64	buf;
+ 	ext2_filsys fs = NULL;
+ 
+@@ -1743,6 +1745,10 @@ int main(int argc, char *argv[])
+ 			goto out;
+ 		}
+ 	}
++	if (access(_PATH_PROC_MOUNTS, R_OK) == 0)
++		mtab = _PATH_PROC_MOUNTS;
++	else
++		mtab = _PATH_MOUNTED;
+ 
+ 	if (argc == optind)
+ 		goto out;
+@@ -1797,7 +1803,7 @@ int main(int argc, char *argv[])
+ 		if (S_ISBLK(buf.st_mode)) {
+ 			/* Block device */
+ 			strncpy(dev_name, argv[i], strnlen(argv[i], PATH_MAX));
+-			if (get_mount_point(argv[i], dir_name, PATH_MAX) < 0)
++			if (get_mount_point(argv[i], dir_name, PATH_MAX, mtab) < 0)
+ 				continue;
+ 			if (lstat64(dir_name, &buf) < 0) {
+ 				perror(NGMSG_FILE_INFO);
+@@ -1833,7 +1839,7 @@ int main(int argc, char *argv[])
+ 		 * filesystem type checked in get_mount_point()
+ 		 */
+ 		if (arg_type == FILENAME || arg_type == DIRNAME) {
+-			if (is_ext4(argv[i], dev_name) < 0)
++			if (is_ext4(argv[i], dev_name, mtab) < 0)
+ 				continue;
+ 			if (realpath(argv[i], dir_name) == NULL) {
+ 				perror("Couldn't get full path");
 -- 
-Regards,
+1.7.11.4
 
-Zhi Yong Wu
