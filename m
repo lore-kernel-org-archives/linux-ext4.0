@@ -1,60 +1,97 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Local DoS through write heavy I/O on CFQ & Deadline
-Date: Fri, 19 Oct 2012 00:24:49 +0200
-Message-ID: <20121018222449.GA19204@quack.suse.cz>
-References: <0B138F62-16BF-4295-9AD9-64C0BB39FCE2@alex.org.uk>
- <20121012133044.GA10115@dhcp22.suse.cz>
- <E6EF14955C67D6CA58918872@nimrod.local>
- <20121012145838.GD22083@dhcp22.suse.cz>
- <3D1C85A52BB960B79E37AC30@nimrod.local>
- <20121018212845.GB17646@quack.suse.cz>
- <50807F26.5070106@genband.com>
+From: Zhi Yong Wu <zwu.kernel@gmail.com>
+Subject: Re: [RFC v3 11/13] vfs: add 3 new ioctl interfaces
+Date: Fri, 19 Oct 2012 16:21:54 +0800
+Message-ID: <CAEH94LjWqh3q29AnQpmedLjjxY66WxcNueiprXkzGkceBxHPkQ@mail.gmail.com>
+References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+	<1349863655-29320-12-git-send-email-zwu.kernel@gmail.com>
+	<20121016031710.GD2864@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Alex Bligh <alex@alex.org.uk>,
-	Michal Hocko <mhocko@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Chris Friesen <chris.friesen@genband.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54949 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750724Ab2JRWYw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Oct 2012 18:24:52 -0400
-Content-Disposition: inline
-In-Reply-To: <50807F26.5070106@genband.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20121016031710.GD2864@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 18-10-12 16:13:58, Chris Friesen wrote:
-> On 10/18/2012 03:28 PM, Jan Kara wrote:
-> 
-> >   Yeah, ionice has its limitations. The problem is that all buffered
-> >writes happen just into memory (so completely independently of ionice
-> >settings). Subsequent writing of dirty memory to disk happens using flusher
-> >thread which is a kernel process and it doesn't know anything about IO
-> >priority set for task which created the file. If you wrote the file with
-> >oflag=direct or oflag=sync you would see that ionice works as expected.
-> 
-> Has anyone looked at storing the ionice value with the buffered
-> write request such that the actual writes to disk could be sorted by
-> priority and done with the ionice level of the original caller?
-  There's nothing as "buffered write request" in kernel. When buffered
-write happens, data are just copied into page cache. We could attach a tag
-to each modified page in the page cache but that would get really expensive.
+On Tue, Oct 16, 2012 at 11:17 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Wed, Oct 10, 2012 at 06:07:33PM +0800, zwu.kernel@gmail.com wrote:
+>> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+>>
+>>   FS_IOC_GET_HEAT_INFO: return a struct containing the various
+>> metrics collected in btrfs_freq_data structs, and also return a
+>
+> I think you mean hot_freq_data :P
+>
+>> calculated data temperature based on those metrics. Optionally, retrieve
+>> the temperature from the hot data hash list instead of recalculating it.
+>
+> To get the heat info for a specific file you have to know what file
+> you want to get that info for, right?  I can see the usefulness of
+> asking for the heat data on a specific file, but how do you find the
+> hot files in the first place? i.e. the big question the user
+> interface needs to answer is "what files are hot?".
+>
+> Once userspace knows what the hottest files are, it can open them
+> and query the data via the above ioctl, but expecting userspace to
+> iterate millions of inodes in a filesystem to find hot files is very
+> inefficient.
+>
+> FWIW, if you were to return file handles to the hottest files, then
+Good idea. I am not very clear about how to implement it. file handles
+mean file_handle??  How to return them to the application? via
+debugfs? How many hottest files should be returned?? Top 100?
 
-Essentially the same problems happens with cgroups where buffered writes
-are not accounted as well. There we considered to attach a tag to inodes
-(which doesn't work well if processes from different cgroups / with
-different IO priority write to the same inode but that's not that common)
-which is reasonably cheap. But then you have to build smarts into flusher
-thread to prioritize inodes according to tags (you cannot really let
-flusher thread just submit IO with that priority because when it gets
-blocked, it starves writeback with possible higher priority). Alternatively
-you could have separate flusher thread per-cgroup / IO priority. That is
-easier from code point of view but throughput suffers because of limited
-merging of IO. So all in all the problem is known but hard to tackle.
+> the application could open and query them without even needing to
+> know the path name to them. This woul dbe exceedingly useful for
+> defragmentation programs, especially as that is the way xfs_fsr
+> already operates on candidate files.(*)
+>
+> IOWs, sometimes the pathname is irrelevant to the operations that
+> applications want to perform - all they care about having an
+> efficient method of finding the inode they want and getting a file
+> descriptor that points to the file. Given the heat map info fits
+> right in to the sort of operations defrag and data mover tools
+> already do, it kind of makes sense to optimise the interface towards
+> those uses....
+>
+> (*) i.e. finds them via bulkstat which returns handle information
+> along with all the other inode data, then opens the file by handle
+> to do the defrag work....
+>
+>>   FS_IOC_GET_HEAT_OPTS: return an integer representing the current
+>> state of hot data tracking and migration:
+>>
+>> 0 = do nothing
+>> 1 = track frequency of access
+>>
+>>   FS_IOC_SET_HEAT_OPTS: change the state of hot data tracking and
+>> migration, as described above.
+>
+> I can't see how this is a manageable interface. It is not
+> persistent, so after every filesystem mount you'd have to set the
+> flag on all your inodes again. Hence, for the moment, I'd suggest
+> that dropping per-inode tracking control until all the core issues
+> are sorted out....
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-							Honza
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Regards,
+
+Zhi Yong Wu
