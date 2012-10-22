@@ -1,155 +1,72 @@
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-Subject: [PATCH 19/22] ext4: add support for read_iter and write_iter
-Date: Mon, 22 Oct 2012 10:15:19 -0500
-Message-ID: <1350918922-6096-20-git-send-email-dave.kleikamp@oracle.com>
-References: <1350918922-6096-1-git-send-email-dave.kleikamp@oracle.com>
-Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
-	"Maxim V. Patlasov" <mpatlasov@parallels.com>,
-	Dave Kleikamp <dave.kleikamp@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1350918922-6096-1-git-send-email-dave.kleikamp@oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: Re: EXT4-fs error w/ external USB drive
+Date: Mon, 22 Oct 2012 20:36:47 +0200
+Message-ID: <5085923F.9050801@gmx.de>
+References: <507C4BDA.20205@gmx.de> <20121019210723.GA4721@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout-de.gmx.net ([213.165.64.22]:43575 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755771Ab2JVSjk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2012 14:39:40 -0400
+In-Reply-To: <20121019210723.GA4721@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-use the generic_file_read_iter(), create ext4_file_write_iter() based on
-ext4_file_write(), and make ext4_file_write() a wrapper around
-ext4_file_write_iter().
+On 10/19/2012 11:07 PM, Theodore Ts'o wrote:
+> On Mon, Oct 15, 2012 at 07:46:02PM +0200, Toralf F=C3=B6rster wrote:
+>> Even with current stable kernel 3.6.2 I sometimes get those syslog m=
+essages :
+>>
+>>
+>> 2012-10-15T19:37:58.401+02:00 n22 kernel: EXT4-fs error (device sdb3=
+): ext4_mb_generate_buddy:741: group 436, 22902 clusters in bitmap, 229=
+01 in gd
+>=20
+> Have you run e2fsck to clean up the file system corruption?  If you
+> have, do you continually get these errors afterwards?
 
-Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc: Zach Brown <zab@zabbo.net>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext4/file.c | 49 ++++++++++++++++++++++++++++++++++---------------
- 1 file changed, 34 insertions(+), 15 deletions(-)
+Well, I got it yesterday too :
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index bf3966b..4a49e91 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -72,12 +72,11 @@ void ext4_unwritten_wait(struct inode *inode)
-  * or one thread will zero the other's data, causing corruption.
-  */
- static int
--ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
--		   unsigned long nr_segs, loff_t pos)
-+ext4_unaligned_aio(struct inode *inode, struct iov_iter *iter, loff_t pos)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int blockmask = sb->s_blocksize - 1;
--	size_t count = iov_length(iov, nr_segs);
-+	size_t count = iov_iter_count(iter);
- 	loff_t final_size = pos + count;
- 
- 	if (pos >= inode->i_size)
-@@ -90,8 +89,8 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
- }
- 
- static ssize_t
--ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
--		    unsigned long nr_segs, loff_t pos)
-+ext4_file_dio_write(struct kiocb *iocb, struct iov_iter *iter,
-+		    loff_t pos)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -99,11 +98,11 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 	int unaligned_aio = 0;
- 	ssize_t ret;
- 	int overwrite = 0;
--	size_t length = iov_length(iov, nr_segs);
-+	size_t length = iov_iter_count(iter);
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
- 	    !is_sync_kiocb(iocb))
--		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
-+		unaligned_aio = ext4_unaligned_aio(inode, iter, pos);
- 
- 	/* Unaligned direct AIO must be serialized; see comment above */
- 	if (unaligned_aio) {
-@@ -152,7 +151,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- 			overwrite = 1;
- 	}
- 
--	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
-+	ret = __generic_file_write_iter(iocb, iter, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
- 
- 	if (ret > 0 || ret == -EIOCBQUEUED) {
-@@ -171,8 +170,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
- }
- 
- static ssize_t
--ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
--		unsigned long nr_segs, loff_t pos)
-+ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *iter, loff_t pos)
- {
- 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
- 	ssize_t ret;
-@@ -184,26 +182,45 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
- 
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
- 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--		size_t length = iov_length(iov, nr_segs);
-+		size_t length = iov_iter_count(iter);
- 
- 		if ((pos > sbi->s_bitmap_maxbytes ||
- 		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
- 			return -EFBIG;
- 
- 		if (pos + length > sbi->s_bitmap_maxbytes) {
--			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
--					      sbi->s_bitmap_maxbytes - pos);
-+			ret = iov_iter_shorten(iter,
-+					       sbi->s_bitmap_maxbytes - pos);
-+			if (ret)
-+				return ret;
- 		}
- 	}
- 
- 	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT))
--		ret = ext4_file_dio_write(iocb, iov, nr_segs, pos);
-+		ret = ext4_file_dio_write(iocb, iter, pos);
- 	else
--		ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
-+		ret = generic_file_write_iter(iocb, iter, pos);
- 
- 	return ret;
- }
- 
-+static ssize_t
-+ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
-+		unsigned long nr_segs, loff_t pos)
-+{
-+	struct iov_iter i;
-+	int ret;
-+	size_t count;
-+
-+	ret = generic_segment_checks(iov, &nr_segs, &count, VERIFY_WRITE);
-+	if (ret)
-+		return ret;
-+
-+	iov_iter_init(&i, iov, nr_segs, count, 0);
-+
-+	return ext4_file_write_iter(iocb, &i, pos);
-+}
-+
- static const struct vm_operations_struct ext4_file_vm_ops = {
- 	.fault		= filemap_fault,
- 	.page_mkwrite   = ext4_page_mkwrite,
-@@ -310,6 +327,8 @@ const struct file_operations ext4_file_operations = {
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
- 	.aio_write	= ext4_file_write,
-+	.read_iter	= generic_file_read_iter,
-+	.write_iter	= ext4_file_write_iter,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
--- 
-1.7.12.3
+n22 ~ # zgrep  ext4_mb_generate_buddy /var/log/messages-201210*        =
+                                                                       =
+                                       =20
+/var/log/messages-20121021.gz:2012-10-15T19:05:39.189+02:00 n22 kernel:=
+ EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 774, 27=
+157 clusters in bitmap, 27052 in gd      =20
+/var/log/messages-20121021.gz:2012-10-15T19:37:58.401+02:00 n22 kernel:=
+ EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 436, 22=
+902 clusters in bitmap, 22901 in gd      =20
+/var/log/messages-20121021.gz:2012-10-15T19:56:05.301+02:00 n22 kernel:=
+ EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 1233, 1=
+1981 clusters in bitmap, 11974 in gd     =20
+/var/log/messages-20121021.gz:2012-10-15T19:56:18.601+02:00 n22 kernel:=
+ EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 484, 28=
+817 clusters in bitmap, 28101 in gd     =20
+
+I rebooted the system and forced a run of fsck after these lines too.
+I'll check periodically whether it happens again.
+=20
+> You say this is an external USB disk; is there any possibility of the
+> disk getting unmounted uncleanly due to the cable getting pulled out
+> while the disk is still mounted, and then the disk getting remounted
+> w/o having e2fsck run on the disk?
+
+=46or the first occurrence probably yes (better : I dunno), but yesterd=
+ay definitely not.
+
+
+
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
