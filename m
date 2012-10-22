@@ -1,82 +1,79 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 hanlding of ext2/3 mount options
-Date: Mon, 22 Oct 2012 00:53:17 -0400
-Message-ID: <20121022045317.GF4768@thunk.org>
-References: <20121018181515.GA13898@andromeda.usersys.redhat.com>
+From: Marcel van Beurden <marcel_linux-ext4@marsnix.nl>
+Subject: Re: Shrinking ext3 partition takes long and high CPU usage
+Date: Mon, 22 Oct 2012 11:42:35 +0200
+Message-ID: <5085150B.4050504@marsnix.nl>
+References: <50811EA2.6030603@marsnix.nl> <20121019143614.GA15590@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56757 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828Ab2JVExY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Oct 2012 00:53:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20121018181515.GA13898@andromeda.usersys.redhat.com>
+Received: from smtp-vbr7.xs4all.nl ([194.109.24.27]:4757 "EHLO
+	smtp-vbr7.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752098Ab2JVJmp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2012 05:42:45 -0400
+Received: from squeeze.netwerk (mrcl.xs4all.nl [83.163.124.123])
+	by smtp-vbr7.xs4all.nl (8.13.8/8.13.8) with ESMTP id q9M9ggQe096273
+	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2012 11:42:43 +0200 (CEST)
+	(envelope-from marcel_linux-ext4@marsnix.nl)
+Received: from [188.202.202.42] (helo=[192.168.20.45])
+	by squeeze.netwerk with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	(envelope-from <marcel_linux-ext4@marsnix.nl>)
+	id 1TQEWv-0000q0-RZ
+	for linux-ext4@vger.kernel.org; Mon, 22 Oct 2012 11:42:42 +0200
+In-Reply-To: <20121019143614.GA15590@andromeda.usersys.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 18, 2012 at 03:15:15PM -0300, Carlos Maiolino wrote:
-> Hey Ted, how's going?
-> 
-> I was wondering if when using Ext4 module to mount ext2/3
-> filesystems (not conversion), if the ext4 module shouldn't fail a
-> mount of ext2/3 if a ext4-only mount option has been passed to it.
-> 
-> For example:
-> 
-> mount -t ext3 -o journal_checksum <dev> <mount_point> 
-> 
-> this works and the FS is properly mounted, although journal_checksum
-> is not a valid ext3 mount option.
-> 
-> Should this be considered a bug?
+Hi,
 
-Hmmm.... in general, I don't think using ext4-specific mount options
-should be considered a bug with file systems whose features are
-consistent with what was used with ext2 or ext3 file system drivers in
-the past.  After all, we might want to allow users to experiment
-without converting their file systems to ext4 --- especially since we
-don't have a way of going from ext4 to ext2/3.
+A follow-up...
 
-However, it is related to something that Eric has been wanting to code
-up for a while, but as far as I know he wasn't had the time.
-Specifically, the goal is to create some kind of compact way of
-encoding a combination of file system features and mount options which
-are "supported".  It's not clear whether this can be done in a
-table-driven way, or it whether it would have to be expressed in a
-series of conditionals in C code (and it brings up the question of
-what combinations of file system features and mount options should be
-considered "supported").
+ >> Is resize2fs being stuck and hanging forever, or is it just taking a
+>> lot of time? I wouldn't expect resizing to be so CPU intensive.
+>>
+> Hi, is not possible to answer this with just the information you provided. I
+> would expect to see soft lockup warnings on the system log if it was really
+> stuck.
 
-The basic idea is that for upstream kernels, if users try to use an
-"unsupported" set of file system features and/or mount options, the
-kernel would print a warning message indicating that they had used an
-unsupported combination of features, and to please contact the ext4
-mailing list so we can find out why they are using that combination of
-features (so I and others who run ext4 tests on upstream kernels can
-decide whether we would want to increase our test matrix or not).
+There was no information in any log.
 
-For distribution kernels, I expect that distros might want to use a
-much more restrictive set of file system features and mount options,
-and if the user uses something which is "not supported", the distro
-could decide that they have a policy whether they print message saying
-that this was not supported, or they could taint the kernel, or
-whatever.  But then that can be left up to each distro to decide what
-they are willing to "support".
+> You're using a too olde resize2fs so, may be possible you're using a buggy
+> version too, but I'm not the best person to say if there was any bug on
+> resize2fs which might be causing this.
 
-I imagine there would probably be a set of file system features and
-mount options where we don't care whether they are enabled or not, and
-there might be a few file system features where they _must_ be
-enabled, and some file system features where they must not be enabled
-for the file system to be considered features --- and then there might
-be some interesting questions of how various mount options and file
-system features interact with one another, and whether a distribution
-might want to be so restrictive as to say, "we only support this
-specific, exact, set of file system features, and no others".
+Yeah, it was not an up-to-date system. I just used whatever I had available.
 
-Exactly what those combinations might be I suspect would be at least
-somewhat controversial....
+> Also, I hope you're trying to shrink the filesystem with this umounted :-)
 
-	  	  	     	     	    - Ted
+It was unmounted.
+
+According to my calculations (using the data rate that iotop showed me), 
+it would take forever. So I decided to cancel the resize process. Then I 
+ran e2fsck on it which gave me plenty of errors like this one:
+
+Multiply-claimed block(s) in inode 2879754: 43528289 43528290 43528291 
+43528292 43528293 43528294 43528295 43528296 43528297 43528298 43528299 
+43528300 43528301 43528302 43528303 43528304 43528305 43528306
+
+And after that it crashed with this message:
+
+e2fsck: Can't allocate block element
+e2fsck: aborted
+
+Since the disk still seemed readable, I copied all files to another disk 
+and it did that without complaining. Not sure how many files are 
+missing/corrupted. So far I found some empty directories and one regular 
+file that was 0 bytes.
+
+Lessons learned:
+1. Always use up-to-date software
+2. Be careful that when meaning to resize a partition, you don't 
+accidentally move it (round to cylinders in gparted?)
+3. Get the USB disk out of it's enclosure and hook it up to a SATA port
+
+Regards,
+Marcel
+
