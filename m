@@ -1,72 +1,62 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Re: EXT4-fs error w/ external USB drive
-Date: Mon, 22 Oct 2012 20:36:47 +0200
-Message-ID: <5085923F.9050801@gmx.de>
-References: <507C4BDA.20205@gmx.de> <20121019210723.GA4721@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 3.7
+Date: Mon, 22 Oct 2012 18:19:59 -0400
+Message-ID: <20121022221959.GA16531@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.22]:43575 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755771Ab2JVSjk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2012 14:39:40 -0400
-In-Reply-To: <20121019210723.GA4721@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:56896 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756254Ab2JVWUC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Oct 2012 18:20:02 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/19/2012 11:07 PM, Theodore Ts'o wrote:
-> On Mon, Oct 15, 2012 at 07:46:02PM +0200, Toralf F=C3=B6rster wrote:
->> Even with current stable kernel 3.6.2 I sometimes get those syslog m=
-essages :
->>
->>
->> 2012-10-15T19:37:58.401+02:00 n22 kernel: EXT4-fs error (device sdb3=
-): ext4_mb_generate_buddy:741: group 436, 22902 clusters in bitmap, 229=
-01 in gd
->=20
-> Have you run e2fsck to clean up the file system corruption?  If you
-> have, do you continually get these errors afterwards?
+The following changes since commit c278531d39f3158bfee93dc67da0b77e09776de2:
 
-Well, I got it yesterday too :
+  ext4: fix ext4_flush_completed_IO wait semantics (2012-10-05 11:31:55 -0400)
 
-n22 ~ # zgrep  ext4_mb_generate_buddy /var/log/messages-201210*        =
-                                                                       =
-                                       =20
-/var/log/messages-20121021.gz:2012-10-15T19:05:39.189+02:00 n22 kernel:=
- EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 774, 27=
-157 clusters in bitmap, 27052 in gd      =20
-/var/log/messages-20121021.gz:2012-10-15T19:37:58.401+02:00 n22 kernel:=
- EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 436, 22=
-902 clusters in bitmap, 22901 in gd      =20
-/var/log/messages-20121021.gz:2012-10-15T19:56:05.301+02:00 n22 kernel:=
- EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 1233, 1=
-1981 clusters in bitmap, 11974 in gd     =20
-/var/log/messages-20121021.gz:2012-10-15T19:56:18.601+02:00 n22 kernel:=
- EXT4-fs error (device sdb3): ext4_mb_generate_buddy:741: group 484, 28=
-817 clusters in bitmap, 28101 in gd     =20
+are available in the git repository at:
 
-I rebooted the system and forced a run of fsck after these lines too.
-I'll check periodically whether it happens again.
-=20
-> You say this is an external USB disk; is there any possibility of the
-> disk getting unmounted uncleanly due to the cable getting pulled out
-> while the disk is still mounted, and then the disk getting remounted
-> w/o having e2fsck run on the disk?
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-=46or the first occurrence probably yes (better : I dunno), but yesterd=
-ay definitely not.
+for you to fetch changes up to 5de35e8d5c02d271c20e18337e01bc20e6ef472e:
 
+  ext4: Avoid underflow in ext4_trim_fs() (2012-10-22 18:01:19 -0400)
 
+----------------------------------------------------------------
+Various bug fixes for ext4.  The most serious of them fixes a security
+bug (CVE-2012-4508) which leads to stale data exposure when we have
+fallocate racing against writes to files undergoing delayed
+allocation.  We also have two fixes for the metadata checksum feature,
+the most serious of which can cause the superblock to have a invalid
+checksum after a power failure.
 
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+----------------------------------------------------------------
+Dmitry Monakhov (2):
+      ext4: serialize fallocate with ext4_convert_unwritten_extents
+      ext4: race-condition protection for ext4_convert_unwritten_extents_endio
+
+Lukas Czerner (2):
+      ext4: fix undefined bit shift result in ext4_fill_flex_info
+      ext4: Avoid underflow in ext4_trim_fs()
+
+Tao Ma (1):
+      ext4: Checksum the block bitmap properly with bigalloc enabled
+
+Theodore Ts'o (1):
+      ext4: fix metadata checksum calculation for the superblock
+
+ fs/ext4/balloc.c    |  8 +++----
+ fs/ext4/bitmap.c    |  6 ++++--
+ fs/ext4/ext4.h      |  7 +++----
+ fs/ext4/ext4_jbd2.c |  8 ++-----
+ fs/ext4/extents.c   | 60 +++++++++++++++++++++++++++++++++++++++++++----------
+ fs/ext4/ialloc.c    |  4 +---
+ fs/ext4/mballoc.c   | 14 ++++++-------
+ fs/ext4/resize.c    |  3 +--
+ fs/ext4/super.c     |  9 ++++----
+ 9 files changed, 74 insertions(+), 45 deletions(-)
