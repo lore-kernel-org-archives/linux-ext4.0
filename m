@@ -1,79 +1,184 @@
-From: Marcel van Beurden <marcel_linux-ext4@marsnix.nl>
-Subject: Re: Shrinking ext3 partition takes long and high CPU usage
-Date: Mon, 22 Oct 2012 11:42:35 +0200
-Message-ID: <5085150B.4050504@marsnix.nl>
-References: <50811EA2.6030603@marsnix.nl> <20121019143614.GA15590@andromeda.usersys.redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-vbr7.xs4all.nl ([194.109.24.27]:4757 "EHLO
-	smtp-vbr7.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752098Ab2JVJmp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2012 05:42:45 -0400
-Received: from squeeze.netwerk (mrcl.xs4all.nl [83.163.124.123])
-	by smtp-vbr7.xs4all.nl (8.13.8/8.13.8) with ESMTP id q9M9ggQe096273
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2012 11:42:43 +0200 (CEST)
-	(envelope-from marcel_linux-ext4@marsnix.nl)
-Received: from [188.202.202.42] (helo=[192.168.20.45])
-	by squeeze.netwerk with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	(envelope-from <marcel_linux-ext4@marsnix.nl>)
-	id 1TQEWv-0000q0-RZ
-	for linux-ext4@vger.kernel.org; Mon, 22 Oct 2012 11:42:42 +0200
-In-Reply-To: <20121019143614.GA15590@andromeda.usersys.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: [PATCH 17/22] fs: add read_iter and write_iter to several file systems
+Date: Mon, 22 Oct 2012 10:15:17 -0500
+Message-ID: <1350918922-6096-18-git-send-email-dave.kleikamp@oracle.com>
+References: <1350918922-6096-1-git-send-email-dave.kleikamp@oracle.com>
+Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
+	"Maxim V. Patlasov" <mpatlasov@parallels.com>,
+	Dave Kleikamp <dave.kleikamp@oracle.com>,
+	v9fs-developer@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+	reiserfs-devel@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1350918922-6096-1-git-send-email-dave.kleikamp@oracle.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+These are the simple ones.
 
-A follow-up...
+File systems that use generic_file_aio_read() and generic_file_aio_write()
+can trivially support generic_file_read_iter() and generic_file_write_iter().
 
- >> Is resize2fs being stuck and hanging forever, or is it just taking a
->> lot of time? I wouldn't expect resizing to be so CPU intensive.
->>
-> Hi, is not possible to answer this with just the information you provided. I
-> would expect to see soft lockup warnings on the system log if it was really
-> stuck.
+This patch adds those file_operations for 9p, ext2, ext3, fat, hfs, hfsplus,
+jfs, nilfs2, and reiserfs.
 
-There was no information in any log.
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Zach Brown <zab@zabbo.net>
+Cc: v9fs-developer@lists.sourceforge.net
+Cc: Jan Kara <jack@suse.cz>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: jfs-discussion@lists.sourceforge.net
+Cc: linux-nilfs@vger.kernel.org
+Cc: reiserfs-devel@vger.kernel.org
+---
+ fs/9p/vfs_file.c   | 4 ++++
+ fs/ext2/file.c     | 2 ++
+ fs/ext3/file.c     | 2 ++
+ fs/fat/file.c      | 2 ++
+ fs/hfs/inode.c     | 2 ++
+ fs/hfsplus/inode.c | 2 ++
+ fs/jfs/file.c      | 2 ++
+ fs/nilfs2/file.c   | 2 ++
+ fs/reiserfs/file.c | 2 ++
+ 9 files changed, 20 insertions(+)
 
-> You're using a too olde resize2fs so, may be possible you're using a buggy
-> version too, but I'm not the best person to say if there was any bug on
-> resize2fs which might be causing this.
-
-Yeah, it was not an up-to-date system. I just used whatever I had available.
-
-> Also, I hope you're trying to shrink the filesystem with this umounted :-)
-
-It was unmounted.
-
-According to my calculations (using the data rate that iotop showed me), 
-it would take forever. So I decided to cancel the resize process. Then I 
-ran e2fsck on it which gave me plenty of errors like this one:
-
-Multiply-claimed block(s) in inode 2879754: 43528289 43528290 43528291 
-43528292 43528293 43528294 43528295 43528296 43528297 43528298 43528299 
-43528300 43528301 43528302 43528303 43528304 43528305 43528306
-
-And after that it crashed with this message:
-
-e2fsck: Can't allocate block element
-e2fsck: aborted
-
-Since the disk still seemed readable, I copied all files to another disk 
-and it did that without complaining. Not sure how many files are 
-missing/corrupted. So far I found some empty directories and one regular 
-file that was 0 bytes.
-
-Lessons learned:
-1. Always use up-to-date software
-2. Be careful that when meaning to resize a partition, you don't 
-accidentally move it (round to cylinders in gparted?)
-3. Get the USB disk out of it's enclosure and hook it up to a SATA port
-
-Regards,
-Marcel
-
+diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
+index c2483e9..d19458b 100644
+--- a/fs/9p/vfs_file.c
++++ b/fs/9p/vfs_file.c
+@@ -748,6 +748,8 @@ const struct file_operations v9fs_cached_file_operations = {
+ 	.write = v9fs_cached_file_write,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
+ 	.lock = v9fs_file_lock,
+@@ -761,6 +763,8 @@ const struct file_operations v9fs_cached_file_operations_dotl = {
+ 	.write = v9fs_cached_file_write,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
+ 	.lock = v9fs_file_lock_dotl,
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index a5b3a5d..eee8f86 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -66,6 +66,8 @@ const struct file_operations ext2_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl = ext2_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext2_compat_ioctl,
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index 25cb413..86828f7 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -54,6 +54,8 @@ const struct file_operations ext3_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index a62e0ec..250d1b7 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -166,6 +166,8 @@ const struct file_operations fat_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.release	= fat_file_release,
+ 	.unlocked_ioctl	= fat_generic_ioctl,
+diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
+index 986cb91..f750dbe 100644
+--- a/fs/hfs/inode.c
++++ b/fs/hfs/inode.c
+@@ -656,8 +656,10 @@ static const struct file_operations hfs_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
++	.read_iter	= generic_file_read_iter,
+ 	.write		= do_sync_write,
+ 	.aio_write	= generic_file_aio_write,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.fsync		= hfs_file_fsync,
+diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
+index 94fc092..0191a0d 100644
+--- a/fs/hfsplus/inode.c
++++ b/fs/hfsplus/inode.c
+@@ -369,8 +369,10 @@ static const struct file_operations hfsplus_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
++	.read_iter	= generic_file_read_iter,
+ 	.write		= do_sync_write,
+ 	.aio_write	= generic_file_aio_write,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.fsync		= hfsplus_file_fsync,
+diff --git a/fs/jfs/file.c b/fs/jfs/file.c
+index 9d3afd1..a49ede70 100644
+--- a/fs/jfs/file.c
++++ b/fs/jfs/file.c
+@@ -151,6 +151,8 @@ const struct file_operations jfs_file_operations = {
+ 	.read		= do_sync_read,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.mmap		= generic_file_mmap,
+ 	.splice_read	= generic_file_splice_read,
+ 	.splice_write	= generic_file_splice_write,
+diff --git a/fs/nilfs2/file.c b/fs/nilfs2/file.c
+index 16f35f7..f4c58c9 100644
+--- a/fs/nilfs2/file.c
++++ b/fs/nilfs2/file.c
+@@ -155,6 +155,8 @@ const struct file_operations nilfs_file_operations = {
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= generic_file_aio_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= generic_file_write_iter,
+ 	.unlocked_ioctl	= nilfs_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= nilfs_compat_ioctl,
+diff --git a/fs/reiserfs/file.c b/fs/reiserfs/file.c
+index 8375c92..8f86c2b 100644
+--- a/fs/reiserfs/file.c
++++ b/fs/reiserfs/file.c
+@@ -306,6 +306,8 @@ const struct file_operations reiserfs_file_operations = {
+ 	.fsync = reiserfs_sync_file,
+ 	.aio_read = generic_file_aio_read,
+ 	.aio_write = generic_file_aio_write,
++	.read_iter = generic_file_read_iter,
++	.write_iter = generic_file_write_iter,
+ 	.splice_read = generic_file_splice_read,
+ 	.splice_write = generic_file_splice_write,
+ 	.llseek = generic_file_llseek,
+-- 
+1.7.12.3
