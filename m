@@ -1,39 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Checksum the block bitmap properly with bigalloc
- enabled.
-Date: Mon, 22 Oct 2012 00:33:28 -0400
-Message-ID: <20121022043328.GC4768@thunk.org>
-References: <1350306093-2995-1-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH v2] ext4: Avoid underflow of in ext4_trim_fs()
+Date: Mon, 22 Oct 2012 00:37:21 -0400
+Message-ID: <20121022043721.GD4768@thunk.org>
+References: <1349784762-28069-1-git-send-email-lczerner@redhat.com>
+ <1349944485-13868-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56746 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:56749 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751513Ab2JVEdf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Oct 2012 00:33:35 -0400
+	id S1750828Ab2JVEh0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Oct 2012 00:37:26 -0400
 Content-Disposition: inline
-In-Reply-To: <1350306093-2995-1-git-send-email-tm@tao.ma>
+In-Reply-To: <1349944485-13868-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 15, 2012 at 09:01:33PM +0800, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Thu, Oct 11, 2012 at 10:34:45AM +0200, Lukas Czerner wrote:
+> Currently if len argument in ext4_trim_fs() is smaller than one block,
+> the 'end' variable underflow. Avoid that by returning EINVAL if len is
+> smaller than file system block.
 > 
-> In mke2fs, we only checksum the whole bitmap block and it is right.
-> While in the kernel, we use EXT4_BLOCKS_PER_GROUP to indicate the
-> size of the checksumed bitmap which is wrong when we enable bigalloc.
-> The right size should be EXT4_CLUSTERS_PER_GROUP and this patch fixes
-> it.
+> Also remove useless unlikely().
 > 
-> Also as every caller of ext4_block_bitmap_csum_set and
-> ext4_block_bitmap_csum_verify pass in EXT4_BLOCKS_PER_GROUP(sb)/8,
-> we'd better removes this parameter and sets it in the function itself.
-> 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Thanks, applied!
+Thanks, applied.
 
 						- Ted
