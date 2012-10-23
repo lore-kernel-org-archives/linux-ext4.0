@@ -1,72 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Tue, 23 Oct 2012 19:28:13 -0400
-Message-ID: <20121023232813.GF28626@thunk.org>
+From: Nix <nix@esperi.org.uk>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
+Date: Wed, 24 Oct 2012 00:34:42 +0100
+Message-ID: <87y5iwlq3x.fsf@spindle.srvr.nix>
 References: <87objupjlr.fsf@spindle.srvr.nix>
- <20121023013343.GB6370@fieldses.org>
- <87mwzdnuww.fsf@spindle.srvr.nix>
- <20121023143019.GA3040@fieldses.org>
- <874nllxi7e.fsf_-_@spindle.srvr.nix>
- <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <20121023221913.GC28626@thunk.org>
- <87bofsn5zm.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<87pq48nbyz.fsf_-_@spindle.srvr.nix>
+	<20121023221913.GC28626@thunk.org> <87bofsn5zm.fsf@spindle.srvr.nix>
+	<20121023232813.GF28626@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Bryan Schumaker <bjschuma@netapp.com>,
 	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
 	gregkh@linuxfoundation.org,
-	Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+	Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
 	Eric Sandeen <sandeen@redhat.com>, stable@vger.kernel.org
-To: Nix <nix@esperi.org.uk>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57113 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934083Ab2JWX22 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Oct 2012 19:28:28 -0400
-Content-Disposition: inline
-In-Reply-To: <87bofsn5zm.fsf@spindle.srvr.nix>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:59819 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933579Ab2JWXez (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 19:34:55 -0400
+In-Reply-To: <20121023232813.GF28626@thunk.org> (Theodore Ts'o's message of
+	"Tue, 23 Oct 2012 19:28:13 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 24, 2012 at 12:06:21AM +0100, Nix wrote:
-> I note that the patch is in the latest stable releases of 3.4.x and
-> 3.5.x, which are IIRC end-of-lifed. I'd say that if your patch does
-> indeed fix it, this justifies pushing out new releases of both these
-> stable kernels with just this patch in, just to make sure people taking
-> the latest stable kernel from those releases don't eat their
-> filesystems.
+On 24 Oct 2012, Theodore Ts'o told this:
 
-Eric is in the process of reviewing the bug, and creating a repro case
-so we can definitely show that my theory is sound, and that the bug
-has been fixed by my proposed fix.  We know that my patch definitely
-restores the behaviour previous to commit eeecef0af5, so it can't
-hurt, but we do want to make 100% sure that it really fixes the
-problem.  (I found the potential bug by desk checking the all of the
-commits between v3.6.1 and v3.6.3, and none of the other commits
-triggered my WTF alarm, but we want to have a easy repro case so we
-can be 100% sure it's been fixed.  It's always nice when theory is
-backed up with empircal evidence.  :-)
+> hurt, but we do want to make 100% sure that it really fixes the
+> problem.
 
-Until then, it should also be fine to just revert that commit on the
-other stable kernels.
+Well, yes, that would be nice. I can certainly try to verify that it
+stops my filesystems getting corrupted. (And if so, I owe you a
+$BEVERAGE. Though I suspect I owe you about three million of those
+already for other code written in the past.)
 
-> The bug did really quite a lot of damage to my /home fs in only a few
-> minutes of uptime, given how few files I wrote to it. What it could have
-> done to a more conventional distro install with everything including
-> /home on one filesystem, I shudder to think.
+>> The bug did really quite a lot of damage to my /home fs in only a few
+>> minutes of uptime, given how few files I wrote to it. What it could have
+>> done to a more conventional distro install with everything including
+>> /home on one filesystem, I shudder to think.
+>
+> Well, the problem won't show up if the journal has wrapped.  So it
+> will only show up if the system has been rebooted twice in fairly
+> quick succession.  A full conventional distro install probably
+> wouldn't have triggered a bug...
 
-Well, the problem won't show up if the journal has wrapped.  So it
-will only show up if the system has been rebooted twice in fairly
-quick succession.  A full conventional distro install probably
-wouldn't have triggered a bug... although someone who habitually
-reboots their laptop instead of using suspend/resume or hiberbate, or
-someone who is trying to bisect the kernel looking for some other bug
-could easily trip over this --- which I guess is how you got hit by
-it.
+A full *install* from scratch, no. I was more worried about the
+possibility of someone running -stable kernels on an existing distro
+installation, and shutting down every night (given what's been happening
+to UK electricity prices in the last few years I suspect there are quite
+a lot of people doing that in the UK to save power). If they happen not
+to do much on one particular day other than a bit of light distro
+updating, they could perfectly well end up roasting things touched
+during the distro update. Things like glibc :(
 
-Regards,
+>                                  although someone who habitually
+> reboots their laptop instead of using suspend/resume or hiberbate, or
+> someone who is trying to bisect the kernel looking for some other bug
+> could easily trip over this --- which I guess is how you got hit by
+> it.
 
-						- Ted
+I was first hit by it in /var before I was even trying to bisect: I was
+just rebooting to unwedge NFS lockd. It's true that in less than a week
+probably not all that many people have rebooted often enough to trip
+over this.
+
+I hope.
+
+-- 
+NULL && (void)
