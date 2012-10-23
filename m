@@ -1,62 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 3.7
-Date: Mon, 22 Oct 2012 18:19:59 -0400
-Message-ID: <20121022221959.GA16531@thunk.org>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Notify when discard is not supported
+Date: Tue, 23 Oct 2012 11:14:19 -0200
+Message-ID: <20121023131419.GA14662@andromeda.usersys.redhat.com>
+References: <1350648758-3318-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:56896 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756254Ab2JVWUC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Oct 2012 18:20:02 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:9740 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932625Ab2JWNOX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Oct 2012 09:14:23 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9NDENYw031351
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Oct 2012 09:14:23 -0400
+Received: from andromeda.usersys.redhat.com (ovpn-113-84.phx2.redhat.com [10.3.113.84])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9NDEKcO009879
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Oct 2012 09:14:22 -0400
 Content-Disposition: inline
+In-Reply-To: <1350648758-3318-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit c278531d39f3158bfee93dc67da0b77e09776de2:
+On Fri, Oct 19, 2012 at 02:12:37PM +0200, Lukas Czerner wrote:
+> Notify user when mounting the file system with -o discard option, but
+> the device does not support discard. Obviously we do not want to fail
+> the mount or disable the options, because the underlying device might
+> change in future even without file system remount.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  fs/ext4/super.c |    8 ++++++++
+>  1 files changed, 8 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 7265a03..fd3ff41 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4017,6 +4017,14 @@ no_journal:
+>  	}
+>  #endif  /* CONFIG_QUOTA */
+>  
+> +	if (test_opt(sb, DISCARD)) {
+> +		struct request_queue *q = bdev_get_queue(sb->s_bdev);
+> +		if (!blk_queue_discard(q))
+> +			ext4_msg(sb, KERN_WARNING,
+> +				 "mounting with \"discard\" option, but "
+> +				 "the device does not support discard");
+> +	}
+> +
+>  	ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+>  		 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
+>  		 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-  ext4: fix ext4_flush_completed_IO wait semantics (2012-10-05 11:31:55 -0400)
+Looks good to me
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 5de35e8d5c02d271c20e18337e01bc20e6ef472e:
-
-  ext4: Avoid underflow in ext4_trim_fs() (2012-10-22 18:01:19 -0400)
-
-----------------------------------------------------------------
-Various bug fixes for ext4.  The most serious of them fixes a security
-bug (CVE-2012-4508) which leads to stale data exposure when we have
-fallocate racing against writes to files undergoing delayed
-allocation.  We also have two fixes for the metadata checksum feature,
-the most serious of which can cause the superblock to have a invalid
-checksum after a power failure.
-
-----------------------------------------------------------------
-Dmitry Monakhov (2):
-      ext4: serialize fallocate with ext4_convert_unwritten_extents
-      ext4: race-condition protection for ext4_convert_unwritten_extents_endio
-
-Lukas Czerner (2):
-      ext4: fix undefined bit shift result in ext4_fill_flex_info
-      ext4: Avoid underflow in ext4_trim_fs()
-
-Tao Ma (1):
-      ext4: Checksum the block bitmap properly with bigalloc enabled
-
-Theodore Ts'o (1):
-      ext4: fix metadata checksum calculation for the superblock
-
- fs/ext4/balloc.c    |  8 +++----
- fs/ext4/bitmap.c    |  6 ++++--
- fs/ext4/ext4.h      |  7 +++----
- fs/ext4/ext4_jbd2.c |  8 ++-----
- fs/ext4/extents.c   | 60 +++++++++++++++++++++++++++++++++++++++++++----------
- fs/ext4/ialloc.c    |  4 +---
- fs/ext4/mballoc.c   | 14 ++++++-------
- fs/ext4/resize.c    |  3 +--
- fs/ext4/super.c     |  9 ++++----
- 9 files changed, 74 insertions(+), 45 deletions(-)
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+-- 
+--Carlos
