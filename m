@@ -1,75 +1,57 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: [PATCH, RFC] Ext3: Mount partition as read only if during orphan cleanup truncate fails to obtain journal handle.
-Date: Wed, 24 Oct 2012 16:12:44 +0530
-Message-ID: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
-Cc: linux-ext4@vger.kernel.org,
-	Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: jack@suse.cz
+From: Nix <nix@esperi.org.uk>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
+Date: Wed, 24 Oct 2012 12:45:40 +0100
+Message-ID: <87liewks9n.fsf@spindle.srvr.nix>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com>
+	<87txtkld4h.fsf@spindle.srvr.nix> <50876E1D.3040501@redhat.com>
+	<20121024052351.GB21714@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+	gregkh@linuxfoundation.org,
+	Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:48775 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756338Ab2JXKnP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2012 06:43:15 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rr4so1129369pbb.19
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2012 03:43:14 -0700 (PDT)
+Received: from icebox.esperi.org.uk ([81.187.191.129]:58520 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752631Ab2JXLp6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2012 07:45:58 -0400
+In-Reply-To: <20121024052351.GB21714@thunk.org> (Theodore Ts'o's message of
+	"Wed, 24 Oct 2012 01:23:51 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-During orphan cleanup while doing truncate, if we fail to obtain journal
-handle, the inode for which truncate was called would not be removed from
-both the on-disk and in-memory orphan lists as the call to ext3_orphan_del
-would not be executed.
+On 24 Oct 2012, Theodore Ts'o stated:
 
-This would have following consequences:
-a) As the inode is not removed from the on-disk list, truncate would be
-called again for the same inode. Each call would add the inode to the
-in-memory list. This operation would continue endlessly or until truncate
-is succeed.
+>                         Journal flushes outside of an unmount does
+> happen as part of online resizing, the FIBMAP ioctl, or when the file
+> system is frozen.  But it didn't sound like Toralf or Nix was using
+> any of those features.
 
-b) If somehow, after some iterations, truncate is succeed, ext3_orphan_del
-will only remove the inode from in-memory list just 1 time. This will trigger
-j_assert during put super.
+Quite so -- the corrupted filesystems have space reserved for resizing,
+and one of them has been resized, years ago, but I haven't resized
+either of them with this kernel, or with any kernel numbered 3.x for
+that matter.
 
-This patch handles both the problems. If truncate fails, first in-memory
-list is cleared and than the partition is mounted as read only.
-Failure to obtain journal handle during mount may suggest that journal
-device is corrupted.
+> Toralf, Nix, if you could try applying this patch (at the end of this
+> message), and let me know how and when the WARN_ON triggers, and if it
+> does, please send the empty_bug_workaround plus the WARN_ON(1) report.
+> I know about the case where a file system is mounted and then
+> immediately unmounted, but we don't think that's the problematic case.
+> If you see any other cases where WARN_ON is triggering, it would be
+> really good to know....
 
-Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
----
- fs/ext3/super.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+I'll give it a test later today, after another backup has finished.
+Daily backups are normally overkill, but I don't think they are right
+now.
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index bd60e08..798cd6f 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1540,7 +1540,22 @@ static void ext3_orphan_cleanup (struct super_block * sb,
- 			jbd_debug(2, "truncating inode %lu to %Ld bytes\n",
- 				  inode->i_ino, inode->i_size);
- 			ext3_truncate(inode);
--			nr_truncates++;
-+			if (list_empty(&EXT3_I(inode)->i_orphan)) {
-+				nr_truncates++;
-+			} else {
-+				/* Remove inode from in-memory orphan list */
-+				list_del_init(&EXT3_I(inode)->i_orphan);
-+				ext3_msg(sb, KERN_ERR, "Truncate failed for "
-+                                        "orphan  inode = %lu. Running e2fsck"
-+                                        " is recommended", inode->i_ino);
-+				if (!(s_flags & MS_RDONLY)) {
-+					ext3_msg(sb, KERN_INFO, "FS would be"
-+						" mounted as readonly");
-+					s_flags |= MS_RDONLY;
-+				}
-+				break;
-+			}
-+
- 		} else {
- 			printk(KERN_DEBUG
- 				"%s: deleting unreferenced inode %lu\n",
 -- 
-1.7.11.4
-
+NULL && (void)
