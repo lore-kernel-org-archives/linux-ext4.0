@@ -1,43 +1,44 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 44731] ext4 deadlock under heavy io?
-Date: Wed, 24 Oct 2012 20:38:31 +0000 (UTC)
-Message-ID: <20121024203831.5164211FBAA@bugzilla.kernel.org>
-References: <bug-44731-13602@https.bugzilla.kernel.org/>
+From: Nix <nix@esperi.org.uk>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
+Date: Wed, 24 Oct 2012 21:45:47 +0100
+Message-ID: <878vavtx8k.fsf@spindle.srvr.nix>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com>
+	<87txtkld4h.fsf@spindle.srvr.nix> <50876E1D.3040501@redhat.com>
+	<20121024052351.GB21714@thunk.org> <878vavveee.fsf@spindle.srvr.nix>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+	gregkh@linuxfoundation.org,
+	Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:40165 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934318Ab2JXUif (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Oct 2012 16:38:35 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BF7EE2047C
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2012 20:38:32 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 537962043D
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2012 20:38:31 +0000 (UTC)
-In-Reply-To: <bug-44731-13602@https.bugzilla.kernel.org/>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:60473 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757672Ab2JXUqA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2012 16:46:00 -0400
+In-Reply-To: <878vavveee.fsf@spindle.srvr.nix> (nix@esperi.org.uk's message of
+	"Wed, 24 Oct 2012 20:49:45 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=44731
+On 24 Oct 2012, nix@esperi.org.uk spake thusly:
+> So, the net effect of this is that normally I get no journal recovery on
+> anything at all -- but sometimes, if umounting takes longer than a few
+> seconds, I reboot with not everything unmounted, and journal recovery
+> kicks in on reboot.
 
-
-Tom Deering <tomdeering7@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tomdeering7@gmail.com
-
-
-
-
---- Comment #17 from Tom Deering <tomdeering7@gmail.com>  2012-10-24 20:38:30 ---
-I have also experienced this. Bug report for Ubuntu:
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1071012
+It occurs to me that it is possible that this bug hits only those
+filesystems for which a umount has started but been unable to complete.
+If so, this is a relatively rare and unimportant bug which probably hits
+only me and users of slow removable filesystems in the whole world...
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+NULL && (void)
