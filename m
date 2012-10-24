@@ -1,175 +1,283 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V7 17/23] ext4: let empty_dir handle inline dir.
-Date: Wed, 24 Oct 2012 10:55:32 +0800
-Message-ID: <1351047338-4963-17-git-send-email-tm@tao.ma>
+Subject: [PATCH V7 12/23] ext4: Let ext4_readdir handle inline data.
+Date: Wed, 24 Oct 2012 10:55:27 +0800
+Message-ID: <1351047338-4963-12-git-send-email-tm@tao.ma>
 References: <1351047002-4723-1-git-send-email-tm@tao.ma>
  <1351047338-4963-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:46196 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S934274Ab2JXDEJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 23:04:09 -0400
+Received: from oproxy11-pub.bluehost.com ([173.254.64.10]:45594 "HELO
+	oproxy11-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S964993Ab2JXDEM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 23:04:12 -0400
 Received: from [182.92.247.2] (port=23186 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TQr8Y-0006KI-Kg
-	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:56:07 -0600
+	id 1TQr8S-0006KI-Ud
+	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:56:01 -0600
 In-Reply-To: <1351047338-4963-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-empty_dir is used when deleting a dir. So it should handle
-inline dir properly.
+For "." and "..", we just call filldir by ourselves
+instead of iterating the real dir entry.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inline.c |   90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/namei.c  |    8 +++++
- fs/ext4/xattr.h  |    6 +++
- 3 files changed, 104 insertions(+), 0 deletions(-)
+ fs/ext4/dir.c    |   25 +++++-----
+ fs/ext4/ext4.h   |   12 +++++
+ fs/ext4/inline.c |  136 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.h  |    9 ++++
+ 4 files changed, 169 insertions(+), 13 deletions(-)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 7c9d08b..b8d877f 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -27,23 +27,11 @@
+ #include <linux/slab.h>
+ #include <linux/rbtree.h>
+ #include "ext4.h"
+-
+-static unsigned char ext4_filetype_table[] = {
+-	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+-};
++#include "xattr.h"
+ 
+ static int ext4_dx_readdir(struct file *filp,
+ 			   void *dirent, filldir_t filldir);
+ 
+-static unsigned char get_dtype(struct super_block *sb, int filetype)
+-{
+-	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
+-	    (filetype >= EXT4_FT_MAX))
+-		return DT_UNKNOWN;
+-
+-	return (ext4_filetype_table[filetype]);
+-}
+-
+ /**
+  * Check if the given dir-inode refers to an htree-indexed directory
+  * (or a directory which chould potentially get coverted to use htree
+@@ -68,6 +56,9 @@ static int is_dx_dir(struct inode *inode)
+  * Return 0 if the directory entry is OK, and 1 if there is a problem
+  *
+  * Note: this is the opposite of what ext2 and ext3 historically returned...
++ *
++ * bh passed here can be an inode block or a dir data block, depending
++ * on the inode inline data flag.
+  */
+ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 			   struct inode *dir, struct file *filp,
+@@ -124,6 +115,14 @@ static int ext4_readdir(struct file *filp,
+ 	int ret = 0;
+ 	int dir_has_error = 0;
+ 
++	if (ext4_has_inline_data(inode)) {
++		int has_inline_data = 1;
++		ret = ext4_read_inline_dir(filp, dirent, filldir,
++					   &has_inline_data);
++		if (has_inline_data)
++			return ret;
++	}
++
+ 	if (is_dx_dir(inode)) {
+ 		err = ext4_dx_readdir(filp, dirent, filldir);
+ 		if (err != ERR_BAD_DX_DIR) {
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0b8e788..eb3f391 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1972,6 +1972,18 @@ static inline void ext4_update_dx_flag(struct inode *inode)
+ 				     EXT4_FEATURE_COMPAT_DIR_INDEX))
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+ }
++static unsigned char ext4_filetype_table[] = {
++	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
++};
++
++static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
++{
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FILETYPE) ||
++	    (filetype >= EXT4_FT_MAX))
++		return DT_UNKNOWN;
++
++	return ext4_filetype_table[filetype];
++}
+ 
+ /* fsync.c */
+ extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 21c8957..5bf1326 100644
+index 5a17543..8270265 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -1559,6 +1559,96 @@ out:
- 	return err;
+@@ -1282,6 +1282,142 @@ out:
+ 	return ret;
  }
  
-+/*
-+ * Get the inline dentry at offset.
-+ */
-+static inline struct ext4_dir_entry_2 *
-+ext4_get_inline_entry(struct inode *inode,
-+		      struct ext4_iloc *iloc,
-+		      unsigned int offset,
-+		      void **inline_start,
-+		      int *inline_size)
++int ext4_read_inline_dir(struct file *filp,
++			 void *dirent, filldir_t filldir,
++			 int *has_inline_data)
 +{
-+	void *inline_pos;
-+
-+	BUG_ON(offset > ext4_get_inline_size(inode));
-+
-+	if (offset < EXT4_MIN_INLINE_DATA_SIZE) {
-+		inline_pos = (void *)ext4_raw_inode(iloc)->i_block;
-+		*inline_size = EXT4_MIN_INLINE_DATA_SIZE;
-+	} else {
-+		inline_pos = ext4_get_inline_xattr_pos(inode, iloc);
-+		offset -= EXT4_MIN_INLINE_DATA_SIZE;
-+		*inline_size = ext4_get_inline_size(inode) -
-+				EXT4_MIN_INLINE_DATA_SIZE;
-+	}
-+
-+	if (inline_start)
-+		*inline_start = inline_pos;
-+	return (struct ext4_dir_entry_2 *)(inline_pos + offset);
-+}
-+
-+int empty_inline_dir(struct inode *dir, int *has_inline_data)
-+{
-+	int err, inline_size;
-+	struct ext4_iloc iloc;
-+	void *inline_pos;
-+	unsigned int offset;
++	int error = 0;
++	unsigned int offset, parent_ino;
++	int i, stored;
 +	struct ext4_dir_entry_2 *de;
-+	int ret = 1;
++	struct super_block *sb;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	int ret, inline_size = 0;
++	struct ext4_iloc iloc;
++	void *dir_buf = NULL;
 +
-+	err = ext4_get_inode_loc(dir, &iloc);
-+	if (err) {
-+		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
-+				 err, dir->i_ino);
-+		return 1;
-+	}
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		return ret;
 +
-+	down_read(&EXT4_I(dir)->xattr_sem);
-+	if (!ext4_has_inline_data(dir)) {
++	down_read(&EXT4_I(inode)->xattr_sem);
++	if (!ext4_has_inline_data(inode)) {
++		up_read(&EXT4_I(inode)->xattr_sem);
 +		*has_inline_data = 0;
 +		goto out;
 +	}
 +
-+	de = (struct ext4_dir_entry_2 *)ext4_raw_inode(&iloc)->i_block;
-+	if (!le32_to_cpu(de->inode)) {
-+		ext4_warning(dir->i_sb,
-+			     "bad inline directory (dir #%lu) - no `..'",
-+			     dir->i_ino);
-+		ret = 1;
++	inline_size = ext4_get_inline_size(inode);
++	dir_buf = kmalloc(inline_size, GFP_NOFS);
++	if (!dir_buf) {
++		ret = -ENOMEM;
++		up_read(&EXT4_I(inode)->xattr_sem);
 +		goto out;
 +	}
 +
-+	offset = EXT4_INLINE_DOTDOT_SIZE;
-+	while (offset < dir->i_size) {
-+		de = ext4_get_inline_entry(dir, &iloc, offset,
-+					   &inline_pos, &inline_size);
-+		if (ext4_check_dir_entry(dir, NULL, de,
-+					 iloc.bh, inline_pos,
-+					 inline_size, offset)) {
-+			ext4_warning(dir->i_sb,
-+				     "bad inline directory (dir #%lu) - "
-+				     "inode %u, rec_len %u, name_len %d"
-+				     "inline size %d\n",
-+				     dir->i_ino, le32_to_cpu(de->inode),
-+				     le16_to_cpu(de->rec_len), de->name_len,
-+				     inline_size);
-+			ret = 1;
-+			goto out;
-+		}
-+		if (le32_to_cpu(de->inode)) {
-+			ret = 0;
-+			goto out;
-+		}
-+		offset += ext4_rec_len_from_disk(de->rec_len, inline_size);
-+	}
++	ret = ext4_read_inline_data(inode, dir_buf, inline_size, &iloc);
++	up_read(&EXT4_I(inode)->xattr_sem);
++	if (ret < 0)
++		goto out;
 +
++	sb = inode->i_sb;
++	stored = 0;
++	parent_ino = le32_to_cpu(((struct ext4_dir_entry_2 *)dir_buf)->inode);
++
++	while (!error && !stored && filp->f_pos < inode->i_size) {
++revalidate:
++		/*
++		 * If the version has changed since the last call to
++		 * readdir(2), then we might be pointing to an invalid
++		 * dirent right now.  Scan from the start of the inline
++		 * dir to make sure.
++		 */
++		if (filp->f_version != inode->i_version) {
++			for (i = 0;
++			     i < inode->i_size && i < offset;) {
++				if (!i) {
++					/* skip "." and ".." if needed. */
++					i += EXT4_INLINE_DOTDOT_SIZE;
++					continue;
++				}
++				de = (struct ext4_dir_entry_2 *)
++					(dir_buf + i);
++				/* It's too expensive to do a full
++				 * dirent test each time round this
++				 * loop, but we do have to test at
++				 * least that it is non-zero.  A
++				 * failure will be detected in the
++				 * dirent test below. */
++				if (ext4_rec_len_from_disk(de->rec_len,
++					inline_size) < EXT4_DIR_REC_LEN(1))
++					break;
++				i += ext4_rec_len_from_disk(de->rec_len,
++							    inline_size);
++			}
++			offset = i;
++			filp->f_pos = offset;
++			filp->f_version = inode->i_version;
++		}
++
++		while (!error && filp->f_pos < inode->i_size) {
++			if (filp->f_pos == 0) {
++				error = filldir(dirent, ".", 1, 0, inode->i_ino,
++						DT_DIR);
++				if (error)
++					break;
++				stored++;
++
++				error = filldir(dirent, "..", 2, 0, parent_ino,
++						DT_DIR);
++				if (error)
++					break;
++				stored++;
++
++				filp->f_pos = offset = EXT4_INLINE_DOTDOT_SIZE;
++				continue;
++			}
++
++			de = (struct ext4_dir_entry_2 *)(dir_buf + offset);
++			if (ext4_check_dir_entry(inode, filp, de,
++						 iloc.bh, dir_buf,
++						 inline_size, offset)) {
++				ret = stored;
++				goto out;
++			}
++			offset += ext4_rec_len_from_disk(de->rec_len,
++							 inline_size);
++			if (le32_to_cpu(de->inode)) {
++				/* We might block in the next section
++				 * if the data destination is
++				 * currently swapped out.  So, use a
++				 * version stamp to detect whether or
++				 * not the directory has been modified
++				 * during the copy operation.
++				 */
++				u64 version = filp->f_version;
++
++				error = filldir(dirent, de->name,
++						de->name_len,
++						filp->f_pos,
++						le32_to_cpu(de->inode),
++						get_dtype(sb, de->file_type));
++				if (error)
++					break;
++				if (version != filp->f_version)
++					goto revalidate;
++				stored++;
++			}
++			filp->f_pos += ext4_rec_len_from_disk(de->rec_len,
++							      inline_size);
++		}
++		offset = 0;
++	}
 +out:
-+	up_read(&EXT4_I(dir)->xattr_sem);
++	kfree(dir_buf);
 +	brelse(iloc.bh);
 +	return ret;
 +}
 +
- int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- {
- 	int ret;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 9d84aed..b250269 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2445,6 +2445,14 @@ static int empty_dir(struct inode *inode)
- 	struct super_block *sb;
- 	int err = 0;
- 
-+	if (ext4_has_inline_data(inode)) {
-+		int has_inline_data = 1;
-+
-+		err = empty_inline_dir(inode, &has_inline_data);
-+		if (has_inline_data)
-+			return err;
-+	}
-+
- 	sb = inode->i_sb;
- 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
- 	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
+ /*
+  * Try to create the inline data for the new dir.
+  * If it succeeds, return 0, otherwise return the error.
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 62a242a..2791d9a 100644
+index 6fecf7b..7162662 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -180,6 +180,7 @@ extern int ext4_delete_inline_entry(handle_t *handle,
- 				    struct ext4_dir_entry_2 *de_del,
- 				    struct buffer_head *bh,
- 				    int *has_inline_data);
-+extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+@@ -168,6 +168,9 @@ extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
+ extern int ext4_try_create_inline_dir(handle_t *handle,
+ 				      struct inode *parent,
+ 				      struct inode *inode);
++extern int ext4_read_inline_dir(struct file *filp,
++				void *dirent, filldir_t filldir,
++				int *has_inline_data);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -379,6 +380,11 @@ static inline int ext4_delete_inline_entry(handle_t *handle,
+@@ -345,6 +348,12 @@ static inline int ext4_try_create_inline_dir(handle_t *handle,
  {
  	return 0;
  }
-+
-+static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
++static inline int ext4_read_inline_dir(struct file *filp,
++				       void *dirent, filldir_t filldir,
++				       int *has_inline_data)
 +{
 +	return 0;
 +}
