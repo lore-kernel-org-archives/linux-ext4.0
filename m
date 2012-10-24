@@ -1,29 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: OOPS after deleting file on ext4 filesystem
-Date: Tue, 23 Oct 2012 23:08:12 -0400
-Message-ID: <20121024030812.GA21714@thunk.org>
-References: <20121024005022.GA25399@elliptictech.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Nick Bowler <nbowler@elliptictech.com>
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: metadata_csum set but no space in dir leaf for checksum
+Date: 24 Oct 2012 00:12:18 -0400
+Message-ID: <20121024041218.24709.qmail@science.horizon.com>
+References: <20121024014309.GA25755@blackbox.djwong.org>
+Cc: adilger.kernel@dilger.ca, linux@horizon.com,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
+To: darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57151 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934056Ab2JXDIQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Oct 2012 23:08:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20121024005022.GA25399@elliptictech.com>
+Received: from science.horizon.com ([71.41.210.146]:30975 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750731Ab2JXEMU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2012 00:12:20 -0400
+In-Reply-To: <20121024014309.GA25755@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 23, 2012 at 08:50:22PM -0400, Nick Bowler wrote:
-> Hi folks,
-> 
-> I just saw an ext4 oops on one of my machines after a couple months of
-> uptime, on Linux 3.5.2.  I doubt I will be able to reproduce the problem
-> easily so I'm just posting this in case anyone can tell what's going on.
+> Any more errors/corruption to report?
 
-Fixed in v3.5.3 or later kernels.  (Commit 2cd45bebc56a)
+Thanks for the nudge.  Indeed, no more complaints since the 17th when
+I installed your patch.
 
-      	 	   	 	   - Ted
+So it seems that you've figured out the problem, modiulo only figuring
+why the fallback code path is being taken in the first place.
+
+Thank you very much!
+
+(BTW, your e-mail and Reply-To: set to you only; was that intentional?
+I've ignored it and sent to the whole mailing list, since it seems
+relevant.)
