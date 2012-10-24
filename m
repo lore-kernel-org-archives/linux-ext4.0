@@ -1,211 +1,189 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V7 10/23] ext4: Create __ext4_insert_dentry for dir entry insertion.
-Date: Wed, 24 Oct 2012 10:55:25 +0800
-Message-ID: <1351047338-4963-10-git-send-email-tm@tao.ma>
+Subject: [PATCH V7 08/23] ext4: Make ext4_init_dot_dotdot for inline dir usage.
+Date: Wed, 24 Oct 2012 10:55:23 +0800
+Message-ID: <1351047338-4963-8-git-send-email-tm@tao.ma>
 References: <1351047002-4723-1-git-send-email-tm@tao.ma>
  <1351047338-4963-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:39914 "HELO
+Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:48451 "HELO
 	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S934284Ab2JXCz7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 22:55:59 -0400
+	with SMTP id S934294Ab2JXCz5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 22:55:57 -0400
 Received: from [182.92.247.2] (port=23186 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TQr8Q-0006KI-Ma
-	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:55:59 -0600
+	id 1TQr8O-0006KI-G5
+	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:55:56 -0600
 In-Reply-To: <1351047338-4963-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-The old add_dirent_to_buf handles all the work related to the
-work of adding dir entry to a dir block. Now we have inline data,
-so create 2 new function __ext4_find_dest_de and __ext4_insert_dentry
-that do the real work and let add_dirent_to_buf call them.
+Currently, the initialization of dot and dotdot are encapsulated in
+ext4_mkdir and also bond with dir_block. So create a new function
+named ext4_init_new_dir and the initialization is moved to
+ext4_init_dot_dotdot. Now it will called either in the normal non-inline
+case(rec_len of ".." will cover the whole block) or when we converting an
+inline dir to a block(rec len of ".." will be the real length). The start
+of the next entry is also returned for inline dir usage.
 
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h  |   15 ++++++++
- fs/ext4/namei.c |  105 ++++++++++++++++++++++++++++++++++---------------------
- 2 files changed, 80 insertions(+), 40 deletions(-)
+ fs/ext4/ext4.h  |    4 ++
+ fs/ext4/namei.c |  115 ++++++++++++++++++++++++++++++++++---------------------
+ 2 files changed, 75 insertions(+), 44 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cc889a4..82871bb 100644
+index 7838c32..8b56db1 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1952,6 +1952,21 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
-+extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+			     struct buffer_head *bh,
-+			     void *buf, int buf_size,
-+			     const char *name, int namelen,
-+			     struct ext4_dir_entry_2 **dest_de);
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen);
-+static inline void ext4_update_dx_flag(struct inode *inode)
-+{
-+	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
-+				     EXT4_FEATURE_COMPAT_DIR_INDEX))
-+		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
-+}
+@@ -2399,6 +2399,10 @@ extern void ext4_unwritten_wait(struct inode *inode);
+ extern const struct inode_operations ext4_dir_inode_operations;
+ extern const struct inode_operations ext4_special_inode_operations;
+ extern struct dentry *ext4_get_parent(struct dentry *child);
++extern struct ext4_dir_entry_2 *ext4_init_dot_dotdot(struct inode *inode,
++				 struct ext4_dir_entry_2 *de,
++				 int blocksize, int csum_size,
++				 unsigned int parent_ino, int dotdot_real_len);
  
- /* fsync.c */
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
+ /* symlink.c */
+ extern const struct inode_operations ext4_symlink_inode_operations;
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4f1c9f5..21c9f9a 100644
+index 6d600a6..dcf1be7 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1082,13 +1082,6 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- 	dx_set_count(entries, count + 1);
+@@ -2211,21 +2211,87 @@ retry:
+ 	return err;
  }
  
--static void ext4_update_dx_flag(struct inode *inode)
--{
--	if (!EXT4_HAS_COMPAT_FEATURE(inode->i_sb,
--				     EXT4_FEATURE_COMPAT_DIR_INDEX))
--		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
--}
--
- /*
-  * NOTE! unlike strncmp, ext4_match returns 1 for success, 0 for failure.
-  *
-@@ -1595,6 +1588,63 @@ errout:
- 	return NULL;
- }
- 
-+int ext4_find_dest_de(struct inode *dir, struct inode *inode,
-+		      struct buffer_head *bh,
-+		      void *buf, int buf_size,
-+		      const char *name, int namelen,
-+		      struct ext4_dir_entry_2 **dest_de)
+-static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
++struct ext4_dir_entry_2 *ext4_init_dot_dotdot(struct inode *inode,
++			  struct ext4_dir_entry_2 *de,
++			  int blocksize, int csum_size,
++			  unsigned int parent_ino, int dotdot_real_len)
 +{
-+	struct ext4_dir_entry_2 *de;
-+	unsigned short reclen = EXT4_DIR_REC_LEN(namelen);
-+	int nlen, rlen;
-+	unsigned int offset = 0;
-+	char *top;
-+
-+	de = (struct ext4_dir_entry_2 *)buf;
-+	top = buf + buf_size - reclen;
-+	while ((char *) de <= top) {
-+		if (ext4_check_dir_entry(dir, NULL, de, bh,
-+					 buf, buf_size, offset))
-+			return -EIO;
-+		if (ext4_match(namelen, name, de))
-+			return -EEXIST;
-+		nlen = EXT4_DIR_REC_LEN(de->name_len);
-+		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+		if ((de->inode ? rlen - nlen : rlen) >= reclen)
-+			break;
-+		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
-+		offset += rlen;
-+	}
-+	if ((char *) de > top)
-+		return -ENOSPC;
-+
-+	*dest_de = de;
-+	return 0;
-+}
-+
-+void ext4_insert_dentry(struct inode *inode,
-+			struct ext4_dir_entry_2 *de,
-+			int buf_size,
-+			const char *name, int namelen)
-+{
-+
-+	int nlen, rlen;
-+
-+	nlen = EXT4_DIR_REC_LEN(de->name_len);
-+	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-+	if (de->inode) {
-+		struct ext4_dir_entry_2 *de1 =
-+				(struct ext4_dir_entry_2 *)((char *)de + nlen);
-+		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, buf_size);
-+		de->rec_len = ext4_rec_len_to_disk(nlen, buf_size);
-+		de = de1;
-+	}
-+	de->file_type = EXT4_FT_UNKNOWN;
 +	de->inode = cpu_to_le32(inode->i_ino);
-+	ext4_set_de_type(inode->i_sb, de, inode->i_mode);
-+	de->name_len = namelen;
-+	memcpy(de->name, name, namelen);
-+}
- /*
-  * Add a new entry into a directory (leaf) block.  If de is non-NULL,
-  * it points to a directory entry which is guaranteed to be large
-@@ -1610,12 +1660,10 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
- 	int		namelen = dentry->d_name.len;
--	unsigned int	offset = 0;
- 	unsigned int	blocksize = dir->i_sb->s_blocksize;
- 	unsigned short	reclen;
--	int		nlen, rlen, err;
--	char		*top;
- 	int		csum_size = 0;
-+	int		err;
- 
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
- 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
-@@ -1623,23 +1671,11 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 
- 	reclen = EXT4_DIR_REC_LEN(namelen);
- 	if (!de) {
--		de = (struct ext4_dir_entry_2 *)bh->b_data;
--		top = bh->b_data + (blocksize - csum_size) - reclen;
--		while ((char *) de <= top) {
--			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
--						 bh->b_size, offset))
--				return -EIO;
--			if (ext4_match(namelen, name, de))
--				return -EEXIST;
--			nlen = EXT4_DIR_REC_LEN(de->name_len);
--			rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--			if ((de->inode? rlen - nlen: rlen) >= reclen)
--				break;
--			de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
--			offset += rlen;
--		}
--		if ((char *) de > top)
--			return -ENOSPC;
-+		err = ext4_find_dest_de(dir, inode,
-+					bh, bh->b_data, blocksize - csum_size,
-+					name, namelen, &de);
-+		if (err)
-+			return err;
- 	}
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, bh);
-@@ -1649,19 +1685,8 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	}
- 
- 	/* By now the buffer is marked for journaling */
--	nlen = EXT4_DIR_REC_LEN(de->name_len);
--	rlen = ext4_rec_len_from_disk(de->rec_len, blocksize);
--	if (de->inode) {
--		struct ext4_dir_entry_2 *de1 = (struct ext4_dir_entry_2 *)((char *)de + nlen);
--		de1->rec_len = ext4_rec_len_to_disk(rlen - nlen, blocksize);
--		de->rec_len = ext4_rec_len_to_disk(nlen, blocksize);
--		de = de1;
--	}
--	de->file_type = EXT4_FT_UNKNOWN;
--	de->inode = cpu_to_le32(inode->i_ino);
--	ext4_set_de_type(dir->i_sb, de, inode->i_mode);
--	de->name_len = namelen;
--	memcpy(de->name, name, namelen);
-+	ext4_insert_dentry(inode, de, blocksize, name, namelen);
++	de->name_len = 1;
++	de->rec_len = ext4_rec_len_to_disk(EXT4_DIR_REC_LEN(de->name_len),
++					   blocksize);
++	strcpy(de->name, ".");
++	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
 +
- 	/*
- 	 * XXX shouldn't update any times until successful
- 	 * completion of syscall, but too many callers depend
--- 
-1.7.1
-
++	de = ext4_next_entry(de, blocksize);
++	de->inode = cpu_to_le32(parent_ino);
++	de->name_len = 2;
++	if (!dotdot_real_len)
++		de->rec_len = ext4_rec_len_to_disk(blocksize -
++					(csum_size + EXT4_DIR_REC_LEN(1)),
++					blocksize);
++	else
++		de->rec_len = ext4_rec_len_to_disk(
++				EXT4_DIR_REC_LEN(de->name_len), blocksize);
++	strcpy(de->name, "..");
++	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
++
++	return ext4_next_entry(de, blocksize);
++}
++
++static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
++			     struct inode *inode)
+ {
+-	handle_t *handle;
+-	struct inode *inode;
+ 	struct buffer_head *dir_block = NULL;
+ 	struct ext4_dir_entry_2 *de;
+ 	struct ext4_dir_entry_tail *t;
+ 	unsigned int blocksize = dir->i_sb->s_blocksize;
+ 	int csum_size = 0;
+-	int err, retries = 0;
++	int err;
+ 
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(dir->i_sb,
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
++	inode->i_size = EXT4_I(inode)->i_disksize = blocksize;
++	dir_block = ext4_bread(handle, inode, 0, 1, &err);
++	if (!(dir_block = ext4_bread(handle, inode, 0, 1, &err))) {
++		if (!err) {
++			err = -EIO;
++			ext4_error(inode->i_sb,
++				   "Directory hole detected on inode %lu\n",
++				   inode->i_ino);
++		}
++		goto out;
++	}
++	BUFFER_TRACE(dir_block, "get_write_access");
++	err = ext4_journal_get_write_access(handle, dir_block);
++	if (err)
++		goto out;
++	de = (struct ext4_dir_entry_2 *)dir_block->b_data;
++	ext4_init_dot_dotdot(inode, de, blocksize, csum_size, dir->i_ino, 0);
++	set_nlink(inode, 2);
++	if (csum_size) {
++		t = EXT4_DIRENT_TAIL(dir_block->b_data, blocksize);
++		initialize_dirent_tail(t, blocksize);
++	}
++
++	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
++	err = ext4_handle_dirty_dirent_node(handle, inode, dir_block);
++	if (err)
++		goto out;
++	set_buffer_verified(dir_block);
++out:
++	brelse(dir_block);
++	return err;
++}
++
++static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
++{
++	handle_t *handle;
++	struct inode *inode;
++	int err, retries = 0;
++
+ 	if (EXT4_DIR_LINK_MAX(dir))
+ 		return -EMLINK;
+ 
+@@ -2249,47 +2315,9 @@ retry:
+ 
+ 	inode->i_op = &ext4_dir_inode_operations;
+ 	inode->i_fop = &ext4_dir_operations;
+-	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
+-	if (!(dir_block = ext4_bread(handle, inode, 0, 1, &err))) {
+-		if (!err) {
+-			err = -EIO;
+-			ext4_error(inode->i_sb,
+-				   "Directory hole detected on inode %lu\n",
+-				   inode->i_ino);
+-		}
+-		goto out_clear_inode;
+-	}
+-	BUFFER_TRACE(dir_block, "get_write_access");
+-	err = ext4_journal_get_write_access(handle, dir_block);
++	err = ext4_init_new_dir(handle, dir, inode);
+ 	if (err)
+ 		goto out_clear_inode;
+-	de = (struct ext4_dir_entry_2 *) dir_block->b_data;
+-	de->inode = cpu_to_le32(inode->i_ino);
+-	de->name_len = 1;
+-	de->rec_len = ext4_rec_len_to_disk(EXT4_DIR_REC_LEN(de->name_len),
+-					   blocksize);
+-	strcpy(de->name, ".");
+-	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
+-	de = ext4_next_entry(de, blocksize);
+-	de->inode = cpu_to_le32(dir->i_ino);
+-	de->rec_len = ext4_rec_len_to_disk(blocksize -
+-					   (csum_size + EXT4_DIR_REC_LEN(1)),
+-					   blocksize);
+-	de->name_len = 2;
+-	strcpy(de->name, "..");
+-	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
+-	set_nlink(inode, 2);
+-
+-	if (csum_size) {
+-		t = EXT4_DIRENT_TAIL(dir_block->b_data, blocksize);
+-		initialize_dirent_tail(t, blocksize);
+-	}
