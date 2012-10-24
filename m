@@ -1,73 +1,76 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
  (and other stable branches?)
-Date: Wed, 24 Oct 2012 17:08:19 -0400
-Message-ID: <20121024210819.GA5484@thunk.org>
-References: <20121023013343.GB6370@fieldses.org>
+Date: Wed, 24 Oct 2012 17:31:29 -0400
+Message-ID: <20121024213129.GB5484@thunk.org>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+ <20121023013343.GB6370@fieldses.org>
  <87mwzdnuww.fsf@spindle.srvr.nix>
  <20121023143019.GA3040@fieldses.org>
  <874nllxi7e.fsf_-_@spindle.srvr.nix>
  <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <508740B2.2030401@redhat.com>
- <87txtkld4h.fsf@spindle.srvr.nix>
- <50876E1D.3040501@redhat.com>
- <20121024052351.GB21714@thunk.org>
- <878vavveee.fsf@spindle.srvr.nix>
+ <20121023221913.GC28626@thunk.org>
+ <k69ejs$vt2$1@ger.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Bryan Schumaker <bjschuma@netapp.com>,
-	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
-	gregkh@linuxfoundation.org,
-	Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
-To: Nix <nix@esperi.org.uk>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+To: Jannis Achstetter <jannis_achstetter@web.de>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <878vavveee.fsf@spindle.srvr.nix>
+In-Reply-To: <k69ejs$vt2$1@ger.gmane.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 24, 2012 at 09:45:47PM +0100, Nix wrote:
+On Wed, Oct 24, 2012 at 09:13:01PM +0200, Jannis Achstetter wrote:
 > 
-> It occurs to me that it is possible that this bug hits only those
-> filesystems for which a umount has started but been unable to complete.
-> If so, this is a relatively rare and unimportant bug which probably hits
-> only me and users of slow removable filesystems in the whole world...
+> As a "normal linux user" I'm interested in the practical things to do
+> now to avoid data loss. I'm running several systems with 3.6.2 and ext4.
+> Fearing loss of data:
+> - Is there a way to see whether the journal of a specific partition has
+> been wrapped (since mounting) so that umounting and mounting (or doing a
+> reboot to downgrade the kernel) is safe?
 
-Can you verify this?  Does the bug show up if you just hit the power
-switch while the system is booted?
+My initial analysis of what had been causing the problem now looks
+incorrect (or at least incomplete).  Both Eric and I have been unable
+to reproduce the failure based on my initial theory of what had been
+going on.  So the best information at this point is that it's probably
+not related to the file system getting unmounted before the journal
+has wrapped.
 
-How about changing the "sleep 2" to "sleep 0.5"?  (Feel free to
-unmount your other partitions, and just leave a test file system
-mounted to minimize the chances that you lose partitions that require
-hours and hours to restore...)
+(Keep in mind this is why commercial software corporations like
+Microsoft or Apple generally don't make discussions as they are trying
+to root cause a problem public; sometimes the initial theories can be
+incorrect, and it's unfortunate when misinformation ends up on
+Phoronix or Slashdot, leading to people to panic...  but this is open
+source, so that means we do everything in the open, since that way we
+can all work towards finding the best answer.)
 
-If you can get a very reliable repro, we might have to ask you to try
-the following experiments:
+At the *moment* it looks like it might be related to an unclean
+shutdown (i.e., a forced reset or power failure while the file system
+is mounted or is in the process of being unmounted).  That being said,
+a simply kill -9 of kvm running a test kernel while the file system is
+mounted by otherwise quiscient doesn't trigger the problem (I was
+trying that last night).
 
-0) Make sure the reliable repro does _not_ work with 3.6.1 booted
+It's a little bit too early for this meme:
 
-1) Try a 3.6.2 kernel
+    http://memegenerator.net/instance/28936247
 
-2) (If the problem shows up above) try a 3.6.2 kernel with 14b4ed2 reverted
+But do please note that that Fedora !7 users have been using 3.6.2 for
+a while, so if this were an easily triggered bug, (a) Eric and I would
+have managed to reproduce it by now, and (b) lots of people would be
+complaining, since the symptoms of the bug are not subtle.
 
-3) (If the problem shows up above) try a 3.6.2 kernel with all of ext4
-   related patches reverted:
-92b7722 ext4: fix mtime update in nodelalloc mode
-34414b2 ext4: fix fdatasync() for files with only i_size changes
-12ebdf0 ext4: always set i_op in ext4_mknod()
-22a5672 ext4: online defrag is not supported for journaled files
-ba57d9e ext4: move_extent code cleanup
-2fdb112 ext4: fix crash when accessing /proc/mounts concurrently
-1638f1f ext4: fix potential deadlock in ext4_nonda_switch()
-5018ddd ext4: avoid duplicate writes of the backup bg descriptor blocks
-256ae46 ext4: don't copy non-existent gdt blocks when resizing
-416a688 ext4: ignore last group w/o enough space when resizing instead of BUG'ing
-14b4ed2 jbd2: don't write superblock when if its empty
+That's not to say we aren't treating this seriously; but people
+shouldn't panic unduly.... (and if you are using a critical
+enterprise/production server on bleeding edge kernels, may I suggest
+that this might not be such a good idea; there is a *reason* why
+enterprise Linux distro's spend 6-9 months or more just stablizing the
+kernel, and being super paranoid about making changes afterwards for
+years, and it's not because they enjoy backporting patches and working
+with trailing edge kernel sources.  :-)
 
-4) (If the problem still shows up) then we may need to do a full
-   bisect to figure out what is going on....
+Regards,
 
-   	     	     	    	     	- Ted
+						- Ted
