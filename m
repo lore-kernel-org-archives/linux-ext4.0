@@ -1,42 +1,34 @@
-From: Martin <marogge@onlinehome.de>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Wed, 24 Oct 2012 19:38:15 +0200
-Message-ID: <50882787.3030504@onlinehome.de>
-References: <jXsTo-5lW-13@gated-at.bofh.it> <jXBDk-7vn-13@gated-at.bofh.it> <jXNl8-5m5-13@gated-at.bofh.it> <jXNOa-5MR-23@gated-at.bofh.it> <jXPGh-87s-5@gated-at.bofh.it> <jXTJW-4CH-55@gated-at.bofh.it> <jXUZj-6mo-13@gated-at.bofh.it> <jXVLH-7kO-5@gated-at.bofh.it> <jXW53-7CC-5@gated-at.bofh.it> <jXWeJ-7Lk-1@gated-at.bofh.it>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: EXT4-fs error w/ external USB drive
+Date: Wed, 24 Oct 2012 14:35:05 -0400
+Message-ID: <20121024183505.GA6142@thunk.org>
+References: <507C4BDA.20205@gmx.de>
+ <20121019210723.GA4721@thunk.org>
+ <5085923F.9050801@gmx.de>
+ <20121024011128.GG28626@thunk.org>
+ <5088260D.7080403@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Nix <nix@esperi.org.uk>, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	stable@vger.kernel.org, gregkh@linuxfoundation.org
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <jXWeJ-7Lk-1@gated-at.bofh.it>
+Content-Disposition: inline
+In-Reply-To: <5088260D.7080403@gmx.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 10/24/2012 01:40 AM, Nix wrote:
+On Wed, Oct 24, 2012 at 07:31:57PM +0200, Toralf F=F6rster wrote:
+> > Are you using any kind of special mount options on your usb stick?
+> >
+> nope
 
-> It's true that in less than a week
-> probably not all that many people have rebooted often enough to trip
-> over this.
->
-> I hope.
->
+Thanks, we're trying to get a reliable repro of this failure, and so
+every bit of data helps...  I've cc'ed you on the other thread, and if
+you could try the second patch I sent out last night (and let me know
+when/if the WARN_ON triggers), I'd really appreciate it.
 
-Fwiw, i got a fried root filesystem (ext4) on one machine last week. It 
-was on 3.5.3 or 3.5.5. Since there was nothing in the logs and the 
-kernel was modified (CK, BFQ) and tainted (nvidia) I did not notify any 
-maintainers. I have not had the time yet to rebuild the machine 
-(unfortunately that will be laboursome), so the users cannot do their 
-homework or attend to their social life for the time being...
+Thanks again,
 
-The pattern was indeed characterized by a sequence of reboots (I am 
-told), and in a weird fashion files started to disappear from the root 
-filesystem (I first noticed /etc/groups missing, and after further fscks 
-and reboots login became impossible (I assume that /etc/passwd and or 
-/etc/shadow are buggered). I haven't assessed the extent of the damage yet.
-
-Still not sure whether it is related to the bug in question, of course.
-
-Martin
+                                          - Ted
