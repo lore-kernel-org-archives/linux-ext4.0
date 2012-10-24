@@ -1,179 +1,216 @@
 From: Tao Ma <tm@tao.ma>
-Subject: [PATCH V7 21/23] ext4: let ext4_truncate handle inline data correctly.
-Date: Wed, 24 Oct 2012 10:55:36 +0800
-Message-ID: <1351047338-4963-21-git-send-email-tm@tao.ma>
+Subject: [PATCH V7 20/23] ext4: Evict inline data out if we needs to strore xattr in inode.
+Date: Wed, 24 Oct 2012 10:55:35 +0800
+Message-ID: <1351047338-4963-20-git-send-email-tm@tao.ma>
 References: <1351047002-4723-1-git-send-email-tm@tao.ma>
  <1351047338-4963-1-git-send-email-tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:48244 "HELO
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:38089 "HELO
 	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S965173Ab2JXDEN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 23:04:13 -0400
+	with SMTP id S964805Ab2JXDEL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2012 23:04:11 -0400
 Received: from [182.92.247.2] (port=23186 helo=tma-laptop1.taobao.ali.com)
 	by box585.bluehost.com with esmtpsa (TLSv1:AES256-SHA:256)
 	(Exim 4.76)
 	(envelope-from <tm@tao.ma>)
-	id 1TQr8d-0006KI-3z
-	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:56:11 -0600
+	id 1TQr8c-0006KI-0l
+	for linux-ext4@vger.kernel.org; Tue, 23 Oct 2012 20:56:10 -0600
 In-Reply-To: <1351047338-4963-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Tao Ma <boyu.mt@taobao.com>
 
-Signed-off-by: Robin Dong <sanbai@taobao.com>
+Now we stores data in the inode, but in case we need to store some
+xattrs and inode doesn't have enough space, Andreas suggested that
+we should keep the xattr(metadata) in and data should be pushed out.
+So this patch does the work.
+
 Signed-off-by: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/inline.c |   90 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inode.c  |    8 +++++
- fs/ext4/xattr.h  |    9 +++++
- 3 files changed, 107 insertions(+), 0 deletions(-)
+ fs/ext4/inline.c |   46 ++++++++++++++++++++++++++++++++++++++++++----
+ fs/ext4/xattr.c  |   48 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/xattr.h  |    9 ++++++---
+ 3 files changed, 95 insertions(+), 8 deletions(-)
 
 diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 6a4053e..bff1f23 100644
+index dcf1f8e..6a4053e 100644
 --- a/fs/ext4/inline.c
 +++ b/fs/ext4/inline.c
-@@ -1747,3 +1747,93 @@ out:
- 	brelse(iloc.bh);
- 	return error;
+@@ -202,7 +202,7 @@ out:
+ /*
+  * write the buffer to the inline inode.
+  * If 'create' is set, we don't need to do the extra copy in the xattr
+- * value since it is already handled by ext4_xattr_ibody_set. That saves
++ * value since it is already handled by ext4_xattr_ibody_inline_set. That saves
+  * us one memcpy.
+  */
+ void ext4_write_inline_data(struct inode *inode, struct ext4_iloc *iloc,
+@@ -280,7 +280,7 @@ static int ext4_create_inline_data(handle_t *handle,
+ 
+ 	BUG_ON(!is.s.not_found);
+ 
+-	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
++	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
+ 	if (error) {
+ 		if (error == -ENOSPC)
+ 			ext4_clear_inode_state(inode,
+@@ -349,7 +349,7 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,
+ 	i.value = value;
+ 	i.value_len = len;
+ 
+-	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
++	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
+ 	if (error)
+ 		goto out;
+ 
+@@ -422,7 +422,7 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
+ 	if (error)
+ 		goto out;
+ 
+-	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
++	error = ext4_xattr_ibody_inline_set(handle, inode, &i, &is);
+ 	if (error)
+ 		goto out;
+ 
+@@ -1709,3 +1709,41 @@ out:
+ 	up_read(&EXT4_I(inode)->xattr_sem);
+ 	return (error < 0 ? error : 0);
  }
 +
-+void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
++/*
++ * Called during xattr set, and if we can sparse space 'needed',
++ * just create the extent tree evict the data to the outer block.
++ *
++ * We use jbd2 instead of page cache to move data to the 1st block
++ * so that the whole transaction can be committed as a whole and
++ * the data isn't lost because of the delayed page cache write.
++ */
++int ext4_try_to_evict_inline_data(handle_t *handle,
++				  struct inode *inode,
++				  int needed)
 +{
-+	handle_t *handle;
-+	int inline_size, value_len, needed_blocks;
-+	size_t i_size;
-+	void *value = NULL;
-+	struct ext4_xattr_ibody_find is = {
-+		.s = { .not_found = -ENODATA, },
-+	};
-+	struct ext4_xattr_info i = {
-+		.name_index = EXT4_XATTR_INDEX_SYSTEM,
-+		.name = EXT4_XATTR_SYSTEM_DATA,
-+	};
++	int error;
++	struct ext4_xattr_entry *entry;
++	struct ext4_xattr_ibody_header *header;
++	struct ext4_inode *raw_inode;
++	struct ext4_iloc iloc;
 +
++	error = ext4_get_inode_loc(inode, &iloc);
++	if (error)
++		return error;
 +
-+	needed_blocks = ext4_writepage_trans_blocks(inode);
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle))
-+		return;
-+
-+	down_write(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode)) {
-+		*has_inline = 0;
-+		ext4_journal_stop(handle);
-+		return;
++	raw_inode = ext4_raw_inode(&iloc);
++	header = IHDR(inode, raw_inode);
++	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
++					    EXT4_I(inode)->i_inline_off);
++	if (EXT4_XATTR_LEN(entry->e_name_len) +
++	    EXT4_XATTR_SIZE(le32_to_cpu(entry->e_value_size)) < needed) {
++		error = -ENOSPC;
++		goto out;
 +	}
 +
-+	if (ext4_orphan_add(handle, inode))
-+		goto out;
-+
-+	if (ext4_get_inode_loc(inode, &is.iloc))
-+		goto out;
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	i_size = inode->i_size;
-+	inline_size = ext4_get_inline_size(inode);
-+	EXT4_I(inode)->i_disksize = i_size;
-+
-+	if (i_size < inline_size) {
-+		/* Clear the content in the xattr space. */
-+		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
-+			if (ext4_xattr_ibody_find(inode, &i, &is))
-+				goto out_error;
-+
-+			BUG_ON(is.s.not_found);
-+
-+			value_len = le32_to_cpu(is.s.here->e_value_size);
-+			value = kmalloc(value_len, GFP_NOFS);
-+			if (!value)
-+				goto out_error;
-+
-+			if (ext4_xattr_ibody_get(inode, i.name_index, i.name,
-+						value, value_len))
-+				goto out_error;
-+
-+			i.value = value;
-+			i.value_len = i_size > EXT4_MIN_INLINE_DATA_SIZE ?
-+					i_size - EXT4_MIN_INLINE_DATA_SIZE : 0;
-+			if (ext4_xattr_ibody_inline_set(handle, inode, &i, &is))
-+				goto out_error;
-+		}
-+
-+		/* Clear the content within i_blocks. */
-+		if (i_size < EXT4_MIN_INLINE_DATA_SIZE)
-+			memset(ext4_raw_inode(&is.iloc)->i_block + i_size, 0,
-+					EXT4_MIN_INLINE_DATA_SIZE - i_size);
-+
-+		EXT4_I(inode)->i_inline_size = i_size <
-+					EXT4_MIN_INLINE_DATA_SIZE ?
-+					EXT4_MIN_INLINE_DATA_SIZE : i_size;
-+	}
-+
-+out_error:
-+	up_write(&EXT4_I(inode)->i_data_sem);
++	error = ext4_convert_inline_data_nolock(handle, inode, &iloc);
 +out:
-+	brelse(is.iloc.bh);
-+	up_write(&EXT4_I(inode)->xattr_sem);
-+	kfree(value);
-+	if (inode->i_nlink)
-+		ext4_orphan_del(handle, inode);
-+
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+	if (IS_SYNC(inode))
-+		ext4_handle_sync(handle);
-+
-+	ext4_journal_stop(handle);
-+	return;
++	brelse(iloc.bh);
++	return error;
 +}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 44b572e..b314a0c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3643,6 +3643,14 @@ void ext4_truncate(struct inode *inode)
- 	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
- 		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index dfcb156..e83beb2 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -959,6 +959,44 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+ 	return 0;
+ }
  
-+	if (ext4_has_inline_data(inode)) {
-+		int has_inline = 1;
++int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
++				struct ext4_xattr_info *i,
++				struct ext4_xattr_ibody_find *is)
++{
++	struct ext4_xattr_ibody_header *header;
++	struct ext4_xattr_search *s = &is->s;
++	int error;
 +
-+		ext4_inline_data_truncate(inode, &has_inline);
-+		if (has_inline)
-+			return;
++	if (EXT4_I(inode)->i_extra_isize == 0)
++		return -ENOSPC;
++	error = ext4_xattr_set_entry(i, s);
++	if (error) {
++		if (error == -ENOSPC &&
++		    ext4_has_inline_data(inode)) {
++			error = ext4_try_to_evict_inline_data(handle, inode,
++					EXT4_XATTR_LEN(strlen(i->name) +
++					EXT4_XATTR_SIZE(i->value_len)));
++			if (error)
++				return error;
++			error = ext4_xattr_ibody_find(inode, i, is);
++			if (error)
++				return error;
++			error = ext4_xattr_set_entry(i, s);
++		}
++		if (error)
++			return error;
 +	}
++	header = IHDR(inode, ext4_raw_inode(&is->iloc));
++	if (!IS_LAST_ENTRY(s->first)) {
++		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
++		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
++	} else {
++		header->h_magic = cpu_to_le32(0);
++		ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
++	}
++	return 0;
++}
 +
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		ext4_ext_truncate(inode);
- 	else
+ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 			 struct ext4_xattr_info *i,
+ 			 struct ext4_xattr_ibody_find *is)
+@@ -1117,9 +1155,17 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ {
+ 	handle_t *handle;
+ 	int error, retries = 0;
++	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
+ 
+ retry:
+-	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
++	/*
++	 * In case of inline data, we may push out the data to a block,
++	 * So reserve the journal space first.
++	 */
++	if (ext4_has_inline_data(inode))
++		credits += ext4_writepage_trans_blocks(inode) + 1;
++
++	handle = ext4_journal_start(inode, credits);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 	} else {
 diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index ef9ce62..0aef19e 100644
+index 2e09ab2..ef9ce62 100644
 --- a/fs/ext4/xattr.h
 +++ b/fs/ext4/xattr.h
-@@ -190,6 +190,8 @@ extern int ext4_inline_data_fiemap(struct inode *inode,
- extern int ext4_try_to_evict_inline_data(handle_t *handle,
- 					 struct inode *inode,
- 					 int needed);
-+extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
-+
+@@ -122,9 +122,9 @@ extern int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+ extern int ext4_xattr_ibody_get(struct inode *inode, int name_index,
+ 				const char *name,
+ 				void *buffer, size_t buffer_size);
+-extern int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+-				struct ext4_xattr_info *i,
+-				struct ext4_xattr_ibody_find *is);
++extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
++				       struct ext4_xattr_info *i,
++				       struct ext4_xattr_ibody_find *is);
+ 
+ extern int ext4_has_inline_data(struct inode *inode);
+ extern int ext4_get_inline_size(struct inode *inode);
+@@ -187,6 +187,9 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+ extern int ext4_inline_data_fiemap(struct inode *inode,
+ 				   struct fiemap_extent_info *fieinfo,
+ 				   int *has_inline);
++extern int ext4_try_to_evict_inline_data(handle_t *handle,
++					 struct inode *inode,
++					 int needed);
  # else  /* CONFIG_EXT4_FS_XATTR */
  
  static inline int
-@@ -409,6 +411,13 @@ static inline int ext4_inline_data_fiemap(struct inode *inode,
- {
- 	return 0;
- }
-+
-+static inline void ext4_inline_data_truncate(struct inode *inode,
-+					     int *has_inline)
-+{
-+	return;
-+}
-+
- # endif  /* CONFIG_EXT4_FS_XATTR */
- 
- #ifdef CONFIG_EXT4_FS_SECURITY
 -- 
 1.7.1
 
