@@ -1,51 +1,114 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT4-fs error w/ external USB drive
-Date: Thu, 25 Oct 2012 13:27:28 -0500
-Message-ID: <50898490.20409@redhat.com>
-References: <507C4BDA.20205@gmx.de> <20121019210723.GA4721@thunk.org> <5085923F.9050801@gmx.de> <20121024011128.GG28626@thunk.org> <5088260D.7080403@gmx.de> <20121024183505.GA6142@thunk.org> <50896B42.90606@gmx.de> <20121025182004.GA16257@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Wed, 24 Oct 2012 22:17:17 +0200
+Message-ID: <20121024201717.GA5572@quack.suse.cz>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+ <20121023013343.GB6370@fieldses.org>
+ <87mwzdnuww.fsf@spindle.srvr.nix>
+ <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <87pq48nbyz.fsf_-_@spindle.srvr.nix>
+ <20121023221913.GC28626@thunk.org>
+ <50873CE5.8090303@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	=?ISO-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Nix <nix@esperi.org.uk>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+	gregkh@linuxfoundation.org,
+	Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>,
+	stable@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28577 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:59497 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759429Ab2JYS1k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2012 14:27:40 -0400
-In-Reply-To: <20121025182004.GA16257@thunk.org>
+	id S935206Ab2JYTJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2012 15:09:00 -0400
+Content-Disposition: inline
+In-Reply-To: <50873CE5.8090303@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/25/12 1:20 PM, Theodore Ts'o wrote:
-> On Thu, Oct 25, 2012 at 06:39:30PM +0200, Toralf F=F6rster wrote:
->> After a lot of file operations (Gentoo emerging, kernel build, git
->> pulls, ...) I s2disk the system (that with the external USB drive)
->> yesterday, wake it up today, rebooted it -
->> and had to manually repair the file system, because the automatic fs=
-ck
->> gave up.
->=20
-> OK, I'm going to send another patch series which I'd hope you could
-> test to see if reduces the rate at which this happens.
->=20
->> Nevertheless there's another Linux system I have (64bit RH EL,intern=
-al
->> drive), where with kernel 3.5.4-1.el6.elrepo.x86_64 EXT4 errors occu=
-rred.
->> I attached the whole appropriate section of /var/log/message.
->=20
-> I don't have easy access to the RHEL kernel sources, and so I don't
+On Tue 23-10-12 19:57:09, Eric Sandeen wrote:
+> On 10/23/12 5:19 PM, Theodore Ts'o wrote:
+> > On Tue, Oct 23, 2012 at 09:57:08PM +0100, Nix wrote:
+> >>
+> >> It is now quite clear that this is a bug introduced by one or more of
+> >> the post-3.6.1 ext4 patches (which have all been backported at least to
+> >> 3.5, so the problem is probably there too).
+> >>
+> >> [   60.290844] EXT4-fs error (device dm-3): ext4_mb_generate_buddy:741: group 202, 1583 clusters in bitmap, 1675 in gd
+> >> [   60.291426] JBD2: Spotted dirty metadata buffer (dev = dm-3, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+> >>
+> > 
+> > I think I've found the problem.  I believe the commit at fault is commit
+> > 14b4ed22a6 (upstream commit eeecef0af5e):
+> > 
+> >     jbd2: don't write superblock when if its empty
+> > 
+> > which first appeared in v3.6.2.
+> > 
+> > The reason why the problem happens rarely is that the effect of the
+> > buggy commit is that if the journal's starting block is zero, we fail
+> > to truncate the journal when we unmount the file system.  This can
+> > happen if we mount and then unmount the file system fairly quickly,
+> > before the log has a chance to wrap.After the first time this has
+> > happened, it's not a disaster, since when we replay the journal, we'll
+> > just replay some extra transactions.  But if this happens twice, the
+> > oldest valid transaction will still not have gotten updated, but some
+> > of the newer transactions from the last mount session will have gotten
+> > written by the very latest transacitons, and when we then try to do
+> > the extra transaction replays, the metadata blocks can end up getting
+> > very scrambled indeed.
+> 
+> I'm stumped by this; maybe Ted can see if I'm missing something.
+> 
+> (and Nix, is there anything special about your fs?  Any nondefault
+> mkfs or mount options, external journal, inordinately large fs, or
+> anything like that?)
+> 
+> The suspect commit added this in jbd2_mark_journal_empty():
+> 
+>         /* Is it already empty? */
+>         if (sb->s_start == 0) {
+>                 read_unlock(&journal->j_state_lock);
+>                 return;
+>         }
+> 
+> thereby short circuiting the function.
+> 
+> But Ted's suggestion that mounting the fs, doing a little work, and
+> unmounting before we wrap would lead to this doesn't make sense to
+> me.  When I do a little work, s_start is at 1, not 0.  We start
+> the journal at s_first:
+> 
+> load_superblock()
+> 	journal->j_first = be32_to_cpu(sb->s_first);
+> 
+> And when we wrap the journal, we wrap back to j_first:
+> 
+> jbd2_journal_next_log_block():
+>         if (journal->j_head == journal->j_last)
+>                 journal->j_head = journal->j_first;
+> 
+> and j_first comes from s_first, which is set at journal creation
+> time to be "1" for an internal journal.
+> 
+> So s_start == 0 sure looks special to me; so far I can only see that
+> we get there if we've been through jbd2_mark_journal_empty() already,
+> though I'm eyeballing jbd2_journal_get_log_tail() as well.
+> 
+> Ted's proposed patch seems harmless but so far I don't understand
+> what problem it fixes, and I cannot recreate getting to
+> jbd2_mark_journal_empty() with a dirty log and s_start == 0.
+  Agreed. I rather thing we might miss journal->j_flags |= JBD2_FLUSHED
+when shortcircuiting jbd2_mark_journal_empty(). But I still don't exactly
+see how that would cause the corruption...
 
-Just FWIW, that's a 3rd party kernel, not something Red Hat
-ships.  (see "elrepo")
-
--Eric
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
