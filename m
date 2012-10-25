@@ -1,71 +1,105 @@
-From: Michael Tokarev <mjt@tls.msk.ru>
-Subject: [PATCH] ext4: do not try to write superblock on journal-less readonly remount
-Date: Thu, 25 Oct 2012 12:39:57 +0400
-Message-ID: <1351154397-14743-1-git-send-email-mjt@msgid.tls.msk.ru>
-Cc: sandeen@redhat.com, Michael Tokarev <mjt@tls.msk.ru>
-To: linux-ext4@vger.kernel.org
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Automatic setting of {INODE,BLOCK}_UNINIT flags
+Date: Thu, 25 Oct 2012 11:44:44 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.1210251138100.24674@dhcp-1-104.brq.redhat.com>
+References: <1351149943-4827-1-git-send-email-tracek@redhat.com> <CAGBYx2bU=G0X4GDZSjznnn12yAxJXs=RWn_x1EvHM8RGbkdk0A@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Tomas Racek <tracek@redhat.com>, linux-ext4@vger.kernel.org,
+	lczerner@redhat.com
+To: Yongqiang Yang <xiaoqiangnk@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from isrv.corpit.ru ([86.62.121.231]:33215 "EHLO isrv.corpit.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:18472 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933317Ab2JYIkL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2012 04:40:11 -0400
+	id S934884Ab2JYJou (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2012 05:44:50 -0400
+In-Reply-To: <CAGBYx2bU=G0X4GDZSjznnn12yAxJXs=RWn_x1EvHM8RGbkdk0A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a journal-less ext4 filesystem is mounted on a read-only block
-device (blockdev --setro will do), each remount (for other, unrelated,
-flags, like suid=>nosuid etc) results in a series of scary messages
-from kernel telling about I/O errors on the device.
+On Thu, 25 Oct 2012, Yongqiang Yang wrote:
 
-This is becauese of the following code ext4_remount():
+> Date: Thu, 25 Oct 2012 15:44:48 +0800
+> From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+> To: Tomas Racek <tracek@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
+> Subject: Re: [PATCH] ext4: Automatic setting of {INODE,BLOCK}_UNINIT flags
+> 
+> Does it make sense in no journal mode?
 
-       if (sbi->s_journal == NULL)
-                ext4_commit_super(sb, 1);
+I am not sure why it would not ? It only makes changes to the block
+group descriptors marking block/inode table as unitialized so we can
+skip then in fsck.
 
-at the end of remount procedure, which forces writing (flushing) of
-a superblock regardless whenever it is dirty or not, if the filesystem
-is readonly or not, and whenever the device itself is readonly or not.
+Originally it has been only marked uninitialized when we create the
+file system, but once we use the particular inode table or block
+group bitmap it become initialized forever, even though it has been
+completely freed since then. This patch fixes it so it can become
+uninitialized again (granted that the flag name is not the best).
 
-The proposed fix tests whenever both old mount flags and new mount
-flags does not include MS_READONLY, and only in this case calls
-ext4_commit_super().
+Advantages are that we can skip that in fsck, but also we might save
+read from disk, because uninitialized descriptors are initialized in
+memory rather hen read from the disk.
 
-Maybe it is sufficient to check for MS_READONLY just in old mount
-options (old_sb_flags).  Note this is journal-less mode, so, for
-example, we weren't have journal replay operation, so if old flags
-include MS_REASONLY, we shuold have no dirty blocks at all, and
-there's no reason to call ext4_commit_super().
+So my question is, why do you think this might not make sense in no
+journal mode ? Maybe I am missing something.
 
-But only in case both old and new flags include MS_READONLY we're
-certain we will not write anything - if new flag does not include
-this bit, we will write sooner or later anyway, so preventing just
-one commit_super() at the _beginning_ of mount is not really necessary.
+Thanks!
+-Lukas
 
-This change probably applicable to -stable, -- not because it fixes
-a serious bug, but because the messages printed by the kernel are
-rather scary for an average user.  On the other hand, actual usage
-of ext4 in nojournal mode on a read-only medium is very rare.
-
-Thanks to Eric Sandeen for help in diagnosing this issue.
-
-Signed-off-By: Michael Tokarev <mjt@tls.msk.ru>
----
- fs/ext4/super.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3e0851e..2e896fd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4687,7 +4687,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	}
- 
- 	ext4_setup_system_zone(sb);
--	if (sbi->s_journal == NULL)
-+	if (sbi->s_journal == NULL && !(sb->s_flags & old_sb_flags & MS_RDONLY))
- 		ext4_commit_super(sb, 1);
- 
- 	unlock_super(sb);
--- 
-1.7.10.4
-
+> 
+> Thanks,
+> Yongqiang.
+> 
+> On Thu, Oct 25, 2012 at 3:25 PM, Tomas Racek <tracek@redhat.com> wrote:
+> > When last inode from bg is freed, set the INODE_UNINIT flag, similarly
+> > when last block is freed, set BLOCK_UNINIT flag. This can speed up
+> > subsequent fsck run.
+> >
+> > Signed-off-by: Tomas Racek <tracek@redhat.com>
+> > ---
+> >  fs/ext4/ialloc.c  | 4 ++++
+> >  fs/ext4/mballoc.c | 4 ++++
+> >  2 files changed, 8 insertions(+)
+> >
+> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> > index 4facdd2..6e4b982 100644
+> > --- a/fs/ext4/ialloc.c
+> > +++ b/fs/ext4/ialloc.c
+> > @@ -289,6 +289,10 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+> >
+> >         count = ext4_free_inodes_count(sb, gdp) + 1;
+> >         ext4_free_inodes_set(sb, gdp, count);
+> > +
+> > +       if (count == EXT4_INODES_PER_GROUP(sb))
+> > +               gdp->bg_flags |= cpu_to_le16(EXT4_BG_INODE_UNINIT);
+> > +
+> >         if (is_directory) {
+> >                 count = ext4_used_dirs_count(sb, gdp) - 1;
+> >                 ext4_used_dirs_set(sb, gdp, count);
+> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> > index 526e553..28bce35 100644
+> > --- a/fs/ext4/mballoc.c
+> > +++ b/fs/ext4/mballoc.c
+> > @@ -4665,6 +4665,10 @@ do_more:
+> >
+> >         ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
+> >         ext4_free_group_clusters_set(sb, gdp, ret);
+> > +
+> > +       if(ret == EXT4_BLOCKS_PER_GROUP(sb))
+> > +               gdp->bg_flags |= cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
+> > +
+> >         ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
+> >         ext4_group_desc_csum_set(sb, block_group, gdp);
+> >         ext4_unlock_group(sb, block_group);
+> > --
+> > 1.7.11.7
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> 
+> 
