@@ -1,162 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] xfstests: test ext4 statfs
-Date: Thu, 25 Oct 2012 12:19:24 -0500
-Message-ID: <5089749C.4050003@redhat.com>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: [PATCH] ext4: do not try to write superblock on journal-less
+ readonly remount
+Date: Thu, 25 Oct 2012 21:38:20 +0400
+Message-ID: <5089790C.8080606@msgid.tls.msk.ru>
+References: <1351154397-14743-1-git-send-email-mjt@msgid.tls.msk.ru> <alpine.LFD.2.00.1210251438530.24674@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35389 "EHLO mx1.redhat.com"
+Received: from isrv.corpit.ru ([86.62.121.231]:47588 "EHLO isrv.corpit.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935930Ab2JYRT2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Oct 2012 13:19:28 -0400
+	id S935887Ab2JYRiW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2012 13:38:22 -0400
+In-Reply-To: <alpine.LFD.2.00.1210251438530.24674@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Calculating free blocks in ext[234] is surprisingly hard, since
-by default we report "bsd" style df which doesn't count filesystem
-"overhead" blocks as used.
+On 25.10.2012 16:43, Luk=E1=9A Czerner wrote:
+> On Thu, 25 Oct 2012, Michael Tokarev wrote:
+>=20
+>> Date: Thu, 25 Oct 2012 12:39:57 +0400
+>> From: Michael Tokarev <mjt@tls.msk.ru>
+>> To: linux-ext4@vger.kernel.org
+>> Cc: sandeen@redhat.com, Michael Tokarev <mjt@tls.msk.ru>
+>> Subject: [PATCH] ext4: do not try to write superblock on journal-les=
+s readonly
+>>      remount
+>>
+>> When a journal-less ext4 filesystem is mounted on a read-only block
+>> device (blockdev --setro will do), each remount (for other, unrelate=
+d,
+>> flags, like suid=3D>nosuid etc) results in a series of scary message=
+s
+>> from kernel telling about I/O errors on the device.
+>=20
+> Hi Michael,
+>=20
+> I am not able to reproduce the problem you're seeing:
+>=20
+> mkfs.ext4 /dev/sdd1
+> tune2fs -O ^has_journal /dev/sdd1
+> blockdev --setro /dev/sdd1
+> mount /dev/sdd1 /mnt/test
+>=20
+> and then
+>=20
+> mount -o remount,suid /dev/sdd1
+> mount -o remount,nosuid /dev/sdd1
+> mount -o remount,noatime /dev/sdd1
+> mount -o remount,relatime /dev/sdd1
+> mount -o remount,relatime,commit=3D20 /dev/sdd1
+>=20
+> just does not produce any errors. Both /var/log/messages and dmesg
+> are clear.
 
-With a lot of code dedicated to sorting out what to report as
-free, things tend to go wrong surprisingly often.
+Interesting.
 
-Here's a test to actually try to stop the next regression.  ;)
+Actual situation where I observed this issue was when the device
+really was read-only.  In my case it was a virtual machine (kvm)
+with a read-only virtio drive (-drive file=3Dfoo,if=3Dvirtio,readonly=3D=
+on).
+I played with a "live CD"-type system.
 
-NB: For bsddf, the kernel currently does not count journal blocks
-as overhead; it probably should.  But the test below looks to have
-the result within 1% of perfection, so it still passes even if
-the kernel doesn't count the journal against free blocks.
+Now when I look at it, I'm not sure if I were really able to
+reproduce it with regular /dev/sdNN and blockdev --setro.  I
+*think* it was reproducible, but actually I can't.  So it looks
+like blockdev --setro does not do what it claims to do -- the
+actual device isn't really set read-only.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+The errors produced at remount are real, when the device in question
+really dislikes (reject) writes.  Apparently --setro isn't enough --
+somewhere at kernel level write for such device are actually succeeded
+instead of being errored out, when the device itself does not reject
+writes.  So the impact is even less severe when I initially thought.
 
-diff --git a/289 b/289
-new file mode 100755
-index 0000000..bf0e897
---- /dev/null
-+++ b/289
-@@ -0,0 +1,103 @@
-+#! /bin/bash
-+# FS QA Test No. 286
-+#
-+# Test overhead & df output for extN filesystems
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=sandeen@redhat.com
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+
-+# real QA test starts here
-+
-+# Modify as appropriate.
-+_supported_fs ext2 ext3 ext4
-+_supported_os Linux
-+_require_scratch
-+
-+rm -f $seq.full
-+
-+_scratch_mkfs >> $seq.full 2>&1
-+
-+# Get the honest truth about block counts straight from metadata on disk
-+TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
-+		| awk '/Block count:/{print $3}'`
-+
-+FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
-+		| awk '/Free blocks:/{print $3}'`
-+
-+# nb: kernels today don't count journal blocks  as overhead, but should.
-+# For most filesystems this will still be within tolerance.
-+# Overhead is all the blocks (already) used by the fs itself:
-+OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
-+
-+#  bsddf|minixdf
-+#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
-+#         behaviour is to return in the f_blocks field the total number of
-+#         blocks of the filesystem, while the bsddf  behaviour  (which  is
-+#         the default) is to subtract the overhead blocks used by the ext2
-+#         filesystem and not available for file storage.
-+
-+# stat -f output looks like this; we get f_blocks from that, which
-+# varies depending on the df mount options used below:
-+
-+#   File: "/mnt/test"
-+#    ID: affc5f2b2f57652 Namelen: 255     Type: ext2/ext3
-+# Block size: 4096       Fundamental block size: 4096
-+# Blocks: Total: 5162741    Free: 5118725    Available: 4856465
-+# Inodes: Total: 1313760    Free: 1313749
-+
-+_scratch_mount "-o minixdf"
-+MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
-+umount $SCRATCH_MNT
-+
-+_scratch_mount "-o bsddf"
-+BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
-+umount $SCRATCH_MNT
-+
-+# Echo data to $seq.full for analysis
-+echo "Overhead is $OVERHEAD blocks out of $TOTAL_BLOCKS ($FREE_BLOCKS free)" >> $seq.full
-+echo "MINIX free blocks $MINIX_F_BLOCKS" >> $seq.full
-+echo "BSD free blocks $BSD_F_BLOCKS" >> $seq.full
-+
-+# minix should be exactly equal (hence tolerance of 0)
-+_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
-+# bsd should be within ... we'll say 1% for some slop
-+_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/289.out b/289.out
-new file mode 100644
-index 0000000..a4de760
---- /dev/null
-+++ b/289.out
-@@ -0,0 +1,3 @@
-+QA output created by 289
-+minix f_blocks is in range
-+bsd f_blocks is in range
-diff --git a/group b/group
-index fb0f8eb..a846b60 100644
---- a/group
-+++ b/group
-@@ -407,3 +407,4 @@ deprecated
- 286 other
- 287 auto dump quota quick
- 288 auto quick ioctl trim
-+289 auto quick
+Thanks,
 
+/mjt
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
