@@ -1,63 +1,121 @@
-From: Nix <nix@esperi.org.uk>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
-Date: Thu, 25 Oct 2012 00:47:49 +0100
-Message-ID: <87liev77q2.fsf@spindle.srvr.nix>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	<20121023143019.GA3040@fieldses.org>
-	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<87pq48nbyz.fsf_-_@spindle.srvr.nix>
-	<20121023221913.GC28626@thunk.org> <k69ejs$vt2$1@ger.gmane.org>
-	<20121024213129.GB5484@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6
+ (when rebooting during umount)
+Date: Wed, 24 Oct 2012 21:10:56 -0400
+Message-ID: <20121025011056.GC4559@thunk.org>
+References: <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <87pq48nbyz.fsf_-_@spindle.srvr.nix>
+ <508740B2.2030401@redhat.com>
+ <87txtkld4h.fsf@spindle.srvr.nix>
+ <50876E1D.3040501@redhat.com>
+ <20121024052351.GB21714@thunk.org>
+ <878vavveee.fsf@spindle.srvr.nix>
+ <20121024210819.GA5484@thunk.org>
+ <87y5iv78op.fsf_-_@spindle.srvr.nix>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jannis Achstetter <jannis_achstetter@web.de>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+	gregkh@linuxfoundation.org,
+	Toralf =?iso-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
+To: Nix <nix@esperi.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:35645 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755685Ab2JXXrw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2012 19:47:52 -0400
-In-Reply-To: <20121024213129.GB5484@thunk.org> (Theodore Ts'o's message of
-	"Wed, 24 Oct 2012 17:31:29 -0400")
+Received: from li9-11.members.linode.com ([67.18.176.11]:57359 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751243Ab2JYBLO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Oct 2012 21:11:14 -0400
+Content-Disposition: inline
+In-Reply-To: <87y5iv78op.fsf_-_@spindle.srvr.nix>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 24 Oct 2012, Theodore Ts'o uttered the following:
-> (Keep in mind this is why commercial software corporations like
-> Microsoft or Apple generally don't make discussions as they are trying
-> to root cause a problem public; sometimes the initial theories can be
-> incorrect, and it's unfortunate when misinformation ends up on
-> Phoronix or Slashdot, leading to people to panic...  but this is open
-> source, so that means we do everything in the open, since that way we
-> can all work towards finding the best answer.)
-
-Quite. The first few days of any problem diagnosis are often a process
-of taking something from 'oh my god it might be the end of the world' to
-'oh look it's really obscure, no wonder nobody has ever seen it before'.
-
-This is quite *definitely* such a problem.
-
-> It's a little bit too early for this meme:
+On Thu, Oct 25, 2012 at 12:27:02AM +0100, Nix wrote:
 >
->     http://memegenerator.net/instance/28936247
+>  - /sbin/reboot -f of running system
+>    -> Journal replay, no problems other than the expected free block
+>       count problems. This is not such a severe problem after all!
+> 
+>  - Normal shutdown, but a 60 second pause after lazy umount, more than
+>    long enough for all umounts to proceed to termination
+>    -> no corruption, but curiously /home experienced a journal replay
+>       before being fscked, even though a cat of /proc/mounts after
+>       umounting revealed that the only mounted filesystem was /,
+>       read-only, so /home should have been clean
 
-It appears I have taken up a new post as the Iraqi Information Minister.
-This is why I was disturbed to see the thing hitting Phoronix and then
-Slashdot: as the guy whose FSes are being eaten, this is probably not an
-easy bug to hit! If it hits, the consequences are serious, but it
-doesn't seem to be easy to hit. (I should perhaps have phrased the
-subject line better, but I'd just had my $HOME eaten and was rather
-stressed out...)
+Question: how are you doing the journal replay?  Is it happening as
+part of running e2fsck, or are you mounting the file system and
+letting kernel do the journal replay?
 
-> But do please note that that Fedora !7 users have been using 3.6.2 for
-> a while, so if this were an easily triggered bug, (a) Eric and I would
-> have managed to reproduce it by now, and (b) lots of people would be
-> complaining, since the symptoms of the bug are not subtle.
+Also, can you reproduce the problem with the nobarrier and
+journal_async_commit options *removed*?  Yes, I know you have battery
+backup, but it would be interesting to see if the problem shows up in
+the default configuration with none of the more specialist options.
+(So it would probably be good to test with journal_checksum removed as
+well.)
 
-Quite.
+If that does make the problem go away, that will be a very interesting
+data point....
 
--- 
-NULL && (void)
+> Unfortunately, the massive corruption in the last testcase was seen in
+> 3.6.1 as well as 3.6.3: it appears that the only effect that superblock
+> change had in 3.6.3 was to make this problem easier to hit, and that the
+> bug itself was introduced probably somewhere between 3.5 and 3.6 (though
+> I only rebooted 3.5.x twice, and it's rare enough before 3.6.[23], at
+> ~1/20 boots, that it may have been present for longer and I never
+> noticed).
+
+Hmm.... ok.  Can you tell whether or not the 2nd patch I posted on
+this thread made any difference to how frequently it happened?  The
+main difference with 3.6.3 with 2nd patch applied compared to 3.6.1 is
+that if it detects that the journal superblock update is a no-op, it
+skips the write request.  With 3.6.1, it submits the journal
+superblock write regardless of whether or not it would be a no-op.  So
+if my patch isn't making a difference to the freqency to when you are
+seeing the corruption, then it must be the write request itself which
+is important.
+
+When you say it's rare before 3.6.[23], how rare is it?  How reliably
+can you trigger it under 3.6.1?  One in 3?  One in 5?  One in 20?
+
+As far as bisecting, one experiment that I'd really appreciate your
+doing is to check and see whether you can reproduce the problem using
+the 3.4 kernel, and if you can, to see if it reproduces under the 3.3
+kernel.
+
+The reason why I ask this is there were not any major changes between
+3.5 and 3.6, or between 3.4 and 3.5.  There *were* however, some
+fairly major changes made by Jan Kara that were introduced between 3.3
+and 3.4.  Among other things, this is where we started using FUA
+(Force Unit Attention) writes to update the journal superblock instead
+of just using REQ_FLUSH.  This is in fact the most likely place where
+we might have introduced the regression, since it wouldn't surprise me
+if Jan didn't test the case of using nobarrier with a storage array
+with battery backup (I certainly didn't, since I don't have easy
+access to such fancy toys :-).
+
+> It also appears impossible for me to reliably shut my system down,
+> though a 60s timeout after lazy umount and before reboot is likely to
+> work in all but the most pathological of cases (where a downed NFS
+> server comes up at just the wrong instant): it is clear that the
+> previous 5s timeout eventually became insufficient simply because of the
+> amount of time it can take to do a umount on today's larger filesystems.
+
+Something that you might want to consider trying is after you kill all
+of the processes, remount all of the local disk file systems
+read-only, then kick off the unmount of the NFS file systems (just to
+be nice to the NFS servers, so they are notified of the unmount), and
+then just force the reboot.  If the file systems have been remounted
+r/o, that will cause the journal to be shutdown cleanly, and all of
+the write flushed out.  (Modulo issues with nobarrier, but that's a
+separate issue.  I'm now thinking that a smart thing to do might be
+force a flush on an unmount or remount r/o, regardless of whether
+nobarrier is specified, just to make sure everything is written out
+before the poweroff, battery backup or no.)
+
+Regards,
+
+						- Ted
