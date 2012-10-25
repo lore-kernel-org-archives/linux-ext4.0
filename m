@@ -1,56 +1,41 @@
-From: Nix <nix@esperi.org.uk>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6 (when rebooting during umount)
-Date: Thu, 25 Oct 2012 15:15:48 +0100
-Message-ID: <8739124oyz.fsf@spindle.srvr.nix>
-References: <87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com>
-	<87txtkld4h.fsf@spindle.srvr.nix> <50876E1D.3040501@redhat.com>
-	<20121024052351.GB21714@thunk.org> <878vavveee.fsf@spindle.srvr.nix>
-	<20121024210819.GA5484@thunk.org> <87y5iv78op.fsf_-_@spindle.srvr.nix>
-	<20121025011056.GC4559@thunk.org> <87y5iv5noq.fsf@spindle.srvr.nix>
-	<20121025141226.GC13562@thunk.org>
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Subject: [PATCH] ex4: remove unused assignment
+Date: Thu, 25 Oct 2012 15:21:55 +0100
+Message-ID: <20121025142151.16543.60773.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Bryan Schumaker <bjschuma@netapp.com>,
-	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
-	gregkh@linuxfoundation.org,
-	Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20121025141226.GC13562@thunk.org> (Theodore Ts'o's message of
-	"Thu, 25 Oct 2012 10:12:26 -0400")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:53761 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759519Ab2JYOUT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 10:20:19 -0400
+Received: from localhost.localdomain (earthlight.etchedpixels.co.uk [81.2.110.250])
+	by lxorguk.ukuu.org.uk (8.14.5/8.14.1) with ESMTP id q9PEqIbS006476
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2012 15:52:23 +0100
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 25 Oct 2012, Theodore Ts'o stated:
+From: Alan Cox <alan@linux.intel.com>
 
-> I've been thinking about this some more, and if you don't have a lot
-> of time,
+Signed-off-by: Alan Cox <alan@linux.intel.com>
+---
 
-I've got time, but it's this weekend, not during the week :)
+ fs/ext4/mballoc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
->          perhaps the most important test to do is this.  Does the
-> chance of your seeing corrupted files in v3.6.3 go down if you run
-> 3.6.3 with commit 14b4ed22a6 reverted?
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 526e553..2c5a48f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1373,7 +1373,7 @@ static int mb_find_extent(struct ext4_buddy *e4b, int block,
+ 	ex->fe_start += next;
+ 
+ 	while (needed > ex->fe_len &&
+-	       (buddy = mb_find_buddy(e4b, order, &max))) {
++	       mb_find_buddy(e4b, order, &max)) {
+ 
+ 		if (block + 1 >= max)
+ 			break;
 
-This I can verify, sometime this evening. (I presume what we're really
-interested in is whether the window in which files get corrupted has
-narrowed such that my 5s sleep after umount is now long enough to have a
-lower likelihood of corruption, since we know that a near-0s sleep after
-umount causes corruption almost every time on 3.6.1 as well: I've now
-done that three times and got corruption every time.)
-
-> But most importantly, even if the bug doesn't show up with the default
-> mount options at all (which explains why Eric and I weren't able to
-> reproduce it), there are probably other users using nobarrier, so if
-> the frequency with which you were seeing corruptions went up
-> significantly between 3.6.1 and 3.6.3, and reverting 14b4ed22a6 brings
-> the frequency back down to what you were seeing with 3.6.1, we should
-> do that ASAP.
-
-Agreed.
-
--- 
-NULL && (void)
