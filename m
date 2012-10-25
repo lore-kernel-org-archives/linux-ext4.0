@@ -1,93 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: fix I/O error when unmounting an ro file system
-Date: Thu, 25 Oct 2012 16:01:01 -0400
-Message-ID: <1351195261-31258-3-git-send-email-tytso@mit.edu>
-References: <1351195261-31258-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: sandeen@redhat.com, Theodore Ts'o <tytso@mit.edu>,
-	Nix <nix@esperi.org.uk>,
-	=?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57601 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934218Ab2JYUBG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 16:01:06 -0400
-In-Reply-To: <1351195261-31258-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
+Subject: Re: [PATCH 1/3] mm: print out information of file affected by memory error
+Date: Thu, 25 Oct 2012 16:34:49 -0400
+Message-ID: <1351197289-13946-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+References: <20121025193249.GC3262@quack.suse.cz>
+Cc: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+        Andi Kleen <andi.kleen@intel.com>, Tony Luck <tony.luck@intel.com>,
+        Wu Fengguang <fengguang.wu@intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Jun'ichi Nomura" <j-nomura@ce.jp.nec.com>,
+        Akira Fujita <a-fujita@rs.jp.nec.com>, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20121025193249.GC3262@quack.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-This comment fixes commit eeecef0af5ea in a different way.  The
-original bug was that the following sequence:
+Hi Jan,
 
-# truncate --size=3D1g fsfile
-# mkfs.ext4 -F fsfile
-# mount -o loop,ro fsfile /mnt
-# umount /mnt
-# dmesg | tail
+Thank you for taking time for the review.
 
-results in an IO error when unmounting the RO filesystem:
+On Thu, Oct 25, 2012 at 09:32:49PM +0200, Jan Kara wrote:
+> On Thu 25-10-12 11:12:47, Naoya Horiguchi wrote:
+> > Printing out the information about which file can be affected by a
+> > memory error in generic_error_remove_page() is helpful for user to
+> > estimate the impact of the error.
+> > 
+> > Signed-off-by: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
+> > ---
+> >  mm/truncate.c | 8 +++++++-
+> >  1 file changed, 7 insertions(+), 1 deletion(-)
+> > 
+> > diff --git v3.7-rc2.orig/mm/truncate.c v3.7-rc2/mm/truncate.c
+> > index d51ce92..df0c6ab7 100644
+> > --- v3.7-rc2.orig/mm/truncate.c
+> > +++ v3.7-rc2/mm/truncate.c
+> > @@ -151,14 +151,20 @@ int truncate_inode_page(struct address_space *mapping, struct page *page)
+> >   */
+> >  int generic_error_remove_page(struct address_space *mapping, struct page *page)
+> >  {
+> > +	int ret;
+> > +	struct inode *inode = mapping->host;
+> > +
+>   This will oops if mapping == NULL. Currently the only caller seems to
+> check beforehand but still, it's better keep the code as robust as it it.
 
-[  318.020828] Buffer I/O error on device loop1, logical block 196608
-[  318.027024] lost page write due to I/O error on loop1
-[  318.032088] JBD2: Error -5 detected when updating journal superblock=
- for l
+OK. Adding a comment about it will be helpful for that purpose.
 
-And this was a regression introduced by commit 24bcc89c7e7c: "jbd2:
-split updating of journal superblock and marking journal empty".
-
-Here, we fix this bug by explicitly checking to see if the journal's
-block device is read-only.  If it is read-only, we then do a sanity
-check to make sure that sb->s_start is zero.  If it is non-zero, that
-implies that one or more transactions has been committed to the
-journal, which is a "can't happen" scenario if the block device is
-read-only.  So we will print a warning message and abort the journal
-in that case.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Nix <nix@esperi.org.uk>
-Cc: Toralf F=C3=B6rster <toralf.foerster@gmx.de>
----
- fs/jbd2/journal.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index bd23f2e..dcea89f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1357,6 +1357,24 @@ static void jbd2_mark_journal_empty(journal_t *j=
-ournal)
- 	jbd_debug(1, "JBD2: Marking journal as empty (seq %d)\n",
- 		  journal->j_tail_sequence);
-=20
-+	if (bdev_read_only(journal->j_dev)) {
-+		__be32 s_start =3D sb->s_start;
-+
-+		read_unlock(&journal->j_state_lock);
-+		if (s_start !=3D 0) {
-+			/*
-+			 * should never happen, but aborting the
-+			 * journal is nicer than a BUG_ON
-+			 */
-+			printk(KERN_ERR
-+	"JBD2: trying to empty non-empty journal for r/o device %s\n",
-+			       journal->j_devname);
-+			WARN_ON(1);
-+			jbd2_journal_abort(journal, -EROFS);
-+		}
-+		return;
-+	}
-+
- 	sb->s_sequence =3D cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    =3D cpu_to_be32(0);
- 	read_unlock(&journal->j_state_lock);
---=20
-1.7.12.rc0.22.gcdd159b
+Thanks,
+Naoya
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
