@@ -1,38 +1,61 @@
-From: Felipe Contreras <felipe.contreras@gmail.com>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Thu, 25 Oct 2012 19:02:03 +0200
-Message-ID: <CAMP44s1kz=zOFMALaazmcq754CCJ3EocgSMs9uLP5uHnMx=fRQ@mail.gmail.com>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	<20121023013343.GB6370@fieldses.org>
-	<87mwzdnuww.fsf@spindle.srvr.nix>
-	<20121023143019.GA3040@fieldses.org>
-	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<87pq48nbyz.fsf_-_@spindle.srvr.nix>
-	<20121023221913.GC28626@thunk.org>
-	<k69ejs$vt2$1@ger.gmane.org>
-	<20121024213129.GB5484@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: fix overhead calculations in ext4_statfs, again
+Date: Thu, 25 Oct 2012 12:14:23 -0500
+Message-ID: <5089736F.1030509@redhat.com>
+References: <50896FD6.1010807@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Jannis Achstetter <jannis_achstetter@web.de>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:34897 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757202Ab2JYRCE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 13:02:04 -0400
-In-Reply-To: <20121024213129.GB5484@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49712 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935883Ab2JYRO0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Oct 2012 13:14:26 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9PHEQKY013133
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2012 13:14:26 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q9PHENRZ000811
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2012 13:14:26 -0400
+In-Reply-To: <50896FD6.1010807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 24, 2012 at 11:31 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+sorry that should be "ext4_statfs" in the subject.
 
-> But do please note that that Fedora !7 users have been using 3.6.2 for
-> a while,
+On 10/25/12 11:59 AM, Eric Sandeen wrote:
+> "overhead" was a write-only variable in this function after commit
+> 952fc18e; we set it to 0 for minixdf, or to sbi->s_overhead if !minixdf,
+> but never read it again after that.
+> 
+> We need to use it, not sbi->s_overhead, when subtracting out overhead
+> for f_blocks, or we get the wrong answer for minixdf.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> "Once more, with feeling!" ;)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index e44b233..2feaf78 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4758,7 +4758,7 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+>  
+>  	buf->f_type = EXT4_SUPER_MAGIC;
+>  	buf->f_bsize = sb->s_blocksize;
+> -	buf->f_blocks = ext4_blocks_count(es) - EXT4_C2B(sbi, sbi->s_overhead);
+> +	buf->f_blocks = ext4_blocks_count(es) - EXT4_C2B(sbi, overhead);
+>  	bfree = percpu_counter_sum_positive(&sbi->s_freeclusters_counter) -
+>  		percpu_counter_sum_positive(&sbi->s_dirtyclusters_counter);
+>  	/* prevent underflow in case that few free space is available */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Same in Arch Linux.
-
--- 
-Felipe Contreras
