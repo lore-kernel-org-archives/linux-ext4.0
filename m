@@ -1,47 +1,55 @@
-From: Nix <nix@esperi.org.uk>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6 (when rebooting during umount)
-Date: Thu, 25 Oct 2012 12:06:42 +0100
-Message-ID: <871ugm6cal.fsf@spindle.srvr.nix>
-References: <20121023143019.GA3040@fieldses.org>
-	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com>
-	<87txtkld4h.fsf@spindle.srvr.nix> <50876E1D.3040501@redhat.com>
-	<20121024052351.GB21714@thunk.org> <878vavveee.fsf@spindle.srvr.nix>
-	<20121024210819.GA5484@thunk.org> <87y5iv78op.fsf_-_@spindle.srvr.nix>
-	<20121025011056.GC4559@thunk.org>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: re: ext4: Replace BUG_ON() with ext4_error() in move_extents.c
+Date: Thu, 25 Oct 2012 14:35:03 +0300
+Message-ID: <20121025113503.GA7836@elgon.mountain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Bryan Schumaker <bjschuma@netapp.com>,
-	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
-	gregkh@linuxfoundation.org,
-	Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: a-fujita@rs.jp.nec.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:34299 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755896Ab2JYLG5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 07:06:57 -0400
-In-Reply-To: <20121025011056.GC4559@thunk.org> (Theodore Ts'o's message of
-	"Wed, 24 Oct 2012 21:10:56 -0400")
+Received: from rcsinet15.oracle.com ([148.87.113.117]:45011 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933106Ab2JYLfL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 07:35:11 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 25 Oct 2012, Theodore Ts'o stated:
-> Also, can you reproduce the problem with the nobarrier and
-> journal_async_commit options *removed*?  Yes, I know you have battery
-> backup, but it would be interesting to see if the problem shows up in
-> the default configuration with none of the more specialist options.
-> (So it would probably be good to test with journal_checksum removed as
-> well.)
+Hello Akira Fujita,
 
-I'm going to spend some time after work today trying to reproduce this
-in a virtual machine. If rebooting while umounting is truly all it
-takes, as it seems, this should eliminate a bunch of variables and make
-it a lot easier to reproduce. (Assuming Eric hasn't already done just
-that, that is.)
+This is a semi-automatic email about new static checker warnings.
 
--- 
-NULL && (void)
+The patch 2147b1a6a48e: "ext4: Replace BUG_ON() with ext4_error() in 
+move_extents.c" from Sep 16, 2009, leads to the following Smatch 
+complaint:
+
+fs/ext4/move_extent.c:693 mext_replace_branches()
+	 warn: variable dereferenced before check 'dext' (see line 683)
+
+fs/ext4/move_extent.c
+   682		dext = donor_path[depth].p_ext;
+   683		tmp_dext = *dext;
+                           ^^^^^
+Old dereference.
+
+   684	
+   685		*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
+   686					      donor_off, count);
+   687		if (*err)
+   688			goto out;
+   689	
+   690		/* Loop for the donor extents */
+   691		while (1) {
+   692			/* The extent for donor must be found. */
+   693			if (!dext) {
+                            ^^^^^
+This check was inside BUG_ON() macro before and so Smatch ignored it on
+the basis that macros do a lot of unneeded checks.  But now it's outside
+the macro it triggers a warning.
+
+   694				EXT4_ERROR_INODE(donor_inode,
+   695					   "The extent for donor must be found");
+
+regards,
+dan carpenter
+
