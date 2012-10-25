@@ -1,96 +1,206 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v4 14/15] xfs: add hot tracking support
-Date: Thu, 25 Oct 2012 23:09:06 +0800
-Message-ID: <1351177747-19389-15-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v4 15/15] vfs,hot_track: add the documentation
+Date: Thu, 25 Oct 2012 23:09:07 +0800
+Message-ID: <1351177747-19389-16-git-send-email-zwu.kernel@gmail.com>
 References: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
 	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
-	cmm@us.ibm.com, Dave Chinner <dchinner@redhat.com>
+	cmm@us.ibm.com, Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Dave Chinner <dchinner@redhat.com>
+From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Connect up the VFS hot tracking support
-so XFS filesystems can make use of it.
-
-Signed-off-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/xfs/xfs_mount.h |    1 +
- fs/xfs/xfs_super.c |   16 ++++++++++++++++
- 2 files changed, 17 insertions(+), 0 deletions(-)
+ Documentation/filesystems/00-INDEX         |    2 +
+ Documentation/filesystems/hot_tracking.txt |  164 ++++++++++++++++++++++++++++
+ 2 files changed, 166 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/hot_tracking.txt
 
-diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-index deee09e..96d93c2 100644
---- a/fs/xfs/xfs_mount.h
-+++ b/fs/xfs/xfs_mount.h
-@@ -217,6 +217,7 @@ typedef struct xfs_mount {
- #define XFS_MOUNT_WSYNC		(1ULL << 0)	/* for nfs - all metadata ops
- 						   must be synchronous except
- 						   for space allocations */
-+#define XFS_MOUNT_HOTTRACK      (1ULL << 1)     /* hot inode tracking */
- #define XFS_MOUNT_WAS_CLEAN	(1ULL << 3)
- #define XFS_MOUNT_FS_SHUTDOWN	(1ULL << 4)	/* atomic stop of all filesystem
- 						   operations, typically for
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 26a09bd..48b3bed 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -61,6 +61,7 @@
- #include <linux/kthread.h>
- #include <linux/freezer.h>
- #include <linux/parser.h>
-+#include <linux/hot_tracking.h>
- 
- static const struct super_operations xfs_super_operations;
- static kmem_zone_t *xfs_ioend_zone;
-@@ -114,6 +115,7 @@ mempool_t *xfs_ioend_pool;
- #define MNTOPT_NODELAYLOG  "nodelaylog"	/* Delayed logging disabled */
- #define MNTOPT_DISCARD	   "discard"	/* Discard unused blocks */
- #define MNTOPT_NODISCARD   "nodiscard"	/* Do not discard unused blocks */
-+#define MNTOPT_HOTTRACK    "hot_track"  /* hot inode tracking */
- 
- /*
-  * Table driven mount option parser.
-@@ -371,6 +373,8 @@ xfs_parseargs(
- 			mp->m_flags |= XFS_MOUNT_DISCARD;
- 		} else if (!strcmp(this_char, MNTOPT_NODISCARD)) {
- 			mp->m_flags &= ~XFS_MOUNT_DISCARD;
-+		} else if (!strcmp(this_char, MNTOPT_HOTTRACK)) {
-+			mp->m_flags |= XFS_MOUNT_HOTTRACK;
- 		} else if (!strcmp(this_char, "ihashsize")) {
- 			xfs_warn(mp,
- 	"ihashsize no longer used, option is deprecated.");
-@@ -1005,6 +1009,9 @@ xfs_fs_put_super(
- {
- 	struct xfs_mount	*mp = XFS_M(sb);
- 
-+	if (mp->m_flags & XFS_MOUNT_HOTTRACK)
-+		hot_track_exit(sb);
+diff --git a/Documentation/filesystems/00-INDEX b/Documentation/filesystems/00-INDEX
+index 8c624a1..b68bdff 100644
+--- a/Documentation/filesystems/00-INDEX
++++ b/Documentation/filesystems/00-INDEX
+@@ -118,3 +118,5 @@ xfs.txt
+ 	- info and mount options for the XFS filesystem.
+ xip.txt
+ 	- info on execute-in-place for file mappings.
++hot_tracking.txt
++	- info on hot data tracking in VFS layer
+diff --git a/Documentation/filesystems/hot_tracking.txt b/Documentation/filesystems/hot_tracking.txt
+new file mode 100644
+index 0000000..ccb367d
+--- /dev/null
++++ b/Documentation/filesystems/hot_tracking.txt
+@@ -0,0 +1,164 @@
++Hot Data Tracking
 +
- 	xfs_filestream_unmount(mp);
- 	cancel_delayed_work_sync(&mp->m_sync_work);
- 	xfs_unmountfs(mp);
-@@ -1407,7 +1414,16 @@ xfs_fs_fill_super(
- 		goto out_unmount;
- 	}
- 
-+	if (mp->m_flags & XFS_MOUNT_HOTTRACK) {
-+		error = hot_track_init(sb);
-+		if (error)
-+			goto out_free_root;
-+	}
++September, 2012		Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 +
- 	return 0;
-+ out_free_root:
-+	dput(sb->s_root);
-+	sb->s_root = NULL;
-  out_syncd_stop:
- 	xfs_syncd_stop(mp);
-  out_filestream_unmount:
++CONTENTS
++
++1. Introduction
++2. Motivation
++3. The Design
++4. Git Development Tree
++5. Usage Example
++
++
++1. Introduction
++
++  The feature adds experimental support for tracking data temperature
++information in VFS layer.  Essentially, this means maintaining some key
++stats(like number of reads/writes, last read/write time, frequency of
++reads/writes), then distilling those numbers down to a single
++"temperature" value that reflects what data is "hot," and using that
++temperature to move data to SSDs.
++
++  The long-term goal of the feature is to allow some FSs,
++e.g. Btrfs to intelligently utilize SSDs in a heterogenous volume.
++Incidentally, this project has been motivated by
++the Project Ideas page on the Btrfs wiki.
++
++  Of course, users are warned not to run this code outside of development
++environments. These patches are EXPERIMENTAL, and as such they might eat
++your data and/or memory. That said, the code should be relatively safe
++when the hottrack mount option are disabled.
++
++2. Motivation
++
++  The overall goal of enabling hot data relocation to SSD has been
++motivated by the Project Ideas page on the Btrfs wiki at
++<https://btrfs.wiki.kernel.org/index.php/Project_ideas>.
++It will divide into two steps. VFS provide hot data tracking function
++while specific FS will provide hot data relocation function.
++So as the first step of this goal, it is hoped that the patchset
++for hot data tracking will eventually mature into VFS.
++
++  This is essentially the traditional cache argument: SSD is fast and
++expensive; HDD is cheap but slow. ZFS, for example, can already take
++advantage of SSD caching. Btrfs should also be able to take advantage of
++hybrid storage without many broad, sweeping changes to existing code.
++
++
++3. The Design
++
++These include the following parts:
++
++    * Hooks in existing vfs functions to track data access frequency
++
++    * New radix-trees for tracking access frequency of inodes and sub-file
++ranges
++    The relationship between super_block and radix-tree is as below:
++hot_info.hot_inode_tree
++    Each FS instance can find hot tracking info s_hotinfo.
++In this hot_info, it store a lot of hot tracking info such as hot_inode_tree,
++inode and range list, etc.
++
++    * A list for indexing data by its temperature
++
++    * A debugfs interface for dumping data from the radix-trees
++
++    * A background kthread for updating inode heat info
++
++    * Mount options for enabling temperature tracking(-o hot_track,
++default mean disabled)
++    * An ioctl to retrieve the frequency information collected for a certain
++file
++    * Ioctls to enable/disable frequency tracking per inode.
++
++Let us see their relationship as below:
++
++    * hot_info.hot_inode_tree indexes hot_inode_items, one per inode
++
++    * hot_inode_item contains access frequency data for that inode
++
++    * hot_inode_item holds a heat list node to index the access
++frequency data for that inode
++
++    * hot_inode_item.hot_range_tree indexes hot_range_items for that inode
++
++    * hot_range_item contains access frequency data for that range
++
++    * hot_range_item holds a heat list node to index the access
++frequency data for that range
++
++    * hot_info.heat_inode_map indexes per-inode heat list nodes
++
++    * hot_info.heat_range_map indexes per-range heat list nodes
++
++  How about some ascii art? :) Just looking at the hot inode item case
++(the range item case is the same pattern, though), we have:
++
++heat_inode_map           hot_inode_tree
++    |                         |
++    |                         V
++    |           +-------hot_comm_item--------+
++    |           |       frequency data       |
+++---+           |        list_head           |
++|               V            ^ |             V
++| ...<--hot_comm_item-->...  | |  ...<--hot_comm_item-->...
++|       frequency data       | |        frequency data
+++-------->list_head----------+ +--------->list_head--->.....
++       hot_range_tree                  hot_range_tree
++                                             |
++             heat_range_map                  V
++                   |           +-------hot_comm_item--------+
++                   |           |       frequency data       |
++               +---+           |        list_head           |
++               |               V            ^ |             V
++               | ...<--hot_comm_item-->...  | |  ...<--hot_comm_item-->...
++               |       frequency data       | |        frequency data
++               +-------->list_head----------+ +--------->list_head--->.....
++
++4. Git Development Tree
++
++  The feature is still on development and review, so if you're interested,
++you can pull from the git repository at the following location:
++  https://github.com/wuzhy/kernel.git hot_tracking
++  git://github.com/wuzhy/kernel.git hot_tracking
++
++
++5. Usage Example
++
++To use hot tracking, you should mount like this:
++
++$ mount -o hot_track /dev/sdb /mnt
++[ 1505.894078] device label test devid 1 transid 29 /dev/sdb
++[ 1505.952977] btrfs: disk space caching is enabled
++[ 1506.069678] vfs: turning on hot data tracking
++
++Mount debugfs at first:
++
++$ mount -t debugfs none /sys/kernel/debug
++$ ls -l /sys/kernel/debug/hot_track/
++total 0
++drwxr-xr-x 2 root root 0 Aug  8 04:40 sdb
++$ ls -l /sys/kernel/debug/hot_track/sdb
++total 0
++-rw-r--r-- 1 root root 0 Aug  8 04:40 inode_data
++-rw-r--r-- 1 root root 0 Aug  8 04:40 range_data
++
++View information about hot tracking from debugfs:
++
++$ echo "hot tracking test" > /mnt/file
++$ cat /sys/kernel/debug/hot_track/sdb/inode_data
++inode #279, reads 0, writes 1, avg read time 18446744073709551615,
++avg write time 5251566408153596, temp 109
++$ cat /sys/kernel/debug/hot_track/sdb/range_data
++inode #279, range start 0 (range len 1048576) reads 0, writes 1,
++avg read time 18446744073709551615, avg write time 1128690176623144209, temp 64
++
++$ echo "hot data tracking test" >> /mnt/file
++$ cat /sys/kernel/debug/hot_track/sdb/inode_data
++inode #279, reads 0, writes 2, avg read time 18446744073709551615,
++avg write time 4923343766042451, temp 109
++$ cat /sys/kernel/debug/hot_track/sdb/range_data
++inode #279, range start 0 (range len 1048576) reads 0, writes 2,
++avg read time 18446744073709551615, avg write time 1058147040842596150, temp 64
++
 -- 
 1.7.6.5
