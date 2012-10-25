@@ -1,55 +1,98 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: re: ext4: Replace BUG_ON() with ext4_error() in move_extents.c
-Date: Thu, 25 Oct 2012 14:35:03 +0300
-Message-ID: <20121025113503.GA7836@elgon.mountain>
+From: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Subject: Re: [PATCH] ext4: Automatic setting of {INODE,BLOCK}_UNINIT flags
+Date: Thu, 25 Oct 2012 19:39:06 +0800
+Message-ID: <CAGBYx2YbtPmCc5=OEKZoLHDj90oboUfBXBXm+BMVF-XMS8z0kg@mail.gmail.com>
+References: <1351149943-4827-1-git-send-email-tracek@redhat.com>
+ <CAGBYx2bU=G0X4GDZSjznnn12yAxJXs=RWn_x1EvHM8RGbkdk0A@mail.gmail.com> <alpine.LFD.2.00.1210251138100.24674@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: a-fujita@rs.jp.nec.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Tomas Racek <tracek@redhat.com>, linux-ext4@vger.kernel.org
+To: =?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:45011 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933106Ab2JYLfL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 07:35:11 -0400
-Content-Disposition: inline
+Received: from mail-la0-f46.google.com ([209.85.215.46]:56024 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751694Ab2JYLj2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Oct 2012 07:39:28 -0400
+Received: by mail-la0-f46.google.com with SMTP id h6so1327251lag.19
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Oct 2012 04:39:27 -0700 (PDT)
+In-Reply-To: <alpine.LFD.2.00.1210251138100.24674@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Akira Fujita,
+>
+> So my question is, why do you think this might not make sense in no
+> journal mode ? Maybe I am missing something.
+Yep, advantage is obvious, in no journal mode, if we delete a file
+which is the last inode in a block group, and the uninit flag of inode
+bitmap is flused to disk and directory referring the inode is not
+flushed,  I don't know how fsck handles the situation currently.  If
+fsck handles the situation, everything is ok. I meant maybe we should
+check fsck too.
 
-This is a semi-automatic email about new static checker warnings.
+Yongqiang.
+>
+> Thanks!
+> -Lukas
+>
+>>
+>> Thanks,
+>> Yongqiang.
+>>
+>> On Thu, Oct 25, 2012 at 3:25 PM, Tomas Racek <tracek@redhat.com> wrote:
+>> > When last inode from bg is freed, set the INODE_UNINIT flag, similarly
+>> > when last block is freed, set BLOCK_UNINIT flag. This can speed up
+>> > subsequent fsck run.
+>> >
+>> > Signed-off-by: Tomas Racek <tracek@redhat.com>
+>> > ---
+>> >  fs/ext4/ialloc.c  | 4 ++++
+>> >  fs/ext4/mballoc.c | 4 ++++
+>> >  2 files changed, 8 insertions(+)
+>> >
+>> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>> > index 4facdd2..6e4b982 100644
+>> > --- a/fs/ext4/ialloc.c
+>> > +++ b/fs/ext4/ialloc.c
+>> > @@ -289,6 +289,10 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+>> >
+>> >         count = ext4_free_inodes_count(sb, gdp) + 1;
+>> >         ext4_free_inodes_set(sb, gdp, count);
+>> > +
+>> > +       if (count == EXT4_INODES_PER_GROUP(sb))
+>> > +               gdp->bg_flags |= cpu_to_le16(EXT4_BG_INODE_UNINIT);
+>> > +
+>> >         if (is_directory) {
+>> >                 count = ext4_used_dirs_count(sb, gdp) - 1;
+>> >                 ext4_used_dirs_set(sb, gdp, count);
+>> > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> > index 526e553..28bce35 100644
+>> > --- a/fs/ext4/mballoc.c
+>> > +++ b/fs/ext4/mballoc.c
+>> > @@ -4665,6 +4665,10 @@ do_more:
+>> >
+>> >         ret = ext4_free_group_clusters(sb, gdp) + count_clusters;
+>> >         ext4_free_group_clusters_set(sb, gdp, ret);
+>> > +
+>> > +       if(ret == EXT4_BLOCKS_PER_GROUP(sb))
+>> > +               gdp->bg_flags |= cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
+>> > +
+>> >         ext4_block_bitmap_csum_set(sb, block_group, gdp, bitmap_bh);
+>> >         ext4_group_desc_csum_set(sb, block_group, gdp);
+>> >         ext4_unlock_group(sb, block_group);
+>> > --
+>> > 1.7.11.7
+>> >
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
+>>
+>>
 
-The patch 2147b1a6a48e: "ext4: Replace BUG_ON() with ext4_error() in 
-move_extents.c" from Sep 16, 2009, leads to the following Smatch 
-complaint:
 
-fs/ext4/move_extent.c:693 mext_replace_branches()
-	 warn: variable dereferenced before check 'dext' (see line 683)
 
-fs/ext4/move_extent.c
-   682		dext = donor_path[depth].p_ext;
-   683		tmp_dext = *dext;
-                           ^^^^^
-Old dereference.
-
-   684	
-   685		*err = mext_calc_swap_extents(&tmp_dext, &tmp_oext, orig_off,
-   686					      donor_off, count);
-   687		if (*err)
-   688			goto out;
-   689	
-   690		/* Loop for the donor extents */
-   691		while (1) {
-   692			/* The extent for donor must be found. */
-   693			if (!dext) {
-                            ^^^^^
-This check was inside BUG_ON() macro before and so Smatch ignored it on
-the basis that macros do a lot of unneeded checks.  But now it's outside
-the macro it triggers a warning.
-
-   694				EXT4_ERROR_INODE(donor_inode,
-   695					   "The extent for donor must be found");
-
-regards,
-dan carpenter
-
+-- 
+Best Wishes
+Yongqiang Yang
