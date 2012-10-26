@@ -1,70 +1,58 @@
-From: Nix <nix-dKoSMcxRz+Te9xe1eoZjHA@public.gmane.org>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
-Date: Fri, 26 Oct 2012 21:59:07 +0100
-Message-ID: <87objpx84k.fsf@spindle.srvr.nix>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	<20121023143019.GA3040@fieldses.org>
-	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508AF3FA.4020506@redhat.com>
-	<87wqydx957.fsf@spindle.srvr.nix> <20121026205618.GC8614@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Fri, 26 Oct 2012 17:10:33 -0400
+Message-ID: <20121026211033.GD8614@thunk.org>
+References: <jXNl8-5m5-13@gated-at.bofh.it>
+ <jXNOa-5MR-23@gated-at.bofh.it>
+ <jXPGh-87s-5@gated-at.bofh.it>
+ <jXTJW-4CH-55@gated-at.bofh.it>
+ <jXUZj-6mo-13@gated-at.bofh.it>
+ <jXVLH-7kO-5@gated-at.bofh.it>
+ <jXW53-7CC-5@gated-at.bofh.it>
+ <jXWeJ-7Lk-1@gated-at.bofh.it>
+ <50882787.3030504@onlinehome.de>
+ <508AEEF7.8060301@onlinehome.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Bryan Schumaker <bjschuma-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Peng Tao <bergwolf-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
-	gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20121026205618.GC8614-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org> (Theodore Ts'o's message of
-	"Fri, 26 Oct 2012 16:56:18 -0400")
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Nix <nix@esperi.org.uk>, linux-ext4@vger.kernel.org,
+	stable@vger.kernel.org, gregkh@linuxfoundation.org
+To: Martin <marogge@onlinehome.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57867 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934123Ab2JZVKl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Oct 2012 17:10:41 -0400
+Content-Disposition: inline
+In-Reply-To: <508AEEF7.8060301@onlinehome.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 26 Oct 2012, Theodore Ts'o stated:
+This looks very different.  The symptoms are quite different, and it's
+most likely that an unclean shutdown is involved.  In your case,
+you're doing clean shutdowns, with some suspend/resume cycles thrown
+in.  Also, kernel version 3.5.5 doesn't have the commits that were
+added between 3.6.1 and 3.6.3.
 
-> On Fri, Oct 26, 2012 at 09:37:08PM +0100, Nix wrote:
->> 
->> I can reproduce this on a small filesystem and stick the image somewhere
->> if that would be of any use to anyone. (If I'm very lucky, merely making
->> this offer will make the problem go away. :} )
->
-> I'm not sure the image is going to be that useful.  What we really
-> need to do is to get a reliable reproduction of what _you_ are seeing.
->
-> It's clear from Eric's experiments that journal_checksum is dangerous.
-> 
-> That's why one of the things I asked you to do when you had time was
-> to see if you could reproduce the problem you are seeing w/o
-> nobarrier,journal_checksum,journal_async_commit.
+Are you running e2fsck to fix the file system consistency problems;
+what is e2fsck reporting?
 
-OK. Will do tomorrow.
+Do you need to have a suspend/resume in order to trigger the problem?
 
-> The other experiment that would be really useful if you could do is to
-> try to apply these two patches which I sent earlier this week:
->
-> [PATCH 1/2] ext4: revert "jbd2: don't write superblock when if its empty
-> [PATCH 2/2] ext4: fix I/O error when unmounting an ro file system
->
-> ... and see if they make a difference.
+This could very be some kind of hardware problem or kernel bug related
+to suspend/resume.  Unfortunately, many different problems get noticed
+by the file system, but the root cause is can often be something else;
+a hardware problem, or a bug somewhere else in the kernel.
 
-As of tomorrow I'll be able to reboot without causing a riot: I'll test
-it then. (Sorry for the delay :( )
+Regards,
 
->                                               So I really don't want
-> to push these patches to Linus until I get confirmation that they make
-> a difference to *somebody*.
+						- Ted
 
-Agreed.
-
-This isn't the first time that journal_checksum has proven problematic.
-It's a shame that we're stuck between two error-inducing stools here...
-
--- 
-NULL && (void)
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+P.S.  Can you do us a favor and start a separate mail thread with the
+information reposted?  It's can get hard to track different cases when
+a lot of people assume that their random failure (some of which are
+hardware problems) are related to the issue we are trying to track
+down in this mail thread and then they all pile onto the same mail
+thread or the same web forum --- one of the reasons why I detest
+Ubuntu Launchpad.  Thanks!!
