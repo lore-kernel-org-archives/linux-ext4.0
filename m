@@ -1,132 +1,117 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: Re: EXT4-fs error w/ external USB drive
-Date: Fri, 26 Oct 2012 16:30:12 +0200
-Message-ID: <508A9E74.4050309@gmx.de>
-References: <507C4BDA.20205@gmx.de> <20121019210723.GA4721@thunk.org> <5085923F.9050801@gmx.de> <20121024011128.GG28626@thunk.org> <5088260D.7080403@gmx.de> <20121024183505.GA6142@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Fri, 26 Oct 2012 10:25:44 -0500
+Message-ID: <508AAB78.5030505@redhat.com>
+References: <87objupjlr.fsf@spindle.srvr.nix> <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix> <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix> <20121023221913.GC28626@thunk.org> <50873CE5.8090303@redhat.com> <20121024201717.GA5572@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Nix <nix@esperi.org.uk>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+	gregkh@linuxfoundation.org,
+	=?ISO-8859-1?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
+	stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.22]:49950 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S933271Ab2JZOaS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 10:30:18 -0400
-In-Reply-To: <20121024183505.GA6142@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47910 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933674Ab2JZP0G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Oct 2012 11:26:06 -0400
+In-Reply-To: <20121024201717.GA5572@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/24/2012 08:35 PM, Theodore Ts'o wrote:
-> On Wed, Oct 24, 2012 at 07:31:57PM +0200, Toralf F=C3=B6rster wrote:
->>> Are you using any kind of special mount options on your usb stick?
+On 10/24/12 3:17 PM, Jan Kara wrote:
+> On Tue 23-10-12 19:57:09, Eric Sandeen wrote:
+>> On 10/23/12 5:19 PM, Theodore Ts'o wrote:
+>>> On Tue, Oct 23, 2012 at 09:57:08PM +0100, Nix wrote:
+>>>>
+>>>> It is now quite clear that this is a bug introduced by one or more of
+>>>> the post-3.6.1 ext4 patches (which have all been backported at least to
+>>>> 3.5, so the problem is probably there too).
+>>>>
+>>>> [   60.290844] EXT4-fs error (device dm-3): ext4_mb_generate_buddy:741: group 202, 1583 clusters in bitmap, 1675 in gd
+>>>> [   60.291426] JBD2: Spotted dirty metadata buffer (dev = dm-3, blocknr = 0). There's a risk of filesystem corruption in case of system crash.
+>>>>
 >>>
->> nope
->=20
-> Thanks, we're trying to get a reliable repro of this failure, and so
-> every bit of data helps...  I've cc'ed you on the other thread, and i=
-f
-> you could try the second patch I sent out last night (and let me know
-> when/if the WARN_ON triggers), I'd really appreciate it.
->=20
-> Thanks again,
->=20
->                                           - Ted
->=20
-Well, here it is :
+>>> I think I've found the problem.  I believe the commit at fault is commit
+>>> 14b4ed22a6 (upstream commit eeecef0af5e):
+>>>
+>>>     jbd2: don't write superblock when if its empty
+>>>
+>>> which first appeared in v3.6.2.
+>>>
+>>> The reason why the problem happens rarely is that the effect of the
+>>> buggy commit is that if the journal's starting block is zero, we fail
+>>> to truncate the journal when we unmount the file system.  This can
+>>> happen if we mount and then unmount the file system fairly quickly,
+>>> before the log has a chance to wrap.After the first time this has
+>>> happened, it's not a disaster, since when we replay the journal, we'll
+>>> just replay some extra transactions.  But if this happens twice, the
+>>> oldest valid transaction will still not have gotten updated, but some
+>>> of the newer transactions from the last mount session will have gotten
+>>> written by the very latest transacitons, and when we then try to do
+>>> the extra transaction replays, the metadata blocks can end up getting
+>>> very scrambled indeed.
+>>
+>> I'm stumped by this; maybe Ted can see if I'm missing something.
+>>
+>> (and Nix, is there anything special about your fs?  Any nondefault
+>> mkfs or mount options, external journal, inordinately large fs, or
+>> anything like that?)
+>>
+>> The suspect commit added this in jbd2_mark_journal_empty():
+>>
+>>         /* Is it already empty? */
+>>         if (sb->s_start == 0) {
+>>                 read_unlock(&journal->j_state_lock);
+>>                 return;
+>>         }
+>>
+>> thereby short circuiting the function.
+>>
+>> But Ted's suggestion that mounting the fs, doing a little work, and
+>> unmounting before we wrap would lead to this doesn't make sense to
+>> me.  When I do a little work, s_start is at 1, not 0.  We start
+>> the journal at s_first:
+>>
+>> load_superblock()
+>> 	journal->j_first = be32_to_cpu(sb->s_first);
+>>
+>> And when we wrap the journal, we wrap back to j_first:
+>>
+>> jbd2_journal_next_log_block():
+>>         if (journal->j_head == journal->j_last)
+>>                 journal->j_head = journal->j_first;
+>>
+>> and j_first comes from s_first, which is set at journal creation
+>> time to be "1" for an internal journal.
+>>
+>> So s_start == 0 sure looks special to me; so far I can only see that
+>> we get there if we've been through jbd2_mark_journal_empty() already,
+>> though I'm eyeballing jbd2_journal_get_log_tail() as well.
+>>
+>> Ted's proposed patch seems harmless but so far I don't understand
+>> what problem it fixes, and I cannot recreate getting to
+>> jbd2_mark_journal_empty() with a dirty log and s_start == 0.
+>   Agreed. I rather thing we might miss journal->j_flags |= JBD2_FLUSHED
+> when shortcircuiting jbd2_mark_journal_empty(). But I still don't exactly
+> see how that would cause the corruption...
 
-2012-10-25T21:05:28.000+02:00 n22 sudo: tfoerste : TTY=3Dpts/2 ; PWD=3D=
-/home/tfoerste/virtual/uml ; USER=3Droot ; COMMAND=3D/bin/su -
-2012-10-25T21:05:28.000+02:00 n22 sudo: pam_unix(sudo:session): session=
- opened for user root by tfoerste(uid=3D0)
-2012-10-25T21:05:28.000+02:00 n22 su[18998]: Successful su for root by =
-root
-2012-10-25T21:05:28.000+02:00 n22 su[18998]: + /dev/pts/2 root:root
-2012-10-25T21:05:28.000+02:00 n22 su[18998]: pam_unix(su:session): sess=
-ion opened for user root by tfoerste(uid=3D0)
-2012-10-25T21:05:44.880+02:00 n22 kernel: EXT4-fs (loop0): mounted file=
-system with ordered data mode. Opts: (null)
-2012-10-25T21:07:07.218+02:00 n22 kernel: JBD2: jbd2_mark_journal_empty=
- bug workaround (79, 80)
-2012-10-25T21:07:07.218+02:00 n22 kernel: ------------[ cut here ]-----=
--------
-2012-10-25T21:07:07.218+02:00 n22 kernel: WARNING: at fs/jbd2/journal.c=
-:1364 jbd2_mark_journal_empty+0xef/0x110()
-2012-10-25T21:07:07.218+02:00 n22 kernel: Hardware name: 4180F65
-2012-10-25T21:07:07.218+02:00 n22 kernel: Modules linked in: bluetooth =
-cpufreq_stats loop ipt_MASQUERADE xt_owner xt_multiport ipt_REJECT xt_r=
-ecent xt_tcpudp xt_mac nf_conntrack_ftp xt_state xt_limit xt_LOG iptabl=
-e_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack iptable_filt=
-er ip_tables x_tables af_packet pppoe pppox ppp_generic slhc bridge stp=
- llc tun msr i915 coretemp cfbfillrect cfbimgblt i2c_algo_bit cfbcopyar=
-ea fbcon bitblit snd_hda_codec_conexant softcursor font snd_hda_intel s=
-nd_hda_codec kvm_intel snd_pcm intel_agp 8250_pci intel_gtt drm_kms_hel=
-per snd_page_alloc snd_timer kvm 8250 drm thinkpad_acpi nvram uvcvideo =
-snd serial_core agpgart fb sdhci_pci usblp videobuf2_vmalloc e1000e vid=
-eobuf2_memops videobuf2_core videodev i2c_i801 tpm_tis soundcore hwmon =
-arc4 sdhci i2c_core tpm fbdev iwldvm acpi_cpufreq mac80211 mperf ac psm=
-ouse iwlwifi battery button cfg80211 rfkill evdev mmc_core processor vi=
-deo tpm_bios thermal wmi xts gf128mul aesni_intel ablk_helper cryptd ae=
-s_i58
-6 aes_generic cbc fuse nfs lockd sunrpc dm_crypt dm_mod hid_monterey hi=
-d_microsoft hid_logitech hid_ezkey hid_cypress hid_chicony hid_cherry h=
-id_belkin hid_apple hid_a4tech hid_generic usbhid hid sr_mod cdrom sg [=
-last unloaded: microcode]
-2012-10-25T21:07:07.218+02:00 n22 kernel: Pid: 19040, comm: umount Not =
-tainted 3.6.3 #8
-2012-10-25T21:07:07.218+02:00 n22 kernel: Call Trace:
-2012-10-25T21:07:07.218+02:00 n22 kernel: [<c10323e2>] warn_slowpath_co=
-mmon+0x72/0xa0
-2012-10-25T21:07:07.218+02:00 n22 kernel: [<c11e253f>] ? jbd2_mark_jour=
-nal_empty+0xef/0x110
-2012-10-25T21:07:07.218+02:00 n22 kernel: [<c11e253f>] ? jbd2_mark_jour=
-nal_empty+0xef/0x110
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c1032432>] warn_slowpath_nu=
-ll+0x22/0x30
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c11e253f>] jbd2_mark_journa=
-l_empty+0xef/0x110
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c11e272e>] jbd2_journal_des=
-troy+0x1ce/0x1f0
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c10529c0>] ? add_wait_queue=
-+0x50/0x50
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c11b079a>] ext4_put_super+0=
-x4a/0x2e0
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c1127652>] ? dispose_list+0=
-x32/0x40
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c1127c0f>] ? evict_inodes+0=
-x8f/0xe0
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c1112521>] generic_shutdown=
-_super+0x51/0xd0
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c10e5b45>] ? pcpu_free_area=
-+0x145/0x190
-2012-10-25T21:07:07.223+02:00 n22 kernel: [<c11125c9>] kill_block_super=
-+0x29/0x70
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c1112800>] deactivate_locke=
-d_super+0x30/0x90
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c1113247>] deactivate_super=
-+0x47/0x60
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c112a41d>] mntput_no_expire=
-+0xcd/0x120
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c112b1ca>] sys_umount+0x6a/=
-0x330
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c112b4ae>] sys_oldumount+0x=
-1e/0x20
-2012-10-25T21:07:07.224+02:00 n22 kernel: [<c13ad753>] sysenter_do_call=
-+0x12/0x22
-2012-10-25T21:07:07.224+02:00 n22 kernel: ---[ end trace 8e7416a7368818=
-fe ]---
-2012-10-25T21:07:07.000+02:00 n22 su[18998]: pam_unix(su:session): sess=
-ion closed for user root
-2012-10-25T21:07:07.000+02:00 n22 sudo: pam_unix(sudo:session): session=
- closed for user root
+Agreed, except so far I cannot see any way to get here with s_start == 0
+without ALREADY having JBD2_FLUSHED set.  Can you?
 
+Anyway, I think the problem is still poorly understood; lots of random facts
+floating about, and a pretty weird usecase with nonstandard/dangerous mount
+options.  I do want to figure out what regressed (if anything) but so far
+this investigation doesn't seem very methodical.
 
---=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
+
+> 								Honza
+> 
+
