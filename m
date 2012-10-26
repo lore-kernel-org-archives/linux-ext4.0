@@ -1,79 +1,74 @@
-From: "Luck, Tony" <tony.luck@intel.com>
-Subject: RE: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Fri, 26 Oct 2012 22:24:23 +0000
-Message-ID: <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
- <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
- <20121026184649.GA8614@thunk.org>
+From: Martin <marogge@onlinehome.de>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Sat, 27 Oct 2012 01:15:38 +0200
+Message-ID: <508B199A.8050108@onlinehome.de>
+References: <jXNl8-5m5-13@gated-at.bofh.it> <jXNOa-5MR-23@gated-at.bofh.it> <jXPGh-87s-5@gated-at.bofh.it> <jXTJW-4CH-55@gated-at.bofh.it> <jXUZj-6mo-13@gated-at.bofh.it> <jXVLH-7kO-5@gated-at.bofh.it> <jXW53-7CC-5@gated-at.bofh.it> <jXWeJ-7Lk-1@gated-at.bofh.it> <50882787.3030504@onlinehome.de> <508AEEF7.8060301@onlinehome.de> <20121026211033.GD8614@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-	"Kleen, Andi" <andi.kleen@intel.com>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>,
-	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Nix <nix@esperi.org.uk>, linux-ext4@vger.kernel.org,
+	stable@vger.kernel.org, gregkh@linuxfoundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:8085 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966778Ab2JZWe2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 18:34:28 -0400
-In-Reply-To: <20121026184649.GA8614@thunk.org>
-Content-Language: en-US
+Received: from moutng.kundenserver.de ([212.227.17.8]:54022 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934204Ab2JZXPs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 19:15:48 -0400
+In-Reply-To: <20121026211033.GD8614@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Well, we could set a new attribute bit on the file which indicates
-> that the file has been corrupted, and this could cause any attempts to
-> open the file to return some error until the bit has been cleared.
+On 10/26/2012 11:10 PM, Theodore Ts'o wrote:
+> This looks very different.  The symptoms are quite different, and it's
+> most likely that an unclean shutdown is involved.  In your case,
+> you're doing clean shutdowns, with some suspend/resume cycles thrown
+> in.
 
-That sounds a lot better than renaming/moving the file.
+No no, the case I reported was triggered by an unclean shutdown: my son 
+hitting the power button after a system crash, or more likely when the 
+graphics subsystem became unresponsive.
 
-> This would persist across reboots.  The only problem is that system
-> administrators might get very confused (at least at first, when they
-> first run a kernel or a distribution which has this feature enabled).
+> Are you running e2fsck to fix the file system consistency problems;
+> what is e2fsck reporting?
 
-Yes. This would require some education. But new attributes have been
-added in the past (e.g. immutable) that caused confusion to users and
-tools that didn't know about them.
+by now it attests a bill of clean health. at first it reported issues 
+the precise nature of which escaping my memory, fixed them, and after 
+the next reboot reported some more issues which again were fixed. Had I 
+known this will look similar to a prominent issue I would have paid more 
+attention.
 
-> Application programs could also get very confused when any attempt to
-> open or read from a file suddenly returned some new error code (EIO,
-> or should we designate a new errno code for this purpose, so there is
-> a better indication of what the heck was going on?)
+> Do you need to have a suspend/resume in order to trigger the problem?
 
-EIO sounds wrong ... but it is perhaps the best of the existing codes. Adding
-a new one is also challenging too.
+no, I just mentioned the suspend/resume cycles to explain what is going 
+on in the syslog, which I didn't attach in the end. During the period of 
+the problem building up there was no suspend/resume event.
 
-> Also, if we just log the message in dmesg, if the system administrator
-> doesn't find the "this file is corrupted" bit right away
+> This could very be some kind of hardware problem or kernel bug related
+> to suspend/resume.  Unfortunately, many different problems get noticed
+> by the file system, but the root cause is can often be something else;
+> a hardware problem, or a bug somewhere else in the kernel.
 
-This is pretty much a given. Nobody will see the message in the console log
-until it is far too late.
+I hear what you are saying. I just want to add that the hardware has 
+survived the past two or three years despite suspend/resume and the odd 
+abusive treatment (like unclean shutdown by non-techie users). I tend to 
+keep the kernel, patches, modules and user land up to date.
 
-> I'm not sure it's worth it to go to these extents, but I could imagine
-> some customers wanting to have this sort of information.  Do we know
-> what their "nice to have" / "must have" requirements might be?
+>
+> Regards,
+>
+> 						- Ted
+>
+> P.S.  Can you do us a favor and start a separate mail thread with the
+> information reposted?  It's can get hard to track different cases when
+> a lot of people assume that their random failure (some of which are
+> hardware problems) are related to the issue we are trying to track
+> down in this mail thread and then they all pile onto the same mail
+> thread or the same web forum --- one of the reasons why I detest
+> Ubuntu Launchpad.  Thanks!!
 
-18 years ago Intel rather famously attempted to sell users on the idea that a
-rare divide error that sometimes gave the wrong answer could be ignored. Before
-my time at Intel, but it is still burned into the corporate psyche that customers
-really don't like to get the wrong answers from their computers.
+Shall do.
 
-Whether it is worth it may depend on the relative frequency of data being
-corrupted this way, compared to all the other ways that it might get messed
-up. If it were a thousand times more likely that data got silently corrupted
-on its path to media, sitting spinning on the media, and then back off the
-drive again - then all this fancy stuff wouldn't make any real difference.
-I have no data on the relative error rates of memory and i/o - so I can't
-answer this.
+cu Martin
 
--Tony
