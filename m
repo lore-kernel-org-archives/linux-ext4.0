@@ -1,89 +1,98 @@
-From: Namjae Jeon <linkinjeon@gmail.com>
-Subject: Re: [PATCH, RFC] Ext3: Mount partition as read only if during orphan
- cleanup truncate fails to obtain journal handle.
-Date: Fri, 26 Oct 2012 20:42:23 +0900
-Message-ID: <CAKYAXd91L8Ar+kO-oPg9_j65s_4xtd87JJZ7S8B7EH_jB-NLgA@mail.gmail.com>
-References: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
-	Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	=?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 1/8 v3] ext4: add two structures supporting extent status tree
+Date: Fri, 26 Oct 2012 21:23:38 +0800
+Message-ID: <1351257825-3701-2-git-send-email-wenqing.lz@taobao.com>
+References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
+Cc: tytso@mit.edu, hughd@google.com, xiaoqiangnk@gmail.com,
+	achender@linux.vnet.ibm.com, lczerner@redhat.com,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org, jeff.liu@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:49956 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932364Ab2JZLmZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 07:42:25 -0400
-In-Reply-To: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:52319 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755008Ab2JZNMq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 09:12:46 -0400
+Received: by mail-pa0-f46.google.com with SMTP id hz1so1922583pad.19
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2012 06:12:46 -0700 (PDT)
+In-Reply-To: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add Cc in mail loop.
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Thanks.
+This patch adds two structures that supports extent status tree, extent_status
+and ext4_es_tree.  Currently extent_status is used to track a delay extent for
+an inode, which record the start block and the length of the delay extent.
+ext4_es_tree is used to store all extent_status for an inode in memory.
 
-2012/10/24, Ashish Sangwan <ashishsangwan2@gmail.com>:
-> During orphan cleanup while doing truncate, if we fail to obtain journal
-> handle, the inode for which truncate was called would not be removed from
-> both the on-disk and in-memory orphan lists as the call to ext3_orphan_del
-> would not be executed.
->
-> This would have following consequences:
-> a) As the inode is not removed from the on-disk list, truncate would be
-> called again for the same inode. Each call would add the inode to the
-> in-memory list. This operation would continue endlessly or until truncate
-> is succeed.
->
-> b) If somehow, after some iterations, truncate is succeed, ext3_orphan_del
-> will only remove the inode from in-memory list just 1 time. This will
-> trigger
-> j_assert during put super.
->
-> This patch handles both the problems. If truncate fails, first in-memory
-> list is cleared and than the partition is mounted as read only.
-> Failure to obtain journal handle during mount may suggest that journal
-> device is corrupted.
->
-> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> ---
->  fs/ext3/super.c | 17 ++++++++++++++++-
->  1 file changed, 16 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index bd60e08..798cd6f 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -1540,7 +1540,22 @@ static void ext3_orphan_cleanup (struct super_block *
-> sb,
->  			jbd_debug(2, "truncating inode %lu to %Ld bytes\n",
->  				  inode->i_ino, inode->i_size);
->  			ext3_truncate(inode);
-> -			nr_truncates++;
-> +			if (list_empty(&EXT3_I(inode)->i_orphan)) {
-> +				nr_truncates++;
-> +			} else {
-> +				/* Remove inode from in-memory orphan list */
-> +				list_del_init(&EXT3_I(inode)->i_orphan);
-> +				ext3_msg(sb, KERN_ERR, "Truncate failed for "
-> +                                        "orphan  inode = %lu. Running
-> e2fsck"
-> +                                        " is recommended", inode->i_ino);
-> +				if (!(s_flags & MS_RDONLY)) {
-> +					ext3_msg(sb, KERN_INFO, "FS would be"
-> +						" mounted as readonly");
-> +					s_flags |= MS_RDONLY;
-> +				}
-> +				break;
-> +			}
-> +
->  		} else {
->  			printk(KERN_DEBUG
->  				"%s: deleting unreferenced inode %lu\n",
-> --
-> 1.7.11.4
->
->
+CC: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
+Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+v3 <- v2:
+ - add i_es_lock to protect extent status tree
+
+ fs/ext4/ext4.h           |  6 ++++++
+ fs/ext4/extents_status.h | 25 +++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
+ create mode 100644 fs/ext4/extents_status.h
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3c20de1..bcc634b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -811,6 +811,8 @@ struct ext4_ext_cache {
+ 	__u32		ec_len; /* must be 32bit to return holes */
+ };
+ 
++#include "extents_status.h"
++
+ /*
+  * fourth extended file system inode data in memory
+  */
+@@ -888,6 +890,10 @@ struct ext4_inode_info {
+ 	struct list_head i_prealloc_list;
+ 	spinlock_t i_prealloc_lock;
+ 
++	/* extents status tree */
++	struct ext4_es_tree i_es_tree;
++	rwlock_t i_es_lock;
++
+ 	/* ialloc */
+ 	ext4_group_t	i_last_alloc_group;
+ 
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+new file mode 100644
+index 0000000..8be2ab9
+--- /dev/null
++++ b/fs/ext4/extents_status.h
+@@ -0,0 +1,25 @@
++/*
++ *  fs/ext4/extents_status.h
++ *
++ * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
++ * Modified by
++ *	Allison Henderson <achender@linux.vnet.ibm.com>
++ *	Zheng Liu <wenqing.lz@taobao.com>
++ *
++ */
++
++#ifndef _EXT4_EXTENTS_STATUS_H
++#define _EXT4_EXTENTS_STATUS_H
++
++struct extent_status {
++	struct rb_node rb_node;
++	ext4_lblk_t start;	/* first block extent covers */
++	ext4_lblk_t len;	/* length of extent in block */
++};
++
++struct ext4_es_tree {
++	struct rb_root root;
++	struct extent_status *cache_es;	/* recently accessed extent */
++};
++
++#endif /* _EXT4_EXTENTS_STATUS_H */
+-- 
+1.7.12.rc2.18.g61b472e
+
