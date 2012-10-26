@@ -1,72 +1,71 @@
-From: Nix <nix@esperi.org.uk>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
-Date: Fri, 26 Oct 2012 21:47:26 +0100
-Message-ID: <87sj91x8o1.fsf@spindle.srvr.nix>
-References: <jXsTo-5lW-13@gated-at.bofh.it> <jXBDk-7vn-13@gated-at.bofh.it>
-	<jXNl8-5m5-13@gated-at.bofh.it> <jXNOa-5MR-23@gated-at.bofh.it>
-	<jXPGh-87s-5@gated-at.bofh.it> <jXTJW-4CH-55@gated-at.bofh.it>
-	<jXUZj-6mo-13@gated-at.bofh.it> <jXVLH-7kO-5@gated-at.bofh.it>
-	<jXW53-7CC-5@gated-at.bofh.it> <jXWeJ-7Lk-1@gated-at.bofh.it>
-	<50882787.3030504@onlinehome.de> <508AEEF7.8060301@onlinehome.de>
-	<871uglyoap.fsf@spindle.srvr.nix> <508AF639.30603@onlinehome.de>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Fri, 26 Oct 2012 16:56:18 -0400
+Message-ID: <20121026205618.GC8614@thunk.org>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+ <20121023013343.GB6370@fieldses.org>
+ <87mwzdnuww.fsf@spindle.srvr.nix>
+ <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <87pq48nbyz.fsf_-_@spindle.srvr.nix>
+ <508AF3FA.4020506@redhat.com>
+ <87wqydx957.fsf@spindle.srvr.nix>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, tytso@mit.edu, stable@vger.kernel.org,
-	gregkh@linuxfoundation.org
-To: Martin <marogge@onlinehome.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:43135 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752136Ab2JZUra (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 16:47:30 -0400
-In-Reply-To: <508AF639.30603@onlinehome.de> (Martin's message of "Fri, 26 Oct
-	2012 22:44:41 +0200")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Bryan Schumaker <bjschuma-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Peng Tao <bergwolf-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
+	gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Nix <nix-dKoSMcxRz+Te9xe1eoZjHA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <87wqydx957.fsf-AdTWujXS48Mg67Zj9sPl2A@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 26 Oct 2012, Martin said:
+On Fri, Oct 26, 2012 at 09:37:08PM +0100, Nix wrote:
+> 
+> I can reproduce this on a small filesystem and stick the image somewhere
+> if that would be of any use to anyone. (If I'm very lucky, merely making
+> this offer will make the problem go away. :} )
 
-> On 10/26/2012 10:24 PM, Nix wrote:
->> On 26 Oct 2012, Martin spake thusly:
->>> Computer is booted again in order to copy a few files to memory stick. Unbeknownst to me, the following entries are logged in the
->>> system log:
->>>
->>> Oct 15 20:00:16 harold kernel: EXT4-fs error (device sda5): add_dirent_to_buf:1587: inode #655361: block 2629945: comm mount: bad
->>> entry in directory: rec_len % 4 != 0 - offset=360(360), inode=655682, rec_len=18, name_len=5
->>> Oct 15 20:00:16 harold kernel: Aborting journal on device sda5-8.
->>> Oct 15 20:00:16 harold kernel: EXT4-fs (sda5): Remounting filesystem read-only
->>> Oct 15 20:00:16 harold kernel: EXT4-fs error (device sda5) in ext4_evict_inode:238: Journal has aborted
->>> Oct 15 20:00:16 harold kernel: EXT4-fs error (device sda5) in ext4_create:2120: IO failure
->>
->> That's an interesting failure, but looks slightly different to what I
->> saw. No bad directory entries, no aborted journals: a replayed journal
->> and subsequent corruption. Still damaged though, and after a journal
->> abort I'm not surprised you had problems!
->
-> So my corrupt journal is simply the result of a user turning off the machine at a bad point in time? That's scary. In that scenario
-> even the option data=journal wouldn't save me from harm, would it?
+I'm not sure the image is going to be that useful.  What we really
+need to do is to get a reliable reproduction of what _you_ are seeing.
 
-No, I think that's probably a bug -- but I don't know if it's the same
-bug: the symptoms are slightly different.
+It's clear from Eric's experiments that journal_checksum is dangerous.
+In fact, I will likely put it under an #ifdef EXT4_EXPERIMENTAL to try
+to discourage people from using it in the future.  There are things
+I've been planning on doing to make it be safer, but there's a very
+good *reason* that both journal_checksum and journal_async_commit are
+not on by default.
 
-(Note that some hard drives in the distant past had been known to write
-rubbish if powered down during a write. I don't think this has been true
-for a good decade or so, though.)
+That's why one of the things I asked you to do when you had time was
+to see if you could reproduce the problem you are seeing w/o
+nobarrier,journal_checksum,journal_async_commit.
 
->> It's hard to reason about a kernel that's had *that* massive lump of
->> binary junk applied to it, alas. This may or may not be the same
->> problem: it has some common features with what I see, but not all.
->
-> true, i normally re-create problems with vanilla kernels before
-> reporting them. In this case I was cleanly sniped with no chance of
-> re-play so far.
+The other experiment that would be really useful if you could do is to
+try to apply these two patches which I sent earlier this week:
 
-True. I'm stuck with a problem that I can only currently reproduce on
-physical hardware myself :( In addition to seeing if Ted's proposed
-patch reduces the frequency of corruption, I'll be doing some tests this
-weekend with LVM block device suspension and subsequent reboots to see
-if that causes similar symptoms even in virtualization.
+[PATCH 1/2] ext4: revert "jbd2: don't write superblock when if its empty
+[PATCH 2/2] ext4: fix I/O error when unmounting an ro file system
 
--- 
-NULL && (void)
+... and see if they make a difference.
+
+If they don't make a difference, I don't want to apply patches just
+for placebo/PR reasons.  And for Eric at least, he can reproduce the
+journal checksum error followed by fairly significant corruption
+reported by e2fsck with journal_checksum, and the presence or absense
+of these patches make no difference for him.  So I really don't want
+to push these patches to Linus until I get confirmation that they make
+a difference to *somebody*.
+
+Regards,
+
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
