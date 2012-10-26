@@ -1,50 +1,51 @@
 From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: xfstests: Assume yes when test device is not partitioned
-Date: Fri, 26 Oct 2012 10:54:24 -0500
-Message-ID: <508AB230.1010102@sgi.com>
-References: <1315038799-2150-1-git-send-email-prasadjoshi.linux@gmail.com>
+Subject: Re: xfstests: optionally run all tests under quota
+Date: Fri, 26 Oct 2012 11:49:18 -0500
+Message-ID: <508ABF0E.70800@sgi.com>
+References: <4B71B6E7.1000203@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>,
-	Chaitanya Kulkarni <chaitanyakulkarni15@gmail.com>,
-	<xfs@oss.sgi.com>
-To: Prasad Joshi <prasadjoshi.linux@gmail.com>
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:34357 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S964822Ab2JZPwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Oct 2012 11:52:51 -0400
-In-Reply-To: <1315038799-2150-1-git-send-email-prasadjoshi.linux@gmail.com>
+Received: from relay1.sgi.com ([192.48.179.29]:36871 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751684Ab2JZQrl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Oct 2012 12:47:41 -0400
+In-Reply-To: <4B71B6E7.1000203@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 09/03/2011 03:33 AM, Prasad Joshi wrote:
-> If an entire device used for file system creation, the mkfs.ext2/3/4
-> asks for confirmation before proceeding. Since the device is
-> configured for testing it is safe to assume positive response
-> during mkfs.
+On 02/09/2010 01:26 PM, Eric Sandeen wrote:
+> This patch might be a little heavy handed, but it seems to
+> work; if you set USE_QUOTA=1 in your environment, all
+> tests should be run with quota on and enabled.
 >
-> The patch also replaces hard coded mkfs path with MKFS_PROG variable.
+> This will hopefully help shake out some of the ext4
+> quota problems, although one needs to keep an eye
+> on the console to see whether warnings scroll by.
 >
-> Signed-off-by: Chaitanya Kulkarni <chaitanyakulkarni15@gmail.com>
-> Signed-off-by: Prasad Joshi <prasadjoshi.linux@gmail.com>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 >
 > ---
-> 032       |    4 ++--
->   049       |    2 +-
->   073       |    2 +-
->   common.rc |    4 ++--
->   4 files changed, 6 insertions(+), 6 deletions(-)
 >
+>
+> diff --git a/common.rc b/common.rc
+> index 6424871..4fde921 100644
+> --- a/common.rc
+> +++ b/common.rc
+
 Looks good
 
 Reviewed-by: Rich Johnston <rjohnston@sgi.com>
 
-Prasad,
+Eric,
 
 This patch has been committed to git://oss.sgi.com/xfs/cmds/xfstests, 
-master branch, commit ID 9ea06dce.
+master branch, commit ID edd6bcf9.
+
 
 Thanks
 --Rich
