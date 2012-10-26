@@ -1,236 +1,422 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 7/8 v3] ext4: reimplement fiemap on extent status tree
-Date: Fri, 26 Oct 2012 21:23:44 +0800
-Message-ID: <1351257825-3701-8-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 8/8 v3] ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
+Date: Fri, 26 Oct 2012 21:23:45 +0800
+Message-ID: <1351257825-3701-9-git-send-email-wenqing.lz@taobao.com>
 References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
 Cc: tytso@mit.edu, hughd@google.com, xiaoqiangnk@gmail.com,
 	achender@linux.vnet.ibm.com, lczerner@redhat.com,
 	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org, jeff.liu@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:34022 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758550Ab2JZNNL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 09:13:11 -0400
-Received: by mail-da0-f46.google.com with SMTP id n41so1300913dak.19
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2012 06:13:10 -0700 (PDT)
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:52319 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758654Ab2JZNNO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Oct 2012 09:13:14 -0400
+Received: by mail-pa0-f46.google.com with SMTP id hz1so1922583pad.19
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2012 06:13:14 -0700 (PDT)
 In-Reply-To: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This patch reimplements fiemap on extent status tree.
+This patch makes ext4 really support SEEK_DATA/SEEK_HOLE flags.  Block-mapped
+and extent-mapped files are fully implemented together because ext4_map_blocks
+hides this differences.
+
+After applying this patch, it will cause a failure in xfstest #285 when the file
+is block-mapped due to block-mapped file isn't support fallocate(2).
+
+I had tried to use ext4_ext_walk_space() to retrieve the offset for a
+extent-mapped file.  But finally I decide to keep using ext4_map_blocks() to
+support SEEK_DATA/SEEK_HOLE because ext4_map_blocks() can hide the difference
+between block-mapped file and extent-mapped file.  Moreover, in next step,
+extent status tree will track all extent status, and we can get all mappings
+from this tree.  So I think that using ext4_map_blocks() is a better choice.
 
 CC: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Yongqiang Yang <xiaoqiangnk@gmail.com>
-Signed-off-by: Allison Henderson <achender@linux.vnet.ibm.com>
+CC: Hugh Dickins <hughd@google.com>
+Signed-off-by: Jie Liu <jeff.liu@oracle.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents.c | 184 +++++++-----------------------------------------------
- 1 file changed, 21 insertions(+), 163 deletions(-)
+v3 <- v2:
+ - determine an unwritten extent as a data/hole according to the whether there
+   has some data in page cache or not.
+ - remove ext4_seek_data_hole(), and call ext4_seek_data/hole() directly.
+ - fix some bugs
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d6da3a8..a72197b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4499,193 +4499,51 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-+	struct extent_status es;
- 	__u64	logical;
- 	__u64	physical;
- 	__u64	length;
- 	__u32	flags = 0;
-+	ext4_lblk_t next_del;
- 	int		ret = 0;
- 	struct fiemap_extent_info *fieinfo = data;
- 	unsigned char blksize_bits;
+Please apply this patch before testing this patch using xfstest #285 due to
+there is a bug in xfstest (http://patchwork.xfs.org/patch/4276/).
+
+The function ext4_find_unwritten_pgoff() is inspired by Jeff's work for xfs
+(d126d43f631f996daeee5006714fed914be32368).  Thus, I add a Signed-off-by for
+his crediting.
+
+Jeff, I really appreicate if you could allow me to add Signed-off-by in this
+patch.  Please let me know if you think it is not well.  Thanks!
+
+ fs/ext4/file.c | 334 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 332 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index bf3966b..2f5759e 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -24,6 +24,7 @@
+ #include <linux/mount.h>
+ #include <linux/path.h>
+ #include <linux/quotaops.h>
++#include <linux/pagevec.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+@@ -286,6 +287,324 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ }
  
--	blksize_bits = inode->i_sb->s_blocksize_bits;
--	logical = (__u64)newex->ec_block << blksize_bits;
-+	es.start = newex->ec_block;
-+	next_del = ext4_es_find_extent(inode, &es);
- 
-+	next = min(next_del, next);
- 	if (newex->ec_start == 0) {
- 		/*
- 		 * No extent in extent-tree contains block @newex->ec_start,
- 		 * then the block may stay in 1)a hole or 2)delayed-extent.
--		 *
--		 * Holes or delayed-extents are processed as follows.
--		 * 1. lookup dirty pages with specified range in pagecache.
--		 *    If no page is got, then there is no delayed-extent and
--		 *    return with EXT_CONTINUE.
--		 * 2. find the 1st mapped buffer,
--		 * 3. check if the mapped buffer is both in the request range
--		 *    and a delayed buffer. If not, there is no delayed-extent,
--		 *    then return.
--		 * 4. a delayed-extent is found, the extent will be collected.
- 		 */
--		ext4_lblk_t	end = 0;
--		pgoff_t		last_offset;
--		pgoff_t		offset;
--		pgoff_t		index;
--		pgoff_t		start_index = 0;
--		struct page	**pages = NULL;
--		struct buffer_head *bh = NULL;
--		struct buffer_head *head = NULL;
--		unsigned int nr_pages = PAGE_SIZE / sizeof(struct page *);
--
--		pages = kmalloc(PAGE_SIZE, GFP_KERNEL);
--		if (pages == NULL)
--			return -ENOMEM;
--
--		offset = logical >> PAGE_SHIFT;
--repeat:
--		last_offset = offset;
--		head = NULL;
--		ret = find_get_pages_tag(inode->i_mapping, &offset,
--					PAGECACHE_TAG_DIRTY, nr_pages, pages);
--
--		if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--			/* First time, try to find a mapped buffer. */
--			if (ret == 0) {
--out:
--				for (index = 0; index < ret; index++)
--					page_cache_release(pages[index]);
--				/* just a hole. */
--				kfree(pages);
--				return EXT_CONTINUE;
--			}
--			index = 0;
--
--next_page:
--			/* Try to find the 1st mapped buffer. */
--			end = ((__u64)pages[index]->index << PAGE_SHIFT) >>
--				  blksize_bits;
--			if (!page_has_buffers(pages[index]))
--				goto out;
--			head = page_buffers(pages[index]);
--			if (!head)
--				goto out;
--
--			index++;
--			bh = head;
--			do {
--				if (end >= newex->ec_block +
--					newex->ec_len)
--					/* The buffer is out of
--					 * the request range.
--					 */
--					goto out;
--
--				if (buffer_mapped(bh) &&
--				    end >= newex->ec_block) {
--					start_index = index - 1;
--					/* get the 1st mapped buffer. */
--					goto found_mapped_buffer;
--				}
--
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			/* No mapped buffer in the range found in this page,
--			 * We need to look up next page.
--			 */
--			if (index >= ret) {
--				/* There is no page left, but we need to limit
--				 * newex->ec_len.
--				 */
--				newex->ec_len = end - newex->ec_block;
--				goto out;
--			}
--			goto next_page;
--		} else {
--			/*Find contiguous delayed buffers. */
--			if (ret > 0 && pages[0]->index == last_offset)
--				head = page_buffers(pages[0]);
--			bh = head;
--			index = 1;
--			start_index = 0;
-+		if (es.len == 0)
-+			/* A hole found. */
-+			return EXT_CONTINUE;
+ /*
++ * Here we use ext4_map_blocks() to get a block mapping for a extent-based
++ * file rather than ext4_ext_walk_space() because we can introduce
++ * SEEK_DATA/SEEK_HOLE for block-mapped and extent-mapped file at the same
++ * function.  When extent status tree has been fully implemented, it will
++ * track all extent status for a file and we can directly use it to
++ * retrieve the offset for SEEK_DATA/SEEK_HOLE.
++ */
 +
-+		if (es.start > newex->ec_block) {
-+			/* A hole found. */
-+			newex->ec_len = min(es.start - newex->ec_block,
-+					    newex->ec_len);
-+			return EXT_CONTINUE;
- 		}
++/*
++ * When we retrieve the offset for SEEK_DATA/SEEK_HOLE, we would need to
++ * lookup page cache to check whether or not there has some data between
++ * [startoff, endoff] because, if this range contains an unwritten extent,
++ * we determine this extent as a data or a hole according to whether the
++ * page cache has data or not.
++ */
++static int ext4_find_unwritten_pgoff(struct inode *inode,
++				     int origin,
++				     struct ext4_map_blocks *map,
++				     loff_t *offset)
++{
++	struct pagevec pvec;
++	unsigned int blkbits;
++	pgoff_t index;
++	pgoff_t end;
++	loff_t endoff;
++	loff_t startoff;
++	loff_t lastoff;
++	int found = 0;
++
++	blkbits = inode->i_sb->s_blocksize_bits;
++	startoff = *offset;
++	lastoff = startoff;
++	endoff = (map->m_lblk + map->m_len) << blkbits;
++
++	index = startoff >> PAGE_CACHE_SHIFT;
++	end = endoff >> PAGE_CACHE_SHIFT;
++
++	pagevec_init(&pvec, 0);
++	do {
++		int i, num;
++		unsigned long nr_pages;
++
++		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
++		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
++					  (pgoff_t)num);
++		if (nr_pages == 0) {
++			if (origin == SEEK_DATA)
++				break;
++
++			BUG_ON(origin != SEEK_HOLE);
++			/*
++			 * If this is the first time to go into the loop and
++			 * offset is not beyond the end offset, it will be a
++			 * hole at this offset
++			 */
++			if (lastoff == startoff || lastoff < endoff)
++				found = 1;
++			break;
++		}
++
++		/*
++		 * If this is the first time to go into the loop and
++		 * offset is smaller than the first page offset, it will be a
++		 * hole at this offset.
++		 */
++		if (lastoff == startoff && origin == SEEK_HOLE &&
++		    lastoff < page_offset(pvec.pages[0])) {
++			found = 1;
++			break;
++		}
++
++		for (i = 0; i < nr_pages; i++) {
++			struct page *page = pvec.pages[i];
++			struct buffer_head *bh, *head;
++
++			/*
++			 * If the current offset is not beyond the end of given
++			 * range, it will be a hole.
++			 */
++			if (lastoff < endoff && origin == SEEK_HOLE &&
++			    page->index > end) {
++				found = 1;
++				*offset = lastoff;
++				goto out;
++			}
++
++			lock_page(page);
++
++			if (unlikely(page->mapping != inode->i_mapping)) {
++				unlock_page(page);
++				continue;
++			}
++
++			if (!page_has_buffers(page)) {
++				unlock_page(page);
++				continue;
++			}
++
++			if (page_has_buffers(page)) {
++				lastoff = page_offset(page);
++				bh = head = page_buffers(page);
++				do {
++					if (buffer_uptodate(bh) ||
++					    buffer_unwritten(bh)) {
++						if (origin == SEEK_DATA)
++							found = 1;
++					} else {
++						if (origin == SEEK_HOLE)
++							found = 1;
++					}
++					if (found) {
++						*offset = max_t(loff_t,
++							startoff, lastoff);
++						unlock_page(page);
++						goto out;
++					}
++					lastoff += bh->b_size;
++					bh = bh->b_this_page;
++				} while (bh != head);
++			}
++
++			lastoff = page_offset(page) + PAGE_SIZE;
++			unlock_page(page);
++		}
++
++		/*
++		 * The no. of pages is less than our desired, that would be a
++		 * hole in there.
++		 */
++		if (nr_pages < num && origin == SEEK_HOLE) {
++			found = 1;
++			*offset = lastoff;
++			break;
++		}
++
++		index = pvec.pages[i - 1]->index + 1;
++		pagevec_release(&pvec);
++	} while (index <= end);
++
++out:
++	pagevec_release(&pvec);
++	return found;
++}
++
++/*
++ * ext4_seek_data() retrieves the offset for SEEK_DATA.
++ */
++static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
++{
++	struct inode *inode = file->f_mapping->host;
++	struct ext4_map_blocks map;
++	struct extent_status es;
++	ext4_lblk_t start, last, end;
++	loff_t dataoff, isize;
++	int blkbits;
++	int ret = 0;
++
++	mutex_lock(&inode->i_mutex);
++
++	isize = i_size_read(inode);
++	if (offset >= isize) {
++		mutex_unlock(&inode->i_mutex);
++		return -ENXIO;
++	}
++
++	blkbits = inode->i_sb->s_blocksize_bits;
++	start = offset >> blkbits;
++	last = start;
++	end = isize >> blkbits;
++	dataoff = offset;
++
++	do {
++		map.m_lblk = last;
++		map.m_len = end - last + 1;
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
++			if (last != start)
++				dataoff = last << blkbits;
++			break;
++		}
++
++		/*
++		 * If there is a delay extent at this offset,
++		 * it will be as a data.
++		 */
++		es.start = last;
++		(void)ext4_es_find_extent(inode, &es);
++		if (last >= es.start &&
++		    last < es.start + es.len) {
++			if (last != start)
++				dataoff = last << blkbits;
++			break;
++		}
++
++		/*
++		 * If there is a unwritten extent at this offset,
++		 * it will be as a data or a hole according to page
++		 * cache that has data or not.
++		 */
++		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++			int unwritten;
++			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_DATA,
++							      &map, &dataoff);
++			if (unwritten)
++				break;
++		}
++
++		last++;
++		dataoff = last << blkbits;
++	} while (last <= end);
++
++	mutex_unlock(&inode->i_mutex);
++
++	if (dataoff > isize)
++		return -ENXIO;
++
++	if (dataoff < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
++		return -EINVAL;
++	if (dataoff > maxsize)
++		return -EINVAL;
++
++	if (dataoff != file->f_pos) {
++		file->f_pos = dataoff;
++		file->f_version = 0;
++	}
++
++	return dataoff;
++}
++
++/*
++ * ext4_seek_hole() retrieves the offset for SEEK_HOLE.
++ */
++static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
++{
++	struct inode *inode = file->f_mapping->host;
++	struct ext4_map_blocks map;
++	struct extent_status es;
++	ext4_lblk_t start, last, end;
++	loff_t holeoff, isize;
++	int blkbits;
++	int ret = 0;
++
++	mutex_lock(&inode->i_mutex);
++
++	isize = i_size_read(inode);
++	if (offset >= isize) {
++		mutex_unlock(&inode->i_mutex);
++		return -ENXIO;
++	}
++
++	blkbits = inode->i_sb->s_blocksize_bits;
++	start = offset >> blkbits;
++	last = start;
++	end = isize >> blkbits;
++	holeoff = offset;
++
++	do {
++		map.m_lblk = last;
++		map.m_len = end - last + 1;
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
++			last += ret;
++			holeoff = last << blkbits;
++			continue;
++		}
++
++		/*
++		 * If there is a delay extent at this offset,
++		 * we will skip this extent.
++		 */
++		es.start = last;
++		(void)ext4_es_find_extent(inode, &es);
++		if (last >= es.start &&
++		    last < es.start + es.len) {
++			last = es.start + es.len;
++			holeoff = last << blkbits;
++			continue;
++		}
++
++		/*
++		 * If there is a unwritten extent at this offset,
++		 * it will be as a data or a hole according to page
++		 * cache that has data or not.
++		 */
++		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++			int unwritten;
++			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
++							      &map, &holeoff);
++			if (!unwritten) {
++				last += ret;
++				holeoff = last << blkbits;
++				continue;
++			}
++		}
++
++		/* find a hole */
++		break;
++	} while (last <= end);
++
++	mutex_unlock(&inode->i_mutex);
++
++	if (holeoff > isize)
++		holeoff = isize;
++
++	if (holeoff < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
++		return -EINVAL;
++	if (holeoff > maxsize)
++		return -EINVAL;
++
++	if (holeoff != file->f_pos) {
++		file->f_pos = holeoff;
++		file->f_version = 0;
++	}
++
++	return holeoff;
++}
++
++/*
+  * ext4_llseek() handles both block-mapped and extent-mapped maxbytes values
+  * by calling generic_file_llseek_size() with the appropriate maxbytes
+  * value for each.
+@@ -300,8 +619,19 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+ 	else
+ 		maxbytes = inode->i_sb->s_maxbytes;
  
--found_mapped_buffer:
--		if (bh != NULL && buffer_delay(bh)) {
--			/* 1st or contiguous delayed buffer found. */
--			if (!(flags & FIEMAP_EXTENT_DELALLOC)) {
--				/*
--				 * 1st delayed buffer found, record
--				 * the start of extent.
--				 */
--				flags |= FIEMAP_EXTENT_DELALLOC;
--				newex->ec_block = end;
--				logical = (__u64)end << blksize_bits;
--			}
--			/* Find contiguous delayed buffers. */
--			do {
--				if (!buffer_delay(bh))
--					goto found_delayed_extent;
--				bh = bh->b_this_page;
--				end++;
--			} while (bh != head);
--
--			for (; index < ret; index++) {
--				if (!page_has_buffers(pages[index])) {
--					bh = NULL;
--					break;
--				}
--				head = page_buffers(pages[index]);
--				if (!head) {
--					bh = NULL;
--					break;
--				}
--
--				if (pages[index]->index !=
--				    pages[start_index]->index + index
--				    - start_index) {
--					/* Blocks are not contiguous. */
--					bh = NULL;
--					break;
--				}
--				bh = head;
--				do {
--					if (!buffer_delay(bh))
--						/* Delayed-extent ends. */
--						goto found_delayed_extent;
--					bh = bh->b_this_page;
--					end++;
--				} while (bh != head);
--			}
--		} else if (!(flags & FIEMAP_EXTENT_DELALLOC))
--			/* a hole found. */
--			goto out;
--
--found_delayed_extent:
--		newex->ec_len = min(end - newex->ec_block,
--						(ext4_lblk_t)EXT_INIT_MAX_LEN);
--		if (ret == nr_pages && bh != NULL &&
--			newex->ec_len < EXT_INIT_MAX_LEN &&
--			buffer_delay(bh)) {
--			/* Have not collected an extent and continue. */
--			for (index = 0; index < ret; index++)
--				page_cache_release(pages[index]);
--			goto repeat;
--		}
--
--		for (index = 0; index < ret; index++)
--			page_cache_release(pages[index]);
--		kfree(pages);
-+		flags |= FIEMAP_EXTENT_DELALLOC;
-+		newex->ec_len = es.start + es.len - newex->ec_block;
- 	}
+-	return generic_file_llseek_size(file, offset, origin,
+-					maxbytes, i_size_read(inode));
++	switch (origin) {
++	case SEEK_SET:
++	case SEEK_CUR:
++	case SEEK_END:
++		return generic_file_llseek_size(file, offset, origin,
++						maxbytes, i_size_read(inode));
++	case SEEK_DATA:
++		return ext4_seek_data(file, offset, maxbytes);
++	case SEEK_HOLE:
++		return ext4_seek_hole(file, offset, maxbytes);
++	}
++
++	return -EINVAL;
+ }
  
--	physical = (__u64)newex->ec_start << blksize_bits;
--	length =   (__u64)newex->ec_len << blksize_bits;
+ const struct file_operations ext4_file_operations = {
+-- 
+1.7.12.rc2.18.g61b472e
+
