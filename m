@@ -1,65 +1,229 @@
-From: "Luck, Tony" <tony.luck@intel.com>
-Subject: RE: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Fri, 26 Oct 2012 16:55:01 +0000
-Message-ID: <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
- <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: xfstests: test ext4 statfs
+Date: Fri, 26 Oct 2012 13:03:18 -0500
+Message-ID: <508AD066.4090102@sgi.com>
+References: <5089749C.4050003@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Cc: "Kleen, Andi" <andi.kleen@intel.com>, "Wu, Fengguang"
-	<fengguang.wu@intel.com>, Andrew Morton <akpm@linux-foundation.org>, Jan Kara
-	<jack@suse.cz>, Jun'ichi Nomura <j-nomura@ce.jp.nec.com>, Akira Fujita
-	<a-fujita@rs.jp.nec.com>, "linux-kernel@vger.kernel.org"
-	<linux-kernel@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>, Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20121026061206.GA31139@thunk.org>
-Content-Language: en-US
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from relay2.sgi.com ([192.48.179.30]:33052 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S965435Ab2JZSBq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Oct 2012 14:01:46 -0400
+In-Reply-To: <5089749C.4050003@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> If we go back to first principles, what do we want to do?  We want the
-> system administrator to know that a file might be potentially
-> corrupted.  And perhaps, if a program tries to read from that file, it
-> should get an error.  If we have a program that has that file mmap'ed
-> at the time of the error, perhaps we should kill the program with some
-> kind of signal.  But to force a reboot of the entire system?  Or to
-> remounte the file system read-only?  That seems to be completely
-> disproportionate for what might be 2 or 3 bits getting flipped in a
-> page cache for a file.
+On 10/25/2012 12:19 PM, Eric Sandeen wrote:
+> Calculating free blocks in ext[234] is surprisingly hard, since
+> by default we report "bsd" style df which doesn't count filesystem
+> "overhead" blocks as used.
+>
+> With a lot of code dedicated to sorting out what to report as
+> free, things tend to go wrong surprisingly often.
+>
+> Here's a test to actually try to stop the next regression.  ;)
+>
+> NB: For bsddf, the kernel currently does not count journal blocks
+> as overhead; it probably should.  But the test below looks to have
+> the result within 1% of perfection, so it still passes even if
+> the kernel doesn't count the journal against free blocks.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>
+> ---
+>
+>
+> diff --git a/289 b/289
+> new file mode 100755
+> index 0000000..bf0e897
+> --- /dev/null
+> +++ b/289
+> @@ -0,0 +1,103 @@
+> +#! /bin/bash
+> +# FS QA Test No. 286
+                       ^
+                     289
+I know this may change at commit time. ;)
 
-I think that we know that the file *is* corrupted, not just "potentially".
-We probably know the location of the corruption to cache-line granularity.
-Perhaps better on systems where we have access to ecc syndrome bits,
-perhaps worse ... we do have some errors where the low bits of the address
-are not known.
+> +#
+> +# Test overhead & df output for extN filesystems
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2012 Red Hat, Inc.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +#
+> +# creator
+> +owner=sandeen@redhat.com
+> +
+> +seq=`basename $0`
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1	# failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    cd /
+> +    rm -f $tmp.*
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common.rc
+> +. ./common.filter# ./check 289
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 cxfsxe4 3.7.0-rc2+
+MKFS_OPTIONS  -- /dev/sdc2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sdc2 /xfs_scratch
 
-I'm in total agreement that forcing a reboot or fsck is unhelpful here.
+289	 - output mismatch (see 289.out.bad)
+--- 289.out	2012-10-26 12:33:27.000000000 -0500
++++ 289.out.bad	2012-10-26 12:35:03.000000000 -0500
+@@ -1,3 +1,4 @@
+  QA output created by 289
+-minix f_blocks is in range
++minix f_blocks has value of 7208959
++minix f_blocks is NOT in range 7323904 .. 7323904
+  bsd f_blocks is in range
+Ran: 289
+Failures: 289
+Failed 1 of 1 tests
 
-But what should we do?  We don't want to let the error be propagated. That
-could cause a cascade of more failures as applications make bad decisions
-based on the corrupted data.
+> +
+> +# real QA test starts here
+> +
+> +# Modify as appropriate.
+> +_supported_fs ext2 ext3 ext4
+> +_supported_os Linux
+> +_require_scratch
+> +
+> +rm -f $seq.full
+> +
+> +_scratch_mkfs >> $seq.full 2>&1
+> +
+> +# Get the honest truth about block counts straight from metadata on disk
+> +TOTAL_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
+> +		| awk '/Block count:/{print $3}'`
+> +
+> +FREE_BLOCKS=`dumpe2fs -h $SCRATCH_DEV 2>/dev/null \
+> +		| awk '/Free blocks:/{print $3}'`
+> +
+> +# nb: kernels today don't count journal blocks  as overhead, but should.
+> +# For most filesystems this will still be within tolerance.
+> +# Overhead is all the blocks (already) used by the fs itself:
+> +OVERHEAD=$(($TOTAL_BLOCKS-$FREE_BLOCKS))
+> +
+> +#  bsddf|minixdf
+> +#         Set the behaviour  for  the  statfs  system  call.  The  minixdf
+> +#         behaviour is to return in the f_blocks field the total number of
+> +#         blocks of the filesystem, while the bsddf  behaviour  (which  is
+> +#         the default) is to subtract the overhead blocks used by the ext2
+> +#         filesystem and not available for file storage.
+> +
+> +# stat -f output looks like this; we get f_blocks from that, which
+> +# varies depending on the df mount options used below:
+> +
+> +#   File: "/mnt/test"
+> +#    ID: affc5f2b2f57652 Namelen: 255     Type: ext2/ext3
+> +# Block size: 4096       Fundamental block size: 4096
+> +# Blocks: Total: 5162741    Free: 5118725    Available: 4856465
+> +# Inodes: Total: 1313760    Free: 1313749
+> +
+> +_scratch_mount "-o minixdf"
+> +MINIX_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
+> +umount $SCRATCH_MNT
+> +
+> +_scratch_mount "-o bsddf"
+> +BSD_F_BLOCKS=`stat -f $SCRATCH_MNT | awk '/^Blocks/{print $3}'`
+> +umount $SCRATCH_MNT
+> +
+> +# Echo data to $seq.full for analysis
+> +echo "Overhead is $OVERHEAD blocks out of $TOTAL_BLOCKS ($FREE_BLOCKS free)" >> $seq.full
+> +echo "MINIX free blocks $MINIX_F_BLOCKS" >> $seq.full
+> +echo "BSD free blocks $BSD_F_BLOCKS" >> $seq.full
+> +
 
-Perhaps we could ask the filesystem to move the file to a top-level
-"corrupted" directory (analogous to "lost+found") with some attached
-metadata to help recovery tools know where the file came from, and the
-range of corrupted bytes in the file? We'd also need to invalidate existing
-open file descriptors (or less damaging - flag them to avoid the corrupted
-area??). Whatever we do, it needs to be persistent across a reboot ... the
-lost bits are not going to magically heal themselves.
+This passes for ext[23] but not ext4.
 
-We already have code to send SIGBUS to applications that have the
-corrupted page mmap(2)'d (see mm/memory-failure.c).
+> +# minix should be exactly equal (hence tolerance of 0)
+> +_within_tolerance "minix f_blocks" $MINIX_F_BLOCKS $TOTAL_BLOCKS 0 -v
 
-Other ideas?
+This is what I got when I ran it on an 80G  SSD.
 
--Tony
+Model: ATA INTEL SSDSA2M080 (scsi)
+Disk /dev/sdc: 80.0GB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt_sync_mbr
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Number  Start   End     Size    File system  Name     Flags
+  1      17.4kB  30.0GB  30.0GB  ext4         primary
+  2      30.0GB  60.0GB  30.0GB  ext4         primary
+
+# ./check 289
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 cxfsxe4 3.7.0-rc2+
+MKFS_OPTIONS  -- /dev/sdc2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sdc2 /xfs_scratch
+
+289	 - output mismatch (see 289.out.bad)
+--- 289.out	2012-10-26 12:33:27.000000000 -0500
++++ 289.out.bad	2012-10-26 12:35:03.000000000 -0500
+@@ -1,3 +1,4 @@
+  QA output created by 289
+-minix f_blocks is in range
++minix f_blocks has value of 7208959
++minix f_blocks is NOT in range 7323904 .. 7323904
+  bsd f_blocks is in range
+Ran: 289
+Failures: 289
+Failed 1 of 1 tests
+
+
+> +# bsd should be within ... we'll say 1% for some slop
+> +_within_tolerance "bsd f_blocks" $BSD_F_BLOCKS $(($TOTAL_BLOCKS-$OVERHEAD)) 1% -v
+> +
+> +# success, all done
+> +status=0
+> +exit
+> diff --git a/289.out b/289.out
+> new file mode 100644
+> index 0000000..a4de760
+> --- /dev/null
+> +++ b/289.out
+> @@ -0,0 +1,3 @@
+> +QA output created by 289
+> +minix f_blocks is in range
+> +bsd f_blocks is in range
+> diff --git a/group b/group
+> index fb0f8eb..a846b60 100644
+> --- a/group
+> +++ b/group
+> @@ -407,3 +407,4 @@ deprecated
+>   286 other
+>   287 auto dump quota quick
+>   288 auto quick ioctl trim
+> +289 auto quick
+>
+
+Regards
+--Rich
+
