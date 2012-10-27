@@ -1,45 +1,104 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Fri, 26 Oct 2012 20:22:58 -0400
-Message-ID: <20121027002258.GB31030@thunk.org>
-References: <87mwzdnuww.fsf@spindle.srvr.nix>
- <20121023143019.GA3040@fieldses.org>
- <874nllxi7e.fsf_-_@spindle.srvr.nix>
- <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <508AF3FA.4020506@redhat.com>
- <87wqydx957.fsf@spindle.srvr.nix>
- <20121026205618.GC8614@thunk.org>
- <87objpx84k.fsf@spindle.srvr.nix>
- <20121026211542.GE8614@thunk.org>
- <87haphx76u.fsf@spindle.srvr.nix>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [RFC PATCH 2/2] mm: Gate stable page writes on the bdi flag
+Date: Fri, 26 Oct 2012 18:36:08 -0700
+Message-ID: <20121027013608.GB19591@blackbox.djwong.org>
+References: <20121026101909.GB19617@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Bryan Schumaker <bjschuma-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Peng Tao <bergwolf-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
-	gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Nix <nix-dKoSMcxRz+Te9xe1eoZjHA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87haphx76u.fsf-AdTWujXS48Mg67Zj9sPl2A@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20121026101909.GB19617@blackbox.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 26, 2012 at 10:19:21PM +0100, Nix wrote:
-> > prevent unwary civilians from coming across the feature and saying,
-> > "oooh, shiny!" and turning it on.  :-(
-> 
-> Or having it turned on by default either, which seems to be the case
-> now.
+Create a helper function to decide if a particular address space is backed by a
+device that requires stable page writes.  For each wait_on_page_writeback call
+that was inserted in the original stable page write patchset, change it to wait
+only if the helper says it's necessary.  This should eliminate unnecessary
+waiting for devices that don't require page contents to be immutable during
+writeout.
 
-Huh?  It's not turned on by default.  If you mount with no mount
-options, journal checksums are *not* turned on.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
 
-	 	 	       	     - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/buffer.c         |    3 ++-
+ fs/ext4/inode.c     |    4 ++--
+ include/linux/fs.h  |    2 ++
+ mm/filemap.c        |    3 ++-
+ mm/page-writeback.c |    7 +++++++
+ 5 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index b5f0442..f508ece 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2334,7 +2334,8 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	if (unlikely(ret < 0))
+ 		goto out_unlock;
+ 	set_page_dirty(page);
+-	wait_on_page_writeback(page);
++	if (page->mapping && mapping_needs_stable_writes(page->mapping))
++		wait_on_page_writeback(page);
+ 	return 0;
+ out_unlock:
+ 	unlock_page(page);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b3c243b..82908b8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4813,8 +4813,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (page_has_buffers(page)) {
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+ 					ext4_bh_unmapped)) {
+-			/* Wait so that we don't change page under IO */
+-			wait_on_page_writeback(page);
++			if (mapping_needs_stable_writes(mapping))
++				wait_on_page_writeback(page);
+ 			ret = VM_FAULT_LOCKED;
+ 			goto out;
+ 		}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b33cfc9..d99db0e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -466,6 +466,8 @@ struct block_device {
+ 	struct percpu_rw_semaphore	bd_block_size_semaphore;
+ };
+ 
++int mapping_needs_stable_writes(struct address_space *mapping);
++
+ /*
+  * Radix-tree tags, for tagging dirty and writeback pages within the pagecache
+  * radix trees
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 83efee7..aedc6bd 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2274,7 +2274,8 @@ repeat:
+ 		return NULL;
+ 	}
+ found:
+-	wait_on_page_writeback(page);
++	if (mapping_needs_stable_writes(mapping))
++		wait_on_page_writeback(page);
+ 	return page;
+ }
+ EXPORT_SYMBOL(grab_cache_page_write_begin);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 830893b..d0f042c 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2275,3 +2275,10 @@ int mapping_tagged(struct address_space *mapping, int tag)
+ 	return radix_tree_tagged(&mapping->page_tree, tag);
+ }
+ EXPORT_SYMBOL(mapping_tagged);
++
++int mapping_needs_stable_writes(struct address_space *mapping)
++{
++	return mapping->backing_dev_info &&
++	       bdi_cap_stable_writes(mapping->backing_dev_info);
++}
++EXPORT_SYMBOL_GPL(mapping_needs_stable_writes);
