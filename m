@@ -1,118 +1,45 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing device
- needs stable page writes
-Date: Fri, 26 Oct 2012 18:35:24 -0700
-Message-ID: <20121027013524.GA19591@blackbox.djwong.org>
-References: <20121026101909.GB19617@blackbox.djwong.org>
+From: Jim Rees <rees-63aXycvo3TyHXe+LvDLADg@public.gmane.org>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Fri, 26 Oct 2012 23:11:47 -0400
+Message-ID: <20121027031147.GA4255@umich.edu>
+References: <20121023013343.GB6370@fieldses.org>
+ <87mwzdnuww.fsf@spindle.srvr.nix>
+ <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <87pq48nbyz.fsf_-_@spindle.srvr.nix>
+ <508AF3FA.4020506@redhat.com>
+ <87wqydx957.fsf@spindle.srvr.nix>
+ <20121026205618.GC8614@thunk.org>
+ <87objpx84k.fsf@spindle.srvr.nix>
+ <20121026211542.GE8614@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Nix <nix-dKoSMcxRz+Te9xe1eoZjHA@public.gmane.org>,
+	Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Bryan Schumaker <bjschuma-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Peng Tao <bergwolf-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
+	gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20121026101909.GB19617@blackbox.djwong.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20121026211542.GE8614-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-This creates BDI_CAP_STABLE_WRITES, which indicates that a device requires
-stable page writes.  It also plumbs in a sysfs attribute so that admins can
-check the device status.
+Theodore Ts'o wrote:
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
+  The problem is this code isn't done yet, and journal_checksum is
+  really not ready for prime time.  When it is ready, my plan is to wire
+  it up so it is enabled by default; at the moment, it was intended for
+  developer experimentation only.  As I said, it's my fault for not
+  clearly labelling it "Not for you!", or putting it under an #ifdef to
+  prevent unwary civilians from coming across the feature and saying,
+  "oooh, shiny!" and turning it on.  :-(
 
- block/blk-integrity.c       |    8 ++++++++
- include/linux/backing-dev.h |    6 ++++++
- mm/backing-dev.c            |   11 +++++++++++
- 3 files changed, 25 insertions(+)
-
-diff --git a/block/blk-integrity.c b/block/blk-integrity.c
-index da2a818..d05d7b3 100644
---- a/block/blk-integrity.c
-+++ b/block/blk-integrity.c
-@@ -384,6 +384,7 @@ EXPORT_SYMBOL(blk_integrity_is_initialized);
- int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
- {
- 	struct blk_integrity *bi;
-+	struct backing_dev_info *bdi;
- 
- 	BUG_ON(disk == NULL);
- 
-@@ -420,6 +421,9 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
- 	} else
- 		bi->name = bi_unsupported_name;
- 
-+	bdi = &disk->queue->backing_dev_info;
-+	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
-+
- 	return 0;
- }
- EXPORT_SYMBOL(blk_integrity_register);
-@@ -434,10 +438,14 @@ EXPORT_SYMBOL(blk_integrity_register);
- void blk_integrity_unregister(struct gendisk *disk)
- {
- 	struct blk_integrity *bi;
-+	struct backing_dev_info *bdi;
- 
- 	if (!disk || !disk->integrity)
- 		return;
- 
-+	bdi = &disk->queue->backing_dev_info;
-+	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
-+
- 	bi = disk->integrity;
- 
- 	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 2a9a9ab..b82a8bb 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
- #define BDI_CAP_EXEC_MAP	0x00000040
- #define BDI_CAP_NO_ACCT_WB	0x00000080
- #define BDI_CAP_SWAP_BACKED	0x00000100
-+#define BDI_CAP_STABLE_WRITES	0x00000200
- 
- #define BDI_CAP_VMFLAGS \
- 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
-@@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
- int pdflush_proc_obsolete(struct ctl_table *table, int write,
- 		void __user *buffer, size_t *lenp, loff_t *ppos);
- 
-+static inline bool bdi_cap_stable_writes(struct backing_dev_info *bdi)
-+{
-+	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
-+}
-+
- static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
- {
- 	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index d3ca2b3..a2f4c08 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
- }
- BDI_SHOW(max_ratio, bdi->max_ratio)
- 
-+static ssize_t stable_page_writes_show(struct device *dev,
-+	struct device_attribute *attr, char *page)
-+{
-+	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-+
-+	return snprintf(page, PAGE_SIZE-1, "%d\n",
-+			bdi->capabilities & BDI_CAP_STABLE_WRITES ? 1 : 0);
-+}
-+
- #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
-+#define __ATTR_RO(attr) __ATTR(attr, 0444, attr##_show, NULL)
- 
- static struct device_attribute bdi_dev_attrs[] = {
- 	__ATTR_RW(read_ahead_kb),
- 	__ATTR_RW(min_ratio),
- 	__ATTR_RW(max_ratio),
-+	__ATTR_RO(stable_page_writes),
- 	__ATTR_NULL,
- };
- 
+Perhaps a word or two in the mount man page would be appropriate?
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
