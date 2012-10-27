@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [RFC PATCH 2/2] mm: Gate stable page writes on the bdi flag
-Date: Fri, 26 Oct 2012 18:36:08 -0700
-Message-ID: <20121027013608.GB19591@blackbox.djwong.org>
+Subject: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing device
+ needs stable page writes
+Date: Fri, 26 Oct 2012 18:35:24 -0700
+Message-ID: <20121027013524.GA19591@blackbox.djwong.org>
 References: <20121026101909.GB19617@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -14,91 +15,104 @@ In-Reply-To: <20121026101909.GB19617@blackbox.djwong.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Create a helper function to decide if a particular address space is backed by a
-device that requires stable page writes.  For each wait_on_page_writeback call
-that was inserted in the original stable page write patchset, change it to wait
-only if the helper says it's necessary.  This should eliminate unnecessary
-waiting for devices that don't require page contents to be immutable during
-writeout.
+This creates BDI_CAP_STABLE_WRITES, which indicates that a device requires
+stable page writes.  It also plumbs in a sysfs attribute so that admins can
+check the device status.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
 
- fs/buffer.c         |    3 ++-
- fs/ext4/inode.c     |    4 ++--
- include/linux/fs.h  |    2 ++
- mm/filemap.c        |    3 ++-
- mm/page-writeback.c |    7 +++++++
- 5 files changed, 15 insertions(+), 4 deletions(-)
+ block/blk-integrity.c       |    8 ++++++++
+ include/linux/backing-dev.h |    6 ++++++
+ mm/backing-dev.c            |   11 +++++++++++
+ 3 files changed, 25 insertions(+)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b5f0442..f508ece 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2334,7 +2334,8 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	if (unlikely(ret < 0))
- 		goto out_unlock;
- 	set_page_dirty(page);
--	wait_on_page_writeback(page);
-+	if (page->mapping && mapping_needs_stable_writes(page->mapping))
-+		wait_on_page_writeback(page);
+diff --git a/block/blk-integrity.c b/block/blk-integrity.c
+index da2a818..d05d7b3 100644
+--- a/block/blk-integrity.c
++++ b/block/blk-integrity.c
+@@ -384,6 +384,7 @@ EXPORT_SYMBOL(blk_integrity_is_initialized);
+ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
+ {
+ 	struct blk_integrity *bi;
++	struct backing_dev_info *bdi;
+ 
+ 	BUG_ON(disk == NULL);
+ 
+@@ -420,6 +421,9 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
+ 	} else
+ 		bi->name = bi_unsupported_name;
+ 
++	bdi = &disk->queue->backing_dev_info;
++	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
++
  	return 0;
- out_unlock:
- 	unlock_page(page);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b3c243b..82908b8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4813,8 +4813,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	if (page_has_buffers(page)) {
- 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
- 					ext4_bh_unmapped)) {
--			/* Wait so that we don't change page under IO */
--			wait_on_page_writeback(page);
-+			if (mapping_needs_stable_writes(mapping))
-+				wait_on_page_writeback(page);
- 			ret = VM_FAULT_LOCKED;
- 			goto out;
- 		}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b33cfc9..d99db0e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -466,6 +466,8 @@ struct block_device {
- 	struct percpu_rw_semaphore	bd_block_size_semaphore;
+ }
+ EXPORT_SYMBOL(blk_integrity_register);
+@@ -434,10 +438,14 @@ EXPORT_SYMBOL(blk_integrity_register);
+ void blk_integrity_unregister(struct gendisk *disk)
+ {
+ 	struct blk_integrity *bi;
++	struct backing_dev_info *bdi;
+ 
+ 	if (!disk || !disk->integrity)
+ 		return;
+ 
++	bdi = &disk->queue->backing_dev_info;
++	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
++
+ 	bi = disk->integrity;
+ 
+ 	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 2a9a9ab..b82a8bb 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
+ #define BDI_CAP_EXEC_MAP	0x00000040
+ #define BDI_CAP_NO_ACCT_WB	0x00000080
+ #define BDI_CAP_SWAP_BACKED	0x00000100
++#define BDI_CAP_STABLE_WRITES	0x00000200
+ 
+ #define BDI_CAP_VMFLAGS \
+ 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
+@@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
+ int pdflush_proc_obsolete(struct ctl_table *table, int write,
+ 		void __user *buffer, size_t *lenp, loff_t *ppos);
+ 
++static inline bool bdi_cap_stable_writes(struct backing_dev_info *bdi)
++{
++	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
++}
++
+ static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
+ {
+ 	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
+diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+index d3ca2b3..a2f4c08 100644
+--- a/mm/backing-dev.c
++++ b/mm/backing-dev.c
+@@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
+ }
+ BDI_SHOW(max_ratio, bdi->max_ratio)
+ 
++static ssize_t stable_page_writes_show(struct device *dev,
++	struct device_attribute *attr, char *page)
++{
++	struct backing_dev_info *bdi = dev_get_drvdata(dev);
++
++	return snprintf(page, PAGE_SIZE-1, "%d\n",
++			bdi->capabilities & BDI_CAP_STABLE_WRITES ? 1 : 0);
++}
++
+ #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
++#define __ATTR_RO(attr) __ATTR(attr, 0444, attr##_show, NULL)
+ 
+ static struct device_attribute bdi_dev_attrs[] = {
+ 	__ATTR_RW(read_ahead_kb),
+ 	__ATTR_RW(min_ratio),
+ 	__ATTR_RW(max_ratio),
++	__ATTR_RO(stable_page_writes),
+ 	__ATTR_NULL,
  };
  
-+int mapping_needs_stable_writes(struct address_space *mapping);
-+
- /*
-  * Radix-tree tags, for tagging dirty and writeback pages within the pagecache
-  * radix trees
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 83efee7..aedc6bd 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2274,7 +2274,8 @@ repeat:
- 		return NULL;
- 	}
- found:
--	wait_on_page_writeback(page);
-+	if (mapping_needs_stable_writes(mapping))
-+		wait_on_page_writeback(page);
- 	return page;
- }
- EXPORT_SYMBOL(grab_cache_page_write_begin);
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 830893b..d0f042c 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2275,3 +2275,10 @@ int mapping_tagged(struct address_space *mapping, int tag)
- 	return radix_tree_tagged(&mapping->page_tree, tag);
- }
- EXPORT_SYMBOL(mapping_tagged);
-+
-+int mapping_needs_stable_writes(struct address_space *mapping)
-+{
-+	return mapping->backing_dev_info &&
-+	       bdi_cap_stable_writes(mapping->backing_dev_info);
-+}
-+EXPORT_SYMBOL_GPL(mapping_needs_stable_writes);
