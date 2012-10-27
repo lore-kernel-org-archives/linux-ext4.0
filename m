@@ -1,102 +1,434 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Testing ext4's journal via simulating a reboot via KVM
-Date: Sat, 27 Oct 2012 04:01:27 -0400
-Message-ID: <20121027080127.GA12045@thunk.org>
-References: <87objupjlr.fsf@spindle.srvr.nix>
- <20121023013343.GB6370@fieldses.org>
- <87mwzdnuww.fsf@spindle.srvr.nix>
- <20121023143019.GA3040@fieldses.org>
- <874nllxi7e.fsf_-_@spindle.srvr.nix>
- <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <508AF3FA.4020506@redhat.com>
+From: Jeff Liu <jeff.liu@oracle.com>
+Subject: Re: [PATCH 8/8 v3] ext4: introduce lseek SEEK_DATA/SEEK_HOLE support
+Date: Sat, 27 Oct 2012 18:05:59 +0800
+Message-ID: <508BB207.1010506@oracle.com>
+References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com> <1351257825-3701-9-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>, Nix <nix@esperi.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, hughd@google.com,
+	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
+	lczerner@redhat.com, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:57949 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751836Ab2J0IBe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 27 Oct 2012 04:01:34 -0400
-Content-Disposition: inline
-In-Reply-To: <508AF3FA.4020506@redhat.com>
+Received: from aserp1050.oracle.com ([141.146.126.70]:29358 "EHLO
+	aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751855Ab2J0KQE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Oct 2012 06:16:04 -0400
+Received: from aserp1040.oracle.com (aserp1040.oracle.com [141.146.126.69])
+	by aserp1050.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q9RA7mgI023609
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sat, 27 Oct 2012 10:07:49 GMT
+In-Reply-To: <1351257825-3701-9-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 26, 2012 at 03:35:06PM -0500, Eric Sandeen wrote:
-> 
-> Out of curiosity, when I test log replay with the journal_checksum option, I
-> almost always get something like:
-> 
-> [  999.917805] JBD2: journal transaction 84121 on dm-1-8 is corrupt.
-> [  999.923904] EXT4-fs (dm-1): error loading journal
+Hi Zheng,
 
-I tried to reproduce your findings, using my kvm setup.  I've pushed
-the changes that I am using here (see the kvm-autorun and kvm-xfstests
-directories):
+On 10/26/2012 09:23 PM, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+>
+> This patch makes ext4 really support SEEK_DATA/SEEK_HOLE flags.  Block-mapped
+> and extent-mapped files are fully implemented together because ext4_map_blocks
+> hides this differences.
+>
+> After applying this patch, it will cause a failure in xfstest #285 when the file
+> is block-mapped due to block-mapped file isn't support fallocate(2).
+>
+> I had tried to use ext4_ext_walk_space() to retrieve the offset for a
+> extent-mapped file.  But finally I decide to keep using ext4_map_blocks() to
+> support SEEK_DATA/SEEK_HOLE because ext4_map_blocks() can hide the difference
+> between block-mapped file and extent-mapped file.  Moreover, in next step,
+> extent status tree will track all extent status, and we can get all mappings
+> from this tree.  So I think that using ext4_map_blocks() is a better choice.
+>
+> CC: "Theodore Ts'o" <tytso@mit.edu>
+> CC: Hugh Dickins <hughd@google.com>
+> Signed-off-by: Jie Liu <jeff.liu@oracle.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> ---
+> v3 <- v2:
+>   - determine an unwritten extent as a data/hole according to the whether there
+>     has some data in page cache or not.
+>   - remove ext4_seek_data_hole(), and call ext4_seek_data/hole() directly.
+>   - fix some bugs
+>
+> Please apply this patch before testing this patch using xfstest #285 due to
+> there is a bug in xfstest (http://patchwork.xfs.org/patch/4276/).
+>
+> The function ext4_find_unwritten_pgoff() is inspired by Jeff's work for xfs
+> (d126d43f631f996daeee5006714fed914be32368).  Thus, I add a Signed-off-by for
+> his crediting.
+>
+> Jeff, I really appreicate if you could allow me to add Signed-off-by in this
+> patch.  Please let me know if you think it is not well.  Thanks!
+I'm fine. :)
+Finally, maybe I'll try to tweak that routine with page cache lookup for 
+unwritten extents to be a
+VFS helper so that Btrfs can make use of it as well, thank you!
 
-   git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
-
-Using both the kernel tree as of my last pull request to Linus, as
-well as v3.6.3, I was not able to reproduce a failure using this:
-
-./kvm-xfstests -m nobarrier,journal_async_commit,journal_checksum fsstress
-
-<wait until fsstress has started running for 10 seconds or so, and in
-  another window>
-
-killall kvm
-
-I then built a version of e2fsck using the configure option
---enable-jbd-debug, and then ran e2fsck with the E2FSCK_JBD_DEBUG
-environment variable set to 3.  (This allowed me to confirm that the
-checksums really were getting set.)
-
-Running e2fsck -f on the underlying volume, I could see that checksums
-was in fact properly set, and the journal replay completed
-successfully.  I tried this multiple times, and it worked every single
-time.  This was with me killing the kvm while fsstress was running so
-there was over 300 transactions that had to be replayed.
-
-Eric has said that he was able to see journal checksum failures which
-caused the journal to abort using his setup.  It's very interesting
-that I could not (no matter how many times I tried, and with
-variations on the mount options).  It makes me wonder if there is some
-difference with how dm-snapshot was working versus simply just killing
-the kvm process --- could it be that dm-snapshot wasn't taking a
-consistent snapshot?  The fact that KVM is seeing valid checksums
-would imply that the file system layer is (at least) sending valid
-data to the disk.  Why dm_snapshot is not seeing valid checksum is
-definitely an interesting question.
-
-Eric if you can build a version of e2fsck with --config-jbd-debug
-enabled, that would be useful since you'll be able to see how much the
-expected and real checksum vary with each other.  Maybe that will tell
-us something...
-
-						- Ted
-
-
-P.S.  One other interesting thing I discovered is this.  Using debugfs
--R "logdump -a", I found the following:
-
-Found expected sequence 20587, type 2 (commit block) at block 5302
-Found expected sequence 20588, type 1 (descriptor block) at block 5303
-Dumping descriptor block, sequence 20588, at block 5303:
-  FS block 23 logged at journal block 5304 (flags 0x0)
-  FS block 1 logged at journal block 5305 (flags 0x2)
-  FS block 1157 logged at journal block 5306 (flags 0xa)
-Found expected sequence 20588, type 2 (commit block) at block 5307
-Found expected sequence 20589, type 2 (commit block) at block 5308
-Found expected sequence 20590, type 2 (commit block) at block 5309
-
-Note the sequence of what appear to be completely empty commit blocks.
-I'm not sure what fsstress is doing which is causing e2fsck to issue
-empty commit blocks, but as far as I can tell, they are completely
-pointless.
-
-I tried running "debugfs -R logdump" on my root file system, and I saw
-a few cases of empty commits, but at a much reduced rate.  Still, if
-we can figure out how to stop the jbd2 layer from creating these empty
-commits, it would certainly optimize things a bit.
+-Jeff
+>
+>   fs/ext4/file.c | 334 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+>   1 file changed, 332 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index bf3966b..2f5759e 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -24,6 +24,7 @@
+>   #include <linux/mount.h>
+>   #include <linux/path.h>
+>   #include <linux/quotaops.h>
+> +#include <linux/pagevec.h>
+>   #include "ext4.h"
+>   #include "ext4_jbd2.h"
+>   #include "xattr.h"
+> @@ -286,6 +287,324 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+>   }
+>   
+>   /*
+> + * Here we use ext4_map_blocks() to get a block mapping for a extent-based
+> + * file rather than ext4_ext_walk_space() because we can introduce
+> + * SEEK_DATA/SEEK_HOLE for block-mapped and extent-mapped file at the same
+> + * function.  When extent status tree has been fully implemented, it will
+> + * track all extent status for a file and we can directly use it to
+> + * retrieve the offset for SEEK_DATA/SEEK_HOLE.
+> + */
+> +
+> +/*
+> + * When we retrieve the offset for SEEK_DATA/SEEK_HOLE, we would need to
+> + * lookup page cache to check whether or not there has some data between
+> + * [startoff, endoff] because, if this range contains an unwritten extent,
+> + * we determine this extent as a data or a hole according to whether the
+> + * page cache has data or not.
+> + */
+> +static int ext4_find_unwritten_pgoff(struct inode *inode,
+> +				     int origin,
+> +				     struct ext4_map_blocks *map,
+> +				     loff_t *offset)
+> +{
+> +	struct pagevec pvec;
+> +	unsigned int blkbits;
+> +	pgoff_t index;
+> +	pgoff_t end;
+> +	loff_t endoff;
+> +	loff_t startoff;
+> +	loff_t lastoff;
+> +	int found = 0;
+> +
+> +	blkbits = inode->i_sb->s_blocksize_bits;
+> +	startoff = *offset;
+> +	lastoff = startoff;
+> +	endoff = (map->m_lblk + map->m_len) << blkbits;
+> +
+> +	index = startoff >> PAGE_CACHE_SHIFT;
+> +	end = endoff >> PAGE_CACHE_SHIFT;
+> +
+> +	pagevec_init(&pvec, 0);
+> +	do {
+> +		int i, num;
+> +		unsigned long nr_pages;
+> +
+> +		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
+> +		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
+> +					  (pgoff_t)num);
+> +		if (nr_pages == 0) {
+> +			if (origin == SEEK_DATA)
+> +				break;
+> +
+> +			BUG_ON(origin != SEEK_HOLE);
+> +			/*
+> +			 * If this is the first time to go into the loop and
+> +			 * offset is not beyond the end offset, it will be a
+> +			 * hole at this offset
+> +			 */
+> +			if (lastoff == startoff || lastoff < endoff)
+> +				found = 1;
+> +			break;
+> +		}
+> +
+> +		/*
+> +		 * If this is the first time to go into the loop and
+> +		 * offset is smaller than the first page offset, it will be a
+> +		 * hole at this offset.
+> +		 */
+> +		if (lastoff == startoff && origin == SEEK_HOLE &&
+> +		    lastoff < page_offset(pvec.pages[0])) {
+> +			found = 1;
+> +			break;
+> +		}
+> +
+> +		for (i = 0; i < nr_pages; i++) {
+> +			struct page *page = pvec.pages[i];
+> +			struct buffer_head *bh, *head;
+> +
+> +			/*
+> +			 * If the current offset is not beyond the end of given
+> +			 * range, it will be a hole.
+> +			 */
+> +			if (lastoff < endoff && origin == SEEK_HOLE &&
+> +			    page->index > end) {
+> +				found = 1;
+> +				*offset = lastoff;
+> +				goto out;
+> +			}
+> +
+> +			lock_page(page);
+> +
+> +			if (unlikely(page->mapping != inode->i_mapping)) {
+> +				unlock_page(page);
+> +				continue;
+> +			}
+> +
+> +			if (!page_has_buffers(page)) {
+> +				unlock_page(page);
+> +				continue;
+> +			}
+> +
+> +			if (page_has_buffers(page)) {
+> +				lastoff = page_offset(page);
+> +				bh = head = page_buffers(page);
+> +				do {
+> +					if (buffer_uptodate(bh) ||
+> +					    buffer_unwritten(bh)) {
+> +						if (origin == SEEK_DATA)
+> +							found = 1;
+> +					} else {
+> +						if (origin == SEEK_HOLE)
+> +							found = 1;
+> +					}
+> +					if (found) {
+> +						*offset = max_t(loff_t,
+> +							startoff, lastoff);
+> +						unlock_page(page);
+> +						goto out;
+> +					}
+> +					lastoff += bh->b_size;
+> +					bh = bh->b_this_page;
+> +				} while (bh != head);
+> +			}
+> +
+> +			lastoff = page_offset(page) + PAGE_SIZE;
+> +			unlock_page(page);
+> +		}
+> +
+> +		/*
+> +		 * The no. of pages is less than our desired, that would be a
+> +		 * hole in there.
+> +		 */
+> +		if (nr_pages < num && origin == SEEK_HOLE) {
+> +			found = 1;
+> +			*offset = lastoff;
+> +			break;
+> +		}
+> +
+> +		index = pvec.pages[i - 1]->index + 1;
+> +		pagevec_release(&pvec);
+> +	} while (index <= end);
+> +
+> +out:
+> +	pagevec_release(&pvec);
+> +	return found;
+> +}
+> +
+> +/*
+> + * ext4_seek_data() retrieves the offset for SEEK_DATA.
+> + */
+> +static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+> +{
+> +	struct inode *inode = file->f_mapping->host;
+> +	struct ext4_map_blocks map;
+> +	struct extent_status es;
+> +	ext4_lblk_t start, last, end;
+> +	loff_t dataoff, isize;
+> +	int blkbits;
+> +	int ret = 0;
+> +
+> +	mutex_lock(&inode->i_mutex);
+> +
+> +	isize = i_size_read(inode);
+> +	if (offset >= isize) {
+> +		mutex_unlock(&inode->i_mutex);
+> +		return -ENXIO;
+> +	}
+> +
+> +	blkbits = inode->i_sb->s_blocksize_bits;
+> +	start = offset >> blkbits;
+> +	last = start;
+> +	end = isize >> blkbits;
+> +	dataoff = offset;
+> +
+> +	do {
+> +		map.m_lblk = last;
+> +		map.m_len = end - last + 1;
+> +		ret = ext4_map_blocks(NULL, inode, &map, 0);
+> +		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
+> +			if (last != start)
+> +				dataoff = last << blkbits;
+> +			break;
+> +		}
+> +
+> +		/*
+> +		 * If there is a delay extent at this offset,
+> +		 * it will be as a data.
+> +		 */
+> +		es.start = last;
+> +		(void)ext4_es_find_extent(inode, &es);
+> +		if (last >= es.start &&
+> +		    last < es.start + es.len) {
+> +			if (last != start)
+> +				dataoff = last << blkbits;
+> +			break;
+> +		}
+> +
+> +		/*
+> +		 * If there is a unwritten extent at this offset,
+> +		 * it will be as a data or a hole according to page
+> +		 * cache that has data or not.
+> +		 */
+> +		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+> +			int unwritten;
+> +			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_DATA,
+> +							      &map, &dataoff);
+> +			if (unwritten)
+> +				break;
+> +		}
+> +
+> +		last++;
+> +		dataoff = last << blkbits;
+> +	} while (last <= end);
+> +
+> +	mutex_unlock(&inode->i_mutex);
+> +
+> +	if (dataoff > isize)
+> +		return -ENXIO;
+> +
+> +	if (dataoff < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
+> +		return -EINVAL;
+> +	if (dataoff > maxsize)
+> +		return -EINVAL;
+> +
+> +	if (dataoff != file->f_pos) {
+> +		file->f_pos = dataoff;
+> +		file->f_version = 0;
+> +	}
+> +
+> +	return dataoff;
+> +}
+> +
+> +/*
+> + * ext4_seek_hole() retrieves the offset for SEEK_HOLE.
+> + */
+> +static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+> +{
+> +	struct inode *inode = file->f_mapping->host;
+> +	struct ext4_map_blocks map;
+> +	struct extent_status es;
+> +	ext4_lblk_t start, last, end;
+> +	loff_t holeoff, isize;
+> +	int blkbits;
+> +	int ret = 0;
+> +
+> +	mutex_lock(&inode->i_mutex);
+> +
+> +	isize = i_size_read(inode);
+> +	if (offset >= isize) {
+> +		mutex_unlock(&inode->i_mutex);
+> +		return -ENXIO;
+> +	}
+> +
+> +	blkbits = inode->i_sb->s_blocksize_bits;
+> +	start = offset >> blkbits;
+> +	last = start;
+> +	end = isize >> blkbits;
+> +	holeoff = offset;
+> +
+> +	do {
+> +		map.m_lblk = last;
+> +		map.m_len = end - last + 1;
+> +		ret = ext4_map_blocks(NULL, inode, &map, 0);
+> +		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
+> +			last += ret;
+> +			holeoff = last << blkbits;
+> +			continue;
+> +		}
+> +
+> +		/*
+> +		 * If there is a delay extent at this offset,
+> +		 * we will skip this extent.
+> +		 */
+> +		es.start = last;
+> +		(void)ext4_es_find_extent(inode, &es);
+> +		if (last >= es.start &&
+> +		    last < es.start + es.len) {
+> +			last = es.start + es.len;
+> +			holeoff = last << blkbits;
+> +			continue;
+> +		}
+> +
+> +		/*
+> +		 * If there is a unwritten extent at this offset,
+> +		 * it will be as a data or a hole according to page
+> +		 * cache that has data or not.
+> +		 */
+> +		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+> +			int unwritten;
+> +			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
+> +							      &map, &holeoff);
+> +			if (!unwritten) {
+> +				last += ret;
+> +				holeoff = last << blkbits;
+> +				continue;
+> +			}
+> +		}
+> +
+> +		/* find a hole */
+> +		break;
+> +	} while (last <= end);
+> +
+> +	mutex_unlock(&inode->i_mutex);
+> +
+> +	if (holeoff > isize)
+> +		holeoff = isize;
+> +
+> +	if (holeoff < 0 && !(file->f_mode & FMODE_UNSIGNED_OFFSET))
+> +		return -EINVAL;
+> +	if (holeoff > maxsize)
+> +		return -EINVAL;
+> +
+> +	if (holeoff != file->f_pos) {
+> +		file->f_pos = holeoff;
+> +		file->f_version = 0;
+> +	}
+> +
+> +	return holeoff;
+> +}
+> +
+> +/*
+>    * ext4_llseek() handles both block-mapped and extent-mapped maxbytes values
+>    * by calling generic_file_llseek_size() with the appropriate maxbytes
+>    * value for each.
+> @@ -300,8 +619,19 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
+>   	else
+>   		maxbytes = inode->i_sb->s_maxbytes;
+>   
+> -	return generic_file_llseek_size(file, offset, origin,
+> -					maxbytes, i_size_read(inode));
+> +	switch (origin) {
+> +	case SEEK_SET:
+> +	case SEEK_CUR:
+> +	case SEEK_END:
+> +		return generic_file_llseek_size(file, offset, origin,
+> +						maxbytes, i_size_read(inode));
+> +	case SEEK_DATA:
+> +		return ext4_seek_data(file, offset, maxbytes);
+> +	case SEEK_HOLE:
+> +		return ext4_seek_hole(file, offset, maxbytes);
+> +	}
+> +
+> +	return -EINVAL;
+>   }
+>   
+>   const struct file_operations ext4_file_operations = {
 
