@@ -1,85 +1,116 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC v4 03/15] vfs,hot_track: add the function for collecting
- I/O frequency
-Date: Sun, 28 Oct 2012 15:55:20 +0800
-Message-ID: <20121028075520.GA14554@gmail.com>
+Subject: [PATCH] ext4: add hot tracking support
+Date: Sun, 28 Oct 2012 17:22:50 +0800
+Message-ID: <1351416170-3735-1-git-send-email-wenqing.lz@taobao.com>
 References: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
- <1351177747-19389-4-git-send-email-zwu.kernel@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-To: zwu.kernel@gmail.com
+Cc: cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	zwu.kernel@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:51971 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752231Ab2J1HoG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Oct 2012 03:44:06 -0400
-Content-Disposition: inline
-In-Reply-To: <1351177747-19389-4-git-send-email-zwu.kernel@gmail.com>
+Received: from mail-da0-f46.google.com ([209.85.210.46]:35419 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754851Ab2J1JMA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Oct 2012 05:12:00 -0400
+In-Reply-To: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Zhiyong, 
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-On Thu, Oct 25, 2012 at 11:08:55PM +0800, zwu.kernel@gmail.com wrote:
-[snip]
-> @@ -199,6 +342,54 @@ err:
->  }
->  
->  /*
-> + * Main function to update access frequency from read/writepage(s) hooks
-> + */
-> +inline void hot_update_freqs(struct inode *inode, u64 start,
-> +			u64 len, int rw)
+Define a new mount option to add VFS hot tracking support in order to use it in
+ext4.
 
-This function seems too big.  So we really need to inline this function?
+CC: Zhi Yong Wu <zwu.kernel@gmail.com>
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+Hi Zhiyong,
+
+Here is a try to add hot tracking support in ext4.  I do some simple tests and
+it works well.
 
 Regards,
 Zheng
 
-> +{
-> +	struct hot_info *root = inode->i_sb->s_hot_root;
-> +	struct hot_inode_item *he;
-> +	struct hot_range_item *hr;
-> +	u32 cur, end;
-> +
-> +	if (!root || (len == 0))
-> +		return;
-> +
-> +	he = hot_inode_item_find(root, inode->i_ino);
-> +	if (IS_ERR(he)) {
-> +		WARN_ON(1);
-> +		return;
-> +	}
-> +
-> +	spin_lock(&he->hot_inode.lock);
-> +	hot_freq_data_update(&he->hot_inode.hot_freq_data, rw);
-> +	spin_unlock(&he->hot_inode.lock);
-> +
-> +	/*
-> +	 * Align ranges on RANGE_SIZE boundary
-> +	 * to prevent proliferation of range structs
-> +	 */
-> +	end = (start + len + RANGE_SIZE - 1) >> RANGE_BITS;
-> +	for (cur = (start >> RANGE_BITS); cur < end; cur++) {
-> +		hr = hot_range_item_find(he, cur);
-> +		if (IS_ERR(hr)) {
-> +			WARN_ON(1);
-> +			hot_inode_item_put(he);
-> +			return;
-> +		}
-> +
-> +		spin_lock(&hr->hot_range.lock);
-> +		hot_freq_data_update(&hr->hot_range.hot_freq_data, rw);
-> +		spin_unlock(&hr->hot_range.lock);
-> +
-> +		hot_range_item_put(hr);
-> +	}
-> +
-> +	hot_inode_item_put(he);
-> +}
-> +EXPORT_SYMBOL_GPL(hot_update_freqs);
+ fs/ext4/ext4.h  |  3 +++
+ fs/ext4/super.c | 15 ++++++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3c20de1..f6cff1e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1298,6 +1298,9 @@ struct ext4_sb_info {
+ 
+ 	/* Precomputed FS UUID checksum for seeding other checksums */
+ 	__u32 s_csum_seed;
++
++	/* Enable hot tracking or not */
++	int s_hottrack_enable;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 80928f7..1506dc3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -43,6 +43,7 @@
+ 
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
++#include <linux/hot_tracking.h>
+ 
+ #include "ext4.h"
+ #include "ext4_extents.h"
+@@ -864,6 +865,8 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_ext_release(sb);
+ 	ext4_xattr_put_super(sb);
+ 
++	if (sbi->s_hottrack_enable)
++		hot_track_exit(sb);
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+@@ -1222,7 +1225,7 @@ enum {
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+-	Opt_max_dir_size_kb,
++	Opt_max_dir_size_kb, Opt_hottrack,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1297,6 +1300,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
+ 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
++	{Opt_hottrack, "hot_track"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
+@@ -1478,6 +1482,7 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
++	{Opt_hottrack, 0, MOPT_GTE0},
+ 	{Opt_err, 0, 0}
+ };
+ 
+@@ -1595,6 +1600,14 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			sbi->s_li_wait_mult = arg;
+ 		} else if (token == Opt_max_dir_size_kb) {
+ 			sbi->s_max_dir_size_kb = arg;
++		} else if (token == Opt_hottrack) {
++			if (hot_track_init(sb)) {
++				ext4_msg(sb, KERN_ERR,
++					 "EXT4-fs: hot tracking initialization"
++					 " failed");
++				return -1;
++			}
++			sbi->s_hottrack_enable = 1;
+ 		} else if (token == Opt_stripe) {
+ 			sbi->s_stripe = arg;
+ 		} else if (m->flags & MOPT_DATAJ) {
+-- 
+1.7.12.rc2.18.g61b472e
+
