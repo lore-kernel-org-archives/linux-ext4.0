@@ -1,116 +1,44 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: add hot tracking support
-Date: Sun, 28 Oct 2012 17:22:50 +0800
-Message-ID: <1351416170-3735-1-git-send-email-wenqing.lz@taobao.com>
-References: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
-Cc: cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	zwu.kernel@gmail.com
+From: "Nelson, John R" <John_Nelson@student.uml.edu>
+Subject: Fsck and large file
+Date: Sun, 28 Oct 2012 12:00:49 +0000
+Message-ID: <0408C81F72528E40A0D3235A1F67FFC83ECD45F3@SN2PRD0202MB144.namprd02.prod.outlook.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:35419 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754851Ab2J1JMA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Oct 2012 05:12:00 -0400
-In-Reply-To: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
+Received: from am1ehsobe005.messaging.microsoft.com ([213.199.154.208]:2244
+	"EHLO am1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750891Ab2J1MA4 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 28 Oct 2012 08:00:56 -0400
+Received: from mail116-am1 (localhost [127.0.0.1])	by
+ mail116-am1-R.bigfish.com (Postfix) with ESMTP id 12ECF4600CE	for
+ <linux-ext4@vger.kernel.org>; Sun, 28 Oct 2012 12:00:54 +0000 (UTC)
+Received: from AM1EHSMHS018.bigfish.com (unknown [10.3.201.230])	by
+ mail116-am1.bigfish.com (Postfix) with ESMTP id 301C9180049	for
+ <linux-ext4@vger.kernel.org>; Sun, 28 Oct 2012 12:00:52 +0000 (UTC)
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+How big of a file does FSCK consider a large file? I mean by the output snipplet below
 
-Define a new mount option to add VFS hot tracking support in order to use it in
-ext4.
+  18713 inodes used (0.03%, out of 59727872)
+         248 non-contiguous files (1.3%)
+          29 non-contiguous directories (0.2%)
+             # of inodes with ind/dind/tind blocks: 0/0/0
+             Extent depth histogram: 19083/39
+    13643522 blocks used (5.71%, out of 238892544)
+           0 bad blocks
+           3 large files
 
-CC: Zhi Yong Wu <zwu.kernel@gmail.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
-Hi Zhiyong,
-
-Here is a try to add hot tracking support in ext4.  I do some simple tests and
-it works well.
-
-Regards,
-Zheng
-
- fs/ext4/ext4.h  |  3 +++
- fs/ext4/super.c | 15 ++++++++++++++-
- 2 files changed, 17 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3c20de1..f6cff1e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1298,6 +1298,9 @@ struct ext4_sb_info {
- 
- 	/* Precomputed FS UUID checksum for seeding other checksums */
- 	__u32 s_csum_seed;
-+
-+	/* Enable hot tracking or not */
-+	int s_hottrack_enable;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 80928f7..1506dc3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -43,6 +43,7 @@
- 
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-+#include <linux/hot_tracking.h>
- 
- #include "ext4.h"
- #include "ext4_extents.h"
-@@ -864,6 +865,8 @@ static void ext4_put_super(struct super_block *sb)
- 	ext4_ext_release(sb);
- 	ext4_xattr_put_super(sb);
- 
-+	if (sbi->s_hottrack_enable)
-+		hot_track_exit(sb);
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -1222,7 +1225,7 @@ enum {
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
--	Opt_max_dir_size_kb,
-+	Opt_max_dir_size_kb, Opt_hottrack,
- };
- 
- static const match_table_t tokens = {
-@@ -1297,6 +1300,7 @@ static const match_table_t tokens = {
- 	{Opt_init_itable, "init_itable"},
- 	{Opt_noinit_itable, "noinit_itable"},
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
-+	{Opt_hottrack, "hot_track"},
- 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
- 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
- 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
-@@ -1478,6 +1482,7 @@ static const struct mount_opts {
- 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
- 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
-+	{Opt_hottrack, 0, MOPT_GTE0},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -1595,6 +1600,14 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			sbi->s_li_wait_mult = arg;
- 		} else if (token == Opt_max_dir_size_kb) {
- 			sbi->s_max_dir_size_kb = arg;
-+		} else if (token == Opt_hottrack) {
-+			if (hot_track_init(sb)) {
-+				ext4_msg(sb, KERN_ERR,
-+					 "EXT4-fs: hot tracking initialization"
-+					 " failed");
-+				return -1;
-+			}
-+			sbi->s_hottrack_enable = 1;
- 		} else if (token == Opt_stripe) {
- 			sbi->s_stripe = arg;
- 		} else if (m->flags & MOPT_DATAJ) {
--- 
-1.7.12.rc2.18.g61b472e
+       15803 regular files
+        3318 directories
+           0 character device files
+           0 block device files
+           0 fifos
+           0 links
+          14 symbolic links (14 fast symbolic links)
+           0 sockets
 
