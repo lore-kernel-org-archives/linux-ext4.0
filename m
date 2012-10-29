@@ -1,93 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Sun, 28 Oct 2012 21:00:13 -0400
-Message-ID: <20121029010012.GE9161@thunk.org>
+From: Nix <nix@esperi.org.uk>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
+Date: Mon, 29 Oct 2012 01:04:32 +0000
+Message-ID: <87lieqdr6n.fsf@spindle.srvr.nix>
 References: <20121026205618.GC8614@thunk.org>
- <87objpx84k.fsf@spindle.srvr.nix>
- <20121026211542.GE8614@thunk.org>
- <87haphx76u.fsf@spindle.srvr.nix>
- <20121027002258.GB31030@thunk.org>
- <873910xevu.fsf@spindle.srvr.nix>
- <20121027175534.GA7783@thunk.org>
- <87fw4zzra3.fsf@spindle.srvr.nix>
- <508C4FE5.1030102@redhat.com>
- <508C633F.4070100@redhat.com>
+	<87objpx84k.fsf@spindle.srvr.nix> <20121026211542.GE8614@thunk.org>
+	<87haphx76u.fsf@spindle.srvr.nix> <20121027002258.GB31030@thunk.org>
+	<873910xevu.fsf@spindle.srvr.nix> <20121027175534.GA7783@thunk.org>
+	<87fw4zzra3.fsf@spindle.srvr.nix> <508C4FE5.1030102@redhat.com>
+	<508C633F.4070100@redhat.com> <20121029010012.GE9161@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nix <nix@esperi.org.uk>, linux-ext4@vger.kernel.org,
+Content-Type: text/plain
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org, gregkh@linuxfoundation.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58186 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754273Ab2J2BAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 28 Oct 2012 21:00:25 -0400
-Content-Disposition: inline
-In-Reply-To: <508C633F.4070100@redhat.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:46824 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754273Ab2J2BEj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Oct 2012 21:04:39 -0400
+In-Reply-To: <20121029010012.GE9161@thunk.org> (Theodore Ts'o's message of
+	"Sun, 28 Oct 2012 21:00:13 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 27, 2012 at 05:42:07PM -0500, Eric Sandeen wrote:
-> 
-> It looks like the inode_bitmap_bh is being modified outside a transaction:
-> 
->                 ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
-> 
-> It needs a get_write_access / handle_dirty_metadata pair around it.
+On 29 Oct 2012, Theodore Ts'o spake thusly:
 
-Oops.   Nice catch!!
+>     commit 119c0d4460b001e44b41dcf73dc6ee794b98bd31 modified this function
+>     such that the inode bitmap was being modified outside a transaction,
+>     which could lead to corruption, and was discovered when journal_checksum
+>     found a bad checksum in the journal.
 
-The patch isn't quite right, though.  We only want to call
-ext4_journal_get_write_access() when we know that there is an available
-bit in the bitmap.  (We could still lose the race, but in that case
-the winner of the race probably grabbed the bitmap block first.)
+Hm. If this could have caused corruption for non-checksum users, it must
+be a pretty rare case if nobody's hit it in six months -- or maybe, I
+suppose, they hit it and never noticed. (But, hey, this makes me happier
+to have reported this despite all the flap, if it's found a genuine bug
+that could have hit people not using wierdo mount options.)
 
-Also, we only need to call ext4_handle_dirty_metadata() if we
-successfully grab the bit in the bitmap.
+Thanks for spending so much time on this fix. Much appreciated.
 
-So I suggest this patch instead:
-
-commit 087eda81f1ac6a6a0394f781b44f1d555d8f64c6
-Author: Eric Sandeen <sandeen@redhat.com>
-Date:   Sun Oct 28 20:59:57 2012 -0400
-
-    ext4: fix unjournaled inode bitmap modification
-    
-    commit 119c0d4460b001e44b41dcf73dc6ee794b98bd31 modified this function
-    such that the inode bitmap was being modified outside a transaction,
-    which could lead to corruption, and was discovered when journal_checksum
-    found a bad checksum in the journal.
-    
-    Reported-by: Nix <nix@esperi.org.uk>
-    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-    Cc: stable@vger.kernel.org
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 4facdd2..575afac 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -725,6 +725,10 @@ repeat_in_this_group:
- 				   "inode=%lu", ino + 1);
- 			continue;
- 		}
-+		BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
-+		err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
-+		if (err)
-+			goto fail;
- 		ext4_lock_group(sb, group);
- 		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
- 		ext4_unlock_group(sb, group);
-@@ -738,6 +742,11 @@ repeat_in_this_group:
- 	goto out;
- 
- got:
-+	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
-+	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
-+	if (err)
-+		goto fail;
-+
- 	/* We may have to initialize the block bitmap if it isn't already */
- 	if (ext4_has_group_desc_csum(sb) &&
- 	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-- 
+NULL && (void)
