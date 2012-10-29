@@ -1,9 +1,9 @@
 From: Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: [RFC v4+ hot_track 15/19] sysfs: add two hot_track proc files
-Date: Mon, 29 Oct 2012 11:10:40 -0700
-Message-ID: <20121029181040.GA3605@kroah.com>
+Subject: Re: [RFC v4+ hot_track 13/19] debugfs: introduce one function
+Date: Mon, 29 Oct 2012 11:11:35 -0700
+Message-ID: <20121029181135.GB3605@kroah.com>
 References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
- <1351485061-12297-16-git-send-email-zwu.kernel@gmail.com>
+ <1351485061-12297-14-git-send-email-zwu.kernel@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -14,20 +14,18 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 To: zwu.kernel@gmail.com
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1351485061-12297-16-git-send-email-zwu.kernel@gmail.com>
+In-Reply-To: <1351485061-12297-14-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 29, 2012 at 12:30:57PM +0800, zwu.kernel@gmail.com wrote:
+On Mon, Oct 29, 2012 at 12:30:55PM +0800, zwu.kernel@gmail.com wrote:
 > From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 > 
->   Add two proc files hot-kick-time and hot-update-delay
-> under the dir /proc/sys/fs/ in order to turn
-> TIME_TO_KICK and HEAT_UPDATE_DELAY into be tunable.
+>   The debugfs function is used to get expected dentry.
 
-As you say, these are proc files, not sysfs files, so please fix the
- Subject: up here.
+Huh?  Why do you need this?  Why haven't you added documentation for the
+function saying what it does?
 
-thanks,
+confused,
 
 greg k-h
