@@ -1,69 +1,59 @@
-From: "Jun'ichi Nomura" <j-nomura@ce.jp.nec.com>
-Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Mon, 29 Oct 2012 20:05:51 +0900
-Message-ID: <508E630F.2080800@ce.jp.nec.com>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com> <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com> <20121026061206.GA31139@thunk.org> <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com> <20121026184649.GA8614@thunk.org> <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com> <20121027221626.GA9161@thunk.org> <20121029011632.GN29378@dastard> <20121029024024.GC9365@thunk.org> <m27gq9r2cu.fsf@firstfloor.org>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: Re: [PATCH, RFC] Ext3: Mount partition as read only if during orphan
+ cleanup truncate fails to obtain journal handle.
+Date: Mon, 29 Oct 2012 16:37:17 +0530
+Message-ID: <CAOiN93=p-EOiRWOs=mw52zkQtFy=6Tg7PgJ7HT=drcgFKWCNdw@mail.gmail.com>
+References: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
+	<20121029104939.GB18767@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
-        "Luck\, Tony" <tony.luck@intel.com>,
-        Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-        "Kleen\, Andi" <andi.kleen@intel.com>,
-        "Wu\, Fengguang" <fengguang.wu@intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Akira Fujita <a-fujita@rs.jp.nec.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <m27gq9r2cu.fsf@firstfloor.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	Namjae Jeon <linkinjeon@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:35457 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932307Ab2J2LHS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Oct 2012 07:07:18 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so5071186vcb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2012 04:07:17 -0700 (PDT)
+In-Reply-To: <20121029104939.GB18767@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/29/12 19:37, Andi Kleen wrote:
-> Theodore Ts'o <tytso@mit.edu> writes:
->> On Mon, Oct 29, 2012 at 12:16:32PM +1100, Dave Chinner wrote:
->>> Except that there are filesystems that cannot implement such flags,
->>> or require on-disk format changes to add more of those flags. This
->>> is most definitely not a filesystem specific behaviour, so any sort
->>> of VFS level per-file state needs to be kept in xattrs, not special
->>> flags. Filesystems are welcome to optimise the storage of such
->>> special xattrs (e.g. down to a single boolean flag in an inode), but
->>> using a flag for something that dould, in fact, storage the exactly
->>> offset and length of the corruption is far better than just storing
->>> a "something is corrupted in this file" bit....
+On Mon, Oct 29, 2012 at 4:19 PM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 24-10-12 16:12:44, Ashish Sangwan wrote:
+>> During orphan cleanup while doing truncate, if we fail to obtain journal
+>> handle, the inode for which truncate was called would not be removed from
+>> both the on-disk and in-memory orphan lists as the call to ext3_orphan_del
+>> would not be executed.
 >>
->> Agreed, if we're going to add an xattr, then we might as well store
-> 
-> I don't think an xattr makes sense for this. It's sufficient to keep
-> this state in memory.
-> 
-> In general these error paths are hard to test and it's important
-> to keep them as simple as possible. Doing IO and other complexities
-> just doesn't make sense. Just have the simplest possible path
-> that can do the job.
+>> This would have following consequences:
+>> a) As the inode is not removed from the on-disk list, truncate would be
+>> called again for the same inode. Each call would add the inode to the
+>> in-memory list. This operation would continue endlessly or until truncate
+>> is succeed.
+>>
+>> b) If somehow, after some iterations, truncate is succeed, ext3_orphan_del
+>> will only remove the inode from in-memory list just 1 time. This will trigger
+>> j_assert during put super.
+>>
+>> This patch handles both the problems. If truncate fails, first in-memory
+>> list is cleared and than the partition is mounted as read only.
+>> Failure to obtain journal handle during mount may suggest that journal
+>> device is corrupted.
+>   Could you really trigger any of the described bugs? Because
+> ext3_truncate() does take care to remove inode from orphan list even if
+> starting of a transaction fails (see out_notrans label in ext3_truncate()).
+Sorry, my bad. Did'nt notice out_notrans tag.
+Actually, its just ext4 which does not clear orphan list.
+Please ignore this patch.
 
-And since it's difficult to prove, I think it's nice to have an
-option to panic if the memory error was on dirty page cache.
-
-It's theoretically same as disk I/O error; dirty cache is marked invalid
-and next read will go to disk.
-Though in practice, the next read will likely to fail if disk was broken.
-(Given that transient errors are usually recovered by retries and fail-overs
- in storage stack and not visible to applications which don't care.)
-So it's "consistent" in some sense.
-OTOH, the next read will likely succeed reading old data from disk
-in case of the memory error.
-I'm afraid the read-after-write inconsistency could cause silent data
-corruption.
-
--- 
-Jun'ichi Nomura, NEC Corporation
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks,
+Ashish
+> Also spitting additional messages should be unnecessary - the error which
+> caused truncate to fail should have logged the error message and also taken
+> appropriate action depending on filesystem configuration (i.e., remount fs
+> read-only, panic the system, or do nothing).
+>
