@@ -1,93 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH, RFC] Ext3: Mount partition as read only if during
- orphan cleanup truncate fails to obtain journal handle.
-Date: Mon, 29 Oct 2012 11:49:39 +0100
-Message-ID: <20121029104939.GB18767@quack.suse.cz>
-References: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
+From: "Jun'ichi Nomura" <j-nomura@ce.jp.nec.com>
+Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Mon, 29 Oct 2012 20:05:51 +0900
+Message-ID: <508E630F.2080800@ce.jp.nec.com>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com> <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com> <20121026061206.GA31139@thunk.org> <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com> <20121026184649.GA8614@thunk.org> <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com> <20121027221626.GA9161@thunk.org> <20121029011632.GN29378@dastard> <20121029024024.GC9365@thunk.org> <m27gq9r2cu.fsf@firstfloor.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
-	Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	Namjae Jeon <linkinjeon@gmail.com>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52149 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751338Ab2J2Ktl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Oct 2012 06:49:41 -0400
-Content-Disposition: inline
-In-Reply-To: <1351075364-2886-1-git-send-email-ashish.sangwan2@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
+        "Luck\, Tony" <tony.luck@intel.com>,
+        Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+        "Kleen\, Andi" <andi.kleen@intel.com>,
+        "Wu\, Fengguang" <fengguang.wu@intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Akira Fujita <a-fujita@rs.jp.nec.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andi Kleen <andi@firstfloor.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <m27gq9r2cu.fsf@firstfloor.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-10-12 16:12:44, Ashish Sangwan wrote:
-> During orphan cleanup while doing truncate, if we fail to obtain journal
-> handle, the inode for which truncate was called would not be removed from
-> both the on-disk and in-memory orphan lists as the call to ext3_orphan_del
-> would not be executed.
+On 10/29/12 19:37, Andi Kleen wrote:
+> Theodore Ts'o <tytso@mit.edu> writes:
+>> On Mon, Oct 29, 2012 at 12:16:32PM +1100, Dave Chinner wrote:
+>>> Except that there are filesystems that cannot implement such flags,
+>>> or require on-disk format changes to add more of those flags. This
+>>> is most definitely not a filesystem specific behaviour, so any sort
+>>> of VFS level per-file state needs to be kept in xattrs, not special
+>>> flags. Filesystems are welcome to optimise the storage of such
+>>> special xattrs (e.g. down to a single boolean flag in an inode), but
+>>> using a flag for something that dould, in fact, storage the exactly
+>>> offset and length of the corruption is far better than just storing
+>>> a "something is corrupted in this file" bit....
+>>
+>> Agreed, if we're going to add an xattr, then we might as well store
 > 
-> This would have following consequences:
-> a) As the inode is not removed from the on-disk list, truncate would be
-> called again for the same inode. Each call would add the inode to the
-> in-memory list. This operation would continue endlessly or until truncate
-> is succeed.
+> I don't think an xattr makes sense for this. It's sufficient to keep
+> this state in memory.
 > 
-> b) If somehow, after some iterations, truncate is succeed, ext3_orphan_del
-> will only remove the inode from in-memory list just 1 time. This will trigger
-> j_assert during put super.
-> 
-> This patch handles both the problems. If truncate fails, first in-memory
-> list is cleared and than the partition is mounted as read only.
-> Failure to obtain journal handle during mount may suggest that journal
-> device is corrupted.
-  Could you really trigger any of the described bugs? Because
-ext3_truncate() does take care to remove inode from orphan list even if
-starting of a transaction fails (see out_notrans label in ext3_truncate()).
-Also spitting additional messages should be unnecessary - the error which
-caused truncate to fail should have logged the error message and also taken
-appropriate action depending on filesystem configuration (i.e., remount fs
-read-only, panic the system, or do nothing).
+> In general these error paths are hard to test and it's important
+> to keep them as simple as possible. Doing IO and other complexities
+> just doesn't make sense. Just have the simplest possible path
+> that can do the job.
 
-								Honza
+And since it's difficult to prove, I think it's nice to have an
+option to panic if the memory error was on dirty page cache.
 
-> 
-> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> ---
->  fs/ext3/super.c | 17 ++++++++++++++++-
->  1 file changed, 16 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index bd60e08..798cd6f 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -1540,7 +1540,22 @@ static void ext3_orphan_cleanup (struct super_block * sb,
->  			jbd_debug(2, "truncating inode %lu to %Ld bytes\n",
->  				  inode->i_ino, inode->i_size);
->  			ext3_truncate(inode);
-> -			nr_truncates++;
-> +			if (list_empty(&EXT3_I(inode)->i_orphan)) {
-> +				nr_truncates++;
-> +			} else {
-> +				/* Remove inode from in-memory orphan list */
-> +				list_del_init(&EXT3_I(inode)->i_orphan);
-> +				ext3_msg(sb, KERN_ERR, "Truncate failed for "
-> +                                        "orphan  inode = %lu. Running e2fsck"
-> +                                        " is recommended", inode->i_ino);
-> +				if (!(s_flags & MS_RDONLY)) {
-> +					ext3_msg(sb, KERN_INFO, "FS would be"
-> +						" mounted as readonly");
-> +					s_flags |= MS_RDONLY;
-> +				}
-> +				break;
-> +			}
-> +
->  		} else {
->  			printk(KERN_DEBUG
->  				"%s: deleting unreferenced inode %lu\n",
-> -- 
-> 1.7.11.4
-> 
+It's theoretically same as disk I/O error; dirty cache is marked invalid
+and next read will go to disk.
+Though in practice, the next read will likely to fail if disk was broken.
+(Given that transient errors are usually recovered by retries and fail-overs
+ in storage stack and not visible to applications which don't care.)
+So it's "consistent" in some sense.
+OTOH, the next read will likely succeed reading old data from disk
+in case of the memory error.
+I'm afraid the read-after-write inconsistency could cause silent data
+corruption.
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Jun'ichi Nomura, NEC Corporation
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
