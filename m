@@ -1,7 +1,7 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v4+ hot_track 07/19] vfs: add map info update function
-Date: Mon, 29 Oct 2012 12:30:49 +0800
-Message-ID: <1351485061-12297-8-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v4+ hot_track 12/19] vfs: add one ioctl interface
+Date: Mon, 29 Oct 2012 12:30:54 +0800
+Message-ID: <1351485061-12297-13-git-send-email-zwu.kernel@gmail.com>
 References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
@@ -15,120 +15,187 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
+  FS_IOC_GET_HEAT_INFO: return a struct containing the various
+metrics collected in hot_freq_data structs, and also return a
+calculated data temperature based on those metrics. Optionally, retrieve
+the temperature from the hot data hash list instead of recalculating it.
+
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/hot_tracking.c |   66 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/hot_tracking.h |   21 +++++++++++++++++
- 2 files changed, 87 insertions(+), 0 deletions(-)
+ fs/compat_ioctl.c            |    5 +++
+ fs/ioctl.c                   |   78 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/hot_tracking.h |   19 ++++++++++
+ 3 files changed, 102 insertions(+), 0 deletions(-)
 
-diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
-index 83e590c..9245dd3 100644
---- a/fs/hot_tracking.c
-+++ b/fs/hot_tracking.c
-@@ -398,6 +398,72 @@ static u32 hot_temp_calc(struct hot_freq_data *freq_data)
+diff --git a/fs/compat_ioctl.c b/fs/compat_ioctl.c
+index 4c6285f..ad1d603 100644
+--- a/fs/compat_ioctl.c
++++ b/fs/compat_ioctl.c
+@@ -57,6 +57,7 @@
+ #include <linux/i2c-dev.h>
+ #include <linux/atalk.h>
+ #include <linux/gfp.h>
++#include <linux/hot_tracking.h>
+ 
+ #include <net/bluetooth/bluetooth.h>
+ #include <net/bluetooth/hci.h>
+@@ -1400,6 +1401,9 @@ COMPATIBLE_IOCTL(TIOCSTART)
+ COMPATIBLE_IOCTL(TIOCSTOP)
+ #endif
+ 
++/*Hot data tracking*/
++COMPATIBLE_IOCTL(FS_IOC_GET_HEAT_INFO)
++
+ /* fat 'r' ioctls. These are handled by fat with ->compat_ioctl,
+    but we don't want warnings on other file systems. So declare
+    them as compatible here. */
+@@ -1579,6 +1583,7 @@ asmlinkage long compat_sys_ioctl(unsigned int fd, unsigned int cmd,
+ 	case FIBMAP:
+ 	case FIGETBSZ:
+ 	case FIONREAD:
++	case FS_IOC_GET_HEAT_INFO:
+ 		if (S_ISREG(f.file->f_path.dentry->d_inode->i_mode))
+ 			break;
+ 		/*FALL THROUGH*/
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 3bdad6d..f0e225e 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -15,6 +15,7 @@
+ #include <linux/writeback.h>
+ #include <linux/buffer_head.h>
+ #include <linux/falloc.h>
++#include "hot_tracking.h"
+ 
+ #include <asm/ioctls.h>
+ 
+@@ -537,6 +538,80 @@ static int ioctl_fsthaw(struct file *filp)
  }
  
  /*
-+ * Calculate a new temperature and, if necessary,
-+ * move the list_head corresponding to this inode or range
-+ * to the proper list with the new temperature
++ * Retrieve information about access frequency for the given file. Return it in
++ * a userspace-friendly struct for btrfsctl (or another tool) to parse.
++ *
++ * The temperature that is returned can be "live" -- that is, recalculated when
++ * the ioctl is called -- or it can be returned from the hashtable, reflecting
++ * the (possibly old) value that the system will use when considering files
++ * for migration. This behavior is determined by hot_heat_info->live.
 + */
-+static void hot_map_array_update(struct hot_freq_data *freq_data,
-+				struct hot_info *root)
++static int ioctl_heat_info(struct file *file, void __user *argp)
 +{
-+	struct hot_map_head *buckets, *cur_bucket;
-+	struct hot_comm_item *comm_item;
++	struct inode *inode = file->f_dentry->d_inode;
++	struct hot_heat_info *heat_info;
 +	struct hot_inode_item *he;
-+	struct hot_range_item *hr;
-+	u32 temp = hot_temp_calc(freq_data);
-+	u8 a_temp = temp >> (32 - HEAT_MAP_BITS);
-+	u8 b_temp = freq_data->last_temp >> (32 - HEAT_MAP_BITS);
++	int ret = 0;
 +
-+	comm_item = container_of(freq_data,
-+			struct hot_comm_item, hot_freq_data);
++	heat_info = kmalloc(sizeof(struct hot_heat_info),
++				GFP_KERNEL | GFP_NOFS);
 +
-+	if (freq_data->flags & FREQ_DATA_TYPE_INODE) {
-+		he = container_of(comm_item,
-+			struct hot_inode_item, hot_inode);
-+		buckets = root->heat_inode_map;
-+
-+		if (he == NULL)
-+			return;
-+
-+		spin_lock(&he->hot_inode.lock);
-+		if (list_empty(&he->hot_inode.n_list) || (a_temp != b_temp)) {
-+			if (!list_empty(&he->hot_inode.n_list)) {
-+				list_del_init(&he->hot_inode.n_list);
-+				root->hot_map_nr--;
-+			}
-+
-+			cur_bucket = buckets + a_temp;
-+			list_add_tail(&he->hot_inode.n_list,
-+					&cur_bucket->node_list);
-+			root->hot_map_nr++;
-+			freq_data->last_temp = temp;
-+		}
-+		spin_unlock(&he->hot_inode.lock);
-+	} else if (freq_data->flags & FREQ_DATA_TYPE_RANGE) {
-+		hr = container_of(comm_item,
-+			struct hot_range_item, hot_range);
-+		buckets = root->heat_range_map;
-+
-+		if (hr == NULL)
-+			return;
-+
-+		spin_lock(&hr->hot_range.lock);
-+		if (list_empty(&hr->hot_range.n_list) || (a_temp != b_temp)) {
-+			if (!list_empty(&hr->hot_range.n_list)) {
-+				list_del_init(&hr->hot_range.n_list);
-+				root->hot_map_nr--;
-+			}
-+
-+			cur_bucket = buckets + a_temp;
-+			list_add_tail(&hr->hot_range.n_list,
-+					&cur_bucket->node_list);
-+			root->hot_map_nr++;
-+			freq_data->last_temp = temp;
-+		}
-+		spin_unlock(&hr->hot_range.lock);
++	if (copy_from_user((void *) heat_info,
++			argp,
++			sizeof(struct hot_heat_info)) != 0) {
++		ret = -EFAULT;
++		goto err;
 +	}
++
++	he = hot_inode_item_find(inode->i_sb->s_hot_root, inode->i_ino);
++	if (!he) {
++		/* we don't have any info on this file yet */
++		ret = -ENODATA;
++		goto err;
++	}
++
++	spin_lock(&he->hot_inode.lock);
++	heat_info->avg_delta_reads =
++		(__u64) he->hot_inode.hot_freq_data.avg_delta_reads;
++	heat_info->avg_delta_writes =
++		(__u64) he->hot_inode.hot_freq_data.avg_delta_writes;
++	heat_info->last_read_time =
++	(__u64) timespec_to_ns(&he->hot_inode.hot_freq_data.last_read_time);
++	heat_info->last_write_time =
++	(__u64) timespec_to_ns(&he->hot_inode.hot_freq_data.last_write_time);
++	heat_info->num_reads =
++		(__u32) he->hot_inode.hot_freq_data.nr_reads;
++	heat_info->num_writes =
++		(__u32) he->hot_inode.hot_freq_data.nr_writes;
++
++	if (heat_info->live > 0) {
++		/*
++		 * got a request for live temperature,
++		 * call hot_hash_calc_temperature to recalculate
++		 */
++		heat_info->temp =
++		inode->i_sb->s_hot_root->hot_func_type->ops.hot_temp_calc_fn(
++					&he->hot_inode.hot_freq_data);
++	} else {
++		/* not live temperature, get it from the hashlist */
++		heat_info->temp = he->hot_inode.hot_freq_data.last_temp;
++	}
++	spin_unlock(&he->hot_inode.lock);
++
++	hot_inode_item_put(he);
++
++	if (copy_to_user(argp, (void *) heat_info,
++			sizeof(struct hot_heat_info))) {
++		ret = -EFAULT;
++		goto err;
++	}
++
++err:
++	kfree(heat_info);
++	return ret;
 +}
 +
 +/*
-  * Initialize inode and range map arrays.
-  */
- static void hot_map_array_init(struct hot_info *root)
-diff --git a/fs/hot_tracking.h b/fs/hot_tracking.h
-index cc4666e..196b894 100644
---- a/fs/hot_tracking.h
-+++ b/fs/hot_tracking.h
-@@ -26,6 +26,27 @@
+  * When you add any new common ioctls to the switches above and below
+  * please update compat_sys_ioctl() too.
+  *
+@@ -591,6 +666,9 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 	case FIGETBSZ:
+ 		return put_user(inode->i_sb->s_blocksize, argp);
  
- #define FREQ_POWER 4
++	case FS_IOC_GET_HEAT_INFO:
++		return ioctl_heat_info(filp, argp);
++
+ 	default:
+ 		if (S_ISREG(inode->i_mode))
+ 			error = file_ioctl(filp, cmd, arg);
+diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
+index f82db2d..b3ed251 100644
+--- a/include/linux/hot_tracking.h
++++ b/include/linux/hot_tracking.h
+@@ -41,6 +41,17 @@ struct hot_freq_data {
+ 	u32 last_temp;
+ };
  
-+/* NRR/NRW heat unit = 2^X accesses */
-+#define NRR_MULTIPLIER_POWER 20 /* NRR - number of reads since mount */
-+#define NRR_COEFF_POWER 0
-+#define NRW_MULTIPLIER_POWER 20 /* NRW - number of writes since mount */
-+#define NRW_COEFF_POWER 0
++struct hot_heat_info {
++	__u64 avg_delta_reads;
++	__u64 avg_delta_writes;
++	__u64 last_read_time;
++	__u64 last_write_time;
++	__u32 num_reads;
++	__u32 num_writes;
++	__u32 temp;
++	__u8 live;
++};
 +
-+/* LTR/LTW heat unit = 2^X ns of age */
-+#define LTR_DIVIDER_POWER 30 /* LTR - time elapsed since last read(ns) */
-+#define LTR_COEFF_POWER 1
-+#define LTW_DIVIDER_POWER 30 /* LTW - time elapsed since last write(ns) */
-+#define LTW_COEFF_POWER 1
-+
+ /* List heads in hot map array */
+ struct hot_map_head {
+ 	struct list_head node_list;
+@@ -110,6 +121,14 @@ struct hot_info {
+ 	struct shrinker hot_shrink;
+ };
+ 
 +/*
-+ * AVR/AVW cold unit = 2^X ns of average delta
-+ * AVR/AVW heat unit = HEAT_MAX_VALUE - cold unit
++ * Hot data tracking ioctls:
++ *
++ * HOT_INFO - retrieve info on frequency of access
 + */
-+#define AVR_DIVIDER_POWER 40 /* AVR - average delta between recent reads(ns) */
-+#define AVR_COEFF_POWER 0
-+#define AVW_DIVIDER_POWER 40 /* AVW - average delta between recent writes(ns) */
-+#define AVW_COEFF_POWER 0
++#define FS_IOC_GET_HEAT_INFO _IOR('f', 17, \
++			struct hot_heat_info)
 +
- void hot_inode_item_put(struct hot_inode_item *he);
- struct hot_inode_item *hot_inode_item_find(struct hot_info *root, u64 ino);
- 
+ extern void __init hot_cache_init(void);
+ extern int hot_track_init(struct super_block *sb);
+ extern void hot_track_exit(struct super_block *sb);
 -- 
 1.7.6.5
