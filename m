@@ -1,107 +1,83 @@
-From: Jan Kara <jack@suse.cz>
+From: Andi Kleen <andi@firstfloor.org>
 Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Mon, 29 Oct 2012 19:55:29 +0100
-Message-ID: <20121029185529.GB28272@quack.suse.cz>
-References: <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
- <20121026184649.GA8614@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
- <20121027221626.GA9161@thunk.org>
- <20121029011632.GN29378@dastard>
- <20121029024024.GC9365@thunk.org>
- <m27gq9r2cu.fsf@firstfloor.org>
- <20121029182455.GA7098@thunk.org>
+Date: Mon, 29 Oct 2012 12:07:04 -0700
+Message-ID: <m21ughksh3.fsf@firstfloor.org>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+	<1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+	<20121026061206.GA31139@thunk.org>
+	<3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+	<20121026184649.GA8614@thunk.org>
+	<3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+	<20121027221626.GA9161@thunk.org> <20121029011632.GN29378@dastard>
+	<20121029024024.GC9365@thunk.org> <m27gq9r2cu.fsf@firstfloor.org>
+	<20121029182455.GA7098@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andi Kleen <andi@firstfloor.org>,
-	Dave Chinner <david@fromorbit.com>,
-	"Luck, Tony" <tony.luck@intel.com>,
-	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-	"Kleen, Andi" <andi.kleen@intel.com>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>,
-	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Dave Chinner <david@fromorbit.com>,  "Luck\, Tony" <tony.luck@intel.com>,  Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,  "Kleen\, Andi" <andi.kleen@intel.com>,  "Wu\, Fengguang" <fengguang.wu@intel.com>,  Andrew Morton <akpm@linux-foundation.org>,  Jan Kara <jack@suse.cz>,  Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,  Akira Fujita <a-fujita@rs.jp.nec.com>,  "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,  "linux-mm\@kvack.org" <linux-mm@kvack.org>,  "linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121029182455.GA7098@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20121029182455.GA7098@thunk.org> (Theodore Ts'o's message of
+	"Mon, 29 Oct 2012 14:24:56 -0400")
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 29-10-12 14:24:56, Ted Tso wrote:
-> On Mon, Oct 29, 2012 at 03:37:05AM -0700, Andi Kleen wrote:
-> > > Agreed, if we're going to add an xattr, then we might as well store
-> > 
-> > I don't think an xattr makes sense for this. It's sufficient to keep
-> > this state in memory.
-> > 
-> > In general these error paths are hard to test and it's important
-> > to keep them as simple as possible. Doing IO and other complexities
-> > just doesn't make sense. Just have the simplest possible path
-> > that can do the job.
-> 
-> It's actually pretty easy to test this particular one, and certainly
+Theodore Ts'o <tytso@mit.edu> writes:
+>
+> It's actually pretty easy to test this particular one, 
+
+Note the error can happen at any time.
+
+> and certainly
 > one of the things I'd strongly encourage in this patch series is the
-> introduction of an interface via madvise and fadvise that allows us to
+> introduction of an interface via madvise
+
+It already exists of course.
+
+I would suggest to study the existing framework before more 
+suggestions.
+
 > simulate an ECC hard error event.  So I don't think "it's hard to
 > test" is a reason not to do the right thing.  Let's make it easy to
-> test, and the include it in xfstests.  All of the core file systems
-> are regularly running regression tests via xfstests, so if we define a
-> standard way of testing this function (this is why I suggested
-> fadvise/madvise instead of an ioctl, but in a pinch we could do this
-> via an ioctl instead).
-  Well, we have an error-injection framework which would be a better fit
-for this functionality rather than some madvise / fadvise hack IMHO. And
-test in xfstests can just check whether the error-injection code is
-compiled in before running the test...
+
+What you can't test doesn't work. It's that simple.
+
+And memory error handling is extremly hard to test. The errors
+can happen at any time. It's not a well defined event.
+There are test suites for it of course (mce-test, mce-inject[1]),
+but they needed a lot of engineering effort to be at where
+they are.
+
+[1] despite the best efforts of some current RAS developers
+at breaking it.
 
 > Note that the problem that we're dealing with is buffered writes; so
 > it's quite possible that the process which wrote the file, thus
 > dirtying the page cache, has already exited; so there's no way we can
 > guarantee we can inform the process which wrote the file via a signal
-> or a error code return.  It's also possible that part of the file has
-> been written out to the disk, so forcibly crashing the system and
-> rebooting isn't necessarily going to save the file from being
-> corrupted.
-> 
+> or a error code return.
+
+Is that any different from other IO errors? It doesn't need to 
+be better.
+
 > Also, if you're going to keep this state in memory, what happens if
-> the inode gets pushed out of memory?  Do we pin the inode?  Or do we
-> just say that it's stored into memory until some non-deterministic
-> time (as far as userspace programs are concerned, but if they are
-> running in a tight memory cgroup, it might be very short time later)
-> suddenly the state gets lost?
-> 
-> I think it's fair that if there are file systems that don't have a
-> single bit they can allocate in the inode, we can either accept
-> Jun'ichi's suggest to just forcibly crash the system, or we can allow
-> the state to be stored in memory.  But I suspect the core file systems
-> that might be used by enterprise-class workloads will want to provide
-> something better.
-> 
-> I'm not that convinced that we need to insert an xattr; after all, not
-> all file systems support xattrs at all, and I think a single bit
-> indicating that the file has corrupted data is sufficient.  But I
-> think it would be useful to at least optionally support a persistent
-> storage of this bit.
-  Here I'd just note that the situation isn't that much different from a
-plain old EIO we can hit during writeback. There we use in memory flag
-(AS_EIO / PageError) and hope that an application which cares enough about
-its data will call fsync() and thus get the error back. Sure it's not
-ideal but so far nobody seemed to be bothered enough to improve on that. So
-is it really fair to bother authors of this patch with it?
+> the inode gets pushed out of memory? 
 
-And regarding xattr - I think it's an overkill. Just recording the error in
-the kernel log with enough detail and flagging the file (or even just the
-filesystem) would be OK IMHO. Rest could be handled in userspace if someone
-cares enough.
+You lose the error, just like you do today with any other IO error.
 
-								Honza
+We had a lot of discussions on this when the memory error handling
+was originally introduced, that was the conclusuion.
+
+I don't think a special panic knob for this makes sense either.
+We already have multiple panic knobs for memory errors, that
+can be used.
+
+-Andi
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+ak@linux.intel.com -- Speaking for myself only
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
