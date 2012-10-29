@@ -1,148 +1,134 @@
-From: zwu.kernel@gmail.com
-Subject: [RFC v4+ hot_track 05/19] vfs: add hooks to enable hot tracking
-Date: Mon, 29 Oct 2012 12:30:47 +0800
-Message-ID: <1351485061-12297-6-git-send-email-zwu.kernel@gmail.com>
-References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
-	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
-	cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
-To: linux-fsdevel@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH -v3] ext4: fix unjournaled inode bitmap modification
+Date: Sun, 28 Oct 2012 23:07:15 -0600
+Message-ID: <EC22F9FA-0881-4861-A65B-10ED68C44B1E@dilger.ca>
+References: <87objupjlr.fsf@spindle.srvr.nix> <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix> <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix> <508CB35D.9080102@redhat.com> <20121029023034.GA9365@thunk.org>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, Nix <nix@esperi.org.uk>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	gregkh@linuxfoundation.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:36722 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754754Ab2J2EcI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Oct 2012 00:32:08 -0400
-Received: from /spool/local
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <zwu.kernel@gmail.com>;
-	Sun, 28 Oct 2012 22:32:06 -0600
-In-Reply-To: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:65075 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752871Ab2J2FHR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Oct 2012 01:07:17 -0400
+In-Reply-To: <20121029023034.GA9365@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+On 2012-10-28, at 8:30 PM, Theodore Ts'o wrote:
+> Hence in my version of the patch, I've waited until right before the
+> call to ext4_lock_group() before calling get_write_access().  Note
+> that it's safe to call get_write_access() on a bh twice; the second
+> time the jbd2 layer will notice that the bh is already a part of the
+> transaction.
+> 
+> Also, leaving out the calls to ext4_handle_release_buffer() makes the
+> patch easier to understand and reason about.
+> 
+> What do you think of this version?
 
-  Miscellaneous features that implement hot data tracking
-and generally make the hot data functions a bit more friendly.
+Looks good.
 
-Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
----
- fs/direct-io.c      |    6 ++++++
- mm/filemap.c        |    6 ++++++
- mm/page-writeback.c |   12 ++++++++++++
- mm/readahead.c      |    6 ++++++
- 4 files changed, 30 insertions(+), 0 deletions(-)
+> commit 67d725143e9e7ea458a0c1c4a6625657c3dc7ba2
+> Author: Eric Sandeen <sandeen@redhat.com>
+> Date:   Sun Oct 28 22:24:57 2012 -0400
+> 
+>    ext4: fix unjournaled inode bitmap modification
+> 
+>    commit 119c0d4460b001e44b41dcf73dc6ee794b98bd31 changed
+>    ext4_new_inode() such that the inode bitmap was being modified
+>    outside a transaction, which could lead to corruption, and was
+>    discovered when journal_checksum found a bad checksum in the
+>    journal during log replay.
+> 
+>    Nix ran into this when using the journal_async_commit mount
+>    option, which enables journal checksumming.  The ensuing
+>    journal replay failures due to the bad checksums led to
+>    filesystem corruption reported as the now infamous
+>    "Apparent serious progressive ext4 data corruption bug"
+> 
+>    [ Changed by tytso to only call ext4_journal_get_write_access() only
+>      when we're fairly certain that we're going to allocate the inode. ]
+> 
+>    I've tested this by mounting with journal_checksum and
+>    running fsstress then dropping power; I've also tested by
+>    hacking DM to create snapshots w/o first quiescing, which
+>    allows me to test journal replay repeatedly w/o actually
+>    power-cycling the box.  Without the patch I hit a journal
+>    checksum error every time.  With this fix it survives
+>    many iterations.
+> 
+>    Reported-by: Nix <nix@esperi.org.uk>
+>    Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>    Cc: stable@vger.kernel.org
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 4facdd2..3a100e7 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -725,6 +725,10 @@ repeat_in_this_group:
+> 				   "inode=%lu", ino + 1);
+> 			continue;
+> 		}
+> +		BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+> +		err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
+> +		if (err)
+> +			goto fail;
+> 		ext4_lock_group(sb, group);
+> 		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
+> 		ext4_unlock_group(sb, group);
+> @@ -738,6 +742,11 @@ repeat_in_this_group:
+> 	goto out;
+> 
+> got:
+> +	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
+> +	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
+> +	if (err)
+> +		goto fail;
+> +
+> 	/* We may have to initialize the block bitmap if it isn't already */
+> 	if (ext4_has_group_desc_csum(sb) &&
+> 	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+> @@ -771,11 +780,6 @@ got:
+> 			goto fail;
+> 	}
+> 
+> -	BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+> -	err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
+> -	if (err)
+> -		goto fail;
+> -
+> 	BUFFER_TRACE(group_desc_bh, "get_write_access");
+> 	err = ext4_journal_get_write_access(handle, group_desc_bh);
+> 	if (err)
+> @@ -823,11 +827,6 @@ got:
+> 	}
+> 	ext4_unlock_group(sb, group);
+> 
+> -	BUFFER_TRACE(inode_bitmap_bh, "call ext4_handle_dirty_metadata");
+> -	err = ext4_handle_dirty_metadata(handle, NULL, inode_bitmap_bh);
+> -	if (err)
+> -		goto fail;
+> -
+> 	BUFFER_TRACE(group_desc_bh, "call ext4_handle_dirty_metadata");
+> 	err = ext4_handle_dirty_metadata(handle, NULL, group_desc_bh);
+> 	if (err)
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index f86c720..1d23631 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -37,6 +37,7 @@
- #include <linux/uio.h>
- #include <linux/atomic.h>
- #include <linux/prefetch.h>
-+#include "hot_tracking.h"
- 
- /*
-  * How many user pages to map in one call to get_user_pages().  This determines
-@@ -1297,6 +1298,11 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 	prefetch(bdev->bd_queue);
- 	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
- 
-+	/* Hot data tracking */
-+	hot_update_freqs(inode, (u64)offset,
-+			(u64)iov_length(iov, nr_segs),
-+			rw & WRITE);
-+
- 	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
- 				     nr_segs, get_block, end_io,
- 				     submit_io, flags);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 83efee7..51b2c48 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -33,6 +33,7 @@
- #include <linux/hardirq.h> /* for BUG_ON(!in_atomic()) only */
- #include <linux/memcontrol.h>
- #include <linux/cleancache.h>
-+#include <linux/hot_tracking.h>
- #include "internal.h"
- 
- /*
-@@ -1224,6 +1225,11 @@ readpage:
- 		 * PG_error will be set again if readpage fails.
- 		 */
- 		ClearPageError(page);
-+
-+		/* Hot data tracking */
-+		hot_update_freqs(inode, (u64)page->index << PAGE_CACHE_SHIFT,
-+				PAGE_CACHE_SIZE, 0);
-+
- 		/* Start the actual read. The read will unlock the page. */
- 		error = mapping->a_ops->readpage(filp, page);
- 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 830893b..5220040 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -35,6 +35,7 @@
- #include <linux/buffer_head.h> /* __set_page_dirty_buffers */
- #include <linux/pagevec.h>
- #include <linux/timer.h>
-+#include <linux/hot_tracking.h>
- #include <trace/events/writeback.h>
- 
- /*
-@@ -1903,13 +1904,24 @@ EXPORT_SYMBOL(generic_writepages);
- int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
- {
- 	int ret;
-+	pgoff_t start = 0;
-+	u64 count = 0;
- 
- 	if (wbc->nr_to_write <= 0)
- 		return 0;
-+
-+	start = mapping->writeback_index << PAGE_CACHE_SHIFT;
-+	count = (u64)wbc->nr_to_write;
-+
- 	if (mapping->a_ops->writepages)
- 		ret = mapping->a_ops->writepages(mapping, wbc);
- 	else
- 		ret = generic_writepages(mapping, wbc);
-+
-+	/* Hot data tracking */
-+	hot_update_freqs(mapping->host, (u64)start,
-+			(count - (u64)wbc->nr_to_write) * PAGE_CACHE_SIZE, 1);
-+
- 	return ret;
- }
- 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index 7963f23..8a24f1e 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -19,6 +19,7 @@
- #include <linux/pagemap.h>
- #include <linux/syscalls.h>
- #include <linux/file.h>
-+#include <linux/hot_tracking.h>
- 
- /*
-  * Initialise a struct file's readahead state.  Assumes that the caller has
-@@ -138,6 +139,11 @@ static int read_pages(struct address_space *mapping, struct file *filp,
- out:
- 	blk_finish_plug(&plug);
- 
-+	/* Hot data tracking */
-+	hot_update_freqs(mapping->host, (u64)(list_entry(pages->prev,\
-+				struct page, lru)->index) << PAGE_CACHE_SHIFT,
-+			(u64)nr_pages * PAGE_CACHE_SIZE, 0);
-+
- 	return ret;
- }
- 
--- 
-1.7.6.5
+
+Cheers, Andreas
+
+
+
+
 
