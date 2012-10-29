@@ -1,62 +1,80 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Sun, 28 Oct 2012 21:35:58 -0500
-Message-ID: <508DEB8E.10101@redhat.com>
-References: <20121026211542.GE8614@thunk.org> <87haphx76u.fsf@spindle.srvr.nix> <20121027002258.GB31030@thunk.org> <873910xevu.fsf@spindle.srvr.nix> <20121027175534.GA7783@thunk.org> <87fw4zzra3.fsf@spindle.srvr.nix> <508C4FE5.1030102@redhat.com> <508C633F.4070100@redhat.com> <20121029010012.GE9161@thunk.org> <508DE8D3.1050101@redhat.com> <20121029023430.GB9365@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Sun, 28 Oct 2012 22:40:24 -0400
+Message-ID: <20121029024024.GC9365@thunk.org>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <20121026061206.GA31139@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+ <20121026184649.GA8614@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+ <20121027221626.GA9161@thunk.org>
+ <20121029011632.GN29378@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>, Nix <nix@esperi.org.uk>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	gregkh@linuxfoundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12782 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757413Ab2J2CgF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 28 Oct 2012 22:36:05 -0400
-In-Reply-To: <20121029023430.GB9365@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Luck, Tony" <tony.luck@intel.com>,
+	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+	"Kleen, Andi" <andi.kleen@intel.com>,
+	"Wu, Fengguang" <fengguang.wu@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20121029011632.GN29378@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 10/28/12 9:34 PM, Theodore Ts'o wrote:
-> On Sun, Oct 28, 2012 at 09:24:19PM -0500, Eric Sandeen wrote:
->> Yeah, I knew it wasn't ;)  I did resend 
->> [PATCH] ext4: fix unjournaled inode bitmap modification
->> which is a bit more involved.
+On Mon, Oct 29, 2012 at 12:16:32PM +1100, Dave Chinner wrote:
 > 
-> Yeah, sorry, I didn't see your updated patch at first, since this mail
-> thread is one complicated tangle.  :-(
-> 
->> That'll get_write_access on the same buffer over and over, I suppose
->> it's ok, but the patch I sent tries to minimize that, and call
->> ext4_handle_release_buffer if we're not going to use it (which is
->> a no-op today anyway and not normally used I guess...)
-> 
-> Well, it's really rare that we will go through that loop more than
-> once; it only happens if we have multiple processes race against each
-> other trying to grab the same inode.
-> 
->> If ext4_handle_release_buffer() is dead code now, and repeated calls
->> via repeat_in_this_group: are no big deal, then your version looks fine.
-> 
-> Yeah, I think it's pretty much dead code.  At least, I can't think of
-> a good reason why we would want to actually try to handle
-> ext4_handle_release_buffer() to claw back the transaciton credit.  And
-> if we do, we'll have to do a sweep through the entire ext4 codebase
-> anyway.
+> Except that there are filesystems that cannot implement such flags,
+> or require on-disk format changes to add more of those flags. This
+> is most definitely not a filesystem specific behaviour, so any sort
+> of VFS level per-file state needs to be kept in xattrs, not special
+> flags. Filesystems are welcome to optimise the storage of such
+> special xattrs (e.g. down to a single boolean flag in an inode), but
+> using a flag for something that dould, in fact, storage the exactly
+> offset and length of the corruption is far better than just storing
+> a "something is corrupted in this file" bit....
 
-Yeah, seems that way.
+Agreed, if we're going to add an xattr, then we might as well store
+not just a boolean, but some indication of what part of the file was
+corrupted.  The only complication is what if there are many memory
+corruptions.  Do we store just the last ECC hard error that we
+detected?  Or just the first?
 
-Then your simpler version is probably the way to go.
+It wasn't clear to me it was worth the extra complexity, but if there
+are indeed for file systems that don't have or don't want to allocate
+a spare bit in their inode structure, that might be a good enough
+justification to add an xattr.  (Was this a hypothetical, or does this
+constraint apply to XFS or some other file system that you're aware of?)
 
-Thanks,
--Eric
-
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > I note that we've already added a new error code:
+> > 
+> > #define EHWPOISON 133	  /* Memory page has hardware error */
+> > 
+> > ... although the glibc shipping with Debian testing hasn't been taught
+> > what it is, so strerror(EHWPOISON) returns "Unknown error 133".  We
+> > could simply allow open(2) and stat(2) return this error, although I
+> > wonder if we're just better off defining a new error code.
 > 
+> If we are going to add special new "file corrupted" errors, we
+> should add EFSCORRUPTED (i.e. "filesystem corrupted") at the same
+> time....
 
+I would dearly love it if we could allocate a new EFSCORRUPTED errno.
+I was about to follow XFS's lead and change ext4 to return EUCLEAN
+instead of EIO in the cases of fs corruption, but that really is ugly
+and gross...
+
+						- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
