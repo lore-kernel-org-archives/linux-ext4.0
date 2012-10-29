@@ -1,31 +1,49 @@
-From: Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: [RFC v4+ hot_track 13/19] debugfs: introduce one function
-Date: Mon, 29 Oct 2012 11:11:35 -0700
-Message-ID: <20121029181135.GB3605@kroah.com>
-References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
- <1351485061-12297-14-git-send-email-zwu.kernel@gmail.com>
+From: "Luck, Tony" <tony.luck@intel.com>
+Subject: RE: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Mon, 29 Oct 2012 18:11:58 +0000
+Message-ID: <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <20121026061206.GA31139@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+ <20121026184649.GA8614@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+ <20121027221626.GA9161@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
-	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
-To: zwu.kernel@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1351485061-12297-14-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+Cc: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>, "Kleen, Andi"
+	<andi.kleen@intel.com>, "Wu, Fengguang" <fengguang.wu@intel.com>, Andrew
+ Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>, Jun'ichi Nomura
+	<j-nomura@ce.jp.nec.com>, Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>, "linux-ext4@vger.kernel.org"
+	<linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20121027221626.GA9161@thunk.org>
+Content-Language: en-US
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 29, 2012 at 12:30:55PM +0800, zwu.kernel@gmail.com wrote:
-> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-> 
->   The debugfs function is used to get expected dentry.
+> What I would recommend is adding a=20
+>
+> #define FS_CORRUPTED_FL		0x01000000 /* File is corrupted */
+>
+> ... and which could be accessed and cleared via the lsattr and chattr
+> programs.
 
-Huh?  Why do you need this?  Why haven't you added documentation for the
-function saying what it does?
+Good - but we need some space to save the corrupted range information
+too. These errors should be quite rare, so one range per file should be
+enough.
 
-confused,
+New file systems should plan to add space in their on-disk format. The
+corruption isn't going to go away across a reboot.
 
-greg k-h
+-Tony
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
