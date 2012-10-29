@@ -1,45 +1,47 @@
-From: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
-Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Mon, 29 Oct 2012 17:47:36 -0400
-Message-ID: <1351547256-837-1-git-send-email-n-horiguchi@ah.jp.nec.com>
-References: <m21ughksh3.fsf@firstfloor.org>
-Cc: Dave Chinner <david@fromorbit.com>, Tony Luck <tony.luck@intel.com>,
-        Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-        Andi Kleen <andi.kleen@intel.com>,
-        Wu Fengguang <fengguang.wu@intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        "Jun'ichi Nomura" <j-nomura@ce.jp.nec.com>,
-        Akira Fujita <a-fujita@rs.jp.nec.com>, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-ext4@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <m21ughksh3.fsf@firstfloor.org>
-Sender: owner-linux-mm@kvack.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: semi-stable page writes
+Date: Tue, 30 Oct 2012 09:01:22 +1100
+Message-ID: <20121029220122.GT29378@dastard>
+References: <20121026101909.GB19617@blackbox.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20121026101909.GB19617@blackbox.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 29, 2012 at 12:07:04PM -0700, Andi Kleen wrote:
-> Theodore Ts'o <tytso@mit.edu> writes:
-...
-> > Also, if you're going to keep this state in memory, what happens if
-> > the inode gets pushed out of memory? 
+On Fri, Oct 26, 2012 at 03:19:09AM -0700, Darrick J. Wong wrote:
+> Hi everyone,
 > 
-> You lose the error, just like you do today with any other IO error.
-> 
-> We had a lot of discussions on this when the memory error handling
-> was originally introduced, that was the conclusuion.
-> 
-> I don't think a special panic knob for this makes sense either.
-> We already have multiple panic knobs for memory errors, that
-> can be used.
+> Are people still annoyed about writes taking unexpectedly long amounts of tme
+> due to the stable page write patchset?  I'm guessing yes...
 
-Yes. I understand that adding a new knob is not good.
-So this patch uses the existing ext4 knob without adding new one.
+I haven't heard anyone except th elunatic fringe complain
+recently...
 
-Thanks,
-Naoya
+> I'm close to posting a patchset that (a) gates the wait_on_page_writeback calls
+> on a flag that you can set in the bdi to indicate that you need stable writes
+> (which blk_integrity_register will set);
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I'd prefer stable pages by default (e.g. btrfs needs it for sane
+data crc calculations), with an option to turn it off.
+
+> (b) (ab)uses a page flag bit (PG_slab)
+> to indicate that a page is actually being sent out to disk hardware; and (c)
+
+I don't think you can do that. You can send slab allocated memory to
+disk (e.g. kmalloc()d memory) and XFS definitely does that for
+sub-page sized metadata. I'm pretty sure that means the PG_slab
+flag is not available for (ab)use in the IO path....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
