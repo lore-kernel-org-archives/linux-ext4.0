@@ -1,49 +1,138 @@
-From: "Luck, Tony" <tony.luck@intel.com>
-Subject: RE: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Mon, 29 Oct 2012 18:11:58 +0000
-Message-ID: <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
- <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
- <20121026184649.GA8614@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
- <20121027221626.GA9161@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
+ device needs stable page writes
+Date: Mon, 29 Oct 2012 19:13:58 +0100
+Message-ID: <20121029181358.GG18767@quack.suse.cz>
+References: <20121026101909.GB19617@blackbox.djwong.org>
+ <20121027013524.GA19591@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Cc: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>, "Kleen, Andi"
-	<andi.kleen@intel.com>, "Wu, Fengguang" <fengguang.wu@intel.com>, Andrew
- Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>, Jun'ichi Nomura
-	<j-nomura@ce.jp.nec.com>, Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>, "linux-ext4@vger.kernel.org"
-	<linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20121027221626.GA9161@thunk.org>
-Content-Language: en-US
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:44421 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932181Ab2J2SOA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2012 14:14:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20121027013524.GA19591@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> What I would recommend is adding a=20
->
-> #define FS_CORRUPTED_FL		0x01000000 /* File is corrupted */
->
-> ... and which could be accessed and cleared via the lsattr and chattr
-> programs.
+On Fri 26-10-12 18:35:24, Darrick J. Wong wrote:
+> This creates BDI_CAP_STABLE_WRITES, which indicates that a device requires
+> stable page writes.  It also plumbs in a sysfs attribute so that admins can
+> check the device status.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+  I guess Jens Axboe <axboe@kernel.dk> would be the best target for this
+patch (so that he can merge it). The patch looks OK to me. You can add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
-Good - but we need some space to save the corrupted range information
-too. These errors should be quite rare, so one range per file should be
-enough.
+								Honza
 
-New file systems should plan to add space in their on-disk format. The
-corruption isn't going to go away across a reboot.
-
--Tony
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> ---
+> 
+>  block/blk-integrity.c       |    8 ++++++++
+>  include/linux/backing-dev.h |    6 ++++++
+>  mm/backing-dev.c            |   11 +++++++++++
+>  3 files changed, 25 insertions(+)
+> 
+> diff --git a/block/blk-integrity.c b/block/blk-integrity.c
+> index da2a818..d05d7b3 100644
+> --- a/block/blk-integrity.c
+> +++ b/block/blk-integrity.c
+> @@ -384,6 +384,7 @@ EXPORT_SYMBOL(blk_integrity_is_initialized);
+>  int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
+>  {
+>  	struct blk_integrity *bi;
+> +	struct backing_dev_info *bdi;
+>  
+>  	BUG_ON(disk == NULL);
+>  
+> @@ -420,6 +421,9 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
+>  	} else
+>  		bi->name = bi_unsupported_name;
+>  
+> +	bdi = &disk->queue->backing_dev_info;
+> +	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
+> +
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL(blk_integrity_register);
+> @@ -434,10 +438,14 @@ EXPORT_SYMBOL(blk_integrity_register);
+>  void blk_integrity_unregister(struct gendisk *disk)
+>  {
+>  	struct blk_integrity *bi;
+> +	struct backing_dev_info *bdi;
+>  
+>  	if (!disk || !disk->integrity)
+>  		return;
+>  
+> +	bdi = &disk->queue->backing_dev_info;
+> +	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
+> +
+>  	bi = disk->integrity;
+>  
+>  	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
+> diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+> index 2a9a9ab..b82a8bb 100644
+> --- a/include/linux/backing-dev.h
+> +++ b/include/linux/backing-dev.h
+> @@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
+>  #define BDI_CAP_EXEC_MAP	0x00000040
+>  #define BDI_CAP_NO_ACCT_WB	0x00000080
+>  #define BDI_CAP_SWAP_BACKED	0x00000100
+> +#define BDI_CAP_STABLE_WRITES	0x00000200
+>  
+>  #define BDI_CAP_VMFLAGS \
+>  	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
+> @@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
+>  int pdflush_proc_obsolete(struct ctl_table *table, int write,
+>  		void __user *buffer, size_t *lenp, loff_t *ppos);
+>  
+> +static inline bool bdi_cap_stable_writes(struct backing_dev_info *bdi)
+> +{
+> +	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
+> +}
+> +
+>  static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
+>  {
+>  	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
+> diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+> index d3ca2b3..a2f4c08 100644
+> --- a/mm/backing-dev.c
+> +++ b/mm/backing-dev.c
+> @@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
+>  }
+>  BDI_SHOW(max_ratio, bdi->max_ratio)
+>  
+> +static ssize_t stable_page_writes_show(struct device *dev,
+> +	struct device_attribute *attr, char *page)
+> +{
+> +	struct backing_dev_info *bdi = dev_get_drvdata(dev);
+> +
+> +	return snprintf(page, PAGE_SIZE-1, "%d\n",
+> +			bdi->capabilities & BDI_CAP_STABLE_WRITES ? 1 : 0);
+> +}
+> +
+>  #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
+> +#define __ATTR_RO(attr) __ATTR(attr, 0444, attr##_show, NULL)
+>  
+>  static struct device_attribute bdi_dev_attrs[] = {
+>  	__ATTR_RW(read_ahead_kb),
+>  	__ATTR_RW(min_ratio),
+>  	__ATTR_RW(max_ratio),
+> +	__ATTR_RO(stable_page_writes),
+>  	__ATTR_NULL,
+>  };
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
