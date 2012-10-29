@@ -1,47 +1,61 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v4+ hot_track 00/19] vfs: hot data tracking
-Date: Mon, 29 Oct 2012 20:31:45 +0800
-Message-ID: <CAEH94LjASvpA_q4zTURR7A+EaDdVm3SSFOGgnwH6EXeH0pzz8g@mail.gmail.com>
-References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
-	<m2boflr2o4.fsf@firstfloor.org>
+From: Rich Johnston <rjohnston@sgi.com>
+Subject: Re: xfstests: test ext4 statfs
+Date: Mon, 29 Oct 2012 08:28:32 -0500
+Message-ID: <508E8480.5020507@sgi.com>
+References: <5089749C.4050003@redhat.com> <508AD066.4090102@sgi.com> <508AD8E8.1040301@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
-	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
-To: Andi Kleen <andi@firstfloor.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:58511 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758759Ab2J2Mbr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Oct 2012 08:31:47 -0400
-In-Reply-To: <m2boflr2o4.fsf@firstfloor.org>
+Received: from relay2.sgi.com ([192.48.179.30]:46232 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753911Ab2J2N0x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2012 09:26:53 -0400
+In-Reply-To: <508AD8E8.1040301@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 6:30 PM, Andi Kleen <andi@firstfloor.org> wrote:
-> zwu.kernel@gmail.com writes:
->>
->> TODO List:
->>
->>  1.) Need to do scalability or performance tests.
->
-> You're changing some of the most performance critical code in the
-> kernel. This step is absolutely not optional.
-ah, i know, but now i need to make sure all the codes are correct at
-first, then do these tests.
+On 10/26/2012 01:39 PM, Eric Sandeen wrote:
+> On 10/26/12 1:03 PM, Rich Johnston wrote:
+>> On 10/25/2012 12:19 PM, Eric Sandeen wrote:
+>>> Calculating free blocks in ext[234] is surprisingly hard, since
+>>> by default we report "bsd" style df which doesn't count filesystem
+>>> "overhead" blocks as used.
+>>>
+>>> With a lot of code dedicated to sorting out what to report as
+>>> free, things tend to go wrong surprisingly often.
+>>>
+>>> Here's a test to actually try to stop the next regression.  ;)
+>>>
+>>> NB: For bsddf, the kernel currently does not count journal blocks
+>>> as overhead; it probably should.  But the test below looks to have
+>>> the result within 1% of perfection, so it still passes even if
+>>> the kernel doesn't count the journal against free blocks.
+>>>
+>>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+>>>
+>>> ---
+>>>
 
 >
-> -Andi
 >
-> --
-> ak@linux.intel.com -- Speaking for myself only
+> Yep - it's an ext4 bug.  I sent a patch to fix it.
+>
+> [PATCH] ext4: fix overhead calculations in ext4_stats, again
+>
+> You might want to retest w/ that.
+>
+> -Eric
+>
+>>> +
+
+Thanks Eric,
+
+Everything passes now.
+
+Reviewed-by: Rich Johnston <rjohnston@sgi.com>
 
 
-
--- 
-Regards,
-
-Zhi Yong Wu
