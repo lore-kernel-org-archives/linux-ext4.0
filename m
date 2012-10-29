@@ -1,232 +1,139 @@
 From: zwu.kernel@gmail.com
-Subject: [RFC v4+ hot_track 10/19] vfs: introduce hot func register framework
-Date: Mon, 29 Oct 2012 12:30:52 +0800
-Message-ID: <1351485061-12297-11-git-send-email-zwu.kernel@gmail.com>
+Subject: [RFC v4+ hot_track 11/19] vfs: register one shrinker
+Date: Mon, 29 Oct 2012 12:30:53 +0800
+Message-ID: <1351485061-12297-12-git-send-email-zwu.kernel@gmail.com>
 References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
 	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
 	cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:40831 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756699Ab2J2Ect (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2012 00:32:49 -0400
+Received: from /spool/local
+	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <zwu.kernel@gmail.com>;
+	Mon, 29 Oct 2012 00:32:47 -0400
 In-Reply-To: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 
-  Introduce one framwork to enable that specific FS
-can register its own hot tracking functions.
+  Register a shrinker to control the amount of
+memory that is used in tracking hot regions - if we are throwing
+inodes out of memory due to memory pressure, we most definitely are
+going to need to reduce the amount of memory the tracking code is
+using, even if it means losing useful information (i.e. the shrinker
+accelerates the aging process).
 
 Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 ---
- fs/hot_tracking.c            |   78 ++++++++++++++++++++++++++++++++++++++----
- include/linux/hot_tracking.h |   25 +++++++++++++
- 2 files changed, 96 insertions(+), 7 deletions(-)
+ fs/hot_tracking.c            |   61 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/hot_tracking.h |    1 +
+ 2 files changed, 62 insertions(+), 0 deletions(-)
 
 diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
-index 0ef9cad..c6c6138 100644
+index c6c6138..54a8208 100644
 --- a/fs/hot_tracking.c
 +++ b/fs/hot_tracking.c
-@@ -24,6 +24,9 @@
- #include <linux/limits.h>
- #include "hot_tracking.h"
- 
-+static DEFINE_SPINLOCK(hot_func_list_lock);
-+static LIST_HEAD(hot_func_list);
-+
- /* kmem_cache pointers for slab caches */
- static struct kmem_cache *hot_inode_item_cachep __read_mostly;
- static struct kmem_cache *hot_range_item_cachep __read_mostly;
-@@ -305,20 +308,23 @@ static u64 hot_average_update(struct timespec old_atime,
- 	return new_avg;
+@@ -653,6 +653,61 @@ err:
  }
+ EXPORT_SYMBOL_GPL(hot_cache_init);
  
--static void hot_freq_data_update(struct hot_freq_data *freq_data, bool write)
-+static void hot_freq_data_update(struct hot_info *root,
-+		struct hot_freq_data *freq_data, bool write)
- {
- 	struct timespec cur_time = current_kernel_time();
- 
- 	if (write) {
- 		freq_data->nr_writes += 1;
--		freq_data->avg_delta_writes = hot_average_update(
-+		freq_data->avg_delta_writes =
-+			root->hot_func_type->ops.hot_rw_freq_calc_fn(
- 				freq_data->last_write_time,
- 				cur_time,
- 				freq_data->avg_delta_writes);
- 		freq_data->last_write_time = cur_time;
- 	} else {
- 		freq_data->nr_reads += 1;
--		freq_data->avg_delta_reads = hot_average_update(
-+		freq_data->avg_delta_reads =
-+			root->hot_func_type->ops.hot_rw_freq_calc_fn(
- 				freq_data->last_read_time,
- 				cur_time,
- 				freq_data->avg_delta_reads);
-@@ -430,7 +436,7 @@ static void hot_map_array_update(struct hot_freq_data *freq_data,
- 	struct hot_comm_item *comm_item;
- 	struct hot_inode_item *he;
- 	struct hot_range_item *hr;
--	u32 temp = hot_temp_calc(freq_data);
-+	u32 temp = root->hot_func_type->ops.hot_temp_calc_fn(freq_data);
- 	u8 a_temp = temp >> (32 - HEAT_MAP_BITS);
- 	u8 b_temp = freq_data->last_temp >> (32 - HEAT_MAP_BITS);
- 
-@@ -511,7 +517,7 @@ static void hot_range_update(struct hot_inode_item *he,
- 				&hr_nodes[i]->hot_range.hot_freq_data, root);
- 
- 			spin_lock(&hr_nodes[i]->hot_range.lock);
--			obsolete = hot_is_obsolete(
-+			obsolete = root->hot_func_type->ops.hot_is_obsolete_fn(
- 					&hr_nodes[i]->hot_range.hot_freq_data);
- 			spin_unlock(&hr_nodes[i]->hot_range.lock);
- 
-@@ -668,7 +674,7 @@ void hot_update_freqs(struct inode *inode, u64 start,
- 	}
- 
- 	spin_lock(&he->hot_inode.lock);
--	hot_freq_data_update(&he->hot_inode.hot_freq_data, rw);
-+	hot_freq_data_update(root, &he->hot_inode.hot_freq_data, rw);
- 	spin_unlock(&he->hot_inode.lock);
- 
- 	/*
-@@ -685,7 +691,7 @@ void hot_update_freqs(struct inode *inode, u64 start,
- 		}
- 
- 		spin_lock(&hr->hot_range.lock);
--		hot_freq_data_update(&hr->hot_range.hot_freq_data, rw);
-+		hot_freq_data_update(root, &hr->hot_range.hot_freq_data, rw);
- 		spin_unlock(&hr->hot_range.lock);
- 
- 		hot_range_item_put(hr);
-@@ -695,6 +701,61 @@ void hot_update_freqs(struct inode *inode, u64 start,
- }
- EXPORT_SYMBOL_GPL(hot_update_freqs);
- 
-+static struct hot_func_type hot_func_def = {
-+	.hot_func_name = "hot_type_def",
-+	.ops = {
-+		.hot_rw_freq_calc_fn = hot_average_update,
-+		.hot_temp_calc_fn    = hot_temp_calc,
-+		.hot_is_obsolete_fn  = hot_is_obsolete,
-+	},
-+};
-+
-+static struct hot_func_type *hot_func_get(const char *name)
++static int hot_track_prune_map(struct hot_map_head *map_head,
++				bool type, int nr)
 +{
-+	struct hot_func_type *f, *h = &hot_func_def;
++	struct hot_comm_item *node;
++	int i;
 +
-+	spin_lock(&hot_func_list_lock);
-+	list_for_each_entry(f, &hot_func_list, list) {
-+		if (!strcmp(f->hot_func_name, name))
-+			h = f;
-+	}
-+	spin_unlock(&hot_func_list_lock);
++	for (i = 0; i < HEAT_MAP_SIZE; i++) {
++		while (!list_empty(&(map_head + i)->node_list)) {
++			if (nr-- <= 0)
++				break;
 +
-+	return h;
-+}
-+
-+int hot_func_register(struct hot_func_type *h)
-+{
-+	struct hot_func_type *f, *t = NULL;
-+
-+	/* register, don't allow duplicate names */
-+	spin_lock(&hot_func_list_lock);
-+	list_for_each_entry(f, &hot_func_list, list) {
-+		if (!strcmp(f->hot_func_name, h->hot_func_name))
-+			t = f;
++			node = list_first_entry(&(map_head + i)->node_list,
++					struct hot_comm_item, n_list);
++			if (type) {
++				struct hot_inode_item *hot_inode =
++					container_of(node,
++					struct hot_inode_item, hot_inode);
++				hot_inode_item_put(hot_inode);
++			} else {
++				struct hot_range_item *hot_range =
++					container_of(node,
++					struct hot_range_item, hot_range);
++				hot_range_item_put(hot_range);
++			}
++		}
 +	}
 +
-+	if (t) {
-+		spin_unlock(&hot_func_list_lock);
-+		return -EBUSY;
-+	}
-+
-+	list_add_tail(&h->list, &hot_func_list);
-+	spin_unlock(&hot_func_list_lock);
-+
-+	return 0;
++	return nr;
 +}
-+EXPORT_SYMBOL_GPL(hot_func_register);
 +
-+void hot_func_unregister(struct hot_func_type *h)
++/* The shrinker callback function */
++static int hot_track_prune(struct shrinker *shrink,
++			struct shrink_control *sc)
 +{
-+	/* unregister */
-+	spin_lock(&hot_func_list_lock);
-+	list_del_init(&h->list);
-+	spin_unlock(&hot_func_list_lock);
++	struct hot_info *root =
++		container_of(shrink, struct hot_info, hot_shrink);
++	int ret;
++
++	if (sc->nr_to_scan == 0)
++		return root->hot_map_nr;
++
++	if (!(sc->gfp_mask & __GFP_FS))
++		return -1;
++
++	ret = hot_track_prune_map(root->heat_range_map,
++				false, sc->nr_to_scan);
++	if (ret > 0)
++		ret = hot_track_prune_map(root->heat_inode_map,
++					true, ret);
++	if (ret > 0)
++		root->hot_map_nr -= (sc->nr_to_scan - ret);
++
++	return root->hot_map_nr;
 +}
-+EXPORT_SYMBOL_GPL(hot_func_unregister);
 +
  /*
-  * Initialize the data structures for hot data tracking.
+  * Main function to update access frequency from read/writepage(s) hooks
   */
-@@ -714,6 +775,9 @@ int hot_track_init(struct super_block *sb)
- 	hot_inode_tree_init(root);
- 	hot_map_array_init(root);
+@@ -791,6 +846,11 @@ int hot_track_init(struct super_block *sb)
+ 	queue_delayed_work(root->update_wq, &root->update_work,
+ 		msecs_to_jiffies(HEAT_UPDATE_DELAY * MSEC_PER_SEC));
  
-+	/* Get hot func type */
-+	root->hot_func_type = hot_func_get(sb->s_type->name);
++	/* Register a shrinker callback */
++	root->hot_shrink.shrink = hot_track_prune;
++	root->hot_shrink.seeks = DEFAULT_SEEKS;
++	register_shrinker(&root->hot_shrink);
 +
- 	root->update_wq = alloc_workqueue(
- 		"hot_update_wq", WQ_NON_REENTRANT, 0);
- 	if (!root->update_wq) {
+ 	printk(KERN_INFO "VFS: Turning on hot data tracking\n");
+ 
+ 	return 0;
+@@ -807,6 +867,7 @@ void hot_track_exit(struct super_block *sb)
+ {
+ 	struct hot_info *root = sb->s_hot_root;
+ 
++	unregister_shrinker(&root->hot_shrink);
+ 	cancel_delayed_work_sync(&root->update_work);
+ 	destroy_workqueue(root->update_wq);
+ 	hot_map_array_exit(root);
 diff --git a/include/linux/hot_tracking.h b/include/linux/hot_tracking.h
-index 2ee0d02..3941052 100644
+index 3941052..f82db2d 100644
 --- a/include/linux/hot_tracking.h
 +++ b/include/linux/hot_tracking.h
-@@ -23,6 +23,8 @@
- #define HEAT_MAP_BITS 8
- #define HEAT_MAP_SIZE (1 << HEAT_MAP_BITS)
- 
-+#define HOT_NAME_MAX 16
-+
- /*
-  * A frequency data struct holds values that are used to
-  * determine temperature of files and file ranges. These structs
-@@ -73,6 +75,25 @@ struct hot_range_item {
- 	u32 len; /* length in bytes */
- };
- 
-+typedef u64 (hot_rw_freq_calc_fn) (struct timespec old_atime,
-+			struct timespec cur_time, u64 old_avg);
-+typedef u32 (hot_temp_calc_fn) (struct hot_freq_data *freq_data);
-+typedef bool (hot_is_obsolete_fn) (struct hot_freq_data *freq_data);
-+
-+struct hot_func_ops {
-+	hot_rw_freq_calc_fn *hot_rw_freq_calc_fn;
-+	hot_temp_calc_fn *hot_temp_calc_fn;
-+	hot_is_obsolete_fn *hot_is_obsolete_fn;
-+};
-+
-+/* identifies an hot func type */
-+struct hot_func_type {
-+	char hot_func_name[HOT_NAME_MAX];
-+	/* fields provided by specific FS */
-+	struct hot_func_ops ops;
-+	struct list_head list;
-+};
-+
- struct hot_info {
- 	struct radix_tree_root hot_inode_tree;
- 	spinlock_t lock; /*protect inode tree */
-@@ -85,6 +106,7 @@ struct hot_info {
- 
+@@ -107,6 +107,7 @@ struct hot_info {
  	struct workqueue_struct *update_wq;
  	struct delayed_work update_work;
-+	struct hot_func_type *hot_func_type;
+ 	struct hot_func_type *hot_func_type;
++	struct shrinker hot_shrink;
  };
  
  extern void __init hot_cache_init(void);
-@@ -93,4 +115,7 @@ extern void hot_track_exit(struct super_block *sb);
- extern void hot_update_freqs(struct inode *inode, u64 start,
- 				u64 len, int rw);
- 
-+extern int hot_func_register(struct hot_func_type *h);
-+extern void hot_func_unregister(struct hot_func_type *h);
-+
- #endif  /* _LINUX_HOTTRACK_H */
 -- 
 1.7.6.5
+
