@@ -1,83 +1,43 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Mon, 29 Oct 2012 12:07:04 -0700
-Message-ID: <m21ughksh3.fsf@firstfloor.org>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
-	<1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
-	<20121026061206.GA31139@thunk.org>
-	<3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
-	<20121026184649.GA8614@thunk.org>
-	<3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
-	<20121027221626.GA9161@thunk.org> <20121029011632.GN29378@dastard>
-	<20121029024024.GC9365@thunk.org> <m27gq9r2cu.fsf@firstfloor.org>
-	<20121029182455.GA7098@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42723] EXT4-fs error: ext4_mb_generate_buddy
+Date: Mon, 29 Oct 2012 20:25:14 +0000 (UTC)
+Message-ID: <20121029202514.5BDC811FB59@bugzilla.kernel.org>
+References: <bug-42723-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,  "Luck\, Tony" <tony.luck@intel.com>,  Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,  "Kleen\, Andi" <andi.kleen@intel.com>,  "Wu\, Fengguang" <fengguang.wu@intel.com>,  Andrew Morton <akpm@linux-foundation.org>,  Jan Kara <jack@suse.cz>,  Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,  Akira Fujita <a-fujita@rs.jp.nec.com>,  "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,  "linux-mm\@kvack.org" <linux-mm@kvack.org>,  "linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20121029182455.GA7098@thunk.org> (Theodore Ts'o's message of
-	"Mon, 29 Oct 2012 14:24:56 -0400")
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:43767 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751928Ab2J2UZR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2012 16:25:17 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6ACA620393
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2012 20:25:16 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 937BF201B9
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Oct 2012 20:25:15 +0000 (UTC)
+In-Reply-To: <bug-42723-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o <tytso@mit.edu> writes:
->
-> It's actually pretty easy to test this particular one, 
+https://bugzilla.kernel.org/show_bug.cgi?id=42723
 
-Note the error can happen at any time.
 
-> and certainly
-> one of the things I'd strongly encourage in this patch series is the
-> introduction of an interface via madvise
+Eric Sandeen <sandeen@redhat.com> changed:
 
-It already exists of course.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
 
-I would suggest to study the existing framework before more 
-suggestions.
 
-> simulate an ECC hard error event.  So I don't think "it's hard to
-> test" is a reason not to do the right thing.  Let's make it easy to
 
-What you can't test doesn't work. It's that simple.
 
-And memory error handling is extremly hard to test. The errors
-can happen at any time. It's not a well defined event.
-There are test suites for it of course (mce-test, mce-inject[1]),
-but they needed a lot of engineering effort to be at where
-they are.
-
-[1] despite the best efforts of some current RAS developers
-at breaking it.
-
-> Note that the problem that we're dealing with is buffered writes; so
-> it's quite possible that the process which wrote the file, thus
-> dirtying the page cache, has already exited; so there's no way we can
-> guarantee we can inform the process which wrote the file via a signal
-> or a error code return.
-
-Is that any different from other IO errors? It doesn't need to 
-be better.
-
-> Also, if you're going to keep this state in memory, what happens if
-> the inode gets pushed out of memory? 
-
-You lose the error, just like you do today with any other IO error.
-
-We had a lot of discussions on this when the memory error handling
-was originally introduced, that was the conclusuion.
-
-I don't think a special panic knob for this makes sense either.
-We already have multiple panic knobs for memory errors, that
-can be used.
-
--Andi
+--- Comment #6 from Eric Sandeen <sandeen@redhat.com>  2012-10-29 20:25:13 ---
+Ted, Robert bisected at least one instance of this to a specific commit w.r.t.
+bigalloc; do you know if it's been resolved?
 
 -- 
-ak@linux.intel.com -- Speaking for myself only
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
