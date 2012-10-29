@@ -1,52 +1,91 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Transactions in JBD2 proc
-Date: Mon, 29 Oct 2012 19:24:09 +0100
-Message-ID: <20121029182409.GH18767@quack.suse.cz>
-References: <4B9BD6EF1B194041BF688A9AAE347E37064B168BA039@mercury-stu.bhcc.dom>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Mon, 29 Oct 2012 14:24:56 -0400
+Message-ID: <20121029182455.GA7098@thunk.org>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <20121026061206.GA31139@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+ <20121026184649.GA8614@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+ <20121027221626.GA9161@thunk.org>
+ <20121029011632.GN29378@dastard>
+ <20121029024024.GC9365@thunk.org>
+ <m27gq9r2cu.fsf@firstfloor.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: John R Nelson <jrnelson@bhcc.edu>
+Cc: Dave Chinner <david@fromorbit.com>,
+	"Luck, Tony" <tony.luck@intel.com>,
+	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+	"Kleen, Andi" <andi.kleen@intel.com>,
+	"Wu, Fengguang" <fengguang.wu@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>,
+	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44893 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757361Ab2J2SYL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Oct 2012 14:24:11 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:58299 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757361Ab2J2SZL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Oct 2012 14:25:11 -0400
 Content-Disposition: inline
-In-Reply-To: <4B9BD6EF1B194041BF688A9AAE347E37064B168BA039@mercury-stu.bhcc.dom>
+In-Reply-To: <m27gq9r2cu.fsf@firstfloor.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 29-10-12 13:20:43, John R Nelson wrote:
-> hi,
-> does the 3640 indicate that there have have 3640 journal writes to this
-> ext4 parition since my computer has been up?
-  Well, it depends on what you call "journal write". There were 3640
-trasactions to your ext4 partition. Each transaction can contain more
-"logical" operations like file creation, file write, rename, ... Each
-transaction also consists of more blocks. In your case there were 7 blocks
-per transaction on average - which is rather small but I expect that's
-because the filesystem is mostly idle.
-	
-								Honza
+On Mon, Oct 29, 2012 at 03:37:05AM -0700, Andi Kleen wrote:
+> > Agreed, if we're going to add an xattr, then we might as well store
 > 
-> 3640 transaction, each up to 8192 blocks
-> average: 
->   0ms waiting for transaction
->   2032ms running transaction
->   0ms transaction was being locked
->   0ms flushing data (in ordered mode)
->   52ms logging transaction
->   71647us average transaction commit time
->   316 handles per transaction
->   7 blocks per transaction
->   8 logged blocks per transaction
+> I don't think an xattr makes sense for this. It's sufficient to keep
+> this state in memory.
 > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> In general these error paths are hard to test and it's important
+> to keep them as simple as possible. Doing IO and other complexities
+> just doesn't make sense. Just have the simplest possible path
+> that can do the job.
+
+It's actually pretty easy to test this particular one, and certainly
+one of the things I'd strongly encourage in this patch series is the
+introduction of an interface via madvise and fadvise that allows us to
+simulate an ECC hard error event.  So I don't think "it's hard to
+test" is a reason not to do the right thing.  Let's make it easy to
+test, and the include it in xfstests.  All of the core file systems
+are regularly running regression tests via xfstests, so if we define a
+standard way of testing this function (this is why I suggested
+fadvise/madvise instead of an ioctl, but in a pinch we could do this
+via an ioctl instead).
+
+Note that the problem that we're dealing with is buffered writes; so
+it's quite possible that the process which wrote the file, thus
+dirtying the page cache, has already exited; so there's no way we can
+guarantee we can inform the process which wrote the file via a signal
+or a error code return.  It's also possible that part of the file has
+been written out to the disk, so forcibly crashing the system and
+rebooting isn't necessarily going to save the file from being
+corrupted.
+
+Also, if you're going to keep this state in memory, what happens if
+the inode gets pushed out of memory?  Do we pin the inode?  Or do we
+just say that it's stored into memory until some non-deterministic
+time (as far as userspace programs are concerned, but if they are
+running in a tight memory cgroup, it might be very short time later)
+suddenly the state gets lost?
+
+I think it's fair that if there are file systems that don't have a
+single bit they can allocate in the inode, we can either accept
+Jun'ichi's suggest to just forcibly crash the system, or we can allow
+the state to be stored in memory.  But I suspect the core file systems
+that might be used by enterprise-class workloads will want to provide
+something better.
+
+I'm not that convinced that we need to insert an xattr; after all, not
+all file systems support xattrs at all, and I think a single bit
+indicating that the file has corrupted data is sufficient.  But I
+think it would be useful to at least optionally support a persistent
+storage of this bit.
+
+					- Ted
