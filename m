@@ -1,55 +1,79 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Date: Sun, 28 Oct 2012 21:09:09 -0500
-Message-ID: <508DE545.7030903@redhat.com>
-References: <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix> <508AF3FA.4020506@redhat.com> <87wqydx957.fsf@spindle.srvr.nix> <20121026205618.GC8614@thunk.org> <87objpx84k.fsf@spindle.srvr.nix> <20121026211542.GE8614@thunk.org> <87haphx76u.fsf@spindle.srvr.nix> <20121027002258.GB31030@thunk.org> <873910xevu.fsf@spindle.srvr.nix> <20121027175534.GA7783@thunk.org> <87fw4zzra3.fsf@spindle.srvr.nix> <508C4FE5.1030102@redhat.com> <878varzk56.fsf@spindle.srvr.nix> <508C50BB.2040300@redhat.com> <87390zzjr9.fsf@spindle.srvr.nix> <508C5357.6090204@redhat.com> <09758CEA-74B5-48D0-8075-BB723A2CABBB@dilger.ca>
+From: Zhi Yong Wu <zwu.kernel@gmail.com>
+Subject: Re: [RFC v4 03/15] vfs,hot_track: add the function for collecting I/O frequency
+Date: Mon, 29 Oct 2012 10:14:39 +0800
+Message-ID: <CAEH94LhyW8THc1JNgaCeptiN9ErUHALrpsT0BK=bXa8gMq3iRQ@mail.gmail.com>
+References: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
+	<1351177747-19389-4-git-send-email-zwu.kernel@gmail.com>
+	<20121028075520.GA14554@gmail.com>
+	<CAEH94LidECTUHb0_Wujyg=zH18+dzxMPTUUpiYBeUSiG7MpSKQ@mail.gmail.com>
+	<20121029020124.GP29378@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Nix <nix@esperi.org.uk>, "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51753 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757384Ab2J2CJR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 28 Oct 2012 22:09:17 -0400
-In-Reply-To: <09758CEA-74B5-48D0-8075-BB723A2CABBB@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	tytso@mit.edu, cmm@us.ibm.com,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20121029020124.GP29378@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 10/28/12 12:08 PM, Andreas Dilger wrote:
-> On 2012-10-27, at 15:34, Eric Sandeen <sandeen@redhat.com <mailto:sandeen@redhat.com>> wrote:
->> I've been testing with a hacked up devicemapper target which creates
->> a "dirty" snapshot which requires a replay; saves the actual power
->> drop & restore cycle, and I could repro the journal_checksum bug
->> right off.
-> 
-> Are you using dm-flakey, or something home grown?  I've heard about dm-flakey, but haven't looked into the details to know whether it is actually useful for such testing. 
-
-I just changed DM to not quiesce the fs by hardcoding do_lockfs to "0" in dm_suspend().
-
->> XFS has an ioctl to make this easy in regression testing, and several
->> tests in xfstests do cover xfs journal recovery.  We need
->> to add such a thing to ext4.  Not being able to programatically
->> test recovery is a problem.
-> 
-> We have a patch that we used for testing Lustre (and in turn ext4)
-> recovery which sits in the block layer and discards writes after a
-> trigger is hit. The trigger can be triggered programmatically inside
-> the Lustre code, or via ioctl from userspace.
-> 
-> http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob;f=lustre/kernel_patches/patches/dev_read_only-2.6.32-rhel6.patch
-> <http://git.whamcloud.com/?p=fs/lustre-release.git;a=blob;f=lustre/kernel_patches/patches/dev_read_only-2.6.32-rhel6.patch;h=8c79b40b939fccbdb5c3bc4501ee433e23cc7831;hb=HEAD>
+On Mon, Oct 29, 2012 at 10:01 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Sun, Oct 28, 2012 at 09:51:48PM +0800, Zhi Yong Wu wrote:
+>> On Sun, Oct 28, 2012 at 3:55 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+>> > Hi Zhiyong,
+>> >
+>> > On Thu, Oct 25, 2012 at 11:08:55PM +0800, zwu.kernel@gmail.com wrote:
+>> > [snip]
+>> >> @@ -199,6 +342,54 @@ err:
+>> >>  }
+>> >>
+>> >>  /*
+>> >> + * Main function to update access frequency from read/writepage(s) hooks
+>> >> + */
+>> >> +inline void hot_update_freqs(struct inode *inode, u64 start,
+>> >> +                     u64 len, int rw)
+>> >
+>> > This function seems too big.  So we really need to inline this function?
+>> As Dave said in his comments, it will add a function call
+>> overhead even when tracking is not enabled. a static inline function
+>> will just result in no extra overhead other than the if
+>> statement....
 >
+> I don't think I said that with respect to this code. I think I said
+> it w.r.t. a define or a small wrapper that decides to call
+> hot_update_freqs().  A static inline fucntion should only be a
+> couple of lines of code at most.
 >
-> 
-I'd been thinking of moving our testing over to dm-flakey once we get to a new enough kernel (2.6.38+) and/or when it gets back-ported to RHEL6, since this is the last patch to the core kernel that we need for Lustre.
+> A static function, OTOH, can be inlined by the compiler if the
+> compiler thinks that is a win. But....
+thanks for your explaination at first.
+>
+> .....
+>
+>> >> +EXPORT_SYMBOL_GPL(hot_update_freqs);
+>
+> ... it's an exported function, so it can't be inline or static, so
+> using "inline" is wrong whatever way you look at it. ;)
+ah, but i' m surprised by why the compiler find this error.
 
-XFS has XFS_IOC_GOINGDOWN to force recovery on the next mount, and several xfstests to exercise it.
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--Eric
- 
-> Cheers, Andreas
 
+
+-- 
+Regards,
+
+Zhi Yong Wu
