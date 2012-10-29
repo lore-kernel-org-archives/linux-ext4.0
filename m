@@ -1,147 +1,107 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Mon, 29 Oct 2012 19:30:51 +0100
-Message-ID: <20121029183051.GJ18767@quack.suse.cz>
-References: <20121026101909.GB19617@blackbox.djwong.org>
- <20121027013524.GA19591@blackbox.djwong.org>
- <20121029181358.GG18767@quack.suse.cz>
+Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Mon, 29 Oct 2012 19:55:29 +0100
+Message-ID: <20121029185529.GB28272@quack.suse.cz>
+References: <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <20121026061206.GA31139@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+ <20121026184649.GA8614@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+ <20121027221626.GA9161@thunk.org>
+ <20121029011632.GN29378@dastard>
+ <20121029024024.GC9365@thunk.org>
+ <m27gq9r2cu.fsf@firstfloor.org>
+ <20121029182455.GA7098@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Andi Kleen <andi@firstfloor.org>,
+	Dave Chinner <david@fromorbit.com>,
+	"Luck, Tony" <tony.luck@intel.com>,
+	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+	"Kleen, Andi" <andi.kleen@intel.com>,
+	"Wu, Fengguang" <fengguang.wu@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>,
+	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20121029181358.GG18767@quack.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20121029182455.GA7098@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 29-10-12 19:13:58, Jan Kara wrote:
-> On Fri 26-10-12 18:35:24, Darrick J. Wong wrote:
-> > This creates BDI_CAP_STABLE_WRITES, which indicates that a device requires
-> > stable page writes.  It also plumbs in a sysfs attribute so that admins can
-> > check the device status.
+On Mon 29-10-12 14:24:56, Ted Tso wrote:
+> On Mon, Oct 29, 2012 at 03:37:05AM -0700, Andi Kleen wrote:
+> > > Agreed, if we're going to add an xattr, then we might as well store
 > > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->   I guess Jens Axboe <axboe@kernel.dk> would be the best target for this
-> patch (so that he can merge it). The patch looks OK to me. You can add:
->   Reviewed-by: Jan Kara <jack@suse.cz>
-  One more thing popped up in my mind: What about NFS, Ceph or md RAID5?
-These could (at least theoretically) care about stable writes as well. I'm
-not sure if they really started to use them but it would be good to at
-least let them know.
+> > I don't think an xattr makes sense for this. It's sufficient to keep
+> > this state in memory.
+> > 
+> > In general these error paths are hard to test and it's important
+> > to keep them as simple as possible. Doing IO and other complexities
+> > just doesn't make sense. Just have the simplest possible path
+> > that can do the job.
+> 
+> It's actually pretty easy to test this particular one, and certainly
+> one of the things I'd strongly encourage in this patch series is the
+> introduction of an interface via madvise and fadvise that allows us to
+> simulate an ECC hard error event.  So I don't think "it's hard to
+> test" is a reason not to do the right thing.  Let's make it easy to
+> test, and the include it in xfstests.  All of the core file systems
+> are regularly running regression tests via xfstests, so if we define a
+> standard way of testing this function (this is why I suggested
+> fadvise/madvise instead of an ioctl, but in a pinch we could do this
+> via an ioctl instead).
+  Well, we have an error-injection framework which would be a better fit
+for this functionality rather than some madvise / fadvise hack IMHO. And
+test in xfstests can just check whether the error-injection code is
+compiled in before running the test...
+
+> Note that the problem that we're dealing with is buffered writes; so
+> it's quite possible that the process which wrote the file, thus
+> dirtying the page cache, has already exited; so there's no way we can
+> guarantee we can inform the process which wrote the file via a signal
+> or a error code return.  It's also possible that part of the file has
+> been written out to the disk, so forcibly crashing the system and
+> rebooting isn't necessarily going to save the file from being
+> corrupted.
+> 
+> Also, if you're going to keep this state in memory, what happens if
+> the inode gets pushed out of memory?  Do we pin the inode?  Or do we
+> just say that it's stored into memory until some non-deterministic
+> time (as far as userspace programs are concerned, but if they are
+> running in a tight memory cgroup, it might be very short time later)
+> suddenly the state gets lost?
+> 
+> I think it's fair that if there are file systems that don't have a
+> single bit they can allocate in the inode, we can either accept
+> Jun'ichi's suggest to just forcibly crash the system, or we can allow
+> the state to be stored in memory.  But I suspect the core file systems
+> that might be used by enterprise-class workloads will want to provide
+> something better.
+> 
+> I'm not that convinced that we need to insert an xattr; after all, not
+> all file systems support xattrs at all, and I think a single bit
+> indicating that the file has corrupted data is sufficient.  But I
+> think it would be useful to at least optionally support a persistent
+> storage of this bit.
+  Here I'd just note that the situation isn't that much different from a
+plain old EIO we can hit during writeback. There we use in memory flag
+(AS_EIO / PageError) and hope that an application which cares enough about
+its data will call fsync() and thus get the error back. Sure it's not
+ideal but so far nobody seemed to be bothered enough to improve on that. So
+is it really fair to bother authors of this patch with it?
+
+And regarding xattr - I think it's an overkill. Just recording the error in
+the kernel log with enough detail and flagging the file (or even just the
+filesystem) would be OK IMHO. Rest could be handled in userspace if someone
+cares enough.
 
 								Honza
-
-> > ---
-> > 
-> >  block/blk-integrity.c       |    8 ++++++++
-> >  include/linux/backing-dev.h |    6 ++++++
-> >  mm/backing-dev.c            |   11 +++++++++++
-> >  3 files changed, 25 insertions(+)
-> > 
-> > diff --git a/block/blk-integrity.c b/block/blk-integrity.c
-> > index da2a818..d05d7b3 100644
-> > --- a/block/blk-integrity.c
-> > +++ b/block/blk-integrity.c
-> > @@ -384,6 +384,7 @@ EXPORT_SYMBOL(blk_integrity_is_initialized);
-> >  int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
-> >  {
-> >  	struct blk_integrity *bi;
-> > +	struct backing_dev_info *bdi;
-> >  
-> >  	BUG_ON(disk == NULL);
-> >  
-> > @@ -420,6 +421,9 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
-> >  	} else
-> >  		bi->name = bi_unsupported_name;
-> >  
-> > +	bdi = &disk->queue->backing_dev_info;
-> > +	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
-> > +
-> >  	return 0;
-> >  }
-> >  EXPORT_SYMBOL(blk_integrity_register);
-> > @@ -434,10 +438,14 @@ EXPORT_SYMBOL(blk_integrity_register);
-> >  void blk_integrity_unregister(struct gendisk *disk)
-> >  {
-> >  	struct blk_integrity *bi;
-> > +	struct backing_dev_info *bdi;
-> >  
-> >  	if (!disk || !disk->integrity)
-> >  		return;
-> >  
-> > +	bdi = &disk->queue->backing_dev_info;
-> > +	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
-> > +
-> >  	bi = disk->integrity;
-> >  
-> >  	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
-> > diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-> > index 2a9a9ab..b82a8bb 100644
-> > --- a/include/linux/backing-dev.h
-> > +++ b/include/linux/backing-dev.h
-> > @@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
-> >  #define BDI_CAP_EXEC_MAP	0x00000040
-> >  #define BDI_CAP_NO_ACCT_WB	0x00000080
-> >  #define BDI_CAP_SWAP_BACKED	0x00000100
-> > +#define BDI_CAP_STABLE_WRITES	0x00000200
-> >  
-> >  #define BDI_CAP_VMFLAGS \
-> >  	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
-> > @@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
-> >  int pdflush_proc_obsolete(struct ctl_table *table, int write,
-> >  		void __user *buffer, size_t *lenp, loff_t *ppos);
-> >  
-> > +static inline bool bdi_cap_stable_writes(struct backing_dev_info *bdi)
-> > +{
-> > +	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
-> > +}
-> > +
-> >  static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
-> >  {
-> >  	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
-> > diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-> > index d3ca2b3..a2f4c08 100644
-> > --- a/mm/backing-dev.c
-> > +++ b/mm/backing-dev.c
-> > @@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
-> >  }
-> >  BDI_SHOW(max_ratio, bdi->max_ratio)
-> >  
-> > +static ssize_t stable_page_writes_show(struct device *dev,
-> > +	struct device_attribute *attr, char *page)
-> > +{
-> > +	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-> > +
-> > +	return snprintf(page, PAGE_SIZE-1, "%d\n",
-> > +			bdi->capabilities & BDI_CAP_STABLE_WRITES ? 1 : 0);
-> > +}
-> > +
-> >  #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
-> > +#define __ATTR_RO(attr) __ATTR(attr, 0444, attr##_show, NULL)
-> >  
-> >  static struct device_attribute bdi_dev_attrs[] = {
-> >  	__ATTR_RW(read_ahead_kb),
-> >  	__ATTR_RW(min_ratio),
-> >  	__ATTR_RW(max_ratio),
-> > +	__ATTR_RO(stable_page_writes),
-> >  	__ATTR_NULL,
-> >  };
-> >  
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
