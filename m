@@ -1,80 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Sun, 28 Oct 2012 22:40:24 -0400
-Message-ID: <20121029024024.GC9365@thunk.org>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
- <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
- <20121026184649.GA8614@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
- <20121027221626.GA9161@thunk.org>
- <20121029011632.GN29378@dastard>
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Date: Sun, 28 Oct 2012 22:42:24 -0400
+Message-ID: <20121029024224.GD9365@thunk.org>
+References: <20121027002258.GB31030@thunk.org>
+ <873910xevu.fsf@spindle.srvr.nix>
+ <20121027175534.GA7783@thunk.org>
+ <87fw4zzra3.fsf@spindle.srvr.nix>
+ <508C4FE5.1030102@redhat.com>
+ <508C633F.4070100@redhat.com>
+ <20121029010012.GE9161@thunk.org>
+ <508DE8D3.1050101@redhat.com>
+ <20121029023430.GB9365@thunk.org>
+ <508DEB8E.10101@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Luck, Tony" <tony.luck@intel.com>,
-	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-	"Kleen, Andi" <andi.kleen@intel.com>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Nix <nix@esperi.org.uk>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, gregkh@linuxfoundation.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58213 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757597Ab2J2Cma (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 28 Oct 2012 22:42:30 -0400
 Content-Disposition: inline
-In-Reply-To: <20121029011632.GN29378@dastard>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <508DEB8E.10101@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 12:16:32PM +1100, Dave Chinner wrote:
+On Sun, Oct 28, 2012 at 09:35:58PM -0500, Eric Sandeen wrote:
+> Yeah, seems that way.
 > 
-> Except that there are filesystems that cannot implement such flags,
-> or require on-disk format changes to add more of those flags. This
-> is most definitely not a filesystem specific behaviour, so any sort
-> of VFS level per-file state needs to be kept in xattrs, not special
-> flags. Filesystems are welcome to optimise the storage of such
-> special xattrs (e.g. down to a single boolean flag in an inode), but
-> using a flag for something that dould, in fact, storage the exactly
-> offset and length of the corruption is far better than just storing
-> a "something is corrupted in this file" bit....
+> Then your simpler version is probably the way to go.
 
-Agreed, if we're going to add an xattr, then we might as well store
-not just a boolean, but some indication of what part of the file was
-corrupted.  The only complication is what if there are many memory
-corruptions.  Do we store just the last ECC hard error that we
-detected?  Or just the first?
+If you have a chance, could you do me a favor and test my -v3 version
+of the patch?  It should work just as well as yours, but I'm getting
+paranoid in my old age, and you seem to have a reliable way of testing
+for this failure.  I still need to figure out why my kvm based
+approach isn't showing the problem....
 
-It wasn't clear to me it was worth the extra complexity, but if there
-are indeed for file systems that don't have or don't want to allocate
-a spare bit in their inode structure, that might be a good enough
-justification to add an xattr.  (Was this a hypothetical, or does this
-constraint apply to XFS or some other file system that you're aware of?)
+Thanks,
 
-> > I note that we've already added a new error code:
-> > 
-> > #define EHWPOISON 133	  /* Memory page has hardware error */
-> > 
-> > ... although the glibc shipping with Debian testing hasn't been taught
-> > what it is, so strerror(EHWPOISON) returns "Unknown error 133".  We
-> > could simply allow open(2) and stat(2) return this error, although I
-> > wonder if we're just better off defining a new error code.
-> 
-> If we are going to add special new "file corrupted" errors, we
-> should add EFSCORRUPTED (i.e. "filesystem corrupted") at the same
-> time....
-
-I would dearly love it if we could allocate a new EFSCORRUPTED errno.
-I was about to follow XFS's lead and change ext4 to return EUCLEAN
-instead of EIO in the cases of fs corruption, but that really is ugly
-and gross...
-
-						- Ted
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- Ted
