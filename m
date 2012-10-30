@@ -1,82 +1,69 @@
-From: NeilBrown <neilb@suse.de>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Tue, 30 Oct 2012 15:48:44 +1100
-Message-ID: <20121030154844.1898f068@notabene.brown>
-References: <20121026101909.GB19617@blackbox.djwong.org>
-	<20121027013524.GA19591@blackbox.djwong.org>
-	<yq1ehkg8us1.fsf@sermon.lab.mkp.net>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: How to use new "native 4k sector sized" HDD with ext4
+Date: Tue, 30 Oct 2012 18:27:52 +0530
+Message-ID: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/c/itFBuq+A.7zMntXTa.IYL"; protocol="application/pgp-signature"
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, adilger@dilger.ca, sandeen@redhat.com,
+	Namjae Jeon <linkinjeon@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:41782 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756950Ab2J3M5x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Oct 2012 08:57:53 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so223816vcb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 05:57:52 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/c/itFBuq+A.7zMntXTa.IYL
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+We have a 2TB HDD having native 4k sector size but emulated as 512bytes.
+And we want to use this device with sector size 4k and not 512bytes.
 
-On Tue, 30 Oct 2012 00:10:22 -0400 "Martin K. Petersen"
-<martin.petersen@oracle.com> wrote:
+In mkfs.xfs there is option "-s", using which, one can set the sector size.
+What is the use case of this option?
 
-> >>>>> "Darrick" =3D=3D Darrick J Wong <darrick.wong@oracle.com> writes:
->=20
-> Darrick> This creates BDI_CAP_STABLE_WRITES, which indicates that a
-> Darrick> device requires stable page writes.  It also plumbs in a sysfs
-> Darrick> attribute so that admins can check the device status.
->=20
-> Might be nice to make the sysfs knob tweakable. Also, don't forget to
-> add a suitable blurb to Documentation/ABI/.
+Also, such option is not present for ext4. So, apart from aligining the
+ partition on multiple of 8 sector numbers do we have to do something else
+ for using 4k sectors?
 
- It isn't at all clear to me that having the sysfs knob 'tweakable' is a go=
-od
- idea.
- From the md/raid5 perspective, I would want to know for certain whether the
- pages in a give bio are guaranteed not to change, or if they might.
- I could set the BDI_CAP_STABLE_WRITES and believe they will never change, =
-or
- test the BDI_CAP_STABLE_WRITES and let that tell me if they might change or
- not.  But if the bit can be changed at any moment, then it can never be
- trusted and so becomes worthless to me.
+We measured the write performance of XFS/EXT4 with sector size 512bytes and 4KB.
 
- At the very least it should only be possible to change it when there is no
- IO in flight.
+XFS With 512 byte sector size=>
+ RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+  524288   22.12MB/sec    0.00MB/sec    0.00MB/sec
+  262144   18.87MB/sec    0.00MB/sec    0.00MB/sec
+  131072   18.25MB/sec    0.00MB/sec    0.00MB/sec
+   65536   18.90MB/sec    0.00MB/sec    0.00MB/sec
+   32768   23.26MB/sec    0.00MB/sec    0.00MB/sec
+   16384   18.21MB/sec    0.00MB/sec    0.00MB/sec
+    8192   21.23MB/sec    0.00MB/sec    0.00MB/sec
+    4096   20.58MB/sec    0.00MB/sec    0.00MB/sec
 
-NeilBrown
+XFS after setting 4KB sector size (-s size 4096) =>
+RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+  524288   21.93MB/sec    0.00MB/sec    0.00MB/sec
+  262144   28.49MB/sec    0.00MB/sec    0.00MB/sec
+  131072   25.64MB/sec    0.00MB/sec    0.00MB/sec
+   65536   24.27MB/sec    0.00MB/sec    0.00MB/sec
+   32768   26.39MB/sec    0.00MB/sec    0.00MB/sec
+   16384   28.49MB/sec    0.00MB/sec    0.00MB/sec
+    8192   22.83MB/sec    0.00MB/sec    0.00MB/sec
+    4096   24.88MB/sec    0.00MB/sec    0.00MB/sec
 
+Ext4 with default mkfs.ext4 options =>
+ RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+  524288   31.95MB/sec    0.00MB/sec    0.00MB/sec
+  262144   26.88MB/sec    0.00MB/sec    0.00MB/sec
+  131072   23.04MB/sec    0.00MB/sec    0.00MB/sec
+   65536   25.91MB/sec    0.00MB/sec    0.00MB/sec
+   32768   24.69MB/sec    0.00MB/sec    0.00MB/sec
+   16384   24.27MB/sec    0.00MB/sec    0.00MB/sec
+    8192   32.05MB/sec    0.00MB/sec    0.00MB/sec
+    4096   30.21MB/sec    0.00MB/sec    0.00MB/sec
 
->=20
-> Feel free to add my Acked-by:
->=20
+Ext4 performed little better than XFS (-s size 4096).
+Seeing this, we are tempted to believe that ext4 is already
+using 4k sectors.
 
-
---Sig_/c/itFBuq+A.7zMntXTa.IYL
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUI9cLDnsnt1WYoG5AQLmLA//U5Xz60zeREjktAv1PIv/31S/KdEceRXt
-ipilRltZGso/AntT4gyNfAU8wzojTKJxcVY8nmE+e0M2HsAks5y2WsdiqK9Sfkg8
-S6tsxqJpEPMYJVg6uPIMAZvM5OjQWBtSMHDaWt/mWhzQq9eF9EV0dJNmEXZLEqMA
-zQO+nu3tnK4VEkwCtXFb+z4wJkidDtUT+Zsl+a920COORJBGAkNX/M2BhQDodaRG
-Hfx9StPbgWgWPGl98t/LbQN8eu2/eqyij0oNtWVN6D6FSbnemphsusDjwyIftXuY
-RTzSbMijTyojNfhZT73rVkduHa6evAlQ5jhZPN+G/9mHdN9J2cAm0zDt8/BnRzjO
-Hu6W9mqe2XZNEghVPZjqjAWl+UBBUXU2GfJHxkZyEz3jv1WZKLDfsdigyeVxYd2K
-YYd7pM3TUQmniUDvqHSiynGFwWWI+MRpg/96Fr5IxxJjdBW1Wyn9kqD7G/1uTTlw
-kze1d3W2zAg4aRoNs9PSWaGvaEcXkIrJjnHpM6mi0TTA0vFfr/Fa04O1axjTQv4+
-KQBASb2TlQC0iN3W8NLc97yyTpurJMZJ2CQDAwL+k0nKxy+wqXcoeASKs3OCXkCR
-EVIFMpQkYvAIAB5rIsMrdpPkJvW9iQuQNC02e8pKavZBZyKmWZVmqz+XqybhCvGf
-8OP8NUs4lJ0=
-=hcZ+
------END PGP SIGNATURE-----
-
---Sig_/c/itFBuq+A.7zMntXTa.IYL--
+Is there any way to make sure that ext4 is indeed using 4k sectors?
