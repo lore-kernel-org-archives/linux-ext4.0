@@ -1,64 +1,69 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Tue, 30 Oct 2012 13:14:24 -0700
-Message-ID: <20121030201424.GD19559@blackbox.djwong.org>
+Subject: Re: semi-stable page writes
+Date: Tue, 30 Oct 2012 13:40:37 -0700
+Message-ID: <20121030204037.GE19559@blackbox.djwong.org>
 References: <20121026101909.GB19617@blackbox.djwong.org>
- <20121027013524.GA19591@blackbox.djwong.org>
- <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
- <20121030154844.1898f068@notabene.brown>
- <yq1a9v4884i.fsf@sermon.lab.mkp.net>
+ <20121029220122.GT29378@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, "Theodore Ts'o" <tytso@mit.edu>,
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:30006 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750955Ab2J3UOb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Oct 2012 16:14:31 -0400
+Received: from acsinet15.oracle.com ([141.146.126.227]:25543 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934519Ab2J3Ukt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Oct 2012 16:40:49 -0400
 Content-Disposition: inline
-In-Reply-To: <yq1a9v4884i.fsf@sermon.lab.mkp.net>
+In-Reply-To: <20121029220122.GT29378@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 08:19:41AM -0400, Martin K. Petersen wrote:
-> >>>>> "Neil" == NeilBrown  <neilb@suse.de> writes:
+On Tue, Oct 30, 2012 at 09:01:22AM +1100, Dave Chinner wrote:
+> On Fri, Oct 26, 2012 at 03:19:09AM -0700, Darrick J. Wong wrote:
+> > Hi everyone,
+> > 
+> > Are people still annoyed about writes taking unexpectedly long amounts of tme
+> > due to the stable page write patchset?  I'm guessing yes...
 > 
-> Neil,
+> I haven't heard anyone except th elunatic fringe complain
+> recently...
 > 
-> >> Might be nice to make the sysfs knob tweakable. Also, don't forget to
-> >> add a suitable blurb to Documentation/ABI/.
+> > I'm close to posting a patchset that (a) gates the wait_on_page_writeback calls
+> > on a flag that you can set in the bdi to indicate that you need stable writes
+> > (which blk_integrity_register will set);
 > 
-> Neil>  It isn't at all clear to me that having the sysfs knob
-> Neil>  'tweakable' is a good idea.  From the md/raid5 perspective, I
-> Neil>  would want to know for certain whether the pages in a give bio
-> Neil>  are guaranteed not to change, or if they might.  I could set the
-> Neil>  BDI_CAP_STABLE_WRITES and believe they will never change, or test
-> Neil>  the BDI_CAP_STABLE_WRITES and let that tell me if they might
-> Neil>  change or not.  But if the bit can be changed at any moment, then
-> Neil>  it can never be trusted and so becomes worthless to me.
+> I'd prefer stable pages by default (e.g. btrfs needs it for sane
+> data crc calculations), with an option to turn it off.
 > 
-> I was mostly interested in being able to turn it on for devices that
-> haven't explicitly done so. I agree that turning it off can be
-> problematic.
+> > (b) (ab)uses a page flag bit (PG_slab)
+> > to indicate that a page is actually being sent out to disk hardware; and (c)
+> 
+> I don't think you can do that. You can send slab allocated memory to
+> disk (e.g. kmalloc()d memory) and XFS definitely does that for
+> sub-page sized metadata. I'm pretty sure that means the PG_slab
+> flag is not available for (ab)use in the IO path....
 
-I'm ok with having a tunable that can turn it on, but atm I can't really think
-of a convincing reason to let people turn it /off/.  If people yell loud enough
-I'll add it, but I'd rather not have to distinguish between "on because user
-set it on" vs "on because hw needs it".
+I gave up on PG_slab and declared my own PG_ bit.  Unfortunately, atm I can't
+remember which bit of code marks the page ptes so that they have to go back
+through page_mkwrite, where we can trap the write.  Hopefully for a shorter
+duration.
 
-It'd be nice if the presence BDI_CAP_STABLE_WRITES meant that all filesystems
-would wait on page writes.  Hrm, guess I'll see about adding that to the patch
-set.  Though ISTR that at least the vfat and ext2 maintainers weren't
-interested the last time I asked.
+Also, I was wondering -- is it possible to pursue a dual strategy?  If we can
+obtain a memory page without sleeping or causing any writeback, then use the
+page as a bounce buffer.  Otherwise, just wait like we do now.  It looks as
+though one could use __GFP_NORETRY | __GFP_NO_MEMALLOC to see if the allocator
+can give out a page without having to run reclaim...?
 
 --D
 > 
+> Cheers,
+> 
+> Dave.
 > -- 
-> Martin K. Petersen	Oracle Linux Engineering
+> Dave Chinner
+> david@fromorbit.com
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
