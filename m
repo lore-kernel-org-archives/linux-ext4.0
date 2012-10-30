@@ -1,71 +1,99 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: How to use new "native 4k sector sized" HDD with ext4
-Date: Tue, 30 Oct 2012 10:22:45 -0400
-Message-ID: <20121030142245.GB5972@thunk.org>
+Date: Tue, 30 Oct 2012 09:31:13 -0500
+Message-ID: <508FE4B1.2060903@redhat.com>
 References: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger@dilger.ca, sandeen@redhat.com,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, adilger@dilger.ca,
 	Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
 To: Ashish Sangwan <ashishsangwan2@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:58440 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756127Ab2J3OWx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Oct 2012 10:22:53 -0400
-Content-Disposition: inline
+Received: from mx1.redhat.com ([209.132.183.28]:64695 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753343Ab2J3Obc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2012 10:31:32 -0400
 In-Reply-To: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 06:27:52PM +0530, Ashish Sangwan wrote:
+On 10/30/12 7:57 AM, Ashish Sangwan wrote:
+> We have a 2TB HDD having native 4k sector size but emulated as 512bytes.
+> And we want to use this device with sector size 4k and not 512bytes.
 > 
 > In mkfs.xfs there is option "-s", using which, one can set the sector size.
 > What is the use case of this option?
-> 
+
+That's a question for the xfs list ;)  xfs does issue IOs down
+to that sector size, defaulting to 512, so setting it to the physical
+sector size makes sense.  Newer mkfs.xfs does this automatically:
+
+287d168b550857ce40e04b5f618d7eb91b87022f mkfs.xfs: properly handle physical sector size
+
+    This primarily allows us to default to using the physical
+    sectorsize for mkfs's "sector size" value, the fundamental
+    size of any IOs the filesystem will perform.
+
 > Also, such option is not present for ext4. So, apart from aligining the
 >  partition on multiple of 8 sector numbers do we have to do something else
 >  for using 4k sectors?
 
-The equivalent option for ext4 is -b (which we call the block size).
-It defaults to 4k for all but the very smallest file systems, where
-space efficiency (especially if you are storing a large number of
-small files on say, a 1.44 megabyte floppy) becomes more important.
-For file system smaller than 512mb, we use the smallest possible block
-size supported by ext2/3/4, which is 1k.  (This is configurable; see
-/etc/mke2fs.conf; "small" file systems are ones smaller than 512mb,
-while "floppy" file systems are ones smaller than 4mb.  You can change
-the defaults in the configuration file, or you can specify explicit
-settings via the command-line options as documented in the mke2fs man
-page.
+Nope.  Although I wouldn't specify a block size less than the physical
+sector size (and if you do, mkfs.ext4 will complain) -
 
+# blockdev --getss --getpbsz /dev/sde
+512
+4096
+# mkfs.ext4 -b 1024 /dev/sde
+mke2fs 1.41.12 (17-May-2010)
+Warning: specified blocksize 1024 is less than device physical sectorsize 4096
+...
+
+> We measured the write performance of XFS/EXT4 with sector size 512bytes and 4KB.
+> 
+> XFS With 512 byte sector size=>
+>  RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+>   524288   22.12MB/sec    0.00MB/sec    0.00MB/sec
+>   262144   18.87MB/sec    0.00MB/sec    0.00MB/sec
+>   131072   18.25MB/sec    0.00MB/sec    0.00MB/sec
+>    65536   18.90MB/sec    0.00MB/sec    0.00MB/sec
+>    32768   23.26MB/sec    0.00MB/sec    0.00MB/sec
+>    16384   18.21MB/sec    0.00MB/sec    0.00MB/sec
+>     8192   21.23MB/sec    0.00MB/sec    0.00MB/sec
+>     4096   20.58MB/sec    0.00MB/sec    0.00MB/sec
+> 
+> XFS after setting 4KB sector size (-s size 4096) =>
+> RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+>   524288   21.93MB/sec    0.00MB/sec    0.00MB/sec
+>   262144   28.49MB/sec    0.00MB/sec    0.00MB/sec
+>   131072   25.64MB/sec    0.00MB/sec    0.00MB/sec
+>    65536   24.27MB/sec    0.00MB/sec    0.00MB/sec
+>    32768   26.39MB/sec    0.00MB/sec    0.00MB/sec
+>    16384   28.49MB/sec    0.00MB/sec    0.00MB/sec
+>     8192   22.83MB/sec    0.00MB/sec    0.00MB/sec
+>     4096   24.88MB/sec    0.00MB/sec    0.00MB/sec
+> 
+> Ext4 with default mkfs.ext4 options =>
+>  RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
+>   524288   31.95MB/sec    0.00MB/sec    0.00MB/sec
+>   262144   26.88MB/sec    0.00MB/sec    0.00MB/sec
+>   131072   23.04MB/sec    0.00MB/sec    0.00MB/sec
+>    65536   25.91MB/sec    0.00MB/sec    0.00MB/sec
+>    32768   24.69MB/sec    0.00MB/sec    0.00MB/sec
+>    16384   24.27MB/sec    0.00MB/sec    0.00MB/sec
+>     8192   32.05MB/sec    0.00MB/sec    0.00MB/sec
+>     4096   30.21MB/sec    0.00MB/sec    0.00MB/sec
+> 
+> Ext4 performed little better than XFS (-s size 4096).
+> Seeing this, we are tempted to believe that ext4 is already
+> using 4k sectors.
+> 
 > Is there any way to make sure that ext4 is indeed using 4k sectors?
 
-You can use dumpe2fs to look at the file system parameters.  The
-confusion here is caused by the fact that xfs uses sector size where
-ext 2/3/4 follows the BSD Fast File System convention of using the
-terminology of "block size".
+ext4 will only do IOs in multiples of block size, so if you set it to
+4k, and properly align the filesystem start to a 4k boundary, there
+is nothing else to do.
 
-XFS supports using the minimum sector size of 512 bytes by default
-since it means that if you are store large number of small files
-(i.e., only one or two 512 byte sectors), there is less wasted space.
-However, since ext2 and ext3 used an indirect block mapping scheme,
-there was a huge performance advantage in going with 4k blocks, and so
-we use that as a default for larger file systems (at the time, 512
-megabytes was considered "large" :-).  With ext4, we use an
-extent-based mapping scheme, but disks have gotten bigger, and so the
-internal fragmentation overhead of using 4k blocks is much less of an
-issue.
+-Eric
 
-(Internal fragmentation is the observation that assuming a random
-distribution, you will waste on average half the block size for each
-file --- that is, a 1 byte or 1k file will stil take 4k of storage,
-while a 3k or 4095 byte file will also require 4k of storage.  So on
-average, you waste 2k of space per file.  If your average file size is
-on the order megabytes, this doesn't matter.  If your average file
-size is on the order of a few kilobytes, this matters more.  With 2
-and 3 terabyte drives available, it's not clear this matters at all.  :-)
-
-Regards,
-
-      	       	      		      	  	- Ted
