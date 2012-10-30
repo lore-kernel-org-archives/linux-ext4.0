@@ -1,69 +1,86 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: How to use new "native 4k sector sized" HDD with ext4
-Date: Tue, 30 Oct 2012 18:27:52 +0530
-Message-ID: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
+ device needs stable page writes
+Date: Tue, 30 Oct 2012 14:38:25 +0100
+Message-ID: <20121030133825.GA2260@quack.suse.cz>
+References: <20121026101909.GB19617@blackbox.djwong.org>
+ <20121027013524.GA19591@blackbox.djwong.org>
+ <20121029181358.GG18767@quack.suse.cz>
+ <20121029183051.GJ18767@quack.suse.cz>
+ <20121030104837.2e4b06fc@notabene.brown>
+ <20121030001008.GA372@quack.suse.cz>
+ <20121030113441.7f62df51@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, adilger@dilger.ca, sandeen@redhat.com,
-	Namjae Jeon <linkinjeon@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:41782 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756950Ab2J3M5x (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Oct 2012 08:57:53 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so223816vcb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 05:57:52 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:54669 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932453Ab2J3Ni2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2012 09:38:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20121030113441.7f62df51@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We have a 2TB HDD having native 4k sector size but emulated as 512bytes.
-And we want to use this device with sector size 4k and not 512bytes.
+On Tue 30-10-12 11:34:41, NeilBrown wrote:
+> On Tue, 30 Oct 2012 01:10:08 +0100 Jan Kara <jack@suse.cz> wrote:
+> 
+> > On Tue 30-10-12 10:48:37, NeilBrown wrote:
+> > > On Mon, 29 Oct 2012 19:30:51 +0100 Jan Kara <jack@suse.cz> wrote:
+> > > 
+> > > > On Mon 29-10-12 19:13:58, Jan Kara wrote:
+> > > > > On Fri 26-10-12 18:35:24, Darrick J. Wong wrote:
+> > > > > > This creates BDI_CAP_STABLE_WRITES, which indicates that a device requires
+> > > > > > stable page writes.  It also plumbs in a sysfs attribute so that admins can
+> > > > > > check the device status.
+> > > > > > 
+> > > > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > > > >   I guess Jens Axboe <axboe@kernel.dk> would be the best target for this
+> > > > > patch (so that he can merge it). The patch looks OK to me. You can add:
+> > > > >   Reviewed-by: Jan Kara <jack@suse.cz>
+> > > >   One more thing popped up in my mind: What about NFS, Ceph or md RAID5?
+> > > > These could (at least theoretically) care about stable writes as well. I'm
+> > > > not sure if they really started to use them but it would be good to at
+> > > > least let them know.
+> > > > 
+> > > 
+> > > What exactly are the semantics of BDI_CAP_STABLE_WRITES ?
+> > > 
+> > > If I set it for md/RAID5, do I get a cast-iron guarantee that no byte in any
+> > > page submitted for write will ever change until after I call bio_endio()?
+> >   Yes.
+> > 
+> > > If so, is this true for all filesystems? - I would expect a bigger patch would
+> > > be needed for that.
+> >   Actually the code is in kernel for quite some time already. The problem
+> > is it is always enabled causing unnecessary performance issues for some
+> > workloads. So these patches try to be more selective in when the code gets
+> > enabled.
+> > 
+> > Regarding "all filesystems" question: If we update filemap_page_mkwrite()
+> > to call wait_on_page_writeback() then it should be for all filesystems.
+> 
+> Cool.  I didn't realise it had progressed that far.
+> 
+> I guess it is time to look at the possibility of removing the
+> 'copy-into-cache' step for full-page, well-aligned bi_iovecs.
+> 
+> I assume this applies to swap-out as well ??  It has been a minor source of
+> frustration that when you swap-out to RAID1, you can occasionally get
+> different data on the two devices because memory changed between the two DMA
+> events.
+  Really? I'm somewhat surprised. I was under the impression that when a
+page is added to a swap cache it is unmapped so there should be no
+modification to it possible while it is being swapped out. But maybe it
+could get mapped back and modified after we unlock the page and submit the
+bio. So mm/memory.c:do_swap_page() might need wait_on_page_writeback() as
+well. But I'm not an expert on swap code. I guess I'll experiment with this
+a bit. Thanks for a pointer.
 
-In mkfs.xfs there is option "-s", using which, one can set the sector size.
-What is the use case of this option?
-
-Also, such option is not present for ext4. So, apart from aligining the
- partition on multiple of 8 sector numbers do we have to do something else
- for using 4k sectors?
-
-We measured the write performance of XFS/EXT4 with sector size 512bytes and 4KB.
-
-XFS With 512 byte sector size=>
- RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
-  524288   22.12MB/sec    0.00MB/sec    0.00MB/sec
-  262144   18.87MB/sec    0.00MB/sec    0.00MB/sec
-  131072   18.25MB/sec    0.00MB/sec    0.00MB/sec
-   65536   18.90MB/sec    0.00MB/sec    0.00MB/sec
-   32768   23.26MB/sec    0.00MB/sec    0.00MB/sec
-   16384   18.21MB/sec    0.00MB/sec    0.00MB/sec
-    8192   21.23MB/sec    0.00MB/sec    0.00MB/sec
-    4096   20.58MB/sec    0.00MB/sec    0.00MB/sec
-
-XFS after setting 4KB sector size (-s size 4096) =>
-RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
-  524288   21.93MB/sec    0.00MB/sec    0.00MB/sec
-  262144   28.49MB/sec    0.00MB/sec    0.00MB/sec
-  131072   25.64MB/sec    0.00MB/sec    0.00MB/sec
-   65536   24.27MB/sec    0.00MB/sec    0.00MB/sec
-   32768   26.39MB/sec    0.00MB/sec    0.00MB/sec
-   16384   28.49MB/sec    0.00MB/sec    0.00MB/sec
-    8192   22.83MB/sec    0.00MB/sec    0.00MB/sec
-    4096   24.88MB/sec    0.00MB/sec    0.00MB/sec
-
-Ext4 with default mkfs.ext4 options =>
- RecSize    WriteSpeed  RanReadSpeed RanWriteSpeed
-  524288   31.95MB/sec    0.00MB/sec    0.00MB/sec
-  262144   26.88MB/sec    0.00MB/sec    0.00MB/sec
-  131072   23.04MB/sec    0.00MB/sec    0.00MB/sec
-   65536   25.91MB/sec    0.00MB/sec    0.00MB/sec
-   32768   24.69MB/sec    0.00MB/sec    0.00MB/sec
-   16384   24.27MB/sec    0.00MB/sec    0.00MB/sec
-    8192   32.05MB/sec    0.00MB/sec    0.00MB/sec
-    4096   30.21MB/sec    0.00MB/sec    0.00MB/sec
-
-Ext4 performed little better than XFS (-s size 4096).
-Seeing this, we are tempted to believe that ext4 is already
-using 4k sectors.
-
-Is there any way to make sure that ext4 is indeed using 4k sectors?
+								Honza
