@@ -1,78 +1,48 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] Remove VLAIS usage from JBD2 code
-Date: Tue, 30 Oct 2012 12:13:07 -0700
-Message-ID: <20121030191307.GC19576@blackbox.djwong.org>
-References: <1351622404-18214-1-git-send-email-behanw@converseincode.com>
- <1351622404-18214-2-git-send-email-behanw@converseincode.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] more ext4 bug fixes for 3.7
+Date: Tue, 30 Oct 2012 15:27:57 -0400
+Message-ID: <nsxy5inoj42.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Mark Charlebois <charlebm@gmail.com>
-To: Behan Webster <behanw@converseincode.com>
+Cc: linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1050.oracle.com ([141.146.126.70]:27709 "EHLO
-	aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932654Ab2J3TOj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Oct 2012 15:14:39 -0400
-Received: from aserp1040.oracle.com (aserp1040.oracle.com [141.146.126.69])
-	by aserp1050.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q9UJEXXi031210
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 19:14:33 GMT
-Content-Disposition: inline
-In-Reply-To: <1351622404-18214-2-git-send-email-behanw@converseincode.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:58512 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932654Ab2J3T2E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2012 15:28:04 -0400
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 02:40:04PM -0400, Behan Webster wrote:
-> From: Mark Charlebois <charlebm@gmail.com>
-> 
-> The use of variable length arrays in structs (VLAIS) in the Linux Kernel code
-> precludes the use of compilers which don't implement VLAIS (for instance the
-> Clang compiler). Since ctx is always a 32-bit CRC, hard coding a size of 4
-> bytes accomplishes the same thing without the use of VLAIS. This is the same
-> technique already employed in fs/ext4/ext4.h
-> 
-> Signed-off-by: Mark Charlebois <charlebm@gmail.com>
-> Signed-off-by: Behan Webster <behanw@converseincode.com>
-> ---
->  include/linux/jbd2.h |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 3efc43f..efcbdfc 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1308,7 +1308,7 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
->  {
->  	struct {
->  		struct shash_desc shash;
-> -		char ctx[crypto_shash_descsize(journal->j_chksum_driver)];
-> +		char ctx[4];
 
-I wonder if this code ought to have a defensive programming check such as
-BUG_ON(crypto_shash_descsize(journal->j_chksum_driver) > 4) here just in case
-we ever decide to support a checksum function that is bigger than 32 bits?
+The following changes since commit 8f0d8163b50e01f398b14bcd4dc039ac5ab18d64:
 
-At this stage of the game I doubt we'll be adding larger checksums to
-ext4/jbd2, but I wouldn't want to rely on remembering this detail if we ever
-do want to change it.  I guess we could hide the check behind CONFIG_JBD_DEBUG
-if we're concerned about slowing down the hot path.
+  Linux 3.7-rc3 (2012-10-28 12:24:48 -0700)
 
-The same comment applies to Ted's patch ("ext4: remove dynamic array size in
-ext4_chksum()") back in July.
+are available in the git repository at:
 
-<shrug> Otherwise,
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
+for you to fetch changes up to ffb5387e85d528fb6d0d924abfa3fbf0fc484071:
 
---D
->  	} desc;
->  	int err;
->  
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  ext4: fix unjournaled inode bitmap modification (2012-10-28 22:24:57 -0400)
+
+----------------------------------------------------------------
+This fixes the root cause of the ext4 data corruption bug which raised
+a ruckus on LWN, Phoronix, and Slashdot.  This bug only showed up when
+non-standard mount options (journal_async_commit and/or
+journal_checksum) were enabled, and when the file system was not
+cleanly unmounted, but the root cause was the inode bitmap
+modifications was not being properly journaled.  This could
+potentially lead to minor file system corruptions (pass 5 complaints
+with the inode allocation bitmap) after an unclean shutdown under the
+wrong/unlucky workloads, but it turned into major failure if the
+journal_checksum and/or jouaral_async_commit  was enabled.
+
+----------------------------------------------------------------
+Eric Sandeen (1):
+      ext4: fix unjournaled inode bitmap modification
+
+ fs/ext4/ialloc.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
