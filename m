@@ -1,86 +1,145 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: How to use new "native 4k sector sized" HDD with ext4
-Date: Tue, 30 Oct 2012 09:36:54 -0500
-Message-ID: <508FE606.9040405@redhat.com>
-References: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com> <20121030142245.GB5972@thunk.org>
+Subject: [PATCH] ext4: remove ext4_handle_release_buffer()
+Date: Tue, 30 Oct 2012 12:05:10 -0500
+Message-ID: <509008C6.3070700@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ashish Sangwan <ashishsangwan2@gmail.com>, adilger@dilger.ca,
-	Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57013 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23336 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753110Ab2J3OhI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Oct 2012 10:37:08 -0400
-In-Reply-To: <20121030142245.GB5972@thunk.org>
+	id S1759908Ab2J3RFN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2012 13:05:13 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9UH5C1Y026873
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 13:05:12 -0400
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9UH5API014179
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 13:05:11 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/30/12 9:22 AM, Theodore Ts'o wrote:
-> On Tue, Oct 30, 2012 at 06:27:52PM +0530, Ashish Sangwan wrote:
->>
->> In mkfs.xfs there is option "-s", using which, one can set the sector size.
->> What is the use case of this option?
->>
->> Also, such option is not present for ext4. So, apart from aligining the
->>  partition on multiple of 8 sector numbers do we have to do something else
->>  for using 4k sectors?
-> 
-> The equivalent option for ext4 is -b (which we call the block size).
-> It defaults to 4k for all but the very smallest file systems, where
-> space efficiency (especially if you are storing a large number of
-> small files on say, a 1.44 megabyte floppy) becomes more important.
-> For file system smaller than 512mb, we use the smallest possible block
-> size supported by ext2/3/4, which is 1k.  (This is configurable; see
-> /etc/mke2fs.conf; "small" file systems are ones smaller than 512mb,
-> while "floppy" file systems are ones smaller than 4mb.  You can change
-> the defaults in the configuration file, or you can specify explicit
-> settings via the command-line options as documented in the mke2fs man
-> page.
+ext4_handle_release_buffer() was intended to remove journal
+write access from a buffer, but it doesn't actually do anything
+at all other than add a BUFFER_TRACE point, but it's not reliably
+used for that either.  Remove all the associated dead code.
 
-One thing I noticed is that if mkfs.ext4 self-selects a block size based
-on device size, it ignores the physical block size and does not warn
-about it:
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-# mkfs.ext4 /dev/sde
-mke2fs 1.41.12 (17-May-2010)
-Filesystem label=
-OS type: Linux
-Block size=1024 (log=0)
-...
+If this flies, I can do the same for ext3.
 
-For tiny filesystems, performance is probably not a big deal though.
-
->> Is there any way to make sure that ext4 is indeed using 4k sectors?
-> 
-> You can use dumpe2fs to look at the file system parameters.  The
-> confusion here is caused by the fact that xfs uses sector size where
-> ext 2/3/4 follows the BSD Fast File System convention of using the
-> terminology of "block size".
-
-Well, xfs uses both, actually.
-
-       -b block_size_options
-              This option  specifies  the  fundamental  block  size
-              of the filesystem. 
-
-       -s sector_size
-              This  option  specifies  the  fundamental sector size
-              of the filesystem. 
-
-but the man page doesn't do a great job of describing when one or
-the other comes into play.
-
-> XFS supports using the minimum sector size of 512 bytes by default
-> since it means that if you are store large number of small files
-> (i.e., only one or two 512 byte sectors), there is less wasted space.
-
-The bigger issue here is on XFS is that even for a 4k block size fs,
-XFS will issue some 512 IOs.  That's why there's a separate switch
-and separate heuristics for bumping it up on 4k devices - separate
-from the block size itself.
-
--Eric 
-
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 56d258c..7177f9b 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -254,13 +254,6 @@ static inline void ext4_handle_sync(handle_t *handle)
+ 		handle->h_sync = 1;
+ }
+ 
+-static inline void ext4_handle_release_buffer(handle_t *handle,
+-						struct buffer_head *bh)
+-{
+-	if (ext4_handle_valid(handle))
+-		jbd2_journal_release_buffer(handle, bh);
+-}
+-
+ static inline int ext4_handle_is_aborted(handle_t *handle)
+ {
+ 	if (ext4_handle_valid(handle))
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 47bf06a..d99387b 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -783,7 +783,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 
+ 	err = ext4_journal_get_write_access(handle, gdb_bh);
+ 	if (unlikely(err))
+-		goto exit_sbh;
++		goto exit_dind;
+ 
+ 	err = ext4_journal_get_write_access(handle, dind);
+ 	if (unlikely(err))
+@@ -792,7 +792,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	/* ext4_reserve_inode_write() gets a reference on the iloc */
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+ 	if (unlikely(err))
+-		goto exit_dindj;
++		goto exit_dind;
+ 
+ 	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
+ 				     sizeof(struct buffer_head *),
+@@ -846,12 +846,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 
+ exit_inode:
+ 	ext4_kvfree(n_group_desc);
+-	/* ext4_handle_release_buffer(handle, iloc.bh); */
+ 	brelse(iloc.bh);
+-exit_dindj:
+-	/* ext4_handle_release_buffer(handle, dind); */
+-exit_sbh:
+-	/* ext4_handle_release_buffer(handle, EXT4_SB(sb)->s_sbh); */
+ exit_dind:
+ 	brelse(dind);
+ exit_bh:
+@@ -969,14 +964,8 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	for (i = 0; i < reserved_gdb; i++) {
+-		if ((err = ext4_journal_get_write_access(handle, primary[i]))) {
+-			/*
+-			int j;
+-			for (j = 0; j < i; j++)
+-				ext4_handle_release_buffer(handle, primary[j]);
+-			 */
++		if ((err = ext4_journal_get_write_access(handle, primary[i])))
+ 			goto exit_bh;
+-		}
+ 	}
+ 
+ 	if ((err = ext4_reserve_inode_write(handle, inode, &iloc)))
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 2cdb98d..b1adda1 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -794,7 +794,6 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			int offset = (char *)s->here - bs->bh->b_data;
+ 
+ 			unlock_buffer(bs->bh);
+-			ext4_handle_release_buffer(handle, bs->bh);
+ 			if (ce) {
+ 				mb_cache_entry_release(ce);
+ 				ce = NULL;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 484b8d1..dbf41f9 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -60,7 +60,6 @@ EXPORT_SYMBOL(jbd2_journal_get_create_access);
+ EXPORT_SYMBOL(jbd2_journal_get_undo_access);
+ EXPORT_SYMBOL(jbd2_journal_set_triggers);
+ EXPORT_SYMBOL(jbd2_journal_dirty_metadata);
+-EXPORT_SYMBOL(jbd2_journal_release_buffer);
+ EXPORT_SYMBOL(jbd2_journal_forget);
+ #if 0
+ EXPORT_SYMBOL(journal_sync_buffer);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a74ba46..deffd94 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1207,17 +1207,6 @@ out:
+ 	return ret;
+ }
+ 
+-/*
+- * jbd2_journal_release_buffer: undo a get_write_access without any buffer
+- * updates, if the update decided in the end that it didn't need access.
+- *
+- */
+-void
+-jbd2_journal_release_buffer(handle_t *handle, struct buffer_head *bh)
+-{
+-	BUFFER_TRACE(bh, "entry");
+-}
