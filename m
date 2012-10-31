@@ -1,69 +1,63 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
-Date: Wed, 31 Oct 2012 11:21:51 +1100
-Message-ID: <20121031002151.GI29378@dastard>
-References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
- <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
- <20121026061206.GA31139@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
- <20121026184649.GA8614@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
- <20121027221626.GA9161@thunk.org>
- <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
+Subject: Re: How to use new "native 4k sector sized" HDD with ext4
+Date: Wed, 31 Oct 2012 11:43:04 +1100
+Message-ID: <20121031004304.GJ29378@dastard>
+References: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
+ <20121030142245.GB5972@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
-	"Kleen, Andi" <andi.kleen@intel.com>,
-	"Wu, Fengguang" <fengguang.wu@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>,
-	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Luck, Tony" <tony.luck@intel.com>
+Cc: Ashish Sangwan <ashishsangwan2@gmail.com>, adilger@dilger.ca,
+	sandeen@redhat.com, Namjae Jeon <linkinjeon@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:43892 "EHLO
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:44059 "EHLO
 	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750870Ab2JaAVz (ORCPT
+	by vger.kernel.org with ESMTP id S934083Ab2JaAnI (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Oct 2012 20:21:55 -0400
+	Tue, 30 Oct 2012 20:43:08 -0400
 Content-Disposition: inline
-In-Reply-To: <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
+In-Reply-To: <20121030142245.GB5972@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 06:11:58PM +0000, Luck, Tony wrote:
-> > What I would recommend is adding a 
-> >
-> > #define FS_CORRUPTED_FL		0x01000000 /* File is corrupted */
-> >
-> > ... and which could be accessed and cleared via the lsattr and chattr
-> > programs.
+On Tue, Oct 30, 2012 at 10:22:45AM -0400, Theodore Ts'o wrote:
+> On Tue, Oct 30, 2012 at 06:27:52PM +0530, Ashish Sangwan wrote:
+> > 
+> > In mkfs.xfs there is option "-s", using which, one can set the sector size.
+> > What is the use case of this option?
+> > 
+> > Also, such option is not present for ext4. So, apart from aligining the
+> >  partition on multiple of 8 sector numbers do we have to do something else
+> >  for using 4k sectors?
 > 
-> Good - but we need some space to save the corrupted range information
-> too. These errors should be quite rare, so one range per file should be
-> enough.
+> The equivalent option for ext4 is -b (which we call the block size).
+...
+> > Is there any way to make sure that ext4 is indeed using 4k sectors?
 > 
-> New file systems should plan to add space in their on-disk format. The
-> corruption isn't going to go away across a reboot.
+> You can use dumpe2fs to look at the file system parameters.  The
+> confusion here is caused by the fact that xfs uses sector size where
+> ext 2/3/4 follows the BSD Fast File System convention of using the
+> terminology of "block size".
 
-No, not at all. if you want to store something in the filesystem
-permanently, then use xattrs. You cannot rely on the filesystem
-being able to store random application specific data in their
-on-disk format. That's the *exact purpose* that xattrs were
-invented for - they are an extensible, user-defined, per-file
-metadata storage mechanism that is not tied to the filesystem
-on-disk format.
+That's not really correct.  XFS also uses the uses filesystem blocks
+just like ext2/3/4 for almost everything, data and metadata.
 
-The kernel already makes extensive use of xattrs for such metadata -
-just look at all the security and integrity code that uses xattrs to
-store their application-specific metadata.  Hence *anything* that
-the kernel wants to store on permanent storage should be using
-xattrs because then the application has complete control of what is
-stored without caring about what filesystem it is storing it on.
+However, the XFS journal format has requirements for detecting torn
+writes in journal recovery and hence needs to know the sector size
+of the log device (i.e. the minimum guaranteed atomic IO size). The
+key metadata in each AG (the AG headers) are also sector sized so
+that they don't get corrupted by torn writes, either, so XFS also
+needs to know the sector size of the data device if is using.
+
+> XFS supports using the minimum sector size of 512 bytes by default
+> since it means that if you are store large number of small files
+> (i.e., only one or two 512 byte sectors), there is less wasted space.
+
+That's not really correct, either. Just like ext4, XFS uses a 4k
+block size by default, so the minimum allocated to file data is 4k.
+The minimum FSB size that XFS supports is the sector size, but that
+is not the default...
 
 Cheers,
 
