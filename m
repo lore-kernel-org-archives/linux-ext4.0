@@ -1,29 +1,26 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: semi-stable page writes
-Date: Wed, 31 Oct 2012 02:05:19 -0700
-Message-ID: <20121031090519.GE19591@blackbox.djwong.org>
+Date: Wed, 31 Oct 2012 12:45:45 +0100
+Message-ID: <20121031114545.GB18424@quack.suse.cz>
 References: <20121026101909.GB19617@blackbox.djwong.org>
  <20121029220122.GT29378@dastard>
- <20121030204037.GE19559@blackbox.djwong.org>
- <20121030234331.GH29378@dastard>
+ <20121030010027.GA4508@thunk.org>
+ <20121030233021.GG29378@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27067 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935251Ab2JaJFe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 05:05:34 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20121030234331.GH29378@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20121030233021.GG29378@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 31, 2012 at 10:43:31AM +1100, Dave Chinner wrote:
-> On Tue, Oct 30, 2012 at 01:40:37PM -0700, Darrick J. Wong wrote:
+On Wed 31-10-12 10:30:21, Dave Chinner wrote:
+> On Mon, Oct 29, 2012 at 09:00:27PM -0400, Theodore Ts'o wrote:
 > > On Tue, Oct 30, 2012 at 09:01:22AM +1100, Dave Chinner wrote:
 > > > On Fri, Oct 26, 2012 at 03:19:09AM -0700, Darrick J. Wong wrote:
 > > > > Hi everyone,
@@ -33,46 +30,46 @@ On Wed, Oct 31, 2012 at 10:43:31AM +1100, Dave Chinner wrote:
 > > > 
 > > > I haven't heard anyone except th elunatic fringe complain
 > > > recently...
-> > > 
-> > > > I'm close to posting a patchset that (a) gates the wait_on_page_writeback calls
-> > > > on a flag that you can set in the bdi to indicate that you need stable writes
-> > > > (which blk_integrity_register will set);
-> > > 
-> > > I'd prefer stable pages by default (e.g. btrfs needs it for sane
-> > > data crc calculations), with an option to turn it off.
-> > > 
-> > > > (b) (ab)uses a page flag bit (PG_slab)
-> > > > to indicate that a page is actually being sent out to disk hardware; and (c)
-> > > 
-> > > I don't think you can do that. You can send slab allocated memory to
-> > > disk (e.g. kmalloc()d memory) and XFS definitely does that for
-> > > sub-page sized metadata. I'm pretty sure that means the PG_slab
-> > > flag is not available for (ab)use in the IO path....
 > > 
-> > I gave up on PG_slab and declared my own PG_ bit.  Unfortunately, atm I can't
-> > remember which bit of code marks the page ptes so that they have to go back
-> > through page_mkwrite, where we can trap the write.  Hopefully for a shorter
-> > duration.
+> > We are currently carrying a patch in the Google kernel which
+> > unconditionally disables stable page writes specifically because it
+> > introduced significant latencies that were unacceptable for some of
+> > our (internal) customers of said production kernel.
+> > 
+> > I'll leave it to others to decide whether the Google production kernel
+> > is part of the lunatic fringe or not.  :-)
 > 
-> clear_page_dirty_for_io(), IIRC.
-
-Yep, thanks.  My memory is a bit rusty due to recent downtime. :/
-
-Now to figure out if I can safely call that from deep inside the SCSI dispatch
-functions as part of deferred-checksumming.  I have a bad feeling that we have
-to lock the page, which implies sleeping, and (unless they fixed this) the SCSI
-dispatch functions hold the scsi host lock while running, which means we can't
-sleep.
-
-> > Also, I was wondering -- is it possible to pursue a dual strategy?  If we can
-> > obtain a memory page without sleeping or causing any writeback, then use the
-> > page as a bounce buffer.  Otherwise, just wait like we do now.
+> Google is, and has the resources to maintain a lunatic fringe kernel
+> ;)
 > 
-> Using bounce buffers for all IO is not a feasible solution. Way too
-> much overhead copying data, not to mention we are already suffering
-> from the problem of flusher threads going CPU bound trying to issue
-> enough IO to keep high bandwidth storage fully utilised...
+> Besides, we've discussed google's problem before, and it came down
+> to bad application design (i.e. no buffering to protect against
+> variable filesystem/storage latency) and not stable pages being the
+> source of the problem. Turning off stable pages was a hack to work
+> around a badly designed application stack....
+  Well, so far I heard like 4 or 5 complaints about performance that were
+tracked down to stable pages. Likely the most convincing was a case of an
+application mmaping 1 GB file and randomly changing bits here and there.
+Throughput of that application dropped to about a third with stable pages
+(which surprised me at the first sight but after doing the math it's
+obvious).
 
-Ok.
+  As much as I agree that the problems can be solved in the applications
+(if you have the liberty to modify them...), reported problems seem to be
+common enough so that we try to do better than we do now.
 
---D
+> > IMO, it would be better to have the system automatically do the right
+> > thing, though.  If there is no need for stable page writes, why pay
+> > the performance penalty for it?
+> 
+> Yes, and the right thing to do is to put correctness before performance.
+> Stable pages are needed for correctness in a lot of cases, so that shoul
+> dbe the default. If the user has performance problems, then they can turn
+> it off. At no time should the default require tuning to get correct
+> behaviour. case in point: filesystems default to "barriers = on".
+  I agree here. But still that does not rule out the possibility of getting
+it right in the kernel without having to enable stable pages in all cases.
+I.e., if btrfs needs stable pages, let it set the flag that it needs them.
+Same for DIF/DIX, RAID5 or whatever else...
+
+								Honza
