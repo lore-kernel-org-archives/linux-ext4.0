@@ -1,59 +1,73 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Tue, 30 Oct 2012 16:58:41 -0700
-Message-ID: <509069B1.2040200@panasas.com>
-References: <20121026101909.GB19617@blackbox.djwong.org> <20121027013524.GA19591@blackbox.djwong.org> <yq1ehkg8us1.fsf@sermon.lab.mkp.net> <20121030154844.1898f068@notabene.brown> <yq1a9v4884i.fsf@sermon.lab.mkp.net> <20121030201424.GD19559@blackbox.djwong.org> <20121031091441.5fc6b412@notabene.brown>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/3] ext4: introduce ext4_error_remove_page
+Date: Wed, 31 Oct 2012 11:21:51 +1100
+Message-ID: <20121031002151.GI29378@dastard>
+References: <1351177969-893-1-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <1351177969-893-3-git-send-email-n-horiguchi@ah.jp.nec.com>
+ <20121026061206.GA31139@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A13B@ORSMSX108.amr.corp.intel.com>
+ <20121026184649.GA8614@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5A388@ORSMSX108.amr.corp.intel.com>
+ <20121027221626.GA9161@thunk.org>
+ <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20121031091441.5fc6b412@notabene.brown>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>,
+	"Kleen, Andi" <andi.kleen@intel.com>,
+	"Wu, Fengguang" <fengguang.wu@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Kara <jack@suse.cz>,
+	Jun'ichi Nomura <j-nomura@ce.jp.nec.com>,
+	Akira Fujita <a-fujita@rs.jp.nec.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Luck, Tony" <tony.luck@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:43892 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750870Ab2JaAVz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Oct 2012 20:21:55 -0400
+Content-Disposition: inline
+In-Reply-To: <3908561D78D1C84285E8C5FCA982C28F19D5ABB3@ORSMSX108.amr.corp.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/30/2012 03:14 PM, NeilBrown wrote:
-> On Tue, 30 Oct 2012 13:14:24 -0700 "Darrick J. Wong"
-> <darrick.wong@oracle.com> wrote:
+On Mon, Oct 29, 2012 at 06:11:58PM +0000, Luck, Tony wrote:
+> > What I would recommend is adding a 
+> >
+> > #define FS_CORRUPTED_FL		0x01000000 /* File is corrupted */
+> >
+> > ... and which could be accessed and cleared via the lsattr and chattr
+> > programs.
 > 
->> On Tue, Oct 30, 2012 at 08:19:41AM -0400, Martin K. Petersen wrote:
->>>>>>>> "Neil" == NeilBrown  <neilb@suse.de> writes:
->>>
-<>
->  So I see a need for 2 flags here.
-
-Yes that was my thought too. We need two flags. The FS should communicate
-it's capabilities as well.
-
->  The first one is set by the device or transport to say "I would prefer
->  stable writes if possible".
->  The second is set by the filesystem, either because it has its own needs, or
->  because it sees the first flag set on the device and chooses to honour it.
->  The VFS/VM would act based on this second flag, and devices like md/RAID5
->  would set the first flag, and assume writes are stable if the second flag is
->  also set.
+> Good - but we need some space to save the corrupted range information
+> too. These errors should be quite rare, so one range per file should be
+> enough.
 > 
->  This implies that setting that second flag must be handled synchronously by
->  the filesystem, so that the device doesn't see the flag set until the
->  filesystem has committed to honouring it.  That seems to make a mount (or
->  remount) option the safest way to set it.
-> 
+> New file systems should plan to add space in their on-disk format. The
+> corruption isn't going to go away across a reboot.
 
-I think I do not like any mount option or any other tuneable. With the
-block device stating it's needs and the FS confirming on it's capability
-then I do not see how reverting that decision by admin can be any good.
-Any overrides by an admin would then just be a bug.
+No, not at all. if you want to store something in the filesystem
+permanently, then use xattrs. You cannot rely on the filesystem
+being able to store random application specific data in their
+on-disk format. That's the *exact purpose* that xattrs were
+invented for - they are an extensible, user-defined, per-file
+metadata storage mechanism that is not tied to the filesystem
+on-disk format.
 
->  Comments?
-> 
-> NeilBrown
-> 
+The kernel already makes extensive use of xattrs for such metadata -
+just look at all the security and integrity code that uses xattrs to
+store their application-specific metadata.  Hence *anything* that
+the kernel wants to store on permanent storage should be using
+xattrs because then the application has complete control of what is
+stored without caring about what filesystem it is storing it on.
 
-Thanks
-Boaz
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
