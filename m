@@ -1,42 +1,164 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: How to use new "native 4k sector sized" HDD with ext4
-Date: Wed, 31 Oct 2012 11:02:27 +0530
-Message-ID: <CAOiN93=zb7nujbZqBWPDO6x4p2ghmsswX-fMd79sZKFc1Bga1g@mail.gmail.com>
-References: <CAOiN93kV079jkdzY-R7jMVGQq4nN4c-sdswCq-XRaOpZm=ttwA@mail.gmail.com>
-	<20121030142245.GB5972@thunk.org>
-	<20121031004304.GJ29378@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
+ device needs stable page writes
+Date: Wed, 31 Oct 2012 01:56:04 -0700
+Message-ID: <20121031085604.GC19591@blackbox.djwong.org>
+References: <20121026101909.GB19617@blackbox.djwong.org>
+ <20121027013524.GA19591@blackbox.djwong.org>
+ <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
+ <20121030154844.1898f068@notabene.brown>
+ <yq1a9v4884i.fsf@sermon.lab.mkp.net>
+ <20121030201424.GD19559@blackbox.djwong.org>
+ <20121031091441.5fc6b412@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger@dilger.ca,
-	sandeen@redhat.com, Namjae Jeon <linkinjeon@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:64460 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751286Ab2JaFc2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 01:32:28 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so1138102vcb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2012 22:32:27 -0700 (PDT)
-In-Reply-To: <20121031004304.GJ29378@dastard>
+Received: from userp1050.oracle.com ([156.151.31.82]:51965 "EHLO
+	userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934894Ab2JaI5d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 04:57:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20121031091441.5fc6b412@notabene.brown>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> That's not really correct.  XFS also uses the uses filesystem blocks
-> just like ext2/3/4 for almost everything, data and metadata.
->
-> However, the XFS journal format has requirements for detecting torn
-> writes in journal recovery and hence needs to know the sector size
-> of the log device (i.e. the minimum guaranteed atomic IO size). The
-> key metadata in each AG (the AG headers) are also sector sized so
-> that they don't get corrupted by torn writes, either, so XFS also
-> needs to know the sector size of the data device if is using.
+On Wed, Oct 31, 2012 at 09:14:41AM +1100, NeilBrown wrote:
+> On Tue, 30 Oct 2012 13:14:24 -0700 "Darrick J. Wong"
+> <darrick.wong@oracle.com> wrote:
+> 
+> > On Tue, Oct 30, 2012 at 08:19:41AM -0400, Martin K. Petersen wrote:
+> > > >>>>> "Neil" == NeilBrown  <neilb@suse.de> writes:
+> > > 
+> > > Neil,
+> > > 
+> > > >> Might be nice to make the sysfs knob tweakable. Also, don't forget to
+> > > >> add a suitable blurb to Documentation/ABI/.
+> > > 
+> > > Neil>  It isn't at all clear to me that having the sysfs knob
+> > > Neil>  'tweakable' is a good idea.  From the md/raid5 perspective, I
+> > > Neil>  would want to know for certain whether the pages in a give bio
+> > > Neil>  are guaranteed not to change, or if they might.  I could set the
+> > > Neil>  BDI_CAP_STABLE_WRITES and believe they will never change, or test
+> > > Neil>  the BDI_CAP_STABLE_WRITES and let that tell me if they might
+> > > Neil>  change or not.  But if the bit can be changed at any moment, then
+> > > Neil>  it can never be trusted and so becomes worthless to me.
+> > > 
+> > > I was mostly interested in being able to turn it on for devices that
+> > > haven't explicitly done so. I agree that turning it off can be
+> > > problematic.
+> > 
+> > I'm ok with having a tunable that can turn it on, but atm I can't really think
+> > of a convincing reason to let people turn it /off/.  If people yell loud enough
+> > I'll add it, but I'd rather not have to distinguish between "on because user
+> > set it on" vs "on because hw needs it".
+> > 
+> > It'd be nice if the presence BDI_CAP_STABLE_WRITES meant that all filesystems
+> > would wait on page writes.  Hrm, guess I'll see about adding that to the patch
+> > set.  Though ISTR that at least the vfat and ext2 maintainers weren't
+> > interested the last time I asked.
+> 
+> I'm still a little foggy on the exact semantics and use-cases for this flag.
+> I'll try to piece together the bits that I know and ask you to tell me what
+> I've missed or what I've got wrong.
+> 
+>  Stable writes are valuable when the filesystem or device driver calculates
+>  some sort of 'redundancy' information based on the page in memory that is
+>  about to be written.
+>  This could be:
+>       integrity data that will be sent with the page to the storage device
+>       parity over a number of pages that will be written to a separate device
+>        (i.e. RAID5/RAID6).
+>       MAC or similar checksum that will be sent with the data over the network
+>         and will be validated by the receiving device, which can then ACK or
+>         NAK depending on correctness.
+> 
+>  These could be implemented  in the filesystem or in the device driver, so
+>  either should be able to request stable writes.  If neither request stable
+>  writes, then the cost of stable writes should be avoided.
 
-This perfectly explains why it makes sense for xfs.mkfs to have sectorsize
-option and why this is not required for ext4.
-And next time I will keep in mind to include xfs list too in cc while
-asking such a question.
+Most of the changes are in the VM; the only place where filesystem-specific
+bits are needed are for things like ext4 which override page_mkwrite.  I'm not
+sure what you mean by the filesystem requesting stable writes; unless I'm
+missing something (it's late), it's only the storage device that has any sort
+of needs.  The filesystem is free either to accomodate the need for stable
+writes, or ignore that and deal with the IO errors.
 
-Thanks,
+>  For the device driver (or network transport), not getting stable writes when
+>  requested might be a performance issue, or it might be a correctness issue.
+>  e.g. if an unstable write causes a MAC to be wrong, the network layer can
+>  simply arrange a re-transmit.  If an unstable write causes RAID5 parity to
+>  be wrong, that unstable write could cause data corruption.
+> 
+>  For the filesystem, the requirement to provide stable writes could just be a
+>  performance cost (a few extra waits) or it could require significant
+>  re-working of the code (you say vfat and ext2 aren't really comfortable with
+>  supporting them).
 
-Ashish
+I vaguely recall that the reason for skipping vfat was that the maintainer
+didn't like the idea of paying the wait costs even on a disk that didn't
+require it.  I think we're addressing that.  As for ext2 there wasn't much
+comment, though I think Ted or someone mentioned that since it was "stable"
+code, it wasn't worth fixing.  In any case, patching filemap_page_mkwrite to
+have a write_on_page_writeback seems to have fixed a number of filesystems
+(hfs, reiser, ext2...) with little fuss.
+
+>  Finally there is the VFS/VM which needs to provide support for stable
+>  writes.  It already does - your flag seems to just allow clients of the
+>  VFS/VM to indicate whether stable writes are required.
+> 
+>  So there seem to be several cases:
+> 
+>  1/ The filesystem wants to always use stable writes.  It just sets the flag,
+>     and the device will see stable writes whether it cares or not.  This would
+>     happen if the filesystem is adding integrity data.
+>  2/ The device would prefer stable writes if possible.  This would apply to
+>     iscsi (??) as it needs to add some sort of checksum before putting the
+>     data on the network
+>  3/ The device absolutely requires stable writes, or needs to provide
+>     stability itself by taking a copy (md/RAID5 does this).  So it needs to
+>     know whether each write is stable, or it cannot take advantage of stable
+>     writes.
+> 
+> 
+>  So I see a need for 2 flags here.
+>  The first one is set by the device or transport to say "I would prefer
+>  stable writes if possible".
+
+Yep, that seems to correspond with what the patch provides right now.
+
+>  The second is set by the filesystem, either because it has its own needs, or
+>  because it sees the first flag set on the device and chooses to honour it.
+>  The VFS/VM would act based on this second flag, and devices like md/RAID5
+>  would set the first flag, and assume writes are stable if the second flag is
+>  also set.
+
+This is a trickier piece... I guess this means that the bdi has to keep track
+of how many clients are using it (it looks like multiple fses on a partitioned
+disk share the same bdi) and of those clients, which ones claim to support
+stable page writes.  If all clients do, then the disk can assume that all
+writes headed to it will be stable.  If even one doesn't, then I guess the
+device falls back to whatever strategy it used before (the raid5 copying).
+
+I guess we also need a way to pass these flags through md/dm if appropriate.
+
+>  This implies that setting that second flag must be handled synchronously by
+>  the filesystem, so that the device doesn't see the flag set until the
+>  filesystem has committed to honouring it.  That seems to make a mount (or
+>  remount) option the safest way to set it.
+
+Yeah, I was thinking that fill_super and kill_sb might be good sites for
+whatever calls we need to make back to the bdi to make the stable page write
+declarations.
+
+--D
+
+>  Comments?
+> 
+> NeilBrown
+
+
