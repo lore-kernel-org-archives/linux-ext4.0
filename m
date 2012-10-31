@@ -1,164 +1,133 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Wed, 31 Oct 2012 01:56:04 -0700
-Message-ID: <20121031085604.GC19591@blackbox.djwong.org>
+Subject: Re: [RFC PATCH 2/2] mm: Gate stable page writes on the bdi flag
+Date: Wed, 31 Oct 2012 01:58:12 -0700
+Message-ID: <20121031085812.GD19591@blackbox.djwong.org>
 References: <20121026101909.GB19617@blackbox.djwong.org>
- <20121027013524.GA19591@blackbox.djwong.org>
- <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
- <20121030154844.1898f068@notabene.brown>
- <yq1a9v4884i.fsf@sermon.lab.mkp.net>
- <20121030201424.GD19559@blackbox.djwong.org>
- <20121031091441.5fc6b412@notabene.brown>
+ <20121027013608.GB19591@blackbox.djwong.org>
+ <20121029182857.GI18767@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:51965 "EHLO
-	userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934894Ab2JaI5d (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 04:57:33 -0400
+Received: from rcsinet15.oracle.com ([148.87.113.117]:49516 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934894Ab2JaI6X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 04:58:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20121031091441.5fc6b412@notabene.brown>
+In-Reply-To: <20121029182857.GI18767@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2012 at 09:14:41AM +1100, NeilBrown wrote:
-> On Tue, 30 Oct 2012 13:14:24 -0700 "Darrick J. Wong"
-> <darrick.wong@oracle.com> wrote:
-> 
-> > On Tue, Oct 30, 2012 at 08:19:41AM -0400, Martin K. Petersen wrote:
-> > > >>>>> "Neil" == NeilBrown  <neilb@suse.de> writes:
-> > > 
-> > > Neil,
-> > > 
-> > > >> Might be nice to make the sysfs knob tweakable. Also, don't forget to
-> > > >> add a suitable blurb to Documentation/ABI/.
-> > > 
-> > > Neil>  It isn't at all clear to me that having the sysfs knob
-> > > Neil>  'tweakable' is a good idea.  From the md/raid5 perspective, I
-> > > Neil>  would want to know for certain whether the pages in a give bio
-> > > Neil>  are guaranteed not to change, or if they might.  I could set the
-> > > Neil>  BDI_CAP_STABLE_WRITES and believe they will never change, or test
-> > > Neil>  the BDI_CAP_STABLE_WRITES and let that tell me if they might
-> > > Neil>  change or not.  But if the bit can be changed at any moment, then
-> > > Neil>  it can never be trusted and so becomes worthless to me.
-> > > 
-> > > I was mostly interested in being able to turn it on for devices that
-> > > haven't explicitly done so. I agree that turning it off can be
-> > > problematic.
+On Mon, Oct 29, 2012 at 07:28:57PM +0100, Jan Kara wrote:
+> On Fri 26-10-12 18:36:08, Darrick J. Wong wrote:
+> > Create a helper function to decide if a particular address space is backed by a
+> > device that requires stable page writes.  For each wait_on_page_writeback call
+> > that was inserted in the original stable page write patchset, change it to wait
+> > only if the helper says it's necessary.  This should eliminate unnecessary
+> > waiting for devices that don't require page contents to be immutable during
+> > writeout.
 > > 
-> > I'm ok with having a tunable that can turn it on, but atm I can't really think
-> > of a convincing reason to let people turn it /off/.  If people yell loud enough
-> > I'll add it, but I'd rather not have to distinguish between "on because user
-> > set it on" vs "on because hw needs it".
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
 > > 
-> > It'd be nice if the presence BDI_CAP_STABLE_WRITES meant that all filesystems
-> > would wait on page writes.  Hrm, guess I'll see about adding that to the patch
-> > set.  Though ISTR that at least the vfat and ext2 maintainers weren't
-> > interested the last time I asked.
+> >  fs/buffer.c         |    3 ++-
+> >  fs/ext4/inode.c     |    4 ++--
+> >  include/linux/fs.h  |    2 ++
+> >  mm/filemap.c        |    3 ++-
+> >  mm/page-writeback.c |    7 +++++++
+> >  5 files changed, 15 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/buffer.c b/fs/buffer.c
+> > index b5f0442..f508ece 100644
+> > --- a/fs/buffer.c
+> > +++ b/fs/buffer.c
+> > @@ -2334,7 +2334,8 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+> >  	if (unlikely(ret < 0))
+> >  		goto out_unlock;
+> >  	set_page_dirty(page);
+> > -	wait_on_page_writeback(page);
+> > +	if (page->mapping && mapping_needs_stable_writes(page->mapping))
+> > +		wait_on_page_writeback(page);
+>   The page is locked and we checked whether it belongs to the right mapping
+> just after we locked it down. So you can safely skip the page->mapping
+> test.
 > 
-> I'm still a little foggy on the exact semantics and use-cases for this flag.
-> I'll try to piece together the bits that I know and ask you to tell me what
-> I've missed or what I've got wrong.
-> 
->  Stable writes are valuable when the filesystem or device driver calculates
->  some sort of 'redundancy' information based on the page in memory that is
->  about to be written.
->  This could be:
->       integrity data that will be sent with the page to the storage device
->       parity over a number of pages that will be written to a separate device
->        (i.e. RAID5/RAID6).
->       MAC or similar checksum that will be sent with the data over the network
->         and will be validated by the receiving device, which can then ACK or
->         NAK depending on correctness.
-> 
->  These could be implemented  in the filesystem or in the device driver, so
->  either should be able to request stable writes.  If neither request stable
->  writes, then the cost of stable writes should be avoided.
+> >  	return 0;
+> >  out_unlock:
+> >  	unlock_page(page);
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index b3c243b..82908b8 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -4813,8 +4813,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+> >  	if (page_has_buffers(page)) {
+> >  		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> >  					ext4_bh_unmapped)) {
+> > -			/* Wait so that we don't change page under IO */
+> > -			wait_on_page_writeback(page);
+> > +			if (mapping_needs_stable_writes(mapping))
+> > +				wait_on_page_writeback(page);
+> >  			ret = VM_FAULT_LOCKED;
+> >  			goto out;
+> >  		}
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index b33cfc9..d99db0e 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -466,6 +466,8 @@ struct block_device {
+> >  	struct percpu_rw_semaphore	bd_block_size_semaphore;
+> >  };
+> >  
+> > +int mapping_needs_stable_writes(struct address_space *mapping);
+> > +
+> >  /*
+> >   * Radix-tree tags, for tagging dirty and writeback pages within the pagecache
+> >   * radix trees
+> > diff --git a/mm/filemap.c b/mm/filemap.c
+> > index 83efee7..aedc6bd 100644
+> > --- a/mm/filemap.c
+> > +++ b/mm/filemap.c
+> > @@ -2274,7 +2274,8 @@ repeat:
+> >  		return NULL;
+> >  	}
+> >  found:
+> > -	wait_on_page_writeback(page);
+> > +	if (mapping_needs_stable_writes(mapping))
+> > +		wait_on_page_writeback(page);
+> >  	return page;
+> >  }
+> >  EXPORT_SYMBOL(grab_cache_page_write_begin);
+> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> > index 830893b..d0f042c 100644
+> > --- a/mm/page-writeback.c
+> > +++ b/mm/page-writeback.c
+> > @@ -2275,3 +2275,10 @@ int mapping_tagged(struct address_space *mapping, int tag)
+> >  	return radix_tree_tagged(&mapping->page_tree, tag);
+> >  }
+> >  EXPORT_SYMBOL(mapping_tagged);
+> > +
+> > +int mapping_needs_stable_writes(struct address_space *mapping)
+> > +{
+> > +	return mapping->backing_dev_info &&
+> > +	       bdi_cap_stable_writes(mapping->backing_dev_info);
+> > +}
+> > +EXPORT_SYMBOL_GPL(mapping_needs_stable_writes);
+>   Traditional name for these shortcuts is "mapping_cap_..." and put them in
+> linux/backing-dev.h.  And you don't have to check
+> mapping->backing_dev_info.
 
-Most of the changes are in the VM; the only place where filesystem-specific
-bits are needed are for things like ext4 which override page_mkwrite.  I'm not
-sure what you mean by the filesystem requesting stable writes; unless I'm
-missing something (it's late), it's only the storage device that has any sort
-of needs.  The filesystem is free either to accomodate the need for stable
-writes, or ignore that and deal with the IO errors.
-
->  For the device driver (or network transport), not getting stable writes when
->  requested might be a performance issue, or it might be a correctness issue.
->  e.g. if an unstable write causes a MAC to be wrong, the network layer can
->  simply arrange a re-transmit.  If an unstable write causes RAID5 parity to
->  be wrong, that unstable write could cause data corruption.
-> 
->  For the filesystem, the requirement to provide stable writes could just be a
->  performance cost (a few extra waits) or it could require significant
->  re-working of the code (you say vfat and ext2 aren't really comfortable with
->  supporting them).
-
-I vaguely recall that the reason for skipping vfat was that the maintainer
-didn't like the idea of paying the wait costs even on a disk that didn't
-require it.  I think we're addressing that.  As for ext2 there wasn't much
-comment, though I think Ted or someone mentioned that since it was "stable"
-code, it wasn't worth fixing.  In any case, patching filemap_page_mkwrite to
-have a write_on_page_writeback seems to have fixed a number of filesystems
-(hfs, reiser, ext2...) with little fuss.
-
->  Finally there is the VFS/VM which needs to provide support for stable
->  writes.  It already does - your flag seems to just allow clients of the
->  VFS/VM to indicate whether stable writes are required.
-> 
->  So there seem to be several cases:
-> 
->  1/ The filesystem wants to always use stable writes.  It just sets the flag,
->     and the device will see stable writes whether it cares or not.  This would
->     happen if the filesystem is adding integrity data.
->  2/ The device would prefer stable writes if possible.  This would apply to
->     iscsi (??) as it needs to add some sort of checksum before putting the
->     data on the network
->  3/ The device absolutely requires stable writes, or needs to provide
->     stability itself by taking a copy (md/RAID5 does this).  So it needs to
->     know whether each write is stable, or it cannot take advantage of stable
->     writes.
-> 
-> 
->  So I see a need for 2 flags here.
->  The first one is set by the device or transport to say "I would prefer
->  stable writes if possible".
-
-Yep, that seems to correspond with what the patch provides right now.
-
->  The second is set by the filesystem, either because it has its own needs, or
->  because it sees the first flag set on the device and chooses to honour it.
->  The VFS/VM would act based on this second flag, and devices like md/RAID5
->  would set the first flag, and assume writes are stable if the second flag is
->  also set.
-
-This is a trickier piece... I guess this means that the bdi has to keep track
-of how many clients are using it (it looks like multiple fses on a partitioned
-disk share the same bdi) and of those clients, which ones claim to support
-stable page writes.  If all clients do, then the disk can assume that all
-writes headed to it will be stable.  If even one doesn't, then I guess the
-device falls back to whatever strategy it used before (the raid5 copying).
-
-I guess we also need a way to pass these flags through md/dm if appropriate.
-
->  This implies that setting that second flag must be handled synchronously by
->  the filesystem, so that the device doesn't see the flag set until the
->  filesystem has committed to honouring it.  That seems to make a mount (or
->  remount) option the safest way to set it.
-
-Yeah, I was thinking that fill_super and kill_sb might be good sites for
-whatever calls we need to make back to the bdi to make the stable page write
-declarations.
+Ok, I've removed both of those checks.  Thank you for the comments!
 
 --D
-
->  Comments?
 > 
-> NeilBrown
-
-
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
