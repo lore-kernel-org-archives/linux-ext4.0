@@ -1,75 +1,173 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: semi-stable page writes
-Date: Wed, 31 Oct 2012 12:45:45 +0100
-Message-ID: <20121031114545.GB18424@quack.suse.cz>
+Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
+ device needs stable page writes
+Date: Wed, 31 Oct 2012 12:56:14 +0100
+Message-ID: <20121031115614.GC18424@quack.suse.cz>
 References: <20121026101909.GB19617@blackbox.djwong.org>
- <20121029220122.GT29378@dastard>
- <20121030010027.GA4508@thunk.org>
- <20121030233021.GG29378@dastard>
+ <20121027013524.GA19591@blackbox.djwong.org>
+ <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
+ <20121030154844.1898f068@notabene.brown>
+ <yq1a9v4884i.fsf@sermon.lab.mkp.net>
+ <20121030201424.GD19559@blackbox.djwong.org>
+ <20121031091441.5fc6b412@notabene.brown>
+ <20121031085604.GC19591@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
+Cc: NeilBrown <neilb@suse.de>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:43689 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751956Ab2JaL4R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Oct 2012 07:56:17 -0400
 Content-Disposition: inline
-In-Reply-To: <20121030233021.GG29378@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20121031085604.GC19591@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 31-10-12 10:30:21, Dave Chinner wrote:
-> On Mon, Oct 29, 2012 at 09:00:27PM -0400, Theodore Ts'o wrote:
-> > On Tue, Oct 30, 2012 at 09:01:22AM +1100, Dave Chinner wrote:
-> > > On Fri, Oct 26, 2012 at 03:19:09AM -0700, Darrick J. Wong wrote:
-> > > > Hi everyone,
+On Wed 31-10-12 01:56:04, Darrick J. Wong wrote:
+> On Wed, Oct 31, 2012 at 09:14:41AM +1100, NeilBrown wrote:
+> > On Tue, 30 Oct 2012 13:14:24 -0700 "Darrick J. Wong"
+> > <darrick.wong@oracle.com> wrote:
+> > 
+> > > On Tue, Oct 30, 2012 at 08:19:41AM -0400, Martin K. Petersen wrote:
+> > > > >>>>> "Neil" == NeilBrown  <neilb@suse.de> writes:
 > > > > 
-> > > > Are people still annoyed about writes taking unexpectedly long amounts of tme
-> > > > due to the stable page write patchset?  I'm guessing yes...
+> > > > Neil,
+> > > > 
+> > > > >> Might be nice to make the sysfs knob tweakable. Also, don't forget to
+> > > > >> add a suitable blurb to Documentation/ABI/.
+> > > > 
+> > > > Neil>  It isn't at all clear to me that having the sysfs knob
+> > > > Neil>  'tweakable' is a good idea.  From the md/raid5 perspective, I
+> > > > Neil>  would want to know for certain whether the pages in a give bio
+> > > > Neil>  are guaranteed not to change, or if they might.  I could set the
+> > > > Neil>  BDI_CAP_STABLE_WRITES and believe they will never change, or test
+> > > > Neil>  the BDI_CAP_STABLE_WRITES and let that tell me if they might
+> > > > Neil>  change or not.  But if the bit can be changed at any moment, then
+> > > > Neil>  it can never be trusted and so becomes worthless to me.
+> > > > 
+> > > > I was mostly interested in being able to turn it on for devices that
+> > > > haven't explicitly done so. I agree that turning it off can be
+> > > > problematic.
 > > > 
-> > > I haven't heard anyone except th elunatic fringe complain
-> > > recently...
+> > > I'm ok with having a tunable that can turn it on, but atm I can't really think
+> > > of a convincing reason to let people turn it /off/.  If people yell loud enough
+> > > I'll add it, but I'd rather not have to distinguish between "on because user
+> > > set it on" vs "on because hw needs it".
+> > > 
+> > > It'd be nice if the presence BDI_CAP_STABLE_WRITES meant that all filesystems
+> > > would wait on page writes.  Hrm, guess I'll see about adding that to the patch
+> > > set.  Though ISTR that at least the vfat and ext2 maintainers weren't
+> > > interested the last time I asked.
 > > 
-> > We are currently carrying a patch in the Google kernel which
-> > unconditionally disables stable page writes specifically because it
-> > introduced significant latencies that were unacceptable for some of
-> > our (internal) customers of said production kernel.
+> > I'm still a little foggy on the exact semantics and use-cases for this flag.
+> > I'll try to piece together the bits that I know and ask you to tell me what
+> > I've missed or what I've got wrong.
 > > 
-> > I'll leave it to others to decide whether the Google production kernel
-> > is part of the lunatic fringe or not.  :-)
+> >  Stable writes are valuable when the filesystem or device driver calculates
+> >  some sort of 'redundancy' information based on the page in memory that is
+> >  about to be written.
+> >  This could be:
+> >       integrity data that will be sent with the page to the storage device
+> >       parity over a number of pages that will be written to a separate device
+> >        (i.e. RAID5/RAID6).
+> >       MAC or similar checksum that will be sent with the data over the network
+> >         and will be validated by the receiving device, which can then ACK or
+> >         NAK depending on correctness.
+> > 
+> >  These could be implemented  in the filesystem or in the device driver, so
+> >  either should be able to request stable writes.  If neither request stable
+> >  writes, then the cost of stable writes should be avoided.
 > 
-> Google is, and has the resources to maintain a lunatic fringe kernel
-> ;)
-> 
-> Besides, we've discussed google's problem before, and it came down
-> to bad application design (i.e. no buffering to protect against
-> variable filesystem/storage latency) and not stable pages being the
-> source of the problem. Turning off stable pages was a hack to work
-> around a badly designed application stack....
-  Well, so far I heard like 4 or 5 complaints about performance that were
-tracked down to stable pages. Likely the most convincing was a case of an
-application mmaping 1 GB file and randomly changing bits here and there.
-Throughput of that application dropped to about a third with stable pages
-(which surprised me at the first sight but after doing the math it's
-obvious).
+> Most of the changes are in the VM; the only place where filesystem-specific
+> bits are needed are for things like ext4 which override page_mkwrite.  I'm not
+> sure what you mean by the filesystem requesting stable writes; unless I'm
+> missing something (it's late), it's only the storage device that has any sort
+> of needs.  The filesystem is free either to accomodate the need for stable
+> writes, or ignore that and deal with the IO errors.
+  As it was noted somewhere else in the thread, if you compute data
+checksums in the filesystem, you need stable pages as well.
 
-  As much as I agree that the problems can be solved in the applications
-(if you have the liberty to modify them...), reported problems seem to be
-common enough so that we try to do better than we do now.
-
-> > IMO, it would be better to have the system automatically do the right
-> > thing, though.  If there is no need for stable page writes, why pay
-> > the performance penalty for it?
+> >  For the device driver (or network transport), not getting stable writes when
+> >  requested might be a performance issue, or it might be a correctness issue.
+> >  e.g. if an unstable write causes a MAC to be wrong, the network layer can
+> >  simply arrange a re-transmit.  If an unstable write causes RAID5 parity to
+> >  be wrong, that unstable write could cause data corruption.
+> > 
+> >  For the filesystem, the requirement to provide stable writes could just be a
+> >  performance cost (a few extra waits) or it could require significant
+> >  re-working of the code (you say vfat and ext2 aren't really comfortable with
+> >  supporting them).
 > 
-> Yes, and the right thing to do is to put correctness before performance.
-> Stable pages are needed for correctness in a lot of cases, so that shoul
-> dbe the default. If the user has performance problems, then they can turn
-> it off. At no time should the default require tuning to get correct
-> behaviour. case in point: filesystems default to "barriers = on".
-  I agree here. But still that does not rule out the possibility of getting
-it right in the kernel without having to enable stable pages in all cases.
-I.e., if btrfs needs stable pages, let it set the flag that it needs them.
-Same for DIF/DIX, RAID5 or whatever else...
+> I vaguely recall that the reason for skipping vfat was that the maintainer
+> didn't like the idea of paying the wait costs even on a disk that didn't
+> require it.  I think we're addressing that.  As for ext2 there wasn't much
+> comment, though I think Ted or someone mentioned that since it was "stable"
+> code, it wasn't worth fixing.  In any case, patching filemap_page_mkwrite to
+> have a write_on_page_writeback seems to have fixed a number of filesystems
+> (hfs, reiser, ext2...) with little fuss.
+  Yup, I sent you a patch for this a while ago. If stable pages are
+conditional only for case which require them (or make a good use of them),
+I have no problem with making all filesystems provide them. After changing
+filemap_page_mkwrite(), there are 5 filesystems (ncpfs, ceph, cifs, ubifs,
+ocfs2) which won't support stable pages. I can fix these once we agree on
+the generic infrastructure.
+ 
+> >  Finally there is the VFS/VM which needs to provide support for stable
+> >  writes.  It already does - your flag seems to just allow clients of the
+> >  VFS/VM to indicate whether stable writes are required.
+> > 
+> >  So there seem to be several cases:
+> > 
+> >  1/ The filesystem wants to always use stable writes.  It just sets the flag,
+> >     and the device will see stable writes whether it cares or not.  This would
+> >     happen if the filesystem is adding integrity data.
+> >  2/ The device would prefer stable writes if possible.  This would apply to
+> >     iscsi (??) as it needs to add some sort of checksum before putting the
+> >     data on the network
+> >  3/ The device absolutely requires stable writes, or needs to provide
+> >     stability itself by taking a copy (md/RAID5 does this).  So it needs to
+> >     know whether each write is stable, or it cannot take advantage of stable
+> >     writes.
+> > 
+> > 
+> >  So I see a need for 2 flags here.
+> >  The first one is set by the device or transport to say "I would prefer
+> >  stable writes if possible".
+> 
+> Yep, that seems to correspond with what the patch provides right now.
+> 
+> >  The second is set by the filesystem, either because it has its own needs, or
+> >  because it sees the first flag set on the device and chooses to honour it.
+> >  The VFS/VM would act based on this second flag, and devices like md/RAID5
+> >  would set the first flag, and assume writes are stable if the second flag is
+> >  also set.
+> 
+> This is a trickier piece... I guess this means that the bdi has to keep track
+> of how many clients are using it (it looks like multiple fses on a partitioned
+> disk share the same bdi) and of those clients, which ones claim to support
+> stable page writes.  If all clients do, then the disk can assume that all
+> writes headed to it will be stable.  If even one doesn't, then I guess the
+> device falls back to whatever strategy it used before (the raid5 copying).
+> 
+> I guess we also need a way to pass these flags through md/dm if appropriate.
+  I'd like to keep things simple. It's not hard to make all filesystems
+support stable pages so let's just do that to remove one variable from the
+picture. Then we are in the situation where storage can request stable
+pages by setting bdi bit and filesystem will obey. Also filesystem itself can
+request stable pages by setting the bit and generic functions in mm will
+take that into account. No need for two flags...
+
+You are right that we need a mechanism to push the flags from the devices
+through various storage layers up into the bdi filesystem sees to make
+things reliable.
 
 								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
