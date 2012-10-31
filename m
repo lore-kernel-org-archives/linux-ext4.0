@@ -1,133 +1,78 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC PATCH 2/2] mm: Gate stable page writes on the bdi flag
-Date: Wed, 31 Oct 2012 01:58:12 -0700
-Message-ID: <20121031085812.GD19591@blackbox.djwong.org>
+Subject: Re: semi-stable page writes
+Date: Wed, 31 Oct 2012 02:05:19 -0700
+Message-ID: <20121031090519.GE19591@blackbox.djwong.org>
 References: <20121026101909.GB19617@blackbox.djwong.org>
- <20121027013608.GB19591@blackbox.djwong.org>
- <20121029182857.GI18767@quack.suse.cz>
+ <20121029220122.GT29378@dastard>
+ <20121030204037.GE19559@blackbox.djwong.org>
+ <20121030234331.GH29378@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49516 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934894Ab2JaI6X (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 04:58:23 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:27067 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935251Ab2JaJFe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 05:05:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20121029182857.GI18767@quack.suse.cz>
+In-Reply-To: <20121030234331.GH29378@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 07:28:57PM +0100, Jan Kara wrote:
-> On Fri 26-10-12 18:36:08, Darrick J. Wong wrote:
-> > Create a helper function to decide if a particular address space is backed by a
-> > device that requires stable page writes.  For each wait_on_page_writeback call
-> > that was inserted in the original stable page write patchset, change it to wait
-> > only if the helper says it's necessary.  This should eliminate unnecessary
-> > waiting for devices that don't require page contents to be immutable during
-> > writeout.
+On Wed, Oct 31, 2012 at 10:43:31AM +1100, Dave Chinner wrote:
+> On Tue, Oct 30, 2012 at 01:40:37PM -0700, Darrick J. Wong wrote:
+> > On Tue, Oct 30, 2012 at 09:01:22AM +1100, Dave Chinner wrote:
+> > > On Fri, Oct 26, 2012 at 03:19:09AM -0700, Darrick J. Wong wrote:
+> > > > Hi everyone,
+> > > > 
+> > > > Are people still annoyed about writes taking unexpectedly long amounts of tme
+> > > > due to the stable page write patchset?  I'm guessing yes...
+> > > 
+> > > I haven't heard anyone except th elunatic fringe complain
+> > > recently...
+> > > 
+> > > > I'm close to posting a patchset that (a) gates the wait_on_page_writeback calls
+> > > > on a flag that you can set in the bdi to indicate that you need stable writes
+> > > > (which blk_integrity_register will set);
+> > > 
+> > > I'd prefer stable pages by default (e.g. btrfs needs it for sane
+> > > data crc calculations), with an option to turn it off.
+> > > 
+> > > > (b) (ab)uses a page flag bit (PG_slab)
+> > > > to indicate that a page is actually being sent out to disk hardware; and (c)
+> > > 
+> > > I don't think you can do that. You can send slab allocated memory to
+> > > disk (e.g. kmalloc()d memory) and XFS definitely does that for
+> > > sub-page sized metadata. I'm pretty sure that means the PG_slab
+> > > flag is not available for (ab)use in the IO path....
 > > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > 
-> >  fs/buffer.c         |    3 ++-
-> >  fs/ext4/inode.c     |    4 ++--
-> >  include/linux/fs.h  |    2 ++
-> >  mm/filemap.c        |    3 ++-
-> >  mm/page-writeback.c |    7 +++++++
-> >  5 files changed, 15 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/buffer.c b/fs/buffer.c
-> > index b5f0442..f508ece 100644
-> > --- a/fs/buffer.c
-> > +++ b/fs/buffer.c
-> > @@ -2334,7 +2334,8 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
-> >  	if (unlikely(ret < 0))
-> >  		goto out_unlock;
-> >  	set_page_dirty(page);
-> > -	wait_on_page_writeback(page);
-> > +	if (page->mapping && mapping_needs_stable_writes(page->mapping))
-> > +		wait_on_page_writeback(page);
->   The page is locked and we checked whether it belongs to the right mapping
-> just after we locked it down. So you can safely skip the page->mapping
-> test.
+> > I gave up on PG_slab and declared my own PG_ bit.  Unfortunately, atm I can't
+> > remember which bit of code marks the page ptes so that they have to go back
+> > through page_mkwrite, where we can trap the write.  Hopefully for a shorter
+> > duration.
 > 
-> >  	return 0;
-> >  out_unlock:
-> >  	unlock_page(page);
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index b3c243b..82908b8 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -4813,8 +4813,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-> >  	if (page_has_buffers(page)) {
-> >  		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
-> >  					ext4_bh_unmapped)) {
-> > -			/* Wait so that we don't change page under IO */
-> > -			wait_on_page_writeback(page);
-> > +			if (mapping_needs_stable_writes(mapping))
-> > +				wait_on_page_writeback(page);
-> >  			ret = VM_FAULT_LOCKED;
-> >  			goto out;
-> >  		}
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index b33cfc9..d99db0e 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -466,6 +466,8 @@ struct block_device {
-> >  	struct percpu_rw_semaphore	bd_block_size_semaphore;
-> >  };
-> >  
-> > +int mapping_needs_stable_writes(struct address_space *mapping);
-> > +
-> >  /*
-> >   * Radix-tree tags, for tagging dirty and writeback pages within the pagecache
-> >   * radix trees
-> > diff --git a/mm/filemap.c b/mm/filemap.c
-> > index 83efee7..aedc6bd 100644
-> > --- a/mm/filemap.c
-> > +++ b/mm/filemap.c
-> > @@ -2274,7 +2274,8 @@ repeat:
-> >  		return NULL;
-> >  	}
-> >  found:
-> > -	wait_on_page_writeback(page);
-> > +	if (mapping_needs_stable_writes(mapping))
-> > +		wait_on_page_writeback(page);
-> >  	return page;
-> >  }
-> >  EXPORT_SYMBOL(grab_cache_page_write_begin);
-> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> > index 830893b..d0f042c 100644
-> > --- a/mm/page-writeback.c
-> > +++ b/mm/page-writeback.c
-> > @@ -2275,3 +2275,10 @@ int mapping_tagged(struct address_space *mapping, int tag)
-> >  	return radix_tree_tagged(&mapping->page_tree, tag);
-> >  }
-> >  EXPORT_SYMBOL(mapping_tagged);
-> > +
-> > +int mapping_needs_stable_writes(struct address_space *mapping)
-> > +{
-> > +	return mapping->backing_dev_info &&
-> > +	       bdi_cap_stable_writes(mapping->backing_dev_info);
-> > +}
-> > +EXPORT_SYMBOL_GPL(mapping_needs_stable_writes);
->   Traditional name for these shortcuts is "mapping_cap_..." and put them in
-> linux/backing-dev.h.  And you don't have to check
-> mapping->backing_dev_info.
+> clear_page_dirty_for_io(), IIRC.
 
-Ok, I've removed both of those checks.  Thank you for the comments!
+Yep, thanks.  My memory is a bit rusty due to recent downtime. :/
+
+Now to figure out if I can safely call that from deep inside the SCSI dispatch
+functions as part of deferred-checksumming.  I have a bad feeling that we have
+to lock the page, which implies sleeping, and (unless they fixed this) the SCSI
+dispatch functions hold the scsi host lock while running, which means we can't
+sleep.
+
+> > Also, I was wondering -- is it possible to pursue a dual strategy?  If we can
+> > obtain a memory page without sleeping or causing any writeback, then use the
+> > page as a bounce buffer.  Otherwise, just wait like we do now.
+> 
+> Using bounce buffers for all IO is not a feasible solution. Way too
+> much overhead copying data, not to mention we are already suffering
+> from the problem of flusher threads going CPU bound trying to issue
+> enough IO to keep high bandwidth storage fully utilised...
+
+Ok.
 
 --D
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
