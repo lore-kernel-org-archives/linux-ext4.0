@@ -1,60 +1,39 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: "George Spelvin" <linux@horizon.com>
 Subject: Re: ext4: fix metadata checksum calculation for the superblock
-Date: Thu, 1 Nov 2012 00:18:18 -0700
-Message-ID: <20121101071818.GG19576@blackbox.djwong.org>
-References: <20121101064942.GF19576@blackbox.djwong.org>
- <20121101070731.21349.qmail@science.horizon.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Date: 1 Nov 2012 03:28:47 -0400
+Message-ID: <20121101072847.25732.qmail@science.horizon.com>
+References: <20121101071818.GG19576@blackbox.djwong.org>
 Cc: linux-ext4@vger.kernel.org, tm@tao.ma, tytso@mit.edu
-To: George Spelvin <linux@horizon.com>
+To: darrick.wong@oracle.com, linux@horizon.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet15.oracle.com ([148.87.113.117]:16955 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753516Ab2KAHSY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2012 03:18:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20121101070731.21349.qmail@science.horizon.com>
+Received: from science.horizon.com ([71.41.210.146]:16820 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753568Ab2KAH2s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2012 03:28:48 -0400
+In-Reply-To: <20121101071818.GG19576@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 01, 2012 at 03:07:31AM -0400, George Spelvin wrote:
-> > Yes, it would be useful to know what's going on with this directory file,
-> > since it seems to fallback to linear scan, yet e2fsck -D doesn't fix it.
-> > What I was /going/ for was that the kernel would notice a bad directory
-> > and flag it for fsck on reboot.  Upon reboot, fsck would be run, notice
-> > the bad dir, and feed it to the directory rebuilder to get it fixed
-> > for good.  However, there doesn't seem to be any real checksum mismatch,
-> > so the rebuild doesn't happen.
-> 
-> That's what confuses me.  I had already run e2fsck -D (which I assume
-> rebuilds all directories, even if unnecessary) before observing the
-> problem.  The other odd clue is that it's always nfsd that chokes;
-> other accesses to the directory (ls -U, ls -lU, grep -r) don't produce
-> the message.
+> Oh, so ... it's just nfsd that causes the linear fallback?  Regular (i.e.
+> non-nfs) users can see everything in the dir, no error messages?
 
-Oh, so ... it's just nfsd that causes the linear fallback?  Regular (i.e.
-non-nfs) users can see everything in the dir, no error messages?
+Yup.  After it survived one e2fsck -D, I poked at the directory a bit
+to see if I could cause the error.  No success from local access.
 
-Now *that* is odd. :)
+It's also probably an NFSv2 client.  I wonder if it's doing something
+odd with directory seeks that's causing problems; perhaps htree and the
+32-bit seek cookie limit are not friends?
 
-You know, I was starting to wonder what on earth would even cause the fallback
-in the first place.  It even looked like most of the "your dir is corrupt"
-exits from that function would spit out an error or be somehow obviously
-broken.
+>> I haven't observed it, no.  But the nature of the symptoms suggests it
+>> might be happening.
 
-> > Also ... refresh my memory -- some files have disappeared as a result of this
-> > happening?
-> 
-> I haven't observed it, no.  But the nature of the symptoms suggests it
-> might be happening.
+> Hum.  When linear scan happens on a hashed dir, it's scanning the same
+> blocks that the hash scan sees.   The htree block looks like a regular
+> directory block with one huge "unused" dirent that wraps all the htree
+> data.  So, the linear scan should find the exact same files as a htree
+> scan would.  If it doesn't, something's wrong.  But you say it isn't,
+> so I imagine it's fine.
 
-Hum.  When linear scan happens on a hashed dir, it's scanning the same blocks
-that the hash scan sees.   The htree block looks like a regular directory block
-with one huge "unused" dirent that wraps all the htree data.  So, the linear
-scan should find the exact same files as a htree scan would.  If it doesn't,
-something's wrong.  But you say it isn't, so I imagine it's fine.
-
-<shrug> Another thing for me to ponder tomorrow. :)
-
---D
+Maybe I was wrong.  I was worried that it was aborting the directory
+scan due to the error and thus files would disappear.  If that doesn't
+happen, no worries.
