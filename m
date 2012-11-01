@@ -1,51 +1,64 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: ext4: fix metadata checksum calculation for the superblock
-Date: Wed, 31 Oct 2012 18:13:12 -0700
-Message-ID: <20121101011312.GG19591@blackbox.djwong.org>
+Date: Wed, 31 Oct 2012 21:50:15 -0400
+Message-ID: <20121101015015.GA28919@thunk.org>
 References: <20121008024126.GC468@thunk.org>
  <20121101010521.893.qmail@science.horizon.com>
+ <20121101011312.GG19591@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, tm@tao.ma
-To: George Spelvin <linux@horizon.com>
+Cc: George Spelvin <linux@horizon.com>, linux-ext4@vger.kernel.org,
+	tm@tao.ma
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:17837 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756142Ab2KABNT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2012 21:13:19 -0400
+Received: from li9-11.members.linode.com ([67.18.176.11]:58724 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756572Ab2KABuV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 31 Oct 2012 21:50:21 -0400
 Content-Disposition: inline
-In-Reply-To: <20121101010521.893.qmail@science.horizon.com>
+In-Reply-To: <20121101011312.GG19591@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2012 at 09:05:21PM -0400, George Spelvin wrote:
-> I'm currently running with two ext4 patches:
+On Wed, Oct 31, 2012 at 06:13:12PM -0700, Darrick J. Wong wrote:
+> > Author: Theodore Ts'o <tytso@mit.edu>
+> > Date: Sun Oct 7 22:18:56 2012 -0400
+> > Subject: ext4: fix metadata checksum calculation for the superblock
+
+This one was cc'ed to stable@vger.kernel.org.  But when you said "I
+notice, that neither of thse have made it into 2.6.5", I assume you
+meant 3.5?  The last 3.5 kernel is 3.5.7, and Greg K-H isn't
+backporting fixes to 3.5.x any more.  (See http://www.kernel.org to
+see which kernels are marked "EOL"; those are the ones which are no
+longer getting updates.)
+
+So that means it should eventually make it to the 3.4.x and 3.6.x
+kernels.
+
+> > Author: Darrick J. Wong <darrick.wong@oracle.com>
+> > Date: Wed Oct 17 12:51:30 2012 -0700
+> > Subject: ext4: Don't verify checksums of dx non-leaf nodes during fallback linear scan
+
+I missed this one because the subject line didn't have [PATCH] in it.
+(Darrick, it really helps if you use git format-patch / git
+send-email; you can use a message-id of the message you're replying to
+in the mail thread to chain the message to the thread.)
+
+I would have eventually found it in patchwork, but even in patchwork
+the listing would have had a potentially misleading subject line,
+since it grabs the patch title from the subject line of the e-mail.
+
+> <shrug> I was wondering too, but I figured Ted was probably busy dealing with
+> the corruption bug and such.
 > 
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date: Sun Oct 7 22:18:56 2012 -0400
-> Subject: ext4: fix metadata checksum calculation for the superblock
-> 
-> Author: Darrick J. Wong <darrick.wong@oracle.com>
-> Date: Wed Oct 17 12:51:30 2012 -0700
-> Subject: ext4: Don't verify checksums of dx non-leaf nodes during fallback linear scan
-> 
-> They appear to fix real problems.  I notice, that neither of these have
-> made it into 2.6.5.  Should they be sent to -stable at some point?
-> 
-> I'm not trying to overrule your judgements on the matter, just ensure that
-> the omission is actually a conscious decision rather than an oversight.
+> (Which itself doesn't seem to be in 3.6.x yet)
 
-<shrug> I was wondering too, but I figured Ted was probably busy dealing with
-the corruption bug and such.
+It isn't in 3.7-rc3 because I didn't see it before I sent the pull
+request to Linus....
 
-(Which itself doesn't seem to be in 3.6.x yet)
+At this point I'll just include it in the patches to be sent to Linus
+at the next merge window, mainly because I don't have the time to run
+a separate regression test run just for this patch, and it's only a
+cosmetic issue, right?
 
-I suppose it's a good sign that it's been more than a week and you haven't hit
-anything else...
-
---D
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
