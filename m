@@ -1,52 +1,62 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 3/3] fs: Fix remaining filesystems to wait for stable
- page writeback
-Date: Thu, 1 Nov 2012 15:23:54 -0700
-Message-ID: <5092F67A.2060203@panasas.com>
-References: <20121101075805.16153.64714.stgit@blackbox.djwong.org> <20121101075829.16153.92036.stgit@blackbox.djwong.org> <5092C2CE.7070209@panasas.com> <20121101162254.03dbbd9a@tlielax.poochiereds.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
+ device needs stable page writes
+Date: Thu, 1 Nov 2012 23:42:16 +0100
+Message-ID: <20121101224216.GA31937@quack.suse.cz>
+References: <yq1ehkg8us1.fsf@sermon.lab.mkp.net>
+ <20121030154844.1898f068@notabene.brown>
+ <yq1a9v4884i.fsf@sermon.lab.mkp.net>
+ <20121030201424.GD19559@blackbox.djwong.org>
+ <20121031091441.5fc6b412@notabene.brown>
+ <20121031085604.GC19591@blackbox.djwong.org>
+ <20121031115614.GC18424@quack.suse.cz>
+ <20121031193652.GF19591@blackbox.djwong.org>
+ <20121101085942.GA6584@quack.suse.cz>
+ <5092B060.9070604@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>, <axboe@kernel.dk>,
-        <lucho@ionkov.net>, <tytso@mit.edu>, <sage@inktank.com>,
-        <ericvh@gmail.com>, <mfasheh@suse.com>, <dedekind1@gmail.com>,
-        <adrian.hunter@intel.com>, <dhowells@redhat.com>, <sfrench@samba.org>,
-        <jlbec@evilplan.org>, <rminnich@sandia.gov>,
-        <linux-cifs@vger.kernel.org>, <jack@suse.cz>,
-        <martin.petersen@oracle.com>, <neilb@suse.de>, <david@fromorbit.com>,
-        <linux-kernel@vger.kernel.org>, <linux-mm@kvack.org>,
-        <linux-mtd@lists.infradead.org>, <linux-fsdevel@vger.kernel.org>,
-        <v9fs-developer@lists.sourceforge.net>, <ceph-devel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-afs@lists.infradead.org>,
-        <ocfs2-devel@oss.oracle.com>
-To: Jeff Layton <jlayton@samba.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20121101162254.03dbbd9a@tlielax.poochiereds.net>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	NeilBrown <neilb@suse.de>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:34428 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762442Ab2KAWmS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 1 Nov 2012 18:42:18 -0400
+Content-Disposition: inline
+In-Reply-To: <5092B060.9070604@panasas.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/01/2012 01:22 PM, Jeff Layton wrote:
-> Hmm...I don't know...
+On Thu 01-11-12 10:24:48, Boaz Harrosh wrote:
+> On 11/01/2012 01:59 AM, Jan Kara wrote:
+> <>
+> > (all block device inodes share one superblock).
+> > 
 > 
-> I've never been crazy about using the page lock for this, but in the
-> absence of a better way to guarantee stable pages, it was what I ended
-> up with at the time. cifs_writepages will hold the page lock until
-> kernel_sendmsg returns. At that point the TCP layer will have copied
-> off the page data so it's safe to release it.
+> Really? that is not so good is it, for other obvious reasons. 
+> Why is it not one superblock per BDI? That would be more obvious
+> to me.
 > 
-> With this change though, we're going to end up blocking until the
-> writeback flag clears, right? And I think that will happen when the
-> reply comes in? So, we'll end up blocking for much longer than is
-> really necessary in page_mkwrite with this change.
+> > Thoughts?
 > 
+> It's a really bad design. I think it is worth fixing. For the above
+> problem, as well as a much better fit with our current thread-per-bdi,
+> and the rest of the Kernel model. No?
+  So the fact that there is one superblock of virtual filesystem containing
+all block device inodes is inconvenient at times (that's why we have to
+have inode_to_bdi() function in fs/fs-writeback.c) but OTOH you cannot
+really attach these virtual block device inodes (note that these are
+different from an inode for an object say /dev/sda in the filesystem)
+anywhere else and having one sb per block device would really be an
+overkill.
 
-Hmm OK, that is a very good point. In that case it is just a simple
-nack on Darrick's hunk to cifs. cifs is fine and should not be touched
-
-Boaz
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
