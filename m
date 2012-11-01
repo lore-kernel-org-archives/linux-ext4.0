@@ -1,46 +1,62 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [RFC PATCH 1/2] bdi: Create a flag to indicate that a backing
- device needs stable page writes
-Date: Wed, 31 Oct 2012 23:25:30 -0700
-Message-ID: <509215DA.6060609@panasas.com>
-References: <20121027013524.GA19591@blackbox.djwong.org> <yq1ehkg8us1.fsf@sermon.lab.mkp.net> <20121030154844.1898f068@notabene.brown> <yq1a9v4884i.fsf@sermon.lab.mkp.net> <20121030201424.GD19559@blackbox.djwong.org> <20121031091441.5fc6b412@notabene.brown> <20121031085604.GC19591@blackbox.djwong.org> <20121031115614.GC18424@quack.suse.cz> <20121031193652.GF19591@blackbox.djwong.org> <5091B075.7030608@panasas.com> <20121101055109.GD19576@blackbox.djwong.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: ext4: fix metadata checksum calculation for the superblock
+Date: Wed, 31 Oct 2012 23:49:42 -0700
+Message-ID: <20121101064942.GF19576@blackbox.djwong.org>
+References: <20121101015015.GA28919@thunk.org>
+ <20121101061212.16497.qmail@science.horizon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, NeilBrown <neilb@suse.de>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, tm@tao.ma
+To: George Spelvin <linux@horizon.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:55044 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751312Ab2KAGZj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2012 02:25:39 -0400
-In-Reply-To: <20121101055109.GD19576@blackbox.djwong.org>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:41748 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752608Ab2KAGtu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2012 02:49:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20121101061212.16497.qmail@science.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/31/2012 10:51 PM, Darrick J. Wong wrote:
+On Thu, Nov 01, 2012 at 02:12:12AM -0400, George Spelvin wrote:
+> > This one was cc'ed to stable@vger.kernel.org.  But when you said "I
+> > notice, that neither of thse have made it into 2.6.5", I assume you
+> > meant 3.5?
 > 
-> Of course, all that goes out the door with iscsi since it doesn't necessarily
-> care about DIF/DIX but wants stable pages anyway.  It'd be useful to be able to
-> play around with iscsi too.  Could you point me to where in the iscsi code it
-> does the copy-and-checksum behavior?
+> Whoops, typo!  I meant 3.6.5, the very latest just-out-today stable
+> kernel.
 > 
-
-I'll send you an untested proof of concept patch tomorrow. So at least you can
-see where the code is. But no guaranty that it actually works.
-
-You will need to dig into iscsi docs to enable it in config files, look for
-data_digest= or something like that.
-
-header digest is when only the headers are check-summed and data-digest is when
-all the data is check-summed.
-
-> --D
+> Quite a few 3.6.x kernels have come out since that patch was Cc'ed,
+> and it keeps not being included.  So I wondered.
 > 
+> > So that means it should eventually make it to the 3.4.x and 3.6.x
+> > kernels.
+> 
+> That's what I thought, but I didn't want to pester Greg until I was sure
+> of your intentions.
+> 
+> > At this point I'll just include it in the patches to be sent to Linus
+> > at the next merge window, mainly because I don't have the time to run
+> > a separate regression test run just for this patch, and it's only a
+> > cosmetic issue, right?
+> 
+> Well, it causes the file system to be marked dirty and unnecessarily
+> checked on reboot, which I contend is a bug, but it's not a data-loss
+> bug.
+> 
+> I do worry that it could cause file lookup to fail when it shouldn't,
+> which *is* effectively a data-loss bug, even if the data reappears
+> on reboot.  But I'd have to understand the problem and fix better to
+> know if that actually happens; I haven't observed it.
 
-Cheers
-Boaz
+Yes, it would be useful to know what's going on with this directory file, since
+it seems to fallback to linear scan, yet e2fsck -D doesn't fix it.  What I was
+/going/ for was that the kernel would notice a bad directory and flag it for
+fsck on reboot.  Upon reboot, fsck would be run, notice the bad dir, and feed
+it to the directory rebuilder to get it fixed for good.  However, there doesn't
+seem to be any real checksum mismatch, so the rebuild doesn't happen.
+
+Also ... refresh my memory -- some files have disappeared as a result of this
+happening?
+
+--D
