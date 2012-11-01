@@ -1,8 +1,9 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [RFC PATCH v2 0/3] mm/fs: Implement faster stable page writes on
- filesystems
-Date: Thu, 01 Nov 2012 00:58:06 -0700
-Message-ID: <20121101075805.16153.64714.stgit@blackbox.djwong.org>
+Subject: [PATCH 2/3] mm: Only enforce stable page writes if the backing device
+ requires it
+Date: Thu, 01 Nov 2012 00:58:21 -0700
+Message-ID: <20121101075821.16153.38301.stgit@blackbox.djwong.org>
+References: <20121101075805.16153.64714.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -18,43 +19,105 @@ To: axboe@kernel.dk, lucho@ionkov.net, tytso@mit.edu, sage@inktank.com,
         dedekind1@gmail.com, adrian.hunter@intel.com, dhowells@redhat.com,
         sfrench@samba.org, jlbec@evilplan.org, rminnich@sandia.gov
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20121101075805.16153.64714.stgit@blackbox.djwong.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+Create a helper function to check if a backing device requires stable page
+writes and, if so, performs the necessary wait.  Then, make it so that all
+points in the memory manager that handle making pages writable use the helper
+function.  This should provide stable page write support to most filesystems,
+while eliminating unnecessary waiting for devices that don't require the
+feature.
 
-This patchset makes some key modifications to the original 'stable page writes'
-patchset.  First, it provides users (devices and filesystems) of a
-backing_dev_info the ability to declare whether or not it is necessary to
-ensure that page contents cannot change during writeout, whereas the current
-code assumes that this is true.  Second, it relaxes the wait_on_page_writeback
-calls so that they only occur if something needs it.  Third, it fixes up (most)
-of the remaining filesystems to use this improved conditional-wait logic in the
-hopes of providing stable page writes on all filesystems.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/buffer.c             |    2 +-
+ fs/ext4/inode.c         |    2 +-
+ include/linux/pagemap.h |    1 +
+ mm/filemap.c            |    3 ++-
+ mm/page-writeback.c     |   11 +++++++++++
+ 5 files changed, 16 insertions(+), 3 deletions(-)
 
-It is hoped that (for people not using checksumming devices, anyway) this
-patchset will give back unnecessary performance decreases since the original
-stable page write patchset went into 3.0.  It seems possible, though, that iscsi
-and raid5 may wish to use the new stable page write support to enable zero-copy
-writeout.
 
-Unfortunately, it seems that ext3 is still broken wrt stable page writes.  One
-workaround would be to use ext4 instead, or avoid the use of ext3.ko + DIF/DIX.
-Hopefully it doesn't take long to sort out.
-
-Another thing I noticed is that there are several filesystems that call
-wait_on_page_writeback before returning VM_FAULT_LOCKED in their page_mkwrite
-delegates.  It might be possible to convert some of these to
-wait_for_stable_pages unless there's some other reason that we always want to
-wait for writeback.
-
-Finally, if a filesystem wants the VM to help it provide stable pages, it's now
-possible to use the *_require_stable_pages() functions to turn that on.  It
-might be useful for checksumming data blocks during write.
-
-This patchset has been lightly tested on 3.7.0-rc3 on x64.
-
---D
+diff --git a/fs/buffer.c b/fs/buffer.c
+index b5f0442..cac3007 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2334,7 +2334,7 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	if (unlikely(ret < 0))
+ 		goto out_unlock;
+ 	set_page_dirty(page);
+-	wait_on_page_writeback(page);
++	wait_on_stable_page_write(page);
+ 	return 0;
+ out_unlock:
+ 	unlock_page(page);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b3c243b..948d68a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4814,7 +4814,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+ 					ext4_bh_unmapped)) {
+ 			/* Wait so that we don't change page under IO */
+-			wait_on_page_writeback(page);
++			wait_on_stable_page_write(page);
+ 			ret = VM_FAULT_LOCKED;
+ 			goto out;
+ 		}
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index e42c762..c28da25 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -398,6 +398,7 @@ static inline void wait_on_page_writeback(struct page *page)
+ }
+ 
+ extern void end_page_writeback(struct page *page);
++void wait_on_stable_page_write(struct page *page);
+ 
+ /*
+  * Add an arbitrary waiter to a page's wait queue
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 83efee7..ee46141 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1728,6 +1728,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * see the dirty page and writeprotect it again.
+ 	 */
+ 	set_page_dirty(page);
++	wait_on_stable_page_write(page);
+ out:
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+@@ -2274,7 +2275,7 @@ repeat:
+ 		return NULL;
+ 	}
+ found:
+-	wait_on_page_writeback(page);
++	wait_on_stable_page_write(page);
+ 	return page;
+ }
+ EXPORT_SYMBOL(grab_cache_page_write_begin);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 830893b..916dae1 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2275,3 +2275,14 @@ int mapping_tagged(struct address_space *mapping, int tag)
+ 	return radix_tree_tagged(&mapping->page_tree, tag);
+ }
+ EXPORT_SYMBOL(mapping_tagged);
++
++void wait_on_stable_page_write(struct page *page)
++{
++	struct backing_dev_info *bdi = page->mapping->backing_dev_info;
++
++	if (!bdi_cap_stable_pages_required(bdi))
++		return;
++
++	wait_on_page_writeback(page);
++}
++EXPORT_SYMBOL_GPL(wait_on_stable_page_write);
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
