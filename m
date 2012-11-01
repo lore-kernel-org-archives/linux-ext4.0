@@ -1,10 +1,10 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 3/3] fs: Fix remaining filesystems to wait for stable
- page writeback
-Date: Thu, 1 Nov 2012 13:36:41 +0100
-Message-ID: <20121101123641.GA23132@quack.suse.cz>
+Subject: Re: [PATCH 2/3] mm: Only enforce stable page writes if the backing
+ device requires it
+Date: Thu, 1 Nov 2012 14:28:46 +0100
+Message-ID: <20121101132846.GB23132@quack.suse.cz>
 References: <20121101075805.16153.64714.stgit@blackbox.djwong.org>
- <20121101075829.16153.92036.stgit@blackbox.djwong.org>
+ <20121101075821.16153.38301.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, sage-4GqslpFJ+cxBDgjK7y7TUQ@public.gmane.org,
@@ -22,74 +22,49 @@ Cc: axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@
 To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20121101075829.16153.92036.stgit-yuuUpGxbzT9UbpRmUfBrXUB+6BGkLq7r@public.gmane.org>
+In-Reply-To: <20121101075821.16153.38301.stgit-yuuUpGxbzT9UbpRmUfBrXUB+6BGkLq7r@public.gmane.org>
 Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 01-11-12 00:58:29, Darrick J. Wong wrote:
-> Fix up the filesystems that provide their own ->page_mkwrite handlers to
-> provide stable page writes if necessary.
+On Thu 01-11-12 00:58:21, Darrick J. Wong wrote:
+> Create a helper function to check if a backing device requires stable page
+> writes and, if so, performs the necessary wait.  Then, make it so that all
+> points in the memory manager that handle making pages writable use the helper
+> function.  This should provide stable page write support to most filesystems,
+> while eliminating unnecessary waiting for devices that don't require the
+> feature.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
 > ---
->  fs/9p/vfs_file.c |    1 +
->  fs/afs/write.c   |    4 ++--
->  fs/ceph/addr.c   |    1 +
->  fs/cifs/file.c   |    1 +
->  fs/ocfs2/mmap.c  |    1 +
->  fs/ubifs/file.c  |    4 ++--
->  6 files changed, 8 insertions(+), 4 deletions(-)
+>  fs/buffer.c             |    2 +-
+>  fs/ext4/inode.c         |    2 +-
+>  include/linux/pagemap.h |    1 +
+>  mm/filemap.c            |    3 ++-
+>  mm/page-writeback.c     |   11 +++++++++++
+>  5 files changed, 16 insertions(+), 3 deletions(-)
 > 
-> 
-> diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
-> index c2483e9..aa253f0 100644
-> --- a/fs/9p/vfs_file.c
-> +++ b/fs/9p/vfs_file.c
-> @@ -620,6 +620,7 @@ v9fs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->  	lock_page(page);
->  	if (page->mapping != inode->i_mapping)
->  		goto out_unlock;
-> +	wait_on_stable_page_write(page);
->  
->  	return VM_FAULT_LOCKED;
->  out_unlock:
-> diff --git a/fs/afs/write.c b/fs/afs/write.c
-> index 9aa52d9..39eb2a4 100644
-> --- a/fs/afs/write.c
-> +++ b/fs/afs/write.c
-> @@ -758,7 +758,7 @@ int afs_page_mkwrite(struct vm_area_struct *vma, struct page *page)
->  #ifdef CONFIG_AFS_FSCACHE
->  	fscache_wait_on_page_write(vnode->cache, page);
->  #endif
-> -
-> +	wait_on_stable_page_write(page);
->  	_leave(" = 0");
-> -	return 0;
-> +	return VM_FAULT_LOCKED;
+..
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 830893b..916dae1 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -2275,3 +2275,14 @@ int mapping_tagged(struct address_space *mapping, int tag)
+>  	return radix_tree_tagged(&mapping->page_tree, tag);
 >  }
-  Oh, I missed these two since I've got confused by
-fscache_wait_on_page_write().
-
-> diff --git a/fs/ocfs2/mmap.c b/fs/ocfs2/mmap.c
-> index 47a87dd..a0027b1 100644
-> --- a/fs/ocfs2/mmap.c
-> +++ b/fs/ocfs2/mmap.c
-> @@ -124,6 +124,7 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
->  				     fsdata);
->  	BUG_ON(ret != len);
->  	ret = VM_FAULT_LOCKED;
-> +	wait_on_stable_page_write(page);
->  out:
->  	return ret;
->  }
-  Actually, this is not so easy. ocfs2 doesn't use
-grab_cache_page_write_begin() so you have to modify write_begin() path as
-well. And then you don't have to modify __ocfs2_page_mkwrite() because it
-uses ocfs2_write_begin(). Preferably teach it to use
-grab_cache_page_write_begin()...
-
-  And I think you are missing ncpfs. Because ncp_file_mmap does not set
-.mkwrite - it should use filemap_page_mkwrite() I think.
+>  EXPORT_SYMBOL(mapping_tagged);
+> +
+> +void wait_on_stable_page_write(struct page *page)
+> +{
+> +	struct backing_dev_info *bdi = page->mapping->backing_dev_info;
+> +
+> +	if (!bdi_cap_stable_pages_required(bdi))
+> +		return;
+> +
+> +	wait_on_page_writeback(page);
+> +}
+> +EXPORT_SYMBOL_GPL(wait_on_stable_page_write);
+  Just one nit: Maybe "wait_if_stable_write()" would describe the function
+better? Otherwise the patch looks OK.
 
 								Honza
 -- 
