@@ -1,467 +1,132 @@
-From: Tim Landscheidt <tim@tim-landscheidt.de>
-Subject: Re: Weird filesystem corruption from wayland / radeon / chromium
-Date: Fri, 02 Nov 2012 18:55:37 +0000
-Message-ID: <878vajq1g6.fsf@passepartout.tim-landscheidt.de>
-References: <20120903220213.GE19158@chaosreigns.com>
-	<20120904032919.GJ5066@thunk.org>
-	<20120905024848.GK19158@chaosreigns.com>
-	<20120905033818.GL19158@chaosreigns.com>
-	<87liekovgo.fsf@passepartout.tim-landscheidt.de>
-	<509401E2.30402@redhat.com>
+From: Wilmer van der Gaast <wilmer@gaast.net>
+Subject: Re: Bug#692104: linux-image-3.2.0-3-amd64: NULL pointer dereference
+  in ext4fs
+Date: Fri, 02 Nov 2012 22:52:35 +0100
+Message-ID: <509440A3.5020604@gaast.net>
+References: <50938953.6010001@gaast.net> <1351866830.13356.100.camel@deadeye.wl.decadent.org.uk>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/mixed;
+ boundary="------------040809040308040305000707"
+Cc: linux-ext4@vger.kernel.org, 692104@bugs.debian.org
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:47956 "EHLO plane.gmane.org"
+Received: from roy.gaast.net ([80.101.33.21]:32964 "EHLO mail.gaast.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932260Ab2KBSzy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 2 Nov 2012 14:55:54 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1TUMPP-0005oi-Pk
-	for linux-ext4@vger.kernel.org; Fri, 02 Nov 2012 19:55:59 +0100
-Received: from g224120190.adsl.alicedsl.de ([92.224.120.190])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 02 Nov 2012 19:55:59 +0100
-Received: from tim by g224120190.adsl.alicedsl.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Fri, 02 Nov 2012 19:55:59 +0100
+	id S1757073Ab2KBWAj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 2 Nov 2012 18:00:39 -0400
+In-Reply-To: <1351866830.13356.100.camel@deadeye.wl.decadent.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
+This is a multi-part message in MIME format.
+--------------040809040308040305000707
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Eric Sandeen <sandeen@redhat.com> wrote:
+Hello,
 
-> [...]
->> Shortly after starting Chrome, the messages reappeared
->> again:
+On 02-11-12 15:33, Ben Hutchings wrote:
+>> I don't know what exactly triggered this, but the result was that my /home
+>> was no longer accessible after this event.  My root filesystem was still
+>> okay.
+> I assume this means it was no longer accessible until the next boot.
+>
+Oh yes, definitely. Sorry for not being clear.
 
->> | Nov  2 15:15:48 passepartout kernel: [ 1979.196296] EXT4-fs error (device dm-4): ext4_ext_search_left:1304: inode #274258: comm flush-253:4: ix (3666) != EXT_FIRST_INDEX (0) (depth 0)!
->> | Nov  2 15:15:48 passepartout kernel: [ 1979.196306] EXT4-fs (dm-4): delayed block allocation failed for inode 274258 at logical offset 3672 with max blocks 2 with error -5
->> | Nov  2 15:15:48 passepartout kernel: [ 1979.196308] EXT4-fs (dm-4): This should not happen!! Data will be lost
->> | Nov  2 15:15:48 passepartout kernel: [ 1979.196308]
+Also, this has just happened again. This time, after me not having 
+touched the laptop for over ten hours. I'm starting to wonder whether my 
+filesystem is corrupted. I'll make an LVM snapshot and then do a full fsck.
 
->> And indeed:
+I'll attach the backtrace. Seems to be the same like this morning.
 
->> | [root@passepartout ~]# find ~tim -inum 274258
->> | /home/tim/.cache/google-chrome/Default/Cache/data_3
->> | [root@passepartout ~]#
 
->> So somehow Chromium/Chrome seems to be able to trigger ker-
->> nel messages indicating a file system error while no actual
->> file system errors seem to occur (very big assumption here
->> because I have no idea how to detect if "data_3" is cor-
->> rupted).
+Wilmer v/d Gaast.
 
-> So it's the same inode every time.
+-- 
++-------- .''`.     - -- ---+  +        - -- --- ---- ----- ------+
+| wilmer : :'  :  gaast.net |  | OSS Programmer   www.bitlbee.org |
+| lintux `. `~'  debian.org |  | Full-time geek  wilmer.gaast.net |
++--- -- -  ` ---------------+  +------ ----- ---- --- -- -        +
 
-> What does
+--------------040809040308040305000707
+Content-Type: text/plain;
+ name="crash2.txt"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="crash2.txt"
 
-> # debugfs -R "dump_extents <274258>" /dev/dm-4
-
-> show? (or whatever the appropriate device node path is)
-
-See attachment.
-
-> You might also create an e2image -r fs image so we could
-> take a closer look later if needed.  You could provide it offline if
-> filenames are sensitive (no file data is contained in the image).
-> Or you could use the filename obfuscation option.
-
-> But creating the e2image now just to capture the state might
-> be good.
-
-> [...]
-
-As this is my home directory and never meant to be pub-
-lished :-), I have never assessed whether filenames there
-are sensitive, but I don't want to take any chances and will
-send you a private link to the obfuscated image per separate
-mail.  I have taken a non-obfuscated image as well.
-
-The warning is still appearing:
-
-| Nov  2 18:23:42 passepartout kernel: [13252.909399] EXT4-fs error (device dm-4): ext4_ext_search_left:1304: inode #274258: comm flush-253:4: ix (3666) != EXT_FIRST_INDEX (0) (depth 0)!
-| Nov  2 18:23:42 passepartout kernel: [13252.909411] EXT4-fs (dm-4): delayed block allocation failed for inode 274258 at logical offset 4076 with max blocks 2 with error -5
-| Nov  2 18:23:42 passepartout kernel: [13252.909413] EXT4-fs (dm-4): This should not happen!! Data will be lost
-| Nov  2 18:23:42 passepartout kernel: [13252.909413]
-
-Tim
-
---=-=-=
-Content-Disposition: inline; filename=dump_extents.txt
-
-Level Entries       Logical          Physical Length Flags
- 0/ 1   1/  2     0 -  3665 1114157             3666
- 1/ 1   1/ 59     0 -   132  510721 -  510853    133 
- 1/ 1   2/ 59   133 -   139  511415 -  511421      7 
- 1/ 1   3/ 59   140 -   140  511422 -  511422      1 
- 1/ 1   4/ 59   142 -   142  511423 -  511423      1 
- 1/ 1   5/ 59   143 -   323  511452 -  511632    181 
- 1/ 1   6/ 59   324 -   324  511633 -  511633      1 
- 1/ 1   7/ 59   325 -   325  994304 -  994304      1 
- 1/ 1   8/ 59   326 -   422  511634 -  511730     97 
- 1/ 1   9/ 59   423 -   426  532808 -  532811      4 
- 1/ 1  10/ 59   427 -   430  565368 -  565371      4 
- 1/ 1  11/ 59   431 -   466  565596 -  565631     36 
- 1/ 1  12/ 59   467 -   477  565638 -  565648     11 
- 1/ 1  13/ 59   478 -   478  565907 -  565907      1 
- 1/ 1  14/ 59   479 -   479  566270 -  566270      1 
- 1/ 1  15/ 59   480 -   486  566456 -  566462      7 
- 1/ 1  16/ 59   487 -   714  566464 -  566691    228 
- 1/ 1  17/ 59   715 -   715  566693 -  566693      1 
- 1/ 1  18/ 59   716 -   771  566696 -  566751     56 
- 1/ 1  19/ 59   772 -  1283  566784 -  567295    512 
- 1/ 1  20/ 59  1284 -  1284  567349 -  567349      1 
- 1/ 1  21/ 59  1285 -  1286  567355 -  567356      2 
- 1/ 1  22/ 59  1287 -  1287  567358 -  567358      1 
- 1/ 1  23/ 59  1288 -  1288  567371 -  567371      1 
- 1/ 1  24/ 59  1289 -  1289  567378 -  567378      1 
- 1/ 1  25/ 59  1290 -  1290  567391 -  567391      1 
- 1/ 1  26/ 59  1291 -  1298  567416 -  567423      8 
- 1/ 1  27/ 59  1299 -  1302  567440 -  567443      4 
- 1/ 1  28/ 59  1303 -  1303  567509 -  567509      1 
- 1/ 1  29/ 59  1304 -  1305  567514 -  567515      2 
- 1/ 1  30/ 59  1306 -  1369  567528 -  567591     64 
- 1/ 1  31/ 59  1370 -  1385  567600 -  567615     16 
- 1/ 1  32/ 59  1386 -  1386  567619 -  567619      1 
- 1/ 1  33/ 59  1387 -  1392  567624 -  567629      6 
- 1/ 1  34/ 59  1393 -  2120  567657 -  568384    728 
- 1/ 1  35/ 59  2121 -  2121  568386 -  568386      1 
- 1/ 1  36/ 59  2122 -  2138  568391 -  568407     17 
- 1/ 1  37/ 59  2139 -  2202  568416 -  568479     64 
- 1/ 1  38/ 59  2203 -  2259  568487 -  568543     57 
- 1/ 1  39/ 59  2260 -  2523  568552 -  568815    264 
- 1/ 1  40/ 59  2524 -  2551  568836 -  568863     28 
- 1/ 1  41/ 59  2552 -  2552  568865 -  568865      1 
- 1/ 1  42/ 59  2553 -  2557  568868 -  568872      5 
- 1/ 1  43/ 59  2558 -  2564  568874 -  568880      7 
- 1/ 1  44/ 59  2565 -  2567  568882 -  568884      3 
- 1/ 1  45/ 59  2568 -  3025  568886 -  569343    458 
- 1/ 1  46/ 59  3026 -  3026  570166 -  570166      1 
- 1/ 1  47/ 59  3027 -  3027  570794 -  570794      1 
- 1/ 1  48/ 59  3028 -  3028  570798 -  570798      1 
- 1/ 1  49/ 59  3029 -  3029  571307 -  571307      1 
- 1/ 1  50/ 59  3030 -  3030  571343 -  571343      1 
- 1/ 1  51/ 59  3031 -  3031  571707 -  571707      1 
- 1/ 1  52/ 59  3032 -  3032  571714 -  571714      1 
- 1/ 1  53/ 59  3033 -  3034  571734 -  571735      2 
- 1/ 1  54/ 59  3035 -  3035  571766 -  571766      1 
- 1/ 1  55/ 59  3036 -  3036  572220 -  572220      1 
- 1/ 1  56/ 59  3037 -  3037  572223 -  572223      1 
- 1/ 1  57/ 59  3038 -  3038  572699 -  572699      1 
- 1/ 1  58/ 59  3039 -  3664  573440 -  574065    626 
- 1/ 1  59/ 59  3665 -  4092  574066 -  574493    428 
- 0/ 1   2/  2  3666 -  9217  395702             5552
- 1/ 1   1/307  4093 -  4093  574494 -  574494      1 
- 1/ 1   2/307  4094 -  4095  395758 -  395759      2 
- 1/ 1   3/307  4096 -  4096  395760 -  395760      1 
- 1/ 1   4/307  4097 -  4216  435170 -  435289    120 
- 1/ 1   5/307  4217 -  4271  435378 -  435432     55 
- 1/ 1   6/307  4272 -  4366  435530 -  435624     95 
- 1/ 1   7/307  4367 -  4367  435625 -  435625      1 
- 1/ 1   8/307  4368 -  4398 1475371 - 1475401     31 
- 1/ 1   9/307  4399 -  4411 1475481 - 1475493     13 
- 1/ 1  10/307  4412 -  4418 1475500 - 1475506      7 
- 1/ 1  11/307  4419 -  4436 1583086 - 1583103     18 
- 1/ 1  12/307  4437 -  4468 1583360 - 1583391     32 
- 1/ 1  13/307  4469 -  4469 1583578 - 1583578      1 
- 1/ 1  14/307  4470 -  4501 1583616 - 1583647     32 
- 1/ 1  15/307  4502 -  4533 1583680 - 1583711     32 
- 1/ 1  16/307  4534 -  4565 1583808 - 1583839     32 
- 1/ 1  17/307  4566 -  4597 1583904 - 1583935     32 
- 1/ 1  18/307  4598 -  4629 1583968 - 1583999     32 
- 1/ 1  19/307  4630 -  4661 1584064 - 1584095     32 
- 1/ 1  20/307  4662 -  4693 1588928 - 1588959     32 
- 1/ 1  21/307  4694 -  5909 1604416 - 1605631   1216 
- 1/ 1  22/307  5910 -  5911 1609124 - 1609125      2 
- 1/ 1  23/307  5912 -  5913 1609648 - 1609649      2 
- 1/ 1  24/307  5914 -  5914 1610118 - 1610118      1 
- 1/ 1  25/307  5915 -  5915 1610380 - 1610380      1 
- 1/ 1  26/307  5916 -  5919 1610392 - 1610395      4 
- 1/ 1  27/307  5920 -  5921 1610476 - 1610477      2 
- 1/ 1  28/307  5922 -  5922 1610548 - 1610548      1 
- 1/ 1  29/307  5923 -  5924 1610701 - 1610702      2 
- 1/ 1  30/307  5925 -  5925 1610758 - 1610758      1 
- 1/ 1  31/307  5926 -  5927 1611237 - 1611238      2 
- 1/ 1  32/307  5928 -  5928 1611242 - 1611242      1 
- 1/ 1  33/307  5929 -  5929 1611244 - 1611244      1 
- 1/ 1  34/307  5930 -  5931 1611246 - 1611247      2 
- 1/ 1  35/307  5932 -  5932 1611284 - 1611284      1 
- 1/ 1  36/307  5933 -  5933 1611286 - 1611286      1 
- 1/ 1  37/307  5934 -  5934 1611315 - 1611315      1 
- 1/ 1  38/307  5935 -  5935 1611689 - 1611689      1 
- 1/ 1  39/307  5936 -  5936 1611780 - 1611780      1 
- 1/ 1  40/307  5937 -  5937 1611782 - 1611782      1 
- 1/ 1  41/307  5938 -  5938 1611786 - 1611786      1 
- 1/ 1  42/307  5939 -  5939 1611789 - 1611789      1 
- 1/ 1  43/307  5940 -  5940 1612466 - 1612466      1 
- 1/ 1  44/307  5941 -  5941 1612477 - 1612477      1 
- 1/ 1  45/307  5942 -  5942 1662485 - 1662485      1 
- 1/ 1  46/307  5943 -  5943 1662668 - 1662668      1 
- 1/ 1  47/307  5944 -  5944 1662772 - 1662772      1 
- 1/ 1  48/307  5945 -  5946 1666272 - 1666273      2 
- 1/ 1  49/307  5947 -  5947 1666455 - 1666455      1 
- 1/ 1  50/307  5948 -  5948 1667080 - 1667080      1 
- 1/ 1  51/307  5949 -  5949 1671386 - 1671386      1 
- 1/ 1  52/307  5950 -  5950 1672117 - 1672117      1 
- 1/ 1  53/307  5951 -  5951 1672566 - 1672566      1 
- 1/ 1  54/307  5952 -  5952 1672847 - 1672847      1 
- 1/ 1  55/307  5953 -  5953 1673823 - 1673823      1 
- 1/ 1  56/307  5954 -  5954 1676155 - 1676155      1 
- 1/ 1  57/307  5955 -  5955 1676823 - 1676823      1 
- 1/ 1  58/307  5956 -  5956 1677127 - 1677127      1 
- 1/ 1  59/307  5957 -  5957 1677140 - 1677140      1 
- 1/ 1  60/307  5958 -  5958 1677207 - 1677207      1 
- 1/ 1  61/307  5959 -  5959 1677373 - 1677373      1 
- 1/ 1  62/307  5960 -  5960 1677395 - 1677395      1 
- 1/ 1  63/307  5961 -  5961 1678288 - 1678288      1 
- 1/ 1  64/307  5962 -  5962 1678671 - 1678671      1 
- 1/ 1  65/307  5963 -  5963 1679102 - 1679102      1 
- 1/ 1  66/307  5964 -  5964 1679165 - 1679165      1 
- 1/ 1  67/307  5965 -  5965 1688204 - 1688204      1 
- 1/ 1  68/307  5966 -  5966 1701798 - 1701798      1 
- 1/ 1  69/307  5967 -  5967 1701836 - 1701836      1 
- 1/ 1  70/307  5968 -  5968 1701844 - 1701844      1 
- 1/ 1  71/307  5969 -  5969 1702078 - 1702078      1 
- 1/ 1  72/307  5970 -  5970 1702106 - 1702106      1 
- 1/ 1  73/307  5971 -  5971 1702116 - 1702116      1 
- 1/ 1  74/307  5972 -  5972 1702139 - 1702139      1 
- 1/ 1  75/307  5973 -  5973 1702148 - 1702148      1 
- 1/ 1  76/307  5974 -  5974 1702282 - 1702282      1 
- 1/ 1  77/307  5975 -  5975 1703287 - 1703287      1 
- 1/ 1  78/307  5976 -  5976 1703437 - 1703437      1 
- 1/ 1  79/307  5977 -  5977 1703454 - 1703454      1 
- 1/ 1  80/307  5978 -  5978 1703972 - 1703972      1 
- 1/ 1  81/307  5979 -  5979 1704047 - 1704047      1 
- 1/ 1  82/307  5980 -  5981 1704091 - 1704092      2 
- 1/ 1  83/307  5982 -  5982 1704133 - 1704133      1 
- 1/ 1  84/307  5983 -  5983 1704139 - 1704139      1 
- 1/ 1  85/307  5984 -  5984 1704202 - 1704202      1 
- 1/ 1  86/307  5985 -  5985 1704210 - 1704210      1 
- 1/ 1  87/307  5986 -  5986 1704224 - 1704224      1 
- 1/ 1  88/307  5987 -  5987 1704231 - 1704231      1 
- 1/ 1  89/307  5988 -  5988 1704328 - 1704328      1 
- 1/ 1  90/307  5989 -  5989 1704413 - 1704413      1 
- 1/ 1  91/307  5990 -  5990 1704427 - 1704427      1 
- 1/ 1  92/307  5991 -  5991 1704430 - 1704430      1 
- 1/ 1  93/307  5992 -  5992 1704484 - 1704484      1 
- 1/ 1  94/307  5993 -  5994 1704671 - 1704672      2 
- 1/ 1  95/307  5995 -  5995 1704702 - 1704702      1 
- 1/ 1  96/307  5996 -  5996 1704745 - 1704745      1 
- 1/ 1  97/307  5997 -  5997 1704758 - 1704758      1 
- 1/ 1  98/307  5998 -  5998 1704761 - 1704761      1 
- 1/ 1  99/307  5999 -  5999 1704778 - 1704778      1 
- 1/ 1 100/307  6000 -  6000 1704797 - 1704797      1 
- 1/ 1 101/307  6001 -  6001 1704806 - 1704806      1 
- 1/ 1 102/307  6002 -  6002 1704828 - 1704828      1 
- 1/ 1 103/307  6003 -  6003 1704839 - 1704839      1 
- 1/ 1 104/307  6004 -  6004 1704851 - 1704851      1 
- 1/ 1 105/307  6005 -  6005 1704911 - 1704911      1 
- 1/ 1 106/307  6006 -  6006 1704938 - 1704938      1 
- 1/ 1 107/307  6007 -  6007 1704985 - 1704985      1 
- 1/ 1 108/307  6008 -  6008 1705011 - 1705011      1 
- 1/ 1 109/307  6009 -  6009 1705073 - 1705073      1 
- 1/ 1 110/307  6010 -  6010 1705084 - 1705084      1 
- 1/ 1 111/307  6011 -  6011 1705089 - 1705089      1 
- 1/ 1 112/307  6012 -  6012 1705105 - 1705105      1 
- 1/ 1 113/307  6013 -  6013 1705194 - 1705194      1 
- 1/ 1 114/307  6014 -  6014 1705196 - 1705196      1 
- 1/ 1 115/307  6015 -  6015 1705232 - 1705232      1 
- 1/ 1 116/307  6016 -  6016 1705241 - 1705241      1 
- 1/ 1 117/307  6017 -  6017 1705272 - 1705272      1 
- 1/ 1 118/307  6018 -  6018 1705361 - 1705361      1 
- 1/ 1 119/307  6019 -  6019 1705381 - 1705381      1 
- 1/ 1 120/307  6020 -  6020 1705396 - 1705396      1 
- 1/ 1 121/307  6021 -  6021 1705404 - 1705404      1 
- 1/ 1 122/307  6022 -  6022 1705411 - 1705411      1 
- 1/ 1 123/307  6023 -  6023 1705450 - 1705450      1 
- 1/ 1 124/307  6024 -  6024 1705468 - 1705468      1 
- 1/ 1 125/307  6025 -  6025 1705499 - 1705499      1 
- 1/ 1 126/307  6026 -  6027 1705527 - 1705528      2 
- 1/ 1 127/307  6028 -  6028 1705548 - 1705548      1 
- 1/ 1 128/307  6029 -  6029 1705559 - 1705559      1 
- 1/ 1 129/307  6030 -  6030 1705655 - 1705655      1 
- 1/ 1 130/307  6031 -  6032 1705663 - 1705664      2 
- 1/ 1 131/307  6033 -  6033 1705674 - 1705674      1 
- 1/ 1 132/307  6034 -  6034 1705816 - 1705816      1 
- 1/ 1 133/307  6035 -  6036 1705913 - 1705914      2 
- 1/ 1 134/307  6037 -  6037 1706038 - 1706038      1 
- 1/ 1 135/307  6038 -  6038 1706058 - 1706058      1 
- 1/ 1 136/307  6039 -  6039 1706068 - 1706068      1 
- 1/ 1 137/307  6040 -  6040 1706222 - 1706222      1 
- 1/ 1 138/307  6041 -  6041 1706238 - 1706238      1 
- 1/ 1 139/307  6042 -  6042 1706280 - 1706280      1 
- 1/ 1 140/307  6043 -  6043 1706417 - 1706417      1 
- 1/ 1 141/307  6044 -  6044 1706451 - 1706451      1 
- 1/ 1 142/307  6045 -  6045 1706512 - 1706512      1 
- 1/ 1 143/307  6046 -  6046 1706534 - 1706534      1 
- 1/ 1 144/307  6047 -  6047 1706543 - 1706543      1 
- 1/ 1 145/307  6048 -  6048 1706565 - 1706565      1 
- 1/ 1 146/307  6049 -  6049 1706577 - 1706577      1 
- 1/ 1 147/307  6050 -  6050 1706595 - 1706595      1 
- 1/ 1 148/307  6051 -  6051 1706650 - 1706650      1 
- 1/ 1 149/307  6052 -  6052 1706705 - 1706705      1 
- 1/ 1 150/307  6053 -  6053 1706717 - 1706717      1 
- 1/ 1 151/307  6054 -  6054 1706721 - 1706721      1 
- 1/ 1 152/307  6055 -  6055 1706750 - 1706750      1 
- 1/ 1 153/307  6056 -  6056 1706876 - 1706876      1 
- 1/ 1 154/307  6057 -  6057 1706898 - 1706898      1 
- 1/ 1 155/307  6058 -  6058 1707226 - 1707226      1 
- 1/ 1 156/307  6059 -  6059 1707542 - 1707542      1 
- 1/ 1 157/307  6060 -  6060 1707617 - 1707617      1 
- 1/ 1 158/307  6061 -  6061 1707725 - 1707725      1 
- 1/ 1 159/307  6062 -  6062 1707735 - 1707735      1 
- 1/ 1 160/307  6063 -  6063 1707939 - 1707939      1 
- 1/ 1 161/307  6064 -  6064 1707948 - 1707948      1 
- 1/ 1 162/307  6065 -  6065 1708062 - 1708062      1 
- 1/ 1 163/307  6066 -  6066 1708166 - 1708166      1 
- 1/ 1 164/307  6067 -  6067 1708264 - 1708264      1 
- 1/ 1 165/307  6068 -  6068 1708373 - 1708373      1 
- 1/ 1 166/307  6069 -  6069 1708446 - 1708446      1 
- 1/ 1 167/307  6070 -  6070 1708486 - 1708486      1 
- 1/ 1 168/307  6071 -  6071 1708524 - 1708524      1 
- 1/ 1 169/307  6072 -  6072 1708639 - 1708639      1 
- 1/ 1 170/307  6073 -  6073 1708856 - 1708856      1 
- 1/ 1 171/307  6074 -  6074 1709073 - 1709073      1 
- 1/ 1 172/307  6075 -  6075 1709221 - 1709221      1 
- 1/ 1 173/307  6076 -  6076 1709282 - 1709282      1 
- 1/ 1 174/307  6077 -  6077 1709809 - 1709809      1 
- 1/ 1 175/307  6078 -  6079 1709903 - 1709904      2 
- 1/ 1 176/307  6080 -  6080 1709907 - 1709907      1 
- 1/ 1 177/307  6081 -  6081 1709914 - 1709914      1 
- 1/ 1 178/307  6082 -  6082 1709920 - 1709920      1 
- 1/ 1 179/307  6083 -  6083 1709926 - 1709926      1 
- 1/ 1 180/307  6084 -  6084 1709932 - 1709932      1 
- 1/ 1 181/307  6085 -  6086 1709935 - 1709936      2 
- 1/ 1 182/307  6087 -  6087 1709939 - 1709939      1 
- 1/ 1 183/307  6088 -  6088 1709941 - 1709941      1 
- 1/ 1 184/307  6089 -  6089 1709950 - 1709950      1 
- 1/ 1 185/307  6090 -  6090 1709955 - 1709955      1 
- 1/ 1 186/307  6091 -  6091 1709959 - 1709959      1 
- 1/ 1 187/307  6092 -  6092 1709963 - 1709963      1 
- 1/ 1 188/307  6093 -  6093 1709967 - 1709967      1 
- 1/ 1 189/307  6094 -  6095 1709969 - 1709970      2 
- 1/ 1 190/307  6096 -  6096 1709973 - 1709973      1 
- 1/ 1 191/307  6097 -  6097 1709975 - 1709975      1 
- 1/ 1 192/307  6098 -  6099 1709981 - 1709982      2 
- 1/ 1 193/307  6100 -  6100 1709986 - 1709986      1 
- 1/ 1 194/307  6101 -  6101 1709992 - 1709992      1 
- 1/ 1 195/307  6102 -  6102 1709994 - 1709994      1 
- 1/ 1 196/307  6103 -  6103 1710004 - 1710004      1 
- 1/ 1 197/307  6104 -  6104 1710010 - 1710010      1 
- 1/ 1 198/307  6105 -  6105 1710012 - 1710012      1 
- 1/ 1 199/307  6106 -  6106 1710019 - 1710019      1 
- 1/ 1 200/307  6107 -  6107 1710022 - 1710022      1 
- 1/ 1 201/307  6108 -  6108 1710030 - 1710030      1 
- 1/ 1 202/307  6109 -  6109 1710033 - 1710033      1 
- 1/ 1 203/307  6110 -  6110 1710041 - 1710041      1 
- 1/ 1 204/307  6111 -  6111 1710048 - 1710048      1 
- 1/ 1 205/307  6112 -  6112 1710052 - 1710052      1 
- 1/ 1 206/307  6113 -  6114 1710055 - 1710056      2 
- 1/ 1 207/307  6115 -  6115 1710058 - 1710058      1 
- 1/ 1 208/307  6116 -  6116 1710060 - 1710060      1 
- 1/ 1 209/307  6117 -  6117 1710133 - 1710133      1 
- 1/ 1 210/307  6118 -  6118 1710173 - 1710173      1 
- 1/ 1 211/307  6119 -  6119 1710175 - 1710175      1 
- 1/ 1 212/307  6120 -  6120 1710180 - 1710180      1 
- 1/ 1 213/307  6121 -  6121 1738629 - 1738629      1 
- 1/ 1 214/307  6122 -  6122 1763179 - 1763179      1 
- 1/ 1 215/307  6123 -  6138 1790976 - 1790991     16 
- 1/ 1 216/307  6139 -  6139 1791013 - 1791013      1 
- 1/ 1 217/307  6140 -  6140 1791019 - 1791019      1 
- 1/ 1 218/307  6141 -  6141 1791027 - 1791027      1 
- 1/ 1 219/307  6142 -  6142 1791040 - 1791040      1 
- 1/ 1 220/307  6143 -  6143 1791041 - 1791041      1 
- 1/ 1 221/307  6144 -  6158 1884111 - 1884125     15 
- 1/ 1 222/307  6159 -  6398 1884128 - 1884367    240 
- 1/ 1 223/307  6399 -  6404 1884372 - 1884377      6 
- 1/ 1 224/307  6405 -  6496 1884384 - 1884475     92 
- 1/ 1 225/307  6497 -  6794 1884480 - 1884777    298 
- 1/ 1 226/307  6795 -  7034 1884786 - 1885025    240 
- 1/ 1 227/307  7035 -  7168 1885028 - 1885161    134 
- 1/ 1 228/307  7169 -  7169 1885162 - 1885162      1 
- 1/ 1 229/307  7170 -  7332   59414 -   59576    163 
- 1/ 1 230/307  7333 -  7551   59579 -   59797    219 
- 1/ 1 231/307  7552 -  7632   59799 -   59879     81 
- 1/ 1 232/307  7633 -  7639   59887 -   59893      7 
- 1/ 1 233/307  7640 -  7687   59896 -   59943     48 
- 1/ 1 234/307  7688 -  7814   60642 -   60768    127 
- 1/ 1 235/307  7815 -  7815   60790 -   60790      1 
- 1/ 1 236/307  7816 -  7848   67968 -   68000     33 
- 1/ 1 237/307  7849 -  7868   68672 -   68691     20 
- 1/ 1 238/307  7869 -  7941   69888 -   69960     73 
- 1/ 1 239/307  7942 -  7945   73336 -   73339      4 
- 1/ 1 240/307  7946 -  7959   73439 -   73452     14 
- 1/ 1 241/307  7960 -  7992   99035 -   99067     33 
- 1/ 1 242/307  7993 -  8002  101744 -  101753     10 
- 1/ 1 243/307  8003 -  8012  101755 -  101764     10 
- 1/ 1 244/307  8013 -  8056  101933 -  101976     44 
- 1/ 1 245/307  8057 -  8104  135360 -  135407     48 
- 1/ 1 246/307  8105 -  8168  136064 -  136127     64 
- 1/ 1 247/307  8169 -  8190  139322 -  139343     22 
- 1/ 1 248/307  8191 -  8191  139344 -  139344      1 
- 1/ 1 249/307  8192 -  8210 1839184 - 1839202     19 
- 1/ 1 250/307  8211 -  8222 1839272 - 1839283     12 
- 1/ 1 251/307  8223 -  8229 1839289 - 1839295      7 
- 1/ 1 252/307  8230 -  8310 1839307 - 1839387     81 
- 1/ 1 253/307  8311 -  8360 1839394 - 1839443     50 
- 1/ 1 254/307  8361 -  8484 1839511 - 1839634    124 
- 1/ 1 255/307  8485 -  8505 1839648 - 1839668     21 
- 1/ 1 256/307  8506 -  8531 1839744 - 1839769     26 
- 1/ 1 257/307  8532 -  8552 1839800 - 1839820     21 
- 1/ 1 258/307  8553 -  8557 1840137 - 1840141      5 
- 1/ 1 259/307  8558 -  8560 1840143 - 1840145      3 
- 1/ 1 260/307  8561 -  8562 1840153 - 1840154      2 
- 1/ 1 261/307  8563 -  8563 1840173 - 1840173      1 
- 1/ 1 262/307  8564 -  8564 1840175 - 1840175      1 
- 1/ 1 263/307  8565 -  8568 1840184 - 1840187      4 
- 1/ 1 264/307  8569 -  8571 1840241 - 1840243      3 
- 1/ 1 265/307  8572 -  8572 1840251 - 1840251      1 
- 1/ 1 266/307  8573 -  8573 1840268 - 1840268      1 
- 1/ 1 267/307  8574 -  8585 1840278 - 1840289     12 
- 1/ 1 268/307  8586 -  8586 1840291 - 1840291      1 
- 1/ 1 269/307  8587 -  8588 1840318 - 1840319      2 
- 1/ 1 270/307  8589 -  8590 1840341 - 1840342      2 
- 1/ 1 271/307  8591 -  8595 1840370 - 1840374      5 
- 1/ 1 272/307  8596 -  8599 1840380 - 1840383      4 
- 1/ 1 273/307  8600 -  8613 1840592 - 1840605     14 
- 1/ 1 274/307  8614 -  8615 1841180 - 1841181      2 
- 1/ 1 275/307  8616 -  8616 1841247 - 1841247      1 
- 1/ 1 276/307  8617 -  8618 1841312 - 1841313      2 
- 1/ 1 277/307  8619 -  8621 1841341 - 1841343      3 
- 1/ 1 278/307  8622 -  8622 1841817 - 1841817      1 
- 1/ 1 279/307  8623 -  8629 1841823 - 1841829      7 
- 1/ 1 280/307  8630 -  8643 1841880 - 1841893     14 
- 1/ 1 281/307  8644 -  8671 1841911 - 1841938     28 
- 1/ 1 282/307  8672 -  8682 1842318 - 1842328     11 
- 1/ 1 283/307  8683 -  8704 1842816 - 1842837     22 
- 1/ 1 284/307  8705 -  8706 1843248 - 1843249      2 
- 1/ 1 285/307  8707 -  8709 1843261 - 1843263      3 
- 1/ 1 286/307  8710 -  8711 1843302 - 1843303      2 
- 1/ 1 287/307  8712 -  8714 1843333 - 1843335      3 
- 1/ 1 288/307  8715 -  8715 1843503 - 1843503      1 
- 1/ 1 289/307  8716 -  8788 1843544 - 1843616     73 
- 1/ 1 290/307  8789 -  8806 1843635 - 1843652     18 
- 1/ 1 291/307  8807 -  8807 1843905 - 1843905      1 
- 1/ 1 292/307  8808 -  8829 1845559 - 1845580     22 
- 1/ 1 293/307  8830 -  8887 1845583 - 1845640     58 
- 1/ 1 294/307  8888 -  8936 1845644 - 1845692     49 
- 1/ 1 295/307  8937 -  8949 1845703 - 1845715     13 
- 1/ 1 296/307  8950 -  8979 1845729 - 1845758     30 
- 1/ 1 297/307  8980 -  8989 1845950 - 1845959     10 
- 1/ 1 298/307  8990 -  9007 1846625 - 1846642     18 
- 1/ 1 299/307  9008 -  9030 1850932 - 1850954     23 
- 1/ 1 300/307  9031 -  9051 1851148 - 1851168     21 
- 1/ 1 301/307  9052 -  9061 1851179 - 1851188     10 
- 1/ 1 302/307  9062 -  9092 1851231 - 1851261     31 
- 1/ 1 303/307  9093 -  9187 1851264 - 1851358     95 
- 1/ 1 304/307  9188 -  9188 1851359 - 1851359      1 
- 1/ 1 305/307  9189 -  9189  759303 -  759303      1 
- 1/ 1 306/307  9190 -  9216 1851360 - 1851386     27 
- 1/ 1 307/307  9217 -  9217 1851387 - 1851387      1 
-
---=-=-=--
-
+QlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2Ug
+YXQgICAgICAgICAgIChudWxsKQpJUDogWzxmZmZmZmZmZmEwMTZiZTRiPl0gZXh0NF9tYl9n
+b29kX2dyb3VwKzB4MzkvMHhjZCBbZXh0NF0KUEdEIDEyYWMyMjA2NyBQVUQgMTJkZTVmMDY3
+IFBNRCAwIApPb3BzOiAwMDAwIFsjMV0gU01QIApDUFUgMCAKTW9kdWxlcyBsaW5rZWQgaW46
+IHBhcnBvcnRfcGMgcHBkZXYgbHAgcGFycG9ydCBibmVwIHJmY29tbSBibHVldG9vdGggY3B1
+ZnJlcV9jb25zZXJ2YXRpdmUgY3B1ZnJlcV91c2Vyc3BhY2UgY3B1ZnJlcV9wb3dlcnNhdmUg
+Y3B1ZnJlcV9zdGF0cyB1aW5wdXQgZnVzZSBuZnNkIG5mcyBuZnNfYWNsIGF1dGhfcnBjZ3Nz
+IGZzY2FjaGUgbG9ja2Qgc3VucnBjIGV4dDMgamJkIGV4dDIgbG9vcCBrdm1faW50ZWwga3Zt
+IHNuZF9oZGFfY29kZWNfY29uZXhhbnQgc25kX2hkYV9pbnRlbCBzbmRfaGRhX2NvZGVjIHNu
+ZF9od2RlcCBzbmRfcGNtX29zcyBzbmRfbWl4ZXJfb3NzIHNuZF9wY20gYXJjNCBzbmRfcGFn
+ZV9hbGxvYyBzbmRfc2VxX21pZGkgc25kX3NlcV9taWRpX2V2ZW50IHNuZF9yYXdtaWRpIGl3
+bHdpZmkgc25kX3NlcSBwc21vdXNlIHNuZF9zZXFfZGV2aWNlIGlUQ09fd2R0IHBjc3BrciBz
+ZXJpb19yYXcgc25kX3RpbWVyIGV2ZGV2IGNvcmV0ZW1wIGlUQ09fdmVuZG9yX3N1cHBvcnQg
+aTJjX2k4MDEgbWFjODAyMTEgYmF0dGVyeSB0aGlua3BhZF9hY3BpIGk5MTUgYWNwaV9jcHVm
+cmVxIHRwbV90aXMgbnZyYW0gY2ZnODAyMTEgdHBtIHRwbV9iaW9zIHJma2lsbCBhYyBwb3dl
+cl9zdXBwbHkgc25kIGRybV9rbXNfaGVscGVyIGRybSBtcGVyZiBpMmNfYWxnb19iaXQgd21p
+IGkyY19jb3JlIHZpZGVvIHNvdW5kY29yZSBwcm9jZXNzb3IgYnV0dG9uIGV4dDQgY3JjMTYg
+amJkMiBtYmNhY2hlIHNoYTI1Nl9nZW5lcmljIGNyeXB0ZCBhZXNfeDg2XzY0IGFlc19nZW5l
+cmljIGNiYyBkbV9jcnlwdCBkbV9tb2Qgc2cgc2RfbW9kIGNyY190MTBkaWYgdGhlcm1hbCB0
+aGVybWFsX3N5cyBhaGNpIGxpYmFoY2kgdWhjaV9oY2QgbGliYXRhIGVoY2lfaGNkIHNjc2lf
+bW9kIHVzYmNvcmUgdXNiX2NvbW1vbiBlMTAwMGUgW2xhc3QgdW5sb2FkZWQ6IHNjc2lfd2Fp
+dF9zY2FuXQoKUGlkOiAzODQ4LCBjb21tOiBmaXJlZm94LWJpbiBOb3QgdGFpbnRlZCAzLjIu
+MC0zLWFtZDY0ICMxIExFTk9WTyA3NDY1Q1RPLzc0NjVDVE8KUklQOiAwMDEwOls8ZmZmZmZm
+ZmZhMDE2YmU0Yj5dICBbPGZmZmZmZmZmYTAxNmJlNGI+XSBleHQ0X21iX2dvb2RfZ3JvdXAr
+MHgzOS8weGNkIFtleHQ0XQpSU1A6IDAwMTg6ZmZmZjg4MDEyZGVlZDhjOCAgRUZMQUdTOiAw
+MDAxMDI5MwpSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiBmZmZmODgwMGI4OTI0OGQ4IFJD
+WDogMDAwMDAwMDAwMDAwMDAwMgpSRFg6IGZmZmY4ODAxMmFjNWUwMDAgUlNJOiAwMDAwMDAw
+MDAwMDAwMDU4IFJESTogZmZmZjg4MDEzNjNjMDQwMApSQlA6IDAwMDAwMDAwMDAwMDAxNTgg
+UjA4OiBmZmZmODgwMTE2YTBhNDU4IFIwOTogZmZmZjg4MDExNmEwYTQ1OApSMTA6IGZmZmY4
+ODAxMTZhMGE0NTggUjExOiBmZmZmODgwMTE2YTBhNDU4IFIxMjogMDAwMDAwMDAwMDAwMDAw
+MApSMTM6IDAwMDAwMDAwMDAwMDAwMDAgUjE0OiBmZmZmODgwMTM2M2MwNDAwIFIxNTogMDAw
+MDAwMDAwMDAwMDAwMApGUzogIDAwMDA3ZmE3M2JhZmU3MDAoMDAwMCkgR1M6ZmZmZjg4MDEz
+YmMwMDAwMCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwCkNTOiAgMDAxMCBEUzogMDAw
+MCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMKQ1IyOiAwMDAwMDAwMDAwMDAwMDAw
+IENSMzogMDAwMDAwMDEyZDJjMDAwMCBDUjQ6IDAwMDAwMDAwMDAwNDA2ZjAKRFIwOiAwMDAw
+MDAwMDAwMDAwMDAwIERSMTogMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAw
+MDAKRFIzOiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6IDAw
+MDAwMDAwMDAwMDA0MDAKUHJvY2VzcyBmaXJlZm94LWJpbiAocGlkOiAzODQ4LCB0aHJlYWRp
+bmZvIGZmZmY4ODAxMmRlZWMwMDAsIHRhc2sgZmZmZjg4MDEzMmUyNzFlMCkKU3RhY2s6CmZm
+ZmY4ODAxMTZhMGE0NTggZmZmZjg4MDBiODkyNDhkOCBmZmZmODgwMTMyZTk3ODAwIGZmZmY4
+ODAxMzYzYzA0MDAKMDAwMDAwMDAwMDAwMDAwMCAwMDAwMDAwMDAwMDAwMTUwIDAwMDAwMDAw
+MDAwMDAxNTggZmZmZmZmZmZhMDE2ZDM5NwowMDAwMDAwMzAwMDAwMDAwIGZmZmY4ODAxMzJl
+OTdhZjggMDAwMDAwMDBmZmZmZmZmZiBmZmZmODgwMTMyZTI3MWUwCkNhbGwgVHJhY2U6Cls8
+ZmZmZmZmZmZhMDE2ZDM5Nz5dID8gZXh0NF9tYl9yZWd1bGFyX2FsbG9jYXRvcisweDExMC8w
+eDI2NCBbZXh0NF0KWzxmZmZmZmZmZjgxMDM2NDU3Pl0gPyBzaG91bGRfcmVzY2hlZCsweDUv
+MHgyMwpbPGZmZmZmZmZmYTAxNmU1MGE+XSA/IGV4dDRfbWJfbmV3X2Jsb2NrcysweDFjMi8w
+eDQwMyBbZXh0NF0KWzxmZmZmZmZmZmEwMTY5MDBmPl0gPyBfX2V4dDRfaGFuZGxlX2RpcnR5
+X21ldGFkYXRhKzB4ZDcvMHhlOCBbZXh0NF0KWzxmZmZmZmZmZmEwMTcxZWFiPl0gPyBleHQ0
+X2FsbG9jX2JyYW5jaCsweDFhYi8weDQ2OCBbZXh0NF0KWzxmZmZmZmZmZmEwMTJmYmYxPl0g
+PyBqYmQyX2pvdXJuYWxfc3RvcCsweDIwOS8weDIxYiBbamJkMl0KWzxmZmZmZmZmZmEwMTcy
+OTIyPl0gPyBleHQ0X2luZF9tYXBfYmxvY2tzKzB4Mjg5LzB4NGE2IFtleHQ0XQpbPGZmZmZm
+ZmZmYTAxNDg0YmU+XSA/IGV4dDRfZGFfd3JpdGVfZW5kKzB4MWYxLzB4MjMyIFtleHQ0XQpb
+PGZmZmZmZmZmODEwYmQ1ZDk+XSA/IHJlbGVhc2VfcGFnZXMrMHg2OC8weDE0ZApbPGZmZmZm
+ZmZmODEwYmQ1ZDk+XSA/IHJlbGVhc2VfcGFnZXMrMHg2OC8weDE0ZApbPGZmZmZmZmZmODEx
+YWQwOTk+XSA/IF9fbG9va3VwX3RhZysweGI2LzB4MTIwCls8ZmZmZmZmZmZhMDE0NTYzNz5d
+ID8gZXh0NF9tYXBfYmxvY2tzKzB4MTE0LzB4MWYwIFtleHQ0XQpbPGZmZmZmZmZmODExYWQ4
+MGE+XSA/IHJhZGl4X3RyZWVfZ2FuZ19sb29rdXBfdGFnX3Nsb3QrMHg3Ny8weDk4Cls8ZmZm
+ZmZmZmY4MTBmMzY5Nj5dID8gbWVtX2Nncm91cF9hZGRfbHJ1X2xpc3QrMHhkLzB4YWEKWzxm
+ZmZmZmZmZmEwMTQ4NThkPl0gPyBtcGFnZV9kYV9tYXBfYW5kX3N1Ym1pdCsweDhlLzB4MmY5
+IFtleHQ0XQpbPGZmZmZmZmZmYTAxNDhhZGY+XSA/IHdyaXRlX2NhY2hlX3BhZ2VzX2RhKzB4
+MjE0LzB4MmM1IFtleHQ0XQpbPGZmZmZmZmZmYTAxNDhlMzI+XSA/IGV4dDRfZGFfd3JpdGVw
+YWdlcysweDJhMi8weDQ1YiBbZXh0NF0KWzxmZmZmZmZmZjgxMGI0Y2QwPl0gPyBfX2ZpbGVt
+YXBfZmRhdGF3cml0ZV9yYW5nZSsweDRiLzB4NTAKWzxmZmZmZmZmZmEwMTQxNWFhPl0gPyBl
+eHQ0X3JlbGVhc2VfZmlsZSsweDFiLzB4OTMgW2V4dDRdCls8ZmZmZmZmZmY4MTBmYTMwZD5d
+ID8gZnB1dCsweGY5LzB4MWExCls8ZmZmZmZmZmY4MTBmODAzNj5dID8gZmlscF9jbG9zZSsw
+eDYyLzB4NmEKWzxmZmZmZmZmZjgxMGY4MGNjPl0gPyBzeXNfY2xvc2UrMHg4ZS8weGNiCls8
+ZmZmZmZmZmY4MTM0ZmM5Mj5dID8gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiCkNv
+ZGU6IDUzIDQ4IDg5IGZiIDQxIDUyIDRjIDhiIDc3IDA4IDQ5IDhiIDg2IGIwIDAyIDAwIDAw
+IDRjIDg5IGY3IDQ0IDhiIGI4IDIwIDAzIDAwIDAwIGU4IGZkIGRjIGZmIGZmIDQxIDgzIGZk
+IDAzIDQ5IDg5IGM0IDc2IDAyIDBmIDBiIDw0OD4gOGIgMDAgYTggMDEgNzQgMGUgODkgZWUg
+NGMgODkgZjcgZTggMTggZmUgZmYgZmYgODUgYzAgNzUgNjkgClJJUCAgWzxmZmZmZmZmZmEw
+MTZiZTRiPl0gZXh0NF9tYl9nb29kX2dyb3VwKzB4MzkvMHhjZCBbZXh0NF0KUlNQIDxmZmZm
+ODgwMTJkZWVkOGM4PgpDUjI6IDAwMDAwMDAwMDAwMDAwMDAKLS0tWyBlbmQgdHJhY2UgNGJl
+NzZlNDJmYzY2MDA2YSBdLS0tCg==
+--------------040809040308040305000707--
