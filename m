@@ -1,113 +1,121 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: xfstests: optionally run all tests under quota
-Date: Mon, 5 Nov 2012 20:56:43 +1100
-Message-ID: <20121105095642.GL29378@dastard>
-References: <4B71B6E7.1000203@redhat.com>
- <508ABF0E.70800@sgi.com>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [RFC v4+ hot_track 03/19] vfs: add I/O frequency update
+ function
+Date: Mon, 05 Nov 2012 11:07:05 +0000
+Message-ID: <1352113625.2705.10.camel@menhir>
+References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
+	 <1351485061-12297-4-git-send-email-zwu.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, xfs-oss <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Rich Johnston <rjohnston@sgi.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
+	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
+To: zwu.kernel@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:27114 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751302Ab2KEJ4q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2012 04:56:46 -0500
-Content-Disposition: inline
-In-Reply-To: <508ABF0E.70800@sgi.com>
+Received: from mx1.redhat.com ([209.132.183.28]:19831 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751721Ab2KELHx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Nov 2012 06:07:53 -0500
+In-Reply-To: <1351485061-12297-4-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 26, 2012 at 11:49:18AM -0500, Rich Johnston wrote:
-> On 02/09/2010 01:26 PM, Eric Sandeen wrote:
-> >This patch might be a little heavy handed, but it seems to
-> >work; if you set USE_QUOTA=1 in your environment, all
-> >tests should be run with quota on and enabled.
-> >
-> >This will hopefully help shake out some of the ext4
-> >quota problems, although one needs to keep an eye
-> >on the console to see whether warnings scroll by.
-> >
-> >Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> >
-> >---
-> >
-> >
-> >diff --git a/common.rc b/common.rc
-> >index 6424871..4fde921 100644
-> >--- a/common.rc
-> >+++ b/common.rc
+Hi,
+
+On Mon, 2012-10-29 at 12:30 +0800, zwu.kernel@gmail.com wrote:
+> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
 > 
-> Looks good
+>   Add some util helpers to update access frequencies
+> for one file or its range.
 > 
-> Reviewed-by: Rich Johnston <rjohnston@sgi.com>
+> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+> ---
+>  fs/hot_tracking.c            |  179 ++++++++++++++++++++++++++++++++++++++++++
+>  fs/hot_tracking.h            |    7 ++
+>  include/linux/hot_tracking.h |    2 +
+>  3 files changed, 188 insertions(+), 0 deletions(-)
 > 
-> Eric,
-> 
-> This patch has been committed to
-> git://oss.sgi.com/xfs/cmds/xfstests, master branch, commit ID
-> edd6bcf9.
+> diff --git a/fs/hot_tracking.c b/fs/hot_tracking.c
+> index 68591f0..0a7d9a3 100644
+> --- a/fs/hot_tracking.c
+> +++ b/fs/hot_tracking.c
+> @@ -172,6 +172,137 @@ static void hot_inode_tree_exit(struct hot_info *root)
+>  	}
+>  }
+>  
+> +struct hot_inode_item
+> +*hot_inode_item_find(struct hot_info *root, u64 ino)
+> +{
+> +	struct hot_inode_item *he;
+> +	int ret;
+> +
+> +again:
+> +	spin_lock(&root->lock);
+> +	he = radix_tree_lookup(&root->hot_inode_tree, ino);
+> +	if (he) {
+> +		kref_get(&he->hot_inode.refs);
+> +		spin_unlock(&root->lock);
+> +		return he;
+> +	}
+> +	spin_unlock(&root->lock);
+> +
+> +	he = kmem_cache_zalloc(hot_inode_item_cachep,
+> +				GFP_KERNEL | GFP_NOFS);
+This doesn't look quite right... which of these two did you mean? I
+assume probably just GFP_NOFS
 
-And here's the problem with committing 2 year old patches without
-review:
+> +	if (!he)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	hot_inode_item_init(he, ino, &root->hot_inode_tree);
+> +
+> +	ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
+> +	if (ret) {
+> +		kmem_cache_free(hot_inode_item_cachep, he);
+> +		return ERR_PTR(ret);
+> +	}
+> +
+> +	spin_lock(&root->lock);
+> +	ret = radix_tree_insert(&root->hot_inode_tree, ino, he);
+> +	if (ret == -EEXIST) {
+> +		kmem_cache_free(hot_inode_item_cachep, he);
+> +		spin_unlock(&root->lock);
+> +		radix_tree_preload_end();
+> +		goto again;
+> +	}
+> +	spin_unlock(&root->lock);
+> +	radix_tree_preload_end();
+> +
+> +	kref_get(&he->hot_inode.refs);
+> +	return he;
+> +}
+> +EXPORT_SYMBOL_GPL(hot_inode_item_find);
+> +
+> +static struct hot_range_item
+> +*hot_range_item_find(struct hot_inode_item *he,
+> +			u32 start)
+> +{
+> +	struct hot_range_item *hr;
+> +	int ret;
+> +
+> +again:
+> +	spin_lock(&he->lock);
+> +	hr = radix_tree_lookup(&he->hot_range_tree, start);
+> +	if (hr) {
+> +		kref_get(&hr->hot_range.refs);
+> +		spin_unlock(&he->lock);
+> +		return hr;
+> +	}
+> +	spin_unlock(&he->lock);
+> +
+> +	hr = kmem_cache_zalloc(hot_range_item_cachep,
+> +				GFP_KERNEL | GFP_NOFS);
+Likewise, here too.
 
-$ grep "Can't initialize the DMAPI" [0-9]* | uniq
-142.out.bad:Can't initialize the DMAPI
-143.out.bad:Can't initialize the DMAPI
-144.out.bad:Can't initialize the DMAPI
-145.out.bad:Can't initialize the DMAPI
-146.out.bad:Can't initialize the DMAPI
-147.out.bad:Can't initialize the DMAPI
-150.out.bad:Can't initialize the DMAPI
-155.out.bad:Can't initialize the DMAPI
-156.out.bad:Can't initialize the DMAPI
-157.out.bad:Can't initialize the DMAPI
-158.out.bad:Can't initialize the DMAPI
-161.out.bad:Can't initialize the DMAPI
-168.out.bad:Can't initialize the DMAPI
-175.out.bad:Can't initialize the DMAPI
-176.out.bad:Can't initialize the DMAPI
-185.out.bad:Can't initialize the DMAPI
+Steve.
 
-This breaks the dmapi mount error detection, and hence whether dmapi
-is enabled or not in the kernel. The problem is this:
 
-@@ -251,6 +277,7 @@ _scratch_mount_options()
- _scratch_mount()
- {
-     _mount -t $FSTYP `_scratch_mount_options $*`
-+    _setup_quota $SCRATCH_MNT
- }
- 
 
-means that callers no longer can check is the mount succeeded or not
-by looking at the return of _scratch_mount(). Hence this code:
-
-_dmapi_scratch_mount () {
-    if [ `echo "$MOUNT_OPTIONS" | grep -c dmapi` -gt 0 -o \
-        `echo "$MOUNT_OPTIONS" | grep -c dmi` -gt 0 ] ; then
-        #already got dmapi options set
-        _scratch_mount
-        dmapi_mount_result=$?
-    else
-        _scratch_mount "-o dmapi,mtpt=$SCRATCH_MNT"
-        dmapi_mount_result=$?
-    fi
-
-    if [ $dmapi_mount_result -ne 0 ] ; then
-        _notrun "Assuming DMAPI modules are not loaded"
-    fi
-}
-
-now fails to detect that mounts fail.
-
-Can we revert this commit for now? If we really need this
-functionality someone can fix the original patch and re-propose it...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
