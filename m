@@ -1,38 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 50021] ext4 discard option not working on journal dissabled
- filesystem
-Date: Mon,  5 Nov 2012 18:00:08 +0000 (UTC)
-Message-ID: <20121105180008.AD29811F8EC@bugzilla.kernel.org>
-References: <bug-50021-13602@https.bugzilla.kernel.org/>
+From: "Mr.Evans Thomas Jr" <evansthomas2012@gmail.com>
+Subject: Business Relationship
+Date: Mon, 5 Nov 2012 13:25:02 -0500
+Message-ID: <0103be964870fe0c05f03d76cf634d11.squirrel__7172.35209090195$1352142411$gmane$org@emailmg.netfirms.com>
+Reply-To: mr.evansthomas@rocketmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:55271 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752275Ab2KESAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Nov 2012 13:00:16 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 3552B2022A
-	for <linux-ext4@vger.kernel.org>; Mon,  5 Nov 2012 18:00:11 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id BC1A32019D
-	for <linux-ext4@vger.kernel.org>; Mon,  5 Nov 2012 18:00:08 +0000 (UTC)
-In-Reply-To: <bug-50021-13602@https.bugzilla.kernel.org/>
+Received: from bosmailout08.eigbox.net ([66.96.186.8]:36920 "EHLO
+	bosmailout08.eigbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933108Ab2KETGV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2012 14:06:21 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=50021
 
 
 
+From:Mr.Evans Thomas
+Accra, Ghana.
 
 
---- Comment #4 from Gregory Krzystek <ninex@o2.pl>  2012-11-05 18:00:08 ---
-Thanks guys! :D
-This patch works for me.
+This e-mail is strictly confidential and is for your attention only.I am
+making this venture proposal to you with faith, hoping that you will be
+capable to do this transaction with me in confidence.
 
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+I wish to transfer sum of($38,000,000.00) US Dollars, which belong to the
+director and owner of petrochemical service. He died with out a will,
+through my investigation. However, if you can  be honest with me,please
+send me your phone
+number,your age and  profession; so that I will detail you on how we will
+conclude this  transaction in 5 banking working days
+
+I will give you more information regarding this transaction if you are
+interested.
+
+Yours,
+
+Mr.Evans Thomas
+mr.evansthomas@rocketmail.com
+
