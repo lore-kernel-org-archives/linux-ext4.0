@@ -1,66 +1,105 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/8] fs/ext3/inode.c: drop if around WARN_ON
-Date: Wed, 7 Nov 2012 00:04:27 +0100
-Message-ID: <20121106230427.GB16836@quack.suse.cz>
-References: <1351974625-10282-1-git-send-email-Julia.Lawall@lip6.fr>
- <1351974625-10282-5-git-send-email-Julia.Lawall@lip6.fr>
+From: David Sterba <dave@jikos.cz>
+Subject: Re: [RFC v4+ hot_track 10/19] vfs: introduce hot func register
+ framework
+Date: Wed, 7 Nov 2012 00:14:47 +0100
+Message-ID: <20121106231447.GV3102@twin.jikos.cz>
+References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
+ <1351485061-12297-11-git-send-email-zwu.kernel@gmail.com>
+Reply-To: dave@jikos.cz
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, kernel-janitors@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Julia Lawall <Julia.Lawall@lip6.fr>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
+	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
+To: zwu.kernel@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39767 "EHLO mx2.suse.de"
+Received: from twin.jikos.cz ([89.185.236.188]:50166 "EHLO twin.jikos.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753019Ab2KFXEa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Nov 2012 18:04:30 -0500
+	id S1752613Ab2KFXPI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Nov 2012 18:15:08 -0500
 Content-Disposition: inline
-In-Reply-To: <1351974625-10282-5-git-send-email-Julia.Lawall@lip6.fr>
+In-Reply-To: <1351485061-12297-11-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 03-11-12 21:30:21, Julia Lawall wrote:
-> From: Julia Lawall <Julia.Lawall@lip6.fr>
-> 
-> Just use WARN_ON rather than an if containing only WARN_ON(1).
-> 
-> A simplified version of the semantic patch that makes this transformation
-> is as follows: (http://coccinelle.lip6.fr/)
-> 
-> // <smpl>
-> @@
-> expression e;
-> @@
-> - if (e) WARN_ON(1);
-> + WARN_ON(e);
-> // </smpl>
-> 
-> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-  Thanks. Added into my tree.
+On Mon, Oct 29, 2012 at 12:30:52PM +0800, zwu.kernel@gmail.com wrote:
+> +static struct hot_func_type *hot_func_get(const char *name)
+> +{
+> +	struct hot_func_type *f, *h = &hot_func_def;
+> +
+> +	spin_lock(&hot_func_list_lock);
+> +	list_for_each_entry(f, &hot_func_list, list) {
+> +		if (!strcmp(f->hot_func_name, name))
+> +			h = f;
 
-							Honza
+You probably want to break here
 
-> ---
->  fs/ext3/inode.c |    3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 7e87e37..b176d42 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1071,8 +1071,7 @@ struct buffer_head *ext3_getblk(handle_t *handle, struct inode *inode,
->  	 * mapped. 0 in case of a HOLE.
->  	 */
->  	if (err > 0) {
-> -		if (err > 1)
-> -			WARN_ON(1);
-> +		WARN_ON(err > 1);
->  		err = 0;
->  	}
->  	*errp = err;
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> +	}
+> +	spin_unlock(&hot_func_list_lock);
+> +
+> +	return h;
+> +}
+> +
+> +int hot_func_register(struct hot_func_type *h)
+> +{
+> +	struct hot_func_type *f, *t = NULL;
+> +
+> +	/* register, don't allow duplicate names */
+> +	spin_lock(&hot_func_list_lock);
+> +	list_for_each_entry(f, &hot_func_list, list) {
+> +		if (!strcmp(f->hot_func_name, h->hot_func_name))
+> +			t = f;
+
+if duplicate names are not allowed, then a warning may make sense to
+let us know that something is wrong
+
+> +	}
+> +
+> +	if (t) {
+> +		spin_unlock(&hot_func_list_lock);
+> +		return -EBUSY;
+> +	}
+> +
+> +	list_add_tail(&h->list, &hot_func_list);
+> +	spin_unlock(&hot_func_list_lock);
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL_GPL(hot_func_register);
+> --- a/include/linux/hot_tracking.h
+> +++ b/include/linux/hot_tracking.h
+> @@ -73,6 +75,25 @@ struct hot_range_item {
+>  	u32 len; /* length in bytes */
+>  };
+>  
+> +typedef u64 (hot_rw_freq_calc_fn) (struct timespec old_atime,
+> +			struct timespec cur_time, u64 old_avg);
+> +typedef u32 (hot_temp_calc_fn) (struct hot_freq_data *freq_data);
+> +typedef bool (hot_is_obsolete_fn) (struct hot_freq_data *freq_data);
+
+I'm thinking, whether these typedefs are useful, similar ops structures
+do not introduce them, also when you pick a struct member names exactly
+same as the typedefs:
+
+> +struct hot_func_ops {
+> +	hot_rw_freq_calc_fn *hot_rw_freq_calc_fn;
+> +	hot_temp_calc_fn *hot_temp_calc_fn;
+> +	hot_is_obsolete_fn *hot_is_obsolete_fn;
+> +};
+
+My suggestion is to make the types explicit in the structure.
+
+> +/* identifies an hot func type */
+> +struct hot_func_type {
+> +	char hot_func_name[HOT_NAME_MAX];
+
+'name' would be sufficient IMHO
+
+> +	/* fields provided by specific FS */
+> +	struct hot_func_ops ops;
+> +	struct list_head list;
+> +};
+
+david
