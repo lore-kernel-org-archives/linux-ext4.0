@@ -1,35 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: why has "fix ext4_ext_remove_space tree traversal" not been
- applied?
-Date: Tue, 6 Nov 2012 09:40:25 -0500
-Message-ID: <20121106144025.GA9377@thunk.org>
-References: <20632.64737.272834.202562@fisica.ufpr.br>
- <20121106131751.GA3242@thunk.org>
- <20633.5411.781195.220149@fisica.ufpr.br>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: still got few EXT4-fs errors
+Date: Tue, 06 Nov 2012 22:13:49 +0100
+Message-ID: <50997D8D.40509@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Carlos Carvalho <carlos@fisica.ufpr.br>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:59628 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750905Ab2KFOka (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Nov 2012 09:40:30 -0500
-Content-Disposition: inline
-In-Reply-To: <20633.5411.781195.220149@fisica.ufpr.br>
+Received: from mailout-de.gmx.net ([213.165.64.22]:59430 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751801Ab2KFVNx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Nov 2012 16:13:53 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 06, 2012 at 11:48:19AM -0200, Carlos Carvalho wrote:
-> Sure. I asked because we're having serious problems with a released
-> version (3.5.2), so an available fix should have already been applied
-> somewhere and I didn't recognize it. Dmitry sent the link that shows
-> this is the case. Now we'll go to 3.6.6.
+With kernel 3.6.6-rc1 I got :
 
-3.5.2 is not a long-term stable release, so the last 3.5.x kernel was
-3.5.7 released on 2012-10-12.  See http://www.kernel.org and note the
-'EOL' next to the version.
+n22 ~ # zgrep -e 'EXT4-fs error' -e JBD2 /var/log/messages
+2012-11-05T13:40:44.460+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:933: IO failure
+2012-11-05T13:41:25.982+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:933: IO failure
+2012-11-05T13:41:26.543+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+ext4_mb_generate_buddy:741: group 771, 31096 clusters in bitmap, 31095 =
+in gd
+2012-11-05T13:41:26.543+01:00 n22 kernel: JBD2: Spotted dirty metadata =
+buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
+uption in case of system crash.
+2012-11-05T13:45:02.077+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+ext4_mb_generate_buddy:741: group 1123, 31721 clusters in bitmap, 31720=
+ in gd
+2012-11-05T13:45:02.077+01:00 n22 kernel: JBD2: Spotted dirty metadata =
+buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
+uption in case of system crash.
+2012-11-05T13:54:41.729+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+mb_free_blocks:1300: group 1123, block 36808224:freeing already freed b=
+lock (bit 9760)
+2012-11-05T13:54:41.729+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+mb_free_blocks:1300: group 771, block 25264846:freeing already freed bl=
+ock (bit 718)
 
-Regards,
 
-						- Ted
+It is an almost stable Gentoo Linux 32 bit, booted from an external USB=
+ disk.
+
+What I did at that time was to compile the 3.6.6 final stable kernel.
+
+
+--
+=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
