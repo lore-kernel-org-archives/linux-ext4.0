@@ -1,59 +1,111 @@
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-Subject: still got few EXT4-fs errors
-Date: Tue, 06 Nov 2012 22:13:49 +0100
-Message-ID: <50997D8D.40509@gmx.de>
+From: David Sterba <dave@jikos.cz>
+Subject: Re: [RFC v4+ hot_track 02/19] vfs: initialize and free data
+ structures
+Date: Tue, 6 Nov 2012 23:24:42 +0100
+Message-ID: <20121106222442.GS3102@twin.jikos.cz>
+References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
+ <1351485061-12297-3-git-send-email-zwu.kernel@gmail.com>
+Reply-To: dave@jikos.cz
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
+	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
+To: zwu.kernel@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.22]:59430 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751801Ab2KFVNx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Nov 2012 16:13:53 -0500
+Received: from twin.jikos.cz ([89.185.236.188]:49312 "EHLO twin.jikos.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751561Ab2KFWZS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Nov 2012 17:25:18 -0500
+Content-Disposition: inline
+In-Reply-To: <1351485061-12297-3-git-send-email-zwu.kernel@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With kernel 3.6.6-rc1 I got :
+On Mon, Oct 29, 2012 at 12:30:44PM +0800, zwu.kernel@gmail.com wrote:
+> +/* Frees the entire hot_range_tree. */
+> +static void hot_inode_item_free(struct kref *kref)
+> +{
+> +	struct hot_comm_item *comm_item = container_of(kref,
+> +			struct hot_comm_item, refs);
+> +	struct hot_inode_item *he = container_of(comm_item,
+> +			struct hot_inode_item, hot_inode);
+> +
+> +	hot_range_tree_free(he);
+> +	radix_tree_delete(he->hot_inode_tree, he->i_ino);
 
-n22 ~ # zgrep -e 'EXT4-fs error' -e JBD2 /var/log/messages
-2012-11-05T13:40:44.460+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
-n ext4_new_inode:933: IO failure
-2012-11-05T13:41:25.982+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
-n ext4_new_inode:933: IO failure
-2012-11-05T13:41:26.543+01:00 n22 kernel: EXT4-fs error (device sdb3): =
-ext4_mb_generate_buddy:741: group 771, 31096 clusters in bitmap, 31095 =
-in gd
-2012-11-05T13:41:26.543+01:00 n22 kernel: JBD2: Spotted dirty metadata =
-buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
-uption in case of system crash.
-2012-11-05T13:45:02.077+01:00 n22 kernel: EXT4-fs error (device sdb3): =
-ext4_mb_generate_buddy:741: group 1123, 31721 clusters in bitmap, 31720=
- in gd
-2012-11-05T13:45:02.077+01:00 n22 kernel: JBD2: Spotted dirty metadata =
-buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
-uption in case of system crash.
-2012-11-05T13:54:41.729+01:00 n22 kernel: EXT4-fs error (device sdb3): =
-mb_free_blocks:1300: group 1123, block 36808224:freeing already freed b=
-lock (bit 9760)
-2012-11-05T13:54:41.729+01:00 n22 kernel: EXT4-fs error (device sdb3): =
-mb_free_blocks:1300: group 771, block 25264846:freeing already freed bl=
-ock (bit 718)
+void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 
+and he::i_ino is u64, this will not work when
+sizeof(unsigned long) != sizeof(u64) (iirc this is a known limitation of
+radix tree implementation). This will work on 64bit only, not sure if
+this is intentional.
 
-It is an almost stable Gentoo Linux 32 bit, booted from an external USB=
- disk.
+> +	kmem_cache_free(hot_inode_item_cachep, he);
+> +}
+> +
+> +/* Frees the entire hot_inode_tree. */
+> +static void hot_inode_tree_exit(struct hot_info *root)
+> +{
+> +	struct hot_inode_item *hi_nodes[8];
+> +	u64 ino = 0;
+> +	int i, n;
 
-What I did at that time was to compile the 3.6.6 final stable kernel.
+nitpick, put the declarations on separate lines
 
+> +
+> +	while (1) {
+> +		spin_lock(&root->lock);
+> +		n = radix_tree_gang_lookup(&root->hot_inode_tree,
+> +					   (void **)hi_nodes, ino,
+> +					   ARRAY_SIZE(hi_nodes));
+> +		if (!n) {
+> +			spin_unlock(&root->lock);
+> +			break;
+> +		}
+> +
+> +		ino = hi_nodes[n - 1]->i_ino + 1;
+> +		for (i = 0; i < n; i++)
+> +			hot_inode_item_put(hi_nodes[i]);
+> +		spin_unlock(&root->lock);
+> +	}
+> +}
+> +
+>  /*
+>   * Initialize kmem cache for hot_inode_item and hot_range_item.
+>   */
+> @@ -106,3 +197,36 @@ err:
+>  	kmem_cache_destroy(hot_inode_item_cachep);
+>  }
+>  EXPORT_SYMBOL_GPL(hot_cache_init);
+> +
+> +/*
+> + * Initialize the data structures for hot data tracking.
+> + */
+> +int hot_track_init(struct super_block *sb)
+> +{
+> +	struct hot_info *root;
+> +	int ret = -ENOMEM;
+> +
+> +	root = kzalloc(sizeof(struct hot_info), GFP_NOFS);
+> +	if (!root) {
+> +		printk(KERN_ERR "%s: Failed to malloc memory for "
+> +				"hot_info\n", __func__);
+> +		return ret;
 
---
-=20
-MfG/Sincerely
-Toralf F=C3=B6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+minor: you can drop the variable ret and just reurn ENOMEM here
+
+> +	}
+> +
+> +	sb->s_hot_root = root;
+> +	hot_inode_tree_init(root);
+> +
+> +	printk(KERN_INFO "VFS: Turning on hot data tracking\n");
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL_GPL(hot_track_init);
+
+david
