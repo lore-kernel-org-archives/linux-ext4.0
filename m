@@ -1,57 +1,66 @@
-From: David Sterba <dave@jikos.cz>
-Subject: Re: [RFC v4+ hot_track 05/19] vfs: add hooks to enable hot tracking
-Date: Tue, 6 Nov 2012 23:51:36 +0100
-Message-ID: <20121106225136.GU3102@twin.jikos.cz>
-References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
- <1351485061-12297-6-git-send-email-zwu.kernel@gmail.com>
-Reply-To: dave@jikos.cz
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/8] fs/ext3/inode.c: drop if around WARN_ON
+Date: Wed, 7 Nov 2012 00:04:27 +0100
+Message-ID: <20121106230427.GB16836@quack.suse.cz>
+References: <1351974625-10282-1-git-send-email-Julia.Lawall@lip6.fr>
+ <1351974625-10282-5-git-send-email-Julia.Lawall@lip6.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
-	david@fromorbit.com, tytso@mit.edu, cmm@us.ibm.com,
-	wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
-To: zwu.kernel@gmail.com
+Cc: Jan Kara <jack@suse.cz>, kernel-janitors@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Julia Lawall <Julia.Lawall@lip6.fr>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from twin.jikos.cz ([89.185.236.188]:49825 "EHLO twin.jikos.cz"
+Received: from cantor2.suse.de ([195.135.220.15]:39767 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412Ab2KFWvx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Nov 2012 17:51:53 -0500
+	id S1753019Ab2KFXEa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Nov 2012 18:04:30 -0500
 Content-Disposition: inline
-In-Reply-To: <1351485061-12297-6-git-send-email-zwu.kernel@gmail.com>
+In-Reply-To: <1351974625-10282-5-git-send-email-Julia.Lawall@lip6.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 12:30:47PM +0800, zwu.kernel@gmail.com wrote:
-> --- a/mm/readahead.c
-> +++ b/mm/readahead.c
-> @@ -19,6 +19,7 @@
->  #include <linux/pagemap.h>
->  #include <linux/syscalls.h>
->  #include <linux/file.h>
-> +#include <linux/hot_tracking.h>
->  
->  /*
->   * Initialise a struct file's readahead state.  Assumes that the caller has
-> @@ -138,6 +139,11 @@ static int read_pages(struct address_space *mapping, struct file *filp,
->  out:
->  	blk_finish_plug(&plug);
->  
-> +	/* Hot data tracking */
-> +	hot_update_freqs(mapping->host, (u64)(list_entry(pages->prev,\
-> +				struct page, lru)->index) << PAGE_CACHE_SHIFT,
-> +			(u64)nr_pages * PAGE_CACHE_SIZE, 0);
+On Sat 03-11-12 21:30:21, Julia Lawall wrote:
+> From: Julia Lawall <Julia.Lawall@lip6.fr>
+> 
+> Just use WARN_ON rather than an if containing only WARN_ON(1).
+> 
+> A simplified version of the semantic patch that makes this transformation
+> is as follows: (http://coccinelle.lip6.fr/)
+> 
+> // <smpl>
+> @@
+> expression e;
+> @@
+> - if (e) WARN_ON(1);
+> + WARN_ON(e);
+> // </smpl>
+> 
+> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+  Thanks. Added into my tree.
 
-There's a stale \ at the end of the line, and I find this formatting
-hard to read. Does the following look acceptable?
+							Honza
 
-	hot_update_freqs(mapping->host,
-		(u64)(list_entry(pages->prev, struct page, lru)->index)
-			<< PAGE_CACHE_SHIFT,
-		(u64)nr_pages * PAGE_CACHE_SIZE, 0);
-
-> +
->  	return ret;
->  }
->  
+> ---
+>  fs/ext3/inode.c |    3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 7e87e37..b176d42 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1071,8 +1071,7 @@ struct buffer_head *ext3_getblk(handle_t *handle, struct inode *inode,
+>  	 * mapped. 0 in case of a HOLE.
+>  	 */
+>  	if (err > 0) {
+> -		if (err > 1)
+> -			WARN_ON(1);
+> +		WARN_ON(err > 1);
+>  		err = 0;
+>  	}
+>  	*errp = err;
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
