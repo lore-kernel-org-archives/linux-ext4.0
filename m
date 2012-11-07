@@ -1,58 +1,46 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: What should be the optimum value of G (number-of-groups) when using flex_bg?
-Date: Wed, 7 Nov 2012 05:02:25 -0700
-Message-ID: <701D25F0-1D33-420C-8D5C-C65734E32E13@dilger.ca>
-References: <CAOiN93nrrFHZpcBHih-ySa8FNMdOp4gTgzjVPXWKPYSABgHMMw@mail.gmail.com> <CAOiN93nGvYNZUiNRq23ThDU+sYmooAgjjTfYode3vdXna2E7fg@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 45621] Kernel ooops: BUG: unable to handle kernel paging
+ request at 000000080000001c
+Date: Wed,  7 Nov 2012 12:42:49 +0000 (UTC)
+Message-ID: <20121107124249.2BD4511FB6C@bugzilla.kernel.org>
+References: <bug-45621-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:12812 "EHLO
-	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750745Ab2KGMC0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 07:02:26 -0500
-In-Reply-To: <CAOiN93nGvYNZUiNRq23ThDU+sYmooAgjjTfYode3vdXna2E7fg@mail.gmail.com>
+Received: from mail.kernel.org ([198.145.19.201]:35455 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753242Ab2KGMmx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Nov 2012 07:42:53 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id E9BD02023E
+	for <linux-ext4@vger.kernel.org>; Wed,  7 Nov 2012 12:42:51 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 58B2820241
+	for <linux-ext4@vger.kernel.org>; Wed,  7 Nov 2012 12:42:49 +0000 (UTC)
+In-Reply-To: <bug-45621-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-11-05, at 9:36 PM, Ashish Sangwan wrote:
-> We have a 2TB HDD which we formated using default options of mkfs.ext4(v1.42.6).
-> I took around ~15 seconds to complete this operation.
-> 
-> Than we formatted the same partition with "-G 1024" and there was
-> around 30% performance improvement in
-> the mkfs.ext4 timings.
-> 
-> Than, out of curiosity, we increased the G's value to 1048576 and
-> there was a drastic degradation in the performance of mkfs.ext4.
-> It took more than 5 minutes to complete the execution.
-> 
-> Is it the expected behavior?
-
-The optimum number is very workload specific.  We use "-G 256" and
-a few other options so that the number of metadata blocks per group
-is a multiple of 1MB and aligned on 1MB boundaries.  This is for
-optimized IO on RAID-6 storage that has good IO performance with 1MB
-chunk sizes.
-
-> AFAIK flex_bg is on by default with G's vaule as 16. Can we consider
-> this the optimum value?
-> 
-> Any suggesstions on what  we can set the Gs value for a 2TB HDD such
-> that both the FS and the
-> mkfs.ext4 gives optimum performance?
-> It would be really helpful if somebody can shed some light over this feature.
-> 
-> Thanks,
-> Ashish
+https://bugzilla.kernel.org/show_bug.cgi?id=45621
 
 
-Cheers, Andreas
+Dmitry Monakhov <dmonakhov@openvz.org> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |dmonakhov@openvz.org
 
 
 
 
+--- Comment #8 from Dmitry Monakhov <dmonakhov@openvz.org>  2012-11-07 12:42:48 ---
+So you use raiser4(which is known to have such type of corruption) and
+wondering that other parts of dcache becomes corrupted? Have you ever reproduce
+this w/o raiser4-pc ? I'm pretty sure that his is raiser's bug and absolutely
+not related with ext4
 
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
