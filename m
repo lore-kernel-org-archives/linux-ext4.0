@@ -1,45 +1,37 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v4+ hot_track 16/19] btrfs: add hot tracking support
-Date: Wed, 7 Nov 2012 16:03:55 +0800
-Message-ID: <CAEH94LhVSXEuqSGgj+Hrce4FLa_Pr8CKabk1GYpfw9z-Cm8uhg@mail.gmail.com>
-References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
-	<1351485061-12297-17-git-send-email-zwu.kernel@gmail.com>
-	<20121107000025.GY3102@twin.jikos.cz>
+From: "kaefert@gmail.com" <kaefert@gmail.com>
+Subject: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
+ Checksum for group .. failed
+Date: Wed, 7 Nov 2012 09:23:22 +0100
+Message-ID: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: dave@jikos.cz, zwu.kernel@gmail.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
-	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
-	cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:49394 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751285Ab2KGID5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 03:03:57 -0500
-In-Reply-To: <20121107000025.GY3102@twin.jikos.cz>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:54850 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751380Ab2KGIXo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 03:23:44 -0500
+Received: by mail-ee0-f46.google.com with SMTP id b15so737088eek.19
+        for <linux-ext4@vger.kernel.org>; Wed, 07 Nov 2012 00:23:43 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 7, 2012 at 8:00 AM, David Sterba <dave@jikos.cz> wrote:
-> On Mon, Oct 29, 2012 at 12:30:58PM +0800, zwu.kernel@gmail.com wrote:
->> From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
->>
->>   Introduce one new mount option '-o hot_track',
->> and add its parsing support.
->>   Its usage looks like:
->>    mount -o hot_track
->>    mount -o nouser,hot_track
->>    mount -o nouser,hot_track,loop
->>    mount -o hot_track,nouser
->>
->> Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
-> Reviewed-by: David Sterba <dsterba@suse.cz>
-thanks for your review.
+Hi there!
 
+I've got this problem with an ext4 filesystem on an external usb disk
+of mine, I've documented the problem (and my approaches for solving
+it) here:
+http://serverfault.com/questions/446074/e2fsck-extremly-slow-although-enough-memory-exists
 
+I started gparted and with it e2fsck is around 2012-11-04_2200 and its
+2012-11-07_0923 right now (CET).
+It used up nearly 57 hours of cpu time since then, and I would like to
+find out if and when it will finish.
+Can somebody tell me if and how I could get this information?
 
--- 
-Regards,
+Thanks for developing this great filesystem, and thanks for helping me
+out in my hour[s ;)] of need.
 
-Zhi Yong Wu
+Kind Regards,
+
+Thomas K.
