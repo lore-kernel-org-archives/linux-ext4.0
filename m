@@ -1,123 +1,103 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [PATCH] ext4: add hot tracking support
-Date: Wed, 7 Nov 2012 16:37:12 +0800
-Message-ID: <CAEH94LiCpZ8tZPfwvU5E-F5HaNN8UH+11a8dNVrEKzsTKsjfbg@mail.gmail.com>
-References: <1351177747-19389-1-git-send-email-zwu.kernel@gmail.com>
-	<1351416170-3735-1-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: [PATCH] xfs: add hot tracking support.
+Date: Wed, 7 Nov 2012 16:38:23 +0800
+Message-ID: <CAEH94LjKg78Fm=xROhHsrZkSMUFhJMWeec1b87e8jLh9cMzMGw@mail.gmail.com>
+References: <1349863655-29320-1-git-send-email-zwu.kernel@gmail.com>
+	<20121016000405.GA2864@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1351416170-3735-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxram@linux.vnet.ibm.com, viro@zeniv.linux.org.uk,
+	dave@jikos.cz, tytso@mit.edu, cmm@us.ibm.com,
+	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:57649 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752353Ab2KGIiZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 03:38:25 -0500
+In-Reply-To: <20121016000405.GA2864@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-HI, Zheng,
+HI, Dave,
 
 I guess that you should add some hot tracking stuff in some
-ext4_show_xxx function, right?
+xfs_show_xxx function, right?
 
-On Sun, Oct 28, 2012 at 5:22 PM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Oct 16, 2012 at 8:04 AM, Dave Chinner <david@fromorbit.com> wrote:
 >
-> Define a new mount option to add VFS hot tracking support in order to use it in
-> ext4.
+> From: Dave Chinner <dchinner@redhat.com>
 >
-> CC: Zhi Yong Wu <zwu.kernel@gmail.com>
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Connect up the VFS hot tracking support so XFS filesystems can make
+> use of it.
+>
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
 > ---
-> Hi Zhiyong,
+>  fs/xfs/xfs_mount.h |    1 +
+>  fs/xfs/xfs_super.c |    9 +++++++++
+>  2 files changed, 10 insertions(+)
 >
-> Here is a try to add hot tracking support in ext4.  I do some simple tests and
-> it works well.
->
-> Regards,
-> Zheng
->
->  fs/ext4/ext4.h  |  3 +++
->  fs/ext4/super.c | 15 ++++++++++++++-
->  2 files changed, 17 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 3c20de1..f6cff1e 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1298,6 +1298,9 @@ struct ext4_sb_info {
->
->         /* Precomputed FS UUID checksum for seeding other checksums */
->         __u32 s_csum_seed;
-> +
-> +       /* Enable hot tracking or not */
-> +       int s_hottrack_enable;
->  };
->
->  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 80928f7..1506dc3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -43,6 +43,7 @@
->
+> diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
+> index a631ca3..d5e7277 100644
+> --- a/fs/xfs/xfs_mount.h
+> +++ b/fs/xfs/xfs_mount.h
+> @@ -215,6 +215,7 @@ typedef struct xfs_mount {
+>  #define XFS_MOUNT_WSYNC                (1ULL << 0)     /* for nfs - all metadata ops
+>                                                    must be synchronous except
+>                                                    for space allocations */
+> +#define XFS_MOUNT_HOTTRACK     (1ULL << 1)     /* hot inode tracking */
+>  #define XFS_MOUNT_WAS_CLEAN    (1ULL << 3)
+>  #define XFS_MOUNT_FS_SHUTDOWN  (1ULL << 4)     /* atomic stop of all filesystem
+>                                                    operations, typically for
+> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> index 56c2537..17786ff 100644
+> --- a/fs/xfs/xfs_super.c
+> +++ b/fs/xfs/xfs_super.c
+> @@ -61,6 +61,7 @@
 >  #include <linux/kthread.h>
 >  #include <linux/freezer.h>
+>  #include <linux/parser.h>
 > +#include <linux/hot_tracking.h>
 >
->  #include "ext4.h"
->  #include "ext4_extents.h"
-> @@ -864,6 +865,8 @@ static void ext4_put_super(struct super_block *sb)
->         ext4_ext_release(sb);
->         ext4_xattr_put_super(sb);
+>  static const struct super_operations xfs_super_operations;
+>  static kmem_zone_t *xfs_ioend_zone;
+> @@ -114,6 +115,7 @@ mempool_t *xfs_ioend_pool;
+>  #define MNTOPT_NODELAYLOG  "nodelaylog"        /* Delayed logging disabled */
+>  #define MNTOPT_DISCARD    "discard"    /* Discard unused blocks */
+>  #define MNTOPT_NODISCARD   "nodiscard" /* Do not discard unused blocks */
+> +#define MNTOPT_HOTTRACK        "hot_track"     /* hot inode tracking */
 >
-> +       if (sbi->s_hottrack_enable)
+>  /*
+>   * Table driven mount option parser.
+> @@ -371,6 +373,8 @@ xfs_parseargs(
+>                         mp->m_flags |= XFS_MOUNT_DISCARD;
+>                 } else if (!strcmp(this_char, MNTOPT_NODISCARD)) {
+>                         mp->m_flags &= ~XFS_MOUNT_DISCARD;
+> +               } else if (!strcmp(this_char, MNTOPT_HOTTRACK)) {
+> +                       mp->m_flags |= XFS_MOUNT_HOTTRACK;
+>                 } else if (!strcmp(this_char, "ihashsize")) {
+>                         xfs_warn(mp,
+>         "ihashsize no longer used, option is deprecated.");
+> @@ -1040,6 +1044,9 @@ xfs_fs_put_super(
+>  {
+>         struct xfs_mount        *mp = XFS_M(sb);
+>
+> +       if (mp->m_flags & XFS_MOUNT_HOTTRACK)
 > +               hot_track_exit(sb);
->         if (!(sb->s_flags & MS_RDONLY)) {
->                 EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
->                 es->s_state = cpu_to_le16(sbi->s_mount_state);
-> @@ -1222,7 +1225,7 @@ enum {
->         Opt_inode_readahead_blks, Opt_journal_ioprio,
->         Opt_dioread_nolock, Opt_dioread_lock,
->         Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
-> -       Opt_max_dir_size_kb,
-> +       Opt_max_dir_size_kb, Opt_hottrack,
->  };
+> +
+>         xfs_filestream_unmount(mp);
+>         xfs_unmountfs(mp);
 >
->  static const match_table_t tokens = {
-> @@ -1297,6 +1300,7 @@ static const match_table_t tokens = {
->         {Opt_init_itable, "init_itable"},
->         {Opt_noinit_itable, "noinit_itable"},
->         {Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
-> +       {Opt_hottrack, "hot_track"},
->         {Opt_removed, "check=none"},    /* mount option from ext2/3 */
->         {Opt_removed, "nocheck"},       /* mount option from ext2/3 */
->         {Opt_removed, "reservation"},   /* mount option from ext2/3 */
-> @@ -1478,6 +1482,7 @@ static const struct mount_opts {
->         {Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
->         {Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
->         {Opt_max_dir_size_kb, 0, MOPT_GTE0},
-> +       {Opt_hottrack, 0, MOPT_GTE0},
->         {Opt_err, 0, 0}
->  };
+> @@ -1470,6 +1477,8 @@ xfs_fs_fill_super(
+>                 error = ENOMEM;
+>                 goto out_unmount;
+>         }
+> +       if (mp->m_flags & XFS_MOUNT_HOTTRACK)
+> +               hot_track_init(sb);
 >
-> @@ -1595,6 +1600,14 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->                         sbi->s_li_wait_mult = arg;
->                 } else if (token == Opt_max_dir_size_kb) {
->                         sbi->s_max_dir_size_kb = arg;
-> +               } else if (token == Opt_hottrack) {
-> +                       if (hot_track_init(sb)) {
-> +                               ext4_msg(sb, KERN_ERR,
-> +                                        "EXT4-fs: hot tracking initialization"
-> +                                        " failed");
-> +                               return -1;
-> +                       }
-> +                       sbi->s_hottrack_enable = 1;
->                 } else if (token == Opt_stripe) {
->                         sbi->s_stripe = arg;
->                 } else if (m->flags & MOPT_DATAJ) {
-> --
-> 1.7.12.rc2.18.g61b472e
+>         return 0;
 >
 
 
