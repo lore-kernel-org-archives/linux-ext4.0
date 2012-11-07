@@ -1,40 +1,58 @@
-From: "Buyink, Juliette" <J.Buyink@msc20.nyenrode.nl>
-Subject: Erneut validieren Ihre Mailbox
-Date: Wed, 7 Nov 2012 11:22:24 +0100
-Message-ID: <B907608D688DA64B84A55D845DDD03910AC3A3D105AC@exnr01.ba.nyenrode.campus>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: What should be the optimum value of G (number-of-groups) when using flex_bg?
+Date: Wed, 7 Nov 2012 05:02:25 -0700
+Message-ID: <701D25F0-1D33-420C-8D5C-C65734E32E13@dilger.ca>
+References: <CAOiN93nrrFHZpcBHih-ySa8FNMdOp4gTgzjVPXWKPYSABgHMMw@mail.gmail.com> <CAOiN93nGvYNZUiNRq23ThDU+sYmooAgjjTfYode3vdXna2E7fg@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Namjae Jeon <linkinjeon@gmail.com>, linux-ext4@vger.kernel.org
+To: Ashish Sangwan <ashishsangwan2@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exchange.nyenrode.nl ([192.87.113.5]:11794 "EHLO
-	exchange.nyenrode.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752348Ab2KGK1o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 05:27:44 -0500
-Content-Language: en-US
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:12812 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750745Ab2KGMC0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 07:02:26 -0500
+In-Reply-To: <CAOiN93nGvYNZUiNRq23ThDU+sYmooAgjjTfYode3vdXna2E7fg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sie haben das Limit Ihrer Mailbox von unseren IT Service =FCbertroffen,=
- und jetzt kannst du nicht empfangen alle eingehenden E-Mails und auch =
-einige von Ihren ausgehenden E-Mails werden nicht zugestellt werden und=
- schlie=DFlich, Ihr Konto wird "de-aktiviert" innerhalb von 24 Stunden =
-ab jetzt. Um dies zu verhindern, sollten Sie auf den Link unten, um Ihr=
- Konto zur=FCckzusetzen klicken.
+On 2012-11-05, at 9:36 PM, Ashish Sangwan wrote:
+> We have a 2TB HDD which we formated using default options of mkfs.ext4(v1.42.6).
+> I took around ~15 seconds to complete this operation.
+> 
+> Than we formatted the same partition with "-G 1024" and there was
+> around 30% performance improvement in
+> the mkfs.ext4 timings.
+> 
+> Than, out of curiosity, we increased the G's value to 1048576 and
+> there was a drastic degradation in the performance of mkfs.ext4.
+> It took more than 5 minutes to complete the execution.
+> 
+> Is it the expected behavior?
 
-https://docs.google.com/spreadsheet/viewform?formkey=3DdEt6RnNyTGFRS0d3=
-MENBSXp5bllYckE6MQ
+The optimum number is very workload specific.  We use "-G 256" and
+a few other options so that the number of metadata blocks per group
+is a multiple of 1MB and aligned on 1MB boundaries.  This is for
+optimized IO on RAID-6 storage that has good IO performance with 1MB
+chunk sizes.
 
-Gelingt dies nicht, wird nur begrenzten Zugang zu Ihrem Postfach f=FChr=
-en, w=E4hrend Ihr Konto bleibt IN-ACTIVE innerhalb der n=E4chsten 24 St=
-unden.
+> AFAIK flex_bg is on by default with G's vaule as 16. Can we consider
+> this the optimum value?
+> 
+> Any suggesstions on what  we can set the Gs value for a 2TB HDD such
+> that both the FS and the
+> mkfs.ext4 gives optimum performance?
+> It would be really helpful if somebody can shed some light over this feature.
+> 
+> Thanks,
+> Ashish
 
-Vielen Dank, dass Sie uns Sie besser bedienen!
-Regards,
-Management.
-Upgrade-Abteilung.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Cheers, Andreas
+
+
+
+
+
