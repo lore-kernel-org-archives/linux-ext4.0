@@ -1,10 +1,10 @@
 From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: [RFC v4+ hot_track 02/19] vfs: initialize and free data structures
-Date: Wed, 7 Nov 2012 14:55:55 +0800
-Message-ID: <CAEH94LjG8QescsBd9D5jS_nVMkjpXah9imSjty+T-vBu1WNuuw@mail.gmail.com>
+Subject: Re: [RFC v4+ hot_track 03/19] vfs: add I/O frequency update function
+Date: Wed, 7 Nov 2012 15:03:54 +0800
+Message-ID: <CAEH94LiZ5CCfNq8xhmCU5vz1cZBd3EZ-U+Q+cBAaOUYPFMAKbw@mail.gmail.com>
 References: <1351485061-12297-1-git-send-email-zwu.kernel@gmail.com>
-	<1351485061-12297-3-git-send-email-zwu.kernel@gmail.com>
-	<20121106222442.GS3102@twin.jikos.cz>
+	<1351485061-12297-4-git-send-email-zwu.kernel@gmail.com>
+	<20121106223704.GT3102@twin.jikos.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 To: dave@jikos.cz, zwu.kernel@gmail.com, linux-fsdevel@vger.kernel.org,
@@ -12,104 +12,115 @@ To: dave@jikos.cz, zwu.kernel@gmail.com, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linuxram@linux.vnet.ibm.com,
 	viro@zeniv.linux.org.uk, david@fromorbit.com, tytso@mit.edu,
 	cmm@us.ibm.com, wuzhy@linux.vnet.ibm.com, wenqing.lz@taobao.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:65116 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143Ab2KGGz5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2012 01:55:57 -0500
-In-Reply-To: <20121106222442.GS3102@twin.jikos.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20121106223704.GT3102@twin.jikos.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 7, 2012 at 6:24 AM, David Sterba <dave@jikos.cz> wrote:
-> On Mon, Oct 29, 2012 at 12:30:44PM +0800, zwu.kernel@gmail.com wrote:
->> +/* Frees the entire hot_range_tree. */
->> +static void hot_inode_item_free(struct kref *kref)
+On Wed, Nov 7, 2012 at 6:37 AM, David Sterba <dave@jikos.cz> wrote:
+> On Mon, Oct 29, 2012 at 12:30:45PM +0800, zwu.kernel@gmail.com wrote:
+>> --- a/fs/hot_tracking.c
+>> +++ b/fs/hot_tracking.c
+>> +struct hot_inode_item
+>> +*hot_inode_item_find(struct hot_info *root, u64 ino)
 >> +{
->> +     struct hot_comm_item *comm_item = container_of(kref,
->> +                     struct hot_comm_item, refs);
->> +     struct hot_inode_item *he = container_of(comm_item,
->> +                     struct hot_inode_item, hot_inode);
+>> +     struct hot_inode_item *he;
+>> +     int ret;
 >> +
->> +     hot_range_tree_free(he);
->> +     radix_tree_delete(he->hot_inode_tree, he->i_ino);
->
-> void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
->
-> and he::i_ino is u64, this will not work when
-> sizeof(unsigned long) != sizeof(u64) (iirc this is a known limitation of
-> radix tree implementation). This will work on 64bit only, not sure if
-> this is intentional.
-i actually also realized this. Do you have a better way to handle this?
->
->> +     kmem_cache_free(hot_inode_item_cachep, he);
->> +}
->> +
->> +/* Frees the entire hot_inode_tree. */
->> +static void hot_inode_tree_exit(struct hot_info *root)
->> +{
->> +     struct hot_inode_item *hi_nodes[8];
->> +     u64 ino = 0;
->> +     int i, n;
->
-> nitpick, put the declarations on separate lines
-Will it have any issue? It has passed the check of checkpatch.pl.
-
->
->> +
->> +     while (1) {
->> +             spin_lock(&root->lock);
->> +             n = radix_tree_gang_lookup(&root->hot_inode_tree,
->> +                                        (void **)hi_nodes, ino,
->> +                                        ARRAY_SIZE(hi_nodes));
->> +             if (!n) {
->> +                     spin_unlock(&root->lock);
->> +                     break;
->> +             }
->> +
->> +             ino = hi_nodes[n - 1]->i_ino + 1;
->> +             for (i = 0; i < n; i++)
->> +                     hot_inode_item_put(hi_nodes[i]);
+>> +again:
+>> +     spin_lock(&root->lock);
+>> +     he = radix_tree_lookup(&root->hot_inode_tree, ino);
+>> +     if (he) {
+>> +             kref_get(&he->hot_inode.refs);
 >> +             spin_unlock(&root->lock);
+>> +             return he;
 >> +     }
+>> +     spin_unlock(&root->lock);
+>> +
+>> +     he = kmem_cache_zalloc(hot_inode_item_cachep,
+>> +                             GFP_KERNEL | GFP_NOFS);
+>> +     if (!he)
+>> +             return ERR_PTR(-ENOMEM);
+>> +
+>> +     hot_inode_item_init(he, ino, &root->hot_inode_tree);
+>> +
+>> +     ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
+>> +     if (ret) {
+>> +             kmem_cache_free(hot_inode_item_cachep, he);
+>
+>                 radix_tree_preload_end()
+>
+>> +             return ERR_PTR(ret);
+>> +     }
+>> +
+>> +     spin_lock(&root->lock);
+>> +     ret = radix_tree_insert(&root->hot_inode_tree, ino, he);
+>> +     if (ret == -EEXIST) {
+>> +             kmem_cache_free(hot_inode_item_cachep, he);
+>> +             spin_unlock(&root->lock);
+>> +             radix_tree_preload_end();
+>> +             goto again;
+>> +     }
+>> +     spin_unlock(&root->lock);
+>> +     radix_tree_preload_end();
+>> +
+>> +     kref_get(&he->hot_inode.refs);
+>> +     return he;
 >> +}
+>> +EXPORT_SYMBOL_GPL(hot_inode_item_find);
 >> +
->>  /*
->>   * Initialize kmem cache for hot_inode_item and hot_range_item.
->>   */
->> @@ -106,3 +197,36 @@ err:
->>       kmem_cache_destroy(hot_inode_item_cachep);
->>  }
->>  EXPORT_SYMBOL_GPL(hot_cache_init);
->> +
->> +/*
->> + * Initialize the data structures for hot data tracking.
->> + */
->> +int hot_track_init(struct super_block *sb)
+>> +static struct hot_range_item
+>> +*hot_range_item_find(struct hot_inode_item *he,
+>> +                     u32 start)
 >> +{
->> +     struct hot_info *root;
->> +     int ret = -ENOMEM;
+>> +     struct hot_range_item *hr;
+>> +     int ret;
 >> +
->> +     root = kzalloc(sizeof(struct hot_info), GFP_NOFS);
->> +     if (!root) {
->> +             printk(KERN_ERR "%s: Failed to malloc memory for "
->> +                             "hot_info\n", __func__);
->> +             return ret;
+>> +again:
+>> +     spin_lock(&he->lock);
+>> +     hr = radix_tree_lookup(&he->hot_range_tree, start);
+>> +     if (hr) {
+>> +             kref_get(&hr->hot_range.refs);
+>> +             spin_unlock(&he->lock);
+>> +             return hr;
+>> +     }
+>> +     spin_unlock(&he->lock);
+>> +
+>> +     hr = kmem_cache_zalloc(hot_range_item_cachep,
+>> +                             GFP_KERNEL | GFP_NOFS);
+>> +     if (!hr)
+>> +             return ERR_PTR(-ENOMEM);
+>> +
+>> +     hot_range_item_init(hr, start, he);
+>> +
+>> +     ret = radix_tree_preload(GFP_NOFS & ~__GFP_HIGHMEM);
+>> +     if (ret) {
+>> +             kmem_cache_free(hot_range_item_cachep, hr);
 >
-> minor: you can drop the variable ret and just reurn ENOMEM here
-This variable will also be used in the following patches.
-
+>                 radix_tree_preload_end()
+I checked some kernel existing cases about the usage of
+radix_tree_preload(), it seems that when radix_tree_preload() fail,
+its error handling doesn't need call radix_tree_preload_end() any
+more.
 >
+>> +             return ERR_PTR(ret);
 >> +     }
 >> +
->> +     sb->s_hot_root = root;
->> +     hot_inode_tree_init(root);
+>> +     spin_lock(&he->lock);
+>> +     ret = radix_tree_insert(&he->hot_range_tree, start, hr);
+>> +     if (ret == -EEXIST) {
+>> +             kmem_cache_free(hot_range_item_cachep, hr);
+>> +             spin_unlock(&he->lock);
+>> +             radix_tree_preload_end();
+ditto.
+>> +             goto again;
+>> +     }
+>> +     spin_unlock(&he->lock);
+>> +     radix_tree_preload_end();
 >> +
->> +     printk(KERN_INFO "VFS: Turning on hot data tracking\n");
->> +
->> +     return 0;
+>> +     kref_get(&hr->hot_range.refs);
+>> +     return hr;
 >> +}
->> +EXPORT_SYMBOL_GPL(hot_track_init);
 >
 > david
 
