@@ -1,32 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix overhead calculations in ext4_stats, again
-Date: Thu, 8 Nov 2012 10:34:31 -0500
-Message-ID: <20121108153431.GA766@thunk.org>
-References: <50896FD6.1010807@redhat.com>
+Subject: Re: [PATCH 2/2 v2] ext4: add a variable to record the value of
+ map->m_flags in tracepoint
+Date: Thu, 8 Nov 2012 14:34:45 -0500
+Message-ID: <20121108193445.GI19977@thunk.org>
+References: <1350390934-3101-1-git-send-email-wenqing.lz@taobao.com>
+ <1350390934-3101-2-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60072 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60080 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756768Ab2KHWLB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Nov 2012 17:11:01 -0500
+	id S1757143Ab2KHWLC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Nov 2012 17:11:02 -0500
 Content-Disposition: inline
-In-Reply-To: <50896FD6.1010807@redhat.com>
+In-Reply-To: <1350390934-3101-2-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 25, 2012 at 11:59:02AM -0500, Eric Sandeen wrote:
-> "overhead" was a write-only variable in this function after commit
-> 952fc18e; we set it to 0 for minixdf, or to sbi->s_overhead if !minixdf,
-> but never read it again after that.
+On Tue, Oct 16, 2012 at 08:35:34PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> We need to use it, not sbi->s_overhead, when subtracting out overhead
-> for f_blocks, or we get the wrong answer for minixdf.
+> When we use trace_ext4_ext/ind_map_blocks_exit, we will print the value of
+> map->m_flags in order that we can understand what currently status is.
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> CC: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
