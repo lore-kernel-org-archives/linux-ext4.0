@@ -1,39 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Remove VLAIS usage from JBD2 code
-Date: Thu, 8 Nov 2012 10:53:07 -0500
-Message-ID: <20121108155307.GB766@thunk.org>
-References: <1351622404-18214-1-git-send-email-behanw@converseincode.com>
- <1351622404-18214-2-git-send-email-behanw@converseincode.com>
- <20121030191307.GC19576@blackbox.djwong.org>
+Subject: Re: [PATCH] ext4: fix overhead calculations in ext4_stats, again
+Date: Thu, 8 Nov 2012 10:34:31 -0500
+Message-ID: <20121108153431.GA766@thunk.org>
+References: <50896FD6.1010807@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Behan Webster <behanw@converseincode.com>,
-	linux-ext4@vger.kernel.org, Mark Charlebois <charlebm@gmail.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60082 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60072 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757146Ab2KHWLC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Nov 2012 17:11:02 -0500
+	id S1756768Ab2KHWLB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Nov 2012 17:11:01 -0500
 Content-Disposition: inline
-In-Reply-To: <20121030191307.GC19576@blackbox.djwong.org>
+In-Reply-To: <50896FD6.1010807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hey Darrick,
+On Thu, Oct 25, 2012 at 11:59:02AM -0500, Eric Sandeen wrote:
+> "overhead" was a write-only variable in this function after commit
+> 952fc18e; we set it to 0 for minixdf, or to sbi->s_overhead if !minixdf,
+> but never read it again after that.
+> 
+> We need to use it, not sbi->s_overhead, when subtracting out overhead
+> for f_blocks, or we get the wrong answer for minixdf.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-I was looking at this code a bit more closely while applying the
-revised version of this patch --- and this in particular raised a red
-flag for me:
+Thanks, applied.
 
-     *(u32 *)desc.ctx = crc;
-     	   ...
-     return *(u32 *)desc.ctx;
-
-Does this raise any byte swapping issues?  Looking at how the crc32
-code in crypto/ works, I'm almost certain this is broken on big-endian
-systems, and we need to add le32_to_cup() and cpu_to_le32() calls here.
-
-Am I missing something?
-
-	     	     	    		  - Ted
+					- Ted
