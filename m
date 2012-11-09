@@ -1,51 +1,69 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Prevent race while waling extent tree
-Date: Fri, 9 Nov 2012 10:19:52 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1211091018340.19842@dhcp-1-104.brq.redhat.com>
-References: <1352372929-18513-1-git-send-email-lczerner@redhat.com> <20121108215233.GB1282@lenny.home.zabbo.net>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Zach Brown <zab@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH v2] ext4: Prevent race while waling extent tree
+Date: Fri,  9 Nov 2012 11:38:53 +0100
+Message-ID: <1352457533-11642-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, zab@redhat.com, dmonakhov@openvz.org,
+	Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58825 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10296 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750881Ab2KIJT7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Nov 2012 04:19:59 -0500
-In-Reply-To: <20121108215233.GB1282@lenny.home.zabbo.net>
+	id S1752104Ab2KIKjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Nov 2012 05:39:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 8 Nov 2012, Zach Brown wrote:
+Currently ext4_ext_walk_space() only takes i_data_sem for read when
+searching for the extent at given block with ext4_ext_find_extent().
+Then it drops the lock and the extent tree can be changed at will.
+However later on we're searching for the 'next' extent, but the extent
+tree might already have changed, so the information might not be
+accurate.
 
-> Date: Thu, 8 Nov 2012 13:52:33 -0800
-> From: Zach Brown <zab@redhat.com>
-> To: Lukas Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-> Subject: Re: [PATCH] ext4: Prevent race while waling extent tree
-> 
-> On Thu, Nov 08, 2012 at 12:08:49PM +0100, Lukas Czerner wrote:
-> > +		down_read(&EXT4_I(inode)->i_data_sem);
-> >  		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-> >  					  ext4_ext_fiemap_cb, fieinfo);
-> > +		up_read(&EXT4_I(inode)->i_data_sem);
-> 
-> Can this deadlock?  ext4_ext_fiemap_cb() seems to be doing all kinds of
-> exciting things that might also try and acquire the i_data_sem, like
-> GFP_KERNEL allocs (reclaim -> writepage) and copying to userspace (mmap
-> fault -> readpage -> get blocks).
-> 
-> It seems like the safer fix is to broaden the sampling lock coverage to
-> include referencing all the extent data but to release it around the
-> callback.
-> 
-> No?
-> 
-> - z
+In fact we can hit BUG_ON(end <= start) if the extent got inserted into
+the tree after the one we found and before the block we were searching
+for. This has been reproduced by running xfstests 225 in loop on s390x
+architecture, but theoretically we could hit this on any other
+architecture as well, but probably not as often.
 
-Yeah, you're right. Having the lock around the whole
-ext4_ext_walk_space() might deadlock. I'll fix this.
+ext4_ext_walk_space() is currently only used from ext4_fiemap().
 
-Thanks for noticing this!
--Lukas
+Fix this by extending the critical section to include
+ext4_ext_next_allocated_block() as well. It means that if there are any
+operation going on on the particular inode, the fiemap will return
+inaccurate data. However this will also fix the concerns about starving
+writers to the extent tree, because we will put and reacquire the
+semaphore with every iteration. This will not be particularly fast, but
+fiemap is not critical operation.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: Extend the critical section rather than put the whole function under
+    the lock.
+
+ fs/ext4/extents.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7011ac9..d444281 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1978,7 +1978,6 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+ 		/* find extent for this block */
+ 		down_read(&EXT4_I(inode)->i_data_sem);
+ 		path = ext4_ext_find_extent(inode, block, path);
+-		up_read(&EXT4_I(inode)->i_data_sem);
+ 		if (IS_ERR(path)) {
+ 			err = PTR_ERR(path);
+ 			path = NULL;
+@@ -1993,6 +1992,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+ 		}
+ 		ex = path[depth].p_ext;
+ 		next = ext4_ext_next_allocated_block(path);
++		up_read(&EXT4_I(inode)->i_data_sem);
+ 
+ 		exists = 0;
+ 		if (!ex) {
+-- 
+1.7.7.6
+
