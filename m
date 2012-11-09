@@ -1,40 +1,44 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/8 v3] ext4: add operations on extent status tree
-Date: Thu, 8 Nov 2012 18:21:23 -0500
-Message-ID: <20121108232123.GP19977@thunk.org>
-References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
- <1351257825-3701-3-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
+ Checksum for group .. failed
+Date: Thu, 8 Nov 2012 19:01:56 -0500
+Message-ID: <20121109000156.GQ19977@thunk.org>
+References: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jeff.liu@oracle.com, hughd@google.com,
-	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
-	lczerner@redhat.com, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: "kaefert@gmail.com" <kaefert@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60144 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60151 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751425Ab2KHXVg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Nov 2012 18:21:36 -0500
+	id S1757235Ab2KIAB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Nov 2012 19:01:59 -0500
 Content-Disposition: inline
-In-Reply-To: <1351257825-3701-3-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 26, 2012 at 09:23:39PM +0800, Zheng Liu wrote:
-> + * 3. performance analysis
-> + *   --	overhead
-> + *	1. Apart from operations on a delayed extent tree, we need to
-> + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
-> + *	extent tree, this can have impact on parallel read-write and write-write
+On Wed, Nov 07, 2012 at 09:23:22AM +0100, kaefert@gmail.com wrote:
+> Hi there!
+> 
+> I've got this problem with an ext4 filesystem on an external usb disk
+> of mine, I've documented the problem (and my approaches for solving
+> it) here:
+> http://serverfault.com/questions/446074/e2fsck-extremly-slow-although-enough-memory-exists
+> 
+> I started gparted and with it e2fsck is around 2012-11-04_2200 and its
+> 2012-11-07_0923 right now (CET).
+> It used up nearly 57 hours of cpu time since then, and I would like to
+> find out if and when it will finish.
+> Can somebody tell me if and how I could get this information?
 
-Hi Zheng,
+Can you please run e2fsck from the command line, and capture the
+output (i.e., using "script").  I really need the e2fsck output to
+understand what is going on.  The strace output is really not helpful.
 
-I can fix this up, before I finalize your commit, but I just want to
-check.  I believe this comment is out of date --- we are now using a
-r/w spinlock, i_es_lock, yes?  Since we never hold the spinlock for
-very long, I would be surprised if this is going to be a scalability
-bottleneck (too bad Eric doesn't have access to the big SMP machine
-that he used to use to help us do our scalability testing, so we could
-check to be sure).
+In general, you may be better off simply not trusting gparted to run
+e2fsck and resize2fs for you.  If there are no problems I'm sure it's
+fine, but it's really hard to debug things if you insist on letting
+gparted swallon all of the useful debugging output....
 
-    			       	     	      - Ted
+		       	   	  	    - Ted
