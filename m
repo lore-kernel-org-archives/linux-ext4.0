@@ -1,44 +1,52 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
- Checksum for group .. failed
-Date: Thu, 8 Nov 2012 19:01:56 -0500
-Message-ID: <20121109000156.GQ19977@thunk.org>
-References: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 2/8 v3] ext4: add operations on extent status tree
+Date: Fri, 9 Nov 2012 10:22:55 +0800
+Message-ID: <20121109022255.GA27826@gmail.com>
+References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
+ <1351257825-3701-3-git-send-email-wenqing.lz@taobao.com>
+ <20121108232123.GP19977@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "kaefert@gmail.com" <kaefert@gmail.com>
+Cc: linux-ext4@vger.kernel.org, jeff.liu@oracle.com, hughd@google.com,
+	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
+	lczerner@redhat.com, Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60151 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757235Ab2KIAB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 8 Nov 2012 19:01:59 -0500
+Received: from mail-da0-f46.google.com ([209.85.210.46]:46148 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756372Ab2KICKk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2012 21:10:40 -0500
+Received: by mail-da0-f46.google.com with SMTP id n41so1445462dak.19
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Nov 2012 18:10:40 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
+In-Reply-To: <20121108232123.GP19977@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 07, 2012 at 09:23:22AM +0100, kaefert@gmail.com wrote:
-> Hi there!
+On Thu, Nov 08, 2012 at 06:21:23PM -0500, Theodore Ts'o wrote:
+> On Fri, Oct 26, 2012 at 09:23:39PM +0800, Zheng Liu wrote:
+> > + * 3. performance analysis
+> > + *   --	overhead
+> > + *	1. Apart from operations on a delayed extent tree, we need to
+> > + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
+> > + *	extent tree, this can have impact on parallel read-write and write-write
 > 
-> I've got this problem with an ext4 filesystem on an external usb disk
-> of mine, I've documented the problem (and my approaches for solving
-> it) here:
-> http://serverfault.com/questions/446074/e2fsck-extremly-slow-although-enough-memory-exists
+> Hi Zheng,
 > 
-> I started gparted and with it e2fsck is around 2012-11-04_2200 and its
-> 2012-11-07_0923 right now (CET).
-> It used up nearly 57 hours of cpu time since then, and I would like to
-> find out if and when it will finish.
-> Can somebody tell me if and how I could get this information?
+> I can fix this up, before I finalize your commit, but I just want to
+> check.  I believe this comment is out of date --- we are now using a
+> r/w spinlock, i_es_lock, yes?  Since we never hold the spinlock for
+> very long, I would be surprised if this is going to be a scalability
+> bottleneck (too bad Eric doesn't have access to the big SMP machine
+> that he used to use to help us do our scalability testing, so we could
+> check to be sure).
 
-Can you please run e2fsck from the command line, and capture the
-output (i.e., using "script").  I really need the e2fsck output to
-understand what is going on.  The strace output is really not helpful.
+Hi Ted,
 
-In general, you may be better off simply not trusting gparted to run
-e2fsck and resize2fs for you.  If there are no problems I'm sure it's
-fine, but it's really hard to debug things if you insist on letting
-gparted swallon all of the useful debugging output....
-
-		       	   	  	    - Ted
+Oops, it is my fault.  Indeed it needs to be replaced with i_es_lock.  I
+can do some tests in a server which has 16 cores, but I am afraid that
+it is not so big as you thought.  I am willing to run Eric's tests to 
+ensure that there is no any scalability problem.
+ 
+Regards,
+Zheng
