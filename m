@@ -1,52 +1,58 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/8 v3] ext4: add operations on extent status tree
-Date: Fri, 9 Nov 2012 10:22:55 +0800
-Message-ID: <20121109022255.GA27826@gmail.com>
-References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
- <1351257825-3701-3-git-send-email-wenqing.lz@taobao.com>
- <20121108232123.GP19977@thunk.org>
+From: "kaefert@gmail.com" <kaefert@gmail.com>
+Subject: Re: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
+ Checksum for group .. failed
+Date: Fri, 9 Nov 2012 07:05:02 +0100
+Message-ID: <CACDumsRP6+AMZdCPgyH03_NBrCWY8m_1Gp2DD9aMwqh9DtpEhA@mail.gmail.com>
+References: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
+ <20121109000156.GQ19977@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jeff.liu@oracle.com, hughd@google.com,
-	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
-	lczerner@redhat.com, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:46148 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756372Ab2KICKk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2012 21:10:40 -0500
-Received: by mail-da0-f46.google.com with SMTP id n41so1445462dak.19
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Nov 2012 18:10:40 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20121108232123.GP19977@thunk.org>
+Received: from mail-ea0-f174.google.com ([209.85.215.174]:63880 "EHLO
+	mail-ea0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750771Ab2KIGFX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Nov 2012 01:05:23 -0500
+Received: by mail-ea0-f174.google.com with SMTP id c13so1332432eaa.19
+        for <linux-ext4@vger.kernel.org>; Thu, 08 Nov 2012 22:05:22 -0800 (PST)
+In-Reply-To: <20121109000156.GQ19977@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 08, 2012 at 06:21:23PM -0500, Theodore Ts'o wrote:
-> On Fri, Oct 26, 2012 at 09:23:39PM +0800, Zheng Liu wrote:
-> > + * 3. performance analysis
-> > + *   --	overhead
-> > + *	1. Apart from operations on a delayed extent tree, we need to
-> > + *	down_write(inode->i_data_sem) in delayed write path to maintain delayed
-> > + *	extent tree, this can have impact on parallel read-write and write-write
-> 
-> Hi Zheng,
-> 
-> I can fix this up, before I finalize your commit, but I just want to
-> check.  I believe this comment is out of date --- we are now using a
-> r/w spinlock, i_es_lock, yes?  Since we never hold the spinlock for
-> very long, I would be surprised if this is going to be a scalability
-> bottleneck (too bad Eric doesn't have access to the big SMP machine
-> that he used to use to help us do our scalability testing, so we could
-> check to be sure).
+2012/11/9 Theodore Ts'o <tytso@mit.edu>
+>
+> Can you please run e2fsck from the command line, and capture the
+> output (i.e., using "script").  I really need the e2fsck output to
+> understand what is going on.  The strace output is really not helpful.
+>
+> In general, you may be better off simply not trusting gparted to run
+> e2fsck and resize2fs for you.  If there are no problems I'm sure it's
+> fine, but it's really hard to debug things if you insist on letting
+> gparted swallon all of the useful debugging output....
+>
+>                                             - Ted
 
-Hi Ted,
+Hi there Ted!
 
-Oops, it is my fault.  Indeed it needs to be replaced with i_es_lock.  I
-can do some tests in a server which has 16 cores, but I am afraid that
-it is not so big as you thought.  I am willing to run Eric's tests to 
-ensure that there is no any scalability problem.
- 
-Regards,
-Zheng
+Thanks for the answer! Of course I understand that when you want to
+debug something you really gotta run it from the console, It's just
+when I started to run this, I did not think anything would go wrong,
+you never think it hits you ;)
+
+After e2fsck failed for the first time (where I don't know why, since
+gparted crashed after I tried to save the details), I started to run
+e2fsck manually, and since the -p option made him cancel the run I
+started a third run in interactive mode. I've posted the console
+output of this second and third run as an update to my question at
+serverfault.com (see
+http://serverfault.com/questions/446074/e2fsck-extremely-slow-although-enough-memory-exists
+- start reading at "UPDATE4")
+
+The 3rd run is still running (since about 20 hours now) and showing
+the same pattern as the first run that failed after 78 hours.
+
+
+Thanks for looking at this,
+
+Thomas K.
