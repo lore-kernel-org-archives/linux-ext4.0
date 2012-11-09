@@ -1,57 +1,53 @@
-From: Anatol Pomozov <anatol.pomozov@gmail.com>
-Subject: Re: [PATCH 2/2] ext4: Remove code duplication in ext4_get_block_write_nolock()
-Date: Fri, 9 Nov 2012 09:51:35 -0800
-Message-ID: <CAOMFOmX8RfzxpwV2OhYQnMTezjwHQLGAV-za7wz3gRSNv88iFg@mail.gmail.com>
-References: <1350328009-22740-1-git-send-email-anatol.pomozov@gmail.com>
-	<1350328009-22740-2-git-send-email-anatol.pomozov@gmail.com>
-	<20121109172957.GA19041@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] Remove VLAIS usage from JBD2 code
+Date: Fri, 9 Nov 2012 15:19:12 -0800
+Message-ID: <20121109231912.GA6444@blackbox.djwong.org>
+References: <1351622404-18214-1-git-send-email-behanw@converseincode.com>
+ <1351622404-18214-2-git-send-email-behanw@converseincode.com>
+ <20121030191307.GC19576@blackbox.djwong.org>
+ <20121108155307.GB766@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: wenqing.lz@taobao.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Behan Webster <behanw@converseincode.com>,
+	linux-ext4@vger.kernel.org, Mark Charlebois <charlebm@gmail.com>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:50545 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753530Ab2KIRvg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Nov 2012 12:51:36 -0500
-Received: by mail-lb0-f174.google.com with SMTP id n3so3226973lbo.19
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Nov 2012 09:51:35 -0800 (PST)
-In-Reply-To: <20121109172957.GA19041@thunk.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:25166 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751037Ab2KIXTT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Nov 2012 18:19:19 -0500
+Content-Disposition: inline
+In-Reply-To: <20121108155307.GB766@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi
+On Thu, Nov 08, 2012 at 10:53:07AM -0500, Theodore Ts'o wrote:
+> Hey Darrick,
+> 
+> I was looking at this code a bit more closely while applying the
+> revised version of this patch --- and this in particular raised a red
+> flag for me:
+> 
+>      *(u32 *)desc.ctx = crc;
+>      	   ...
+>      return *(u32 *)desc.ctx;
+> 
+> Does this raise any byte swapping issues?  Looking at how the crc32
+> code in crypto/ works, I'm almost certain this is broken on big-endian
+> systems, and we need to add le32_to_cup() and cpu_to_le32() calls here.
+> 
+> Am I missing something?
 
-On Fri, Nov 9, 2012 at 9:29 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> There's a really serious bug in this patch which I didn't notice at
-> first:
->
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -683,7 +683,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
->>       map.m_lblk = iblock;
->>       map.m_len = bh->b_size >> inode->i_blkbits;
->>
->> -     if (flags && !handle) {
->> +     if (flags && !(flags | EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
->                             ^^^
->
-> This should obviously read:
->
->         if (flags && !(flags & EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
+crc32_[bl]e_generic() in lib/crc32.c contains the appropriate be/le-to-cpu
+conversion calls to ensure that the results are always returned in cpu-endian
+format.  The crypto/crc32.c file is basically just a crypto-hash wrapper around
+the lib/crc32.c code, and don't touch the endianness at all.  The ext4 code
+receives the results from the crypto code in cpu-endian format and always
+converts it to (or from) little-endian format when accessing disk structures.
 
-D'oh... You are right..
+As far as e2fsprogs, it leaves the checksums in le format, only converting it
+to cpu-endian format when verifying or setting the checksum.
 
-> Otherwise xfstests #91 will blow out with a circular lockdep warning.
->
-> As a reminder, please do make sure you compile with lockdep enabled
-> when you run your tests; it's found more than one bug for me!
-
-I though I tested with and without debug options enabled. Maybe I
-missed lockdep option somehow, next time i'll make sure that it is
-enabled.
-
-Thanks for catching it.
-
->
->                                               - Ted
+--D
+> 
+> 	     	     	    		  - Ted
