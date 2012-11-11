@@ -1,17 +1,26 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] ext4: init pagevec in ext4_da_block_invalidatepages
-Date: Sun, 11 Nov 2012 15:33:34 -0600
-Message-ID: <50A019AE.7090907@redhat.com>
+Subject: [PATCH V2] ext4: init pagevec in ext4_da_block_invalidatepages
+Date: Sun, 11 Nov 2012 15:50:37 -0600
+Message-ID: <50A01DAD.4080607@redhat.com>
+References: <50A019AE.7090907@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: stable@kernel.org
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13886 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6818 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751708Ab2KKVdg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Nov 2012 16:33:36 -0500
+	id S1752030Ab2KKVum (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Nov 2012 16:50:42 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qABLocFd030022
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sun, 11 Nov 2012 16:50:42 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qABLobwY022339
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Sun, 11 Nov 2012 16:50:38 -0500
+In-Reply-To: <50A019AE.7090907@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -23,7 +32,11 @@ back of the LRU when ->cold makes it to
 free_hot_cold_page()
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Cc: stable@vger.kernel.org
 ---
+
+(resend w/ stable in S-O-B area rather than fat-fingered
+in email cc :/  )
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 index b3c243b..f89c0e5 100644
@@ -38,4 +51,10 @@ index b3c243b..f89c0e5 100644
  	while (index <= end) {
  		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
  		if (nr_pages == 0)
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
