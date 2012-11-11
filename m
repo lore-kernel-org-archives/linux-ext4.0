@@ -1,125 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
- ext2/3
-Date: Sun, 11 Nov 2012 16:16:25 -0600
-Message-ID: <50A023B9.4020609@redhat.com>
-References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com> <20121108170202.GB19977@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Carlos Maiolino <cmaiolino@redhat.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: "George Spelvin" <linux@horizon.com>
+Subject: mke2fs -O 64bit -E resize=<anything> divides by 0
+Date: 11 Nov 2012 17:27:16 -0500
+Message-ID: <20121111222716.11311.qmail@science.horizon.com>
+Cc: linux@horizon.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20953 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752303Ab2KKWQ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Nov 2012 17:16:28 -0500
-In-Reply-To: <20121108170202.GB19977@thunk.org>
+Received: from science.horizon.com ([71.41.210.146]:19296 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751959Ab2KKW1S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 11 Nov 2012 17:27:18 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/8/12 11:02 AM, Theodore Ts'o wrote:
-> On Thu, Nov 01, 2012 at 05:32:11PM -0200, Carlos Maiolino wrote:
->>
->> I have not added all mount options I believe need to raise a
->> warning, just those with a flag set on superblock, but I expect to
->> generate a discussion here about which mount options should be
->> warned and get suggestions about how to deal with argumented options
->> (ex: commit= opt), to be included in a V2 of this patch.
-> 
-> Let's take a step back, and see if we can be explicit about why it
-> would be useful to warn when a user uses mount options that we were
-> not present with the implementation of the file system drivers found
-> in fs/ext2 and fs/ext3.  While we're at it, we can also examine the
-> same question with respect to file system features --- i.e., if
-> someone mounts a file system with an extent feature enabled using
-> mount -t ext2, what if anything should we do.  What are we trying to
-> achieve, or conversely what are we trying to prevent?
-> 
-> Suppose the user does something like this:
-> 
->    mount -t ext3 -o delalloc /dev/sdb /u1
-> 
-> Yes, the traditional ext3 driver code doesn't understand the delalloc
-> mount option, but what's the concern that is leading us to want to
-> print a warning message to the log (that the user may or may not even
-> see).  Are we worried that what should happen is not sufficiently
-> well-defined?  Are we worried that while it might work with a
-> particular kernel which is compiled a certain way, it might not work
-> with another kernel?  Is it part of the larger question of wanting to
-> warn if the user is using a set of not-well-tested combination of
-> mount options and/or file system features?
-> 
-> If it is the latter, what is the right approach?  At Barcelona, I was
-> chatting with Ric Wheeler and Ralf Flaxa, and they had differing
-> opinions about what the right thing to do for features which are not
-> supported.  Ralf felt that warning in the syslog might be sufficient.
-> I sugested setting a new kernel taint flag, to make it easier for the
-> supper desk to twig to the fact that the user was doing something
-> unusual.  Ric offerred his opinion that it was better to hard-fail the
-> mount.  And of course, this is with distro kernels; for the upstream
-> kernel, I think our goal is to (a) warn the user that they are doing
-> something unusual, and (b) ask them to tell us (at linux-ext4) what
-> they are doing and why, so we have a better understanding of what
-> users want, so we can either add it to our test matrix, or perhaps
-> warn the user off.
+I'm using v1.43-WIP-2012-09-22-10-g41bf599, last commit Oct. 14.
 
-The overarching reason is to cut down the test matrix if possible, I think.
-This has advantages for both distros & upstream, and might even lead
-to code simplification if we can exclude some corner-case behaviors.
+I'm trying to create a file system with 64bit support and specify a
+maximum resize limit of 64 TiB = 2^34 blocks = 17179869184.
 
-But the other question that might need answering is this:
+(gdb) run -n -t ext4 -O 64bit -E resize=4294967296 /dev/md1
+Starting program: /root/e2fsprogs/misc/mke2fs -n -t ext4 -O 64bit -E resize=4294967295 /dev/md1
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+mke2fs 1.43-WIP (22-Sep-2012)
 
-If a user has asked ext4.ko to mount an ext3 device, should it behave
-as closely as possible to what the ext3.ko driver used to do?  And I'd
-say yes.  Therefore things like -t ext3 -o delalloc should be hard-failed.
+Program received signal SIGFPE, Arithmetic exception.
+0x0000000000405f5a in parse_extended_opts (opts=<optimized out>, 
+    param=0x64e200) at mke2fs.c:800
+800                             gdpb = EXT2_DESC_PER_BLOCK(param);
 
-If you really want your old ext3 filesystem to be mounted with delalloc,
-then I think the right way would be to use mount -t ext4 /dev/ext3-dev.
-Then you get the runtime behaviors such as delalloc, and ext4 should
-not write anything which is not ext3-compatible.
+The issue is that 
 
-Perhaps we need to go through in fine detail, but I think mount -t
-ext3 should reject any options not applicable to ext3.ko.  If you want
-the newer ext4 behaviors, then use mount -t ext4.
+#define EXT2_DESC_PER_BLOCK(s)          (EXT2_BLOCK_SIZE(s) / EXT2_DESC_SIZE(s))
+#define EXT2_DESC_SIZE(s)                                                \
+       ((EXT2_SB(s)->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) ? \
+        (s)->s_desc_size : EXT2_MIN_DESC_SIZE)
 
-> So not only do we need to decide which mount options and file system
-> features we want to support, or warn against etc., it's also useful to
-> think about what we want to do when the user does something a little
-> out of the norm.
->
-> And since I very much doubt that upstream, Red Hat, SuSE, Canonical,
-> etc., will ever agree on the right thing is, this is probably one of
-> those things where we want to have a scheme where it is relatively
-> easy for distributors to set their own policy, which may differ for a
-> community versus enterprise distro kernel.
+and s_desc_size is 0 because parse_extended_opts is called from PRS which
+is called very early in main() at line 2320, while s_desc_size is set up
+in ext2fs_initialize, which is not called from main() until mke2fs.c:2353.
 
-Perhaps, but a well-thought-out rationale for what combinations make
-sense might just fly everywhere.
+As a temporary workaround, I notice that ext2fs_initialize sets s_desc_size to
+the fixed value EXT2_MIN_DESC_SIZE_64BIT, so I changed the #define as follows:
 
-A complex scheme of configuration policy sounds like potentially another
-layer of knobs on an already vast layer of knobs.  ;)
+#define EXT2_DESC_SIZE(s)                                                \
+       ((EXT2_SB(s)->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) ? \
+        (s)->s_desc_size ?: EXT2_MIN_DESC_SIZE_64BIT : EXT2_MIN_DESC_SIZE)
 
-(That said, distros may well want to just nuke things like data=writeback
-from orbit)
+... which seems to work.
 
-(And that said, I'm of the opinion that upstream should too ;))
 
-Anyway, back to my main point:  As a guiding principle I think I would
-say that mount -t ext3 with ext4.ko should hard-reject any option not
-understood by ext3.ko.  It's clear and predictable, and should make for
-a decent first cut.
-
--Eric
-
-> But in order to make sure we don't end up talking past each other, I
-> think it's useful to be very explicit about why we want to do this,
-> before we try to figure what's and the how's.
-> 
->        	      	 	       	       - Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+(One point that occurred to me while wrestling with this is that the
+default resize limit of initial size * 1000 should perhaps be clamped
+to 2^32 if 64bit is not enabled.)
