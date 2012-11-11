@@ -1,87 +1,134 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: do not use ext4_error() when there is no space in dir leaf for csum
-Date: Sat, 10 Nov 2012 22:20:25 -0500
-Message-ID: <1352604025-22310-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: kbuild test robot <fengguang.wu@intel.com>
+Subject: [ext4:dev 5/25] fs/jbd2/commit.c:351:18: sparse: incorrect type
+ in assignment (different base types)
+Date: Sun, 11 Nov 2012 12:32:36 +0800
+Message-ID: <509f2a64.XFrkA1UaQS/vutlH%fengguang.wu@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Mark Charlebois <charlebm@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Behan Webster <behanw@converseincode.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60430 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752188Ab2KKDUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 10 Nov 2012 22:20:30 -0500
+Received: from mga01.intel.com ([192.55.52.88]:57751 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752188Ab2KKEcu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 10 Nov 2012 23:32:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If there is no space for a checksum in a directory leaf node,
-previously we would use EXT4_ERROR_INODE() which would mark the file
-system as inconsistent.  While it would be nice to use e2fsck -D, it
-certainly isn't required, so just print a warning using
-ext4_warning().
+tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+head:   dffe9d8da715bed4d395883add90a2d150d85729
+commit: fd47d3e1c2949838e858379aaf2bc20647be2912 [5/25] jbd2: remove VLAIS usage from JBD2 code
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
+
+sparse warnings:
+
++ fs/jbd2/commit.c:351:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/commit.c:351:18:    expected unsigned int [unsigned] [usertype] sequence
+fs/jbd2/commit.c:351:18:    got restricted __be32 [usertype] <noident>
+fs/jbd2/commit.c:359:25: sparse: incorrect type in assignment (different base types)
+fs/jbd2/commit.c:359:25:    expected restricted __be16 [usertype] t_checksum
+fs/jbd2/commit.c:359:25:    got restricted __be32 [usertype] <noident>
+--
+fs/jbd2/journal.c:100:5: sparse: symbol 'jbd2_verify_csum_type' was not declared. Should it be static?
+fs/jbd2/journal.c:112:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/journal.c:112:18:    expected unsigned int [unsigned] [usertype] old_csum
+fs/jbd2/journal.c:112:18:    got restricted __be32 [usertype] s_checksum
+fs/jbd2/journal.c:115:24: sparse: incorrect type in assignment (different base types)
+fs/jbd2/journal.c:115:24:    expected restricted __be32 [usertype] s_checksum
+fs/jbd2/journal.c:115:24:    got unsigned int [unsigned] [usertype] old_csum
++ fs/jbd2/journal.c:117:16: sparse: incorrect type in return expression (different base types)
+fs/jbd2/journal.c:117:16:    expected unsigned int
+fs/jbd2/journal.c:117:16:    got restricted __be32 [usertype] <noident>
++ fs/jbd2/journal.c:125:18: sparse: restricted __be32 degrades to integer
++ fs/jbd2/journal.c:120:5: sparse: symbol 'jbd2_superblock_csum_verify' was not declared. Should it be static?
+fs/jbd2/journal.c:133:24: sparse: incorrect type in assignment (different base types)
+fs/jbd2/journal.c:133:24:    expected restricted __be32 [usertype] s_checksum
+fs/jbd2/journal.c:133:24:    got unsigned int
++ fs/jbd2/journal.c:128:6: sparse: symbol 'jbd2_superblock_csum_set' was not declared. Should it be static?
+--
+fs/jbd2/recovery.c:188:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:188:18:    expected unsigned int [unsigned] [usertype] provided
+fs/jbd2/recovery.c:188:18:    got restricted __be32 [usertype] t_checksum
+fs/jbd2/recovery.c:191:26: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:191:26:    expected restricted __be32 [usertype] t_checksum
+fs/jbd2/recovery.c:191:26:    got unsigned int [unsigned] [usertype] provided
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:193:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:390:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:390:18:    expected unsigned int [unsigned] [usertype] provided
+fs/jbd2/recovery.c:390:18:    got restricted __be32 <noident>
+fs/jbd2/recovery.c:393:24: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:393:24:    expected restricted __be32 <noident>
+fs/jbd2/recovery.c:393:24:    got unsigned int [unsigned] [usertype] provided
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:395:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:407:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:407:18:    expected unsigned int [unsigned] [usertype] sequence
+fs/jbd2/recovery.c:407:18:    got restricted __be32 [usertype] <noident>
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
+fs/jbd2/recovery.c:411:20: sparse: cast to restricted __be32
++ fs/jbd2/recovery.c:411:20: sparse: cast from restricted __be16
++ fs/jbd2/recovery.c:413:28: sparse: restricted __be32 degrades to integer
+fs/jbd2/recovery.c:819:18: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:819:18:    expected unsigned int [unsigned] [usertype] provided
+fs/jbd2/recovery.c:819:18:    got restricted __be32 [usertype] r_checksum
+fs/jbd2/recovery.c:822:26: sparse: incorrect type in assignment (different base types)
+fs/jbd2/recovery.c:822:26:    expected restricted __be32 [usertype] r_checksum
+fs/jbd2/recovery.c:822:26:    got unsigned int [unsigned] [usertype] provided
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+fs/jbd2/recovery.c:824:20: sparse: cast to restricted __be32
+
+vim +351 fs/jbd2/commit.c
+
+3caa487f Darrick J. Wong 2012-05-27  335  	tail->t_checksum = 0;
+3caa487f Darrick J. Wong 2012-05-27  336  	csum = jbd2_chksum(j, j->j_csum_seed, jh2bh(descriptor)->b_data,
+3caa487f Darrick J. Wong 2012-05-27  337  			   j->j_blocksize);
+3caa487f Darrick J. Wong 2012-05-27  338  	tail->t_checksum = cpu_to_be32(csum);
+3caa487f Darrick J. Wong 2012-05-27  339  }
+3caa487f Darrick J. Wong 2012-05-27  340  
+c3900875 Darrick J. Wong 2012-05-27  341  static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
+c3900875 Darrick J. Wong 2012-05-27  342  				    struct buffer_head *bh, __u32 sequence)
+c3900875 Darrick J. Wong 2012-05-27  343  {
+c3900875 Darrick J. Wong 2012-05-27  344  	struct page *page = bh->b_page;
+c3900875 Darrick J. Wong 2012-05-27  345  	__u8 *addr;
+c3900875 Darrick J. Wong 2012-05-27  346  	__u32 csum;
+c3900875 Darrick J. Wong 2012-05-27  347  
+c3900875 Darrick J. Wong 2012-05-27  348  	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
+c3900875 Darrick J. Wong 2012-05-27  349  		return;
+c3900875 Darrick J. Wong 2012-05-27  350  
+c3900875 Darrick J. Wong 2012-05-27 @351  	sequence = cpu_to_be32(sequence);
+906adea1 Cong Wang       2012-06-23  352  	addr = kmap_atomic(page);
+c3900875 Darrick J. Wong 2012-05-27  353  	csum = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
+c3900875 Darrick J. Wong 2012-05-27  354  			  sizeof(sequence));
+c3900875 Darrick J. Wong 2012-05-27  355  	csum = jbd2_chksum(j, csum, addr + offset_in_page(bh->b_data),
+c3900875 Darrick J. Wong 2012-05-27  356  			  bh->b_size);
+906adea1 Cong Wang       2012-06-23  357  	kunmap_atomic(addr);
+c3900875 Darrick J. Wong 2012-05-27  358  
+c3900875 Darrick J. Wong 2012-05-27  359  	tag->t_checksum = cpu_to_be32(csum);
+
 ---
- fs/ext4/namei.c | 18 ++++++++++--------
- 1 file changed, 10 insertions(+), 8 deletions(-)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6d600a6..580af3d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -261,6 +261,12 @@ static __le32 ext4_dirent_csum(struct inode *inode,
- 	return cpu_to_le32(csum);
- }
- 
-+static void warn_no_space_for_csum(struct inode *inode)
-+{
-+	ext4_warning(inode->i_sb, "no space in directory inode %lu leaf for "
-+		     "checksum.  Please run e2fsck -D.", inode->i_ino);
-+}
-+
- int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
- {
- 	struct ext4_dir_entry_tail *t;
-@@ -271,8 +277,7 @@ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
- 
- 	t = get_dirent_tail(inode, dirent);
- 	if (!t) {
--		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
--				 "leaf for checksum.  Please run e2fsck -D.");
-+		warn_no_space_for_csum(inode);
- 		return 0;
- 	}
- 
-@@ -294,8 +299,7 @@ static void ext4_dirent_csum_set(struct inode *inode,
- 
- 	t = get_dirent_tail(inode, dirent);
- 	if (!t) {
--		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
--				 "leaf for checksum.  Please run e2fsck -D.");
-+		warn_no_space_for_csum(inode);
- 		return;
- 	}
- 
-@@ -377,8 +381,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
- 	count = le16_to_cpu(c->count);
- 	if (count_offset + (limit * sizeof(struct dx_entry)) >
- 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
--		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
--				 "tree checksum found.  Run e2fsck -D.");
-+		warn_no_space_for_csum(inode);
- 		return 1;
- 	}
- 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-@@ -408,8 +411,7 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
- 	count = le16_to_cpu(c->count);
- 	if (count_offset + (limit * sizeof(struct dx_entry)) >
- 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
--		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
--				 "tree checksum.  Run e2fsck -D.");
-+		warn_no_space_for_csum(inode);
- 		return;
- 	}
- 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
--- 
-1.7.12.rc0.22.gcdd159b
-
+0-DAY kernel build testing backend         Open Source Technology Center
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
