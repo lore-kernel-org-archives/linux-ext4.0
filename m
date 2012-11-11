@@ -1,35 +1,87 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Commit Interval and Delayed Allocation
-Date: Fri, 9 Nov 2012 21:58:38 -0500
-Message-ID: <20121110025838.GA5974@thunk.org>
-References: <0408C81F72528E40A0D3235A1F67FFC83ECD9881@SN2PRD0202MB144.namprd02.prod.outlook.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Nelson, John R" <John_Nelson@student.uml.edu>
+Subject: [PATCH] ext4: do not use ext4_error() when there is no space in dir leaf for csum
+Date: Sat, 10 Nov 2012 22:20:25 -0500
+Message-ID: <1352604025-22310-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:60318 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:60430 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750810Ab2KJC6l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 9 Nov 2012 21:58:41 -0500
-Content-Disposition: inline
-In-Reply-To: <0408C81F72528E40A0D3235A1F67FFC83ECD9881@SN2PRD0202MB144.namprd02.prod.outlook.com>
+	id S1752188Ab2KKDUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 10 Nov 2012 22:20:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 10, 2012 at 12:40:42AM +0000, Nelson, John R wrote:
-> Hi,
->   Say if ext4 commits every 5 seconds, does this mean whatever is
->buffered for delayed allocation is flushed every 5 seconds as well?
+If there is no space for a checksum in a directory leaf node,
+previously we would use EXT4_ERROR_INODE() which would mark the file
+system as inconsistent.  While it would be nice to use e2fsck -D, it
+certainly isn't required, so just print a warning using
+ext4_warning().
 
-No; there is a separate 30 second timer which is used for writeback
-thread.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
+---
+ fs/ext4/namei.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-For ext3 in data=ordered mode, we will flush out dirty pages for
-inodes which have been written to make sure that stale data can never
-get revealed.
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6d600a6..580af3d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -261,6 +261,12 @@ static __le32 ext4_dirent_csum(struct inode *inode,
+ 	return cpu_to_le32(csum);
+ }
+ 
++static void warn_no_space_for_csum(struct inode *inode)
++{
++	ext4_warning(inode->i_sb, "no space in directory inode %lu leaf for "
++		     "checksum.  Please run e2fsck -D.", inode->i_ino);
++}
++
+ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
+ {
+ 	struct ext4_dir_entry_tail *t;
+@@ -271,8 +277,7 @@ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
+ 
+ 	t = get_dirent_tail(inode, dirent);
+ 	if (!t) {
+-		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
+-				 "leaf for checksum.  Please run e2fsck -D.");
++		warn_no_space_for_csum(inode);
+ 		return 0;
+ 	}
+ 
+@@ -294,8 +299,7 @@ static void ext4_dirent_csum_set(struct inode *inode,
+ 
+ 	t = get_dirent_tail(inode, dirent);
+ 	if (!t) {
+-		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
+-				 "leaf for checksum.  Please run e2fsck -D.");
++		warn_no_space_for_csum(inode);
+ 		return;
+ 	}
+ 
+@@ -377,8 +381,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
+ 	count = le16_to_cpu(c->count);
+ 	if (count_offset + (limit * sizeof(struct dx_entry)) >
+ 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+-		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
+-				 "tree checksum found.  Run e2fsck -D.");
++		warn_no_space_for_csum(inode);
+ 		return 1;
+ 	}
+ 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+@@ -408,8 +411,7 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
+ 	count = le16_to_cpu(c->count);
+ 	if (count_offset + (limit * sizeof(struct dx_entry)) >
+ 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+-		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
+-				 "tree checksum.  Run e2fsck -D.");
++		warn_no_space_for_csum(inode);
+ 		return;
+ 	}
+ 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+-- 
+1.7.12.rc0.22.gcdd159b
 
-But in delayed allocation, there is no risk that stale data can get
-revealed until we actually allocate the data blocks.
-
-	       	  	   	    	- Ted
