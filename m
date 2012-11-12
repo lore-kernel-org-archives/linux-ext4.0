@@ -1,167 +1,51 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: Prevent race while waling extent tree
-Date: Mon, 12 Nov 2012 15:57:25 +0100
-Message-ID: <1352732245-30132-1-git-send-email-lczerner@redhat.com>
-Cc: tytso@mit.edu, zab@redhat.com, dmonakhov@openvz.org,
-	Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
+ Checksum for group .. failed
+Date: Mon, 12 Nov 2012 11:16:46 -0500
+Message-ID: <20121112161646.GF4895@thunk.org>
+References: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
+ <20121109000156.GQ19977@thunk.org>
+ <CACDumsTj9S2eLNG+zNFY_9ZCZdKGDVVz5SF2BqapS3JvvYP8AA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "kaefert@gmail.com" <kaefert@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15452 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751887Ab2KLO5i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Nov 2012 09:57:38 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:60670 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753687Ab2KLQQt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Nov 2012 11:16:49 -0500
+Content-Disposition: inline
+In-Reply-To: <CACDumsTj9S2eLNG+zNFY_9ZCZdKGDVVz5SF2BqapS3JvvYP8AA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently ext4_ext_walk_space() only takes i_data_sem for read when
-searching for the extent at given block with ext4_ext_find_extent().
-Then it drops the lock and the extent tree can be changed at will.
-However later on we're searching for the 'next' extent, but the extent
-tree might already have changed, so the information might not be
-accurate.
+On Sun, Nov 11, 2012 at 07:14:40PM +0100, kaefert@gmail.com wrote:
+> 
+> So it took several days, but after running it manually it finished to
+> run after a few days. However, It doesn't seem to get the filesystem
+> in a truely clean state, although it doesn't print an error (at least
+> not at the end), because I've ran e2fsck again on the same partition
+> and it found errors again. Here's the output of the last run that
+> completed:
 
-In fact we can hit BUG_ON(end <= start) if the extent got inserted into
-the tree after the one we found and before the block we were searching
-for. This has been reproduced by running xfstests 225 in loop on s390x
-architecture, but theoretically we could hit this on any other
-architecture as well, but probably not as often.
+You said this is an external USB drive, right?  How big is it?  If
+it's affordable, something I would suggest doing is to make image copy
+(i.e., using dd or dd_rescue) to another external USB drive, just to
+rule out hardware issues.
 
-Fix this by extending the critical section to include
-ext4_ext_next_allocated_block() as well. It means that if there are any
-operation going on on the particular inode, the fiemap will return
-inaccurate data. However this will also fix the concerns about starving
-writers to the extent tree, because we will put and reacquire the
-semaphore with every iteration. This will not be particularly fast, but
-fiemap is not critical operation.
+The Pass 1B/1C/1D errors, particularly if you are seeing the exact
+same pattern after running a full e2fsck -fy run, makes me suspicious
+that inode table blocks are getting written to the wrong location on
+disk --- and whether this is caused by the storage device failing in
+some strange way.
 
-However we also need to limit the access to the extent structure to the
-critical section, because outside of it the content can change. So we
-remove extent and next block parameters from ext4_ext_fiemap_cb()
-function and pass just flags instead.
+Also, can you save the output of e2fsck to a file?  Direct the output
+to a log file, so I can look at it.  There are patterns of the
+"millions of entries of the same pattern" which you've elided which
+can be a hint.  Also, can you disable the German translation to make
+it easier for me to investigate?
 
-Also we have to move path reinitialization inside the critical section.
+Thanks,
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/ext4_extents.h |    5 ++---
- fs/ext4/extents.c      |   40 +++++++++++++++++++++-------------------
- 2 files changed, 23 insertions(+), 22 deletions(-)
-
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index cb1b2c9..356ad9f 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -149,9 +149,8 @@ struct ext4_ext_path {
-  * positive retcode - signal for ext4_ext_walk_space(), see below
-  * callback must return valid extent (passed or newly created)
-  */
--typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
--					struct ext4_ext_cache *,
--					struct ext4_extent *, void *);
-+typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_cache *,
-+				    unsigned int, void *);
- 
- #define EXT_CONTINUE   0
- #define EXT_BREAK      1
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7011ac9..c097acf 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1968,7 +1968,8 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 	struct ext4_extent *ex;
- 	ext4_lblk_t next, start = 0, end = 0;
- 	ext4_lblk_t last = block + num;
--	int depth, exists, err = 0;
-+	int exists, depth = 0, err = 0;
-+	unsigned int flags = 0;
- 
- 	BUG_ON(func == NULL);
- 	BUG_ON(inode == NULL);
-@@ -1977,9 +1978,16 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 		num = last - block;
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
-+
-+		if (path && ext_depth(inode) != depth) {
-+			/* depth was changed. we have to realloc path */
-+			kfree(path);
-+			path = NULL;
-+		}
-+
- 		path = ext4_ext_find_extent(inode, block, path);
--		up_read(&EXT4_I(inode)->i_data_sem);
- 		if (IS_ERR(path)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			err = PTR_ERR(path);
- 			path = NULL;
- 			break;
-@@ -1987,6 +1995,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 
- 		depth = ext_depth(inode);
- 		if (unlikely(path[depth].p_hdr == NULL)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
- 			err = -EIO;
- 			break;
-@@ -2037,14 +2046,21 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			cbex.ec_block = le32_to_cpu(ex->ee_block);
- 			cbex.ec_len = ext4_ext_get_actual_len(ex);
- 			cbex.ec_start = ext4_ext_pblock(ex);
-+			if (ext4_ext_is_uninitialized(ex))
-+				flags |= FIEMAP_EXTENT_UNWRITTEN;
- 		}
-+		up_read(&EXT4_I(inode)->i_data_sem);
- 
- 		if (unlikely(cbex.ec_len == 0)) {
- 			EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
- 			err = -EIO;
- 			break;
- 		}
--		err = func(inode, next, &cbex, ex, cbdata);
-+
-+		if (next == EXT_MAX_BLOCKS)
-+			flags |= FIEMAP_EXTENT_LAST;
-+
-+		err = func(inode, &cbex, flags, cbdata);
- 		ext4_ext_drop_refs(path);
- 
- 		if (err < 0)
-@@ -2057,12 +2073,6 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			break;
- 		}
- 
--		if (ext_depth(inode) != depth) {
--			/* depth was changed. we have to realloc path */
--			kfree(path);
--			path = NULL;
--		}
--
- 		block = cbex.ec_block + cbex.ec_len;
- 	}
- 
-@@ -4574,14 +4584,12 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
- /*
-  * Callback function called for each extent to gather FIEMAP information.
-  */
--static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
--		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
--		       void *data)
-+static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_cache *newex,
-+			      unsigned int flags, void *data)
- {
- 	__u64	logical;
- 	__u64	physical;
- 	__u64	length;
--	__u32	flags = 0;
- 	int		ret = 0;
- 	struct fiemap_extent_info *fieinfo = data;
- 	unsigned char blksize_bits;
-@@ -4759,12 +4767,6 @@ found_delayed_extent:
- 	physical = (__u64)newex->ec_start << blksize_bits;
- 	length =   (__u64)newex->ec_len << blksize_bits;
- 
--	if (ex && ext4_ext_is_uninitialized(ex))
--		flags |= FIEMAP_EXTENT_UNWRITTEN;
--
--	if (next == EXT_MAX_BLOCKS)
--		flags |= FIEMAP_EXTENT_LAST;
+						- Ted
