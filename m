@@ -1,60 +1,51 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH V2] ext4: init pagevec in ext4_da_block_invalidatepages
-Date: Mon, 12 Nov 2012 12:12:58 -0200
-Message-ID: <20121112141258.GA2496@andromeda.usersys.redhat.com>
-References: <50A019AE.7090907@redhat.com>
- <50A01DAD.4080607@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: resize2fs running out of reserved gdb blocks.
+Date: Mon, 12 Nov 2012 09:40:20 -0500
+Message-ID: <20121112144020.GD4895@thunk.org>
+References: <alpine.DEB.1.10.1211121241000.2903@wormhole.tzimmola.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Kimmo Mustonen <k-20121112-81452+linux-ext4@tzimmola.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4822 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753286Ab2KLONC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Nov 2012 09:13:02 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qACED2Ml030206
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Nov 2012 09:13:02 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:60655 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753111Ab2KLOkX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Nov 2012 09:40:23 -0500
 Content-Disposition: inline
-In-Reply-To: <50A01DAD.4080607@redhat.com>
+In-Reply-To: <alpine.DEB.1.10.1211121241000.2903@wormhole.tzimmola.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 11, 2012 at 03:50:37PM -0600, Eric Sandeen wrote:
-> ext4_da_block_invalidatepages is missing a pagevec_init(),
-> which means that pvec->cold contains random garbage.
-> 
-> This affects whether the page goes to the front or
-> back of the LRU when ->cold makes it to
-> free_hot_cold_page()
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> Cc: stable@vger.kernel.org
-> ---
-> 
-> (resend w/ stable in S-O-B area rather than fat-fingered
-> in email cc :/  )
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b3c243b..f89c0e5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1503,6 +1503,8 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd)
->  
->  	index = mpd->first_page;
->  	end   = mpd->next_page - 1;
-> +
-> +	pagevec_init(&pvec, 0);
->  	while (index <= end) {
->  		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
->  		if (nr_pages == 0)
-> 
+On Mon, Nov 12, 2012 at 01:21:32PM +0200, Kimmo Mustonen wrote:
+> I have an ext4 partition that seems to have used all reserved gdt blocks.
 
-Looks Good,
+The original on-line resize scheme required gdt blocks to be reserved
+so there would be room for the group descriptor table blocks (which
+had to be contiguous).  The number of group descriptor blocks that was
+reserved calculated to be a thousand times the size of the original
+file system, which would normally be enough.  *But* it was also capped
+by a limitation in how we reserved the gdt blocks such that the sum of
+the in-use gdt blocks plus reserved gdt blocks could not exceed 1024
+blocks.  Before the 64-bit option, this was not a problem, since we
+would hit the 16T limitation at the same time.  However, when the
+64-bit option is enabled, it's possible to run out of gdt blocks using
+the old scheme; this is the limitation which you hit.
 
-Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+In the very latest kernels, we have added a new on-line resizing
+scheme, which does not require that block group descriptors be
+contiguous.  However, it requires the very latest version of e2fsprogs
+(1.42.6) and the to-be-released 3.7 kernel (the new on-line resizing
+code landed in 3.7-rc1, during the merge window).
 
--- 
-Carlos
+If you are willing to temporarily boot a bleeding edge 3.7 kernel and
+use the resize2fs from e2fsprogs 1.42.6, you'll be able to resizing
+your partition.  After you do this, you could fall back to the Debian
+stable kernel and things should work w/o problems; the latest kernel
+and e2fsprogs code is needed just for the online resize operation.
+The resulting file system will be recognized by older kernels and
+e2fsprogs programs.
+
+Regards,
+
+						- Ted
