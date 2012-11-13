@@ -1,141 +1,62 @@
 From: Peng Tao <bergwolf@gmail.com>
-Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
-Date: Tue, 13 Nov 2012 19:34:41 +0800
-Message-ID: <CA+a=Yy6pi5rUv2GJtsvH1=O+WAawWg03S_ORpVfwnVzYa4tPqA@mail.gmail.com>
-References: <1352732245-30132-1-git-send-email-lczerner@redhat.com> <1352794923-28555-1-git-send-email-lczerner@redhat.com>
+Subject: Re: Commit Interval and Delayed Allocation
+Date: Tue, 13 Nov 2012 19:37:20 +0800
+Message-ID: <CA+a=Yy4KjhA5N2=ooc3Z405wfGDg2fsUH7qvF=iwJ9hiQM7zkw@mail.gmail.com>
+References: <0408C81F72528E40A0D3235A1F67FFC83ECD9881@SN2PRD0202MB144.namprd02.prod.outlook.com>
+ <20121110025838.GA5974@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, zab@redhat.com,
-	dmonakhov@openvz.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: "Nelson, John R" <John_Nelson@student.uml.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f46.google.com ([209.85.215.46]:54617 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752146Ab2KMLfD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 06:35:03 -0500
-Received: by mail-la0-f46.google.com with SMTP id h6so5338257lag.19
-        for <linux-ext4@vger.kernel.org>; Tue, 13 Nov 2012 03:35:01 -0800 (PST)
-In-Reply-To: <1352794923-28555-1-git-send-email-lczerner@redhat.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:39342 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751847Ab2KMLhm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 06:37:42 -0500
+Received: by mail-lb0-f174.google.com with SMTP id gp3so96806lbb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 13 Nov 2012 03:37:41 -0800 (PST)
+In-Reply-To: <20121110025838.GA5974@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 13, 2012 at 4:22 PM, Lukas Czerner <lczerner@redhat.com> wrote:
-> Currently ext4_ext_walk_space() only takes i_data_sem for read when
-> searching for the extent at given block with ext4_ext_find_extent().
-> Then it drops the lock and the extent tree can be changed at will.
-> However later on we're searching for the 'next' extent, but the extent
-> tree might already have changed, so the information might not be
-> accurate.
+On Sat, Nov 10, 2012 at 10:58 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Sat, Nov 10, 2012 at 12:40:42AM +0000, Nelson, John R wrote:
+>> Hi,
+>>   Say if ext4 commits every 5 seconds, does this mean whatever is
+>>buffered for delayed allocation is flushed every 5 seconds as well?
 >
-> In fact we can hit BUG_ON(end <= start) if the extent got inserted into
-> the tree after the one we found and before the block we were searching
-> for. This has been reproduced by running xfstests 225 in loop on s390x
-> architecture, but theoretically we could hit this on any other
-> architecture as well, but probably not as often.
+> No; there is a separate 30 second timer which is used for writeback
+> thread.
 >
-> Fix this by extending the critical section to include
-> ext4_ext_next_allocated_block() as well. It means that if there are any
-> operation going on on the particular inode, the fiemap will return
-> inaccurate data. However this will also fix the concerns about starving
-> writers to the extent tree, because we will put and reacquire the
-> semaphore with every iteration. This will not be particularly fast, but
-> fiemap is not critical operation.
+> For ext3 in data=ordered mode, we will flush out dirty pages for
+> inodes which have been written to make sure that stale data can never
+> get revealed.
 >
-> However we also need to limit the access to the extent structure to the
-> critical section, because outside of it the content can change. So we
-> remove extent and next block parameters from ext4_ext_fiemap_cb()
-> function and pass just flags instead.
+> But in delayed allocation, there is no risk that stale data can get
+> revealed until we actually allocate the data blocks.
 >
-> Also we have to move path reinitialization inside the critical section.
->
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
-> v3: reworked
->
->  fs/ext4/ext4_extents.h |    5 ++---
->  fs/ext4/extents.c      |   40 +++++++++++++++++++++-------------------
->  2 files changed, 23 insertions(+), 22 deletions(-)
->
-> diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-> index cb1b2c9..356ad9f 100644
-> --- a/fs/ext4/ext4_extents.h
-> +++ b/fs/ext4/ext4_extents.h
-> @@ -149,9 +149,8 @@ struct ext4_ext_path {
->   * positive retcode - signal for ext4_ext_walk_space(), see below
->   * callback must return valid extent (passed or newly created)
->   */
-> -typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
-> -                                       struct ext4_ext_cache *,
-> -                                       struct ext4_extent *, void *);
-> +typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_cache *,
-> +                                   unsigned int, void *);
->
->  #define EXT_CONTINUE   0
->  #define EXT_BREAK      1
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 7011ac9..c097acf 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1968,7 +1968,8 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->         struct ext4_extent *ex;
->         ext4_lblk_t next, start = 0, end = 0;
->         ext4_lblk_t last = block + num;
-> -       int depth, exists, err = 0;
-> +       int exists, depth = 0, err = 0;
-> +       unsigned int flags = 0;
->
->         BUG_ON(func == NULL);
->         BUG_ON(inode == NULL);
-> @@ -1977,9 +1978,16 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->                 num = last - block;
->                 /* find extent for this block */
->                 down_read(&EXT4_I(inode)->i_data_sem);
-> +
-> +               if (path && ext_depth(inode) != depth) {
-> +                       /* depth was changed. we have to realloc path */
-> +                       kfree(path);
-> +                       path = NULL;
-> +               }
-> +
->                 path = ext4_ext_find_extent(inode, block, path);
-> -               up_read(&EXT4_I(inode)->i_data_sem);
->                 if (IS_ERR(path)) {
-> +                       up_read(&EXT4_I(inode)->i_data_sem);
->                         err = PTR_ERR(path);
->                         path = NULL;
->                         break;
-> @@ -1987,6 +1995,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->
->                 depth = ext_depth(inode);
->                 if (unlikely(path[depth].p_hdr == NULL)) {
-> +                       up_read(&EXT4_I(inode)->i_data_sem);
->                         EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
->                         err = -EIO;
->                         break;
-> @@ -2037,14 +2046,21 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
->                         cbex.ec_block = le32_to_cpu(ex->ee_block);
->                         cbex.ec_len = ext4_ext_get_actual_len(ex);
->                         cbex.ec_start = ext4_ext_pblock(ex);
-> +                       if (ext4_ext_is_uninitialized(ex))
-> +                               flags |= FIEMAP_EXTENT_UNWRITTEN;
->                 }
-> +               up_read(&EXT4_I(inode)->i_data_sem);
->
->                 if (unlikely(cbex.ec_len == 0)) {
->                         EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
->                         err = -EIO;
->                         break;
->                 }
-> -               err = func(inode, next, &cbex, ex, cbdata);
-> +
-> +               if (next == EXT_MAX_BLOCKS)
-> +                       flags |= FIEMAP_EXTENT_LAST;
-> +
-> +               err = func(inode, &cbex, flags, cbdata);
-You may want to include func() in the critical section as well, to fix
-the cp data corruption reported by Roger Niva. It looks to be the same
-race.
-http://thread.gmane.org/gmane.comp.file-systems.ext4/35393
+Hi Ted,
+
+Then ext4.txt seems need updating? If I understand you correctly, I'd
+expect to lose 30 seconds of data rather than 5 seconds if data is
+delayed allocated.
+
+172 commit=nrsec    (*)     Ext4 can be told to sync all its data and metadata
+173                         every 'nrsec' seconds. The default value
+is 5 seconds.
+174                         This means that if you lose your power,
+you will lose
+175                         as much as the latest 5 seconds of work (your
+176                         filesystem will not be damaged though, thanks to the
+177                         journaling).  This default value (or any low value)
+178                         will hurt performance, but it's good for
+data-safety.
+179                         Setting it to 0 will have the same effect as leaving
+180                         it at the default (5 seconds).
+181                         Setting it to very large values will improve
+182                         performance.
+
 
 -- 
 Thanks,
