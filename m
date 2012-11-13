@@ -1,108 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: "George Spelvin" <linux@horizon.com>
 Subject: Re: e2fsck: eh_magic = 0000 != f30a
-Date: Tue, 13 Nov 2012 09:19:14 -0600
-Message-ID: <50A264F2.2020001@redhat.com>
-References: <20121113120327.31308.qmail@science.horizon.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Date: 13 Nov 2012 11:42:30 -0500
+Message-ID: <20121113164230.26152.qmail@science.horizon.com>
+References: <50A264F2.2020001@redhat.com>
 Cc: linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+To: linux@horizon.com, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15616 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752251Ab2KMPTS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Nov 2012 10:19:18 -0500
-In-Reply-To: <20121113120327.31308.qmail@science.horizon.com>
+Received: from science.horizon.com ([71.41.210.146]:31024 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750780Ab2KMQmb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 11:42:31 -0500
+In-Reply-To: <50A264F2.2020001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/13/12 6:03 AM, George Spelvin wrote:
-> Having just created and filled a 64bit file system, I ran e2fsck on it,
-> and keep getting this message printed shortly after "Pass 1" is printed.
+Eric Sandeen wrote:
+> Just for posterity, can you say what parameters you used on mkfs,
+> as well as include the "dumpe2fs -h" output for the filesystem so we can
+> see features, geometry, etc?  Then it can probably be reproduced
+> and analyzed.
 
-Just for posterity, can you say what parameters you used on mkfs,
-as well as include the "dumpe2fs -h" output for the filesystem so we can
-see features, geometry, etc?  Then it can probably be reproduced
-and analyzed.
+Ah, good idea, sorry.
 
--Eric
+The command was
+mke2fs -E stride=32,stripe-width=352,resize=17179869184 -i 1048576 -L data -t ext4 -O metadata_csum,resize_inode,64bit,^huge_file -v /dev/md1
 
-
-> It doesn't seem to cause any obvious bad things.  Is it dangerous?
-> 
-> Adding some debugging prints to e2fsck, I discovered the error occurs
-> with inode 7 (the reside inode) at line 869 of e2fsck/pass1.c.
-> 
-> 
-> Also, the first fsck ever on the newly filled filesystem (which was run
-> with -D) produced a 1-block error:
-> 
-> Pass 5: Checking group summary information                                     
-> Block bitmap differences:  -1719140557                                         
-> Fix<y>? yes
-> Free blocks count wrong for group #52464 (32344, counted=32345).               
-> Fix<y>? yes
-> Free blocks count wrong (227072527, counted=227072528).
-> Fix<y>? yes
-> 
-> The second (without -D) reversed it:
-> # e2fsck -f -v -C0 /dev/md1
-> e2fsck 1.43-WIP (22-Sep-2012)
-> Pass 1: Checking inodes, blocks, and sizes
-> eh_magic = 0000 != f30a
-> Pass 2: Checking directory structure                                           
-> Pass 3: Checking directory connectivity                                        
-> Pass 4: Checking reference counts                                              
-> Pass 5: Checking group summary information                                     
-> Block bitmap differences:  +1719140557                                         
-> Fix<y>? yes
-> Free blocks count wrong for group #52464 (32345, counted=32344).               
-> Fix<y>? yes
-> Free blocks count wrong (227072528, counted=227072527).
-> Fix<y>? yes
-> 
-> 
-> Dumping some information:
-> debugfs:  ex <7>
-> <7>: does not uses extent block maps
-> debugfs:  stat <7>
-> Inode: 7   Type: regular    Mode:  0600   Flags: 0x0
-> Generation: 0    Version: 0x00000000:00000000
-> User:     0   Group:     0   Size: 4299210752
-> File ACL: 0    Directory ACL: 0
-> Links: 1   Blockcount: 188424
-> Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
->  atime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
->  mtime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
-> crtime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
-> Size of extra inode fields: 28
-> Inode checksum: 0xb1958b41
-> BLOCKS:
-> (DIND):2122, (IND):1025, (1036):33793, (1037):99329, (1038):164865, (1039):230401, (1040):295937, (1041):820225, (1042):885761, (1043):1606657, (1044):2655233, (1045):4097025, (1046):7963649, (1047):11240449, (1048):20481025, (1049):23888897, (1050):71664641, (1051):78676993, (1052):102401025, (1053):214991873, (1054):512001025, (1055):550732801, (1056):644973569, (1057):1934918657, (IND):1026, (2060):33794, (2061):99330, (2062):164866, (2063):230402, (2064):295938, (2065):820226, (2066):885762, (2067):1606658, (2068):2655234, (2069):4097026, (2070):7963650, (2071):11240450, (2072):20481026, (2073):23888898, (2074):71664642, (2075):78676994, (2076):102401026, (2077):214991874, (2078):512001026, (2079):550732802, (2080):644973570, (2081):1934918658, (IND):1027, (3084):33795, (3085):99331,
-  (3086):164867, (3087):230403, (3088):295939, (3089):820227, (3090):885763, (3091):1606659, (3092):2655235, (3093):4097027, (3094):7963651, (3095):11240451, (3096):20481027, (3097):23888899!
- , !
->  (3098):71664643, (3099):78676995, (3100):102401027, (3101):214991875, (3102):512001027, (3103):550732803, (3104):644973571, (3105):1934918659, (IND):1028, (4108):33796, (4109):99332, (4110):164868, (4111):230404, (4112):295940, (4113):820228, (4114):885764, (4115):1606660, (4116):2655236, (4117):4097028, (4118):7963652, (4119):11240452, (4120):20481028, (4121):23888900, (4122):71664644, (4123):78676996, (4124):102401028, (4125):214991876, (4126):512001028, (4127):550732804, (4128):644973572, (4129):1934918660, (IND):1029, (5132):33797, (5133):99333, (5134):164869, (5135):230405, (5136):295941, (5137):820229, (5138):885765, (5139):1606661, (5140):2655237, (5141):4097029, (5142):7963653, (5143):11240453, (5144):20481029, (5145):23888901, (5146):71664645, (5147):78676997, (5148):102401029,
-  (5149):214991877, (5150):512001029, (5151):550732805, (5152):644973573, (5153):1934918661, (IND):1030, (6156):33798, (6157):99334, (6158):164870, (6159):230406, (6160):295942, (6161):82023!
- 0,!
->   (6162):885766, (6163):1606662, (6164):2655238, (6165):4097030!
->  , (6166):7963654, (6167):11240454, (6168):20481030, (6169):23888902, (6170):71664646, (6171):78676998, (6172):102401030, (6173):214991878, (6174):512001030, (6175):550732806, (6176):644973574, (6177):1934918662, (IND):1031, (7180):33799, (7181):99335, (7182):164871, (7183):230407, (7184):295943, (7185):820231, (7186):885767, (7187):1606663, (7188):2655239, (7189):4097031, (7190):7963655, (7191):11240455, (7192):20481031, (7193):23888903, (7194):71664647, (7195):78676999, (7196):102401031, (7197):214991879, (7198):512001031, (7199):550732807, (7200):644973575, (7201):1934918663, (IND):1032, (8204):33800, (8205):99336, (8206):164872, (8207):230408, (8208):295944, (8209):820232, (8210):885768, (8211):1606664, (8212):2655240, (8213):4097032, (8214):7963656, (8215):11240456, (8216):20481032,
-  (8217):23888904, (8218):71664648, (8219):78677000, (8220):102401032, (8221):214991880, (8222):512001032, (8223):550732808, (8224):644973576, (8225):1934918664, (IND):1033, (9228):33801, (9!
- 22!
->  9):99337, (9230):164873, (9231):230409, (9232):295945, (9233):820233, (9234):885769, (9235):1606665, (9236):2655241, (9237):4097033, (9238):7963657, (9239):11240457, (9240):20481033, (9241):23888905, (9242):71664649, (9243):78677001, (9244):102401033, (9245):214991881, (9246):512001033, (9247):550732809, (9248):644973577, (9249):1934918665, (IND):1034, (10252):33802, (10253):99338, (10254):164874, (10255):230410, (10256):295946, (10257):820234, (10258):885770, (10259):1606666, (10260):2655242, (10261):4097034, (10262):7963658, (10263):11240458, (10264):20481034, (10265):23888906, (10266):71664650, (10267):78677002, (10268):102401034, (10269):214991882, (10270):512001034, (10271):550732810, (10272):644973578, (10273):1934918666, (IND):1035, (11276):33803, (11277):99339, (11278):164875, (
- 11279):230411, (11280):295947, (11281):820235, (11282):885771, (11283):1606667, (11284):2655243, (11285):4097035, (11286):7963659, (11287):11240459, (11288):20481035, (11289):23888907, (112!
- 90!
->  ):71664651, (11291):78677003, (11292):102401035, (11293):214991883, (11!
->  294):512001035, (11295):550732811, (11296):644973579, (11297):1934918667, (IND):1036, (12300):33804, (12301):99340, (12302):164876, (12303):230412, (12304):295948, (12305):820236, (12306):885772, (12307):1606668, (12308):2655244, (12309):4097036, (12310):7963660, (12311):11240460, (12312):20481036, (12313):23888908, (12314):71664652, (12315):78677004, (12316):102401036, (12317):214991884, (12318):512001036, (12319):550732812, (12320):644973580, (12321):1934918668, (IND):1037, (13324):33805, (13325):99341, (13326):164877, (13327):230413, (13328):295949, (13329):820237, (13330):885773, (13331):1606669, (13332):2655245, (13333):4097037, (13334):7963661, (13335):11240461, (13336):20481037, (13337):23888909,
-> [snip]
->  (IND):1023, (1047564):33791, (1047565):99327, (1047566):164863, (1047567):230399, (1047568):295935, (1047569):820223, (1047570):885759, (1047571):1606655, (1047572):2655231, (1047573):4097023, (1047574):7963647, (1047575):11240447, (1047576):20481023, (1047577):23888895, (1047578):71664639, (1047579):78676991, (1047580):102401023, (1047581):214991871, (1047582):512001023, (1047583):550732799, (1047584):644973567, (1047585):1934918655, (IND):1024, (1048588):33792, (1048589):99328, (1048590):164864, (1048591):230400, (1048592):295936, (1048593):820224, (1048594):885760, (1048595):1606656, (1048596):2655232, (1048597):4097024, (1048598):7963648, (1048599):11240448, (1048600):20481024, (1048601):23888896, (1048602):71664640, (1048603):78676992, (1048604):102401024, (1048605):214991872, (104
- 8606):512001024, (1048607):550732800, (1048608):644973568, (1048609):1934918656
-> TOTAL: 23553
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+dumpe2fs 1.43-WIP (22-Sep-2012)
+Filesystem volume name:   data
+Last mounted on:          /data
+Filesystem UUID:          c99d1f6f-b973-4378-a391-8e10f15fd24a
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file dir_nlink extra_isize metadata_csum
+Filesystem flags:         signed_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              7630464
+Block count:              1953383296
+Reserved block count:     97669164
+Free blocks:              227072527
+Free inodes:              5618110
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      1024
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         128
+Inode blocks per group:   8
+RAID stride:              32
+RAID stripe width:        352
+Flex block group size:    16
+Filesystem created:       Sun Nov 11 17:08:46 2012
+Last mount time:          Tue Nov 13 08:02:29 2012
+Last write time:          Tue Nov 13 08:02:29 2012
+Mount count:              2
+Maximum mount count:      -1
+Last checked:             Tue Nov 13 06:43:04 2012
+Check interval:           0 (<none>)
+Lifetime writes:          6628 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      305f1eba-74eb-438f-9acf-f41597f73f54
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x8881f484
+Journal features:         journal_incompat_revoke journal_64bit
+Journal size:             128M
+Journal length:           32768
+Journal sequence:         0x00005238
+Journal start:            0
 
