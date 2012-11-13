@@ -1,81 +1,97 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: e2fsck: eh_magic = 0000 != f30a
-Date: 13 Nov 2012 11:42:30 -0500
-Message-ID: <20121113164230.26152.qmail@science.horizon.com>
-References: <50A264F2.2020001@redhat.com>
-Cc: linux-ext4@vger.kernel.org
-To: linux@horizon.com, sandeen@redhat.com
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: do not use ext4_error() when there is no space in
+ dir leaf for csum
+Date: Tue, 13 Nov 2012 10:16:05 -0800
+Message-ID: <20121113181605.GA11794@blackbox.djwong.org>
+References: <1352604025-22310-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:31024 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750780Ab2KMQmb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 11:42:31 -0500
-In-Reply-To: <50A264F2.2020001@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30711 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755548Ab2KMSQK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 13:16:10 -0500
+Content-Disposition: inline
+In-Reply-To: <1352604025-22310-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Just for posterity, can you say what parameters you used on mkfs,
-> as well as include the "dumpe2fs -h" output for the filesystem so we can
-> see features, geometry, etc?  Then it can probably be reproduced
-> and analyzed.
+On Sat, Nov 10, 2012 at 10:20:25PM -0500, Theodore Ts'o wrote:
+> If there is no space for a checksum in a directory leaf node,
+> previously we would use EXT4_ERROR_INODE() which would mark the file
+> system as inconsistent.  While it would be nice to use e2fsck -D, it
+> certainly isn't required, so just print a warning using
+> ext4_warning().
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-Ah, good idea, sorry.
+Looks fine to me, so you can change Cc: to Acked-By:.
 
-The command was
-mke2fs -E stride=32,stripe-width=352,resize=17179869184 -i 1048576 -L data -t ext4 -O metadata_csum,resize_inode,64bit,^huge_file -v /dev/md1
-
-dumpe2fs 1.43-WIP (22-Sep-2012)
-Filesystem volume name:   data
-Last mounted on:          /data
-Filesystem UUID:          c99d1f6f-b973-4378-a391-8e10f15fd24a
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file dir_nlink extra_isize metadata_csum
-Filesystem flags:         signed_directory_hash 
-Default mount options:    user_xattr acl
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              7630464
-Block count:              1953383296
-Reserved block count:     97669164
-Free blocks:              227072527
-Free inodes:              5618110
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1024
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         128
-Inode blocks per group:   8
-RAID stride:              32
-RAID stripe width:        352
-Flex block group size:    16
-Filesystem created:       Sun Nov 11 17:08:46 2012
-Last mount time:          Tue Nov 13 08:02:29 2012
-Last write time:          Tue Nov 13 08:02:29 2012
-Mount count:              2
-Maximum mount count:      -1
-Last checked:             Tue Nov 13 06:43:04 2012
-Check interval:           0 (<none>)
-Lifetime writes:          6628 GB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      305f1eba-74eb-438f-9acf-f41597f73f54
-Journal backup:           inode blocks
-Checksum type:            crc32c
-Checksum:                 0x8881f484
-Journal features:         journal_incompat_revoke journal_64bit
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00005238
-Journal start:            0
-
+--D
+> ---
+>  fs/ext4/namei.c | 18 ++++++++++--------
+>  1 file changed, 10 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 6d600a6..580af3d 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -261,6 +261,12 @@ static __le32 ext4_dirent_csum(struct inode *inode,
+>  	return cpu_to_le32(csum);
+>  }
+>  
+> +static void warn_no_space_for_csum(struct inode *inode)
+> +{
+> +	ext4_warning(inode->i_sb, "no space in directory inode %lu leaf for "
+> +		     "checksum.  Please run e2fsck -D.", inode->i_ino);
+> +}
+> +
+>  int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
+>  {
+>  	struct ext4_dir_entry_tail *t;
+> @@ -271,8 +277,7 @@ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
+>  
+>  	t = get_dirent_tail(inode, dirent);
+>  	if (!t) {
+> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
+> -				 "leaf for checksum.  Please run e2fsck -D.");
+> +		warn_no_space_for_csum(inode);
+>  		return 0;
+>  	}
+>  
+> @@ -294,8 +299,7 @@ static void ext4_dirent_csum_set(struct inode *inode,
+>  
+>  	t = get_dirent_tail(inode, dirent);
+>  	if (!t) {
+> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
+> -				 "leaf for checksum.  Please run e2fsck -D.");
+> +		warn_no_space_for_csum(inode);
+>  		return;
+>  	}
+>  
+> @@ -377,8 +381,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
+>  	count = le16_to_cpu(c->count);
+>  	if (count_offset + (limit * sizeof(struct dx_entry)) >
+>  	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
+> -				 "tree checksum found.  Run e2fsck -D.");
+> +		warn_no_space_for_csum(inode);
+>  		return 1;
+>  	}
+>  	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+> @@ -408,8 +411,7 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
+>  	count = le16_to_cpu(c->count);
+>  	if (count_offset + (limit * sizeof(struct dx_entry)) >
+>  	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
+> -				 "tree checksum.  Run e2fsck -D.");
+> +		warn_no_space_for_csum(inode);
+>  		return;
+>  	}
+>  	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
