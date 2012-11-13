@@ -1,80 +1,152 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: e2fsck: eh_magic = 0000 != f30a
-Date: 13 Nov 2012 07:03:27 -0500
-Message-ID: <20121113120327.31308.qmail@science.horizon.com>
-Cc: linux@horizon.com
-To: linux-ext4@vger.kernel.org
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
+Date: Tue, 13 Nov 2012 13:07:03 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1211131304030.3577@localhost>
+References: <1352732245-30132-1-git-send-email-lczerner@redhat.com> <1352794923-28555-1-git-send-email-lczerner@redhat.com> <CA+a=Yy6pi5rUv2GJtsvH1=O+WAawWg03S_ORpVfwnVzYa4tPqA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, zab@redhat.com, dmonakhov@openvz.org
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:29729 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751556Ab2KMMD3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 07:03:29 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:23220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751212Ab2KMMHL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Nov 2012 07:07:11 -0500
+In-Reply-To: <CA+a=Yy6pi5rUv2GJtsvH1=O+WAawWg03S_ORpVfwnVzYa4tPqA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Having just created and filled a 64bit file system, I ran e2fsck on it,
-and keep getting this message printed shortly after "Pass 1" is printed.
+On Tue, 13 Nov 2012, Peng Tao wrote:
 
-It doesn't seem to cause any obvious bad things.  Is it dangerous?
+> Date: Tue, 13 Nov 2012 19:34:41 +0800
+> From: Peng Tao <bergwolf@gmail.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, zab@redhat.com,
+>     dmonakhov@openvz.org
+> Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
+> 
+> On Tue, Nov 13, 2012 at 4:22 PM, Lukas Czerner <lczerner@redhat.com> wrote:
+> > Currently ext4_ext_walk_space() only takes i_data_sem for read when
+> > searching for the extent at given block with ext4_ext_find_extent().
+> > Then it drops the lock and the extent tree can be changed at will.
+> > However later on we're searching for the 'next' extent, but the extent
+> > tree might already have changed, so the information might not be
+> > accurate.
+> >
+> > In fact we can hit BUG_ON(end <= start) if the extent got inserted into
+> > the tree after the one we found and before the block we were searching
+> > for. This has been reproduced by running xfstests 225 in loop on s390x
+> > architecture, but theoretically we could hit this on any other
+> > architecture as well, but probably not as often.
+> >
+> > Fix this by extending the critical section to include
+> > ext4_ext_next_allocated_block() as well. It means that if there are any
+> > operation going on on the particular inode, the fiemap will return
+> > inaccurate data. However this will also fix the concerns about starving
+> > writers to the extent tree, because we will put and reacquire the
+> > semaphore with every iteration. This will not be particularly fast, but
+> > fiemap is not critical operation.
+> >
+> > However we also need to limit the access to the extent structure to the
+> > critical section, because outside of it the content can change. So we
+> > remove extent and next block parameters from ext4_ext_fiemap_cb()
+> > function and pass just flags instead.
+> >
+> > Also we have to move path reinitialization inside the critical section.
+> >
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> > v3: reworked
+> >
+> >  fs/ext4/ext4_extents.h |    5 ++---
+> >  fs/ext4/extents.c      |   40 +++++++++++++++++++++-------------------
+> >  2 files changed, 23 insertions(+), 22 deletions(-)
+> >
+> > diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+> > index cb1b2c9..356ad9f 100644
+> > --- a/fs/ext4/ext4_extents.h
+> > +++ b/fs/ext4/ext4_extents.h
+> > @@ -149,9 +149,8 @@ struct ext4_ext_path {
+> >   * positive retcode - signal for ext4_ext_walk_space(), see below
+> >   * callback must return valid extent (passed or newly created)
+> >   */
+> > -typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
+> > -                                       struct ext4_ext_cache *,
+> > -                                       struct ext4_extent *, void *);
+> > +typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_cache *,
+> > +                                   unsigned int, void *);
+> >
+> >  #define EXT_CONTINUE   0
+> >  #define EXT_BREAK      1
+> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > index 7011ac9..c097acf 100644
+> > --- a/fs/ext4/extents.c
+> > +++ b/fs/ext4/extents.c
+> > @@ -1968,7 +1968,8 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+> >         struct ext4_extent *ex;
+> >         ext4_lblk_t next, start = 0, end = 0;
+> >         ext4_lblk_t last = block + num;
+> > -       int depth, exists, err = 0;
+> > +       int exists, depth = 0, err = 0;
+> > +       unsigned int flags = 0;
+> >
+> >         BUG_ON(func == NULL);
+> >         BUG_ON(inode == NULL);
+> > @@ -1977,9 +1978,16 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+> >                 num = last - block;
+> >                 /* find extent for this block */
+> >                 down_read(&EXT4_I(inode)->i_data_sem);
+> > +
+> > +               if (path && ext_depth(inode) != depth) {
+> > +                       /* depth was changed. we have to realloc path */
+> > +                       kfree(path);
+> > +                       path = NULL;
+> > +               }
+> > +
+> >                 path = ext4_ext_find_extent(inode, block, path);
+> > -               up_read(&EXT4_I(inode)->i_data_sem);
+> >                 if (IS_ERR(path)) {
+> > +                       up_read(&EXT4_I(inode)->i_data_sem);
+> >                         err = PTR_ERR(path);
+> >                         path = NULL;
+> >                         break;
+> > @@ -1987,6 +1995,7 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+> >
+> >                 depth = ext_depth(inode);
+> >                 if (unlikely(path[depth].p_hdr == NULL)) {
+> > +                       up_read(&EXT4_I(inode)->i_data_sem);
+> >                         EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
+> >                         err = -EIO;
+> >                         break;
+> > @@ -2037,14 +2046,21 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
+> >                         cbex.ec_block = le32_to_cpu(ex->ee_block);
+> >                         cbex.ec_len = ext4_ext_get_actual_len(ex);
+> >                         cbex.ec_start = ext4_ext_pblock(ex);
+> > +                       if (ext4_ext_is_uninitialized(ex))
+> > +                               flags |= FIEMAP_EXTENT_UNWRITTEN;
+> >                 }
+> > +               up_read(&EXT4_I(inode)->i_data_sem);
+> >
+> >                 if (unlikely(cbex.ec_len == 0)) {
+> >                         EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
+> >                         err = -EIO;
+> >                         break;
+> >                 }
+> > -               err = func(inode, next, &cbex, ex, cbdata);
+> > +
+> > +               if (next == EXT_MAX_BLOCKS)
+> > +                       flags |= FIEMAP_EXTENT_LAST;
+> > +
+> > +               err = func(inode, &cbex, flags, cbdata);
+> You may want to include func() in the critical section as well, to fix
+> the cp data corruption reported by Roger Niva. It looks to be the same
+> race.
 
-Adding some debugging prints to e2fsck, I discovered the error occurs
-with inode 7 (the reside inode) at line 869 of e2fsck/pass1.c.
+That's not a good idea. As already mentioned by Zach Brown
+ext4_ext_fiemap_cb() is doing all kinds of things including possibly
+taking i_data_sem. Moreover even if we do that, after we drop the
+semaphore and return data to the user it might no longer be valid
+anyway in the case there is any IO going on on the file.
 
-
-Also, the first fsck ever on the newly filled filesystem (which was run
-with -D) produced a 1-block error:
-
-Pass 5: Checking group summary information                                     
-Block bitmap differences:  -1719140557                                         
-Fix<y>? yes
-Free blocks count wrong for group #52464 (32344, counted=32345).               
-Fix<y>? yes
-Free blocks count wrong (227072527, counted=227072528).
-Fix<y>? yes
-
-The second (without -D) reversed it:
-# e2fsck -f -v -C0 /dev/md1
-e2fsck 1.43-WIP (22-Sep-2012)
-Pass 1: Checking inodes, blocks, and sizes
-eh_magic = 0000 != f30a
-Pass 2: Checking directory structure                                           
-Pass 3: Checking directory connectivity                                        
-Pass 4: Checking reference counts                                              
-Pass 5: Checking group summary information                                     
-Block bitmap differences:  +1719140557                                         
-Fix<y>? yes
-Free blocks count wrong for group #52464 (32345, counted=32344).               
-Fix<y>? yes
-Free blocks count wrong (227072528, counted=227072527).
-Fix<y>? yes
-
-
-Dumping some information:
-debugfs:  ex <7>
-<7>: does not uses extent block maps
-debugfs:  stat <7>
-Inode: 7   Type: regular    Mode:  0600   Flags: 0x0
-Generation: 0    Version: 0x00000000:00000000
-User:     0   Group:     0   Size: 4299210752
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 188424
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
- atime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
- mtime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
-crtime: 0x50a021ee:00000000 -- Sun Nov 11 17:08:46 2012
-Size of extra inode fields: 28
-Inode checksum: 0xb1958b41
-BLOCKS:
-(DIND):2122, (IND):1025, (1036):33793, (1037):99329, (1038):164865, (1039):230401, (1040):295937, (1041):820225, (1042):885761, (1043):1606657, (1044):2655233, (1045):4097025, (1046):7963649, (1047):11240449, (1048):20481025, (1049):23888897, (1050):71664641, (1051):78676993, (1052):102401025, (1053):214991873, (1054):512001025, (1055):550732801, (1056):644973569, (1057):1934918657, (IND):1026, (2060):33794, (2061):99330, (2062):164866, (2063):230402, (2064):295938, (2065):820226, (2066):885762, (2067):1606658, (2068):2655234, (2069):4097026, (2070):7963650, (2071):11240450, (2072):20481026, (2073):23888898, (2074):71664642, (2075):78676994, (2076):102401026, (2077):214991874, (2078):512001026, (2079):550732802, (2080):644973570, (2081):1934918658, (IND):1027, (3084):33795, (3085):99331, (
- 3086):164867, (3087):230403, (3088):295939, (3089):820227, (3090):885763, (3091):1606659, (3092):2655235, (3093):4097027, (3094):7963651, (3095):11240451, (3096):20481027, (3097):23888899, (3098):71664643, (3099):78676995, (3100):102401027, (3101):214991875, (3102):512001027, (3103):550732803, (3104):644973571, (3105):1934918659, (IND):1028, (4108):33796, (4109):99332, (4110):164868, (4111):230404, (4112):295940, (4113):820228, (4114):885764, (4115):1606660, (4116):2655236, (4117):4097028, (4118):7963652, (4119):11240452, (4120):20481028, (4121):23888900, (4122):71664644, (4123):78676996, (4124):102401028, (4125):214991876, (4126):512001028, (4127):550732804, (4128):644973572, (4129):1934918660, (IND):1029, (5132):33797, (5133):99333, (5134):164869, (5135):230405, (5136):295941, (5137):8
- 20229, (5138):885765, (5139):1606661, (5140):2655237, (5141):4097029, (5142):7963653, (5143):11240453, (5144):20481029, (5145):23888901, (5146):71664645, (5147):78676997, (5148):102401029, (5149):214991877, (5150):512001029, (5151):550732805, (5152):644973573, (5153):1934918661, (IND):1030, (6156):33798, (6157):99334, (6158):164870, (6159):230406, (6160):295942, (6161):820230, (6162):885766, (6163):1606662, (6164):2655238, (6165):4097030, (6166):7963654, (6167):11240454, (6168):20481030, (6169):23888902, (6170):71664646, (6171):78676998, (6172):102401030, (6173):214991878, (6174):512001030, (6175):550732806, (6176):644973574, (6177):1934918662, (IND):1031, (7180):33799, (7181):99335, (7182):164871, (7183):230407, (7184):295943, (7185):820231, (7186):885767, (7187):1606663, (7188):2655239
- , (7189):4097031, (7190):7963655, (7191):11240455, (7192):20481031, (7193):23888903, (7194):71664647, (7195):78676999, (7196):102401031, (7197):214991879, (7198):512001031, (7199):550732807, (7200):644973575, (7201):1934918663, (IND):1032, (8204):33800, (8205):99336, (8206):164872, (8207):230408, (8208):295944, (8209):820232, (8210):885768, (8211):1606664, (8212):2655240, (8213):4097032, (8214):7963656, (8215):11240456, (8216):20481032, (8217):23888904, (8218):71664648, (8219):78677000, (8220):102401032, (8221):214991880, (8222):512001032, (8223):550732808, (8224):644973576, (8225):1934918664, (IND):1033, (9228):33801, (9229):99337, (9230):164873, (9231):230409, (9232):295945, (9233):820233, (9234):885769, (9235):1606665, (9236):2655241, (9237):4097033, (9238):7963657, (9239):11240457, (
- 9240):20481033, (9241):23888905, (9242):71664649, (9243):78677001, (9244):102401033, (9245):214991881, (9246):512001033, (9247):550732809, (9248):644973577, (9249):1934918665, (IND):1034, (10252):33802, (10253):99338, (10254):164874, (10255):230410, (10256):295946, (10257):820234, (10258):885770, (10259):1606666, (10260):2655242, (10261):4097034, (10262):7963658, (10263):11240458, (10264):20481034, (10265):23888906, (10266):71664650, (10267):78677002, (10268):102401034, (10269):214991882, (10270):512001034, (10271):550732810, (10272):644973578, (10273):1934918666, (IND):1035, (11276):33803, (11277):99339, (11278):164875, (11279):230411, (11280):295947, (11281):820235, (11282):885771, (11283):1606667, (11284):2655243, (11285):4097035, (11286):7963659, (11287):11240459, (11288):20481035, (
- 11289):23888907, (11290):71664651, (11291):78677003, (11292):102401035, (11293):214991883, (11294):512001035, (11295):550732811, (11296):644973579, (11297):1934918667, (IND):1036, (12300):33804, (12301):99340, (12302):164876, (12303):230412, (12304):295948, (12305):820236, (12306):885772, (12307):1606668, (12308):2655244, (12309):4097036, (12310):7963660, (12311):11240460, (12312):20481036, (12313):23888908, (12314):71664652, (12315):78677004, (12316):102401036, (12317):214991884, (12318):512001036, (12319):550732812, (12320):644973580, (12321):1934918668, (IND):1037, (13324):33805, (13325):99341, (13326):164877, (13327):230413, (13328):295949, (13329):820237, (13330):885773, (13331):1606669, (13332):2655245, (13333):4097037, (13334):7963661, (13335):11240461, (13336):20481037, (13337):2
- 3888909,
-[snip]
- (IND):1023, (1047564):33791, (1047565):99327, (1047566):164863, (1047567):230399, (1047568):295935, (1047569):820223, (1047570):885759, (1047571):1606655, (1047572):2655231, (1047573):4097023, (1047574):7963647, (1047575):11240447, (1047576):20481023, (1047577):23888895, (1047578):71664639, (1047579):78676991, (1047580):102401023, (1047581):214991871, (1047582):512001023, (1047583):550732799, (1047584):644973567, (1047585):1934918655, (IND):1024, (1048588):33792, (1048589):99328, (1048590):164864, (1048591):230400, (1048592):295936, (1048593):820224, (1048594):885760, (1048595):1606656, (1048596):2655232, (1048597):4097024, (1048598):7963648, (1048599):11240448, (1048600):20481024, (1048601):23888896, (1048602):71664640, (1048603):78676992, (1048604):102401024, (1048605):214991872, (10486
- 06):512001024, (1048607):550732800, (1048608):644973568, (1048609):1934918656
-TOTAL: 23553
-
+-Lukas
