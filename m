@@ -1,97 +1,86 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: do not use ext4_error() when there is no space in
- dir leaf for csum
-Date: Tue, 13 Nov 2012 10:16:05 -0800
-Message-ID: <20121113181605.GA11794@blackbox.djwong.org>
-References: <1352604025-22310-1-git-send-email-tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Weird filesystem corruption from wayland / radeon / chromium
+Date: Tue, 13 Nov 2012 12:28:49 -0600
+Message-ID: <50A29161.4060506@redhat.com>
+References: <20120903220213.GE19158@chaosreigns.com> <20120904032919.GJ5066@thunk.org> <20120905024848.GK19158@chaosreigns.com> <20120905033818.GL19158@chaosreigns.com> <87liekovgo.fsf@passepartout.tim-landscheidt.de> <509401E2.30402@redhat.com> <878vajq1g6.fsf@passepartout.tim-landscheidt.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30711 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755548Ab2KMSQK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2012 13:16:10 -0500
-Content-Disposition: inline
-In-Reply-To: <1352604025-22310-1-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:4525 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753083Ab2KMS2u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Nov 2012 13:28:50 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qADISoVU007516
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Nov 2012 13:28:50 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qADISnjg021138
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Nov 2012 13:28:49 -0500
+In-Reply-To: <878vajq1g6.fsf@passepartout.tim-landscheidt.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 10, 2012 at 10:20:25PM -0500, Theodore Ts'o wrote:
-> If there is no space for a checksum in a directory leaf node,
-> previously we would use EXT4_ERROR_INODE() which would mark the file
-> system as inconsistent.  While it would be nice to use e2fsck -D, it
-> certainly isn't required, so just print a warning using
-> ext4_warning().
+On 11/2/12 1:55 PM, Tim Landscheidt wrote:
+> Eric Sandeen <sandeen@redhat.com> wrote:
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
+>> [...]
+>>> Shortly after starting Chrome, the messages reappeared
+>>> again:
+> 
+>>> | Nov  2 15:15:48 passepartout kernel: [ 1979.196296] EXT4-fs error (device dm-4): ext4_ext_search_left:1304: inode #274258: comm flush-253:4: ix (3666) != EXT_FIRST_INDEX (0) (depth 0)!
+>>> | Nov  2 15:15:48 passepartout kernel: [ 1979.196306] EXT4-fs (dm-4): delayed block allocation failed for inode 274258 at logical offset 3672 with max blocks 2 with error -5
+>>> | Nov  2 15:15:48 passepartout kernel: [ 1979.196308] EXT4-fs (dm-4): This should not happen!! Data will be lost
+>>> | Nov  2 15:15:48 passepartout kernel: [ 1979.196308]
+> 
+>>> And indeed:
+> 
+>>> | [root@passepartout ~]# find ~tim -inum 274258
+>>> | /home/tim/.cache/google-chrome/Default/Cache/data_3
+>>> | [root@passepartout ~]#
+> 
+>>> So somehow Chromium/Chrome seems to be able to trigger ker-
+>>> nel messages indicating a file system error while no actual
+>>> file system errors seem to occur (very big assumption here
+>>> because I have no idea how to detect if "data_3" is cor-
+>>> rupted).
+> 
+>> So it's the same inode every time.
+> 
+>> What does
+> 
+>> # debugfs -R "dump_extents <274258>" /dev/dm-4
+> 
+>> show? (or whatever the appropriate device node path is)
+> 
+> See attachment.
 
-Looks fine to me, so you can change Cc: to Acked-By:.
+Level Entries       Logical          Physical Length Flags
+ 0/ 1   1/  2     0 -  3665 1114157             3666
+ 1/ 1   1/ 59     0 -   132  510721 -  510853    133 
+ 1/ 1   2/ 59   133 -   139  511415 -  511421      7 
+...
+ 1/ 1  58/ 59  3039 -  3664  573440 -  574065    626 
+ 1/ 1  59/ 59  3665 -  4092  574066 -  574493    428 
+ 0/ 1   2/  2  3666 -  9217  395702             5552
+ 1/ 1   1/307  4093 -  4093  574494 -  574494      1 
+ 1/ 1   2/307  4094 -  4095  395758 -  395759      2 
+...
 
---D
-> ---
->  fs/ext4/namei.c | 18 ++++++++++--------
->  1 file changed, 10 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 6d600a6..580af3d 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -261,6 +261,12 @@ static __le32 ext4_dirent_csum(struct inode *inode,
->  	return cpu_to_le32(csum);
->  }
->  
-> +static void warn_no_space_for_csum(struct inode *inode)
-> +{
-> +	ext4_warning(inode->i_sb, "no space in directory inode %lu leaf for "
-> +		     "checksum.  Please run e2fsck -D.", inode->i_ino);
-> +}
-> +
->  int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
->  {
->  	struct ext4_dir_entry_tail *t;
-> @@ -271,8 +277,7 @@ int ext4_dirent_csum_verify(struct inode *inode, struct ext4_dir_entry *dirent)
->  
->  	t = get_dirent_tail(inode, dirent);
->  	if (!t) {
-> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
-> -				 "leaf for checksum.  Please run e2fsck -D.");
-> +		warn_no_space_for_csum(inode);
->  		return 0;
->  	}
->  
-> @@ -294,8 +299,7 @@ static void ext4_dirent_csum_set(struct inode *inode,
->  
->  	t = get_dirent_tail(inode, dirent);
->  	if (!t) {
-> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space in dir "
-> -				 "leaf for checksum.  Please run e2fsck -D.");
-> +		warn_no_space_for_csum(inode);
->  		return;
->  	}
->  
-> @@ -377,8 +381,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
->  	count = le16_to_cpu(c->count);
->  	if (count_offset + (limit * sizeof(struct dx_entry)) >
->  	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
-> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
-> -				 "tree checksum found.  Run e2fsck -D.");
-> +		warn_no_space_for_csum(inode);
->  		return 1;
->  	}
->  	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-> @@ -408,8 +411,7 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
->  	count = le16_to_cpu(c->count);
->  	if (count_offset + (limit * sizeof(struct dx_entry)) >
->  	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
-> -		EXT4_ERROR_INODE(inode, "metadata_csum set but no space for "
-> -				 "tree checksum.  Run e2fsck -D.");
-> +		warn_no_space_for_csum(inode);
->  		return;
->  	}
->  	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
+Ok, so the first top-level record says it covers logical 0->3665,
+but the last extent actually goes from 3665->4092.
+
+Then the next top level extent says it covers 3666->9217,
+but that overlaps w/ the last real extent just prior, and
+the first allocated extent under it actually starts at 4093.
+
+so,
+a) how'd it get into this state, and
+b) why doesn't fsck care ...
+
+Looking into that . . .
+
+-Eric
