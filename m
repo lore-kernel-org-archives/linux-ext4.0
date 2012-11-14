@@ -1,55 +1,106 @@
-From: "Ohlsson, Fredrik (GE Healthcare, consultant)"
-	<Fredrik.Ohlsson@ge.com>
-Subject: ext4 settings in an embedded system
-Date: Wed, 14 Nov 2012 11:41:59 +0100
-Message-ID: <C0489DC3A08C21449F8FE865472DC75204834F08@BUDMLVEM03.e2k.ad.ge.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: 64bit + resize2fs... this is Not Good.
+Date: Wed, 14 Nov 2012 15:39:42 -0500
+Message-ID: <20121114203942.GA23511@thunk.org>
+References: <20121114054347.GA20380@thunk.org>
+ <20121114072021.28351.qmail@science.horizon.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: George Spelvin <linux@horizon.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod5og111.obsmtp.com ([64.18.0.22]:58850 "EHLO
-	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932095Ab2KNKmw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Nov 2012 05:42:52 -0500
-Content-class: urn:content-classes:message
+Received: from li9-11.members.linode.com ([67.18.176.11]:32883 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423338Ab2KNUjq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Nov 2012 15:39:46 -0500
+Content-Disposition: inline
+In-Reply-To: <20121114072021.28351.qmail@science.horizon.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I would like to have advice regarding features and options.
-I am working with an embedded system equipped with an IDE Flash Disk an=
-d the ext4 filesystem. I have identified 3 problems that I would like t=
-o solve in our product. The power is abruptly turned off from time to t=
-ime, this has sometimes resulted in broken Superblock (inode8) and empt=
-y files with size 0 bytes. It also happens that file changes is not com=
-mitted to disk even if minutes pass before a power loss. This is very u=
-ndesirable and expensive in our case, we are searching for a solution o=
-r a workaround to the problems.
-List with my problems I like to solve:
-1. Broken Superblock (inode8).
-2. Empty files, size 0.
-3. Very long auto commit times, several minutes with default settings.
+On Wed, Nov 14, 2012 at 02:20:21AM -0500, George Spelvin wrote:
+> 
+> If you don't mind, *my* primary question is "what can I salvage from this
+> rubble?", since I didn't happen to have 8 TB of backup space available
+> to me when I did the resize, and there's soem stuff on the FS I'd
+> rather not lose...
 
+Sigh...  ok, unfortunately that's not something I can answer right
+away.  I *can* tell you what happened, though.  Figuring out the best
+way to help you recover while minimizing data loss is going to require
+more thought....
 
-Is ext4 a bad choice for an embedded system with I 1Gb IDE Flash Disk a=
-nd Debian 2.6.32-5-686? =A0Should we change filesystem?
+First of all, the support for 64-bit online-resizing didn't hit the
+3.6 kernel, and since it's a new feature, it's unlikely the stable
+kernel gatekeepers will accept it unless and until at leastr one
+distribution who is using a stable kernel is willing to backport the
+patches to their distro kernel.  So in order to use it, you'll need a
+3.7-rc1 or newer kernel.  That explains why the on-line resizing
+didn't work.
 
-I am planning to set the mount flags: barrier=3D1, commit=3D1 and data=3D=
-journal, is this the way to go with an embedded system and ext4?=20
+The reason why you lost so badly when you did an off-line resize was
+because you explicitly changed the resize limit default, via the -E
+resize=NNN option.  (Can you explain to me your thinking about why you
+specified this, just out of curiosity?)  Normally the default is 1000
+times the size of the original file system, or for a file system
+larger than 1.6TB, enough so that the file system can be resized to
+the maximum amount that can be supported via the resize_inode scheme,
+which is 16TB.  In practice, for pretty much any large file system,
+including pretty much any raid arrays, the default allows us to do
+resizes without needing to move any inode table blocks.
 
-Is there more ext4 options/settings I can use to get an embedded system=
- reliable when a power loss occurs?
+So the way things would have worked with a default file system is that
+resize2fs would (in off-line mode) resize the file system up to the
+maximum 16TB, and then stop.  Using online resizing, a sufficiently
+new enough kernel would use the resize_inode up to the number of
+reserved gdt blocks (which would by default take you to the 16TB
+limit) and then switch over to the meta_bg scheme for doing on-line
+resizing, which has no limits.
 
-Best Regards
+Unfortunately resize2fs in off-line resizing mode, (a) does not yet
+know how to use the meta_bg scheme for resizing, and (b) doesn't deal
+well with the case where you (1) have multiple inode tables in the
+same block group, as is the case when flex_bg is enabled, as it is
+with ext4 file systems, and (2) when it needs to move inode tables.
+We protect against this by disallowing growing filesystems using
+off-line resizing in the case where the file system has flex_bg but
+does not have the resize_inode feature enabled.  *However*, if the
+file system does have a resize_inode, but there is not a sufficient
+number of gdt blocks (because of an explicitly specified -E resize=NNN
+option to mke2fs), then this case isn't caught, and as a result
+resize2fs will corrupt the file system.
 
-=46redrik Ohlsson
-Software Engineer
+Sigh.  Unfortunately, you fell into this corner case, which I failed
+to forsee and protect against.
 
+It is relatively easy to fix resize2fs so it detects this case and
+handles it appropriately.  What is harder is how to fix a file system
+which has been scrambed by resize2fs after the fact.  There will
+definitely be some parts of the inode table which will have gotten
+overwritten, because resize2fs doesn't handle the flex_bg layout
+correctly when moving inode table blocks.  The question is what's the
+best way of undoing the damage going forward, and that's going to have
+to require some more thought and probably some experimentation and
+development work.
 
+If you don't need the information right away, I'd advise you to not
+touch the file system, since any attempt to try to fix is likely to
+make the problem worse (and will cause me to to have to try to
+replicate the attempted fix to see what happened as a result).  I'm
+guessing that you've already tried running e2fsck -fy, which aborted
+midway through the run?
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
+
+P.S.  This doesn't exactly replicate what you did, but it's a simple
+repro case of the failure which you hit.  The key to triggering the
+failure is the specification of the -E resize=NNN option.  If you
+remove this, resize2fs will not corrupt the file system:
+
+# lvcreate -L 32g -n bigscratch /dev/closure
+# mke2fs -t ext4 -E resize=12582912 /dev/closure/bigscratch
+# lvresize -L 64g /dev/closure/bigscratch
+# e2fsck -f /dev/closure/bigscratch
+# resize2fs -p /dev/closure/bigscratch
+# e2fsck -fy /dev/closure/bigscratch
+
