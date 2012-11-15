@@ -1,377 +1,111 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 7/7] libext2fs: add a unit test for inline data
-Date: Thu, 15 Nov 2012 16:13:29 +0800
-Message-ID: <1352967209-29616-8-git-send-email-wenqing.lz@taobao.com>
-References: <1352967209-29616-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: ext4 settings in an embedded system
+Date: Thu, 15 Nov 2012 10:42:13 +0200
+Message-ID: <1352968933.2221.16.camel@sauron.fi.intel.com>
+References: <C0489DC3A08C21449F8FE865472DC75204834F08@BUDMLVEM03.e2k.ad.ge.com>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-/CxZ9WqU7zbnej7C+vJf"
+Cc: linux-ext4@vger.kernel.org
+To: "Ohlsson, Fredrik (GE Healthcare, consultant)"
+	<Fredrik.Ohlsson@ge.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:39372 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S2992758Ab2KOIBV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2012 03:01:21 -0500
-Received: by mail-da0-f46.google.com with SMTP id n41so561869dak.19
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2012 00:01:21 -0800 (PST)
-In-Reply-To: <1352967209-29616-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mga11.intel.com ([192.55.52.93]:17431 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423471Ab2KOIle (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Nov 2012 03:41:34 -0500
+In-Reply-To: <C0489DC3A08C21449F8FE865472DC75204834F08@BUDMLVEM03.e2k.ad.ge.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
 
-In this unit test, we will test manipulation of regular file and dir for inline
-data to make sure all tests pass.
+--=-/CxZ9WqU7zbnej7C+vJf
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- lib/ext2fs/Makefile.in   |  10 +-
- lib/ext2fs/inline_data.c | 295 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 303 insertions(+), 2 deletions(-)
+Hi, Fredrik,
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 045f573..06febd0 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -378,6 +378,11 @@ tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
- 	$(Q) $(CC) -o tst_inline $(srcdir)/inline.c $(ALL_CFLAGS) -DDEBUG \
- 		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
- 
-+tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+	$(E) "	LD $@"
-+	$(Q) $(CC) -o tst_inline_data $(srcdir)/inline_data.c $(ALL_CFLAGS) \
-+	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
-+
- tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) \
- 		$(top_srcdir)/lib/e2p/e2p.h
- 	$(E) "	LD $@"
-@@ -394,7 +399,7 @@ mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
- 
- check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
-     tst_super_size tst_types tst_inode_size tst_csum tst_crc32c tst_bitmaps \
--    tst_inline
-+    tst_inline tst_inline_data
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_bitops
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_badblocks
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_iscan
-@@ -404,6 +409,7 @@ check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inode_size
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_csum
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inline
-+	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inline_data
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_crc32c
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) \
- 		./tst_bitmaps -f $(srcdir)/tst_bitmaps_cmds > tst_bitmaps_out
-@@ -449,7 +455,7 @@ clean::
- 		tst_badblocks tst_iscan ext2_err.et ext2_err.c ext2_err.h \
- 		tst_byteswap tst_ismounted tst_getsize tst_sectgetsize \
- 		tst_bitops tst_types tst_icount tst_super_size tst_csum \
--		tst_bitmaps tst_bitmaps_out tst_bitmaps_cmd.c \
-+		tst_bitmaps tst_bitmaps_out tst_bitmaps_cmd.c tst_inline_data \
- 		ext2_tdbtool mkjournal debug_cmds.c \
- 		../libext2fs.a ../libext2fs_p.a ../libext2fs_chk.a \
- 		crc32c_table.h gen_crc32ctable tst_crc32c
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index e9892e6..ea3736c 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -900,3 +900,298 @@ out:
- 	ext2fs_free_mem(&inode);
- 	return retval;
- }
-+
-+#ifdef DEBUG
-+#include "e2p/e2p.h"
-+
-+/*
-+ * The length of buffer is set to 64 because in inode's i_block member it only
-+ * can save 60 bytes.  Thus this value can let the data being saved in extra
-+ * space.
-+ */
-+#define BUF_LEN (64)
-+
-+/*
-+ * Test manipulation of regular file.
-+ *
-+ * In this test case, the following operations are tested:
-+ *  - regular file creation with inline_data flag
-+ *  - try to write data into inode while the size of data is fit for saving in
-+ *    inode
-+ *  - read data from inode
-+ *  - write data without changing the size of inline data
-+ *  - get the size of inline data
-+ *  - truncate
-+ *  - check header
-+ */
-+static errcode_t test_file(ext2_filsys fs)
-+{
-+	ext2_ino_t newfile;
-+	errcode_t retval;
-+	unsigned int written;
-+	struct ext2_inode_large inode;
-+	char *buf, *cmpbuf;
-+	int inline_size;
-+
-+	retval = ext2fs_new_inode(fs, 2, 010755, 0, &newfile);
-+	if (retval) {
-+		com_err("test_file", retval,
-+			"While creating a new file");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_write_new_inode(fs, newfile, (void *)&inode);
-+	if (retval) {
-+		com_err("test_file", retval,
-+			"While writting a new inode");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_get_arrayzero(BUF_LEN, sizeof(char), &buf);
-+	if (retval) {
-+		com_err("test_file", retval, "While creating buffer");
-+		return 1;
-+	}
-+	memset(buf, 'a', BUF_LEN);
-+	retval = ext2fs_try_to_write_inline_data(fs, newfile, buf,
-+						 BUF_LEN, &written);
-+	if (retval) {
-+		com_err("test_file", retval,
-+			"While trying to write a regular file");
-+		return 1;
-+	}
-+
-+	if (written != BUF_LEN) {
-+		printf("inline_data: write a regular file error, written %d "
-+		       "should be %d.\n", written, BUF_LEN);
-+		return 1;
-+	}
-+
-+	inline_size = ext2fs_get_inline_data_size(fs, newfile);
-+	if (inline_size != BUF_LEN) {
-+		printf("inline_data: the size of inline data is incorrect\n");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_get_arrayzero(BUF_LEN, sizeof(char), &cmpbuf);
-+	if (retval) {
-+		com_err("test_file", retval, "While creating buffer");
-+		return 1;
-+	}
-+	retval = ext2fs_read_inline_data(fs, newfile, cmpbuf);
-+	if (retval) {
-+		com_err("test_file", retval, "While reading");
-+		return 1;
-+	}
-+
-+	if (memcmp(buf, cmpbuf, BUF_LEN)) {
-+		printf("inline_data: read a regular file error\n");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_write_inline_data(fs, newfile, buf);
-+	if (retval) {
-+		printf("inline_data: write a regular file error\n");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_punch(fs, newfile, 0, 0, 0, ~0U);
-+	if (retval) {
-+		printf("inline_data: truncate failed\n");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_inline_data_header_check(fs, newfile);
-+	if (retval != 1) {
-+		printf("inline_data: header check failed\n");
-+		return 1;
-+	}
-+
-+	ext2fs_free_mem(&buf);
-+	ext2fs_free_mem(&cmpbuf);
-+
-+	printf("tst_inline_data(REG): OK\n");
-+
-+	return 0;
-+}
-+
-+static errcode_t test_create_parent_dir(ext2_filsys fs, ext2_ino_t *ino)
-+{
-+	const char *dot = ".";
-+	errcode_t retval;
-+	ext2_ino_t dir, tmp;
-+
-+	retval = ext2fs_new_inode(fs, EXT2_ROOT_INO, LINUX_S_IFDIR | 0755,
-+				  0, &dir);
-+	if (retval) {
-+		com_err("test_create_parent_dir", retval,
-+			"while allocating a inode");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_inline_data_mkdir(fs, EXT2_ROOT_INO, dir);
-+	if (retval) {
-+		com_err("test_create_parent_dir", retval,
-+			"while making test dir");
-+		return 1;
-+	}
-+
-+	ext2fs_inode_alloc_stats2(fs, dir, +1, 1);
-+
-+	retval = ext2fs_lookup(fs, dir, dot, strlen(dot), 0, &tmp);
-+	if (retval) {
-+		com_err("test_create_parent_dir", retval,
-+			"while looking up test dir");
-+		return 1;
-+	}
-+
-+	if (tmp != dir) {
-+		printf("inline_data: looking up '.' error\n");
-+		return 1;
-+	}
-+
-+	*ino = dir;
-+	return 0;
-+}
-+
-+static errcode_t test_manipulate_dirs(ext2_filsys fs, ext2_ino_t parent)
-+{
-+	errcode_t retval;
-+	ext2_ino_t dir = 12, tmp;
-+	char name[PATH_MAX];
-+	int i;
-+
-+	/*
-+	 * Here we only try to create 4 dirs:
-+	 *   4 bytes (parent inode) + 56 bytes
-+	 * In ext4 a dir at least need to take 12 bytes.  So it only can
-+	 * save 4 dirs in inode's i_block.
-+	 */
-+	for (i = 0; i < 4; i++) {
-+		tmp = 0;
-+		snprintf(name, PATH_MAX, "%d", i);
-+		retval = ext2fs_mkdir(fs, parent, 0, name);
-+		if (retval) {
-+			com_err("test_manipulate_dirs", retval,
-+				"while making dir %s", name);
-+			return 1;
-+		}
-+
-+		retval = ext2fs_lookup(fs, parent, name,
-+				       strlen(name), 0, &tmp);
-+		if (retval) {
-+			com_err("test_manipulate_dirs", retval,
-+				"while looking up test dir");
-+			return 1;
-+		}
-+
-+		if (tmp != dir) {
-+			printf("inline_data: create subdirs failed, "
-+			       "dir inode is %d, but now is %d\n", dir, tmp);
-+			return 1;
-+		}
-+
-+		retval = ext2fs_inline_data_dirsearch(fs, parent, name,
-+						      strlen(name));
-+		if (retval != 1) {
-+			printf("inline_data: dirsearch %s failed\n", name);
-+			return 1;
-+		}
-+
-+		dir++;
-+	}
-+
-+	/*
-+	 * XXX: In e2fsprogs the size of inline data doesn't expand from i_block
-+	 * space to extra space while making a new dir.  If extra space has been
-+	 * used while creating a new dir, extra space will be used.  So here
-+	 * ext2fs_mkdir() will return EXT2_ET_DIR_NO_SPACE.
-+	 */
-+	snprintf(name, PATH_MAX, "%d", i);
-+	retval = ext2fs_mkdir(fs, parent, 0, name);
-+	if (retval != EXT2_ET_DIR_NO_SPACE) {
-+		com_err("test_manipulate_dirs", retval,
-+			"while making dir %s", name);
-+		return 1;
-+	}
-+
-+	retval = ext2fs_expand_dir(fs, parent);
-+	if (retval) {
-+		com_err("test_manipulate_dirs", retval,
-+			"while expanding test dir");
-+		return 1;
-+	}
-+
-+	retval = ext2fs_inline_data_header_check(fs, parent);
-+	if (retval != 1) {
-+		printf("inline_data: header check failed\n");
-+		return 1;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * Test manipulation of directory.
-+ *
-+ * In this test case, we first try to create a test dir.  Then we will try to
-+ * create, lookup, expand this dir and make sure all tests pass.
-+ */
-+static errcode_t test_dir(ext2_filsys fs)
-+{
-+	errcode_t retval;
-+	ext2_ino_t dir;
-+
-+	retval = test_create_parent_dir(fs, &dir);
-+	if (retval)
-+		return 1;
-+
-+	retval = test_manipulate_dirs(fs, dir);
-+	if (retval)
-+		return 1;
-+
-+	printf("tst_inline_data(DIR): OK\n");
-+	return 0;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	struct ext2_super_block param;
-+	errcode_t		retval;
-+	ext2_filsys		fs;
-+	int			i;
-+
-+	memset(&param, 0, sizeof(param));
-+	ext2fs_blocks_count_set(&param, 32768);
-+
-+	retval = ext2fs_initialize("test fs", EXT2_FLAG_64BITS, &param,
-+				   test_io_manager, &fs);
-+	if (retval) {
-+		com_err("setup", retval,
-+			"While initializing filesystem");
-+		exit(1);
-+	}
-+
-+	fs->super->s_feature_ro_compat |= EXT2_FEATURE_COMPAT_EXT_ATTR;
-+	fs->super->s_feature_incompat |= EXT4_FEATURE_INCOMPAT_INLINE_DATA;
-+	fs->super->s_rev_level = EXT2_DYNAMIC_REV;
-+	fs->super->s_inode_size = 256;
-+
-+	retval = ext2fs_allocate_tables(fs);
-+	if (retval) {
-+		com_err("setup", retval,
-+			"while allocating tables for test filesysmte");
-+		exit(1);
-+	}
-+
-+	retval = test_file(fs);
-+	if (retval)
-+		return retval;
-+
-+	retval = test_dir(fs);
-+	if (retval)
-+		return retval;
-+
-+	return 0;
-+}
-+#endif
--- 
-1.7.12.rc2.18.g61b472e
+On Wed, 2012-11-14 at 11:41 +0100, Ohlsson, Fredrik (GE Healthcare,
+consultant) wrote:
+> 2. Empty files, size 0.
+
+Well, this is expected in some cases. If create a file, start appending
+data, and have a power cut, you may end up with zero-sized files.
+
+This is a Linux feature - the data is cached in RAM until write-back
+happens or something like fsync() happens.
+
+Ext4 has a feature that if you write to a file, then close it, ext4 will
+initiate write-back for you right away. It was added a couple of years
+ago to make it more user-friendly.
+
+You really should investigate what are those files and what was
+happening to them just before the power cut. Zero-length files may be
+normal, in general.
+
+However, strictly _all_ files you care about should be explicitly
+synced. This is just safer.
+
+If you write serious medical software, you should take data integrity
+seriously in your apps.
+
+I wrote this section for UBIFS users long time ago, and it is the same
+(modulo UBIFS-specific details) for other Linux file-systems, including
+ext4:
+
+http://www.linux-mtd.infradead.org/doc/ubifs.html#L_writeback
+http://www.linux-mtd.infradead.org/doc/ubifs.html#L_sync_exceptions
+
+> Is ext4 a bad choice for an embedded system with I 1Gb IDE Flash Disk and=
+ Debian 2.6.32-5-686?  Should we change filesystem?
+
+I do not know for sure, but I doubt there is serious power-cut testing
+regularly conducted for ext4, but people may correct me.
+
+So if power-cut tolerance is important for you, you should conduct good
+power-cut tests.
+
+And remember, the disk quality is very important for
+power-cut-tolerance. If you uses something like bad managed flash (bad
+SSD, eMMC), it may lose recently written data on power-cut. So testing
+is important.
+
+Of course you should have barriers on as well.
+
+We conducted some 3 years ago. Results were quite good for ext4 - in
+many cases it could recover without a need to run ckfs.ext4, sometimes
+it was not mountable, but ckfs.ext4 helped.
+
+On the opposite, ext3 constantly required ckfs.ext3, and sometimes died
+so badly that even ckfs.ext3 could not recover it.
+
+--=20
+Best Regards,
+Artem Bityutskiy
+
+--=-/CxZ9WqU7zbnej7C+vJf
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJQpKrlAAoJECmIfjd9wqK03kwP/Rkw8YlYiV4+UykZwKsBKHua
+MKjq9uckHs5+iob6ncGWKBgd2SmjseTtsJAQcWC2ihYdx+XMBYPo7SYUzz1XCk8O
+6UmB7hKu4Aa58/Eo6Idyi0lL7GXqEh9sjlBp8JC24UtoLVtj5oiJgtXseQAblcKL
+qFXqqI46Wdw4RET/iKircpF7enzbebCbAd5z6eerVU0l89FXChXAAyEx1iSECElx
+NeVRFcGEFRpZb2rzK+RBIDHyELKqcnu1cHG5jvcsHnXN6ya6BDJ2D69aFtzFwZfF
+dEEsb2le8Ezc0mS0juUAZGnOGavR5OnkaMmiWRl8fsKSJAfNK2+mSC5jwXlF61Hi
+ZXT+bLwv0/wi6HUO9EUrjHiOjdrZ/W0W9HIUtnUqxOoJuL5IB6QByiyqfkq+8UKy
+4FDvH6u28TFGcr8YtTwaXZWqHolNxi4H8yJrAfE2OPPNb1PtOp7cSzRGrZR1j2bE
+B90WG95y4SMFFsg6votrKaaZ3sNq+qtBFPXgSLYyaZou2l4bVfXJe6RDxRwy7WhD
+VBngMuw/Vy9ws2DLZ10zgTu38bcXgIQRkzrTJHjfErZ7x3j0Iv5obhrUr2+ZzmmA
+ftp0Qf/DxIritHnvyz82T1IcvrNVRJwsaKwARfp4jwGcveAEFN4lZo1D9qWt/VHS
+ukFt+3YahMLHJHnOoWVY
+=AMOX
+-----END PGP SIGNATURE-----
+
+--=-/CxZ9WqU7zbnej7C+vJf--
 
