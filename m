@@ -1,408 +1,377 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 6/7] libext2fs: fix some warnings from make gcc-wall
-Date: Thu, 15 Nov 2012 16:13:28 +0800
-Message-ID: <1352967209-29616-7-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 7/7] libext2fs: add a unit test for inline data
+Date: Thu, 15 Nov 2012 16:13:29 +0800
+Message-ID: <1352967209-29616-8-git-send-email-wenqing.lz@taobao.com>
 References: <1352967209-29616-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:65348 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S2992758Ab2KOIBT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2012 03:01:19 -0500
-Received: by mail-pa0-f46.google.com with SMTP id hz1so905780pad.19
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2012 00:01:19 -0800 (PST)
+Received: from mail-da0-f46.google.com ([209.85.210.46]:39372 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S2992758Ab2KOIBV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2012 03:01:21 -0500
+Received: by mail-da0-f46.google.com with SMTP id n41so561869dak.19
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2012 00:01:21 -0800 (PST)
 In-Reply-To: <1352967209-29616-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Remove some warnings from make gcc-wall.
+In this unit test, we will test manipulation of regular file and dir for inline
+data to make sure all tests pass.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- e2fsck/pass1.c           |  2 +-
- lib/ext2fs/dir_iterate.c |  4 +--
- lib/ext2fs/ext2fs.h      |  8 +++---
- lib/ext2fs/ext2fsP.h     |  4 +--
- lib/ext2fs/ext_attr.c    | 14 +++++------
- lib/ext2fs/inline_data.c | 65 ++++++++++++++++++++++++------------------------
- lib/ext2fs/mkdir.c       |  2 +-
- lib/ext2fs/punch.c       | 12 +++------
- 8 files changed, 53 insertions(+), 58 deletions(-)
+ lib/ext2fs/Makefile.in   |  10 +-
+ lib/ext2fs/inline_data.c | 295 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 303 insertions(+), 2 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 41352c7..1f41166 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -203,7 +203,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
- 	}
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 045f573..06febd0 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -378,6 +378,11 @@ tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
+ 	$(Q) $(CC) -o tst_inline $(srcdir)/inline.c $(ALL_CFLAGS) -DDEBUG \
+ 		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
  
- 	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
--		int inline_size;
-+		unsigned int inline_size;
++tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
++	$(E) "	LD $@"
++	$(Q) $(CC) -o tst_inline_data $(srcdir)/inline_data.c $(ALL_CFLAGS) \
++	-DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
++
+ tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) \
+ 		$(top_srcdir)/lib/e2p/e2p.h
+ 	$(E) "	LD $@"
+@@ -394,7 +399,7 @@ mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
  
- 		inline_size = ext2fs_get_inline_data_size(fs, ino);
- 		if (inline_size == inode->i_size)
-diff --git a/lib/ext2fs/dir_iterate.c b/lib/ext2fs/dir_iterate.c
-index 198c5aa..7d5b1da 100644
---- a/lib/ext2fs/dir_iterate.c
-+++ b/lib/ext2fs/dir_iterate.c
-@@ -289,8 +289,8 @@ next:
- }
- 
- int ext2fs_process_dir_inline_data(ext2_filsys	fs,
--				   void		*buf,
--				   int		buf_len,
-+				   char		*buf,
-+				   unsigned int	buf_len,
- 				   e2_blkcnt_t	blockcnt,
- 				   struct ext2_inode_large *inode,
- 				   void		*priv_data)
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 05f630e..7a28e0f 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1343,21 +1343,21 @@ extern errcode_t ext2fs_get_memalign(unsigned long size,
- 
- /* inline_data.c */
- extern int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino);
--extern int ext2fs_get_inline_data_size(ext2_filsys fs, ext2_ino_t ino);
-+extern unsigned int ext2fs_get_inline_data_size(ext2_filsys fs, ext2_ino_t ino);
- extern int ext2fs_inline_data_iterate(ext2_filsys fs,
- 				      ext2_ino_t ino,
- 				      int flags,
- 				      char *block_buf,
- 				      int (*func)(ext2_filsys fs,
--						  void *buf,
--						  int buf_len,
-+						  char *buf,
-+						  unsigned int buf_len,
- 						  e2_blkcnt_t blockcnt,
- 						  struct ext2_inode_large *inode,
- 						  void *priv_data),
- 				      void *priv_data);
- extern int ext2fs_inline_data_header_check(ext2_filsys fs, ext2_ino_t ino);
- extern errcode_t ext2fs_inline_data_mkdir(ext2_filsys fs, ext2_ino_t parent,
--					  ext2_ino_t ino, const char *name);
-+					  ext2_ino_t ino);
- extern errcode_t ext2fs_convert_inline_data(ext2_filsys fs, ext2_ino_t ino,
- 					    void *priv_data);
- extern errcode_t ext2fs_read_inline_data(ext2_filsys fs, ext2_ino_t ino,
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 503ebbf..1da44ce 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -99,8 +99,8 @@ extern int ext2fs_process_dir_block(ext2_filsys  	fs,
- 				    void		*priv_data);
- 
- extern int ext2fs_process_dir_inline_data(ext2_filsys	fs,
--					  void		*buf,
--					  int		buf_len,
-+					  char		*buf,
-+					  unsigned int	buf_len,
- 					  e2_blkcnt_t	blockcnt,
- 					  struct ext2_inode_large *inode,
- 					  void		*priv_data);
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 9c9ab1c..ec363e5 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -193,7 +193,7 @@ errcode_t ext2fs_find_entry_ext_attr(struct ext2_ext_attr_entry **pentry,
- {
- 	struct ext2_ext_attr_entry *entry;
- 	size_t name_len;
--	int cmp;
-+	int cmp = 1;
- 
- 	name_len = strlen(name);
- 	for (entry = *pentry; !EXT2_EXT_IS_LAST_ENTRY(entry);
-@@ -267,7 +267,7 @@ errcode_t ext2fs_set_entry_ext_attr(struct ext2_ext_attr_info *i,
- 				    struct ext2_ext_attr_search *s)
- {
- 	struct ext2_ext_attr_entry *last;
--	size_t free, min_offs = s->end - s->base;
-+	size_t freesize, min_offs = s->end - s->base;
- 	size_t name_len = strlen(i->name);
- 
- 	last = s->first;
-@@ -278,17 +278,17 @@ errcode_t ext2fs_set_entry_ext_attr(struct ext2_ext_attr_info *i,
- 				min_offs = offs;
- 		}
- 	}
--	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
-+	freesize = min_offs - ((void *)last - s->base) - sizeof(__u32);
- 	if (!s->not_found) {
- 		if (!s->here->e_value_block && s->here->e_value_size) {
- 			size_t size = ext2fs_le32_to_cpu(s->here->e_value_size);
--			free += EXT2_EXT_ATTR_SIZE(size);
-+			freesize += EXT2_EXT_ATTR_SIZE(size);
- 		}
--		free += EXT2_EXT_ATTR_LEN(name_len);
-+		freesize += EXT2_EXT_ATTR_LEN(name_len);
- 	}
- 	if (i->value) {
--		if (free < EXT2_EXT_ATTR_SIZE(i->value_len) ||
--		    free < EXT2_EXT_ATTR_LEN(name_len) +
-+		if (freesize < EXT2_EXT_ATTR_SIZE(i->value_len) ||
-+		    freesize < EXT2_EXT_ATTR_LEN(name_len) +
- 			   EXT2_EXT_ATTR_SIZE(i->value_len))
- 			return -1;
- 	}
+ check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
+     tst_super_size tst_types tst_inode_size tst_csum tst_crc32c tst_bitmaps \
+-    tst_inline
++    tst_inline tst_inline_data
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_bitops
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_badblocks
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_iscan
+@@ -404,6 +409,7 @@ check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inode_size
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_csum
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inline
++	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_inline_data
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_crc32c
+ 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) \
+ 		./tst_bitmaps -f $(srcdir)/tst_bitmaps_cmds > tst_bitmaps_out
+@@ -449,7 +455,7 @@ clean::
+ 		tst_badblocks tst_iscan ext2_err.et ext2_err.c ext2_err.h \
+ 		tst_byteswap tst_ismounted tst_getsize tst_sectgetsize \
+ 		tst_bitops tst_types tst_icount tst_super_size tst_csum \
+-		tst_bitmaps tst_bitmaps_out tst_bitmaps_cmd.c \
++		tst_bitmaps tst_bitmaps_out tst_bitmaps_cmd.c tst_inline_data \
+ 		ext2_tdbtool mkjournal debug_cmds.c \
+ 		../libext2fs.a ../libext2fs_p.a ../libext2fs_chk.a \
+ 		crc32c_table.h gen_crc32ctable tst_crc32c
 diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index fd89360..e9892e6 100644
+index e9892e6..ea3736c 100644
 --- a/lib/ext2fs/inline_data.c
 +++ b/lib/ext2fs/inline_data.c
-@@ -11,6 +11,7 @@
- 
- #include "config.h"
- #include <stdio.h>
-+#include <time.h>
- 
- #include "ext2_fs.h"
- #include "ext2_ext_attr.h"
-@@ -24,7 +25,8 @@ static int ext2fs_iget_extra_inode(ext2_filsys fs, struct ext2_inode_large *inod
- 				    struct inline_data *data);
- static void *ext2fs_get_inline_xattr_pos(struct ext2_inode_large *inode,
- 					 struct inline_data *data);
--static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *inode);
-+static unsigned int ext2fs_get_max_inline_size(ext2_filsys fs,
-+						struct ext2_inode_large *inode);
- static void ext2fs_inline_data_finish_convert(ext2_filsys fs, ext2_ino_t ino,
- 					      char *target, void *buf,
- 					      int inline_size);
-@@ -35,14 +37,13 @@ static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
- 					   struct inline_data *data);
- static errcode_t ext2fs_create_inline_data(ext2_filsys fs,
- 					   struct ext2_inode_large *inode,
--					   int len);
--static int do_search_dir(ext2_filsys fs, void *start, int size,
-+					   unsigned int len);
-+static int do_search_dir(ext2_filsys fs, void *start, unsigned int size,
- 			 const char *name, size_t len);
- 
- static int ext2fs_iget_extra_inode(ext2_filsys fs, struct ext2_inode_large *inode,
- 				    struct inline_data *data)
- {
--	struct ext2_ext_attr_ibody_header *header;
- 	struct ext2_ext_attr_search s = {
- 		.not_found = -1,
- 	};
-@@ -121,7 +122,7 @@ static errcode_t ext2fs_inline_data_destory_data(ext2_filsys fs, ext2_ino_t ino,
- 	return 0;
- }
- 
--static int do_search_dir(ext2_filsys fs, void *start, int size,
-+static int do_search_dir(ext2_filsys fs, void *start, unsigned int size,
- 			 const char *name, size_t len)
- {
- 	struct ext2_dir_entry *de;
-@@ -154,8 +155,6 @@ errcode_t ext2fs_inline_data_dirsearch(ext2_filsys fs, ext2_ino_t ino,
- 	struct ext2_inode_large *inode;
- 	struct ext2_dir_entry dirent;
- 	struct inline_data data;
--	unsigned int offset = 0;
--	unsigned int rec_len;
- 	void *inline_start;
- 	int inline_size;
- 	errcode_t retval = 0;
-@@ -220,12 +219,12 @@ int ext2fs_inode_has_inline_data(ext2_filsys fs, ext2_ino_t ino)
- 	return (inode.i_flags & EXT4_INLINE_DATA_FL);
- }
- 
--int ext2fs_get_inline_data_size(ext2_filsys fs, ext2_ino_t ino)
-+unsigned int ext2fs_get_inline_data_size(ext2_filsys fs, ext2_ino_t ino)
- {
- 	struct inline_data data;
- 	struct ext2_inode_large *inode;
- 	errcode_t retval = 0;
--	int inline_size = 0;
-+	unsigned int inline_size = 0;
- 
- 	if (!ext2fs_inode_has_inline_data(fs, ino))
- 		return 0;
-@@ -255,7 +254,7 @@ static void ext2fs_update_final_de(ext2_filsys fs, void *de_buf,
- {
- 	struct ext2_dir_entry *de, *prev_de;
- 	void *limit;
--	int de_len;
-+	unsigned int de_len;
- 
- 	de = (struct ext2_dir_entry *)de_buf;
- 	if (old_size) {
-@@ -332,8 +331,8 @@ int ext2fs_inline_data_iterate(ext2_filsys fs,
- 			       int flags,
- 			       char *block_buf,
- 			       int (*func)(ext2_filsys fs,
--					   void *buf,
--					   int buf_len,
-+					   char *buf,
-+					   unsigned int buf_len,
- 					   e2_blkcnt_t blockcnt,
- 					   struct ext2_inode_large *inode,
- 					   void *priv_data),
-@@ -414,7 +413,7 @@ errcode_t ext2fs_read_inline_data(ext2_filsys fs, ext2_ino_t ino, char *buf)
- 	struct ext2_inode_large *inode;
- 	struct inline_data data;
- 	errcode_t retval = 0;
--	int inline_size;
-+	unsigned int inline_size;
- 
- 	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
- 	if (retval)
-@@ -447,7 +446,7 @@ errcode_t ext2fs_write_inline_data(ext2_filsys fs, ext2_ino_t ino, char *buf)
- 	struct ext2_inode_large *inode;
- 	struct inline_data data;
- 	errcode_t retval = 0;
--	int inline_size;
-+	unsigned int inline_size;
- 
- 	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
- 	if (retval)
-@@ -484,7 +483,12 @@ errcode_t ext2fs_punch_inline_data(ext2_filsys fs, ext2_ino_t ino,
- 	struct inline_data data;
- 	errcode_t retval = 0;
- 	void *value;
--	int inline_size, value_len;
-+	unsigned int inline_size;
-+	int value_len;
-+
-+	/* punching hole for inline_data is not supported */
-+	if (end != ~0U)
-+		return EXT2_ET_OP_NOT_SUPPORTED;
- 
- 	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
- 	if (retval)
-@@ -504,7 +508,6 @@ errcode_t ext2fs_punch_inline_data(ext2_filsys fs, ext2_ino_t ino,
- 		goto out;
- 
- 	if (start < inline_size) {
--		struct ext2_ext_attr_ibody_header *header;
- 		struct ext2_ext_attr_search s = {
- 			.not_found = -1,
- 		};
-@@ -594,11 +597,9 @@ errcode_t ext2fs_convert_inline_data(ext2_filsys fs,
- 	ext2_extent_handle_t handle;
- 	errcode_t retval;
- 	blk64_t blk;
--	void *inline_start;
- 	char *backup_buf;
- 	char *blk_buf;
--	int inline_size;
--	int i, limit, r;
-+	unsigned int inline_size;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-@@ -702,7 +703,7 @@ out:
- 
- static errcode_t ext2fs_create_inline_data(ext2_filsys fs,
- 					   struct ext2_inode_large *inode,
--					   int len)
-+					   unsigned int len)
- {
- 	struct ext2_ext_attr_ibody_header *header;
- 	struct ext2_ext_attr_search s = {
-@@ -742,12 +743,11 @@ static errcode_t ext2fs_create_inline_data(ext2_filsys fs,
- }
- 
- errcode_t ext2fs_inline_data_mkdir(ext2_filsys fs, ext2_ino_t parent,
--				   ext2_ino_t ino, const char *name)
-+				   ext2_ino_t ino)
- {
- 	struct ext2_inode_large *inode;
- 	struct ext2_dir_entry *de;
- 	errcode_t retval = 0;
--	char *buf;
- 	int inline_size = EXT4_MIN_INLINE_DATA_SIZE;
- 	__u32 t = fs->now ? fs->now : time(NULL);
- 
-@@ -793,13 +793,14 @@ out:
+@@ -900,3 +900,298 @@ out:
+ 	ext2fs_free_mem(&inode);
  	return retval;
  }
- 
--static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *inode)
-+static unsigned int ext2fs_get_max_inline_size(ext2_filsys fs,
-+				struct ext2_inode_large *inode)
- {
- 	struct ext2_ext_attr_entry *entry;
- 	struct ext2_ext_attr_ibody_header *header;
- 	struct inline_data data;
- 	errcode_t retval = 0;
--	int free, min_offs;
-+	unsigned int freesize, min_offs;
- 
- 	min_offs = EXT2_INODE_SIZE(fs->super) -
- 		   EXT2_GOOD_OLD_INODE_SIZE -
-@@ -817,7 +818,7 @@ static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *i
- 				min_offs = offs;
- 		}
- 	}
--	free = min_offs -
-+	freesize = min_offs -
- 		((void *)entry - (void *)IFIRST(header)) - sizeof(__u32);
- 
- 	/*
-@@ -831,19 +832,19 @@ static int ext2fs_get_max_inline_size(ext2_filsys fs, struct ext2_inode_large *i
- 	if (data.inline_off) {
- 		entry = (struct ext2_ext_attr_entry *)
- 			((void *)inode + data.inline_off);
--		free += ext2fs_le32_to_cpu(entry->e_value_size);
-+		freesize += ext2fs_le32_to_cpu(entry->e_value_size);
- 		goto out;
- 	}
- 
--	free -= EXT2_EXT_ATTR_LEN(strlen(EXT4_EXT_ATTR_SYSTEM_DATA));
-+	freesize -= EXT2_EXT_ATTR_LEN(strlen(EXT4_EXT_ATTR_SYSTEM_DATA));
- 
--	if (free > EXT2_EXT_ATTR_ROUND)
--		free = EXT2_EXT_ATTR_SIZE(free - EXT2_EXT_ATTR_ROUND);
-+	if (freesize > EXT2_EXT_ATTR_ROUND)
-+		freesize = EXT2_EXT_ATTR_SIZE(freesize - EXT2_EXT_ATTR_ROUND);
- 	else
--		free = 0;
-+		freesize = 0;
- 
- out:
--	return free + EXT4_MIN_INLINE_DATA_SIZE;
-+	return freesize + EXT4_MIN_INLINE_DATA_SIZE;
- }
- 
- errcode_t ext2fs_try_to_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
-@@ -853,7 +854,7 @@ errcode_t ext2fs_try_to_write_inline_data(ext2_filsys fs, ext2_ino_t ino,
- 	struct ext2_inode_large *inode;
- 	struct inline_data data;
- 	errcode_t retval = 0;
--	int inline_size = 0;
-+	unsigned int inline_size = 0;
- 
- 	retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super), &inode);
- 	if (retval)
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index d48a075..93403c8 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -58,7 +58,7 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 	if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_INLINE_DATA &&
- 	    ino >= EXT2_FIRST_INO(fs->super) &&
- 	    strcmp("lost+found", name) != 0) {
--		retval = ext2fs_inline_data_mkdir(fs, parent, ino, name);
-+		retval = ext2fs_inline_data_mkdir(fs, parent, ino);
- 		if (retval)
- 			goto cleanup;
- 		inline_data = 1;
-diff --git a/lib/ext2fs/punch.c b/lib/ext2fs/punch.c
-index 4b8d51c..8de9649 100644
---- a/lib/ext2fs/punch.c
-+++ b/lib/ext2fs/punch.c
-@@ -307,15 +307,9 @@ extern errcode_t ext2fs_punch(ext2_filsys fs, ext2_ino_t ino,
- 			return retval;
- 		inode = &inode_buf;
- 	}
--	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
--		/* punching hole for inline_data is not supported */
--		if (end != ~0)
--			retval = EXT2_ET_OP_NOT_SUPPORTED;
--		else
--			retval = ext2fs_punch_inline_data(fs, ino, start, end);
++
++#ifdef DEBUG
++#include "e2p/e2p.h"
++
++/*
++ * The length of buffer is set to 64 because in inode's i_block member it only
++ * can save 60 bytes.  Thus this value can let the data being saved in extra
++ * space.
++ */
++#define BUF_LEN (64)
++
++/*
++ * Test manipulation of regular file.
++ *
++ * In this test case, the following operations are tested:
++ *  - regular file creation with inline_data flag
++ *  - try to write data into inode while the size of data is fit for saving in
++ *    inode
++ *  - read data from inode
++ *  - write data without changing the size of inline data
++ *  - get the size of inline data
++ *  - truncate
++ *  - check header
++ */
++static errcode_t test_file(ext2_filsys fs)
++{
++	ext2_ino_t newfile;
++	errcode_t retval;
++	unsigned int written;
++	struct ext2_inode_large inode;
++	char *buf, *cmpbuf;
++	int inline_size;
++
++	retval = ext2fs_new_inode(fs, 2, 010755, 0, &newfile);
++	if (retval) {
++		com_err("test_file", retval,
++			"While creating a new file");
++		return 1;
++	}
++
++	retval = ext2fs_write_new_inode(fs, newfile, (void *)&inode);
++	if (retval) {
++		com_err("test_file", retval,
++			"While writting a new inode");
++		return 1;
++	}
++
++	retval = ext2fs_get_arrayzero(BUF_LEN, sizeof(char), &buf);
++	if (retval) {
++		com_err("test_file", retval, "While creating buffer");
++		return 1;
++	}
++	memset(buf, 'a', BUF_LEN);
++	retval = ext2fs_try_to_write_inline_data(fs, newfile, buf,
++						 BUF_LEN, &written);
++	if (retval) {
++		com_err("test_file", retval,
++			"While trying to write a regular file");
++		return 1;
++	}
++
++	if (written != BUF_LEN) {
++		printf("inline_data: write a regular file error, written %d "
++		       "should be %d.\n", written, BUF_LEN);
++		return 1;
++	}
++
++	inline_size = ext2fs_get_inline_data_size(fs, newfile);
++	if (inline_size != BUF_LEN) {
++		printf("inline_data: the size of inline data is incorrect\n");
++		return 1;
++	}
++
++	retval = ext2fs_get_arrayzero(BUF_LEN, sizeof(char), &cmpbuf);
++	if (retval) {
++		com_err("test_file", retval, "While creating buffer");
++		return 1;
++	}
++	retval = ext2fs_read_inline_data(fs, newfile, cmpbuf);
++	if (retval) {
++		com_err("test_file", retval, "While reading");
++		return 1;
++	}
++
++	if (memcmp(buf, cmpbuf, BUF_LEN)) {
++		printf("inline_data: read a regular file error\n");
++		return 1;
++	}
++
++	retval = ext2fs_write_inline_data(fs, newfile, buf);
++	if (retval) {
++		printf("inline_data: write a regular file error\n");
++		return 1;
++	}
++
++	retval = ext2fs_punch(fs, newfile, 0, 0, 0, ~0U);
++	if (retval) {
++		printf("inline_data: truncate failed\n");
++		return 1;
++	}
++
++	retval = ext2fs_inline_data_header_check(fs, newfile);
++	if (retval != 1) {
++		printf("inline_data: header check failed\n");
++		return 1;
++	}
++
++	ext2fs_free_mem(&buf);
++	ext2fs_free_mem(&cmpbuf);
++
++	printf("tst_inline_data(REG): OK\n");
++
++	return 0;
++}
++
++static errcode_t test_create_parent_dir(ext2_filsys fs, ext2_ino_t *ino)
++{
++	const char *dot = ".";
++	errcode_t retval;
++	ext2_ino_t dir, tmp;
++
++	retval = ext2fs_new_inode(fs, EXT2_ROOT_INO, LINUX_S_IFDIR | 0755,
++				  0, &dir);
++	if (retval) {
++		com_err("test_create_parent_dir", retval,
++			"while allocating a inode");
++		return 1;
++	}
++
++	retval = ext2fs_inline_data_mkdir(fs, EXT2_ROOT_INO, dir);
++	if (retval) {
++		com_err("test_create_parent_dir", retval,
++			"while making test dir");
++		return 1;
++	}
++
++	ext2fs_inode_alloc_stats2(fs, dir, +1, 1);
++
++	retval = ext2fs_lookup(fs, dir, dot, strlen(dot), 0, &tmp);
++	if (retval) {
++		com_err("test_create_parent_dir", retval,
++			"while looking up test dir");
++		return 1;
++	}
++
++	if (tmp != dir) {
++		printf("inline_data: looking up '.' error\n");
++		return 1;
++	}
++
++	*ino = dir;
++	return 0;
++}
++
++static errcode_t test_manipulate_dirs(ext2_filsys fs, ext2_ino_t parent)
++{
++	errcode_t retval;
++	ext2_ino_t dir = 12, tmp;
++	char name[PATH_MAX];
++	int i;
++
++	/*
++	 * Here we only try to create 4 dirs:
++	 *   4 bytes (parent inode) + 56 bytes
++	 * In ext4 a dir at least need to take 12 bytes.  So it only can
++	 * save 4 dirs in inode's i_block.
++	 */
++	for (i = 0; i < 4; i++) {
++		tmp = 0;
++		snprintf(name, PATH_MAX, "%d", i);
++		retval = ext2fs_mkdir(fs, parent, 0, name);
++		if (retval) {
++			com_err("test_manipulate_dirs", retval,
++				"while making dir %s", name);
++			return 1;
++		}
++
++		retval = ext2fs_lookup(fs, parent, name,
++				       strlen(name), 0, &tmp);
++		if (retval) {
++			com_err("test_manipulate_dirs", retval,
++				"while looking up test dir");
++			return 1;
++		}
++
++		if (tmp != dir) {
++			printf("inline_data: create subdirs failed, "
++			       "dir inode is %d, but now is %d\n", dir, tmp);
++			return 1;
++		}
++
++		retval = ext2fs_inline_data_dirsearch(fs, parent, name,
++						      strlen(name));
++		if (retval != 1) {
++			printf("inline_data: dirsearch %s failed\n", name);
++			return 1;
++		}
++
++		dir++;
++	}
++
++	/*
++	 * XXX: In e2fsprogs the size of inline data doesn't expand from i_block
++	 * space to extra space while making a new dir.  If extra space has been
++	 * used while creating a new dir, extra space will be used.  So here
++	 * ext2fs_mkdir() will return EXT2_ET_DIR_NO_SPACE.
++	 */
++	snprintf(name, PATH_MAX, "%d", i);
++	retval = ext2fs_mkdir(fs, parent, 0, name);
++	if (retval != EXT2_ET_DIR_NO_SPACE) {
++		com_err("test_manipulate_dirs", retval,
++			"while making dir %s", name);
++		return 1;
++	}
++
++	retval = ext2fs_expand_dir(fs, parent);
++	if (retval) {
++		com_err("test_manipulate_dirs", retval,
++			"while expanding test dir");
++		return 1;
++	}
++
++	retval = ext2fs_inline_data_header_check(fs, parent);
++	if (retval != 1) {
++		printf("inline_data: header check failed\n");
++		return 1;
++	}
++
++	return 0;
++}
++
++/*
++ * Test manipulation of directory.
++ *
++ * In this test case, we first try to create a test dir.  Then we will try to
++ * create, lookup, expand this dir and make sure all tests pass.
++ */
++static errcode_t test_dir(ext2_filsys fs)
++{
++	errcode_t retval;
++	ext2_ino_t dir;
++
++	retval = test_create_parent_dir(fs, &dir);
++	if (retval)
++		return 1;
++
++	retval = test_manipulate_dirs(fs, dir);
++	if (retval)
++		return 1;
++
++	printf("tst_inline_data(DIR): OK\n");
++	return 0;
++}
++
++int main(int argc, char *argv[])
++{
++	struct ext2_super_block param;
++	errcode_t		retval;
++	ext2_filsys		fs;
++	int			i;
++
++	memset(&param, 0, sizeof(param));
++	ext2fs_blocks_count_set(&param, 32768);
++
++	retval = ext2fs_initialize("test fs", EXT2_FLAG_64BITS, &param,
++				   test_io_manager, &fs);
++	if (retval) {
++		com_err("setup", retval,
++			"While initializing filesystem");
++		exit(1);
++	}
++
++	fs->super->s_feature_ro_compat |= EXT2_FEATURE_COMPAT_EXT_ATTR;
++	fs->super->s_feature_incompat |= EXT4_FEATURE_INCOMPAT_INLINE_DATA;
++	fs->super->s_rev_level = EXT2_DYNAMIC_REV;
++	fs->super->s_inode_size = 256;
++
++	retval = ext2fs_allocate_tables(fs);
++	if (retval) {
++		com_err("setup", retval,
++			"while allocating tables for test filesysmte");
++		exit(1);
++	}
++
++	retval = test_file(fs);
++	if (retval)
++		return retval;
++
++	retval = test_dir(fs);
++	if (retval)
++		return retval;
++
++	return 0;
++}
++#endif
+-- 
+1.7.12.rc2.18.g61b472e
+
