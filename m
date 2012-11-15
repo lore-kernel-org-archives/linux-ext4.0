@@ -1,68 +1,49 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: 64bit + resize2fs... this is Not Good.
-Date: 14 Nov 2012 22:43:03 -0500
-Message-ID: <20121115034303.3956.qmail@science.horizon.com>
-References: <20121114233854.GD24980@thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: linux@horizon.com, tytso@mit.edu
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 0/7] bug fix and add a unit test for inline data in e2fsprogs
+Date: Thu, 15 Nov 2012 16:13:22 +0800
+Message-ID: <1352967209-29616-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:39496 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S2992461Ab2KODnF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Nov 2012 22:43:05 -0500
-In-Reply-To: <20121114233854.GD24980@thunk.org>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:65348 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933227Ab2KOIBG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Nov 2012 03:01:06 -0500
+Received: by mail-pa0-f46.google.com with SMTP id hz1so905780pad.19
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2012 00:01:06 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> It's actually not 1000x times.  It's a 1000x times up to a maximum of
-> 1024 current and reserved gdt blocks (which is the absolute maxmimum
-> which can be supported using resize_inode feature).  Contrary to what
-> you had expected, it's simply not possible to have 2048 or 4096
-> reserved gdt blocks using the resize_inode scheme.  That's because it
-> stores in the reserved gdt blocks using an indirect/direct scheme, and
-> that's all the sapce that we have.  (With a 4k block, and 4 bytes per
-> blocks --- the resize_inode scheme simply completely doesn't work if
-> above 16TB since it uses 4 byte block numbers --- 4k/4 = 1024 block group
-> descriptors.)
+Hi all,
 
-Er... you can't use extents?  The blocks *are* all contiguous.
+Here is some bug fixes and first try to add a unit test for inline data in
+e2fsprogs.  This patch set bases against pu branch of e2fsprogs.
 
->> Yeah, I see how that would cause problems, as you ask for 51.5G of
->> resize range.  What pisses me off is that I asked for 64 TiB!
->> (-E resize=17179869184)
+Patch 1-5 fix some bugs for inline data in e2fsprogs.
 
-> Yes, mke2fs should have issued an error message to let you know
-> there's no way it could honor your request.
+Patch 6 removes some warnings that are reported by make gcc-wall
 
-As long as I get to be at least a *little* bit grumpy that *both*
-mke2fs and resize2fs, when asked to do something they couldn't to,
-failed to produce any sort of error message, but silently f***ed it up.
+Patch 7 tries to add a unit test for inline data.
 
-> Again, I'm really sorry; you were exploring some of the less well
-> tested code paths in e2fsprogs/resize2fs.  :-(
+Regards,
+						- Zheng
+---
+Zheng Liu (7)
+      libext2fs: rec_len is set incorrect in ext2fs_process_dir_inline_data
+      libext2fs: create a new dir with inline data while ino is greater than or equal to th
+      libext2fs: wrong loop will cause dir entry is not found in dirsearch command
+      libext2fs: return written bytes in ext2fs_try_to_write_inline_data
+      libext2fs: fix a typo
+      libext2fs: fix some warnings from make gcc-wall
+      libext2fs: add a unit test for inline data
 
-I seem to be developing a knack for that this last couple of months. :-(
-
-I *thought* I was doing the obvious thing.
-
-All I set out to do was expand a 10 TB RAID to 22 TB.
-Really, everything I did I *thought* I chose the *safest*
-possible option.
-
-1. Restripe RAID
-2. Try to resize FS, hit 16 TB limit.
-3. Restripe RAID back down.
-4. Create new 8 TB RAID from new drives
-5. Format with 64-bit ext4, telling mke2fs that I will be resizing later.
-5a. Fight with bug in mke2fs while doing so.
-
-6. Copy over files from 32-bit FS
-7. Destroy old RAID, and add drives to new RAID
-8. Restripe up to 22 TB (again!)
-9. Resize file system.  Personally, an off-line technique
-  "feels safer" than on-line, so I went with that.
-
-10. Kablooie!
-
-Other than skipping the first 3 steps, what was I supposed to
-do different?
+ e2fsck/pass1.c           |   2 +-
+ lib/ext2fs/Makefile.in   |  10 +-
+ lib/ext2fs/dir_iterate.c |   7 +-
+ lib/ext2fs/ext2fs.h      |   8 +-
+ lib/ext2fs/ext2fsP.h     |   4 +-
+ lib/ext2fs/ext_attr.c    |  16 +--
+ lib/ext2fs/inline_data.c | 367 ++++++++++++++++++++++++++++++++++++++++++++++++++++------
+ lib/ext2fs/mkdir.c       |   5 +-
+ lib/ext2fs/punch.c       |  12 +-
+ 9 files changed, 367 insertions(+), 64 deletions(-)
