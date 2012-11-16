@@ -1,63 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH RFC] ext4: remove calls to ext4_jbd2_file_inode() from delalloc write path
-Date: Fri, 16 Nov 2012 12:49:13 -0500
-Message-ID: <1353088153-16249-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: e2fsck extremly slow after: EXT4-fs.. ext4_check_descriptors:
+ Checksum for group .. failed
+Date: Fri, 16 Nov 2012 13:14:29 -0500
+Message-ID: <20121116181429.GB16410@thunk.org>
+References: <CACDumsQsF4JoqygHT+8wQKz-=zuMPjTccrK1mnHnAZsf36O_Cg@mail.gmail.com>
+ <20121109000156.GQ19977@thunk.org>
+ <CACDumsTj9S2eLNG+zNFY_9ZCZdKGDVVz5SF2BqapS3JvvYP8AA@mail.gmail.com>
+ <20121112161646.GF4895@thunk.org>
+ <CACDumsT=cjmNFtAWKMXvkvujHgixEX44xEif+qo3Q04f1N=QsQ@mail.gmail.com>
+ <7CDB2F8F-6316-424C-8F37-5E5CEEF8F29D@dilger.ca>
+ <20121113212400.GA13850@thunk.org>
+ <CACDumsTV9vfs5-dJt0qzfdCTcUm0H-M7tEUVxEKm9DVsAqR22w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "kaefert@gmail.com" <kaefert@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33218 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:33224 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752469Ab2KPRtU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Nov 2012 12:49:20 -0500
+	id S1752993Ab2KPSOc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Nov 2012 13:14:32 -0500
+Content-Disposition: inline
+In-Reply-To: <CACDumsTV9vfs5-dJt0qzfdCTcUm0H-M7tEUVxEKm9DVsAqR22w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The calls to ext4_jbd2_file_inode() are needed to guarantee that we do
-not expose stale data in the data=ordered mode.  However, they are not
-necessary because in all of the cases where we have newly allocated
-blocks in the delayed allocation write path, we immediately submit the
-dirty pages for I/O.  Hence, we can avoid the overhead of adding the
-inode to the list of inodes whose data pages will be to be flushed out
-to disk completely during the next commit operation.
+On Thu, Nov 15, 2012 at 12:51:04PM +0100, kaefert@gmail.com wrote:
+> 
+> I've found that on that filesystem, in many folders I now have found
+> every 8th file has as contents instead of what it should have a copy
+> of every other 4th file - with some aditional zeros after it.
+> 
+> Maybe its more clear I give an example:
+> A folder with 25 files:
+> file 5 is a copy of 1
+> file 13 is a copy of 9
+> file 21 is a copy of 17
+> 
+> The original contents of file 5, 13 and 21 seem to have been lost,
+> maybe they are in the lost+found folder. The problem doesn't always
+> start with the first file in a folder, and doesn't always continue to
+> the end of the folder.
 
-This will reduce the pressure on the j_list_lock and improve CPU
-utilizations and reduce the number of page-level locks needed by the
-jbd2 thread while doing a commit.
+Alas, that's symptomatic of an inode table block getting written to
+the wrong location on disk.  Each inode structure in the inode table
+is 256 bytes (by default for ext4).  So if you write a block which is
+supposed to contain the inode information for inodes #100, #101, #102,
+#104, #105, #106, #107, #108, ... #115 off by 1 kilobyte, the the
+inode structure for #100 will get written on top of the location where
+the inode information for inode #104 should be, etc.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c | 20 +-------------------
- 1 file changed, 1 insertion(+), 19 deletions(-)
+This sounds very much like hardware failure to me, since this is not
+the sort of mistake that is likely to be caused by a kernel bug ---
+especially since 1k is not a multiple of the file system block size.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 52f7ff2..cf5d30a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1636,15 +1636,6 @@ static void mpage_da_map_and_submit(struct mpage_da_data *mpd)
- 
- 		for (i = 0; i < map.m_len; i++)
- 			unmap_underlying_metadata(bdev, map.m_pblk + i);
--
--		if (ext4_should_order_data(mpd->inode)) {
--			err = ext4_jbd2_file_inode(handle, mpd->inode);
--			if (err) {
--				/* Only if the journal is aborted */
--				mpd->retval = err;
--				goto submit_io;
--			}
--		}
- 	}
- 
- 	/*
-@@ -2592,17 +2583,8 @@ static int ext4_da_write_end(struct file *file,
- 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
- 		if (ext4_da_should_update_i_disksize(page, end)) {
- 			down_write(&EXT4_I(inode)->i_data_sem);
--			if (new_i_size > EXT4_I(inode)->i_disksize) {
--				/*
--				 * Updating i_disksize when extending file
--				 * without needing block allocation
--				 */
--				if (ext4_should_order_data(inode))
--					ret = ext4_jbd2_file_inode(handle,
--								   inode);
+So I would cast a very skeptical eye on the hardware that this file
+system was stored on....
+
+						- Ted
