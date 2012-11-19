@@ -1,89 +1,79 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: Issue with bad file system
-Date: 19 Nov 2012 03:32:45 -0500
-Message-ID: <20121119083245.18044.qmail@science.horizon.com>
-References: <CAPAnFc9axLdcQ0xsGKsqQ5jMVs13JjYv7JdJkc_Q6Kdwa56JiQ@mail.gmail.com>
-Cc: linux-ext4@vger.kernel.org
-To: dreusser@gmail.com, linux@horizon.com
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: ext4 settings in an embedded system
+Date: Mon, 19 Nov 2012 12:42:15 +0200
+Message-ID: <1353321735.20111.34.camel@sauron.fi.intel.com>
+References: <C0489DC3A08C21449F8FE865472DC75204834F08@BUDMLVEM03.e2k.ad.ge.com>
+	 <1352968933.2221.16.camel@sauron.fi.intel.com>
+	 <CAA0+VHyODd+hsSL6FBqcLGb_r3ViHmL78ay=8k5CJeP0=Z2k7A@mail.gmail.com>
+	 <50A65E5D.7040305@redhat.com>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-F4u/a1lHy9gxDs06ErQL"
+Cc: Andrey Sidorov <qrxd43@motorola.com>,
+	"Ohlsson, Fredrik (GE Healthcare, consultant)"
+	<Fredrik.Ohlsson@ge.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:57005 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753146Ab2KSIcr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 03:32:47 -0500
-In-Reply-To: <CAPAnFc9axLdcQ0xsGKsqQ5jMVs13JjYv7JdJkc_Q6Kdwa56JiQ@mail.gmail.com>
+Received: from mga09.intel.com ([134.134.136.24]:10438 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751248Ab2KSKlc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Nov 2012 05:41:32 -0500
+In-Reply-To: <50A65E5D.7040305@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> I am running this on Linux Mint 12 .. I don't know the kernel version
-> as I cannot boot so I am booting of whatever I downloaded from Mint's
-> website (13 rc I think) off a pen drive to try and save my data.
-> 
-> mint mnt # uname -a
-> Linux mint 3.5.0-17-generic #28-Ubuntu SMP Tue Oct 9 19:31:23 UTC 2012
-> x86_64 x86_64 x86_64 GNU/Linux
 
-For the benefit of other ext4 hackers, Mint 12 is based on Ubuntu 11.10
-and runs a 3.0 kernel.
+--=-F4u/a1lHy9gxDs06ErQL
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-> I ran the cat of /proc/partitions and copied the data from previous
-> emails to the linux-raid DL (which forwarded me onto this one).  Must
-> have gotten it before the raid was working.  Here is an updated one.
+On Fri, 2012-11-16 at 09:40 -0600, Eric Sandeen wrote:
+> Barriers were not made default on ext3 until 2011, in kernel v3.1,
+> astonishingly.  So it makes sense that ext3 fared worse than ext4.
 
-Okay, no problem.  The failure to show up just conflicted with your
-statement that the RAID worked fine, and I was wondering if there wa a
-problem there.  It appears that's not the issue.
+Very probable, I do not remember if we had them. But we were testing on
+top of eMMC with not write-cache.
 
-> as for the last command you asked .. can you give me more info on it?
-> if you meant dumpe2fs ... here is the output.
+Anyway, that was long time ago.
 
-I did; my fingers got confused; sorry about the typo.  Doubly sorry
-because it is a plausible command name.
+While on it, one problem I remember in an unrelated testing of ext3 on
+top of eMMC was related to _read_ errors. Sometimes after an power cut
+eMMC returned an ECC error, so a sector could be unreadable. But after
+writing to this sector it became fine.
 
-> mint mnt # dumpe2fs -h /dev/md0
-> dumpe2fs 1.42.5 (29-Jul-2012)
-> dumpe2fs: Bad magic number in super-block while trying to open /dev/md0
-> Couldn't find valid filesystem superblock.
+ext3 and the tools treated a read error as fatal. However, in case of
+eMMC that was something "normal".
 
-Well, that explains the immediate problem.
+I do not know how the situation changes since then, this was probably in
+2009.
 
-Does "dumpe2fs -h -o superblock=32768" produce anything more useful?
-(That checks the first backup superblock.  There are additional backups at
-98304, 163840, 229376, 294912, ...)
+--=20
+Best Regards,
+Artem Bityutskiy
 
-> Can you give me specific e2fsck commands to run which will not ruin my
-> disks and data?  I have seen people online recommending re-writing the
-> super blocks but I am now sure I want to write anything until I know
-> it will not damage something and erase my data.
+--=-F4u/a1lHy9gxDs06ErQL
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
-"e2fsck -n" will only print errors and not change anything.  It's
-always safe.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
 
-Try "e2fsck -n -v /dev/md0" (given the dumpe2fs failure, I expect that
-will not work) and then try "e2fsck -n -v -b 32768 /dev/md0".
+iQIcBAABAgAGBQJQqg0HAAoJECmIfjd9wqK0Jb0P/2m8U92rlBFeQBO2aEKsY//L
+P9XbmEwekhCN1FUpqewu0cjMt6trj5fsxXZNyW+ra/V2hiSdGCFlnEzVpF19UutE
+A5AFg4B73b6S6gjFX6FKetkAE1Pk0wS0gsCm7tes4li9eGtXoaEMIMuuz4xCzhNy
+a6v+l2ID1X/tr3OspxmQYPL6ocWfWL15VYUcIjgrW0dogKM/uIPfi/Wwb3rtR+X6
+QuxpDVrukDSPTwT5wNynwmS0hIgheZ0Nuuf+kD9W3AWgtPvCUUGYtdxn9Oz6GHUJ
+NBaT1f8RYaQbZrL0JwKZp0f1YM0RozstJ+PpgqCbx12ua15MswYiFQ4jUfFK87/L
+gAcD2bz6pZCaz6wqoGquhtkxkELdBCNgceIjuaE7KN/9ej8MCYMjRGQ0VvdIAc6C
+je5KoQujA5USVTdL07vjNZjW+Vy3Tt7So3rVAF2xepV1H6wa2nqGa8IKyGOY40Bu
+ivkxJvab1RmuyEzX1tS5mz6vZdOH4SpOUWg63Jx2Ylo9pDi6euGCPtQOlQiVOXTy
+Vhfi8LkHmlZHFUI8DQhNAqzxPA4VaWA50laUKTObPsfh3gGK5jQm7bXZvrqyrncK
+jxw7c5MJXBrYWEmTRu1EhPqh9vWB4IKGdqU11xuoVHt1IAt4FXkOhpP0INSL43Vr
+dZjq28zzlHhL+swBwzBF
+=nZFl
+-----END PGP SIGNATURE-----
 
-I don't know what happened to your superblock, but if that's all that
-got trashed, recovery is actually quite straightforward and there's no
-risk of data loss.  e2fsck will just print a huge number of "free blocks
-count wrong" messages as it fixes them.
+--=-F4u/a1lHy9gxDs06ErQL--
 
-(However, that's a pretty big "if".)
-
-
-Another thing that would be useful is "dd if=/dev/md0 skip=2 count=2 | xxd"
-(or od -x if you don't have xxd).  That will give a hex dump of the
-primary superblock, which might show the extent of the damage.
-
-
-If "e2fsck -n -b 32768" works, the way to repair it is to run it again
-without the "-n", but the -n output will say how bad it is.
-
-As a general rule of thumb, the more phases e2fsck gets through before
-complaining, the less the damage.  Errors in the bitmaps found in phase 5
-are not a serious problem; they only indicate things that would rapidly
-*become* serious problems if you mounted the file system and tried to
-write to it.
-
-One thing I strongly recommend when e2fsck is fixing a lot of problems is
-to save a log (I usually use the "script" program, but you can also use
-"<command> 2>&1 | tee output") of the e2fsck run so you can refer back
-to it later.
