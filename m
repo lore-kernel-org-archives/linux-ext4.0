@@ -1,63 +1,39 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
-Date: Mon, 19 Nov 2012 12:11:35 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1211191211280.24659@dhcp-1-104.brq.redhat.com>
-References: <1352732245-30132-1-git-send-email-lczerner@redhat.com> <1352794923-28555-1-git-send-email-lczerner@redhat.com> <CA+a=Yy6pi5rUv2GJtsvH1=O+WAawWg03S_ORpVfwnVzYa4tPqA@mail.gmail.com> <alpine.LFD.2.00.1211131304030.3577@localhost> <20121113141911.GA7472@X61>
- <20121113185104.GC1282@lenny.home.zabbo.net> <alpine.LFD.2.00.1211151714520.27888@dhcp-1-104.brq.redhat.com> <20121119032430.GB24414@thunk.org>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="571107329-515253542-1353323498=:24659"
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	Zach Brown <zab@redhat.com>, Peng Tao <bergwolf@gmail.com>,
-	linux-ext4@vger.kernel.org, dmonakhov@openvz.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Sachin Kamat <sachin.kamat@linaro.org>
+Subject: [PATCH 1/1] ext4: Remove duplicate inclusion of ext4_extents.h in super.c
+Date: Mon, 19 Nov 2012 16:47:22 +0530
+Message-ID: <1353323842-32283-1-git-send-email-sachin.kamat@linaro.org>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, sachin.kamat@linaro.org,
+	patches@linaro.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29485 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751842Ab2KSLLo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Nov 2012 06:11:44 -0500
-In-Reply-To: <20121119032430.GB24414@thunk.org>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:60065 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750695Ab2KSLXa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 06:23:30 -0500
+Received: by mail-pa0-f46.google.com with SMTP id bh2so386379pad.19
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2012 03:23:30 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+ext4_extents.h was included twice.
 
---571107329-515253542-1353323498=:24659
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+Signed-off-by: Sachin Kamat <sachin.kamat@linaro.org>
+---
+ fs/ext4/super.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-On Sun, 18 Nov 2012, Theodore Ts'o wrote:
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ad6cd8a..c8a6138 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -50,7 +50,6 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "mballoc.h"
+-#include "ext4_extents.h"
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/ext4.h>
+-- 
+1.7.4.1
 
-> Date: Sun, 18 Nov 2012 22:24:30 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: Zach Brown <zab@redhat.com>, Peng Tao <bergwolf@gmail.com>,
->     linux-ext4@vger.kernel.org, dmonakhov@openvz.org
-> Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
-> 
-> On Thu, Nov 15, 2012 at 05:39:06PM +0100, Lukáš Czerner wrote:
-> > You're both right. The code have to be reorganized. The
-> > ext4_ext_fiemap_cb() is ugly as hell, but luckily that will be
-> > resolved with extent status tree patches from Zheng Liu, however the
-> > indirection in ext4_ext_walk_space() and the callback business
-> > is also pointless.
-> 
-> Hi Lukas,
-> 
-> Is your patch going to be dependent on whether the extent status tree
-> patches are applied?
-> 
-> If so, you might want to develop your patch versus the ext4 git tree's
-> master branch, which includes the extent status patches currently
-> queued for the next merge window.
-> 
-> Thanks!!
-> 
-> 					- Ted
-
-Yes, there is a small conflict. I'll base it on top of the ext4 git
-tree.
-
-Thanks!
--Lukas
---571107329-515253542-1353323498=:24659--
