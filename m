@@ -1,52 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] ext4: Prevent race while waling extent tree
-Date: Sun, 18 Nov 2012 22:24:30 -0500
-Message-ID: <20121119032430.GB24414@thunk.org>
-References: <1352732245-30132-1-git-send-email-lczerner@redhat.com>
- <1352794923-28555-1-git-send-email-lczerner@redhat.com>
- <CA+a=Yy6pi5rUv2GJtsvH1=O+WAawWg03S_ORpVfwnVzYa4tPqA@mail.gmail.com>
- <alpine.LFD.2.00.1211131304030.3577@localhost>
- <20121113141911.GA7472@X61>
- <20121113185104.GC1282@lenny.home.zabbo.net>
- <alpine.LFD.2.00.1211151714520.27888@dhcp-1-104.brq.redhat.com>
+From: Drew Reusser <dreusser@gmail.com>
+Subject: Issue with bad file system
+Date: Sun, 18 Nov 2012 23:46:14 -0500
+Message-ID: <CAPAnFc9ziuDdFV=4u2jcaGFTBV4M6xnkqbatOB0azgSShDYxTQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Zach Brown <zab@redhat.com>, Peng Tao <bergwolf@gmail.com>,
-	linux-ext4@vger.kernel.org, dmonakhov@openvz.org
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33481 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751859Ab2KSDYe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Nov 2012 22:24:34 -0500
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1211151714520.27888@dhcp-1-104.brq.redhat.com>
+Received: from mail-la0-f46.google.com ([209.85.215.46]:63030 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752757Ab2KSEqR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Nov 2012 23:46:17 -0500
+Received: by mail-la0-f46.google.com with SMTP id p5so797175lag.19
+        for <linux-ext4@vger.kernel.org>; Sun, 18 Nov 2012 20:46:14 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2012 at 05:39:06PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> You're both right. The code have to be reorganized. The
-> ext4_ext_fiemap_cb() is ugly as hell, but luckily that will be
-> resolved with extent status tree patches from Zheng Liu, however the
-> indirection in ext4_ext_walk_space() and the callback business
-> is also pointless.
+Hello all,
 
-Hi Lukas,
+I am having an issue with a ext4 file system which I cannot get to
+come back up.  There were no changes that I know of, but I rebooted,
+and when the system came back up it was not able to read from the hard
+drives.  I have it setup in a raid 10 configuration, and can mount the
+raid array with no issues.  However when I mount the file system, I
+get the following error "EXT4-fs (md0): VFS: Can't find ext4
+filesystem" from the log files.
 
-Is your patch going to be dependent on whether the extent status tree
-patches are applied?
+Is there anyone that can help as I have to get this data back and I
+prefer not to have to go to a professional to get it back and spend
+the money.
 
-If so, you might want to develop your patch versus the ext4 git tree's
-master branch, which includes the extent status patches currently
-queued for the next merge window.
+-Drew
 
-Thanks!!
+Basic Info:  4x1TB disks, raid 10 equaling 2TB total.  All four disks
+are just one giant partition starting at the 2MB mark so I could boot
+and put mdadm in the boot sector and get into linux.
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Some basic commands below:
+
+
+mint mnt # mount -t ext4 /dev/md0 /mnt/raid
+mount: wrong fs type, bad option, bad superblock on /dev/md0,
+       missing codepage or helper program, or other error
+       In some cases useful info is found in syslog - try
+       dmesg | tail  or so
+
+
+
+
+C is the pen-drive I am booting from currently and F is the 2TB disk I
+was using to backup to.
+
+mint dev # cat /proc/partitions
+major minor  #blocks  name
+
+   7        0     939820 loop0
+   8        0  976762584 sda
+   8        1  976760832 sda1
+   8       16  976762584 sdb
+   8       17  976237568 sdb1
+   8       32    1985024 sdc
+   8       33    1984960 sdc1
+   8       48  976762584 sdd
+   8       49  976760832 sdd1
+   8       64  976762584 sde
+   8       65  976237568 sde1
+  11        0    1048575 sr0
+   8       80 1953514584 sdf
+   8       81 1953512448 sdf1
