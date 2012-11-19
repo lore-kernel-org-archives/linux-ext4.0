@@ -1,51 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Issue with bad file system
-Date: Mon, 19 Nov 2012 13:41:07 -0500
-Message-ID: <20121119184107.GA29487@thunk.org>
-References: <CAPAnFc9axLdcQ0xsGKsqQ5jMVs13JjYv7JdJkc_Q6Kdwa56JiQ@mail.gmail.com>
- <20121119083245.18044.qmail@science.horizon.com>
- <CAPAnFc_BdHCOB0iPwPdfPt_aiJ1PLNgnCAGaZwmOEX32j5LM7Q@mail.gmail.com>
- <50AA6913.2090104@redhat.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: ext4 fs errors - immediately reboot needed ?
+Date: Mon, 19 Nov 2012 19:45:41 +0100
+Message-ID: <50AA7E55.2090707@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Drew Reusser <dreusser@gmail.com>,
-	George Spelvin <linux@horizon.com>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:33601 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754477Ab2KSSlM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Nov 2012 13:41:12 -0500
-Content-Disposition: inline
-In-Reply-To: <50AA6913.2090104@redhat.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:39018 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753954Ab2KSSpq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 13:45:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-One of the things you could to verify that in fact the RAID array is
-sane is to run the following command:
+/me wonders, whether the following messages should force me to *immedia=
+tely*
+reboot the system of whether I should schedule a reboot in the near fut=
+ure :
 
-debugfs -s 32768 -b 4096 /dev/md0
+2012-11-19T19:23:53.099+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:933: IO failure
+2012-11-19T19:24:04.971+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+ext4_mb_generate_buddy:741: group 409, 11806 clusters in bitmap, 11805 =
+in gd
+2012-11-19T19:24:04.971+01:00 n22 kernel: JBD2: Spotted dirty metadata =
+buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
+uption in case of system crash.
+2012-11-19T19:37:20.188+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:933: IO failure
+2012-11-19T19:44:28.552+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+ext4_mb_generate_buddy:741: group 424, 27235 clusters in bitmap, 27234 =
+in gd
+2012-11-19T19:44:28.552+01:00 n22 kernel: JBD2: Spotted dirty metadata =
+buffer (dev =3D sdb3, blocknr =3D 0). There's a risk of filesystem corr=
+uption in case of system crash.
+2012-11-19T19:44:33.734+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+mb_free_blocks:1300: group 424, block 13916749:freeing already freed bl=
+ock (bit 23117)
+2012-11-19T19:44:33.734+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+mb_free_blocks:1300: group 409, block 13431904:freeing already freed bl=
+ock (bit 29792)
 
-Then you can examine the file system via the debugfs commands "cd",
-"ls", "cat", "dump" (or even "rdump", although that's more interesting
-recovery operations).  I would suggest looking at a number of
-directories and make sure they look as you expect them, and that you
-try dumping out a few files and making sure that they are
-uncorrecpted.
-
-If the majority of the files you look at look sane, then it should be
-safe to let e2fsck recover the file system from the backup superblock.
-
-In the future, we'll be able to use the metadata checksum feature to
-automate this process (as well as being able to more gracefully and
-automatically handle inode table blocks written to the wrong location
-on disk, overwriting other inode table blocks) --- but a bit more
-testing is needed before I'd recommend it for regular users.  (In
-particular, I want to make sure that random journal corruptions are
-handled correctly when the metadata checksum feature is enabled ---
-before we start having more enthusiastic users try out bleeding edge
-features on production file systems....)
-
-Regards,
-
-						- Ted
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
