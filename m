@@ -1,52 +1,29 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Issue with bad file system
-Date: Mon, 19 Nov 2012 09:29:01 -0600
-Message-ID: <50AA503D.2060503@redhat.com>
-References: <20121119083245.18044.qmail@science.horizon.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH V7 00/23] ext4: Add inline data support
+Date: Mon, 19 Nov 2012 10:29:33 -0500
+Message-ID: <20121119152933.GB29807@thunk.org>
+References: <1351047002-4723-1-git-send-email-tm@tao.ma>
+ <50A9E28D.2010601@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: dreusser@gmail.com, linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38073 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753119Ab2KSP3E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 19 Nov 2012 10:29:04 -0500
-In-Reply-To: <20121119083245.18044.qmail@science.horizon.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:33551 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753203Ab2KSP3g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 19 Nov 2012 10:29:36 -0500
+Content-Disposition: inline
+In-Reply-To: <50A9E28D.2010601@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/19/12 2:32 AM, George Spelvin wrote:
-...
+On Mon, Nov 19, 2012 at 03:41:01PM +0800, Tao Ma wrote:
+> 	any chance that inline data can be merged in this window?
 
-> "e2fsck -n" will only print errors and not change anything.  It's
-> always safe.
-> 
-> Try "e2fsck -n -v /dev/md0" (given the dumpe2fs failure, I expect that
-> will not work) and then try "e2fsck -n -v -b 32768 /dev/md0".
-> 
-> I don't know what happened to your superblock, but if that's all that
-> got trashed, recovery is actually quite straightforward and there's no
-> risk of data loss.  e2fsck will just print a huge number of "free blocks
-> count wrong" messages as it fixes them.
-> 
-> (However, that's a pretty big "if".)
-> 
-> 
-> Another thing that would be useful is "dd if=/dev/md0 skip=2 count=2 | xxd"
-> (or od -x if you don't have xxd).  That will give a hex dump of the
-> primary superblock, which might show the extent of the damage.
-> 
-> 
-> If "e2fsck -n -b 32768" works, the way to repair it is to run it again
-> without the "-n", but the -n output will say how bad it is.
+Yes, I'm hoping to do a full review on these patches in the very near
+future for this merge window.
 
-Whoops, I replied without seeing these other replies; somehow threading
-was broken w/ George's first reply.
+Cheers,
 
-Anyway - I would not go to e2fsck yet.  I think your raid is mis-assembled.
-I'd investigate that first.  I'll look at the other output a bit more, but
-for now, I'd stay away from fsck - just wanted to get that out there quick.
-
--Eric
+						- Ted
