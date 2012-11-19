@@ -1,48 +1,32 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 0/8 v3] ext4: extent status tree (step 1)
-Date: Mon, 19 Nov 2012 13:28:59 +0800
-Message-ID: <20121119052859.GA22442@gmail.com>
-References: <1351257825-3701-1-git-send-email-wenqing.lz@taobao.com>
- <20121119031725.GA24414@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jeff.liu@oracle.com, hughd@google.com,
-	xiaoqiangnk@gmail.com, achender@linux.vnet.ibm.com,
-	lczerner@redhat.com, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: Issue with bad file system
+Date: 19 Nov 2012 01:30:04 -0500
+Message-ID: <20121119063004.4845.qmail@science.horizon.com>
+Cc: linux@horizon.com, linux-ext4@vger.kernel.org
+To: dreusser@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:43252 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751395Ab2KSFQ3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 00:16:29 -0500
-Received: by mail-da0-f46.google.com with SMTP id p5so586716dak.19
-        for <linux-ext4@vger.kernel.org>; Sun, 18 Nov 2012 21:16:28 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20121119031725.GA24414@thunk.org>
+Received: from science.horizon.com ([71.41.210.146]:56783 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752893Ab2KSGaG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 01:30:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 18, 2012 at 10:17:25PM -0500, Theodore Ts'o wrote:
-> On Fri, Oct 26, 2012 at 09:23:37PM +0800, Zheng Liu wrote:
-> > Hi all,
-> > 
-> > Here is the v3 of extent status tree.  In this version, the biggest change is
-> > the i_es_lock (a rwlock_t) instead of i_data_sem, which is introduced to protect
-> > extent status tree.  Moreover I improve the SEEK_DATA/SEEK_HOLE.  In previous
-> > version, the unwritten extent is as a data, and now it will lookup page cache to
-> > determine it as a data or a hole.  When it has some data at the given range, the
-> > unwritten extent will be as a data.  Otherwise, it will be as a hole.  Other
-> > changes contain some bug fixes.
-> 
-> I don't think I ack'ed this patch series earlier; my apologies.  In
-> any case (with the comment fixup we discussed earlier), It's currently
-> queued for the next merge window.
+I'm sorry about your problems, but... a little more information
+please?
 
-Thanks. :-)
+Mount is very explicitly telling you that there's probably more
+information in the kernel logs.  It even gives the command to see it.
+WHY DIDN'T YOU INCLUDE IT?  <snark>Was it perhaps too subtle a hint?</snark>
 
-BTW, I am trying to implement the second step of extent status tree,
-which will track all extent status for an inode.  After that, some
-improvements will be added, such as extent-level locking, etc.
+What kernel version are you running?  If it's a distribution kernel,
+what kernel?  What architecture?
 
-Regards,
-                                                - Zheng
+What does e2fsck say about the file system?
+What does dumpe4fs -h /dev/md0 show?
+
+
+The one odd thing I can see is that md devices *are* usually listed in
+/proc/partitions, but it's not showing up in yours.
+
+The output of "cat /proc/mdstat" would also be useful.
