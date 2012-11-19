@@ -1,59 +1,89 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH V7 00/23] ext4: Add inline data support
-Date: Mon, 19 Nov 2012 15:41:01 +0800
-Message-ID: <50A9E28D.2010601@tao.ma>
-References: <1351047002-4723-1-git-send-email-tm@tao.ma>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: "George Spelvin" <linux@horizon.com>
+Subject: Re: Issue with bad file system
+Date: 19 Nov 2012 03:32:45 -0500
+Message-ID: <20121119083245.18044.qmail@science.horizon.com>
+References: <CAPAnFc9axLdcQ0xsGKsqQ5jMVs13JjYv7JdJkc_Q6Kdwa56JiQ@mail.gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: dreusser@gmail.com, linux@horizon.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 50-87-16-10.unifiedlayer.com ([50.87.16.10]:44123 "HELO
-	oproxy12-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752848Ab2KSHlJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 02:41:09 -0500
-Received: from [182.92.247.2] (port=14999 helo=[10.62.3.43])
-	by box585.bluehost.com with esmtpsa (TLSv1:CAMELLIA256-SHA:256)
-	(Exim 4.76)
-	(envelope-from <tm@tao.ma>)
-	id 1TaLyd-00031g-Ug
-	for linux-ext4@vger.kernel.org; Mon, 19 Nov 2012 00:41:08 -0700
-In-Reply-To: <1351047002-4723-1-git-send-email-tm@tao.ma>
+Received: from science.horizon.com ([71.41.210.146]:57005 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753146Ab2KSIcr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 03:32:47 -0500
+In-Reply-To: <CAPAnFc9axLdcQ0xsGKsqQ5jMVs13JjYv7JdJkc_Q6Kdwa56JiQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-	any chance that inline data can be merged in this window?
+> I am running this on Linux Mint 12 .. I don't know the kernel version
+> as I cannot boot so I am booting of whatever I downloaded from Mint's
+> website (13 rc I think) off a pen drive to try and save my data.
+> 
+> mint mnt # uname -a
+> Linux mint 3.5.0-17-generic #28-Ubuntu SMP Tue Oct 9 19:31:23 UTC 2012
+> x86_64 x86_64 x86_64 GNU/Linux
 
-Thanks
-Tao
-On 10/24/2012 10:50 AM, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
-> 
-> Hi list,
-> 
-> this is another try for the inline data support for ext4. There is
-> no major change from V6. I just rebased it to 3.7-rc1 and run
-> xfstests again it.
-> 
-> git diff --stat
->  fs/ext4/Makefile  |    2 +-
->  fs/ext4/dir.c     |   41 +-
->  fs/ext4/ext4.h    |   89 +++-
->  fs/ext4/extents.c |   22 +-
->  fs/ext4/ialloc.c  |    4 +
->  fs/ext4/inline.c  | 1878 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/inode.c   |  237 ++++++--
->  fs/ext4/namei.c   |  492 ++++++++++-----
->  fs/ext4/xattr.c   |   87 ++-
->  fs/ext4/xattr.h   |  280 ++++++++
->  10 files changed, 2855 insertions(+), 277 deletions(-)
-> 
-> Thanks
-> Tao
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+For the benefit of other ext4 hackers, Mint 12 is based on Ubuntu 11.10
+and runs a 3.0 kernel.
 
+> I ran the cat of /proc/partitions and copied the data from previous
+> emails to the linux-raid DL (which forwarded me onto this one).  Must
+> have gotten it before the raid was working.  Here is an updated one.
+
+Okay, no problem.  The failure to show up just conflicted with your
+statement that the RAID worked fine, and I was wondering if there wa a
+problem there.  It appears that's not the issue.
+
+> as for the last command you asked .. can you give me more info on it?
+> if you meant dumpe2fs ... here is the output.
+
+I did; my fingers got confused; sorry about the typo.  Doubly sorry
+because it is a plausible command name.
+
+> mint mnt # dumpe2fs -h /dev/md0
+> dumpe2fs 1.42.5 (29-Jul-2012)
+> dumpe2fs: Bad magic number in super-block while trying to open /dev/md0
+> Couldn't find valid filesystem superblock.
+
+Well, that explains the immediate problem.
+
+Does "dumpe2fs -h -o superblock=32768" produce anything more useful?
+(That checks the first backup superblock.  There are additional backups at
+98304, 163840, 229376, 294912, ...)
+
+> Can you give me specific e2fsck commands to run which will not ruin my
+> disks and data?  I have seen people online recommending re-writing the
+> super blocks but I am now sure I want to write anything until I know
+> it will not damage something and erase my data.
+
+"e2fsck -n" will only print errors and not change anything.  It's
+always safe.
+
+Try "e2fsck -n -v /dev/md0" (given the dumpe2fs failure, I expect that
+will not work) and then try "e2fsck -n -v -b 32768 /dev/md0".
+
+I don't know what happened to your superblock, but if that's all that
+got trashed, recovery is actually quite straightforward and there's no
+risk of data loss.  e2fsck will just print a huge number of "free blocks
+count wrong" messages as it fixes them.
+
+(However, that's a pretty big "if".)
+
+
+Another thing that would be useful is "dd if=/dev/md0 skip=2 count=2 | xxd"
+(or od -x if you don't have xxd).  That will give a hex dump of the
+primary superblock, which might show the extent of the damage.
+
+
+If "e2fsck -n -b 32768" works, the way to repair it is to run it again
+without the "-n", but the -n output will say how bad it is.
+
+As a general rule of thumb, the more phases e2fsck gets through before
+complaining, the less the damage.  Errors in the bitmaps found in phase 5
+are not a serious problem; they only indicate things that would rapidly
+*become* serious problems if you mounted the file system and tried to
+write to it.
+
+One thing I strongly recommend when e2fsck is fixing a lot of problems is
+to save a log (I usually use the "script" program, but you can also use
+"<command> 2>&1 | tee output") of the e2fsck run so you can refer back
+to it later.
