@@ -1,322 +1,43 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 1/3 v2] ext4: add indirect punching hole support
-Date: Mon, 19 Nov 2012 20:55:16 +0800
-Message-ID: <1353329718-2075-2-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 2/3 v2] ext4: let us fully support punching hole feature in fallocate
+Date: Mon, 19 Nov 2012 20:55:17 +0800
+Message-ID: <1353329718-2075-3-git-send-email-wenqing.lz@taobao.com>
 References: <1353329718-2075-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from mail-pa0-f46.google.com ([209.85.220.46]:40976 "EHLO
 	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751440Ab2KSMmt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 07:42:49 -0500
+	with ESMTP id S1751440Ab2KSMmv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2012 07:42:51 -0500
 Received: by mail-pa0-f46.google.com with SMTP id bh2so430130pad.19
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2012 04:42:49 -0800 (PST)
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2012 04:42:51 -0800 (PST)
 In-Reply-To: <1353329718-2075-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This patch makes indirect file support punching hole feature.  It is almost
-the same as ext4_ext_punch_hole.  First, we invalidate all pages between
-this hole, and then we try to deallocate all blocks of this hole.
-
-A recursive function is used to handle deallocation of blocks.  In this
-function, it iterates over the entries in inode's i_blocks or indirect blocks,
-and try to free the block for each one of them.
-
- * After applying this patch, xfstest #255 will not pass w/o extent because
- * block-based file doesn't support unwritten extent.
+After adding indirect punching hole feature, we need to enable it in fallocate.
+For this purpose, some sanity checks need to be adjusted.  Currently we need to
+check FALLOC_FL_PUNCH_HOLE flag before other sanity checks.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/ext4.h     |   1 +
- fs/ext4/indirect.c | 244 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inode.c    |   6 +-
- 3 files changed, 247 insertions(+), 4 deletions(-)
+ fs/ext4/extents.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3c20de1..b1ac5d5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2035,6 +2035,7 @@ extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
- extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
- extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
- extern void ext4_ind_truncate(struct inode *inode);
-+extern int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7011ac9..b43b3e9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4420,13 +4420,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	struct ext4_map_blocks map;
+ 	unsigned int credits, blkbits = inode->i_blkbits;
  
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 792e388..ad58421 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1514,3 +1514,247 @@ out_stop:
- 	trace_ext4_truncate_exit(inode);
- }
- 
-+static int free_hole_blocks(handle_t *handle, struct inode *inode,
-+			    struct buffer_head *parent_bh, __le32 *i_data,
-+			    int level, ext4_lblk_t first,
-+			    ext4_lblk_t count, int max)
-+{
-+	struct buffer_head *bh = NULL;
-+	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
-+	int ret = 0;
-+	int i, inc;
-+	ext4_lblk_t offset;
-+	__le32 blk;
-+
-+	inc = 1 << ((EXT4_BLOCK_SIZE_BITS(inode->i_sb) - 2) * level);
-+	for (i = 0, offset = 0; i < max; i++, i_data++, offset += inc) {
-+		if (offset >= count + first)
-+			break;
-+		if (*i_data == 0 || (offset + inc) <= first)
-+			continue;
-+		blk = *i_data;
-+		if (level > 0) {
-+			ext4_lblk_t first2;
-+			bh = sb_bread(inode->i_sb, blk);
-+			if (!bh) {
-+				EXT4_ERROR_INODE_BLOCK(inode, blk,
-+						       "Read failure");
-+				return -EIO;
-+			}
-+			first2 = (first > offset) ? first - offset : 0;
-+			ret = free_hole_blocks(handle, inode, bh,
-+					       (__le32 *)bh->b_data, level - 1,
-+					       first2, count - offset,
-+					       inode->i_sb->s_blocksize >> 2);
-+			if (ret) {
-+				brelse(bh);
-+				goto err;
-+			}
-+		}
-+		if (level == 0 ||
-+		    (bh && all_zeroes((__le32 *)bh->b_data,
-+				      (__le32 *)bh->b_data + addr_per_block))) {
-+			ext4_free_data(handle, inode, parent_bh, &blk, &blk+1);
-+			*i_data = 0;
-+		}
-+		brelse(bh);
-+		bh = NULL;
-+	}
-+
-+err:
-+	return ret;
-+}
-+
-+static int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
-+				 ext4_lblk_t first, ext4_lblk_t stop)
-+{
-+	int addr_per_block = EXT4_ADDR_PER_BLOCK(inode->i_sb);
-+	int level, ret = 0;
-+	int num = EXT4_NDIR_BLOCKS;
-+	ext4_lblk_t count, max = EXT4_NDIR_BLOCKS;
-+	__le32 *i_data = EXT4_I(inode)->i_data;
-+
-+	count = stop - first;
-+	for (level = 0; level < 4; level++, max *= addr_per_block) {
-+		if (first < max) {
-+			ret = free_hole_blocks(handle, inode, NULL, i_data,
-+					       level, first, count, num);
-+			if (ret)
-+				goto err;
-+			if (count > max)
-+				count -= max - first;
-+			else
-+				break;
-+			first = 0;
-+		} else {
-+			first -= max;
-+		}
-+		i_data += num;
-+		if (level == 0) {
-+			num = 1;
-+			max = 1;
-+		}
-+	}
-+
-+err:
-+	return ret;
-+}
-+
-+int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length)
-+{
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
-+	ext4_lblk_t first_block, stop_block;
-+	struct address_space *mapping = inode->i_mapping;
-+	handle_t *handle = NULL;
-+	loff_t first_page, last_page, page_len;
-+	loff_t first_page_offset, last_page_offset;
-+	int err = 0;
-+
-+	/*
-+	 * Write out all dirty pages to avoid race conditions
-+	 * Then release them.
-+	 */
-+	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-+		err = filemap_write_and_wait_range(mapping,
-+			offset, offset + length - 1);
-+		if (err)
-+			return err;
-+	}
-+
-+	mutex_lock(&inode->i_mutex);
-+	/* It's not possible punch hole on append only file */
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
-+		err = -EPERM;
-+		goto out_mutex;
-+	}
-+	if (IS_SWAPFILE(inode)) {
-+		err = -ETXTBSY;
-+		goto out_mutex;
-+	}
-+
-+	/* No need to punch hole beyond i_size */
-+	if (offset >= inode->i_size)
-+		goto out_mutex;
-+
-+	/*
-+	 * If the hole extents beyond i_size, set the hole
-+	 * to end after the page that contains i_size
-+	 */
-+	if (offset + length > inode->i_size) {
-+		length = inode->i_size +
-+		    PAGE_CACHE_SIZE - (inode->i_size & (PAGE_CACHE_SIZE - 1)) -
-+		    offset;
-+	}
-+
-+	first_page = (offset + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+	last_page = (offset + length) >> PAGE_CACHE_SHIFT;
-+
-+	first_page_offset = first_page << PAGE_CACHE_SHIFT;
-+	last_page_offset = last_page << PAGE_CACHE_SHIFT;
-+
-+	/* Now release the pages */
-+	if (last_page_offset > first_page_offset) {
-+		truncate_pagecache_range(inode, first_page_offset,
-+					 last_page_offset - 1);
-+	}
-+
-+	/* Wait all existing dio works, newcomers will block on i_mutex */
-+	ext4_inode_block_unlocked_dio(inode);
-+	err = ext4_flush_unwritten_io(inode);
-+	if (err)
-+		goto out_dio;
-+	inode_dio_wait(inode);
-+
-+	handle = start_transaction(inode);
-+	if (IS_ERR(handle))
-+		goto out_dio;
-+
-+	/*
-+	 * Now we need to zero out the non-page-aligned data in the
-+	 * pages at the start and tail of the hole, and unmap the buffer
-+	 * heads for the block aligned regions of the page that were
-+	 * completely zerod.
-+	 */
-+	if (first_page > last_page) {
-+		/*
-+		 * If the file space being truncated is contained within a page
-+		 * just zero out and unmap the middle of that page
-+		 */
-+		err = ext4_discard_partial_page_buffers(handle,
-+			mapping, offset, length, 0);
-+		if (err)
-+			goto out;
-+	} else {
-+		/*
-+		 * Zero out and unmap the paritial page that contains
-+		 * the start of the hole
-+		 */
-+		page_len = first_page_offset - offset;
-+		if (page_len > 0) {
-+			err = ext4_discard_partial_page_buffers(handle, mapping,
-+							offset, page_len, 0);
-+			if (err)
-+				goto out;
-+		}
-+
-+		/*
-+		 * Zero out and unmap the partial page that contains
-+		 * the end of the hole
-+		 */
-+		page_len = offset + length - last_page_offset;
-+		if (page_len > 0) {
-+			err = ext4_discard_partial_page_buffers(handle, mapping,
-+						last_page_offset, page_len, 0);
-+			if (err)
-+				goto out;
-+		}
-+	}
-+
-+	/*
-+	 * If i_size contained in the last page, we need to
-+	 * unmap and zero the paritial page after i_size
-+	 */
-+	if (inode->i_size >> PAGE_CACHE_SHIFT == last_page &&
-+	    inode->i_size % PAGE_CACHE_SIZE != 0) {
-+		page_len = PAGE_CACHE_SIZE -
-+			(inode->i_size & (PAGE_CACHE_SIZE - 1));
-+		if (page_len > 0) {
-+			err = ext4_discard_partial_page_buffers(handle,
-+				mapping, inode->i_size, page_len, 0);
-+			if (err)
-+				goto out;
-+		}
-+	}
-+
-+	first_block = (offset + sb->s_blocksize - 1) >>
-+		EXT4_BLOCK_SIZE_BITS(sb);
-+	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
-+
-+	if (first_block >= stop_block)
-+		goto out;
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_discard_preallocations(inode);
-+
-+	err = ext4_free_hole_blocks(handle, inode, first_block, stop_block);
-+
-+	ext4_discard_preallocations(inode);
-+
-+	if (IS_SYNC(inode))
-+		ext4_handle_sync(handle);
-+
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+
-+out:
-+	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
-+	ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+
-+out_dio:
-+	ext4_inode_resume_unlocked_dio(inode);
-+out_mutex:
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return err;
-+}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b3c243b..733ed5b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3478,10 +3478,8 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	if (!S_ISREG(inode->i_mode))
- 		return -EOPNOTSUPP;
- 
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
--		/* TODO: Add support for non extent hole punching */
+-	/*
+-	 * currently supporting (pre)allocate mode for extent-based
+-	 * files _only_
+-	 */
+-	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
 -		return -EOPNOTSUPP;
--	}
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+		return ext4_ind_punch_hole(file, offset, length);
- 
- 	if (EXT4_SB(inode->i_sb)->s_cluster_ratio > 1) {
- 		/* TODO: Add support for bigalloc file systems */
--- 
-1.7.12.rc2.18.g61b472e
-
