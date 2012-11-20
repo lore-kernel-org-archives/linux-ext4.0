@@ -1,335 +1,159 @@
-From: LOANOFFERS <naturloansinfo89@gmail.com>
-Subject: TO WHOM IT MAY CONCERN.
-Date: Tue, 20 Nov 2012 01:54:26 -0800 (PST)
-Message-ID: <1353405266.25002.YahooMailClassic@web5720.biz.mail.ne1.yahoo.com>
-Reply-To: naturloansinfo88@gmail.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/9] ext4: honor the O_SYNC flag for aysnchronous
+ direct I/O requests
+Date: Tue, 20 Nov 2012 11:07:51 +0100
+Message-ID: <20121120100751.GB1408@quack.suse.cz>
+References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
+ <20121120074131.24645.38489.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="1181194666-748588461-1353405266=:25002"
-To: undisclosed recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
+	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
+	jack@suse.cz, linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm9-vm5.bullet.mail.ne1.yahoo.com ([98.138.91.231]:36090 "EHLO
-	nm9-vm5.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751528Ab2KTKBK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Nov 2012 05:01:10 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:40180 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751855Ab2KTKHz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Nov 2012 05:07:55 -0500
+Content-Disposition: inline
+In-Reply-To: <20121120074131.24645.38489.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---1181194666-748588461-1353405266=:25002
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Mon 19-11-12 23:41:31, Darrick J. Wong wrote:
+> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
+> flushed after the write completion.  Instead, it's flushed *before* the
+> I/O is sent to the disk (in __generic_file_aio_write).  This patch
+> attempts to fix that problem by marking an I/O as requiring a cache
+> flush in endio processing.  I'll send a follow-on patch to the
+> generic write code to get rid of the bogus generic_write_sync call
+> when EIOCBQUEUED is returned.
+> 
+> From: Jeff Moyer <jmoyer@redhat.com>
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> [darrick.wong@oracle.com: Rework original patch to reflect a subsequent
+> 			  ext4 reorganization]
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  fs/ext4/ext4.h    |    9 +++++
+>  fs/ext4/file.c    |    2 +
+>  fs/ext4/inode.c   |    6 +++
+>  fs/ext4/page-io.c |   92 +++++++++++++++++++++++++++++++++++++++++++++--------
+>  fs/ext4/super.c   |   13 +++++++
+>  5 files changed, 106 insertions(+), 16 deletions(-)
+> 
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3c20de1..f5a0b89 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -186,6 +186,7 @@ struct mpage_da_data {
+>  #define EXT4_IO_END_ERROR	0x0002
+>  #define EXT4_IO_END_QUEUED	0x0004
+>  #define EXT4_IO_END_DIRECT	0x0008
+> +#define EXT4_IO_END_NEEDS_SYNC	0x0010
+>  
+>  struct ext4_io_page {
+>  	struct page	*p_page;
+> @@ -1279,6 +1280,9 @@ struct ext4_sb_info {
+>  	/* workqueue for dio unwritten */
+>  	struct workqueue_struct *dio_unwritten_wq;
+>  
+> +	/* workqueue for aio+dio+o_sync disk cache flushing */
+> +	struct workqueue_struct *aio_dio_flush_wq;
+> +
+  Umm, I'm not completely decided whether we really need a separate
+workqueue. But it doesn't cost too much so I guess it makes some sense -
+fsync() is rather heavy so syncing won't starve extent conversion...
 
-=0APLEASE KINDLY VIEW THE ATTACHED FILE. =0A=0A
---1181194666-748588461-1353405266=:25002
-Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document; name="LOAN.docx"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="LOAN.docx"
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 68e896e..cda013a 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -84,6 +84,50 @@ void ext4_free_io_end(ext4_io_end_t *io)
+>  	kmem_cache_free(io_end_cachep, io);
+>  }
+>  
+> +/*
+> + * This function is called in the completion path for AIO O_SYNC|O_DIRECT
+> + * writes, and also in the fsync path.  The purpose is to ensure that the
+> + * disk caches for the journal and data devices are flushed.
+> + */
+> +static int ext4_end_io_do_flush(ext4_io_end_t *io)
+> +{
+> +	struct inode *inode = io->inode;
+> +	tid_t commit_tid;
+> +	bool needs_barrier = false;
+> +	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+> +	int barriers_enabled = test_opt(inode->i_sb, BARRIER);
+> +	int ret = 0;
+> +
+> +	if (!barriers_enabled)
+> +		return 0;
+  This is definitely wrong. Even if barriers are disabled, we may need to
+push out some buffers or commit a transaction.
 
-UEsDBBQABgAIAAAAIQDd/JU3ZgEAACAFAAATAAgCW0NvbnRlbnRfVHlwZXNd
-LnhtbCCiBAIooAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0VMtuwjAQvFfqP0S+Vomh
-h6qqCBz6OLZIpR9g7A1Y9Uv28vr7bgJEVQtBKuUSKVnvzOzsxIPR2ppsCTFp
-70rWL3osAye90m5Wso/JS37PsoTCKWG8g5JtILHR8PpqMNkESBl1u1SyOWJ4
-4DzJOViRCh/AUaXy0Qqk1zjjQchPMQN+2+vdcekdgsMcaww2HDxBJRYGs+c1
-fd4qiWASyx63B2uukokQjJYCSSlfOvWDJd8xFNTZnElzHdINyWD8IENdOU6w
-63sja6JWkI1FxFdhSQZf+ai48nJhaYaiG+aATl9VWkLbX6OF6CWkRJ5bU7QV
-K7Tb6z+qI+HGQPp/FVvcLnrSOY4+JE57OZsf6s0rUDlZESCihnZ1x0cHRLLs
-EsPvkLvGb1KAlHfgzbN/tgcNzEnKin6JiZgaOJvvV/Ja6JMiVjB9v5j738C7
-hLT5kz7+wYz9dVF3H0gdb+634RcAAAD//wMAUEsDBBQABgAIAAAAIQAekRq3
-8wAAAE4CAAALAAgCX3JlbHMvLnJlbHMgogQCKKAAAgAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAjJLbSgNBDIbvBd9hyH032woi0tneSKF3IusDhJnsAXcOzKTavr2jILpQ
-217m9OfLT9abg5vUO6c8Bq9hWdWg2JtgR99reG23iwdQWchbmoJnDUfOsGlu
-b9YvPJGUoTyMMaui4rOGQSQ+ImYzsKNchci+VLqQHEkJU4+RzBv1jKu6vsf0
-VwOamabaWQ1pZ+9AtcdYNl/WDl03Gn4KZu/Yy4kVyAdhb9kuYipsScZyjWop
-9SwabDDPJZ2RYqwKNuBpotX1RP9fi46FLAmhCYnP83x1nANaXg902aJ5x687
-HyFZLBZ9e/tDg7MvaD4BAAD//wMAUEsDBBQABgAIAAAAIQC91bngLAEAAOAD
-AAAcAAgBd29yZC9fcmVscy9kb2N1bWVudC54bWwucmVscyCiBAEooAABAAAA
-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
-AMECAADRMgAAAAA=
+> +
+> +	/*
+> +	 * If we are running in nojournal mode, just flush the disk
+> +	 * cache and return.
+> +	 */
+> +	if (!journal)
+> +		return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+  And this is wrong as well - you need to do work similar to what
+ext4_sync_file() does. Actually it would be *much* better if these two
+sites used the same helper function. Which also poses an interesting
+question about locking - do we need i_mutex or not? Forcing a transaction
+commit is definitely OK without it, similarly as grabbing transaction ids
+from inode or ext4_should_journal_data() test. __sync_inode() call seems
+to be OK without i_mutex as well so I believe we can just get rid of it
+(getting i_mutex from the workqueue is a locking nightmare we don't want to
+return to).
 
---1181194666-748588461-1353405266=:25002--
+> +
+> +	if (ext4_should_journal_data(inode)) {
+> +		ret = ext4_force_commit(inode->i_sb);
+> +		goto out;
+> +	}
+> +
+> +	commit_tid = io->iocb->ki_filp->f_flags & __O_SYNC ?
+> +		EXT4_I(inode)->i_sync_tid : EXT4_I(inode)->i_datasync_tid;
+> +	if (!jbd2_trans_will_send_data_barrier(journal, commit_tid))
+> +		needs_barrier = true;
+> +
+> +	jbd2_log_start_commit(journal, commit_tid);
+> +	ret = jbd2_log_wait_commit(journal, commit_tid);
+> +
+> +	if (!ret && needs_barrier)
+> +		ret = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
+> +
+> +out:
+> +	return ret;
+> +}
+> +
+>  /* check a range of space and convert unwritten extents to written. */
+>  static int ext4_end_io(ext4_io_end_t *io)
+>  {
+...
+> @@ -149,8 +209,11 @@ void ext4_add_complete_io(ext4_io_end_t *io_end)
+>  	struct workqueue_struct *wq;
+>  	unsigned long flags;
+>  
+> -	BUG_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
+> -	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+> +	BUG_ON(!ext4_io_end_deferred(io_end));
+> +	if (io_end->flag & EXT4_IO_END_UNWRITTEN)
+> +		wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
+> +	else
+> +		wq = EXT4_SB(io_end->inode->i_sb)->aio_dio_flush_wq;
+  Umm, I'd prefer if we used aio_dio_flush_wq when EXT4_IO_END_NEEDS_SYNC
+is set. That way slow syncing works will be always offloaded to a separate
+workqueue.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
