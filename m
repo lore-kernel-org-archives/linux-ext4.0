@@ -1,198 +1,70 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct
- I/O requests
-Date: Tue, 20 Nov 2012 22:20:38 +1100
-Message-ID: <20121120112038.GC2591@dastard>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH v1 0/9] fs: fix up AIO+DIO+O_SYNC to actually do the sync part
+Date: Tue, 20 Nov 2012 09:23:18 -0500
+Message-ID: <x49pq38jquh.fsf@segfault.boston.devel.redhat.com>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
- <20121120075114.25270.40680.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, tytso@mit.edu, jmoyer@redhat.com, bpm@sgi.com,
+Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com, bpm@sgi.com,
 	viro@zeniv.linux.org.uk, jack@suse.cz,
 	linux-fsdevel@vger.kernel.org, hch@infradead.org,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, djwong+kernel@djwong.org
+	xfs@oss.sgi.com
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121120075114.25270.40680.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:24747 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751513Ab2KTOXn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Nov 2012 09:23:43 -0500
+In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org> (Darrick
+	J. Wong's message of "Mon, 19 Nov 2012 23:41:16 -0800")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2012 at 11:51:14PM -0800, Darrick J. Wong wrote:
-> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
-> flushed after the write completion for AIOs.  This patch attempts to fix
-> that problem by marking an I/O as requiring a cache flush in endio
-> processing, and then issuing the cache flush after any unwritten extent
-> conversion is done.
-> 
-> From: Jeff Moyer <jmoyer@redhat.com>
-> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-> [darrick.wong@oracle.com: Rework patch to use per-mount workqueues]
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/xfs/xfs_aops.c  |   52 +++++++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/xfs/xfs_aops.h  |    1 +
->  fs/xfs/xfs_mount.h |    1 +
->  fs/xfs/xfs_super.c |    8 ++++++++
->  4 files changed, 61 insertions(+), 1 deletion(-)
-> 
-> 
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index e57e2da..9cebbb7 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-> @@ -173,6 +173,24 @@ xfs_setfilesize(
->  }
->  
->  /*
-> + * In the case of synchronous, AIO, O_DIRECT writes, we need to flush
-> + * the disk cache when the I/O is complete.
-> + */
+"Darrick J. Wong" <darrick.wong@oracle.com> writes:
 
-That's not quite right - we need to fsync the metadata when the data
-IO is complete. Block device/disk cache flushes are irrelevant at
-this level as that is wholly encapsulated inside the metadata fsync
-processing.
+> Hi everybody,
+>
+> On March 29th, Jeff Moyer posted to lkml a patchset with this note:
+>
+>> Currently, AIO+DIO+O_SYNC writes are not actually sync'd (for xfs), or they
+>> are sync'd before the I/O is actually issued (everybody else).  The following
+>> patch series fixes this in two parts.  First, for the file systems that use
+>> the generic routines, Jan has provided some generic infrastructure to perform
+>> the syncs after the I/O is completed.  Second, for those file systems which
+>> require some endio processing of their own for O_DIRECT writes (xfs and
+>> ext4), [Jeff] implemented file system specific syncing.  This passes the
+>> updated xfs-tests 113 test [Jeff] posted earlier, as well as all of the tests
+>> in the aio group.  [Jeff] tested ext3, ext4, xfs, and btrfs only.
+>
+> Since the original post a few months ago, this patchset doesn't seem to have
+> made any progress.  An internal testing team here discovered that the issue
+> also affects O_SYNC+AIO+DIO writes to block devices.  Worse yet, since the
+> flushes were being issued (and waited upon) directly in the io_submit call
+> graph, the io_submit calls themselves would take a very long time to complete.
+> Therefore, I added another patch to move the flush to the io_end processing.
+>
+> The blockdev patch was written by me.  The ext4 patch had to be updated to
+> accomodate a rework of the ext4 endio code that landed since March.  Everything
+> else has been passed through from Jeff's March 30th resend, with few changes.
+>
+> This patchset has been tested (albeit lightly) against 3.7-rc6 on x64, with
+> ext4, xfs, btrfs, vfat, jfs, hfsplus, ext2, ext3, and raw block devices.
+>
+> Comments and questions are, as always, welcome.
 
-> +STATIC bool
-> +xfs_ioend_needs_cache_flush(
+Hi, Darrick,
 
-xfs_ioend_need_fsync()
+I just finished testing my version of this patch set on ext4 and xfs
+(btrfs is next), but you beat me to the posting!  Sorry, I should have
+been more clear when I said I would see about refreshing the series.
 
-> +	struct xfs_ioend	*ioend)
-> +{
-> +	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-> +	struct xfs_mount *mp = ip->i_mount;
-> +
-> +	if (!(mp->m_flags & XFS_MOUNT_BARRIER))
-> +		return false;
+How have you tested these patches?  You just said "lightly", and I'm
+afraid I don't know what that means.  xfstests?  You should at least run
+them through test 113.
 
-And regardless of whether we have barriers enabled or not, we need
-to flush the dirty metadata to the log for O_SYNC/O_DSYNC+AIO+DIO
-writes here. So there should be no check of the mount flags here.
-
-> +	return IS_SYNC(ioend->io_inode) ||
-> +	       (ioend->io_iocb->ki_filp->f_flags & O_DSYNC);
-> +}
-> +
-> +/*
->   * Schedule IO completion handling on the final put of an ioend.
->   *
->   * If there is no work to do we might as well call it a day and free the
-> @@ -189,11 +207,30 @@ xfs_finish_ioend(
->  			queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
->  		else if (ioend->io_append_trans)
->  			queue_work(mp->m_data_workqueue, &ioend->io_work);
-> +		else if (ioend->io_needs_fsync)
-> +			queue_work(mp->m_aio_blkdev_flush_wq, &ioend->io_work);
->  		else
->  			xfs_destroy_ioend(ioend);
->  	}
->  }
->  
-> +STATIC int
-> +xfs_ioend_force_cache_flush(
-
-STATIC void
-xfs_ioend_fsync()
-
-> +	xfs_ioend_t	*ioend)
-> +{
-> +	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-> +	struct xfs_mount *mp = ip->i_mount;
-> +	int		err = 0;
-> +	int		datasync;
-
-	trace_xfs_ioend_fsync(ip);
-
-> +	datasync = !IS_SYNC(ioend->io_inode) &&
-> +		!(ioend->io_iocb->ki_filp->f_flags & __O_SYNC);
-> +	err = do_xfs_file_fsync(ip, mp, datasync);
-> +	xfs_destroy_ioend(ioend);
-
-I think this is wrong. The ioend is destroyed by the caller, so
-putting it here turns all subsequent uses by the caller into
-use-after-free memory corruption bugs.
-
-
-> +	/* do_xfs_file_fsync returns -errno. our caller expects positive. */
-> +	return -err;
-
-This is why xfs_do_file_fsync() should be returning a positive
-error - to avoid repeated juggling of error signs.
-
-> +}
-> +
->  /*
->   * IO write completion.
->   */
-> @@ -250,12 +287,22 @@ xfs_end_io(
->  		error = xfs_setfilesize(ioend);
->  		if (error)
->  			ioend->io_error = -error;
-> +	} else if (ioend->io_needs_fsync) {
-> +		error = xfs_ioend_force_cache_flush(ioend);
-> +		if (error && ioend->io_result > 0)
-> +			ioend->io_error = -error;
-> +		ioend->io_needs_fsync = 0;
-
-So this is all use-after-free. Also, there's no need to clear
-io_needs_fsync() as the ioend is about to be destroyed.
-
->  	} else {
->  		ASSERT(!xfs_ioend_is_append(ioend));
->  	}
->  
->  done:
-> -	xfs_destroy_ioend(ioend);
-> +	/* the honoring of O_SYNC has to be done last */
-> +	if (ioend->io_needs_fsync) {
-> +		atomic_inc(&ioend->io_remaining);
-> +		xfs_finish_ioend(ioend);
-> +	} else
-> +		xfs_destroy_ioend(ioend);
-
-And requeuing work from one workqueue to the next is something that
-we can avoid.  We know at IO submission time (i.e.
-xfs_vm_direct_io)) whether an fsync completion is going to be needed
-during Io completion.  The ioend->io_needs_fsync flag can be set
-then, and the first pass through xfs_finish_ioend() can queue it to
-the correct workqueue.  i.e. it only needs to be queued if it's not
-already an unwritten or append ioend and it needs an fsync.
-
-As it is, all the data completion workqueues run the same completion
-function so all you need to do is handle the fsync case at the end
-of the existing processing - it's not an else case. i.e the end of
-xfs_end_io() becomes:
-
-	if (ioend->io_needs_fsync) {
-		error = xfs_ioend_fsync(ioend);
-		if (error)
-			ioend->io_error = -error;
-		goto done;
-	}
-done:
-	xfs_destroy_ioend(ioend);
-
-As it is, this code is going to change before these changes go in -
-there's a nasty regression in the DIO code that I found this
-afternoon that requires reworking this IO completion logic to
-avoid. The patch will appear on the list soon....
-
-> --- a/fs/xfs/xfs_mount.h
-> +++ b/fs/xfs/xfs_mount.h
-> @@ -209,6 +209,7 @@ typedef struct xfs_mount {
->  	struct workqueue_struct	*m_data_workqueue;
->  	struct workqueue_struct	*m_unwritten_workqueue;
->  	struct workqueue_struct	*m_cil_workqueue;
-> +	struct workqueue_struct *m_aio_blkdev_flush_wq;
-
-	struct workqueue_struct *m_aio_fsync_wq;
+Would you like to push the set in, or should I post the patches I've
+got?  Doesn't matter to me, just let me know.
 
 Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Jeff
