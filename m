@@ -1,68 +1,52 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/3 v2] ext4: let us fully support punching hole feature
- in fallocate
-Date: Tue, 20 Nov 2012 15:43:35 +0800
-Message-ID: <20121120074335.GA6191@gmail.com>
-References: <1353329718-2075-1-git-send-email-wenqing.lz@taobao.com>
- <1353329718-2075-3-git-send-email-wenqing.lz@taobao.com>
- <20121120063505.GA11117@yanx>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v1 0/9] fs: fix up AIO+DIO+O_SYNC to actually do the sync part
+Date: Mon, 19 Nov 2012 23:41:16 -0800
+Message-ID: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Guo Chao <yan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
+	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
+	jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:37422 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752697Ab2KTHay (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 02:30:54 -0500
-Received: by mail-pb0-f46.google.com with SMTP id wy7so4076211pbc.19
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2012 23:30:54 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20121120063505.GA11117@yanx>
+Received: from userp1040.oracle.com ([156.151.31.81]:25055 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750928Ab2KTHlo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 02:41:44 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2012 at 02:35:05PM +0800, Guo Chao wrote:
-> Hi, Zheng:
-> 
-> On Mon, Nov 19, 2012 at 08:55:17PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > After adding indirect punching hole feature, we need to enable it in fallocate.
-> > For this purpose, some sanity checks need to be adjusted.  Currently we need to
-> > check FALLOC_FL_PUNCH_HOLE flag before other sanity checks.
-> > 
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > ---
-> >  fs/ext4/extents.c | 14 +++++++-------
-> >  1 file changed, 7 insertions(+), 7 deletions(-)
-> > 
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 7011ac9..b43b3e9 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -4420,13 +4420,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-> >  	struct ext4_map_blocks map;
-> >  	unsigned int credits, blkbits = inode->i_blkbits;
-> > 
-> > -	/*
-> > -	 * currently supporting (pre)allocate mode for extent-based
-> > -	 * files _only_
-> > -	 */
-> > -	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> > -		return -EOPNOTSUPP;
-> > -
-> >  	/* Return error if mode is not supported */
-> >  	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
-> >  		return -EOPNOTSUPP;
-> 
-> Checking these mode flags seems redundant here, VFS already checked them.
-> Maybe you can remove it by the way.
+Hi everybody,
 
-Yeah, I see.  Not only ext4, other filesystems also check it in themselves,
-such as xfs, btrfs.  I am not very familiar with why we need to do this,
-but IMHO a better way might be removing it from all filesystems in another
-patch series.  I will send it out.  Thanks for your suggestion.
+On March 29th, Jeff Moyer posted to lkml a patchset with this note:
 
-Regards,
-                                                - Zheng
+> Currently, AIO+DIO+O_SYNC writes are not actually sync'd (for xfs), or they
+> are sync'd before the I/O is actually issued (everybody else).  The following
+> patch series fixes this in two parts.  First, for the file systems that use
+> the generic routines, Jan has provided some generic infrastructure to perform
+> the syncs after the I/O is completed.  Second, for those file systems which
+> require some endio processing of their own for O_DIRECT writes (xfs and
+> ext4), [Jeff] implemented file system specific syncing.  This passes the
+> updated xfs-tests 113 test [Jeff] posted earlier, as well as all of the tests
+> in the aio group.  [Jeff] tested ext3, ext4, xfs, and btrfs only.
+
+Since the original post a few months ago, this patchset doesn't seem to have
+made any progress.  An internal testing team here discovered that the issue
+also affects O_SYNC+AIO+DIO writes to block devices.  Worse yet, since the
+flushes were being issued (and waited upon) directly in the io_submit call
+graph, the io_submit calls themselves would take a very long time to complete.
+Therefore, I added another patch to move the flush to the io_end processing.
+
+The blockdev patch was written by me.  The ext4 patch had to be updated to
+accomodate a rework of the ext4 endio code that landed since March.  Everything
+else has been passed through from Jeff's March 30th resend, with few changes.
+
+This patchset has been tested (albeit lightly) against 3.7-rc6 on x64, with
+ext4, xfs, btrfs, vfat, jfs, hfsplus, ext2, ext3, and raw block devices.
+
+Comments and questions are, as always, welcome.
+
+--D
