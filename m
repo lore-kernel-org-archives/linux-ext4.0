@@ -1,84 +1,136 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 9/9] blkdev: Fix up AIO+DIO+O_SYNC to do the sync part
- correctly
-Date: Tue, 20 Nov 2012 11:15:59 +0100
-Message-ID: <20121120101559.GC1408@quack.suse.cz>
+Subject: Re: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct
+ I/O requests
+Date: Tue, 20 Nov 2012 11:24:20 +0100
+Message-ID: <20121120102420.GD1408@quack.suse.cz>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
- <20121120075115.25270.62451.stgit@blackbox.djwong.org>
+ <20121120075114.25270.40680.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
 	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
 	jack@suse.cz, linux-fsdevel@vger.kernel.org, hch@infradead.org,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com
+	xfs@oss.sgi.com, djwong+kernel@djwong.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40701 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:41112 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751871Ab2KTKQC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Nov 2012 05:16:02 -0500
+	id S1752922Ab2KTKYX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Nov 2012 05:24:23 -0500
 Content-Disposition: inline
-In-Reply-To: <20121120075115.25270.62451.stgit@blackbox.djwong.org>
+In-Reply-To: <20121120075114.25270.40680.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 19-11-12 23:51:15, Darrick J. Wong wrote:
-> When performing O_SYNC+AIO+DIO writes to block devices, use the DIO_SYNC_WRITES
-> flag so that flushes are issued /after/ the write completes, not before.
+On Mon 19-11-12 23:51:14, Darrick J. Wong wrote:
+> If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
+> flushed after the write completion for AIOs.  This patch attempts to fix
+> that problem by marking an I/O as requiring a cache flush in endio
+> processing, and then issuing the cache flush after any unwritten extent
+> conversion is done.
 > 
-> Note, however, that for block devices, the DIO setup code ensures that a flush
-> wq is attached to the superblock of the bdevfs filesystem, not the filesystem
-> that the device node happens to reside in.  This means that unlike regular
-> files, iocb->ki_filp->f_mapping->host->i_sb != inode->i_sb.  Therefore, adjust
-> Jeff's earlier patch to keep the pointer use consistent and avoid a NULL deref.
-> 
+> From: Jeff Moyer <jmoyer@redhat.com>
+> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
+> [darrick.wong@oracle.com: Rework patch to use per-mount workqueues]
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  fs/block_dev.c |    5 +++--
->  fs/direct-io.c |    3 ++-
->  2 files changed, 5 insertions(+), 3 deletions(-)
+>  fs/xfs/xfs_aops.c  |   52 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/xfs/xfs_aops.h  |    1 +
+>  fs/xfs/xfs_mount.h |    1 +
+>  fs/xfs/xfs_super.c |    8 ++++++++
+>  4 files changed, 61 insertions(+), 1 deletion(-)
 > 
 > 
-> diff --git a/fs/block_dev.c b/fs/block_dev.c
-> index 1a1e5e3..05ff33a 100644
-> --- a/fs/block_dev.c
-> +++ b/fs/block_dev.c
-> @@ -235,7 +235,8 @@ blkdev_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
->  	struct inode *inode = file->f_mapping->host;
->  
->  	return __blockdev_direct_IO(rw, iocb, inode, I_BDEV(inode), iov, offset,
-> -				    nr_segs, blkdev_get_blocks, NULL, NULL, 0);
-> +				    nr_segs, blkdev_get_blocks, NULL, NULL,
-> +				    DIO_SYNC_WRITES);
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index e57e2da..9cebbb7 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+> @@ -173,6 +173,24 @@ xfs_setfilesize(
 >  }
 >  
->  int __sync_blockdev(struct block_device *bdev, int wait)
-> @@ -1631,7 +1632,7 @@ ssize_t blkdev_aio_write(struct kiocb *iocb, const struct iovec *iov,
->  	percpu_down_read(&bdev->bd_block_size_semaphore);
+>  /*
+> + * In the case of synchronous, AIO, O_DIRECT writes, we need to flush
+> + * the disk cache when the I/O is complete.
+> + */
+> +STATIC bool
+> +xfs_ioend_needs_cache_flush(
+> +	struct xfs_ioend	*ioend)
+> +{
+> +	struct xfs_inode *ip = XFS_I(ioend->io_inode);
+> +	struct xfs_mount *mp = ip->i_mount;
+> +
+> +	if (!(mp->m_flags & XFS_MOUNT_BARRIER))
+> +		return false;
+> +
+> +	return IS_SYNC(ioend->io_inode) ||
+> +	       (ioend->io_iocb->ki_filp->f_flags & O_DSYNC);
+> +}
+  I'm not really a XFS developer but calling things "...cache_flush" when
+you actually mean fsync is IMHO misleading.
+
+> +
+> +/*
+>   * Schedule IO completion handling on the final put of an ioend.
+>   *
+>   * If there is no work to do we might as well call it a day and free the
+> @@ -189,11 +207,30 @@ xfs_finish_ioend(
+>  			queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
+>  		else if (ioend->io_append_trans)
+>  			queue_work(mp->m_data_workqueue, &ioend->io_work);
+> +		else if (ioend->io_needs_fsync)
+> +			queue_work(mp->m_aio_blkdev_flush_wq, &ioend->io_work);
+>  		else
+>  			xfs_destroy_ioend(ioend);
+>  	}
+>  }
 >  
->  	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
-> -	if (ret > 0 || ret == -EIOCBQUEUED) {
-> +	if (ret > 0) {
->  		ssize_t err;
+> +STATIC int
+> +xfs_ioend_force_cache_flush(
+> +	xfs_ioend_t	*ioend)
+> +{
+> +	struct xfs_inode *ip = XFS_I(ioend->io_inode);
+> +	struct xfs_mount *mp = ip->i_mount;
+> +	int		err = 0;
+> +	int		datasync;
+> +
+> +	datasync = !IS_SYNC(ioend->io_inode) &&
+> +		!(ioend->io_iocb->ki_filp->f_flags & __O_SYNC);
+> +	err = do_xfs_file_fsync(ip, mp, datasync);
+> +	xfs_destroy_ioend(ioend);
+> +	/* do_xfs_file_fsync returns -errno. our caller expects positive. */
+> +	return -err;
+> +}
+> +
+>  /*
+>   * IO write completion.
+>   */
+> @@ -250,12 +287,22 @@ xfs_end_io(
+>  		error = xfs_setfilesize(ioend);
+>  		if (error)
+>  			ioend->io_error = -error;
+> +	} else if (ioend->io_needs_fsync) {
+> +		error = xfs_ioend_force_cache_flush(ioend);
+> +		if (error && ioend->io_result > 0)
+> +			ioend->io_error = -error;
+> +		ioend->io_needs_fsync = 0;
+>  	} else {
+>  		ASSERT(!xfs_ioend_is_append(ioend));
+>  	}
 >  
->  		err = generic_write_sync(file, pos, ret);
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index b7391d4..c626c43 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -258,7 +258,8 @@ void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
->  		work->ret = ret;
->  		work->offset = offset;
->  		work->len = bytes;
-> -		queue_work(inode->i_sb->s_dio_flush_wq, &work->work);
-> +		queue_work(iocb->ki_filp->f_mapping->host->i_sb->s_dio_flush_wq,
-> +			   &work->work);
-  This should be folded into the original patch introducing the
-s_dio_flush_wq. And please add a comment before this line saying that block
-devices need a dereference exactly like this... Otherwise the patch looks
-good so you can add:
-  Reviewed-by: Jan Kara <jack@suse.cz>
+>  done:
+> -	xfs_destroy_ioend(ioend);
+> +	/* the honoring of O_SYNC has to be done last */
+> +	if (ioend->io_needs_fsync) {
+> +		atomic_inc(&ioend->io_remaining);
+> +		xfs_finish_ioend(ioend);
+> +	} else
+> +		xfs_destroy_ioend(ioend);
+>  }
+  Umm, I don't quite get why you do things the way you do in xfs_end_io().
+Why don't you handle fsync there always but offload it instead to workqueue
+again in some cases? Is it so that it gets processed in the right workqueue
+or why?
 
 								Honza
 -- 
