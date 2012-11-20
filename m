@@ -1,42 +1,35 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 1/4][RFC] ext4: remove duplicated check from ext4_fallocate
-Date: Tue, 20 Nov 2012 17:29:42 +0800
-Message-ID: <1353403785-3489-2-git-send-email-wenqing.lz@taobao.com>
-References: <1353403785-3489-1-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 0/4][RFC] remove duplicated check from ext4, xfs, btrfs, and ocfs2
+Date: Tue, 20 Nov 2012 17:29:41 +0800
+Message-ID: <1353403785-3489-1-git-send-email-wenqing.lz@taobao.com>
 Cc: yan@linux.vnet.ibm.com, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org,
 	ocfs2-devel@oss.oracle.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <1353403785-3489-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+Hi all,
 
-Remove a sanity check from ext4_fallocate because vfs has already checked it.
+This patch series tries to remove a sanity check in fallocate from specific
+filesystems because vfs has already checked it.
 
-Reported-by: Guo Chao <yan@linux.vnet.ibm.com>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+I am not very familiar with why we need to do this duplicated check.  Please let
+me know if I miss something.
+
+Regards,
+						- Zheng
+
 ---
+Zheng Liu(4):
+      ext4: remove dupoicated check from ext4_fallocate
+      xfs: remove duplicated check from xfs_file_fallocate
+      btrfs: remove duplicated check from btrfs_fallocate
+      ocfs2: remove duplicated check from ocfs2_fallocate
+
+ fs/btrfs/file.c   | 4 ----
  fs/ext4/extents.c | 4 ----
- 1 file changed, 4 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7011ac9..c2eb409 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4427,10 +4427,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return -EOPNOTSUPP;
- 
--	/* Return error if mode is not supported */
--	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
--		return -EOPNOTSUPP;
--
- 	if (mode & FALLOC_FL_PUNCH_HOLE)
- 		return ext4_punch_hole(file, offset, len);
- 
--- 
-1.7.12.rc2.18.g61b472e
-
+ fs/ocfs2/file.c   | 2 --
+ fs/xfs/xfs_file.c | 3 ---
+ 4 files changed, 13 deletions(-)
