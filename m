@@ -1,77 +1,92 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 2/9] ext4: honor the O_SYNC flag for aysnchronous direct I/O requests
-Date: Tue, 20 Nov 2012 15:02:15 -0500
-Message-ID: <x49sj84hwl4.fsf@segfault.boston.devel.redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct
+ I/O requests
+Date: Wed, 21 Nov 2012 07:08:27 +1100
+Message-ID: <20121120200827.GE2591@dastard>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
-	<20121120074131.24645.38489.stgit@blackbox.djwong.org>
-	<20121120100751.GB1408@quack.suse.cz>
+ <20121120075114.25270.40680.stgit@blackbox.djwong.org>
+ <20121120112038.GC2591@dastard>
+ <x49wqxghxhj.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Darrick J. Wong" <darrick.wong@oracle.com>, axboe@kernel.dk,
-	tytso@mit.edu, david@fromorbit.com, bpm@sgi.com,
-	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	hch@infradead.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20121120100751.GB1408@quack.suse.cz> (Jan Kara's message of
-	"Tue, 20 Nov 2012 11:07:51 +0100")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	tytso@mit.edu, bpm@sgi.com, viro@zeniv.linux.org.uk, jack@suse.cz,
+	linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, djwong+kernel@djwong.org
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:27736 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752503Ab2KTUIa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Nov 2012 15:08:30 -0500
+Content-Disposition: inline
+In-Reply-To: <x49wqxghxhj.fsf@segfault.boston.devel.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+On Tue, Nov 20, 2012 at 02:42:48PM -0500, Jeff Moyer wrote:
+> Dave Chinner <david@fromorbit.com> writes:
+> 
+> > And requeuing work from one workqueue to the next is something that
+> > we can avoid.  We know at IO submission time (i.e.
+> > xfs_vm_direct_io)) whether an fsync completion is going to be needed
+> > during Io completion.  The ioend->io_needs_fsync flag can be set
+> > then, and the first pass through xfs_finish_ioend() can queue it to
+> > the correct workqueue.  i.e. it only needs to be queued if it's not
+> > already an unwritten or append ioend and it needs an fsync.
+> >
+> > As it is, all the data completion workqueues run the same completion
+> > function so all you need to do is handle the fsync case at the end
+> > of the existing processing - it's not an else case. i.e the end of
+> > xfs_end_io() becomes:
+> >
+> > 	if (ioend->io_needs_fsync) {
+> > 		error = xfs_ioend_fsync(ioend);
+> > 		if (error)
+> > 			ioend->io_error = -error;
+> > 		goto done;
+> > 	}
+> > done:
+> > 	xfs_destroy_ioend(ioend);
+> 
+> Works for me, that makes things simpler.
+> 
+> > As it is, this code is going to change before these changes go in -
+> > there's a nasty regression in the DIO code that I found this
+> > afternoon that requires reworking this IO completion logic to
+> > avoid. The patch will appear on the list soon....
+> 
+> I'm not on the xfs list, so if you haven't already sent it, mind Cc-ing
+> me?
 
->> @@ -1279,6 +1280,9 @@ struct ext4_sb_info {
->>  	/* workqueue for dio unwritten */
->>  	struct workqueue_struct *dio_unwritten_wq;
->>  
->> +	/* workqueue for aio+dio+o_sync disk cache flushing */
->> +	struct workqueue_struct *aio_dio_flush_wq;
->> +
->   Umm, I'm not completely decided whether we really need a separate
-> workqueue. But it doesn't cost too much so I guess it makes some sense -
-> fsync() is rather heavy so syncing won't starve extent conversion...
+http://oss.sgi.com/archives/xfs/2012-11/msg00493.html
 
-I'm assuming you'd like me to convert the names from flush to fsync,
-yes?
+First cut is here, but it will change a bit as review goes on...
 
->> +
->> +	/*
->> +	 * If we are running in nojournal mode, just flush the disk
->> +	 * cache and return.
->> +	 */
->> +	if (!journal)
->> +		return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_NOIO, NULL);
->   And this is wrong as well - you need to do work similar to what
-> ext4_sync_file() does. Actually it would be *much* better if these two
-> sites used the same helper function. Which also poses an interesting
-> question about locking - do we need i_mutex or not? Forcing a transaction
-> commit is definitely OK without it, similarly as grabbing transaction ids
-> from inode or ext4_should_journal_data() test. __sync_inode() call seems
-> to be OK without i_mutex as well so I believe we can just get rid of it
-> (getting i_mutex from the workqueue is a locking nightmare we don't want to
-> return to).
+> >> --- a/fs/xfs/xfs_mount.h
+> >> +++ b/fs/xfs/xfs_mount.h
+> >> @@ -209,6 +209,7 @@ typedef struct xfs_mount {
+> >>  	struct workqueue_struct	*m_data_workqueue;
+> >>  	struct workqueue_struct	*m_unwritten_workqueue;
+> >>  	struct workqueue_struct	*m_cil_workqueue;
+> >> +	struct workqueue_struct *m_aio_blkdev_flush_wq;
+> >
+> > 	struct workqueue_struct *m_aio_fsync_wq;
+> 
+> For the record, m_aio_blkdev_flush_wq is the name you chose previously.
+> ;-)
 
-Just to be clear, are you saying you would like me to remove the
-mutex_lock/unlock pair from ext4_sync_file?  (I had already factored out
-the common code between this new code path and the fsync path in my tree.)
+<cue Led Zeppelin>
 
->> @@ -149,8 +209,11 @@ void ext4_add_complete_io(ext4_io_end_t *io_end)
->>  	struct workqueue_struct *wq;
->>  	unsigned long flags;
->>  
->> -	BUG_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
->> -	wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
->> +	BUG_ON(!ext4_io_end_deferred(io_end));
->> +	if (io_end->flag & EXT4_IO_END_UNWRITTEN)
->> +		wq = EXT4_SB(io_end->inode->i_sb)->dio_unwritten_wq;
->> +	else
->> +		wq = EXT4_SB(io_end->inode->i_sb)->aio_dio_flush_wq;
->   Umm, I'd prefer if we used aio_dio_flush_wq when EXT4_IO_END_NEEDS_SYNC
-> is set. That way slow syncing works will be always offloaded to a separate
-> workqueue.
+It's been a long time since I read that patch....
 
-OK.
+:)
 
-Thanks!
-Jeff
+Cheers,
+
+Dave....
+-- 
+Dave Chinner
+david@fromorbit.com
