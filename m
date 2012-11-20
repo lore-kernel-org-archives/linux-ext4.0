@@ -1,70 +1,84 @@
-From: Guo Chao <yan@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/3 v2] ext4: let us fully support punching hole feature
- in fallocate
-Date: Tue, 20 Nov 2012 14:35:05 +0800
-Message-ID: <20121120063505.GA11117@yanx>
-References: <1353329718-2075-1-git-send-email-wenqing.lz@taobao.com>
- <1353329718-2075-3-git-send-email-wenqing.lz@taobao.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [RFC] extent status tree (step2)
+Date: Tue, 20 Nov 2012 15:19:08 +0800
+Message-ID: <20121120071908.GA6078@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([122.248.162.5]:49119 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751955Ab2KTGfW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 01:35:22 -0500
-Received: from /spool/local
-	by e28smtp05.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
-	Tue, 20 Nov 2012 12:05:20 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qAK6ZHkG55771332
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2012 12:05:18 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qAK6ZHt5005596
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2012 17:35:17 +1100
+Received: from mail-da0-f46.google.com ([209.85.210.46]:38166 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751064Ab2KTHG0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 02:06:26 -0500
+Received: by mail-da0-f46.google.com with SMTP id p5so1112631dak.19
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2012 23:06:25 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1353329718-2075-3-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, Zheng:
+Hi all,
 
-On Mon, Nov 19, 2012 at 08:55:17PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> After adding indirect punching hole feature, we need to enable it in fallocate.
-> For this purpose, some sanity checks need to be adjusted.  Currently we need to
-> check FALLOC_FL_PUNCH_HOLE flag before other sanity checks.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> ---
->  fs/ext4/extents.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 7011ac9..b43b3e9 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4420,13 +4420,6 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->  	struct ext4_map_blocks map;
->  	unsigned int credits, blkbits = inode->i_blkbits;
-> 
-> -	/*
-> -	 * currently supporting (pre)allocate mode for extent-based
-> -	 * files _only_
-> -	 */
-> -	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-> -		return -EOPNOTSUPP;
-> -
->  	/* Return error if mode is not supported */
->  	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
->  		return -EOPNOTSUPP;
+Extent status tree has been applied into linux-next.  So I have begun to try to
+implement the second step of extent status tree [1].  In this step the following
+improvements will be added:
+ - track all extent status for an inode
+ - improve delay allocation space reservation
+ - reduce the race contention of i_data_sem w/ delalloc
+ - big extent tree (accelerate looking up in extent tree)
 
-Checking these mode flags seems redundant here, VFS already checked them.
-Maybe you can remove it by the way.
 
-Regards,
-Guo Chao
+* Track all extent status for an inode
 
+Now extent status tree only records the status of delay extents.  In this step,
+it will be improved to track all extent status for an inode.  The extent status
+includes DELAY, WRITTEN, UNWRITTEN.  When an application opens a file, there
+will be an empty extent status tree.  While calling get_block_t function, the
+extent status will be inserted into this tree.  So after some time this tree can
+track most of extent entries.
+
+* Improve delay allocation space reservation
+
+Currently we will meet a warning in some specific pressure test w/ bigalloc and
+delalloc.  The reason is that we need to reserve some spaces for delay
+allocation.  As bigalloc is enabled this work is complicated.  So we can use
+extent status tree to track how much space we need to reserve.
+
+* Reduce the race contention of i_data_sem w/ delalloc
+
+When delalloc is enabled, filesystem will accumulate more blocks that are
+waiting to be written out.  That brings us more continuous file layout and
+higher throughput.  In a specific case, however, it causes a huge latency for
+application.  When an app does some append writes, it only needs to wait just
+a moment if flusher is sleep and doesn't write any dirty pages out.  But when
+flusher tries to write these dirty pages, i_data_sem will be taken for a long
+time with delalloc because filesystem needs to allocate lots of blocks for these
+pages.  At the same time, if the app goes on doing a append write, filesystem
+will try to take i_data_sem too because it needs to determine whether or not
+some blocks has been allocated.  So the app must need to wait a long time to
+finish this write.  It is unacceptable for some applications that are
+latency-sensitive.
+
+In this step, we can modify get_block_t function to look up extent status tree.
+When filesystem needs to find a block mapping, it will look up extent status
+tree firstly.  We only needs to take a rwlock and can avoid waiting for a long
+time.
+
+* Big extent tree
+
+This year at ext4 developer workshop, Ted and other folks discussed about big
+extent cache [2].  The idea is that multiple extent entries are collapsed into
+a single in memory.  It looks like a cache for extent tree, and can reduce the
+cost of memory and accelerate looking up an extent entry.  It seems that extent
+status tree also can do this thing.
+
+Ted, If you have some updates for big extent cache or I misunderstand something,
+please let me know. Thanks!
+
+Any comments or feedbacks are appreciated.
+
+Thanks!
+						- Zheng
+
+---
+1. http://pl.digipedia.org/usenet/thread/11916/30410/
+2. http://www.spinics.net/lists/linux-ext4/msg31742.html
