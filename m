@@ -1,313 +1,77 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] ext4: Prevent race while walking extent tree
-Date: Tue, 20 Nov 2012 15:57:39 +0100
-Message-ID: <1353423460-12178-2-git-send-email-lczerner@redhat.com>
-References: <1353423460-12178-1-git-send-email-lczerner@redhat.com>
-Cc: gnehzuil.liu@gmail.com, tytso@mit.edu, dmonakhov@openvz.org,
-	bergwolf@gmail.com, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32041 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753173Ab2KTO5x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Nov 2012 09:57:53 -0500
-In-Reply-To: <1353423460-12178-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v1 0/9] fs: fix up AIO+DIO+O_SYNC to actually do the sync
+ part
+Date: Tue, 20 Nov 2012 10:57:00 -0800
+Message-ID: <20121120185700.GD8740@blackbox.djwong.org>
+References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
+ <x49pq38jquh.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com, bpm@sgi.com,
+	viro@zeniv.linux.org.uk, jack@suse.cz,
+	linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <x49pq38jquh.fsf@segfault.boston.devel.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently ext4_ext_walk_space() only takes i_data_sem for read when
-searching for the extent at given block with ext4_ext_find_extent().
-Then it drops the lock and the extent tree can be changed at will.
-However later on we're searching for the 'next' extent, but the extent
-tree might already have changed, so the information might not be
-accurate.
+On Tue, Nov 20, 2012 at 09:23:18AM -0500, Jeff Moyer wrote:
+> "Darrick J. Wong" <darrick.wong@oracle.com> writes:
+> 
+> > Hi everybody,
+> >
+> > On March 29th, Jeff Moyer posted to lkml a patchset with this note:
+> >
+> >> Currently, AIO+DIO+O_SYNC writes are not actually sync'd (for xfs), or they
+> >> are sync'd before the I/O is actually issued (everybody else).  The following
+> >> patch series fixes this in two parts.  First, for the file systems that use
+> >> the generic routines, Jan has provided some generic infrastructure to perform
+> >> the syncs after the I/O is completed.  Second, for those file systems which
+> >> require some endio processing of their own for O_DIRECT writes (xfs and
+> >> ext4), [Jeff] implemented file system specific syncing.  This passes the
+> >> updated xfs-tests 113 test [Jeff] posted earlier, as well as all of the tests
+> >> in the aio group.  [Jeff] tested ext3, ext4, xfs, and btrfs only.
+> >
+> > Since the original post a few months ago, this patchset doesn't seem to have
+> > made any progress.  An internal testing team here discovered that the issue
+> > also affects O_SYNC+AIO+DIO writes to block devices.  Worse yet, since the
+> > flushes were being issued (and waited upon) directly in the io_submit call
+> > graph, the io_submit calls themselves would take a very long time to complete.
+> > Therefore, I added another patch to move the flush to the io_end processing.
+> >
+> > The blockdev patch was written by me.  The ext4 patch had to be updated to
+> > accomodate a rework of the ext4 endio code that landed since March.  Everything
+> > else has been passed through from Jeff's March 30th resend, with few changes.
+> >
+> > This patchset has been tested (albeit lightly) against 3.7-rc6 on x64, with
+> > ext4, xfs, btrfs, vfat, jfs, hfsplus, ext2, ext3, and raw block devices.
+> >
+> > Comments and questions are, as always, welcome.
+> 
+> Hi, Darrick,
+> 
+> I just finished testing my version of this patch set on ext4 and xfs
+> (btrfs is next), but you beat me to the posting!  Sorry, I should have
+> been more clear when I said I would see about refreshing the series.
+> 
+> How have you tested these patches?  You just said "lightly", and I'm
+> afraid I don't know what that means.  xfstests?  You should at least run
+> them through test 113.
 
-In fact we can hit BUG_ON(end <= start) if the extent got inserted into
-the tree after the one we found and before the block we were searching
-for. This has been reproduced by running xfstests 225 in loop on s390x
-architecture, but theoretically we could hit this on any other
-architecture as well, but probably not as often.
+xfstest'd for ext4, but only sanity checked on the rest.
 
-Moreover the extent currently in delayed allocation might be allocated
-after we search the extent tree and before we search extent status tree
-delayed buffers resulting in those delayed buffers being completely
-missed, even though completely written and allocated.
+> Would you like to push the set in, or should I post the patches I've
+> got?  Doesn't matter to me, just let me know.
 
-We fix all those problems in several steps:
+Since you're the original author of most of the patches in my set anyway, would
+you mind simply picking up my blockdev patch for your next submission?  It
+sounds like you're a little further along in the testing than I am anyway.
 
- 1. remove unnecessary callback indirection
- 2. rename functions
-        ext4_ext_walk_space -> ext4_fill_fiemap_extents
-        ext4_ext_fiemap_cb -> ext4_find_delayed_extent
- 3. move fiemap_fill_next_extent() into ext4_fill_fiemap_extents()
- 4. hold the i_data_sem for:
-        ext4_ext_find_extent()
-        ext4_ext_next_allocated_block()
-        ext4_find_delayed_extent()
- 5. call fiemap_fill_next_extent after releasing the i_data_sem
- 6. move path reinitialization into the critical section.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- fs/ext4/ext4_extents.h |   14 ------
- fs/ext4/extents.c      |  121 ++++++++++++++++++++++++++----------------------
- 2 files changed, 65 insertions(+), 70 deletions(-)
-
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 603bb11..173b6c5 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -144,20 +144,6 @@ struct ext4_ext_path {
-  */
- 
- /*
-- * to be called by ext4_ext_walk_space()
-- * negative retcode - error
-- * positive retcode - signal for ext4_ext_walk_space(), see below
-- * callback must return valid extent (passed or newly created)
-- */
--typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
--					struct ext4_ext_cache *,
--					struct ext4_extent *, void *);
--
--#define EXT_CONTINUE   0
--#define EXT_BREAK      1
--#define EXT_REPEAT     2
--
--/*
-  * Maximum number of logical blocks in a file; ext4_extent's ee_block is
-  * __le32.
-  */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d3dd618..c7e3b58 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -109,6 +109,9 @@ static int ext4_split_extent_at(handle_t *handle,
- 			     int split_flag,
- 			     int flags);
- 
-+static int ext4_find_delayed_extent(struct inode *inode,
-+				    struct ext4_ext_cache *newex);
-+
- static int ext4_ext_truncate_extend_restart(handle_t *handle,
- 					    struct inode *inode,
- 					    int needed)
-@@ -1959,27 +1962,35 @@ cleanup:
- 	return err;
- }
- 
--static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
--			       ext4_lblk_t num, ext_prepare_callback func,
--			       void *cbdata)
-+static int ext4_fill_fiemap_extents(struct inode *inode,
-+				    ext4_lblk_t block, ext4_lblk_t num,
-+				    struct fiemap_extent_info *fieinfo)
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_ext_cache cbex;
- 	struct ext4_extent *ex;
--	ext4_lblk_t next, start = 0, end = 0;
-+	ext4_lblk_t next, next_del, start = 0, end = 0;
- 	ext4_lblk_t last = block + num;
--	int depth, exists, err = 0;
-+	int exists, depth = 0, err = 0;
-+	unsigned int flags = 0;
-+	unsigned char blksize_bits = inode->i_sb->s_blocksize_bits;
- 
--	BUG_ON(func == NULL);
- 	BUG_ON(inode == NULL);
- 
- 	while (block < last && block != EXT_MAX_BLOCKS) {
- 		num = last - block;
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
-+
-+		if (path && ext_depth(inode) != depth) {
-+			/* depth was changed. we have to realloc path */
-+			kfree(path);
-+			path = NULL;
-+		}
-+
- 		path = ext4_ext_find_extent(inode, block, path);
--		up_read(&EXT4_I(inode)->i_data_sem);
- 		if (IS_ERR(path)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			err = PTR_ERR(path);
- 			path = NULL;
- 			break;
-@@ -1987,13 +1998,16 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 
- 		depth = ext_depth(inode);
- 		if (unlikely(path[depth].p_hdr == NULL)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
- 			err = -EIO;
- 			break;
- 		}
- 		ex = path[depth].p_ext;
- 		next = ext4_ext_next_allocated_block(path);
-+		ext4_ext_drop_refs(path);
- 
-+		flags = 0;
- 		exists = 0;
- 		if (!ex) {
- 			/* there is no extent yet, so try to allocate
-@@ -2037,30 +2051,49 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			cbex.ec_block = le32_to_cpu(ex->ee_block);
- 			cbex.ec_len = ext4_ext_get_actual_len(ex);
- 			cbex.ec_start = ext4_ext_pblock(ex);
-+			if (ext4_ext_is_uninitialized(ex))
-+				flags |= FIEMAP_EXTENT_UNWRITTEN;
- 		}
- 
-+		next_del = ext4_find_delayed_extent(inode, &cbex);
-+		if (next_del) {
-+			exists = 1;
-+			flags |= FIEMAP_EXTENT_DELALLOC;
-+		}
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+
- 		if (unlikely(cbex.ec_len == 0)) {
- 			EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
- 			err = -EIO;
- 			break;
- 		}
--		err = func(inode, next, &cbex, ex, cbdata);
--		ext4_ext_drop_refs(path);
- 
--		if (err < 0)
--			break;
--
--		if (err == EXT_REPEAT)
--			continue;
--		else if (err == EXT_BREAK) {
--			err = 0;
--			break;
-+		/* This is possible iff next == next_del == EXT_MAX_BLOCKS */
-+		if (next == next_del) {
-+			flags |= FIEMAP_EXTENT_LAST;
-+			if (unlikely(next_del != EXT_MAX_BLOCKS ||
-+				     next != EXT_MAX_BLOCKS)) {
-+				EXT4_ERROR_INODE(inode,
-+						 "next extent == %u, next "
-+						 "delalloc extent = %u",
-+						 next, next_del);
-+				err = -EIO;
-+				break;
-+			}
- 		}
- 
--		if (ext_depth(inode) != depth) {
--			/* depth was changed. we have to realloc path */
--			kfree(path);
--			path = NULL;
-+		if (exists) {
-+			err = fiemap_fill_next_extent(fieinfo,
-+				(__u64)cbex.ec_block << blksize_bits,
-+				(__u64)cbex.ec_start << blksize_bits,
-+				(__u64)cbex.ec_len << blksize_bits,
-+				flags);
-+			if (err < 0)
-+				break;
-+			if (err == 1) {
-+				err = 0;
-+				break;
-+			}
- 		}
- 
- 		block = cbex.ec_block + cbex.ec_len;
-@@ -4493,26 +4526,19 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
- }
- 
- /*
-- * Callback function called for each extent to gather FIEMAP information.
-+ * Find delayed extent at newex->ec_start update newex accordingly and
-+ * return start of next delayed extent, or return zero if no delayed
-+ * extent found.
-  */
--static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
--		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
--		       void *data)
-+static int ext4_find_delayed_extent(struct inode *inode,
-+				    struct ext4_ext_cache *newex)
- {
- 	struct extent_status es;
--	__u64	logical;
--	__u64	physical;
--	__u64	length;
--	__u32	flags = 0;
- 	ext4_lblk_t next_del;
--	int		ret = 0;
--	struct fiemap_extent_info *fieinfo = data;
--	unsigned char blksize_bits;
- 
- 	es.start = newex->ec_block;
- 	next_del = ext4_es_find_extent(inode, &es);
- 
--	next = min(next_del, next);
- 	if (newex->ec_start == 0) {
- 		/*
- 		 * No extent in extent-tree contains block @newex->ec_start,
-@@ -4520,37 +4546,19 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		 */
- 		if (es.len == 0)
- 			/* A hole found. */
--			return EXT_CONTINUE;
-+			return 0;
- 
- 		if (es.start > newex->ec_block) {
- 			/* A hole found. */
- 			newex->ec_len = min(es.start - newex->ec_block,
- 					    newex->ec_len);
--			return EXT_CONTINUE;
-+			return 0;
- 		}
- 
--		flags |= FIEMAP_EXTENT_DELALLOC;
- 		newex->ec_len = es.start + es.len - newex->ec_block;
- 	}
- 
--	if (ex && ext4_ext_is_uninitialized(ex))
--		flags |= FIEMAP_EXTENT_UNWRITTEN;
--
--	if (next == EXT_MAX_BLOCKS)
--		flags |= FIEMAP_EXTENT_LAST;
--
--	blksize_bits = inode->i_sb->s_blocksize_bits;
--	logical = (__u64)newex->ec_block << blksize_bits;
--	physical = (__u64)newex->ec_start << blksize_bits;
--	length =   (__u64)newex->ec_len << blksize_bits;
--
--	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
--					length, flags);
--	if (ret < 0)
--		return ret;
--	if (ret == 1)
--		return EXT_BREAK;
--	return EXT_CONTINUE;
-+	return next_del;
- }
- /* fiemap flags we can handle specified here */
- #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
-@@ -4772,6 +4780,7 @@ out_mutex:
- 	mutex_unlock(&inode->i_mutex);
- 	return err;
- }
-+
- int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		__u64 start, __u64 len)
- {
-@@ -4802,8 +4811,8 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		 * Walk the extent tree gathering extent information.
- 		 * ext4_ext_fiemap_cb will push extents back to user.
- 		 */
--		error = ext4_ext_walk_space(inode, start_blk, len_blks,
--					  ext4_ext_fiemap_cb, fieinfo);
-+		error = ext4_fill_fiemap_extents(inode, start_blk,
-+						 len_blks, fieinfo);
- 	}
- 
- 	return error;
--- 
-1.7.7.6
-
+--D
+> 
+> Cheers,
+> Jeff
