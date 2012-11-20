@@ -1,33 +1,26 @@
-From: darrick.wong@oracle.com
-Subject: (unknown)
-Date: Tue, 20 Nov 2012 02:15:21 -0600
-Message-ID: <201211200815.qAK8FLZ3021995__9423.15241923115$1353399373$gmane$org@acsmt357.oracle.com>
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:50736 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751649Ab2KTIPh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:15:37 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
->From nobody Mon Nov 19 23:51:14 2012
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct I/O
  requests
-To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com, jmoyer@redhat.com,
- bpm@sgi.com, viro@zeniv.linux.org.uk, jack@suse.cz
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
- djwong+kernel@djwong.org
 Date: Mon, 19 Nov 2012 23:51:14 -0800
 Message-ID: <20121120075114.25270.40680.stgit@blackbox.djwong.org>
-In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
-User-Agent: StGit/0.15
-MIME-Version: 1.0
+Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, djwong+kernel@djwong.org
+To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
+	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
+	jack@suse.cz
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:51051 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751440Ab2KTIQQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:16:16 -0500
+In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
 flushed after the write completion for AIOs.  This patch attempts to fix
