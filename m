@@ -1,11 +1,11 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 8/9] filemap: don't call generic_write_sync for -EIOCBQUEUED
-Date: Mon, 19 Nov 2012 23:51:15 -0800
-Message-ID: <20121120075114.25270.24389.stgit@blackbox.djwong.org>
+Subject: Re: [PATCH v1 0/9] fs: fix up AIO+DIO+O_SYNC to actually do the sync
+ part
+Date: Tue, 20 Nov 2012 00:38:36 -0800
+Message-ID: <20121120083836.GA11842@blackbox.djwong.org>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	xfs@oss.sgi.com
@@ -13,45 +13,54 @@ To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
 	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
 	jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23102 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752516Ab2KTITh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:19:37 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:49210 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750953Ab2KTIiv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:38:51 -0500
+Content-Disposition: inline
 In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Apologies for the garbage emails.  The corporate email server lost its mind,
+and I'm well on my way to losing mine.... <grumble> <shakes fist>
 
-As it stands, generic_file_aio_write will call into generic_write_sync
-when -EIOCBQUEUED is returned from __generic_file_aio_write.  EIOCBQUEUED
-indicates that an I/O was submitted but NOT completed.  Thus, we will
-flush the disk cache, potentially before the write(s) even make it to
-the disk!  Up until now, this has been the best we could do, as file
-systems didn't bother to flush the disk cache after an O_SYNC AIO+DIO
-write.  After applying the prior two patches to xfs and ext4, at least
-the major two file systems do the right thing.  So, let's go ahead and
-fix this backwards logic.
+They at least were so garbled that they're not attached to this thread.
 
-From: Jeff Moyer <jmoyer@redhat.com>
-Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
----
- mm/filemap.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+--D
 
-
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 83efee7..8e14c10 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2532,7 +2532,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
- 	mutex_unlock(&inode->i_mutex);
- 
--	if (ret > 0 || ret == -EIOCBQUEUED) {
-+	if (ret > 0) {
- 		ssize_t err;
- 
- 		err = generic_write_sync(file, pos, ret);
-
-
+> Hi everybody,
+> 
+> On March 29th, Jeff Moyer posted to lkml a patchset with this note:
+> 
+> > Currently, AIO+DIO+O_SYNC writes are not actually sync'd (for xfs), or they
+> > are sync'd before the I/O is actually issued (everybody else).  The following
+> > patch series fixes this in two parts.  First, for the file systems that use
+> > the generic routines, Jan has provided some generic infrastructure to perform
+> > the syncs after the I/O is completed.  Second, for those file systems which
+> > require some endio processing of their own for O_DIRECT writes (xfs and
+> > ext4), [Jeff] implemented file system specific syncing.  This passes the
+> > updated xfs-tests 113 test [Jeff] posted earlier, as well as all of the tests
+> > in the aio group.  [Jeff] tested ext3, ext4, xfs, and btrfs only.
+> 
+> Since the original post a few months ago, this patchset doesn't seem to have
+> made any progress.  An internal testing team here discovered that the issue
+> also affects O_SYNC+AIO+DIO writes to block devices.  Worse yet, since the
+> flushes were being issued (and waited upon) directly in the io_submit call
+> graph, the io_submit calls themselves would take a very long time to complete.
+> Therefore, I added another patch to move the flush to the io_end processing.
+> 
+> The blockdev patch was written by me.  The ext4 patch had to be updated to
+> accomodate a rework of the ext4 endio code that landed since March.  Everything
+> else has been passed through from Jeff's March 30th resend, with few changes.
+> 
+> This patchset has been tested (albeit lightly) against 3.7-rc6 on x64, with
+> ext4, xfs, btrfs, vfat, jfs, hfsplus, ext2, ext3, and raw block devices.
+> 
+> Comments and questions are, as always, welcome.
+> 
+> --D
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
