@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 5/9] btrfs: Use generic handlers of O_SYNC AIO DIO
+Subject: [PATCH 7/9] ocfs2: Use generic handlers of O_SYNC AIO DIO
 Date: Mon, 19 Nov 2012 23:51:14 -0800
-Message-ID: <20121120075114.25270.85716.stgit@blackbox.djwong.org>
+Message-ID: <20121120075114.25270.83181.stgit@blackbox.djwong.org>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -12,51 +12,49 @@ Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
 To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
 	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
 	jack@suse.cz
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:16759 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752300Ab2KTITa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:19:30 -0500
 In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Use generic handlers to queue fsync() when AIO DIO is completed for O_SYNC
-file. Although we use our own bio->end_io function, we call dio_end_io()
-from it and thus, because we don't set any specific dio->end_io function,
-generic code ends up calling generic_dio_end_io() which is all what we need
-for proper O_SYNC AIO DIO handling.
+file.
 
 From: Jan Kara <jack@suse.cz>
 Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-[darrick.wong@oracle.com: Don't issue flush if aio is queued]
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/btrfs/file.c  |    2 +-
- fs/btrfs/inode.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ocfs2/aops.c |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index 9ab1bed..37b5bb3 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1495,7 +1495,7 @@ static ssize_t btrfs_file_aio_write(struct kiocb *iocb,
- 	 * one running right now.
- 	 */
- 	BTRFS_I(inode)->last_trans = root->fs_info->generation + 1;
--	if (num_written > 0 || num_written == -EIOCBQUEUED) {
-+	if (num_written > 0) {
- 		err = generic_write_sync(file, pos, num_written);
- 		if (err < 0 && num_written > 0)
- 			num_written = err;
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index 95542a1..c8b6049 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -6579,7 +6579,7 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
- 	return __blockdev_direct_IO(rw, iocb, inode,
- 		   BTRFS_I(inode)->root->fs_info->fs_devices->latest_bdev,
- 		   iov, offset, nr_segs, btrfs_get_blocks_direct, NULL,
--		   btrfs_submit_direct, 0);
-+		   btrfs_submit_direct, DIO_SYNC_WRITES);
+diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+index 6577432..60457cc 100644
+--- a/fs/ocfs2/aops.c
++++ b/fs/ocfs2/aops.c
+@@ -593,9 +593,7 @@ static void ocfs2_dio_end_io(struct kiocb *iocb,
+ 	level = ocfs2_iocb_rw_locked_level(iocb);
+ 	ocfs2_rw_unlock(inode, level);
+ 
+-	if (is_async)
+-		aio_complete(iocb, ret, 0);
+-	inode_dio_done(inode);
++	generic_dio_end_io(iocb, offset, bytes, private, ret, is_async);
  }
  
- static int btrfs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ /*
+@@ -642,7 +640,7 @@ static ssize_t ocfs2_direct_IO(int rw,
+ 	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev,
+ 				    iov, offset, nr_segs,
+ 				    ocfs2_direct_IO_get_blocks,
+-				    ocfs2_dio_end_io, NULL, 0);
++				    ocfs2_dio_end_io, NULL, DIO_SYNC_WRITES);
+ }
+ 
+ static void ocfs2_figure_cluster_boundaries(struct ocfs2_super *osb,
+
+
