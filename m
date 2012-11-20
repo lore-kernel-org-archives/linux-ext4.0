@@ -1,26 +1,26 @@
 From: darrick.wong@oracle.com
 Subject: (unknown)
-Date: Tue, 20 Nov 2012 02:05:24 -0600
-Message-ID: <201211200805.qAK85OoL001317@acsmt358.oracle.com>
+Date: Tue, 20 Nov 2012 02:07:43 -0600
+Message-ID: <201211200807.qAK87hOc002722@acsmt358.oracle.com>
 To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:26745 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:27499 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752156Ab2KTIFo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:05:44 -0500
+	with ESMTP id S1751513Ab2KTIH6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:07:58 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 >From nobody Mon Nov 19 23:51:14 2012
-Subject: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct I/O
- requests
+Subject: [PATCH 5/9] btrfs: Use generic handlers of O_SYNC AIO DIO
 To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com, jmoyer@redhat.com,
  bpm@sgi.com, viro@zeniv.linux.org.uk, jack@suse.cz
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+ djwong+kernel@djwong.org
 Date: Mon, 19 Nov 2012 23:51:14 -0800
-Message-ID: <20121120075114.25270.40680.stgit@blackbox.djwong.org>
+Message-ID: <20121120075114.25270.85716.stgit@blackbox.djwong.org>
 In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 User-Agent: StGit/0.15
@@ -28,176 +28,48 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 
-If a file is opened with O_SYNC|O_DIRECT, the drive cache does not get
-flushed after the write completion for AIOs.  This patch attempts to fix
-that problem by marking an I/O as requiring a cache flush in endio
-processing, and then issuing the cache flush after any unwritten extent
-conversion is done.
+Use generic handlers to queue fsync() when AIO DIO is completed for O_SYNC
+file. Although we use our own bio->end_io function, we call dio_end_io()
+from it and thus, because we don't set any specific dio->end_io function,
+generic code ends up calling generic_dio_end_io() which is all what we need
+for proper O_SYNC AIO DIO handling.
 
-From: Jeff Moyer <jmoyer@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-[darrick.wong@oracle.com: Rework patch to use per-mount workqueues]
+[darrick.wong@oracle.com: Don't issue flush if aio is queued]
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/xfs/xfs_aops.c  |   52 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/xfs/xfs_aops.h  |    1 +
- fs/xfs/xfs_mount.h |    1 +
- fs/xfs/xfs_super.c |    8 ++++++++
- 4 files changed, 61 insertions(+), 1 deletion(-)
+ fs/btrfs/file.c  |    2 +-
+ fs/btrfs/inode.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index e57e2da..9cebbb7 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -173,6 +173,24 @@ xfs_setfilesize(
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index 9ab1bed..37b5bb3 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -1495,7 +1495,7 @@ static ssize_t btrfs_file_aio_write(struct kiocb *iocb,
+ 	 * one running right now.
+ 	 */
+ 	BTRFS_I(inode)->last_trans = root->fs_info->generation + 1;
+-	if (num_written > 0 || num_written == -EIOCBQUEUED) {
++	if (num_written > 0) {
+ 		err = generic_write_sync(file, pos, num_written);
+ 		if (err < 0 && num_written > 0)
+ 			num_written = err;
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 95542a1..c8b6049 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -6579,7 +6579,7 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
+ 	return __blockdev_direct_IO(rw, iocb, inode,
+ 		   BTRFS_I(inode)->root->fs_info->fs_devices->latest_bdev,
+ 		   iov, offset, nr_segs, btrfs_get_blocks_direct, NULL,
+-		   btrfs_submit_direct, 0);
++		   btrfs_submit_direct, DIO_SYNC_WRITES);
  }
  
- /*
-+ * In the case of synchronous, AIO, O_DIRECT writes, we need to flush
-+ * the disk cache when the I/O is complete.
-+ */
-+STATIC bool
-+xfs_ioend_needs_cache_flush(
-+	struct xfs_ioend	*ioend)
-+{
-+	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-+	struct xfs_mount *mp = ip->i_mount;
-+
-+	if (!(mp->m_flags & XFS_MOUNT_BARRIER))
-+		return false;
-+
-+	return IS_SYNC(ioend->io_inode) ||
-+	       (ioend->io_iocb->ki_filp->f_flags & O_DSYNC);
-+}
-+
-+/*
-  * Schedule IO completion handling on the final put of an ioend.
-  *
-  * If there is no work to do we might as well call it a day and free the
-@@ -189,11 +207,30 @@ xfs_finish_ioend(
- 			queue_work(mp->m_unwritten_workqueue, &ioend->io_work);
- 		else if (ioend->io_append_trans)
- 			queue_work(mp->m_data_workqueue, &ioend->io_work);
-+		else if (ioend->io_needs_fsync)
-+			queue_work(mp->m_aio_blkdev_flush_wq, &ioend->io_work);
- 		else
- 			xfs_destroy_ioend(ioend);
- 	}
- }
- 
-+STATIC int
-+xfs_ioend_force_cache_flush(
-+	xfs_ioend_t	*ioend)
-+{
-+	struct xfs_inode *ip = XFS_I(ioend->io_inode);
-+	struct xfs_mount *mp = ip->i_mount;
-+	int		err = 0;
-+	int		datasync;
-+
-+	datasync = !IS_SYNC(ioend->io_inode) &&
-+		!(ioend->io_iocb->ki_filp->f_flags & __O_SYNC);
-+	err = do_xfs_file_fsync(ip, mp, datasync);
-+	xfs_destroy_ioend(ioend);
-+	/* do_xfs_file_fsync returns -errno. our caller expects positive. */
-+	return -err;
-+}
-+
- /*
-  * IO write completion.
-  */
-@@ -250,12 +287,22 @@ xfs_end_io(
- 		error = xfs_setfilesize(ioend);
- 		if (error)
- 			ioend->io_error = -error;
-+	} else if (ioend->io_needs_fsync) {
-+		error = xfs_ioend_force_cache_flush(ioend);
-+		if (error && ioend->io_result > 0)
-+			ioend->io_error = -error;
-+		ioend->io_needs_fsync = 0;
- 	} else {
- 		ASSERT(!xfs_ioend_is_append(ioend));
- 	}
- 
- done:
--	xfs_destroy_ioend(ioend);
-+	/* the honoring of O_SYNC has to be done last */
-+	if (ioend->io_needs_fsync) {
-+		atomic_inc(&ioend->io_remaining);
-+		xfs_finish_ioend(ioend);
-+	} else
-+		xfs_destroy_ioend(ioend);
- }
- 
- /*
-@@ -292,6 +339,7 @@ xfs_alloc_ioend(
- 	atomic_set(&ioend->io_remaining, 1);
- 	ioend->io_isasync = 0;
- 	ioend->io_isdirect = 0;
-+	ioend->io_needs_fsync = 0;
- 	ioend->io_error = 0;
- 	ioend->io_list = NULL;
- 	ioend->io_type = type;
-@@ -1409,6 +1457,8 @@ xfs_end_io_direct_write(
- 
- 	if (is_async) {
- 		ioend->io_isasync = 1;
-+		if (xfs_ioend_needs_cache_flush(ioend))
-+			ioend->io_needs_fsync = 1;
- 		xfs_finish_ioend(ioend);
- 	} else {
- 		xfs_finish_ioend_sync(ioend);
-diff --git a/fs/xfs/xfs_aops.h b/fs/xfs/xfs_aops.h
-index c325abb..e48c7c2 100644
---- a/fs/xfs/xfs_aops.h
-+++ b/fs/xfs/xfs_aops.h
-@@ -47,6 +47,7 @@ typedef struct xfs_ioend {
- 	atomic_t		io_remaining;	/* hold count */
- 	unsigned int		io_isasync : 1;	/* needs aio_complete */
- 	unsigned int		io_isdirect : 1;/* direct I/O */
-+	unsigned int		io_needs_fsync : 1; /* aio+dio+o_sync */
- 	struct inode		*io_inode;	/* file being written to */
- 	struct buffer_head	*io_buffer_head;/* buffer linked list head */
- 	struct buffer_head	*io_buffer_tail;/* buffer linked list tail */
-diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-index deee09e..ecd3d2e 100644
---- a/fs/xfs/xfs_mount.h
-+++ b/fs/xfs/xfs_mount.h
-@@ -209,6 +209,7 @@ typedef struct xfs_mount {
- 	struct workqueue_struct	*m_data_workqueue;
- 	struct workqueue_struct	*m_unwritten_workqueue;
- 	struct workqueue_struct	*m_cil_workqueue;
-+	struct workqueue_struct *m_aio_blkdev_flush_wq;
- } xfs_mount_t;
- 
- /*
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 26a09bd..b05b557 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -863,8 +863,15 @@ xfs_init_mount_workqueues(
- 			WQ_MEM_RECLAIM, 0, mp->m_fsname);
- 	if (!mp->m_cil_workqueue)
- 		goto out_destroy_unwritten;
-+
-+	mp->m_aio_blkdev_flush_wq = alloc_workqueue("xfs-aio-blkdev-flush/%s",
-+			WQ_MEM_RECLAIM, 0, mp->m_fsname);
-+	if (!mp->m_aio_blkdev_flush_wq)
-+		goto out_destroy_cil_queue;
- 	return 0;
- 
-+out_destroy_cil_queue:
-+	destroy_workqueue(mp->m_cil_workqueue);
- out_destroy_unwritten:
- 	destroy_workqueue(mp->m_unwritten_workqueue);
- out_destroy_data_iodone_queue:
-@@ -877,6 +884,7 @@ STATIC void
- xfs_destroy_mount_workqueues(
- 	struct xfs_mount	*mp)
- {
-+	destroy_workqueue(mp->m_aio_blkdev_flush_wq);
- 	destroy_workqueue(mp->m_cil_workqueue);
- 	destroy_workqueue(mp->m_data_workqueue);
- 	destroy_workqueue(mp->m_unwritten_workqueue);
+ static int btrfs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 
 
