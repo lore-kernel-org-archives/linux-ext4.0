@@ -1,8 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 9/9] blkdev: Fix up AIO+DIO+O_SYNC to do the sync part
- correctly
+Subject: [PATCH 8/9] filemap: don't call generic_write_sync for -EIOCBQUEUED
 Date: Mon, 19 Nov 2012 23:51:15 -0800
-Message-ID: <20121120075115.25270.62451.stgit@blackbox.djwong.org>
+Message-ID: <20121120075114.25270.24389.stgit@blackbox.djwong.org>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -13,61 +12,46 @@ Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
 To: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
 	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
 	jack@suse.cz
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:23102 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752516Ab2KTITh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2012 03:19:37 -0500
 In-Reply-To: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When performing O_SYNC+AIO+DIO writes to block devices, use the DIO_SYNC_WRITES
-flag so that flushes are issued /after/ the write completes, not before.
+Hi,
 
-Note, however, that for block devices, the DIO setup code ensures that a flush
-wq is attached to the superblock of the bdevfs filesystem, not the filesystem
-that the device node happens to reside in.  This means that unlike regular
-files, iocb->ki_filp->f_mapping->host->i_sb != inode->i_sb.  Therefore, adjust
-Jeff's earlier patch to keep the pointer use consistent and avoid a NULL deref.
+As it stands, generic_file_aio_write will call into generic_write_sync
+when -EIOCBQUEUED is returned from __generic_file_aio_write.  EIOCBQUEUED
+indicates that an I/O was submitted but NOT completed.  Thus, we will
+flush the disk cache, potentially before the write(s) even make it to
+the disk!  Up until now, this has been the best we could do, as file
+systems didn't bother to flush the disk cache after an O_SYNC AIO+DIO
+write.  After applying the prior two patches to xfs and ext4, at least
+the major two file systems do the right thing.  So, let's go ahead and
+fix this backwards logic.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
 ---
- fs/block_dev.c |    5 +++--
- fs/direct-io.c |    3 ++-
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ mm/filemap.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 1a1e5e3..05ff33a 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -235,7 +235,8 @@ blkdev_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
- 	struct inode *inode = file->f_mapping->host;
- 
- 	return __blockdev_direct_IO(rw, iocb, inode, I_BDEV(inode), iov, offset,
--				    nr_segs, blkdev_get_blocks, NULL, NULL, 0);
-+				    nr_segs, blkdev_get_blocks, NULL, NULL,
-+				    DIO_SYNC_WRITES);
- }
- 
- int __sync_blockdev(struct block_device *bdev, int wait)
-@@ -1631,7 +1632,7 @@ ssize_t blkdev_aio_write(struct kiocb *iocb, const struct iovec *iov,
- 	percpu_down_read(&bdev->bd_block_size_semaphore);
- 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 83efee7..8e14c10 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2532,7 +2532,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
  	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+ 	mutex_unlock(&inode->i_mutex);
+ 
 -	if (ret > 0 || ret == -EIOCBQUEUED) {
 +	if (ret > 0) {
  		ssize_t err;
  
  		err = generic_write_sync(file, pos, ret);
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index b7391d4..c626c43 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -258,7 +258,8 @@ void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
- 		work->ret = ret;
- 		work->offset = offset;
- 		work->len = bytes;
--		queue_work(inode->i_sb->s_dio_flush_wq, &work->work);
-+		queue_work(iocb->ki_filp->f_mapping->host->i_sb->s_dio_flush_wq,
-+			   &work->work);
- 	} else {
- 		aio_complete(iocb, ret, 0);
- 		inode_dio_done(inode);
+
+
