@@ -1,42 +1,40 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 2/4][RFC] xfs: remove duplicated check from xfs_file_fallocate
-Date: Tue, 20 Nov 2012 17:29:43 +0800
-Message-ID: <1353403785-3489-3-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 4/4][RFC] ocfs2: remove duplicated check from ocfs2_fallocate
+Date: Tue, 20 Nov 2012 17:29:45 +0800
+Message-ID: <1353403785-3489-5-git-send-email-wenqing.lz@taobao.com>
 References: <1353403785-3489-1-git-send-email-wenqing.lz@taobao.com>
 Cc: yan@linux.vnet.ibm.com, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	xfs@oss.sgi.com, linux-btrfs@vger.kernel.org,
 	ocfs2-devel@oss.oracle.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1353403785-3489-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Remove a sanity check from xfs_file_fallocate because vfs has already checked
-it.
+Remove a sanity check from ocfs2_fallocate because vfs has already checked it.
 
 Reported-by: Guo Chao <yan@linux.vnet.ibm.com>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/xfs/xfs_file.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/ocfs2/file.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index aa473fa..7b50d12 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -815,9 +815,6 @@ xfs_file_fallocate(
- 	int		cmd = XFS_IOC_RESVSP;
- 	int		attr_flags = XFS_ATTR_NOLOCK;
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index 5a4ee77..2446efa 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -2001,8 +2001,6 @@ static long ocfs2_fallocate(struct file *file, int mode, loff_t offset,
+ 	int change_size = 1;
+ 	int cmd = OCFS2_IOC_RESVSP64;
  
 -	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
 -		return -EOPNOTSUPP;
--
- 	bf.l_whence = 0;
- 	bf.l_start = offset;
- 	bf.l_len = len;
+ 	if (!ocfs2_writes_unwritten_extents(osb))
+ 		return -EOPNOTSUPP;
+ 
 -- 
 1.7.12.rc2.18.g61b472e
 
