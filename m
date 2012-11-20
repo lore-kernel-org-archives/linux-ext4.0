@@ -1,92 +1,88 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/9] xfs: honor the O_SYNC flag for aysnchronous direct
- I/O requests
-Date: Wed, 21 Nov 2012 07:08:27 +1100
-Message-ID: <20121120200827.GE2591@dastard>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 9/9] blkdev: Fix up AIO+DIO+O_SYNC to do the sync part correctly
+Date: Tue, 20 Nov 2012 15:47:54 -0500
+Message-ID: <x49obishuh1.fsf@segfault.boston.devel.redhat.com>
 References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
- <20121120075114.25270.40680.stgit@blackbox.djwong.org>
- <20121120112038.GC2591@dastard>
- <x49wqxghxhj.fsf@segfault.boston.devel.redhat.com>
+	<20121120075115.25270.62451.stgit@blackbox.djwong.org>
+	<20121120101559.GC1408@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Darrick J. Wong" <darrick.wong@oracle.com>, axboe@kernel.dk,
-	tytso@mit.edu, bpm@sgi.com, viro@zeniv.linux.org.uk, jack@suse.cz,
-	linux-fsdevel@vger.kernel.org, hch@infradead.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, djwong+kernel@djwong.org
-To: Jeff Moyer <jmoyer@redhat.com>
+	tytso@mit.edu, david@fromorbit.com, bpm@sgi.com,
+	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	hch@infradead.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:27736 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752503Ab2KTUIa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Nov 2012 15:08:30 -0500
-Content-Disposition: inline
-In-Reply-To: <x49wqxghxhj.fsf@segfault.boston.devel.redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:65456 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752464Ab2KTUsI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 20 Nov 2012 15:48:08 -0500
+In-Reply-To: <20121120101559.GC1408@quack.suse.cz> (Jan Kara's message of
+	"Tue, 20 Nov 2012 11:15:59 +0100")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2012 at 02:42:48PM -0500, Jeff Moyer wrote:
-> Dave Chinner <david@fromorbit.com> writes:
-> 
-> > And requeuing work from one workqueue to the next is something that
-> > we can avoid.  We know at IO submission time (i.e.
-> > xfs_vm_direct_io)) whether an fsync completion is going to be needed
-> > during Io completion.  The ioend->io_needs_fsync flag can be set
-> > then, and the first pass through xfs_finish_ioend() can queue it to
-> > the correct workqueue.  i.e. it only needs to be queued if it's not
-> > already an unwritten or append ioend and it needs an fsync.
-> >
-> > As it is, all the data completion workqueues run the same completion
-> > function so all you need to do is handle the fsync case at the end
-> > of the existing processing - it's not an else case. i.e the end of
-> > xfs_end_io() becomes:
-> >
-> > 	if (ioend->io_needs_fsync) {
-> > 		error = xfs_ioend_fsync(ioend);
-> > 		if (error)
-> > 			ioend->io_error = -error;
-> > 		goto done;
-> > 	}
-> > done:
-> > 	xfs_destroy_ioend(ioend);
-> 
-> Works for me, that makes things simpler.
-> 
-> > As it is, this code is going to change before these changes go in -
-> > there's a nasty regression in the DIO code that I found this
-> > afternoon that requires reworking this IO completion logic to
-> > avoid. The patch will appear on the list soon....
-> 
-> I'm not on the xfs list, so if you haven't already sent it, mind Cc-ing
-> me?
+Jan Kara <jack@suse.cz> writes:
 
-http://oss.sgi.com/archives/xfs/2012-11/msg00493.html
+> On Mon 19-11-12 23:51:15, Darrick J. Wong wrote:
+>> When performing O_SYNC+AIO+DIO writes to block devices, use the DIO_SYNC_WRITES
+>> flag so that flushes are issued /after/ the write completes, not before.
+>> 
+>> Note, however, that for block devices, the DIO setup code ensures that a flush
+>> wq is attached to the superblock of the bdevfs filesystem, not the filesystem
+>> that the device node happens to reside in.  This means that unlike regular
+>> files, iocb->ki_filp->f_mapping->host->i_sb != inode->i_sb.  Therefore, adjust
+>> Jeff's earlier patch to keep the pointer use consistent and avoid a NULL deref.
+>> 
+>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+>> ---
+>>  fs/block_dev.c |    5 +++--
+>>  fs/direct-io.c |    3 ++-
+>>  2 files changed, 5 insertions(+), 3 deletions(-)
+>> 
+>> 
+>> diff --git a/fs/block_dev.c b/fs/block_dev.c
+>> index 1a1e5e3..05ff33a 100644
+>> --- a/fs/block_dev.c
+>> +++ b/fs/block_dev.c
+>> @@ -235,7 +235,8 @@ blkdev_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
+>>  	struct inode *inode = file->f_mapping->host;
+>>  
+>>  	return __blockdev_direct_IO(rw, iocb, inode, I_BDEV(inode), iov, offset,
+>> -				    nr_segs, blkdev_get_blocks, NULL, NULL, 0);
+>> +				    nr_segs, blkdev_get_blocks, NULL, NULL,
+>> +				    DIO_SYNC_WRITES);
+>>  }
+>>  
+>>  int __sync_blockdev(struct block_device *bdev, int wait)
+>> @@ -1631,7 +1632,7 @@ ssize_t blkdev_aio_write(struct kiocb *iocb, const struct iovec *iov,
+>>  	percpu_down_read(&bdev->bd_block_size_semaphore);
+>>  
+>>  	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+>> -	if (ret > 0 || ret == -EIOCBQUEUED) {
+>> +	if (ret > 0) {
+>>  		ssize_t err;
+>>  
+>>  		err = generic_write_sync(file, pos, ret);
+>> diff --git a/fs/direct-io.c b/fs/direct-io.c
+>> index b7391d4..c626c43 100644
+>> --- a/fs/direct-io.c
+>> +++ b/fs/direct-io.c
+>> @@ -258,7 +258,8 @@ void generic_dio_end_io(struct kiocb *iocb, loff_t offset, ssize_t bytes,
+>>  		work->ret = ret;
+>>  		work->offset = offset;
+>>  		work->len = bytes;
+>> -		queue_work(inode->i_sb->s_dio_flush_wq, &work->work);
+>> +		queue_work(iocb->ki_filp->f_mapping->host->i_sb->s_dio_flush_wq,
+>> +			   &work->work);
+>   This should be folded into the original patch introducing the
+> s_dio_flush_wq. And please add a comment before this line saying that block
+> devices need a dereference exactly like this... Otherwise the patch looks
+> good so you can add:
+>   Reviewed-by: Jan Kara <jack@suse.cz>
 
-First cut is here, but it will change a bit as review goes on...
-
-> >> --- a/fs/xfs/xfs_mount.h
-> >> +++ b/fs/xfs/xfs_mount.h
-> >> @@ -209,6 +209,7 @@ typedef struct xfs_mount {
-> >>  	struct workqueue_struct	*m_data_workqueue;
-> >>  	struct workqueue_struct	*m_unwritten_workqueue;
-> >>  	struct workqueue_struct	*m_cil_workqueue;
-> >> +	struct workqueue_struct *m_aio_blkdev_flush_wq;
-> >
-> > 	struct workqueue_struct *m_aio_fsync_wq;
-> 
-> For the record, m_aio_blkdev_flush_wq is the name you chose previously.
-> ;-)
-
-<cue Led Zeppelin>
-
-It's been a long time since I read that patch....
-
-:)
+When you say, "This," do you mean that one change, or the whole patch?
 
 Cheers,
-
-Dave....
--- 
-Dave Chinner
-david@fromorbit.com
+Jeff
