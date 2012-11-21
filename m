@@ -1,50 +1,34 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/2] ext4: Prevent race while walking extent tree
-Date: Wed, 21 Nov 2012 14:55:42 +0800
-Message-ID: <20121121065542.GA14704@gmail.com>
-References: <1353423460-12178-1-git-send-email-lczerner@redhat.com>
- <1353423460-12178-2-git-send-email-lczerner@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/4] bdi: Track users that require stable page writes
+Date: Wed, 21 Nov 2012 02:54:35 -0500
+Message-ID: <20121121075435.GA16370@infradead.org>
+References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
+ <20121121020034.10225.51692.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, dmonakhov@openvz.org,
-	bergwolf@gmail.com
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	tytso@mit.edu, rminnich@sandia.gov, viro@zeniv.linux.org.uk,
+	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:53040 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751000Ab2KUGnA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2012 01:43:00 -0500
-Received: by mail-pa0-f46.google.com with SMTP id bh2so1849536pad.19
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2012 22:42:59 -0800 (PST)
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:54807
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752126Ab2KUHyw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Nov 2012 02:54:52 -0500
 Content-Disposition: inline
-In-Reply-To: <1353423460-12178-2-git-send-email-lczerner@redhat.com>
+In-Reply-To: <20121121020034.10225.51692.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2012 at 03:57:39PM +0100, Lukas Czerner wrote:
-[cut]
-> +
->  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  		__u64 start, __u64 len)
->  {
-> @@ -4802,8 +4811,8 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
->  		 * Walk the extent tree gathering extent information.
->  		 * ext4_ext_fiemap_cb will push extents back to user.
->  		 */
+On Tue, Nov 20, 2012 at 06:00:34PM -0800, Darrick J. Wong wrote:
+> This creates a per-backing-device counter that tracks the number of users which
+> require pages to be held immutable during writeout.  Eventually it will be used
+> to waive wait_for_page_writeback() if nobody requires stable pages.
 
-This comment needs to be updated because ext4_ext_fiemap_cb has been
-renamed.
+Why are we going down this stupid route again now?  Just let the block
+device say it needs stable writes and let the VM deal with it.
 
-Regards,
-                                                - Zheng
-
-> -		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-> -					  ext4_ext_fiemap_cb, fieinfo);
-> +		error = ext4_fill_fiemap_extents(inode, start_blk,
-> +						 len_blks, fieinfo);
->  	}
->  
->  	return error;
-> -- 
-> 1.7.7.6
-> 
