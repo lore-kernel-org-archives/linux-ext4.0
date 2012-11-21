@@ -1,58 +1,77 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: remove unaligned AIO warning printk
-Date: Wed, 21 Nov 2012 14:03:17 -0600
-Message-ID: <50AD3385.1030500@redhat.com>
-References: <50AD09F0.6090706@redhat.com> <20121121194728.GA6895@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 4/4] ext3: Warn if mounting rw on a disk requiring stable
+ page writes
+Date: Wed, 21 Nov 2012 13:13:19 -0800
+Message-ID: <20121121211319.GA32202@blackbox.djwong.org>
+References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
+ <20121121020056.10225.15220.stgit@blackbox.djwong.org>
+ <20121121021543.GI10507@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14589 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756016Ab2KUUDU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Nov 2012 15:03:20 -0500
-In-Reply-To: <20121121194728.GA6895@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, lucho@ionkov.net, ericvh@gmail.com, tytso@mit.edu,
+	rminnich@sandia.gov, viro@zeniv.linux.org.uk,
+	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20121121021543.GI10507@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 11/21/12 1:47 PM, Theodore Ts'o wrote:
-> On Wed, Nov 21, 2012 at 11:05:52AM -0600, Eric Sandeen wrote:
->> Although I put this in, I now think it was a bad decision.
->> For most users, there is very little to be done in this case.  They
->> get the message, once per day, with no real context or proposed action.
->> TBH, it generates support calls when it probably does not need to;
->> the message sounds more dire than the situation really is.
->>
->> Just nuke it.  Normal investigation via blktrace or whatnot can
->> reveal poor IO patterns if bad performance is encountered.
+On Wed, Nov 21, 2012 at 03:15:43AM +0100, Jan Kara wrote:
+> On Tue 20-11-12 18:00:56, Darrick J. Wong wrote:
+> > ext3 doesn't properly isolate pages from changes during writeback.  Since the
+> > recommended fix is to use ext4, for now we'll just print a warning if the user
+> > tries to mount in write mode.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  fs/ext3/super.c |    8 ++++++++
+> >  1 file changed, 8 insertions(+)
+> > 
+> > 
+> > diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> > index 5366393..5b3725d 100644
+> > --- a/fs/ext3/super.c
+> > +++ b/fs/ext3/super.c
+> > @@ -1325,6 +1325,14 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
+> >  			"forcing read-only mode");
+> >  		res = MS_RDONLY;
+> >  	}
+> > +	if (!read_only &&
+> > +	    queue_requires_stable_pages(bdev_get_queue(sb->s_bdev))) {
+> > +		ext3_msg(sb, KERN_ERR,
+> > +			"error: ext3 cannot safely write data to a disk "
+> > +			"requiring stable pages writes; forcing read-only "
+> > +			"mode.  Upgrading to ext4 is recommended.");
+> > +		res = MS_RDONLY;
+> > +	}
+> >  	if (read_only)
+> >  		return res;
+> >  	if (!(sbi->s_mount_state & EXT3_VALID_FS))
+>   Why this? ext3 should be fixed by your change to
+> filemap_page_mkwrite()... Or does testing show otherwise?
+
+Yes, it's still broken even with this new set of changes.  Now that I think
+about it a little more, I recall that writeback mode was actually fine, so this
+is a little harsh.
+
+Hm... looking at the ordered code a little more, it looks like
+ext3_ordered_write_end is calling journal_dirty_data_fn, which (I guess?) tries
+to write mapped buffers back through the journal?  Taking it out seems to fix
+ordered mode, though I have a suspicion that it might very well break ordered
+mode too.
+
+--D
 > 
-> I wonder if this might be a good thing to enable or disable via sysfs
-> tuning knob, just to make it a little easier for a random application
-> developer to test for this?
-
-*shrug* would be more knobs & more complexity; I bet 99% of people reporting
-it would never have known the knob was there, and doubtful they'd have turned
-it on.  If developers cared, they'd probably have done the proper thing in the
-first place.  I guess I'm skeptical of the usefulness.
-
-> And do you have a list of the bad applications so we can nag them to
-> fix them?
-
-Whenever we get it reported, it's some proprietary thing.  So no, not
-really, I'm afraid.
-
-But google live search thinks it's virtualbox, kvm, and java ;)
-
-"Unaligned AIO/DIO on inode" turns up plenty.
-
-Can you do some sort of google-grep-awk to find every app that's been
-reported on lists?  ;)
-
--Eric
-
-> 					- Ted
-> 
-
-
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
