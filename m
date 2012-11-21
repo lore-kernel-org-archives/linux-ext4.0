@@ -1,63 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/4] ext3: Warn if mounting rw on a disk requiring
- stable page writes
-Date: Wed, 21 Nov 2012 03:15:43 +0100
-Message-ID: <20121121021543.GI10507@quack.suse.cz>
-References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
- <20121121020056.10225.15220.stgit@blackbox.djwong.org>
+From: Wei Yongjun <weiyj.lk@gmail.com>
+Subject: [PATCH -next] ext4: remove duplicated include from super.c
+Date: Wed, 21 Nov 2012 13:30:42 +0800
+Message-ID: <CAPgLHd_PAXe7SYKsLOmwYUuYf6CWfyuHA0RLTBFf3mUTKzJhVA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	tytso@mit.edu, rminnich@sandia.gov, viro@zeniv.linux.org.uk,
-	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: yongjun_wei@trendmicro.com.cn, linux-ext4@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56661 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752017Ab2KUCPs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 20 Nov 2012 21:15:48 -0500
-Content-Disposition: inline
-In-Reply-To: <20121121020056.10225.15220.stgit@blackbox.djwong.org>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:52986 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750820Ab2KUFan (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2012 00:30:43 -0500
+Received: by mail-qa0-f53.google.com with SMTP id k31so1314001qat.19
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2012 21:30:42 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 20-11-12 18:00:56, Darrick J. Wong wrote:
-> ext3 doesn't properly isolate pages from changes during writeback.  Since the
-> recommended fix is to use ext4, for now we'll just print a warning if the user
-> tries to mount in write mode.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/ext3/super.c |    8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> 
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index 5366393..5b3725d 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -1325,6 +1325,14 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
->  			"forcing read-only mode");
->  		res = MS_RDONLY;
->  	}
-> +	if (!read_only &&
-> +	    queue_requires_stable_pages(bdev_get_queue(sb->s_bdev))) {
-> +		ext3_msg(sb, KERN_ERR,
-> +			"error: ext3 cannot safely write data to a disk "
-> +			"requiring stable pages writes; forcing read-only "
-> +			"mode.  Upgrading to ext4 is recommended.");
-> +		res = MS_RDONLY;
-> +	}
->  	if (read_only)
->  		return res;
->  	if (!(sbi->s_mount_state & EXT3_VALID_FS))
-  Why this? ext3 should be fixed by your change to
-filemap_page_mkwrite()... Or does testing show otherwise?
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Remove duplicated include.
+
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ fs/ext4/super.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ad6cd8a..c8a6138 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -50,7 +50,6 @@
+ #include "xattr.h"
+ #include "acl.h"
+ #include "mballoc.h"
+-#include "ext4_extents.h"
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/ext4.h>
+
+
