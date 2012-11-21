@@ -1,10 +1,9 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH 1/4] bdi: Track users that require stable page writes
-Date: Wed, 21 Nov 2012 05:52:49 -0500
-Message-ID: <20121121105249.GA15010@infradead.org>
+Date: Wed, 21 Nov 2012 05:56:24 -0500
+Message-ID: <20121121105624.GA19050@infradead.org>
 References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
  <20121121020034.10225.51692.stgit@blackbox.djwong.org>
- <20121121075435.GA16370@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
@@ -14,21 +13,55 @@ Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
 	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
 	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:55706
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752143Ab2KUK4b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Nov 2012 05:56:31 -0500
 Content-Disposition: inline
-In-Reply-To: <20121121075435.GA16370@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20121121020034.10225.51692.stgit@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2012 at 02:54:35AM -0500, Christoph Hellwig wrote:
-> On Tue, Nov 20, 2012 at 06:00:34PM -0800, Darrick J. Wong wrote:
-> > This creates a per-backing-device counter that tracks the number of users which
-> > require pages to be held immutable during writeout.  Eventually it will be used
-> > to waive wait_for_page_writeback() if nobody requires stable pages.
-> 
-> Why are we going down this stupid route again now?  Just let the block
-> device say it needs stable writes and let the VM deal with it.
+> +static inline void bdi_require_stable_pages(struct backing_dev_info *bdi)
+> +{
+> +	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
+> +}
+> +
+> +static inline void bdi_unrequire_stable_pages(struct backing_dev_info *bdi)
+> +{
+> +	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
+> +}
 
-Seems like the series actually does that, and this paragraph was just
-left over from earlier versions.  Sorry for complaining too quickly, but
-you really should update the description.
+Any reason to provide these wrappers while other BDI_CAP_ values don't
+have it/
+
+Also what protects bdi->capabilities against concurrent updates now that
+it gets modified at runtime?
+
+> +static inline void queue_require_stable_pages(struct request_queue *q)
+> +{
+> +	bdi_require_stable_pages(&q->backing_dev_info);
+> +}
+> +
+> +static inline void queue_unrequire_stable_pages(struct request_queue *q)
+> +{
+> +	bdi_unrequire_stable_pages(&q->backing_dev_info);
+> +}
+> +
+> +static inline int queue_requires_stable_pages(struct request_queue *q)
+> +{
+> +	return bdi_cap_stable_pages_required(&q->backing_dev_info);
+> +}
+
+Independent of the above I see no point in these wrappers that just
+provide a single dereference.
+
+> +static ssize_t stable_pages_required_store(struct device *dev,
+> +					   struct device_attribute *attr,
+> +					   const char *buf, size_t count)
+
+Can you add a rationale on why we'd want to allow users to change the
+value?  I can't really think of any.
+
