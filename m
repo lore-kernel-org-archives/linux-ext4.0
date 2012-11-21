@@ -1,76 +1,37 @@
-From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH 7/9] ocfs2: Use generic handlers of O_SYNC AIO DIO
-Date: Wed, 21 Nov 2012 11:32:41 -0800
-Message-ID: <20121121193240.GL2822@localhost>
-References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
- <20121120075114.25270.83181.stgit@blackbox.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: remove unaligned AIO warning printk
+Date: Wed, 21 Nov 2012 14:47:28 -0500
+Message-ID: <20121121194728.GA6895@thunk.org>
+References: <50AD09F0.6090706@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
-	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
-	jack@suse.cz, linux-fsdevel@vger.kernel.org, hch@infradead.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:44880 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755768Ab2KUTdD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2012 14:33:03 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:33998 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755818Ab2KUTrc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Nov 2012 14:47:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20121120075114.25270.83181.stgit@blackbox.djwong.org>
+In-Reply-To: <50AD09F0.6090706@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2012 at 11:51:14PM -0800, Darrick J. Wong wrote:
-> Use generic handlers to queue fsync() when AIO DIO is completed for O_SYNC
-> file.
+On Wed, Nov 21, 2012 at 11:05:52AM -0600, Eric Sandeen wrote:
+> Although I put this in, I now think it was a bad decision.
+> For most users, there is very little to be done in this case.  They
+> get the message, once per day, with no real context or proposed action.
+> TBH, it generates support calls when it probably does not need to;
+> the message sounds more dire than the situation really is.
 > 
-> From: Jan Kara <jack@suse.cz>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Jeff Moyer <jmoyer@redhat.com>
-Acked-by: Joel Becker <jlbec@evilplan.org>
+> Just nuke it.  Normal investigation via blktrace or whatnot can
+> reveal poor IO patterns if bad performance is encountered.
 
-> ---
->  fs/ocfs2/aops.c |    6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> 
-> diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-> index 6577432..60457cc 100644
-> --- a/fs/ocfs2/aops.c
-> +++ b/fs/ocfs2/aops.c
-> @@ -593,9 +593,7 @@ static void ocfs2_dio_end_io(struct kiocb *iocb,
->  	level = ocfs2_iocb_rw_locked_level(iocb);
->  	ocfs2_rw_unlock(inode, level);
->  
-> -	if (is_async)
-> -		aio_complete(iocb, ret, 0);
-> -	inode_dio_done(inode);
-> +	generic_dio_end_io(iocb, offset, bytes, private, ret, is_async);
->  }
->  
->  /*
-> @@ -642,7 +640,7 @@ static ssize_t ocfs2_direct_IO(int rw,
->  	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev,
->  				    iov, offset, nr_segs,
->  				    ocfs2_direct_IO_get_blocks,
-> -				    ocfs2_dio_end_io, NULL, 0);
-> +				    ocfs2_dio_end_io, NULL, DIO_SYNC_WRITES);
->  }
->  
->  static void ocfs2_figure_cluster_boundaries(struct ocfs2_super *osb,
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I wonder if this might be a good thing to enable or disable via sysfs
+tuning knob, just to make it a little easier for a random application
+developer to test for this?
 
--- 
+And do you have a list of the bad applications so we can nag them to
+fix them?
 
-"Hell is oneself, hell is alone, the other figures in it, merely projections."
-        - T. S. Eliot
-
-			http://www.jlbec.org/
-			jlbec@evilplan.org
+					- Ted
