@@ -1,9 +1,10 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/4] bdi: Track users that require stable page writes
-Date: Wed, 21 Nov 2012 05:56:24 -0500
-Message-ID: <20121121105624.GA19050@infradead.org>
+Subject: Re: [PATCH 2/4] mm: Only enforce stable page writes if the backing
+ device requires it
+Date: Wed, 21 Nov 2012 05:57:32 -0500
+Message-ID: <20121121105732.GB19050@infradead.org>
 References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
- <20121121020034.10225.51692.stgit@blackbox.djwong.org>
+ <20121121020041.10225.35875.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
@@ -14,54 +15,27 @@ Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
 	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:55706
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:55727
 	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752143Ab2KUK4b (ORCPT
+	by vger.kernel.org with ESMTP id S1754526Ab2KUK5j (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Nov 2012 05:56:31 -0500
+	Wed, 21 Nov 2012 05:57:39 -0500
 Content-Disposition: inline
-In-Reply-To: <20121121020034.10225.51692.stgit@blackbox.djwong.org>
+In-Reply-To: <20121121020041.10225.35875.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +static inline void bdi_require_stable_pages(struct backing_dev_info *bdi)
-> +{
-> +	bdi->capabilities |= BDI_CAP_STABLE_WRITES;
-> +}
-> +
-> +static inline void bdi_unrequire_stable_pages(struct backing_dev_info *bdi)
-> +{
-> +	bdi->capabilities &= ~BDI_CAP_STABLE_WRITES;
-> +}
+On Tue, Nov 20, 2012 at 06:00:41PM -0800, Darrick J. Wong wrote:
+> Create a helper function to check if a backing device requires stable page
+> writes and, if so, performs the necessary wait.  Then, make it so that all
+> points in the memory manager that handle making pages writable use the helper
+> function.  This should provide stable page write support to most filesystems,
+> while eliminating unnecessary waiting for devices that don't require the
+> feature.
 
-Any reason to provide these wrappers while other BDI_CAP_ values don't
-have it/
+> +void wait_if_stable_page_write(struct page *page)
 
-Also what protects bdi->capabilities against concurrent updates now that
-it gets modified at runtime?
+wait_for_stable_page() ?
 
-> +static inline void queue_require_stable_pages(struct request_queue *q)
-> +{
-> +	bdi_require_stable_pages(&q->backing_dev_info);
-> +}
-> +
-> +static inline void queue_unrequire_stable_pages(struct request_queue *q)
-> +{
-> +	bdi_unrequire_stable_pages(&q->backing_dev_info);
-> +}
-> +
-> +static inline int queue_requires_stable_pages(struct request_queue *q)
-> +{
-> +	return bdi_cap_stable_pages_required(&q->backing_dev_info);
-> +}
-
-Independent of the above I see no point in these wrappers that just
-provide a single dereference.
-
-> +static ssize_t stable_pages_required_store(struct device *dev,
-> +					   struct device_attribute *attr,
-> +					   const char *buf, size_t count)
-
-Can you add a rationale on why we'd want to allow users to change the
-value?  I can't really think of any.
+Also this really needs a kerneldoc comment describing the usage.
 
