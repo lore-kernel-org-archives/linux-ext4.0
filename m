@@ -1,31 +1,62 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/9] xfs: factor out everything but the
- filemap_write_and_wait from xfs_file_fsync
-Date: Wed, 21 Nov 2012 05:09:13 -0500
-Message-ID: <20121121100913.GF23339@infradead.org>
-References: <20121120074116.24645.36369.stgit@blackbox.djwong.org>
- <20121120074138.24645.36708.stgit@blackbox.djwong.org>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: Prevent race while walking extent tree
+Date: Wed, 21 Nov 2012 11:35:15 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1211211134340.23054@dhcp-1-104.brq.redhat.com>
+References: <1353423460-12178-1-git-send-email-lczerner@redhat.com> <1353423460-12178-2-git-send-email-lczerner@redhat.com> <20121121065542.GA14704@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, tytso@mit.edu, david@fromorbit.com,
-	jmoyer@redhat.com, bpm@sgi.com, viro@zeniv.linux.org.uk,
-	jack@suse.cz, linux-fsdevel@vger.kernel.org, hch@infradead.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121120074138.24645.36708.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, dmonakhov@openvz.org, bergwolf@gmail.com
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:35147 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752359Ab2KUKfj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Nov 2012 05:35:39 -0500
+In-Reply-To: <20121121065542.GA14704@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2012 at 11:41:38PM -0800, Darrick J. Wong wrote:
-> Hi,
+On Wed, 21 Nov 2012, Zheng Liu wrote:
+
+> Date: Wed, 21 Nov 2012 14:55:42 +0800
+> From: Zheng Liu <gnehzuil.liu@gmail.com>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, dmonakhov@openvz.org,
+>     bergwolf@gmail.com
+> Subject: Re: [PATCH 1/2] ext4: Prevent race while walking extent tree
 > 
-> Fsyncing is tricky business, so factor out the bits of the xfs_file_fsync
-> function that can be used from the I/O post-processing path.
+> On Tue, Nov 20, 2012 at 03:57:39PM +0100, Lukas Czerner wrote:
+> [cut]
+> > +
+> >  int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+> >  		__u64 start, __u64 len)
+> >  {
+> > @@ -4802,8 +4811,8 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+> >  		 * Walk the extent tree gathering extent information.
+> >  		 * ext4_ext_fiemap_cb will push extents back to user.
+> >  		 */
+> 
+> This comment needs to be updated because ext4_ext_fiemap_cb has been
+> renamed.
+> 
+> Regards,
+>                                                 - Zheng
 
-Why would we need to skip the filemap_write_and_wait_range call here?
-If we're doing direct I/O we should not have any pages in this regions
-anyway.  You're also not skipping it in the generic implementation as
-far as I can see, so I see no point in doing it just in XFS.
+Good catch, I'll resend it.
+
+Thanks!
+-Lukas
+
+> 
+> > -		error = ext4_ext_walk_space(inode, start_blk, len_blks,
+> > -					  ext4_ext_fiemap_cb, fieinfo);
+> > +		error = ext4_fill_fiemap_extents(inode, start_blk,
+> > +						 len_blks, fieinfo);
+> >  	}
+> >  
+> >  	return error;
+> > -- 
+> > 1.7.7.6
+> > 
+> 
