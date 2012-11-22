@@ -1,90 +1,70 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 2/2] jbd: Stabilize pages during writes when in
- ordered mode
-Date: Thu, 22 Nov 2012 10:19:31 +0100
-Message-ID: <20121122091931.GB11154@quack.suse.cz>
-References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
- <20121121020056.10225.15220.stgit@blackbox.djwong.org>
- <20121121021543.GI10507@quack.suse.cz>
- <20121121211319.GA32202@blackbox.djwong.org>
- <20121121213333.GF30250@quack.suse.cz>
- <20121122084713.69e5b1fc@notabene.brown>
- <20121122014755.GH8740@blackbox.djwong.org>
- <20121122023645.GB32182@blackbox.djwong.org>
+From: Sachin Kamat <sachin.kamat@linaro.org>
+Subject: Re: [PATCH 1/1] ext4: Remove duplicate inclusion of ext4_extents.h in super.c
+Date: Thu, 22 Nov 2012 10:43:52 +0530
+Message-ID: <CAK9yfHyVJjxX46C8b6fduxTmEeqvx5p9j-bE7X9v=Wcpq9aLVA@mail.gmail.com>
+References: <1353323842-32283-1-git-send-email-sachin.kamat@linaro.org>
+	<20121119133944.GA11095@gmail.com>
+	<CAK9yfHyLzJE+rH3L0UN1x2dVNcEdaR=F7Z_Q2NfTidV2GKuP=g@mail.gmail.com>
+	<20121119162356.GB2337@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, Jan Kara <jack@suse.cz>,
-	axboe@kernel.dk, lucho@ionkov.net, ericvh@gmail.com, tytso@mit.edu,
-	rminnich@sandia.gov, viro@zeniv.linux.org.uk,
-	martin.petersen@oracle.com, david@fromorbit.com,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121122023645.GB32182@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: Sachin Kamat <sachin.kamat@linaro.org>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, patches@linaro.org,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:55777 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757805Ab2KVVsd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2012 16:48:33 -0500
+Received: by mail-vb0-f46.google.com with SMTP id ff1so3138577vbb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2012 13:48:32 -0800 (PST)
+In-Reply-To: <20121119162356.GB2337@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 21-11-12 18:36:45, Darrick J. Wong wrote:
-> When writing buffers out to disk ahead of committing a transaction, set the
-> Stable bit on the page to prevent others from wandering in and modifying the
-> page.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/jbd/commit.c |   18 +++++++++++++++++-
->  1 file changed, 17 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-> index 86b39b1..b1f0eed 100644
-> --- a/fs/jbd/commit.c
-> +++ b/fs/jbd/commit.c
-> @@ -155,13 +155,29 @@ static int journal_write_commit_record(journal_t *journal,
->  	return (ret == -EIO);
->  }
->  
-> +static void end_stable_write_sync(struct buffer_head *bh, int uptodate)
-> +{
-> +	clear_page_stable(bh->b_page);
-> +	end_buffer_write_sync(bh, uptodate);
-> +}
-  This doesn't work when blocksize < pagesize... There can be more buffers
-in one page under IO so you can clear the stable bit only after the last of
-them is done. See how PageWriteback bit is handled in
-end_buffer_async_write().
+Hi Theodore,
 
-> +
->  static void journal_do_submit_data(struct buffer_head **wbuf, int bufs,
->  				   int write_op)
->  {
->  	int i;
->  
->  	for (i = 0; i < bufs; i++) {
-> -		wbuf[i]->b_end_io = end_buffer_write_sync;
-> +		struct page *p = wbuf[i]->b_page;
-> +		if (TestSetPageStable(p))
-> +			wbuf[i]->b_end_io = end_buffer_write_sync;
-> +		else
-> +			wbuf[i]->b_end_io = end_stable_write_sync;
-  Umm, why is this? It presume it is some attempt to handle blocksize <
-page size?
+On 19 November 2012 21:53, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> On Mon, Nov 19, 2012 at 08:36:06PM +0530, Sachin Kamat wrote:
+>> Hi Zheng,
+>>
+>> On 19 November 2012 19:09, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+>> > On Mon, Nov 19, 2012 at 04:47:22PM +0530, Sachin Kamat wrote:
+>> >> ext4_extents.h was included twice.
+>> >>
+>> >> Signed-off-by: Sachin Kamat <sachin.kamat@linaro.org>
+>> >> ---
+>> >>  fs/ext4/super.c |    1 -
+>> >>  1 files changed, 0 insertions(+), 1 deletions(-)
+>> >>
+>> >> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> >> index ad6cd8a..c8a6138 100644
+>> >> --- a/fs/ext4/super.c
+>> >> +++ b/fs/ext4/super.c
+>> >> @@ -50,7 +50,6 @@
+>> >>  #include "xattr.h"
+>> >>  #include "acl.h"
+>> >>  #include "mballoc.h"
+>> >> -#include "ext4_extents.h"
+>> >
+>> > Hi Sachin,
+>> >
+>> > Sorry, I don't find this duplicated code in mainline kernel 3.7-rc6.
+>>
+>> The duplicated code is available on the linux-next tree (20121115).
+>> The second instance was added by the commit
+>> "ext4: let ext4 maintain extent status tree" (commit id: 51865fda).
+>
+> Good catch.  Sorry for my fault that introduces this duplicated code.
+> The patch looks good to me.
+>
+> Regards,
+>                                                 - Zheng
 
-> +
-> +		if (trylock_page(p)) {
-> +			clear_page_dirty_for_io(p);
-> +			unlock_page(p);
-> +		}
-> +
-  And this is wrong again for blocksize < pagesize. There can be other
-dirty buffers under the page...
+This is just a simple patch to remove the include statement coded
+twice in the file.
+Please pick this up.
 
->  		/* We use-up our safety reference in submit_bh() */
->  		submit_bh(write_op, wbuf[i]);
->  	}
-
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+With warm regards,
+Sachin
