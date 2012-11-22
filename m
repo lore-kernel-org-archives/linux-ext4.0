@@ -1,330 +1,128 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2 v5] ext4: Prevent race while walking extent tree
-Date: Thu, 22 Nov 2012 09:36:28 +0100
-Message-ID: <1353573389-5388-2-git-send-email-lczerner@redhat.com>
-References: <1353573389-5388-1-git-send-email-lczerner@redhat.com>
-Cc: gnehzuil.liu@gmail.com, tytso@mit.edu, dmonakhov@openvz.org,
-	bergwolf@gmail.com, Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12257 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755449Ab2KVTbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Nov 2012 14:31:45 -0500
-In-Reply-To: <1353573389-5388-1-git-send-email-lczerner@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 4/4] ext3: Warn if mounting rw on a disk requiring stable
+ page writes
+Date: Wed, 21 Nov 2012 17:47:55 -0800
+Message-ID: <20121122014755.GH8740@blackbox.djwong.org>
+References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
+ <20121121020056.10225.15220.stgit@blackbox.djwong.org>
+ <20121121021543.GI10507@quack.suse.cz>
+ <20121121211319.GA32202@blackbox.djwong.org>
+ <20121121213333.GF30250@quack.suse.cz>
+ <20121122084713.69e5b1fc@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, axboe@kernel.dk, lucho@ionkov.net,
+	ericvh@gmail.com, tytso@mit.edu, rminnich@sandia.gov,
+	viro@zeniv.linux.org.uk, martin.petersen@oracle.com,
+	david@fromorbit.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20121122084713.69e5b1fc@notabene.brown>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently ext4_ext_walk_space() only takes i_data_sem for read when
-searching for the extent at given block with ext4_ext_find_extent().
-Then it drops the lock and the extent tree can be changed at will.
-However later on we're searching for the 'next' extent, but the extent
-tree might already have changed, so the information might not be
-accurate.
+On Thu, Nov 22, 2012 at 08:47:13AM +1100, NeilBrown wrote:
+> On Wed, 21 Nov 2012 22:33:33 +0100 Jan Kara <jack@suse.cz> wrote:
+> 
+> > On Wed 21-11-12 13:13:19, Darrick J. Wong wrote:
+> > > On Wed, Nov 21, 2012 at 03:15:43AM +0100, Jan Kara wrote:
+> > > > On Tue 20-11-12 18:00:56, Darrick J. Wong wrote:
+> > > > > ext3 doesn't properly isolate pages from changes during writeback.  Since the
+> > > > > recommended fix is to use ext4, for now we'll just print a warning if the user
+> > > > > tries to mount in write mode.
+> > > > > 
+> > > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > > > > ---
+> > > > >  fs/ext3/super.c |    8 ++++++++
+> > > > >  1 file changed, 8 insertions(+)
+> > > > > 
+> > > > > 
+> > > > > diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> > > > > index 5366393..5b3725d 100644
+> > > > > --- a/fs/ext3/super.c
+> > > > > +++ b/fs/ext3/super.c
+> > > > > @@ -1325,6 +1325,14 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
+> > > > >  			"forcing read-only mode");
+> > > > >  		res = MS_RDONLY;
+> > > > >  	}
+> > > > > +	if (!read_only &&
+> > > > > +	    queue_requires_stable_pages(bdev_get_queue(sb->s_bdev))) {
+> > > > > +		ext3_msg(sb, KERN_ERR,
+> > > > > +			"error: ext3 cannot safely write data to a disk "
+> > > > > +			"requiring stable pages writes; forcing read-only "
+> > > > > +			"mode.  Upgrading to ext4 is recommended.");
+> > > > > +		res = MS_RDONLY;
+> > > > > +	}
+> > > > >  	if (read_only)
+> > > > >  		return res;
+> > > > >  	if (!(sbi->s_mount_state & EXT3_VALID_FS))
+> > > >   Why this? ext3 should be fixed by your change to
+> > > > filemap_page_mkwrite()... Or does testing show otherwise?
+> > > 
+> > > Yes, it's still broken even with this new set of changes.  Now that I think
+> > > about it a little more, I recall that writeback mode was actually fine, so this
+> > > is a little harsh.
+> > > 
+> > > Hm... looking at the ordered code a little more, it looks like
+> > > ext3_ordered_write_end is calling journal_dirty_data_fn, which (I guess?) tries
+> > > to write mapped buffers back through the journal?  Taking it out seems to fix
+> > > ordered mode, though I have a suspicion that it might very well break ordered
+> > > mode too.
+> >   Oh, right. kjournald writing buffers directly (without setting
+> > PageWriteback) will break things. So please, change warning to:
 
-In fact we can hit BUG_ON(end <= start) if the extent got inserted into
-the tree after the one we found and before the block we were searching
-for. This has been reproduced by running xfstests 225 in loop on s390x
-architecture, but theoretically we could hit this on any other
-architecture as well, but probably not as often.
+Maybe we should just fix this anyway?
 
-Moreover the extent currently in delayed allocation might be allocated
-after we search the extent tree and before we search extent status tree
-delayed buffers resulting in those delayed buffers being completely
-missed, even though completely written and allocated.
+I still have the patch that adds PG_stable (and changes the
+wait_for_page_stable() test to use this flag instead of PG_writeback) kicking
+around in my tree.  I wrote a patch to jbd that changes journal_do_submit_data
+to set PG_stable, call clear_page_dirty_for_io(), and unsets the stable bit in
+the end_io processing.
 
-We fix all those problems in several steps:
+It seems to get rid of the checksum-after-write errors, though I'm not
+convinced it's correct.  But, I'll send both patches along.
 
- 1. remove unnecessary callback indirection
- 2. rename functions
-        ext4_ext_walk_space -> ext4_fill_fiemap_extents
-        ext4_ext_fiemap_cb -> ext4_find_delayed_extent
- 3. move fiemap_fill_next_extent() into ext4_fill_fiemap_extents()
- 4. hold the i_data_sem for:
-        ext4_ext_find_extent()
-        ext4_ext_next_allocated_block()
-        ext4_find_delayed_extent()
- 5. call fiemap_fill_next_extent after releasing the i_data_sem
- 6. move path reinitialization into the critical section.
+> > 
+> > 	/*
+> > 	 * In data=ordered mode, kjournald writes buffers without setting
+> > 	 * PageWriteback bit thus generic code does not properly wait for
+> > 	 * writeback of those buffers to finish.
+> > 	 */
+> > 	if (!read_only &&
+> > 	    test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA &&
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
-v4: Reworked
-v5: Change check for existing delayed extent. Update comments
+test_opt(sb, DATA_FLAGS) != EXT3_MOUNT_WRITEBACK_DATA
 
- fs/ext4/ext4_extents.h |   14 -----
- fs/ext4/extents.c      |  136 +++++++++++++++++++++++++++---------------------
- 2 files changed, 76 insertions(+), 74 deletions(-)
+since I bet data=journal mode is also borken wrt PageWriteback.
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 603bb11..173b6c5 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -144,20 +144,6 @@ struct ext4_ext_path {
-  */
- 
- /*
-- * to be called by ext4_ext_walk_space()
-- * negative retcode - error
-- * positive retcode - signal for ext4_ext_walk_space(), see below
-- * callback must return valid extent (passed or newly created)
-- */
--typedef int (*ext_prepare_callback)(struct inode *, ext4_lblk_t,
--					struct ext4_ext_cache *,
--					struct ext4_extent *, void *);
--
--#define EXT_CONTINUE   0
--#define EXT_BREAK      1
--#define EXT_REPEAT     2
--
--/*
-  * Maximum number of logical blocks in a file; ext4_extent's ee_block is
-  * __le32.
-  */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d3dd618..fbe7dc2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -109,6 +109,9 @@ static int ext4_split_extent_at(handle_t *handle,
- 			     int split_flag,
- 			     int flags);
- 
-+static int ext4_find_delayed_extent(struct inode *inode,
-+				    struct ext4_ext_cache *newex);
-+
- static int ext4_ext_truncate_extend_restart(handle_t *handle,
- 					    struct inode *inode,
- 					    int needed)
-@@ -1959,27 +1962,33 @@ cleanup:
- 	return err;
- }
- 
--static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
--			       ext4_lblk_t num, ext_prepare_callback func,
--			       void *cbdata)
-+static int ext4_fill_fiemap_extents(struct inode *inode,
-+				    ext4_lblk_t block, ext4_lblk_t num,
-+				    struct fiemap_extent_info *fieinfo)
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_ext_cache cbex;
- 	struct ext4_extent *ex;
--	ext4_lblk_t next, start = 0, end = 0;
-+	ext4_lblk_t next, next_del, start = 0, end = 0;
- 	ext4_lblk_t last = block + num;
--	int depth, exists, err = 0;
--
--	BUG_ON(func == NULL);
--	BUG_ON(inode == NULL);
-+	int exists, depth = 0, err = 0;
-+	unsigned int flags = 0;
-+	unsigned char blksize_bits = inode->i_sb->s_blocksize_bits;
- 
- 	while (block < last && block != EXT_MAX_BLOCKS) {
- 		num = last - block;
- 		/* find extent for this block */
- 		down_read(&EXT4_I(inode)->i_data_sem);
-+
-+		if (path && ext_depth(inode) != depth) {
-+			/* depth was changed. we have to realloc path */
-+			kfree(path);
-+			path = NULL;
-+		}
-+
- 		path = ext4_ext_find_extent(inode, block, path);
--		up_read(&EXT4_I(inode)->i_data_sem);
- 		if (IS_ERR(path)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			err = PTR_ERR(path);
- 			path = NULL;
- 			break;
-@@ -1987,13 +1996,16 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 
- 		depth = ext_depth(inode);
- 		if (unlikely(path[depth].p_hdr == NULL)) {
-+			up_read(&EXT4_I(inode)->i_data_sem);
- 			EXT4_ERROR_INODE(inode, "path[%d].p_hdr == NULL", depth);
- 			err = -EIO;
- 			break;
- 		}
- 		ex = path[depth].p_ext;
- 		next = ext4_ext_next_allocated_block(path);
-+		ext4_ext_drop_refs(path);
- 
-+		flags = 0;
- 		exists = 0;
- 		if (!ex) {
- 			/* there is no extent yet, so try to allocate
-@@ -2037,30 +2049,54 @@ static int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
- 			cbex.ec_block = le32_to_cpu(ex->ee_block);
- 			cbex.ec_len = ext4_ext_get_actual_len(ex);
- 			cbex.ec_start = ext4_ext_pblock(ex);
-+			if (ext4_ext_is_uninitialized(ex))
-+				flags |= FIEMAP_EXTENT_UNWRITTEN;
- 		}
- 
-+		/*
-+		 * Find delayed extent and update cbex accordingly. We call
-+		 * it even in !exists case to find out whether cbex is the
-+		 * last existing extent or not.
-+		 */
-+		next_del = ext4_find_delayed_extent(inode, &cbex);
-+		if (!exists && next_del) {
-+			exists = 1;
-+			flags |= FIEMAP_EXTENT_DELALLOC;
-+		}
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+
- 		if (unlikely(cbex.ec_len == 0)) {
- 			EXT4_ERROR_INODE(inode, "cbex.ec_len == 0");
- 			err = -EIO;
- 			break;
- 		}
--		err = func(inode, next, &cbex, ex, cbdata);
--		ext4_ext_drop_refs(path);
--
--		if (err < 0)
--			break;
- 
--		if (err == EXT_REPEAT)
--			continue;
--		else if (err == EXT_BREAK) {
--			err = 0;
--			break;
-+		/* This is possible iff next == next_del == EXT_MAX_BLOCKS */
-+		if (next == next_del) {
-+			flags |= FIEMAP_EXTENT_LAST;
-+			if (unlikely(next_del != EXT_MAX_BLOCKS ||
-+				     next != EXT_MAX_BLOCKS)) {
-+				EXT4_ERROR_INODE(inode,
-+						 "next extent == %u, next "
-+						 "delalloc extent = %u",
-+						 next, next_del);
-+				err = -EIO;
-+				break;
-+			}
- 		}
- 
--		if (ext_depth(inode) != depth) {
--			/* depth was changed. we have to realloc path */
--			kfree(path);
--			path = NULL;
-+		if (exists) {
-+			err = fiemap_fill_next_extent(fieinfo,
-+				(__u64)cbex.ec_block << blksize_bits,
-+				(__u64)cbex.ec_start << blksize_bits,
-+				(__u64)cbex.ec_len << blksize_bits,
-+				flags);
-+			if (err < 0)
-+				break;
-+			if (err == 1) {
-+				err = 0;
-+				break;
-+			}
- 		}
- 
- 		block = cbex.ec_block + cbex.ec_len;
-@@ -4493,26 +4529,23 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
- }
- 
- /*
-- * Callback function called for each extent to gather FIEMAP information.
-+ * If newex is not existing extent (newex->ec_start equals zero) find
-+ * delayed extent at start of newex and update newex accordingly and
-+ * return start of the next delayed extent.
-+ *
-+ * If newex is existing extent (newex->ec_start is not equal zero)
-+ * return start of next delayed extent or EXT_MAX_BLOCKS if no delayed
-+ * extent found. Leave newex unmodified.
-  */
--static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
--		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
--		       void *data)
-+static int ext4_find_delayed_extent(struct inode *inode,
-+				    struct ext4_ext_cache *newex)
- {
- 	struct extent_status es;
--	__u64	logical;
--	__u64	physical;
--	__u64	length;
--	__u32	flags = 0;
- 	ext4_lblk_t next_del;
--	int		ret = 0;
--	struct fiemap_extent_info *fieinfo = data;
--	unsigned char blksize_bits;
- 
- 	es.start = newex->ec_block;
- 	next_del = ext4_es_find_extent(inode, &es);
- 
--	next = min(next_del, next);
- 	if (newex->ec_start == 0) {
- 		/*
- 		 * No extent in extent-tree contains block @newex->ec_start,
-@@ -4520,37 +4553,19 @@ static int ext4_ext_fiemap_cb(struct inode *inode, ext4_lblk_t next,
- 		 */
- 		if (es.len == 0)
- 			/* A hole found. */
--			return EXT_CONTINUE;
-+			return 0;
- 
- 		if (es.start > newex->ec_block) {
- 			/* A hole found. */
- 			newex->ec_len = min(es.start - newex->ec_block,
- 					    newex->ec_len);
--			return EXT_CONTINUE;
-+			return 0;
- 		}
- 
--		flags |= FIEMAP_EXTENT_DELALLOC;
- 		newex->ec_len = es.start + es.len - newex->ec_block;
- 	}
- 
--	if (ex && ext4_ext_is_uninitialized(ex))
--		flags |= FIEMAP_EXTENT_UNWRITTEN;
--
--	if (next == EXT_MAX_BLOCKS)
--		flags |= FIEMAP_EXTENT_LAST;
--
--	blksize_bits = inode->i_sb->s_blocksize_bits;
--	logical = (__u64)newex->ec_block << blksize_bits;
--	physical = (__u64)newex->ec_start << blksize_bits;
--	length =   (__u64)newex->ec_len << blksize_bits;
--
--	ret = fiemap_fill_next_extent(fieinfo, logical, physical,
--					length, flags);
--	if (ret < 0)
--		return ret;
--	if (ret == 1)
--		return EXT_BREAK;
--	return EXT_CONTINUE;
-+	return next_del;
- }
- /* fiemap flags we can handle specified here */
- #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
-@@ -4772,6 +4787,7 @@ out_mutex:
- 	mutex_unlock(&inode->i_mutex);
- 	return err;
- }
-+
- int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		__u64 start, __u64 len)
- {
-@@ -4799,11 +4815,11 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		len_blks = ((ext4_lblk_t) last_blk) - start_blk + 1;
- 
- 		/*
--		 * Walk the extent tree gathering extent information.
--		 * ext4_ext_fiemap_cb will push extents back to user.
-+		 * Walk the extent tree gathering extent information
-+		 * and pushing extents back to the user.
- 		 */
--		error = ext4_ext_walk_space(inode, start_blk, len_blks,
--					  ext4_ext_fiemap_cb, fieinfo);
-+		error = ext4_fill_fiemap_extents(inode, start_blk,
-+						 len_blks, fieinfo);
- 	}
- 
- 	return error;
--- 
-1.7.7.6
+> > 	    queue_requires_stable_pages(bdev_get_queue(sb->s_bdev))) {
+> > 		ext3_msg(sb, KERN_ERR,
+> > 			"error: data=ordered mode does not support stable "
+> > 			"page writes required by the disk; forcing read-only "
+> > 			"mode. Upgrading to ext4 is recommended.");
+> > 		res = MS_RDONLY;
+> > 	}
+> > 
+> > then you need a similar check in ext3_remount() so that filesystem cannot
+> > be remounted read-write.
+> > 
+> > 								Honza
+> 
+> Given this restriction, there is no way that I can change md/raid5 to set the
+> "stable pages" flag and stop copying pages into the stripe-cache.  ext3 on
+> raid5 will be much too common to allow this breakage.
+> 
+> I would really like to be able to say "I prefer stable pages, but they aren't
+> a requirement as long as I know which is which" ....
 
+I'd rather just fix ext3. :)
+
+(or remove it, since ext4 can handle ext3)
+
+--D
+
+> NeilBrown
