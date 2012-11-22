@@ -1,165 +1,60 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [RFC PATCH 1/2] mm: Introduce page flag to indicate stable page
- status
-Date: Wed, 21 Nov 2012 18:36:08 -0800
-Message-ID: <20121122023608.GA32182@blackbox.djwong.org>
-References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
- <20121121020056.10225.15220.stgit@blackbox.djwong.org>
- <20121121021543.GI10507@quack.suse.cz>
- <20121121211319.GA32202@blackbox.djwong.org>
- <20121121213333.GF30250@quack.suse.cz>
- <20121122084713.69e5b1fc@notabene.brown>
- <20121122014755.GH8740@blackbox.djwong.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: softlockup in xfstests 083
+Date: Thu, 22 Nov 2012 14:36:00 -0500
+Message-ID: <20121122193600.GA31635@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, axboe@kernel.dk, lucho@ionkov.net,
-	ericvh@gmail.com, tytso@mit.edu, rminnich@sandia.gov,
-	viro@zeniv.linux.org.uk, martin.petersen@oracle.com,
-	david@fromorbit.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33708
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757111Ab2KVTgB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Nov 2012 14:36:01 -0500
+Received: from hch by bombadil.infradead.org with local (Exim 4.76 #1 (Red Hat Linux))
+	id 1TbcZ6-0000oi-LS
+	for linux-ext4@vger.kernel.org; Thu, 22 Nov 2012 19:36:00 +0000
 Content-Disposition: inline
-In-Reply-To: <20121122014755.GH8740@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds yet another page flag, PG_stable, to indicate that the page's
-contents must not be changed because the page is undergoing some sort of
-integrity operation (checksumming, digest calculation, etc.)  This change
-should enable us to reduce page write latency in userspace apps, particularly
-for things like networked filesystems where the page contents needn't be held
-stable after a write request is transmitted, even though PG_writeback is still
-set.
+Running xfstests on ext4 using current Linus' tree I can reasily
+reproduce the following softlockup in xfstests 083:
 
-Also, convert wait_for_stable_page to use this new page flag.  By default,
-PG_stable is set for the same duration as PG_writeback.
-
-Signed-off-by: Darick J. Wong <darrick.wong@oracle.com>
----
- include/linux/page-flags.h |    2 ++
- include/linux/pagemap.h    |    1 +
- mm/filemap.c               |    8 ++++++++
- mm/page-writeback.c        |    7 ++++++-
- mm/page_alloc.c            |    3 +++
- 5 files changed, 20 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index b5d1384..83f41bf 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -109,6 +109,7 @@ enum pageflags {
- #ifdef CONFIG_TRANSPARENT_HUGEPAGE
- 	PG_compound_lock,
- #endif
-+	PG_stable,		/* page is immutable during a writeout */
- 	__NR_PAGEFLAGS,
- 
- 	/* Filesystems */
-@@ -208,6 +209,7 @@ PAGEFLAG(Pinned, pinned) TESTSCFLAG(Pinned, pinned)	/* Xen */
- PAGEFLAG(SavePinned, savepinned);			/* Xen */
- PAGEFLAG(Reserved, reserved) __CLEARPAGEFLAG(Reserved, reserved)
- PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
-+PAGEFLAG(Stable, stable) TESTSETFLAG(Stable, stable)
- 
- __PAGEFLAG(SlobFree, slob_free)
- 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index ea631ee..0e0a006 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -399,6 +399,7 @@ static inline void wait_on_page_writeback(struct page *page)
- 
- extern void end_page_writeback(struct page *page);
- void wait_for_stable_page(struct page *page);
-+void clear_page_stable(struct page *page);
- 
- /*
-  * Add an arbitrary waiter to a page's wait queue
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 5577dc8..88dc3b7 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -534,6 +534,13 @@ static inline void wake_up_page(struct page *page, int bit)
- 	__wake_up_bit(page_waitqueue(page), &page->flags, bit);
- }
- 
-+void clear_page_stable(struct page *page)
-+{
-+	ClearPageStable(page);
-+	wake_up_page(page, PG_stable);
-+}
-+EXPORT_SYMBOL_GPL(clear_page_stable);
-+
- void wait_on_page_bit(struct page *page, int bit_nr)
- {
- 	DEFINE_WAIT_BIT(wait, &page->flags, bit_nr);
-@@ -608,6 +615,7 @@ void end_page_writeback(struct page *page)
- 
- 	smp_mb__after_clear_bit();
- 	wake_up_page(page, PG_writeback);
-+	wake_up_page(page, PG_stable);
- }
- EXPORT_SYMBOL(end_page_writeback);
- 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 1bc0edf..2cd8155 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2209,6 +2209,7 @@ int test_clear_page_writeback(struct page *page)
- 		unsigned long flags;
- 
- 		spin_lock_irqsave(&mapping->tree_lock, flags);
-+		ClearPageStable(page);
- 		ret = TestClearPageWriteback(page);
- 		if (ret) {
- 			radix_tree_tag_clear(&mapping->page_tree,
-@@ -2221,6 +2222,7 @@ int test_clear_page_writeback(struct page *page)
- 		}
- 		spin_unlock_irqrestore(&mapping->tree_lock, flags);
- 	} else {
-+		ClearPageStable(page);
- 		ret = TestClearPageWriteback(page);
- 	}
- 	if (ret) {
-@@ -2240,6 +2242,7 @@ int test_set_page_writeback(struct page *page)
- 		unsigned long flags;
- 
- 		spin_lock_irqsave(&mapping->tree_lock, flags);
-+		SetPageStable(page);
- 		ret = TestSetPageWriteback(page);
- 		if (!ret) {
- 			radix_tree_tag_set(&mapping->page_tree,
-@@ -2257,6 +2260,7 @@ int test_set_page_writeback(struct page *page)
- 				     PAGECACHE_TAG_TOWRITE);
- 		spin_unlock_irqrestore(&mapping->tree_lock, flags);
- 	} else {
-+		SetPageStable(page);
- 		ret = TestSetPageWriteback(page);
- 	}
- 	if (!ret)
-@@ -2291,6 +2295,7 @@ void wait_for_stable_page(struct page *page)
- 	if (!bdi_cap_stable_pages_required(bdi))
- 		return;
- 
--	wait_on_page_writeback(page);
-+	if (PageStable(page))
-+		wait_on_page_bit(page, PG_stable);
- }
- EXPORT_SYMBOL_GPL(wait_for_stable_page);
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 7bb35ac..2b308d2 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -6056,6 +6056,9 @@ static const struct trace_print_flags pageflag_names[] = {
- #ifdef CONFIG_TRANSPARENT_HUGEPAGE
- 	{1UL << PG_compound_lock,	"compound_lock"	},
- #endif
-+#ifdef CONFIG_BLK_DEV_INTEGRITY
-+	{1UL << PG_stable,		"stable" },
-+#endif
- };
- 
- static void dump_page_flags(unsigned long flags)
+083 9s ...[ 1124.995740] EXT4-fs (vdb2): mounted filesystem with ordered
+data mode. Opts: acl,user_xattr
+[ 1156.073356] BUG: soft lockup - CPU#0 stuck for 22s! [fsstress:912]
+[ 1156.074733] Modules linked in:
+[ 1156.075471] CPU 0 
+[ 1156.075887] Pid: 912, comm: fsstress Not tainted 3.7.0-rc6+ #212 Bochs Bochs
+[ 1156.076558] RIP: 0010:[<ffffffff81152b64>]  [<ffffffff81152b64>] kfree+0xc4/0x140
+[ 1156.076558] RSP: 0018:ffff880047235c58  EFLAGS: 00000282
+[ 1156.076558] RAX: 0000000000000056 RBX: ffff880047235bd0 RCX: 0000000000000065
+[ 1156.076558] RDX: 0000000000000055 RSI: 0000000000000046 RDI: 0000000000000000
+[ 1156.076558] RBP: ffff880047235c78 R08: ffe2001390ac0000 R09: 002dffe4ef58e42b
+[ 1156.076558] R10: ff8707731e20e802 R11: 000000000000086d R12: ffffffff8167f60c
+[ 1156.076558] R13: ffff880047235c48 R14: 0000000000000046 R15: ffff880057594400
+[ 1156.076558] FS:  0000000000000000(0000) GS:ffff88005d800000(0063) knlGS:00000000f75be6c0
+[ 1156.076558] CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+[ 1156.076558] CR2: 00000000f714b004 CR3: 00000000592cc000 CR4: 00000000000006f0
+[ 1156.076558] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 1156.076558] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[ 1156.076558] Process fsstress (pid: 912, threadinfo ffff880047234000, task ffff8800582bc0c0)
+[ 1156.076558] Stack:
+[ 1156.076558]  0000000000000001 00000000ffffffff 0000000000000008 ffff88005aed6648
+[ 1156.076558]  ffff880047235d78 ffffffff812547fc ffff880053965390 ffff88005aed6648
+[ 1156.076558]  ffff880047235d30 ffff88005af8a3a0 ffff88005aed6598 ffff88003a5fe900
+[ 1156.076558] Call Trace:
+[ 1156.076558]  [<ffffffff812547fc>] ext4_ext_remove_space+0x49c/0xeb0
+[ 1156.076558]  [<ffffffff81257251>] ? ext4_ext_truncate+0x151/0x1b0
+[ 1156.076558]  [<ffffffff81257273>] ext4_ext_truncate+0x173/0x1b0
+[ 1156.076558]  [<ffffffff81229445>] ext4_truncate+0xd5/0xe0
+[ 1156.076558]  [<ffffffff8122c3ba>] ext4_setattr+0x37a/0x570
+[ 1156.076558]  [<ffffffff810882c1>] ? current_fs_time+0x11/0x60
+[ 1156.076558]  [<ffffffff8116f024>] notify_change+0x164/0x390
+[ 1156.076558]  [<ffffffff81164723>] ? user_path_at_empty+0x63/0xa0
+[ 1156.076558]  [<ffffffff81154a2d>] do_truncate+0x5d/0xa0
+[ 1156.076558]  [<ffffffff81154bf4>] sys_truncate+0x184/0x1a0
+[ 1156.076558]  [<ffffffff8107bc93>] sys32_truncate64+0x13/0x20
+[ 1156.076558]  [<ffffffff81b04e61>] sysenter_dispatch+0x7/0x1e
+[ 1156.076558] Code: 1c b0 00 00 48 98 49 8b 9c c6 80 00 00 00 8b 43 04 39 03 73 79 0f 1f 44 00 00 8b 03 89 c2 83 c0 01 4c 89 64 d3 18 89 03 41 55 9d <5b> 41 5c 41 5d 41 5e 5d c3 0f 1f 00 48 8b 1d b9 d6 f4 00 48 85
