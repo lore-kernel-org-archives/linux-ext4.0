@@ -1,58 +1,157 @@
-From: Andreas Dilger <aedilger@gmail.com>
-Subject: Re: e2fsck repeatedly asks to clear the same entry?
-Date: Fri, 23 Nov 2012 12:18:42 -0700
-Message-ID: <07FA29B6-B150-4A93-B6FF-3072DF31B577@gmail.com>
-References: <k8of5a$sjb$1@ger.gmane.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Mark Casey <markc@unifiedgroup.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] tests: don't consider "make check" a compiler error
+Date: Fri, 23 Nov 2012 13:31:45 -0700
+Message-ID: <1353702705-2263-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:63394 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753818Ab2KWTXk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Nov 2012 14:23:40 -0500
-Received: by mail-pb0-f46.google.com with SMTP id wy7so6688892pbc.19
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Nov 2012 11:23:39 -0800 (PST)
-In-Reply-To: <k8of5a$sjb$1@ger.gmane.org>
+Received: from idcmail-mo1so.shaw.ca ([24.71.223.10]:49908 "EHLO
+	idcmail-mo1so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756188Ab2KWUbr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Nov 2012 15:31:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2012-11-23, at 11:26, Mark Casey <markc@unifiedgroup.com> wrote:
-> I'm in a bit of a loop trying to fix my ext4 filesystem; it always goes like this even after several passes.
-> 
->> root@host:/home/luser# /root/latest/sbin/e2fsck -f /dev/vgdalr6/lv1
->> e2fsck 1.42.5 (29-Jul-2012)
->> Pass 1: Checking inodes, blocks, and sizes
->> Pass 2: Checking directory structure
->> Entry 'A5 11-3' in /share/path/09/Brett/Pines/Flynt's Side Drive - Complete Archive Copy/SA Version Pines/Chris Pics 11-2-10 (268533857) has deleted/unused inode 15115.  Clear<y>? yes
->> Pass 3: Checking directory connectivity
->> Pass 4: Checking reference counts
->> Pass 5: Checking group summary information
->> 
->> /dev/vgdalr6/lv1: ***** FILE SYSTEM WAS MODIFIED *****
->> /dev/vgdalr6/lv1: 8993801/268697600 files (0.8% non-contiguous), 2152234742/4299161600 blocks
->> root@host:/home/luser#
-> 
-> 
-> Would anyone have any suggestions how to proceed?
-> 
-> The cause of this is that I did an unsupported resize (a shrink) by commenting out one of resize2fs' checks...as described here: (note I'm not claiming this as "permission"; I knew it might not work)
+In a number of places, the output format from "make check" is
+incorrectly interpreted as compiler warning output (triggered by
+the presence of colons and parenthesis in the output).  Convert
+these lines to similar output that does not trigger false build
+warnings.
 
-E2fsck should be able to fix (i.e. get into some consistent state) anything regardless of how it got into that state. 
+In the case of the tst_uuid.c program, the "ctime()" output was
+difficult to change, but in fact it is better to actually compare
+the time-based UUID against wallclock time instead of just printing
+the formatted time as a string, so this test is improved.
 
-> http://article.gmane.org/gmane.comp.file-systems.ext4/35375
-> 
->  this current issue with the directory 'A5 11-3' is the only symptom presenting. I have most of the e2fsck log that followed the resize in case that would be of use.
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ lib/ext2fs/csum.c   |    5 +++--
+ lib/ext2fs/inline.c |    2 +-
+ lib/uuid/tst_uuid.c |   28 +++++++++++++++++++++-------
+ 3 files changed, 25 insertions(+), 10 deletions(-)
 
-It would probably be useful to get information from debugfs for this directory and inode (stats, ls -l <268533857>, stat <15115>, and checki 15115). 
+diff --git a/lib/ext2fs/csum.c b/lib/ext2fs/csum.c
+index 6c2e562..6c18513 100644
+--- a/lib/ext2fs/csum.c
++++ b/lib/ext2fs/csum.c
+@@ -870,7 +870,7 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
+ {
+ 	__u16 crc1, crc2, crc3;
+ 	dgrp_t swabgroup;
+- 	struct ext2_group_desc *desc = ext2fs_group_desc(fs, fs->group_desc, group);
++	struct ext2_group_desc *desc;
+ 	size_t size;
+ 	struct ext2_super_block *sb = fs->super;
+ 	int offset = offsetof(struct ext2_group_desc, bg_checksum);
+@@ -878,6 +878,7 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
+ 	struct ext4_group_desc swabdesc;
+ #endif
+ 
++	desc = ext2fs_group_desc(fs, fs->group_desc, group);
+ 	size = fs->super->s_desc_size;
+ 	if (size < EXT2_MIN_DESC_SIZE)
+ 		size = EXT2_MIN_DESC_SIZE;
+@@ -902,7 +903,7 @@ void print_csum(const char *msg, ext2_filsys fs, dgrp_t group)
+ 	if (offset < size)
+ 		crc3 = ext2fs_crc16(crc3, (char *)desc + offset, size - offset);
+ 
+-	printf("%s: UUID %s(%04x), grp %u(%04x): %04x=%04x\n",
++	printf("%s UUID %s=%04x, grp %u=%04x: %04x=%04x\n",
+ 	       msg, e2p_uuid2str(sb->s_uuid), crc1, group, crc2, crc3,
+ 	       ext2fs_group_desc_csum(fs, group));
+ }
+diff --git a/lib/ext2fs/inline.c b/lib/ext2fs/inline.c
+index eef3dda..05da1f7 100644
+--- a/lib/ext2fs/inline.c
++++ b/lib/ext2fs/inline.c
+@@ -99,7 +99,7 @@ static errcode_t test_memalign(unsigned long align)
+ 	if (!retval && !isaligned(ptr, align))
+ 		retval = EINVAL;
+ 	free(ptr);
+-	printf("tst_memliagn(%lu): %s\n", align, 
++	printf("tst_memalign(%lu) is %s\n", align,
+ 	       retval ? error_message(retval) : "OK");
+ 	return retval;
+ }
+diff --git a/lib/uuid/tst_uuid.c b/lib/uuid/tst_uuid.c
+index 5884ad9..2216970 100644
+--- a/lib/uuid/tst_uuid.c
++++ b/lib/uuid/tst_uuid.c
+@@ -74,7 +74,7 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 	uuid_t		buf, tst;
+ 	char		str[100];
+ 	struct timeval	tv;
+-	time_t		time_reg;
++	time_t		time_reg, time_gen;
+ 	unsigned char	*cp;
+ 	int i;
+ 	int failed = 0;
+@@ -104,7 +104,8 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 		printf("%02x", *cp++);
+ 	}
+ 	printf("\n");
+-	type = uuid_type(buf); 	variant = uuid_variant(buf);
++	type = uuid_type(buf);
++	variant = uuid_variant(buf);
+ 	printf("UUID type = %d, UUID variant = %d\n", type, variant);
+ 	if (variant != UUID_VARIANT_DCE) {
+ 		printf("Incorrect UUID Variant; was expecting DCE!\n");
+@@ -117,6 +118,7 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 	}
+ 	printf("\n");
+ 
++	time_gen = time(0);
+ 	uuid_generate_time(buf);
+ 	uuid_unparse(buf, str);
+ 	printf("UUID string = %s\n", str);
+@@ -125,7 +127,8 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 		printf("%02x", *cp++);
+ 	}
+ 	printf("\n");
+-	type = uuid_type(buf); 	variant = uuid_variant(buf);
++	type = uuid_type(buf);
++	variant = uuid_variant(buf);
+ 	printf("UUID type = %d, UUID variant = %d\n", type, variant);
+ 	if (variant != UUID_VARIANT_DCE) {
+ 		printf("Incorrect UUID Variant; was expecting DCE!\n");
+@@ -136,15 +139,25 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 		       "1 (time-based type)!\\n");
+ 		failed++;
+ 	}
++
+ 	tv.tv_sec = 0;
+ 	tv.tv_usec = 0;
+ 	time_reg = uuid_time(buf, &tv);
+-	printf("UUID time is: (%ld, %ld): %s\n", tv.tv_sec, tv.tv_usec,
+-	       ctime(&time_reg));
++	printf("UUID generated at %lu reports %lu (%ld.%ld)\n",
++	       time_gen, time_reg, tv.tv_sec, tv.tv_usec);
++	/* allow 1s margin in case of rollover between sampling
++	 * the current time and when the UUID is generated. */
++	if (time_reg > time_gen + 1) {
++		printf("UUID time comparison failed!\n");
++		failed++;
++	} else {
++		printf("UUID time comparison succeeded.\n");
++	}
++
+ 	uuid_parse(str, tst);
+-	if (!uuid_compare(buf, tst))
++	if (!uuid_compare(buf, tst)) {
+ 		printf("UUID parse and compare succeeded.\n");
+-	else {
++	} else {
+ 		printf("UUID parse and compare failed!\n");
+ 		failed++;
+ 	}
+@@ -162,6 +175,7 @@ main(int argc ATTR((unused)) , char **argv ATTR((unused)))
+ 		printf("UUID copy and compare failed!\n");
+ 		failed++;
+ 	}
++
+ 	failed += test_uuid("84949cc5-4701-4a84-895b-354c584a981b", 1);
+ 	failed += test_uuid("84949CC5-4701-4A84-895B-354C584A981B", 1);
+ 	failed += test_uuid("84949cc5-4701-4a84-895b-354c584a981bc", 0);
+-- 
+1.7.3.4
 
-Normally I'd say that getting a e2image of the filesystem would be useful for debugging and to create a test case, but since the filesystem is 16TB in size that won't be practical. 
-
-In the worst case, it should be possible to fix this manually on debugfs either by marking the inode in use in the bitmap (seti 15115) or clear the inode number in the directory entry (on my phone right now and can't check the command for this).
-
-It would be nice to get a test case first, so that e2fsck could be fixed, so if this isn't causing you grief it would be nice to keep this around until there is a chance to understand the problem. 
-
-Cheers, Andreas
