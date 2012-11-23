@@ -1,48 +1,55 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
- ext2/3
-Date: Fri, 23 Nov 2012 14:20:09 -0200
-Message-ID: <20121123162009.GA10760@andromeda.usersys.redhat.com>
-References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com>
- <20121108170202.GB19977@thunk.org>
- <50A023B9.4020609@redhat.com>
- <50A54AAC.8050100@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd: Fix lock ordering bug in journal_unmap_buffer()
+Date: Fri, 23 Nov 2012 18:20:21 +0100
+Message-ID: <1353691221-4176-1-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20867 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:54444 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755208Ab2KWQUw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Nov 2012 11:20:52 -0500
-Content-Disposition: inline
-In-Reply-To: <50A54AAC.8050100@redhat.com>
+	id S1753594Ab2KWRU1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Nov 2012 12:20:27 -0500
+Received: from relay1.suse.de (unknown [195.135.220.254])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 59D56A3DDD
+	for <linux-ext4@vger.kernel.org>; Fri, 23 Nov 2012 18:20:26 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, sorry my delayed answer on this thread.
+Commit 09e05d48 introduced a wait for transaction commit into
+journal_unmap_buffer() in the case we are truncating a buffer undergoing commit
+in the page stradding i_size on a filesystem with blocksize < pagesize. Sadly
+we forgot to drop buffer lock before waiting for transaction commit and thus
+deadlock is possible when kjournald wants to lock the buffer.
 
-> >Anyway, back to my main point:  As a guiding principle I think I would
-> >say that mount -t ext3 with ext4.ko should hard-reject any option not
-> >understood by ext3.ko.  It's clear and predictable, and should make for
-> >a decent first cut.
-> >
-> >-Eric
-> 
-> Agreed (sounds almost like we had coordinated our answers before I
-> spoke to Ted in Barcelona!).
-> 
-> Ric
-> 
-that's my main point, and the goal of my first patch. I was thinking in just
-warn when mounting a ext3 with ext4.ko using mount options not recognized by
-ext3.ko, but, looks like hard-reject these options looks more reasonable than
-just warning.
+Fix the problem by dropping the buffer lock before waiting for transaction
+commit. Since we are still holding page lock (and that is OK), buffer cannot
+disappear under us.
 
-I'm going to re-write the patch using this approach. Is there any concern in
-take this direction from any part here?
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/transaction.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
+I want to push this fix to Linus soon. JBD2 needs the fix as well but there
+it affects only data=journal mode and the fix is more complex due to different
+lock ordering.
+
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 78b7f84..7f5120b 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -1961,7 +1961,9 @@ retry:
+ 			spin_unlock(&journal->j_list_lock);
+ 			jbd_unlock_bh_state(bh);
+ 			spin_unlock(&journal->j_state_lock);
++			unlock_buffer(bh);
+ 			log_wait_commit(journal, tid);
++			lock_buffer(bh);
+ 			goto retry;
+ 		}
+ 		/*
 -- 
-Carlos
+1.7.1
+
