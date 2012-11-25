@@ -1,73 +1,80 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/6] e2fsck: optimize pass1 for CPU time
-Date: Sat, 24 Nov 2012 19:36:30 -0500
-Message-ID: <1353803794-11593-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/6] libext2fs: optimize rb_set_bmap_range()
+Date: Sat, 24 Nov 2012 19:36:29 -0500
+Message-ID: <1353803794-11593-2-git-send-email-tytso@mit.edu>
 References: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34508 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34500 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752747Ab2KYAgl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 24 Nov 2012 19:36:41 -0500
+	id S1752678Ab2KYAgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 24 Nov 2012 19:36:37 -0500
 In-Reply-To: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Optimize e2fsck pass 1 by marking entire extents as being in use at a
-time, instead of block by block.  This optimization only works for
-non-bigalloc file systems for now (it's tricky to handle bigalloc file
-systems since this code is also responsible for dealing with blocks
-that are not correctly aligned within a cluster).  When the
-optimization works, the CPU savings can be significant: up to two or
-three CPU minutes for a full 4T disk.
+This speeds up reading bitmaps from disk for very large (and full)
+disks by significant amounts (i.e., up to two CPU minutes for a 4T
+file system).
 
 Addresses-Google-Bug: #7534813
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/pass1.c | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
+ lib/ext2fs/blkmap64_rb.c | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 78fbe8d..cc00e0f 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1432,6 +1432,16 @@ static _INLINE_ void mark_block_used(e2fsck_t ctx, blk64_t block)
- 	}
- }
+diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
+index a42eda1..816f44f 100644
+--- a/lib/ext2fs/blkmap64_rb.c
++++ b/lib/ext2fs/blkmap64_rb.c
+@@ -674,16 +674,42 @@ static errcode_t rb_set_bmap_range(ext2fs_generic_bitmap bitmap,
+ 				     __u64 start, size_t num, void *in)
+ {
+ 	struct ext2fs_rb_private *bp;
++	unsigned char *cp;
+ 	size_t i;
++	int first_set = -1;
+ 	int ret;
  
-+static _INLINE_ void mark_blocks_used(e2fsck_t ctx, blk64_t block,
-+				      unsigned int num)
-+{
-+	if (ext2fs_test_block_bitmap_range2(ctx->block_found_map, block, num))
-+		ext2fs_mark_block_bitmap_range2(ctx->block_found_map, block, num);
-+	else
-+		while (num--)
-+			mark_block_used(ctx, block++);
-+}
-+
- /*
-  * Adjust the extended attribute block's reference counts at the end
-  * of pass 1, either by subtracting out references for EA blocks that
-@@ -1867,11 +1877,15 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 				goto failed_add_dir_block;
- 			}
- 		}
-+		if (!ctx->fs->cluster_ratio_bits) {
-+			mark_blocks_used(ctx, extent.e_pblk, extent.e_len);
-+			pb->num_blocks += extent.e_len;
+ 	bp = (struct ext2fs_rb_private *) bitmap->private;
+ 
+ 	for (i = 0; i < num; i++) {
+-		ret = ext2fs_test_bit(i, in);
+-		if (ret)
+-			rb_insert_extent(start + i - bitmap->start, 1, bp);
++		if (i & 7 == 0) {
++			unsigned char c = cp[i/8];
++			if (c == 0xFF) {
++				if (first_set == -1)
++					first_set = i;
++				i += 7;
++				continue;
++			}
++			if ((c == 0x00) && (first_set == -1)) {
++				i += 7;
++				continue;
++			}
 +		}
- 		for (blk = extent.e_pblk, blockcnt = extent.e_lblk, i = 0;
- 		     i < extent.e_len;
- 		     blk++, blockcnt++, i++) {
--			if (!(ctx->fs->cluster_ratio_bits &&
--			      pb->previous_block &&
-+			if (ctx->fs->cluster_ratio_bits &&
-+			    !(pb->previous_block &&
- 			      (EXT2FS_B2C(ctx->fs, blk) ==
- 			       EXT2FS_B2C(ctx->fs, pb->previous_block)) &&
- 			      (blk & EXT2FS_CLUSTER_MASK(ctx->fs)) ==
++		if (ext2fs_test_bit(i, in)) {
++			if (first_set == -1)
++				first_set = i;
++			continue;
++		}
++		if (first_set == -1)
++			continue;
++
++		rb_insert_extent(start + first_set - bitmap->start,
++				 i - first_set, bp);
++		first_set = -1;
+ 	}
++	if (first_set != -1)
++		rb_insert_extent(start + first_set - bitmap->start,
++				 num - first_set, bp);
+ 
+ 	return 0;
+ }
 -- 
 1.7.12.rc0.22.gcdd159b
 
