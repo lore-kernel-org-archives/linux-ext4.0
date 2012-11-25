@@ -1,71 +1,320 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH 0/6] Optimize e2fsck for large file systems
-Date: Sun, 25 Nov 2012 00:09:13 -0500
-Message-ID: <20121125050913.GA14506@thunk.org>
-References: <1353803794-11593-1-git-send-email-tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 50981] New: ext4 : DATA CORRUPTION read and write on same 4096
+ page  range
+Date: Sun, 25 Nov 2012 16:31:58 +0000 (UTC)
+Message-ID: <bug-50981-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34523 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750708Ab2KYFJQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Nov 2012 00:09:16 -0500
-Content-Disposition: inline
-In-Reply-To: <1353803794-11593-1-git-send-email-tytso@mit.edu>
+Received: from mail.kernel.org ([198.145.19.201]:47310 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753111Ab2KYQcD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 25 Nov 2012 11:32:03 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 7C906201C1
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Nov 2012 16:32:01 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 368D9201BC
+	for <linux-ext4@vger.kernel.org>; Sun, 25 Nov 2012 16:32:00 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Oops, sorry, I screwed up the "before" numbers.  Here are the proper
-(apples-to-apples) comparisons; the results are not quite as
-eye-popping, but there is still a significant (3x in wall clock time)
-improvement...
+https://bugzilla.kernel.org/show_bug.cgi?id=50981
 
-Before...
+           Summary: ext4 : DATA CORRUPTION read and write on same 4096
+                    page  range
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.32 Red Hat Enterprise Linux Workstation release
+                    6.2 (Santiago)
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: meetmehiro@gmail.com
+        Regression: No
 
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 916k/31500k (719k/198k), time: 96.48/81.26/ 0.10
-Pass 1: I/O read: 8MB, write: 0MB, rate: 0.08MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 916k/62064k (704k/212k), time:  0.46/ 0.01/ 0.03
-Pass 2: I/O read: 4MB, write: 0MB, rate: 8.72MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 916k/62064k (705k/212k), time: 97.56/81.88/ 0.13
-Pass 3A: Memory used: 916k/62064k (736k/181k), time:  0.00/ 0.00/ 0.00
-Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 3: Memory used: 916k/62064k (693k/223k), time:  0.00/ 0.00/ 0.00
-Pass 3: I/O read: 1MB, write: 0MB, rate: 1257.86MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 916k/936k (602k/315k), time:  6.59/ 6.55/ 0.02
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 1048k/936k (569k/480k), time: 93.39/80.92/ 0.69
-Pass 5: I/O read: 117MB, write: 0MB, rate: 1.25MB/s
-Memory used: 1048k/936k (569k/480k), time: 197.58/169.36/ 0.84
-I/O read: 129MB, write: 0MB, rate: 0.65MB/s
-169.36user 0.90system 3:17.66elapsed 86%CPU (0avgtext+0avgdata 254192maxresident)k
-0inputs+0outputs (12major+16066minor)pagefaults 0swaps
 
-.... and after....
+Kernal version and Red hat
 
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 916k/31500k (719k/198k), time: 17.83/ 2.79/ 0.05
-Pass 1: I/O read: 8MB, write: 0MB, rate: 0.45MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 916k/62064k (704k/212k), time:  0.45/ 0.01/ 0.01
-Pass 2: I/O read: 4MB, write: 0MB, rate: 8.82MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 916k/62064k (704k/212k), time: 18.89/ 3.39/ 0.07
-Pass 3A: Memory used: 916k/62064k (735k/181k), time:  0.00/ 0.00/ 0.00
-Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 3: Memory used: 916k/62064k (693k/224k), time:  0.00/ 0.00/ 0.00
-Pass 3: I/O read: 1MB, write: 0MB, rate: 1265.82MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 916k/936k (601k/315k), time:  5.69/ 5.67/ 0.00
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 1048k/936k (569k/480k), time: 22.76/10.49/ 0.53
-Pass 5: I/O read: 117MB, write: 0MB, rate: 5.14MB/s
-Memory used: 1048k/936k (569k/480k), time: 47.38/19.57/ 0.60
-I/O read: 129MB, write: 0MB, rate: 2.72MB/s
+2.6.32 , Red Hat Enterprise Linux Workstation release 6.2 (Santiago)
 
+
+I have one scientific application, that is running on ext4 , after three to
+fours days, I have started to seen that data is not correct.. then i tried to
+find simple reproducer for the same.
+
+Pl. find the reproducer for the same with this issue is hitting easily.  
+
+Logs : 
+
+./sim ext4_write
+creating the threads
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader thread has opened the file, fd : 4
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+reader..checking data integrity
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+writing B at offset 0...
+writing A at offset 0...
+writing B at offset 0...
+reader..checking data integrity
+writing A at offset 0...
+reader.. corrupted data, at offset : 511
+writing B at offset 0...
+
+
+
+C program :
+#include <stdio.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <assert.h>
+#include <errno.h>
+       #include <sys/types.h>
+       #include <sys/stat.h>
+       #include <fcntl.h>
+       #include <unistd.h>
+#include <sys/mman.h>
+
+pthread_t reader_id, writer_id;
+
+char write_buf [4096] = {0,};
+char read_buf[4096] = {0,};
+
+char  datafile[256] = {0,};
+int stop_write = 0;
+
+
+
+void * writer (void * arg)
+{
+
+        int fd = -1;
+        int count = 0;
+        /* this thread will open the file and write 4k data to it alternatively
+         * of a different data set to the same offset
+         */
+        /* opening the file */
+        assert((fd = open(datafile, O_CREAT|O_RDWR, 0777)) != -1);
+
+        while (1) {
+
+                if (stop_write)
+                {
+                        close(fd);
+                        printf("write stopped\n");
+                        return NULL;
+                }
+                if (count % 2 == 0)
+                        memset(write_buf, 'A', sizeof(write_buf));
+                else
+                        memset(write_buf, 'B', sizeof(write_buf));
+
+
+                assert(lseek(fd, 0, SEEK_SET) == 0);
+                printf("writing %c at offset 0...\n", write_buf[0]);
+                assert(write(fd, write_buf, 4096) == 4096);
+                count ++;
+
+        }
+        //pthread_exit((void *)0);
+        close(fd);
+        return NULL;
+}
+
+void * reader(void * arg)
+{
+
+        int fd = -1;
+        int count = 0;
+        /* this thread will open the file and write 4k data to it alternatively
+         * of a different data set to the same offset
+         */
+        /* opening the file */
+        assert((fd = open(datafile, O_CREAT|O_RDWR, 0777)) != -1);
+        printf("reader thread has opened the file, fd : %d\n", fd);
+        while (1) {
+
+                memset(read_buf, '\0', 4096);
+                assert(lseek(fd, 0, SEEK_SET) == 0);
+                assert(read(fd, read_buf, 4096) == 4096);
+                count ++;
+                printf("reader..checking data integrity\n");
+                int i=0;
+                for (i=0; i < 4095; i++)
+                {
+                        int prev_char = read_buf[i];
+                        int next_char = read_buf[i+1];
+                        if (prev_char != next_char)
+                        {
+                                printf("reader.. corrupted data, at offset :
+%d\n", i);
+                                stop_write = 1;
+                                int output_fd = open("res.txt", O_CREAT|O_RDWR,
+0777);
+
+                                assert(write(output_fd, read_buf, 4096) ==
+4096);
+                                close(output_fd);
+                                close(fd);
+                                return NULL;
+                        }
+                }
+
+
+        }
+        //pthread_exit((void *)0);
+        close(fd);
+        return NULL;
+}
+int main (int argc, char *argv[])
+{
+        pthread_attr_t attr;
+        void * arg = NULL;
+        int *status;
+        int err = 0;
+
+        if (argc != 2) {
+                printf("usage : ./reader_writer <file pathname>\n");
+                exit(1);
+        }
+
+
+        memset(datafile, '\0', sizeof(datafile));
+        strcpy(datafile, argv[1]);
+
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+        /* create the reader and writer thread */
+        printf("creating the threads\n");
+        if ((err = pthread_create(&writer_id, &attr, writer, (void *)arg)) !=
+0) {
+                printf ("pthread_create failed err no :%d\n", err);
+        }
+        if ((err = pthread_create(&reader_id, &attr, reader, (void *)arg)) !=
+0) {
+                printf ("pthread_create failed err no :%d\n", err);
+        }
+        pthread_attr_destroy(&attr);
+
+        /* Wait on the other threads */
+        assert(pthread_join(writer_id, (void *)&status) == 0);
+        assert(pthread_join(reader_id, (void *)&status) == 0);
+
+        pthread_exit(NULL);
+}
+
+How to run
+gcc program.c -o ext4_program -lpthread 
+./ext4_program ext4_write
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
