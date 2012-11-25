@@ -1,77 +1,123 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/6] libext2fs: optimize rb_get_bmap_range() for mostly allocated bmaps
-Date: Sat, 24 Nov 2012 19:36:33 -0500
-Message-ID: <1353803794-11593-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH 6/6] e2fsck: optimize pass 5 for CPU utilization
+Date: Sat, 24 Nov 2012 19:36:34 -0500
+Message-ID: <1353803794-11593-7-git-send-email-tytso@mit.edu>
 References: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34510 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34512 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752678Ab2KYAmg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 24 Nov 2012 19:42:36 -0500
+	id S1752678Ab2KYAmk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 24 Nov 2012 19:42:40 -0500
 In-Reply-To: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This optimizies the CPU utilization of the rb_get_bmap_range()
-function when most of the bitmap is allocated.
+Add a fast past optimization in e2fsck's pass 5 for the common case
+where the block bitmap is correct.  The optimization works by
+extracting each block group's block allocation bitmap into a memory
+buffer, and comparing it with the expected allocation bitmap using
+memcmp().  If it matches, then we can just update the free block
+counts and be on our way, and skip checking each bit individually.
+
+Addresses-Google-Bug: #7534813
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/blkmap64_rb.c | 29 ++++++++++++++++++++++++-----
- 1 file changed, 24 insertions(+), 5 deletions(-)
+ e2fsck/pass5.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 53 insertions(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-index 0705cf2..3a5518b 100644
---- a/lib/ext2fs/blkmap64_rb.c
-+++ b/lib/ext2fs/blkmap64_rb.c
-@@ -721,6 +721,7 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
- 	struct rb_node *parent = NULL, *next, **n;
- 	struct ext2fs_rb_private *bp;
- 	struct bmap_rb_extent *ext;
-+	int count;
- 	__u64 pos;
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 8312fe0..5aff55c 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -212,6 +212,12 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 	int	cmp_block = 0;
+ 	int	redo_flag = 0;
+ 	blk64_t	super_blk, old_desc_blk, new_desc_blk;
++	char *actual_buf, *bitmap_buf;
++
++	actual_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize,
++						     "actual bitmap buffer");
++	bitmap_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize,
++						     "bitmap block buffer");
  
- 	bp = (struct ext2fs_rb_private *) bitmap->private;
-@@ -748,14 +749,32 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
- 		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
+ 	clear_problem_context(&pctx);
+ 	free_array = (unsigned int *) e2fsck_allocate_memory(ctx,
+@@ -259,11 +265,53 @@ redo_counts:
+ 	for (i = B2C(fs->super->s_first_data_block);
+ 	     i < ext2fs_blocks_count(fs->super);
+ 	     i += EXT2FS_CLUSTER_RATIO(fs)) {
++		int first_block_in_bg = (B2C(i) -
++					 B2C(fs->super->s_first_data_block)) %
++			fs->super->s_clusters_per_group == 0;
++		int n, nbytes = fs->super->s_clusters_per_group / 8;
++
+ 		actual = ext2fs_fast_test_block_bitmap2(ctx->block_found_map, i);
  
- 		pos = ext->start;
--		if (pos < start)
-+		count = ext->count;
-+		if (pos > start+num)
-+			break;
-+		if (pos < start) {
-+			count -= start - pos;
-+			if (count < 0)
-+				continue;
- 			pos = start;
--
--		while (pos < (ext->start + ext->count)) {
--			if ((pos - start) >= num)
--				return 0;
++		/*
++		 * Try to optimize pass5 by extracting a bitmap block
++		 * as expected from what we have on disk, and then
++		 * comparing the two.  If they are identical, then
++		 * update the free block counts and go on to the next
++		 * block group.  This is much faster than doing the
++		 * individual bit-by-bit comparison.  The one downside
++		 * is that this doesn't work if we are asking e2fsck
++		 * to do a discard operation.
++		 */
++		if (!first_block_in_bg ||
++		    (group == (int)fs->group_desc_count - 1) ||
++		    (ctx->options & E2F_OPT_DISCARD))
++			goto no_optimize;
++
++		retval = ext2fs_get_block_bitmap_range2(ctx->block_found_map,
++				B2C(i), fs->super->s_clusters_per_group,
++				actual_buf);
++		if (retval)
++			goto no_optimize;
++		if (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT))
++			memset(bitmap_buf, 0, nbytes);
++		else {
++			retval = ext2fs_get_block_bitmap_range2(fs->block_map,
++					B2C(i), fs->super->s_clusters_per_group,
++					bitmap_buf);
++			if (retval)
++				goto no_optimize;
 +		}
-+		if (pos+count > start+num)
-+			count = start+num - pos;
++		if (memcmp(actual_buf, bitmap_buf, nbytes) != 0)
++			goto no_optimize;
++		n = ext2fs_bitcount(actual_buf, nbytes);
++		group_free = fs->super->s_clusters_per_group - n;
++		free_blocks += group_free;
++		i += fs->super->s_clusters_per_group - 1;
++		goto next_group;
++	no_optimize:
 +
-+		while (count > 0) {
-+			if ((count >= 8) &&
-+			    ((pos - start) % 8) == 0) {
-+				int nbytes = count >> 3;
-+				int offset = (pos -start) >> 3;
-+
-+				memset(out + offset, 0xFF, nbytes);
-+				pos += nbytes << 3;
-+				count -= nbytes << 3;
-+				continue;
-+			}
- 			ext2fs_fast_set_bit64((pos - start), out);
- 			pos++;
-+			count--;
- 		}
+ 		if (skip_group) {
+-			if ((B2C(i) - B2C(fs->super->s_first_data_block)) %
+-			    fs->super->s_clusters_per_group == 0) {
++			if (first_block_in_bg) {
+ 				super_blk = 0;
+ 				old_desc_blk = 0;
+ 				new_desc_blk = 0;
+@@ -401,6 +449,7 @@ redo_counts:
+ 			if (!bitmap && i >= first_free)
+ 				e2fsck_discard_blocks(ctx, first_free,
+ 						      (i - first_free) + 1);
++		next_group:
+ 			first_free = ext2fs_blocks_count(fs->super);
+ 
+ 			free_array[group] = group_free;
+@@ -475,6 +524,8 @@ redo_counts:
  	}
- 	return 0;
+ errout:
+ 	ext2fs_free_mem(&free_array);
++	ext2fs_free_mem(&actual_buf);
++	ext2fs_free_mem(&bitmap_buf);
+ }
+ 
+ static void check_inode_bitmaps(e2fsck_t ctx)
 -- 
 1.7.12.rc0.22.gcdd159b
 
