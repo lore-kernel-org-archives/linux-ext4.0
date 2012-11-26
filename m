@@ -1,69 +1,353 @@
-From: Mark Casey <markc@unifiedgroup.com>
-Subject: Re: e2fsck repeatedly asks to clear the same entry?
-Date: Sun, 25 Nov 2012 21:52:02 -0600
-Message-ID: <50B2E762.5040906@unifiedgroup.com>
-References: <k8of5a$sjb$1@ger.gmane.org> <07FA29B6-B150-4A93-B6FF-3072DF31B577@gmail.com> <50B068E3.4090100@unifiedgroup.com> <7BE44E5B-807D-4C20-8D49-88D0394147FD@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 50981] ext4 : DATA CORRUPTION read and write on same 4096 page
+ range
+Date: Mon, 26 Nov 2012 05:55:56 +0000 (UTC)
+Message-ID: <20121126055556.C695911FB81@bugzilla.kernel.org>
+References: <bug-50981-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from plane.gmane.org ([80.91.229.3]:44326 "EHLO plane.gmane.org"
+Received: from mail.kernel.org ([198.145.19.201]:58251 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753878Ab2KZDwP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 25 Nov 2012 22:52:15 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
-	id 1Tcpk7-000142-MT
-	for linux-ext4@vger.kernel.org; Mon, 26 Nov 2012 04:52:23 +0100
-Received: from cpe-76-183-161-185.tx.res.rr.com ([76.183.161.185])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 04:52:23 +0100
-Received: from markc by cpe-76-183-161-185.tx.res.rr.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 04:52:23 +0100
-In-Reply-To: <7BE44E5B-807D-4C20-8D49-88D0394147FD@gmail.com>
+	id S1751641Ab2KZF4A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 00:56:00 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 26207201BD
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 05:55:59 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 25139201B5
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 05:55:57 +0000 (UTC)
+In-Reply-To: <bug-50981-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/24/2012 1:17 PM, Andreas Dilger wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=50981
+
+
+
+
+
+--- Comment #1 from Yongqiang Yang <xiaoqiangnk@gmail.com>  2012-11-26 05:55:56 ---
+which block size does the filesystem use, 1K or 4K?
+
+Yongqiang
+
+
+On Mon, Nov 26, 2012 at 12:31 AM, <bugzilla-daemon@bugzilla.kernel.org>wrote:
+
+> https://bugzilla.kernel.org/show_bug.cgi?id=50981
 >
-> So this is the problematic entry. The directory entry looks ok, though it doesn't have the same name as e2fsck reports. It claims the entry is "A5 11-3", which is a bit bizarre.
-
-My fault. I was initially inconsistent in deciding what parts of our 
-real tree I wanted online. So there is nothing named "A5 11-3". Should 
-not be an issue again; sorry to add complication.
-
+>            Summary: ext4 : DATA CORRUPTION read and write on same 4096
+>                     page  range
+>            Product: File System
+>            Version: 2.5
+>     Kernel Version: 2.6.32 Red Hat Enterprise Linux Workstation release
+>                     6.2 (Santiago)
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: high
+>           Priority: P1
+>          Component: ext4
+>         AssignedTo: fs_ext4@kernel-bugs.osdl.org
+>         ReportedBy: meetmehiro@gmail.com
+>         Regression: No
 >
-> ...
 >
-> Yes, though if this directory is accessed it might turn the filesystem read-only.
-
-Yep, it does.
-
+> Kernal version and Red hat
 >
->> These files are older so I wouldn't mind setting the permissions so that no one can get to them for a bit. What would I need to do to get a test case going?
+> 2.6.32 , Red Hat Enterprise Linux Workstation release 6.2 (Santiago)
 >
-> Just mark the parent directory inaccessible:
 >
-> # chmod 000 "/share/path/09/Brett/Pines/Flynt's Side Drive - Complete Archive Copy/SA Version Pines/Chris Pics 11-2-10/Group 5 11-3"
+> I have one scientific application, that is running on ext4 , after three to
+> fours days, I have started to seen that data is not correct.. then i tried
+> to
+> find simple reproducer for the same.
+>
+> Pl. find the reproducer for the same with this issue is hitting easily.
+>
+> Logs :
+>
+> ./sim ext4_write
+> creating the threads
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader thread has opened the file, fd : 4
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> reader..checking data integrity
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> writing B at offset 0...
+> writing A at offset 0...
+> writing B at offset 0...
+> reader..checking data integrity
+> writing A at offset 0...
+> reader.. corrupted data, at offset : 511
+> writing B at offset 0...
+>
+>
+>
+> C program :
+> #include <stdio.h>
+> #include <fcntl.h>
+> #include <pthread.h>
+> #include <assert.h>
+> #include <errno.h>
+>        #include <sys/types.h>
+>        #include <sys/stat.h>
+>        #include <fcntl.h>
+>        #include <unistd.h>
+> #include <sys/mman.h>
+>
+> pthread_t reader_id, writer_id;
+>
+> char write_buf [4096] = {0,};
+> char read_buf[4096] = {0,};
+>
+> char  datafile[256] = {0,};
+> int stop_write = 0;
+>
+>
+>
+> void * writer (void * arg)
+> {
+>
+>         int fd = -1;
+>         int count = 0;
+>         /* this thread will open the file and write 4k data to it
+> alternatively
+>          * of a different data set to the same offset
+>          */
+>         /* opening the file */
+>         assert((fd = open(datafile, O_CREAT|O_RDWR, 0777)) != -1);
+>
+>         while (1) {
+>
+>                 if (stop_write)
+>                 {
+>                         close(fd);
+>                         printf("write stopped\n");
+>                         return NULL;
+>                 }
+>                 if (count % 2 == 0)
+>                         memset(write_buf, 'A', sizeof(write_buf));
+>                 else
+>                         memset(write_buf, 'B', sizeof(write_buf));
+>
+>
+>                 assert(lseek(fd, 0, SEEK_SET) == 0);
+>                 printf("writing %c at offset 0...\n", write_buf[0]);
+>                 assert(write(fd, write_buf, 4096) == 4096);
+>                 count ++;
+>
+>         }
+>         //pthread_exit((void *)0);
+>         close(fd);
+>         return NULL;
+> }
+>
+> void * reader(void * arg)
+> {
+>
+>         int fd = -1;
+>         int count = 0;
+>         /* this thread will open the file and write 4k data to it
+> alternatively
+>          * of a different data set to the same offset
+>          */
+>         /* opening the file */
+>         assert((fd = open(datafile, O_CREAT|O_RDWR, 0777)) != -1);
+>         printf("reader thread has opened the file, fd : %d\n", fd);
+>         while (1) {
+>
+>                 memset(read_buf, '\0', 4096);
+>                 assert(lseek(fd, 0, SEEK_SET) == 0);
+>                 assert(read(fd, read_buf, 4096) == 4096);
+>                 count ++;
+>                 printf("reader..checking data integrity\n");
+>                 int i=0;
+>                 for (i=0; i < 4095; i++)
+>                 {
+>                         int prev_char = read_buf[i];
+>                         int next_char = read_buf[i+1];
+>                         if (prev_char != next_char)
+>                         {
+>                                 printf("reader.. corrupted data, at offset
+> :
+> %d\n", i);
+>                                 stop_write = 1;
+>                                 int output_fd = open("res.txt",
+> O_CREAT|O_RDWR,
+> 0777);
+>
+>                                 assert(write(output_fd, read_buf, 4096) ==
+> 4096);
+>                                 close(output_fd);
+>                                 close(fd);
+>                                 return NULL;
+>                         }
+>                 }
+>
+>
+>         }
+>         //pthread_exit((void *)0);
+>         close(fd);
+>         return NULL;
+> }
+> int main (int argc, char *argv[])
+> {
+>         pthread_attr_t attr;
+>         void * arg = NULL;
+>         int *status;
+>         int err = 0;
+>
+>         if (argc != 2) {
+>                 printf("usage : ./reader_writer <file pathname>\n");
+>                 exit(1);
+>         }
+>
+>
+>         memset(datafile, '\0', sizeof(datafile));
+>         strcpy(datafile, argv[1]);
+>
+>         pthread_attr_init(&attr);
+>         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+>
+>         /* create the reader and writer thread */
+>         printf("creating the threads\n");
+>         if ((err = pthread_create(&writer_id, &attr, writer, (void *)arg))
+> !=
+> 0) {
+>                 printf ("pthread_create failed err no :%d\n", err);
+>         }
+>         if ((err = pthread_create(&reader_id, &attr, reader, (void *)arg))
+> !=
+> 0) {
+>                 printf ("pthread_create failed err no :%d\n", err);
+>         }
+>         pthread_attr_destroy(&attr);
+>
+>         /* Wait on the other threads */
+>         assert(pthread_join(writer_id, (void *)&status) == 0);
+>         assert(pthread_join(reader_id, (void *)&status) == 0);
+>
+>         pthread_exit(NULL);
+> }
+>
+> How to run
+> gcc program.c -o ext4_program -lpthread
+> ./ext4_program ext4_write
+>
+> --
+> Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+> ------- You are receiving this mail because: -------
+> You are watching the assignee of the bug.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
 
-No problem. Once I've got that done I'll see what I can do with e2image. 
-I really appreciate the input so I'd like to do whatever I can if you 
-still think it might lead to some sort of bugfix. So far the only 
-changes made were to restore the other files that the post-resize fsck 
-had to remove/free. Final total was a couple gigs across 7 dirs.
-
-I've looked for any stat differences between the current file tree and 
-the one from the backup just before the resize. The only issue found is 
-that there appear to be ~200 directories that were not removed by fsck 
-but appear to have had their modtimes reset by it instead. The actual 
-files contained were untouched. If that is also no big concern then I 
-think later tonight, after/if I can get an e2image done, I'll just 
-restore their modtimes from the backup to make things pretty again.
-
-Thank you,
-Mark
-
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
