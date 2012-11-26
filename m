@@ -1,53 +1,122 @@
-From: Roger Niva <rogerniva@gmail.com>
-Subject: Re: Ext4 file corruption using cp
-Date: Mon, 26 Nov 2012 09:48:10 +0100
-Message-ID: <CAH3VSLwhe7ZHfuc1+RatWvrvAOAS3HakYoRr5+PNnvvrue9BmA@mail.gmail.com>
-References: <CAH3VSLyZvtHC5G_Hx6oHr_jR43+vYz46nXLkifuD3gXGLd21yQ@mail.gmail.com>
-	<CAH3VSLw_spHkb27VbRUG-81Rc=hwPDnhfGOe9LqExs0bFveujQ@mail.gmail.com>
-	<61093A2B-5AEA-4ED8-B43D-AB6217B405AC@dilger.ca>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [RFC PATCH 0/6] Optimize e2fsck for large file systems
+Date: Mon, 26 Nov 2012 10:19:54 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1211261019010.18234@localhost>
+References: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ea0-f174.google.com ([209.85.215.174]:52575 "EHLO
-	mail-ea0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753839Ab2KZIsM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 03:48:12 -0500
-Received: by mail-ea0-f174.google.com with SMTP id e13so4300550eaa.19
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 00:48:10 -0800 (PST)
-In-Reply-To: <61093A2B-5AEA-4ED8-B43D-AB6217B405AC@dilger.ca>
+Received: from mx1.redhat.com ([209.132.183.28]:30004 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753175Ab2KZJUA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 04:20:00 -0500
+In-Reply-To: <1353803794-11593-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 11, 2012 at 6:50 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On 2012-11-11, at 4:37, Roger Niva <rogerniva@gmail.com> wrote:
->>
->> We are trying to pin down a file corruption issue we have on 5
->> productionservers and would like some suggestions about how to proceed
->> to find the culprit. It may or may not be ext4-related, but as that is
->> the only clue we have so far, we're trying here first.
->>
->> The productionservers are running Slackware 13.37 with a selfcompiled
->> kernel (no patches or external modules).
->> We have a script running daily that copies files from one folder to
->> another using cp.
->
-> there was a bug in ext4 FIEMAP ioctl code in the past that interacted badly with fileutils for copying files that were just written and still in cache.  That was around 2.6.26 or so.
->
-> You should probably try a new version of fileutils to see if that solves the problem. Alternately, if you run "sync" before "cp" this should also avoid the problem.
->
-> Cheers, Andreas
+On Sat, 24 Nov 2012, Theodore Ts'o wrote:
 
-Hi.
+> Date: Sat, 24 Nov 2012 19:36:28 -0500
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [RFC PATCH 0/6] Optimize e2fsck for large file systems
+> 
+> This patch series optimizes e2fsck for large file systems (where large
+> is 4TB or more).  Previously checking a 4TB file system when it was
+> mostly full could take upwards of six minutes of wall clock time, and
+> e2fsck would be mostly CPU bound.  With this patch series, the same 4TB
+> file system can now be checked in less than 50 seconds and approximately
+> 20 seconds of userspace CPU time.   (Previously, it was consuming over
+> 15 times as much CPU time.)
+> 
+> The speed ups come in three places:
+> 
+> 1)  Reducing the CPU time while reading the block bitmap in from disk.
+>     This was done by speeding up rb_set_bmap_range, and it significantly
+>     improves e2fsck's pass 5 operation.
+> 
+> 2)  Reducing the CPU time in e2fsck pass1 while constructing the
+>     block_found_map (which is the in-core block allocation bitmap as
+>     found by interating over all of the inodes).
+> 
+> 3)  Further speed up e2fsck's pass 5 by comparing the block allocation
+>     bitmap one bitmap block at a time, instead of a bit-at-a-time.
+> 
+> Before....
+> 
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 1: Memory used: 712k/31500k (622k/91k), time: 194.99/179.09/ 0.04
+> Pass 1: I/O read: 8MB, write: 0MB, rate: 0.04MB/s
+> Pass 2: Checking directory structure
+> Pass 2: Memory used: 712k/62064k (605k/108k), time:  1.03/ 0.01/ 0.02
+> Pass 2: I/O read: 4MB, write: 0MB, rate: 3.89MB/s
+> Pass 3: Checking directory connectivity
+> Peak memory: Memory used: 712k/62064k (605k/108k), time: 197.31/180.37/ 0.07
+> Pass 3A: Memory used: 712k/62064k (626k/87k), time:  0.00/ 0.00/ 0.00
+> Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+> Pass 3: Memory used: 712k/62064k (594k/119k), time:  0.00/ 0.00/ 0.00
+> Pass 3: I/O read: 1MB, write: 0MB, rate: 639.39MB/s
+> Pass 4: Checking reference counts
+> Pass 4: Memory used: 712k/936k (533k/180k), time:  7.82/ 7.81/ 0.00
+> Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+> Pass 5: Checking group summary information
+> Pass 5: Memory used: 832k/936k (510k/323k), time: 172.99/161.13/ 0.41
+> Pass 5: I/O read: 118MB, write: 0MB, rate: 0.68MB/s
+> Memory used: 832k/936k (510k/323k), time: 378.21/349.38/ 0.48
+> I/O read: 129MB, write: 0MB, rate: 0.34MB/s
+> 
+> ... and after....
+> 
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 1: Memory used: 916k/31500k (719k/198k), time: 17.83/ 2.79/ 0.05
+> Pass 1: I/O read: 8MB, write: 0MB, rate: 0.45MB/s
+> Pass 2: Checking directory structure
+> Pass 2: Memory used: 916k/62064k (704k/212k), time:  0.45/ 0.01/ 0.01
+> Pass 2: I/O read: 4MB, write: 0MB, rate: 8.82MB/s
+> Pass 3: Checking directory connectivity
+> Peak memory: Memory used: 916k/62064k (704k/212k), time: 18.89/ 3.39/ 0.07
+> Pass 3A: Memory used: 916k/62064k (735k/181k), time:  0.00/ 0.00/ 0.00
+> Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+> Pass 3: Memory used: 916k/62064k (693k/224k), time:  0.00/ 0.00/ 0.00
+> Pass 3: I/O read: 1MB, write: 0MB, rate: 1265.82MB/s
+> Pass 4: Checking reference counts
+> Pass 4: Memory used: 916k/936k (601k/315k), time:  5.69/ 5.67/ 0.00
+> Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+> Pass 5: Checking group summary information
+> Pass 5: Memory used: 1048k/936k (569k/480k), time: 22.76/10.49/ 0.53
+> Pass 5: I/O read: 117MB, write: 0MB, rate: 5.14MB/s
+> Memory used: 1048k/936k (569k/480k), time: 47.38/19.57/ 0.60
+> I/O read: 129MB, write: 0MB, rate: 2.72MB/s
 
-We have now been running a newer coreutils (/bin/cp) for about a week
-without seeing this pop up again, so we're reasonably sure it fixed
-the issue for us.
+That's very impressive speed up Ted! I'll give it a try and take a
+look at the patches.
 
-Thanks a bunch!
+Thanks!
+-Lukas
 
-
--- 
-Vennlig hilsen,
-Roger Niva
+> 
+> For slower CPU's (i.e., bookshelf NAS servers with underpowered, wimpy
+> ARM processors) or for larger RAID arrays, the speed ups would of course
+> be even better.
+> 
+> Theodore Ts'o (6):
+>   libext2fs: optimize rb_set_bmap_range()
+>   e2fsck: optimize pass1 for CPU time
+>   libext2fs: add ext2fs_bitcount() function
+>   libext2fs: optimize rb_get_bmap_range()
+>   libext2fs: optimize rb_get_bmap_range() for mostly allocated bmaps
+>   e2fsck: optimize pass 5 for CPU utilization
+> 
+>  e2fsck/pass1.c             | 18 +++++++++--
+>  e2fsck/pass5.c             | 55 +++++++++++++++++++++++++++++++--
+>  lib/ext2fs/bitops.c        | 35 +++++++++++++++++++++
+>  lib/ext2fs/bitops.h        |  1 +
+>  lib/ext2fs/blkmap64_rb.c   | 76 ++++++++++++++++++++++++++++++++++------------
+>  lib/ext2fs/tst_bitmaps.c   |  1 +
+>  lib/ext2fs/tst_bitmaps_exp |  3 ++
+>  7 files changed, 165 insertions(+), 24 deletions(-)
+> 
+> 
