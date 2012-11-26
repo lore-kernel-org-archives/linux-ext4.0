@@ -1,45 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/6] libext2fs: optimize rb_get_bmap_range() for mostly
- allocated bmaps
-Date: Mon, 26 Nov 2012 09:17:33 -0500
-Message-ID: <20121126141733.GD31891@thunk.org>
-References: <1353803794-11593-1-git-send-email-tytso@mit.edu>
- <1353803794-11593-6-git-send-email-tytso@mit.edu>
- <alpine.LFD.2.00.1211261152260.18234@localhost>
+Subject: Re: Ext4 file corruption using cp
+Date: Mon, 26 Nov 2012 09:24:21 -0500
+Message-ID: <20121126142421.GE31891@thunk.org>
+References: <CAH3VSLyZvtHC5G_Hx6oHr_jR43+vYz46nXLkifuD3gXGLd21yQ@mail.gmail.com>
+ <CAH3VSLw_spHkb27VbRUG-81Rc=hwPDnhfGOe9LqExs0bFveujQ@mail.gmail.com>
+ <61093A2B-5AEA-4ED8-B43D-AB6217B405AC@dilger.ca>
+ <CAH3VSLwhe7ZHfuc1+RatWvrvAOAS3HakYoRr5+PNnvvrue9BmA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Roger Niva <rogerniva@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34825 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34829 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752260Ab2KZORh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 09:17:37 -0500
+	id S1752832Ab2KZOYZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 09:24:25 -0500
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.1211261152260.18234@localhost>
+In-Reply-To: <CAH3VSLwhe7ZHfuc1+RatWvrvAOAS3HakYoRr5+PNnvvrue9BmA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2012 at 12:22:42PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
-:
-> > +		if (pos > start+num)
->=20
-> Missing spacing around '+'.
+On Mon, Nov 26, 2012 at 09:48:10AM +0100, Roger Niva wrote:
+> 
+> We have now been running a newer coreutils (/bin/cp) for about a week
+> without seeing this pop up again, so we're reasonably sure it fixed
+> the issue for us.
 
-I'll fix all of the spacing comments, thanks.
+Thanks for confirming that this fixed your issue!
 
-> Also I think that the condition should rather be:
->=20
-> 		if (pos >=3D start + num)
-
-Yes.  I believe the case where pos =3D start + num gets caught later on
-when we check the count variable, but it's cleaner/faster to bail out
-here.
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+       	   	      	   	      	   - Ted
