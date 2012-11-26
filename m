@@ -1,113 +1,279 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 0/6 -v2] Optimize e2fsck for large file systems
-Date: Mon, 26 Nov 2012 11:39:34 -0500
-Message-ID: <1353947981-15219-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/6 -v3] libext2fs: add ext2fs_bitcount() function
+Date: Mon, 26 Nov 2012 11:39:37 -0500
+Message-ID: <1353947981-15219-4-git-send-email-tytso@mit.edu>
+References: <1353947981-15219-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34884 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34888 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754983Ab2KZQjs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755062Ab2KZQjs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 26 Nov 2012 11:39:48 -0500
+In-Reply-To: <1353947981-15219-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As requested on the ext4 conference call, here is an updated release of
-the e2fsck optimization patch series.
+This function efficiently counts the number of bits in a block of
+memory.
 
-
-This patch series optimizes e2fsck for large file systems (where large
-is 4TB or more).  Previously checking a 4TB file system when it was
-mostly full could take upwards of 3 minutes of wall clock time, and
-e2fsck would be mostly CPU bound.  With this patch series, the same 4TB
-file system can now be checked in less than 50 seconds and approximately
-20 seconds of userspace CPU time.   (Previously, it was consuming over
-8 times as much CPU time.)
-
-The speed ups come in three places:
-
-1)  Reducing the CPU time while reading the block bitmap in from disk.
-    This was done by speeding up rb_set_bmap_range, and it significantly
-    improves e2fsck's pass 5 operation.
-
-2)  Reducing the CPU time in e2fsck pass1 while constructing the
-    block_found_map (which is the in-core block allocation bitmap as
-    found by interating over all of the inodes).
-
-3)  Further speed up e2fsck's pass 5 by comparing the block allocation
-    bitmap one bitmap block at a time, instead of a bit-at-a-time.
-
-Before....
-
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 916k/31500k (719k/198k), time: 96.48/81.26/ 0.10
-Pass 1: I/O read: 8MB, write: 0MB, rate: 0.08MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 916k/62064k (704k/212k), time:  0.46/ 0.01/ 0.03
-Pass 2: I/O read: 4MB, write: 0MB, rate: 8.72MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 916k/62064k (705k/212k), time: 97.56/81.88/ 0.13
-Pass 3A: Memory used: 916k/62064k (736k/181k), time:  0.00/ 0.00/ 0.00
-Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 3: Memory used: 916k/62064k (693k/223k), time:  0.00/ 0.00/ 0.00
-Pass 3: I/O read: 1MB, write: 0MB, rate: 1257.86MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 916k/936k (602k/315k), time:  6.59/ 6.55/ 0.02
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 1048k/936k (569k/480k), time: 93.39/80.92/ 0.69
-Pass 5: I/O read: 117MB, write: 0MB, rate: 1.25MB/s
-Memory used: 1048k/936k (569k/480k), time: 197.58/169.36/ 0.84
-I/O read: 129MB, write: 0MB, rate: 0.65MB/s
-169.36user 0.90system 3:17.66elapsed 86%CPU (0avgtext+0avgdata 254192maxresident)k
-0inputs+0outputs (12major+16066minor)pagefaults 0swaps
-
-.... and after....
-
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 916k/31500k (719k/198k), time: 17.83/ 2.79/ 0.05
-Pass 1: I/O read: 8MB, write: 0MB, rate: 0.45MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 916k/62064k (704k/212k), time:  0.45/ 0.01/ 0.01
-Pass 2: I/O read: 4MB, write: 0MB, rate: 8.82MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 916k/62064k (704k/212k), time: 18.89/ 3.39/ 0.07
-Pass 3A: Memory used: 916k/62064k (735k/181k), time:  0.00/ 0.00/ 0.00
-Pass 3A: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 3: Memory used: 916k/62064k (693k/224k), time:  0.00/ 0.00/ 0.00
-Pass 3: I/O read: 1MB, write: 0MB, rate: 1265.82MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 916k/936k (601k/315k), time:  5.69/ 5.67/ 0.00
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 1048k/936k (569k/480k), time: 22.76/10.49/ 0.53
-Pass 5: I/O read: 117MB, write: 0MB, rate: 5.14MB/s
-Memory used: 1048k/936k (569k/480k), time: 47.38/19.57/ 0.60
-I/O read: 129MB, write: 0MB, rate: 2.72MB/s
-
-For slower CPU's (i.e., bookshelf NAS servers with underpowered, wimpy
-ARM processors) or for larger RAID arrays, the speed ups would of course
-be even better.
-
-
-Theodore Ts'o (6):
-  libext2fs: optimize rb_set_bmap_range()
-  e2fsck: optimize pass1 for CPU time
-  libext2fs: add ext2fs_bitcount() function
-  libext2fs: optimize rb_get_bmap_range()
-  libext2fs: optimize rb_get_bmap_range() for mostly allocated bmaps
-  e2fsck: optimize pass 5 for CPU utilization
-
- e2fsck/pass1.c              | 18 ++++++++-
- e2fsck/pass5.c              | 55 ++++++++++++++++++++++++-
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+---
  lib/ext2fs/bitops.c         | 35 ++++++++++++++++
  lib/ext2fs/bitops.h         |  1 +
- lib/ext2fs/blkmap64_rb.c    | 76 +++++++++++++++++++++++++----------
  lib/ext2fs/tst_bitmaps.c    |  1 +
  lib/ext2fs/tst_bitmaps_cmds | 42 ++++++++++++++++++++
  lib/ext2fs/tst_bitmaps_exp  | 97 +++++++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 301 insertions(+), 24 deletions(-)
+ 5 files changed, 176 insertions(+)
 
+diff --git a/lib/ext2fs/bitops.c b/lib/ext2fs/bitops.c
+index 9322a35..bd9e768 100644
+--- a/lib/ext2fs/bitops.c
++++ b/lib/ext2fs/bitops.c
+@@ -116,3 +116,38 @@ int ext2fs_test_bit64(__u64 nr, const void * addr)
+ 	return (mask & *ADDR);
+ }
+ 
++static unsigned int popcount8(unsigned int w)
++{
++	unsigned int res = w - ((w >> 1) & 0x55);
++	res = (res & 0x33) + ((res >> 2) & 0x33);
++	return (res + (res >> 4)) & 0x0F;
++}
++
++static unsigned int popcount32(unsigned int w)
++{
++	unsigned int res = w - ((w >> 1) & 0x55555555);
++	res = (res & 0x33333333) + ((res >> 2) & 0x33333333);
++	res = (res + (res >> 4)) & 0x0F0F0F0F;
++	res = res + (res >> 8);
++	return (res + (res >> 16)) & 0x000000FF;
++}
++
++unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes)
++{
++	const unsigned char *cp = addr;
++	const __u32 *p = addr;
++	unsigned int res = 0;
++
++	if ((((unsigned long) addr) & 3) == 0) {
++		while (nbytes > 4) {
++			res += popcount32(*p++);
++			nbytes -= 4;
++		}
++		cp = (const unsigned char *) p;
++	}
++	while (nbytes > 0) {
++		res += popcount8(*cp++);
++		nbytes--;
++	}
++	return res;
++}
+diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
+index 526870f..406999b 100644
+--- a/lib/ext2fs/bitops.h
++++ b/lib/ext2fs/bitops.h
+@@ -686,6 +686,7 @@ extern int ext2fs_test_bit(unsigned int nr, const void * addr);
+ extern int ext2fs_set_bit64(__u64 nr,void * addr);
+ extern int ext2fs_clear_bit64(__u64 nr, void * addr);
+ extern int ext2fs_test_bit64(__u64 nr, const void * addr);
++extern unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes);
+ 
+ #ifdef NO_INLINE_FUNCS
+ extern void ext2fs_fast_set_bit(unsigned int nr,void * addr);
+diff --git a/lib/ext2fs/tst_bitmaps.c b/lib/ext2fs/tst_bitmaps.c
+index 5da3693..2a76292 100644
+--- a/lib/ext2fs/tst_bitmaps.c
++++ b/lib/ext2fs/tst_bitmaps.c
+@@ -270,6 +270,7 @@ void dump_bitmap(ext2fs_generic_bitmap bmap, unsigned int start, unsigned num)
+ 	for (i=0; i < len; i++)
+ 		printf("%02x", buf[i]);
+ 	printf("\n");
++	printf("bits set: %u\n", ext2fs_bitcount(buf, len));
+ 	free(buf);
+ }
+ 
+diff --git a/lib/ext2fs/tst_bitmaps_cmds b/lib/ext2fs/tst_bitmaps_cmds
+index 9a4f3d0..31e2a60 100644
+--- a/lib/ext2fs/tst_bitmaps_cmds
++++ b/lib/ext2fs/tst_bitmaps_cmds
+@@ -53,5 +53,47 @@ cleari 5
+ testi 17
+ testi 6
+ testi 4
++clearb 7 12
++dump_bb
++setb 1
++dump_bb
++setb 2
++dump_bb
++setb 3
++dump_bb
++setb 4
++dump_bb
++setb 5
++dump_bb
++setb 6
++dump_bb
++setb 7
++dump_bb
++setb 8
++dump_bb
++setb 10
++setb 12
++setb 14
++setb 17
++setb 19
++setb 24
++setb 26
++setb 27
++setb 30
++setb 31
++setb 32
++setb 35
++setb 39
++setb 40
++setb 44
++setb 46
++setb 47
++setb 49
++setb 51
++setb 52
++clearb 2
++clearb 3
++clearb 7
++dump_bb
+ quit
+ 
+diff --git a/lib/ext2fs/tst_bitmaps_exp b/lib/ext2fs/tst_bitmaps_exp
+index 2d406ce..2d62b66 100644
+--- a/lib/ext2fs/tst_bitmaps_exp
++++ b/lib/ext2fs/tst_bitmaps_exp
+@@ -36,6 +36,7 @@ tst_bitmaps: testb 16
+ Block 16 is set
+ tst_bitmaps: dump_bb
+ block bitmap: 00f80000000000000000000000000000
++bits set: 5
+ tst_bitmaps: ffzb 11 16
+ First unmarked block is 11
+ tst_bitmaps: ffzb 12 16
+@@ -64,6 +65,7 @@ tst_bitmaps: setb 12 7
+ Marking blocks 12 to 18
+ tst_bitmaps: dump_bb
+ block bitmap: 00f80300000000000000000000000000
++bits set: 7
+ tst_bitmaps: seti 2
+ Setting inode 2, was clear before
+ tst_bitmaps: seti 5
+@@ -82,6 +84,7 @@ tst_bitmaps: testi 1
+ Inode 1 is clear
+ tst_bitmaps: dump_ib
+ inode bitmap: 1e000000
++bits set: 4
+ tst_bitmaps: ffzi 1 6
+ First unmarked inode is 1
+ tst_bitmaps: ffzi 2 5
+@@ -110,5 +113,99 @@ tst_bitmaps: testi 6
+ Inode 6 is clear
+ tst_bitmaps: testi 4
+ Inode 4 is clear
++tst_bitmaps: clearb 7 12
++Clearing blocks 7 to 18
++tst_bitmaps: dump_bb
++block bitmap: 00000000000000000000000000000000
++bits set: 0
++tst_bitmaps: setb 1
++Setting block 1, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 01000000000000000000000000000000
++bits set: 1
++tst_bitmaps: setb 2
++Setting block 2, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 03000000000000000000000000000000
++bits set: 2
++tst_bitmaps: setb 3
++Setting block 3, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 07000000000000000000000000000000
++bits set: 3
++tst_bitmaps: setb 4
++Setting block 4, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 0f000000000000000000000000000000
++bits set: 4
++tst_bitmaps: setb 5
++Setting block 5, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 1f000000000000000000000000000000
++bits set: 5
++tst_bitmaps: setb 6
++Setting block 6, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 3f000000000000000000000000000000
++bits set: 6
++tst_bitmaps: setb 7
++Setting block 7, was clear before
++tst_bitmaps: dump_bb
++block bitmap: 7f000000000000000000000000000000
++bits set: 7
++tst_bitmaps: setb 8
++Setting block 8, was clear before
++tst_bitmaps: dump_bb
++block bitmap: ff000000000000000000000000000000
++bits set: 8
++tst_bitmaps: setb 10
++Setting block 10, was clear before
++tst_bitmaps: setb 12
++Setting block 12, was clear before
++tst_bitmaps: setb 14
++Setting block 14, was clear before
++tst_bitmaps: setb 17
++Setting block 17, was clear before
++tst_bitmaps: setb 19
++Setting block 19, was clear before
++tst_bitmaps: setb 24
++Setting block 24, was clear before
++tst_bitmaps: setb 26
++Setting block 26, was clear before
++tst_bitmaps: setb 27
++Setting block 27, was clear before
++tst_bitmaps: setb 30
++Setting block 30, was clear before
++tst_bitmaps: setb 31
++Setting block 31, was clear before
++tst_bitmaps: setb 32
++Setting block 32, was clear before
++tst_bitmaps: setb 35
++Setting block 35, was clear before
++tst_bitmaps: setb 39
++Setting block 39, was clear before
++tst_bitmaps: setb 40
++Setting block 40, was clear before
++tst_bitmaps: setb 44
++Setting block 44, was clear before
++tst_bitmaps: setb 46
++Setting block 46, was clear before
++tst_bitmaps: setb 47
++Setting block 47, was clear before
++tst_bitmaps: setb 49
++Setting block 49, was clear before
++tst_bitmaps: setb 51
++Setting block 51, was clear before
++tst_bitmaps: setb 52
++Setting block 52, was clear before
++tst_bitmaps: clearb 2
++Clearing block 2, was set before
++tst_bitmaps: clearb 3
++Clearing block 3, was set before
++tst_bitmaps: clearb 7
++Clearing block 7, was set before
++tst_bitmaps: dump_bb
++block bitmap: b92a85e6c4680d000000000000000000
++bits set: 25
+ tst_bitmaps: quit
+ tst_bitmaps: 
 -- 
 1.7.12.rc0.22.gcdd159b
 
