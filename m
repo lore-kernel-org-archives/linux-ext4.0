@@ -1,124 +1,60 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 6/6 -v2] e2fsck: optimize pass 5 for CPU utilization
-Date: Mon, 26 Nov 2012 11:39:40 -0500
-Message-ID: <1353947981-15219-7-git-send-email-tytso@mit.edu>
+From: Zach Brown <zab@zabbo.net>
+Subject: Re: [PATCH 3/6 -v3] libext2fs: add ext2fs_bitcount() function
+Date: Mon, 26 Nov 2012 15:17:45 -0800
+Message-ID: <20121126231745.GH23854@lenny.home.zabbo.net>
 References: <1353947981-15219-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+ <1353947981-15219-4-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34893 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755184Ab2KZQp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2012 11:45:56 -0500
-In-Reply-To: <1353947981-15219-1-git-send-email-tytso@mit.edu>
+Received: from tetsuo.zabbo.net ([50.193.208.193]:59398 "EHLO tetsuo.zabbo.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754953Ab2KZXRq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 18:17:46 -0500
+Content-Disposition: inline
+In-Reply-To: <1353947981-15219-4-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a fast past optimization in e2fsck's pass 5 for the common case
-where the block bitmap is correct.  The optimization works by
-extracting each block group's block allocation bitmap into a memory
-buffer, and comparing it with the expected allocation bitmap using
-memcmp().  If it matches, then we can just update the free block
-counts and be on our way, and skip checking each bit individually.
+> This function efficiently counts the number of bits in a block of
+> memory.
 
-Addresses-Google-Bug: #7534813
+Would it be worth the annoying build- and run-time machinery to detect
+and use the -msse4.2 __builtin_popcount() gcc intrinsic?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
----
- e2fsck/pass5.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 53 insertions(+), 2 deletions(-)
+> +static unsigned int popcount32(unsigned int w)
+> +{
+> +	unsigned int res = w - ((w >> 1) & 0x55555555);
+> +	res = (res & 0x33333333) + ((res >> 2) & 0x33333333);
+> +	res = (res + (res >> 4)) & 0x0F0F0F0F;
+> +	res = res + (res >> 8);
+> +	return (res + (res >> 16)) & 0x000000FF;
+> +}
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 8312fe0..5aff55c 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -212,6 +212,12 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 	int	cmp_block = 0;
- 	int	redo_flag = 0;
- 	blk64_t	super_blk, old_desc_blk, new_desc_blk;
-+	char *actual_buf, *bitmap_buf;
-+
-+	actual_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize,
-+						     "actual bitmap buffer");
-+	bitmap_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize,
-+						     "bitmap block buffer");
- 
- 	clear_problem_context(&pctx);
- 	free_array = (unsigned int *) e2fsck_allocate_memory(ctx,
-@@ -259,11 +265,53 @@ redo_counts:
- 	for (i = B2C(fs->super->s_first_data_block);
- 	     i < ext2fs_blocks_count(fs->super);
- 	     i += EXT2FS_CLUSTER_RATIO(fs)) {
-+		int first_block_in_bg = (B2C(i) -
-+					 B2C(fs->super->s_first_data_block)) %
-+			fs->super->s_clusters_per_group == 0;
-+		int n, nbytes = fs->super->s_clusters_per_group / 8;
-+
- 		actual = ext2fs_fast_test_block_bitmap2(ctx->block_found_map, i);
- 
-+		/*
-+		 * Try to optimize pass5 by extracting a bitmap block
-+		 * as expected from what we have on disk, and then
-+		 * comparing the two.  If they are identical, then
-+		 * update the free block counts and go on to the next
-+		 * block group.  This is much faster than doing the
-+		 * individual bit-by-bit comparison.  The one downside
-+		 * is that this doesn't work if we are asking e2fsck
-+		 * to do a discard operation.
-+		 */
-+		if (!first_block_in_bg ||
-+		    (group == (int)fs->group_desc_count - 1) ||
-+		    (ctx->options & E2F_OPT_DISCARD))
-+			goto no_optimize;
-+
-+		retval = ext2fs_get_block_bitmap_range2(ctx->block_found_map,
-+				B2C(i), fs->super->s_clusters_per_group,
-+				actual_buf);
-+		if (retval)
-+			goto no_optimize;
-+		if (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT))
-+			memset(bitmap_buf, 0, nbytes);
-+		else {
-+			retval = ext2fs_get_block_bitmap_range2(fs->block_map,
-+					B2C(i), fs->super->s_clusters_per_group,
-+					bitmap_buf);
-+			if (retval)
-+				goto no_optimize;
-+		}
-+		if (memcmp(actual_buf, bitmap_buf, nbytes) != 0)
-+			goto no_optimize;
-+		n = ext2fs_bitcount(actual_buf, nbytes);
-+		group_free = fs->super->s_clusters_per_group - n;
-+		free_blocks += group_free;
-+		i += fs->super->s_clusters_per_group - 1;
-+		goto next_group;
-+	no_optimize:
-+
- 		if (skip_group) {
--			if ((B2C(i) - B2C(fs->super->s_first_data_block)) %
--			    fs->super->s_clusters_per_group == 0) {
-+			if (first_block_in_bg) {
- 				super_blk = 0;
- 				old_desc_blk = 0;
- 				new_desc_blk = 0;
-@@ -401,6 +449,7 @@ redo_counts:
- 			if (!bitmap && i >= first_free)
- 				e2fsck_discard_blocks(ctx, first_free,
- 						      (i - first_free) + 1);
-+		next_group:
- 			first_free = ext2fs_blocks_count(fs->super);
- 
- 			free_array[group] = group_free;
-@@ -475,6 +524,8 @@ redo_counts:
- 	}
- errout:
- 	ext2fs_free_mem(&free_array);
-+	ext2fs_free_mem(&actual_buf);
-+	ext2fs_free_mem(&bitmap_buf);
- }
- 
- static void check_inode_bitmaps(e2fsck_t ctx)
--- 
-1.7.12.rc0.22.gcdd159b
+  40042b:       89 c2                   mov    %eax,%edx
+  400432:       d1 ea                   shr    %edx
+  400434:       81 e2 55 55 55 55       and    $0x55555555,%edx
+  40043a:       29 d0                   sub    %edx,%eax
+  40043c:       89 c2                   mov    %eax,%edx
+  40043e:       c1 e8 02                shr    $0x2,%eax
+  400441:       81 e2 33 33 33 33       and    $0x33333333,%edx
+  400447:       25 33 33 33 33          and    $0x33333333,%eax
+  40044c:       01 d0                   add    %edx,%eax
+  40044e:       89 c2                   mov    %eax,%edx
+  400450:       c1 ea 04                shr    $0x4,%edx
+  400453:       01 d0                   add    %edx,%eax
+  400455:       25 0f 0f 0f 0f          and    $0xf0f0f0f,%eax
+  40045a:       89 c2                   mov    %eax,%edx
+  40045c:       c1 ea 08                shr    $0x8,%edx
+  40045f:       01 d0                   add    %edx,%eax
+  400461:       89 c6                   mov    %eax,%esi
+  400463:       c1 ee 10                shr    $0x10,%esi
+  400468:       0f b6 f0                movzbl %al,%esi
 
+__builtin_popcount():
+
+  40047e:       f3 0f b8 f0             popcnt %eax,%esi
+
+- z
