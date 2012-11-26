@@ -1,53 +1,53 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 50981] ext4 : DATA CORRUPTION read and write on same 4096 page
- range
-Date: Mon, 26 Nov 2012 08:34:18 +0000 (UTC)
-Message-ID: <20121126083418.8E43A11FB7E@bugzilla.kernel.org>
-References: <bug-50981-13602@https.bugzilla.kernel.org/>
+From: Roger Niva <rogerniva@gmail.com>
+Subject: Re: Ext4 file corruption using cp
+Date: Mon, 26 Nov 2012 09:48:10 +0100
+Message-ID: <CAH3VSLwhe7ZHfuc1+RatWvrvAOAS3HakYoRr5+PNnvvrue9BmA@mail.gmail.com>
+References: <CAH3VSLyZvtHC5G_Hx6oHr_jR43+vYz46nXLkifuD3gXGLd21yQ@mail.gmail.com>
+	<CAH3VSLw_spHkb27VbRUG-81Rc=hwPDnhfGOe9LqExs0bFveujQ@mail.gmail.com>
+	<61093A2B-5AEA-4ED8-B43D-AB6217B405AC@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:32822 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753671Ab2KZIeV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2012 03:34:21 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 98A24201BA
-	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 08:34:20 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 27B332018F
-	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 08:34:19 +0000 (UTC)
-In-Reply-To: <bug-50981-13602@https.bugzilla.kernel.org/>
+Received: from mail-ea0-f174.google.com ([209.85.215.174]:52575 "EHLO
+	mail-ea0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753839Ab2KZIsM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 03:48:12 -0500
+Received: by mail-ea0-f174.google.com with SMTP id e13so4300550eaa.19
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 00:48:10 -0800 (PST)
+In-Reply-To: <61093A2B-5AEA-4ED8-B43D-AB6217B405AC@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=50981
+On Sun, Nov 11, 2012 at 6:50 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On 2012-11-11, at 4:37, Roger Niva <rogerniva@gmail.com> wrote:
+>>
+>> We are trying to pin down a file corruption issue we have on 5
+>> productionservers and would like some suggestions about how to proceed
+>> to find the culprit. It may or may not be ext4-related, but as that is
+>> the only clue we have so far, we're trying here first.
+>>
+>> The productionservers are running Slackware 13.37 with a selfcompiled
+>> kernel (no patches or external modules).
+>> We have a script running daily that copies files from one folder to
+>> another using cp.
+>
+> there was a bug in ext4 FIEMAP ioctl code in the past that interacted badly with fileutils for copying files that were just written and still in cache.  That was around 2.6.26 or so.
+>
+> You should probably try a new version of fileutils to see if that solves the problem. Alternately, if you run "sync" before "cp" this should also avoid the problem.
+>
+> Cheers, Andreas
 
+Hi.
 
-Lukas Czerner <lczerner@redhat.com> changed:
+We have now been running a newer coreutils (/bin/cp) for about a week
+without seeing this pop up again, so we're reasonably sure it fixed
+the issue for us.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |lczerner@redhat.com
+Thanks a bunch!
 
-
-
-
---- Comment #2 from Lukas Czerner <lczerner@redhat.com>  2012-11-26 08:34:18 ---
-This is present upstream as well (3.7.0-rc7). In fact it is not even ext4
-specific. I can easily reproduce this on btrfs, ext3, vfat. I suspect that this
-would be reproducible on every file system which does not implement its own
-read/write exclusion as xfs does.
-
-MM people should really take a look at this as well since we are expecting the
-read/write to/from the single page to be atomic, but this looks like that it
-might not be true.
-
-Thanks!
--Lukas
 
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Vennlig hilsen,
+Roger Niva
