@@ -1,16 +1,16 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/6 -v2] libext2fs: add ext2fs_bitcount() function
-Date: Mon, 26 Nov 2012 09:10:35 -0500
-Message-ID: <1353939035-31829-1-git-send-email-tytso@mit.edu>
-References: <20121126140638.GC31891@thunk.org>
+Subject: [PATCH 4/6 -v3] libext2fs: add ext2fs_bitcount() function
+Date: Mon, 26 Nov 2012 09:12:05 -0500
+Message-ID: <1353939125-31996-1-git-send-email-tytso@mit.edu>
+References: <1353939035-31829-1-git-send-email-tytso@mit.edu>
 Cc: lczerner@redhat.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:34817 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:34821 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752996Ab2KZOKh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2012 09:10:37 -0500
-In-Reply-To: <20121126140638.GC31891@thunk.org>
+	id S1752147Ab2KZOMH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 09:12:07 -0500
+In-Reply-To: <1353939035-31829-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -20,6 +20,8 @@ memory.
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 ---
+
+(Once more, with the correct patch...)
 
 Renamed function signature to make it clear that ext2fs_bitcount takes
 the number of bytes, not number of bits.
@@ -35,7 +37,7 @@ thoroughly tested.
  5 files changed, 176 insertions(+)
 
 diff --git a/lib/ext2fs/bitops.c b/lib/ext2fs/bitops.c
-index 9322a35..7f5b66f 100644
+index 9322a35..bd9e768 100644
 --- a/lib/ext2fs/bitops.c
 +++ b/lib/ext2fs/bitops.c
 @@ -116,3 +116,38 @@ int ext2fs_test_bit64(__u64 nr, const void * addr)
@@ -58,34 +60,34 @@ index 9322a35..7f5b66f 100644
 +	return (res + (res >> 16)) & 0x000000FF;
 +}
 +
-+unsigned int ext2fs_bitcount(const void *addr, unsigned int count)
++unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes)
 +{
 +	const unsigned char *cp = addr;
 +	const __u32 *p = addr;
 +	unsigned int res = 0;
 +
 +	if ((((unsigned long) addr) & 3) == 0) {
-+		while (count > 4) {
++		while (nbytes > 4) {
 +			res += popcount32(*p++);
-+			count -= 4;
++			nbytes -= 4;
 +		}
 +		cp = (const unsigned char *) p;
 +	}
-+	while (count > 0) {
++	while (nbytes > 0) {
 +		res += popcount8(*cp++);
-+		count--;
++		nbytes--;
 +	}
 +	return res;
 +}
 diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
-index 526870f..17e707c 100644
+index 526870f..406999b 100644
 --- a/lib/ext2fs/bitops.h
 +++ b/lib/ext2fs/bitops.h
 @@ -686,6 +686,7 @@ extern int ext2fs_test_bit(unsigned int nr, const void * addr);
  extern int ext2fs_set_bit64(__u64 nr,void * addr);
  extern int ext2fs_clear_bit64(__u64 nr, void * addr);
  extern int ext2fs_test_bit64(__u64 nr, const void * addr);
-+extern unsigned int ext2fs_bitcount(const void *addr, unsigned int count);
++extern unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes);
  
  #ifdef NO_INLINE_FUNCS
  extern void ext2fs_fast_set_bit(unsigned int nr,void * addr);
