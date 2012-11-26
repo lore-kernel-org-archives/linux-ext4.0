@@ -1,85 +1,49 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 4/6] libext2fs: optimize rb_get_bmap_range()
-Date: Mon, 26 Nov 2012 11:46:24 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1211261146110.18234@localhost>
-References: <1353803794-11593-1-git-send-email-tytso@mit.edu> <1353803794-11593-5-git-send-email-tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 50981] ext4 : DATA CORRUPTION read and write on same 4096 page
+ range
+Date: Mon, 26 Nov 2012 11:18:39 +0000 (UTC)
+Message-ID: <20121126111839.1E5D011FB81@bugzilla.kernel.org>
+References: <bug-50981-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62227 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.19.201]:37148 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754361Ab2KZKqa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2012 05:46:30 -0500
-In-Reply-To: <1353803794-11593-5-git-send-email-tytso@mit.edu>
+	id S1754552Ab2KZLSp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 06:18:45 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 72D9920136
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 11:18:40 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 76A3420124
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 11:18:39 +0000 (UTC)
+In-Reply-To: <bug-50981-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 24 Nov 2012, Theodore Ts'o wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=50981
 
-> Date: Sat, 24 Nov 2012 19:36:32 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH 4/6] libext2fs: optimize rb_get_bmap_range()
-> 
-> This simplifies the rb_get_bmap_range() function and speeds it up for
-> the case where most of the bitmap is zero.
 
-Looks good
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  lib/ext2fs/blkmap64_rb.c | 25 ++++++++-----------------
->  1 file changed, 8 insertions(+), 17 deletions(-)
-> 
-> diff --git a/lib/ext2fs/blkmap64_rb.c b/lib/ext2fs/blkmap64_rb.c
-> index 816f44f..0705cf2 100644
-> --- a/lib/ext2fs/blkmap64_rb.c
-> +++ b/lib/ext2fs/blkmap64_rb.c
-> @@ -741,32 +741,23 @@ static errcode_t rb_get_bmap_range(ext2fs_generic_bitmap bitmap,
->  			break;
->  	}
->  
-> -	pos = start;
-> +	memset(out, 0, (num + 7) >> 3);
-> +
->  	for (; parent != NULL; parent = next) {
->  		next = ext2fs_rb_next(parent);
->  		ext = ext2fs_rb_entry(parent, struct bmap_rb_extent, node);
->  
-> -		while (((pos - start) < num) &&
-> -			(pos < ext->start)) {
-> -			ext2fs_fast_clear_bit64((pos - start), out);
-> -			pos++;
-> -		}
-> -
-> -		if ((pos - start) >= num)
-> -			return 0;
-> +		pos = ext->start;
-> +		if (pos < start)
-> +			pos = start;
->  
-> -		while (((pos - start) < num) &&
-> -			(pos < (ext->start + ext->count))) {
-> +		while (pos < (ext->start + ext->count)) {
-> +			if ((pos - start) >= num)
-> +				return 0;
->  			ext2fs_fast_set_bit64((pos - start), out);
->  			pos++;
->  		}
->  	}
-> -
-> -	while ((pos - start) < num) {
-> -		ext2fs_fast_clear_bit64((pos - start), out);
-> -		pos++;
-> -	}
-> -
->  	return 0;
->  }
->  
-> 
+
+--- Comment #5 from Zheng Liu <gnehzuil.liu@gmail.com>  2012-11-26 11:18:38 ---
+(In reply to comment #4)
+> Yes, that's what I said XFS has its own read/write exclusion. However we're
+> reading/writing a single page here and page read/write shoud be atomic so we
+> should _not_ see page with mixed data. Basically the page should be locked when
+> we copy data from/to it,
+
+Sorry, as my understanding, a page won't be locked when it is accessed if it
+has been mark uptodate.  If we write a page that has been written recently, the
+uptodate flag won't be clear.  So reader won't try to lock page, and maybe that
+is not atomic.  Am I missing something?
+
+Regards,
+Zheng
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
