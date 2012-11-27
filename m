@@ -1,80 +1,49 @@
-From: Sachin Kamat <sachin.kamat@linaro.org>
-Subject: Re: [PATCH 1/1] ext4: Remove duplicate inclusion of ext4_extents.h in super.c
-Date: Tue, 27 Nov 2012 09:07:08 +0530
-Message-ID: <CAK9yfHxMBmLAoNTKbvAoCYEyA9zqumao6Ou-WWOD4PZwMtGiaA@mail.gmail.com>
-References: <1353323842-32283-1-git-send-email-sachin.kamat@linaro.org>
-	<20121119133944.GA11095@gmail.com>
-	<CAK9yfHyLzJE+rH3L0UN1x2dVNcEdaR=F7Z_Q2NfTidV2GKuP=g@mail.gmail.com>
-	<20121119162356.GB2337@gmail.com>
-	<CAK9yfHyVJjxX46C8b6fduxTmEeqvx5p9j-bE7X9v=Wcpq9aLVA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/6 -v3] libext2fs: add ext2fs_bitcount() function
+Date: Tue, 27 Nov 2012 00:16:17 -0500
+Message-ID: <20121127051617.GA7080@thunk.org>
+References: <1353947981-15219-1-git-send-email-tytso@mit.edu>
+ <1353947981-15219-4-git-send-email-tytso@mit.edu>
+ <20121126231745.GH23854@lenny.home.zabbo.net>
+ <20121127014505.GB25222@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Sachin Kamat <sachin.kamat@linaro.org>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger.kernel@dilger.ca, patches@linaro.org,
-	Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Zach Brown <zab@zabbo.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:58934 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933114Ab2K0DhK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 22:37:10 -0500
-Received: by mail-vb0-f46.google.com with SMTP id ff1so6423823vbb.19
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 19:37:08 -0800 (PST)
-In-Reply-To: <CAK9yfHyVJjxX46C8b6fduxTmEeqvx5p9j-bE7X9v=Wcpq9aLVA@mail.gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:35005 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750903Ab2K0FQU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Nov 2012 00:16:20 -0500
+Content-Disposition: inline
+In-Reply-To: <20121127014505.GB25222@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ping
+On Mon, Nov 26, 2012 at 08:45:05PM -0500, Theodore Ts'o wrote:
+> I suppose I should first check and see how much difference it makes to
+> with a hard-coded use __builtin_popcnt().  If it makes a sufficiently
+> large improvement, it's probably worth the hair of implementing the
+> fallback machinery.
 
-On 22 November 2012 10:43, Sachin Kamat <sachin.kamat@linaro.org> wrote:
-> Hi Theodore,
->
-> On 19 November 2012 21:53, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
->> On Mon, Nov 19, 2012 at 08:36:06PM +0530, Sachin Kamat wrote:
->>> Hi Zheng,
->>>
->>> On 19 November 2012 19:09, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
->>> > On Mon, Nov 19, 2012 at 04:47:22PM +0530, Sachin Kamat wrote:
->>> >> ext4_extents.h was included twice.
->>> >>
->>> >> Signed-off-by: Sachin Kamat <sachin.kamat@linaro.org>
->>> >> ---
->>> >>  fs/ext4/super.c |    1 -
->>> >>  1 files changed, 0 insertions(+), 1 deletions(-)
->>> >>
->>> >> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> >> index ad6cd8a..c8a6138 100644
->>> >> --- a/fs/ext4/super.c
->>> >> +++ b/fs/ext4/super.c
->>> >> @@ -50,7 +50,6 @@
->>> >>  #include "xattr.h"
->>> >>  #include "acl.h"
->>> >>  #include "mballoc.h"
->>> >> -#include "ext4_extents.h"
->>> >
->>> > Hi Sachin,
->>> >
->>> > Sorry, I don't find this duplicated code in mainline kernel 3.7-rc6.
->>>
->>> The duplicated code is available on the linux-next tree (20121115).
->>> The second instance was added by the commit
->>> "ext4: let ext4 maintain extent status tree" (commit id: 51865fda).
->>
->> Good catch.  Sorry for my fault that introduces this duplicated code.
->> The patch looks good to me.
->>
->> Regards,
->>                                                 - Zheng
->
-> This is just a simple patch to remove the include statement coded
-> twice in the file.
-> Please pick this up.
->
-> --
-> With warm regards,
-> Sachin
+I did some quick benchmarking, and the difference it makes when
+checking 4TB's worth of bitmaps is negligble:
 
+slow popcount: 0.2623
+fast popcount: 0.0700
 
+For a 128TB's worth of bitmaps, the time difference is:
 
--- 
-With warm regards,
-Sachin
+slow popcount: 8.0185
+fast popcount: 2.2066
+
+I measured running e2fsck on an empty 128TB file system, and that took
+202 CPU seconds (assuming all of the fs metadata blocks are in cache),
+so with this optimization we would save at most 3%.  (For comparison,
+using an unmodified 1.42.6 e2fsck, it burned 392.7 CPU seconds.)
+
+My conclusion is that using __builtin_popcnt() is a nice-to-have, and
+if someone sends me patches I'll probably take them as a optimization,
+but it's not super high priority for me.
+
+							- Ted
