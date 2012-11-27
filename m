@@ -1,147 +1,110 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 4/4] ext3: Warn if mounting rw on a disk requiring stable
- page writes
-Date: Mon, 26 Nov 2012 18:17:40 -0800
-Message-ID: <20121127021740.GA11869@blackbox.djwong.org>
-References: <20121121020027.10225.43206.stgit@blackbox.djwong.org>
- <20121121020056.10225.15220.stgit@blackbox.djwong.org>
- <20121121021543.GI10507@quack.suse.cz>
- <20121121211319.GA32202@blackbox.djwong.org>
- <20121121213333.GF30250@quack.suse.cz>
- <20121122084713.69e5b1fc@notabene.brown>
- <20121122014755.GH8740@blackbox.djwong.org>
- <20121122091240.GA11154@quack.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: How to run xfstests against multipath disks on SuSE?
+Date: Tue, 27 Nov 2012 14:14:38 +1100
+Message-ID: <20121127031438.GK6434@dastard>
+References: <CAPxxNQmwX+TmJ=B-H0f+bzpx5JdijyyRrxCAAZRi9+c8HjQL9Q@mail.gmail.com>
+ <alpine.LFD.2.00.1211261442490.18234@localhost>
+ <20121126145559.GK31891@thunk.org>
+ <CAPxxNQmgOmEzkmzL7Tei4KAxaP49yx1fmhNgxvwaFNiYVosGtA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, axboe@kernel.dk, lucho@ionkov.net,
-	ericvh@gmail.com, tytso@mit.edu, rminnich@sandia.gov,
-	viro@zeniv.linux.org.uk, martin.petersen@oracle.com,
-	david@fromorbit.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Ryan Wang <openspace.wang@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30507 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755614Ab2K0CTm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 21:19:42 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:28812 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755614Ab2K0DOl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 26 Nov 2012 22:14:41 -0500
 Content-Disposition: inline
-In-Reply-To: <20121122091240.GA11154@quack.suse.cz>
+In-Reply-To: <CAPxxNQmgOmEzkmzL7Tei4KAxaP49yx1fmhNgxvwaFNiYVosGtA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 22, 2012 at 10:12:40AM +0100, Jan Kara wrote:
-> On Wed 21-11-12 17:47:55, Darrick J. Wong wrote:
-> > On Thu, Nov 22, 2012 at 08:47:13AM +1100, NeilBrown wrote:
-> > > On Wed, 21 Nov 2012 22:33:33 +0100 Jan Kara <jack@suse.cz> wrote:
-> > > 
-> > > > On Wed 21-11-12 13:13:19, Darrick J. Wong wrote:
-> > > > > On Wed, Nov 21, 2012 at 03:15:43AM +0100, Jan Kara wrote:
-> > > > > > On Tue 20-11-12 18:00:56, Darrick J. Wong wrote:
-> > > > > > > ext3 doesn't properly isolate pages from changes during writeback.  Since the
-> > > > > > > recommended fix is to use ext4, for now we'll just print a warning if the user
-> > > > > > > tries to mount in write mode.
-> > > > > > > 
-> > > > > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > > > > > > ---
-> > > > > > >  fs/ext3/super.c |    8 ++++++++
-> > > > > > >  1 file changed, 8 insertions(+)
-> > > > > > > 
-> > > > > > > 
-> > > > > > > diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> > > > > > > index 5366393..5b3725d 100644
-> > > > > > > --- a/fs/ext3/super.c
-> > > > > > > +++ b/fs/ext3/super.c
-> > > > > > > @@ -1325,6 +1325,14 @@ static int ext3_setup_super(struct super_block *sb, struct ext3_super_block *es,
-> > > > > > >  			"forcing read-only mode");
-> > > > > > >  		res = MS_RDONLY;
-> > > > > > >  	}
-> > > > > > > +	if (!read_only &&
-> > > > > > > +	    queue_requires_stable_pages(bdev_get_queue(sb->s_bdev))) {
-> > > > > > > +		ext3_msg(sb, KERN_ERR,
-> > > > > > > +			"error: ext3 cannot safely write data to a disk "
-> > > > > > > +			"requiring stable pages writes; forcing read-only "
-> > > > > > > +			"mode.  Upgrading to ext4 is recommended.");
-> > > > > > > +		res = MS_RDONLY;
-> > > > > > > +	}
-> > > > > > >  	if (read_only)
-> > > > > > >  		return res;
-> > > > > > >  	if (!(sbi->s_mount_state & EXT3_VALID_FS))
-> > > > > >   Why this? ext3 should be fixed by your change to
-> > > > > > filemap_page_mkwrite()... Or does testing show otherwise?
-> > > > > 
-> > > > > Yes, it's still broken even with this new set of changes.  Now that I think
-> > > > > about it a little more, I recall that writeback mode was actually fine, so this
-> > > > > is a little harsh.
-> > > > > 
-> > > > > Hm... looking at the ordered code a little more, it looks like
-> > > > > ext3_ordered_write_end is calling journal_dirty_data_fn, which (I guess?) tries
-> > > > > to write mapped buffers back through the journal?  Taking it out seems to fix
-> > > > > ordered mode, though I have a suspicion that it might very well break ordered
-> > > > > mode too.
-> > > >   Oh, right. kjournald writing buffers directly (without setting
-> > > > PageWriteback) will break things. So please, change warning to:
-> > 
-> > Maybe we should just fix this anyway?
-> > 
-> > I still have the patch that adds PG_stable (and changes the
-> > wait_for_page_stable() test to use this flag instead of PG_writeback) kicking
-> > around in my tree.  I wrote a patch to jbd that changes journal_do_submit_data
-> > to set PG_stable, call clear_page_dirty_for_io(), and unsets the stable bit in
-> > the end_io processing.
-> > 
-> > It seems to get rid of the checksum-after-write errors, though I'm not
-> > convinced it's correct.  But, I'll send both patches along.
->   I'll check the patches. Fixing PageWriteback logic for ext3 is not easily
-> doable due to lock ranking constraints - PageWriteback has to be set under
-> PageLocked but that ranks above transaction start so kjournald cannot grab
-> page locks so it cannot set PageWriteback... And changing the lock ordering
-> is a major surgery.
-> 
-> What could be doable is waiting for buffer locks from ext3's ->write_begin
-> and ->page_mkwrite implementations in case stable writes are required. If
-> your approach with a separate page bit doesn't work out (and I have some
-> doubts about that as mm people are *really* thrifty with page bits).
-> 
-> > > > 	/*
-> > > > 	 * In data=ordered mode, kjournald writes buffers without setting
-> > > > 	 * PageWriteback bit thus generic code does not properly wait for
-> > > > 	 * writeback of those buffers to finish.
-> > > > 	 */
-> > > > 	if (!read_only &&
-> > > > 	    test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA &&
-> > 
-> > test_opt(sb, DATA_FLAGS) != EXT3_MOUNT_WRITEBACK_DATA
-> > 
-> > since I bet data=journal mode is also borken wrt PageWriteback.
->   It is broken wrt PageWriteback but it actually waits for buffer locks in
-> ->write_begin() so at least write path should be properly protected. But
-> mmap is not handled properly there (although that wouldn't be that hard to
-> fix). So I agree the condition should rather be what you suggest.
+On Tue, Nov 27, 2012 at 09:20:47AM +0800, Ryan Wang wrote:
+> 2012/11/26 Theodore Ts'o <tytso@mit.edu>:
+> > On Mon, Nov 26, 2012 at 02:43:40PM +0100, Luk=C3=A1=C5=A1 Czerner w=
+rote:
+> >> > The I checked the script common.rc, and found that it uses
+> >> > df to determine the filesystem type and it uses the realpath
+> >> > "/dev/dm-0" instead of "/dev/mapper/mpatha", while df always
+> >> > shows "devtmpfs" instead of "ext4" for /dev/dm-0.
+> >> >
+> >> > I run "mount" and found that devtmpfs is mount on /dev/ on opens=
+use
+> >> > ***by default***. Even though  I run "mount -t btrfs /dev/dm-0 /=
+somedir",
+> >> > df still showed devtmpfs.
+> >> >
+> >> > Any ideas to kick off the xfstests?
+> >
+> > At least with the df which ships with Debian Testing, df will displ=
+ay
+> > the file system in use if it matches the device name which is
+> > /etc/mtab.  It looks the issue is that mount is canonicalizing the
+> > device name to be the human friendly version:
+> >
+> > # ls -l /dev/mapper/closure-bigscratch
+> > 0 lrwxrwxrwx 1 root root 7 Nov 16 15:15 /dev/mapper/closure-bigscra=
+tch -> ../dm-7
+> > <tytso.root@closure> {/home/tytso/bin}, level 2
+> > # mount /dev/dm-7 /u2
+> > # df /u2
+> > Filesystem                     1K-blocks   Used Available Use% Moun=
+ted on
+> > /dev/mapper/closure-bigscratch  52403200 224772  52178428   1% /u2
+> > # grep /u2 /etc/mtab
+> > /dev/mapper/closure-bigscratch /u2 xfs rw,relatime,attr2,inode64,no=
+quota 0 0
+> >
+> > So the simplest solution is to just use /dev/mapper/mpatha instead =
+of
+> > insisting on using /dev/dm-0.  That's what I do....
+>=20
+> In xfstests/common.rc, it will use realpath to obtain /dev/dm-0, even=
+ if you
+> specified /dev/mapper/mpatha.
+> My problem is in SuSE, the devtmpfs is mounted on /dev by default, se=
+ems
+> used by udev. And df reports devtmpfs on /dev/dm-0, instead of ext4.
 
-Hm.  In journal mode, write_begin calls do_journal_get_write_access on each
-buffer for a given page, and in turn, jbd's do_get_write_access calls
-lock_buffer.  Is that what you're referring to by "actually waits for buffer
-locks"?  I'm wondering how that helps us, since afaict PG_writeback doesn't get
-set in that path, and I think it's a little early to be setting PG_writeback
-anyway.
+What version of xfstests are you using? Do you have a
+"README.device-mapper" file in the base directory? If not, upgrade
+to the latest version and retry.
 
-If the page has to be locked before the transaction starts, how much of a
-problem is it to set PG_writeback?  Even though that seems a bit early to be
-doing that?
+$ gl -n 1 -p 0a81886
+commit 0a818862bb74932e15971ec8bedb55765ec3a3f6
+Author: Christoph Hellwig <hch@lst.de>
+Date:   Wed May 4 16:28:32 2011 +0200
 
-Just for fun, I tried porting ext4_page_mkwrite into ext3 (removing all the
-parts that don't exist in ext3) so that do_journal_get_write_access would also
-get called here, but it didn't seem to fix journal mode.  
+    xfstests: support post-udev device mapper nodes
 
---D
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+    Because of udevs complaining device mapper now creates /dev/dm-N as=
+ the real
+    device nodes, and just symlinks the /dev/mapper/ names to it.  This=
+ would be
+    easy if everything used the /dev/mapper clear names, but most syste=
+m utilities
+    translate them back to the /dev/mapper/ names and thus confuse vari=
+ous test
+    cases.  Add support to _is_block_dev to read symlinks, and add docu=
+mentation
+    on how to run xfstests on device mapper volumes.
+
+    Signed-off-by: Christoph Hellwig <hch@lst.de>
+    Reviewed-by: Alex Elder <aelder@sgi.com>
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
