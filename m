@@ -1,110 +1,80 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: How to run xfstests against multipath disks on SuSE?
-Date: Tue, 27 Nov 2012 14:14:38 +1100
-Message-ID: <20121127031438.GK6434@dastard>
-References: <CAPxxNQmwX+TmJ=B-H0f+bzpx5JdijyyRrxCAAZRi9+c8HjQL9Q@mail.gmail.com>
- <alpine.LFD.2.00.1211261442490.18234@localhost>
- <20121126145559.GK31891@thunk.org>
- <CAPxxNQmgOmEzkmzL7Tei4KAxaP49yx1fmhNgxvwaFNiYVosGtA@mail.gmail.com>
+From: Sachin Kamat <sachin.kamat@linaro.org>
+Subject: Re: [PATCH 1/1] ext4: Remove duplicate inclusion of ext4_extents.h in super.c
+Date: Tue, 27 Nov 2012 09:07:08 +0530
+Message-ID: <CAK9yfHxMBmLAoNTKbvAoCYEyA9zqumao6Ou-WWOD4PZwMtGiaA@mail.gmail.com>
+References: <1353323842-32283-1-git-send-email-sachin.kamat@linaro.org>
+	<20121119133944.GA11095@gmail.com>
+	<CAK9yfHyLzJE+rH3L0UN1x2dVNcEdaR=F7Z_Q2NfTidV2GKuP=g@mail.gmail.com>
+	<20121119162356.GB2337@gmail.com>
+	<CAK9yfHyVJjxX46C8b6fduxTmEeqvx5p9j-bE7X9v=Wcpq9aLVA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
-To: Ryan Wang <openspace.wang@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Sachin Kamat <sachin.kamat@linaro.org>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, patches@linaro.org,
+	Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:28812 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755614Ab2K0DOl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Nov 2012 22:14:41 -0500
-Content-Disposition: inline
-In-Reply-To: <CAPxxNQmgOmEzkmzL7Tei4KAxaP49yx1fmhNgxvwaFNiYVosGtA@mail.gmail.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:58934 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933114Ab2K0DhK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2012 22:37:10 -0500
+Received: by mail-vb0-f46.google.com with SMTP id ff1so6423823vbb.19
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2012 19:37:08 -0800 (PST)
+In-Reply-To: <CAK9yfHyVJjxX46C8b6fduxTmEeqvx5p9j-bE7X9v=Wcpq9aLVA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2012 at 09:20:47AM +0800, Ryan Wang wrote:
-> 2012/11/26 Theodore Ts'o <tytso@mit.edu>:
-> > On Mon, Nov 26, 2012 at 02:43:40PM +0100, Luk=C3=A1=C5=A1 Czerner w=
-rote:
-> >> > The I checked the script common.rc, and found that it uses
-> >> > df to determine the filesystem type and it uses the realpath
-> >> > "/dev/dm-0" instead of "/dev/mapper/mpatha", while df always
-> >> > shows "devtmpfs" instead of "ext4" for /dev/dm-0.
-> >> >
-> >> > I run "mount" and found that devtmpfs is mount on /dev/ on opens=
-use
-> >> > ***by default***. Even though  I run "mount -t btrfs /dev/dm-0 /=
-somedir",
-> >> > df still showed devtmpfs.
-> >> >
-> >> > Any ideas to kick off the xfstests?
-> >
-> > At least with the df which ships with Debian Testing, df will displ=
-ay
-> > the file system in use if it matches the device name which is
-> > /etc/mtab.  It looks the issue is that mount is canonicalizing the
-> > device name to be the human friendly version:
-> >
-> > # ls -l /dev/mapper/closure-bigscratch
-> > 0 lrwxrwxrwx 1 root root 7 Nov 16 15:15 /dev/mapper/closure-bigscra=
-tch -> ../dm-7
-> > <tytso.root@closure> {/home/tytso/bin}, level 2
-> > # mount /dev/dm-7 /u2
-> > # df /u2
-> > Filesystem                     1K-blocks   Used Available Use% Moun=
-ted on
-> > /dev/mapper/closure-bigscratch  52403200 224772  52178428   1% /u2
-> > # grep /u2 /etc/mtab
-> > /dev/mapper/closure-bigscratch /u2 xfs rw,relatime,attr2,inode64,no=
-quota 0 0
-> >
-> > So the simplest solution is to just use /dev/mapper/mpatha instead =
-of
-> > insisting on using /dev/dm-0.  That's what I do....
->=20
-> In xfstests/common.rc, it will use realpath to obtain /dev/dm-0, even=
- if you
-> specified /dev/mapper/mpatha.
-> My problem is in SuSE, the devtmpfs is mounted on /dev by default, se=
-ems
-> used by udev. And df reports devtmpfs on /dev/dm-0, instead of ext4.
+ping
 
-What version of xfstests are you using? Do you have a
-"README.device-mapper" file in the base directory? If not, upgrade
-to the latest version and retry.
+On 22 November 2012 10:43, Sachin Kamat <sachin.kamat@linaro.org> wrote:
+> Hi Theodore,
+>
+> On 19 November 2012 21:53, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+>> On Mon, Nov 19, 2012 at 08:36:06PM +0530, Sachin Kamat wrote:
+>>> Hi Zheng,
+>>>
+>>> On 19 November 2012 19:09, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+>>> > On Mon, Nov 19, 2012 at 04:47:22PM +0530, Sachin Kamat wrote:
+>>> >> ext4_extents.h was included twice.
+>>> >>
+>>> >> Signed-off-by: Sachin Kamat <sachin.kamat@linaro.org>
+>>> >> ---
+>>> >>  fs/ext4/super.c |    1 -
+>>> >>  1 files changed, 0 insertions(+), 1 deletions(-)
+>>> >>
+>>> >> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>>> >> index ad6cd8a..c8a6138 100644
+>>> >> --- a/fs/ext4/super.c
+>>> >> +++ b/fs/ext4/super.c
+>>> >> @@ -50,7 +50,6 @@
+>>> >>  #include "xattr.h"
+>>> >>  #include "acl.h"
+>>> >>  #include "mballoc.h"
+>>> >> -#include "ext4_extents.h"
+>>> >
+>>> > Hi Sachin,
+>>> >
+>>> > Sorry, I don't find this duplicated code in mainline kernel 3.7-rc6.
+>>>
+>>> The duplicated code is available on the linux-next tree (20121115).
+>>> The second instance was added by the commit
+>>> "ext4: let ext4 maintain extent status tree" (commit id: 51865fda).
+>>
+>> Good catch.  Sorry for my fault that introduces this duplicated code.
+>> The patch looks good to me.
+>>
+>> Regards,
+>>                                                 - Zheng
+>
+> This is just a simple patch to remove the include statement coded
+> twice in the file.
+> Please pick this up.
+>
+> --
+> With warm regards,
+> Sachin
 
-$ gl -n 1 -p 0a81886
-commit 0a818862bb74932e15971ec8bedb55765ec3a3f6
-Author: Christoph Hellwig <hch@lst.de>
-Date:   Wed May 4 16:28:32 2011 +0200
 
-    xfstests: support post-udev device mapper nodes
 
-    Because of udevs complaining device mapper now creates /dev/dm-N as=
- the real
-    device nodes, and just symlinks the /dev/mapper/ names to it.  This=
- would be
-    easy if everything used the /dev/mapper clear names, but most syste=
-m utilities
-    translate them back to the /dev/mapper/ names and thus confuse vari=
-ous test
-    cases.  Add support to _is_block_dev to read symlinks, and add docu=
-mentation
-    on how to run xfstests on device mapper volumes.
-
-    Signed-off-by: Christoph Hellwig <hch@lst.de>
-    Reviewed-by: Alex Elder <aelder@sgi.com>
-
-Cheers,
-
-Dave.
---=20
-Dave Chinner
-david@fromorbit.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+With warm regards,
+Sachin
