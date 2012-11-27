@@ -1,112 +1,116 @@
-From: Adam Huffman <adam.huffman@gmail.com>
-Subject: Re: Filesystem corruption on Fedora 17
-Date: Tue, 27 Nov 2012 16:59:05 +0000
-Message-ID: <CAP5prOh1VvLtCvY_iE2om2dXmgwHoD5JkkfVqu=MUtMiv9L9vg@mail.gmail.com>
-References: <CAP5prOgjNXnvXr1HELuez7+Be+TW4N8t9P_AeQw8pBVYDnFHTg@mail.gmail.com>
-	<20121127164745.GB7107@thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: How to run xfstests against multipath disks on SuSE?
+Date: Tue, 27 Nov 2012 11:08:30 -0600
+Message-ID: <50B4F38E.8060806@redhat.com>
+References: <CAPxxNQmwX+TmJ=B-H0f+bzpx5JdijyyRrxCAAZRi9+c8HjQL9Q@mail.gmail.com> <alpine.LFD.2.00.1211261442490.18234@localhost> <20121126145559.GK31891@thunk.org> <CAPxxNQmgOmEzkmzL7Tei4KAxaP49yx1fmhNgxvwaFNiYVosGtA@mail.gmail.com> <20121127031438.GK6434@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Ryan Wang <openspace.wang@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	=?UTF-8?B?THVrw6HFoSBDemVybmVy?= <lczerner@redhat.com>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:41716 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756136Ab2K0Q7H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2012 11:59:07 -0500
-Received: by mail-lb0-f174.google.com with SMTP id gi11so6833532lbb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Nov 2012 08:59:05 -0800 (PST)
-In-Reply-To: <20121127164745.GB7107@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:29132 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751086Ab2K0RIs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Nov 2012 12:08:48 -0500
+In-Reply-To: <20121127031438.GK6434@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2012 at 4:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Nov 27, 2012 at 01:31:18PM +0000, Adam Huffman wrote:
+On 11/26/12 9:14 PM, Dave Chinner wrote:
+> On Tue, Nov 27, 2012 at 09:20:47AM +0800, Ryan Wang wrote:
+>> 2012/11/26 Theodore Ts'o <tytso@mit.edu>:
+>>> On Mon, Nov 26, 2012 at 02:43:40PM +0100, Luk=C3=A1=C5=A1 Czerner w=
+rote:
+>>>>> The I checked the script common.rc, and found that it uses
+>>>>> df to determine the filesystem type and it uses the realpath
+>>>>> "/dev/dm-0" instead of "/dev/mapper/mpatha", while df always
+>>>>> shows "devtmpfs" instead of "ext4" for /dev/dm-0.
+>>>>>
+>>>>> I run "mount" and found that devtmpfs is mount on /dev/ on opensu=
+se
+>>>>> ***by default***. Even though  I run "mount -t btrfs /dev/dm-0 /s=
+omedir",
+>>>>> df still showed devtmpfs.
+>>>>>
+>>>>> Any ideas to kick off the xfstests?
+>>>
+>>> At least with the df which ships with Debian Testing, df will displ=
+ay
+>>> the file system in use if it matches the device name which is
+>>> /etc/mtab.  It looks the issue is that mount is canonicalizing the
+>>> device name to be the human friendly version:
+>>>
+>>> # ls -l /dev/mapper/closure-bigscratch
+>>> 0 lrwxrwxrwx 1 root root 7 Nov 16 15:15 /dev/mapper/closure-bigscra=
+tch -> ../dm-7
+>>> <tytso.root@closure> {/home/tytso/bin}, level 2
+>>> # mount /dev/dm-7 /u2
+>>> # df /u2
+>>> Filesystem                     1K-blocks   Used Available Use% Moun=
+ted on
+>>> /dev/mapper/closure-bigscratch  52403200 224772  52178428   1% /u2
+>>> # grep /u2 /etc/mtab
+>>> /dev/mapper/closure-bigscratch /u2 xfs rw,relatime,attr2,inode64,no=
+quota 0 0
+>>>
+>>> So the simplest solution is to just use /dev/mapper/mpatha instead =
+of
+>>> insisting on using /dev/dm-0.  That's what I do....
 >>
->> On two machines now I've had severe filesystem corruption.  They are
->> both Fedora 17 machines, and they both have, at some point, run the
->> kernels that have been mentioned recently as possibly suffering from
->> ext4 corruption problems.
->
-> I don't know if you followed the story that closely, but the hysteria
-> over the "ext4 corruption problems" were caused by users who were
-> using non-standard mount options or other ext4 features....
->
+>> In xfstests/common.rc, it will use realpath to obtain /dev/dm-0, eve=
+n if you
+>> specified /dev/mapper/mpatha.
+>> My problem is in SuSE, the devtmpfs is mounted on /dev by default, s=
+eems
+>> used by udev. And df reports devtmpfs on /dev/dm-0, instead of ext4.
+>=20
+> What version of xfstests are you using? Do you have a
+> "README.device-mapper" file in the base directory? If not, upgrade
+> to the latest version and retry.
+>=20
+> $ gl -n 1 -p 0a81886
+> commit 0a818862bb74932e15971ec8bedb55765ec3a3f6
+> Author: Christoph Hellwig <hch@lst.de>
+> Date:   Wed May 4 16:28:32 2011 +0200
+>=20
+>     xfstests: support post-udev device mapper nodes
+>=20
+>     Because of udevs complaining device mapper now creates /dev/dm-N =
+as the real
+>     device nodes, and just symlinks the /dev/mapper/ names to it.  Th=
+is would be
+>     easy if everything used the /dev/mapper clear names, but most sys=
+tem utilities
+>     translate them back to the /dev/mapper/ names and thus confuse va=
+rious test
+>     cases.  Add support to _is_block_dev to read symlinks, and add do=
+cumentation
+>     on how to run xfstests on device mapper volumes.
+>=20
+>     Signed-off-by: Christoph Hellwig <hch@lst.de>
+>     Reviewed-by: Alex Elder <aelder@sgi.com>
+>=20
+> Cheers,
+>=20
+> Dave.
+>=20
 
-Yes, I only mentioned that "just in case".  I certainly don't have any
-exotic mount options.
+Recent "realpath" changes also went in:
 
->> In the worst case, fsck is unable to fix the problems:
->>
->> fsck from util-linux 2.20.1
->> e2fsck 1.42.4 (12-June-2012)
->> ext2fs_check_desc: Corrupt group descriptor: bad block for block bitmap
->> fsck.ext4: Group descriptors look bad... trying backup blocks...
->> /dev/mapper/heppc128-lv_home: recovering journal
->> fsck.ext4: unable to set superblock flags on /dev/mapper/heppc128-lv_home
->
-> Furthermore, this doesn't look like any of the problems that people
-> have reported.  The corruption pattern looks most like what you would
-> see if the blocks in the beginning (low numbered blocks) part of the
-> file system have been overwritten with garbage.
->
-> So first of all, if there is critical data that you want to preserve,
-> the first thing I'd suggest doing is to make a image copy of the
-> partition; it's only 56 GB, so hopefluly you have space to make a copy
-> before you do any further experimentation to try to recover things.
->
+b03c662399956609934ff063e9064e15dc7459ac xfstests: fix to build src/rea=
+lpath and the correct the existence of target devices
+d5ea873fcbf00b841f0511a26fb341364a5c6425 xfstests: resolve symlinked de=
+vices to real paths
 
-I took a copy using dd_rescue yesterday, and that's what I've been
-running fsck against.
-(After that I tried mkfs.ext4 -S on the disk itself, which wasn't successful...)
-The images comprises an LVM PV and VG, so I've used kpartx to make it
-available, if that makes a difference.
+so either of those could have broken and/or fixed it for you :)
 
-There is one person claiming that it does:
-
-http://j-b.livejournal.com/334065.html
-
-> As far as the "unable to set superblock flags" error, I think I can
-> see how that can happen (and in fact I've created a short test case
-> which demonstrates the problem --- see attached), but that appears to
-> be a one shot failure.  That is, the second time you run e2fsck, it
-> should be able to make progress. is that the case for you?
->
-
-No, I see the same error no matter how many times I run e2fsck.
-
-> (It's also possible that there are hardware bugs which is triggering
-> this problem, however, and if in fact you're seeing this happen
-> repeatably, I'd have seriously suspect some kind of hardware failure.)
->
-
-While I did suspect hardware problems, there hasn't been any sign of
-them in the system logs so far.
-
-Do you have any ideas about this error, with a different LV from the same disk?:
-
-Pass 1: Checking inodes, blocks, and sizes
-Inode 4122234 has illegal block(s).  Clear? yes
-
-Illegal block #256918621 (1313286244) in inode 4122234.  CLEARED.
-Error storing directory block information (inode=4122234, block=0,
-num=78646612): Memory allocation failed
-
-Many thanks for taking a look.
-
-Best Wishes,
-Adam
-
->                                             - Ted
->
-> P.S.  In order to get this failure I had to basically use a block
-> editor, since there are software safeguards which prevent e2fsprogs or
-> ext4 from setting the needs_recovery bit on backup superblocks, and
-> this is what was necessary to trigger the bug.  I'll fix this for the
-> next release of e2fsprogs.  The reason why we hadn't noticed was
-> because (a) it basically requires a very specific hardware-induced
-> bit-flip to trigger, and (b) even when it does, the second run of
-> e2fsck makes the problem go away, so typically it gets noticed when
-> system fails to boot due to e2fsck blowing out, and then when the
-> system administrator runs fsck a second time on the file system,
-> forward progress gets made.
->
+-Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
