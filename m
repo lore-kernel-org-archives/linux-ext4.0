@@ -1,53 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Errors from e2image
-Date: Wed, 28 Nov 2012 16:29:03 -0500
-Message-ID: <20121128212903.GB30650@thunk.org>
-References: <CAP5prOhNaffwJaPQageP-jvHTccaEKhQCmwqVbMeSwPq-DUodg@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] ext4: include journal blocks in df overhead calcs
+Date: Wed, 28 Nov 2012 15:48:24 -0600
+Message-ID: <50B686A8.2010101@redhat.com>
+References: <50B67949.60104@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Adam Huffman <adam.huffman@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Eric Whitney <enwlinux@gmail.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35556 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753931Ab2K1V3H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Nov 2012 16:29:07 -0500
-Content-Disposition: inline
-In-Reply-To: <CAP5prOhNaffwJaPQageP-jvHTccaEKhQCmwqVbMeSwPq-DUodg@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30222 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755752Ab2K1VsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Nov 2012 16:48:25 -0500
+In-Reply-To: <50B67949.60104@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 06:32:24PM +0000, Adam Huffman wrote:
-> Hello again
-> 
-> I've just run e2image, as you suggested and it doesn't look like it's
-> ever going to complete.
-> 
-> There are lots of errors on the console like:
-> 
-> Illegal block number passed to ext2fs_mark_block_bitmap #822751537 for
-> in-use block map
+To more accurately calculate overhead for "bsd" style
+df reporting, we should count the journal blocks as
+overhead as well.
 
-Hmmm.., can you send me the *complete* output of e2fsck -n on the file system image?
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Tested-by: Eric Whitney <enwlinux@gmail.com>
+---
 
-This is a very basic error caused by illegal block numbers in an inode
-extent map (or indirect block).  E2fsck should have reported this, and
-fixing this is not hard.  Yet nothing you sent me showed anything like
-that --- but you've only sent me excerpts, and not the full e2fsck
-output.....
+V2: I guess s_overhead _is_ in clusters, so do
+that conversion after all.  Ted, if I'm wrong, you
+can pick the other patch ;)
 
-> Is this something I need to leave running for a long time?
+Editorial/soapbox:
 
-How big is your file system?  It shouldn't take that long, but the
-illegal block numbers should not caused it to get it stuck in a loop.
+TBH it's hard to keep track of what fields are
+now stored as "clusters" not blocks . . .
 
-> I tried it
-> on the other problematic LV and the command did complete, though the
-> qcow2 file it produced was empty.
+Esp. when we do things like use local vars named "blk" -
 
-Now *that's* just weird.  Just to be sure... can you try reinstalling
-the e2fsprogs package on your system?  I'm wondering if the shared
-libraries have gotten subtly corrupted somehow....  what you are
-reporting just doesn't make any sense....
+	blks = count_overhead(sb, i, buf);
 
-						- Ted
+but count_overhead() returns *clusters*, so it's
+really quite confusing to keep it all straight.
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 80928f7..b441daa 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3229,6 +3229,10 @@ int ext4_calculate_overhead(struct super_block *sb)
+ 			memset(buf, 0, PAGE_SIZE);
+ 		cond_resched();
+ 	}
++	/* Add the journal blocks as well */
++	if (sbi->s_journal)
++		overhead += EXT4_B2C(sbi, sbi->s_journal->j_maxlen);
++
+ 	sbi->s_overhead = overhead;
+ 	smp_wmb();
+ 	free_page((unsigned long) buf);
+
