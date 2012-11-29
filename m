@@ -1,93 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] e2fsck: Fix incorrect interior node logical start values
-Date: Thu, 29 Nov 2012 09:22:31 -0600
-Message-ID: <50B77DB7.70307@redhat.com>
-References: <50A546D8.3020500@redhat.com> <20121129133129.GC20413@thunk.org>
+Date: Thu, 29 Nov 2012 11:40:29 -0500
+Message-ID: <20121129164029.GA16577@thunk.org>
+References: <50A546D8.3020500@redhat.com>
+ <20121129133129.GC20413@thunk.org>
+ <50B77DB7.70307@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/mixed; boundary="nFreZHaLTZJo0R7j"
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45328 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751034Ab2K2PWb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2012 10:22:31 -0500
-In-Reply-To: <20121129133129.GC20413@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:35813 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751348Ab2K2Qkd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:33 -0500
+Content-Disposition: inline
+In-Reply-To: <50B77DB7.70307@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/29/12 7:31 AM, Theodore Ts'o wrote:
-> Hmm, it looks like you didn't run the regression test script before
-> submitting this patch?
 
-No :(  I ran it against several filesystems mangled by xfstests,
-IIRC, but TBH I forgot to run the e2fsprogs suite.  My mistake,
-I've gotten out of that habit.  Mea culpa.
+--nFreZHaLTZJo0R7j
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> It looks like it's not a bug which your patch introduced, but rather,
-> it uncovered a bug.  This was a failure in the second run of
-> f_extent_bad_node, because in the fix we didn't make sure we updated
-> the starting block of parent node when we cleared a node in the extent
-> tree.  (see below)
+On Thu, Nov 29, 2012 at 09:22:31AM -0600, Eric Sandeen wrote:
 > 
-> This brings up another question.  Did you test file systems after
-> running punch on a number of different files to make sure the e2fsck
-> is happy withe file systems which current kernels might generate?
+> But it's a weird inconsistency isn't it, and fixing it up in fsck should
+> be the right thing to do anyway?
 
-I'm pretty sure I did test it against punched files, but I can
-do further testing if you have a particular concern ....
+Oh, I agree, but basically, as a result I'm going to put this patch on
+hold until we do a bit more testing.  I'm just not ready to push this
+out on the maint branch just yet.....
 
-> In this particular test case, even though the logical start didn't
-> match, it doesn't cause any problems because it's at the left-most
-> branch of the tree.  I want to make sure we aren't triggering failures
-> for file systems where the kernel is creating which is technically
-> incorrect, but which isn't causing problems in practice...
+(The general rule is that I want to keep the maint branch in a state
+where someone who wants to take a snapshot for a production
+environment should feel generally comfortable to do this --- modulo
+rollout/integration testing, of course.  I'll keep it on an
+es/fsck-int-node-fixup branch to make sure we don't lose it, but it's
+something where I want to add some additional testing before I'm
+comfortable rolling it out to the maint branch, just to make sure it
+doesn't trigger any regression.)
 
-But it's a weird inconsistency isn't it, and fixing it up in fsck should
-be the right thing to do anyway?
+BTW, while I was experimenting with test cases I found another related
+bug (but not a regression) where e2fsck isn't able to fix up a
+specific fs corruption (see attached).  It's unlikely to happen in
+real life, but given how easily I was able to create something that
+e2fsck can't fix, it's clear we were missing some synthetic test
+cases.
 
--Eric
+						- Ted
 
-> 	       	     	   	   - Ted
-> 
-> % ./test_script f_extent_bad_node
-> f_extent_bad_node: bad interior node in extent tree: failed
-> --- ../../tests/f_extent_bad_node/expect.2     2012-07-06 13:37:27.316253023 +0000
-> +++ f_extent_bad_node.2.log		       2012-11-29 13:24:11.119306973 +0000
-> @@ -1,7 +1,23 @@
->  Pass 1: Checking inodes, blocks, and sizes
-> +Interior extent node level 0 of inode 12:
-> +Logical start 0 does not match logical start 3 at next level.  Fix? yes
-> +
-> +Inode 12, i_blocks is 8, should be 6.  Fix? yes
-> +
->  Pass 2: Checking directory structure
->  Pass 3: Checking directory connectivity
->  Pass 4: Checking reference counts
->  Pass 5: Checking group summary information
-> -test_filesys: 12/16 files (0.0% non-contiguous), 25/100 blocks
-> -Exit status is 0
-> +Block bitmap differences:  -24
-> +Fix? yes
-> +
-> +Free blocks count wrong for group #0 (75, counted=76).
-> +Fix? yes
-> +
-> +Free blocks count wrong (75, counted=76).
-> +Fix? yes
-> +
-> +
-> +test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-> +test_filesys: 12/16 files (0.0% non-contiguous), 24/100 blocks
-> +Exit status is 1
-> 125 tests succeeded	1 tests failed
-> Tests failed: f_extent_bad_node 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+--nFreZHaLTZJo0R7j
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="bad-extent-no-fix.img.gz"
+Content-Transfer-Encoding: base64
 
+H4sICOKPt1ACA2JhZC1leHRlbnQtbm8tZml4LmltZwDt3EuMDFsYAOBTNS0mPcTjeo3364q4
+DEEQEYJICAsJWzuExCsxIjeRGGsLkVhaWtlYig03N7m7KzaWVpbewsJKO6frjJ42JN5p+vuS
+f+qf6ao+1dX1V53KVJ0QgG41McbBGGNirIlRi1GMnGF+FWm+cwdu7n146ebeEBqNfc+L5nzV
+75Xh5fpiDMXYEGNbGcLfcfrf+hUz39Z3X7n8bM/d2+HsnQ/XY+XxE4M/+rP+f/HW450vtp+6
+sOPe2F0vl/yb1ndcfu3sgdbn+J6Kj/wtbeMtdj06QE+MP2IsatZ/LZTNvXN4P31wxBaC31ej
+0bhx4/qjZSl/0wC6SdnsAxflQJxWeVkODFR9+CmhXh47eXrwr8Mnz5w4WPWV7/f0FoOHTg8e
+PnrskKMn/Nr6Pqj/1z1V/QNdomYTgPoH1D+g/gH1D6h/QP0D6h9Q/4D6B9Q/AADQiRoTPAMN
+3ar+qj/sH3E8KIZCmByqcatSTAnVc8Epnxaq8YJSPiO0xgqbGaOe89l5mZTPjTE15/Pz8ilf
+EGN6zhfm90r54hj9OV+S3zflS2PMyvmy3EbKl8eYk/OB3F7KV8WYl/PVue2Ur81tp3xdbjvl
+60M1/lHKN+T1SPnGGH/mfFNep5RvdtrgN1F/Nb5j6n+6+gcAfoJ/tlYdhjT+73BUr5TNfkkI
+vbmfVLT9mzSNhTbmO7R/7UL8cTWE87Hd4cg9sWZ/JbVfvG+/NZrw1C9oo5j2pM83DUD79f+4
+99f/rrEBoFvO/2U8/4++rkx9gX6bBwAAAAAAAAB+KaPvf/85nqb772tV++33v/c0nztsv/+9
+pQiGLePbDaXnL1bVaqP3/yLvf19vks3b8Tr5+Z9Tbce/Mrbf2iNn5enSEfmneP4HAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAD4HO8AUeso5gCQAQA=
+
+--nFreZHaLTZJo0R7j--
