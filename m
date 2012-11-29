@@ -1,34 +1,42 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsck: Fix incorrect interior node logical start values
-Date: Wed, 28 Nov 2012 23:49:16 -0600
-Message-ID: <50B6F75C.8070903@redhat.com>
-References: <50A546D8.3020500@redhat.com> <20121129044609.GC8029@thunk.org> <20121129045230.GD8029@thunk.org>
+Subject: Re: [PATCH] e2fsprogs: fix configure help text for quota
+Date: Wed, 28 Nov 2012 23:50:46 -0600
+Message-ID: <50B6F7B6.4050003@redhat.com>
+References: <50B504C4.6090504@redhat.com> <20121129040323.GA8029@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: ext4 development <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3983 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31742 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab2K2FtT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2012 00:49:19 -0500
-In-Reply-To: <20121129045230.GD8029@thunk.org>
+	id S1750727Ab2K2Fut (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Nov 2012 00:50:49 -0500
+In-Reply-To: <20121129040323.GA8029@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/28/12 10:52 PM, Theodore Ts'o wrote:
-> On Wed, Nov 28, 2012 at 11:46:10PM -0500, Theodore Ts'o wrote:
+On 11/28/12 10:03 PM, Theodore Ts'o wrote:
+> On Tue, Nov 27, 2012 at 12:21:56PM -0600, Eric Sandeen wrote:
+>> It's --enable-quota, not --enable-libquota.
 >>
->> And I did come up with a test case...
->>
+>> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > 
-> Wow, that was unnecessarily large.  Here's a smaller one...
+> Thanks, applied.
 > 
->      	      		    	    	     - Ted
+>> PS it's still off by default.  Should it be?  What bugs remain?
 > 
+> Yeah, we probably should turn it on.  It's turned on by default in
+> Debian in the 1.42.x releases.  I don't know of any remaining bugs,
+> but at the same time, it's not gotten a lot of use to date.
+> 
+>        	   	      	       	      - Ted
 
-Was that by hand-hackery or did you figure out how to hit
-it at runtime?
+Hum, ok.
+
+Maybe then rather than fixing up all the configure stuff, I
+should have just removed the switch and turned it on.  Oh well.
 
 -Eric
+
