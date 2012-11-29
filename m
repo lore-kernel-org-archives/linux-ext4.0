@@ -1,70 +1,67 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: Fix possible use after free of buffer head
-Date: Thu, 29 Nov 2012 11:02:39 -0800
-Message-ID: <20121129190239.GA2888@blackbox.djwong.org>
-References: <1354185828-28545-1-git-send-email-lczerner@redhat.com>
+Subject: Re: [RFC PATCH] ext4: Convert unwritten extents during end_io
+ processing
+Date: Thu, 29 Nov 2012 11:47:39 -0800
+Message-ID: <20121129194739.GA2694@blackbox.djwong.org>
+References: <20121123075502.307482760@bombadil.infradead.org>
+ <20121123075916.375908616@bombadil.infradead.org>
+ <x49a9u3f276.fsf@segfault.boston.devel.redhat.com>
+ <20121128002656.GC4321@blackbox.djwong.org>
+ <20121128003027.GA14500@infradead.org>
+ <20121128080254.GB11869@blackbox.djwong.org>
+ <20121128143405.GB23743@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, stable@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>, linux-fsdevel@vger.kernel.org,
+	Jan Kara <jack@suse.cz>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:34976 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753530Ab2K2TCx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2012 14:02:53 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:16885 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751384Ab2K2Tse (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2012 14:48:34 -0500
 Content-Disposition: inline
-In-Reply-To: <1354185828-28545-1-git-send-email-lczerner@redhat.com>
+In-Reply-To: <20121128143405.GB23743@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 11:43:48AM +0100, Lukas Czerner wrote:
-> Commit fa77dcfafeaa6bc73293c646bfc3d5192dcf0be2 introduces block bitmap
-> checksum calculation into ext4_new_inode() in the case that block group
-> was uninitialized. However we brelse() the bitmap buffer before we
-> attempt to checksum it so we have no guarantee that the buffer is still
-> there.
+On Wed, Nov 28, 2012 at 09:34:05AM -0500, Christoph Hellwig wrote:
+> On Wed, Nov 28, 2012 at 12:02:54AM -0800, Darrick J. Wong wrote:
+> > Here's a lightly tested (it passed enough of xfstests and an aio+dio+osync
+> > tester on ext4 on x64...) patch that rips out the whole wq mess to convert
+> > unwritten extents from endio processing.  This has the effect that unwritten
+> > extents are now converted as part of writeback, not fsync/truncate/punch_hole.
+> > I have a suspicion that the reason why ext4 had that behavior was to reduce
+> > churn in the extent tree if one writes a bunch of adjacent sections of hole.
+> > Oh well.  I haven't seen any huge regressions yet, but then I'm really just
+> > posting this early to see if anyone spots obvious bugs.
+> > 
+> > Christoph, was this what you had in mind?
 > 
-> Fix this by releasing the buffer after the possible checksum
-> computation.
+> Can you actually call ext4_convert_unwritten_extents from irq context
+> safely for the buffered I/O case?  At least for the XFS equivalent we
+> need user context, which is why we have these workqueues in the first
+> place.
 
-Looks ok, so:
-Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
+You can't call the conversion from irq context.  It /looks/ like for the
+buffered case the conversion seems to get done from the context of the calling
+process, and it's only for dio that we need to do odd twists to make
+dio_complete happen from a wq.
 
-That IBM fellow is gone. ;)
+Sadly, I also discovered that I hadn't fixed all the cases where the conversion
+could happen from irq context.  I think I found the last two, but now I'm
+suspicious that I've messed up the locking... it seems like the
+generic_write_sync -> ext4_fsync_file path is encountering extents that are
+still unconverted, and stalling there.  Hm.  Maybe I should have some lunch
+first.
+
+> But what we're doing is to make sure unwritten extent conversion happens
+> before marking the page writeback complete, so that
+> filemap_write_and_wait and friends implicitly wait for this conversion
+> when waiting for page I/O to complete, and thus removing the need for
+> all the explicit flushing infrastructure.
+
+That's where I (hope) I'm headed too. :)
 
 --D
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Cc: Darrick J. Wong <djwong@us.ibm.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/ext4/ialloc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 3a100e7..c7efa88 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -762,7 +762,6 @@ got:
->  
->  		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
->  		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
-> -		brelse(block_bitmap_bh);
->  
->  		/* recheck and clear flag under lock if we still need to */
->  		ext4_lock_group(sb, group);
-> @@ -775,6 +774,7 @@ got:
->  			ext4_group_desc_csum_set(sb, group, gdp);
->  		}
->  		ext4_unlock_group(sb, group);
-> +		brelse(block_bitmap_bh);
->  
->  		if (err)
->  			goto fail;
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
