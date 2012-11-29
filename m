@@ -1,59 +1,33 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V2] ext4: include journal blocks in df overhead calcs
-Date: Wed, 28 Nov 2012 15:48:24 -0600
-Message-ID: <50B686A8.2010101@redhat.com>
-References: <50B67949.60104@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: fix configure help text for quota
+Date: Wed, 28 Nov 2012 23:03:23 -0500
+Message-ID: <20121129040323.GA8029@thunk.org>
+References: <50B504C4.6090504@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Eric Whitney <enwlinux@gmail.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30222 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755752Ab2K1VsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 28 Nov 2012 16:48:25 -0500
-In-Reply-To: <50B67949.60104@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:35628 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932667Ab2K2ED2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 28 Nov 2012 23:03:28 -0500
+Content-Disposition: inline
+In-Reply-To: <50B504C4.6090504@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To more accurately calculate overhead for "bsd" style
-df reporting, we should count the journal blocks as
-overhead as well.
+On Tue, Nov 27, 2012 at 12:21:56PM -0600, Eric Sandeen wrote:
+> It's --enable-quota, not --enable-libquota.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Tested-by: Eric Whitney <enwlinux@gmail.com>
----
+Thanks, applied.
 
-V2: I guess s_overhead _is_ in clusters, so do
-that conversion after all.  Ted, if I'm wrong, you
-can pick the other patch ;)
+> PS it's still off by default.  Should it be?  What bugs remain?
 
-Editorial/soapbox:
+Yeah, we probably should turn it on.  It's turned on by default in
+Debian in the 1.42.x releases.  I don't know of any remaining bugs,
+but at the same time, it's not gotten a lot of use to date.
 
-TBH it's hard to keep track of what fields are
-now stored as "clusters" not blocks . . .
-
-Esp. when we do things like use local vars named "blk" -
-
-	blks = count_overhead(sb, i, buf);
-
-but count_overhead() returns *clusters*, so it's
-really quite confusing to keep it all straight.
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 80928f7..b441daa 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3229,6 +3229,10 @@ int ext4_calculate_overhead(struct super_block *sb)
- 			memset(buf, 0, PAGE_SIZE);
- 		cond_resched();
- 	}
-+	/* Add the journal blocks as well */
-+	if (sbi->s_journal)
-+		overhead += EXT4_B2C(sbi, sbi->s_journal->j_maxlen);
-+
- 	sbi->s_overhead = overhead;
- 	smp_wmb();
- 	free_page((unsigned long) buf);
-
+       	   	      	       	      - Ted
