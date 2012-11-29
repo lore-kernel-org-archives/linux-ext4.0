@@ -1,40 +1,54 @@
-From: zwu.kernel@gmail.com
-Subject: [PATCH] ext4: remove some unused code lines
-Date: Thu, 29 Nov 2012 18:00:00 +0800
-Message-ID: <1354183200-8628-1-git-send-email-zwu.kernel@gmail.com>
-Cc: tytso@mit.edu, linux-kernel@vger.kernel.org,
-	Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: Fix possible use after free of buffer head
+Date: Thu, 29 Nov 2012 11:43:48 +0100
+Message-ID: <1354185828-28545-1-git-send-email-lczerner@redhat.com>
+Cc: tytso@mit.edu, Lukas Czerner <lczerner@redhat.com>,
+	"Darrick J. Wong" <djwong@us.ibm.com>, stable@vger.kernel.org
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:35824 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751392Ab2K2Kn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Nov 2012 05:43:57 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+Commit fa77dcfafeaa6bc73293c646bfc3d5192dcf0be2 introduces block bitmap
+checksum calculation into ext4_new_inode() in the case that block group
+was uninitialized. However we brelse() the bitmap buffer before we
+attempt to checksum it so we have no guarantee that the buffer is still
+there.
 
-Signed-off-by: Zhi Yong Wu <wuzhy@linux.vnet.ibm.com>
+Fix this by releasing the buffer after the possible checksum
+computation.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: Darrick J. Wong <djwong@us.ibm.com>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/extents.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/ext4/ialloc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7011ac9..43ec639 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2156,7 +2156,6 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 		  struct ext4_extent *ex)
- {
- 	struct ext4_ext_cache *cex;
--	struct ext4_sb_info *sbi;
- 	int ret = 0;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 3a100e7..c7efa88 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -762,7 +762,6 @@ got:
  
- 	/*
-@@ -2164,7 +2163,6 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
- 	 */
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	cex = &EXT4_I(inode)->i_cached_extent;
--	sbi = EXT4_SB(inode->i_sb);
+ 		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
+ 		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
+-		brelse(block_bitmap_bh);
  
- 	/* has cache valid data? */
- 	if (cex->ec_len == 0)
+ 		/* recheck and clear flag under lock if we still need to */
+ 		ext4_lock_group(sb, group);
+@@ -775,6 +774,7 @@ got:
+ 			ext4_group_desc_csum_set(sb, group, gdp);
+ 		}
+ 		ext4_unlock_group(sb, group);
++		brelse(block_bitmap_bh);
+ 
+ 		if (err)
+ 			goto fail;
 -- 
-1.7.6.5
+1.7.7.6
+
