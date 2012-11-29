@@ -1,67 +1,115 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC PATCH] ext4: Convert unwritten extents during end_io
- processing
-Date: Thu, 29 Nov 2012 11:47:39 -0800
-Message-ID: <20121129194739.GA2694@blackbox.djwong.org>
-References: <20121123075502.307482760@bombadil.infradead.org>
- <20121123075916.375908616@bombadil.infradead.org>
- <x49a9u3f276.fsf@segfault.boston.devel.redhat.com>
- <20121128002656.GC4321@blackbox.djwong.org>
- <20121128003027.GA14500@infradead.org>
- <20121128080254.GB11869@blackbox.djwong.org>
- <20121128143405.GB23743@infradead.org>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] libext2fs: fix inode cache overruns
+Date: Thu, 29 Nov 2012 18:14:13 -0500
+Message-ID: <20121129231413.GA26246@wallace>
+References: <20121117183745.GA8489@wallace>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>, linux-fsdevel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:16885 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751384Ab2K2Tse (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2012 14:48:34 -0500
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:60420 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752776Ab2K2XOT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2012 18:14:19 -0500
+Received: by mail-gh0-f174.google.com with SMTP id g15so2626173ghb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2012 15:14:18 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20121128143405.GB23743@infradead.org>
+In-Reply-To: <20121117183745.GA8489@wallace>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 09:34:05AM -0500, Christoph Hellwig wrote:
-> On Wed, Nov 28, 2012 at 12:02:54AM -0800, Darrick J. Wong wrote:
-> > Here's a lightly tested (it passed enough of xfstests and an aio+dio+osync
-> > tester on ext4 on x64...) patch that rips out the whole wq mess to convert
-> > unwritten extents from endio processing.  This has the effect that unwritten
-> > extents are now converted as part of writeback, not fsync/truncate/punch_hole.
-> > I have a suspicion that the reason why ext4 had that behavior was to reduce
-> > churn in the extent tree if one writes a bunch of adjacent sections of hole.
-> > Oh well.  I haven't seen any huge regressions yet, but then I'm really just
-> > posting this early to see if anyone spots obvious bugs.
-> > 
-> > Christoph, was this what you had in mind?
+* Eric Whitney <enwlinux@gmail.com>:
 > 
-> Can you actually call ext4_convert_unwritten_extents from irq context
-> safely for the buffered I/O case?  At least for the XFS equivalent we
-> need user context, which is why we have these workqueues in the first
-> place.
+> An inode cache slot will be overrun if a caller to ext2fs_read_inode_full()
+> or ext2fs_write_inode_full() attempts to read or write a full sized 156
+> byte inode when the target filesystem contains 128 byte inodes.  Limit the
+> copied inode to the smaller of the target filesystem's or the caller's
+> requested inode size.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  lib/ext2fs/inode.c |    7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+> index 0ea210e..e47d664 100644
+> --- a/lib/ext2fs/inode.c
+> +++ b/lib/ext2fs/inode.c
+> @@ -582,7 +582,8 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
+>  	/* Check to see if it's in the inode cache */
+>  	for (i = 0; i < fs->icache->cache_size; i++) {
+>  		if (fs->icache->cache[i].ino == ino) {
+> -			memcpy(inode, fs->icache->cache[i].inode, bufsize);
+> +			memcpy(inode, fs->icache->cache[i].inode,
+> +			       (bufsize > length) ? length : bufsize);
+>  			return 0;
+>  		}
+>  	}
+> @@ -649,7 +650,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
+>  	/* Update the inode cache bookkeeping */
+>  	fs->icache->cache_last = cache_slot;
+>  	fs->icache->cache[cache_slot].ino = ino;
+> -	memcpy(inode, iptr, bufsize);
+> +	memcpy(inode, iptr, (bufsize > length) ? length : bufsize);
+>  
+>  	return 0;
+>  }
+> @@ -705,7 +706,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
+>  		for (i=0; i < fs->icache->cache_size; i++) {
+>  			if (fs->icache->cache[i].ino == ino) {
+>  				memcpy(fs->icache->cache[i].inode, inode,
+> -				       bufsize);
+> +				       (bufsize > length) ? length : bufsize);
+>  				break;
+>  			}
+>  		}
+> -- 
+> 1.7.10.4
+> 
 
-You can't call the conversion from irq context.  It /looks/ like for the
-buffered case the conversion seems to get done from the context of the calling
-process, and it's only for dio that we need to do odd twists to make
-dio_complete happen from a wq.
+Ted:
 
-Sadly, I also discovered that I hadn't fixed all the cases where the conversion
-could happen from irq context.  I think I found the last two, but now I'm
-suspicious that I've messed up the locking... it seems like the
-generic_write_sync -> ext4_fsync_file path is encountering extents that are
-still unconverted, and stalling there.  Hm.  Maybe I should have some lunch
-first.
+Here's some additional background for this patch for a regression
+introduced in e2fsprogs commit 91db7e206d as found in 1.43-WIP
+(master branch).
 
-> But what we're doing is to make sure unwritten extent conversion happens
-> before marking the page writeback complete, so that
-> filemap_write_and_wait and friends implicitly wait for this conversion
-> when waiting for page I/O to complete, and thus removing the need for
-> all the explicit flushing infrastructure.
+e2fsprog's f_dup4 test fails when run on a Pandaboard installed with
+Ubuntu 12.10 Server and running custom 3.7-rc* kernels.  glibc detects
+a heap problem and emits this message:
 
-That's where I (hope) I'm headed too. :)
+*** glibc detected *** ../debugfs/debugfs: double free or corruption (out):
+ 0x0004b6f8 ***
 
---D
+This happens at the beginning of the f_dup4 test in debugfs, which is
+used to modify/prepare a test filesystem for subsequent fsck'ing (object
+of the test) - the failure occurs after debugfs has made some but not all
+of the mods, and then causes debugfs to abort.  The test script doesn't
+check for trouble, so fsck then proceeds to run (successfully) on a
+partially-modified filesystem.  The resulting fsck output does not match
+the output expected for a fully-modified filesystem, and the test fails.
+
+The root cause is the inode cache is being overrun.  The test filesystem
+contains 128 byte inodes, so the inode cache is allocated with 128 byte
+inodes.  However, debugfs's do_set_inode() passes a bufsize of
+sizeof(ext2_inode_large) - 156 bytes - down to ext2fs_{read|write}_inode_full.
+Since the bufsize is used to determine how much data to read from or write
+to the inode cache, we get overruns.
+
+f_dup4 does not fail when run on an x86_64 test system, even though the 
+test filesystem still contains 128 byte inodes.  glibc does not detect an
+error, debugfs runs to completion, and the fsck output is as expected.
+However, if f_dup4 is run with --valgrind after modifying the f_dup4
+script to capture the debugfs output rather than direct it to /dev/null,
+valgrind reports inode cache overruns (same is true on the Pandaboard).
+
+Interestingly, f_dup4 does fail when run on a 32 bit x86 system - glibc
+detects and reports the heap problem and forces debugfs to abort in a
+manner identical to that seen on the Pandaboard.  So, we see failures
+on the 32 bit systems but not on the 64 bit.  It's not yet clear to me
+why glibc isn't catching the overruns on x86_64, but that's what's behind
+my reports of different f_dup4 test behavior in recent ext4 concalls.
+
+Thanks,
+Eric
+
