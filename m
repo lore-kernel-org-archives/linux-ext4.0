@@ -1,42 +1,24 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: fix configure help text for quota
-Date: Wed, 28 Nov 2012 23:50:46 -0600
-Message-ID: <50B6F7B6.4050003@redhat.com>
-References: <50B504C4.6090504@redhat.com> <20121129040323.GA8029@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: "laoar.shao" <laoar.shao@gmail.com>
+Subject: Help about ext3 read-only issue on ext3(2.6.16.60)
+Date: Thu, 29 Nov 2012 16:03:23 +0800
+Message-ID: <5A73E077-593B-450C-9CEE-4A61EEBE2DF8@gmail.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31742 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727Ab2K2Fut (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Nov 2012 00:50:49 -0500
-In-Reply-To: <20121129040323.GA8029@thunk.org>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:53624 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752324Ab2K2IE3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2012 03:04:29 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/28/12 10:03 PM, Theodore Ts'o wrote:
-> On Tue, Nov 27, 2012 at 12:21:56PM -0600, Eric Sandeen wrote:
->> It's --enable-quota, not --enable-libquota.
->>
->> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> 
-> Thanks, applied.
-> 
->> PS it's still off by default.  Should it be?  What bugs remain?
-> 
-> Yeah, we probably should turn it on.  It's turned on by default in
-> Debian in the 1.42.x releases.  I don't know of any remaining bugs,
-> but at the same time, it's not gotten a lot of use to date.
-> 
->        	   	      	       	      - Ted
 
-Hum, ok.
 
-Maybe then rather than fixing up all the configure stuff, I
-should have just removed the switch and turned it on.  Oh well.
-
--Eric
-
+=B7=A2=D7=D4=CE=D2=B5=C4 iPhone--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
