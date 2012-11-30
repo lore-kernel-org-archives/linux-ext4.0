@@ -1,182 +1,271 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: fix inode cache overruns
-Date: Thu, 29 Nov 2012 20:46:06 -0500
-Message-ID: <20121130014606.GA24765@thunk.org>
-References: <20121117183745.GA8489@wallace>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] ext4: restructure ext4_ext_direct_IO()
+Date: Thu, 29 Nov 2012 21:17:06 -0500
+Message-ID: <1354241826-8010-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35979 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:35974 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167Ab2K3Fx3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Nov 2012 00:53:29 -0500
-Content-Disposition: inline
-In-Reply-To: <20121117183745.GA8489@wallace>
+	id S1751167Ab2K3Fx2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Nov 2012 00:53:28 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 17, 2012 at 01:37:45PM -0500, Eric Whitney wrote:
-> An inode cache slot will be overrun if a caller to ext2fs_read_inode_full()
-> or ext2fs_write_inode_full() attempts to read or write a full sized 156
-> byte inode when the target filesystem contains 128 byte inodes.  Limit the
-> copied inode to the smaller of the target filesystem's or the caller's
-> requested inode size.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+Remove a level of indentation by moving the DIO read and extending
+write case to the beginning of the file.  This results in no actual
+programmatic changes to the file, but makes it easier to
+read/understand.
 
-Thanks, applied.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c | 211 +++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 103 insertions(+), 108 deletions(-)
 
-I investigated and discovered why running the ext4 regression tests
-using valgrind didn't discover the problem.  The following commit
-allowed the bug to be trivially surfaced by running the command:
-
-	cd tests; ./test_script --valgrind
-
-I've now verified that the with your patch and this one, plus another
-fix which I've applied to the maint branch to fix various gcc -Wall
-complaints in resize2fs, "./test_script --valgrind" now runs cleanly.
-
-							- Ted
-
-commit 603e5ebc8bb4b5e75c53ddf1461992f8861b35a1
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Nov 29 20:40:21 2012 -0500
-
-    libext2fs: allocate separate memory regions for each inode in the cache
-    
-    The changes to support metadata checksum allocated a single large
-    array for all of the inodes in the inode cache.  This is slightly more
-    efficient, but given that the inode cache is small (only 4 inodes) it
-    doesn't really have that much benefit.  The problem with doing things
-    this way is that the memory overruns, such as the one fixed in commit
-    43c4910371a, do not get detected by valgrind.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 9148d4e..7ec189e 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1328,6 +1328,7 @@ extern errcode_t ext2fs_get_memalign(unsigned long size,
- 				     unsigned long align, void *ptr);
- 
- /* inode.c */
-+extern void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
- extern errcode_t ext2fs_flush_icache(ext2_filsys fs);
- extern errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan,
- 					    ext2_ino_t *ino,
-diff --git a/lib/ext2fs/freefs.c b/lib/ext2fs/freefs.c
-index 28c4132..d3e815c 100644
---- a/lib/ext2fs/freefs.c
-+++ b/lib/ext2fs/freefs.c
-@@ -18,8 +18,6 @@
- #include "ext2_fs.h"
- #include "ext2fsP.h"
- 
--static void ext2fs_free_inode_cache(struct ext2_inode_cache *icache);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cf5d30a..91a2496 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2927,10 +2927,10 @@ retry:
+  * fall back to buffered IO.
+  *
+  * For holes, we fallocate those blocks, mark them as uninitialized
+- * If those blocks were preallocated, we mark sure they are splited, but
++ * If those blocks were preallocated, we mark sure they are split, but
+  * still keep the range to write as uninitialized.
+  *
+- * The unwrritten extents will be converted to written when DIO is completed.
++ * The unwritten extents will be converted to written when DIO is completed.
+  * For async direct IO, since the IO may still pending when return, we
+  * set up an end_io call back function, which will do the conversion
+  * when async direct IO completed.
+@@ -2948,125 +2948,120 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 	struct inode *inode = file->f_mapping->host;
+ 	ssize_t ret;
+ 	size_t count = iov_length(iov, nr_segs);
 -
- void ext2fs_free(ext2_filsys fs)
- {
- 	if (!fs || (fs->magic != EXT2_ET_MAGIC_EXT2FS_FILSYS))
-@@ -65,21 +63,6 @@ void ext2fs_free(ext2_filsys fs)
- }
++	int overwrite = 0;
++	get_block_t *get_block_func = NULL;
++	int dio_flags = 0;
+ 	loff_t final_size = offset + count;
+-	if (rw == WRITE && final_size <= inode->i_size) {
+-		int overwrite = 0;
+-		get_block_t *get_block_func = NULL;
+-		int dio_flags = 0;
  
- /*
-- * Free the inode cache structure
-- */
--static void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
--{
--	if (--icache->refcount)
--		return;
--	if (icache->buffer)
--		ext2fs_free_mem(&icache->buffer);
--	if (icache->cache)
--		ext2fs_free_mem(&icache->cache);
--	icache->buffer_blk = 0;
--	ext2fs_free_mem(&icache);
--}
--
--/*
-  * This procedure frees a badblocks list.
-  */
- void ext2fs_u32_list_free(ext2_u32_list bb)
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index e47d664..f877146 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -72,6 +72,25 @@ errcode_t ext2fs_flush_icache(ext2_filsys fs)
- 	return 0;
- }
+-		BUG_ON(iocb->private == NULL);
++	/* Use the old path for reads and writes beyond i_size. */
++	if (rw != WRITE || final_size > inode->i_size)
++		return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
  
-+/*
-+ * Free the inode cache structure
-+ */
-+void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
-+{
-+	int i;
-+
-+	if (--icache->refcount)
-+		return;
-+	if (icache->buffer)
-+		ext2fs_free_mem(&icache->buffer);
-+	for (i = 0; i < icache->cache_size; i++)
-+		ext2fs_free_mem(&icache->cache[i].inode);
-+	if (icache->cache)
-+		ext2fs_free_mem(&icache->cache);
-+	icache->buffer_blk = 0;
-+	ext2fs_free_mem(&icache);
-+}
-+
- static errcode_t create_icache(ext2_filsys fs)
- {
- 	int		i;
-@@ -86,31 +105,32 @@ static errcode_t create_icache(ext2_filsys fs)
+-		/* If we do a overwrite dio, i_mutex locking can be released */
+-		overwrite = *((int *)iocb->private);
++	BUG_ON(iocb->private == NULL);
  
- 	memset(fs->icache, 0, sizeof(struct ext2_inode_cache));
- 	retval = ext2fs_get_mem(fs->blocksize, &fs->icache->buffer);
--	if (retval) {
--		ext2fs_free_mem(&fs->icache);
--		return retval;
--	}
-+	if (retval)
-+		goto errout;
-+
- 	fs->icache->buffer_blk = 0;
- 	fs->icache->cache_last = -1;
- 	fs->icache->cache_size = 4;
- 	fs->icache->refcount = 1;
- 	retval = ext2fs_get_array(fs->icache->cache_size,
--				  sizeof(struct ext2_inode_cache_ent) +
--				  EXT2_INODE_SIZE(fs->super),
-+				  sizeof(struct ext2_inode_cache_ent),
- 				  &fs->icache->cache);
--	if (retval) {
--		ext2fs_free_mem(&fs->icache->buffer);
--		ext2fs_free_mem(&fs->icache);
--		return retval;
--	}
-+	if (retval)
-+		goto errout;
+-		if (overwrite) {
+-			atomic_inc(&inode->i_dio_count);
+-			down_read(&EXT4_I(inode)->i_data_sem);
+-			mutex_unlock(&inode->i_mutex);
+-		}
++	/* If we do a overwrite dio, i_mutex locking can be released */
++	overwrite = *((int *)iocb->private);
  
--	for (i = 0, p = (void *)(fs->icache->cache + fs->icache->cache_size);
--	     i < fs->icache->cache_size;
--	     i++, p += EXT2_INODE_SIZE(fs->super))
--		fs->icache->cache[i].inode = p;
-+	for (i = 0; i < fs->icache->cache_size; i++) {
-+		retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super),
-+					&fs->icache->cache[i].inode);
-+		if (retval)
-+			goto errout;
+-		/*
+- 		 * We could direct write to holes and fallocate.
+-		 *
+- 		 * Allocated blocks to fill the hole are marked as uninitialized
+- 		 * to prevent parallel buffered read to expose the stale data
+- 		 * before DIO complete the data IO.
+-		 *
+- 		 * As to previously fallocated extents, ext4 get_block
+- 		 * will just simply mark the buffer mapped but still
+- 		 * keep the extents uninitialized.
+- 		 *
+-		 * for non AIO case, we will convert those unwritten extents
+-		 * to written after return back from blockdev_direct_IO.
+-		 *
+-		 * for async DIO, the conversion needs to be defered when
+-		 * the IO is completed. The ext4 end_io callback function
+-		 * will be called to take care of the conversion work.
+-		 * Here for async case, we allocate an io_end structure to
+-		 * hook to the iocb.
+- 		 */
+-		iocb->private = NULL;
+-		ext4_inode_aio_set(inode, NULL);
+-		if (!is_sync_kiocb(iocb)) {
+-			ext4_io_end_t *io_end =
+-				ext4_init_io_end(inode, GFP_NOFS);
+-			if (!io_end) {
+-				ret = -ENOMEM;
+-				goto retake_lock;
+-			}
+-			io_end->flag |= EXT4_IO_END_DIRECT;
+-			iocb->private = io_end;
+-			/*
+-			 * we save the io structure for current async
+-			 * direct IO, so that later ext4_map_blocks()
+-			 * could flag the io structure whether there
+-			 * is a unwritten extents needs to be converted
+-			 * when IO is completed.
+-			 */
+-			ext4_inode_aio_set(inode, io_end);
+-		}
++	if (overwrite) {
++		atomic_inc(&inode->i_dio_count);
++		down_read(&EXT4_I(inode)->i_data_sem);
++		mutex_unlock(&inode->i_mutex);
 +	}
  
- 	ext2fs_flush_icache(fs);
- 	return 0;
-+errout:
-+	ext2fs_free_inode_cache(fs->icache);
-+	fs->icache = 0;
-+	return retval;
+-		if (overwrite) {
+-			get_block_func = ext4_get_block_write_nolock;
+-		} else {
+-			get_block_func = ext4_get_block_write;
+-			dio_flags = DIO_LOCKING;
++	/*
++	 * We could direct write to holes and fallocate.
++	 *
++	 * Allocated blocks to fill the hole are marked as
++	 * uninitialized to prevent parallel buffered read to expose
++	 * the stale data before DIO complete the data IO.
++	 *
++	 * As to previously fallocated extents, ext4 get_block will
++	 * just simply mark the buffer mapped but still keep the
++	 * extents uninitialized.
++	 *
++	 * For non AIO case, we will convert those unwritten extents
++	 * to written after return back from blockdev_direct_IO.
++	 *
++	 * For async DIO, the conversion needs to be deferred when the
++	 * IO is completed. The ext4 end_io callback function will be
++	 * called to take care of the conversion work.  Here for async
++	 * case, we allocate an io_end structure to hook to the iocb.
++	 */
++	iocb->private = NULL;
++	ext4_inode_aio_set(inode, NULL);
++	if (!is_sync_kiocb(iocb)) {
++		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
++		if (!io_end) {
++			ret = -ENOMEM;
++			goto retake_lock;
+ 		}
+-		ret = __blockdev_direct_IO(rw, iocb, inode,
+-					 inode->i_sb->s_bdev, iov,
+-					 offset, nr_segs,
+-					 get_block_func,
+-					 ext4_end_io_dio,
+-					 NULL,
+-					 dio_flags);
+-
+-		if (iocb->private)
+-			ext4_inode_aio_set(inode, NULL);
++		io_end->flag |= EXT4_IO_END_DIRECT;
++		iocb->private = io_end;
+ 		/*
+-		 * The io_end structure takes a reference to the inode,
+-		 * that structure needs to be destroyed and the
+-		 * reference to the inode need to be dropped, when IO is
+-		 * complete, even with 0 byte write, or failed.
+-		 *
+-		 * In the successful AIO DIO case, the io_end structure will be
+-		 * desctroyed and the reference to the inode will be dropped
+-		 * after the end_io call back function is called.
+-		 *
+-		 * In the case there is 0 byte write, or error case, since
+-		 * VFS direct IO won't invoke the end_io call back function,
+-		 * we need to free the end_io structure here.
++		 * we save the io structure for current async direct
++		 * IO, so that later ext4_map_blocks() could flag the
++		 * io structure whether there is a unwritten extents
++		 * needs to be converted when IO is completed.
+ 		 */
+-		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+-			ext4_free_io_end(iocb->private);
+-			iocb->private = NULL;
+-		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+-						EXT4_STATE_DIO_UNWRITTEN)) {
+-			int err;
+-			/*
+-			 * for non AIO case, since the IO is already
+-			 * completed, we could do the conversion right here
+-			 */
+-			err = ext4_convert_unwritten_extents(inode,
+-							     offset, ret);
+-			if (err < 0)
+-				ret = err;
+-			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+-		}
++		ext4_inode_aio_set(inode, io_end);
++	}
+ 
+-	retake_lock:
+-		/* take i_mutex locking again if we do a ovewrite dio */
+-		if (overwrite) {
+-			inode_dio_done(inode);
+-			up_read(&EXT4_I(inode)->i_data_sem);
+-			mutex_lock(&inode->i_mutex);
+-		}
++	if (overwrite) {
++		get_block_func = ext4_get_block_write_nolock;
++	} else {
++		get_block_func = ext4_get_block_write;
++		dio_flags = DIO_LOCKING;
++	}
++	ret = __blockdev_direct_IO(rw, iocb, inode,
++				   inode->i_sb->s_bdev, iov,
++				   offset, nr_segs,
++				   get_block_func,
++				   ext4_end_io_dio,
++				   NULL,
++				   dio_flags);
++
++	if (iocb->private)
++		ext4_inode_aio_set(inode, NULL);
++	/*
++	 * The io_end structure takes a reference to the inode, that
++	 * structure needs to be destroyed and the reference to the
++	 * inode need to be dropped, when IO is complete, even with 0
++	 * byte write, or failed.
++	 *
++	 * In the successful AIO DIO case, the io_end structure will
++	 * be destroyed and the reference to the inode will be dropped
++	 * after the end_io call back function is called.
++	 *
++	 * In the case there is 0 byte write, or error case, since VFS
++	 * direct IO won't invoke the end_io call back function, we
++	 * need to free the end_io structure here.
++	 */
++	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
++		ext4_free_io_end(iocb->private);
++		iocb->private = NULL;
++	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
++						EXT4_STATE_DIO_UNWRITTEN)) {
++		int err;
++		/*
++		 * for non AIO case, since the IO is already
++		 * completed, we could do the conversion right here
++		 */
++		err = ext4_convert_unwritten_extents(inode,
++						     offset, ret);
++		if (err < 0)
++			ret = err;
++		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
++	}
+ 
+-		return ret;
++retake_lock:
++	/* take i_mutex locking again if we do a ovewrite dio */
++	if (overwrite) {
++		inode_dio_done(inode);
++		up_read(&EXT4_I(inode)->i_data_sem);
++		mutex_lock(&inode->i_mutex);
+ 	}
+ 
+-	/* for write the the end of file case, we fall back to old way */
+-	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
++	return ret;
  }
  
- errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
+ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+-- 
+1.7.12.rc0.22.gcdd159b
+
