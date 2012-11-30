@@ -1,271 +1,49 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: restructure ext4_ext_direct_IO()
-Date: Thu, 29 Nov 2012 21:17:06 -0500
-Message-ID: <1354241826-8010-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Guo Chao <yan@linux.vnet.ibm.com>
+Subject: [PATCH 3/4] ext4: remove redundant code in ext4_alloc_inode()
+Date: Fri, 30 Nov 2012 14:41:45 +0800
+Message-ID: <1354257706-6582-3-git-send-email-yan@linux.vnet.ibm.com>
+References: <1354257706-6582-1-git-send-email-yan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:35974 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167Ab2K3Fx2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Nov 2012 00:53:28 -0500
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:60818 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756000Ab2K3GmG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2012 01:42:06 -0500
+Received: from /spool/local
+	by e23smtp08.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
+	Fri, 30 Nov 2012 16:40:56 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qAU6Ux8L35192930
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2012 17:30:59 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qAU6foae022795
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2012 17:41:50 +1100
+In-Reply-To: <1354257706-6582-1-git-send-email-yan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Remove a level of indentation by moving the DIO read and extending
-write case to the beginning of the file.  This results in no actual
-programmatic changes to the file, but makes it easier to
-read/understand.
+inode_init_always() will initialize inode->i_data.writeback_index
+anyway, no need to do this in ext4_alloc_inode().
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
 ---
- fs/ext4/inode.c | 211 +++++++++++++++++++++++++++-----------------------------
- 1 file changed, 103 insertions(+), 108 deletions(-)
+ fs/ext4/super.c |    1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cf5d30a..91a2496 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2927,10 +2927,10 @@ retry:
-  * fall back to buffered IO.
-  *
-  * For holes, we fallocate those blocks, mark them as uninitialized
-- * If those blocks were preallocated, we mark sure they are splited, but
-+ * If those blocks were preallocated, we mark sure they are split, but
-  * still keep the range to write as uninitialized.
-  *
-- * The unwrritten extents will be converted to written when DIO is completed.
-+ * The unwritten extents will be converted to written when DIO is completed.
-  * For async direct IO, since the IO may still pending when return, we
-  * set up an end_io call back function, which will do the conversion
-  * when async direct IO completed.
-@@ -2948,125 +2948,120 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 	size_t count = iov_length(iov, nr_segs);
--
-+	int overwrite = 0;
-+	get_block_t *get_block_func = NULL;
-+	int dio_flags = 0;
- 	loff_t final_size = offset + count;
--	if (rw == WRITE && final_size <= inode->i_size) {
--		int overwrite = 0;
--		get_block_t *get_block_func = NULL;
--		int dio_flags = 0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 66a4e20..15d28e3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -940,7 +940,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 		return NULL;
  
--		BUG_ON(iocb->private == NULL);
-+	/* Use the old path for reads and writes beyond i_size. */
-+	if (rw != WRITE || final_size > inode->i_size)
-+		return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
- 
--		/* If we do a overwrite dio, i_mutex locking can be released */
--		overwrite = *((int *)iocb->private);
-+	BUG_ON(iocb->private == NULL);
- 
--		if (overwrite) {
--			atomic_inc(&inode->i_dio_count);
--			down_read(&EXT4_I(inode)->i_data_sem);
--			mutex_unlock(&inode->i_mutex);
--		}
-+	/* If we do a overwrite dio, i_mutex locking can be released */
-+	overwrite = *((int *)iocb->private);
- 
--		/*
-- 		 * We could direct write to holes and fallocate.
--		 *
-- 		 * Allocated blocks to fill the hole are marked as uninitialized
-- 		 * to prevent parallel buffered read to expose the stale data
-- 		 * before DIO complete the data IO.
--		 *
-- 		 * As to previously fallocated extents, ext4 get_block
-- 		 * will just simply mark the buffer mapped but still
-- 		 * keep the extents uninitialized.
-- 		 *
--		 * for non AIO case, we will convert those unwritten extents
--		 * to written after return back from blockdev_direct_IO.
--		 *
--		 * for async DIO, the conversion needs to be defered when
--		 * the IO is completed. The ext4 end_io callback function
--		 * will be called to take care of the conversion work.
--		 * Here for async case, we allocate an io_end structure to
--		 * hook to the iocb.
-- 		 */
--		iocb->private = NULL;
--		ext4_inode_aio_set(inode, NULL);
--		if (!is_sync_kiocb(iocb)) {
--			ext4_io_end_t *io_end =
--				ext4_init_io_end(inode, GFP_NOFS);
--			if (!io_end) {
--				ret = -ENOMEM;
--				goto retake_lock;
--			}
--			io_end->flag |= EXT4_IO_END_DIRECT;
--			iocb->private = io_end;
--			/*
--			 * we save the io structure for current async
--			 * direct IO, so that later ext4_map_blocks()
--			 * could flag the io structure whether there
--			 * is a unwritten extents needs to be converted
--			 * when IO is completed.
--			 */
--			ext4_inode_aio_set(inode, io_end);
--		}
-+	if (overwrite) {
-+		atomic_inc(&inode->i_dio_count);
-+		down_read(&EXT4_I(inode)->i_data_sem);
-+		mutex_unlock(&inode->i_mutex);
-+	}
- 
--		if (overwrite) {
--			get_block_func = ext4_get_block_write_nolock;
--		} else {
--			get_block_func = ext4_get_block_write;
--			dio_flags = DIO_LOCKING;
-+	/*
-+	 * We could direct write to holes and fallocate.
-+	 *
-+	 * Allocated blocks to fill the hole are marked as
-+	 * uninitialized to prevent parallel buffered read to expose
-+	 * the stale data before DIO complete the data IO.
-+	 *
-+	 * As to previously fallocated extents, ext4 get_block will
-+	 * just simply mark the buffer mapped but still keep the
-+	 * extents uninitialized.
-+	 *
-+	 * For non AIO case, we will convert those unwritten extents
-+	 * to written after return back from blockdev_direct_IO.
-+	 *
-+	 * For async DIO, the conversion needs to be deferred when the
-+	 * IO is completed. The ext4 end_io callback function will be
-+	 * called to take care of the conversion work.  Here for async
-+	 * case, we allocate an io_end structure to hook to the iocb.
-+	 */
-+	iocb->private = NULL;
-+	ext4_inode_aio_set(inode, NULL);
-+	if (!is_sync_kiocb(iocb)) {
-+		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
-+		if (!io_end) {
-+			ret = -ENOMEM;
-+			goto retake_lock;
- 		}
--		ret = __blockdev_direct_IO(rw, iocb, inode,
--					 inode->i_sb->s_bdev, iov,
--					 offset, nr_segs,
--					 get_block_func,
--					 ext4_end_io_dio,
--					 NULL,
--					 dio_flags);
--
--		if (iocb->private)
--			ext4_inode_aio_set(inode, NULL);
-+		io_end->flag |= EXT4_IO_END_DIRECT;
-+		iocb->private = io_end;
- 		/*
--		 * The io_end structure takes a reference to the inode,
--		 * that structure needs to be destroyed and the
--		 * reference to the inode need to be dropped, when IO is
--		 * complete, even with 0 byte write, or failed.
--		 *
--		 * In the successful AIO DIO case, the io_end structure will be
--		 * desctroyed and the reference to the inode will be dropped
--		 * after the end_io call back function is called.
--		 *
--		 * In the case there is 0 byte write, or error case, since
--		 * VFS direct IO won't invoke the end_io call back function,
--		 * we need to free the end_io structure here.
-+		 * we save the io structure for current async direct
-+		 * IO, so that later ext4_map_blocks() could flag the
-+		 * io structure whether there is a unwritten extents
-+		 * needs to be converted when IO is completed.
- 		 */
--		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
--			ext4_free_io_end(iocb->private);
--			iocb->private = NULL;
--		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
--						EXT4_STATE_DIO_UNWRITTEN)) {
--			int err;
--			/*
--			 * for non AIO case, since the IO is already
--			 * completed, we could do the conversion right here
--			 */
--			err = ext4_convert_unwritten_extents(inode,
--							     offset, ret);
--			if (err < 0)
--				ret = err;
--			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
--		}
-+		ext4_inode_aio_set(inode, io_end);
-+	}
- 
--	retake_lock:
--		/* take i_mutex locking again if we do a ovewrite dio */
--		if (overwrite) {
--			inode_dio_done(inode);
--			up_read(&EXT4_I(inode)->i_data_sem);
--			mutex_lock(&inode->i_mutex);
--		}
-+	if (overwrite) {
-+		get_block_func = ext4_get_block_write_nolock;
-+	} else {
-+		get_block_func = ext4_get_block_write;
-+		dio_flags = DIO_LOCKING;
-+	}
-+	ret = __blockdev_direct_IO(rw, iocb, inode,
-+				   inode->i_sb->s_bdev, iov,
-+				   offset, nr_segs,
-+				   get_block_func,
-+				   ext4_end_io_dio,
-+				   NULL,
-+				   dio_flags);
-+
-+	if (iocb->private)
-+		ext4_inode_aio_set(inode, NULL);
-+	/*
-+	 * The io_end structure takes a reference to the inode, that
-+	 * structure needs to be destroyed and the reference to the
-+	 * inode need to be dropped, when IO is complete, even with 0
-+	 * byte write, or failed.
-+	 *
-+	 * In the successful AIO DIO case, the io_end structure will
-+	 * be destroyed and the reference to the inode will be dropped
-+	 * after the end_io call back function is called.
-+	 *
-+	 * In the case there is 0 byte write, or error case, since VFS
-+	 * direct IO won't invoke the end_io call back function, we
-+	 * need to free the end_io structure here.
-+	 */
-+	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
-+		ext4_free_io_end(iocb->private);
-+		iocb->private = NULL;
-+	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
-+						EXT4_STATE_DIO_UNWRITTEN)) {
-+		int err;
-+		/*
-+		 * for non AIO case, since the IO is already
-+		 * completed, we could do the conversion right here
-+		 */
-+		err = ext4_convert_unwritten_extents(inode,
-+						     offset, ret);
-+		if (err < 0)
-+			ret = err;
-+		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
-+	}
- 
--		return ret;
-+retake_lock:
-+	/* take i_mutex locking again if we do a ovewrite dio */
-+	if (overwrite) {
-+		inode_dio_done(inode);
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+		mutex_lock(&inode->i_mutex);
- 	}
- 
--	/* for write the the end of file case, we fall back to old way */
--	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
-+	return ret;
- }
- 
- static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 	ei->vfs_inode.i_version = 1;
+-	ei->vfs_inode.i_data.writeback_index = 0;
+ 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
+ 	INIT_LIST_HEAD(&ei->i_prealloc_list);
+ 	spin_lock_init(&ei->i_prealloc_lock);
 -- 
-1.7.12.rc0.22.gcdd159b
+1.7.9.5
 
