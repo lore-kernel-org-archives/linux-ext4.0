@@ -1,64 +1,51 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 2/4] ext4: use sync_inode_metadata() when sync inode
- metadata
-Date: Fri, 30 Nov 2012 14:24:48 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1211301423100.8688@dhcp-1-104.brq.redhat.com>
-References: <1354257706-6582-1-git-send-email-yan@linux.vnet.ibm.com> <1354257706-6582-2-git-send-email-yan@linux.vnet.ibm.com>
+Subject: Re: [PATCH 3/4] ext4: remove redundant code in ext4_alloc_inode()
+Date: Fri, 30 Nov 2012 14:32:09 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1211301431550.8688@dhcp-1-104.brq.redhat.com>
+References: <1354257706-6582-1-git-send-email-yan@linux.vnet.ibm.com> <1354257706-6582-3-git-send-email-yan@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Guo Chao <yan@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10794 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41520 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030416Ab2K3NYz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Nov 2012 08:24:55 -0500
-In-Reply-To: <1354257706-6582-2-git-send-email-yan@linux.vnet.ibm.com>
+	id S1752886Ab2K3NcU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Nov 2012 08:32:20 -0500
+In-Reply-To: <1354257706-6582-3-git-send-email-yan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 On Fri, 30 Nov 2012, Guo Chao wrote:
 
-> Date: Fri, 30 Nov 2012 14:41:44 +0800
+> Date: Fri, 30 Nov 2012 14:41:45 +0800
 > From: Guo Chao <yan@linux.vnet.ibm.com>
 > To: tytso@mit.edu
 > Cc: linux-ext4@vger.kernel.org
-> Subject: [PATCH 2/4] ext4: use sync_inode_metadata() when sync inode metadata
+> Subject: [PATCH 3/4] ext4: remove redundant code in ext4_alloc_inode()
 > 
-> We have a dedicated interface to sync inode metadata.
+> inode_init_always() will initialize inode->i_data.writeback_index
+> anyway, no need to do this in ext4_alloc_inode().
 > 
 > Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
 > ---
->  fs/ext4/fsync.c |    6 +-----
->  1 file changed, 1 insertion(+), 5 deletions(-)
+>  fs/ext4/super.c |    1 -
+>  1 file changed, 1 deletion(-)
 > 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index be1d89f..dfbc1fe 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -44,7 +44,6 @@
->   */
->  static int ext4_sync_parent(struct inode *inode)
->  {
-> -	struct writeback_control wbc;
->  	struct dentry *dentry = NULL;
->  	struct inode *next;
->  	int ret = 0;
-> @@ -66,10 +65,7 @@ static int ext4_sync_parent(struct inode *inode)
->  		ret = sync_mapping_buffers(inode->i_mapping);
->  		if (ret)
->  			break;
-> -		memset(&wbc, 0, sizeof(wbc));
-> -		wbc.sync_mode = WB_SYNC_ALL;
-> -		wbc.nr_to_write = 0;         /* only write out the inode */
-> -		ret = sync_inode(inode, &wbc);
-> +		ret = sync_inode_metadata(inode, 1);
->  		if (ret)
->  			break;
->  	}
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 66a4e20..15d28e3 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -940,7 +940,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+>  		return NULL;
+>  
+>  	ei->vfs_inode.i_version = 1;
+> -	ei->vfs_inode.i_data.writeback_index = 0;
+>  	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
+>  	INIT_LIST_HEAD(&ei->i_prealloc_list);
+>  	spin_lock_init(&ei->i_prealloc_lock);
 > 
 
-Makes sense.
+Looks good
 
 Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
