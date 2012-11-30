@@ -1,47 +1,38 @@
-From: Guo Chao <yan@linux.vnet.ibm.com>
-Subject: [PATCH 1/4] ext4: remove unsafe and unnecessary memset()
-Date: Fri, 30 Nov 2012 14:41:43 +0800
-Message-ID: <1354257706-6582-1-git-send-email-yan@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix possible use after free of buffer head
+Date: Thu, 29 Nov 2012 21:21:50 -0500
+Message-ID: <20121130022150.GC24765@thunk.org>
+References: <1354185828-28545-1-git-send-email-lczerner@redhat.com>
+ <20121129190239.GA2888@blackbox.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+	stable@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:50073 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751893Ab2K3Glx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2012 01:41:53 -0500
-Received: from /spool/local
-	by e23smtp01.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
-	Fri, 30 Nov 2012 16:38:21 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qAU6V6KT3015108
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2012 17:31:07 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qAU6fmiQ022720
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2012 17:41:48 +1100
+Received: from li9-11.members.linode.com ([67.18.176.11]:35981 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754158Ab2K3Fxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Nov 2012 00:53:30 -0500
+Content-Disposition: inline
+In-Reply-To: <20121129190239.GA2888@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We memset this page before checking whether it's valid. But we need
-not memset zeroed page at all.
+On Thu, Nov 29, 2012 at 11:02:39AM -0800, Darrick J. Wong wrote:
+> On Thu, Nov 29, 2012 at 11:43:48AM +0100, Lukas Czerner wrote:
+> > Commit fa77dcfafeaa6bc73293c646bfc3d5192dcf0be2 introduces block bitmap
+> > checksum calculation into ext4_new_inode() in the case that block group
+> > was uninitialized. However we brelse() the bitmap buffer before we
+> > attempt to checksum it so we have no guarantee that the buffer is still
+> > there.
+> > 
+> > Fix this by releasing the buffer after the possible checksum
+> > computation.
+> 
+> Looks ok, so:
+> Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
----
- fs/ext4/super.c |    1 -
- 1 file changed, 1 deletion(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ad6cd8a..66a4e20 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3206,7 +3206,6 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	ext4_fsblk_t overhead = 0;
- 	char *buf = (char *) get_zeroed_page(GFP_KERNEL);
- 
--	memset(buf, 0, PAGE_SIZE);
- 	if (!buf)
- 		return -ENOMEM;
- 
--- 
-1.7.9.5
-
+						- Ted
