@@ -1,40 +1,53 @@
 From: Cong Ding <dinggnu@gmail.com>
-Subject: [PATCH] fs:ext4:hash.c: reduce one "if" comparison
-Date: Sat,  1 Dec 2012 23:33:41 +0000
-Message-ID: <1354404821-6781-1-git-send-email-dinggnu@gmail.com>
+Subject: [PATCH] fs:ext3: remove lock_buffer in bclean() and setup_new_group_blocks
+Date: Sun,  2 Dec 2012 01:40:28 +0000
+Message-ID: <1354412428-8938-1-git-send-email-dinggnu@gmail.com>
 Cc: Cong Ding <dinggnu@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>,
+To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:62109 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751501Ab2LBBko (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2012 20:40:44 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-it is unnecessary to check i<4 after the loop. just do it before the break.
+it's not necessary to lock the buffers because no one touches them
+beyond the file system.
 
 Signed-off-by: Cong Ding <dinggnu@gmail.com>
 ---
- fs/ext4/hash.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/ext3/resize.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index fa8e491..3d586f0 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -155,11 +155,11 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 	/* Check to see if the seed is all zero's */
- 	if (hinfo->seed) {
- 		for (i = 0; i < 4; i++) {
--			if (hinfo->seed[i])
-+			if (hinfo->seed[i]) {
-+				memcpy(buf, hinfo->seed, sizeof(buf));
- 				break;
-+			}
- 		}
--		if (i < 4)
--			memcpy(buf, hinfo->seed, sizeof(buf));
+diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+index 0f814f3..f76fcd6 100644
+--- a/fs/ext3/resize.c
++++ b/fs/ext3/resize.c
+@@ -122,10 +122,8 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 		brelse(bh);
+ 		bh = ERR_PTR(err);
+ 	} else {
+-		lock_buffer(bh);
+ 		memset(bh->b_data, 0, sb->s_blocksize);
+ 		set_buffer_uptodate(bh);
+-		unlock_buffer(bh);
  	}
  
- 	switch (hinfo->hash_version) {
+ 	return bh;
+@@ -242,10 +240,8 @@ static int setup_new_group_blocks(struct super_block *sb,
+ 			brelse(gdb);
+ 			goto exit_bh;
+ 		}
+-		lock_buffer(gdb);
+ 		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
+ 		set_buffer_uptodate(gdb);
+-		unlock_buffer(gdb);
+ 		err = ext3_journal_dirty_metadata(handle, gdb);
+ 		if (err) {
+ 			brelse(gdb);
 -- 
 1.7.4.5
+
