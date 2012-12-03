@@ -1,102 +1,82 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: [PATCH] ext4: Ensure Inode flags consistency are checked in build time [V2]
-Date: Mon,  3 Dec 2012 15:32:56 -0200
-Message-ID: <1354555976-18052-1-git-send-email-cmaiolino@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Mon, 03 Dec 2012 11:59:33 -0600
+Message-ID: <50BCE885.8010609@redhat.com>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	wuqixuan@huawei.com, lizefan@huawei.com, wuqixuan@gmail.com
+To: Yafang Shao <laoar.shao@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10073 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64182 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754642Ab2LCRdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2012 12:33:04 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qB3HX3UQ017987
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2012 12:33:03 -0500
-Received: from andromeda.usersys.redhat.com (ovpn-113-110.phx2.redhat.com [10.3.113.110])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id qB3HX2TB023171
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Dec 2012 12:33:03 -0500
+	id S1751014Ab2LCR7i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2012 12:59:38 -0500
+In-Reply-To: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Flags being used by atomic operations in inode flags (e.g.
-ext4_test_inode_flag(), should be consistent with that actually stored in
-inodes, i.e.: EXT4_XXX_FL.
+On 12/1/12 8:22 AM, Yafang Shao wrote:
+> Hi all,
+> 
+> We have many x86 boards, and we've been using 2.6.16.60 for a long
+> time. Before time we occasionally found ext3 was switched to read-only
+> while services were running, and we took it for granted it must be
+> some hardware problems.
+>     But recently this issue happens frequently, both in old boards and
+> new boards. We've analyzed logs, and in one board we did find
+> exceptional reboot (but ext3 error happened 9 days after), and in
+> another board we found mptbase recovery routine, but in all other
+> boards there's no suspicious output at all.
+>     The only change with the system is some application updates, and
+> apps now put more IO burden on disks.
+>     The error always happened in ext3_readdir, like this:
+> 
+>  EXT3-fs error (device sda7): ext3_readdir: bad entry in directory
+> #6685458: rec_len is smaller than minimal - offset=3860, inode=0,
+> rec_len=0, name_len=0
+> 
+> Aborting journal on device sda7.
+> 
+> EXT3-fs error (device sda7) in start_transaction: Readonly filesystem
+> 
+> Aborting journal on device sda7.
+> 
+> ext3_abort called.
+> 
+> EXT3-fs error (device sda7): ext3_journal_start_sb: Detected aborted journal
+> 
+> Remounting filesystem read-only
+> 
+> __journal_remove_journal_head: freeing b_committed_data
+> 
+> 
+> 
+> We highly doubt it's hardware failures with this frequency in mind, so
+> we're wondering regarding to this issue if there's some ext3 bug-fix
+> having merged into mainline but not in our old kernel?
 
-It ensures that this consistency is checked at build-time, not at run-time.
+Absolutely there are.  There have been 87 changes just to namei.c since 2.6.16.
+You could look through git logs to see if anything looks applicable.
 
-Currently, the flags consistency are being checked at run-time, but, there is no
-real reason to not do a build-time check instead of a run-time check. The code
-is comparing macro defined values with enum type variables, where both are
-constants, so, there is no problem in comparing constants at build-time.
+You might try:
 
-enum variables are treated as constants by the C compiler, according to the C99
-specs (see www.open-std.org/jtc1/sc22/wg14/www/docs/n1124.pdf sec. 6.2.5, item
-16), so, there is no real problem in comparing an enumeration type at build time
+ef2b02d3e617cb0400eedf2668f86215e1b0e6af ext34: ensure do_split leaves enough free space in both blocks
 
-CC'ing Sergio who helped me to achieve this conclusion, in case there is
-something else we need to discuss.
+but to be honest, sticking with such an old kernel means you are largely on your own, or may need contract help if you can't resolve it.
 
-Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
----
- fs/ext4/ext4.h  | 29 +++++++++++++----------------
- fs/ext4/super.c |  1 +
- 2 files changed, 14 insertions(+), 16 deletions(-)
+-Eric
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3c20de1..4ac0523 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -451,25 +451,22 @@ enum {
- 	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
- };
- 
--#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
--#define CHECK_FLAG_VALUE(FLAG) if (!TEST_FLAG_VALUE(FLAG)) { \
--	printk(KERN_EMERG "EXT4 flag fail: " #FLAG ": %d %d\n", \
--		EXT4_##FLAG##_FL, EXT4_INODE_##FLAG); BUG_ON(1); }
--
--/*
-- * Since it's pretty easy to mix up bit numbers and hex values, and we
-- * can't do a compile-time test for ENUM values, we use a run-time
-- * test to make sure that EXT4_XXX_FL is consistent with respect to
-- * EXT4_INODE_XXX.  If all is well the printk and BUG_ON will all drop
-- * out so it won't cost any extra space in the compiled kernel image.
-- * But it's important that these values are the same, since we are
-- * using EXT4_INODE_XXX to test for the flag values, but EXT4_XX_FL
-- * must be consistent with the values of FS_XXX_FL defined in
-- * include/linux/fs.h and the on-disk values found in ext2, ext3, and
-- * ext4 filesystems, and of course the values defined in e2fsprogs.
-+/*
-+ * Since it's pretty easy to mix up bit numbers and hex values, we use a
-+ * build-time check to make sure that EXT4_XXX_FL is consistent with respect to
-+ * EXT4_INODE_XXX. If all is well, the macros will be dropped, so, it won't cost
-+ * any extra space in the compiled kernel image, otherwise, the build will fail.
-+ * It's important that these values are the same, since we are using
-+ * EXT4_INODE_XXX to test for flag values, but EXT4_XXX_FL must be consistent
-+ * with the values of FS_XXX_FL defined in include/linux/fs.h and the on-disk
-+ * values found in ext2, ext3 and ext4 filesystems, and of course the values
-+ * defined in e2fsprogs.
-  *
-  * It's not paranoia if the Murphy's Law really *is* out to get you.  :-)
-  */
-+#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
-+#define CHECK_FLAG_VALUE(FLAG) BUILD_BUG_ON(!TEST_FLAG_VALUE(FLAG))
-+
- static inline void ext4_check_flag_values(void)
- {
- 	CHECK_FLAG_VALUE(SECRM);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 80928f7..e6f6f8b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5282,6 +5282,7 @@ static int __init ext4_init_fs(void)
- 	ext4_li_info = NULL;
- 	mutex_init(&ext4_li_mtx);
- 
-+	/* Build-time check for flags consistency */
- 	ext4_check_flag_values();
- 
- 	for (i = 0; i < EXT4_WQ_HASH_SZ; i++) {
--- 
-1.7.11.7
+> if hardware problem cause it, what's exactly are these hardware problems?
+> 
+> 
+> 
+> Thanks & Regards!
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
