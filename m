@@ -1,116 +1,289 @@
 From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: Ensure Inode flags consistency are checked in
- build time
-Date: Mon, 3 Dec 2012 11:17:43 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1212031108340.6336@localhost>
-References: <1354291886-18312-1-git-send-email-cmaiolino@redhat.com>
+Subject: Re: [PATCH] ext4: restructure ext4_ext_direct_IO()
+Date: Mon, 3 Dec 2012 11:36:36 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1212031136040.6336@localhost>
+References: <1354241826-8010-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org, dmonakhov@openvz.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50827 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63096 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754000Ab2LCKRt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2012 05:17:49 -0500
-In-Reply-To: <1354291886-18312-1-git-send-email-cmaiolino@redhat.com>
+	id S1750868Ab2LCKgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2012 05:36:43 -0500
+In-Reply-To: <1354241826-8010-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 30 Nov 2012, Carlos Maiolino wrote:
+On Thu, 29 Nov 2012, Theodore Ts'o wrote:
 
-> Date: Fri, 30 Nov 2012 14:11:26 -0200
-> From: Carlos Maiolino <cmaiolino@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Subject: [PATCH] ext4: Ensure Inode flags consistency are checked in build
->     time
+> Date: Thu, 29 Nov 2012 21:17:06 -0500
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Subject: [PATCH] ext4: restructure ext4_ext_direct_IO()
 > 
-> Flags being used by atomic operations in inode flags (e.g.
-> ext4_test_inode_flag(), should be consistent with that actually stored in
-> inodes, i.e.: EXT4_XXX_FL.
+> Remove a level of indentation by moving the DIO read and extending
+> write case to the beginning of the file.  This results in no actual
+> programmatic changes to the file, but makes it easier to
+> read/understand.
 > 
-> It ensures that this consistency is checked at build-time, not at run-time.
-> 
-> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Hi Carlos,
+Looks good.
 
-I wonder why Dmitry when he wrote this noted that we can not do
-compile time test on enum values. I have to admit I do not know
-enough about that, but it seems to work just fine with your patch,
-so can you give us some explanation in the commit description why
-that is not true ?
-
-Also if the values are not matching we get this error:
-
-error: size of unnamed array is negative
-
-which is not explain the problem at all, but I guess it's enough,
-since it points to the variable which does not match.
-
-Adding Dmitry to the cc.
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
 Thanks!
 -Lukas
 
 > ---
->  fs/ext4/ext4.h  | 29 +++++++++++++----------------
->  fs/ext4/super.c |  1 +
->  2 files changed, 14 insertions(+), 16 deletions(-)
+>  fs/ext4/inode.c | 211 +++++++++++++++++++++++++++-----------------------------
+>  1 file changed, 103 insertions(+), 108 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 3c20de1..4ac0523 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -451,25 +451,22 @@ enum {
->  	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
->  };
->  
-> -#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
-> -#define CHECK_FLAG_VALUE(FLAG) if (!TEST_FLAG_VALUE(FLAG)) { \
-> -	printk(KERN_EMERG "EXT4 flag fail: " #FLAG ": %d %d\n", \
-> -		EXT4_##FLAG##_FL, EXT4_INODE_##FLAG); BUG_ON(1); }
-> -
-> -/*
-> - * Since it's pretty easy to mix up bit numbers and hex values, and we
-> - * can't do a compile-time test for ENUM values, we use a run-time
-> - * test to make sure that EXT4_XXX_FL is consistent with respect to
-> - * EXT4_INODE_XXX.  If all is well the printk and BUG_ON will all drop
-> - * out so it won't cost any extra space in the compiled kernel image.
-> - * But it's important that these values are the same, since we are
-> - * using EXT4_INODE_XXX to test for the flag values, but EXT4_XX_FL
-> - * must be consistent with the values of FS_XXX_FL defined in
-> - * include/linux/fs.h and the on-disk values found in ext2, ext3, and
-> - * ext4 filesystems, and of course the values defined in e2fsprogs.
-> +/*
-> + * Since it's pretty easy to mix up bit numbers and hex values, we use a
-> + * build-time check to make sure that EXT4_XXX_FL is consistent with respect to
-> + * EXT4_INODE_XXX. If all is well, the macros will be dropped, so, it won't cost
-> + * any extra space in the compiled kernel image, otherwise, the build will fail.
-> + * It's important that these values are the same, since we are using
-> + * EXT4_INODE_XXX to test for flag values, but EXT4_XXX_FL must be consistent
-> + * with the values of FS_XXX_FL defined in include/linux/fs.h and the on-disk
-> + * values found in ext2, ext3 and ext4 filesystems, and of course the values
-> + * defined in e2fsprogs.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index cf5d30a..91a2496 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2927,10 +2927,10 @@ retry:
+>   * fall back to buffered IO.
 >   *
->   * It's not paranoia if the Murphy's Law really *is* out to get you.  :-)
->   */
-> +#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
-> +#define CHECK_FLAG_VALUE(FLAG) BUILD_BUG_ON(!TEST_FLAG_VALUE(FLAG))
+>   * For holes, we fallocate those blocks, mark them as uninitialized
+> - * If those blocks were preallocated, we mark sure they are splited, but
+> + * If those blocks were preallocated, we mark sure they are split, but
+>   * still keep the range to write as uninitialized.
+>   *
+> - * The unwrritten extents will be converted to written when DIO is completed.
+> + * The unwritten extents will be converted to written when DIO is completed.
+>   * For async direct IO, since the IO may still pending when return, we
+>   * set up an end_io call back function, which will do the conversion
+>   * when async direct IO completed.
+> @@ -2948,125 +2948,120 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+>  	struct inode *inode = file->f_mapping->host;
+>  	ssize_t ret;
+>  	size_t count = iov_length(iov, nr_segs);
+> -
+> +	int overwrite = 0;
+> +	get_block_t *get_block_func = NULL;
+> +	int dio_flags = 0;
+>  	loff_t final_size = offset + count;
+> -	if (rw == WRITE && final_size <= inode->i_size) {
+> -		int overwrite = 0;
+> -		get_block_t *get_block_func = NULL;
+> -		int dio_flags = 0;
+>  
+> -		BUG_ON(iocb->private == NULL);
+> +	/* Use the old path for reads and writes beyond i_size. */
+> +	if (rw != WRITE || final_size > inode->i_size)
+> +		return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+>  
+> -		/* If we do a overwrite dio, i_mutex locking can be released */
+> -		overwrite = *((int *)iocb->private);
+> +	BUG_ON(iocb->private == NULL);
+>  
+> -		if (overwrite) {
+> -			atomic_inc(&inode->i_dio_count);
+> -			down_read(&EXT4_I(inode)->i_data_sem);
+> -			mutex_unlock(&inode->i_mutex);
+> -		}
+> +	/* If we do a overwrite dio, i_mutex locking can be released */
+> +	overwrite = *((int *)iocb->private);
+>  
+> -		/*
+> - 		 * We could direct write to holes and fallocate.
+> -		 *
+> - 		 * Allocated blocks to fill the hole are marked as uninitialized
+> - 		 * to prevent parallel buffered read to expose the stale data
+> - 		 * before DIO complete the data IO.
+> -		 *
+> - 		 * As to previously fallocated extents, ext4 get_block
+> - 		 * will just simply mark the buffer mapped but still
+> - 		 * keep the extents uninitialized.
+> - 		 *
+> -		 * for non AIO case, we will convert those unwritten extents
+> -		 * to written after return back from blockdev_direct_IO.
+> -		 *
+> -		 * for async DIO, the conversion needs to be defered when
+> -		 * the IO is completed. The ext4 end_io callback function
+> -		 * will be called to take care of the conversion work.
+> -		 * Here for async case, we allocate an io_end structure to
+> -		 * hook to the iocb.
+> - 		 */
+> -		iocb->private = NULL;
+> -		ext4_inode_aio_set(inode, NULL);
+> -		if (!is_sync_kiocb(iocb)) {
+> -			ext4_io_end_t *io_end =
+> -				ext4_init_io_end(inode, GFP_NOFS);
+> -			if (!io_end) {
+> -				ret = -ENOMEM;
+> -				goto retake_lock;
+> -			}
+> -			io_end->flag |= EXT4_IO_END_DIRECT;
+> -			iocb->private = io_end;
+> -			/*
+> -			 * we save the io structure for current async
+> -			 * direct IO, so that later ext4_map_blocks()
+> -			 * could flag the io structure whether there
+> -			 * is a unwritten extents needs to be converted
+> -			 * when IO is completed.
+> -			 */
+> -			ext4_inode_aio_set(inode, io_end);
+> -		}
+> +	if (overwrite) {
+> +		atomic_inc(&inode->i_dio_count);
+> +		down_read(&EXT4_I(inode)->i_data_sem);
+> +		mutex_unlock(&inode->i_mutex);
+> +	}
+>  
+> -		if (overwrite) {
+> -			get_block_func = ext4_get_block_write_nolock;
+> -		} else {
+> -			get_block_func = ext4_get_block_write;
+> -			dio_flags = DIO_LOCKING;
+> +	/*
+> +	 * We could direct write to holes and fallocate.
+> +	 *
+> +	 * Allocated blocks to fill the hole are marked as
+> +	 * uninitialized to prevent parallel buffered read to expose
+> +	 * the stale data before DIO complete the data IO.
+> +	 *
+> +	 * As to previously fallocated extents, ext4 get_block will
+> +	 * just simply mark the buffer mapped but still keep the
+> +	 * extents uninitialized.
+> +	 *
+> +	 * For non AIO case, we will convert those unwritten extents
+> +	 * to written after return back from blockdev_direct_IO.
+> +	 *
+> +	 * For async DIO, the conversion needs to be deferred when the
+> +	 * IO is completed. The ext4 end_io callback function will be
+> +	 * called to take care of the conversion work.  Here for async
+> +	 * case, we allocate an io_end structure to hook to the iocb.
+> +	 */
+> +	iocb->private = NULL;
+> +	ext4_inode_aio_set(inode, NULL);
+> +	if (!is_sync_kiocb(iocb)) {
+> +		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
+> +		if (!io_end) {
+> +			ret = -ENOMEM;
+> +			goto retake_lock;
+>  		}
+> -		ret = __blockdev_direct_IO(rw, iocb, inode,
+> -					 inode->i_sb->s_bdev, iov,
+> -					 offset, nr_segs,
+> -					 get_block_func,
+> -					 ext4_end_io_dio,
+> -					 NULL,
+> -					 dio_flags);
+> -
+> -		if (iocb->private)
+> -			ext4_inode_aio_set(inode, NULL);
+> +		io_end->flag |= EXT4_IO_END_DIRECT;
+> +		iocb->private = io_end;
+>  		/*
+> -		 * The io_end structure takes a reference to the inode,
+> -		 * that structure needs to be destroyed and the
+> -		 * reference to the inode need to be dropped, when IO is
+> -		 * complete, even with 0 byte write, or failed.
+> -		 *
+> -		 * In the successful AIO DIO case, the io_end structure will be
+> -		 * desctroyed and the reference to the inode will be dropped
+> -		 * after the end_io call back function is called.
+> -		 *
+> -		 * In the case there is 0 byte write, or error case, since
+> -		 * VFS direct IO won't invoke the end_io call back function,
+> -		 * we need to free the end_io structure here.
+> +		 * we save the io structure for current async direct
+> +		 * IO, so that later ext4_map_blocks() could flag the
+> +		 * io structure whether there is a unwritten extents
+> +		 * needs to be converted when IO is completed.
+>  		 */
+> -		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+> -			ext4_free_io_end(iocb->private);
+> -			iocb->private = NULL;
+> -		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+> -						EXT4_STATE_DIO_UNWRITTEN)) {
+> -			int err;
+> -			/*
+> -			 * for non AIO case, since the IO is already
+> -			 * completed, we could do the conversion right here
+> -			 */
+> -			err = ext4_convert_unwritten_extents(inode,
+> -							     offset, ret);
+> -			if (err < 0)
+> -				ret = err;
+> -			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+> -		}
+> +		ext4_inode_aio_set(inode, io_end);
+> +	}
+>  
+> -	retake_lock:
+> -		/* take i_mutex locking again if we do a ovewrite dio */
+> -		if (overwrite) {
+> -			inode_dio_done(inode);
+> -			up_read(&EXT4_I(inode)->i_data_sem);
+> -			mutex_lock(&inode->i_mutex);
+> -		}
+> +	if (overwrite) {
+> +		get_block_func = ext4_get_block_write_nolock;
+> +	} else {
+> +		get_block_func = ext4_get_block_write;
+> +		dio_flags = DIO_LOCKING;
+> +	}
+> +	ret = __blockdev_direct_IO(rw, iocb, inode,
+> +				   inode->i_sb->s_bdev, iov,
+> +				   offset, nr_segs,
+> +				   get_block_func,
+> +				   ext4_end_io_dio,
+> +				   NULL,
+> +				   dio_flags);
 > +
->  static inline void ext4_check_flag_values(void)
->  {
->  	CHECK_FLAG_VALUE(SECRM);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 80928f7..e6f6f8b 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5282,6 +5282,7 @@ static int __init ext4_init_fs(void)
->  	ext4_li_info = NULL;
->  	mutex_init(&ext4_li_mtx);
+> +	if (iocb->private)
+> +		ext4_inode_aio_set(inode, NULL);
+> +	/*
+> +	 * The io_end structure takes a reference to the inode, that
+> +	 * structure needs to be destroyed and the reference to the
+> +	 * inode need to be dropped, when IO is complete, even with 0
+> +	 * byte write, or failed.
+> +	 *
+> +	 * In the successful AIO DIO case, the io_end structure will
+> +	 * be destroyed and the reference to the inode will be dropped
+> +	 * after the end_io call back function is called.
+> +	 *
+> +	 * In the case there is 0 byte write, or error case, since VFS
+> +	 * direct IO won't invoke the end_io call back function, we
+> +	 * need to free the end_io structure here.
+> +	 */
+> +	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
+> +		ext4_free_io_end(iocb->private);
+> +		iocb->private = NULL;
+> +	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+> +						EXT4_STATE_DIO_UNWRITTEN)) {
+> +		int err;
+> +		/*
+> +		 * for non AIO case, since the IO is already
+> +		 * completed, we could do the conversion right here
+> +		 */
+> +		err = ext4_convert_unwritten_extents(inode,
+> +						     offset, ret);
+> +		if (err < 0)
+> +			ret = err;
+> +		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
+> +	}
 >  
-> +	/* Build-time check for flags consistency */
->  	ext4_check_flag_values();
+> -		return ret;
+> +retake_lock:
+> +	/* take i_mutex locking again if we do a ovewrite dio */
+> +	if (overwrite) {
+> +		inode_dio_done(inode);
+> +		up_read(&EXT4_I(inode)->i_data_sem);
+> +		mutex_lock(&inode->i_mutex);
+>  	}
 >  
->  	for (i = 0; i < EXT4_WQ_HASH_SZ; i++) {
+> -	/* for write the the end of file case, we fall back to old way */
+> -	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+> +	return ret;
+>  }
+>  
+>  static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
 > 
