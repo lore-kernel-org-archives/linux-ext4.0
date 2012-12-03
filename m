@@ -1,138 +1,118 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH V7 03/23] ext4: Add the basic function for inline data
- support.
-Date: Tue, 04 Dec 2012 00:17:04 +0800
-Message-ID: <50BCD080.70702@tao.ma>
-References: <1351047002-4723-1-git-send-email-tm@tao.ma> <1351047338-4963-1-git-send-email-tm@tao.ma> <1351047338-4963-3-git-send-email-tm@tao.ma> <20121203014823.GA5507@thunk.org>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH] ext4: Ensure Inode flags consistency are checked in
+ build time
+Date: Mon, 3 Dec 2012 15:03:37 -0200
+Message-ID: <20121203170337.GA3548@andromeda.usersys.redhat.com>
+References: <1354291886-18312-1-git-send-email-cmaiolino@redhat.com>
+ <alpine.LFD.2.00.1212031108340.6336@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, dmonakhov@openvz.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy9.bluehost.com ([69.89.24.6]:53217 "HELO
-	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751758Ab2LCQRJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2012 11:17:09 -0500
-In-Reply-To: <20121203014823.GA5507@thunk.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57784 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754000Ab2LCRDq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Dec 2012 12:03:46 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1212031108340.6336@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-	As in the concall, it seems that you still have some questions about
-this flag, so in general if a file has inline data,
-EXT4_STAT_MAY_INLINE_DATA is definitely set(in delalloc, it is used as
-another indication, will be explained later) while if a file has this
-flag, it can be inlined or not. And if an inode doesn't have this flag,
-it is definitely not an inline file.
+Hi Lukas,
 
-I will explain one by one with the result I get from 'grep'.
-grep -n EXT4_STATE_MAY_INLINE_DATA fs/ext4/*.c
-
-fs/ext4/ialloc.c:907:		ext4_set_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-This flag is set when we init a new inode when inline data is enabled.
-
-fs/ext4/inline.c:155:		ext4_set_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-Set when we found inline data from an inode disk read. It is OK since an
-inline data file should have this flag.
-
-fs/ext4/inline.c:287:					       EXT4_STATE_MAY_INLINE_DATA);
-If we can't create the inline data for this file, clear this flag.
-
-fs/ext4/inline.c:360:	ext4_set_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-set this flag when we update the inline data.
-
-fs/ext4/inline.c:376:	if (!ext4_test_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA))
-In ext4_prepare_inline_data, we check this flag and if the flag is
-cleared, it isn't an inline one. If it is set, go on to see whether we
-need to create or update it. We can't check ext4_has_inline_data here
-since the inline data region may not be initialized yet.
-
-fs/ext4/inline.c:447:	ext4_clear_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-Inline data is destroyed, so clear it.
-
-fs/ext4/inline.c:532:		ext4_clear_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-In conversion, if this file hasn't be inlined, just clear the flag, so
-that we will treat it in the normal way.
-
-fs/ext4/inline.c:794:		ext4_clear_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-The same conversion as above, but happens in the da path.
-
-fs/ext4/inline.c:815:	ext4_clear_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-end of da conversion. This is *tricky*. Since this is delayed
-allocation, we don't want to touch the on-disk format now. Just clear
-this flag so that:
-1. da_write_end will know that we should handle this like normal
-file(work with fs/ext4/inode.c:2713)
-2. future da_write_begin will try the normal way since this flag is
-cleared(work with fs/ext4/inode.c:2574:)
-3. finally in da_writepages, when we see this flag is cleared while
-ext4_has_inline_data is set, destroy the inline data and prepare for the
-real block allocation(work with fs/ext4/inode.c:2242)
-
-fs/ext4/inline.c:1096:	ext4_set_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-inline data is re-created, so set the flag.
-
-fs/ext4/inline.c:1850:		ext4_clear_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA);
-fallocate conversion. The same as other conversion.
-
-fs/ext4/inode.c:906:	if (ext4_test_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA)) {
-In ext4_write_begin, we have no idea of whether this can be inlined or
-not, so just check this flag. And if we have the possibility(the flag
-hasn't be cleared), go on the inline data path.
-
-fs/ext4/inode.c:2242:						EXT4_STATE_MAY_INLINE_DATA));
-Work with fs/ext4/inline.c:794.
-
-fs/ext4/inode.c:2574:	if (ext4_test_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA)) {
-In ext4_da_write_begin, we have no idea of whether this can be inlined
-or not, so just check this flag. And if we have the possibility(the flag
-hasn't be cleared), go on the inline data path.
-
-fs/ext4/inode.c:2713:	    ext4_test_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA) &&
-Work with fs/ext4/inline.c:794.
-
-fs/ext4/namei.c:2343:	if (ext4_test_inode_state(inode,
-EXT4_STATE_MAY_INLINE_DATA)) {
-In dir init.
-
-Hope I have explained all of these clearly. If you still have something
-unclear, please point it out.
-
-Thanks
-Tao
-
-On 12/03/2012 09:48 AM, Theodore Ts'o wrote:
-> On Wed, Oct 24, 2012 at 10:55:18AM +0800, Tao Ma wrote:
->> +	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
 > 
-> Can you write a paragraph or two about exactly what the semantics are
-> of this state flag --- what it means, when it should be set, and when
-> it should be cleared, etc.?
+> I wonder why Dmitry when he wrote this noted that we can not do
+> compile time test on enum values. I have to admit I do not know
+> enough about that, but it seems to work just fine with your patch,
+> so can you give us some explanation in the commit description why
+> that is not true ?
 > 
-> I'm not entirely sure I understand why you test
-> EXT4_STATE_MAY_INLINE_DATA versus simply calling
-> ext4_has_inline_data() in various places.
+I can't say why a build-time check was not done at the first time, but I can say
+that there is no problem im compare a macro with an enum at the build time, once
+enums are treated as constants by the compiler, so, there is no problem in
+compare an enum type variable with a constant, once both are constants and won't
+change during program's run-time.
+
+Adding it to the commit description and resending a v2
+
+> Also if the values are not matching we get this error:
 > 
-> Thanks!!
+> error: size of unnamed array is negative
 > 
-> 					- Ted
+> which is not explain the problem at all, but I guess it's enough,
+> since it points to the variable which does not match.
+> 
+> Adding Dmitry to the cc.
+> 
+> Thanks!
+> -Lukas
+> 
+> > ---
+> >  fs/ext4/ext4.h  | 29 +++++++++++++----------------
+> >  fs/ext4/super.c |  1 +
+> >  2 files changed, 14 insertions(+), 16 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 3c20de1..4ac0523 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -451,25 +451,22 @@ enum {
+> >  	EXT4_INODE_RESERVED	= 31,	/* reserved for ext4 lib */
+> >  };
+> >  
+> > -#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
+> > -#define CHECK_FLAG_VALUE(FLAG) if (!TEST_FLAG_VALUE(FLAG)) { \
+> > -	printk(KERN_EMERG "EXT4 flag fail: " #FLAG ": %d %d\n", \
+> > -		EXT4_##FLAG##_FL, EXT4_INODE_##FLAG); BUG_ON(1); }
+> > -
+> > -/*
+> > - * Since it's pretty easy to mix up bit numbers and hex values, and we
+> > - * can't do a compile-time test for ENUM values, we use a run-time
+> > - * test to make sure that EXT4_XXX_FL is consistent with respect to
+> > - * EXT4_INODE_XXX.  If all is well the printk and BUG_ON will all drop
+> > - * out so it won't cost any extra space in the compiled kernel image.
+> > - * But it's important that these values are the same, since we are
+> > - * using EXT4_INODE_XXX to test for the flag values, but EXT4_XX_FL
+> > - * must be consistent with the values of FS_XXX_FL defined in
+> > - * include/linux/fs.h and the on-disk values found in ext2, ext3, and
+> > - * ext4 filesystems, and of course the values defined in e2fsprogs.
+> > +/*
+> > + * Since it's pretty easy to mix up bit numbers and hex values, we use a
+> > + * build-time check to make sure that EXT4_XXX_FL is consistent with respect to
+> > + * EXT4_INODE_XXX. If all is well, the macros will be dropped, so, it won't cost
+> > + * any extra space in the compiled kernel image, otherwise, the build will fail.
+> > + * It's important that these values are the same, since we are using
+> > + * EXT4_INODE_XXX to test for flag values, but EXT4_XXX_FL must be consistent
+> > + * with the values of FS_XXX_FL defined in include/linux/fs.h and the on-disk
+> > + * values found in ext2, ext3 and ext4 filesystems, and of course the values
+> > + * defined in e2fsprogs.
+> >   *
+> >   * It's not paranoia if the Murphy's Law really *is* out to get you.  :-)
+> >   */
+> > +#define TEST_FLAG_VALUE(FLAG) (EXT4_##FLAG##_FL == (1 << EXT4_INODE_##FLAG))
+> > +#define CHECK_FLAG_VALUE(FLAG) BUILD_BUG_ON(!TEST_FLAG_VALUE(FLAG))
+> > +
+> >  static inline void ext4_check_flag_values(void)
+> >  {
+> >  	CHECK_FLAG_VALUE(SECRM);
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 80928f7..e6f6f8b 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -5282,6 +5282,7 @@ static int __init ext4_init_fs(void)
+> >  	ext4_li_info = NULL;
+> >  	mutex_init(&ext4_li_mtx);
+> >  
+> > +	/* Build-time check for flags consistency */
+> >  	ext4_check_flag_values();
+> >  
+> >  	for (i = 0; i < EXT4_WQ_HASH_SZ; i++) {
+> > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
+-- 
+Carlos
