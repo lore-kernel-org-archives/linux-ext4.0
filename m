@@ -1,62 +1,46 @@
-From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [ext4:dev 45/57] fs/ext4/inline.c:1025:6: sparse: symbol
- 'ext4_get_inline_xattr_pos' was not declared. Should it be static?
-Date: Mon, 03 Dec 2012 13:20:34 +0800
-Message-ID: <50bc36a2.lAcRnrpMvOgx7DsQ%fengguang.wu@intel.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH V7 03/23] ext4: Add the basic function for inline data
+ support.
+Date: Mon, 03 Dec 2012 13:23:24 +0800
+Message-ID: <50BC374C.7050705@tao.ma>
+References: <1351047002-4723-1-git-send-email-tm@tao.ma> <1351047338-4963-1-git-send-email-tm@tao.ma> <1351047338-4963-3-git-send-email-tm@tao.ma> <20121203014823.GA5507@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="=_50bc36a2.U6wo+FXELd89yglBND/l9vxbv5D7mxddsHgTgGSaOMsefv70"
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Tao Ma <boyu.mt@taobao.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:36000 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750766Ab2LCFVK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2012 00:21:10 -0500
+Received: from oproxy9.bluehost.com ([69.89.24.6]:38539 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750766Ab2LCFX2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2012 00:23:28 -0500
+In-Reply-To: <20121203014823.GA5507@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
+On 12/03/2012 09:48 AM, Theodore Ts'o wrote:
+> On Wed, Oct 24, 2012 at 10:55:18AM +0800, Tao Ma wrote:
+>> +	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
+> 
+> Can you write a paragraph or two about exactly what the semantics are
+> of this state flag --- what it means, when it should be set, and when
+> it should be cleared, etc.?
+> 
+> I'm not entirely sure I understand why you test
+> EXT4_STATE_MAY_INLINE_DATA versus simply calling
+> ext4_has_inline_data() in various places.
+OK, so in general, EXT4_STATE_MAY_INLINE_DATA is a flag that show that
+the file has a potential to be inlined, but there is no guarantee it is
+inlined.
 
---=_50bc36a2.U6wo+FXELd89yglBND/l9vxbv5D7mxddsHgTgGSaOMsefv70
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+So when the inode is created and the volume has inline-data support,
+this flag is set. And when the write_begin comes, we have no idea
+whether it is OK or not to create an inline file, so if this flag is
+set, we just try to call the inline-data stuff to see whether it works.
+If it succeeds, that is cool. But if not, this flag is cleared and we
+will not trap to inline-data stuff for the future write_begin. The
+reason why ext4_has_inline_data() doesn't work here is that a new file
+has no inline data but has the potential to be inlined.
 
-tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-head:   b0c30cdb0d3fcf5a04de4a46fceba767cf8be022
-commit: 83cd81a477199a3f0c01a609069423d5c6e9805d [45/57] ext4: let add_dir_entry handle inline data properly
-
-
-sparse warnings:
-
-+ fs/ext4/inline.c:1025:6: sparse: symbol 'ext4_get_inline_xattr_pos' was not declared. Should it be static?
-
-Please consider folding the attached diff :-)
-
----
-0-DAY kernel build testing backend         Open Source Technology Center
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
-
---=_50bc36a2.U6wo+FXELd89yglBND/l9vxbv5D7mxddsHgTgGSaOMsefv70
-Content-Type: text/x-diff;
- charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="make-it-static-83cd81a.diff"
-
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 89d6a25..a39b632 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1022,7 +1022,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	return 1;
- }
- 
--void *ext4_get_inline_xattr_pos(struct inode *inode, struct ext4_iloc *iloc)
-+static void *ext4_get_inline_xattr_pos(struct inode *inode, struct ext4_iloc *iloc)
- {
- 	struct ext4_xattr_entry *entry;
- 	struct ext4_xattr_ibody_header *header;
-
---=_50bc36a2.U6wo+FXELd89yglBND/l9vxbv5D7mxddsHgTgGSaOMsefv70--
+Thanks
+Tao
