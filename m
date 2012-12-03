@@ -1,289 +1,138 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: restructure ext4_ext_direct_IO()
-Date: Mon, 3 Dec 2012 11:36:36 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1212031136040.6336@localhost>
-References: <1354241826-8010-1-git-send-email-tytso@mit.edu>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH V7 03/23] ext4: Add the basic function for inline data
+ support.
+Date: Tue, 04 Dec 2012 00:17:04 +0800
+Message-ID: <50BCD080.70702@tao.ma>
+References: <1351047002-4723-1-git-send-email-tm@tao.ma> <1351047338-4963-1-git-send-email-tm@tao.ma> <1351047338-4963-3-git-send-email-tm@tao.ma> <20121203014823.GA5507@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63096 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750868Ab2LCKgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Dec 2012 05:36:43 -0500
-In-Reply-To: <1354241826-8010-1-git-send-email-tytso@mit.edu>
+Received: from oproxy9.bluehost.com ([69.89.24.6]:53217 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751758Ab2LCQRJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2012 11:17:09 -0500
+In-Reply-To: <20121203014823.GA5507@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 29 Nov 2012, Theodore Ts'o wrote:
+Hi Ted,
+	As in the concall, it seems that you still have some questions about
+this flag, so in general if a file has inline data,
+EXT4_STAT_MAY_INLINE_DATA is definitely set(in delalloc, it is used as
+another indication, will be explained later) while if a file has this
+flag, it can be inlined or not. And if an inode doesn't have this flag,
+it is definitely not an inline file.
 
-> Date: Thu, 29 Nov 2012 21:17:06 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Subject: [PATCH] ext4: restructure ext4_ext_direct_IO()
+I will explain one by one with the result I get from 'grep'.
+grep -n EXT4_STATE_MAY_INLINE_DATA fs/ext4/*.c
+
+fs/ext4/ialloc.c:907:		ext4_set_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+This flag is set when we init a new inode when inline data is enabled.
+
+fs/ext4/inline.c:155:		ext4_set_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+Set when we found inline data from an inode disk read. It is OK since an
+inline data file should have this flag.
+
+fs/ext4/inline.c:287:					       EXT4_STATE_MAY_INLINE_DATA);
+If we can't create the inline data for this file, clear this flag.
+
+fs/ext4/inline.c:360:	ext4_set_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+set this flag when we update the inline data.
+
+fs/ext4/inline.c:376:	if (!ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA))
+In ext4_prepare_inline_data, we check this flag and if the flag is
+cleared, it isn't an inline one. If it is set, go on to see whether we
+need to create or update it. We can't check ext4_has_inline_data here
+since the inline data region may not be initialized yet.
+
+fs/ext4/inline.c:447:	ext4_clear_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+Inline data is destroyed, so clear it.
+
+fs/ext4/inline.c:532:		ext4_clear_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+In conversion, if this file hasn't be inlined, just clear the flag, so
+that we will treat it in the normal way.
+
+fs/ext4/inline.c:794:		ext4_clear_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+The same conversion as above, but happens in the da path.
+
+fs/ext4/inline.c:815:	ext4_clear_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+end of da conversion. This is *tricky*. Since this is delayed
+allocation, we don't want to touch the on-disk format now. Just clear
+this flag so that:
+1. da_write_end will know that we should handle this like normal
+file(work with fs/ext4/inode.c:2713)
+2. future da_write_begin will try the normal way since this flag is
+cleared(work with fs/ext4/inode.c:2574:)
+3. finally in da_writepages, when we see this flag is cleared while
+ext4_has_inline_data is set, destroy the inline data and prepare for the
+real block allocation(work with fs/ext4/inode.c:2242)
+
+fs/ext4/inline.c:1096:	ext4_set_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+inline data is re-created, so set the flag.
+
+fs/ext4/inline.c:1850:		ext4_clear_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA);
+fallocate conversion. The same as other conversion.
+
+fs/ext4/inode.c:906:	if (ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA)) {
+In ext4_write_begin, we have no idea of whether this can be inlined or
+not, so just check this flag. And if we have the possibility(the flag
+hasn't be cleared), go on the inline data path.
+
+fs/ext4/inode.c:2242:						EXT4_STATE_MAY_INLINE_DATA));
+Work with fs/ext4/inline.c:794.
+
+fs/ext4/inode.c:2574:	if (ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA)) {
+In ext4_da_write_begin, we have no idea of whether this can be inlined
+or not, so just check this flag. And if we have the possibility(the flag
+hasn't be cleared), go on the inline data path.
+
+fs/ext4/inode.c:2713:	    ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA) &&
+Work with fs/ext4/inline.c:794.
+
+fs/ext4/namei.c:2343:	if (ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA)) {
+In dir init.
+
+Hope I have explained all of these clearly. If you still have something
+unclear, please point it out.
+
+Thanks
+Tao
+
+On 12/03/2012 09:48 AM, Theodore Ts'o wrote:
+> On Wed, Oct 24, 2012 at 10:55:18AM +0800, Tao Ma wrote:
+>> +	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
 > 
-> Remove a level of indentation by moving the DIO read and extending
-> write case to the beginning of the file.  This results in no actual
-> programmatic changes to the file, but makes it easier to
-> read/understand.
+> Can you write a paragraph or two about exactly what the semantics are
+> of this state flag --- what it means, when it should be set, and when
+> it should be cleared, etc.?
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-Looks good.
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-Thanks!
--Lukas
-
-> ---
->  fs/ext4/inode.c | 211 +++++++++++++++++++++++++++-----------------------------
->  1 file changed, 103 insertions(+), 108 deletions(-)
+> I'm not entirely sure I understand why you test
+> EXT4_STATE_MAY_INLINE_DATA versus simply calling
+> ext4_has_inline_data() in various places.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index cf5d30a..91a2496 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2927,10 +2927,10 @@ retry:
->   * fall back to buffered IO.
->   *
->   * For holes, we fallocate those blocks, mark them as uninitialized
-> - * If those blocks were preallocated, we mark sure they are splited, but
-> + * If those blocks were preallocated, we mark sure they are split, but
->   * still keep the range to write as uninitialized.
->   *
-> - * The unwrritten extents will be converted to written when DIO is completed.
-> + * The unwritten extents will be converted to written when DIO is completed.
->   * For async direct IO, since the IO may still pending when return, we
->   * set up an end_io call back function, which will do the conversion
->   * when async direct IO completed.
-> @@ -2948,125 +2948,120 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
->  	struct inode *inode = file->f_mapping->host;
->  	ssize_t ret;
->  	size_t count = iov_length(iov, nr_segs);
-> -
-> +	int overwrite = 0;
-> +	get_block_t *get_block_func = NULL;
-> +	int dio_flags = 0;
->  	loff_t final_size = offset + count;
-> -	if (rw == WRITE && final_size <= inode->i_size) {
-> -		int overwrite = 0;
-> -		get_block_t *get_block_func = NULL;
-> -		int dio_flags = 0;
->  
-> -		BUG_ON(iocb->private == NULL);
-> +	/* Use the old path for reads and writes beyond i_size. */
-> +	if (rw != WRITE || final_size > inode->i_size)
-> +		return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
->  
-> -		/* If we do a overwrite dio, i_mutex locking can be released */
-> -		overwrite = *((int *)iocb->private);
-> +	BUG_ON(iocb->private == NULL);
->  
-> -		if (overwrite) {
-> -			atomic_inc(&inode->i_dio_count);
-> -			down_read(&EXT4_I(inode)->i_data_sem);
-> -			mutex_unlock(&inode->i_mutex);
-> -		}
-> +	/* If we do a overwrite dio, i_mutex locking can be released */
-> +	overwrite = *((int *)iocb->private);
->  
-> -		/*
-> - 		 * We could direct write to holes and fallocate.
-> -		 *
-> - 		 * Allocated blocks to fill the hole are marked as uninitialized
-> - 		 * to prevent parallel buffered read to expose the stale data
-> - 		 * before DIO complete the data IO.
-> -		 *
-> - 		 * As to previously fallocated extents, ext4 get_block
-> - 		 * will just simply mark the buffer mapped but still
-> - 		 * keep the extents uninitialized.
-> - 		 *
-> -		 * for non AIO case, we will convert those unwritten extents
-> -		 * to written after return back from blockdev_direct_IO.
-> -		 *
-> -		 * for async DIO, the conversion needs to be defered when
-> -		 * the IO is completed. The ext4 end_io callback function
-> -		 * will be called to take care of the conversion work.
-> -		 * Here for async case, we allocate an io_end structure to
-> -		 * hook to the iocb.
-> - 		 */
-> -		iocb->private = NULL;
-> -		ext4_inode_aio_set(inode, NULL);
-> -		if (!is_sync_kiocb(iocb)) {
-> -			ext4_io_end_t *io_end =
-> -				ext4_init_io_end(inode, GFP_NOFS);
-> -			if (!io_end) {
-> -				ret = -ENOMEM;
-> -				goto retake_lock;
-> -			}
-> -			io_end->flag |= EXT4_IO_END_DIRECT;
-> -			iocb->private = io_end;
-> -			/*
-> -			 * we save the io structure for current async
-> -			 * direct IO, so that later ext4_map_blocks()
-> -			 * could flag the io structure whether there
-> -			 * is a unwritten extents needs to be converted
-> -			 * when IO is completed.
-> -			 */
-> -			ext4_inode_aio_set(inode, io_end);
-> -		}
-> +	if (overwrite) {
-> +		atomic_inc(&inode->i_dio_count);
-> +		down_read(&EXT4_I(inode)->i_data_sem);
-> +		mutex_unlock(&inode->i_mutex);
-> +	}
->  
-> -		if (overwrite) {
-> -			get_block_func = ext4_get_block_write_nolock;
-> -		} else {
-> -			get_block_func = ext4_get_block_write;
-> -			dio_flags = DIO_LOCKING;
-> +	/*
-> +	 * We could direct write to holes and fallocate.
-> +	 *
-> +	 * Allocated blocks to fill the hole are marked as
-> +	 * uninitialized to prevent parallel buffered read to expose
-> +	 * the stale data before DIO complete the data IO.
-> +	 *
-> +	 * As to previously fallocated extents, ext4 get_block will
-> +	 * just simply mark the buffer mapped but still keep the
-> +	 * extents uninitialized.
-> +	 *
-> +	 * For non AIO case, we will convert those unwritten extents
-> +	 * to written after return back from blockdev_direct_IO.
-> +	 *
-> +	 * For async DIO, the conversion needs to be deferred when the
-> +	 * IO is completed. The ext4 end_io callback function will be
-> +	 * called to take care of the conversion work.  Here for async
-> +	 * case, we allocate an io_end structure to hook to the iocb.
-> +	 */
-> +	iocb->private = NULL;
-> +	ext4_inode_aio_set(inode, NULL);
-> +	if (!is_sync_kiocb(iocb)) {
-> +		ext4_io_end_t *io_end = ext4_init_io_end(inode, GFP_NOFS);
-> +		if (!io_end) {
-> +			ret = -ENOMEM;
-> +			goto retake_lock;
->  		}
-> -		ret = __blockdev_direct_IO(rw, iocb, inode,
-> -					 inode->i_sb->s_bdev, iov,
-> -					 offset, nr_segs,
-> -					 get_block_func,
-> -					 ext4_end_io_dio,
-> -					 NULL,
-> -					 dio_flags);
-> -
-> -		if (iocb->private)
-> -			ext4_inode_aio_set(inode, NULL);
-> +		io_end->flag |= EXT4_IO_END_DIRECT;
-> +		iocb->private = io_end;
->  		/*
-> -		 * The io_end structure takes a reference to the inode,
-> -		 * that structure needs to be destroyed and the
-> -		 * reference to the inode need to be dropped, when IO is
-> -		 * complete, even with 0 byte write, or failed.
-> -		 *
-> -		 * In the successful AIO DIO case, the io_end structure will be
-> -		 * desctroyed and the reference to the inode will be dropped
-> -		 * after the end_io call back function is called.
-> -		 *
-> -		 * In the case there is 0 byte write, or error case, since
-> -		 * VFS direct IO won't invoke the end_io call back function,
-> -		 * we need to free the end_io structure here.
-> +		 * we save the io structure for current async direct
-> +		 * IO, so that later ext4_map_blocks() could flag the
-> +		 * io structure whether there is a unwritten extents
-> +		 * needs to be converted when IO is completed.
->  		 */
-> -		if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
-> -			ext4_free_io_end(iocb->private);
-> -			iocb->private = NULL;
-> -		} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
-> -						EXT4_STATE_DIO_UNWRITTEN)) {
-> -			int err;
-> -			/*
-> -			 * for non AIO case, since the IO is already
-> -			 * completed, we could do the conversion right here
-> -			 */
-> -			err = ext4_convert_unwritten_extents(inode,
-> -							     offset, ret);
-> -			if (err < 0)
-> -				ret = err;
-> -			ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
-> -		}
-> +		ext4_inode_aio_set(inode, io_end);
-> +	}
->  
-> -	retake_lock:
-> -		/* take i_mutex locking again if we do a ovewrite dio */
-> -		if (overwrite) {
-> -			inode_dio_done(inode);
-> -			up_read(&EXT4_I(inode)->i_data_sem);
-> -			mutex_lock(&inode->i_mutex);
-> -		}
-> +	if (overwrite) {
-> +		get_block_func = ext4_get_block_write_nolock;
-> +	} else {
-> +		get_block_func = ext4_get_block_write;
-> +		dio_flags = DIO_LOCKING;
-> +	}
-> +	ret = __blockdev_direct_IO(rw, iocb, inode,
-> +				   inode->i_sb->s_bdev, iov,
-> +				   offset, nr_segs,
-> +				   get_block_func,
-> +				   ext4_end_io_dio,
-> +				   NULL,
-> +				   dio_flags);
-> +
-> +	if (iocb->private)
-> +		ext4_inode_aio_set(inode, NULL);
-> +	/*
-> +	 * The io_end structure takes a reference to the inode, that
-> +	 * structure needs to be destroyed and the reference to the
-> +	 * inode need to be dropped, when IO is complete, even with 0
-> +	 * byte write, or failed.
-> +	 *
-> +	 * In the successful AIO DIO case, the io_end structure will
-> +	 * be destroyed and the reference to the inode will be dropped
-> +	 * after the end_io call back function is called.
-> +	 *
-> +	 * In the case there is 0 byte write, or error case, since VFS
-> +	 * direct IO won't invoke the end_io call back function, we
-> +	 * need to free the end_io structure here.
-> +	 */
-> +	if (ret != -EIOCBQUEUED && ret <= 0 && iocb->private) {
-> +		ext4_free_io_end(iocb->private);
-> +		iocb->private = NULL;
-> +	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
-> +						EXT4_STATE_DIO_UNWRITTEN)) {
-> +		int err;
-> +		/*
-> +		 * for non AIO case, since the IO is already
-> +		 * completed, we could do the conversion right here
-> +		 */
-> +		err = ext4_convert_unwritten_extents(inode,
-> +						     offset, ret);
-> +		if (err < 0)
-> +			ret = err;
-> +		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
-> +	}
->  
-> -		return ret;
-> +retake_lock:
-> +	/* take i_mutex locking again if we do a ovewrite dio */
-> +	if (overwrite) {
-> +		inode_dio_done(inode);
-> +		up_read(&EXT4_I(inode)->i_data_sem);
-> +		mutex_lock(&inode->i_mutex);
->  	}
->  
-> -	/* for write the the end of file case, we fall back to old way */
-> -	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
-> +	return ret;
->  }
->  
->  static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+> Thanks!!
 > 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
