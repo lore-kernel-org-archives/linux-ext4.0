@@ -1,54 +1,42 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [ext4:dev 40/60] fs/ext4/inode.c:1953 __ext4_journalled_writepage() error: potential NULL dereference 'page_bufs'.
-Date: Tue,  4 Dec 2012 21:25:45 +0800
-Message-ID: <1354627545-2792-1-git-send-email-tm@tao.ma>
-References: <20121204111011.GD22569@mwanda>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: dan.carpenter@oracle.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: next: ext4 build failure
+Date: Tue, 4 Dec 2012 08:27:01 -0500
+Message-ID: <20121204132701.GA29083@thunk.org>
+References: <50BDC25C.5020509@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: boyu.mt@taobao.com, linux-ext4@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: Jiri Slaby <jslaby@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:47923 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752423Ab2LDNZ6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 08:25:58 -0500
-In-Reply-To: <20121204111011.GD22569@mwanda>
+Received: from li9-11.members.linode.com ([67.18.176.11]:36654 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751875Ab2LDN1J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Dec 2012 08:27:09 -0500
+Content-Disposition: inline
+In-Reply-To: <50BDC25C.5020509@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Dan,
-	Thanks for the report. Can you check whether this patch
-works for you?
+On Tue, Dec 04, 2012 at 10:29:00AM +0100, Jiri Slaby wrote:
+> Hi,
+> 
+> commit a7b0168d4a9bb78535827ddaf9c055963f5bd7aa
+> Author: Tao Ma <boyu.mt@taobao.com>
+> Date:   Sun Dec 2 20:30:52 2012 -0500
+> 
+>     ext4: let fallocate handle inline data correctly
+> 
+> added
+> 
+> static int int ext4_convert_inline_data(struct inode *inode)
+> 
+>        ^^^^^^^
+> 
+> when EXT4_FS_XATTR is unset.
+> 
+> Care to fix that?
 
-Thanks
-Tao
+Oops.  Thanks for catching this!!!
 
-From: Tao Ma <boyu.mt@taobao.com>
-Subject: [PATCH] ext4: Fix a build warning in __ext4_journalled_writepage.
-
-smatch complains:
-fs/ext4/inode.c:1953 __ext4_journalled_writepage() error: potential NULL dereference 'page_bufs'.
-
-So add the check for it.
-
-Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/inode.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dbc5784..431201b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1956,7 +1956,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 	struct buffer_head *page_bufs = NULL;
- 	handle_t *handle = NULL;
- 	int ret = 0;
--	int err;
-+	int err = 0;
- 	struct buffer_head *inode_bh = NULL;
- 
- 	ClearPageChecked(page);
-@@ -1987,8 +1987,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 		ret = ext4_journal_get_write_access(handle, inode_bh);
- 
- 		err = ext4_handle_dirty_metadata(handle, inode, inode_bh);
+						- Ted
