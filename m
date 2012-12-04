@@ -1,48 +1,45 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: Re: next: ext4 build failure
-Date: Tue, 04 Dec 2012 14:29:40 +0100
-Message-ID: <50BDFAC4.6040407@suse.cz>
-References: <50BDC25C.5020509@suse.cz> <20121204132701.GA29083@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, boyu.mt@taobao.com,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Fix a build warning in __ext4_journalled_writepage.
+Date: Tue,  4 Dec 2012 21:39:38 +0800
+Message-ID: <1354628379-3047-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:62739 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398Ab2LDN3p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 08:29:45 -0500
-In-Reply-To: <20121204132701.GA29083@thunk.org>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:49326 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751545Ab2LDNj7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 08:39:59 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/04/2012 02:27 PM, Theodore Ts'o wrote:
-> On Tue, Dec 04, 2012 at 10:29:00AM +0100, Jiri Slaby wrote:
->> Hi,
->>
->> commit a7b0168d4a9bb78535827ddaf9c055963f5bd7aa
->> Author: Tao Ma <boyu.mt@taobao.com>
->> Date:   Sun Dec 2 20:30:52 2012 -0500
->>
->>     ext4: let fallocate handle inline data correctly
->>
->> added
->>
->> static int int ext4_convert_inline_data(struct inode *inode)
->>
->>        ^^^^^^^
->>
->> when EXT4_FS_XATTR is unset.
->>
->> Care to fix that?
-> 
-> Oops.  Thanks for catching this!!!
+From: Tao Ma <boyu.mt@taobao.com>
 
-This is not the only one BTW, see:
-http://decibel.fi.muni.cz/gitweb/?p=linux.git;a=commitdiff;h=1a166497fe3d76e5af8af02e2ee5a967b2829b93
+smatch complains:
+fs/ext4/inode.c:1953 __ext4_journalled_writepage() error: potential NULL dereference 'page_bufs'.
 
-thanks,
--- 
-js
-suse labs
+So add the check for it.
+
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/inode.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dbc5784..431201b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1956,7 +1956,7 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	struct buffer_head *page_bufs = NULL;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+-	int err;
++	int err = 0;
+ 	struct buffer_head *inode_bh = NULL;
+ 
+ 	ClearPageChecked(page);
+@@ -1987,8 +1987,7 @@ static int __ext4_journalled_writepage(struct page *page,
+ 		ret = ext4_journal_get_write_access(handle, inode_bh);
+ 
+ 		err = ext4_handle_dirty_metadata(handle, inode, inode_bh);
