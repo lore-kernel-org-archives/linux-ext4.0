@@ -1,22 +1,22 @@
 From: Forrest Liu <forrestl@synology.com>
 Subject: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Tue,  4 Dec 2012 19:32:32 +0800
-Message-ID: <1354620752-7231-1-git-send-email-forrestl@synology.com>
-Cc: =?UTF-8?q?linux-ext4=C2=A0?= <linux-ext4@vger.kernel.org>,
-	Forrest Liu <forrestl@synology.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Date: Tue,  4 Dec 2012 20:11:09 +0800
+Message-ID: <1354623069-8124-1-git-send-email-forrestl@synology.com>
+Cc: Forrest Liu <forrestl@synology.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:33191 "EHLO
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:44712 "EHLO
 	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751613Ab2LDLcv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 06:32:51 -0500
-Received: by mail-ie0-f174.google.com with SMTP id c11so5928740ieb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Dec 2012 03:32:51 -0800 (PST)
+	with ESMTP id S1751007Ab2LDMLa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 07:11:30 -0500
+Received: by mail-ie0-f174.google.com with SMTP id c11so5980054ieb.19
+        for <linux-ext4@vger.kernel.org>; Tue, 04 Dec 2012 04:11:30 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When depth of extent tree is greater than 1, extent indexes didn't update
-correctly in ext4_ext_rm_idx
+Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
+of extent tree is greater than 1.
 
 Signed-off-by: Forrest Liu <forrestl@synology.com>
 ---
