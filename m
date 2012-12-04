@@ -1,117 +1,100 @@
-From: Darren Hart <dvhart@infradead.org>
-Subject: Re: [e2fsprogs] initdir: Writing inode after the initial write?
-Date: Tue, 04 Dec 2012 12:10:32 -0800
-Message-ID: <50BE58B8.6020909@infradead.org>
-References: <50B967E2.7090703@infradead.org> <92FEB3B3-D4EA-4E84-83F2-F9946D7BCE3B@dilger.ca> <50B990CB.3080607@infradead.org> <85A86E8F-EEB9-495C-AB10-EF3C871EE2B9@dilger.ca> <50BD017F.1070400@infradead.org> <E9A4182B-CEE4-419A-AE6B-F7133766ABC3@gmail.com> <50BE3639.7090704@infradead.org> <20121204190829.GA7790@thunk.org> <50BE51BF.6020208@infradead.org> <20121204200013.GD7790@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Tue, 4 Dec 2012 15:20:44 -0500
+Message-ID: <20121204202044.GE7790@thunk.org>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
+ <50BCE885.8010609@redhat.com>
+ <50BE007D.5080504@huawei.com>
+ <50BE16EC.6060501@tao.ma>
+ <50BE20B9.1050404@itwm.fraunhofer.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <aedilger@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tao Ma <tm@tao.ma>, Li Zefan <lizefan@huawei.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	wuqixuan@huawei.com, wuqixuan@gmail.com
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:32320 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752731Ab2LDUKd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Dec 2012 15:10:33 -0500
-In-Reply-To: <20121204200013.GD7790@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:36782 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751144Ab2LDUUz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Dec 2012 15:20:55 -0500
+Content-Disposition: inline
+In-Reply-To: <50BE20B9.1050404@itwm.fraunhofer.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On 12/04/2012 12:00 PM, Theodore Ts'o wrote:
-> On Tue, Dec 04, 2012 at 11:40:47AM -0800, Darren Hart wrote:
->>
->> 1) Update debugfs to completely support our use-case
->>    [ ] Add symlink support
->>    [ ] Add hardlink support
+On Tue, Dec 04, 2012 at 05:11:37PM +0100, Bernd Schubert wrote:
+> I still don't know if it is related to htree only, but e2fsck isn't
+> properly fixing directory issues without the "-D" option.
+> For example I have a VM here, where the kernel frequently reports
+> something like:
 > 
-> This exists already.  See the "link" command.  It doesn't update the
-> inode i_links_count, but that's probably something I would add by
-> adding an option (-i) which did this.
-
-Right, this seems like it will need to be managed at a higher level (the
-script for the debugfs appraoch).
-
+> > [  304.096059] EXT4-fs (vdb): error count: 4
+> > [  304.096305] EXT4-fs (vdb): initial error at 1352366631: htree_dirblock_to_tree:861: inode 3146582: block 1641814
+> > [  304.096857] EXT4-fs (vdb): last error at 1352381914: empty_dir:2334: inode 3146582: block 1641814
+> > [86807.520052] EXT4-fs (vdb): error count: 4
 > 
->>    [ ] Add meta-data mirroring
+> and e2fsck does not report anything.
+
+This is not an error; this is pointing out that there previously *was*
+an error, with the first file system error happening at:
+
+% date --date "@1352366631"
+Thu Nov  8 04:23:51 EST 2012
+
+and the most recent file system error happening at:
+
+% date --date "@1352381914"
+Thu Nov  8 08:38:34 EST 2012
+
+(your results may differ depending on your local time zone :-)
+
+Newer versions of e2fsck clear this information from the superblock
+after the file system is successfully fixed.  You upgraded your kernel
+without also updating e2fsprogs, and the newer kernels will print this
+message approximately once a day so that users who have their file
+systems set up to use errors=continue, that they get some warning that
+their file system has been corrupted, even if their log files have
+been rotated away.
+
+It's also useful when trying to debug user problems where they are
+convinced it is an ext4 bug, but in fact it's because they've buggered
+their init scripts not to run fsck, or they are using an external USB
+disk with ext4 and aren't bothering to check it with e2fsck after an
+error was reported, etc.  We can now see that the file system had been
+first corrupted $N weeks/months ago, and it isn't a file system
+regression worthy of linkbait scares articles on some random website...
+
+
+In any case, that's why you're seeing it.  It's really not a problem,
+only a cosmetic issue, which can be easily fixed by upgrading
+e2fsprogs.
+
+> Also the dir_entry_type is for some
+> dirs wrongly reported by the kernel, but seen correctly by e2fsck
+> (https://bugzilla.kernel.org/show_bug.cgi?id=50261).
+
+I've looked at your bug report, and it seems pretty clear that it's
+correct on disk.  I'm not sure what might be going on, but this
+doesn't look like an e2fsck problem, but either a problem in glibc,
+the vfs kernel code or the ext4 kernel code.
+
+If you re-run your program, is it consistent which directories
+apparently have the wrong d_type information returned for them?
+
+> I hope to find some time to investigate that next week. I have seen it
+> several times already, but never had the chance to investigate or to
+> take an image.
 > 
-> Not sure what what you mean by meta-data mirroring?
+> So I would really recommend to run "e2fsck -D" for the issue reported here.
 
+Did e2fsck -D really change what you saw?  That will rewrite all of
+the directories as part of optimizing them all, but it certainly won't
+fix the error count/first error/last error series of informational
+messages.  For that you just need to get a newer version of e2fsck.
 
-Sorry, just uid, gid, permissions... basically the inode. This could be
-done by updating the script to use the sif command, but having a -i or
-similar option to "write" (or maybe a new "copy" which did effectively
-the same thing) by reading stat and copying the data across would be a
-nice abstraction.
+Regards,
 
-
->> 2) Refactor filesystem creation functions from debugfs and move them into
->>    libext2fs alongside existing filesystem creation functions like
->>    ext2fs_mkdir()
-> 
-> I'm not sure that creating new libext2fs functions is necessarily
-> needed.  We'll need to discuss that on a case-by-case basis.  For
-> creating a new symlink, sure, I'll buy that --- there's enough
-> complexity involved that it makes sense to move that into the library.
-> 
-> For creating a new hard link, we already have ext2fs_link().  Whether
-> or not it makes sense to add an entirely new function just to bump
-> i_links_count seems very dubious to me.  We could add a flag which
-> reads in the target inode, bumps i_links_count, and then writes it
-> back out, but then we start asking whether or not we need to add an
-> option to set the ctime field or not, etc., etc., etc.
-
-
-Agreed on the hard link. However, things like mknod and write from
-debugfs seem like good candidates to be moved into libext2fs, then
-other tools can make use of the code.
-
-
-> Taken to extremes that way lies the insanity of VMS's create_process
-> system call, with its huge number of parameters and options, as
-> opposed to separating fork() and exec(), and allowing the application
-> program to close file descriptors dup them, edit environment
-> variables, etc., between the fork() and exec(), which was a much saner
-> way of doing things in Unix.
-> 
-> So it's actually quite deliberate that what we have are very low-level
-> primitives in libext2fs.  That being said, API design is a bit of an
-> art, as I said, for something as complicated as symlink creation,
-> where you need to do different things depending on whether the symlink
-> pathname can fit in the inode, etc., it does make sense to have a new
-> function.
-> 
->> 3) Add the "-r initialdir" option to mke2fs that leverages these new
->> functions
->>    from libext2fs.
-> 
-> Assuming the code for -r can be well constrained in terms of cleanly
-> added to the mke2fs sources (probably the bulk of the code should go
-> in a new .c file), and assuming that it doesn't bloat the mke2fs
-> binary too badly, I have no objections to adding the -r option to
-> mke2fs.  (Worst case we can have a --disable-mke2fs-init-dir if there
-> are still people worried about making mke2fs fit on a boot/root 1.44M
-> floppy.  :-)
-> 
-> That being said, if it bloats mke2fs too badly (for example, because
-> you tried using libxml2 for some kind of control file to specify the
-> character/block devices, and it dragged in megabytes and megabytes of
-> compiled object code, I'd certainly object, both because of the
-> addition of the external dependency, and because at that point people
-> really would complain --- and of course, because XML is just
-> horrible.  :-)
-
-
-Indeed! I understand the requirement and will keep a close eye on
-dependencies and compiled size. I will include these numbers in any
-patches that result from this.
-
-So far the dependencies are minimal and I'll work to keep them that way.
-
--- 
-Darren Hart
-Intel Open Source Technology Center
-Yocto Project - Technical Lead - Linux Kernel
+	   	    	  	 	     - Ted
