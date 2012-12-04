@@ -1,122 +1,35 @@
-From: forrest <forrestl@synology.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Tue, 4 Dec 2012 20:29:23 +0800
-Message-ID: <CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
-References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
+From: Prashant Shah <pshah.mumbai@gmail.com>
+Subject: Re: freeze_bdev hangs
+Date: Tue, 4 Dec 2012 18:40:33 +0530
+Message-ID: <CAD6i1fK8bog1wo8E60qFb1piT8P3E=QoaaUH=qiys2R4jG3QPA@mail.gmail.com>
+References: <CAD6i1f+fzh-z+Xr6V2gHBzq4kmJzPcfre91g=q6fJ7P_5nY0Zw@mail.gmail.com>
+ <506F19E6.8030005@redhat.com> <CAD6i1fJbfiBnTu1ttisMr96PzaTWCLAsvmTjx7OevfPcAGd7-A@mail.gmail.com>
+ <20121008161926.GH9243@quack.suse.cz> <CAD6i1fKpWZVbL4gS1ui7GvF81S+SAduckXeWoApwH=KgKuiU9g@mail.gmail.com>
+ <20121009214915.GD27882@quack.suse.cz> <CAD6i1f+hqmjJAO1mAM3o2gtv4qMGJuosen28RLuAwMLMnFTYSw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:44946 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751989Ab2LDM3Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 07:29:24 -0500
-Received: by mail-ie0-f174.google.com with SMTP id c11so6002967ieb.19
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Dec 2012 04:29:23 -0800 (PST)
-In-Reply-To: <1354623069-8124-1-git-send-email-forrestl@synology.com>
+Received: from mail-ea0-f174.google.com ([209.85.215.174]:59107 "EHLO
+	mail-ea0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753154Ab2LDNKz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2012 08:10:55 -0500
+Received: by mail-ea0-f174.google.com with SMTP id e13so1587745eaa.19
+        for <linux-ext4@vger.kernel.org>; Tue, 04 Dec 2012 05:10:54 -0800 (PST)
+In-Reply-To: <CAD6i1f+hqmjJAO1mAM3o2gtv4qMGJuosen28RLuAwMLMnFTYSw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This problem is easily to reproduce
+Hi,
 
-Create a file with size larger than 1GB.
+On Wed, Oct 10, 2012 at 3:19 AM, Jan Kara <jack@suse.cz> wrote:
+>>   OK. There are several ways how I could imagine you hit ino == 0. Either
+>> someone is using direct IO or inode is a block device inode...
+>>
 
-dd if=/dev/zero of=/test_file bs=1M count=1024
+Most of the inode 0 writes belonged to journal (verified with the
+sector number). I think that such journal writes should set the inode
+to 8 or whatever is reserved for the journal rather than 0.
 
-Punch every even block in test_file, and then use debugfs to dump
-extents,  followings is dumped result
-
- 2/ 2 339/340 231197 - 231197   3917597 -   3917597      1
- 2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
- 0/ 2   2/  2 231201 - 262143   3901486              30943
- 1/ 2   1/ 46 231201 - 231880   3901488                680
- 2/ 2   1/340 231201 - 231201   3917601 -   3917601      1
- 2/ 2   2/340 231203 - 231203   3917603 -   3917603      1
-
-Punch blocks #231779 ~#231201 , to remove extent index, and then use
-debugfs to dump extents,  followings is dumped result
-
-2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
- 0/ 2   2/  2 231201 - 262143   3901486              30943
--------> logical block index didn't update when remove extent index
- 1/ 2   1/ 45 231881 - 232560   3901490                680
- 2/ 2   1/340 231881 - 231881   3918281 -   3918281      1
- 2/ 2   2/340 231883 - 231883   3918283 -   3918283      1
-
-Thanks,
-Forrest
-
-2012/12/4 Forrest Liu <forrestl@synology.com>:
-> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
-> of extent tree is greater than 1.
->
-> Signed-off-by: Forrest Liu <forrestl@synology.com>
-> ---
->  fs/ext4/extents.c |   24 ++++++++++++++++++++----
->  1 files changed, 20 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index d3dd618..b10b8c0 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2190,13 +2190,15 @@ errout:
->   * removes index from the index block.
->   */
->  static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
-> -                       struct ext4_ext_path *path)
-> +                       struct ext4_ext_path *path, int depth)
->  {
->         int err;
->         ext4_fsblk_t leaf;
-> +       __le32 border;
->
->         /* free index block */
-> -       path--;
-> +       depth--;
-> +       path = path + depth;
->         leaf = ext4_idx_pblock(path->p_idx);
->         if (unlikely(path->p_hdr->eh_entries == 0)) {
->                 EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
-> @@ -2221,6 +2223,20 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->
->         ext4_free_blocks(handle, inode, NULL, leaf, 1,
->                          EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
-> +
-> +       border = path->p_idx->ei_block;
-> +       while (--depth >= 0) {
-> +               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
-> +                       break;
-> +               path--;
-> +               err = ext4_ext_get_access(handle, inode, path);
-> +               if (err)
-> +                       break;
-> +               path->p_idx->ei_block = border;
-> +               err = ext4_ext_dirty(handle, inode, path);
-> +               if (err)
-> +                       break;
-> +       }
->         return err;
->  }
->
-> @@ -2557,7 +2573,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->         /* if this leaf is free, then we should
->          * remove it from index block above */
->         if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
-> -               err = ext4_ext_rm_idx(handle, inode, path + depth);
-> +               err = ext4_ext_rm_idx(handle, inode, path, depth);
->
->  out:
->         return err;
-> @@ -2760,7 +2776,7 @@ again:
->                                 /* index is empty, remove it;
->                                  * handle must be already prepared by the
->                                  * truncatei_leaf() */
-> -                               err = ext4_ext_rm_idx(handle, inode, path + i);
-> +                               err = ext4_ext_rm_idx(handle, inode, path, i);
->                         }
->                         /* root level has p_bh == NULL, brelse() eats this */
->                         brelse(path[i].p_bh);
-> --
-> 1.7.5.4
->
+Regards.
