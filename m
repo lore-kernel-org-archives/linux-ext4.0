@@ -1,100 +1,98 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Tue, 4 Dec 2012 15:20:44 -0500
-Message-ID: <20121204202044.GE7790@thunk.org>
-References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
- <50BCE885.8010609@redhat.com>
- <50BE007D.5080504@huawei.com>
- <50BE16EC.6060501@tao.ma>
- <50BE20B9.1050404@itwm.fraunhofer.de>
+Subject: Re: [e2fsprogs] initdir: Writing inode after the initial write?
+Date: Tue, 4 Dec 2012 15:36:34 -0500
+Message-ID: <20121204203634.GF7790@thunk.org>
+References: <92FEB3B3-D4EA-4E84-83F2-F9946D7BCE3B@dilger.ca>
+ <50B990CB.3080607@infradead.org>
+ <85A86E8F-EEB9-495C-AB10-EF3C871EE2B9@dilger.ca>
+ <50BD017F.1070400@infradead.org>
+ <E9A4182B-CEE4-419A-AE6B-F7133766ABC3@gmail.com>
+ <50BE3639.7090704@infradead.org>
+ <20121204190829.GA7790@thunk.org>
+ <50BE51BF.6020208@infradead.org>
+ <20121204200013.GD7790@thunk.org>
+ <50BE58B8.6020909@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <tm@tao.ma>, Li Zefan <lizefan@huawei.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Yafang Shao <laoar.shao@gmail.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	wuqixuan@huawei.com, wuqixuan@gmail.com
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Andreas Dilger <aedilger@gmail.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Darren Hart <dvhart@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36782 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:36793 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751144Ab2LDUUz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Dec 2012 15:20:55 -0500
+	id S1751436Ab2LDUgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 4 Dec 2012 15:36:40 -0500
 Content-Disposition: inline
-In-Reply-To: <50BE20B9.1050404@itwm.fraunhofer.de>
+In-Reply-To: <50BE58B8.6020909@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 04, 2012 at 05:11:37PM +0100, Bernd Schubert wrote:
-> I still don't know if it is related to htree only, but e2fsck isn't
-> properly fixing directory issues without the "-D" option.
-> For example I have a VM here, where the kernel frequently reports
-> something like:
+On Tue, Dec 04, 2012 at 12:10:32PM -0800, Darren Hart wrote:
+> > 
+> >>    [ ] Add meta-data mirroring
+> > 
+> > Not sure what what you mean by meta-data mirroring?
 > 
-> > [  304.096059] EXT4-fs (vdb): error count: 4
-> > [  304.096305] EXT4-fs (vdb): initial error at 1352366631: htree_dirblock_to_tree:861: inode 3146582: block 1641814
-> > [  304.096857] EXT4-fs (vdb): last error at 1352381914: empty_dir:2334: inode 3146582: block 1641814
-> > [86807.520052] EXT4-fs (vdb): error count: 4
-> 
-> and e2fsck does not report anything.
+> Sorry, just uid, gid, permissions... basically the inode. This could be
+> done by updating the script to use the sif command, but having a -i or
+> similar option to "write" (or maybe a new "copy" which did effectively
+> the same thing) by reading stat and copying the data across would be a
+> nice abstraction.
 
-This is not an error; this is pointing out that there previously *was*
-an error, with the first file system error happening at:
+Oh, I see, grabbing the permissions from what's actually in the source
+tree.  You may want to talk to some of the people who will actually be
+using your script to see what they want.  I could easily imagine some
+folks arguing that they don't want to use the mtimes from the source
+code tree, but instead they want to set them all to some standard set
+timestamp specified in some config file (in order to make the file
+system image be stable across checkouts).
 
-% date --date "@1352366631"
-Thu Nov  8 04:23:51 EST 2012
+In addition, for setuid root programs, you won't be able to take the
+uid/gid and permissions from the inode anyway --- so I had been
+assuming that you would have some kind of control file, that would
+perhaps be in the top-level of your initial_ directory, that would
+list the default uid/gid/mod times to be used, and then exceptions on
+a per-file basis.  (This was the control file where I was suggesting
+that you _not_ use XML for your encoding; if you want a flexible, but
+easy-to-use config file parser, I'll suggest you take a look at
+e2fsck/profile.c, which is used for parsing /etc/e2fsck.conf and
+/etc/mke2fs.conf.)
 
-and the most recent file system error happening at:
+> Agreed on the hard link. However, things like mknod and write from
+> debugfs seem like good candidates to be moved into libext2fs, then
+> other tools can make use of the code.
 
-% date --date "@1352381914"
-Thu Nov  8 08:38:34 EST 2012
+For write from debugfs, you do realize we have lib/ext2fs/fileio.c,
+right?  That's what debugfs uses already.
 
-(your results may differ depending on your local time zone :-)
+Maybe it would make sense to add a ext2fs_create_file() function which
+takes a pathname, and it takes care of calling namei to get the target
+directory, and then allocating the file, etc., and then leave it to
+the calling application to fill in the inode structure with whatever
+is neecessary to create a new regular file, or a new block/character
+device, etc.
 
-Newer versions of e2fsck clear this information from the superblock
-after the file system is successfully fixed.  You upgraded your kernel
-without also updating e2fsprogs, and the newer kernels will print this
-message approximately once a day so that users who have their file
-systems set up to use errors=continue, that they get some warning that
-their file system has been corrupted, even if their log files have
-been rotated away.
+So that one new function would would kill multiple stones at once; it
+would give you mknod, as well as refactoring most of what's in debugfs
+today for writing a file to a filesystem that isn't in
+lib/ext2fs/fileio.c.
 
-It's also useful when trying to debug user problems where they are
-convinced it is an ext4 bug, but in fact it's because they've buggered
-their init scripts not to run fsck, or they are using an external USB
-disk with ext4 and aren't bothering to check it with e2fsck after an
-error was reported, etc.  We can now see that the file system had been
-first corrupted $N weeks/months ago, and it isn't a file system
-regression worthy of linkbait scares articles on some random website...
+The one gotcha with creating these convenience functions is that it
+make may it much harder to properly report errors back to the user,
+since a fundamental rule for functions in libext2fs is that they
+should not use fprintf(stderr, ...) to report errors back to the user.
+That's the other reason why I tended not push too much complexity into
+libext2fs.
 
+(In general use of stdio in libext2fs is strongly discouraged, since
+that wouldn't be useful for an application written to uses gtk or even
+ncurses, such as that old EVMS front end program that some former
+colleagues of ours at IBM's LTC had written.  :-)  It's also
+problematic for the ppcboot folks, since they are trying to write a
+bootloader which would use libext2fs in a restricted environment that
+doesn't even have stdio available to programs; that was actually a
+problem for them caused by the recently merged mmp code, and I had to
+help them with that.)
 
-In any case, that's why you're seeing it.  It's really not a problem,
-only a cosmetic issue, which can be easily fixed by upgrading
-e2fsprogs.
-
-> Also the dir_entry_type is for some
-> dirs wrongly reported by the kernel, but seen correctly by e2fsck
-> (https://bugzilla.kernel.org/show_bug.cgi?id=50261).
-
-I've looked at your bug report, and it seems pretty clear that it's
-correct on disk.  I'm not sure what might be going on, but this
-doesn't look like an e2fsck problem, but either a problem in glibc,
-the vfs kernel code or the ext4 kernel code.
-
-If you re-run your program, is it consistent which directories
-apparently have the wrong d_type information returned for them?
-
-> I hope to find some time to investigate that next week. I have seen it
-> several times already, but never had the chance to investigate or to
-> take an image.
-> 
-> So I would really recommend to run "e2fsck -D" for the issue reported here.
-
-Did e2fsck -D really change what you saw?  That will rewrite all of
-the directories as part of optimizing them all, but it certainly won't
-fix the error count/first error/last error series of informational
-messages.  For that you just need to get a newer version of e2fsck.
-
-Regards,
-
-	   	    	  	 	     - Ted
+						- Ted
