@@ -1,41 +1,24 @@
 From: Tao Ma <tm@tao.ma>
 Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Wed, 05 Dec 2012 22:02:15 +0800
-Message-ID: <50BF53E7.7010307@tao.ma>
-References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <50BE16EC.6060501@tao.ma> <50BF25E9.3090807@huawei.com>
+Date: Wed, 05 Dec 2012 22:26:05 +0800
+Message-ID: <50BF597D.3040704@tao.ma>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org> <50BF2537.6070809@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
 	Yafang Shao <laoar.shao@gmail.com>,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	wuqixuan@huawei.com, wuqixuan@gmail.com
 To: Li Zefan <lizefan@huawei.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy11-pub.bluehost.com ([173.254.64.10]:53646 "HELO
-	oproxy11-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750803Ab2LFANS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2012 19:13:18 -0500
-In-Reply-To: <50BF25E9.3090807@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <50BF2537.6070809@huawei.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 12/05/2012 06:46 PM, Li Zefan wrote:
->>>>> We highly doubt it's hardware failures with this frequency in mind, so
->>>>> we're wondering regarding to this issue if there's some ext3 bug-fix
->>>>> having merged into mainline but not in our old kernel?
->>>>
->>>> Absolutely there are.  There have been 87 changes just to namei.c since 2.6.16.
->>>> You could look through git logs to see if anything looks applicable.
->>>>
->>>> You might try:
->>>>
->>>> ef2b02d3e617cb0400eedf2668f86215e1b0e6af ext34: ensure do_split leaves enough free space in both blocks
->>>
->>> I've been asked to investigate this issue. Thanks for the reply!
->>>
->>> I found this fix while searching for similar bug reports, but I don't think it
->>> worths trying as we don't use dir_index feature.
+On 12/05/2012 06:43 PM, Li Zefan wrote:
+> On 2012/12/4 23:09, Theodore Ts'o wrote:
+>> On Tue, Dec 04, 2012 at 09:54:05PM +0800, Li Zefan wrote:
 >>>
 >>> I've collected some logs in different machines, and the error was always
 >>> triggered in ext3_readdir:
@@ -45,45 +28,85 @@ On 12/05/2012 06:46 PM, Li Zefan wrote:
 >>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #11124783: rec_len is smaller than minimal - offset=4072, inode=0, rec_len=0, name_len=0
 >>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #52740880: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
 >>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #52740880: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
->>>
+>>
+>> This looks like the last part of the inode was zapped.  It might be
+> 
+> I don't think so. See below...
+> 
+>> worth adding a kernel patch which dumps out the entire directory block
+>> as a hex dump when this triggers --- and then compare it to what you
+>> get if you dump the directory back out after the machine reboot.  That
+>> might given you a hint if something is corrupting the directory block
+>> in memory.  (especially if you set the remount read-only option).
+>>
 >>> The last two errors happened on the same machine, and the same inode! One
 >>> happened in 11/22 (I was told they had run fsck later on), and one in 12/01.
->> So now this directory has been fscked to be right? You can try by just
-> 
-> right.
-> 
->> ls this directory and check whether there are any errors in dmesg.
+>>
+>> If it's always the same inode, you might want to correlate based on
+>> the pathname.  Is there any commonality accross multiple machines in
+>> terms of the directory name, and what application(s) might be touching
+>> that directory?
 >>
 > 
-> no error at all.
-OK, so now it is fixed by e2fsck. hmm, is there any stress inode
-creation/deletion in this dir? 2.6.16 is too older although I am not
-sure whether this is a bug or not.
+> I found this in one log:
 > 
->> Having said that, as this error happens 2 times for the same inode,
->> maybe there is a kernel bug. At least as Ted said in another mail, the
->> end of this buffer head seems to be cleared. So I guess next time when
->> you see this error, please do:
->> 1. use debugfs to find the disk layout for this dir
->> 2. read the blocks from the block device directly
->> 3. check whether the end of a block(from offset to the end) is zeroed.
->> 4. If yes, I guess there should be a kernel bug and we can go on to
->> investigate the code.
->>
+> Nov 14 05:26:55 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+> Nov 14 13:42:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
+> Nov 16 17:29:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
+> Nov 23 19:42:44 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
 > 
-> This may give us different output with that by dumping dir via debugfs?
-> If so I'll try next time.
-In step 2, I mean dd out these blocks, decode and read them by
-yourselves to check whether there are zeroes.
+> Happend 4 times, the same inode, different offsets. Another log showed the
+> same pattern.
+> 
+> They said they ran fsck everytime this happened. Many machines got this problem,
+> but they remember most of the time fsck didn't report error.(*)
+> 
+> I've checked the pathname, and they all points to log dirs. There're 2 kinds
+> of log dirs with different loggers, but seems work similarly.
+> 
+> Except one bug report, all others point to exactly the same log dir.
+> 
+> There're two processes that will touch this dir. One is a monitor, it will
+> delete old logs if they occupy too much space, but normally this shouldn't
+> happen.
+> 
+> Another is the logger. When it wants to log sth, it scans the directory, if
+> there're more than 100 log files, it will delete the oldest one. After writting
+> to the current log file, if the file is larger than 8M, this file will be
+> renamed as a backup log. I haven't read the code yet. But sounds pretty
+> simple, right?
+> 
+> The length of the file name is 25. There were 35 logs dating from 2012/11/02
+> to 2012/11/23, and no pending deleted files. Thus the remaining ~2.8K of the
+> dir block is never used, so I don't think something zeroed it because it
+> has always been zero.
+Only 35 files? So there should be no rename. And the only possible
+action we do to this dir is "create a new log file", right? Then, I
+really don't think ext3 will error in such a simple test case. :(
+
+> 
+> This log dir is new in this version, while the other one also exists in
+> old verison, with less IO.
+You mean the kernel version? Sorry, but what do you want to tell us here?
 
 Thanks
 Tao
 > 
-> Seeing from the output dumpped via debugfs in one machine, more than
-> harf of the dir block is all zero, but the offset is near 4K. I also
-> checked several other machines, no difference.
-
-
-Thanks
-Tao
+> (*) They have machines in different spots. In another spot, 5 out of ~30
+> machines met this problem after upgrading, and fsck reported errors in
+> all of them. However there were just a few errors, and they didn't seem to
+> relate to the directory, which means the directory seems intact. Adding
+> that the fs was created nearly 1 years ago and ever fscked, those errors
+> might have nothing to do with this bug?
+> 
+> btw, the version of e2fsprogsis: e2fsck 1.38 (30-Jun-2005)
+> 
+> Regards
+> Li Zefan
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
