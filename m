@@ -1,168 +1,70 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Wed, 05 Dec 2012 21:58:17 +0800
-Message-ID: <50BF52F9.5080707@tao.ma>
-References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <50BE16EC.6060501@tao.ma> <CAEjEV8D7G3xaT_Y4KdH7eVA-bdexjEE5iKPFRQ=Psgfmmoe-+g@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] fs:ext3: remove lock_buffer in bclean() and
+ setup_new_group_blocks
+Date: Wed, 5 Dec 2012 15:41:07 +0100
+Message-ID: <20121205144107.GE5706@quack.suse.cz>
+References: <1354412428-8938-1-git-send-email-dinggnu@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Li Zefan <lizefan@huawei.com>, Eric Sandeen <sandeen@redhat.com>,
-	Yafang Shao <laoar.shao@gmail.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	wuqixuan@huawei.com
-To: qixuan wu <wuqixuan@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Cong Ding <dinggnu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:45254 "HELO
-	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751669Ab2LEN6e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2012 08:58:34 -0500
-In-Reply-To: <CAEjEV8D7G3xaT_Y4KdH7eVA-bdexjEE5iKPFRQ=Psgfmmoe-+g@mail.gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44162 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754215Ab2LEOlJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Dec 2012 09:41:09 -0500
+Content-Disposition: inline
+In-Reply-To: <1354412428-8938-1-git-send-email-dinggnu@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi qixuan,
-On 12/05/2012 12:16 AM, qixuan wu wrote:
-> Hi Tao, all,
-> 
->     I guess it's a memory(or ext3/kenrel) issue. Beause in one
-> machine, after report this issue, the partition is made to readonly,
-> we use debugfs to "ls dir", and it's fine. It can list all files
-> without error. If the disk has issue, when we using ls command, it
-> will give error also. (The dir name is also using debugfs to get by
-> issue inode ID.)
-Are you sure the disk is good? I just checked the code in e2fsprogs, it
-seems that it will not complain if rec_len = 0, and the dir iteration
-just aborts. I guess the right way should be dd the corresponding block
-out, decode and read it in binary format. :(
+On Sun 02-12-12 01:40:28, Cong Ding wrote:
+> it's not necessary to lock the buffers because no one touches them
+> beyond the file system.
+  Although I agree those locks are not strictly necessary, I prefer to keep
+them because the general rula is buffer contents should be changed under
+buffer lock unless we have a good reason to do otherwise. And here the cost
+of additional lock is really marginal...
 
-Thanks
-Tao
-> 
->     Is there the possibility: one thread(A) is read_dir(directly read
-> from buffer head), and another thread(B) is creating item, and fill
-> this buffer header at the same time. During create item, first modify
-> the last item's rec_len(let it point to next item which initially is
-> zero), then fill this added new item. Suppose the seq is below :
->    1) B: modify last item's rec_len
->    2) A: Read last item, rec_len is modified already by B, and it
-> identify next item is existing.
->    3) A: Read new item, all feilds are zero still.
->    3) B: fill new item with correct value.
-> 
->    This may cause problem. Sorry I am not still checking the code
-> properly. Raise this suppose is just hope ext3 experts can help to
-> think whether such concurring scenario has problem or not ?
->    Any idea or clue is welcome.
-> 
-> Regards & Thanks a lot.
-> Wuqx
-> 
-> On Tue, Dec 4, 2012 at 11:29 PM, Tao Ma <tm@tao.ma> wrote:
->> Hi zefan,
->> On 12/04/2012 09:54 PM, Li Zefan wrote:
->>>>> We have many x86 boards, and we've been using 2.6.16.60 for a long
->>>>> time. Before time we occasionally found ext3 was switched to read-only
->>>>> while services were running, and we took it for granted it must be
->>>>> some hardware problems.
->>>>>     But recently this issue happens frequently, both in old boards and
->>>>> new boards. We've analyzed logs, and in one board we did find
->>>>> exceptional reboot (but ext3 error happened 9 days after), and in
->>>>> another board we found mptbase recovery routine, but in all other
->>>>> boards there's no suspicious output at all.
->>>>>     The only change with the system is some application updates, and
->>>>> apps now put more IO burden on disks.
->>>>>     The error always happened in ext3_readdir, like this:
->>>>>
->>>>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory#6685458: rec_len is smaller than minimal - offset=3860, inode=0, rec_len=0, name_len=0
->>>>> Aborting journal on device sda7.
->>>>> EXT3-fs error (device sda7) in start_transaction: Readonly filesystem
->>>>> Aborting journal on device sda7.
->>>>> ext3_abort called.
->>>>> EXT3-fs error (device sda7): ext3_journal_start_sb: Detected aborted journal
->>>>> Remounting filesystem read-only
->>>>> __journal_remove_journal_head: freeing b_committed_data
->>>>>
->>>>> We highly doubt it's hardware failures with this frequency in mind, so
->>>>> we're wondering regarding to this issue if there's some ext3 bug-fix
->>>>> having merged into mainline but not in our old kernel?
->>>>
->>>> Absolutely there are.  There have been 87 changes just to namei.c since 2.6.16.
->>>> You could look through git logs to see if anything looks applicable.
->>>>
->>>> You might try:
->>>>
->>>> ef2b02d3e617cb0400eedf2668f86215e1b0e6af ext34: ensure do_split leaves enough free space in both blocks
->>>
->>> I've been asked to investigate this issue. Thanks for the reply!
->>>
->>> I found this fix while searching for similar bug reports, but I don't think it
->>> worths trying as we don't use dir_index feature.
->>>
->>> I've collected some logs in different machines, and the error was always
->>> triggered in ext3_readdir:
->>>
->>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #6685458: rec_len is smaller than minimal - offset=3860, inode=0, rec_len=0, name_len=0
->>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #9650541: rec_len is smaller than minimal - offset=3960, inode=0, rec_len=0, name_len=0
->>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #11124783: rec_len is smaller than minimal - offset=4072, inode=0, rec_len=0, name_len=0
->>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #52740880: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
->>> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #52740880: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
->>>
->>> The last two errors happened on the same machine, and the same inode! One
->>> happened in 11/22 (I was told they had run fsck later on), and one in 12/01.
->> So now this directory has been fscked to be right? You can try by just
->> ls this directory and check whether there are any errors in dmesg.
->>
->> Having said that, as this error happens 2 times for the same inode,
->> maybe there is a kernel bug. At least as Ted said in another mail, the
->> end of this buffer head seems to be cleared. So I guess next time when
->> you see this error, please do:
->> 1. use debugfs to find the disk layout for this dir
->> 2. read the blocks from the block device directly
->> 3. check whether the end of a block(from offset to the end) is zeroed.
->> 4. If yes, I guess there should be a kernel bug and we can go on to
->> investigate the code.
->>
->> Thanks
->> Tao
->>>
->>> The offset is always a bit smaller than blocksize, and all the fields are 0.
->>> I dumped one of the dirs, and only ~1.6K was used (fsck reported no error).
->>>
->>> In some machines fsck reported no error at all, and in others filesystems
->>> were corrupted though fixable.
->>>
->>> I didn't see any other error messages before this error at all.
->>>
->>> Does this remind you of some old ext3 bug?
->>>
->>> I'll send you fsck output, dir contents and other logs if u'r interested.
->>>
->>>>
->>>> but to be honest, sticking with such an old kernel means you are largely on your own, or may need contract help if you can't resolve it.
->>>>
->>>
->>> There're numerous machines running old kernels, and many of them are hard to
->>> change. :(
->>>
->>> Yesterday they upgrade apps on ~30 machines, and soon after that 5 machines
->>> had filesystem corrupted. However they won't stop upgrading other machines!
->>>
->>> On the other hand, we can hardly reproduce this bug in the lab.
->>>
->>> So this is critical and urgent. Any help is appreciated.
->>>
->>> Regards
->>> Li Zefan
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+								Honza
 
+> 
+> Signed-off-by: Cong Ding <dinggnu@gmail.com>
+> ---
+>  fs/ext3/resize.c |    4 ----
+>  1 files changed, 0 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+> index 0f814f3..f76fcd6 100644
+> --- a/fs/ext3/resize.c
+> +++ b/fs/ext3/resize.c
+> @@ -122,10 +122,8 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+>  		brelse(bh);
+>  		bh = ERR_PTR(err);
+>  	} else {
+> -		lock_buffer(bh);
+>  		memset(bh->b_data, 0, sb->s_blocksize);
+>  		set_buffer_uptodate(bh);
+> -		unlock_buffer(bh);
+>  	}
+>  
+>  	return bh;
+> @@ -242,10 +240,8 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  			brelse(gdb);
+>  			goto exit_bh;
+>  		}
+> -		lock_buffer(gdb);
+>  		memcpy(gdb->b_data, sbi->s_group_desc[i]->b_data, gdb->b_size);
+>  		set_buffer_uptodate(gdb);
+> -		unlock_buffer(gdb);
+>  		err = ext3_journal_dirty_metadata(handle, gdb);
+>  		if (err) {
+>  			brelse(gdb);
+> -- 
+> 1.7.4.5
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
