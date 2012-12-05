@@ -1,42 +1,239 @@
 From: Darren Hart <dvhart@infradead.org>
-Subject: [PATCH 1/3] lib/ext2fs: Correct interates typo in texinfo docs
-Date: Wed,  5 Dec 2012 13:56:03 -0800
-Message-ID: <ff54dc35c816ae53f149f2f032c12147deac8508.1354743799.git.dvhart@infradead.org>
+Subject: [PATCH 2/3] lib/ext2fs: Add ext2fs_symlink
+Date: Wed,  5 Dec 2012 13:56:04 -0800
+Message-ID: <40709903834127afbb1f6eda82cf50c292b3f97c.1354743799.git.dvhart@infradead.org>
 References: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
 Cc: Darren Hart <dvhart@infradead.org>,
 	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:62577 "EHLO mga14.intel.com"
+Received: from mga02.intel.com ([134.134.136.20]:16816 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752711Ab2LEV40 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Dec 2012 16:56:26 -0500
+	id S1753880Ab2LEV41 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Dec 2012 16:56:27 -0500
 In-Reply-To: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
+In-Reply-To: <ff54dc35c816ae53f149f2f032c12147deac8508.1354743799.git.dvhart@infradead.org>
+References: <ff54dc35c816ae53f149f2f032c12147deac8508.1354743799.git.dvhart@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just a typo fix.
+Creating symlinks is a complex affair when accounting for slowlinks.
+
+Create a new function, ext2fs_symlink(), modeled after ext2fs_mkdir()
+with input from debugfs's do_write() and copy_file(). Like
+ext2fs_mkdir(), ext2fs_symlink() takes on the task of allocating a new
+inode, setting up sane default values in the inode, accounting for the
+inode stats, and copying the target path to either the inode (for
+fastlinks) or to the blocks/extents (for slowlinks) using
+ext2fs_file_write().
+
+It does not attempt to expand the parent directory, instead returning
+EXT2_ET_DIR_NO_SPACE and leaving it to the caller to expand just as
+ext2fs_mkdir() does. Ideally, I think both of these functions should
+make a single attempt to expand the directory.
+
+Adds 1556 bytes to libext2fs.a (stripped).
 
 Signed-off-by: Darren Hart <dvhart@infradead.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Andreas Dilger <adilger@dilger.ca>
 ---
- doc/libext2fs.texinfo | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ lib/ext2fs/Makefile.in    |   8 +++
+ lib/ext2fs/ext2_err.et.in |   3 +
+ lib/ext2fs/symlink.c      | 137 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 148 insertions(+)
+ create mode 100644 lib/ext2fs/symlink.c
 
-diff --git a/doc/libext2fs.texinfo b/doc/libext2fs.texinfo
-index 9d8e7f1..8272d1d 100644
---- a/doc/libext2fs.texinfo
-+++ b/doc/libext2fs.texinfo
-@@ -767,7 +767,7 @@ to initialize directory entries for @file{.} and @file{..}, respectively.
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index e05b438..5411826 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -80,6 +80,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	res_gdt.o \
+ 	rw_bitmaps.o \
+ 	swapfs.o \
++	symlink.o \
+ 	tdb.o \
+ 	undo_io.o \
+ 	unix_io.o \
+@@ -155,6 +156,7 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/res_gdt.c \
+ 	$(srcdir)/rw_bitmaps.c \
+ 	$(srcdir)/swapfs.c \
++	$(srcdir)/symlink.c \
+ 	$(srcdir)/tdb.c \
+ 	$(srcdir)/test_io.c \
+ 	$(srcdir)/tst_badblocks.c \
+@@ -881,6 +883,12 @@ swapfs.o: $(srcdir)/swapfs.c $(top_builddir)/lib/config.h \
+  $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
+  $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
+  $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
++symlink.o: $(srcdir)/symlink.c $(top_builddir)/lib/config.h \
++ $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
++ $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
++ $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
++ $(srcdir)/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
++ $(srcdir)/ext2_ext_attr.h $(srcdir)/bitops.h
+ tdb.o: $(srcdir)/tdb.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/tdb.h
+ test_io.o: $(srcdir)/test_io.c $(top_builddir)/lib/config.h \
+diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
+index c99a167..e1313a8 100644
+--- a/lib/ext2fs/ext2_err.et.in
++++ b/lib/ext2fs/ext2_err.et.in
+@@ -248,6 +248,9 @@ ec	EXT2_ET_DB_NOT_FOUND,
+ ec	EXT2_ET_DIR_EXISTS,
+ 	"Ext2 directory already exists"
  
- @deftypefun errcode_t ext2fs_dir_iterate (ext2_filsys @var{fs}, ext2_ino_t @var{dir}, int @var{flags}, char *@var{block_buf}, int (*@var{func})(struct ext2_dir_entry *@var{dirent}, int @var{offset}, int @var{blocksize}, char *@var{buf}, void *@var{private}), void *@var{private})
++ec	EXT2_ET_FILE_EXISTS,
++	"Ext2 file already exists"
++
+ ec	EXT2_ET_UNIMPLEMENTED,
+ 	"Unimplemented ext2 library function"
  
--This function interates over all of the directory entries in the
-+This function iterates over all of the directory entries in the
- directory @var{dir}, calling the callback function @var{func} for each
- directory entry in the directory.  The @var{block_buf} parameter should
- either be NULL, or if the @code{ext2fs_dir_iterate} function is 
+diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+new file mode 100644
+index 0000000..5bfb9fc
+--- /dev/null
++++ b/lib/ext2fs/symlink.c
+@@ -0,0 +1,137 @@
++/*
++ * symlink.c --- make a symlink in the filesystem, based on mkdir.c
++ *
++ * Copyright (c) 2012, Intel Corporation.
++ * All Rights Reserved.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Library
++ * General Public License, version 2.
++ * %End-Header%
++ */
++
++#include "config.h"
++#include <stdio.h>
++#include <string.h>
++#if HAVE_UNISTD_H
++#include <unistd.h>
++#endif
++#include <fcntl.h>
++#include <time.h>
++#if HAVE_SYS_STAT_H
++#include <sys/stat.h>
++#endif
++#if HAVE_SYS_TYPES_H
++#include <sys/types.h>
++#endif
++
++#include "ext2_fs.h"
++#include "ext2fs.h"
++
++#ifndef EXT2_FT_SYMLINK
++#define EXT2_FT_SYMLINK		7
++#endif
++
++errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
++                         const char *name, char *target)
++{
++	ext2_extent_handle_t	handle;
++	errcode_t		retval;
++	struct ext2_inode	inode;
++	ext2_ino_t		scratch_ino;
++	int			fastlink;
++	int			target_len;
++
++	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
++
++	/*
++	 * Allocate an inode, if necessary
++	 */
++	if (!ino) {
++		retval = ext2fs_new_inode(fs, parent, LINUX_S_IFLNK | 0755,
++		                          0, &ino);
++		if (retval)
++			goto cleanup;
++	}
++
++	/*
++	 * Link the symlink into the filesystem hierarchy
++	 */
++	retval = ext2fs_lookup(fs, parent, name, strlen(name), 0,
++	                       &scratch_ino);
++	if (!retval) {
++		retval = EXT2_ET_FILE_EXISTS;
++		goto cleanup;
++	}
++	if (retval != EXT2_ET_FILE_NOT_FOUND)
++		goto cleanup;
++	retval = ext2fs_link(fs, parent, name, ino, EXT2_FT_SYMLINK);
++	if (retval)
++		goto cleanup;
++
++	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
++
++	/*
++	 * Create the inode structure....
++	 */
++	memset(&inode, 0, sizeof(struct ext2_inode));
++	inode.i_mode = LINUX_S_IFLNK | 0777;
++	inode.i_uid = inode.i_gid = 0;
++	/* FIXME: set the time fields */
++	inode.i_links_count = 1;
++
++	target_len = strlen(target);
++	fastlink = (target_len < sizeof(inode.i_block));
++	if (fastlink) {
++		/* Fast symlinks, target stored in inode */
++		inode.i_size = target_len;
++		strcpy((char *)&inode.i_block, target);
++	} else {
++		if (retval)
++			goto cleanup;
++
++		if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)
++			inode.i_flags |= EXT4_EXTENTS_FL;
++
++		inode.i_size = (target_len % fs->blocksize) ?
++		               target_len + (fs->blocksize - target_len) : target_len;
++	}
++
++	/*
++	 * Write out the inode and inode data block.  The inode generation
++	 * number is assigned by write_new_inode, which means that the file
++	 * operations below should come after it.
++	 */
++	retval = ext2fs_write_new_inode(fs, ino, &inode);
++	if (retval)
++		goto cleanup;
++
++	/*
++	 * For slow links, the target path is written to the blocks/extents
++	 */
++	if (!fastlink) {
++		ext2_extent_handle_t handle;
++		ext2_file_t file;
++		int written = 0;
++		char *rem;
++
++		/* Write the target to file */
++		retval = ext2fs_file_open2(fs, ino, &inode,
++		                           EXT2_FILE_CREATE | EXT2_FILE_WRITE,
++		                           &file);
++		if (retval)
++			goto cleanup;
++
++		rem = target;
++		while (strlen(rem)) {
++			retval = ext2fs_file_write(file, (void *)rem, strlen(rem), &written);
++			rem += written;
++			if (retval)
++				break;
++		}
++		ext2fs_file_close(file);
++	}
++
++cleanup:
++	return retval;
++}
 -- 
 1.7.11.7
 
