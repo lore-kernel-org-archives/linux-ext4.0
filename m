@@ -1,46 +1,41 @@
-From: Darren Hart <dvhart@infradead.org>
-Subject: [PATCH RFC 0/3] ext2fsprogs: Symlink support and doc fix
-Date: Wed,  5 Dec 2012 13:56:02 -0800
-Message-ID: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: RFC: remove CONFIG_EXT4_FS_XATTR
+Date: Wed, 05 Dec 2012 17:35:05 -0500
+Message-ID: <nsxsj7kw2jq.fsf@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Tao Ma <tm@tao.ma>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:37805 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751766Ab2LEV4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Dec 2012 16:56:44 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:37007 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932121Ab2LEWfI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Dec 2012 17:35:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-As we appear to have agreed that adding symlink support to debugfs via a new
-ext2fs_symlink() function in libext2fs was something that needed doing, I
-thought I'd use this as a trial run for my first contribution to the ext2fsprogs
-package before I continue working on the larger project of completing initial
-directory support for mke2fs.
+The number of build warnings that were generated with the inline data
+patch makes me think that perhaps we should just remove
+CONFIG_EXT4_FS_XATTR.  Turning off CONFIG_EXT4_FS_XATTR causes a net
+decrease in the ext4 file system by 27k (about 7.3% if ext4 is built as
+a module; the entire compiled kernel's text+data size for my
+all-in-one-no-modules-for-kvm-testing is 19 megabytes).
 
-While I modeled this patch after existing code, their were some inconcsistencies
-in the code examples I used that I'd welcome input on. In particular:
+Another advantage of making this change is with the inline data option,
+if you turn off CONFIG_EXT4_FS_XATTR, it will still allow a file system
+with inline_data to be mounted, but then attempts to read small files or
+small directories will end up returning EOPNOTSUPP, which will be
+surprising to end users in a very serious way.  (Assuming it works at
+all; I haven't tested to make sure it fails cleanly, and I'm not sure
+Tao has tested that case either; so easing our test matrix is another
+reason why removing this config option would be helpful.)
 
-o Should the ext2fs_link() happen right after ext2fs_new_inode()? Or should it
-  happen closer to the end of the operation? do_write() and ext2fs_mkdir()
-  handle this differently.
+Does anyone have any objections or other reasons why this would be a bad
+idea?
 
-o Is it necessary to allocate the first block and assign it to the inode or the
-  extents? ext2fs_mkdir() does this, do_write() does not. I opted for the
-  simpler of the two and it passes my initial simple tests.
+                                                - Ted
 
-o Should I pass "mode" to ext2fs_new_inode() even though it is ignored?
 
-o Would it make sense to try once to expand_dir rather than bailing out of
-  ext2fs_mkdir() and ext2fs_symlink() if the directory is full?
 
-o What would we like the initial uid,gid,mode,*time values to be for
-  files/directories/links/etc. created with libext2fs?
 
-Finally, I made an attempt to follow the coding style I observed in the code,
-but if I missed something, please let me know.
-
-Thanks,
-
-Darren Hart
-Intel Open Source Technology Center
