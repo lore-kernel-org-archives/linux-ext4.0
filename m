@@ -1,34 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [ext4:dev 40/60] fs/ext4/inode.c:1953
- __ext4_journalled_writepage() error: potential NULL dereference 'page_bufs'.
-Date: Wed, 5 Dec 2012 11:25:10 -0500
-Message-ID: <20121205162510.GF18885@thunk.org>
-References: <20121204111011.GD22569@mwanda>
- <1354627545-2792-1-git-send-email-tm@tao.ma>
- <20121204135602.GE22569@mwanda>
- <20121205054125.GC18885@thunk.org>
- <20121205083141.GJ22569@mwanda>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <tm@tao.ma>, linux-ext4@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
+From: Darren Hart <dvhart@infradead.org>
+Subject: [PATCH 1/3] lib/ext2fs: Correct interates typo in texinfo docs
+Date: Wed,  5 Dec 2012 13:56:03 -0800
+Message-ID: <ff54dc35c816ae53f149f2f032c12147deac8508.1354743799.git.dvhart@infradead.org>
+References: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
+Cc: Darren Hart <dvhart@infradead.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:36951 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752568Ab2LEQZP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Dec 2012 11:25:15 -0500
-Content-Disposition: inline
-In-Reply-To: <20121205083141.GJ22569@mwanda>
+Received: from mga14.intel.com ([143.182.124.37]:62577 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752711Ab2LEV40 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Dec 2012 16:56:26 -0500
+In-Reply-To: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 05, 2012 at 11:31:41AM +0300, Dan Carpenter wrote:
-> 
-> Yeah, moving the check for (inode_bh == NULL) forward is nice.
-> Thanks.
+Just a typo fix.
 
-Not that I really care about optimizing the error path that much, but
-getting a starting a handle only to immediately stop it again if
-inode_bh == NULL was just silly.  :-)
+Signed-off-by: Darren Hart <dvhart@infradead.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>
+---
+ doc/libext2fs.texinfo | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-							- Ted
+diff --git a/doc/libext2fs.texinfo b/doc/libext2fs.texinfo
+index 9d8e7f1..8272d1d 100644
+--- a/doc/libext2fs.texinfo
++++ b/doc/libext2fs.texinfo
+@@ -767,7 +767,7 @@ to initialize directory entries for @file{.} and @file{..}, respectively.
+ 
+ @deftypefun errcode_t ext2fs_dir_iterate (ext2_filsys @var{fs}, ext2_ino_t @var{dir}, int @var{flags}, char *@var{block_buf}, int (*@var{func})(struct ext2_dir_entry *@var{dirent}, int @var{offset}, int @var{blocksize}, char *@var{buf}, void *@var{private}), void *@var{private})
+ 
+-This function interates over all of the directory entries in the
++This function iterates over all of the directory entries in the
+ directory @var{dir}, calling the callback function @var{func} for each
+ directory entry in the directory.  The @var{block_buf} parameter should
+ either be NULL, or if the @code{ext2fs_dir_iterate} function is 
+-- 
+1.7.11.7
+
