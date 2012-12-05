@@ -1,30 +1,31 @@
 From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [ext4:dev 46/60] fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
-Date: Wed, 05 Dec 2012 14:56:00 +0800
-Message-ID: <50bef000.4q/4LopK27nZNLeI%fengguang.wu@intel.com>
+Subject: [ext4:dev 48/60] file.c:(.text+0x894): multiple definition of
+ `ext4_find_inline_entry'
+Date: Wed, 05 Dec 2012 15:02:08 +0800
+Message-ID: <50bef170.oeQzD2UGsgbnmgWm%fengguang.wu@intel.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="=_50bef000.YqqEfBcKisWSlZQidnYMtsuF7Ibk29Gi3VR2JV8ZBeF7dGmx"
+ boundary="=_50bef170.C45wOaLta/1oJCwd2hd3uGgMjATnxKZOIDkdoM908LyF5FBS"
 Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
 To: Tao Ma <boyu.mt@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:63570 "EHLO mga01.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:44614 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752420Ab2LEG46 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Dec 2012 01:56:58 -0500
+	id S1751880Ab2LEHCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 5 Dec 2012 02:02:54 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 This is a multi-part message in MIME format.
 
---=_50bef000.YqqEfBcKisWSlZQidnYMtsuF7Ibk29Gi3VR2JV8ZBeF7dGmx
+--=_50bef170.C45wOaLta/1oJCwd2hd3uGgMjATnxKZOIDkdoM908LyF5FBS
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
 head:   48e12537cdeb606c35896ae84f06f241ef4fc303
-commit: a417fab6fe1532dbd6f10ee2921a520b394b6bc6 [46/60] ext4: let ext4_readdir handle inline data
+commit: ee89b75e3fe3fa4c8758ba3892349bfcfbdc3017 [48/60] ext4: let ext4_find_entry handle inline data
 config: i386-randconfig-b810 (attached as .config)
 
 All error/warnings:
@@ -32,33 +33,57 @@ All error/warnings:
 fs/ext4/file.o: In function `ext4_xattr_ibody_get':
 file.c:(.text+0x885): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/file.o: In function `ext4_find_inline_entry':
+file.c:(.text+0x894): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/ialloc.o: In function `ext4_xattr_ibody_get':
 ialloc.c:(.text+0x531): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/ialloc.o: In function `ext4_find_inline_entry':
+ialloc.c:(.text+0x540): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/inode.o: In function `ext4_xattr_ibody_get':
 inode.c:(.text+0x193e): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/inode.o: In function `ext4_find_inline_entry':
+inode.c:(.text+0x194d): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/page-io.o: In function `ext4_xattr_ibody_get':
 page-io.c:(.text+0x57): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/page-io.o: In function `ext4_find_inline_entry':
+page-io.c:(.text+0x66): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/namei.o: In function `ext4_xattr_ibody_get':
-namei.c:(.text+0xace): multiple definition of `ext4_xattr_ibody_get'
+namei.c:(.text+0xa22): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/namei.o: In function `ext4_find_inline_entry':
+namei.c:(.text+0xa31): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/super.o: In function `ext4_xattr_ibody_get':
 super.c:(.text+0xc2bd): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/super.o: In function `ext4_find_inline_entry':
+super.c:(.text+0xc2cc): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/symlink.o: In function `ext4_xattr_ibody_get':
 symlink.c:(.text+0x1b): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/symlink.o: In function `ext4_find_inline_entry':
+symlink.c:(.text+0x2a): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 fs/ext4/extents.o: In function `ext4_xattr_ibody_get':
 extents.c:(.text+0x12ef): multiple definition of `ext4_xattr_ibody_get'
 fs/ext4/dir.o:dir.c:(.text+0x25c): first defined here
+fs/ext4/extents.o: In function `ext4_find_inline_entry':
+extents.c:(.text+0x12fe): multiple definition of `ext4_find_inline_entry'
+fs/ext4/dir.o:dir.c:(.text+0x26b): first defined here
 
 ---
 0-DAY kernel build testing backend         Open Source Technology Center
 Fengguang Wu, Yuanhan Liu                              Intel Corporation
 
---=_50bef000.YqqEfBcKisWSlZQidnYMtsuF7Ibk29Gi3VR2JV8ZBeF7dGmx
+--=_50bef170.C45wOaLta/1oJCwd2hd3uGgMjATnxKZOIDkdoM908LyF5FBS
 Content-Type: text/plain;
  charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -2805,4 +2830,4 @@ CONFIG_AVERAGE=y
 CONFIG_CORDIC=m
 CONFIG_DDR=y
 
---=_50bef000.YqqEfBcKisWSlZQidnYMtsuF7Ibk29Gi3VR2JV8ZBeF7dGmx--
+--=_50bef170.C45wOaLta/1oJCwd2hd3uGgMjATnxKZOIDkdoM908LyF5FBS--
