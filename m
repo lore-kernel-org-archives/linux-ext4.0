@@ -1,84 +1,94 @@
-From: qixuan wu <wuqixuan@gmail.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Fri, 7 Dec 2012 00:26:26 +0800
-Message-ID: <CAEjEV8A52CHDC9FD9SV+FuuScGe0mJAk69z8o6OHE8kF0bdz_Q@mail.gmail.com>
+Date: Thu, 6 Dec 2012 18:09:13 +0100
+Message-ID: <20121206170913.GC21029@quack.suse.cz>
 References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
-	<50BCE885.8010609@redhat.com>
-	<50BE007D.5080504@huawei.com>
-	<50BE16EC.6060501@tao.ma>
-	<CAEjEV8D7G3xaT_Y4KdH7eVA-bdexjEE5iKPFRQ=Psgfmmoe-+g@mail.gmail.com>
-	<50BF52F9.5080707@tao.ma>
-	<CAEjEV8A=VNY6tSwzJPG32WqO0yNzvgcv8QsqBYEy6KiX7WVgSA@mail.gmail.com>
-	<CAGBYx2bw4D_MDzNGS-QO92tuJvTN2=j6f1u0Y3ReBM-mj33EOA@mail.gmail.com>
+ <50BCE885.8010609@redhat.com>
+ <50BE007D.5080504@huawei.com>
+ <20121204150928.GF29083@thunk.org>
+ <50BF2537.6070809@huawei.com>
+ <50BF597D.3040704@tao.ma>
+ <50BFF149.6080007@huawei.com>
+ <20121206123744.GA17951@quack.suse.cz>
+ <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Tao Ma <tm@tao.ma>, Li Zefan <lizefan@huawei.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Li Zefan <lizefan@huawei.com>,
+	Tao Ma <tm@tao.ma>, Theodore Ts'o <tytso@mit.edu>,
 	Eric Sandeen <sandeen@redhat.com>,
 	Yafang Shao <laoar.shao@gmail.com>,
-	Linux Filesystem Mailing List <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	wuqixuan@huawei.com
-To: Yongqiang Yang <xiaoqiangnk@gmail.com>
+To: qixuan wu <wuqixuan@gmail.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAGBYx2bw4D_MDzNGS-QO92tuJvTN2=j6f1u0Y3ReBM-mj33EOA@mail.gmail.com>
+Content-Disposition: inline
+In-Reply-To: <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi yongqiang,
+On Fri 07-12-12 00:21:25, qixuan wu wrote:
+> Hi Kara,
+> 
+> On Thu, Dec 6, 2012 at 8:37 PM, Jan Kara <jack@suse.cz> wrote:
+> > On Thu 06-12-12 09:13:45, Li Zefan wrote:
+> >> >> I found this in one log:
+> >> >>
+> >> >> Nov 14 05:26:55 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+> >> >> Nov 14 13:42:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
+> >> >> Nov 16 17:29:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
+> >> >> Nov 23 19:42:44 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+> >   Sorry for posting here in the thread but I got unsubscribed from the
+> > list so I don't have the beginning of the thread in my inbox.
+> >
+> >   ext3 directory format is such that the last directory entry in the block
+> > should have length to exactly fill up the whole block. Apparently, the
+> > length got trimmed for some reason so we ended up before end of directory
+> > block looked of another directory entry there and didn't find anything. I
+> > will also make one observation regarding offsets. They are 3952, 4024, and
+> > 4084. If we subtract that from 4096 (block size), we get differences (in
+> > binary) 10010000, 01001000, 00001100. Interestingly these have always two
+> > bits set. Might be luck but need not...
+> 
+> Yes, we also found the interesting things that the offset happen in
+> many boards are like below:
+> 1) 3952
+> 2) 3988( 3952+36)
+> 3) 4024( 3988+36)
+> 4) 4048(4042+24)
+> 5) 4084(same as the rec_len of ".." file if there isn't any file).
+> 
+> I need introduce the rule of the files in the dir, for example:
+> .
+> ..
+> current_log.txt (len is 15, rec_len is 24 when there is file after it,
+> the value "24" i think has relative with  offset 4048)
+> 20120526124556.865213.txt(len is 25, rec_len is 36 when there is file after it).
+> 20120526124984.239475.txt(len is 25, rec_len is 36 when there is file after it).
+> ....
+> Because the rec_len is 36, it has some relative with those offset
+> values( the diff of those values are multiple of 36).
+> I need tell another thing, customer's app invoke opendir/readdir very
+> frequently. There are more than 1000 times, every second(the value
+> need to be confirmed).
+> 
+> > Anyway it would be interesting to get the dump of the corrupted directory
+> > before e2fsck is run. You can do that by running:
+> >   debugfs -R "dump_inode <7225391> /tmp/corrupted_dir" /dev/sda7
+> >
+> > Then you can send the dump of the corrupted directory here.
+> 
+> We have already dump of the data by debugfs. The data is very good
+> without error. But we just did it before fsck, even the fsck is not
+> giving any error. I want to know whether fsck will modify disk data
+> without reporting any error or not ?
+  Ah, OK. So it seems that directory block is OK, just  f_pos gets corrupted
+somehow. There are guards in ext3_readdir() to rescan dir block when
+directory is modified but maybe that's not working correctly. I don't want
+to burn too much time on this since this is so ancient kernel but I'd be
+looking in that direction...
 
-On Thu, Dec 6, 2012 at 10:58 AM, Yongqiang Yang <xiaoqiangnk@gmail.com> wrote:
-> Hi quxuan,
->
-> Could you have a test with ext3's journal disabled?   In our
-> production, I encountered several cases where deleting on a deleted
-> entry happened in ext2, however it doesn''t bother apps, so we didn't
-> dig the cause.
+									Honza
 
-We did not test by disable journal. Our customer is usring default
-journal mode. Because journal is concern only if the system power off.
-If system is continously running and give readonly error, we thought
-it's nothing about journal. I am not very clear what about the issue
-"deleting on a deleted entry", seems not same as our issue. If you can
-more detail about it,  it will be welcomed. :)
-
-> Yongqiang.
->
-> On Wed, Dec 5, 2012 at 11:46 PM, qixuan wu <wuqixuan@gmail.com> wrote:
->> Hi Tao,
->>
->> On Wed, Dec 5, 2012 at 9:58 PM, Tao Ma <tm@tao.ma> wrote:
->>> Hi qixuan,
->>> On 12/05/2012 12:16 AM, qixuan wu wrote:
->>>> Hi Tao, all,
->>>>
->>>>     I guess it's a memory(or ext3/kenrel) issue. Beause in one
->>>> machine, after report this issue, the partition is made to readonly,
->>>> we use debugfs to "ls dir", and it's fine. It can list all files
->>>> without error. If the disk has issue, when we using ls command, it
->>>> will give error also. (The dir name is also using debugfs to get by
->>>> issue inode ID.)
->>> Are you sure the disk is good? I just checked the code in e2fsprogs, it
->>> seems that it will not complain if rec_len = 0, and the dir iteration
->>> just aborts. I guess the right way should be dd the corresponding block
->>> out, decode and read it in binary format. :(
->>
->>     Good idea, will do it.
->>
->> Thanks
->> wuqixuan
->>
->>> Thanks
->>> Tao
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Best Wishes
-> Yongqiang Yang
-
-Thanks
-wuqixuan
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
