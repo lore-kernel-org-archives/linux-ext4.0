@@ -1,40 +1,52 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: RFC: remove CONFIG_EXT4_FS_XATTR
-Date: Wed, 5 Dec 2012 22:48:42 -0500
-Message-ID: <20121206034842.GA21009@thunk.org>
+Date: Thu, 6 Dec 2012 11:26:57 +0100
+Message-ID: <20121206102657.GA16579@quack.suse.cz>
 References: <nsxsj7kw2jq.fsf@closure.thunk.org>
  <50BFF5D6.7050804@tao.ma>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
 To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37039 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753506Ab2LFDss (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Dec 2012 22:48:48 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:51450 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422997Ab2LFK1A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 6 Dec 2012 05:27:00 -0500
 Content-Disposition: inline
 In-Reply-To: <50BFF5D6.7050804@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 06, 2012 at 09:33:10AM +0800, Tao Ma wrote:
+On Thu 06-12-12 09:33:10, Tao Ma wrote:
+> On 12/06/2012 06:35 AM, Theodore Ts'o wrote:
+> > 
+> > The number of build warnings that were generated with the inline data
+> > patch makes me think that perhaps we should just remove
+> > CONFIG_EXT4_FS_XATTR.  Turning off CONFIG_EXT4_FS_XATTR causes a net
+> > decrease in the ext4 file system by 27k (about 7.3% if ext4 is built as
+> > a module; the entire compiled kernel's text+data size for my
+> > all-in-one-no-modules-for-kvm-testing is 19 megabytes).
+> > 
+> > Another advantage of making this change is with the inline data option,
+> > if you turn off CONFIG_EXT4_FS_XATTR, it will still allow a file system
+> > with inline_data to be mounted, but then attempts to read small files or
+> > small directories will end up returning EOPNOTSUPP, which will be
+> > surprising to end users in a very serious way.  (Assuming it works at
+> > all; I haven't tested to make sure it fails cleanly, and I'm not sure
+> > Tao has tested that case either; so easing our test matrix is another
+> > reason why removing this config option would be helpful.)
 > To be frank, I didn't try the inline data test without xattr support. So
 > that would be great if we remove it. :)
 > 
 > btw, does any distribution disable xattr support during kernel build? As
 > Eric said on behalf of redhat, and in my ubuntu box xattr is enabled.
 > Would Jan confirm that SUSE also use it by default?
+  Yes, we enable xattrs in all our kernel configs... BTW +1 from me for
+removing the config option.
 
-I'm pretty sure SuSE enables it, since SELinux requires it, and SuSE
-supports it.
-
-I'm more concerned with various embedded use cases, which is why I
-measured how much additional text/data space xattr support enables
-(which was only 27k, so I doubt that would be an issue in most
-embedded use cases --- hmm.... I've just checked a Nexus 4 kernel
-config and it enables CONFIG_FS_EXT4_XATTR; I'm not sure Android is
-actually using xattrs at all at the moment, but it's certainly
-enabled).
-
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
