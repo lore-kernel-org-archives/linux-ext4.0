@@ -1,52 +1,101 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: RFC: remove CONFIG_EXT4_FS_XATTR
-Date: Thu, 6 Dec 2012 11:26:57 +0100
-Message-ID: <20121206102657.GA16579@quack.suse.cz>
-References: <nsxsj7kw2jq.fsf@closure.thunk.org>
- <50BFF5D6.7050804@tao.ma>
+From: Ashish Sangwan <ashishsangwan2@gmail.com>
+Subject: Re: [PATCH, RFC] Ext4: Mount partition as read only if during orphan
+ cleanup truncate fails to obtain journal handle.
+Date: Thu, 6 Dec 2012 16:59:43 +0530
+Message-ID: <CAOiN93nKkFAc_t6J+c1w4F3V-MYaq9cv2wfAq3hyniWz5wYFMw@mail.gmail.com>
+References: <1351075240-2725-1-git-send-email-ashish.sangwan2@gmail.com>
+	<CAKYAXd_6pHdPtOgOS4=_c6naWwPdMhna29OOKD919HrYM-+kaA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Tao Ma <tm@tao.ma>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	Ashish Sangwan <ashish.sangwan2@gmail.com>,
+	=?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Namjae Jeon <linkinjeon@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51450 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422997Ab2LFK1A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Dec 2012 05:27:00 -0500
-Content-Disposition: inline
-In-Reply-To: <50BFF5D6.7050804@tao.ma>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:57203 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1423283Ab2LFL3o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 06:29:44 -0500
+In-Reply-To: <CAKYAXd_6pHdPtOgOS4=_c6naWwPdMhna29OOKD919HrYM-+kaA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 06-12-12 09:33:10, Tao Ma wrote:
-> On 12/06/2012 06:35 AM, Theodore Ts'o wrote:
-> > 
-> > The number of build warnings that were generated with the inline data
-> > patch makes me think that perhaps we should just remove
-> > CONFIG_EXT4_FS_XATTR.  Turning off CONFIG_EXT4_FS_XATTR causes a net
-> > decrease in the ext4 file system by 27k (about 7.3% if ext4 is built as
-> > a module; the entire compiled kernel's text+data size for my
-> > all-in-one-no-modules-for-kvm-testing is 19 megabytes).
-> > 
-> > Another advantage of making this change is with the inline data option,
-> > if you turn off CONFIG_EXT4_FS_XATTR, it will still allow a file system
-> > with inline_data to be mounted, but then attempts to read small files or
-> > small directories will end up returning EOPNOTSUPP, which will be
-> > surprising to end users in a very serious way.  (Assuming it works at
-> > all; I haven't tested to make sure it fails cleanly, and I'm not sure
-> > Tao has tested that case either; so easing our test matrix is another
-> > reason why removing this config option would be helpful.)
-> To be frank, I didn't try the inline data test without xattr support. So
-> that would be great if we remove it. :)
-> 
-> btw, does any distribution disable xattr support during kernel build? As
-> Eric said on behalf of redhat, and in my ubuntu box xattr is enabled.
-> Would Jan confirm that SUSE also use it by default?
-  Yes, we enable xattrs in all our kernel configs... BTW +1 from me for
-removing the config option.
+Hi Ted,
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Did you get any time to look into this patch?
+This problem is with ext4 only as ext4_truncate does not clean the
+orphan list unlike that of ext3_truncate.
+Instead, in case of failure to obtain handle, orphan list cleanup is
+done in ext4_setattr.
+But during mount, ext4_truncate is not called via ext4_setattr and
+hence the problem.
+What do you think?
+
+On Fri, Oct 26, 2012 at 5:11 PM, Namjae Jeon <linkinjeon@gmail.com> wrote:
+> Add Cc in mail loop.
+>
+> Thanks.
+>
+> 2012/10/24, Ashish Sangwan <ashishsangwan2@gmail.com>:
+>> During orphan cleanup while doing truncate, if we fail to obtain journal
+>> handle, the inode for which truncate was called would not be removed from
+>> both the on-disk and in-memory orphan lists as the call to ext4_orphan_del
+>> would not be executed.
+>>
+>> This would have following consequences:
+>> a) As the inode is not removed from the on-disk list, truncate would be
+>> called again for the same inode. Each call would add the inode to the
+>> in-memory list. This operation would continue endlessly or until truncate
+>> is succeed.
+>>
+>> b) If somehow, after some iterations, truncate is succeed, ext4_orphan_del
+>> will only remove the inode from in-memory list just 1 time. This will
+>> trigger
+>> j_assert during put super.
+>>
+>> This patch handles both the problems. If truncate fails, first in-memory
+>> list is cleared and than the partition is mounted as read only.
+>> Failure to obtain journal handle during mount may suggest that journal
+>> device is corrupted.
+>>
+>> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
+>> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+>> ---
+>>  fs/ext4/super.c | 16 +++++++++++++++-
+>>  1 file changed, 15 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index 4e2aacb..859eccb 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -2201,7 +2201,21 @@ static void ext4_orphan_cleanup(struct super_block
+>> *sb,
+>>                       jbd_debug(2, "truncating inode %lu to %lld bytes\n",
+>>                                 inode->i_ino, inode->i_size);
+>>                       ext4_truncate(inode);
+>> -                     nr_truncates++;
+>> +                     if (list_empty(&EXT4_I(inode)->i_orphan)) {
+>> +                             nr_truncates++;
+>> +                     } else {
+>> +                             /* Remove inode from in-memory orphan list */
+>> +                             list_del_init(&EXT4_I(inode)->i_orphan);
+>> +                             ext4_msg(sb, KERN_ERR, "Truncate failed for "
+>> +                                      "orphan  inode = %lu. Running e2fsck"
+>> +                                      " is recommended", inode->i_ino);
+>> +                             if (!(s_flags & MS_RDONLY)) {
+>> +                                     ext4_msg(sb, KERN_INFO, "FS would be"
+>> +                                             " mounted as readonly");
+>> +                                     s_flags |= MS_RDONLY;
+>> +                             }
+>> +                             break;
+>> +                     }
+>>               } else {
+>>                       ext4_msg(sb, KERN_DEBUG,
+>>                               "%s: deleting unreferenced inode %lu",
+>> --
+>> 1.7.11.4
+>>
+>>
