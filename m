@@ -1,101 +1,215 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH, RFC] Ext4: Mount partition as read only if during orphan
- cleanup truncate fails to obtain journal handle.
-Date: Thu, 6 Dec 2012 16:59:43 +0530
-Message-ID: <CAOiN93nKkFAc_t6J+c1w4F3V-MYaq9cv2wfAq3hyniWz5wYFMw@mail.gmail.com>
-References: <1351075240-2725-1-git-send-email-ashish.sangwan2@gmail.com>
-	<CAKYAXd_6pHdPtOgOS4=_c6naWwPdMhna29OOKD919HrYM-+kaA@mail.gmail.com>
+From: Forrest Liu <forrestl@synology.com>
+Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
+Date: Thu, 6 Dec 2012 19:35:32 +0800
+Message-ID: <CAJSVwFNQUpVd0Kcua+VWx16RR9BsYnQyZYdVCWB6tVgcYA6LUQ@mail.gmail.com>
+References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
+	<CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
+	<CAJSVwFNbvUO_i8CY-g8xb1fWHgAmKgGHYx2hnJqW_TKVHSWtHA@mail.gmail.com>
+	<CAOiN93kGE_mFGg+BLNYBLbeggnk-9nr5k0BDUTTq+81P9k3tWA@mail.gmail.com>
+	<CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Ashish Sangwan <ashish.sangwan2@gmail.com>,
-	=?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Namjae Jeon <linkinjeon@gmail.com>
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Ashish Sangwan <ashishsangwan2@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:57203 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423283Ab2LFL3o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 06:29:44 -0500
-In-Reply-To: <CAKYAXd_6pHdPtOgOS4=_c6naWwPdMhna29OOKD919HrYM-+kaA@mail.gmail.com>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:64700 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1423208Ab2LFLku (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 06:40:50 -0500
+Received: by mail-ie0-f170.google.com with SMTP id k10so17421519iea.1
+        for <linux-ext4@vger.kernel.org>; Thu, 06 Dec 2012 03:40:49 -0800 (PST)
+In-Reply-To: <CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi Ashish,
+   Thanks for your review and fixed hole punch bugs.
 
-Did you get any time to look into this patch?
-This problem is with ext4 only as ext4_truncate does not clean the
-orphan list unlike that of ext3_truncate.
-Instead, in case of failure to obtain handle, orphan list cleanup is
-done in ext4_setattr.
-But during mount, ext4_truncate is not called via ext4_setattr and
-hence the problem.
-What do you think?
+We can't propogate ei_block only in ext4_ext_rm_leave.
 
-On Fri, Oct 26, 2012 at 5:11 PM, Namjae Jeon <linkinjeon@gmail.com> wrote:
-> Add Cc in mail loop.
+There have two cases to call ext4_ext_rm_idx
+1) extent block has no entry, ext4_ext_rm_leave calls
+ext4_ext_rm_idx to release extent block.
+
+2) extent index block has no entry, ext4_ext_remove_space
+calls ext4_ext_rm_idx to release extent index block.
+
+Consider remove third level of extent index block that indexed by
+second level of extent index, and the extent index in second level
+is first entry in block.
+
+In this case, ei_block will not propogate to top level correctly,
+if we only do propogation in ext4_ext_rm_leave.
+
+Regards,
+Forrest
+
+2012/12/5 Ashish Sangwan <ashishsangwan2@gmail.com>:
+> Sorry 1 typo.
+> It should be
+> + path->p_idx->ei_block =(path + 1)->p_idx->ei_block ;
+> instead of
+> + path->p_idx->ei_block = border;
 >
-> Thanks.
->
-> 2012/10/24, Ashish Sangwan <ashishsangwan2@gmail.com>:
->> During orphan cleanup while doing truncate, if we fail to obtain journal
->> handle, the inode for which truncate was called would not be removed from
->> both the on-disk and in-memory orphan lists as the call to ext4_orphan_del
->> would not be executed.
+> On Wed, Dec 5, 2012 at 1:23 PM, Ashish Sangwan <ashishsangwan2@gmail.com> wrote:
+>> I have tested it and the problem is real.
+>> It happens when depth => 2 and punch hole completely removes any of
+>> the first extent indexes at depth 1.
+>> The change in ei_block is not propagated backwards to index at depth 0.
 >>
->> This would have following consequences:
->> a) As the inode is not removed from the on-disk list, truncate would be
->> called again for the same inode. Each call would add the inode to the
->> in-memory list. This operation would continue endlessly or until truncate
->> is succeed.
+>> However, AFAICS, the problematic call to ext4_ext_rm_idx is from
+>> ext4_ext_rm_leaf and there is no need to change in
+>> ext4_ext_remove_space or in ext4_ext_rm_idx.
 >>
->> b) If somehow, after some iterations, truncate is succeed, ext4_orphan_del
->> will only remove the inode from in-memory list just 1 time. This will
->> trigger
->> j_assert during put super.
+>> Forrest, what do you think about below change ?
+>> basically its your code, but its been added to ext4_ext_rm_leaf after
+>> removing index.
 >>
->> This patch handles both the problems. If truncate fails, first in-memory
->> list is cleared and than the partition is mounted as read only.
->> Failure to obtain journal handle during mount may suggest that journal
->> device is corrupted.
+>> @@ -2448,8 +2464,28 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
 >>
->> Signed-off-by: Ashish Sangwan <ashish.sangwan2@gmail.com>
->> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
->> ---
->>  fs/ext4/super.c | 16 +++++++++++++++-
->>  1 file changed, 15 insertions(+), 1 deletion(-)
+>>         /* if this leaf is free, then we should
+>>          * remove it from index block above */
+>> -       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
+>> +       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL) {
+>>                 err = ext4_ext_rm_idx(handle, inode, path + depth);
+>> +               /* If this was the first extent index in node,
+>> +                * propagates the ei_block updation info to top */
+>> +               if(!err) {
+>> +                       --depth;
+>> +                       path = path + depth;
+>> +                       while (--depth >= 0) {
+>> +                               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
+>> +                                       break;
+>> +                               path--;
+>> +                               err = ext4_ext_get_access(handle, inode, path);
+>> +                               if (err)
+>> +                                       break;
+>> +                               path->p_idx->ei_block = border;
+>> +                               err = ext4_ext_dirty(handle, inode, path);
+>> +                               if (err)
+>> +                                       break;
+>> +                       }
+>> +               }
+>> +       }
+>> +
 >>
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 4e2aacb..859eccb 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -2201,7 +2201,21 @@ static void ext4_orphan_cleanup(struct super_block
->> *sb,
->>                       jbd_debug(2, "truncating inode %lu to %lld bytes\n",
->>                                 inode->i_ino, inode->i_size);
->>                       ext4_truncate(inode);
->> -                     nr_truncates++;
->> +                     if (list_empty(&EXT4_I(inode)->i_orphan)) {
->> +                             nr_truncates++;
->> +                     } else {
->> +                             /* Remove inode from in-memory orphan list */
->> +                             list_del_init(&EXT4_I(inode)->i_orphan);
->> +                             ext4_msg(sb, KERN_ERR, "Truncate failed for "
->> +                                      "orphan  inode = %lu. Running e2fsck"
->> +                                      " is recommended", inode->i_ino);
->> +                             if (!(s_flags & MS_RDONLY)) {
->> +                                     ext4_msg(sb, KERN_INFO, "FS would be"
->> +                                             " mounted as readonly");
->> +                                     s_flags |= MS_RDONLY;
->> +                             }
->> +                             break;
->> +                     }
->>               } else {
->>                       ext4_msg(sb, KERN_DEBUG,
->>                               "%s: deleting unreferenced inode %lu",
->> --
->> 1.7.11.4
->>
->>
+>> On Wed, Dec 5, 2012 at 11:43 AM, Forrest Liu <forrestl@synology.com> wrote:
+>>> 2012/12/4 forrest <forrestl@synology.com>:
+>>>> This problem is easily to reproduce
+>>>>
+>>>> Create a file with size larger than 1GB.
+>>>>
+>>>> dd if=/dev/zero of=/test_file bs=1M count=1024
+>>>>
+>>>> Punch every even block in test_file, and then use debugfs to dump
+>>>> extents,  followings is dumped result
+>>>>
+>>>>  2/ 2 339/340 231197 - 231197   3917597 -   3917597      1
+>>>>  2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
+>>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
+>>>>  1/ 2   1/ 46 231201 - 231880   3901488                680
+>>>>  2/ 2   1/340 231201 - 231201   3917601 -   3917601      1
+>>>>  2/ 2   2/340 231203 - 231203   3917603 -   3917603      1
+>>>>
+>>>> Punch blocks #231779 ~#231201 , to remove extent index, and then use
+>>>> debugfs to dump extents,  followings is dumped result
+>>>>
+>>>> 2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
+>>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
+>>>> -------> logical block index didn't update when remove extent index
+>>>>  1/ 2   1/ 45 231881 - 232560   3901490                680
+>>>>  2/ 2   1/340 231881 - 231881   3918281 -   3918281      1
+>>>>  2/ 2   2/340 231883 - 231883   3918283 -   3918283      1
+>>>
+>>> After blocks #231202~#231880 had been punch out, theses blocks can't map again.
+>>> If we do map a block in #231202~#231880, we will get error messages
+>>> like followings.
+>>>
+>>> EXT4-fs error (device md2): ext4_ext_search_left:1239: inode #13: comm
+>>> flush-9:2: ix (231201) != EXT_FIRST_INDEX (1) (depth 0)!
+>>> EXT4-fs (md2): delayed block allocation failed for inode 13 at logical
+>>> offset 231203 with max blocks 1 with error -5
+>>> EXT4-fs (md2): This should not happen!! Data will be lost
+>>>
+>>> Regards,
+>>> Forrest
+>>>
+>>>>
+>>>> 2012/12/4 Forrest Liu <forrestl@synology.com>:
+>>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
+>>>>> of extent tree is greater than 1.
+>>>>>
+>>>>> Signed-off-by: Forrest Liu <forrestl@synology.com>
+>>>>> ---
+>>>>>  fs/ext4/extents.c |   24 ++++++++++++++++++++----
+>>>>>  1 files changed, 20 insertions(+), 4 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>>>>> index d3dd618..b10b8c0 100644
+>>>>> --- a/fs/ext4/extents.c
+>>>>> +++ b/fs/ext4/extents.c
+>>>>> @@ -2190,13 +2190,15 @@ errout:
+>>>>>   * removes index from the index block.
+>>>>>   */
+>>>>>  static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+>>>>> -                       struct ext4_ext_path *path)
+>>>>> +                       struct ext4_ext_path *path, int depth)
+>>>>>  {
+>>>>>         int err;
+>>>>>         ext4_fsblk_t leaf;
+>>>>> +       __le32 border;
+>>>>>
+>>>>>         /* free index block */
+>>>>> -       path--;
+>>>>> +       depth--;
+>>>>> +       path = path + depth;
+>>>>>         leaf = ext4_idx_pblock(path->p_idx);
+>>>>>         if (unlikely(path->p_hdr->eh_entries == 0)) {
+>>>>>                 EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
+>>>>> @@ -2221,6 +2223,20 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+>>>>>
+>>>>>         ext4_free_blocks(handle, inode, NULL, leaf, 1,
+>>>>>                          EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+>>>>> +
+>>>>> +       border = path->p_idx->ei_block;
+>>>>> +       while (--depth >= 0) {
+>>>>> +               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
+>>>>> +                       break;
+>>>>> +               path--;
+>>>>> +               err = ext4_ext_get_access(handle, inode, path);
+>>>>> +               if (err)
+>>>>> +                       break;
+>>>>> +               path->p_idx->ei_block = border;
+>>>>> +               err = ext4_ext_dirty(handle, inode, path);
+>>>>> +               if (err)
+>>>>> +                       break;
+>>>>> +       }
+>>>>>         return err;
+>>>>>  }
+>>>>>
+>>>>> @@ -2557,7 +2573,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+>>>>>         /* if this leaf is free, then we should
+>>>>>          * remove it from index block above */
+>>>>>         if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
+>>>>> -               err = ext4_ext_rm_idx(handle, inode, path + depth);
+>>>>> +               err = ext4_ext_rm_idx(handle, inode, path, depth);
+>>>>>
+>>>>>  out:
+>>>>>         return err;
+>>>>> @@ -2760,7 +2776,7 @@ again:
+>>>>>                                 /* index is empty, remove it;
+>>>>>                                  * handle must be already prepared by the
+>>>>>                                  * truncatei_leaf() */
+>>>>> -                               err = ext4_ext_rm_idx(handle, inode, path + i);
+>>>>> +                               err = ext4_ext_rm_idx(handle, inode, path, i);
+>>>>>                         }
+>>>>>                         /* root level has p_bh == NULL, brelse() eats this */
+>>>>>                         brelse(path[i].p_bh);
+>>>>> --
+>>>>> 1.7.5.4
+>>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
