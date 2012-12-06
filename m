@@ -1,237 +1,309 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Thu, 6 Dec 2012 18:46:39 +0530
-Message-ID: <CAOiN93mbVSvANaUH3S-Y8mfa4uvYcc=iRO3vd4BUpAWgJMJdyA@mail.gmail.com>
-References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
-	<CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
-	<CAJSVwFNbvUO_i8CY-g8xb1fWHgAmKgGHYx2hnJqW_TKVHSWtHA@mail.gmail.com>
-	<CAOiN93kGE_mFGg+BLNYBLbeggnk-9nr5k0BDUTTq+81P9k3tWA@mail.gmail.com>
-	<CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
-	<CAJSVwFNQUpVd0Kcua+VWx16RR9BsYnQyZYdVCWB6tVgcYA6LUQ@mail.gmail.com>
+From: "MR. ZUMA DECUBO" <zumadecubo653@gmail.com>
+Subject: KINDLY READ THE ATTACHED FUND INVESTMENT PROPOSAL LETTER AND REPLY.
+Date: Thu, 6 Dec 2012 05:10:15 -0800 (PST)
+Message-ID: <1354799415.32015.YahooMailRC__42322.1228215427$1354799936$gmane$org@web5710.biz.mail.ne1.yahoo.com>
+Reply-To: "MR. ZUMA DECUBO" <mr.zumadecubo@mcom.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Forrest Liu <forrestl@synology.com>
+Content-Type: multipart/mixed; boundary="1348619509-1544262675-1354799415=:32015"
+To: undisclosed recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:36898 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754617Ab2LFNQn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 08:16:43 -0500
-Received: by mail-vc0-f174.google.com with SMTP id d16so5898465vcd.19
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Dec 2012 05:16:40 -0800 (PST)
-In-Reply-To: <CAJSVwFNQUpVd0Kcua+VWx16RR9BsYnQyZYdVCWB6tVgcYA6LUQ@mail.gmail.com>
+Received: from nm16-vm8.bullet.mail.gq1.yahoo.com ([98.137.177.241]:45116 "EHLO
+	nm16-vm8.bullet.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754545Ab2LFNQb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 08:16:31 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 6, 2012 at 5:05 PM, Forrest Liu <forrestl@synology.com> wrote:
-> Hi Ashish,
->    Thanks for your review and fixed hole punch bugs.
->
-> We can't propogate ei_block only in ext4_ext_rm_leave.
->
-> There have two cases to call ext4_ext_rm_idx
-> 1) extent block has no entry, ext4_ext_rm_leave calls
-> ext4_ext_rm_idx to release extent block.
->
+--1348619509-1544262675-1354799415=:32015
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-1.1)  And when the extent block is removed, the corresponding index
-entry has also to be removed. And if this was the first index entry,
-all the other index entries, are also updated. This updation will
-continue till we reach the root of extent tree OR the currently
-updated index entry is not the first entry in the node.
+=0A
+--1348619509-1544262675-1354799415=:32015
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document; name=FUND
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="FUND INVESTMENT PROPOSAL.docx"
 
-> 2) extent index block has no entry, ext4_ext_remove_space
-> calls ext4_ext_rm_idx to release extent index block.
->
-> Consider remove third level of extent index block that indexed by
-> second level of extent index, and the extent index in second level
-> is first entry in block.
->
-So, I think the above case would be handled by point (1.1) i.e. the
-earlier index updation done from within ext4_ext_rm_leaf.
-The earlier ei_block updation will reach to the top of tree.
+UEsDBBQABgAIAAAAIQDd/JU3ZgEAACAFAAATAAgCW0NvbnRlbnRfVHlwZXNd
+LnhtbCCiBAIooAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0VMtuwjAQvFfqP0S+Vomh
+h6qqCBz6OLZIpR9g7A1Y9Uv28vr7bgJEVQtBKuUSKVnvzOzsxIPR2ppsCTFp
+70rWL3osAye90m5Wso/JS37PsoTCKWG8g5JtILHR8PpqMNkESBl1u1SyOWJ4
+4DzJOViRCh/AUaXy0Qqk1zjjQchPMQN+2+vdcekdgsMcaww2HDxBJRYGs+c1
+fd4qiWASyx63B2uukokQjJYCSSlfOvWDJd8xFNTZnElzHdINyWD8IENdOU6w
+63sja6JWkI1FxFdhSQZf+ai48nJhaYaiG+aATl9VWkLbX6OF6CWkRJ5bU7QV
+K7Tb6z+qI+HGQPp/FVvcLnrSOY4+JE57OZsf6s0rUDlZESCihnZ1x0cHRLLs
+EsPvkLvGb1KAlHfgzbN/tgcNzEnKin6JiZgaOJvvV/Ja6JMiVjB9v5j738C7
+hLT5kz7+wYz9dVF3H0gdb+634RcAAAD//wMAUEsDBBQABgAIAAAAIQAekRq3
+8wAAAE4CAAALAAgCX3JlbHMvLnJlbHMgogQCKKAAAgAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAjJLbSgNBDIbvBd9hyH032woi0tneSKF3IusDhJnsAXcOzKTavr2jILpQ
+217m9OfLT9abg5vUO6c8Bq9hWdWg2JtgR99reG23iwdQWchbmoJnDUfOsGlu
+b9YvPJGUoTyMMaui4rOGQSQ+ImYzsKNchci+VLqQHEkJU4+RzBv1jKu6vsf0
+VwOamabaWQ1pZ+9AtcdYNl/WDl03Gn4KZu/Yy4kVyAdhb9kuYipsScZyjWop
+9SwabDDPJZ2RYqwKNuBpotX1RP9fi46FLAmhCYnP83x1nANaXg902aJ5x687
+HyFZLBZ9e/tDg7MvaD4BAAD//wMAUEsDBBQABgAIAAAAIQB5gIlnKwEAANwD
+AAAcAAgBd29yZC9fcmVscy9kb2N1bWVudC54bWwucmVscyCiBAEooAABAAAA
+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
+AAAA
 
-> In this case, ei_block will not propogate to top level correctly,
-> if we only do propogation in ext4_ext_rm_leave.
-
-And thanks for pointing the problem. Can you reproduce it with my code
-suggesstion even with depth 3?
-If no, than please resend the patch with suggested changes.
-The intent here is to solve the problem without changing any function
-signature and with minimal changes.
-
-Regards,
-Ashish
->
-> Regards,
-> Forrest
->
-> 2012/12/5 Ashish Sangwan <ashishsangwan2@gmail.com>:
->> Sorry 1 typo.
->> It should be
->> + path->p_idx->ei_block =(path + 1)->p_idx->ei_block ;
->> instead of
->> + path->p_idx->ei_block = border;
->>
->> On Wed, Dec 5, 2012 at 1:23 PM, Ashish Sangwan <ashishsangwan2@gmail.com> wrote:
->>> I have tested it and the problem is real.
->>> It happens when depth => 2 and punch hole completely removes any of
->>> the first extent indexes at depth 1.
->>> The change in ei_block is not propagated backwards to index at depth 0.
->>>
->>> However, AFAICS, the problematic call to ext4_ext_rm_idx is from
->>> ext4_ext_rm_leaf and there is no need to change in
->>> ext4_ext_remove_space or in ext4_ext_rm_idx.
->>>
->>> Forrest, what do you think about below change ?
->>> basically its your code, but its been added to ext4_ext_rm_leaf after
->>> removing index.
->>>
->>> @@ -2448,8 +2464,28 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->>>
->>>         /* if this leaf is free, then we should
->>>          * remove it from index block above */
->>> -       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
->>> +       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL) {
->>>                 err = ext4_ext_rm_idx(handle, inode, path + depth);
->>> +               /* If this was the first extent index in node,
->>> +                * propagates the ei_block updation info to top */
->>> +               if(!err) {
->>> +                       --depth;
->>> +                       path = path + depth;
->>> +                       while (--depth >= 0) {
->>> +                               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->>> +                                       break;
->>> +                               path--;
->>> +                               err = ext4_ext_get_access(handle, inode, path);
->>> +                               if (err)
->>> +                                       break;
->>> +                               path->p_idx->ei_block = border;
->>> +                               err = ext4_ext_dirty(handle, inode, path);
->>> +                               if (err)
->>> +                                       break;
->>> +                       }
->>> +               }
->>> +       }
->>> +
->>>
->>> On Wed, Dec 5, 2012 at 11:43 AM, Forrest Liu <forrestl@synology.com> wrote:
->>>> 2012/12/4 forrest <forrestl@synology.com>:
->>>>> This problem is easily to reproduce
->>>>>
->>>>> Create a file with size larger than 1GB.
->>>>>
->>>>> dd if=/dev/zero of=/test_file bs=1M count=1024
->>>>>
->>>>> Punch every even block in test_file, and then use debugfs to dump
->>>>> extents,  followings is dumped result
->>>>>
->>>>>  2/ 2 339/340 231197 - 231197   3917597 -   3917597      1
->>>>>  2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
->>>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
->>>>>  1/ 2   1/ 46 231201 - 231880   3901488                680
->>>>>  2/ 2   1/340 231201 - 231201   3917601 -   3917601      1
->>>>>  2/ 2   2/340 231203 - 231203   3917603 -   3917603      1
->>>>>
->>>>> Punch blocks #231779 ~#231201 , to remove extent index, and then use
->>>>> debugfs to dump extents,  followings is dumped result
->>>>>
->>>>> 2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
->>>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
->>>>> -------> logical block index didn't update when remove extent index
->>>>>  1/ 2   1/ 45 231881 - 232560   3901490                680
->>>>>  2/ 2   1/340 231881 - 231881   3918281 -   3918281      1
->>>>>  2/ 2   2/340 231883 - 231883   3918283 -   3918283      1
->>>>
->>>> After blocks #231202~#231880 had been punch out, theses blocks can't map again.
->>>> If we do map a block in #231202~#231880, we will get error messages
->>>> like followings.
->>>>
->>>> EXT4-fs error (device md2): ext4_ext_search_left:1239: inode #13: comm
->>>> flush-9:2: ix (231201) != EXT_FIRST_INDEX (1) (depth 0)!
->>>> EXT4-fs (md2): delayed block allocation failed for inode 13 at logical
->>>> offset 231203 with max blocks 1 with error -5
->>>> EXT4-fs (md2): This should not happen!! Data will be lost
->>>>
->>>> Regards,
->>>> Forrest
->>>>
->>>>>
->>>>> 2012/12/4 Forrest Liu <forrestl@synology.com>:
->>>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
->>>>>> of extent tree is greater than 1.
->>>>>>
->>>>>> Signed-off-by: Forrest Liu <forrestl@synology.com>
->>>>>> ---
->>>>>>  fs/ext4/extents.c |   24 ++++++++++++++++++++----
->>>>>>  1 files changed, 20 insertions(+), 4 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>>>>> index d3dd618..b10b8c0 100644
->>>>>> --- a/fs/ext4/extents.c
->>>>>> +++ b/fs/ext4/extents.c
->>>>>> @@ -2190,13 +2190,15 @@ errout:
->>>>>>   * removes index from the index block.
->>>>>>   */
->>>>>>  static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->>>>>> -                       struct ext4_ext_path *path)
->>>>>> +                       struct ext4_ext_path *path, int depth)
->>>>>>  {
->>>>>>         int err;
->>>>>>         ext4_fsblk_t leaf;
->>>>>> +       __le32 border;
->>>>>>
->>>>>>         /* free index block */
->>>>>> -       path--;
->>>>>> +       depth--;
->>>>>> +       path = path + depth;
->>>>>>         leaf = ext4_idx_pblock(path->p_idx);
->>>>>>         if (unlikely(path->p_hdr->eh_entries == 0)) {
->>>>>>                 EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
->>>>>> @@ -2221,6 +2223,20 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->>>>>>
->>>>>>         ext4_free_blocks(handle, inode, NULL, leaf, 1,
->>>>>>                          EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
->>>>>> +
->>>>>> +       border = path->p_idx->ei_block;
->>>>>> +       while (--depth >= 0) {
->>>>>> +               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->>>>>> +                       break;
->>>>>> +               path--;
->>>>>> +               err = ext4_ext_get_access(handle, inode, path);
->>>>>> +               if (err)
->>>>>> +                       break;
->>>>>> +               path->p_idx->ei_block = border;
->>>>>> +               err = ext4_ext_dirty(handle, inode, path);
->>>>>> +               if (err)
->>>>>> +                       break;
->>>>>> +       }
->>>>>>         return err;
->>>>>>  }
->>>>>>
->>>>>> @@ -2557,7 +2573,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->>>>>>         /* if this leaf is free, then we should
->>>>>>          * remove it from index block above */
->>>>>>         if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
->>>>>> -               err = ext4_ext_rm_idx(handle, inode, path + depth);
->>>>>> +               err = ext4_ext_rm_idx(handle, inode, path, depth);
->>>>>>
->>>>>>  out:
->>>>>>         return err;
->>>>>> @@ -2760,7 +2776,7 @@ again:
->>>>>>                                 /* index is empty, remove it;
->>>>>>                                  * handle must be already prepared by the
->>>>>>                                  * truncatei_leaf() */
->>>>>> -                               err = ext4_ext_rm_idx(handle, inode, path + i);
->>>>>> +                               err = ext4_ext_rm_idx(handle, inode, path, i);
->>>>>>                         }
->>>>>>                         /* root level has p_bh == NULL, brelse() eats this */
->>>>>>                         brelse(path[i].p_bh);
->>>>>> --
->>>>>> 1.7.5.4
->>>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--1348619509-1544262675-1354799415=:32015--
