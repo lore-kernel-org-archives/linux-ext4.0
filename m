@@ -1,215 +1,98 @@
-From: Forrest Liu <forrestl@synology.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Thu, 6 Dec 2012 19:35:32 +0800
-Message-ID: <CAJSVwFNQUpVd0Kcua+VWx16RR9BsYnQyZYdVCWB6tVgcYA6LUQ@mail.gmail.com>
-References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
-	<CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
-	<CAJSVwFNbvUO_i8CY-g8xb1fWHgAmKgGHYx2hnJqW_TKVHSWtHA@mail.gmail.com>
-	<CAOiN93kGE_mFGg+BLNYBLbeggnk-9nr5k0BDUTTq+81P9k3tWA@mail.gmail.com>
-	<CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Thu, 6 Dec 2012 13:37:44 +0100
+Message-ID: <20121206123744.GA17951@quack.suse.cz>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com>
+ <50BCE885.8010609@redhat.com>
+ <50BE007D.5080504@huawei.com>
+ <20121204150928.GF29083@thunk.org>
+ <50BF2537.6070809@huawei.com>
+ <50BF597D.3040704@tao.ma>
+ <50BFF149.6080007@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Ashish Sangwan <ashishsangwan2@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:64700 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423208Ab2LFLku (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2012 06:40:50 -0500
-Received: by mail-ie0-f170.google.com with SMTP id k10so17421519iea.1
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Dec 2012 03:40:49 -0800 (PST)
-In-Reply-To: <CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tao Ma <tm@tao.ma>, Theodore Ts'o <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	wuqixuan@huawei.com, wuqixuan@gmail.com
+To: Li Zefan <lizefan@huawei.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <50BFF149.6080007@huawei.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ashish,
-   Thanks for your review and fixed hole punch bugs.
+On Thu 06-12-12 09:13:45, Li Zefan wrote:
+> >> I found this in one log:
+> >>
+> >> Nov 14 05:26:55 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+> >> Nov 14 13:42:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
+> >> Nov 16 17:29:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
+> >> Nov 23 19:42:44 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+  Sorry for posting here in the thread but I got unsubscribed from the
+list so I don't have the beginning of the thread in my inbox.
 
-We can't propogate ei_block only in ext4_ext_rm_leave.
+  ext3 directory format is such that the last directory entry in the block
+should have length to exactly fill up the whole block. Apparently, the
+length got trimmed for some reason so we ended up before end of directory
+block looked of another directory entry there and didn't find anything. I
+will also make one observation regarding offsets. They are 3952, 4024, and
+4084. If we subtract that from 4096 (block size), we get differences (in
+binary) 10010000, 01001000, 00001100. Interestingly these have always two
+bits set. Might be luck but need not...
 
-There have two cases to call ext4_ext_rm_idx
-1) extent block has no entry, ext4_ext_rm_leave calls
-ext4_ext_rm_idx to release extent block.
+Anyway it would be interesting to get the dump of the corrupted directory
+before e2fsck is run. You can do that by running:
+  debugfs -R "dump_inode <7225391> /tmp/corrupted_dir" /dev/sda7
 
-2) extent index block has no entry, ext4_ext_remove_space
-calls ext4_ext_rm_idx to release extent index block.
+Then you can send the dump of the corrupted directory here.
 
-Consider remove third level of extent index block that indexed by
-second level of extent index, and the extent index in second level
-is first entry in block.
+> >> Happend 4 times, the same inode, different offsets. Another log showed the
+> >> same pattern.
+> >>
+> >> They said they ran fsck everytime this happened. Many machines got this problem,
+> >> but they remember most of the time fsck didn't report error.(*)
+> >>
+> >> I've checked the pathname, and they all points to log dirs. There're 2 kinds
+> >> of log dirs with different loggers, but seems work similarly.
+> >>
+> >> Except one bug report, all others point to exactly the same log dir.
+> >>
+> >> There're two processes that will touch this dir. One is a monitor, it will
+> >> delete old logs if they occupy too much space, but normally this shouldn't
+> >> happen.
+> >>
+> >> Another is the logger. When it wants to log sth, it scans the directory, if
+> >> there're more than 100 log files, it will delete the oldest one. After writting
+> >> to the current log file, if the file is larger than 8M, this file will be
+> >> renamed as a backup log. I haven't read the code yet. But sounds pretty
+> >> simple, right?
+> >>
+> >> The length of the file name is 25. There were 35 logs dating from 2012/11/02
+> >> to 2012/11/23, and no pending deleted files. Thus the remaining ~2.8K of the
+> >> dir block is never used, so I don't think something zeroed it because it
+> >> has always been zero.
+> > Only 35 files? So there should be no rename. And the only possible
+> 
+> Yes, there can be. The curren log will be renamed when it reaches 8M, and then
+> a new log is created as the current log.
+  Yep. Still the load looks extremely simple. We use 2.6.16 based kernels
+in our SLES distros and I never heard about such corruption. Strange.
+ 
+> > action we do to this dir is "create a new log file", right? Then, I
+> > really don't think ext3 will error in such a simple test case. :(
+> > 
+> >>
+> >> This log dir is new in this version, while the other one also exists in
+> >> old verison, with less IO.
+> > You mean the kernel version? Sorry, but what do you want to tell us here?
+> 
+> The versions of the apps. One of the differences between them is the log system,
+> and the old apps won't trigger this ext3 error.
+  Indeed, this is even stranger...
 
-In this case, ei_block will not propogate to top level correctly,
-if we only do propogation in ext4_ext_rm_leave.
-
-Regards,
-Forrest
-
-2012/12/5 Ashish Sangwan <ashishsangwan2@gmail.com>:
-> Sorry 1 typo.
-> It should be
-> + path->p_idx->ei_block =(path + 1)->p_idx->ei_block ;
-> instead of
-> + path->p_idx->ei_block = border;
->
-> On Wed, Dec 5, 2012 at 1:23 PM, Ashish Sangwan <ashishsangwan2@gmail.com> wrote:
->> I have tested it and the problem is real.
->> It happens when depth => 2 and punch hole completely removes any of
->> the first extent indexes at depth 1.
->> The change in ei_block is not propagated backwards to index at depth 0.
->>
->> However, AFAICS, the problematic call to ext4_ext_rm_idx is from
->> ext4_ext_rm_leaf and there is no need to change in
->> ext4_ext_remove_space or in ext4_ext_rm_idx.
->>
->> Forrest, what do you think about below change ?
->> basically its your code, but its been added to ext4_ext_rm_leaf after
->> removing index.
->>
->> @@ -2448,8 +2464,28 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->>
->>         /* if this leaf is free, then we should
->>          * remove it from index block above */
->> -       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
->> +       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL) {
->>                 err = ext4_ext_rm_idx(handle, inode, path + depth);
->> +               /* If this was the first extent index in node,
->> +                * propagates the ei_block updation info to top */
->> +               if(!err) {
->> +                       --depth;
->> +                       path = path + depth;
->> +                       while (--depth >= 0) {
->> +                               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->> +                                       break;
->> +                               path--;
->> +                               err = ext4_ext_get_access(handle, inode, path);
->> +                               if (err)
->> +                                       break;
->> +                               path->p_idx->ei_block = border;
->> +                               err = ext4_ext_dirty(handle, inode, path);
->> +                               if (err)
->> +                                       break;
->> +                       }
->> +               }
->> +       }
->> +
->>
->> On Wed, Dec 5, 2012 at 11:43 AM, Forrest Liu <forrestl@synology.com> wrote:
->>> 2012/12/4 forrest <forrestl@synology.com>:
->>>> This problem is easily to reproduce
->>>>
->>>> Create a file with size larger than 1GB.
->>>>
->>>> dd if=/dev/zero of=/test_file bs=1M count=1024
->>>>
->>>> Punch every even block in test_file, and then use debugfs to dump
->>>> extents,  followings is dumped result
->>>>
->>>>  2/ 2 339/340 231197 - 231197   3917597 -   3917597      1
->>>>  2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
->>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
->>>>  1/ 2   1/ 46 231201 - 231880   3901488                680
->>>>  2/ 2   1/340 231201 - 231201   3917601 -   3917601      1
->>>>  2/ 2   2/340 231203 - 231203   3917603 -   3917603      1
->>>>
->>>> Punch blocks #231779 ~#231201 , to remove extent index, and then use
->>>> debugfs to dump extents,  followings is dumped result
->>>>
->>>> 2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
->>>>  0/ 2   2/  2 231201 - 262143   3901486              30943
->>>> -------> logical block index didn't update when remove extent index
->>>>  1/ 2   1/ 45 231881 - 232560   3901490                680
->>>>  2/ 2   1/340 231881 - 231881   3918281 -   3918281      1
->>>>  2/ 2   2/340 231883 - 231883   3918283 -   3918283      1
->>>
->>> After blocks #231202~#231880 had been punch out, theses blocks can't map again.
->>> If we do map a block in #231202~#231880, we will get error messages
->>> like followings.
->>>
->>> EXT4-fs error (device md2): ext4_ext_search_left:1239: inode #13: comm
->>> flush-9:2: ix (231201) != EXT_FIRST_INDEX (1) (depth 0)!
->>> EXT4-fs (md2): delayed block allocation failed for inode 13 at logical
->>> offset 231203 with max blocks 1 with error -5
->>> EXT4-fs (md2): This should not happen!! Data will be lost
->>>
->>> Regards,
->>> Forrest
->>>
->>>>
->>>> 2012/12/4 Forrest Liu <forrestl@synology.com>:
->>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
->>>>> of extent tree is greater than 1.
->>>>>
->>>>> Signed-off-by: Forrest Liu <forrestl@synology.com>
->>>>> ---
->>>>>  fs/ext4/extents.c |   24 ++++++++++++++++++++----
->>>>>  1 files changed, 20 insertions(+), 4 deletions(-)
->>>>>
->>>>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>>>> index d3dd618..b10b8c0 100644
->>>>> --- a/fs/ext4/extents.c
->>>>> +++ b/fs/ext4/extents.c
->>>>> @@ -2190,13 +2190,15 @@ errout:
->>>>>   * removes index from the index block.
->>>>>   */
->>>>>  static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->>>>> -                       struct ext4_ext_path *path)
->>>>> +                       struct ext4_ext_path *path, int depth)
->>>>>  {
->>>>>         int err;
->>>>>         ext4_fsblk_t leaf;
->>>>> +       __le32 border;
->>>>>
->>>>>         /* free index block */
->>>>> -       path--;
->>>>> +       depth--;
->>>>> +       path = path + depth;
->>>>>         leaf = ext4_idx_pblock(path->p_idx);
->>>>>         if (unlikely(path->p_hdr->eh_entries == 0)) {
->>>>>                 EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
->>>>> @@ -2221,6 +2223,20 @@ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->>>>>
->>>>>         ext4_free_blocks(handle, inode, NULL, leaf, 1,
->>>>>                          EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
->>>>> +
->>>>> +       border = path->p_idx->ei_block;
->>>>> +       while (--depth >= 0) {
->>>>> +               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->>>>> +                       break;
->>>>> +               path--;
->>>>> +               err = ext4_ext_get_access(handle, inode, path);
->>>>> +               if (err)
->>>>> +                       break;
->>>>> +               path->p_idx->ei_block = border;
->>>>> +               err = ext4_ext_dirty(handle, inode, path);
->>>>> +               if (err)
->>>>> +                       break;
->>>>> +       }
->>>>>         return err;
->>>>>  }
->>>>>
->>>>> @@ -2557,7 +2573,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->>>>>         /* if this leaf is free, then we should
->>>>>          * remove it from index block above */
->>>>>         if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
->>>>> -               err = ext4_ext_rm_idx(handle, inode, path + depth);
->>>>> +               err = ext4_ext_rm_idx(handle, inode, path, depth);
->>>>>
->>>>>  out:
->>>>>         return err;
->>>>> @@ -2760,7 +2776,7 @@ again:
->>>>>                                 /* index is empty, remove it;
->>>>>                                  * handle must be already prepared by the
->>>>>                                  * truncatei_leaf() */
->>>>> -                               err = ext4_ext_rm_idx(handle, inode, path + i);
->>>>> +                               err = ext4_ext_rm_idx(handle, inode, path, i);
->>>>>                         }
->>>>>                         /* root level has p_bh == NULL, brelse() eats this */
->>>>>                         brelse(path[i].p_bh);
->>>>> --
->>>>> 1.7.5.4
->>>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
