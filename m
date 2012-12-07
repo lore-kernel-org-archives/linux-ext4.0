@@ -1,91 +1,100 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH, RFC] Ext4: Mount partition as read only if during orphan
- cleanup truncate fails to obtain journal handle.
-Date: Fri, 7 Dec 2012 14:52:02 +0530
-Message-ID: <CAOiN93n_5t4WD5yzijhDxJ9sZfk6M=baBRnDg5u7Xo+mdX=upQ@mail.gmail.com>
-References: <1351075240-2725-1-git-send-email-ashish.sangwan2@gmail.com>
-	<CAKYAXd_6pHdPtOgOS4=_c6naWwPdMhna29OOKD919HrYM-+kaA@mail.gmail.com>
-	<CAOiN93nKkFAc_t6J+c1w4F3V-MYaq9cv2wfAq3hyniWz5wYFMw@mail.gmail.com>
-	<20121206170938.GC30273@thunk.org>
+From: Li Zefan <lizefan@huawei.com>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Fri, 7 Dec 2012 18:03:49 +0800
+Message-ID: <50C1BF05.6020605@huawei.com>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org> <50BF2537.6070809@huawei.com> <50BF597D.3040704@tao.ma> <50BFF149.6080007@huawei.com> <20121206123744.GA17951@quack.suse.cz> <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com> <20121206170913.GC21029@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Namjae Jeon <linkinjeon@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	=?ISO-8859-2?Q?Luk=E1=B9_Czerner?= <lczerner@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: qixuan wu <wuqixuan@gmail.com>, Tao Ma <tm@tao.ma>,
+	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<wuqixuan@huawei.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:56676 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752099Ab2LGJWE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Dec 2012 04:22:04 -0500
-In-Reply-To: <20121206170938.GC30273@thunk.org>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:42209 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932320Ab2LGKEJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Dec 2012 05:04:09 -0500
+In-Reply-To: <20121206170913.GC21029@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 6, 2012 at 10:39 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Thu, Dec 06, 2012 at 04:59:43PM +0530, Ashish Sangwan wrote:
+On 2012/12/7 1:09, Jan Kara wrote:
+> On Fri 07-12-12 00:21:25, qixuan wu wrote:
+>> Hi Kara,
 >>
->> Did you get any time to look into this patch?
->> This problem is with ext4 only as ext4_truncate does not clean the
->> orphan list unlike that of ext3_truncate.
->> Instead, in case of failure to obtain handle, orphan list cleanup is
->> done in ext4_setattr.
->> But during mount, ext4_truncate is not called via ext4_setattr and
->> hence the problem.
->> What do you think?
->
-> In the patch description, you mentioned that this occurs when the
-> there is a failure to obtain a journal handle.  Is this a hypothetical
-> thing that you exposed via some kind of tester which checks to see
-> what happens if kmalloc() randomly fails some number of allocation
-> requests?  Or was it happening in real life?  And if it is happening
-> in real life, do we understand why it's happening, and is there
-> something we should be doing to mitigate against the root cause of the
-> failure?
->
-Thanks for looking into the patch.
-Yes, you are right. The situation is hypothetical.
-We were checking about Ext4's behavior when it returns error at
-different points in truncate/hole punch path and that's when we
-stumbled on to this.
-In real, we cannot re-produce this scenario without modifying Ext4's
-code and hence an extra RFC added with the patch.
-If you think that obtaining journal handle could never fail at mount
-time, than please ignore this patch.
+>> On Thu, Dec 6, 2012 at 8:37 PM, Jan Kara <jack@suse.cz> wrote:
+>>> On Thu 06-12-12 09:13:45, Li Zefan wrote:
+>>>>>> I found this in one log:
+>>>>>>
+>>>>>> Nov 14 05:26:55 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+>>>>>> Nov 14 13:42:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
+>>>>>> Nov 16 17:29:40 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=4084, inode=0, rec_len=0, name_len=0
+>>>>>> Nov 23 19:42:44 kernel: EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #7225391: rec_len is smaller than minimal - offset=3952, inode=0, rec_len=0, name_len=0
+>>>   Sorry for posting here in the thread but I got unsubscribed from the
+>>> list so I don't have the beginning of the thread in my inbox.
+>>>
+>>>   ext3 directory format is such that the last directory entry in the block
+>>> should have length to exactly fill up the whole block. Apparently, the
+>>> length got trimmed for some reason so we ended up before end of directory
+>>> block looked of another directory entry there and didn't find anything. I
+>>> will also make one observation regarding offsets. They are 3952, 4024, and
+>>> 4084. If we subtract that from 4096 (block size), we get differences (in
+>>> binary) 10010000, 01001000, 00001100. Interestingly these have always two
+>>> bits set. Might be luck but need not...
+>>
+>> Yes, we also found the interesting things that the offset happen in
+>> many boards are like below:
+>> 1) 3952
+>> 2) 3988( 3952+36)
+>> 3) 4024( 3988+36)
+>> 4) 4048(4042+24)
+>> 5) 4084(same as the rec_len of ".." file if there isn't any file).
+>>
+>> I need introduce the rule of the files in the dir, for example:
+>> .
+>> ..
+>> current_log.txt (len is 15, rec_len is 24 when there is file after it,
+>> the value "24" i think has relative with  offset 4048)
+>> 20120526124556.865213.txt(len is 25, rec_len is 36 when there is file after it).
+>> 20120526124984.239475.txt(len is 25, rec_len is 36 when there is file after it).
+>> ....
+>> Because the rec_len is 36, it has some relative with those offset
+>> values( the diff of those values are multiple of 36).
+>> I need tell another thing, customer's app invoke opendir/readdir very
+>> frequently. There are more than 1000 times, every second(the value
+>> need to be confirmed).
+>>
+>>> Anyway it would be interesting to get the dump of the corrupted directory
+>>> before e2fsck is run. You can do that by running:
+>>>   debugfs -R "dump_inode <7225391> /tmp/corrupted_dir" /dev/sda7
+>>>
+>>> Then you can send the dump of the corrupted directory here.
+>>
+>> We have already dump of the data by debugfs. The data is very good
+>> without error. But we just did it before fsck, even the fsck is not
+>> giving any error. I want to know whether fsck will modify disk data
+>> without reporting any error or not ?
+>   Ah, OK. So it seems that directory block is OK, just  f_pos gets corrupted
+> somehow. There are guards in ext3_readdir() to rescan dir block when
+> directory is modified but maybe that's not working correctly. I don't want
+> to burn too much time on this since this is so ancient kernel but I'd be
+> looking in that direction...
+> 
 
-> The alternative to your patch is to do something similar to what ext3
-> does.  That is, if there are any inodes left on the orphan list, to
-> iterate through them all and then clean up the orphan list.  Perhaps
-> we should then also call ext4_error() since technically the file
-> system may very well be inconsistent (there may be allocated inodes
-> holding blocks which are no longer connected the directory hierarchy,
-> which e2fsck would be able to clean up).  But that could potentially
-> cause the system to panic or remount the file system read-only,
-> depending on what the errors= behavior is set to.  Which is why I go
-> back to the original question; do we understand why ext4_truncate()
-> was failing during orphan cleanup in the first place?
->
->                                                - Ted
+I've added some debug code into ext3, which does these things:
+- dump the dir block
+- print the current and last f_pos and offset
+- dump_stack() to see which process triggers the bug
 
-Right, using ext4_error() would have been a better choice than
-explicitly setting RO flag.
-I wonder why ext4_truncate does not clear the orphan_list in case of
-failure to obtain journal handle unlike that of ext3_truncate?
-We would not have to bother about explicitly clearing the orphan list
-in the first place if we could just add a lable like out_notrans (as
-in ext3)=>
- if (IS_ERR(handle))
-                goto out_notrans;
+Hope we can trigger the bug in our labs (We did see this happened twice this week
+in a lab), though we can't patch the kernel in the products.
 
- out_notrans:
-        /*
-         * Delete the inode from orphan list so that it doesn't stay there
-         * forever and trigger assertion on umount.
-         */
-        if (inode->i_nlink)
-                ext3_orphan_del(NULL, inode);
+I compared ext3_readdir() with latest ext3, and saw no difference except some
+API changes. I'll dig deeper. Thansks for the suggestion!
 
-Regards,
-Ashish
+Regards
+Li Zefan
+
