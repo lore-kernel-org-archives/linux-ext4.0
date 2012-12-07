@@ -1,70 +1,96 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole
  punch
-Date: Fri, 07 Dec 2012 16:17:10 -0600
-Message-ID: <50C26AE6.9080902@redhat.com>
-References: <1354623069-8124-1-git-send-email-forrestl@synology.com> <50C0BDA2.4090203@redhat.com> <50C0BE40.5060003@redhat.com> <CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com> <CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
+Date: Fri, 7 Dec 2012 17:29:22 -0500
+Message-ID: <20121207222922.GI29435@thunk.org>
+References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
+ <50C0BDA2.4090203@redhat.com>
+ <50C0BE40.5060003@redhat.com>
+ <CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com>
+ <CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Ashish Sangwan <ashishsangwan2@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
 To: Forrest Liu <forrestl@synology.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38502 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755263Ab2LGWRT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Dec 2012 17:17:19 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:37423 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751068Ab2LGW31 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Dec 2012 17:29:27 -0500
+Content-Disposition: inline
 In-Reply-To: <CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/7/12 6:26 AM, Forrest Liu wrote:
-> 2012/12/7 Ashish Sangwan <ashishsangwan2@gmail.com>:
->> On Thu, Dec 6, 2012 at 9:18 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->>> On 12/6/12 9:45 AM, Eric Sandeen wrote:
->>>> On 12/4/12 6:11 AM, Forrest Liu wrote:
->>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
->>>>> of extent tree is greater than 1.
->>>>
->>>> This is interesting; we had 2 reports of similar corruption on the
->>>> list, I wonder if the application in question was doing hole punching.
->>>> I didn't expect that they were, so TBH I was pretty much ignoring
->>>> the hole-punch cases for parent index updates.  Hm.  I'll have
->>>> to look into that.
->>>> Could you turn your testcase into an xfstest regression test?
-> 
-> Hi Eric,
->    I will check how to do that.
->>>
->>> Also, please note that I sent an e2fsck patch to try to fix this
->>> problem after the fact; it'd be great if in your testing, you could
->>> also confirm that e2fsck w/ my patch fixes it correctly.
->>>
->> I checked you patch.
->> This was the extent tree situation after removing 1st extent index:
->> debugfs:  ex abc
->> Level Entries       Logical        Physical Length Flags
->>  0/ 2   1/  1     0 -  8399  32857            8400
->>  1/ 2   1/  4  2048 -  4081   4138            2034
->>  2/ 2   1/339  2048 -  2053  69632 -  69637      6
->>  2/ 2   2/339  2054 -  2059  69656 -  69661      6
->>
->> E2fsck's output with your patch=>
->> Linux#> /dtv/usb/sdb1/e2fsck /dev/sda1 -f
->> e2fsck 1.42.6.1 (06-DEC-2012)
->> Pass 1: Checking inodes, blocks, and sizes
->> Interior extent node level 0 of inode 31:
->> Logical start 0 does not match logical start 2048 at next level.  Fix<y>? yes
->> Inode 31, i_blocks is 50856, should be 16280.  Fix<y>? yes
-> 
-> I got similar result, pb->num_blocks is incorrect if
-> ext2fs_extent_fix_parents called.
+Hi Forrest,
 
-Maybe I should ask what it looks like without my patch?  I didn't
-think my patch would change anything at all about block count
-or use.
+Can you share an updated version of your patch (with Ashish's
+modification if you've tried testing that)?  And also can you send us
+some automated way to create your test case?  That might make it
+easier for us all to test the same thing and all be on the same page.
 
--Eric
+I assume you have some C program which which is doing all of the
+punching?
 
+I started trying to create something via a script like this:
+
+touch testfile
+fallocate -l 1G testfile
+for i in $(seq 0 8192 1073741824) ; do fallocate -p -o $i -l 4k testfile ; done
+
+.. where fallocate is from contrib/fallocate.c in the e2fsprogs
+sources (not the fallocate from util-linux) with the attached patch to
+add support for the -p option to do the pnuching.... but then I
+decided it might be better if we all standardized on the same test
+case.  Ideally, if the test case is small enough, we can put it in the
+commit message, or at very least we should look into getting it into
+xfstests, and Eric has suggested.
+
+Cheers,
+
+						- Ted
+
+commit 2658b9616fe63d2fd9e2654676877ab014639a92
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Dec 6 11:21:44 2012 -0500
+
+    contrib/fallocate: add support for punch functionality
+    
+    Also fix the -o option so it works correctly (instead of core
+    dumping).
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/contrib/fallocate.c b/contrib/fallocate.c
+index 0e8319f..1436b70 100644
+--- a/contrib/fallocate.c
++++ b/contrib/fallocate.c
+@@ -35,6 +35,7 @@
+ 
+ // #include <linux/falloc.h>
+ #define FALLOC_FL_KEEP_SIZE	0x01
++#define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
+ 
+ void usage(void)
+ {
+@@ -94,12 +95,17 @@ int main(int argc, char **argv)
+ 	int	error;
+ 	int	tflag = 0;
+ 
+-	while ((opt = getopt(argc, argv, "nl:ot")) != -1) {
++	while ((opt = getopt(argc, argv, "npl:o:t")) != -1) {
+ 		switch(opt) {
+ 		case 'n':
+ 			/* do not change filesize */
+ 			falloc_mode = FALLOC_FL_KEEP_SIZE;
+ 			break;
++		case 'p':
++			/* punch mode */
++			falloc_mode = (FALLOC_FL_PUNCH_HOLE |
++				       FALLOC_FL_KEEP_SIZE);
++			break;
+ 		case 'l':
+ 			length = cvtnum(optarg);
+ 			break;
