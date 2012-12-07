@@ -1,98 +1,93 @@
 From: Forrest Liu <forrestl@synology.com>
 Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Fri, 7 Dec 2012 20:13:59 +0800
-Message-ID: <CAJSVwFNFr-1908AYmMKzHirub6x+ZcSkA5v8GfSY4T1rsbO4Ag@mail.gmail.com>
+Date: Fri, 7 Dec 2012 20:26:04 +0800
+Message-ID: <CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
 References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
-	<CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
-	<CAJSVwFNbvUO_i8CY-g8xb1fWHgAmKgGHYx2hnJqW_TKVHSWtHA@mail.gmail.com>
-	<CAOiN93kGE_mFGg+BLNYBLbeggnk-9nr5k0BDUTTq+81P9k3tWA@mail.gmail.com>
-	<CAOiN93m+GQW3k41U6Nsnj6z7ez8nq113Wn_PFzYLzo4ahX734g@mail.gmail.com>
-	<CAJSVwFNQUpVd0Kcua+VWx16RR9BsYnQyZYdVCWB6tVgcYA6LUQ@mail.gmail.com>
-	<CAOiN93mbVSvANaUH3S-Y8mfa4uvYcc=iRO3vd4BUpAWgJMJdyA@mail.gmail.com>
-	<CAJSVwFNPpsEPohbg_E-+brmR+ivO8Zfrd4LiNoY1nqOPkx_t+w@mail.gmail.com>
-	<CAOiN93nAyBQgiOHP+YZjuoX8=61CWNoDQm9nzmgL8nabSuaxJw@mail.gmail.com>
+	<50C0BDA2.4090203@redhat.com>
+	<50C0BE40.5060003@redhat.com>
+	<CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 To: Ashish Sangwan <ashishsangwan2@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:54423 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933763Ab2LGMOA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Dec 2012 07:14:00 -0500
-Received: by mail-ia0-f174.google.com with SMTP id y25so414992iay.19
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Dec 2012 04:13:59 -0800 (PST)
-In-Reply-To: <CAOiN93nAyBQgiOHP+YZjuoX8=61CWNoDQm9nzmgL8nabSuaxJw@mail.gmail.com>
+Received: from mail-ia0-f172.google.com ([209.85.210.172]:39504 "EHLO
+	mail-ia0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932527Ab2LGM0F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Dec 2012 07:26:05 -0500
+Received: by mail-ia0-f172.google.com with SMTP id z13so486867iaz.31
+        for <linux-ext4@vger.kernel.org>; Fri, 07 Dec 2012 04:26:04 -0800 (PST)
+In-Reply-To: <CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 2012/12/7 Ashish Sangwan <ashishsangwan2@gmail.com>:
-> On Thu, Dec 6, 2012 at 8:06 PM, Forrest Liu <forrestl@synology.com> wrote:
->> Hi Ashish,
+> On Thu, Dec 6, 2012 at 9:18 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+>> On 12/6/12 9:45 AM, Eric Sandeen wrote:
+>>> On 12/4/12 6:11 AM, Forrest Liu wrote:
+>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
+>>>> of extent tree is greater than 1.
+>>>
+>>> This is interesting; we had 2 reports of similar corruption on the
+>>> list, I wonder if the application in question was doing hole punching.
+>>> I didn't expect that they were, so TBH I was pretty much ignoring
+>>> the hole-punch cases for parent index updates.  Hm.  I'll have
+>>> to look into that.
+>>> Could you turn your testcase into an xfstest regression test?
+
+Hi Eric,
+   I will check how to do that.
 >>
->>    There have a chance to do  a trivial update, and this case will be
->> covered in ext4_ext_remove_space.
+>> Also, please note that I sent an e2fsck patch to try to fix this
+>> problem after the fact; it'd be great if in your testing, you could
+>> also confirm that e2fsck w/ my patch fixes it correctly.
 >>
->> +       if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL) {
->>                  err = ext4_ext_rm_idx(handle, inode, path + depth);
->> +               /* If this was the first extent index in node,
->> +                * propagates the ei_block updation info to top */
->> +               if(!err) {
->> +                       --depth;
->> +                       path = path + depth;
->> +                       while (--depth >= 0) {
->> +                               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->> +                                       break;
->> +                               path--;
->> +                               err = ext4_ext_get_access(handle, inode, path);
->> +                               if (err)
->> +                                       break;
+> I checked you patch.
+> This was the extent tree situation after removing 1st extent index:
+> debugfs:  ex abc
+> Level Entries       Logical        Physical Length Flags
+>  0/ 2   1/  1     0 -  8399  32857            8400
+>  1/ 2   1/  4  2048 -  4081   4138            2034
+>  2/ 2   1/339  2048 -  2053  69632 -  69637      6
+>  2/ 2   2/339  2054 -  2059  69656 -  69661      6
+>
+> E2fsck's output with your patch=>
+> Linux#> /dtv/usb/sdb1/e2fsck /dev/sda1 -f
+> e2fsck 1.42.6.1 (06-DEC-2012)
+> Pass 1: Checking inodes, blocks, and sizes
+> Interior extent node level 0 of inode 31:
+> Logical start 0 does not match logical start 2048 at next level.  Fix<y>? yes
+> Inode 31, i_blocks is 50856, should be 16280.  Fix<y>? yes
+
+I got similar result, pb->num_blocks is incorrect if
+ext2fs_extent_fix_parents called.
+
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Block bitmap differences:  -4138 -(73712--73717) -73728
+> -(98342--98347) -(98354--98359) -(98366--98371) -(98378--98383)
+> -(98390--98395) -(98402--98407)
+> < Similarly this was huge list of around 50-60 lines, so I skip to last >
+> 910--106915) -(106922--106927) -(106934--106939) -(106946--106951)
+> -(106958--106963) -(122872--122879)
+> Fix<y>? yes
+> Free blocks count wrong for group #0 (14308, counted=14309).
+> Fix<y>? yes
+> Free blocks count wrong for group #2 (12297, counted=12304).
+> Fix<y>? yes
+> Free blocks count wrong for group #3 (9770, counted=14084).
+> Fix<y>? yes
+> Free blocks count wrong (52407, counted=56729).
+> Fix<y>? yes
+> /dev/sda1: ***** FILE SYSTEM WAS MODIFIED *****
+> /dev/sda1: 9872/126592 files (0.1% non-contiguous), 69775/126504 blocks
+> Linux#>
+>
+>> Thanks,
+>> -Eric
 >>
->>         trivial update, when (path + 1)->p_idx->eh_entries == 0
->>
->> +                               path->p_idx->ei_block =(path +
->> 1)->p_idx->ei_block ;
->> +                               err = ext4_ext_dirty(handle, inode, path);
->> +                               if (err)
->> +                                       break;
->> +                       }
->> +               }
->> +       }
->> +
->>
->>    I will trying to reproduce the problem tomorrow.
-> I think it will  work fine atleast till depth = 2.
-> It would be great if you could check with depth > 2.
-> If still having this problem, we can think more.
-
-Hi Ashish,
-
-First, create a file lager than 4GB, and then punch out every even blocks;
-Use ex command in debugfs to dump extents, belowing is the result.
-
-Level Entries           Logical              Physical Length Flags
- 0/ 3   1/  1       1 - 1048575     40013             1048575
- 1/ 3   1/  5       1 -  231160     40012             231160
- 2/ 3   1/340       1 -     680     40011                680
- 3/ 3   1/340       1 -       1   2228225 -   2228225      1
- 3/ 3   2/340       3 -       3   2228227 -   2228227      1
- 3/ 3   3/340       5 -       5   2228229 -   2228229      1
-
-
-punch out 231159, 231157, ..., 1..
-
-
-Level Entries           Logical              Physical Length Flags
- 0/ 3   1/  1       1 - 1048575     40013             1048575
- 1/ 3   1/  4  231161 -  462320   2457604             231160
- 2/ 3   1/340  231161 -  231840   2457606                680
- 3/ 3   1/340  231161 -  231161   2459385 -   2459385      1
-
-
-Then, we get incorrect logical index, if only do correction in ext4_ext_rm_leaf.
-
-
-Thanks,
-Forrest
+>>> -Eric
+>>>
