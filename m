@@ -1,39 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 51431] ext4_mb_generate_buddy self ext4 errors
-Date: Sat,  8 Dec 2012 11:48:01 +0000 (UTC)
-Message-ID: <20121208114801.A54D411FB83@bugzilla.kernel.org>
-References: <bug-51431-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: softlockup in xfstests 083
+Date: Sat, 8 Dec 2012 07:45:42 -0500
+Message-ID: <20121208124542.GA14814@infradead.org>
+References: <20121122193600.GA31635@infradead.org>
+ <alpine.LFD.2.00.1211261423090.24277@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Luk?? Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:44900 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751286Ab2LHLsF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 8 Dec 2012 06:48:05 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 259E62019D
-	for <linux-ext4@vger.kernel.org>; Sat,  8 Dec 2012 11:48:04 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 7DD062019B
-	for <linux-ext4@vger.kernel.org>; Sat,  8 Dec 2012 11:48:02 +0000 (UTC)
-In-Reply-To: <bug-51431-13602@https.bugzilla.kernel.org/>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:37159
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751867Ab2LHMpo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2012 07:45:44 -0500
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1211261423090.24277@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=51431
+On Mon, Nov 26, 2012 at 02:30:32PM +0100, Luk?? Czerner wrote:
+> I am unable to reproduce the problem even after 70 iteration of 083
+> on 3.7.0-rc7. It is not immediately obvious what would block you in
+> ext4_ext_remove_space() other reading the extent tree from the disk,
+> but it should not take so long, is the trace always the same ?
 
+Hi Lukas,
 
-zakrzewskim@wp.pl changed:
+sorry for the delay.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|3.0.54-1                    |3.0.54
+Been retesting this with the current post-pre8 Linus tree and I can
+hit it with a single try, same trace as before.
 
+This is an x86-64 kvm guest, single virtual cpu and 1.5 GB memory on
+a virtio disk.
 
-
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
