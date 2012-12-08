@@ -1,93 +1,82 @@
 From: Forrest Liu <forrestl@synology.com>
 Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Sun, 9 Dec 2012 02:56:54 +0800
-Message-ID: <CAJSVwFOwC=Za2WnpmbepO4gpRk4by8jM1Dj92y0=_nzjCJcqGQ@mail.gmail.com>
+Date: Sun, 9 Dec 2012 03:01:08 +0800
+Message-ID: <CAJSVwFPKx_khgCg=beF+4XF4xE4AuKV_pGPRabo_RJZKaVe_-A@mail.gmail.com>
 References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
-	<CAJSVwFMGZrOncF1s8xwZdDDVfYwtz_OBsKhHMGhMNZ98pQM06Q@mail.gmail.com>
-	<50C37955.9090407@redhat.com>
+	<50C0BDA2.4090203@redhat.com>
+	<50C0BE40.5060003@redhat.com>
+	<CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com>
+	<CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
+	<50C26AE6.9080902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+Cc: Ashish Sangwan <ashishsangwan2@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
 	ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:47110 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965498Ab2LHS44 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2012 13:56:56 -0500
-Received: by mail-ie0-f173.google.com with SMTP id e13so6102540iej.18
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2012 10:56:56 -0800 (PST)
-In-Reply-To: <50C37955.9090407@redhat.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:62281 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965498Ab2LHTBJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2012 14:01:09 -0500
+Received: by mail-ie0-f172.google.com with SMTP id c13so5155806ieb.31
+        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2012 11:01:09 -0800 (PST)
+In-Reply-To: <50C26AE6.9080902@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2012/12/9 Eric Sandeen <sandeen@redhat.com>:
-> On 12/4/12 6:29 AM, forrest wrote:
->> This problem is easily to reproduce
+2012/12/8 Eric Sandeen <sandeen@redhat.com>:
+> On 12/7/12 6:26 AM, Forrest Liu wrote:
+>> 2012/12/7 Ashish Sangwan <ashishsangwan2@gmail.com>:
+>>> On Thu, Dec 6, 2012 at 9:18 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+>>>> On 12/6/12 9:45 AM, Eric Sandeen wrote:
+>>>>> On 12/4/12 6:11 AM, Forrest Liu wrote:
+>>>>>> Extent indexes didn't update correctly in ext4_ext_rm_idx, when depth
+>>>>>> of extent tree is greater than 1.
+>>>>>
+>>>>> This is interesting; we had 2 reports of similar corruption on the
+>>>>> list, I wonder if the application in question was doing hole punching.
+>>>>> I didn't expect that they were, so TBH I was pretty much ignoring
+>>>>> the hole-punch cases for parent index updates.  Hm.  I'll have
+>>>>> to look into that.
+>>>>> Could you turn your testcase into an xfstest regression test?
 >>
->> Create a file with size larger than 1GB.
+>> Hi Eric,
+>>    I will check how to do that.
+>>>>
+>>>> Also, please note that I sent an e2fsck patch to try to fix this
+>>>> problem after the fact; it'd be great if in your testing, you could
+>>>> also confirm that e2fsck w/ my patch fixes it correctly.
+>>>>
+>>> I checked you patch.
+>>> This was the extent tree situation after removing 1st extent index:
+>>> debugfs:  ex abc
+>>> Level Entries       Logical        Physical Length Flags
+>>>  0/ 2   1/  1     0 -  8399  32857            8400
+>>>  1/ 2   1/  4  2048 -  4081   4138            2034
+>>>  2/ 2   1/339  2048 -  2053  69632 -  69637      6
+>>>  2/ 2   2/339  2054 -  2059  69656 -  69661      6
+>>>
+>>> E2fsck's output with your patch=>
+>>> Linux#> /dtv/usb/sdb1/e2fsck /dev/sda1 -f
+>>> e2fsck 1.42.6.1 (06-DEC-2012)
+>>> Pass 1: Checking inodes, blocks, and sizes
+>>> Interior extent node level 0 of inode 31:
+>>> Logical start 0 does not match logical start 2048 at next level.  Fix<y>? yes
+>>> Inode 31, i_blocks is 50856, should be 16280.  Fix<y>? yes
 >>
->> dd if=/dev/zero of=/test_file bs=1M count=1024
->>
->> Punch every even block in test_file, and then use debugfs to dump
->> extents,  followings is dumped result
->>
->>  2/ 2 339/340 231197 - 231197   3917597 -   3917597      1
->>  2/ 2 340/340 231199 - 231199   3917599 -   3917599      1
->>  0/ 2   2/  2 231201 - 262143   3901486              30943
->>  1/ 2   1/ 46 231201 - 231880   3901488                680
->>  2/ 2   1/340 231201 - 231201   3917601 -   3917601      1
->>  2/ 2   2/340 231203 - 231203   3917603 -   3917603      1
->>
->> Punch blocks #231779 ~#231201 ,
+>> I got similar result, pb->num_blocks is incorrect if
+>> ext2fs_extent_fix_parents called.
 >
-> Can you explain what you mean by the above?  Which blocks get punched?
-
-Hi Eric,
-
-At first, i found blowing code may have some problem
-
-ext4_ext_rm_leaf ()
-{
-        ...
-       /////when eh->eh_entries equals to zero, logical start value
-will not be update;
-       //// If parent is first index in block, this cause problem.
-        if (correct_index && eh->eh_entries)
-                err = ext4_ext_correct_indexes(handle, inode, path);
-}
-
-To prove that, I tried to trigger this case (eh->eh_entries = 0)
-
-1) create a file which size greater than 1GB
-
-2) punch all even blocks 0, 2, 4, 6, 8, .......  (blocks depends on
-file size) one by one to make extent tree with depth equals to 2
-
-3) use debugfs to find an extent index entry at level1 (assume leaf at
-level2) witch logical start value is equals to is't parent node.
-
-In example, founded entry is
-1/ 2   1/ 46 231201 - 231880   3901488                680
-
-4 ) punch blocks covered by extent index found by step3 one by one.
-In example,
-231879, 231877, ..., 231201..
-
-5 ) Then, we can use debugfs to  check if logical start value is correct or not
-
-In example, 231201 is not equals to 231881.
-
-0/ 2   2/  2 231201 - 262143   3901486              30943
-1/ 2   1/ 45 231881 - 232560   3901490                680
-
-Thanks,
--Forrest
-
+> Maybe I should ask what it looks like without my patch?  I didn't
+> think my patch would change anything at all about block count
+> or use.
 >
 > -Eric
 >
->> to remove extent index, and then use
->> debugfs to dump extents,  followings is dumped result
->
->
+When i choose not to repair problem of logical start value, there have
+no message like
+
+Inode 31, i_blocks is 50856, should be 16280.  Fix<y>?
+
+-Forrest
