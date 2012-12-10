@@ -1,494 +1,139 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Remove CONFIG_EXT4_FS_XATTR.
-Date: Mon, 10 Dec 2012 11:08:20 +0100
-Message-ID: <20121210100820.GA7213@quack.suse.cz>
-References: <nsxsj7kw2jq.fsf@closure.thunk.org>
- <1355120348-5117-1-git-send-email-tm@tao.ma>
+Subject: Re: [PATCH 4/4] ext3: Warn if mounting rw on a disk requiring
+ stable page writes
+Date: Mon, 10 Dec 2012 11:41:34 +0100
+Message-ID: <20121210104134.GB7213@quack.suse.cz>
+References: <20121121020056.10225.15220.stgit@blackbox.djwong.org>
+ <20121121021543.GI10507@quack.suse.cz>
+ <20121121211319.GA32202@blackbox.djwong.org>
+ <20121121213333.GF30250@quack.suse.cz>
+ <20121122084713.69e5b1fc@notabene.brown>
+ <20121122014755.GH8740@blackbox.djwong.org>
+ <20121122091240.GA11154@quack.suse.cz>
+ <20121127021740.GA11869@blackbox.djwong.org>
+ <20121205121228.GB5706@quack.suse.cz>
+ <20121208010958.GB22952@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, David Brown <davidb@codeaurora.org>,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Tao Ma <tm@tao.ma>
+Cc: Jan Kara <jack@suse.cz>, NeilBrown <neilb@suse.de>,
+	axboe@kernel.dk, lucho@ionkov.net, ericvh@gmail.com, tytso@mit.edu,
+	rminnich@sandia.gov, viro@zeniv.linux.org.uk,
+	martin.petersen@oracle.com, david@fromorbit.com,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44345 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:46071 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754174Ab2LJKIX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Dec 2012 05:08:23 -0500
+	id S1753577Ab2LJKlk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Dec 2012 05:41:40 -0500
 Content-Disposition: inline
-In-Reply-To: <1355120348-5117-1-git-send-email-tm@tao.ma>
+In-Reply-To: <20121208010958.GB22952@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 10-12-12 14:19:08, Tao Ma wrote:
-> From: Tao Ma <boyu.mt@taobao.com>
+On Fri 07-12-12 17:09:58, Darrick J. Wong wrote:
+> On Wed, Dec 05, 2012 at 01:12:28PM +0100, Jan Kara wrote:
+> > On Mon 26-11-12 18:17:40, Darrick J. Wong wrote:
+> > > On Thu, Nov 22, 2012 at 10:12:40AM +0100, Jan Kara wrote:
+> > > > On Wed 21-11-12 17:47:55, Darrick J. Wong wrote:
+> > > >   I'll check the patches. Fixing PageWriteback logic for ext3 is not easily
+> > > > doable due to lock ranking constraints - PageWriteback has to be set under
+> > > > PageLocked but that ranks above transaction start so kjournald cannot grab
+> > > > page locks so it cannot set PageWriteback... And changing the lock ordering
+> > > > is a major surgery.
+> > > > 
+> > > > What could be doable is waiting for buffer locks from ext3's ->write_begin
+> > > > and ->page_mkwrite implementations in case stable writes are required. If
+> > > > your approach with a separate page bit doesn't work out (and I have some
+> > > > doubts about that as mm people are *really* thrifty with page bits).
+> > > > 
+> > > > > > > 	/*
+> > > > > > > 	 * In data=ordered mode, kjournald writes buffers without setting
+> > > > > > > 	 * PageWriteback bit thus generic code does not properly wait for
+> > > > > > > 	 * writeback of those buffers to finish.
+> > > > > > > 	 */
+> > > > > > > 	if (!read_only &&
+> > > > > > > 	    test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA &&
+> > > > > 
+> > > > > test_opt(sb, DATA_FLAGS) != EXT3_MOUNT_WRITEBACK_DATA
+> > > > > 
+> > > > > since I bet data=journal mode is also borken wrt PageWriteback.
+> > > >   It is broken wrt PageWriteback but it actually waits for buffer locks in
+> > > > ->write_begin() so at least write path should be properly protected. But
+> > > > mmap is not handled properly there (although that wouldn't be that hard to
+> > > > fix). So I agree the condition should rather be what you suggest.
+> >   Sorry for late reply. I was on vacation...
 > 
-> Ted has sent out a RFC about removing this feature. Eric and Jan
-> confirmed that both RedHat and SUSE enable this feature in all their
-> product. David also said that "As far as I know, it's enabled in
-> all Android kernels that use ext4." So it seems OK for us.
+> No worries; I have plenty of other patchsets to work on. :)
 > 
-> And what's more, as inline data depends its implementation on xattr,
-> and to be frank, I don't run any test again inline data enabled while
-> xattr disabled. So I think we should add inline data and remove this
-> config option in the same release.
+> > > Hm.  In journal mode, write_begin calls do_journal_get_write_access on each
+> > > buffer for a given page, and in turn, jbd's do_get_write_access calls
+> > > lock_buffer.  Is that what you're referring to by "actually waits for buffer
+> > > locks"?  I'm wondering how that helps us, since afaict PG_writeback doesn't get
+> > > set in that path, and I think it's a little early to be setting PG_writeback
+> > > anyway.
+> >   It does help us. In ext3 data writeback is done either by flusher thread,
+> > that happens under PG_Writeback and generic code waits for that as need, or
+> > by kjournald - that happens under buffer lock and as you properly observed
+> > do_get_write_access() waits for that (and actually copies data that should
+> > go to disk to a separate buffer if needed).
 > 
-> Cc: David Brown <davidb@codeaurora.org>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Eric Sandeen <sandeen@redhat.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Tao Ma <boyu.mt@taobao.com>
-  The patch looks good. You can add:
-Acked-by: Jan Kara <jack@suse.cz>
+> Hm.  jbd2 calls generic_writepages to flush those buffers out, which sets
+> PG_writeback like you'd expect.  It'd be nice if you could do that like ext4
+> does... but then the ext3 writepage functions can call journal start/stop.
+  Yes, it would be nice if ext3 did it the way ext4 does but as I already
+said earlier, that's a major change to the way locking is done. ext3 has
+lock ordering PageLock -> transaction start, while ext4 has lock ordering
+transaction start -> PageLock. This influences a lot of places so it's too
+big change to do to ext3 which is in maintenance only mode.
 
-							Honza
-> ---
->  fs/ext4/Kconfig   |   15 ----
->  fs/ext4/Makefile  |    4 +-
->  fs/ext4/ext4.h    |    2 -
->  fs/ext4/file.c    |    2 -
->  fs/ext4/namei.c   |    4 -
->  fs/ext4/super.c   |    7 --
->  fs/ext4/symlink.c |    4 -
->  fs/ext4/xattr.h   |  236 -----------------------------------------------------
->  8 files changed, 1 insertions(+), 273 deletions(-)
+> Maybe we could call block_write_full_page directly?
+  You have to have the page locked to call that function. Otherwise someone
+could invalidate the page under your hands (or do other sort of things
+function does not expect).
+
+> > > If the page has to be locked before the transaction starts, how much of a
+> > > problem is it to set PG_writeback?  Even though that seems a bit early to be
+> > > doing that?
+> >   Well, what you would need to make things consistent is to set
+> > PG_writeback from kjournald so that all writeback happens with PG_writeback
+> > set on the page. But setting has to happen while the page is locked and
+> > kjournald can never block on page lock because that would cause
+> > deadlocks...
 > 
-> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-> index c22f170..0a475c8 100644
-> --- a/fs/ext4/Kconfig
-> +++ b/fs/ext4/Kconfig
-> @@ -39,22 +39,8 @@ config EXT4_USE_FOR_EXT23
->  	  compiled kernel size by using one file system driver for
->  	  ext2, ext3, and ext4 file systems.
->  
-> -config EXT4_FS_XATTR
-> -	bool "Ext4 extended attributes"
-> -	depends on EXT4_FS
-> -	default y
-> -	help
-> -	  Extended attributes are name:value pairs associated with inodes by
-> -	  the kernel or by users (see the attr(5) manual page, or visit
-> -	  <http://acl.bestbits.at/> for details).
-> -
-> -	  If unsure, say N.
-> -
-> -	  You need this for POSIX ACL support on ext4.
-> -
->  config EXT4_FS_POSIX_ACL
->  	bool "Ext4 POSIX Access Control Lists"
-> -	depends on EXT4_FS_XATTR
->  	select FS_POSIX_ACL
->  	help
->  	  POSIX Access Control Lists (ACLs) support permissions for users and
-> @@ -67,7 +53,6 @@ config EXT4_FS_POSIX_ACL
->  
->  config EXT4_FS_SECURITY
->  	bool "Ext4 Security Labels"
-> -	depends on EXT4_FS_XATTR
->  	help
->  	  Security labels support alternative access control models
->  	  implemented by security modules like SELinux.  This option
-> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-> index e88b7a6..2eea427 100644
-> --- a/fs/ext4/Makefile
-> +++ b/fs/ext4/Makefile
-> @@ -7,8 +7,6 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
->  ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
->  		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
->  		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
-> -		mmp.o indirect.o
-> -
-> -ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o inline.o
-> +		mmp.o indirect.o xattr.o xattr_user.o xattr_trusted.o inline.o
->  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
->  ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 2dd5824..b380147 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -835,7 +835,6 @@ struct ext4_inode_info {
->  #endif
->  	unsigned long	i_flags;
->  
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	/*
->  	 * Extended attributes can be read independently of the main file
->  	 * data. Taking i_mutex even when reading would cause contention
-> @@ -844,7 +843,6 @@ struct ext4_inode_info {
->  	 * EAs.
->  	 */
->  	struct rw_semaphore xattr_sem;
-> -#endif
->  
->  	struct list_head i_orphan;	/* unlinked but open inodes */
->  
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index bf3966b..dcda329 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -326,12 +326,10 @@ const struct file_operations ext4_file_operations = {
->  const struct inode_operations ext4_file_inode_operations = {
->  	.setattr	= ext4_setattr,
->  	.getattr	= ext4_getattr,
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= ext4_listxattr,
->  	.removexattr	= generic_removexattr,
-> -#endif
->  	.get_acl	= ext4_get_acl,
->  	.fiemap		= ext4_fiemap,
->  };
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index adf309b..b099b4c 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -3209,23 +3209,19 @@ const struct inode_operations ext4_dir_inode_operations = {
->  	.mknod		= ext4_mknod,
->  	.rename		= ext4_rename,
->  	.setattr	= ext4_setattr,
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= ext4_listxattr,
->  	.removexattr	= generic_removexattr,
-> -#endif
->  	.get_acl	= ext4_get_acl,
->  	.fiemap         = ext4_fiemap,
->  };
->  
->  const struct inode_operations ext4_special_inode_operations = {
->  	.setattr	= ext4_setattr,
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= ext4_listxattr,
->  	.removexattr	= generic_removexattr,
-> -#endif
->  	.get_acl	= ext4_get_acl,
->  };
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 80928f7..1de7ebc 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -996,9 +996,7 @@ static void init_once(void *foo)
->  	struct ext4_inode_info *ei = (struct ext4_inode_info *) foo;
->  
->  	INIT_LIST_HEAD(&ei->i_orphan);
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	init_rwsem(&ei->xattr_sem);
-> -#endif
->  	init_rwsem(&ei->i_data_sem);
->  	inode_init_once(&ei->vfs_inode);
->  }
-> @@ -1447,13 +1445,10 @@ static const struct mount_opts {
->  	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_DATAJ},
->  	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_DATAJ},
->  	{Opt_data_writeback, EXT4_MOUNT_WRITEBACK_DATA, MOPT_DATAJ},
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
->  	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
-> -#else
->  	{Opt_user_xattr, 0, MOPT_NOSUPPORT},
->  	{Opt_nouser_xattr, 0, MOPT_NOSUPPORT},
-> -#endif
->  #ifdef CONFIG_EXT4_FS_POSIX_ACL
->  	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
->  	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-> @@ -3369,9 +3364,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (def_mount_opts & EXT4_DEFM_UID16)
->  		set_opt(sb, NO_UID32);
->  	/* xattr user namespace & acls are now defaulted on */
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	set_opt(sb, XATTR_USER);
-> -#endif
->  #ifdef CONFIG_EXT4_FS_POSIX_ACL
->  	set_opt(sb, POSIX_ACL);
->  #endif
-> diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-> index ed9354a..ff37119 100644
-> --- a/fs/ext4/symlink.c
-> +++ b/fs/ext4/symlink.c
-> @@ -35,22 +35,18 @@ const struct inode_operations ext4_symlink_inode_operations = {
->  	.follow_link	= page_follow_link_light,
->  	.put_link	= page_put_link,
->  	.setattr	= ext4_setattr,
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= ext4_listxattr,
->  	.removexattr	= generic_removexattr,
-> -#endif
->  };
->  
->  const struct inode_operations ext4_fast_symlink_inode_operations = {
->  	.readlink	= generic_readlink,
->  	.follow_link	= ext4_follow_link,
->  	.setattr	= ext4_setattr,
-> -#ifdef CONFIG_EXT4_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
->  	.listxattr	= ext4_listxattr,
->  	.removexattr	= generic_removexattr,
-> -#endif
->  };
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index f959e6c..c33fa41 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -92,8 +92,6 @@ struct ext4_xattr_ibody_find {
->  	struct ext4_iloc iloc;
->  };
->  
-> -# ifdef CONFIG_EXT4_FS_XATTR
-> -
->  extern const struct xattr_handler ext4_xattr_user_handler;
->  extern const struct xattr_handler ext4_xattr_trusted_handler;
->  extern const struct xattr_handler ext4_xattr_acl_access_handler;
-> @@ -193,240 +191,6 @@ extern int ext4_try_to_evict_inline_data(handle_t *handle,
->  extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
->  
->  extern int ext4_convert_inline_data(struct inode *inode);
-> -# else  /* CONFIG_EXT4_FS_XATTR */
-> -
-> -static inline int
-> -ext4_xattr_get(struct inode *inode, int name_index, const char *name,
-> -	       void *buffer, size_t size, int flags)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline int
-> -ext4_xattr_set(struct inode *inode, int name_index, const char *name,
-> -	       const void *value, size_t size, int flags)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline int
-> -ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
-> -	       const char *name, const void *value, size_t size, int flags)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline void
-> -ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
-> -{
-> -}
-> -
-> -static inline void
-> -ext4_xattr_put_super(struct super_block *sb)
-> -{
-> -}
-> -
-> -static __init inline int
-> -ext4_init_xattr(void)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline void
-> -ext4_exit_xattr(void)
-> -{
-> -}
-> -
-> -static inline int
-> -ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
-> -			    struct ext4_inode *raw_inode, handle_t *handle)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -#define ext4_xattr_handlers	NULL
-> -
-> -static inline int
-> -ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
-> -		      struct ext4_xattr_ibody_find *is)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline int
-> -ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
-> -		     struct ext4_xattr_info *i,
-> -		     struct ext4_xattr_ibody_find *is)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline int
-> -ext4_xattr_ibody_get(struct inode *inode, int name_index,
-> -		     const char *name,
-> -		     void *buffer, size_t buffer_size)
-> -{
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static inline int ext4_find_inline_data(struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_has_inline_data(struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_get_inline_size(struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_get_max_inline_size(struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline void ext4_write_inline_data(struct inode *inode,
-> -					  struct ext4_iloc *iloc,
-> -					  void *buffer, loff_t pos,
-> -					  unsigned int len)
-> -{
-> -	return;
-> -}
-> -
-> -static inline int ext4_init_inline_data(handle_t *handle,
-> -					struct inode *inode,
-> -					unsigned int len)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_destroy_inline_data(handle_t *handle,
-> -					   struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_readpage_inline(struct inode *inode, struct page *page)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_try_to_write_inline_data(struct address_space *mapping,
-> -						struct inode *inode,
-> -						loff_t pos, unsigned len,
-> -						unsigned flags,
-> -						struct page **pagep)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_write_inline_data_end(struct inode *inode,
-> -					     loff_t pos, unsigned len,
-> -					     unsigned copied,
-> -					     struct page *page)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline struct buffer_head *
-> -ext4_journalled_write_inline_data(struct inode *inode,
-> -				  unsigned len,
-> -				  struct page *page)
-> -{
-> -	return NULL;
-> -}
-> -
-> -static inline int
-> -ext4_da_write_inline_data_begin(struct address_space *mapping,
-> -				struct inode *inode,
-> -				loff_t pos, unsigned len,
-> -				unsigned flags,
-> -				struct page **pagep,
-> -				void **fsdata)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
-> -						unsigned len, unsigned copied,
-> -						struct page *page)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_try_add_inline_entry(handle_t *handle,
-> -					    struct dentry *dentry,
-> -					    struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int ext4_try_create_inline_dir(handle_t *handle,
-> -					     struct inode *parent,
-> -					     struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -static inline int ext4_read_inline_dir(struct file *filp,
-> -				       void *dirent, filldir_t filldir,
-> -				       int *has_inline_data)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline struct buffer_head *
-> -ext4_find_inline_entry(struct inode *dir,
-> -		       const struct qstr *d_name,
-> -		       struct ext4_dir_entry_2 **res_dir,
-> -		       int *has_inline_data)
-> -{
-> -	return NULL;
-> -}
-> -
-> -static inline int ext4_delete_inline_entry(handle_t *handle,
-> -					   struct inode *dir,
-> -					   struct ext4_dir_entry_2 *de_del,
-> -					   struct buffer_head *bh,
-> -					   int *has_inline_data)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline struct buffer_head *
-> -ext4_get_first_inline_block(struct inode *inode,
-> -			    struct ext4_dir_entry_2 **parent_de,
-> -			    int *retval)
-> -{
-> -	return NULL;
-> -}
-> -
-> -static inline int ext4_inline_data_fiemap(struct inode *inode,
-> -					  struct fiemap_extent_info *fieinfo,
-> -					  int *has_inline)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline void ext4_inline_data_truncate(struct inode *inode,
-> -					     int *has_inline)
-> -{
-> -	return;
-> -}
-> -
-> -static inline int ext4_convert_inline_data(struct inode *inode)
-> -{
-> -	return 0;
-> -}
-> -# endif  /* CONFIG_EXT4_FS_XATTR */
->  
->  #ifdef CONFIG_EXT4_FS_SECURITY
->  extern int ext4_init_security(handle_t *handle, struct inode *inode,
-> -- 
-> 1.7.1
-> 
+> Right now we try to submit_bh() everything on commit->t_sync_datalist without
+> the page lock.  I guess we could try to lock (and set writeback on) every page
+> on that list, and anything that we can lock then goes on a new
+> t_locked_for_sync list.  If we find a page that's already locked, simply back
+> out to the main kjournald loop and try the whole mess again.  Once all the
+> pages are on the locked_for_sync list, then we can unlock the pages and
+> actually commit the transaction.
+  That's just more complicated way of implementing page lock ;) It won't
+remove deadlocks.
+
+> But, uck, that feels like courting disaster.  Do people sleep with a page
+> locked?
+  Yes, they do - for example in ext3_write_begin(), ext3_journal_start()
+can sleep waiting for kjournald to commit a transaction :). That's the
+deadlock I'm talking about...
+
+>  I'm unsure of the wisdom of making jbd do that.  Can we stall out
+> forever if someone keeps shoving pages onto t_sync_data?
+  That's not an issue. Once transaction commit starts, no new buffers can
+be added to it.
+
+  Hum, I was thinking about how to implement proper exclusion in ext3 using
+buffer locks and it won't be easy. Buffered writes are simple enough but
+mmap is tricky - we'd have to writeprotect the page at the moment we add
+buffer to t_sync_datalist (at that moment we hold the page lock so that is
+doable). That page_mkwrite will have to wait for transaction commit (or
+write the buffers) if underlying buffers are in t_sync_datalist. That will
+make mixing of buffered IO and mmap writes to the same page very slow but
+maybe that would be acceptable. I'll think about it some more...
+
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
