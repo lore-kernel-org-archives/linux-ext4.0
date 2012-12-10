@@ -1,65 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [ext4:dev 62/63] ERROR: "mb_cache_entry_find_next"
- [fs/ext4/ext4.ko] undefined!
-Date: Mon, 10 Dec 2012 16:27:50 -0500
-Message-ID: <20121210212750.GA12851@thunk.org>
-References: <50c64786.6SgYYMd9siG5ynlG%fengguang.wu@intel.com>
+From: kbuild test robot <fengguang.wu@intel.com>
+Subject: [ext4:dev 37/63] fs/ext4/inline.c:268:19: error:
+ 'empty_zero_page' undeclared
+Date: Tue, 11 Dec 2012 06:02:40 +0800
+Message-ID: <50c65c00.3GZ66LxGua+Gl+1Q%fengguang.wu@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <boyu.mt@taobao.com>, linux-ext4@vger.kernel.org
-To: kbuild test robot <fengguang.wu@intel.com>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Tao Ma <boyu.mt@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37873 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752024Ab2LJV15 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Dec 2012 16:27:57 -0500
-Content-Disposition: inline
-In-Reply-To: <50c64786.6SgYYMd9siG5ynlG%fengguang.wu@intel.com>
+Received: from mga09.intel.com ([134.134.136.24]:23276 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750823Ab2LJWD3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Dec 2012 17:03:29 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We forgot to audit remote dependencies outside of the fs/ext4 tree on
-CONFIG_EXT4_FS_XATTR.  The following patch should fix things up.  (I
-won't bother editing all of the defconfig files, since the extra
-CONFIG option doesn't do any harm, and modifying those files increases
-the chances of merge conflicts.)
+tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+head:   9a4c8019471386c6fb039ae9e30f5216b6b55a9e
+commit: 67cf5b09a46f72e048501b84996f2f77bc42e947 [37/63] ext4: add the basic function for inline data support
+config: make ARCH=sparc allyesconfig
 
-Thanks, kbuild test robot!  :-)
+All error/warnings:
 
-					- Ted
+fs/ext4/inline.c: In function 'ext4_create_inline_data':
+fs/ext4/inline.c:268:19: error: 'empty_zero_page' undeclared (first use in this function)
+fs/ext4/inline.c:268:19: note: each undeclared identifier is reported only once for each function it appears in
+fs/ext4/inline.c: At top level:
+fs/ext4/inline.c:164:12: warning: 'ext4_read_inline_data' defined but not used [-Wunused-function]
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 104322b..34ea4f1 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -200,12 +200,9 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
- 			table readahead algorithm will pre-read into
- 			the buffer cache.  The default value is 32 blocks.
- 
--nouser_xattr		Disables Extended User Attributes. If you have extended
--			attribute support enabled in the kernel configuration
--			(CONFIG_EXT4_FS_XATTR), extended attribute support
--			is enabled by default on mount. See the attr(5) manual
--			page and http://acl.bestbits.at/ for more information
--			about extended attributes.
-+nouser_xattr		Disables Extended User Attributes.  See the
-+			attr(5) manual page and http://acl.bestbits.at/
-+			for more information about extended attributes.
- 
- noacl			This option disables POSIX Access Control List
- 			support. If ACL support is enabled in the kernel
-diff --git a/fs/Kconfig b/fs/Kconfig
-index f95ae3a..eaff24a 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -28,8 +28,8 @@ config FS_MBCACHE
- 	tristate
- 	default y if EXT2_FS=y && EXT2_FS_XATTR
- 	default y if EXT3_FS=y && EXT3_FS_XATTR
--	default y if EXT4_FS=y && EXT4_FS_XATTR
--	default m if EXT2_FS_XATTR || EXT3_FS_XATTR || EXT4_FS_XATTR
-+	default y if EXT4_FS=y
-+	default m if EXT2_FS_XATTR || EXT3_FS_XATTR || EXT4_FS
- 
- source "fs/reiserfs/Kconfig"
- source "fs/jfs/Kconfig"
+vim +268 +/empty_zero_page fs/ext4/inline.c
+
+67cf5b09 Tao Ma 2012-12-10  262  
+67cf5b09 Tao Ma 2012-12-10  263  	error = ext4_journal_get_write_access(handle, is.iloc.bh);
+67cf5b09 Tao Ma 2012-12-10  264  	if (error)
+67cf5b09 Tao Ma 2012-12-10  265  		goto out;
+67cf5b09 Tao Ma 2012-12-10  266  
+67cf5b09 Tao Ma 2012-12-10  267  	if (len > EXT4_MIN_INLINE_DATA_SIZE) {
+67cf5b09 Tao Ma 2012-12-10 @268  		value = (void *)empty_zero_page;
+67cf5b09 Tao Ma 2012-12-10  269  		len -= EXT4_MIN_INLINE_DATA_SIZE;
+67cf5b09 Tao Ma 2012-12-10  270  	} else {
+67cf5b09 Tao Ma 2012-12-10  271  		value = "";
+
+---
+0-DAY kernel build testing backend         Open Source Technology Center
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
