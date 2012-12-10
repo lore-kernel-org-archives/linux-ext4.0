@@ -1,69 +1,44 @@
-From: Darren Hart <dvhart@linux.intel.com>
-Subject: Re: [PATCH RFC 0/3] ext2fsprogs: Symlink support and doc fix
-Date: Mon, 10 Dec 2012 07:54:45 -0800
-Message-ID: <50C605C5.7080806@linux.intel.com>
-References: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Remove CONFIG_EXT4_FS_XATTR.
+Date: Mon, 10 Dec 2012 14:21:39 -0500
+Message-ID: <20121210192139.GE7516@thunk.org>
+References: <nsxsj7kw2jq.fsf@closure.thunk.org>
+ <1355120348-5117-1-git-send-email-tm@tao.ma>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, David Brown <davidb@codeaurora.org>,
+	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
+To: Tao Ma <tm@tao.ma>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:24801 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754434Ab2LJPzD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Dec 2012 10:55:03 -0500
-In-Reply-To: <1354744565-12594-1-git-send-email-dvhart@infradead.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37833 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750952Ab2LJTVr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Dec 2012 14:21:47 -0500
+Content-Disposition: inline
+In-Reply-To: <1355120348-5117-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just a bump as a reminder so this series doesn't drop off the Inbox
-queue :-)
+Applied, with some minor fixups so it works with the extents_status
+tree patches, and also to fix a buglet which in fs/ext4/super.c:
 
-Thanks,
+> @@ -1447,13 +1445,10 @@ static const struct mount_opts {
+>  	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_DATAJ},
+>  	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_DATAJ},
+>  	{Opt_data_writeback, EXT4_MOUNT_WRITEBACK_DATA, MOPT_DATAJ},
+> -#ifdef CONFIG_EXT4_FS_XATTR
+>  	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+>  	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+> -#else
+>  	{Opt_user_xattr, 0, MOPT_NOSUPPORT},
+>  	{Opt_nouser_xattr, 0, MOPT_NOSUPPORT},
+> -#endif
 
-Darren
+The table entries between the #else and #endif in the above patch
+chunlk needs to be removed as well.
 
-On 12/05/2012 01:56 PM, Darren Hart wrote:
-> As we appear to have agreed that adding symlink support to debugfs via a new
-> ext2fs_symlink() function in libext2fs was something that needed doing, I
-> thought I'd use this as a trial run for my first contribution to the ext2fsprogs
-> package before I continue working on the larger project of completing initial
-> directory support for mke2fs.
-> 
-> While I modeled this patch after existing code, their were some inconcsistencies
-> in the code examples I used that I'd welcome input on. In particular:
-> 
-> o Should the ext2fs_link() happen right after ext2fs_new_inode()? Or should it
->   happen closer to the end of the operation? do_write() and ext2fs_mkdir()
->   handle this differently.
-> 
-> o Is it necessary to allocate the first block and assign it to the inode or the
->   extents? ext2fs_mkdir() does this, do_write() does not. I opted for the
->   simpler of the two and it passes my initial simple tests.
-> 
-> o Should I pass "mode" to ext2fs_new_inode() even though it is ignored?
-> 
-> o Would it make sense to try once to expand_dir rather than bailing out of
->   ext2fs_mkdir() and ext2fs_symlink() if the directory is full?
-> 
-> o What would we like the initial uid,gid,mode,*time values to be for
->   files/directories/links/etc. created with libext2fs?
-> 
-> Finally, I made an attempt to follow the coding style I observed in the code,
-> but if I missed something, please let me know.
-> 
-> Thanks,
-> 
-> Darren Hart
-> Intel Open Source Technology Center
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+I've fixed this in my tree.
 
--- 
-Darren Hart
-Intel Open Source Technology Center
-Yocto Project - Technical Lead - Linux Kernel
+Regards,
+
+					- Ted
