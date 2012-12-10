@@ -1,47 +1,472 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V7 00/23] ext4: Add inline data support
-Date: Mon, 10 Dec 2012 10:02:28 -0500
-Message-ID: <20121210150228.GA28666@thunk.org>
-References: <1351047002-4723-1-git-send-email-tm@tao.ma>
- <20121206173022.GE30273@thunk.org>
- <50C147A0.4070109@tao.ma>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tao Ma <tm@tao.ma>
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH V2] ext4: Remove CONFIG_EXT4_FS_XATTR.
+Date: Mon, 10 Dec 2012 23:11:03 +0800
+Message-ID: <1355152264-3907-1-git-send-email-tm@tao.ma>
+References: <1355120348-5117-1-git-send-email-tm@tao.ma>
+Cc: David Brown <davidb@codeaurora.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:37739 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754300Ab2LJPCc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Dec 2012 10:02:32 -0500
-Content-Disposition: inline
-In-Reply-To: <50C147A0.4070109@tao.ma>
+Received: from oproxy11-pub.bluehost.com ([173.254.64.10]:48766 "HELO
+	oproxy11-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751869Ab2LJPLY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2012 10:11:24 -0500
+In-Reply-To: <1355120348-5117-1-git-send-email-tm@tao.ma>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 07, 2012 at 09:34:24AM +0800, Tao Ma wrote:
-> I think ext4_inode->xattr_sem should protect us? When we do xattr
-> corresponding operation, we just do
-> down_write/read(&EXT4_I(inode)->xattr_sem), so we should be fine with
-> this type of operation. Am I missing something here?
+From: Tao Ma <boyu.mt@taobao.com>
 
-We're not taking the xattr_sem in ext4_find_inline_data() before we
-call ext4_xattr_ibody_find().  So I think we need something like this:
+Ted has sent out a RFC about removing this feature. Eric and Jan
+confirmed that both RedHat and SUSE enable this feature in all their
+product. David also said that "As far as I know, it's enabled in
+all Android kernels that use ext4." So it seems OK for us.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 6b600b4..e96268d 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -143,7 +143,9 @@ int ext4_find_inline_data(struct inode *inode)
- 	if (error)
- 		return error;
+And what's more, as inline data depends its implementation on xattr,
+and to be frank, I don't run any test again inline data enabled while
+xattr disabled. So I think we should add inline data and remove this
+config option in the same release.
+
+Cc: David Brown <davidb@codeaurora.org>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+Rebase to ext4.git/dev and remove another part I forgot to remove in V1.
+
+ fs/ext4/Kconfig   |   15 ----
+ fs/ext4/Makefile  |    5 +-
+ fs/ext4/ext4.h    |    2 -
+ fs/ext4/file.c    |    2 -
+ fs/ext4/namei.c   |    4 -
+ fs/ext4/super.c   |    9 --
+ fs/ext4/symlink.c |    4 -
+ fs/ext4/xattr.h   |  235 -----------------------------------------------------
+ 8 files changed, 2 insertions(+), 274 deletions(-)
+
+diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+index c22f170..0a475c8 100644
+--- a/fs/ext4/Kconfig
++++ b/fs/ext4/Kconfig
+@@ -39,22 +39,8 @@ config EXT4_USE_FOR_EXT23
+ 	  compiled kernel size by using one file system driver for
+ 	  ext2, ext3, and ext4 file systems.
  
-+	down_read(&EXT4_I(inode)->xattr_sem);
- 	error = ext4_xattr_ibody_find(inode, &i, &is);
-+	up_read(&EXT4_I(inode)->xattr_sem);
- 	if (error)
- 		goto out;
+-config EXT4_FS_XATTR
+-	bool "Ext4 extended attributes"
+-	depends on EXT4_FS
+-	default y
+-	help
+-	  Extended attributes are name:value pairs associated with inodes by
+-	  the kernel or by users (see the attr(5) manual page, or visit
+-	  <http://acl.bestbits.at/> for details).
+-
+-	  If unsure, say N.
+-
+-	  You need this for POSIX ACL support on ext4.
+-
+ config EXT4_FS_POSIX_ACL
+ 	bool "Ext4 POSIX Access Control Lists"
+-	depends on EXT4_FS_XATTR
+ 	select FS_POSIX_ACL
+ 	help
+ 	  POSIX Access Control Lists (ACLs) support permissions for users and
+@@ -67,7 +53,6 @@ config EXT4_FS_POSIX_ACL
  
-
-
-					- Ted
+ config EXT4_FS_SECURITY
+ 	bool "Ext4 Security Labels"
+-	depends on EXT4_FS_XATTR
+ 	help
+ 	  Security labels support alternative access control models
+ 	  implemented by security modules like SELinux.  This option
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 3d96d56..b4b2a66 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -7,8 +7,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
+ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+ 		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+ 		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
+-		mmp.o indirect.o extents_status.o
+-
+-ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o inline.o
++		mmp.o indirect.o extents_status.o \
++		xattr.o xattr_user.o xattr_trusted.o inline.o
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b90e272..e20dc38 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -848,7 +848,6 @@ struct ext4_inode_info {
+ #endif
+ 	unsigned long	i_flags;
+ 
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	/*
+ 	 * Extended attributes can be read independently of the main file
+ 	 * data. Taking i_mutex even when reading would cause contention
+@@ -857,7 +856,6 @@ struct ext4_inode_info {
+ 	 * EAs.
+ 	 */
+ 	struct rw_semaphore xattr_sem;
+-#endif
+ 
+ 	struct list_head i_orphan;	/* unlinked but open inodes */
+ 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2f5759e..b64a60b 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -656,12 +656,10 @@ const struct file_operations ext4_file_operations = {
+ const struct inode_operations ext4_file_inode_operations = {
+ 	.setattr	= ext4_setattr,
+ 	.getattr	= ext4_getattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ 	.fiemap		= ext4_fiemap,
+ };
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index b37c218..cac4482 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3228,23 +3228,19 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 	.mknod		= ext4_mknod,
+ 	.rename		= ext4_rename,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ 	.fiemap         = ext4_fiemap,
+ };
+ 
+ const struct inode_operations ext4_special_inode_operations = {
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e1e216f..7d53adf 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -997,9 +997,7 @@ static void init_once(void *foo)
+ 	struct ext4_inode_info *ei = (struct ext4_inode_info *) foo;
+ 
+ 	INIT_LIST_HEAD(&ei->i_orphan);
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	init_rwsem(&ei->xattr_sem);
+-#endif
+ 	init_rwsem(&ei->i_data_sem);
+ 	inode_init_once(&ei->vfs_inode);
+ }
+@@ -1449,13 +1447,8 @@ static const struct mount_opts {
+ 	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_DATAJ},
+ 	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_DATAJ},
+ 	{Opt_data_writeback, EXT4_MOUNT_WRITEBACK_DATA, MOPT_DATAJ},
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#else
+-	{Opt_user_xattr, 0, MOPT_NOSUPPORT},
+-	{Opt_nouser_xattr, 0, MOPT_NOSUPPORT},
+-#endif
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+ 	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
+@@ -3368,9 +3361,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (def_mount_opts & EXT4_DEFM_UID16)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	set_opt(sb, XATTR_USER);
+-#endif
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	set_opt(sb, POSIX_ACL);
+ #endif
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index ed9354a..ff37119 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -35,22 +35,18 @@ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.follow_link	= page_follow_link_light,
+ 	.put_link	= page_put_link,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ };
+ 
+ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+ 	.follow_link	= ext4_follow_link,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ };
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 67ce7df..c33fa41 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -92,8 +92,6 @@ struct ext4_xattr_ibody_find {
+ 	struct ext4_iloc iloc;
+ };
+ 
+-# ifdef CONFIG_EXT4_FS_XATTR
+-
+ extern const struct xattr_handler ext4_xattr_user_handler;
+ extern const struct xattr_handler ext4_xattr_trusted_handler;
+ extern const struct xattr_handler ext4_xattr_acl_access_handler;
+@@ -193,239 +191,6 @@ extern int ext4_try_to_evict_inline_data(handle_t *handle,
+ extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+ 
+ extern int ext4_convert_inline_data(struct inode *inode);
+-# else  /* CONFIG_EXT4_FS_XATTR */
+-
+-static inline int
+-ext4_xattr_get(struct inode *inode, int name_index, const char *name,
+-	       void *buffer, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+-	       const void *value, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+-	       const char *name, const void *value, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline void
+-ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
+-{
+-}
+-
+-static inline void
+-ext4_xattr_put_super(struct super_block *sb)
+-{
+-}
+-
+-static __init inline int
+-ext4_init_xattr(void)
+-{
+-	return 0;
+-}
+-
+-static inline void
+-ext4_exit_xattr(void)
+-{
+-}
+-
+-static inline int
+-ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+-			    struct ext4_inode *raw_inode, handle_t *handle)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-#define ext4_xattr_handlers	NULL
+-
+-static inline int
+-ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+-		      struct ext4_xattr_ibody_find *is)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+-		     struct ext4_xattr_info *i,
+-		     struct ext4_xattr_ibody_find *is)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_ibody_get(struct inode *inode, int name_index,
+-		     const char *name,
+-		     void *buffer, size_t buffer_size)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int ext4_find_inline_data(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_has_inline_data(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_get_inline_size(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_get_max_inline_size(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline void ext4_write_inline_data(struct inode *inode,
+-					  struct ext4_iloc *iloc,
+-					  void *buffer, loff_t pos,
+-					  unsigned int len)
+-{
+-	return;
+-}
+-
+-static inline int ext4_init_inline_data(handle_t *handle,
+-					struct inode *inode,
+-					unsigned int len)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_destroy_inline_data(handle_t *handle,
+-					   struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_readpage_inline(struct inode *inode, struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_to_write_inline_data(struct address_space *mapping,
+-						struct inode *inode,
+-						loff_t pos, unsigned len,
+-						unsigned flags,
+-						struct page **pagep)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_write_inline_data_end(struct inode *inode,
+-					     loff_t pos, unsigned len,
+-					     unsigned copied,
+-					     struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_journalled_write_inline_data(struct inode *inode,
+-				  unsigned len,
+-				  struct page *page)
+-{
+-	return NULL;
+-}
+-
+-static inline int
+-ext4_da_write_inline_data_begin(struct address_space *mapping,
+-				struct inode *inode,
+-				loff_t pos, unsigned len,
+-				unsigned flags,
+-				struct page **pagep,
+-				void **fsdata)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+-						unsigned len, unsigned copied,
+-						struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_add_inline_entry(handle_t *handle,
+-					    struct dentry *dentry,
+-					    struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_create_inline_dir(handle_t *handle,
+-					     struct inode *parent,
+-					     struct inode *inode)
+-{
+-	return 0;
+-}
+-static inline int ext4_read_inline_dir(struct file *filp,
+-				       void *dirent, filldir_t filldir,
+-				       int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_find_inline_entry(struct inode *dir,
+-		       const struct qstr *d_name,
+-		       struct ext4_dir_entry_2 **res_dir,
+-		       int *has_inline_data)
+-{
+-	return NULL;
+-}
+-static inline int ext4_delete_inline_entry(handle_t *handle,
+-					   struct inode *dir,
+-					   struct ext4_dir_entry_2 *de_del,
+-					   struct buffer_head *bh,
+-					   int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_get_first_inline_block(struct inode *inode,
+-			    struct ext4_dir_entry_2 **parent_de,
+-			    int *retval)
+-{
+-	return NULL;
+-}
+-
+-static inline int ext4_inline_data_fiemap(struct inode *inode,
+-					  struct fiemap_extent_info *fieinfo,
+-					  int *has_inline)
+-{
+-	return 0;
+-}
+-
+-static inline void ext4_inline_data_truncate(struct inode *inode,
+-					     int *has_inline)
+-{
+-	return;
+-}
