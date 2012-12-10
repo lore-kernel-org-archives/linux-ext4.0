@@ -1,108 +1,470 @@
-From: Forrest Liu <forrestl@synology.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole punch
-Date: Sun, 9 Dec 2012 03:29:59 +0800
-Message-ID: <CAJSVwFM3oAd1B1oauxyDj2QTRXy73X43_6E72209Wy497K8EkA@mail.gmail.com>
-References: <1354623069-8124-1-git-send-email-forrestl@synology.com>
-	<50C0BDA2.4090203@redhat.com>
-	<50C0BE40.5060003@redhat.com>
-	<CAOiN93kvSdzsJXqbabuLDcOh2me9wzLUPBsr2UY5BgHFXrhcnA@mail.gmail.com>
-	<CAJSVwFOkH3MzdJTVm9M1fFycNqWr4oy+zUNaDUy0LPnXk=YZMg@mail.gmail.com>
-	<20121207222922.GI29435@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ashish Sangwan <ashishsangwan2@gmail.com>,
+From: Tao Ma <tm@tao.ma>
+Subject: [PATCH] ext4: Remove CONFIG_EXT4_FS_XATTR.
+Date: Mon, 10 Dec 2012 14:19:08 +0800
+Message-ID: <1355120348-5117-1-git-send-email-tm@tao.ma>
+References: <nsxsj7kw2jq.fsf@closure.thunk.org>
+Cc: David Brown <davidb@codeaurora.org>, Jan Kara <jack@suse.cz>,
 	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+	"Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:64349 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435Ab2LHTaA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2012 14:30:00 -0500
-Received: by mail-ie0-f172.google.com with SMTP id c13so5205590ieb.31
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2012 11:30:00 -0800 (PST)
-In-Reply-To: <20121207222922.GI29435@thunk.org>
+Received: from oproxy9.bluehost.com ([69.89.24.6]:58400 "HELO
+	oproxy9.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751792Ab2LJGTq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2012 01:19:46 -0500
+In-Reply-To: <nsxsj7kw2jq.fsf@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-    I have test patch with Ashish's modification, and that have
-problem when depth of extent tree is greater than 2.
+From: Tao Ma <boyu.mt@taobao.com>
 
-   I will make a test case with your patch.
+Ted has sent out a RFC about removing this feature. Eric and Jan
+confirmed that both RedHat and SUSE enable this feature in all their
+product. David also said that "As far as I know, it's enabled in
+all Android kernels that use ext4." So it seems OK for us.
 
-Thanks,
-Forrest
+And what's more, as inline data depends its implementation on xattr,
+and to be frank, I don't run any test again inline data enabled while
+xattr disabled. So I think we should add inline data and remove this
+config option in the same release.
 
+Cc: David Brown <davidb@codeaurora.org>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/Kconfig   |   15 ----
+ fs/ext4/Makefile  |    4 +-
+ fs/ext4/ext4.h    |    2 -
+ fs/ext4/file.c    |    2 -
+ fs/ext4/namei.c   |    4 -
+ fs/ext4/super.c   |    7 --
+ fs/ext4/symlink.c |    4 -
+ fs/ext4/xattr.h   |  236 -----------------------------------------------------
+ 8 files changed, 1 insertions(+), 273 deletions(-)
 
-2012/12/8 Theodore Ts'o <tytso@mit.edu>:
-> Hi Forrest,
->
-> Can you share an updated version of your patch (with Ashish's
-> modification if you've tried testing that)?  And also can you send us
-> some automated way to create your test case?  That might make it
-> easier for us all to test the same thing and all be on the same page.
->
-> I assume you have some C program which which is doing all of the
-> punching?
->
-> I started trying to create something via a script like this:
->
-> touch testfile
-> fallocate -l 1G testfile
-> for i in $(seq 0 8192 1073741824) ; do fallocate -p -o $i -l 4k testfile ; done
->
-> .. where fallocate is from contrib/fallocate.c in the e2fsprogs
-> sources (not the fallocate from util-linux) with the attached patch to
-> add support for the -p option to do the pnuching.... but then I
-> decided it might be better if we all standardized on the same test
-> case.  Ideally, if the test case is small enough, we can put it in the
-> commit message, or at very least we should look into getting it into
-> xfstests, and Eric has suggested.
->
-> Cheers,
->
->                                                 - Ted
->
-> commit 2658b9616fe63d2fd9e2654676877ab014639a92
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Thu Dec 6 11:21:44 2012 -0500
->
->     contrib/fallocate: add support for punch functionality
->
->     Also fix the -o option so it works correctly (instead of core
->     dumping).
->
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->
-> diff --git a/contrib/fallocate.c b/contrib/fallocate.c
-> index 0e8319f..1436b70 100644
-> --- a/contrib/fallocate.c
-> +++ b/contrib/fallocate.c
-> @@ -35,6 +35,7 @@
->
->  // #include <linux/falloc.h>
->  #define FALLOC_FL_KEEP_SIZE    0x01
-> +#define FALLOC_FL_PUNCH_HOLE   0x02 /* de-allocates range */
->
->  void usage(void)
->  {
-> @@ -94,12 +95,17 @@ int main(int argc, char **argv)
->         int     error;
->         int     tflag = 0;
->
-> -       while ((opt = getopt(argc, argv, "nl:ot")) != -1) {
-> +       while ((opt = getopt(argc, argv, "npl:o:t")) != -1) {
->                 switch(opt) {
->                 case 'n':
->                         /* do not change filesize */
->                         falloc_mode = FALLOC_FL_KEEP_SIZE;
->                         break;
-> +               case 'p':
-> +                       /* punch mode */
-> +                       falloc_mode = (FALLOC_FL_PUNCH_HOLE |
-> +                                      FALLOC_FL_KEEP_SIZE);
-> +                       break;
->                 case 'l':
->                         length = cvtnum(optarg);
->                         break;
+diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+index c22f170..0a475c8 100644
+--- a/fs/ext4/Kconfig
++++ b/fs/ext4/Kconfig
+@@ -39,22 +39,8 @@ config EXT4_USE_FOR_EXT23
+ 	  compiled kernel size by using one file system driver for
+ 	  ext2, ext3, and ext4 file systems.
+ 
+-config EXT4_FS_XATTR
+-	bool "Ext4 extended attributes"
+-	depends on EXT4_FS
+-	default y
+-	help
+-	  Extended attributes are name:value pairs associated with inodes by
+-	  the kernel or by users (see the attr(5) manual page, or visit
+-	  <http://acl.bestbits.at/> for details).
+-
+-	  If unsure, say N.
+-
+-	  You need this for POSIX ACL support on ext4.
+-
+ config EXT4_FS_POSIX_ACL
+ 	bool "Ext4 POSIX Access Control Lists"
+-	depends on EXT4_FS_XATTR
+ 	select FS_POSIX_ACL
+ 	help
+ 	  POSIX Access Control Lists (ACLs) support permissions for users and
+@@ -67,7 +53,6 @@ config EXT4_FS_POSIX_ACL
+ 
+ config EXT4_FS_SECURITY
+ 	bool "Ext4 Security Labels"
+-	depends on EXT4_FS_XATTR
+ 	help
+ 	  Security labels support alternative access control models
+ 	  implemented by security modules like SELinux.  This option
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index e88b7a6..2eea427 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -7,8 +7,6 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
+ ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o page-io.o \
+ 		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+ 		ext4_jbd2.o migrate.o mballoc.o block_validity.o move_extent.o \
+-		mmp.o indirect.o
+-
+-ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o inline.o
++		mmp.o indirect.o xattr.o xattr_user.o xattr_trusted.o inline.o
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2dd5824..b380147 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -835,7 +835,6 @@ struct ext4_inode_info {
+ #endif
+ 	unsigned long	i_flags;
+ 
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	/*
+ 	 * Extended attributes can be read independently of the main file
+ 	 * data. Taking i_mutex even when reading would cause contention
+@@ -844,7 +843,6 @@ struct ext4_inode_info {
+ 	 * EAs.
+ 	 */
+ 	struct rw_semaphore xattr_sem;
+-#endif
+ 
+ 	struct list_head i_orphan;	/* unlinked but open inodes */
+ 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index bf3966b..dcda329 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -326,12 +326,10 @@ const struct file_operations ext4_file_operations = {
+ const struct inode_operations ext4_file_inode_operations = {
+ 	.setattr	= ext4_setattr,
+ 	.getattr	= ext4_getattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ 	.fiemap		= ext4_fiemap,
+ };
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index adf309b..b099b4c 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3209,23 +3209,19 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 	.mknod		= ext4_mknod,
+ 	.rename		= ext4_rename,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ 	.fiemap         = ext4_fiemap,
+ };
+ 
+ const struct inode_operations ext4_special_inode_operations = {
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ 	.get_acl	= ext4_get_acl,
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 80928f7..1de7ebc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -996,9 +996,7 @@ static void init_once(void *foo)
+ 	struct ext4_inode_info *ei = (struct ext4_inode_info *) foo;
+ 
+ 	INIT_LIST_HEAD(&ei->i_orphan);
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	init_rwsem(&ei->xattr_sem);
+-#endif
+ 	init_rwsem(&ei->i_data_sem);
+ 	inode_init_once(&ei->vfs_inode);
+ }
+@@ -1447,13 +1445,10 @@ static const struct mount_opts {
+ 	{Opt_data_journal, EXT4_MOUNT_JOURNAL_DATA, MOPT_DATAJ},
+ 	{Opt_data_ordered, EXT4_MOUNT_ORDERED_DATA, MOPT_DATAJ},
+ 	{Opt_data_writeback, EXT4_MOUNT_WRITEBACK_DATA, MOPT_DATAJ},
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#else
+ 	{Opt_user_xattr, 0, MOPT_NOSUPPORT},
+ 	{Opt_nouser_xattr, 0, MOPT_NOSUPPORT},
+-#endif
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+ 	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
+@@ -3369,9 +3364,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (def_mount_opts & EXT4_DEFM_UID16)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	set_opt(sb, XATTR_USER);
+-#endif
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	set_opt(sb, POSIX_ACL);
+ #endif
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index ed9354a..ff37119 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -35,22 +35,18 @@ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.follow_link	= page_follow_link_light,
+ 	.put_link	= page_put_link,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ };
+ 
+ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+ 	.follow_link	= ext4_follow_link,
+ 	.setattr	= ext4_setattr,
+-#ifdef CONFIG_EXT4_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+ 	.removexattr	= generic_removexattr,
+-#endif
+ };
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index f959e6c..c33fa41 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -92,8 +92,6 @@ struct ext4_xattr_ibody_find {
+ 	struct ext4_iloc iloc;
+ };
+ 
+-# ifdef CONFIG_EXT4_FS_XATTR
+-
+ extern const struct xattr_handler ext4_xattr_user_handler;
+ extern const struct xattr_handler ext4_xattr_trusted_handler;
+ extern const struct xattr_handler ext4_xattr_acl_access_handler;
+@@ -193,240 +191,6 @@ extern int ext4_try_to_evict_inline_data(handle_t *handle,
+ extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+ 
+ extern int ext4_convert_inline_data(struct inode *inode);
+-# else  /* CONFIG_EXT4_FS_XATTR */
+-
+-static inline int
+-ext4_xattr_get(struct inode *inode, int name_index, const char *name,
+-	       void *buffer, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+-	       const void *value, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+-	       const char *name, const void *value, size_t size, int flags)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline void
+-ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
+-{
+-}
+-
+-static inline void
+-ext4_xattr_put_super(struct super_block *sb)
+-{
+-}
+-
+-static __init inline int
+-ext4_init_xattr(void)
+-{
+-	return 0;
+-}
+-
+-static inline void
+-ext4_exit_xattr(void)
+-{
+-}
+-
+-static inline int
+-ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+-			    struct ext4_inode *raw_inode, handle_t *handle)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-#define ext4_xattr_handlers	NULL
+-
+-static inline int
+-ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+-		      struct ext4_xattr_ibody_find *is)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+-		     struct ext4_xattr_info *i,
+-		     struct ext4_xattr_ibody_find *is)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int
+-ext4_xattr_ibody_get(struct inode *inode, int name_index,
+-		     const char *name,
+-		     void *buffer, size_t buffer_size)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int ext4_find_inline_data(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_has_inline_data(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_get_inline_size(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_get_max_inline_size(struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline void ext4_write_inline_data(struct inode *inode,
+-					  struct ext4_iloc *iloc,
+-					  void *buffer, loff_t pos,
+-					  unsigned int len)
+-{
+-	return;
+-}
+-
+-static inline int ext4_init_inline_data(handle_t *handle,
+-					struct inode *inode,
+-					unsigned int len)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_destroy_inline_data(handle_t *handle,
+-					   struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_readpage_inline(struct inode *inode, struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_to_write_inline_data(struct address_space *mapping,
+-						struct inode *inode,
+-						loff_t pos, unsigned len,
+-						unsigned flags,
+-						struct page **pagep)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_write_inline_data_end(struct inode *inode,
+-					     loff_t pos, unsigned len,
+-					     unsigned copied,
+-					     struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_journalled_write_inline_data(struct inode *inode,
+-				  unsigned len,
+-				  struct page *page)
+-{
+-	return NULL;
+-}
+-
+-static inline int
+-ext4_da_write_inline_data_begin(struct address_space *mapping,
+-				struct inode *inode,
+-				loff_t pos, unsigned len,
+-				unsigned flags,
+-				struct page **pagep,
+-				void **fsdata)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+-						unsigned len, unsigned copied,
+-						struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_add_inline_entry(handle_t *handle,
+-					    struct dentry *dentry,
+-					    struct inode *inode)
+-{
+-	return 0;
+-}
+-
+-static inline int ext4_try_create_inline_dir(handle_t *handle,
+-					     struct inode *parent,
+-					     struct inode *inode)
+-{
+-	return 0;
+-}
+-static inline int ext4_read_inline_dir(struct file *filp,
+-				       void *dirent, filldir_t filldir,
+-				       int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_find_inline_entry(struct inode *dir,
+-		       const struct qstr *d_name,
+-		       struct ext4_dir_entry_2 **res_dir,
+-		       int *has_inline_data)
+-{
+-	return NULL;
+-}
+-
+-static inline int ext4_delete_inline_entry(handle_t *handle,
+-					   struct inode *dir,
+-					   struct ext4_dir_entry_2 *de_del,
+-					   struct buffer_head *bh,
+-					   int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline int empty_inline_dir(struct inode *dir, int *has_inline_data)
+-{
+-	return 0;
+-}
+-
+-static inline struct buffer_head *
+-ext4_get_first_inline_block(struct inode *inode,
+-			    struct ext4_dir_entry_2 **parent_de,
+-			    int *retval)
+-{
+-	return NULL;
+-}
+-
+-static inline int ext4_inline_data_fiemap(struct inode *inode,
+-					  struct fiemap_extent_info *fieinfo,
+-					  int *has_inline)
+-{
+-	return 0;
+-}
+-
+-static inline void ext4_inline_data_truncate(struct inode *inode,
+-					     int *has_inline)
+-{
+-	return;
+-}
