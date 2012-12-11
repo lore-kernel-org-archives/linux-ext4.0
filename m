@@ -1,63 +1,66 @@
 From: Tao Ma <tm@tao.ma>
-Subject: Re: [ext4:dev 37/63] fs/ext4/inline.c:268:19: error: 'empty_zero_page'
- undeclared
-Date: Tue, 11 Dec 2012 10:25:37 +0800
-Message-ID: <50C699A1.10502@tao.ma>
-References: <50c65c00.3GZ66LxGua+Gl+1Q%fengguang.wu@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Tao Ma <boyu.mt@taobao.com>, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>
-To: kbuild test robot <fengguang.wu@intel.com>
+Subject: [PATCH] ext4: Use kzalloc instead of empty_zero_page because of SPARC build error.
+Date: Tue, 11 Dec 2012 10:55:45 +0800
+Message-ID: <1355194545-4002-1-git-send-email-tm@tao.ma>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:54901 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751930Ab2LKCZm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2012 21:25:42 -0500
-In-Reply-To: <50c65c00.3GZ66LxGua+Gl+1Q%fengguang.wu@intel.com>
+Received: from oproxy6-pub.bluehost.com ([67.222.54.6]:52660 "HELO
+	oproxy6-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751291Ab2LKC4I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2012 21:56:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/11/2012 06:02 AM, kbuild test robot wrote:
-> tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-> head:   9a4c8019471386c6fb039ae9e30f5216b6b55a9e
-> commit: 67cf5b09a46f72e048501b84996f2f77bc42e947 [37/63] ext4: add the basic function for inline data support
-> config: make ARCH=sparc allyesconfig
-> 
-> All error/warnings:
-> 
-> fs/ext4/inline.c: In function 'ext4_create_inline_data':
-> fs/ext4/inline.c:268:19: error: 'empty_zero_page' undeclared (first use in this function)
-> fs/ext4/inline.c:268:19: note: each undeclared identifier is reported only once for each function it appears in
-> fs/ext4/inline.c: At top level:
-> fs/ext4/inline.c:164:12: warning: 'ext4_read_inline_data' defined but not used [-Wunused-function]
-uh, in sparc, we don't have empty_zero_page? I just want to create an
-inline data file without allocating a buffer with the specified length.
-So maybe I have to do the kzalloc thing then. :(
+From: Tao Ma <boyu.mt@taobao.com>
 
-Thanks
-Tao
-> 
-> vim +268 +/empty_zero_page fs/ext4/inline.c
-> 
-> 67cf5b09 Tao Ma 2012-12-10  262  
-> 67cf5b09 Tao Ma 2012-12-10  263  	error = ext4_journal_get_write_access(handle, is.iloc.bh);
-> 67cf5b09 Tao Ma 2012-12-10  264  	if (error)
-> 67cf5b09 Tao Ma 2012-12-10  265  		goto out;
-> 67cf5b09 Tao Ma 2012-12-10  266  
-> 67cf5b09 Tao Ma 2012-12-10  267  	if (len > EXT4_MIN_INLINE_DATA_SIZE) {
-> 67cf5b09 Tao Ma 2012-12-10 @268  		value = (void *)empty_zero_page;
-> 67cf5b09 Tao Ma 2012-12-10  269  		len -= EXT4_MIN_INLINE_DATA_SIZE;
-> 67cf5b09 Tao Ma 2012-12-10  270  	} else {
-> 67cf5b09 Tao Ma 2012-12-10  271  		value = "";
-> 
-> ---
-> 0-DAY kernel build testing backend         Open Source Technology Center
-> Fengguang Wu, Yuanhan Liu                              Intel Corporation
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Build rebot found this error:
+
+config: make ARCH=sparc allyesconfig
+
+All error/warnings:
+
+fs/ext4/inline.c: In function 'ext4_create_inline_data':
+fs/ext4/inline.c:268:19: error: 'empty_zero_page' undeclared (first use in this function)
+fs/ext4/inline.c:268:19: note: each undeclared identifier is reported only once for each function it appears in
+fs/ext4/inline.c: At top level:
+fs/ext4/inline.c:164:12: warning: 'ext4_read_inline_data' defined but not used [-Wunused-function]
+
+In sparc, it seems that we don't have empty_zero_page, so replace it
+with kzalloc and kfree to make sparc happy and make any future architecture
+build successfully by not using empty_zero_page at all.
+
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Tao Ma <boyu.mt@taobao.com>
+---
+ fs/ext4/inline.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 6b600b4..997c1aa 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -263,8 +263,10 @@ static int ext4_create_inline_data(handle_t *handle,
+ 		goto out;
+ 
+ 	if (len > EXT4_MIN_INLINE_DATA_SIZE) {
+-		value = (void *)empty_zero_page;
+ 		len -= EXT4_MIN_INLINE_DATA_SIZE;
++		value = kzalloc(len, GFP_NOFS);
++		if (!value)
++			goto out;
+ 	} else {
+ 		value = "";
+ 		len = 0;
+@@ -275,6 +277,8 @@ static int ext4_create_inline_data(handle_t *handle,
+ 	i.value_len = len;
+ 
+ 	error = ext4_xattr_ibody_find(inode, &i, &is);
++	if (len)
++		kfree(value);
+ 	if (error)
+ 		goto out;
+ 
+-- 
+1.7.0.4
 
