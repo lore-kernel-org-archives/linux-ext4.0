@@ -1,109 +1,94 @@
-From: Tao Ma <tm@tao.ma>
-Subject: [PATCH] ext4: Add EXT4_ZERO_XATTR_VALUE to init inline data directly.
-Date: Tue, 11 Dec 2012 14:39:49 +0800
-Message-ID: <1355207989-4823-1-git-send-email-tm@tao.ma>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy11-pub.bluehost.com ([173.254.64.10]:37311 "HELO
-	oproxy11-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752853Ab2LKGkC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Dec 2012 01:40:02 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Li Zefan <lizefan@huawei.com>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Tue, 11 Dec 2012 16:01:51 +0800
+Message-ID: <50C6E86F.8040308@huawei.com>
+References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org> <50BF2537.6070809@huawei.com> <50BF597D.3040704@tao.ma> <50BFF149.6080007@huawei.com> <20121206123744.GA17951@quack.suse.cz> <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com> <20121206170913.GC21029@quack.suse.cz> <50C1BF05.6020605@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: qixuan wu <wuqixuan@gmail.com>, Tao Ma <tm@tao.ma>,
+	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<wuqixuan@huawei.com>, <xieshuangyi@huawei.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <50C1BF05.6020605@huawei.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Tao Ma <boyu.mt@taobao.com>
+>>> We have already dump of the data by debugfs. The data is very good
+>>> without error. But we just did it before fsck, even the fsck is not
+>>> giving any error. I want to know whether fsck will modify disk data
+>>> without reporting any error or not ?
+>>   Ah, OK. So it seems that directory block is OK, just  f_pos gets corrupted
+>> somehow. There are guards in ext3_readdir() to rescan dir block when
+>> directory is modified but maybe that's not working correctly. I don't want
+>> to burn too much time on this since this is so ancient kernel but I'd be
+>> looking in that direction...
+>>
+> 
+> I've added some debug code into ext3, which does these things:
+> - dump the dir block
+> - print the current and last f_pos and offset
+> - dump_stack() to see which process triggers the bug
+> 
+> Hope we can trigger the bug in our labs (We did see this happened twice this week
+> in a lab), though we can't patch the kernel in the products.
+> 
+> I compared ext3_readdir() with latest ext3, and saw no difference except some
+> API changes. I'll dig deeper. Thansks for the suggestion!
+> 
 
-Build rebot found this error:
+We've managed to trigger the bug once, and collected some debug information. We
+found the buffer head wasn't corrupted, but f_pos was set to 4024 and then ext3
+reported error.
 
-config: make ARCH=sparc allyesconfig
+EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #12747345: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
+Aborting journal on device sda7.
+ext3_abort called.
+EXT3-fs error (device sda7): ext3_journal_start_sb: Detected aborted journal
+Remounting filesystem read-only
 
-All error/warnings:
+00000000: 51 82 c2 00 0c 00 01 02 2e 00 00 00 04 80 c2 00  Q...............
+00000010: 0c 00 02 02 2e 2e 00 00 d6 80 c2 00 10 00 06 02  ................
+00000020: 62 61 63 6b 75 70 00 00 bb 82 c2 00 1c 00 11 01  backup..........
+00000030: 4d 6f 6e 69 74 6f 72 53 65 72 76 69 63 65 2e 6f  MonitorService.o
+00000040: 70 00 00 00 be 82 c2 00 1c 00 13 01 43 6f 6d 70  p...........Comp
+00000050: 6c 61 69 6e 74 50 72 6f 63 65 73 73 2e 6f 70 00  laintProcess.op.
+00000060: c2 82 c2 00 20 00 15 01 4c 6f 63 61 74 69 6f 6e  .... ...Location
+00000070: 50 72 65 50 72 6f 63 65 73 73 2e 6f 70 00 00 00  PreProcess.op...
+00000080: c9 82 c2 00 18 00 0f 01 4e 6f 72 74 68 50 72 6f  ........NorthPro
+00000090: 63 65 73 73 2e 6f 70 00 d4 82 c2 00 18 00 0d 01  cess.op.........
+000000a0: 53 79 73 4d 6f 6e 69 74 6f 72 2e 6f 70 00 00 00  SysMonitor.op...
+000000b0: db 82 c2 00 1c 00 13 01 56 56 49 50 4e 6f 72 74  ........VVIPNort
+000000c0: 68 50 72 6f 63 65 73 73 2e 6f 70 00 e1 82 c2 00  hProcess.op.....
+000000d0: 34 0f 09 01 72 61 6e 73 61 75 2e 6f 70 00 00 00  4...ransau.op...
+000000e0: 4f 83 c2 00 20 0f 1e 01 72 61 6e 73 61 75 2e 6f  O... ...ransau.o
+000000f0: 70 2e 32 30 31 32 31 32 31 30 30 32 30 39 32 34  p.20121210020924
+00000100: 34 35 31 33 39 34 00 00 79 83 c2 00 f8 0e 18 01  451394..y.......
+00000110: 72 61 6e 73 61 75 2e 6f 70 2e 32 30 31 32 31 32  ransau.op.201212
+00000120: 31 30 30 32 30 39 32 34 00 00 00 00 00 00 00 00  10020924........
+...
+00000ff0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 
-fs/ext4/inline.c: In function 'ext4_create_inline_data':
-fs/ext4/inline.c:268:19: error: 'empty_zero_page' undeclared (first use in this function)
-fs/ext4/inline.c:268:19: note: each undeclared identifier is reported only once for each function it appears in
-fs/ext4/inline.c: At top level:
-fs/ext4/inline.c:164:12: warning: 'ext4_read_inline_data' defined but not used [-Wunused-function]
+last_offset=-1, last_fpos=-1, f_pos=4024
 
-In sparc, it seems that we don't have empty_zero_page, so add a new specific
-value EXT4_ZERO_XATTR_VALUE so that when ext4_xattr_set_entry see this flag
-memset the space directly instead of copying from value. This idea is
-inspired by Theodore Ts'o.
+-1 means we hit the bug in the first iteration in the insde while in ext3_readdir().
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Tao Ma <boyu.mt@taobao.com>
----
- fs/ext4/inline.c |    2 +-
- fs/ext4/xattr.c  |   22 ++++++++++++++++------
- fs/ext4/xattr.h  |    1 +
- 3 files changed, 18 insertions(+), 7 deletions(-)
+I've checked how ext3_readdir() works and how f_pos, f_version and i_version
+get initialized and modified. Now I'm lost. I really can't see how f_pos got
+corrupted. :(
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 6b600b4..e435343 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -263,7 +263,7 @@ static int ext4_create_inline_data(handle_t *handle,
- 		goto out;
- 
- 	if (len > EXT4_MIN_INLINE_DATA_SIZE) {
--		value = (void *)empty_zero_page;
-+		value = EXT4_ZERO_XATTR_VALUE;
- 		len -= EXT4_MIN_INLINE_DATA_SIZE;
- 	} else {
- 		value = "";
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 2251769..3a91ebc 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -628,9 +628,14 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
- 				   size. Just replace. */
- 				s->here->e_value_size =
- 					cpu_to_le32(i->value_len);
--				memset(val + size - EXT4_XATTR_PAD, 0,
--				       EXT4_XATTR_PAD); /* Clear pad bytes. */
--				memcpy(val, i->value, i->value_len);
-+				if (i->value == EXT4_ZERO_XATTR_VALUE) {
-+					memset(val, 0, size);
-+				} else {
-+					/* Clear pad bytes first. */
-+					memset(val + size - EXT4_XATTR_PAD, 0,
-+					       EXT4_XATTR_PAD);
-+					memcpy(val, i->value, i->value_len);
-+				}
- 				return 0;
- 			}
- 
-@@ -669,9 +674,14 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
- 			size_t size = EXT4_XATTR_SIZE(i->value_len);
- 			void *val = s->base + min_offs - size;
- 			s->here->e_value_offs = cpu_to_le16(min_offs - size);
--			memset(val + size - EXT4_XATTR_PAD, 0,
--			       EXT4_XATTR_PAD); /* Clear the pad bytes. */
--			memcpy(val, i->value, i->value_len);
-+			if (i->value == EXT4_ZERO_XATTR_VALUE) {
-+				memset(val, 0, size);
-+			} else {
-+				/* Clear the pad bytes first. */
-+				memset(val + size - EXT4_XATTR_PAD, 0,
-+				       EXT4_XATTR_PAD);
-+				memcpy(val, i->value, i->value_len);
-+			}
- 		}
- 	}
- 	return 0;
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index c33fa41..17a6e44 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -71,6 +71,7 @@ struct ext4_xattr_entry {
- #define BFIRST(bh) ENTRY(BHDR(bh)+1)
- #define IS_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
- 
-+#define EXT4_ZERO_XATTR_VALUE ((void *)-1)
- 
- struct ext4_xattr_info {
- 	int name_index;
--- 
-1.7.0.4
+A sample strace output:
+
+10062 getdents64(46, /* 4 entries */, 4096) = 136
+10062 stat64("/xxx/current_log.txt", {st_mode=S_IFREG|0600, st_size=4436494, ...}) = 0
+10062 stat64("/xxx/20121205054350.593907.txt", {st_mode=S_IFREG|0600, st_size=8388846, ...}) = 0
+10062 getdents64(46, /* 0 entries */, 4096) = 0
+
+In the second call to getdents, f_pos should be 4096, but somehow it was
+changed to 4024? but how...
+
+Any hints?
 
