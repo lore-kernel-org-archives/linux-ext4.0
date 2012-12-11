@@ -1,94 +1,176 @@
-From: Li Zefan <lizefan@huawei.com>
-Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Tue, 11 Dec 2012 16:01:51 +0800
-Message-ID: <50C6E86F.8040308@huawei.com>
-References: <CALOAHbDC8jguV7GeSuN01UWBk+74wVHho8Fe9HLan06FZSpw0g@mail.gmail.com> <50BCE885.8010609@redhat.com> <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org> <50BF2537.6070809@huawei.com> <50BF597D.3040704@tao.ma> <50BFF149.6080007@huawei.com> <20121206123744.GA17951@quack.suse.cz> <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com> <20121206170913.GC21029@quack.suse.cz> <50C1BF05.6020605@huawei.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: A huge latency in ext4 and xfs because of stable page write
+Date: Tue, 11 Dec 2012 16:45:21 +0800
+Message-ID: <20121211084520.GA13277@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: qixuan wu <wuqixuan@gmail.com>, Tao Ma <tm@tao.ma>,
-	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Yafang Shao <laoar.shao@gmail.com>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-	<wuqixuan@huawei.com>, <xieshuangyi@huawei.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu, david@fromorbit.com,
+	hch@infradead.org, darrick.wong@oracle.com
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <50C1BF05.6020605@huawei.com>
+Content-Disposition: inline
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->>> We have already dump of the data by debugfs. The data is very good
->>> without error. But we just did it before fsck, even the fsck is not
->>> giving any error. I want to know whether fsck will modify disk data
->>> without reporting any error or not ?
->>   Ah, OK. So it seems that directory block is OK, just  f_pos gets corrupted
->> somehow. There are guards in ext3_readdir() to rescan dir block when
->> directory is modified but maybe that's not working correctly. I don't want
->> to burn too much time on this since this is so ancient kernel but I'd be
->> looking in that direction...
->>
-> 
-> I've added some debug code into ext3, which does these things:
-> - dump the dir block
-> - print the current and last f_pos and offset
-> - dump_stack() to see which process triggers the bug
-> 
-> Hope we can trigger the bug in our labs (We did see this happened twice this week
-> in a lab), though we can't patch the kernel in the products.
-> 
-> I compared ext3_readdir() with latest ext3, and saw no difference except some
-> API changes. I'll dig deeper. Thansks for the suggestion!
-> 
+Hi all,
 
-We've managed to trigger the bug once, and collected some debug information. We
-found the buffer head wasn't corrupted, but f_pos was set to 4024 and then ext3
-reported error.
+At Tao Bao we meet a problem in our product system which causes a huge latency
+because of stable page write.  This problem is easy to reproduce in a testing
+environment, and I can reproduce it in my desktop with a SATA disk.  Here is the
+fio config file that is used to reproduce this problem.
 
-EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #12747345: rec_len is smaller than minimal - offset=4024, inode=0, rec_len=0, name_len=0
-Aborting journal on device sda7.
-ext3_abort called.
-EXT3-fs error (device sda7): ext3_journal_start_sb: Detected aborted journal
-Remounting filesystem read-only
+config file
+-----------
+[global]
+iodepth=1
+directory=/mnt/sda3
+direct=0
+group_reporting
+thread
+fallocate=0
+runtime=120
 
-00000000: 51 82 c2 00 0c 00 01 02 2e 00 00 00 04 80 c2 00  Q...............
-00000010: 0c 00 02 02 2e 2e 00 00 d6 80 c2 00 10 00 06 02  ................
-00000020: 62 61 63 6b 75 70 00 00 bb 82 c2 00 1c 00 11 01  backup..........
-00000030: 4d 6f 6e 69 74 6f 72 53 65 72 76 69 63 65 2e 6f  MonitorService.o
-00000040: 70 00 00 00 be 82 c2 00 1c 00 13 01 43 6f 6d 70  p...........Comp
-00000050: 6c 61 69 6e 74 50 72 6f 63 65 73 73 2e 6f 70 00  laintProcess.op.
-00000060: c2 82 c2 00 20 00 15 01 4c 6f 63 61 74 69 6f 6e  .... ...Location
-00000070: 50 72 65 50 72 6f 63 65 73 73 2e 6f 70 00 00 00  PreProcess.op...
-00000080: c9 82 c2 00 18 00 0f 01 4e 6f 72 74 68 50 72 6f  ........NorthPro
-00000090: 63 65 73 73 2e 6f 70 00 d4 82 c2 00 18 00 0d 01  cess.op.........
-000000a0: 53 79 73 4d 6f 6e 69 74 6f 72 2e 6f 70 00 00 00  SysMonitor.op...
-000000b0: db 82 c2 00 1c 00 13 01 56 56 49 50 4e 6f 72 74  ........VVIPNort
-000000c0: 68 50 72 6f 63 65 73 73 2e 6f 70 00 e1 82 c2 00  hProcess.op.....
-000000d0: 34 0f 09 01 72 61 6e 73 61 75 2e 6f 70 00 00 00  4...ransau.op...
-000000e0: 4f 83 c2 00 20 0f 1e 01 72 61 6e 73 61 75 2e 6f  O... ...ransau.o
-000000f0: 70 2e 32 30 31 32 31 32 31 30 30 32 30 39 32 34  p.20121210020924
-00000100: 34 35 31 33 39 34 00 00 79 83 c2 00 f8 0e 18 01  451394..y.......
-00000110: 72 61 6e 73 61 75 2e 6f 70 2e 32 30 31 32 31 32  ransau.op.201212
-00000120: 31 30 30 32 30 39 32 34 00 00 00 00 00 00 00 00  10020924........
-...
-00000ff0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+[log-append]
+ioengine=sync
+rw=write
+bs=1k
+size=10g
+filesize=10g
+rate=5m
+numjobs=1
 
-last_offset=-1, last_fpos=-1, f_pos=4024
+I run this test case in ext4 and xfs, and both of them are affected by stable
+page write.  The result shows as below.  Please notice the result of latency.
 
--1 means we hit the bug in the first iteration in the insde while in ext3_readdir().
+ext4 w/ stable page write
+-------------------------
+log-append: (groupid=0, jobs=1): err= 0: pid=3455: Tue Dec 11 14:41:27 2012
+  write: io=614401KB, bw=5119.1KB/s, iops=5119 , runt=120001msec
+    clat (usec): min=3 , max=225702 , avg= 7.32, stdev=411.95
+     lat (usec): min=3 , max=225702 , avg= 7.50, stdev=411.95
+    clat percentiles (usec):
+     |  1.00th=[    3],  5.00th=[    3], 10.00th=[    3], 20.00th=[    4], 
+     | 30.00th=[    4], 40.00th=[    4], 50.00th=[    4], 60.00th=[    5], 
+     | 70.00th=[    6], 80.00th=[   12], 90.00th=[   13], 95.00th=[   14],
+     | 99.00th=[   15], 99.50th=[   16], 99.90th=[   18], 99.95th=[   19],
+     | 99.99th=[   25] 
+    bw (KB/s)  : min= 5108, max= 5134, per=100.00%, avg=5120.92, stdev= 1.58
+    lat (usec) : 4=15.93%, 10=59.05%, 20=24.98%, 50=0.03%, 100=0.01%
+    lat (usec) : 250=0.01%
+    lat (msec) : 20=0.01%, 250=0.01%
+  cpu          : usr=0.18%, sys=4.31%, ctx=118850, majf=18446744073709551605,
+minf=18446744073709538970
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued    : total=r=0/w=614401/d=0, short=r=0/w=0/d=0
 
-I've checked how ext3_readdir() works and how f_pos, f_version and i_version
-get initialized and modified. Now I'm lost. I really can't see how f_pos got
-corrupted. :(
+Run status group 0 (all jobs):
+  WRITE: io=614401KB, aggrb=5119KB/s, minb=5119KB/s, maxb=5119KB/s,
+mint=120001msec, maxt=120001msec
 
-A sample strace output:
+Disk stats (read/write):
+  sda: ios=79/1287, merge=5/151907, ticks=702/147202, in_queue=147861, util=6.25%
 
-10062 getdents64(46, /* 4 entries */, 4096) = 136
-10062 stat64("/xxx/current_log.txt", {st_mode=S_IFREG|0600, st_size=4436494, ...}) = 0
-10062 stat64("/xxx/20121205054350.593907.txt", {st_mode=S_IFREG|0600, st_size=8388846, ...}) = 0
-10062 getdents64(46, /* 0 entries */, 4096) = 0
+ext4 w/o stable page write
+--------------------------
+log-append: (groupid=0, jobs=1): err= 0: pid=3062: Tue Dec 11 14:52:32 2012
+  write: io=614400KB, bw=5119.1KB/s, iops=5119 , runt=120001msec
+    clat (usec): min=3 , max=14565 , avg= 6.15, stdev=25.35
+     lat (usec): min=3 , max=14566 , avg= 6.29, stdev=25.35
+    clat percentiles (usec):
+     |  1.00th=[    3],  5.00th=[    3], 10.00th=[    3], 20.00th=[    4], 
+     | 30.00th=[    4], 40.00th=[    4], 50.00th=[    4], 60.00th=[    4], 
+     | 70.00th=[    5], 80.00th=[   12], 90.00th=[   12], 95.00th=[   13],
+     | 99.00th=[   15], 99.50th=[   15], 99.90th=[   17], 99.95th=[   18],
+     | 99.99th=[   64] 
+    bw (KB/s)  : min= 5108, max= 5140, per=100.00%, avg=5122.26, stdev= 4.54
+    lat (usec) : 4=17.33%, 10=57.65%, 20=24.98%, 50=0.02%, 100=0.01%
+    lat (usec) : 250=0.01%
+    lat (msec) : 2=0.01%, 20=0.01%
+  cpu          : usr=4.12%, sys=0.00%, ctx=58904, majf=18446744073709551605,
+minf=18446744073709538969
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued    : total=r=0/w=614400/d=0, short=r=0/w=0/d=0
 
-In the second call to getdents, f_pos should be 4096, but somehow it was
-changed to 4024? but how...
+Run status group 0 (all jobs):
+  WRITE: io=614400KB, aggrb=5119KB/s, minb=5119KB/s, maxb=5119KB/s,
+mint=120001msec, maxt=120001msec
 
-Any hints?
+Disk stats (read/write):
+  sda: ios=34/1254, merge=4/152032, ticks=157/144066, in_queue=147725, util=5.82%
 
+xfs w/ stable page write
+------------------------
+log-append: (groupid=0, jobs=1): err= 0: pid=2848: Tue Dec 11 15:39:25 2012
+  write: io=614401KB, bw=5119.1KB/s, iops=5119 , runt=120002msec
+    clat (usec): min=1 , max=635643 , avg= 5.02, stdev=1141.37
+     lat (usec): min=1 , max=635643 , avg= 5.17, stdev=1141.37
+    clat percentiles (usec):
+     |  1.00th=[    1],  5.00th=[    1], 10.00th=[    1], 20.00th=[    1], 
+     | 30.00th=[    2], 40.00th=[    2], 50.00th=[    2], 60.00th=[    2], 
+     | 70.00th=[    4], 80.00th=[    5], 90.00th=[    6], 95.00th=[    6], 
+     | 99.00th=[    9], 99.50th=[   10], 99.90th=[   11], 99.95th=[   12],
+     | 99.99th=[   13] 
+    bw (KB/s)  : min= 1388, max=11632, per=100.00%, avg=5147.03, stdev=675.82
+    lat (usec) : 2=21.76%, 4=46.03%, 10=31.65%, 20=0.56%, 50=0.01%
+    lat (msec) : 20=0.01%, 750=0.01%
+  cpu          : usr=1.09%, sys=1.18%, ctx=58250, majf=18446744073709551605,
+minf=18446744073709538970
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued    : total=r=0/w=614401/d=0, short=r=0/w=0/d=0
+
+Run status group 0 (all jobs):
+  WRITE: io=614401KB, aggrb=5119KB/s, minb=5119KB/s, maxb=5119KB/s,
+mint=120002msec, maxt=120002msec
+
+Disk stats (read/write):
+  sda: ios=15/1101, merge=0/28, ticks=150/554585, in_queue=554731, util=4.18%
+
+xfs w/o stable page write
+-------------------------
+log-append: (groupid=0, jobs=1): err= 0: pid=3678: Tue Dec 11 15:01:10 2012
+  write: io=614401KB, bw=5119.1KB/s, iops=5119 , runt=120001msec
+    clat (usec): min=1 , max=20866 , avg= 3.50, stdev=26.72
+     lat (usec): min=1 , max=20866 , avg= 3.60, stdev=26.72
+    clat percentiles (usec):
+     |  1.00th=[    1],  5.00th=[    1], 10.00th=[    1], 20.00th=[    2], 
+     | 30.00th=[    2], 40.00th=[    2], 50.00th=[    2], 60.00th=[    2], 
+     | 70.00th=[    5], 80.00th=[    6], 90.00th=[    6], 95.00th=[    8], 
+     | 99.00th=[   10], 99.50th=[   10], 99.90th=[   12], 99.95th=[   12],
+     | 99.99th=[   14] 
+    bw (KB/s)  : min= 5110, max= 5132, per=100.00%, avg=5120.84, stdev= 2.25
+    lat (usec) : 2=15.33%, 4=44.93%, 10=38.33%, 20=1.41%, 50=0.01%
+    lat (usec) : 500=0.01%
+    lat (msec) : 50=0.01%
+  cpu          : usr=2.83%, sys=0.00%, ctx=119423, majf=18446744073709551605,
+minf=18446744073709538968
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued    : total=r=0/w=614401/d=0, short=r=0/w=0/d=0
+
+Run status group 0 (all jobs):
+  WRITE: io=614401KB, aggrb=5119KB/s, minb=5119KB/s, maxb=5119KB/s,
+mint=120001msec, maxt=120001msec
+
+Disk stats (read/write):
+  sda: ios=106/1055, merge=3/35, ticks=1042/522739, in_queue=523780, util=4.56%
+
+We can see that the max of latency is very high with stable page write in ext4
+and xfs, and it reduces to a lower value after stable page write is reverted.  I
+summarize as below.
+
+      ext4    xfs  (usec, lower is better)
+w/  225702 635643
+w/o  14565  20866
+
+Hence, I wonder whether or not we could revert stable page write temporarily.
+After it is improved, we could add it back again.
+
+Thanks,
+						- Zheng
