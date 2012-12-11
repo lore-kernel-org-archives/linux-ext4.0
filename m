@@ -1,124 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 51571] New: Assertion of j_running_transaction on
- jbd2_journal_flush()
-Date: Tue, 11 Dec 2012 09:26:14 +0000 (UTC)
-Message-ID: <bug-51571-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: A huge latency in ext4 and xfs because of stable page write
+Date: Tue, 11 Dec 2012 22:17:07 +1100
+Message-ID: <20121211111707.GU15784@dastard>
+References: <20121211084520.GA13277@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, tytso@mit.edu, hch@infradead.org,
+	darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:41405 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751625Ab2LKJ0S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Dec 2012 04:26:18 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8637E202AA
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2012 09:26:17 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 787B1202A3
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2012 09:26:16 +0000 (UTC)
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:28318 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752608Ab2LKLRL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Dec 2012 06:17:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20121211084520.GA13277@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=51571
+On Tue, Dec 11, 2012 at 04:45:21PM +0800, Zheng Liu wrote:
+> Hi all,
+> 
+> At Tao Bao we meet a problem in our product system which causes a huge latency
+> because of stable page write.  This problem is easy to reproduce in a testing
+> environment, and I can reproduce it in my desktop with a SATA disk.  Here is the
+> fio config file that is used to reproduce this problem.
+> 
+> config file
+> -----------
+> [global]
+> iodepth=1
+> directory=/mnt/sda3
+> direct=0
+> group_reporting
+> thread
+> fallocate=0
+> runtime=120
+> 
+> [log-append]
+> ioengine=sync
+> rw=write
+> bs=1k
 
-           Summary: Assertion of j_running_transaction on
-                    jbd2_journal_flush()
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.4.0
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: yjwsignal@empal.com
-        Regression: No
+Sub-page sized IO. That's guaranteed to have noticable IO latency
+anomalies, regardless of stable data pages. If you are just
+doing appending writes, then you can easily buffer them till you
+have a page of data to write and avoid the problem altogether.
 
+> Hence, I wonder whether or not we could revert stable page write temporarily.
+> After it is improved, we could add it back again.
 
-This BUG is occurred at the remount operations.
+The plan is to turn it off for filesystems/devices that don't
+require it. That list of devices will grow in future, so you
+probably should plan to handle latencies in the application
+properly...
 
-[  214.601983] kernel BUG at fs/jbd2/journal.c : 1769
+Cheers,
 
-       int jbd2_journal_flush(journal_t *journal)
-       {
-           < SNIP >
-line:1767  mutex_unlock(&journal->j_checkpoint_mutex);
-line:1768  write_lock(&journal->j_state_lock);
-line:1769  J_ASSERT(!journal->j_running_transaction);
-           < SNIP >
-       }
-
-The call-stacks of this Procecss-A are below :
-  jbd2_journal_flush+0xF4/0x164
-  ext4_mark_recovery_complete
-  ext4_remount
-  do_remount_sb
-
-And, on this situation, the variable of journal is like below:
-  j_flags = 0x38
-  j_superblock->s_sequence = 0x049F
-  j_tail_sequence = 0x049F
-  j_transaction_sequence = 0x04A0
-  j_commit_sequence = 0x049E
-  j_commit_request = 0x049E
-  j_head = 0x25DE
-  j_tail = 0x25DE
-  j_free = 0x7FFF
-  j_barrier_count = 0x1
-  j_last_sync_writer = 0x0570
-  j_running_transaction->t_tid = 0x49F
-  j_running_transaction->t_state = T_RUNNING
-  j_running_transaction->t_start_time = 0x00000031F66EEAB4
-  j_running_transaction->t_updates = 0
-
-And, The call-stacks of other Process-B are below :
-
-   __schedule+0x634
-   start_this_handle+0x164
-   jbd2__journal_start+0x98
-   ext4_journal_start_sb+0x1a4
-   ext4_rename+0x38
-   vfs_rename+0x28c
-
-i.e The process-B is scheduled at "wait_event()" of the below
-"start_this_handle()". 
-
-static int start_this_handle(journal_t *journal, handle_t *handle,
-           gfp_t gfp_mask)
-{
-  < SNIP >
-  /* Wait on the journal's transaction barrier if necessary */
-  if (journal->j_barrier_count) {
-    read_unlock(&journal->j_state_lock);
-    wait_event(journal->j_wait_transaction_locked,
-        journal->j_barrier_count == 0);
-    goto repeat;
-  }
-
-  if (!journal->j_running_transaction) {
-    read_unlock(&journal->j_state_lock);
-    if (!new_transaction)
-      goto alloc_transaction;
-    write_lock(&journal->j_state_lock);
-    if (!journal->j_running_transaction) {
-      jbd2_get_transaction(journal, new_transaction);
-      new_transaction = NULL;
-    }
-    write_unlock(&journal->j_state_lock);
-    goto repeat;
-  }
-  < SNIP >
-}
-
-Would you tell me about the reason why this bug is occurred??
-
-Thanks
-
+Dave.
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
