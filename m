@@ -1,64 +1,72 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: A huge latency in ext4 and xfs because of stable page write
-Date: Tue, 11 Dec 2012 22:17:07 +1100
-Message-ID: <20121211111707.GU15784@dastard>
-References: <20121211084520.GA13277@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 51571] Assertion of j_running_transaction on
+ jbd2_journal_flush()
+Date: Wed, 12 Dec 2012 00:01:04 +0000 (UTC)
+Message-ID: <20121212000104.75D4D11F993@bugzilla.kernel.org>
+References: <bug-51571-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	linux-fsdevel@vger.kernel.org, tytso@mit.edu, hch@infradead.org,
-	darrick.wong@oracle.com
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:28318 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752608Ab2LKLRL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Dec 2012 06:17:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20121211084520.GA13277@gmail.com>
+Received: from mail.kernel.org ([198.145.19.201]:42476 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754344Ab2LLABG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Dec 2012 19:01:06 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5DE64202AC
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2012 00:01:05 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 7AF9E2028E
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2012 00:01:04 +0000 (UTC)
+In-Reply-To: <bug-51571-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 11, 2012 at 04:45:21PM +0800, Zheng Liu wrote:
-> Hi all,
-> 
-> At Tao Bao we meet a problem in our product system which causes a huge latency
-> because of stable page write.  This problem is easy to reproduce in a testing
-> environment, and I can reproduce it in my desktop with a SATA disk.  Here is the
-> fio config file that is used to reproduce this problem.
-> 
-> config file
-> -----------
-> [global]
-> iodepth=1
-> directory=/mnt/sda3
-> direct=0
-> group_reporting
-> thread
-> fallocate=0
-> runtime=120
-> 
-> [log-append]
-> ioengine=sync
-> rw=write
-> bs=1k
+https://bugzilla.kernel.org/show_bug.cgi?id=51571
 
-Sub-page sized IO. That's guaranteed to have noticable IO latency
-anomalies, regardless of stable data pages. If you are just
-doing appending writes, then you can easily buffer them till you
-have a page of data to write and avoid the problem altogether.
 
-> Hence, I wonder whether or not we could revert stable page write temporarily.
-> After it is improved, we could add it back again.
+Jan Kara <jack@suse.cz> changed:
 
-The plan is to turn it off for filesystems/devices that don't
-require it. That list of devices will grow in future, so you
-probably should plan to handle latencies in the application
-properly...
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
-Cheers,
 
-Dave.
+
+
+--- Comment #1 from Jan Kara <jack@suse.cz>  2012-12-12 00:01:04 ---
+Thanks for detailed report! I presume you have a crash dump when you could
+provide such details? Can you have a look at what
+journal->j_running_transaction->t_handle_count is? I can see the transaction
+has been started some 14 ms ago. That's not too long but still plenty in terms
+of CPU time.
+
+What I think is happening is:
+Process A                                    Process B
+start_this_handle().
+  if (journal->j_barrier_count) # false
+  if (!journal->j_running_transaction) { #true
+    read_unlock(&journal->j_state_lock);
+                                           jbd2_journal_lock_updates()
+                                           jbd2_journal_flush()
+                                            
+write_lock(&journal->j_state_lock);
+                                             if
+(journal->j_running_transaction) {
+                                               #false
+                                             ... wait for committing trans ...
+                                            
+write_unlock(&journal->j_state_lock);
+    ...
+    write_lock(&journal->j_state_lock);
+    jbd2_get_transaction(journal, new_transaction); # Sets
+j_running_transaction
+    write_unlock(&journal->j_state_lock);
+    goto repeat; # eventually blocks on j_barrier_count > 0
+
+I will attach here a patch that should fix this...
+
 -- 
-Dave Chinner
-david@fromorbit.com
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
