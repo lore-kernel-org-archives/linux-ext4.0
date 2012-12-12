@@ -1,58 +1,113 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: A huge latency in ext4 and xfs because of stable page write
-Date: Wed, 12 Dec 2012 11:47:10 -0800
-Message-ID: <20121212194710.GA9453@blackbox.djwong.org>
-References: <20121211084520.GA13277@gmail.com>
- <20121211111707.GU15784@dastard>
- <20121212041803.GA29427@gmail.com>
- <20121212044948.GW16353@dastard>
- <20121212051332.GA6718@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	hch@infradead.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121212051332.GA6718@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] ext4: Split off ext4_journalled_invalidatepage()
+Date: Wed, 12 Dec 2012 21:50:15 +0100
+Message-ID: <1355345416-13565-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:55875 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754319Ab2LLUu1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Dec 2012 15:50:27 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 12, 2012 at 01:13:32PM +0800, Zheng Liu wrote:
-> On Wed, Dec 12, 2012 at 03:49:49PM +1100, Dave Chinner wrote:
-> [cut...]
-> > > > > Hence, I wonder whether or not we could revert stable page write temporarily.
-> > > > > After it is improved, we could add it back again.
-> > > > 
-> > > > The plan is to turn it off for filesystems/devices that don't
-> > > > require it. That list of devices will grow in future, so you
-> > > > probably should plan to handle latencies in the application
-> > > > properly...
-> > > 
-> > > I wonder whether we can provide a sysctl to turn on/off stable page
-> > > write.  At least we need to give sysadmin an opportunity to control it.
-> > 
-> > That's already been considered and discarded because turning off
-> > stable pages on devices that require it will cause validation or
-> > data corruption problems. The discussion was for these patches (and
-> > I think a followup series as well):
-> > 
-> > http://www.spinics.net/lists/linux-fsdevel/msg59421.html
-> 
-> Thanks for pointing out.  So now it seems that only I can do is to
-> present a proposal to revert stable page write temporarily because it
-> causes a huge latency for some applications.
+In data=journal mode we don't need delalloc or DIO handling in invalidatepage
+and similarly in other modes we don't need the journal handling. So split
+invalidatepage implementations.
 
-Hrm... just to be clear, is your complaint that you have one of these
-checksum-happy disks and overwrites are slow on it, or that you have a regular
-SATA disk that doesn't require stable pages and you don't want to take the
-speed hit?
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c             |   23 ++++++++++++++++-------
+ include/trace/events/ext4.h |   14 +++++++++++++-
+ 2 files changed, 29 insertions(+), 8 deletions(-)
 
-If it's the second, then let's just push the bdi flag thing upstream.  Given
-your comments a couple of days ago, I'm pretty sure it's the second, but I
-figured I ought to clarify the record. :)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b3c243b..66abac7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2799,8 +2799,6 @@ static void ext4_invalidatepage_free_endio(struct page *page, unsigned long offs
+ 
+ static void ext4_invalidatepage(struct page *page, unsigned long offset)
+ {
+-	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
+-
+ 	trace_ext4_invalidatepage(page, offset);
+ 
+ 	/*
+@@ -2808,16 +2806,27 @@ static void ext4_invalidatepage(struct page *page, unsigned long offset)
+ 	 */
+ 	if (ext4_should_dioread_nolock(page->mapping->host))
+ 		ext4_invalidatepage_free_endio(page, offset);
++
++	/* No journalling happens on data buffers when this function is used */
++	WARN_ON(page_has_buffers(page) && buffer_jbd(page_buffers(page)));
++
++	block_invalidatepage(page, offset);
++}
++
++static void ext4_journalled_invalidatepage(struct page *page,
++					   unsigned long offset)
++{
++	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
++
++	trace_ext4_journalled_invalidatepage(page, offset);
++
+ 	/*
+ 	 * If it's a full truncate we just forget about the pending dirtying
+ 	 */
+ 	if (offset == 0)
+ 		ClearPageChecked(page);
+ 
+-	if (journal)
+-		jbd2_journal_invalidatepage(journal, page, offset);
+-	else
+-		block_invalidatepage(page, offset);
++	jbd2_journal_invalidatepage(journal, page, offset);
+ }
+ 
+ static int ext4_releasepage(struct page *page, gfp_t wait)
+@@ -3201,7 +3210,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.write_end		= ext4_journalled_write_end,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+ 	.bmap			= ext4_bmap,
+-	.invalidatepage		= ext4_invalidatepage,
++	.invalidatepage		= ext4_journalled_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+ 	.direct_IO		= ext4_direct_IO,
+ 	.is_partially_uptodate  = block_is_partially_uptodate,
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index d49b285..df972d9 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -450,7 +450,7 @@ DEFINE_EVENT(ext4__page_op, ext4_releasepage,
+ 	TP_ARGS(page)
+ );
+ 
+-TRACE_EVENT(ext4_invalidatepage,
++DECLARE_EVENT_CLASS(ext4_invalidatepage_op,
+ 	TP_PROTO(struct page *page, unsigned long offset),
+ 
+ 	TP_ARGS(page, offset),
+@@ -476,6 +476,18 @@ TRACE_EVENT(ext4_invalidatepage,
+ 		  (unsigned long) __entry->index, __entry->offset)
+ );
+ 
++DEFINE_EVENT(ext4_invalidatepage_op, ext4_invalidatepage
++	TP_PROTO(struct page *page, unsigned long offset),
++
++	TP_ARGS(page, offset)
++);
++
++DEFINE_EVENT(ext4_invalidatepage_op, ext4_journalled_invalidatepage
++	TP_PROTO(struct page *page, unsigned long offset),
++
++	TP_ARGS(page, offset)
++);
++
+ TRACE_EVENT(ext4_discard_blocks,
+ 	TP_PROTO(struct super_block *sb, unsigned long long blk,
+ 			unsigned long long count),
+-- 
+1.7.1
 
-I haven't posted new patches because I've been busy writing a fix for ext3.
-It seems to be working, so I'll clean it up and send out a new series.
-
---D
