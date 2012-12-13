@@ -1,75 +1,47 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: A huge latency in ext4 and xfs because of stable page write
-Date: Thu, 13 Dec 2012 10:30:26 +0800
-Message-ID: <20121213023026.GB5185@gmail.com>
-References: <20121211084520.GA13277@gmail.com>
- <20121211111707.GU15784@dastard>
- <20121212041803.GA29427@gmail.com>
- <20121212044948.GW16353@dastard>
- <20121212051332.GA6718@gmail.com>
- <20121212194710.GA9453@blackbox.djwong.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 3/4] 9pfs: Fix filesystem to wait for stable page writeback
+Date: Thu, 13 Dec 2012 00:08:02 -0800
+Message-ID: <20121213080802.23360.4487.stgit@blackbox.djwong.org>
+References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-	hch@infradead.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-kernel@vger.kernel.org, hch@infradead.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
+	"Darrick J. Wong" <darrick.wong@oracle.com>, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:51332 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754422Ab2LMCRL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Dec 2012 21:17:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20121212194710.GA9453@blackbox.djwong.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48300 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751143Ab2LMIJd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2012 03:09:33 -0500
+In-Reply-To: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Darrick,
+Fix up the ->page_mkwrite handler to provide stable page writes if necessary.
 
-On Wed, Dec 12, 2012 at 11:47:10AM -0800, Darrick J. Wong wrote:
-> On Wed, Dec 12, 2012 at 01:13:32PM +0800, Zheng Liu wrote:
-> > On Wed, Dec 12, 2012 at 03:49:49PM +1100, Dave Chinner wrote:
-> > [cut...]
-> > > > > > Hence, I wonder whether or not we could revert stable page write temporarily.
-> > > > > > After it is improved, we could add it back again.
-> > > > > 
-> > > > > The plan is to turn it off for filesystems/devices that don't
-> > > > > require it. That list of devices will grow in future, so you
-> > > > > probably should plan to handle latencies in the application
-> > > > > properly...
-> > > > 
-> > > > I wonder whether we can provide a sysctl to turn on/off stable page
-> > > > write.  At least we need to give sysadmin an opportunity to control it.
-> > > 
-> > > That's already been considered and discarded because turning off
-> > > stable pages on devices that require it will cause validation or
-> > > data corruption problems. The discussion was for these patches (and
-> > > I think a followup series as well):
-> > > 
-> > > http://www.spinics.net/lists/linux-fsdevel/msg59421.html
-> > 
-> > Thanks for pointing out.  So now it seems that only I can do is to
-> > present a proposal to revert stable page write temporarily because it
-> > causes a huge latency for some applications.
-> 
-> Hrm... just to be clear, is your complaint that you have one of these
-> checksum-happy disks and overwrites are slow on it, or that you have a regular
-> SATA disk that doesn't require stable pages and you don't want to take the
-> speed hit?
-> 
-> If it's the second, then let's just push the bdi flag thing upstream.  Given
-> your comments a couple of days ago, I'm pretty sure it's the second, but I
-> figured I ought to clarify the record. :)
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/9p/vfs_file.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-Yes, it's the second.  In our product system we have a large number of
-SATA disks that don't require stable pages.  So that would be great if
-we have a method to turn on/off stable page.
 
-> 
-> I haven't posted new patches because I've been busy writing a fix for ext3.
-> It seems to be working, so I'll clean it up and send out a new series.
+diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
+index c2483e9..357260b 100644
+--- a/fs/9p/vfs_file.c
++++ b/fs/9p/vfs_file.c
+@@ -620,6 +620,7 @@ v9fs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	lock_page(page);
+ 	if (page->mapping != inode->i_mapping)
+ 		goto out_unlock;
++	wait_for_stable_page(page);
+ 
+ 	return VM_FAULT_LOCKED;
+ out_unlock:
 
-Cool!  We are looking forward the new patch series. :-)
-
-Regards,
-                                                - Zheng
