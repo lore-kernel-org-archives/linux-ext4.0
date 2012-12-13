@@ -1,123 +1,89 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 1/4] bdi: Allow block devices to say that they require stable
- page writes
-Date: Thu, 13 Dec 2012 00:07:47 -0800
-Message-ID: <20121213080747.23360.24302.stgit@blackbox.djwong.org>
-References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
+From: Forrest Liu <forrestl@synology.com>
+Subject: [PATCH] ext4: fix extent tree corruption that incurred by hole punch [V2]
+Date: Thu, 13 Dec 2012 23:32:22 +0800
+Message-ID: <CAJSVwFM3vq9wsq0Mn5L1bh-WHoP1g3VMJAOg_ruavZFednsjVw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
-	"Darrick J. Wong" <darrick.wong@oracle.com>, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Ashish Sangwan <ashishsangwan2@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:35430 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753031Ab2LMPcX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2012 10:32:23 -0500
+Received: by mail-ie0-f174.google.com with SMTP id c11so4078598ieb.19
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Dec 2012 07:32:23 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This creates a per-backing-device flag that tracks whether or not pages must be
-held immutable during writeout.  Eventually it will be used to waive
-wait_for_page_writeback() if nobody requires stable pages.
+When depth of extent tree is greater than 1, logical start value
+of interior node didn't updated correctly in ext4_ext_rm_idx.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Forrest Liu <forrestl@synology.com>
 ---
- Documentation/ABI/testing/sysfs-class-bdi |    5 +++++
- block/blk-integrity.c                     |    4 ++++
- include/linux/backing-dev.h               |    6 ++++++
- mm/backing-dev.c                          |   11 +++++++++++
- 4 files changed, 26 insertions(+)
+ fs/ext4/extents.c |   22 ++++++++++++++++++----
+ 1 file changed, 18 insertions(+), 4 deletions(-)
 
-
-diff --git a/Documentation/ABI/testing/sysfs-class-bdi b/Documentation/ABI/testing/sysfs-class-bdi
-index 5f50097..d773d56 100644
---- a/Documentation/ABI/testing/sysfs-class-bdi
-+++ b/Documentation/ABI/testing/sysfs-class-bdi
-@@ -48,3 +48,8 @@ max_ratio (read-write)
- 	most of the write-back cache.  For example in case of an NFS
- 	mount that is prone to get stuck, or a FUSE mount which cannot
- 	be trusted to play fair.
-+
-+stable_pages_required (read-only)
-+
-+	If set, the backing device requires that all pages comprising a write
-+	request must not be changed until writeout is complete.
-diff --git a/block/blk-integrity.c b/block/blk-integrity.c
-index da2a818..dabd221 100644
---- a/block/blk-integrity.c
-+++ b/block/blk-integrity.c
-@@ -420,6 +420,8 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
- 	} else
- 		bi->name = bi_unsupported_name;
- 
-+	disk->queue->backing_dev_info.capabilities |= BDI_CAP_STABLE_WRITES;
-+
- 	return 0;
- }
- EXPORT_SYMBOL(blk_integrity_register);
-@@ -438,6 +440,8 @@ void blk_integrity_unregister(struct gendisk *disk)
- 	if (!disk || !disk->integrity)
- 		return;
- 
-+	disk->queue->backing_dev_info.capabilities &= ~BDI_CAP_STABLE_WRITES;
-+
- 	bi = disk->integrity;
- 
- 	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 2a9a9ab..085501f 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
- #define BDI_CAP_EXEC_MAP	0x00000040
- #define BDI_CAP_NO_ACCT_WB	0x00000080
- #define BDI_CAP_SWAP_BACKED	0x00000100
-+#define BDI_CAP_STABLE_WRITES	0x00000200
- 
- #define BDI_CAP_VMFLAGS \
- 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
-@@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
- int pdflush_proc_obsolete(struct ctl_table *table, int write,
- 		void __user *buffer, size_t *lenp, loff_t *ppos);
- 
-+static inline bool bdi_cap_stable_pages_required(struct backing_dev_info *bdi)
-+{
-+	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
-+}
-+
- static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d3dd618..496952e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2190,13 +2190,14 @@ errout:
+  * removes index from the index block.
+  */
+ static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
+-			struct ext4_ext_path *path)
++			struct ext4_ext_path *path, int depth)
  {
- 	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index d3ca2b3..41733c5 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
+ 	int err;
+ 	ext4_fsblk_t leaf;
+
+ 	/* free index block */
+-	path--;
++	depth--;
++	path = path + depth;
+ 	leaf = ext4_idx_pblock(path->p_idx);
+ 	if (unlikely(path->p_hdr->eh_entries == 0)) {
+ 		EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
+@@ -2221,6 +2222,19 @@ static int ext4_ext_rm_idx(handle_t *handle,
+struct inode *inode,
+
+ 	ext4_free_blocks(handle, inode, NULL, leaf, 1,
+ 			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
++
++	while (--depth >= 0) {
++		if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
++			break;
++		path--;
++		err = ext4_ext_get_access(handle, inode, path);
++		if (err)
++			break;
++		path->p_idx->ei_block = (path+1)->p_idx->ei_block;
++		err = ext4_ext_dirty(handle, inode, path);
++		if (err)
++			break;
++	}
+ 	return err;
  }
- BDI_SHOW(max_ratio, bdi->max_ratio)
- 
-+static ssize_t stable_pages_required_show(struct device *dev,
-+					  struct device_attribute *attr,
-+					  char *page)
-+{
-+	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-+
-+	return snprintf(page, PAGE_SIZE-1, "%d\n",
-+			bdi_cap_stable_pages_required(bdi) ? 1 : 0);
-+}
-+
- #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
- 
- static struct device_attribute bdi_dev_attrs[] = {
- 	__ATTR_RW(read_ahead_kb),
- 	__ATTR_RW(min_ratio),
- 	__ATTR_RW(max_ratio),
-+	__ATTR_RO(stable_pages_required),
- 	__ATTR_NULL,
- };
- 
+
+@@ -2557,7 +2571,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+ 	/* if this leaf is free, then we should
+ 	 * remove it from index block above */
+ 	if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
+-		err = ext4_ext_rm_idx(handle, inode, path + depth);
++		err = ext4_ext_rm_idx(handle, inode, path, depth);
+
+ out:
+ 	return err;
+@@ -2760,7 +2774,7 @@ again:
+ 				/* index is empty, remove it;
+ 				 * handle must be already prepared by the
+ 				 * truncatei_leaf() */
+-				err = ext4_ext_rm_idx(handle, inode, path + i);
++				err = ext4_ext_rm_idx(handle, inode, path, i);
+ 			}
+ 			/* root level has p_bh == NULL, brelse() eats this */
+ 			brelse(path[i].p_bh);
+-- 
+1.7.9.5
