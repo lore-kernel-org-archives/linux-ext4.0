@@ -1,257 +1,66 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole
- punch [V2]
-Date: Fri, 14 Dec 2012 11:18:29 -0600
-Message-ID: <50CB5F65.9050300@redhat.com>
-References: <CAJSVwFM3vq9wsq0Mn5L1bh-WHoP1g3VMJAOg_ruavZFednsjVw@mail.gmail.com> <CAJSVwFMW-pG4ca+EnnqTP2wXn8_zi5C+CihgrS-pvbkn9gnjmQ@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide
+ stable pages during write
+Date: Fri, 14 Dec 2012 11:43:40 -0800
+Message-ID: <20121214194340.GI9453@blackbox.djwong.org>
+References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
+ <20121213080811.23360.98131.stgit@blackbox.djwong.org>
+ <50CA8556.7030905@mit.edu>
+ <20121214021048.GF9453@blackbox.djwong.org>
+ <20121214033334.GA9806@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Ashish Sangwan <ashishsangwan2@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Forrest Liu <forrestl@synology.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756538Ab2LNRSh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 14 Dec 2012 12:18:37 -0500
-In-Reply-To: <CAJSVwFMW-pG4ca+EnnqTP2wXn8_zi5C+CihgrS-pvbkn9gnjmQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andy Lutomirski <luto@amacapital.net>, axboe@kernel.dk,
+	lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
+	martin.petersen@oracle.com, neilb@suse.de,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-kernel@vger.kernel.org, hch@infradead.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20121214033334.GA9806@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 12/13/12 10:04 AM, Forrest Liu wrote:
-> @Ashish
->    I have modified the patch with your suggestion, could you help to review.
+On Fri, Dec 14, 2012 at 02:33:34PM +1100, Dave Chinner wrote:
+> On Thu, Dec 13, 2012 at 06:10:49PM -0800, Darrick J. Wong wrote:
+> > On Thu, Dec 13, 2012 at 05:48:06PM -0800, Andy Lutomirski wrote:
+> > > On 12/13/2012 12:08 AM, Darrick J. Wong wrote:
+> > > > Several complaints have been received regarding long file write latencies when
+> > > > memory pages must be held stable during writeback.  Since it might not be
+> > > > acceptable to stall programs for the entire duration of a page write (which may
+> > > > take many milliseconds even on good hardware), enable a second strategy wherein
+> > > > pages are snapshotted as part of submit_bio; the snapshot can be held stable
+> > > > while writes continue.
+> > > > 
+> > > > This provides a band-aid to provide stable page writes on jbd without needing
+> > > > to backport the fixed locking scheme in jbd2.  A mount option is added to ext4
+> > > > to allow administrators to enable it there.
+> > > 
+> > > I'm a bit confused as to what it has to do with ext3.  Wouldn't this be
+> > > useful as a mount option everywhere, though?
+> > 
+> > ext3 requires snapshots; the rest are ok with either strategy.
+> > 
+> > *If* snapshotting is generally liked, then yes I'll go redo it as a vfs mount
+> > option.
 > 
-> @Ted
->    I wrote a script to verify this problem.
->    This script needs tst_extents and fallocate executables from e2fsprogs, and
-> fallocate needs your patch with bug fix to do hole punch.
+> It's copying every single IO, right? If so, then please don't
+> propagate any further than is necessary to fix the broken
+> filesystems...
 
-Just FWIW, upstream fallocate in util-linux can punch holes already.
+Yup.  I wasn't intending this flag for general service, though I /am/ curious
+to hear if anyone sees any substantive performance difference with snapshots.
 
-Usage:
- fallocate [options] <filename>
-
-Options:
- -n, --keep-size     don't modify the length of the file
- -p, --punch-hole    punch holes in the file
-...
-
--Eric
-
->    Steps to run the script
-> 1) assign variable blkdev to path of block device that filesystem mount on
-> 2) cd to mount point
-> 3) run script
+--D
 > 
-> Thanks,
-> Forrest
+> Cheers,
 > 
-> # verify hole punch bug
-> #
-> blkdev=/dev/sda1
-> file=punch_test
-> cmdfile=cmds
-> filesize=`expr 1024 \* 1024 \* 1024`
-> blksize=`tst_extents -R "stats" $blkdev | grep "Block size" | cut -d
-> ':'  -f 2 | tr -d ' '`
-> maxlblks=`expr $filesize \/ $blksize`
-> 
-> rm $file
-> touch $file
-> fallocate -l $filesize $file
-> sync
-> 
-> inode=`tst_extents -R "stat ${file}" $blkdev | grep Inode | cut -d ' ' -f 2`
-> echo "Inode number: $inode"
-> 
-> # punch every even blocks
-> echo "Punch out every even blocks"
-> i=0
-> while [ "${i}" -lt "${maxlblks}" ]
-> do
-> 	offset=`expr $i \* $blksize`
-> 	fallocate -p -o $offset -l $blksize $file
-> 	i=$(($i+2))
-> done
-> 
-> # get lblk from root->ns->down
-> echo "inode <$inode>" > cmds
-> echo "root" >> cmds
-> echo "ns" >> cmds
-> 
-> a=`tst_extents -f $cmdfile $blkdev`
-> echo "down" >> cmds
-> b=`tst_extents -f $cmdfile $blkdev`
-> 
-> # get output form command "down"
-> c=${b:${#a}}
-> echo "Out put from command \"down\""
-> echo $c
-> 
-> a=`echo ${c#*lblk} | cut -d ',' -f 1`
-> lblk_low=`echo $a | cut -d '-' -f 1`
-> lblk_hi=`echo $a | cut -d '-' -f 3`
-> 
-> echo ""
-> echo "Punch out blocks $lblk_hi, ..., $lblk_low"
-> 
-> i=$lblk_hi
-> while [ $i -ge $lblk_low ]
-> do
-> 	offset=`expr $i \* $blksize`
-> 	fallocate -p -o $offset -l $blksize $file
-> 	i=$(($i-1))
-> done
-> 
-> # verify logical start value is correct or not
-> echo "inode <$inode>" > cmds
-> echo "root" >> cmds
-> a=`tst_extents -f $cmdfile $blkdev`
-> echo "ns" >> cmds
-> b=`tst_extents -f $cmdfile $blkdev`
-> 
-> c=${b:${#a}}
-> c=`echo ${c#*lblk} | cut -d ',' -f 1`
-> lblk_start0=`echo $c | cut -d '-' -f 1`
-> 
-> echo "down" >> cmds
-> c=`tst_extents -f $cmdfile $blkdev`
-> c=${c:${#b}}
-> c=`echo ${c#*lblk} | cut -d ',' -f 1`
-> lblk_start1=`echo $c | cut -d '-' -f 1`
-> 
-> if [ $lblk_start0 -eq $lblk_start1 ]
-> then
-> 	echo "logical start valie is consistency:$lblk_start0,$lblk_start1"
-> else
-> 	echo "logical start valie is not consistency:$lblk_start0,$lblk_start1"
-> fi
-> 
-> 
-> 
-> diff --git a/contrib/fallocate.c b/contrib/fallocate.c
-> index 0e8319f..c1c08e1 100644
-> --- a/contrib/fallocate.c
-> +++ b/contrib/fallocate.c
-> @@ -35,10 +35,11 @@
-> 
->  // #include <linux/falloc.h>
->  #define FALLOC_FL_KEEP_SIZE	0x01
-> +#define FALLOC_FL_PUNCH_HOLE	0x02 /* de-allocates range */
-> 
->  void usage(void)
->  {
-> -	printf("Usage: fallocate [-nt] [-o offset] -l length filename\n");
-> +	printf("Usage: fallocate [-npt] [-o offset] -l length filename\n");
->  	exit(EXIT_FAILURE);
->  }
-> 
-> @@ -56,6 +57,7 @@ cvtnum(char *s)
->  	char		*sp;
->  	int		c;
-> 
-> +
->  	i = strtoll(s, &sp, 0);
->  	if (i == 0 && sp == s)
->  		return -1LL;
-> @@ -94,12 +96,18 @@ int main(int argc, char **argv)
->  	int	error;
->  	int	tflag = 0;
-> 
-> -	while ((opt = getopt(argc, argv, "nl:ot")) != -1) {
-> +	while ((opt = getopt(argc, argv, "npl:o:t")) != -1) {
->  		switch(opt) {
->  		case 'n':
->  			/* do not change filesize */
->  			falloc_mode = FALLOC_FL_KEEP_SIZE;
->  			break;
-> +		case 'p':
-> +			/* punch mode */
-> +			falloc_mode = (FALLOC_FL_PUNCH_HOLE |
-> +				FALLOC_FL_KEEP_SIZE);
-> +			break;
-> +
->  		case 'l':
->  			length = cvtnum(optarg);
->  			break;
-> 
-> 2012/12/13 Forrest Liu <forrestl@synology.com>:
->> When depth of extent tree is greater than 1, logical start value
->> of interior node didn't updated correctly in ext4_ext_rm_idx.
->>
->> Signed-off-by: Forrest Liu <forrestl@synology.com>
->> ---
->>  fs/ext4/extents.c |   22 ++++++++++++++++++----
->>  1 file changed, 18 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index d3dd618..496952e 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -2190,13 +2190,14 @@ errout:
->>   * removes index from the index block.
->>   */
->>  static int ext4_ext_rm_idx(handle_t *handle, struct inode *inode,
->> -                       struct ext4_ext_path *path)
->> +                       struct ext4_ext_path *path, int depth)
->>  {
->>         int err;
->>         ext4_fsblk_t leaf;
->>
->>         /* free index block */
->> -       path--;
->> +       depth--;
->> +       path = path + depth;
->>         leaf = ext4_idx_pblock(path->p_idx);
->>         if (unlikely(path->p_hdr->eh_entries == 0)) {
->>                 EXT4_ERROR_INODE(inode, "path->p_hdr->eh_entries == 0");
->> @@ -2221,6 +2222,19 @@ static int ext4_ext_rm_idx(handle_t *handle,
->> struct inode *inode,
->>
->>         ext4_free_blocks(handle, inode, NULL, leaf, 1,
->>                          EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
->> +
->> +       while (--depth >= 0) {
->> +               if (path->p_idx != EXT_FIRST_INDEX(path->p_hdr))
->> +                       break;
->> +               path--;
->> +               err = ext4_ext_get_access(handle, inode, path);
->> +               if (err)
->> +                       break;
->> +               path->p_idx->ei_block = (path+1)->p_idx->ei_block;
->> +               err = ext4_ext_dirty(handle, inode, path);
->> +               if (err)
->> +                       break;
->> +       }
->>         return err;
->>  }
->>
->> @@ -2557,7 +2571,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
->>         /* if this leaf is free, then we should
->>          * remove it from index block above */
->>         if (err == 0 && eh->eh_entries == 0 && path[depth].p_bh != NULL)
->> -               err = ext4_ext_rm_idx(handle, inode, path + depth);
->> +               err = ext4_ext_rm_idx(handle, inode, path, depth);
->>
->>  out:
->>         return err;
->> @@ -2760,7 +2774,7 @@ again:
->>                                 /* index is empty, remove it;
->>                                  * handle must be already prepared by the
->>                                  * truncatei_leaf() */
->> -                               err = ext4_ext_rm_idx(handle, inode, path + i);
->> +                               err = ext4_ext_rm_idx(handle, inode, path, i);
->>                         }
->>                         /* root level has p_bh == NULL, brelse() eats this */
->>                         brelse(path[i].p_bh);
->> --
->> 1.7.9.5
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
