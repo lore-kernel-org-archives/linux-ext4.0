@@ -1,64 +1,127 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide
- stable pages during write
-Date: Fri, 14 Dec 2012 14:33:34 +1100
-Message-ID: <20121214033334.GA9806@dastard>
-References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
- <20121213080811.23360.98131.stgit@blackbox.djwong.org>
- <50CA8556.7030905@mit.edu>
- <20121214021048.GF9453@blackbox.djwong.org>
+From: "Peng, Tao" <tao.peng@emc.com>
+Subject: RE: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Fri, 14 Dec 2012 03:32:32 +0000
+Message-ID: <1882637210201641A747464075FFC64906715F@MX101CL02.corp.emc.com>
+References: <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org>
+ <50BF2537.6070809@huawei.com> <50BF597D.3040704@tao.ma>
+ <50BFF149.6080007@huawei.com> <20121206123744.GA17951@quack.suse.cz>
+ <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com>
+ <20121206170913.GC21029@quack.suse.cz> <50C1BF05.6020605@huawei.com>
+ <50C6E86F.8040308@huawei.com> <20121212100444.GB18885@quack.suse.cz>
+ <50C86AFC.7080301@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andy Lutomirski <luto@amacapital.net>, axboe@kernel.dk,
-	lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, neilb@suse.de,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:35982 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754851Ab2LNDdj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Dec 2012 22:33:39 -0500
-Content-Disposition: inline
-In-Reply-To: <20121214021048.GF9453@blackbox.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: qixuan wu <wuqixuan@gmail.com>, Tao Ma <tm@tao.ma>,
+	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"wuqixuan@huawei.com" <wuqixuan@huawei.com>,
+	"xieshuangyi@huawei.com" <xieshuangyi@huawei.com>
+To: Li Zefan <lizefan@huawei.com>, Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <50C86AFC.7080301@huawei.com>
+Content-Language: en-US
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 13, 2012 at 06:10:49PM -0800, Darrick J. Wong wrote:
-> On Thu, Dec 13, 2012 at 05:48:06PM -0800, Andy Lutomirski wrote:
-> > On 12/13/2012 12:08 AM, Darrick J. Wong wrote:
-> > > Several complaints have been received regarding long file write latencies when
-> > > memory pages must be held stable during writeback.  Since it might not be
-> > > acceptable to stall programs for the entire duration of a page write (which may
-> > > take many milliseconds even on good hardware), enable a second strategy wherein
-> > > pages are snapshotted as part of submit_bio; the snapshot can be held stable
-> > > while writes continue.
-> > > 
-> > > This provides a band-aid to provide stable page writes on jbd without needing
-> > > to backport the fixed locking scheme in jbd2.  A mount option is added to ext4
-> > > to allow administrators to enable it there.
-> > 
-> > I'm a bit confused as to what it has to do with ext3.  Wouldn't this be
-> > useful as a mount option everywhere, though?
-> 
-> ext3 requires snapshots; the rest are ok with either strategy.
-> 
-> *If* snapshotting is generally liked, then yes I'll go redo it as a vfs mount
-> option.
-
-It's copying every single IO, right? If so, then please don't
-propagate any further than is necessary to fix the broken
-filesystems...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1mc2RldmVsLW93bmVy
+QHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LWZzZGV2ZWwtb3duZXJAdmdlci5rZXJuZWwu
+b3JnXSBPbiBCZWhhbGYgT2YgTGkNCj4gWmVmYW4NCj4gU2VudDogV2VkbmVzZGF5LCBEZWNlbWJl
+ciAxMiwgMjAxMiA3OjMxIFBNDQo+IFRvOiBKYW4gS2FyYQ0KPiBDYzogcWl4dWFuIHd1OyBUYW8g
+TWE7IFRoZW9kb3JlIFRzJ287IEVyaWMgU2FuZGVlbjsgWWFmYW5nIFNoYW87IGxpbnV4LWZzZGV2
+ZWxAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4gZXh0NEB2Z2VyLmtlcm5lbC5vcmc7IHd1cWl4
+dWFuQGh1YXdlaS5jb207IHhpZXNodWFuZ3lpQGh1YXdlaS5jb20NCj4gU3ViamVjdDogUmU6IGhl
+bHAgYWJvdXQgZXh0MyByZWFkLW9ubHkgaXNzdWUgb24gZXh0MygyLjYuMTYuMzApDQo+IA0KPiBP
+biAyMDEyLzEyLzEyIDE4OjA0LCBKYW4gS2FyYSB3cm90ZToNCj4gPiBPbiBUdWUgMTEtMTItMTIg
+MTY6MDE6NTEsIExpIFplZmFuIHdyb3RlOg0KPiA+Pj4+PiBXZSBoYXZlIGFscmVhZHkgZHVtcCBv
+ZiB0aGUgZGF0YSBieSBkZWJ1Z2ZzLiBUaGUgZGF0YSBpcyB2ZXJ5IGdvb2QNCj4gPj4+Pj4gd2l0
+aG91dCBlcnJvci4gQnV0IHdlIGp1c3QgZGlkIGl0IGJlZm9yZSBmc2NrLCBldmVuIHRoZSBmc2Nr
+IGlzIG5vdA0KPiA+Pj4+PiBnaXZpbmcgYW55IGVycm9yLiBJIHdhbnQgdG8ga25vdyB3aGV0aGVy
+IGZzY2sgd2lsbCBtb2RpZnkgZGlzayBkYXRhDQo+ID4+Pj4+IHdpdGhvdXQgcmVwb3J0aW5nIGFu
+eSBlcnJvciBvciBub3QgPw0KPiA+Pj4+ICAgQWgsIE9LLiBTbyBpdCBzZWVtcyB0aGF0IGRpcmVj
+dG9yeSBibG9jayBpcyBPSywganVzdCAgZl9wb3MgZ2V0cyBjb3JydXB0ZWQNCj4gPj4+PiBzb21l
+aG93LiBUaGVyZSBhcmUgZ3VhcmRzIGluIGV4dDNfcmVhZGRpcigpIHRvIHJlc2NhbiBkaXIgYmxv
+Y2sgd2hlbg0KPiA+Pj4+IGRpcmVjdG9yeSBpcyBtb2RpZmllZCBidXQgbWF5YmUgdGhhdCdzIG5v
+dCB3b3JraW5nIGNvcnJlY3RseS4gSSBkb24ndCB3YW50DQo+ID4+Pj4gdG8gYnVybiB0b28gbXVj
+aCB0aW1lIG9uIHRoaXMgc2luY2UgdGhpcyBpcyBzbyBhbmNpZW50IGtlcm5lbCBidXQgSSdkIGJl
+DQo+ID4+Pj4gbG9va2luZyBpbiB0aGF0IGRpcmVjdGlvbi4uLg0KPiA+Pj4+DQo+ID4+Pg0KPiA+
+Pj4gSSd2ZSBhZGRlZCBzb21lIGRlYnVnIGNvZGUgaW50byBleHQzLCB3aGljaCBkb2VzIHRoZXNl
+IHRoaW5nczoNCj4gPj4+IC0gZHVtcCB0aGUgZGlyIGJsb2NrDQo+ID4+PiAtIHByaW50IHRoZSBj
+dXJyZW50IGFuZCBsYXN0IGZfcG9zIGFuZCBvZmZzZXQNCj4gPj4+IC0gZHVtcF9zdGFjaygpIHRv
+IHNlZSB3aGljaCBwcm9jZXNzIHRyaWdnZXJzIHRoZSBidWcNCj4gPj4+DQo+ID4+PiBIb3BlIHdl
+IGNhbiB0cmlnZ2VyIHRoZSBidWcgaW4gb3VyIGxhYnMgKFdlIGRpZCBzZWUgdGhpcyBoYXBwZW5l
+ZCB0d2ljZSB0aGlzIHdlZWsNCj4gPj4+IGluIGEgbGFiKSwgdGhvdWdoIHdlIGNhbid0IHBhdGNo
+IHRoZSBrZXJuZWwgaW4gdGhlIHByb2R1Y3RzLg0KPiA+Pj4NCj4gPj4+IEkgY29tcGFyZWQgZXh0
+M19yZWFkZGlyKCkgd2l0aCBsYXRlc3QgZXh0MywgYW5kIHNhdyBubyBkaWZmZXJlbmNlIGV4Y2Vw
+dCBzb21lDQo+ID4+PiBBUEkgY2hhbmdlcy4gSSdsbCBkaWcgZGVlcGVyLiBUaGFuc2tzIGZvciB0
+aGUgc3VnZ2VzdGlvbiENCj4gPj4+DQo+ID4+DQo+ID4+IFdlJ3ZlIG1hbmFnZWQgdG8gdHJpZ2dl
+ciB0aGUgYnVnIG9uY2UsIGFuZCBjb2xsZWN0ZWQgc29tZSBkZWJ1ZyBpbmZvcm1hdGlvbi4gV2UN
+Cj4gPj4gZm91bmQgdGhlIGJ1ZmZlciBoZWFkIHdhc24ndCBjb3JydXB0ZWQsIGJ1dCBmX3BvcyB3
+YXMgc2V0IHRvIDQwMjQgYW5kIHRoZW4gZXh0Mw0KPiA+PiByZXBvcnRlZCBlcnJvci4NCj4gPj4N
+Cj4gPj4gRVhUMy1mcyBlcnJvciAoZGV2aWNlIHNkYTcpOiBleHQzX3JlYWRkaXI6IGJhZCBlbnRy
+eSBpbiBkaXJlY3RvcnkgIzEyNzQ3MzQ1OiByZWNfbGVuIGlzIHNtYWxsZXINCj4gdGhhbiBtaW5p
+bWFsIC0gb2Zmc2V0PTQwMjQsIGlub2RlPTAsIHJlY19sZW49MCwgbmFtZV9sZW49MA0KPiA+PiBB
+Ym9ydGluZyBqb3VybmFsIG9uIGRldmljZSBzZGE3Lg0KPiA+PiBleHQzX2Fib3J0IGNhbGxlZC4N
+Cj4gPj4gRVhUMy1mcyBlcnJvciAoZGV2aWNlIHNkYTcpOiBleHQzX2pvdXJuYWxfc3RhcnRfc2I6
+IERldGVjdGVkIGFib3J0ZWQgam91cm5hbA0KPiA+PiBSZW1vdW50aW5nIGZpbGVzeXN0ZW0gcmVh
+ZC1vbmx5DQo+ID4+DQo+ID4+IDAwMDAwMDAwOiA1MSA4MiBjMiAwMCAwYyAwMCAwMSAwMiAyZSAw
+MCAwMCAwMCAwNCA4MCBjMiAwMCAgUS4uLi4uLi4uLi4uLi4uLg0KPiA+PiAwMDAwMDAxMDogMGMg
+MDAgMDIgMDIgMmUgMmUgMDAgMDAgZDYgODAgYzIgMDAgMTAgMDAgMDYgMDIgIC4uLi4uLi4uLi4u
+Li4uLi4NCj4gPj4gMDAwMDAwMjA6IDYyIDYxIDYzIDZiIDc1IDcwIDAwIDAwIGJiIDgyIGMyIDAw
+IDFjIDAwIDExIDAxICBiYWNrdXAuLi4uLi4uLi4uDQo+ID4+IDAwMDAwMDMwOiA0ZCA2ZiA2ZSA2
+OSA3NCA2ZiA3MiA1MyA2NSA3MiA3NiA2OSA2MyA2NSAyZSA2ZiAgTW9uaXRvclNlcnZpY2Uubw0K
+PiA+PiAwMDAwMDA0MDogNzAgMDAgMDAgMDAgYmUgODIgYzIgMDAgMWMgMDAgMTMgMDEgNDMgNmYg
+NmQgNzAgIHAuLi4uLi4uLi4uLkNvbXANCj4gPj4gMDAwMDAwNTA6IDZjIDYxIDY5IDZlIDc0IDUw
+IDcyIDZmIDYzIDY1IDczIDczIDJlIDZmIDcwIDAwICBsYWludFByb2Nlc3Mub3AuDQo+ID4+IDAw
+MDAwMDYwOiBjMiA4MiBjMiAwMCAyMCAwMCAxNSAwMSA0YyA2ZiA2MyA2MSA3NCA2OSA2ZiA2ZSAg
+Li4uLiAuLi5Mb2NhdGlvbg0KPiA+PiAwMDAwMDA3MDogNTAgNzIgNjUgNTAgNzIgNmYgNjMgNjUg
+NzMgNzMgMmUgNmYgNzAgMDAgMDAgMDAgIFByZVByb2Nlc3Mub3AuLi4NCj4gPj4gMDAwMDAwODA6
+IGM5IDgyIGMyIDAwIDE4IDAwIDBmIDAxIDRlIDZmIDcyIDc0IDY4IDUwIDcyIDZmICAuLi4uLi4u
+Lk5vcnRoUHJvDQo+ID4+IDAwMDAwMDkwOiA2MyA2NSA3MyA3MyAyZSA2ZiA3MCAwMCBkNCA4MiBj
+MiAwMCAxOCAwMCAwZCAwMSAgY2Vzcy5vcC4uLi4uLi4uLg0KPiA+PiAwMDAwMDBhMDogNTMgNzkg
+NzMgNGQgNmYgNmUgNjkgNzQgNmYgNzIgMmUgNmYgNzAgMDAgMDAgMDAgIFN5c01vbml0b3Iub3Au
+Li4NCj4gPj4gMDAwMDAwYjA6IGRiIDgyIGMyIDAwIDFjIDAwIDEzIDAxIDU2IDU2IDQ5IDUwIDRl
+IDZmIDcyIDc0ICAuLi4uLi4uLlZWSVBOb3J0DQo+ID4+IDAwMDAwMGMwOiA2OCA1MCA3MiA2ZiA2
+MyA2NSA3MyA3MyAyZSA2ZiA3MCAwMCBlMSA4MiBjMiAwMCAgaFByb2Nlc3Mub3AuLi4uLg0KPiA+
+PiAwMDAwMDBkMDogMzQgMGYgMDkgMDEgNzIgNjEgNmUgNzMgNjEgNzUgMmUgNmYgNzAgMDAgMDAg
+MDAgIDQuLi5yYW5zYXUub3AuLi4NCj4gPj4gMDAwMDAwZTA6IDRmIDgzIGMyIDAwIDIwIDBmIDFl
+IDAxIDcyIDYxIDZlIDczIDYxIDc1IDJlIDZmICBPLi4uIC4uLnJhbnNhdS5vDQo+ID4+IDAwMDAw
+MGYwOiA3MCAyZSAzMiAzMCAzMSAzMiAzMSAzMiAzMSAzMCAzMCAzMiAzMCAzOSAzMiAzNCAgcC4y
+MDEyMTIxMDAyMDkyNA0KPiA+PiAwMDAwMDEwMDogMzQgMzUgMzEgMzMgMzkgMzQgMDAgMDAgNzkg
+ODMgYzIgMDAgZjggMGUgMTggMDEgIDQ1MTM5NC4ueS4uLi4uLi4NCj4gPj4gMDAwMDAxMTA6IDcy
+IDYxIDZlIDczIDYxIDc1IDJlIDZmIDcwIDJlIDMyIDMwIDMxIDMyIDMxIDMyICByYW5zYXUub3Au
+MjAxMjEyDQo+ID4+IDAwMDAwMTIwOiAzMSAzMCAzMCAzMiAzMCAzOSAzMiAzNCAwMCAwMCAwMCAw
+MCAwMCAwMCAwMCAwMCAgMTAwMjA5MjQuLi4uLi4uLg0KPiA+PiAuLi4NCj4gPj4gMDAwMDBmZjA6
+IDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwICAuLi4uLi4u
+Li4uLi4uLi4uDQo+ID4+DQo+ID4+IGxhc3Rfb2Zmc2V0PS0xLCBsYXN0X2Zwb3M9LTEsIGZfcG9z
+PTQwMjQNCj4gPj4NCj4gPj4gLTEgbWVhbnMgd2UgaGl0IHRoZSBidWcgaW4gdGhlIGZpcnN0IGl0
+ZXJhdGlvbiBpbiB0aGUgaW5zZGUgd2hpbGUgaW4NCj4gPj4gZXh0M19yZWFkZGlyKCkuDQo+ID4+
+DQo+ID4+IEkndmUgY2hlY2tlZCBob3cgZXh0M19yZWFkZGlyKCkgd29ya3MgYW5kIGhvdyBmX3Bv
+cywgZl92ZXJzaW9uIGFuZCBpX3ZlcnNpb24NCj4gPj4gZ2V0IGluaXRpYWxpemVkIGFuZCBtb2Rp
+ZmllZC4gTm93IEknbSBsb3N0LiBJIHJlYWxseSBjYW4ndCBzZWUgaG93IGZfcG9zIGdvdA0KPiA+
+PiBjb3JydXB0ZWQuIDooDQo+ID4gICBIdW0sIGl0IGxvb2tzIHJlYWxseSBjdXJpb3VzLiBTbyBm
+X3BvcyBoYXMgYmVlbiA0MDI0IHdoZW4gd2UgZW50ZXJlZA0KPiA+IGV4dDNfcmVhZGRpcigpPw0K
+PiANCj4gZHVubm8uIGJ1dCB3aGF0IGVsc2UgY2FuIGJlDQo+IA0KPiA+IERvIHlvdSBrbm93IHdo
+YXQgaXQgd2FzIHdoZW4gd2UgbGFzdCBsZWZ0IGV4dDNfcmVhZGRpcigpDQo+ID4gZm9yIHRoYXQg
+ZmlscD8gWW91IGNhbiBzdG9yZSB0aGF0IHZhbHVlIGluIHNvbWUgZGVidWcgZW50cnkgYWRkZWQg
+dG8gc3RydWN0DQo+ID4gZmlsZS4uLiBBbHNvIGFueSBjaGFuY2Ugd2UgZXZlciBoaXQ6DQo+ID4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpZiAodmVyc2lvbiAhPSBmaWxwLT5mX3Zl
+cnNpb24pDQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGdvdG8g
+cmV2YWxpZGF0ZTsNCj4gPiBJIGRvbid0IHRoaW5rIGl0IGNhbiBldmVyIGhhcHBlbiBzaW5jZSB3
+ZSBob2xkIGlfbXV0ZXggYW5kDQo+ID4gZ2VuZXJpY19maWxlX2xsc2VlaygpIHRha2VzIGlfbXV0
+ZXggYXMgd2VsbC4gQnV0IGJldHRlciBiZSBzdXJlLg0KPiA+DQo+IA0KPiBZZXN0ZXJkYXkgSSd2
+ZSBhZGRlZCBtb3JlIGRlYnVnIGFpZHMsIHdoaWNoIGNvbnZlcnMgYWxsIHRoZSBhYm92ZSBpbmZv
+cm1hdGlvbg0KPiBtZW50aW9uZWQuIEFjdHVhbGx5IHRoZSBjb2RlIHRyYWNrcyBhbGwgdGhlIHBs
+YWNlcyB0aGF0IGNoYW5nZSBmX3BvcywgYW5kDQo+IEkgdGhpbmsgb25seSBsc2VlaygpIGFuZCBy
+ZWFkZGlyKCkgY2FuIGNoYW5nZSBpdC4NCj4gDQo+IE5vdyBJJ20gd2FpdGluZyBmb3IgdGhlIGJ1
+ZyB0byBoYXBwZW4gYWdhaW4sIGNhbiBiZSBzZXZlcmFsIGRheXMuLi4NCk5vdCBzdXJlIGlmIHJl
+bGF0ZWQuIEkndmUgc2VlbiBjcmFwcHkgYXBwcyBkb2luZyBzZWVrZGlyKCkgcmFuZG9tbHkgY2F1
+c2luZyBMdXN0cmUgY2xpZW50IG9vcHMuIFdlIGZpeGVkIGl0IGJ5IGNoZWNraW5nIGlmIGZfdmVy
+c2lvbiBpcyAwIGFzIHdlbGwsIHdoaWNoIG1heSBwYXNzIHRoZSAoZmlscC0+Zl92ZXJzaW9uICE9
+IGlub2RlLT5pX3ZlcnNpb24pIGNoZWNrIGluIEx1c3RyZSBjbGllbnQgd2hlbiBhIGRpciBpcyBs
+c2VlaygpZWQgYmVmb3JlIGlfdmVyc2lvbiBjaGFuZ2VzLiBOb3Qgc3VyZSBpZiBleHQzIGhhcyB0
+aGUgc2FtZSBwcm9ibGVtIHRob3VnaC4gTWF5YmUgaXQgd2lsbCBiZSBoZWxwZnVsIHRvIHByaW50
+IGZfdmVyc2lvbiBhbmQgaV92ZXJzaW9uIHdoZW4geW91IHJlcHJvZHVjZSBpdC4NCg0KVGhhbmtz
+LA0KVGFvDQoNCg==
