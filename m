@@ -1,74 +1,50 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide
- stable pages during write
-Date: Fri, 14 Dec 2012 18:06:50 -0800
-Message-ID: <CALCETrVJd86oD=p6vnRVp=0g8JDbhfZTH2G-ZCCOHzrMMiembw@mail.gmail.com>
-References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
- <20121213080811.23360.98131.stgit@blackbox.djwong.org> <50CA8556.7030905@mit.edu>
- <20121214021048.GF9453@blackbox.djwong.org> <CALCETrWRqFmTpYNyDwUyzQpSVZjVEOCCZfHHohVR5uvHzS+s0Q@mail.gmail.com>
- <20121215020113.GK9453@blackbox.djwong.org>
+From: =?UTF-8?B?RMOibmllbA==?= Fraga <fragabr@gmail.com>
+Subject: Kernel 3.7.0: bad header/extent
+Date: Sat, 15 Dec 2012 18:44:26 -0200
+Message-ID: <kainf9$btc$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:43730 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754735Ab2LOCHL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Dec 2012 21:07:11 -0500
-Received: by mail-vc0-f174.google.com with SMTP id d16so5018286vcd.19
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Dec 2012 18:07:10 -0800 (PST)
-In-Reply-To: <20121215020113.GK9453@blackbox.djwong.org>
+Received: from plane.gmane.org ([80.91.229.3]:43719 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751763Ab2LOUtv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 15 Dec 2012 15:49:51 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <gcfe-linux-ext4@m.gmane.org>)
+	id 1TjygN-0003ar-OI
+	for linux-ext4@vger.kernel.org; Sat, 15 Dec 2012 21:50:03 +0100
+Received: from 187.37.53.245 ([187.37.53.245])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Dec 2012 21:50:03 +0100
+Received: from fragabr by 187.37.53.245 with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Dec 2012 21:50:03 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 14, 2012 at 6:01 PM, Darrick J. Wong
-<darrick.wong@oracle.com> wrote:
-> On Fri, Dec 14, 2012 at 05:12:37PM -0800, Andy Lutomirski wrote:
->> It survived.  I hit at least one mm bug, but I really don't think it's
->> a problem with your code.  (I have not tried this workload on Linux
->> 3.7 at all before.  It normally runs on 3.5.)  The box in question is
->
-> Would you mind sending along the bug report so I can make sure?
+	After upgrading from kernel 3.6.0 to 3.7.0 (x86-64) I got this:
 
-http://marc.info/?l=linux-mm&m=135553342803210&w=2
+Dec 15 18:38:28 tux kernel: EXT4-fs error (device sda2): 
+ext4_ext_check_inode:462: inode #9311628: comm less: bad header/extent:
+invalid extent entries - magic f30a, entries 1, max 4(4), depth 0(0)
 
->
->> ext4 on LVM on dm-crypt on (hardware) RAID 5 on hpsa, which should not
->> need stable pages.
->>
->> The majority of the data written (that wasn't unlinked before it was
->> dropped from cache) was checksummed when written and verified later.
->> Most of this data was written using mmap.  This workload hammers the
->> vm concurrently in several threads, and it frequently stalls when
->> stable pages are enabled, so it's probably exercising the code
->> decently well.
->
-> Did you observe any change in performance?
+	So I tried to run e2fsck and it "fixed" inode 9311628. Running 
+e2fsck again doesn't detect any errors, but the problem remains.
 
-No.  But I'm comparing to 3.5 + butchery to remove stable pages.  With
-stable pages on, this workload performs terribly.  (It's a soft
-real-time thing, as you can possibly guess from my domain name, and
-various latency monitoring things go nuts when stable pages are
-active.)
+	The file I can't access is /usr/include/dlfcn.h (I was trying to compile openssh).
 
-Actually, performance appears to be improved, probably due to
-https://lkml.org/lkml/2012/12/14/14, which I tested concurrently.
+	Anyway, any hints how can I fix it?
 
->
->> Feel free to add Tested-by: Andy Lutomirski <luto@amacapital.net>
->
-> Will do!  Thanks for the testing!
+	Thanks.
 
-My pleasure.  When these changes go in to an upstream kernel, they'll
-represent a significant reduction in how much our kernel differs from
-kernel.org's :)  Thanks for fixing this.
+	Ps: if you need more information, just ask.
 
---Andy
+-- 
+Linux 3.7.0: Terrified Chipmunk
+http://www.youtube.com/DanielFragaBR
+http://www.libertarios.org.br
+
+
