@@ -1,92 +1,85 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide
- stable pages during write
-Date: Mon, 17 Dec 2012 00:13:36 +0800
-Message-ID: <20121216161336.GA6243@gmail.com>
-References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
- <20121213080811.23360.98131.stgit@blackbox.djwong.org>
+From: Li Xi <pkuelelixi@gmail.com>
+Subject: A memory-leak problem of unix_open()
+Date: Mon, 17 Dec 2012 00:34:56 +0800
+Message-ID: <CAPTn0cDC2r3upOb=PAdT_SDH3HbYmkL-Me69RUMU2hxLZjBM7g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20121213080811.23360.98131.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary=bcaec517cda854815404d0fad8b2
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:54578 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750845Ab2LPQe5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Dec 2012 11:34:57 -0500
+Received: by mail-ie0-f174.google.com with SMTP id c11so8192723ieb.19
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Dec 2012 08:34:56 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 12:08:11AM -0800, Darrick J. Wong wrote:
-> diff --git a/mm/bounce.c b/mm/bounce.c
-> index 0420867..fa11935 100644
-> --- a/mm/bounce.c
-> +++ b/mm/bounce.c
-> @@ -178,6 +178,38 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
->  	__bounce_end_io_read(bio, isa_page_pool, err);
->  }
->  
-> +#ifdef CONFIG_NEED_BOUNCE_POOL
-> +static int might_snapshot_stable_page_write(struct bio **bio_orig)
-> +{
-> +	return bio_data_dir(*bio_orig) == WRITE;
-> +}
-> +
-> +static int should_snapshot_stable_pages(struct page *page, int rw)
-> +{
-> +	struct backing_dev_info *bdi;
-> +	struct address_space *mapping = page_mapping(page);
-> +
-> +	if (!mapping)
-> +		return 0;
-> +	bdi = mapping->backing_dev_info;
-> +	if (!bdi_cap_stable_pages_required(bdi))
-> +		return 0;
-> +
-> +	return mapping->host->i_sb->s_flags & MS_SNAP_STABLE &&
-> +	       rw == WRITE;
-> +}
-> +#else
-> +static int might_snapshot_stable_page_write(struct bio **bio_orig)
-> +{
-> +	return 0;
-> +}
-> +
-> +static int should_snapshot_static_pages(struct page *page, int rw)
-                              ^^^^^^
-                              It should be _stable_.
+--bcaec517cda854815404d0fad8b2
+Content-Type: text/plain; charset=ISO-8859-1
 
-Regards,
-                                                - Zheng
-> +{
-> +	return 0;
-> +}
-> +#endif /* CONFIG_NEED_BOUNCE_POOL */
-> +
->  static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
->  			       mempool_t *pool)
->  {
-> @@ -192,7 +224,8 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
->  		/*
->  		 * is destination page below bounce pfn?
->  		 */
-> -		if (page_to_pfn(page) <= queue_bounce_pfn(q))
-> +		if (page_to_pfn(page) <= queue_bounce_pfn(q) &&
-> +		    !should_snapshot_stable_pages(page, rw))
->  			continue;
->  
->  		/*
-> @@ -284,7 +317,8 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
->  	 * don't waste time iterating over bio segments
->  	 */
->  	if (!(q->bounce_gfp & GFP_DMA)) {
-> -		if (queue_bounce_pfn(q) >= blk_max_pfn)
-> +		if (queue_bounce_pfn(q) >= blk_max_pfn &&
-> +		    !might_snapshot_stable_page_write(bio_orig))
->  			return;
->  		pool = page_pool;
->  	} else {
+Hi all,
+
+I think I found a memory-leak problem of e2fsprofgs while using
+valgrind to testing a tool. 'log.txt' is the output. It is a simple
+problem. I wrote a patch, and it works on my server.
+
+Thanks
+
+Li Xi
+
+--bcaec517cda854815404d0fad8b2
+Content-Type: text/plain; charset=US-ASCII; name="log.txt"
+Content-Disposition: attachment; filename="log.txt"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_haseailo1
+
+W3Jvb3RAbWRzMDEgbW1wXSMgdmFsZ3JpbmQgLS1sZWFrLWNoZWNrPWZ1bGwgLi9tbXBzdGF0dXMg
+L2Rldi9zZCANCj09MTk3OTA9PSBNZW1jaGVjaywgYSBtZW1vcnkgZXJyb3IgZGV0ZWN0b3IuDQo9
+PTE5NzkwPT0gQ29weXJpZ2h0IChDKSAyMDAyLTIwMDYsIGFuZCBHTlUgR1BMJ2QsIGJ5IEp1bGlh
+biBTZXdhcmQgZXQgYWwuDQo9PTE5NzkwPT0gVXNpbmcgTGliVkVYIHJldiAxNjU4LCBhIGxpYnJh
+cnkgZm9yIGR5bmFtaWMgYmluYXJ5IHRyYW5zbGF0aW9uLg0KPT0xOTc5MD09IENvcHlyaWdodCAo
+QykgMjAwNC0yMDA2LCBhbmQgR05VIEdQTCdkLCBieSBPcGVuV29ya3MgTExQLg0KPT0xOTc5MD09
+IFVzaW5nIHZhbGdyaW5kLTMuMi4xLCBhIGR5bmFtaWMgYmluYXJ5IGluc3RydW1lbnRhdGlvbiBm
+cmFtZXdvcmsuDQo9PTE5NzkwPT0gQ29weXJpZ2h0IChDKSAyMDAwLTIwMDYsIGFuZCBHTlUgR1BM
+J2QsIGJ5IEp1bGlhbiBTZXdhcmQgZXQgYWwuDQo9PTE5NzkwPT0gRm9yIG1vcmUgZGV0YWlscywg
+cmVydW4gd2l0aDogLXYNCj09MTk3OTA9PSANCkVSUk9SOiBtbXBzdGF0dXMuYygyODApIG1haW4o
+KTogZmFpbGVkIHRvIG9wZW4gZmlsZXN5c3RlbSBbL2Rldi9zZF0sIHJldCA9IDINCj09MTk3OTA9
+PSANCj09MTk3OTA9PSBFUlJPUiBTVU1NQVJZOiAwIGVycm9ycyBmcm9tIDAgY29udGV4dHMgKHN1
+cHByZXNzZWQ6IDUgZnJvbSAxKQ0KPT0xOTc5MD09IG1hbGxvYy9mcmVlOiBpbiB1c2UgYXQgZXhp
+dDogOCBieXRlcyBpbiAxIGJsb2Nrcy4NCj09MTk3OTA9PSBtYWxsb2MvZnJlZTogNSBhbGxvY3Ms
+IDQgZnJlZXMsIDc2MCBieXRlcyBhbGxvY2F0ZWQuDQo9PTE5NzkwPT0gRm9yIGNvdW50cyBvZiBk
+ZXRlY3RlZCBlcnJvcnMsIHJlcnVuIHdpdGg6IC12DQo9PTE5NzkwPT0gc2VhcmNoaW5nIGZvciBw
+b2ludGVycyB0byAxIG5vdC1mcmVlZCBibG9ja3MuDQo9PTE5NzkwPT0gY2hlY2tlZCAxMDAsNzEy
+IGJ5dGVzLg0KPT0xOTc5MD09IA0KPT0xOTc5MD09IDggYnl0ZXMgaW4gMSBibG9ja3MgYXJlIGRl
+ZmluaXRlbHkgbG9zdCBpbiBsb3NzIHJlY29yZCAxIG9mIDENCj09MTk3OTA9PSAgICBhdCAweDRB
+MDU4MDk6IG1hbGxvYyAodmdfcmVwbGFjZV9tYWxsb2MuYzoxNDkpDQo9PTE5NzkwPT0gICAgYnkg
+MHg0QzQ5OEZDOiB1bml4X29wZW4gKGV4dDJmcy5oOjE1MDIpDQo9PTE5NzkwPT0gICAgYnkgMHg0
+QzNGMzBCOiBleHQyZnNfb3BlbjIgKG9wZW5mcy5jOjEzOSkNCj09MTk3OTA9PSAgICBieSAweDRD
+M0ZBMTg6IGV4dDJmc19vcGVuIChvcGVuZnMuYzo3NSkNCj09MTk3OTA9PSAgICBieSAweDQwMTE2
+QzogbWFpbiAoaW4gL2hvbWUvbGl4aS9tbXAvbW1wc3RhdHVzKQ0KPT0xOTc5MD09IA0KPT0xOTc5
+MD09IExFQUsgU1VNTUFSWToNCj09MTk3OTA9PSAgICBkZWZpbml0ZWx5IGxvc3Q6IDggYnl0ZXMg
+aW4gMSBibG9ja3MuDQo9PTE5NzkwPT0gICAgICBwb3NzaWJseSBsb3N0OiAwIGJ5dGVzIGluIDAg
+YmxvY2tzLg0KPT0xOTc5MD09ICAgIHN0aWxsIHJlYWNoYWJsZTogMCBieXRlcyBpbiAwIGJsb2Nr
+cy4NCj09MTk3OTA9PSAgICAgICAgIHN1cHByZXNzZWQ6IDAgYnl0ZXMgaW4gMCBibG9ja3MuDQo9
+PTE5NzkwPT0gUmVhY2hhYmxlIGJsb2NrcyAodGhvc2UgdG8gd2hpY2ggYSBwb2ludGVyIHdhcyBm
+b3VuZCkgYXJlIG5vdCBzaG93bi4NCj09MTk3OTA9PSBUbyBzZWUgdGhlbSwgcmVydW4gd2l0aDog
+LS1zaG93LXJlYWNoYWJsZT15ZXM=
+--bcaec517cda854815404d0fad8b2
+Content-Type: application/octet-stream;
+	name="bug_unix_open_memleak_e2fsprogs-1.42.6.patch"
+Content-Disposition: attachment;
+	filename="bug_unix_open_memleak_e2fsprogs-1.42.6.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_haseafza0
+
+SW5kZXg6IGUyZnNwcm9ncy0xLjQyLjYvbGliL2V4dDJmcy91bml4X2lvLmMKPT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQot
+LS0gZTJmc3Byb2dzLTEuNDIuNi5vcmlnL2xpYi9leHQyZnMvdW5peF9pby5jCTIwMTItMTItMTcg
+MDY6NDY6MzAuMDAwMDAwMDAwICswODAwCisrKyBlMmZzcHJvZ3MtMS40Mi42L2xpYi9leHQyZnMv
+dW5peF9pby5jCTIwMTItMTItMTcgMDc6MTE6MDAuMDAwMDAwMDAwICswODAwCkBAIC02MjQsOCAr
+NjI0LDEyIEBACiAJCWZyZWVfY2FjaGUoZGF0YSk7CiAJCWV4dDJmc19mcmVlX21lbSgmZGF0YSk7
+CiAJfQotCWlmIChpbykKKwlpZiAoaW8pIHsKKwkJaWYgKGlvLT5uYW1lKSB7CisJCQlleHQyZnNf
+ZnJlZV9tZW0oJmlvLT5uYW1lKTsKKwkJfQogCQlleHQyZnNfZnJlZV9tZW0oJmlvKTsKKwl9CiAJ
+cmV0dXJuIHJldHZhbDsKIH0KIAo=
+--bcaec517cda854815404d0fad8b2--
