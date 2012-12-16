@@ -1,59 +1,82 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: =?UTF-8?B?RMOibmllbA==?= Fraga <fragabr@gmail.com>
 Subject: Re: Kernel 3.7.0: bad header/extent
-Date: Sat, 15 Dec 2012 22:51:50 -0500
-Message-ID: <20121216035150.GA6104@thunk.org>
+Date: Sun, 16 Dec 2012 03:39:35 -0200
+Message-ID: <50cd5e9b.0839650a.221f.ffffc460@mx.google.com>
 References: <kainf9$btc$1@ger.gmane.org>
  <20121216022753.GD9016@thunk.org>
  <50cd394d.0153650a.3b8d.ffffb917@mx.google.com>
+ <20121216035150.GA6104@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?D=E2niel?= Fraga <fragabr@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38662 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752401Ab2LPDvy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Dec 2012 22:51:54 -0500
-Content-Disposition: inline
-In-Reply-To: <50cd394d.0153650a.3b8d.ffffb917@mx.google.com>
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:40000 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750845Ab2LPFjl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Dec 2012 00:39:41 -0500
+Received: by mail-ye0-f174.google.com with SMTP id m6so963223yen.19
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Dec 2012 21:39:40 -0800 (PST)
+In-Reply-To: <20121216035150.GA6104@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Dec 16, 2012 at 01:00:25AM -0200, D=E2niel Fraga wrote:
->=20
-> 	Hi Ted! Yes, I get the same EXT4-fs message when I try to
-> access teh file. Here's the requested output:
+On Sat, 15 Dec 2012 22:51:50 -0500
+Theodore Ts'o <tytso@mit.edu> wrote:
 
-Um, really?  **Exactly** the same error message?  That doesn't make
-any sense.  The error message you quoted happens when the kernel
-complains that the block numbers in the inode in question are invalid
-(i.e., are too big for the inode in question, or point at file system
-metadata).
+> Um, really?  **Exactly** the same error message?  That doesn't make
+> any sense.  The error message you quoted happens when the kernel
+> complains that the block numbers in the inode in question are invalid
+> (i.e., are too big for the inode in question, or point at file system
+> metadata).
 
-However, debugfs is not showing any extents --- which would be the
-case after e2fsck repaired the file system (it would have zapped the
-extent tree for the inode).
+	Yes. The exact same message before and after:
 
-So (a) you did run e2fsck on an unmounted file system right?
+EXT4-fs error (device sda2): ext4_ext_check_inode:462: inode #9311628:
+comm less: bad header/extent: invalid extent entries - magic f30a,
+entries 1, max 4(4), depth 0(0)
 
-(b) Can you send me the output of:
+> However, debugfs is not showing any extents --- which would be the
+> case after e2fsck repaired the file system (it would have zapped the
+> extent tree for the inode).
+> 
+> So (a) you did run e2fsck on an unmounted file system right?
 
-	debugfs -R "extents <9311628>" /dev/sda2
+	Yes, unmounted.
 
-just to be sure we aren't missing anything.
+> (b) Can you send me the output of:
+> 
+> 	debugfs -R "extents <9311628>" /dev/sda2
+> 
+> just to be sure we aren't missing anything.
 
-Also, if you are using a really new kernel such as 3.6.x or 3.7.x, you
-***really*** shouldn't be using an ancient version of e2fsprogs such
-as 1.41.12.  You really should be using e2fsprogs 1.42.x, preferably
-the latest e2fsprogs 1.42.6.  I wonder if you are seeing a similar
-message indicating that the file system had previously found an error,
-and which wasn't cleared because you are using an ancient version of
-e2fsprogs....
+	Here it is:
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+debugfs 1.41.12 (17-May-2010)
+Level Entries       Logical              Physical Length Flags
+ 0/ 0   1/  1     0 - 4294967295  37333026 - 4332300321      0 
+
+> Also, if you are using a really new kernel such as 3.6.x or 3.7.x, you
+> ***really*** shouldn't be using an ancient version of e2fsprogs such
+> as 1.41.12.  You really should be using e2fsprogs 1.42.x, preferably
+> the latest e2fsprogs 1.42.6.  I wonder if you are seeing a similar
+> message indicating that the file system had previously found an error,
+> and which wasn't cleared because you are using an ancient version of
+> e2fsprogs....
+
+	Ok. The problem is that I'm trapped. I need to compile the most
+recent version (1.42.6) but the needed file to
+compile (/usr/include/dlfcn.h) isn't available (Input/output error)
+because of this problem. 
+
+	But no problem, because I used e2fsck from "Recovery is
+possible 13.7" cd which uses e2fsck 1.42 version (so you can be sure I
+used e2fsck 1.42 version).
+
+	Any more suggestions? Thanks!
+
+-- 
+Linux 3.7.0: Terrified Chipmunk
+http://www.youtube.com/DanielFragaBR
+http://www.libertarios.org.br
