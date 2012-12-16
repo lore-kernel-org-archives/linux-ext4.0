@@ -1,46 +1,60 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: =?UTF-8?B?RMOibmllbA==?= Fraga <fragabr@gmail.com>
 Subject: Re: Kernel 3.7.0: bad header/extent
-Date: Sat, 15 Dec 2012 21:27:53 -0500
-Message-ID: <20121216022753.GD9016@thunk.org>
+Date: Sun, 16 Dec 2012 01:00:25 -0200
+Message-ID: <50cd394d.0153650a.3b8d.ffffb917@mx.google.com>
 References: <kainf9$btc$1@ger.gmane.org>
+	<20121216022753.GD9016@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?D=E2niel?= Fraga <fragabr@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38650 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751523Ab2LPC16 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Dec 2012 21:27:58 -0500
-Content-Disposition: inline
-In-Reply-To: <kainf9$btc$1@ger.gmane.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:55327 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751633Ab2LPDAa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Dec 2012 22:00:30 -0500
+Received: by mail-gg0-f174.google.com with SMTP id k2so936952ggd.19
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Dec 2012 19:00:30 -0800 (PST)
+In-Reply-To: <20121216022753.GD9016@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 15, 2012 at 06:44:26PM -0200, D=E2niel Fraga wrote:
-> 	After upgrading from kernel 3.6.0 to 3.7.0 (x86-64) I got this:
->=20
-> Dec 15 18:38:28 tux kernel: EXT4-fs error (device sda2):=20
-> ext4_ext_check_inode:462: inode #9311628: comm less: bad header/exten=
-t:
-> invalid extent entries - magic f30a, entries 1, max 4(4), depth 0(0)
->=20
-> 	So I tried to run e2fsck and it "fixed" inode 9311628. Running=20
-> e2fsck again doesn't detect any errors, but the problem remains.
+On Sat, 15 Dec 2012 21:27:53 -0500
+Theodore Ts'o <tytso@mit.edu> wrote:
 
-What do you mean "the problem remains"?  Are you getting the same
-EXT4-fs error message when you try to access the file?
+> > 	So I tried to run e2fsck and it "fixed" inode 9311628. Running 
+> > e2fsck again doesn't detect any errors, but the problem remains.
+> 
+> What do you mean "the problem remains"?  Are you getting the same
+> EXT4-fs error message when you try to access the file?
+> 
+> Can you send the output of the command:
+> 
+> 	debugfs -R "stat <9311628>"/dev/sda2
 
-Can you send the output of the command:
+	Hi Ted! Yes, I get the same EXT4-fs message when I try to
+access teh file. Here's the requested output:
 
-	debugfs -R "stat <9311628>"/dev/sda2
+debugfs 1.41.12 (17-May-2010)
+Inode: 9311628   Type: regular    Mode:  0644   Flags: 0x80000
+Generation: 834245655    Version: 0x00000000:00000001
+User:     0   Group:     0   Size: 7117
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 0
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x4f76ba2c:537fd694 -- Sat Mar 31 05:02:52 2012
+ atime: 0x50ccaf85:c6d93344 -- Sat Dec 15 15:12:37 2012
+ mtime: 0x4f76ba2c:537fd694 -- Sat Mar 31 05:02:52 2012
+crtime: 0x4f76ba2c:537fd694 -- Sat Mar 31 05:02:52 2012
+Size of extra inode fields: 28
+EXTENTS:
 
-Thanks!!
+	***
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	If you need more testing, just ask. Thanks!
+
+-- 
+Linux 3.7.0: Terrified Chipmunk
+http://www.youtube.com/DanielFragaBR
+http://www.libertarios.org.br
