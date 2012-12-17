@@ -1,36 +1,93 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: m68k bitops fixes
-Date: Mon, 17 Dec 2012 09:49:02 -0500
-Message-ID: <20121217144902.GC31563@thunk.org>
-References: <20685.53075.403265.997210@pilspetsen.it.uu.se>
- <20686.16276.932405.296864@pilspetsen.it.uu.se>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Check dioread_nolock on remount
+Date: Mon, 17 Dec 2012 09:43:12 -0600
+Message-ID: <50CF3D90.60408@redhat.com>
+References: <1355434842-13478-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Schwab <schwab@linux-m68k.org>
-To: Mikael Pettersson <mikpe@it.uu.se>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:38876 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752360Ab2LQOtN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Dec 2012 09:49:13 -0500
-Content-Disposition: inline
-In-Reply-To: <20686.16276.932405.296864@pilspetsen.it.uu.se>
+Received: from mx1.redhat.com ([209.132.183.28]:58964 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752179Ab2LQPn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Dec 2012 10:43:57 -0500
+In-Reply-To: <1355434842-13478-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Dec 16, 2012 at 10:39:32PM +0100, Mikael Pettersson wrote:
-> Andreas Schwab suggested that there was no longer an advantage
-> to using inline asm for these operations, so this new patch
-> deletes the m68k-specific code from lib/ext2fs/bitops.h (leaving
-> only 32-bit x86 to still use inline asm there).
+On 12/13/12 3:40 PM, Jan Kara wrote:
+> Currently we allow enabling dioread_nolock mount option on remount for
+> filesystems where blocksize < PAGE_CACHE_SIZE. This isn't really supported so
+> fix the bug by moving the check for blocksize != PAGE_CACHE_SIZE into
+> parse_options(). Change the original PAGE_SIZE to PAGE_CACHE_SIZE along the way
+> because that's what we are really interested in.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Yep, agreed.  Thanks for the patch!  I've applied it in the e2fsprogs
-maint branch.
+Looks good to me,
 
-It would be a good idea to check the m68k kernel, since it was cribbed
-from the kernel sources.  I do agree though that it's unlikely to be a
-problem in kernel code.
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-Thanks again!!
+> ---
+>  fs/ext4/super.c |   22 +++++++++++-----------
+>  1 files changed, 11 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 80928f7..9753ed2 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1650,9 +1650,7 @@ static int parse_options(char *options, struct super_block *sb,
+>  			 unsigned int *journal_ioprio,
+>  			 int is_remount)
+>  {
+> -#ifdef CONFIG_QUOTA
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -#endif
+>  	char *p;
+>  	substring_t args[MAX_OPT_ARGS];
+>  	int token;
+> @@ -1701,6 +1699,16 @@ static int parse_options(char *options, struct super_block *sb,
+>  		}
+>  	}
+>  #endif
+> +	if (test_opt(sb, DIOREAD_NOLOCK)) {
+> +		int blocksize =
+> +			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+> +
+> +		if (blocksize < PAGE_CACHE_SIZE) {
+> +			ext4_msg(sb, KERN_ERR, "can't mount with "
+> +				 "dioread_nolock if block size != PAGE_SIZE");
+> +			return 0;
+> +		}
+> +	}
+>  	return 1;
+>  }
+>  
+> @@ -3446,15 +3454,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  			clear_opt(sb, DELALLOC);
+>  	}
+>  
+> -	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
+> -	if (test_opt(sb, DIOREAD_NOLOCK)) {
+> -		if (blocksize < PAGE_SIZE) {
+> -			ext4_msg(sb, KERN_ERR, "can't mount with "
+> -				 "dioread_nolock if block size != PAGE_SIZE");
+> -			goto failed_mount;
+> -		}
+> -	}
+> -
+>  	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+>  		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+>  
+> @@ -3496,6 +3495,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	if (!ext4_feature_set_ok(sb, (sb->s_flags & MS_RDONLY)))
+>  		goto failed_mount;
+>  
+> +	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
+>  	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+>  	    blocksize > EXT4_MAX_BLOCK_SIZE) {
+>  		ext4_msg(sb, KERN_ERR,
+> 
 
-					- Ted
