@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/4] bdi: Allow block devices to say that they require
- stable page writes
-Date: Mon, 17 Dec 2012 10:04:56 +0100
-Message-ID: <20121217090456.GE5133@quack.suse.cz>
+Subject: Re: [PATCH 2/4] mm: Only enforce stable page writes if the backing
+ device requires it
+Date: Mon, 17 Dec 2012 10:16:46 +0100
+Message-ID: <20121217091646.GF5133@quack.suse.cz>
 References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
- <20121213080747.23360.24302.stgit@blackbox.djwong.org>
+ <20121213080755.23360.31463.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
@@ -16,117 +16,130 @@ Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
 	bharrosh@panasas.com, jlayton@samba.org,
 	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:44417 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751242Ab2LQJQ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Dec 2012 04:16:59 -0500
 Content-Disposition: inline
-In-Reply-To: <20121213080747.23360.24302.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20121213080755.23360.31463.stgit@blackbox.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 13-12-12 00:07:47, Darrick J. Wong wrote:
-> This creates a per-backing-device flag that tracks whether or not pages must be
-> held immutable during writeout.  Eventually it will be used to waive
-> wait_for_page_writeback() if nobody requires stable pages.
-> 
+On Thu 13-12-12 00:07:55, Darrick J. Wong wrote:
+> Create a helper function to check if a backing device requires stable page
+> writes and, if so, performs the necessary wait.  Then, make it so that all
+> points in the memory manager that handle making pages writable use the helper
+> function.  This should provide stable page write support to most filesystems,
+> while eliminating unnecessary waiting for devices that don't require the
+> feature.
+  There are two more places that would seem to need conversion from
+wait_on_page_writeback() to wait_for_stable_page():
+  gfs2_page_mkwrite()
+  nilfs_page_mkwrite()
+
+Otherwise the patch looks OK.
+
+								Honza
+
+
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-									Honza
 > ---
->  Documentation/ABI/testing/sysfs-class-bdi |    5 +++++
->  block/blk-integrity.c                     |    4 ++++
->  include/linux/backing-dev.h               |    6 ++++++
->  mm/backing-dev.c                          |   11 +++++++++++
->  4 files changed, 26 insertions(+)
+>  fs/buffer.c             |    2 +-
+>  fs/ext4/inode.c         |    2 +-
+>  include/linux/pagemap.h |    1 +
+>  mm/filemap.c            |    3 ++-
+>  mm/page-writeback.c     |   20 ++++++++++++++++++++
+>  5 files changed, 25 insertions(+), 3 deletions(-)
 > 
 > 
-> diff --git a/Documentation/ABI/testing/sysfs-class-bdi b/Documentation/ABI/testing/sysfs-class-bdi
-> index 5f50097..d773d56 100644
-> --- a/Documentation/ABI/testing/sysfs-class-bdi
-> +++ b/Documentation/ABI/testing/sysfs-class-bdi
-> @@ -48,3 +48,8 @@ max_ratio (read-write)
->  	most of the write-back cache.  For example in case of an NFS
->  	mount that is prone to get stuck, or a FUSE mount which cannot
->  	be trusted to play fair.
-> +
-> +stable_pages_required (read-only)
-> +
-> +	If set, the backing device requires that all pages comprising a write
-> +	request must not be changed until writeout is complete.
-> diff --git a/block/blk-integrity.c b/block/blk-integrity.c
-> index da2a818..dabd221 100644
-> --- a/block/blk-integrity.c
-> +++ b/block/blk-integrity.c
-> @@ -420,6 +420,8 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
->  	} else
->  		bi->name = bi_unsupported_name;
->  
-> +	disk->queue->backing_dev_info.capabilities |= BDI_CAP_STABLE_WRITES;
-> +
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index ec0aca8..c562136 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -2363,7 +2363,7 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+>  	if (unlikely(ret < 0))
+>  		goto out_unlock;
+>  	set_page_dirty(page);
+> -	wait_on_page_writeback(page);
+> +	wait_for_stable_page(page);
 >  	return 0;
+>  out_unlock:
+>  	unlock_page(page);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index b3c243b..1bfc79f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4814,7 +4814,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+>  					ext4_bh_unmapped)) {
+>  			/* Wait so that we don't change page under IO */
+> -			wait_on_page_writeback(page);
+> +			wait_for_stable_page(page);
+>  			ret = VM_FAULT_LOCKED;
+>  			goto out;
+>  		}
+> diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+> index e42c762..ea631ee 100644
+> --- a/include/linux/pagemap.h
+> +++ b/include/linux/pagemap.h
+> @@ -398,6 +398,7 @@ static inline void wait_on_page_writeback(struct page *page)
 >  }
->  EXPORT_SYMBOL(blk_integrity_register);
-> @@ -438,6 +440,8 @@ void blk_integrity_unregister(struct gendisk *disk)
->  	if (!disk || !disk->integrity)
->  		return;
 >  
-> +	disk->queue->backing_dev_info.capabilities &= ~BDI_CAP_STABLE_WRITES;
-> +
->  	bi = disk->integrity;
+>  extern void end_page_writeback(struct page *page);
+> +void wait_for_stable_page(struct page *page);
 >  
->  	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
-> diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-> index 2a9a9ab..085501f 100644
-> --- a/include/linux/backing-dev.h
-> +++ b/include/linux/backing-dev.h
-> @@ -253,6 +253,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
->  #define BDI_CAP_EXEC_MAP	0x00000040
->  #define BDI_CAP_NO_ACCT_WB	0x00000080
->  #define BDI_CAP_SWAP_BACKED	0x00000100
-> +#define BDI_CAP_STABLE_WRITES	0x00000200
->  
->  #define BDI_CAP_VMFLAGS \
->  	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
-> @@ -307,6 +308,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
->  int pdflush_proc_obsolete(struct ctl_table *table, int write,
->  		void __user *buffer, size_t *lenp, loff_t *ppos);
->  
-> +static inline bool bdi_cap_stable_pages_required(struct backing_dev_info *bdi)
-> +{
-> +	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
-> +}
-> +
->  static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
->  {
->  	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
-> diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-> index d3ca2b3..41733c5 100644
-> --- a/mm/backing-dev.c
-> +++ b/mm/backing-dev.c
-> @@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
+>  /*
+>   * Add an arbitrary waiter to a page's wait queue
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 83efee7..5577dc8 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -1728,6 +1728,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  	 * see the dirty page and writeprotect it again.
+>  	 */
+>  	set_page_dirty(page);
+> +	wait_for_stable_page(page);
+>  out:
+>  	sb_end_pagefault(inode->i_sb);
+>  	return ret;
+> @@ -2274,7 +2275,7 @@ repeat:
+>  		return NULL;
+>  	}
+>  found:
+> -	wait_on_page_writeback(page);
+> +	wait_for_stable_page(page);
+>  	return page;
 >  }
->  BDI_SHOW(max_ratio, bdi->max_ratio)
->  
-> +static ssize_t stable_pages_required_show(struct device *dev,
-> +					  struct device_attribute *attr,
-> +					  char *page)
+>  EXPORT_SYMBOL(grab_cache_page_write_begin);
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 830893b..3e4a8cc 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -2275,3 +2275,23 @@ int mapping_tagged(struct address_space *mapping, int tag)
+>  	return radix_tree_tagged(&mapping->page_tree, tag);
+>  }
+>  EXPORT_SYMBOL(mapping_tagged);
+> +
+> +/**
+> + * wait_for_stable_page() - wait for writeback to finish, if necessary.
+> + * @page:	The page to wait on.
+> + *
+> + * This function determines if the given page is related to a backing device
+> + * that requires page contents to be held stable during writeback.  If so, then
+> + * it will wait for any pending writeback to complete.
+> + */
+> +void wait_for_stable_page(struct page *page)
 > +{
-> +	struct backing_dev_info *bdi = dev_get_drvdata(dev);
+> +	struct address_space *mapping = page_mapping(page);
+> +	struct backing_dev_info *bdi = mapping->backing_dev_info;
 > +
-> +	return snprintf(page, PAGE_SIZE-1, "%d\n",
-> +			bdi_cap_stable_pages_required(bdi) ? 1 : 0);
+> +	if (!bdi_cap_stable_pages_required(bdi))
+> +		return;
+> +
+> +	wait_on_page_writeback(page);
 > +}
-> +
->  #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
->  
->  static struct device_attribute bdi_dev_attrs[] = {
->  	__ATTR_RW(read_ahead_kb),
->  	__ATTR_RW(min_ratio),
->  	__ATTR_RW(max_ratio),
-> +	__ATTR_RO(stable_pages_required),
->  	__ATTR_NULL,
->  };
->  
+> +EXPORT_SYMBOL_GPL(wait_for_stable_page);
 > 
 -- 
 Jan Kara <jack@suse.cz>
