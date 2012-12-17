@@ -1,32 +1,83 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide
  stable pages during write
-Date: Mon, 17 Dec 2012 14:56:17 -0800
-Message-ID: <20121217225617.GB10874@blackbox.djwong.org>
+Date: Mon, 17 Dec 2012 15:20:24 -0800
+Message-ID: <20121217232024.GC10874@blackbox.djwong.org>
 References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
  <20121213080811.23360.98131.stgit@blackbox.djwong.org>
- <20121216161336.GA6243@gmail.com>
+ <20121217102359.GH5133@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+Cc: axboe@kernel.dk, lucho@ionkov.net, ericvh@gmail.com,
 	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
 	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
 	linux-kernel@vger.kernel.org, hch@infradead.org,
 	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
 	bharrosh@panasas.com, jlayton@samba.org,
 	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25711 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751077Ab2LQW5k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Dec 2012 17:57:40 -0500
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20121216161336.GA6243@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20121217102359.GH5133@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 17, 2012 at 12:13:36AM +0800, Zheng Liu wrote:
-> On Thu, Dec 13, 2012 at 12:08:11AM -0800, Darrick J. Wong wrote:
+On Mon, Dec 17, 2012 at 11:23:59AM +0100, Jan Kara wrote:
+> On Thu 13-12-12 00:08:11, Darrick J. Wong wrote:
+> > Several complaints have been received regarding long file write latencies when
+> > memory pages must be held stable during writeback.  Since it might not be
+> > acceptable to stall programs for the entire duration of a page write (which may
+> > take many milliseconds even on good hardware), enable a second strategy wherein
+> > pages are snapshotted as part of submit_bio; the snapshot can be held stable
+> > while writes continue.
+> > 
+> > This provides a band-aid to provide stable page writes on jbd without needing
+> > to backport the fixed locking scheme in jbd2.  A mount option is added to ext4
+> > to allow administrators to enable it there.
+> > 
+> > For those wondering about the ext3 bandage -- fixing the jbd locking (which was
+> > done as part of ext4dev years ago) is a lot of surgery, and setting
+> > PG_writeback on data pages when we actually hold the page lock dropped ext3
+> > performance by nearly an order of magnitude.  If we're going to migrate iscsi
+> > and raid to use stable page writes, the complaints about high latency will
+> > likely return.  We might as well centralize their page snapshotting thing to
+> > one place.
+>   Umm, I kind of like this solution for ext3...
+
+:)
+
+> > diff --git a/mm/Kconfig b/mm/Kconfig
+> > index a3f8ddd..78db0e1 100644
+> > --- a/mm/Kconfig
+> > +++ b/mm/Kconfig
+> > @@ -224,6 +224,16 @@ config BOUNCE
+> >  	def_bool y
+> >  	depends on BLOCK && MMU && (ZONE_DMA || HIGHMEM)
+> >  
+> > +# On the 'tile' arch, USB OHCI needs the bounce pool since tilegx will often
+> > +# have more than 4GB of memory, but we don't currently use the IOTLB to present
+> > +# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
+> > +#
+> > +# We also use the bounce pool to provide stable page writes for users that
+> > +# don't (or can't) afford the wait latency.
+> > +config NEED_BOUNCE_POOL
+> > +	bool
+> > +	default y if (TILE && USB_OHCI_HCD) || (BLK_DEV_INTEGRITY && (EXT3_FS || EXT4_FS))
+> > +
+>   This means that NEED_BOUNCE_POOL is going to be enabled on pretty much
+> any distro kernel...
+
+I want to drop EXT4_FS from that default line.  Then we only need it in the
+case where EXT4_USE_FOR_EXT23=y hasn't taken the place of EXT3_FS=y.
+
+<shrug> Has anyone actually done that?
+
+Heh, even *I* haven't done that.
+
+> >  config NR_QUICK
+> >  	int
+> >  	depends on QUICKLIST
 > > diff --git a/mm/bounce.c b/mm/bounce.c
 > > index 0420867..fa11935 100644
 > > --- a/mm/bounce.c
@@ -40,7 +91,28 @@ On Mon, Dec 17, 2012 at 12:13:36AM +0800, Zheng Liu wrote:
 > > +{
 > > +	return bio_data_dir(*bio_orig) == WRITE;
 > > +}
-> > +
+> ... so might might_snapshot_stable_page_write() will be true for each
+> write. And thus blk_queue_bounce() becomes considerably more expensive?
+> Also calling should_snapshot_stable_pages() for every page seems to be
+> stupid since its result is going to be the same for all the pages in the
+> bio (well, I could imagine setups where it won't be but do we want to
+> support them?).
+> 
+> So cannot we just make a function like should_snapshot_stable_pages() to
+> test whether we really need the bouncing, use it in blk_queue_bounce() and
+> then pass the information to __blk_queue_bounce() if needed?
+
+Yes.  I'd actually considered simply calling should_snapshot() on the first
+bio_vec page and passing that information through, but thought I should play it
+safe for the first revision.
+
+However, a bio targets a single block device, so this seems like a safe
+optimization.
+
+--D
+> 
+> 								Honza
+> 
 > > +static int should_snapshot_stable_pages(struct page *page, int rw)
 > > +{
 > > +	struct backing_dev_info *bdi;
@@ -62,15 +134,6 @@ On Mon, Dec 17, 2012 at 12:13:36AM +0800, Zheng Liu wrote:
 > > +}
 > > +
 > > +static int should_snapshot_static_pages(struct page *page, int rw)
->                               ^^^^^^
->                               It should be _stable_.
-
-Good catch!  Thank you!
-
---D
-> 
-> Regards,
->                                                 - Zheng
 > > +{
 > > +	return 0;
 > > +}
@@ -99,6 +162,25 @@ Good catch!  Thank you!
 > >  			return;
 > >  		pool = page_pool;
 > >  	} else {
+> > diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> > index 3e4a8cc..fbd8efb 100644
+> > --- a/mm/page-writeback.c
+> > +++ b/mm/page-writeback.c
+> > @@ -2291,6 +2291,10 @@ void wait_for_stable_page(struct page *page)
+> >  
+> >  	if (!bdi_cap_stable_pages_required(bdi))
+> >  		return;
+> > +#ifdef CONFIG_NEED_BOUNCE_POOL
+> > +	if (mapping->host->i_sb->s_flags & MS_SNAP_STABLE)
+> > +		return;
+> > +#endif /* CONFIG_NEED_BOUNCE_POOL */
+> >  
+> >  	wait_on_page_writeback(page);
+> >  }
+> > 
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
