@@ -1,32 +1,38 @@
-From: Ashish Sangwan <ashishsangwan2@gmail.com>
-Subject: Re: [PATCH] ext4: fix extent tree corruption that incurred by hole
- punch [V2]
-Date: Mon, 17 Dec 2012 09:55:41 +0530
-Message-ID: <CAOiN93=AXhnxpJYNet9GeTPRn2bmBi9jw2cJXf1Y19rkx-VqhA@mail.gmail.com>
-References: <CAJSVwFM3vq9wsq0Mn5L1bh-WHoP1g3VMJAOg_ruavZFednsjVw@mail.gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Tune2fs metadata_csum
+Date: Mon, 17 Dec 2012 15:23:26 +0800
+Message-ID: <20121217072326.GA7171@gmail.com>
+References: <1355717041.99349.YahooMailNeo@web164606.mail.gq1.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Forrest Liu <forrestl@synology.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Anders Lind <anderslindgaard@yahoo.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:40460 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750966Ab2LQEZn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Dec 2012 23:25:43 -0500
-Received: by mail-vc0-f174.google.com with SMTP id d16so6600165vcd.19
-        for <linux-ext4@vger.kernel.org>; Sun, 16 Dec 2012 20:25:41 -0800 (PST)
-In-Reply-To: <CAJSVwFM3vq9wsq0Mn5L1bh-WHoP1g3VMJAOg_ruavZFednsjVw@mail.gmail.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:57486 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750813Ab2LQHKI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Dec 2012 02:10:08 -0500
+Received: by mail-pb0-f46.google.com with SMTP id wy7so3771774pbc.19
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Dec 2012 23:10:08 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <1355717041.99349.YahooMailNeo@web164606.mail.gq1.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 9:02 PM, Forrest Liu <forrestl@synology.com> wrote:
-> When depth of extent tree is greater than 1, logical start value
-> of interior node didn't updated correctly in ext4_ext_rm_idx.
->
-> Signed-off-by: Forrest Liu <forrestl@synology.com>
-> ---
+On Sun, Dec 16, 2012 at 08:04:01PM -0800, Anders Lind wrote:
+> Hi ext4 developers,
+> 
+> 
+> I tired to use tune2fs metadata_csum feature on my ext4 filesystem.
+> I got message like:
+> ~$ sudo tune2fs -O metadata_csum /dev/sda5
+> tune2fs 1.42 (29-Nov-2011)
+> Setting filesystem feature 'metadata_csum' not supported.
 
+Hi Anders,
 
-Patch seems ok to me.
-Reviewed-by: Ashish Sangwan <ashishsangwan2@gmail.com>
+You need to upgrade your e2fsprogs because metadata_csum feature is
+applied on Aug this year.
+
+Regards,
+                                                - Zheng
