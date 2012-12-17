@@ -1,167 +1,99 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to
- provide stable pages during write
-Date: Mon, 17 Dec 2012 11:23:59 +0100
-Message-ID: <20121217102359.GH5133@quack.suse.cz>
-References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
- <20121213080811.23360.98131.stgit@blackbox.djwong.org>
+From: Li Zefan <lizefan@huawei.com>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Mon, 17 Dec 2012 18:51:27 +0800
+Message-ID: <50CEF92F.6050306@huawei.com>
+References: <50BE007D.5080504@huawei.com> <20121204150928.GF29083@thunk.org> <50BF2537.6070809@huawei.com> <50BF597D.3040704@tao.ma> <50BFF149.6080007@huawei.com> <20121206123744.GA17951@quack.suse.cz> <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com> <20121206170913.GC21029@quack.suse.cz> <50C1BF05.6020605@huawei.com> <50C6E86F.8040308@huawei.com> <20121212100444.GB18885@quack.suse.cz> <50C86AFC.7080301@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	Zheng Liu <gnehzuil.liu@gmail.com>,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: qixuan wu <wuqixuan@gmail.com>, Tao Ma <tm@tao.ma>,
+	"Theodore Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<wuqixuan@huawei.com>, <xieshuangyi@huawei.com>, <tao.peng@emc.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47307 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751013Ab2LQKYN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Dec 2012 05:24:13 -0500
-Content-Disposition: inline
-In-Reply-To: <20121213080811.23360.98131.stgit@blackbox.djwong.org>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:64337 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752175Ab2LQKwY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Dec 2012 05:52:24 -0500
+In-Reply-To: <50C86AFC.7080301@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 13-12-12 00:08:11, Darrick J. Wong wrote:
-> Several complaints have been received regarding long file write latencies when
-> memory pages must be held stable during writeback.  Since it might not be
-> acceptable to stall programs for the entire duration of a page write (which may
-> take many milliseconds even on good hardware), enable a second strategy wherein
-> pages are snapshotted as part of submit_bio; the snapshot can be held stable
-> while writes continue.
+>>> last_offset=-1, last_fpos=-1, f_pos=4024
+>>>
+>>> -1 means we hit the bug in the first iteration in the insde while in
+>>> ext3_readdir().
+>>>
+>>> I've checked how ext3_readdir() works and how f_pos, f_version and i_version
+>>> get initialized and modified. Now I'm lost. I really can't see how f_pos got
+>>> corrupted. :(
+>>   Hum, it looks really curious. So f_pos has been 4024 when we entered
+>> ext3_readdir()?
 > 
-> This provides a band-aid to provide stable page writes on jbd without needing
-> to backport the fixed locking scheme in jbd2.  A mount option is added to ext4
-> to allow administrators to enable it there.
+> dunno. but what else can be
 > 
-> For those wondering about the ext3 bandage -- fixing the jbd locking (which was
-> done as part of ext4dev years ago) is a lot of surgery, and setting
-> PG_writeback on data pages when we actually hold the page lock dropped ext3
-> performance by nearly an order of magnitude.  If we're going to migrate iscsi
-> and raid to use stable page writes, the complaints about high latency will
-> likely return.  We might as well centralize their page snapshotting thing to
-> one place.
-  Umm, I kind of like this solution for ext3...
-
-> diff --git a/mm/Kconfig b/mm/Kconfig
-> index a3f8ddd..78db0e1 100644
-> --- a/mm/Kconfig
-> +++ b/mm/Kconfig
-> @@ -224,6 +224,16 @@ config BOUNCE
->  	def_bool y
->  	depends on BLOCK && MMU && (ZONE_DMA || HIGHMEM)
->  
-> +# On the 'tile' arch, USB OHCI needs the bounce pool since tilegx will often
-> +# have more than 4GB of memory, but we don't currently use the IOTLB to present
-> +# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
-> +#
-> +# We also use the bounce pool to provide stable page writes for users that
-> +# don't (or can't) afford the wait latency.
-> +config NEED_BOUNCE_POOL
-> +	bool
-> +	default y if (TILE && USB_OHCI_HCD) || (BLK_DEV_INTEGRITY && (EXT3_FS || EXT4_FS))
-> +
-  This means that NEED_BOUNCE_POOL is going to be enabled on pretty much
-any distro kernel...
-
->  config NR_QUICK
->  	int
->  	depends on QUICKLIST
-> diff --git a/mm/bounce.c b/mm/bounce.c
-> index 0420867..fa11935 100644
-> --- a/mm/bounce.c
-> +++ b/mm/bounce.c
-> @@ -178,6 +178,38 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
->  	__bounce_end_io_read(bio, isa_page_pool, err);
->  }
->  
-> +#ifdef CONFIG_NEED_BOUNCE_POOL
-> +static int might_snapshot_stable_page_write(struct bio **bio_orig)
-> +{
-> +	return bio_data_dir(*bio_orig) == WRITE;
-> +}
-... so might might_snapshot_stable_page_write() will be true for each
-write. And thus blk_queue_bounce() becomes considerably more expensive?
-Also calling should_snapshot_stable_pages() for every page seems to be
-stupid since its result is going to be the same for all the pages in the
-bio (well, I could imagine setups where it won't be but do we want to
-support them?).
-
-So cannot we just make a function like should_snapshot_stable_pages() to
-test whether we really need the bouncing, use it in blk_queue_bounce() and
-then pass the information to __blk_queue_bounce() if needed?
-
-								Honza
-
-> +static int should_snapshot_stable_pages(struct page *page, int rw)
-> +{
-> +	struct backing_dev_info *bdi;
-> +	struct address_space *mapping = page_mapping(page);
-> +
-> +	if (!mapping)
-> +		return 0;
-> +	bdi = mapping->backing_dev_info;
-> +	if (!bdi_cap_stable_pages_required(bdi))
-> +		return 0;
-> +
-> +	return mapping->host->i_sb->s_flags & MS_SNAP_STABLE &&
-> +	       rw == WRITE;
-> +}
-> +#else
-> +static int might_snapshot_stable_page_write(struct bio **bio_orig)
-> +{
-> +	return 0;
-> +}
-> +
-> +static int should_snapshot_static_pages(struct page *page, int rw)
-> +{
-> +	return 0;
-> +}
-> +#endif /* CONFIG_NEED_BOUNCE_POOL */
-> +
->  static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
->  			       mempool_t *pool)
->  {
-> @@ -192,7 +224,8 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
->  		/*
->  		 * is destination page below bounce pfn?
->  		 */
-> -		if (page_to_pfn(page) <= queue_bounce_pfn(q))
-> +		if (page_to_pfn(page) <= queue_bounce_pfn(q) &&
-> +		    !should_snapshot_stable_pages(page, rw))
->  			continue;
->  
->  		/*
-> @@ -284,7 +317,8 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
->  	 * don't waste time iterating over bio segments
->  	 */
->  	if (!(q->bounce_gfp & GFP_DMA)) {
-> -		if (queue_bounce_pfn(q) >= blk_max_pfn)
-> +		if (queue_bounce_pfn(q) >= blk_max_pfn &&
-> +		    !might_snapshot_stable_page_write(bio_orig))
->  			return;
->  		pool = page_pool;
->  	} else {
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 3e4a8cc..fbd8efb 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -2291,6 +2291,10 @@ void wait_for_stable_page(struct page *page)
->  
->  	if (!bdi_cap_stable_pages_required(bdi))
->  		return;
-> +#ifdef CONFIG_NEED_BOUNCE_POOL
-> +	if (mapping->host->i_sb->s_flags & MS_SNAP_STABLE)
-> +		return;
-> +#endif /* CONFIG_NEED_BOUNCE_POOL */
->  
->  	wait_on_page_writeback(page);
->  }
+>> Do you know what it was when we last left ext3_readdir()
+>> for that filp? You can store that value in some debug entry added to struct
+>> file... Also any chance we ever hit:
+>>                                 if (version != filp->f_version)
+>>                                         goto revalidate;
+>> I don't think it can ever happen since we hold i_mutex and
+>> generic_file_llseek() takes i_mutex as well. But better be sure.
+>>
 > 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Yesterday I've added more debug aids, which convers all the above information
+> mentioned. Actually the code tracks all the places that change f_pos, and
+> I think only lseek() and readdir() can change it.
+> 
+> Now I'm waiting for the bug to happen again, can be several days...
+> 
+
+The bug was triggered again:
+
+EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #9372013: rec_len is smaller than minimal - offset=4028, inode=0, rec_len=0, name_len=0
+
+And I've confirmed f_pos=4028 when we entered ext3_readdir(), while it should be 4096.
+
+I wrote a simple ring buffer to track operations on log dirs, and from the
+ring buffer, we can see that there were no lseek, unlink, rename, etc.
+
+This is correct:
+
+dir=9372013, seq=1549, spot=readdir_1, f_pos=0, f_pos_delta=0
+dir=9372013, seq=1550, spot=readdir_3, f_pos=0, f_pos_delta=0
+dir=9372013, seq=1551, spot=readdir_5, f_pos=12, f_pos_delta=12
+dir=9372013, seq=1552, spot=readdir_5, f_pos=24, f_pos_delta=12
+...
+dir=9372013, seq=1595, spot=readdir_5, f_pos=1488, f_pos_delta=28
+dir=9372013, seq=1596, spot=readdir_5, f_pos=1516, f_pos_delta=28
+dir=9372013, seq=1597, spot=readdir_5, f_pos=1556, f_pos_delta=40
+dir=9372013, seq=1598, spot=readdir_5, f_pos=1584, f_pos_delta=28
+...
+dir=9372013, seq=1627, spot=readdir_5, f_pos=2392, f_pos_delta=28
+dir=9372013, seq=1628, spot=readdir_5, f_pos=4096, f_pos_delta=1704
+dir=9372013, seq=1629, spot=readdir_1, f_pos=4096, f_pos_delta=0
+
+(readir_1 is the entry of readdir(), and readdir_3 is when we enter (f_version != i_version),
+and readdir_5 is we iterate the dir block)
+
+Then f_pos went wrong suddenly:
+
+dir=9372013, seq=1676, spot=readdir_5, f_pos=1488, f_pos_delta=28
+dir=9372013, seq=1677, spot=readdir_5, f_pos=1516, f_pos_delta=28
+dir=9372013, seq=1678, spot=readdir_5, f_pos=1556, f_pos_delta=40
+dir=9372013, seq=1679, spot=readdir_5, f_pos=1516, f_pos_delta=28   <-- !!!!!!!!
+dir=9372013, seq=1680, spot=readdir_5, f_pos=1540, f_pos_delta=24
+...
+dir=9372013, seq=1708, spot=readdir_5, f_pos=2324, f_pos_delta=28
+dir=9372013, seq=1709, spot=readdir_5, f_pos=4028, f_pos_delta=1704
+dir=9372013, seq=1710, spot=readdir_1, f_pos=4028, f_pos_delta=0
+
+This is odd...
+
+While f_pos was wrong, offset is always correct, and this is not some
+single-bit error in memory, so someone else changed f_pos? but we were
+holding i_mutex, and we see nothing else except readdir in the ring
+buffer...
+
