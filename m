@@ -1,93 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Check dioread_nolock on remount
-Date: Mon, 17 Dec 2012 09:43:12 -0600
-Message-ID: <50CF3D90.60408@redhat.com>
-References: <1355434842-13478-1-git-send-email-jack@suse.cz>
+From: Andreas Schwab <schwab@linux-m68k.org>
+Subject: Re: [PATCH] e2fsprogs: m68k bitops fixes
+Date: Mon, 17 Dec 2012 19:15:30 +0100
+Message-ID: <m2a9tc7dfh.fsf@igel.home>
+References: <20685.53075.403265.997210@pilspetsen.it.uu.se>
+	<20686.16276.932405.296864@pilspetsen.it.uu.se>
+	<20121217144902.GC31563@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain
+Cc: Mikael Pettersson <mikpe@it.uu.se>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58964 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752179Ab2LQPn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:43:57 -0500
-In-Reply-To: <1355434842-13478-1-git-send-email-jack@suse.cz>
+Received: from mail-out.m-online.net ([212.18.0.9]:50443 "EHLO
+	mail-out.m-online.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753570Ab2LQSPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Dec 2012 13:15:36 -0500
+In-Reply-To: <20121217144902.GC31563@thunk.org> (Theodore Ts'o's message of
+	"Mon, 17 Dec 2012 09:49:02 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/13/12 3:40 PM, Jan Kara wrote:
-> Currently we allow enabling dioread_nolock mount option on remount for
-> filesystems where blocksize < PAGE_CACHE_SIZE. This isn't really supported so
-> fix the bug by moving the check for blocksize != PAGE_CACHE_SIZE into
-> parse_options(). Change the original PAGE_SIZE to PAGE_CACHE_SIZE along the way
-> because that's what we are really interested in.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Theodore Ts'o <tytso@mit.edu> writes:
 
-Looks good to me,
+> It would be a good idea to check the m68k kernel, since it was cribbed
+> from the kernel sources.
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+The kernel bitops always use signed bit numbers.
 
-> ---
->  fs/ext4/super.c |   22 +++++++++++-----------
->  1 files changed, 11 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 80928f7..9753ed2 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1650,9 +1650,7 @@ static int parse_options(char *options, struct super_block *sb,
->  			 unsigned int *journal_ioprio,
->  			 int is_remount)
->  {
-> -#ifdef CONFIG_QUOTA
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> -#endif
->  	char *p;
->  	substring_t args[MAX_OPT_ARGS];
->  	int token;
-> @@ -1701,6 +1699,16 @@ static int parse_options(char *options, struct super_block *sb,
->  		}
->  	}
->  #endif
-> +	if (test_opt(sb, DIOREAD_NOLOCK)) {
-> +		int blocksize =
-> +			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
-> +
-> +		if (blocksize < PAGE_CACHE_SIZE) {
-> +			ext4_msg(sb, KERN_ERR, "can't mount with "
-> +				 "dioread_nolock if block size != PAGE_SIZE");
-> +			return 0;
-> +		}
-> +	}
->  	return 1;
->  }
->  
-> @@ -3446,15 +3454,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  			clear_opt(sb, DELALLOC);
->  	}
->  
-> -	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
-> -	if (test_opt(sb, DIOREAD_NOLOCK)) {
-> -		if (blocksize < PAGE_SIZE) {
-> -			ext4_msg(sb, KERN_ERR, "can't mount with "
-> -				 "dioread_nolock if block size != PAGE_SIZE");
-> -			goto failed_mount;
-> -		}
-> -	}
-> -
->  	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
->  		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
->  
-> @@ -3496,6 +3495,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (!ext4_feature_set_ok(sb, (sb->s_flags & MS_RDONLY)))
->  		goto failed_mount;
->  
-> +	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
->  	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
->  	    blocksize > EXT4_MAX_BLOCK_SIZE) {
->  		ext4_msg(sb, KERN_ERR,
-> 
+Andreas.
 
+-- 
+Andreas Schwab, schwab@linux-m68k.org
+GPG Key fingerprint = 58CA 54C7 6D53 942B 1756  01D3 44D5 214B 8276 4ED5
+"And now for something completely different."
