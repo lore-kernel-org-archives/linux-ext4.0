@@ -1,221 +1,85 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 51781] New: System got hanged with firefox. Filesystem not
- responding.
-Date: Tue, 18 Dec 2012 08:53:48 +0000 (UTC)
-Message-ID: <bug-51781-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Guo Chao <yan@linux.vnet.ibm.com>
+Subject: [RFC PATCH] ext3, ext4, ocfs2: remove unused macro NAMEI_RA_INDEX
+Date: Tue, 18 Dec 2012 16:56:39 +0800
+Message-ID: <1355820999-27972-1-git-send-email-yan@linux.vnet.ibm.com>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+	Mark Fasheh <mfasheh@suse.com>, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:51555 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754565Ab2LRIxv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Dec 2012 03:53:51 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 5498020226
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Dec 2012 08:53:50 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 1684F201B2
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Dec 2012 08:53:48 +0000 (UTC)
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:55641 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753947Ab2LRI4u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Dec 2012 03:56:50 -0500
+Received: from /spool/local
+	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
+	Tue, 18 Dec 2012 18:53:33 +1000
+Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [9.190.234.120])
+	by d23dlp01.au.ibm.com (Postfix) with ESMTP id 22B552CE804F
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Dec 2012 19:56:45 +1100 (EST)
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qBI8jfYu4391076
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Dec 2012 19:45:41 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qBI8ugXe024344
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Dec 2012 19:56:44 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=51781
+This macro, initially introduced by ext2 in v0.99.15, does not
+have any users from the beginning. It has been removed in later
+ext2 version but still remains in the code of ext3, ext4, ocfs2.
+Remove this macro there.
 
-               URL: https://developer.mozilla.org/en-US/demos/detail/banan
-                    abread
-           Summary: System got hanged with firefox. Filesystem not
-                    responding.
-           Product: File System
-           Version: 2.5
-    Kernel Version: Linux red1 3.5.0-21-generic #32-Ubuntu SMP
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: gaguilar@aguilardelgado.com
-        Regression: No
+Cc: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Mark Fasheh <mfasheh@suse.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: ocfs2-devel@oss.oracle.com
+Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
+---
+ fs/ext3/namei.c |    1 -
+ fs/ext4/namei.c |    1 -
+ fs/ocfs2/dir.c  |    1 -
+ 3 files changed, 3 deletions(-)
 
-
-Created an attachment (id=89401)
- --> (https://bugzilla.kernel.org/attachment.cgi?id=89401)
-Syslog from faillure to next reboot
-
-Hello, 
-
-Something really bizarre happened with firefox. It seems the kernel stopped to
-serve filesystem request because a hung process.
-
-I ran de mozilla demo bananabread, exited one level and entered another and
-everything stopped to work. I tried to kill the process but it has a "D" on the
-status and cannot be killed. 
-
-After a while everything stopped to work. Even the reboot didn't work. I had to
-unplug the machine.
-
-Kernel logs (syslog) is attached. 
-
-It seems something was failing in the disk. It has everything there until next
-reboot.
-
-
-
-I don't know if it's a bug or not but wanted to make sure that nothing can be
-done.
-
-
-I did an error installing bios raid. I have to undo it but I'm a little bit
-afraid of undoing without a backup. 
-
-root@red1:/var/log# dmraid -r
-/dev/sdb: pdc, "pdc_bbbgggjccd", mirror, ok, 625011328 sectors, data@ 0
-/dev/sda: pdc, "pdc_bbbgggjccd", mirror, ok, 625011328 sectors, data@ 0
-
-
-This raid is getting me into troubles. Disk sdb is what failed.
-
-
-gad@red1:~$ cat /proc/cpuinfo 
-processor    : 0
-vendor_id    : AuthenticAMD
-cpu family    : 16
-model        : 4
-model name    : AMD Phenom(tm) II X4 810 Processor
-stepping    : 2
-microcode    : 0x10000db
-cpu MHz        : 800.000
-cache size    : 512 KB
-physical id    : 0
-siblings    : 4
-core id        : 0
-cpu cores    : 4
-apicid        : 0
-initial apicid    : 0
-fpu        : yes
-fpu_exception    : yes
-cpuid level    : 5
-wp        : yes
-flags        : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov
-pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb
-rdtscp lm 3dnowext 3dnow constant_tsc rep_good nopl nonstop_tsc extd_apicid pni
-monitor cx16 popcnt lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a
-misalignsse 3dnowprefetch osvw ibs skinit wdt hw_pstate npt lbrv svm_lock
-nrip_save
-bogomips    : 5217.27
-TLB size    : 1024 4K pages
-clflush size    : 64
-cache_alignment    : 64
-address sizes    : 48 bits physical, 48 bits virtual
-power management: ts ttp tm stc 100mhzsteps hwpstate
-
-processor    : 1
-vendor_id    : AuthenticAMD
-cpu family    : 16
-model        : 4
-model name    : AMD Phenom(tm) II X4 810 Processor
-stepping    : 2
-microcode    : 0x10000db
-cpu MHz        : 800.000
-cache size    : 512 KB
-physical id    : 0
-siblings    : 4
-core id        : 1
-cpu cores    : 4
-apicid        : 1
-initial apicid    : 1
-fpu        : yes
-fpu_exception    : yes
-cpuid level    : 5
-wp        : yes
-flags        : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov
-pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb
-rdtscp lm 3dnowext 3dnow constant_tsc rep_good nopl nonstop_tsc extd_apicid pni
-monitor cx16 popcnt lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a
-misalignsse 3dnowprefetch osvw ibs skinit wdt hw_pstate npt lbrv svm_lock
-nrip_save
-bogomips    : 5217.27
-TLB size    : 1024 4K pages
-clflush size    : 64
-cache_alignment    : 64
-address sizes    : 48 bits physical, 48 bits virtual
-power management: ts ttp tm stc 100mhzsteps hwpstate
-
-processor    : 2
-vendor_id    : AuthenticAMD
-cpu family    : 16
-model        : 4
-model name    : AMD Phenom(tm) II X4 810 Processor
-stepping    : 2
-microcode    : 0x10000db
-cpu MHz        : 800.000
-cache size    : 512 KB
-physical id    : 0
-siblings    : 4
-core id        : 2
-cpu cores    : 4
-apicid        : 2
-initial apicid    : 2
-fpu        : yes
-fpu_exception    : yes
-cpuid level    : 5
-wp        : yes
-flags        : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov
-pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb
-rdtscp lm 3dnowext 3dnow constant_tsc rep_good nopl nonstop_tsc extd_apicid pni
-monitor cx16 popcnt lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a
-misalignsse 3dnowprefetch osvw ibs skinit wdt hw_pstate npt lbrv svm_lock
-nrip_save
-bogomips    : 5217.27
-TLB size    : 1024 4K pages
-clflush size    : 64
-cache_alignment    : 64
-address sizes    : 48 bits physical, 48 bits virtual
-power management: ts ttp tm stc 100mhzsteps hwpstate
-
-processor    : 3
-vendor_id    : AuthenticAMD
-cpu family    : 16
-model        : 4
-model name    : AMD Phenom(tm) II X4 810 Processor
-stepping    : 2
-microcode    : 0x10000db
-cpu MHz        : 800.000
-cache size    : 512 KB
-physical id    : 0
-siblings    : 4
-core id        : 3
-cpu cores    : 4
-apicid        : 3
-initial apicid    : 3
-fpu        : yes
-fpu_exception    : yes
-cpuid level    : 5
-wp        : yes
-flags        : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov
-pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb
-rdtscp lm 3dnowext 3dnow constant_tsc rep_good nopl nonstop_tsc extd_apicid pni
-monitor cx16 popcnt lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a
-misalignsse 3dnowprefetch osvw ibs skinit wdt hw_pstate npt lbrv svm_lock
-nrip_save
-bogomips    : 5217.27
-TLB size    : 1024 4K pages
-clflush size    : 64
-cache_alignment    : 64
-address sizes    : 48 bits physical, 48 bits virtual
-power management: ts ttp tm stc 100mhzsteps hwpstate
-
-
-
-
-
-Linux red1 3.5.0-21-generic #32-Ubuntu SMP Tue Dec 11 18:51:59 UTC 2012 x86_64
-x86_64 x86_64 GNU/Linux
-
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 890b894..88f64eb 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -36,7 +36,6 @@
+ #define NAMEI_RA_CHUNKS  2
+ #define NAMEI_RA_BLOCKS  4
+ #define NAMEI_RA_SIZE        (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+-#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+ 
+ static struct buffer_head *ext3_append(handle_t *handle,
+ 					struct inode *inode,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index cac4482..3f8c3d4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -47,7 +47,6 @@
+ #define NAMEI_RA_CHUNKS  2
+ #define NAMEI_RA_BLOCKS  4
+ #define NAMEI_RA_SIZE	     (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+-#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+ 
+ static struct buffer_head *ext4_append(handle_t *handle,
+ 					struct inode *inode,
+diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+index 8fe4e28..fc12135 100644
+--- a/fs/ocfs2/dir.c
++++ b/fs/ocfs2/dir.c
+@@ -67,7 +67,6 @@
+ #define NAMEI_RA_CHUNKS  2
+ #define NAMEI_RA_BLOCKS  4
+ #define NAMEI_RA_SIZE        (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+-#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+ 
+ static unsigned char ocfs2_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
 -- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.7.9.5
+
