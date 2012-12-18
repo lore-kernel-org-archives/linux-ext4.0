@@ -1,92 +1,96 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: do not try to write superblock on journal-less
- readonly remount
-Date: Tue, 18 Dec 2012 09:20:02 -0600
-Message-ID: <50D089A2.8030809@redhat.com>
-References: <1351154397-14743-1-git-send-email-mjt@msgid.tls.msk.ru> <50D025FE.5040201@msgid.tls.msk.ru>
+Subject: [PATCH RFC] jbd: don't wake kjournald unnecessarily
+Date: Tue, 18 Dec 2012 11:03:57 -0600
+Message-ID: <50D0A1FD.7040203@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Michael Tokarev <mjt@tls.msk.ru>
+Cc: Dave Wysochanski <dwysocha@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54094 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39324 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755009Ab2LRPw2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Dec 2012 10:52:28 -0500
-In-Reply-To: <50D025FE.5040201@msgid.tls.msk.ru>
+	id S1751270Ab2LRREk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Dec 2012 12:04:40 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/18/12 2:14 AM, Michael Tokarev wrote:
-> Ping?  Almost 2 months has passed since initial patch...
-> 
-> Thanks,
-> 
-> /mjt
+Commit d9b0193 jbd: fix fsync() tid wraparound bug
+changed the logic for whether __log_start_commit() should wake up
+kjournald.
 
-Michael, Lukas commented a while ago (10/25) that he was unable to reproduce
-the problem.  Do you have any comment on that?  TBH it's long enough
-ago that I've forgotten the issue ;)
+After backporting this to RHEL6, I had a report of a performance regression
+on a large benchmark, and it was narrowed down to the change above.
 
-But Lukas' question may be what's holding Ted up.
+I did a little investigation of jbd behavior while running xfstest
+013, which just does a large fsstress run, and found that we were
+waking up kjournald more often than before; specifically,
+in the case where
 
+	target == j_commit_request == journal->j_running_transaction
+
+It seems to me that the wakeup is not needed if we already have
+the right target on the commit request, so I tested with the
+additional condition added in the patch below; this brought
+performance back up to prior levels.
+
+I also tested it with tid_t defined to a u8, to get frequent wraps.
+If I back out the wraparound patch, it will easily provoke
+the original ASSERT that prompted the prior commit.  With
+the commit in place and the patch below, I survived running
+fsstress for 10 hours without problems even with a frequently-wrapping
+tid_t.
+
+A couple questions remain:
+
+With a u8 tid_t, the "else" clause from commit d9b0193 fires
+frequently; I really think the underlying problem is that tid_geq()
+etc does not properly handle wraparounds - if, say, target is 255
+and j_commit_request is 0, we don't know if j_commit_request
+is 255 tids behind, or 1 tid ahead.  I have to think about that
+some more, unless it's obvious to someone else.
+
+FWIW, some people have indeed seen that else clause fire upstream,
+both in the case where j_commit_request is > 2^31 and the 
+target is 0.
+
+https://bugzilla.kernel.org/show_bug.cgi?id=46031
+http://forums.debian.net/viewtopic.php?f=5&t=80741
+
+Anyway, I think this patch helps on the "don't send extra wakeups"
+side of things.  Does anyone see a problem with it?
+
+If it looks ok, I'll send the same for jbd2.
+
+Thanks,
 -Eric
 
-> On 25.10.2012 12:39, Michael Tokarev wrote:
->> When a journal-less ext4 filesystem is mounted on a read-only block
->> device (blockdev --setro will do), each remount (for other, unrelated,
->> flags, like suid=>nosuid etc) results in a series of scary messages
->> from kernel telling about I/O errors on the device.
->>
->> This is becauese of the following code ext4_remount():
->>
->>        if (sbi->s_journal == NULL)
->>                 ext4_commit_super(sb, 1);
->>
->> at the end of remount procedure, which forces writing (flushing) of
->> a superblock regardless whenever it is dirty or not, if the filesystem
->> is readonly or not, and whenever the device itself is readonly or not.
->>
->> The proposed fix tests whenever both old mount flags and new mount
->> flags does not include MS_READONLY, and only in this case calls
->> ext4_commit_super().
->>
->> Maybe it is sufficient to check for MS_READONLY just in old mount
->> options (old_sb_flags).  Note this is journal-less mode, so, for
->> example, we weren't have journal replay operation, so if old flags
->> include MS_REASONLY, we shuold have no dirty blocks at all, and
->> there's no reason to call ext4_commit_super().
->>
->> But only in case both old and new flags include MS_READONLY we're
->> certain we will not write anything - if new flag does not include
->> this bit, we will write sooner or later anyway, so preventing just
->> one commit_super() at the _beginning_ of mount is not really necessary.
->>
->> This change probably applicable to -stable, -- not because it fixes
->> a serious bug, but because the messages printed by the kernel are
->> rather scary for an average user.  On the other hand, actual usage
->> of ext4 in nojournal mode on a read-only medium is very rare.
->>
->> Thanks to Eric Sandeen for help in diagnosing this issue.
->>
->> Signed-off-By: Michael Tokarev <mjt@tls.msk.ru>
->> ---
->>  fs/ext4/super.c |    2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 3e0851e..2e896fd 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -4687,7 +4687,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->>  	}
->>  
->>  	ext4_setup_system_zone(sb);
->> -	if (sbi->s_journal == NULL)
->> +	if (sbi->s_journal == NULL && !(sb->s_flags & old_sb_flags & MS_RDONLY))
->>  		ext4_commit_super(sb, 1);
->>  
->>  	unlock_super(sb);
-> 
+=============
+[PATCH] jbd: don't wake kjournald unnecessarily
 
+Don't send an extra wakeup to kjournald in the case where we
+already have the proper target in j_commit_request, i.e. that
+commit has already been requested for commit.
+
+commit d9b0193 "jbd: fix fsync() tid wraparound bug" changed
+the logic leading to a wakeup, but it caused some extra wakeups
+which were found to lead to a measurable performance regression.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+ 
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index a286233..81cc7ea 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -446,7 +446,8 @@ int __log_start_commit(journal_t *journal, tid_t target)
+ 	 * currently running transaction (if it exists).  Otherwise,
+ 	 * the target tid must be an old one.
+ 	 */
+-	if (journal->j_running_transaction &&
++	if (journal->j_commit_request != target &&
++	    journal->j_running_transaction &&
+ 	    journal->j_running_transaction->t_tid == target) {
+ 		/*
+ 		 * We want a new commit: OK, mark the request and wakeup the
