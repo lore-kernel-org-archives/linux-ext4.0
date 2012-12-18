@@ -1,96 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH RFC] jbd: don't wake kjournald unnecessarily
-Date: Tue, 18 Dec 2012 11:03:57 -0600
-Message-ID: <50D0A1FD.7040203@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH] ext3, ext4, ocfs2: remove unused macro
+ NAMEI_RA_INDEX
+Date: Tue, 18 Dec 2012 18:48:11 +0100
+Message-ID: <20121218174811.GC5987@quack.suse.cz>
+References: <1355820999-27972-1-git-send-email-yan@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Dave Wysochanski <dwysocha@redhat.com>
-To: ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, Jan Kara <jack@suse.cz>,
+	Theodore Ts'o <tytso@mit.edu>, Mark Fasheh <mfasheh@suse.com>,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Guo Chao <yan@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39324 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:54250 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751270Ab2LRREk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 18 Dec 2012 12:04:40 -0500
+	id S1750703Ab2LRRs1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 18 Dec 2012 12:48:27 -0500
+Content-Disposition: inline
+In-Reply-To: <1355820999-27972-1-git-send-email-yan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit d9b0193 jbd: fix fsync() tid wraparound bug
-changed the logic for whether __log_start_commit() should wake up
-kjournald.
+On Tue 18-12-12 16:56:39, Guo Chao wrote:
+> This macro, initially introduced by ext2 in v0.99.15, does not
+> have any users from the beginning. It has been removed in later
+> ext2 version but still remains in the code of ext3, ext4, ocfs2.
+> Remove this macro there.
+  Thanks. I've merged the patch into my tree. Since it's trivial, I guess
+other fs maintainers won't mind.
 
-After backporting this to RHEL6, I had a report of a performance regression
-on a large benchmark, and it was narrowed down to the change above.
-
-I did a little investigation of jbd behavior while running xfstest
-013, which just does a large fsstress run, and found that we were
-waking up kjournald more often than before; specifically,
-in the case where
-
-	target == j_commit_request == journal->j_running_transaction
-
-It seems to me that the wakeup is not needed if we already have
-the right target on the commit request, so I tested with the
-additional condition added in the patch below; this brought
-performance back up to prior levels.
-
-I also tested it with tid_t defined to a u8, to get frequent wraps.
-If I back out the wraparound patch, it will easily provoke
-the original ASSERT that prompted the prior commit.  With
-the commit in place and the patch below, I survived running
-fsstress for 10 hours without problems even with a frequently-wrapping
-tid_t.
-
-A couple questions remain:
-
-With a u8 tid_t, the "else" clause from commit d9b0193 fires
-frequently; I really think the underlying problem is that tid_geq()
-etc does not properly handle wraparounds - if, say, target is 255
-and j_commit_request is 0, we don't know if j_commit_request
-is 255 tids behind, or 1 tid ahead.  I have to think about that
-some more, unless it's obvious to someone else.
-
-FWIW, some people have indeed seen that else clause fire upstream,
-both in the case where j_commit_request is > 2^31 and the 
-target is 0.
-
-https://bugzilla.kernel.org/show_bug.cgi?id=46031
-http://forums.debian.net/viewtopic.php?f=5&t=80741
-
-Anyway, I think this patch helps on the "don't send extra wakeups"
-side of things.  Does anyone see a problem with it?
-
-If it looks ok, I'll send the same for jbd2.
-
-Thanks,
--Eric
-
-=============
-[PATCH] jbd: don't wake kjournald unnecessarily
-
-Don't send an extra wakeup to kjournald in the case where we
-already have the proper target in j_commit_request, i.e. that
-commit has already been requested for commit.
-
-commit d9b0193 "jbd: fix fsync() tid wraparound bug" changed
-the logic leading to a wakeup, but it caused some extra wakeups
-which were found to lead to a measurable performance regression.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
- 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index a286233..81cc7ea 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -446,7 +446,8 @@ int __log_start_commit(journal_t *journal, tid_t target)
- 	 * currently running transaction (if it exists).  Otherwise,
- 	 * the target tid must be an old one.
- 	 */
--	if (journal->j_running_transaction &&
-+	if (journal->j_commit_request != target &&
-+	    journal->j_running_transaction &&
- 	    journal->j_running_transaction->t_tid == target) {
- 		/*
- 		 * We want a new commit: OK, mark the request and wakeup the
+								Honza
+> 
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Mark Fasheh <mfasheh@suse.com>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: ocfs2-devel@oss.oracle.com
+> Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
+> ---
+>  fs/ext3/namei.c |    1 -
+>  fs/ext4/namei.c |    1 -
+>  fs/ocfs2/dir.c  |    1 -
+>  3 files changed, 3 deletions(-)
+> 
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 890b894..88f64eb 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -36,7 +36,6 @@
+>  #define NAMEI_RA_CHUNKS  2
+>  #define NAMEI_RA_BLOCKS  4
+>  #define NAMEI_RA_SIZE        (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+> -#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+>  
+>  static struct buffer_head *ext3_append(handle_t *handle,
+>  					struct inode *inode,
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index cac4482..3f8c3d4 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -47,7 +47,6 @@
+>  #define NAMEI_RA_CHUNKS  2
+>  #define NAMEI_RA_BLOCKS  4
+>  #define NAMEI_RA_SIZE	     (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+> -#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+>  
+>  static struct buffer_head *ext4_append(handle_t *handle,
+>  					struct inode *inode,
+> diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+> index 8fe4e28..fc12135 100644
+> --- a/fs/ocfs2/dir.c
+> +++ b/fs/ocfs2/dir.c
+> @@ -67,7 +67,6 @@
+>  #define NAMEI_RA_CHUNKS  2
+>  #define NAMEI_RA_BLOCKS  4
+>  #define NAMEI_RA_SIZE        (NAMEI_RA_CHUNKS * NAMEI_RA_BLOCKS)
+> -#define NAMEI_RA_INDEX(c,b)  (((c) * NAMEI_RA_BLOCKS) + (b))
+>  
+>  static unsigned char ocfs2_filetype_table[] = {
+>  	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+> -- 
+> 1.7.9.5
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
