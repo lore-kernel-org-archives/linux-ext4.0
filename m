@@ -1,199 +1,127 @@
-From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: [PATCH RESEND] vfs: re-implement writeback_inodes_sb(_nr)_if_idle()
- and rename them
-Date: Thu, 20 Dec 2012 18:09:35 +0800
-Message-ID: <50D2E3DF.4010105@cn.fujitsu.com>
-Reply-To: miaox@cn.fujitsu.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
+Date: Thu, 20 Dec 2012 12:32:13 +0100
+Message-ID: <20121220113213.GB3301@quack.suse.cz>
+References: <50BF597D.3040704@tao.ma>
+ <50BFF149.6080007@huawei.com>
+ <20121206123744.GA17951@quack.suse.cz>
+ <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com>
+ <20121206170913.GC21029@quack.suse.cz>
+ <50C1BF05.6020605@huawei.com>
+ <50C6E86F.8040308@huawei.com>
+ <20121212100444.GB18885@quack.suse.cz>
+ <50C86AFC.7080301@huawei.com>
+ <50CEF92F.6050306@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, qixuan wu <wuqixuan@gmail.com>,
+	Tao Ma <tm@tao.ma>, Theodore Ts'o <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Yafang Shao <laoar.shao@gmail.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	wuqixuan@huawei.com, xieshuangyi@huawei.com, tao.peng@emc.com
+To: Li Zefan <lizefan@huawei.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <50CEF92F.6050306@huawei.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-writeback_inodes_sb(_nr)_if_idle() is re-implemented by replacing down_read()
-with down_read_trylock() because
-- If ->s_umount is write locked, then the sb is not idle. That is
-  writeback_inodes_sb(_nr)_if_idle() needn't wait for the lock.
-- writeback_inodes_sb(_nr)_if_idle() grabs s_umount lock when it want to start
-  writeback, it may bring us deadlock problem when doing umount. In order to
-  fix the problem, ext4 and btrfs implemented their own writeback functions
-  instead of writeback_inodes_sb(_nr)_if_idle(), but it introduced the redundant
-  code, it is better to implement a new writeback_inodes_sb(_nr)_if_idle().
+  Hello,
 
-The name of these two functions is cumbersome, so rename them to
-try_to_writeback_inodes_sb(_nr).
+On Mon 17-12-12 18:51:27, Li Zefan wrote:
+> >>> last_offset=-1, last_fpos=-1, f_pos=4024
+> >>>
+> >>> -1 means we hit the bug in the first iteration in the insde while in
+> >>> ext3_readdir().
+> >>>
+> >>> I've checked how ext3_readdir() works and how f_pos, f_version and i_version
+> >>> get initialized and modified. Now I'm lost. I really can't see how f_pos got
+> >>> corrupted. :(
+> >>   Hum, it looks really curious. So f_pos has been 4024 when we entered
+> >> ext3_readdir()?
+> > 
+> > dunno. but what else can be
+> > 
+> >> Do you know what it was when we last left ext3_readdir()
+> >> for that filp? You can store that value in some debug entry added to struct
+> >> file... Also any chance we ever hit:
+> >>                                 if (version != filp->f_version)
+> >>                                         goto revalidate;
+> >> I don't think it can ever happen since we hold i_mutex and
+> >> generic_file_llseek() takes i_mutex as well. But better be sure.
+> >>
+> > 
+> > Yesterday I've added more debug aids, which convers all the above information
+> > mentioned. Actually the code tracks all the places that change f_pos, and
+> > I think only lseek() and readdir() can change it.
+> > 
+> > Now I'm waiting for the bug to happen again, can be several days...
+> > 
+> 
+> The bug was triggered again:
+> 
+> EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #9372013: rec_len is smaller than minimal - offset=4028, inode=0, rec_len=0, name_len=0
+> 
+> And I've confirmed f_pos=4028 when we entered ext3_readdir(), while it
+> should be 4096.
+  OK, interesting.
+ 
+> I wrote a simple ring buffer to track operations on log dirs, and from the
+> ring buffer, we can see that there were no lseek, unlink, rename, etc.
+> 
+> This is correct:
+> 
+> dir=9372013, seq=1549, spot=readdir_1, f_pos=0, f_pos_delta=0
+> dir=9372013, seq=1550, spot=readdir_3, f_pos=0, f_pos_delta=0
+> dir=9372013, seq=1551, spot=readdir_5, f_pos=12, f_pos_delta=12
+> dir=9372013, seq=1552, spot=readdir_5, f_pos=24, f_pos_delta=12
+> ...
+> dir=9372013, seq=1595, spot=readdir_5, f_pos=1488, f_pos_delta=28
+> dir=9372013, seq=1596, spot=readdir_5, f_pos=1516, f_pos_delta=28
+> dir=9372013, seq=1597, spot=readdir_5, f_pos=1556, f_pos_delta=40
+> dir=9372013, seq=1598, spot=readdir_5, f_pos=1584, f_pos_delta=28
+> ...
+> dir=9372013, seq=1627, spot=readdir_5, f_pos=2392, f_pos_delta=28
+> dir=9372013, seq=1628, spot=readdir_5, f_pos=4096, f_pos_delta=1704
+> dir=9372013, seq=1629, spot=readdir_1, f_pos=4096, f_pos_delta=0
+> 
+> (readir_1 is the entry of readdir(), and readdir_3 is when we enter
+> (f_version != i_version), and readdir_5 is we iterate the dir block)
+  Can you post the readdir() code you now run including your logging?
+Thanks!
 
-This idea came from Christoph Hellwig.
-Some code is from the patch of Kamal Mostafa.
+> Then f_pos went wrong suddenly:
+> 
+> dir=9372013, seq=1676, spot=readdir_5, f_pos=1488, f_pos_delta=28
+> dir=9372013, seq=1677, spot=readdir_5, f_pos=1516, f_pos_delta=28
+> dir=9372013, seq=1678, spot=readdir_5, f_pos=1556, f_pos_delta=40
+> dir=9372013, seq=1679, spot=readdir_5, f_pos=1516, f_pos_delta=28   <-- !!!!!!!!
+> dir=9372013, seq=1680, spot=readdir_5, f_pos=1540, f_pos_delta=24
+> ...
+> dir=9372013, seq=1708, spot=readdir_5, f_pos=2324, f_pos_delta=28
+> dir=9372013, seq=1709, spot=readdir_5, f_pos=4028, f_pos_delta=1704
+> dir=9372013, seq=1710, spot=readdir_1, f_pos=4028, f_pos_delta=0
+> 
+> This is odd...
+> 
+> While f_pos was wrong, offset is always correct, and this is not some
+> single-bit error in memory, so someone else changed f_pos? but we were
+> holding i_mutex, and we see nothing else except readdir in the ring
+> buffer...
+  How do you know 'offset' was correct? I don't see it in the ring
+buffer... Anyway, this all points to us taking the:
+                               if (version != filp->f_version)
+                                        goto revalidate;
+branch when 'offset' is already advanced but f_pos isn't. Then we don't
+enter:
+	if (filp->f_version != inode->i_version) {
+branch and thus f_pos and 'offset' stay out of sync and problems happen.
 
-Signed-off-by: Miao Xie <miaox@cn.fujitsu.com>
----
- fs/btrfs/extent-tree.c    | 20 +++-----------------
- fs/ext4/inode.c           |  8 ++------
- fs/fs-writeback.c         | 45 ++++++++++++++++++++-------------------------
- include/linux/writeback.h |  6 +++---
- 4 files changed, 28 insertions(+), 51 deletions(-)
+But how these strange issues with f_version happen is a mystery for me so
+far.
 
-diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
-index d133edf..994e18e 100644
---- a/fs/btrfs/extent-tree.c
-+++ b/fs/btrfs/extent-tree.c
-@@ -3689,20 +3689,6 @@ static int can_overcommit(struct btrfs_root *root,
- 	return 0;
- }
- 
--static int writeback_inodes_sb_nr_if_idle_safe(struct super_block *sb,
--					       unsigned long nr_pages,
--					       enum wb_reason reason)
--{
--	if (!writeback_in_progress(sb->s_bdi) &&
--	    down_read_trylock(&sb->s_umount)) {
--		writeback_inodes_sb_nr(sb, nr_pages, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	}
--
--	return 0;
--}
--
- /*
-  * shrink metadata reservation for delalloc
-  */
-@@ -3735,9 +3721,9 @@ static void shrink_delalloc(struct btrfs_root *root, u64 to_reclaim, u64 orig,
- 	while (delalloc_bytes && loops < 3) {
- 		max_reclaim = min(delalloc_bytes, to_reclaim);
- 		nr_pages = max_reclaim >> PAGE_CACHE_SHIFT;
--		writeback_inodes_sb_nr_if_idle_safe(root->fs_info->sb,
--						    nr_pages,
--						    WB_REASON_FS_FREE_SPACE);
-+		try_to_writeback_inodes_sb_nr(root->fs_info->sb,
-+					      nr_pages,
-+					      WB_REASON_FS_FREE_SPACE);
- 
- 		/*
- 		 * We need to wait for the async pages to actually start before
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b3c243b..f82d60e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2465,12 +2465,8 @@ static int ext4_nonda_switch(struct super_block *sb)
- 	/*
- 	 * Start pushing delalloc when 1/2 of free blocks are dirty.
- 	 */
--	if (dirty_blocks && (free_blocks < 2 * dirty_blocks) &&
--	    !writeback_in_progress(sb->s_bdi) &&
--	    down_read_trylock(&sb->s_umount)) {
--		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
--		up_read(&sb->s_umount);
--	}
-+	if (dirty_blocks && (free_blocks < 2 * dirty_blocks))
-+		try_to_writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
- 
- 	if (2 * free_blocks < 3 * dirty_blocks ||
- 		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 3e3422f..9a04ef2 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1314,7 +1314,6 @@ void writeback_inodes_sb_nr(struct super_block *sb,
- 	bdi_queue_work(sb->s_bdi, &work);
- 	wait_for_completion(&done);
- }
--EXPORT_SYMBOL(writeback_inodes_sb_nr);
- 
- /**
-  * writeback_inodes_sb	-	writeback dirty inodes from given super_block
-@@ -1332,47 +1331,43 @@ void writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- EXPORT_SYMBOL(writeback_inodes_sb);
- 
- /**
-- * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb_nr - try to start writeback if none underway
-  * @sb: the superblock
-- * @reason: reason why some writeback work was initiated
-+ * @nr: the number of pages to write
-+ * @reason: the reason of writeback
-  *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-+ * Invoke writeback_inodes_sb_nr if no writeback is currently underway.
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
-+int try_to_writeback_inodes_sb_nr(struct super_block *sb,
-+				  unsigned long nr,
-+				  enum wb_reason reason)
- {
--	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb(sb, reason);
--		up_read(&sb->s_umount);
-+	if (writeback_in_progress(sb->s_bdi))
- 		return 1;
--	} else
-+
-+	if (!down_read_trylock(&sb->s_umount))
- 		return 0;
-+
-+	writeback_inodes_sb_nr(sb, nr, reason);
-+	up_read(&sb->s_umount);
-+	return 1;
- }
--EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb_nr);
- 
- /**
-- * writeback_inodes_sb_nr_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb - try to start writeback if none underway
-  * @sb: the superblock
-- * @nr: the number of pages to write
-  * @reason: reason why some writeback work was initiated
-  *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-+ * Implement by try_to_writeback_inodes_sb_nr()
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
--				   unsigned long nr,
--				   enum wb_reason reason)
-+int try_to_writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- {
--	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb_nr(sb, nr, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	} else
--		return 0;
-+	return try_to_writeback_inodes_sb_nr(sb, get_nr_dirty_pages(), reason);
- }
--EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb);
- 
- /**
-  * sync_inodes_sb	-	sync sb inode pages
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 50c3e8f..ecdd0e0 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -87,9 +87,9 @@ int inode_wait(void *);
- void writeback_inodes_sb(struct super_block *, enum wb_reason reason);
- void writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
- 							enum wb_reason reason);
--int writeback_inodes_sb_if_idle(struct super_block *, enum wb_reason reason);
--int writeback_inodes_sb_nr_if_idle(struct super_block *, unsigned long nr,
--							enum wb_reason reason);
-+int try_to_writeback_inodes_sb(struct super_block *, enum wb_reason reason);
-+int try_to_writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
-+				  enum wb_reason reason);
- void sync_inodes_sb(struct super_block *);
- long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages,
- 				enum wb_reason reason);
+								Honza
 -- 
-1.7.11.7
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
