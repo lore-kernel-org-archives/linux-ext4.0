@@ -1,34 +1,29 @@
-From: Andy Lutomirski <luto@amacapital.net>
-Subject: [PATCH] ext4: Fix an incorrect comment about i_mutex
-Date: Fri, 21 Dec 2012 11:24:58 -0800
-Message-ID: <1323a2735a9106cf0fa1a6ffee938ce432aa085d.1356117764.git.luto@amacapital.net>
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Andy Lutomirski <luto@amacapital.net>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: Split off ext4_journalled_invalidatepage()
+Date: Fri, 21 Dec 2012 14:48:10 -0500
+Message-ID: <20121221194810.GE31731@thunk.org>
+References: <1355345416-13565-1-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39801 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750748Ab2LUTsT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Dec 2012 14:48:19 -0500
+Content-Disposition: inline
+In-Reply-To: <1355345416-13565-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-i_mutex is not held when ->sync_file is called.
+On Wed, Dec 12, 2012 at 09:50:15PM +0100, Jan Kara wrote:
+> In data=journal mode we don't need delalloc or DIO handling in invalidatepage
+> and similarly in other modes we don't need the journal handling. So split
+> invalidatepage implementations.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andy Lutomirski <luto@amacapital.net>
----
- fs/ext4/fsync.c | 2 --
- 1 file changed, 2 deletions(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index be1d89f..8c15642 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -113,8 +113,6 @@ static int __sync_inode(struct inode *inode, int datasync)
-  *
-  * What we do is just kick off a commit and wait on it.  This will snapshot the
-  * inode to disk.
-- *
-- * i_mutex lock is held when entering and exiting this function
-  */
- 
- int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
--- 
-1.7.11.7
+					- Ted
