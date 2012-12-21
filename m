@@ -1,51 +1,297 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Uninitialized extent races
-Date: Fri, 21 Dec 2012 18:03:35 -0500
-Message-ID: <20121221230335.GH31731@thunk.org>
-References: <20121221012526.GD13474@quack.suse.cz>
- <20121221031151.GA5014@thunk.org>
- <20121221161929.GF17357@quack.suse.cz>
- <20121221180243.GB31731@thunk.org>
- <20121221224947.GA23652@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] ext4: Fix deadlock in journal_unmap_buffer()
+Date: Sat, 22 Dec 2012 00:03:47 +0100
+Message-ID: <20121221230347.GB23652@quack.suse.cz>
+References: <1355345416-13565-1-git-send-email-jack@suse.cz>
+ <1355345416-13565-2-git-send-email-jack@suse.cz>
+ <20121221195220.GF31731@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39830 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751506Ab2LUXDo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Dec 2012 18:03:44 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:46121 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751602Ab2LUXDu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Dec 2012 18:03:50 -0500
 Content-Disposition: inline
-In-Reply-To: <20121221224947.GA23652@quack.suse.cz>
+In-Reply-To: <20121221195220.GF31731@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 21, 2012 at 11:49:47PM +0100, Jan Kara wrote:
->   It's actually simpler than that. We wait for any pending DIO using
-> inode_dio_wait() and i_mutex protects from new writes to be submitted. So
-> that takes care of one possibility. truncate_inode_pages() waits for
-> PageWriteback bit so that handles waiting for IO itself. 
+On Fri 21-12-12 14:52:20, Ted Tso wrote:
+> On Wed, Dec 12, 2012 at 09:50:16PM +0100, Jan Kara wrote:
+> > We cannot wait for transaction commit in journal_unmap_buffer() because we hold
+> > page lock which ranks below transaction start. We solve the issue by bailing
+> > out of journal_unmap_buffer() and jbd2_journal_invalidatepage() with -EBUSY.
+> 
+> ocfs2 also calls jbd2_journal_invalidatepage().  I would think we
+> would need to apply a similar fix up to ocfs2, lest they end up having
+> jbd2_journal_invalidatepage() silently failing for them.
+> 
+> I'm going to hold off on this patch until we're sure it's not going to
+> cause problems for ocfs2.  A quick check indicates that they also
+> support sub-page block sizes, which would tend to indicate that they
+> could get hit by the same dead lock, yes?
+  I should have commented on this in the changelog :).
+jbd2_journal_invalidatepage() gets called only for file pagecache pages.
+Because ocfs2 doesn't do data journalling it never sees buffers that are
+part of a transaction in jbd2_journal_invalidatepage() (similarly to ext4
+except for data=journal case). I'll send a patch to just stop calling
+jbd2_journal_invalidatepage() for ocfs2... But you are safe to merge this
+patch in the mean time.
 
-Hmm, yes, I should have known/remembered that.  I've seen cases where
-very rarely, it's possible for a unlink() or truncate() call to stall
-for multiple minutes(!).  This can happen if you have writeback
-happening in a container which has a very small (low priority)
-constraint on its block I/O bandwidth.  If you try to delete an inode
-which has writeback work pending, it's possible for the writeback to
-take a looong time, which in turn causes the unlink to take a long
-time.
-
-It becomes worse the process doing the unlink is a high priority
-process (say, the cluster management daemon who is cleaning up after
-said low-priority job has completed), but the writeback is happening
-in the context of a low priority cgroup.  You can end up with a nasty
-priority inversion.
-
-And there's not a lot we can do at the kernel level.  We could
-dispatch the truncate to a workqueue and just make sure the file name
-has disappeared from the file system name space before the unlink() to
-userspace, but then the disk space gets released after the unlink()
-call returns, which can cause other problems.
-
-						- Ted
+								Honza
+> 
+> 						- Ted
+> 
+> > Caller is then responsible for waiting for transaction commit to finish and try
+> > invalidation again. Since the issue can happen only for page stradding i_size,
+> > it is simple enough to manually call jbd2_journal_invalidatepage() for such
+> > page from ext4_setattr(), check the return value and wait if necessary.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/inode.c             |   82 +++++++++++++++++++++++++++++++++++++------
+> >  fs/jbd2/transaction.c       |   27 +++++++-------
+> >  include/linux/jbd2.h        |    2 +-
+> >  include/trace/events/ext4.h |    4 +-
+> >  4 files changed, 88 insertions(+), 27 deletions(-)
+> > 
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 66abac7..cc0abeb 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -2813,8 +2813,8 @@ static void ext4_invalidatepage(struct page *page, unsigned long offset)
+> >  	block_invalidatepage(page, offset);
+> >  }
+> >  
+> > -static void ext4_journalled_invalidatepage(struct page *page,
+> > -					   unsigned long offset)
+> > +static int __ext4_journalled_invalidatepage(struct page *page,
+> > +					    unsigned long offset)
+> >  {
+> >  	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
+> >  
+> > @@ -2826,7 +2826,14 @@ static void ext4_journalled_invalidatepage(struct page *page,
+> >  	if (offset == 0)
+> >  		ClearPageChecked(page);
+> >  
+> > -	jbd2_journal_invalidatepage(journal, page, offset);
+> > +	return jbd2_journal_invalidatepage(journal, page, offset);
+> > +}
+> > +
+> > +/* Wrapper for aops... */
+> > +static void ext4_journalled_invalidatepage(struct page *page,
+> > +					   unsigned long offset)
+> > +{
+> > +	WARN_ON(__ext4_journalled_invalidatepage(page, offset) < 0);
+> >  }
+> >  
+> >  static int ext4_releasepage(struct page *page, gfp_t wait)
+> > @@ -4230,6 +4237,47 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
+> >  }
+> >  
+> >  /*
+> > + * In data=journal mode ext4_journalled_invalidatepage() may fail to invalidate
+> > + * buffers that are attached to a page stradding i_size and are undergoing
+> > + * commit. In that case we have to wait for commit to finish and try again.
+> > + */
+> > +static void ext4_wait_for_tail_page_commit(struct inode *inode)
+> > +{
+> > +	struct page *page;
+> > +	unsigned offset;
+> > +	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+> > +	tid_t commit_tid = 0;
+> > +	int ret;
+> > +
+> > +	offset = inode->i_size & (PAGE_CACHE_SIZE - 1);
+> > +	/*
+> > +	 * All buffers in the last page remain valid? Then there's nothing to
+> > +	 * do. We do the check mainly to optimize the common PAGE_CACHE_SIZE ==
+> > +	 * blocksize case
+> > +	 */
+> > +	if (offset > PAGE_CACHE_SIZE - (1 << inode->i_blkbits))
+> > +		return;
+> > +	while (1) {
+> > +		page = find_lock_page(inode->i_mapping,
+> > +				      inode->i_size >> PAGE_CACHE_SHIFT);
+> > +		if (!page)
+> > +			return;
+> > +		ret = __ext4_journalled_invalidatepage(page, offset);
+> > +		unlock_page(page);
+> > +		page_cache_release(page);
+> > +		if (ret != -EBUSY)
+> > +			return;
+> > +		commit_tid = 0;
+> > +		read_lock(&journal->j_state_lock);
+> > +		if (journal->j_committing_transaction)
+> > +			commit_tid = journal->j_committing_transaction->t_tid;
+> > +		read_unlock(&journal->j_state_lock);
+> > +		if (commit_tid)
+> > +			jbd2_log_wait_commit(journal, commit_tid);
+> > +	}
+> > +}
+> > +
+> > +/*
+> >   * ext4_setattr()
+> >   *
+> >   * Called from notify_change.
+> > @@ -4342,16 +4390,28 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+> >  	}
+> >  
+> >  	if (attr->ia_valid & ATTR_SIZE) {
+> > -		if (attr->ia_size != i_size_read(inode)) {
+> > -			truncate_setsize(inode, attr->ia_size);
+> > -			/* Inode size will be reduced, wait for dio in flight.
+> > -			 * Temporarily disable dioread_nolock to prevent
+> > -			 * livelock. */
+> > +		if (attr->ia_size != inode->i_size) {
+> > +			loff_t oldsize = inode->i_size;
+> > +
+> > +			i_size_write(inode, attr->ia_size);
+> > +			/*
+> > +			 * Blocks are going to be removed from the inode. Wait
+> > +			 * for dio in flight.  Temporarily disable
+> > +			 * dioread_nolock to prevent livelock.
+> > +			 */
+> >  			if (orphan) {
+> > -				ext4_inode_block_unlocked_dio(inode);
+> > -				inode_dio_wait(inode);
+> > -				ext4_inode_resume_unlocked_dio(inode);
+> > +				if (!ext4_should_journal_data(inode)) {
+> > +					ext4_inode_block_unlocked_dio(inode);
+> > +					inode_dio_wait(inode);
+> > +					ext4_inode_resume_unlocked_dio(inode);
+> > +				} else
+> > +					ext4_wait_for_tail_page_commit(inode);
+> >  			}
+> > +			/*
+> > +			 * Truncate pagecache after we've waited for commit
+> > +			 * in data=journal mode to make pages freeable.
+> > +			 */
+> > +			truncate_pagecache(inode, oldsize, inode->i_size);
+> >  		}
+> >  		ext4_truncate(inode);
+> >  	}
+> > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> > index a74ba46..e1475b4 100644
+> > --- a/fs/jbd2/transaction.c
+> > +++ b/fs/jbd2/transaction.c
+> > @@ -1850,7 +1850,6 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+> >  
+> >  	BUFFER_TRACE(bh, "entry");
+> >  
+> > -retry:
+> >  	/*
+> >  	 * It is safe to proceed here without the j_list_lock because the
+> >  	 * buffers cannot be stolen by try_to_free_buffers as long as we are
+> > @@ -1945,14 +1944,11 @@ retry:
+> >  		 * for commit and try again.
+> >  		 */
+> >  		if (partial_page) {
+> > -			tid_t tid = journal->j_committing_transaction->t_tid;
+> > -
+> >  			jbd2_journal_put_journal_head(jh);
+> >  			spin_unlock(&journal->j_list_lock);
+> >  			jbd_unlock_bh_state(bh);
+> >  			write_unlock(&journal->j_state_lock);
+> > -			jbd2_log_wait_commit(journal, tid);
+> > -			goto retry;
+> > +			return -EBUSY;
+> >  		}
+> >  		/*
+> >  		 * OK, buffer won't be reachable after truncate. We just set
+> > @@ -2013,21 +2009,23 @@ zap_buffer_unlocked:
+> >   * @page:    page to flush
+> >   * @offset:  length of page to invalidate.
+> >   *
+> > - * Reap page buffers containing data after offset in page.
+> > - *
+> > + * Reap page buffers containing data after offset in page. Can return -EBUSY
+> > + * if buffers are part of the committing transaction and the page is straddling
+> > + * i_size. Caller then has to wait for current commit and try again.
+> >   */
+> > -void jbd2_journal_invalidatepage(journal_t *journal,
+> > -		      struct page *page,
+> > -		      unsigned long offset)
+> > +int jbd2_journal_invalidatepage(journal_t *journal,
+> > +				struct page *page,
+> > +				unsigned long offset)
+> >  {
+> >  	struct buffer_head *head, *bh, *next;
+> >  	unsigned int curr_off = 0;
+> >  	int may_free = 1;
+> > +	int ret = 0;
+> >  
+> >  	if (!PageLocked(page))
+> >  		BUG();
+> >  	if (!page_has_buffers(page))
+> > -		return;
+> > +		return 0;
+> >  
+> >  	/* We will potentially be playing with lists other than just the
+> >  	 * data lists (especially for journaled data mode), so be
+> > @@ -2041,9 +2039,11 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+> >  		if (offset <= curr_off) {
+> >  			/* This block is wholly outside the truncation point */
+> >  			lock_buffer(bh);
+> > -			may_free &= journal_unmap_buffer(journal, bh,
+> > -							 offset > 0);
+> > +			ret = journal_unmap_buffer(journal, bh, offset > 0);
+> >  			unlock_buffer(bh);
+> > +			if (ret < 0)
+> > +				return ret;
+> > +			may_free &= ret;
+> >  		}
+> >  		curr_off = next_off;
+> >  		bh = next;
+> > @@ -2054,6 +2054,7 @@ void jbd2_journal_invalidatepage(journal_t *journal,
+> >  		if (may_free && try_to_free_buffers(page))
+> >  			J_ASSERT(!page_has_buffers(page));
+> >  	}
+> > +	return 0;
+> >  }
+> >  
+> >  /*
+> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > index 3efc43f..cb7d6af 100644
+> > --- a/include/linux/jbd2.h
+> > +++ b/include/linux/jbd2.h
+> > @@ -1099,7 +1099,7 @@ extern int	 jbd2_journal_dirty_metadata (handle_t *, struct buffer_head *);
+> >  extern void	 jbd2_journal_release_buffer (handle_t *, struct buffer_head *);
+> >  extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
+> >  extern void	 journal_sync_buffer (struct buffer_head *);
+> > -extern void	 jbd2_journal_invalidatepage(journal_t *,
+> > +extern int	 jbd2_journal_invalidatepage(journal_t *,
+> >  				struct page *, unsigned long);
+> >  extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+> >  extern int	 jbd2_journal_stop(handle_t *);
+> > diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> > index df972d9..3ef522e 100644
+> > --- a/include/trace/events/ext4.h
+> > +++ b/include/trace/events/ext4.h
+> > @@ -476,13 +476,13 @@ DECLARE_EVENT_CLASS(ext4_invalidatepage_op,
+> >  		  (unsigned long) __entry->index, __entry->offset)
+> >  );
+> >  
+> > -DEFINE_EVENT(ext4_invalidatepage_op, ext4_invalidatepage
+> > +DEFINE_EVENT(ext4_invalidatepage_op, ext4_invalidatepage,
+> >  	TP_PROTO(struct page *page, unsigned long offset),
+> >  
+> >  	TP_ARGS(page, offset)
+> >  );
+> >  
+> > -DEFINE_EVENT(ext4_invalidatepage_op, ext4_journalled_invalidatepage
+> > +DEFINE_EVENT(ext4_invalidatepage_op, ext4_journalled_invalidatepage,
+> >  	TP_PROTO(struct page *page, unsigned long offset),
+> >  
+> >  	TP_ARGS(page, offset)
+> > -- 
+> > 1.7.1
+> > 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
