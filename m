@@ -1,61 +1,72 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RFC] jbd: don't wake kjournald unnecessarily
-Date: Fri, 21 Dec 2012 12:46:02 -0500
-Message-ID: <20121221174602.GA31731@thunk.org>
-References: <50D0A1FD.7040203@redhat.com>
- <20121219012710.GF5987@quack.suse.cz>
- <20121219020526.GG5987@quack.suse.cz>
- <50D12FC3.6090209@redhat.com>
- <20121219081334.GB20163@quack.suse.cz>
- <20121219153725.GD7795@thunk.org>
- <20121219171401.GB28042@quack.suse.cz>
- <20121219202734.GA18804@thunk.org>
- <50D49606.3020708@redhat.com>
+Subject: Re: Uninitialized extent races
+Date: Fri, 21 Dec 2012 13:02:43 -0500
+Message-ID: <20121221180243.GB31731@thunk.org>
+References: <20121221012526.GD13474@quack.suse.cz>
+ <20121221031151.GA5014@thunk.org>
+ <20121221161929.GF17357@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39771 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:39779 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751136Ab2LURqI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Dec 2012 12:46:08 -0500
+	id S1751830Ab2LUSCz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Dec 2012 13:02:55 -0500
 Content-Disposition: inline
-In-Reply-To: <50D49606.3020708@redhat.com>
+In-Reply-To: <20121221161929.GF17357@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 21, 2012 at 11:01:58AM -0600, Eric Sandeen wrote:
-> > I'm also really puzzled about how Eric's patch makes a 10% different
-> > on the AIM7 benchmark; as you've pointed out, that will just cause an
-> > extra wakeup of the jbd/jbd2 thread, which should then quickly check
-> > and decide to go back to sleep.
->
-> Ted, just to double check - is that some wondering aloud, or a NAK
-> of the original patch? :)
+On Fri, Dec 21, 2012 at 05:19:29PM +0100, Jan Kara wrote:
+>   No, I'm speaking about merging currently uninitialized extents. I.e.
+> suppose someone does the following on a filesystem with dioread_nolock so
+> that writeback happens via unwritten extents:
+>   fd = open("file", O_RDWR);
+>   pwrite(fd, buf, 4096, 0);
+> 					flusher thread starts writing
+> 					we create uninitialized extent for
+> 					  range 0-4096
+>   fallocate(fd, 0, 4096, 4096);
+>     - we merge extents and now have just 1 uninitialized extent for range
+>       0-8192
+> 					ext4_convert_unwritten_extents() now
+> 					  has to split the extent to finish
+> 					  the IO.
 
-I'm still thinking....  Things that I don't understand worry me, since
-there's a possibility there's more going on than we think.
+Ah, I see.  Disabling the the merging that might take place as a
+result of the fallocate.  Yes, I agree that's a completely sane thing
+to do.
 
-Did you have a chance to have your perf people enable the the
-jbd2_run_stats tracepoint, to see how the stats change with and
-without the patch?
+The alternate approach would be to add a flag in the extent status
+tree indicating that an unwritten conversion is pending, but that
+would add more complexity.
 
-It would be interesting to see how the stats change --- in particular,
-whether the number of blocks logged per transaction is changing,
-and/or the number of blocks per transaction is changing.  It would
-also be interesting to insert a tracepoint in kjournald so we can
-track the number of times when kjournald is waking, but ends up *not*
-triggering a commit due to the commit timeout firing or
-j_commit_sequence != j_commit_request.  
+Hmmm.... do we need that complexity anyway?  What happens if we have a
+race between a punch (or truncate) and the flusher thread, so there is
+pending write.  There are two things that would be of concern.  (1)
+Will convert_unwritten_extents do the right thing if the extent in
+question has disappeared, and (2) what if the block gets reused for
+some other inode in the interim?
 
-I'll probably take the patch on the grounds that it's obvious, but if
-you could get your perf folks to run the experiment, I'd really
-appreciate it, just so we can understand what might be going on.
-Perhaps there's an opportunity for further optimizations, or we'll
-find that something unexpected that is evidence of a bug.  (Or maybe
-it's just a bug in our understanding, but that's also good to get
-fixed.  :-)
+I _think_ we're OK in the case of (2), since we're not using FUA
+writes for anything other than the commit block, so there shouldn't be
+any way that a write for the new inode could complete before the
+pending write finishes up.  And (1) should be OK, although it may end
+up triggering a WARN_ON and a scarry ext4_msg() in
+ext4_convert_unwritten_extents().   But it made me stop and think....
 
-						- Ted
+> And I regarding more merging, that could be done (obviously), just we might
+> need to postpone that after writeback is finished (PageWriteback is
+> cleared) because there extent estimates are not clear. And I need to know
+> necessary number of extents well in advance to be able to reserve credits
+> in the journal. OTOH maybe we could use jbd2_journal_extend() to get more
+> credits if we need them for merging. And when that fails, bad luck but we
+> can cope... Anyway, this is a different problem.
+
+Yeah, using jbd2_journal_extend() was what I was thinking about doing
+where we could do some opportunistic merging if there's room in the
+journal to allow that.  But I agree that's a different problem....
+
+	   	 	      	    - Ted
