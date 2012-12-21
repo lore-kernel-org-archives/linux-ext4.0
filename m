@@ -1,53 +1,61 @@
-From: Forrest Liu <forrestl@synology.com>
-Subject: Re: [PATCH 3/3] e2fsck: make sure the extent tree is consistent after
- bogus node in the tree
-Date: Fri, 21 Dec 2012 19:02:44 +0800
-Message-ID: <CAJSVwFPUnfc+h-KVxkQeh-jWb92Dr6mUTCFzosyVMdo24eNCqQ@mail.gmail.com>
-References: <20121220234229.GA22476@thunk.org>
-	<1356047023-28367-1-git-send-email-tytso@mit.edu>
-	<1356047023-28367-3-git-send-email-tytso@mit.edu>
-	<20121221031956.GB5014@thunk.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: Uninitialized extent races
+Date: Fri, 21 Dec 2012 16:34:33 +0400
+Message-ID: <87bodnh9d2.fsf@openvz.org>
+References: <20121221012526.GD13474@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ia0-f182.google.com ([209.85.210.182]:52380 "EHLO
-	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751334Ab2LULCp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2012 06:02:45 -0500
-Received: by mail-ia0-f182.google.com with SMTP id x2so3782228iad.41
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2012 03:02:44 -0800 (PST)
-In-Reply-To: <20121221031956.GB5014@thunk.org>
+Received: from mail-la0-f51.google.com ([209.85.215.51]:35917 "EHLO
+	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750801Ab2LUMl4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2012 07:41:56 -0500
+Received: by mail-la0-f51.google.com with SMTP id e4so5009778lag.38
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2012 04:41:52 -0800 (PST)
+In-Reply-To: <20121221012526.GD13474@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have test these patches, and they work fine.
-Thanks for the tip
-                                             - Forrest
-
-2012/12/21 Theodore Ts'o <tytso@mit.edu>:
-> And here is the test case....
->
-> BTW, #protip: You can use the split_node command in tst_extents
-> debugging program not only to perform node splits (which will make the
-> tree wider), but if you try splitting at the root node, it will
-> allocate a new extent tree block, and then move all of the extent tree
-> nodes at the top-level, in the inode, into the new exterior extent
-> tree block.  In effect, this will make the tree deeper.
->
-> This should allow you to make fairly arbitrarily deep and complex
-> extent trees by hand, without having to resort to using fallocate and
-> punch hole commands, which tend to take a lot longer than using the
-> "insert_extent", "replace_extent", and "split_node" commands in
-> tst_extent when creating test cases.
->
-> This also makes it easier to create small test file system images so
-> we don't have to bloat the e2fsprogs source tree with huge test file
-> systems in our regression test suite (which also tend to very much
-> slow down running said regression test suite).
->
-> Regards,
->
->                                                - Ted
->
+On Fri, 21 Dec 2012 02:25:26 +0100, Jan Kara <jack@suse.cz> wrote:
+>   Hello,
+> 
+>   I was looking into handling of unwritten extents and I've noticed two
+> things:
+> 1) Commit 60d4616f added ext4_flush_unwritten_io() call into
+>    ext4_fallocate() with a comment that it should avoid a race between
+>    AIO DIO and fallocate. But that really doesn't completely fix the issue
+>    because writeback can create unwritten extents as well and that is not
+>    synchronized with i_mutex unlike AIO DIO.
+> 
+> 2) Commit dee1f973 actually changed ext4_convert_unwritten_extents_endio()
+>    to be able to deal with the situation when extent we want to convert
+>    isn't exactly the one in the extent tree (i.e., it was merged with
+>    another extent in the mean time). That was the situation 1) tried to
+>    prevent so it seems to make ext4_flush_unwritten_io() call from 1)
+>    unnecessary?
+In fact first patch is still required because dee1f973 may result in
+in-depth tree grow so ENOSPC is not unprobable which result in 
+complain from ext4_end_io().
+> 
+> Am I missing something Dmitry? Also I was wondering about one thing: Does
+> anybody see a problem with disabling merging of uninitialized extents
+> completely?
+Yeah, actually this is sound idea. Instead of fighting again weird races
+it is reasonable to just prevent it, because merge uninitialized extents
+is false optimization anyway. Later it will be merged after if extents
+becomes initialized(which is right place for optimization).
+> It would simplify the code (end_io conversion doesn't need to
+> potentially split extents) and the case when we really want to merge
+> extents - i.e., when someone calls fallocate() on small chunks - doesn't
+> seem like the case we need to optimize for? Also it would bound the amount of
+> transaction credits we need for conversion to 1 block which would make it
+> easier for me to change ext4 to clear PageWriteback only after extent
+> conversion is done (again code simplification, more uniform handling of
+> page writeback).
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
