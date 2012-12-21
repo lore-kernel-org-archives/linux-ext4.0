@@ -1,61 +1,70 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: Uninitialized extent races
-Date: Fri, 21 Dec 2012 16:34:33 +0400
-Message-ID: <87bodnh9d2.fsf@openvz.org>
-References: <20121221012526.GD13474@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 3/3] e2fsck: make sure the extent tree is consistent after
+ bogus node in the tree
+Date: Fri, 21 Dec 2012 09:34:26 -0600
+Message-ID: <50D48182.3090204@redhat.com>
+References: <20121220234229.GA22476@thunk.org> <1356047023-28367-1-git-send-email-tytso@mit.edu> <1356047023-28367-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	forrestl@synology.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f51.google.com ([209.85.215.51]:35917 "EHLO
-	mail-la0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750801Ab2LUMl4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2012 07:41:56 -0500
-Received: by mail-la0-f51.google.com with SMTP id e4so5009778lag.38
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Dec 2012 04:41:52 -0800 (PST)
-In-Reply-To: <20121221012526.GD13474@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:41675 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751484Ab2LUPec (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 21 Dec 2012 10:34:32 -0500
+In-Reply-To: <1356047023-28367-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 21 Dec 2012 02:25:26 +0100, Jan Kara <jack@suse.cz> wrote:
->   Hello,
+On 12/20/12 5:43 PM, Theodore Ts'o wrote:
+> Commit 789bd401c3 ("e2fsck: fix incorrect interior node logical start
+> values") surfaced a bug where if e2fsck finds and removed an invalid
+> node in the extent tree, i.e.:
 > 
->   I was looking into handling of unwritten extents and I've noticed two
-> things:
-> 1) Commit 60d4616f added ext4_flush_unwritten_io() call into
->    ext4_fallocate() with a comment that it should avoid a race between
->    AIO DIO and fallocate. But that really doesn't completely fix the issue
->    because writeback can create unwritten extents as well and that is not
->    synchronized with i_mutex unlike AIO DIO.
+> Inode 12 has an invalid extent node (blk 22, lblk 0)
+> Clear? yes
 > 
-> 2) Commit dee1f973 actually changed ext4_convert_unwritten_extents_endio()
->    to be able to deal with the situation when extent we want to convert
->    isn't exactly the one in the extent tree (i.e., it was merged with
->    another extent in the mean time). That was the situation 1) tried to
->    prevent so it seems to make ext4_flush_unwritten_io() call from 1)
->    unnecessary?
-In fact first patch is still required because dee1f973 may result in
-in-depth tree grow so ENOSPC is not unprobable which result in 
-complain from ext4_end_io().
+> It was possible for starting logical blocks found in the interior
+> nodes of the extent tree.  Commit 789bd401c3 added the ability for
+> e2fsck to discover this problem, which resulted in the test
+> f_extent_bad_node to fail when the second pass of e2fsck reported the
+> following complaint:
 > 
-> Am I missing something Dmitry? Also I was wondering about one thing: Does
-> anybody see a problem with disabling merging of uninitialized extents
-> completely?
-Yeah, actually this is sound idea. Instead of fighting again weird races
-it is reasonable to just prevent it, because merge uninitialized extents
-is false optimization anyway. Later it will be merged after if extents
-becomes initialized(which is right place for optimization).
-> It would simplify the code (end_io conversion doesn't need to
-> potentially split extents) and the case when we really want to merge
-> extents - i.e., when someone calls fallocate() on small chunks - doesn't
-> seem like the case we need to optimize for? Also it would bound the amount of
-> transaction credits we need for conversion to 1 block which would make it
-> easier for me to change ext4 to clear PageWriteback only after extent
-> conversion is done (again code simplification, more uniform handling of
-> page writeback).
+> Interior extent node level 0 of inode 12:
+> Logical start 0 does not match logical start 3 at next level.  Fix? yes
 > 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+> This patch fixes this by adding a call to ext2fs_extent_fix_parents()
+> after deleting the bogus node in the extent tree.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+Thanks Ted, sorry I didn't catch this.  And this gives me hope
+that maybe the extent tree corruption report I had received
+might be due to an e2fsck, not kernel runtime...
+
+-Eric
+
+> ---
+>  e2fsck/pass1.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 2acbb53..a8231f4 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -1809,6 +1809,7 @@ report_problem:
+>  					pctx->str = "ext2fs_extent_delete";
+>  					return;
+>  				}
+> +				ext2fs_extent_fix_parents(ehandle);
+>  				pctx->errcode = ext2fs_extent_get(ehandle,
+>  								  EXT2_EXTENT_CURRENT,
+>  								  &extent);
+> 
+
