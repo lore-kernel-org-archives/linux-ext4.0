@@ -1,40 +1,49 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: Fix deadlock in journal_unmap_buffer()
-Date: Fri, 21 Dec 2012 22:52:51 -0500
-Message-ID: <20121222035251.GA5778@thunk.org>
-References: <1355345416-13565-1-git-send-email-jack@suse.cz>
- <1355345416-13565-2-git-send-email-jack@suse.cz>
- <20121221195220.GF31731@thunk.org>
- <20121221230347.GB23652@quack.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 48431] [PATCH]ext4_fill_super() reports success even if
+ ext4_mb_init() fails
+Date: Sat, 22 Dec 2012 09:29:55 +0000 (UTC)
+Message-ID: <20121222092955.7FA8911FBAA@bugzilla.kernel.org>
+References: <bug-48431-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>,
-	Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:39849 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751417Ab2LVDxB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Dec 2012 22:53:01 -0500
-Content-Disposition: inline
-In-Reply-To: <20121221230347.GB23652@quack.suse.cz>
+Received: from mail.kernel.org ([198.145.19.201]:55926 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750832Ab2LVJaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Dec 2012 04:30:05 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CC6A72016B
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Dec 2012 09:30:03 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 7514E20167
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Dec 2012 09:29:57 +0000 (UTC)
+In-Reply-To: <bug-48431-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 22, 2012 at 12:03:47AM +0100, Jan Kara wrote:
->   I should have commented on this in the changelog :).
-> jbd2_journal_invalidatepage() gets called only for file pagecache pages.
-> Because ocfs2 doesn't do data journalling it never sees buffers that are
-> part of a transaction in jbd2_journal_invalidatepage() (similarly to ext4
-> except for data=journal case). I'll send a patch to just stop calling
-> jbd2_journal_invalidatepage() for ocfs2... But you are safe to merge this
-> patch in the mean time.
+https://bugzilla.kernel.org/show_bug.cgi?id=48431
 
-Ok, so if ocfs2 never tries journalling data blocks, then buffer_jbd()
-will always be NULL, which reduces jbd2_journal_invalidate() to be
-equivalent in functionality to block_invalidatepage(), and so it will
-never abort and return EBUSY.
-  
-Thanks for the explanation, I'll apply the patch.
 
-						- Ted
+Florian Mickler <florian@mickler.org> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |florian@mickler.org
+
+
+
+
+--- Comment #2 from Florian Mickler <florian@mickler.org>  2012-12-22 09:29:55 ---
+A patch referencing this bug report has been merged in Linux v3.8-rc1:
+
+commit 07aa2ea13814ea60d12f7330b6d5ccfdb0c3ba4d
+Author: Lukas Czerner <lczerner@redhat.com>
+Date:   Thu Nov 8 15:16:54 2012 -0500
+
+    ext4: fix error handling in ext4_fill_super()
+
+-- 
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
