@@ -1,49 +1,30 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 48431] [PATCH]ext4_fill_super() reports success even if
- ext4_mb_init() fails
-Date: Sat, 22 Dec 2012 09:29:55 +0000 (UTC)
-Message-ID: <20121222092955.7FA8911FBAA@bugzilla.kernel.org>
-References: <bug-48431-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] lib/ext2fs: Correct interates typo in texinfo docs
+Date: Sat, 22 Dec 2012 22:48:00 -0500
+Message-ID: <20121223034800.GD12563@thunk.org>
+References: <1355971763-2348-1-git-send-email-dvhart@infradead.org>
+ <ff54dc35c816ae53f149f2f032c12147deac8508.1355971726.git.dvhart@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, sgw@linux.intel.com
+To: Darren Hart <dvhart@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:55926 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750832Ab2LVJaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Dec 2012 04:30:05 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id CC6A72016B
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Dec 2012 09:30:03 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 7514E20167
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Dec 2012 09:29:57 +0000 (UTC)
-In-Reply-To: <bug-48431-13602@https.bugzilla.kernel.org/>
+Received: from li9-11.members.linode.com ([67.18.176.11]:39951 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751824Ab2LWDsH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 22 Dec 2012 22:48:07 -0500
+Content-Disposition: inline
+In-Reply-To: <ff54dc35c816ae53f149f2f032c12147deac8508.1355971726.git.dvhart@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=48431
+On Wed, Dec 19, 2012 at 06:49:21PM -0800, Darren Hart wrote:
+> Just a typo fix.
+> 
+> Signed-off-by: Darren Hart <dvhart@infradead.org>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger@dilger.ca>
 
+Thanks, applied.
 
-Florian Mickler <florian@mickler.org> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |florian@mickler.org
-
-
-
-
---- Comment #2 from Florian Mickler <florian@mickler.org>  2012-12-22 09:29:55 ---
-A patch referencing this bug report has been merged in Linux v3.8-rc1:
-
-commit 07aa2ea13814ea60d12f7330b6d5ccfdb0c3ba4d
-Author: Lukas Czerner <lczerner@redhat.com>
-Date:   Thu Nov 8 15:16:54 2012 -0500
-
-    ext4: fix error handling in ext4_fill_super()
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+						- Ted
