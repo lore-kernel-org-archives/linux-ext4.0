@@ -1,286 +1,197 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 7/9 v1] ext4: add a new convert function to convert an unwritten extent in extent status tree
-Date: Mon, 24 Dec 2012 15:55:40 +0800
-Message-ID: <1356335742-11793-8-git-send-email-wenqing.lz@taobao.com>
+Subject: [RFC][PATCH 8/9 v1] ext4: refine unwritten extent conversion
+Date: Mon, 24 Dec 2012 15:55:41 +0800
+Message-ID: <1356335742-11793-9-git-send-email-wenqing.lz@taobao.com>
 References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
+Cc: Jan Kara <jack@suse.cz>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:58298 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751954Ab2LXHmb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Dec 2012 02:42:31 -0500
-Received: by mail-pa0-f46.google.com with SMTP id bh2so3935461pad.19
-        for <linux-ext4@vger.kernel.org>; Sun, 23 Dec 2012 23:42:31 -0800 (PST)
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:59655 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751954Ab2LXHme (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Dec 2012 02:42:34 -0500
+Received: by mail-pb0-f44.google.com with SMTP id uo1so3824656pbc.31
+        for <linux-ext4@vger.kernel.org>; Sun, 23 Dec 2012 23:42:33 -0800 (PST)
 In-Reply-To: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-A new function called ext4_es_convert_unwritten_extents() is defined to convert
-a range of unwritten extents to written in extent status tree.
+Currently all unwritten extent conversion work is pushed into a workqueue to be
+done because DIO end_io is in a irq context and this conversion needs to take
+i_data_sem locking.  But we couldn't take a semaphore in a irq context.  After
+tracking all extent status, we can first convert this unwritten extent in extent
+status tree, and call aio_complete() and inode_dio_done() to notify upper level
+that this dio has done.  We don't need to be worried about exposing a stale data
+because we first try to lookup in extent status tree.  So it makes us to see the
+latest extent status.  Meanwhile we queue a work to convert this unwritten
+extent in extent tree.  After this improvement, reader also needn't wait this
+conversion to be done when dioread_nolock is enabled.
 
-This function aims to improve the unwritten extent conversion in DIO end_io.
-Meanwhile all locks are changed to save irq flags due to DIO end_io is in irq
-context.
-
+CC: Jan Kara <jack@suse.cz>
+CC: "Darrick J. Wong" <darrick.wong@oracle.com>
+CC: Christoph Hellwig <hch@infradead.org>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- fs/ext4/extents_status.c | 161 ++++++++++++++++++++++++++++++++++++++++++++---
- fs/ext4/extents_status.h |   2 +
- 2 files changed, 155 insertions(+), 8 deletions(-)
+[Cc' to Jan, Darrick, and Christoph because Christoph is trying to handle
+O_(D)SYNC for AIO]
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index ccd940c..9db9e05 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -239,10 +239,11 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
- 	struct extent_status *es1 = NULL;
- 	struct rb_node *node;
- 	ext4_lblk_t ret = EXT_MAX_BLOCKS;
-+	unsigned long flags;
+Hi Jan, Darrick, and Christoph,
+
+This patch refines the unwritten extent conversion in ext4.  Now we can call
+aio_complete() and inode_dio_done() in end_io function.  I believe Christoph's
+patch also can work well after applied this patch.  Could you please review
+this patch?
+
+Regards,
+					- Zheng
+
+ fs/ext4/ext4.h     |  2 +-
+ fs/ext4/indirect.c | 11 ++++-------
+ fs/ext4/inode.c    | 11 ++++-------
+ fs/ext4/page-io.c  | 26 ++++++++++++++++++++++----
+ 4 files changed, 31 insertions(+), 19 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8462eb3..b76dc49 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -195,7 +195,6 @@ struct mpage_da_data {
+ #define	EXT4_IO_END_UNWRITTEN	0x0001
+ #define EXT4_IO_END_ERROR	0x0002
+ #define EXT4_IO_END_QUEUED	0x0004
+-#define EXT4_IO_END_DIRECT	0x0008
  
- 	trace_ext4_es_find_extent_enter(inode, es->es_lblk);
+ struct ext4_io_page {
+ 	struct page	*p_page;
+@@ -2538,6 +2537,7 @@ extern void ext4_ioend_wait(struct inode *);
+ extern void ext4_free_io_end(ext4_io_end_t *io);
+ extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
+ extern void ext4_io_submit(struct ext4_io_submit *io);
++extern void ext4_end_io_bh(ext4_io_end_t *io_end, int is_dio);
+ extern int ext4_bio_write_page(struct ext4_io_submit *io,
+ 			       struct page *page,
+ 			       int len,
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 20862f9..c6d7f7f 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
  
--	read_lock(&EXT4_I(inode)->i_es_lock);
-+	read_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
- 	tree = &EXT4_I(inode)->i_es_tree;
+ retry:
+ 	if (rw == READ && ext4_should_dioread_nolock(inode)) {
+-		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
+-			mutex_lock(&inode->i_mutex);
+-			ext4_flush_unwritten_io(inode);
+-			mutex_unlock(&inode->i_mutex);
+-		}
+ 		/*
+ 		 * Nolock dioread optimization may be dynamically disabled
+ 		 * via ext4_inode_block_unlocked_dio(). Check inode's state
+@@ -831,8 +826,10 @@ retry:
+ 		inode_dio_done(inode);
+ 	} else {
+ locked:
+-		ret = blockdev_direct_IO(rw, iocb, inode, iov,
+-				 offset, nr_segs, ext4_get_block);
++		ret = __blockdev_direct_IO(rw, iocb, inode,
++				 inode->i_sb->s_bdev, iov,
++				 offset, nr_segs,
++				 ext4_get_block, NULL, NULL, DIO_LOCKING);
  
- 	/* find delay extent in cache firstly */
-@@ -273,7 +274,7 @@ out:
- 		}
- 	}
- 
--	read_unlock(&EXT4_I(inode)->i_es_lock);
-+	read_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
- 
- 	trace_ext4_es_find_extent_exit(inode, es, ret);
- 	return ret;
-@@ -426,6 +427,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	struct ext4_es_tree *tree;
- 	struct extent_status newes;
- 	ext4_lblk_t end = lblk + len - 1;
-+	unsigned long flags;
- 	int err = 0;
- 
- 	es_debug("add [%u/%u) %llu %d to extent status tree of inode %lu\n",
-@@ -439,7 +441,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	newes.es_status = status;
- 	trace_ext4_es_insert_extent(inode, &newes);
- 
--	write_lock(&EXT4_I(inode)->i_es_lock);
-+	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
- 	tree = &EXT4_I(inode)->i_es_tree;
- 	err = __es_remove_extent(tree, lblk, end);
- 	if (err != 0)
-@@ -447,7 +449,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	err = __es_insert_extent(tree, &newes);
- 
- error:
--	write_unlock(&EXT4_I(inode)->i_es_lock);
-+	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
- 
- 	ext4_es_print_tree(inode);
- 
-@@ -466,12 +468,13 @@ int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es)
- 	struct ext4_es_tree *tree;
- 	struct extent_status *es1;
- 	struct rb_node *node;
-+	unsigned long flags;
- 	int found = 0;
- 
- 	es_debug("lookup extent in block %u\n", es->es_lblk);
- 
- 	tree = &EXT4_I(inode)->i_es_tree;
--	read_lock(&EXT4_I(inode)->i_es_lock);
-+	read_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
- 
- 	/* find delay extent in cache firstly */
- 	if (tree->cache_es) {
-@@ -506,7 +509,7 @@ out:
- 		es->es_status = es1->es_status;
- 	}
- 
--	read_unlock(&EXT4_I(inode)->i_es_lock);
-+	read_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
- 
- 	return found;
+ 		if (unlikely((rw & WRITE) && ret < 0)) {
+ 			loff_t isize = i_size_read(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6610dc7..4549103 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3024,9 +3024,8 @@ static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
+ 			       EXT4_GET_BLOCKS_NO_LOCK);
  }
-@@ -605,6 +608,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 
+-static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+-			    ssize_t size, void *private, int ret,
+-			    bool is_async)
++static void ext4_end_dio(struct kiocb *iocb, loff_t offset, ssize_t size,
++			 void *private, int ret, bool is_async)
  {
- 	struct ext4_es_tree *tree;
- 	ext4_lblk_t end;
-+	unsigned long flags;
- 	int err = 0;
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+         ext4_io_end_t *io_end = iocb->private;
+@@ -3058,8 +3057,7 @@ out:
+ 		io_end->iocb = iocb;
+ 		io_end->result = ret;
+ 	}
+-
+-	ext4_add_complete_io(io_end);
++	ext4_end_io_bh(io_end, 1);
+ }
  
- 	trace_ext4_es_remove_extent(inode, lblk, len);
-@@ -616,9 +620,150 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+@@ -3195,7 +3193,6 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 			ret = -ENOMEM;
+ 			goto retake_lock;
+ 		}
+-		io_end->flag |= EXT4_IO_END_DIRECT;
+ 		iocb->private = io_end;
+ 		/*
+ 		 * we save the io structure for current async direct
+@@ -3216,7 +3213,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
+ 				   inode->i_sb->s_bdev, iov,
+ 				   offset, nr_segs,
+ 				   get_block_func,
+-				   ext4_end_io_dio,
++				   ext4_end_dio,
+ 				   NULL,
+ 				   dio_flags);
  
- 	tree = &EXT4_I(inode)->i_es_tree;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 0016fbc..6b2d88d 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -103,17 +103,35 @@ static int ext4_end_io(ext4_io_end_t *io)
+ 			 "(inode %lu, offset %llu, size %zd, error %d)",
+ 			 inode->i_ino, offset, size, ret);
+ 	}
+-	if (io->iocb)
+-		aio_complete(io->iocb, io->result, 0);
  
--	write_lock(&EXT4_I(inode)->i_es_lock);
-+	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
- 	err = __es_remove_extent(tree, lblk, end);
--	write_unlock(&EXT4_I(inode)->i_es_lock);
-+	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
-+	ext4_es_print_tree(inode);
-+	return err;
+-	if (io->flag & EXT4_IO_END_DIRECT)
+-		inode_dio_done(inode);
+ 	/* Wake up anyone waiting on unwritten extent conversion */
+ 	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
+ 		wake_up_all(ext4_ioend_wq(inode));
++
+ 	return ret;
+ }
+ 
++void ext4_end_io_bh(ext4_io_end_t *io_end, int is_dio)
++{
++	struct inode *inode;
++
++	inode = io_end->inode;
++	(void)ext4_es_convert_unwritten_extents(inode, io_end->offset,
++						io_end->size);
++	ext4_add_complete_io(io_end);
++
++	/*
++	 * Here we can safely notify upper level that aio has done because
++	 * unwritten extent in extent status tree has been converted.  Thus,
++	 * others won't get a stale data because we always lookup extent status
++	 * tree firstly in get_block_t.
++	 */
++	if (io_end->iocb)
++		aio_complete(io_end->iocb, io_end->result, 0);
++	if (is_dio)
++		inode_dio_done(inode);
 +}
 +
-+int ext4_es_convert_unwritten_extents(struct inode *inode, loff_t offset,
-+				      size_t size)
-+{
-+	struct ext4_es_tree *tree;
-+	struct rb_node *node;
-+	struct extent_status *es, orig_es, conv_es;
-+	ext4_lblk_t end, len1, len2;
-+	ext4_lblk_t lblk = 0, len = 0;
-+	unsigned long flags;
-+	unsigned int blkbits;
-+	int err = 0;
-+
-+	/* add trace point and debug */
-+	blkbits = inode->i_blkbits;
-+	lblk = offset >> blkbits;
-+	len = (EXT4_BLOCK_ALIGN(offset + size, blkbits) >> blkbits) - lblk;
-+
-+	end = lblk + len - 1;
-+	BUG_ON(end < lblk);
-+
-+	tree = &EXT4_I(inode)->i_es_tree;
-+
-+	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
-+
-+	es = __es_tree_search(&tree->root, lblk);
-+	if (!es)
-+		goto out;
-+	if (es->es_lblk > end)
-+		goto out;
-+
-+	tree->cache_es = NULL;
-+
-+	orig_es.es_lblk = es->es_lblk;
-+	orig_es.es_len = es->es_len;
-+	orig_es.es_pblk = es->es_pblk;
-+	orig_es.es_status = es->es_status;
-+
-+	len1 = lblk > es->es_lblk ? lblk - es->es_lblk : 0;
-+	len2 = extent_status_end(es) > end ?
-+	       extent_status_end(es) - end : 0;
-+	if (len1 > 0)
-+		es->es_len = len1;
-+	if (len2 > 0) {
-+		if (len1 > 0) {
-+			struct extent_status newes;
-+
-+			newes.es_lblk = end + 1;
-+			newes.es_len = len2;
-+			newes.es_pblk = orig_es.es_pblk + orig_es.es_len - len2;
-+			newes.es_status = orig_es.es_status;
-+			/*BUG_ON(newes.es_status != EXTENT_STATUS_UNWRITTEN);*/
-+			err = __es_insert_extent(tree, &newes);
-+			if (err) {
-+				es->es_lblk = orig_es.es_lblk;
-+				es->es_len = orig_es.es_len;
-+				goto out;
-+			}
-+
-+			conv_es.es_lblk = orig_es.es_lblk + len1;
-+			conv_es.es_len = orig_es.es_len - len1 - len2;
-+			conv_es.es_pblk = orig_es.es_pblk + len1;
-+			conv_es.es_status = EXTENT_STATUS_WRITTEN;
-+			err = __es_insert_extent(tree, &conv_es);
-+			if (err) {
-+				int err2;
-+				err2 = __es_remove_extent(tree, newes.es_lblk,
-+						extent_status_end(&newes));
-+				if (err2)
-+					goto out;
-+				es->es_lblk = orig_es.es_lblk;
-+				es->es_len = orig_es.es_len;
-+				goto out;
-+			}
-+		} else {
-+			es->es_lblk = end + 1;
-+			es->es_len = len2;
-+			es->es_pblk = orig_es.es_pblk + orig_es.es_len - len2;
-+			/*BUG_ON(newes.es_status != EXTENT_STATUS_UNWRITTEN);*/
-+
-+			conv_es.es_lblk = orig_es.es_lblk;
-+			conv_es.es_len = orig_es.es_len - len2;
-+			conv_es.es_pblk = orig_es.es_pblk;
-+			conv_es.es_status = EXTENT_STATUS_WRITTEN;
-+			err = __es_insert_extent(tree, &conv_es);
-+			if (err) {
-+				es->es_lblk = orig_es.es_lblk;
-+				es->es_len = orig_es.es_len;
-+				es->es_pblk = orig_es.es_pblk;
-+			}
-+		}
-+
-+		goto out;
-+	}
-+
-+	if (len1 > 0) {
-+		node = rb_next(&es->rb_node);
-+		if (node)
-+			es = rb_entry(node, struct extent_status, rb_node);
-+		else
-+			es = NULL;
-+	}
-+
-+	while (es && extent_status_end(es) <= end) {
-+		node = rb_next(&es->rb_node);
-+		es->es_status = EXTENT_STATUS_WRITTEN;
-+		if (!node) {
-+			es = NULL;
-+			break;
-+		}
-+		es = rb_entry(node, struct extent_status, rb_node);
-+	}
-+
-+	if (es && es->es_lblk < end + 1) {
-+		ext4_lblk_t orig_len = es->es_len;
-+
-+		/*
-+		 * Here we first set conv_es just because of avoiding copy the
-+		 * value of es to a tmporary variable.
-+		 */
-+		len1 = extent_status_end(es) - end;
-+		conv_es.es_lblk = es->es_lblk;
-+		conv_es.es_len = es->es_len - len1;
-+		conv_es.es_pblk = es->es_pblk;
-+		conv_es.es_status = EXTENT_STATUS_WRITTEN;
-+
-+		es->es_lblk = end + 1;
-+		es->es_len = len1;
-+		es->es_pblk = es->es_pblk + orig_len - len1;
-+
-+		err = __es_insert_extent(tree, &conv_es);
-+		if (err)
-+			goto out;
-+	}
-+
-+out:
-+	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
-+
- 	ext4_es_print_tree(inode);
- 	return err;
- }
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 1890f80..9069ecf 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -51,6 +51,8 @@ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
- 				struct extent_status *es);
- extern int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es);
-+extern int ext4_es_convert_unwritten_extents(struct inode *inode,
-+					     loff_t offset, size_t size);
- 
- static inline int ext4_es_is_written(struct extent_status *es)
+ static void dump_completed_IO(struct inode *inode)
  {
+ #ifdef	EXT4FS_DEBUG
 -- 
 1.7.12.rc2.18.g61b472e
 
