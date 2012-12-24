@@ -1,67 +1,59 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [RFC][PATCH 9/9 v1] ext4: set dioread_nolock by default for extent-based files
-Date: Mon, 24 Dec 2012 15:55:42 +0800
-Message-ID: <1356335742-11793-10-git-send-email-wenqing.lz@taobao.com>
-References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+Subject: Re: Uninitialized extent races
+Date: Mon, 24 Dec 2012 19:17:45 +0800
+Message-ID: <20121224111745.GA12051@gmail.com>
+References: <20121221012526.GD13474@quack.suse.cz>
+ <20121221031151.GA5014@thunk.org>
+ <20121221161929.GF17357@quack.suse.cz>
+ <20121221180243.GB31731@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f45.google.com ([209.85.160.45]:32864 "EHLO
-	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752890Ab2LXHuU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Dec 2012 02:50:20 -0500
-Received: by mail-pb0-f45.google.com with SMTP id mc8so3819871pbc.4
-        for <linux-ext4@vger.kernel.org>; Sun, 23 Dec 2012 23:50:20 -0800 (PST)
-In-Reply-To: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mail-da0-f47.google.com ([209.85.210.47]:61801 "EHLO
+	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576Ab2LXLEU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Dec 2012 06:04:20 -0500
+Received: by mail-da0-f47.google.com with SMTP id s35so3107872dak.20
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Dec 2012 03:04:20 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20121221180243.GB31731@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Fri, Dec 21, 2012 at 01:02:43PM -0500, Theodore Ts'o wrote:
+> On Fri, Dec 21, 2012 at 05:19:29PM +0100, Jan Kara wrote:
+> >   No, I'm speaking about merging currently uninitialized extents. I.e.
+> > suppose someone does the following on a filesystem with dioread_nolock so
+> > that writeback happens via unwritten extents:
+> >   fd = open("file", O_RDWR);
+> >   pwrite(fd, buf, 4096, 0);
+> > 					flusher thread starts writing
+> > 					we create uninitialized extent for
+> > 					  range 0-4096
+> >   fallocate(fd, 0, 4096, 4096);
+> >     - we merge extents and now have just 1 uninitialized extent for range
+> >       0-8192
+> > 					ext4_convert_unwritten_extents() now
+> > 					  has to split the extent to finish
+> > 					  the IO.
+> 
+> Ah, I see.  Disabling the the merging that might take place as a
+> result of the fallocate.  Yes, I agree that's a completely sane thing
+> to do.
+> 
+> The alternate approach would be to add a flag in the extent status
+> tree indicating that an unwritten conversion is pending, but that
+> would add more complexity.
 
-After a dio improvement had been done, we can try to set dioread_nolock by
-default for extent-based files when block size is not smaller than page size.
+Hi Ted and Jan,
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- Documentation/filesystems/ext4.txt | 5 ++---
- fs/ext4/super.c                    | 8 ++++++++
- 2 files changed, 10 insertions(+), 3 deletions(-)
+Sorry for delay reply.  Indeed we could add a flag in extent status tree
+to indicate an pending unwritten extent, and I believe that it can bring
+us some benefits.  But I wonder whether this case often happens.  Do we
+have some real workloads?
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 34ea4f1..b377a1e 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -368,9 +368,8 @@ dioread_nolock		locking. If the dioread_nolock option is specified
- 			speed storages. However this does not work with
- 			data journaling and dioread_nolock option will be
- 			ignored with kernel warning. Note that dioread_nolock
--			code path is only used for extent-based files.
--			Because of the restrictions this options comprises
--			it is off by default (e.g. dioread_lock).
-+			code path is only used for extent-based files.  it is
-+			on by default for extent-based files.
- 
- max_dir_size_kb=n	This limits the size of directories so that any
- 			attempt to expand them beyond the specified
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3cdb0a2..e6def09 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3402,6 +3402,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, DELALLOC);
- 
- 	/*
-+	 * enable dioread_nolock by default
-+	 * Use -o dioread_lock to turn it off
-+	 */
-+	if (!IS_EXT3_SB(sb) && !IS_EXT2_SB(sb) &&
-+	    EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
-+		set_opt(sb, DIOREAD_NOLOCK);
-+
-+	/*
- 	 * set default s_li_wait_mult for lazyinit, for the case there is
- 	 * no mount option specified.
- 	 */
--- 
-1.7.12.rc2.18.g61b472e
-
+Regards,
+                                        - Zheng
