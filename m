@@ -1,32 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fs/ext3: set pointer = NULL, after kfree it
-Date: Tue, 25 Dec 2012 13:51:55 -0500
-Message-ID: <20121225185155.GE5318@thunk.org>
-References: <50D7EEF6.4070005@asianux.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: namei.h: include errno.h
+Date: Tue, 25 Dec 2012 18:52:33 +0000
+Message-ID: <20121225185233.GW4939@ZenIV.linux.org.uk>
+References: <1356372898-21272-1-git-send-email-swarren@wwwdotorg.org>
+ <20121225182449.GA7874@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, akpm@linux-foundation.org, linux-ext4@vger.kernel.org
-To: Chen Gang <gang.chen@asianux.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Stephen Warren <swarren@wwwdotorg.org>,
+	Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jens Axboe <axboe@kernel.dk>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jlayton@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40297 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754063Ab2LYSwB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Dec 2012 13:52:01 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56889 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754063Ab2LYSwp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Dec 2012 13:52:45 -0500
 Content-Disposition: inline
-In-Reply-To: <50D7EEF6.4070005@asianux.com>
+In-Reply-To: <20121225182449.GA7874@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 24, 2012 at 01:58:14PM +0800, Chen Gang wrote:
+On Tue, Dec 25, 2012 at 01:24:49PM -0500, Theodore Ts'o wrote:
+> On Mon, Dec 24, 2012 at 08:14:58AM -0000, Stephen Warren wrote:
+> > This solves:
+> > 
+> > In file included from fs/ext3/symlink.c:20:0:
+> > include/linux/namei.h: In function 'retry_estale':
+> > include/linux/namei.h:114:19: error: 'ESTALE' undeclared (first use in this function)
+> > 
+> > Signed-off-by: Stephen Warren <swarren@wwwdotorg.org>
 > 
->   set s->base = NULL, after kfree it.
+> Reviewed-by: "Theodore Ts'o" <tytso@mit.edu>
 > 
-> Signed-off-by: Chen Gang <gang.chen@asianux.com>
+> Looks good to me.  You might want to add that this commit fixes a
+> build failure regression in v3.8-rc1 which was introduced in commit
+> b9d6ba94b875.
+> 
+> Al, you want to take this, since the original commit went in via the
+> VFS tree?   Or should we have Jan carry this patch?
 
-Was this to fix something flagged by some static code checker?  The
-only caller of ext3_xattr_block_set() is ext3_xattr_set_handle(), and
-s->base is stored on the stack, and as soon as ext3_xattr_block_set()
-returns, the object will disappear.  So it seems pretty hard to see
-how this could lead to a use-after-free bug.
-
-    	       	       	 		- Ted
+Applied, will push later today...
