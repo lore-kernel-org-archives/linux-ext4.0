@@ -1,29 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix an incorrect comment about i_mutex
-Date: Tue, 25 Dec 2012 13:30:32 -0500
-Message-ID: <20121225183032.GB5318@thunk.org>
-References: <1323a2735a9106cf0fa1a6ffee938ce432aa085d.1356117764.git.luto@amacapital.net>
+Subject: Re: [PATCH] ext4: remove unaligned AIO warning printk
+Date: Tue, 25 Dec 2012 13:34:27 -0500
+Message-ID: <20121225183427.GC5318@thunk.org>
+References: <50AD09F0.6090706@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andy Lutomirski <luto@amacapital.net>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40281 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:40284 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754058Ab2LYSai (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Dec 2012 13:30:38 -0500
+	id S1754069Ab2LYSec (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 25 Dec 2012 13:34:32 -0500
 Content-Disposition: inline
-In-Reply-To: <1323a2735a9106cf0fa1a6ffee938ce432aa085d.1356117764.git.luto@amacapital.net>
+In-Reply-To: <50AD09F0.6090706@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 21, 2012 at 11:24:58AM -0800, Andy Lutomirski wrote:
-> i_mutex is not held when ->sync_file is called.
+On Wed, Nov 21, 2012 at 11:05:52AM -0600, Eric Sandeen wrote:
+> Although I put this in, I now think it was a bad decision.
+> For most users, there is very little to be done in this case.  They
+> get the message, once per day, with no real context or proposed action.
+> TBH, it generates support calls when it probably does not need to;
+> the message sounds more dire than the situation really is.
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Andy Lutomirski <luto@amacapital.net>
+> Just nuke it.  Normal investigation via blktrace or whatnot can
+> reveal poor IO patterns if bad performance is encountered.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
