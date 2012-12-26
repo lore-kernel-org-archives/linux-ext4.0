@@ -1,72 +1,57 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: do not try to write superblock on journal-less
- readonly remount
-Date: Tue, 25 Dec 2012 14:09:47 -0500
-Message-ID: <20121225190947.GA16669@thunk.org>
-References: <1351154397-14743-1-git-send-email-mjt@msgid.tls.msk.ru>
- <50D025FE.5040201@msgid.tls.msk.ru>
- <50D089A2.8030809@redhat.com>
- <50D2D959.9060300@msgid.tls.msk.ru>
+From: Chen Gang <gang.chen@asianux.com>
+Subject: Re: [PATCH] fs/ext3: set pointer = NULL, after kfree it
+Date: Wed, 26 Dec 2012 10:33:12 +0800
+Message-ID: <50DA61E8.5090009@asianux.com>
+References: <50D7EEF6.4070005@asianux.com> <20121225185155.GE5318@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Michael Tokarev <mjt@tls.msk.ru>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: jack@suse.cz, akpm@linux-foundation.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40306 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754082Ab2LYTJy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 25 Dec 2012 14:09:54 -0500
-Content-Disposition: inline
-In-Reply-To: <50D2D959.9060300@msgid.tls.msk.ru>
+Received: from intranet.asianux.com ([58.214.24.6]:52378 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752775Ab2LZCcT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Dec 2012 21:32:19 -0500
+In-Reply-To: <20121225185155.GE5318@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-OK, I'll take this; I'm going to take your suggestion and only call
-ext4_commit_super() when we are going from a read-write to read-only
-mount, since that's the only time when we need to force that the
-superblock be written out.
+=E4=BA=8E 2012=E5=B9=B412=E6=9C=8826=E6=97=A5 02:51, Theodore Ts'o =E5=86=
+=99=E9=81=93:
+> On Mon, Dec 24, 2012 at 01:58:14PM +0800, Chen Gang wrote:
+>>
+>>   set s->base =3D NULL, after kfree it.
+>>
+>> Signed-off-by: Chen Gang <gang.chen@asianux.com>
+>=20
+> Was this to fix something flagged by some static code checker?  The
+> only caller of ext3_xattr_block_set() is ext3_xattr_set_handle(), and
+> s->base is stored on the stack, and as soon as ext3_xattr_block_set()
+> returns, the object will disappear.  So it seems pretty hard to see
+> how this could lead to a use-after-free bug.
+>=20
+>     	       	       	 		- Ted
+>=20
+>=20
 
-					- Ted
+  this patch is not for a bug
 
-commit 86fffe43a74af16e306896eba8210bebd33bfd1f
-Author: Michael Tokarev <mjt@tls.msk.ru>
-Date:   Tue Dec 25 14:08:16 2012 -0500
+  it is only for coding habit:
+    it is better to set is to NULL, after kfree it.
+    in the future, if another functions need call ext3_xattr_block_set,=
+ too.
+      it will avoid another members to make mistake.
 
-    ext4: do not try to write superblock on ro remount w/o journal
-    
-    When a journal-less ext4 filesystem is mounted on a read-only block
-    device (blockdev --setro will do), each remount (for other, unrelated,
-    flags, like suid=>nosuid etc) results in a series of scary messages
-    from kernel telling about I/O errors on the device.
-    
-    This is becauese of the following code ext4_remount():
-    
-           if (sbi->s_journal == NULL)
-                    ext4_commit_super(sb, 1);
-    
-    at the end of remount procedure, which forces writing (flushing) of
-    a superblock regardless whenever it is dirty or not, if the filesystem
-    is readonly or not, and whenever the device itself is readonly or not.
-    
-    We only need call ext4_commit_super when the file system had been
-    previously mounted read/write.
-    
-    Thanks to Eric Sandeen for help in diagnosing this issue.
-    
-    Cc: stable@vger.kernel.org
-    Signed-off-By: Michael Tokarev <mjt@tls.msk.ru>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+  since it is not for fixing bug, it is really a minor patch.
+  I can understand if you do not apply it.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4969167..183ae34 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4729,7 +4729,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	}
- 
- 	ext4_setup_system_zone(sb);
--	if (sbi->s_journal == NULL)
-+	if (sbi->s_journal == NULL && !(old_sb_flags & MS_RDONLY))
- 		ext4_commit_super(sb, 1);
- 
- #ifdef CONFIG_QUOTA
+--=20
+Chen Gang
+
+Asianux Corporation
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
