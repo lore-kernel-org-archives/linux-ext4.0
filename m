@@ -1,50 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: 3.8.0-rc1: WARNING: at fs/ext4/page-io.c:232
-Date: Thu, 27 Dec 2012 08:44:13 -0500
-Message-ID: <20121227134413.GA20671@thunk.org>
-References: <CAA1sL1QgkEWciR2qBbKWr+_2tRdhxpE1Jh3P0waSeYR8LR8R5w@mail.gmail.com>
- <20121227062907.GA5001@gmail.com>
- <87mwwzq5t7.fsf@openvz.org>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: Re: [PATCH 4/4] block: Optionally snapshot page contents to provide stable pages during write
+Date: Fri, 28 Dec 2012 04:14:49 +0900
+Message-ID: <877go3z4ra.fsf@devron.myhome.or.jp>
+References: <20121213080740.23360.16346.stgit@blackbox.djwong.org>
+	<20121213080811.23360.98131.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>,
-	Alexander Beregalov <a.beregalov@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:40578 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751202Ab2L0NoT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 27 Dec 2012 08:44:19 -0500
-Content-Disposition: inline
-In-Reply-To: <87mwwzq5t7.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
+	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-kernel@vger.kernel.org, hch@infradead.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	v9fs-developer@lists.sourceforge.net, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20121213080811.23360.98131.stgit@blackbox.djwong.org> (Darrick
+	J. Wong's message of "Thu, 13 Dec 2012 00:08:11 -0800")
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 27, 2012 at 12:04:36PM +0400, Dmitry Monakhov wrote:
-> In fact this is my fault that we still not have autotest for that.
-> I'm think of add crash-test to xfstests which should trigger journal
-> abort and forced umount. Later test should mount FS which trigger
-> journal_replay and orphan_cleanup.
+"Darrick J. Wong" <darrick.wong@oracle.com> writes:
 
-We could create some tests in xfstests which force a crash via "echo b
-> /proc/sysrq-trigger", but the trick is would require xfstests to
-install something in the /etc/rc scripts so xfstests could resume
-right after it came back --- and perhaps to echo something to the
-console which automated test runners (such as the one I use which I've
-published at [1] could capture so they would know that they should
-restart the system.
+> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+> index 780d4c6..0144fbb 100644
+> --- a/include/uapi/linux/fs.h
+> +++ b/include/uapi/linux/fs.h
+> @@ -69,6 +69,7 @@ struct inodes_stat_t {
+>  #define MS_REMOUNT	32	/* Alter flags of a mounted FS */
+>  #define MS_MANDLOCK	64	/* Allow mandatory locks on an FS */
+>  #define MS_DIRSYNC	128	/* Directory modifications are synchronous */
+> +#define MS_SNAP_STABLE	256	/* Snapshot pages during writeback, if needed */
+>  #define MS_NOATIME	1024	/* Do not update access times. */
+>  #define MS_NODIRATIME	2048	/* Do not update directory access times */
+>  #define MS_BIND		4096
 
-[1] git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+I think this flag should be separated into "FS provide stable page" and
+"FS needs bounce buffer for stable page".
 
-For now the simplest way to test this is to use the file system image
-in tests/f_orphan_extents_inode/image.gz, and make this be an
-ext4-specific test.  This is how I tested it when I created my fix (in
-parallel with Zheng's patch).  The compressed file system image is
-only 564 bytes --- and was made deliberately w/o a journal so it could
-be that small --- and the lack of a journal was how I found the
-infinite loop problem which was fixed in the 2/2 patch in my patches.
-So including this compressed fs image in xfstests is probably the way
-I would suggest for now.
+My fs (I guess btrfs also) provides stable page by better way, and
+doesn't need to wait writeback flags too. What needs is just to avoid
+those stable page stuff.
 
-							- Ted
+Thanks.
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
