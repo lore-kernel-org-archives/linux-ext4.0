@@ -1,134 +1,50 @@
-From: kbuild test robot <fengguang.wu@intel.com>
-Subject: [ext4:dev 68/75] include/trace/events/ext4.h:484:1: error: macro
- "DEFINE_EVENT" requires 4 arguments, but only 3 given
-Date: Sun, 30 Dec 2012 00:33:49 +0800
-Message-ID: <50df1b6d.jLf9SqkSRJbKbQF1%fengguang.wu@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: notes in the WARN_ON in ext4_release_page() with data=journal
+Date: Sat, 29 Dec 2012 11:48:30 -0500
+Message-ID: <nsxsj6oolcx.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:57311 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752070Ab2L2QgY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Dec 2012 11:36:24 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:40858 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753127Ab2L2Qsd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Dec 2012 11:48:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-head:   b977f3efba01c959b5e47f65e65dba81ef3c4cbe
-commit: fdd2c03289562245422d920645990ba3e4165034 [68/75] ext4: split off ext4_journalled_invalidatepage()
-config: make ARCH=x86_64 allmodconfig
 
-Note: the ext4/dev HEAD b977f3e builds fine.
-      It only hurts bisectibility.
+The last couple of days I've been trying to track down with a WARN_ON in
+ext4_release_page() which can be reproduced by running xfstests #247 in
+data=journalled mode, since Linux 3.1 (it bisects down to commit
+84ebd7956134).  I'm sending the results of this investigation to
+linux-ext4 partially as a note to myself, or in case other people notice
+it.
 
-All error/warnings:
+What's going on is while the O_DIRECT write is happening, in
+generic_file_direct_write(), first we force all of the pages in question
+to disk using filemap_write_and_wait_range().  Then, we invalidate all
+of the pages in question.  If there is a process which is also modifying
+the page using mmap writes (as in xfstest #247), the page can get marked
+dirty after its writeback, and before the pages are released by
+invalidate_inode_pages2_range().
 
-In file included from fs/ext4/super.c:55:0:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/define_trace.h:79:0,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/ftrace.h:89:0,
-                 from include/trace/define_trace.h:86,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/ftrace.h:139:0,
-                 from include/trace/define_trace.h:86,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/ftrace.h:296:0,
-                 from include/trace/define_trace.h:86,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/ftrace.h:356:0,
-                 from include/trace/define_trace.h:86,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-In file included from include/trace/ftrace.h:404:0,
-                 from include/trace/define_trace.h:86,
-                 from include/trace/events/ext4.h:2173,
-                 from fs/ext4/super.c:55:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
---
-In file included from fs/ext4/extents.c:47:0:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
---
-In file included from fs/ext4/inode.c:46:0:
-include/trace/events/ext4.h:484:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:480:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:480:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-include/trace/events/ext4.h:490:1: error: macro "DEFINE_EVENT" requires 4 arguments, but only 3 given
-include/trace/events/ext4.h:486:1: warning: data definition has no type or storage class [enabled by default]
-include/trace/events/ext4.h:486:1: warning: type defaults to 'int' in declaration of 'DEFINE_EVENT' [-Wimplicit-int]
-fs/ext4/inode.c: In function 'ext4_invalidatepage':
-fs/ext4/inode.c:2883:2: error: implicit declaration of function 'trace_ext4_invalidatepage' [-Werror=implicit-function-declaration]
-fs/ext4/inode.c: In function 'ext4_journalled_invalidatepage':
-fs/ext4/inode.c:2902:2: error: implicit declaration of function 'trace_ext4_journalled_invalidatepage' [-Werror=implicit-function-declaration]
-cc1: some warnings being treated as errors
+(The PageChecked flag is set by ext4_journalled_set_page_dirty(), and
+cleared by __ext4_journalled_writepage() --- for an explanation why,
+please see comments for __ext4_journalled_writepage().  When the page
+gets released, if ext4_release_page() notices that the PageChecked flag
+is still set, it will trigger the WARN_ON.)
 
-vim +/DEFINE_EVENT +484 include/trace/events/ext4.h
+This WARN_ON(), then since the stack trace involves
+invalidate_page_range(), is harmless.  If the user is doing unaligned
+DIO writes, the changes made by the mmap might disappear, and which
+means our cache coherency guarantees made by our O_DIRECT guarantee is
+not absolute.  I'm not really worried about it since, if an application
+is racing an mmap modification with an O_DIRECT write, it's just asking
+to lose --- and this race has been there for a long time.  It's just
+that the data=journal PageChecked machinery makes this noticeable ---
+this potential failure of cache coherency can happen in other ext4
+modes, since the race arises out of the generic DIO code.  Fixing it
+would reqiure adding extra machinery, which is not worth it.
 
-0562e0ba Jiaying Zhang 2011-03-21  472  	),
-0562e0ba Jiaying Zhang 2011-03-21  473  
-0562e0ba Jiaying Zhang 2011-03-21  474  	TP_printk("dev %d,%d ino %lu page_index %lu offset %lu",
-0562e0ba Jiaying Zhang 2011-03-21  475  		  MAJOR(__entry->dev), MINOR(__entry->dev),
-0562e0ba Jiaying Zhang 2011-03-21  476  		  (unsigned long) __entry->ino,
-a9c667f8 Lukas Czerner 2011-06-06  477  		  (unsigned long) __entry->index, __entry->offset)
-0562e0ba Jiaying Zhang 2011-03-21 @478  );
-0562e0ba Jiaying Zhang 2011-03-21  479  
-fdd2c032 Jan Kara      2012-12-25 @480  DEFINE_EVENT(ext4_invalidatepage_op, ext4_invalidatepage
-fdd2c032 Jan Kara      2012-12-25  481  	TP_PROTO(struct page *page, unsigned long offset),
-fdd2c032 Jan Kara      2012-12-25  482  
-fdd2c032 Jan Kara      2012-12-25  483  	TP_ARGS(page, offset)
-fdd2c032 Jan Kara      2012-12-25 @484  );
-fdd2c032 Jan Kara      2012-12-25  485  
-fdd2c032 Jan Kara      2012-12-25  486  DEFINE_EVENT(ext4_invalidatepage_op, ext4_journalled_invalidatepage
-fdd2c032 Jan Kara      2012-12-25  487  	TP_PROTO(struct page *page, unsigned long offset),
-
----
-0-DAY kernel build testing backend         Open Source Technology Center
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+                                           - Ted
