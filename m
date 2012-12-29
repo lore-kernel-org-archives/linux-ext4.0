@@ -1,77 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: 3.8.0-rc1: WARNING: at fs/ext4/page-io.c:232
-Date: Sat, 29 Dec 2012 09:04:49 +0400
-Message-ID: <87sj6psb2m.fsf@openvz.org>
-References: <CAA1sL1QgkEWciR2qBbKWr+_2tRdhxpE1Jh3P0waSeYR8LR8R5w@mail.gmail.com> <20121227062907.GA5001@gmail.com> <87mwwzq5t7.fsf@openvz.org> <20121227134413.GA20671@thunk.org> <20121229002131.GA3120@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: notes in the WARN_ON in ext4_release_page() with data=journal
+Date: Sat, 29 Dec 2012 02:58:54 -0500
+Message-ID: <nsxsj6pe1c1.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>,
-	Alexander Beregalov <a.beregalov@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f43.google.com ([209.85.215.43]:56746 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750705Ab2L2FE5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Dec 2012 00:04:57 -0500
-Received: by mail-la0-f43.google.com with SMTP id eg20so1751543lab.30
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Dec 2012 21:04:54 -0800 (PST)
-In-Reply-To: <20121229002131.GA3120@dastard>
+Received: from li9-11.members.linode.com ([67.18.176.11]:40787 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752037Ab2L2H65 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Dec 2012 02:58:57 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 29 Dec 2012 11:21:31 +1100, Dave Chinner <david@fromorbit.com> wrote:
-> On Thu, Dec 27, 2012 at 08:44:13AM -0500, Theodore Ts'o wrote:
-> > On Thu, Dec 27, 2012 at 12:04:36PM +0400, Dmitry Monakhov wrote:
-> > > In fact this is my fault that we still not have autotest for that.
-> > > I'm think of add crash-test to xfstests which should trigger journal
-> > > abort and forced umount. Later test should mount FS which trigger
-> > > journal_replay and orphan_cleanup.
-> > 
-> > We could create some tests in xfstests which force a crash via "echo b
-> > > /proc/sysrq-trigger", but the trick is would require xfstests to
-> > install something in the /etc/rc scripts so xfstests could resume
-> > right after it came back --- and perhaps to echo something to the
-> > console which automated test runners (such as the one I use which I've
-> > published at [1] could capture so they would know that they should
-> > restart the system.
-> > 
-> > [1] git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
-> > 
-> > For now the simplest way to test this is to use the file system image
-> > in tests/f_orphan_extents_inode/image.gz, and make this be an
-> > ext4-specific test.  This is how I tested it when I created my fix (in
-> > parallel with Zheng's patch).  The compressed file system image is
-> > only 564 bytes --- and was made deliberately w/o a journal so it could
-> > be that small --- and the lack of a journal was how I found the
-> > infinite loop problem which was fixed in the 2/2 patch in my patches.
-> > So including this compressed fs image in xfstests is probably the way
-> > I would suggest for now.
-> 
-> Just implement XFS_IOC_GOINGDOWN. That way xfstests will immediately
-> support shutting down the filesystem via the src/godown utility.
-> The default XFS behaviour is to freeze the filesystem, then do a
-> forced shutdown on it, though it can also just trigger shutdowns
-> with and without first flushing the journal.
-Actually I want to emulate device failure this allow us to test
-following scenarios
-1) unsafe usb dongle unplug(test system survival)
-2) power failure(
-Our 'improved' loop device (http://wiki.openvz.org/Ploop) has
-/sys/block/ploop0/make-it-fail  knob which explicitly fail blkdevice
-Once failed it return EIO on all requests. I would like add this 
-feature in generic loop device.
-> 
-> i.e.  it sounds like test 121 is pretty much what you are describing
-> here...
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+I've been trying to track down with a WARN_ON in ext4_release_page()
+which can be reproduced by running xfstests #247 in data=journalled
+mode.  I'm sending the results of this investigation to linux-ext4
+partially as a note to myself, or in case other people notice it.
+
+What's going on is while the O_DIRECT write is happening, in
+generic_file_direct_write(), first we force all of the pages in question
+to disk using filemap_write_and_wait_range().  Then, we invalidate all
+of the pages in question.  If there is a process which is also modifying
+the page using mmap writes (which is the case in test #247), the page
+can get marked dirty after its writeback, and before the pages are
+released by invalidate_inode_pages2_range().
+
+(The PageChecked flag is set by ext4_journalled_set_page_dirty(), and
+cleared by __ext4_journalled_writepage() --- for an explanation why,
+please see comments for __ext4_journalled_writepage().  When the page
+gets released, if ext4_release_page() notices that the PageChecked flag
+is still set, it will trigger the WARN_ON.)
+
+This WARN_ON(), then since the stack trace involves
+invalidate_page_range(), is harmless.  If the user is doing unaligned
+DIO writes, the changes made by the mmap might disappear, and which
+means our cache coherency guarantees made by our O_DIRECT guarantee is
+not absolute.  I'm not really worried about it since, if an application
+is racing an mmap modification with an O_DIRECT write, it's just asking
+to lose --- and this race has been there for a long time.  It's just
+that the data=journal machinery makes this noticeable.
+
+                                           - Ted
