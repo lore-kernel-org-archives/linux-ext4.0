@@ -1,45 +1,68 @@
-From: David Sterba <dsterba@suse.cz>
-Subject: Re: [PATCH RESEND] vfs: re-implement
- writeback_inodes_sb(_nr)_if_idle() and rename them
-Date: Fri, 28 Dec 2012 15:33:38 +0100
-Message-ID: <20121228143338.GW14116@twin.jikos.cz>
-References: <50D2E3DF.4010105@cn.fujitsu.com>
-Reply-To: dsterba@suse.cz
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: 3.8.0-rc1: WARNING: at fs/ext4/page-io.c:232
+Date: Sat, 29 Dec 2012 11:21:31 +1100
+Message-ID: <20121229002131.GA3120@dastard>
+References: <CAA1sL1QgkEWciR2qBbKWr+_2tRdhxpE1Jh3P0waSeYR8LR8R5w@mail.gmail.com>
+ <20121227062907.GA5001@gmail.com>
+ <87mwwzq5t7.fsf@openvz.org>
+ <20121227134413.GA20671@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Miao Xie <miaox@cn.fujitsu.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	Alexander Beregalov <a.beregalov@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:61731 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755102Ab2L2AVg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 28 Dec 2012 19:21:36 -0500
 Content-Disposition: inline
-In-Reply-To: <50D2E3DF.4010105@cn.fujitsu.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20121227134413.GA20671@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 20, 2012 at 06:09:35PM +0800, Miao Xie wrote:
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -1314,7 +1314,6 @@ void writeback_inodes_sb_nr(struct super_block *sb,
->  	bdi_queue_work(sb->s_bdi, &work);
->  	wait_for_completion(&done);
->  }
-> -EXPORT_SYMBOL(writeback_inodes_sb_nr);
+On Thu, Dec 27, 2012 at 08:44:13AM -0500, Theodore Ts'o wrote:
+> On Thu, Dec 27, 2012 at 12:04:36PM +0400, Dmitry Monakhov wrote:
+> > In fact this is my fault that we still not have autotest for that.
+> > I'm think of add crash-test to xfstests which should trigger journal
+> > abort and forced umount. Later test should mount FS which trigger
+> > journal_replay and orphan_cleanup.
+> 
+> We could create some tests in xfstests which force a crash via "echo b
+> > /proc/sysrq-trigger", but the trick is would require xfstests to
+> install something in the /etc/rc scripts so xfstests could resume
+> right after it came back --- and perhaps to echo something to the
+> console which automated test runners (such as the one I use which I've
+> published at [1] could capture so they would know that they should
+> restart the system.
+> 
+> [1] git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+> 
+> For now the simplest way to test this is to use the file system image
+> in tests/f_orphan_extents_inode/image.gz, and make this be an
+> ext4-specific test.  This is how I tested it when I created my fix (in
+> parallel with Zheng's patch).  The compressed file system image is
+> only 564 bytes --- and was made deliberately w/o a journal so it could
+> be that small --- and the lack of a journal was how I found the
+> infinite loop problem which was fixed in the 2/2 patch in my patches.
+> So including this compressed fs image in xfstests is probably the way
+> I would suggest for now.
 
-Why do you remove the export? writeback_inodes_sb is exported as well.
+Just implement XFS_IOC_GOINGDOWN. That way xfstests will immediately
+support shutting down the filesystem via the src/godown utility.
+The default XFS behaviour is to freeze the filesystem, then do a
+forced shutdown on it, though it can also just trigger shutdowns
+with and without first flushing the journal.
 
-Originally the _nr variant has been introduced for btrfs
-(3259f8bed2f0f57c2fdcdac1b510c3fa319ef97e) and there are no other users
-now, so from that point it would make sense. From the other side, the
-change is not strictly necessary for this patch and keeps the writeback
-API a bit more flexible. I vote for keeping it.
+i.e.  it sounds like test 121 is pretty much what you are describing
+here...
 
-Otherwise (for the btrfs part),
-Tested-by: David Sterba <dsterba@suse.cz>
+Cheers,
 
-
-thanks,
-david
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
