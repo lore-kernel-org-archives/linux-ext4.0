@@ -1,66 +1,68 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext3: set pointer = NULL, after kfree it
-Date: Mon, 31 Dec 2012 16:19:53 +0100
-Message-ID: <20121231151953.GE7564@quack.suse.cz>
-References: <50D7EEF6.4070005@asianux.com>
- <20121225185155.GE5318@thunk.org>
- <50DA61E8.5090009@asianux.com>
+Subject: Re: [PATCH] fs/jbd: set pointer = NULL, after kfree it.
+Date: Mon, 31 Dec 2012 16:23:12 +0100
+Message-ID: <20121231152312.GF7564@quack.suse.cz>
+References: <50D7C04B.6010109@asianux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, jack@suse.cz,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
 To: Chen Gang <gang.chen@asianux.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59828 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:59901 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab2LaPT4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Dec 2012 10:19:56 -0500
+	id S1751257Ab2LaPXN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Dec 2012 10:23:13 -0500
 Content-Disposition: inline
-In-Reply-To: <50DA61E8.5090009@asianux.com>
+In-Reply-To: <50D7C04B.6010109@asianux.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 26-12-12 10:33:12, Chen Gang wrote:
-> =E4=BA=8E 2012=E5=B9=B412=E6=9C=8826=E6=97=A5 02:51, Theodore Ts'o =E5=
-=86=99=E9=81=93:
-> > On Mon, Dec 24, 2012 at 01:58:14PM +0800, Chen Gang wrote:
-> >>
-> >>   set s->base =3D NULL, after kfree it.
-> >>
-> >> Signed-off-by: Chen Gang <gang.chen@asianux.com>
-> >=20
-> > Was this to fix something flagged by some static code checker?  The
-> > only caller of ext3_xattr_block_set() is ext3_xattr_set_handle(), a=
-nd
-> > s->base is stored on the stack, and as soon as ext3_xattr_block_set=
-()
-> > returns, the object will disappear.  So it seems pretty hard to see
-> > how this could lead to a use-after-free bug.
-> >=20
-> >     	       	       	 		- Ted
-> >=20
-> >=20
->=20
->   this patch is not for a bug
->=20
->   it is only for coding habit:
->     it is better to set is to NULL, after kfree it.
->     in the future, if another functions need call ext3_xattr_block_se=
-t, too.
->       it will avoid another members to make mistake.
-  Well, we set pointers to NULL after kfree() only if there's a good ch=
-ance
-we ever look at the pointer again. This is not the case so I don't thin=
-k
-this change makes the code any more safer / easier to read.
+On Mon 24-12-12 10:39:07, Chen Gang wrote:
+> 
+>   set pointer = NULL, after call journal_destroy_revoke_table.
+>     in journal_destroy_revoke_table, it will call kfree to free the buffer.
+  The journal structure will get freed immediately after we return from
+journal_init_revoke() (in case it failed) or journal_destroy_revoke() so I
+don't see a point in setting the pointers to NULL. Or do I miss something?
 
-									Honza
---=20
+								Honza
+> 
+> Signed-off-by: Chen Gang <gang.chen@asianux.com>
+> ---
+>  fs/jbd/revoke.c |    9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
+> index 25c713e..d6457b0 100644
+> --- a/fs/jbd/revoke.c
+> +++ b/fs/jbd/revoke.c
+> @@ -295,6 +295,7 @@ int journal_init_revoke(journal_t *journal, int hash_size)
+>  
+>  fail1:
+>  	journal_destroy_revoke_table(journal->j_revoke_table[0]);
+> +	journal->j_revoke_table[0] = NULL;
+>  fail0:
+>  	return -ENOMEM;
+>  }
+> @@ -303,10 +304,14 @@ fail0:
+>  void journal_destroy_revoke(journal_t *journal)
+>  {
+>  	journal->j_revoke = NULL;
+> -	if (journal->j_revoke_table[0])
+> +	if (journal->j_revoke_table[0]) {
+>  		journal_destroy_revoke_table(journal->j_revoke_table[0]);
+> -	if (journal->j_revoke_table[1])
+> +		journal->j_revoke_table[0] = NULL;
+> +	}
+> +	if (journal->j_revoke_table[1]) {
+>  		journal_destroy_revoke_table(journal->j_revoke_table[1]);
+> +		journal->j_revoke_table[1] = NULL;
+> +	}
+>  }
+>  
+>  
+> -- 
+> 1.7.10.4
+-- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
