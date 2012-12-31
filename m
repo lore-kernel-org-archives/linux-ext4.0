@@ -1,66 +1,85 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/jbd: set pointer = NULL, after kfree it.
-Date: Mon, 31 Dec 2012 16:23:12 +0100
-Message-ID: <20121231152312.GF7564@quack.suse.cz>
-References: <50D7C04B.6010109@asianux.com>
+Subject: Re: [PATCH] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
+ size and count calculation
+Date: Mon, 31 Dec 2012 16:45:59 +0100
+Message-ID: <20121231154559.GG7564@quack.suse.cz>
+References: <50DD20B2.6040204@asianux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
+Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
+	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
+	dwmw2@infradead.org, torvalds@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
 To: Chen Gang <gang.chen@asianux.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59901 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60373 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab2LaPXN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Dec 2012 10:23:13 -0500
+	id S1750958Ab2LaPqH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 31 Dec 2012 10:46:07 -0500
 Content-Disposition: inline
-In-Reply-To: <50D7C04B.6010109@asianux.com>
+In-Reply-To: <50DD20B2.6040204@asianux.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 24-12-12 10:39:07, Chen Gang wrote:
+On Fri 28-12-12 12:31:46, Chen Gang wrote:
 > 
->   set pointer = NULL, after call journal_destroy_revoke_table.
->     in journal_destroy_revoke_table, it will call kfree to free the buffer.
-  The journal structure will get freed immediately after we return from
-journal_init_revoke() (in case it failed) or journal_destroy_revoke() so I
-don't see a point in setting the pointers to NULL. Or do I miss something?
-
-								Honza
+>   give comments (by Theodore Ts'o)
 > 
+>     ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
+> 
+>     [1] Where * is the regexp sense of "0 or more times"
+>     [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
+>         otherwise skip ACL_MASK.
+> 
+>   use macro instead of hard code number (by Chen Gang)
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > Signed-off-by: Chen Gang <gang.chen@asianux.com>
 > ---
->  fs/jbd/revoke.c |    9 +++++++--
->  1 file changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-> index 25c713e..d6457b0 100644
-> --- a/fs/jbd/revoke.c
-> +++ b/fs/jbd/revoke.c
-> @@ -295,6 +295,7 @@ int journal_init_revoke(journal_t *journal, int hash_size)
+...
+> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+> index 7931efe..d75d2f6 100644
+> --- a/include/linux/posix_acl.h
+> +++ b/include/linux/posix_acl.h
+> @@ -26,6 +26,15 @@
+>  #define ACL_MASK		(0x10)
+>  #define ACL_OTHER		(0x20)
 >  
->  fail1:
->  	journal_destroy_revoke_table(journal->j_revoke_table[0]);
-> +	journal->j_revoke_table[0] = NULL;
->  fail0:
->  	return -ENOMEM;
->  }
-> @@ -303,10 +304,14 @@ fail0:
->  void journal_destroy_revoke(journal_t *journal)
->  {
->  	journal->j_revoke = NULL;
-> -	if (journal->j_revoke_table[0])
-> +	if (journal->j_revoke_table[0]) {
->  		journal_destroy_revoke_table(journal->j_revoke_table[0]);
-> -	if (journal->j_revoke_table[1])
-> +		journal->j_revoke_table[0] = NULL;
-> +	}
-> +	if (journal->j_revoke_table[1]) {
->  		journal_destroy_revoke_table(journal->j_revoke_table[1]);
-> +		journal->j_revoke_table[1] = NULL;
-> +	}
->  }
->  
->  
+> +/*
+> + * ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
+> + *
+> + * [1] Where * is the regexp sense of "0 or more times"
+> + * [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
+> + *     otherwise skip ACL_MASK.
+> + */
+> +#define ACL_MAX_SHORT_ENTRY     (4)
+> +
+  I agree that defining a constant for this makes sence. Just please be
+more verbose with the comment. This is hardly readable for anyone not
+knowing what's going on in advance. Also braces around 4 are superfluous.
+Add something like the comment below before posix_acl_valid():
+
+/*
+ * posix_acl_valid() makes sure ACL format is the following:
+ * ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
+ *
+ * [1] Where * is the regexp sense of "0 or more times"
+ * [2] If ACL_USER or ACL_GROUP is present, then ACL_MASK must be present.
+ */
+
+Then add comment before definition of ACL_MAX_SHORT_ENTRY:
+/*
+ * posix_acl_valid() makes sure that if there are <= 4 ACL entries, then
+ * all of them are short. Otherwise exactly 4 entries are short ones and
+ * other have full length. See comment before that function for exact ACL
+ * format.
+ */
+
+								Honza
+>  /* permissions in the e_perm field */
+>  #define ACL_READ		(0x04)
+>  #define ACL_WRITE		(0x02)
 > -- 
 > 1.7.10.4
 -- 
