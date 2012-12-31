@@ -1,87 +1,71 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
- size and count calculation
-Date: Mon, 31 Dec 2012 16:45:59 +0100
-Message-ID: <20121231154559.GG7564@quack.suse.cz>
-References: <50DD20B2.6040204@asianux.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Uninitialized extent races
+Date: Tue, 1 Jan 2013 00:31:46 +0800
+Message-ID: <20121231163146.GA6795@gmail.com>
+References: <20121221012526.GD13474@quack.suse.cz>
+ <20121221031151.GA5014@thunk.org>
+ <20121221161929.GF17357@quack.suse.cz>
+ <20121221180243.GB31731@thunk.org>
+ <20121224111745.GA12051@gmail.com>
+ <20121231083221.GA7564@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
-	dwmw2@infradead.org, torvalds@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
-To: Chen Gang <gang.chen@asianux.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60373 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750958Ab2LaPqH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 31 Dec 2012 10:46:07 -0500
+Received: from mail-da0-f49.google.com ([209.85.210.49]:38009 "EHLO
+	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751209Ab2LaQSM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Dec 2012 11:18:12 -0500
+Received: by mail-da0-f49.google.com with SMTP id v40so5784649dad.22
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2012 08:18:12 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <50DD20B2.6040204@asianux.com>
+In-Reply-To: <20121231083221.GA7564@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-12-12 12:31:46, Chen Gang wrote:
-> 
->   give comments (by Theodore Ts'o)
-> 
->     ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
-> 
->     [1] Where * is the regexp sense of "0 or more times"
->     [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
->         otherwise skip ACL_MASK.
-> 
->   use macro instead of hard code number (by Chen Gang)
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Chen Gang <gang.chen@asianux.com>
-> ---
-...
-> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-> index 7931efe..d75d2f6 100644
-> --- a/include/linux/posix_acl.h
-> +++ b/include/linux/posix_acl.h
-> @@ -26,6 +26,15 @@
->  #define ACL_MASK		(0x10)
->  #define ACL_OTHER		(0x20)
->  
-> +/*
-> + * ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
-> + *
-> + * [1] Where * is the regexp sense of "0 or more times"
-> + * [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
-> + *     otherwise skip ACL_MASK.
-> + */
-> +#define ACL_MAX_SHORT_ENTRY     (4)
-> +
-  I agree that defining a constant for this makes sence. Just please be
-more verbose with the comment. This is hardly readable for anyone not
-knowing what's going on in advance. Also braces around 4 are superfluous.
-Add something like the comment below before posix_acl_valid():
+On Mon, Dec 31, 2012 at 09:32:21AM +0100, Jan Kara wrote:
+> On Mon 24-12-12 19:17:45, Zheng Liu wrote:
+> > On Fri, Dec 21, 2012 at 01:02:43PM -0500, Theodore Ts'o wrote:
+> > > On Fri, Dec 21, 2012 at 05:19:29PM +0100, Jan Kara wrote:
+> > > >   No, I'm speaking about merging currently uninitialized extents. I.e.
+> > > > suppose someone does the following on a filesystem with dioread_nolock so
+> > > > that writeback happens via unwritten extents:
+> > > >   fd = open("file", O_RDWR);
+> > > >   pwrite(fd, buf, 4096, 0);
+> > > > 					flusher thread starts writing
+> > > > 					we create uninitialized extent for
+> > > > 					  range 0-4096
+> > > >   fallocate(fd, 0, 4096, 4096);
+> > > >     - we merge extents and now have just 1 uninitialized extent for range
+> > > >       0-8192
+> > > > 					ext4_convert_unwritten_extents() now
+> > > > 					  has to split the extent to finish
+> > > > 					  the IO.
+> > > 
+> > > Ah, I see.  Disabling the the merging that might take place as a
+> > > result of the fallocate.  Yes, I agree that's a completely sane thing
+> > > to do.
+> > > 
+> > > The alternate approach would be to add a flag in the extent status
+> > > tree indicating that an unwritten conversion is pending, but that
+> > > would add more complexity.
+> > 
+> > Sorry for delay reply.  Indeed we could add a flag in extent status tree
+> > to indicate an pending unwritten extent, and I believe that it can bring
+> > us some benefits.  But I wonder whether this case often happens.  Do we
+> > have some real workloads?
+>   It doesn't happen often but it *can* happen. Thus you have to implement
+> a code which handles the case. I don't think bit in extent status tree is
+> really necessary. Just disabling merging of uninitialized extents is
+> simple. If we see there are some real workloads which have problems with
+> it, we can resort to a more complex solution using extent tree...
 
-/*
- * posix_acl_valid() makes sure ACL format is the following:
- * ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
- *
- * [1] Where * is the regexp sense of "0 or more times"
- * [2] If ACL_USER or ACL_GROUP is present, then ACL_MASK must be present.
- */
+Thanks for your explanation.  I don't know whether or not you have
+generated a patch for this problem.  I am willing to make it in a proper
+time.  If you have begun to generate it, please let me know. :-)
 
-Then add comment before definition of ACL_MAX_SHORT_ENTRY:
-/*
- * posix_acl_valid() makes sure that if there are <= 4 ACL entries, then
- * all of them are short. Otherwise exactly 4 entries are short ones and
- * other have full length. See comment before that function for exact ACL
- * format.
- */
-
-								Honza
->  /* permissions in the e_perm field */
->  #define ACL_READ		(0x04)
->  #define ACL_WRITE		(0x02)
-> -- 
-> 1.7.10.4
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Happy New Year,
+                                                - Zheng
