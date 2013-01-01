@@ -1,59 +1,63 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC][PATCH 3/9 v1] ext4: add physical block and status member
- into extent status tree
-Date: Tue, 1 Jan 2013 13:16:07 +0800
-Message-ID: <20130101051607.GB7546@gmail.com>
+Subject: Re: [RFC][PATCH 8/9 v1] ext4: refine unwritten extent conversion
+Date: Tue, 1 Jan 2013 13:24:45 +0800
+Message-ID: <20130101052445.GC7546@gmail.com>
 References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
- <1356335742-11793-4-git-send-email-wenqing.lz@taobao.com>
- <20121231214952.GL7564@quack.suse.cz>
+ <1356335742-11793-9-git-send-email-wenqing.lz@taobao.com>
+ <20121231215815.GM7564@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Zheng Liu <wenqing.lz@taobao.com>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:58168 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750850Ab3AAFCa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jan 2013 00:02:30 -0500
-Received: by mail-pa0-f49.google.com with SMTP id bi1so7386276pad.22
-        for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2012 21:02:29 -0800 (PST)
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45121 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751497Ab3AAFLJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jan 2013 00:11:09 -0500
+Received: by mail-pb0-f46.google.com with SMTP id wy7so7311176pbc.33
+        for <linux-ext4@vger.kernel.org>; Mon, 31 Dec 2012 21:11:08 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20121231214952.GL7564@quack.suse.cz>
+In-Reply-To: <20121231215815.GM7564@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 31, 2012 at 10:49:52PM +0100, Jan Kara wrote:
-> On Mon 24-12-12 15:55:36, Zheng Liu wrote:
+On Mon, Dec 31, 2012 at 10:58:15PM +0100, Jan Kara wrote:
+> On Mon 24-12-12 15:55:41, Zheng Liu wrote:
 > > From: Zheng Liu <wenqing.lz@taobao.com>
 > > 
-> > es_pblk is used to record physical block that maps to the disk.  es_status is
-> > used to record the status of the extent.  Three status are defined, which are
-> > written, unwritten and delayed.
->   So this means one extent is 48 bytes on 64-bit architectures. If I'm a
-> nasty user and create artificially fragmented file (by allocating every
-> second block), extent tree takes 6 MB per GB of file. That's quite a bit
-> and I think you need to provide a way for kernel to reclaim extent
-> structures...
+> > Currently all unwritten extent conversion work is pushed into a workqueue to be
+> > done because DIO end_io is in a irq context and this conversion needs to take
+> > i_data_sem locking.  But we couldn't take a semaphore in a irq context.  After
+> > tracking all extent status, we can first convert this unwritten extent in extent
+> > status tree, and call aio_complete() and inode_dio_done() to notify upper level
+> > that this dio has done.  We don't need to be worried about exposing a stale data
+> > because we first try to lookup in extent status tree.  So it makes us to see the
+> > latest extent status.  Meanwhile we queue a work to convert this unwritten
+> > extent in extent tree.  After this improvement, reader also needn't wait this
+> > conversion to be done when dioread_nolock is enabled.
+> > 
+> > CC: Jan Kara <jack@suse.cz>
+> > CC: "Darrick J. Wong" <darrick.wong@oracle.com>
+> > CC: Christoph Hellwig <hch@infradead.org>
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+>   OK, so after reading other patches this should work fine. Just I think we
+> should somehow mark in the extent status tree that the extent tree is
+> inconsistent with what's on disk - something like extent dirty bit. It will
+> be set for UNWRITTEN extents where conversion is pending logically it would
+> also make sence to have it set for DELAYED extents. Then if we need to
+> reclaim some extents due to memory pressure we know we have to keep dirty
+> extents because those cache irreplacible information. What do you think?
 
-Indeed, when a file has a lot of fragmentations, status tree will occupy
-a number of memory.  That is why it will be loaded on-demand.  When I make
-it, there are two solutions to load status tree.  One is loading
-on-demand, and another is loading complete extent tree in
-ext4_alloc_inode().  Finally I choose the former because it can reduce
-the pressure of memory at most of time.  But it has a disadvantage that
-status tree doesn't be fully trusted because it hasn't track a
-completely status of extent tree on disk.
-
-I will provide a way to reclaim extent structures from status tree.  Now
-I have an idea in my mind that we can reclaim all extent which are
-WRITTEN/UNWRITTEN status because we always need DELAYED extent in
-fiemap, seek_data/hole and bigalloc code.  Furthermore, as you said in
-another mail, some unwritten extent which will be converted into
-written also doesn't be reclaimed.
-
-Another question is when do these extents reclaim?  Currently when
-clear_inode() is called, the whole status tree will be reclaimed.  Maybe
-a switch in sysfs is a optional choice.  Any thoughts?
+Dirty bit is a good idea for UNWRITTEN extent because we can feel free
+to reclaim all WRITTEN extents and all UNWRITTEN extents that are
+without dirty bit.  But we can not reclaim DEALYED extents no matter
+whether they are dirty or not because they are used to lookup an delayed
+extent in fiemap, seek_data/hole, and bigalloc.  So at least DEALYED
+extent must be kept in status tree.  That is why in step 1 status tree
+only tracks all DELAYED extents in the tree.
 
 Thanks,
                                                 - Zheng
