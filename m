@@ -1,44 +1,68 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: debugfs: dump a sparse file as a new sparse file
-Date: Tue, 1 Jan 2013 17:47:40 -0500
-Message-ID: <20130101224740.GD12554@thunk.org>
-References: <20130101205709.GC12554@thunk.org>
- <20130101212504.11364.qmail@science.horizon.com>
+Subject: [GIT PULL] ext4 bug fixes for 3.8
+Date: Tue, 01 Jan 2013 19:41:00 -0500
+Message-ID: <nsxsj6kl8mb.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: gnehzuil.liu@gmail.com, linux-ext4@vger.kernel.org
-To: George Spelvin <linux@horizon.com>
+Cc: linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41245 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:41252 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751051Ab3AAWrp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 1 Jan 2013 17:47:45 -0500
-Content-Disposition: inline
-In-Reply-To: <20130101212504.11364.qmail@science.horizon.com>
+	id S1752191Ab3ABAlE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jan 2013 19:41:04 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 01, 2013 at 04:25:04PM -0500, George Spelvin wrote:
-> 
-> That's a good enough reason; my only remaining objection is calling it
-> "a non-standard/non-portable GCC extension".
 
-Fair enough.  Basically, e2fsprogs is targetting C89, and with the
-exception of inline functions (which is optional; e2fsprogs will build
-on compilers which don't handle inline functions, and it's only
-recently that I switched us over to use C99 inline functions instead
-of the old gcc's gnu89 inline declarations), as far as I know we're
-not dependent on any C99 language features.
+The following changes since commit bd9926e80330d43f15b710c2935fa41b792d56fd:
 
-Because I tend to use a very conservative coding standard for
-porability's sake, I sometimes lose track of what's actually allowed
-by C99, and what's a GCC extension.
+  ext4: zero out inline data using memset() instead of empty_zero_page (2012-12-11 03:31:49 -0500)
 
-BTW, I'll note that in C11 (ISO/IEC 9899:2011), VLA's have been made
-**optional**.  Hence, even for programs targetting C11-compliant
-compilers, it's still not a good idea to use VLA's in your code if you
-are striving for maximal portability.
+are available in the git repository at:
 
-Regards,
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-	      		      	    	 - Ted
+for you to fetch changes up to 0e9a9a1ad619e7e987815d20262d36a2f95717ca:
+
+  ext4: avoid hang when mounting non-journal filesystems with orphan list (2012-12-27 01:42:50 -0500)
+
+----------------------------------------------------------------
+Various bug fixes for ext4.  Perhaps the most serious bug fixed is one
+which could cause file system corruptions when performing file punch
+operations.
+
+----------------------------------------------------------------
+Andy Lutomirski (1):
+      ext4: fix an incorrect comment about i_mutex
+
+Eric Sandeen (2):
+      ext4: remove unaligned AIO warning printk
+      ext4: include journal blocks in df overhead calcs
+
+Forrest Liu (1):
+      ext4: fix extent tree corruption caused by hole punch
+
+Jan Kara (4):
+      ext4: check dioread_nolock on remount
+      jbd2: fix assertion failure in jbd2_journal_flush()
+      ext4: split off ext4_journalled_invalidatepage()
+      ext4: fix deadlock in journal_unmap_buffer()
+
+Michael Tokarev (1):
+      ext4: do not try to write superblock on ro remount w/o journal
+
+Theodore Ts'o (2):
+      ext4: lock i_mutex when truncating orphan inodes
+      ext4: avoid hang when mounting non-journal filesystems with orphan list
+
+ fs/ext4/extents.c           | 22 ++++++++--
+ fs/ext4/file.c              |  8 ----
+ fs/ext4/fsync.c             |  2 -
+ fs/ext4/inode.c             | 99 ++++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/namei.c             |  3 +-
+ fs/ext4/super.c             | 30 ++++++++------
+ fs/jbd2/transaction.c       | 30 +++++++-------
+ include/linux/jbd2.h        |  2 +-
+ include/trace/events/ext4.h | 14 ++++++-
+ 9 files changed, 152 insertions(+), 58 deletions(-)
