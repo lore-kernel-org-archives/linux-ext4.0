@@ -1,75 +1,70 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH 3/9 v1] ext4: add physical block and status member
- into extent status tree
-Date: Wed, 2 Jan 2013 12:22:55 +0100
-Message-ID: <20130102112255.GA30633@quack.suse.cz>
-References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
- <1356335742-11793-4-git-send-email-wenqing.lz@taobao.com>
- <20121231214952.GL7564@quack.suse.cz>
- <20130101051607.GB7546@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: 3.8.0-rc1: WARNING: at fs/ext4/page-io.c:232
+Date: Wed, 02 Jan 2013 09:17:27 -0600
+Message-ID: <50E44F87.5060102@redhat.com>
+References: <CAA1sL1QgkEWciR2qBbKWr+_2tRdhxpE1Jh3P0waSeYR8LR8R5w@mail.gmail.com> <20121227062907.GA5001@gmail.com> <87mwwzq5t7.fsf@openvz.org> <20121227134413.GA20671@thunk.org> <20121229002131.GA3120@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Dmitry Monakhov <dmonakhov@openvz.org>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	Alexander Beregalov <a.beregalov@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46717 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:40413 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752608Ab3ABLW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Jan 2013 06:22:57 -0500
-Content-Disposition: inline
-In-Reply-To: <20130101051607.GB7546@gmail.com>
+	id S1752714Ab3ABPRt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Jan 2013 10:17:49 -0500
+In-Reply-To: <20121229002131.GA3120@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 01-01-13 13:16:07, Zheng Liu wrote:
-> On Mon, Dec 31, 2012 at 10:49:52PM +0100, Jan Kara wrote:
-> > On Mon 24-12-12 15:55:36, Zheng Liu wrote:
-> > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > 
-> > > es_pblk is used to record physical block that maps to the disk.  es_status is
-> > > used to record the status of the extent.  Three status are defined, which are
-> > > written, unwritten and delayed.
-> >   So this means one extent is 48 bytes on 64-bit architectures. If I'm a
-> > nasty user and create artificially fragmented file (by allocating every
-> > second block), extent tree takes 6 MB per GB of file. That's quite a bit
-> > and I think you need to provide a way for kernel to reclaim extent
-> > structures...
+On 12/28/12 6:21 PM, Dave Chinner wrote:
+> On Thu, Dec 27, 2012 at 08:44:13AM -0500, Theodore Ts'o wrote:
+>> On Thu, Dec 27, 2012 at 12:04:36PM +0400, Dmitry Monakhov wrote:
+>>> In fact this is my fault that we still not have autotest for that.
+>>> I'm think of add crash-test to xfstests which should trigger journal
+>>> abort and forced umount. Later test should mount FS which trigger
+>>> journal_replay and orphan_cleanup.
+>>
+>> We could create some tests in xfstests which force a crash via "echo b
+>>> /proc/sysrq-trigger", but the trick is would require xfstests to
+>> install something in the /etc/rc scripts so xfstests could resume
+>> right after it came back --- and perhaps to echo something to the
+>> console which automated test runners (such as the one I use which I've
+>> published at [1] could capture so they would know that they should
+>> restart the system.
+>>
+>> [1] git://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git
+>>
+>> For now the simplest way to test this is to use the file system image
+>> in tests/f_orphan_extents_inode/image.gz, and make this be an
+>> ext4-specific test.  This is how I tested it when I created my fix (in
+>> parallel with Zheng's patch).  The compressed file system image is
+>> only 564 bytes --- and was made deliberately w/o a journal so it could
+>> be that small --- and the lack of a journal was how I found the
+>> infinite loop problem which was fixed in the 2/2 patch in my patches.
+>> So including this compressed fs image in xfstests is probably the way
+>> I would suggest for now.
 > 
-> Indeed, when a file has a lot of fragmentations, status tree will occupy
-> a number of memory.  That is why it will be loaded on-demand.  When I make
-> it, there are two solutions to load status tree.  One is loading
-> on-demand, and another is loading complete extent tree in
-> ext4_alloc_inode().  Finally I choose the former because it can reduce
-> the pressure of memory at most of time.  But it has a disadvantage that
-> status tree doesn't be fully trusted because it hasn't track a
-> completely status of extent tree on disk.
-  Not reading the whole extent tree in ext4_alloc_inode() is a good start
-but it's not the whole solution IMHO. It saves us from unnecessary reading
-of extents but still if someone reads the whole filesystem (like
-grep -R "foo" /) you will still end up with all extents cached. And that
-will make ext4 inodes pretty heavy in memory. Surely inode reclaim will
-eventually release these inodes including cached extents but it is usually
-more beneficial to cache the inode itself than more extents so allowing us
-to strip cached extents without releasing inode itself would be good.
-
-> I will provide a way to reclaim extent structures from status tree.  Now
-> I have an idea in my mind that we can reclaim all extent which are
-> WRITTEN/UNWRITTEN status because we always need DELAYED extent in
-> fiemap, seek_data/hole and bigalloc code.  Furthermore, as you said in
-> another mail, some unwritten extent which will be converted into
-> written also doesn't be reclaimed.
+> Just implement XFS_IOC_GOINGDOWN. That way xfstests will immediately
+> support shutting down the filesystem via the src/godown utility.
+> The default XFS behaviour is to freeze the filesystem, then do a
+> forced shutdown on it, though it can also just trigger shutdowns
+> with and without first flushing the journal.
 > 
-> Another question is when do these extents reclaim?  Currently when
-> clear_inode() is called, the whole status tree will be reclaimed.  Maybe
-> a switch in sysfs is a optional choice.  Any thoughts?
-  The natural way to handle the shrinking is using 'shrinker' framework. In
-this case, we could register a shrinker for shrinking extents. Just having
-LRU of extents would increase the size of extent structure by 2 pointers
-which is too big I'd think and I'm not yet sure how to choose extents for
-reclaim in some other way. I will think about it...
+> i.e.  it sounds like test 121 is pretty much what you are describing
+> here...
+> 
+> Cheers,
+> 
+> Dave.
+> 
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Agreed, if the xfs testing ioctl semantics make sense across other
+filesystems, it would be great to just re-use that, and voila, instant
+test framework becomes available.
+
+-Eric
