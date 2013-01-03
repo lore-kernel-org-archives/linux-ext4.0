@@ -1,44 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] resize2fs: fix 32-bit overflow issue which can
- corrupt 64-bit file systems
-Date: Thu, 3 Jan 2013 12:16:35 -0500
-Message-ID: <20130103171635.GA3089@thunk.org>
-References: <1357222408-7310-1-git-send-email-tytso@mit.edu>
- <50E5AA43.2080200@redhat.com>
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Subject: ext4_free_inode:319: comm krunner: bit already cleared for inode
+ 6293718
+Date: Thu, 03 Jan 2013 18:49:57 +0100
+Message-ID: <50E5C4C5.9040701@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41532 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753430Ab3ACRQj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jan 2013 12:16:39 -0500
-Content-Disposition: inline
-In-Reply-To: <50E5AA43.2080200@redhat.com>
+Received: from mout.gmx.net ([212.227.17.20]:50560 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753771Ab3ACRzC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jan 2013 12:55:02 -0500
+Received: from mailout-de.gmx.net ([10.1.76.1]) by mrigmx.server.lan
+ (mrigmx002) with ESMTP (Nemesis) id 0MaXUl-1Tb5Sg0Mf3-00KBoi for
+ <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 18:49:59 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 03, 2013 at 09:56:51AM -0600, Eric Sandeen wrote:
-> 
-> Yikes - seems like there are quite a few places where we need to
-> audit this kind of thing
+=46or the following 3 errors I think the last 2 are related to the fact=
+,
+that I'm booting a Gentoo Linux (kernel 3.7.1) from an external USB 2.0=
+ drive,
+but the first error, is that related too to the external drive itslef ?=
+ :
 
-Fortunately a bunch of these only apply for 32-bit resizing (i..e,
-involving the resize_inode or the 32-bit resize iocl).  The goal_blk
-calculations just mean that we will be using a non-optimal block
-number, which we should fix, but it's not catastrophic.
+2013-01-03T16:28:04.305+01:00 n22 kernel: EXT4-fs error (device sdb3): =
+ext4_free_inode:319: comm krunner: bit already cleared for inode 629371=
+8
+2013-01-03T16:28:07.426+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:942: IO failure
+2013-01-03T16:28:10.683+01:00 n22 kernel: EXT4-fs error (device sdb3) i=
+n ext4_new_inode:942: IO failure
 
-The check_block_uninit() function in lib/ext2fs/alloc.c could
-defintely cause a problem if someone were to use the library to write
-into a 64-bit file system via FUSE, e2tools, or debugfs, but it's
-unlikely to cause a problem for mke2fs or e2fsck.  (It could
-potentially cause a problem if e2fsck needed to freshly allocate some
-new blocks for e.g., a missing lost+found directory, or during pass1b
-processing and it allocates for the first time into an block group
-with BLOCK_UNINIT, but it's not a high probability bug.) 
 
-Regardless of how likely they are, I agree absolutely that we should
-audit and fix all of these problems.
-
-						- Ted
+--=20
+MfG/Sincerely
+Toralf F=C3=B6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
