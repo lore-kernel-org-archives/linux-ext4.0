@@ -1,85 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH 8/9 v1] ext4: refine unwritten extent conversion
-Date: Thu, 3 Jan 2013 11:56:13 +0100
-Message-ID: <20130103105613.GA30695@quack.suse.cz>
-References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
- <1356335742-11793-9-git-send-email-wenqing.lz@taobao.com>
- <20121231215815.GM7564@quack.suse.cz>
- <20130101052445.GC7546@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/4] resize2fs: fix 32-bit overflow when calculating the number of free blocks
+Date: Thu,  3 Jan 2013 09:13:26 -0500
+Message-ID: <1357222408-7310-2-git-send-email-tytso@mit.edu>
+References: <1357222408-7310-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53482 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753131Ab3ACK4R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jan 2013 05:56:17 -0500
-Content-Disposition: inline
-In-Reply-To: <20130101052445.GC7546@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:41491 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753412Ab3ACONa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jan 2013 09:13:30 -0500
+In-Reply-To: <1357222408-7310-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 01-01-13 13:24:45, Zheng Liu wrote:
-> On Mon, Dec 31, 2012 at 10:58:15PM +0100, Jan Kara wrote:
-> > On Mon 24-12-12 15:55:41, Zheng Liu wrote:
-> > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > 
-> > > Currently all unwritten extent conversion work is pushed into a workqueue to be
-> > > done because DIO end_io is in a irq context and this conversion needs to take
-> > > i_data_sem locking.  But we couldn't take a semaphore in a irq context.  After
-> > > tracking all extent status, we can first convert this unwritten extent in extent
-> > > status tree, and call aio_complete() and inode_dio_done() to notify upper level
-> > > that this dio has done.  We don't need to be worried about exposing a stale data
-> > > because we first try to lookup in extent status tree.  So it makes us to see the
-> > > latest extent status.  Meanwhile we queue a work to convert this unwritten
-> > > extent in extent tree.  After this improvement, reader also needn't wait this
-> > > conversion to be done when dioread_nolock is enabled.
-> > > 
-> > > CC: Jan Kara <jack@suse.cz>
-> > > CC: "Darrick J. Wong" <darrick.wong@oracle.com>
-> > > CC: Christoph Hellwig <hch@infradead.org>
-> > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> >   OK, so after reading other patches this should work fine. Just I think we
-> > should somehow mark in the extent status tree that the extent tree is
-> > inconsistent with what's on disk - something like extent dirty bit. It will
-> > be set for UNWRITTEN extents where conversion is pending logically it would
-> > also make sence to have it set for DELAYED extents. Then if we need to
-> > reclaim some extents due to memory pressure we know we have to keep dirty
-> > extents because those cache irreplacible information. What do you think?
-> 
-> Dirty bit is a good idea for UNWRITTEN extent because we can feel free
-> to reclaim all WRITTEN extents and all UNWRITTEN extents that are
-> without dirty bit.  But we can not reclaim DEALYED extents no matter
-> whether they are dirty or not because they are used to lookup an delayed
-> extent in fiemap, seek_data/hole, and bigalloc.  So at least DEALYED
-> extent must be kept in status tree.  That is why in step 1 status tree
-> only tracks all DELAYED extents in the tree.
-  So I was thinking about this some more and also testing some code and I
-realized that using extent status tree won't be enough (sadly). In case of
-AIO DIO with O_SYNC set, we have to perform extent conversion on *disk*
-before we can complete the AIO. So extent status tree won't help us in any
-way.
+This caused the free blocks count in the superblock to be incorrect
+after resizing a 64-bit file system if the number of free blocks
+overflowed a 32-bit value.
 
-Furthermore O_SYNC writes end up calling ->fsync() after IO is finished
-which currently waits for all unwritten extents to convert and that
-effectively deadlocks the conversion thread if there are more DIO
-conversions pending. To fix this we would have to hack around
-ext4_file_fsync() to avoid waiting in case of O_SYNC AIO writes and that
-gets nasty quickly. So I'm currently back to my original plan of completing
-IO only after extent conversion happens... I'll see how that works out.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ resize/resize2fs.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-Eventually we could *optimize* that by doing the extent conversion only in
-the extent status tree if possible but I wouldn't bother with it right now.
-For one thing, I also realized we would probably have to somehow throttle
-writers so that there are not too many outstanding conversions (when we
-complete AIO only after the conversion is finished, writer is naturally
-limited by the amount of AIOs allowed).
-
-								Honza
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 0407e41..d9501f9 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -1795,7 +1795,8 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 	ext2_ino_t	ino;
+ 	unsigned int	group = 0;
+ 	unsigned int	count = 0;
+-	int		total_free = 0;
++	blk64_t		total_blocks_free = 0;
++	int		total_inodes_free = 0;
+ 	int		group_free = 0;
+ 	int		uninit = 0;
+ 	blk64_t		super_blk, old_desc_blk, new_desc_blk;
+@@ -1827,7 +1828,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 			  + fs->inode_blocks_per_group))))) ||
+ 		    (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk))) {
+ 			group_free++;
+-			total_free++;
++			total_blocks_free++;
+ 		}
+ 		count++;
+ 		if ((count == fs->super->s_blocks_per_group) ||
+@@ -1851,13 +1852,12 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 					fs->super->s_reserved_gdt_blocks;
+ 		}
+ 	}
+-	ext2fs_free_blocks_count_set(fs->super, total_free);
++	ext2fs_free_blocks_count_set(fs->super, total_blocks_free);
+ 
+ 	/*
+ 	 * Next, calculate the inode statistics
+ 	 */
+ 	group_free = 0;
+-	total_free = 0;
+ 	count = 0;
+ 	group = 0;
+ 
+@@ -1867,7 +1867,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 		if (uninit ||
+ 		    !ext2fs_fast_test_inode_bitmap2(fs->inode_map, ino)) {
+ 			group_free++;
+-			total_free++;
++			total_inodes_free++;
+ 		}
+ 		count++;
+ 		if ((count == fs->super->s_inodes_per_group) ||
+@@ -1882,7 +1882,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ 			uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_INODE_UNINIT);
+ 		}
+ 	}
+-	fs->super->s_free_inodes_count = total_free;
++	fs->super->s_free_inodes_count = total_inodes_free;
+ 	ext2fs_mark_super_dirty(fs);
+ 	return 0;
+ }
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.12.rc0.22.gcdd159b
+
