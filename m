@@ -1,429 +1,293 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] resize2fs: add resource tracking as a debug option
-Date: Thu,  3 Jan 2013 09:13:27 -0500
-Message-ID: <1357222408-7310-3-git-send-email-tytso@mit.edu>
-References: <1357222408-7310-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] ext4: Always use ext4_bio_write_page() for writeout
+Date: Thu, 3 Jan 2013 15:18:12 +0100
+Message-ID: <20130103141812.GA1757@quack.suse.cz>
+References: <1357148744-4895-1-git-send-email-jack@suse.cz>
+ <1357148744-4895-2-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41498 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753594Ab3ACONf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jan 2013 09:13:35 -0500
-In-Reply-To: <1357222408-7310-1-git-send-email-tytso@mit.edu>
+Received: from cantor2.suse.de ([195.135.220.15]:59625 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753514Ab3ACOSP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jan 2013 09:18:15 -0500
+Content-Disposition: inline
+In-Reply-To: <1357148744-4895-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a new debug flag which prints how much time is consumed by the
-various parts of resize2fs's processing.
+On Wed 02-01-13 18:45:40, Jan Kara wrote:
+> Currently we sometimes used block_write_full_page() and sometimes
+> ext4_bio_write_page() for writeback (depending on mount options and call
+> path). Let's always use ext4_bio_write_page() to simplify things a bit.
+  I just found out that we can also drop ext4_io_end_t->page and its
+handling (I can fix that in V2 but I'll wait for some feedback before
+sending it). Actually one argument against this patch could be that
+ext4_bio_write_page() is rather memory hungry - ext4_io_end is
+over 1 KB. I don't think it's critical and it seems to be possible to trim
+that down significantly but I wanted to mention it so that people are not
+surprised.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- resize/Makefile.in      |  27 +++++++---
- resize/resize2fs.8.in   |   2 +
- resize/resize2fs.c      |  50 +++++++++++++++----
- resize/resize2fs.h      |  22 +++++++++
- resize/resource_track.c | 128 ++++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 213 insertions(+), 16 deletions(-)
- create mode 100644 resize/resource_track.c
+								Honza
 
-diff --git a/resize/Makefile.in b/resize/Makefile.in
-index b2739ac..a06b642 100644
---- a/resize/Makefile.in
-+++ b/resize/Makefile.in
-@@ -16,7 +16,8 @@ PROGS=		resize2fs
- TEST_PROGS=	test_extent
- MANPAGES=	resize2fs.8
- 
--RESIZE_OBJS= extent.o resize2fs.o main.o online.o sim_progress.o 
-+RESIZE_OBJS= extent.o resize2fs.o main.o online.o resource_track.o \
-+		sim_progress.o
- 
- TEST_EXTENT_OBJS= extent.o test_extent.o
- 
-@@ -24,6 +25,7 @@ SRCS= $(srcdir)/extent.c \
- 	$(srcdir)/resize2fs.c \
- 	$(srcdir)/main.c \
- 	$(srcdir)/online.c \
-+	$(srcdir)/resource_track.c \
- 	$(srcdir)/sim_progress.c
- 
- LIBS= $(LIBE2P) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBINTL)
-@@ -144,35 +146,48 @@ source_tar_file: $(top_srcdir)/.exclude-file
- # Makefile dependencies follow.  This must be the last section in
- # the Makefile.in file
- #
--extent.o: $(srcdir)/extent.c $(srcdir)/resize2fs.h \
-+extent.o: $(srcdir)/extent.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/resize2fs.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-  $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-  $(top_srcdir)/lib/e2p/e2p.h
--resize2fs.o: $(srcdir)/resize2fs.c $(srcdir)/resize2fs.h \
-+resize2fs.o: $(srcdir)/resize2fs.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/resize2fs.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-  $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-  $(top_srcdir)/lib/e2p/e2p.h
--main.o: $(srcdir)/main.c $(top_srcdir)/lib/e2p/e2p.h \
-+main.o: $(srcdir)/main.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/e2p/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(srcdir)/resize2fs.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-  $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-  $(top_srcdir)/version.h
--online.o: $(srcdir)/online.c $(srcdir)/resize2fs.h \
-+online.o: $(srcdir)/online.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/resize2fs.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-  $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-  $(top_srcdir)/lib/e2p/e2p.h
--sim_progress.o: $(srcdir)/sim_progress.c $(srcdir)/resize2fs.h \
-+resource_track.o: $(srcdir)/resource_track.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/resize2fs.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-+ $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-+ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-+ $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
-+ $(top_srcdir)/lib/e2p/e2p.h
-+sim_progress.o: $(srcdir)/sim_progress.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/resize2fs.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
-  $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
-  $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index 9ff6e0a..735fc91 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -99,6 +99,8 @@ from the following list:
- 	4	\-\ Debug inode relocations
- .br
- 	8	\-\ Debug moving the inode table
-+.br
-+	16	\-\ Print timing information
- .TP 
- .B \-f
- Forces resize2fs to proceed with the filesystem resize operation, overriding
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index d9501f9..f6a52e5 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -74,14 +74,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- {
- 	ext2_resize_t	rfs;
- 	errcode_t	retval;
--
--	retval = ext2fs_read_bitmaps(fs);
--	if (retval)
--		return retval;
--
--	fs->super->s_state |= EXT2_ERROR_FS;
--	ext2fs_mark_super_dirty(fs);
--	ext2fs_flush(fs);
-+	struct resource_track	rtrack, overall_track;
- 
- 	/*
- 	 * Create the data structure
-@@ -89,32 +82,53 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 	retval = ext2fs_get_mem(sizeof(struct ext2_resize_struct), &rfs);
- 	if (retval)
- 		return retval;
--	memset(rfs, 0, sizeof(struct ext2_resize_struct));
- 
--	fix_uninit_block_bitmaps(fs);
-+	memset(rfs, 0, sizeof(struct ext2_resize_struct));
- 	fs->priv_data = rfs;
- 	rfs->old_fs = fs;
- 	rfs->flags = flags;
- 	rfs->itable_buf	 = 0;
- 	rfs->progress = progress;
-+
-+	init_resource_track(&overall_track, "overall resize2fs", fs->io);
-+	init_resource_track(&rtrack, "read_bitmaps", fs->io);
-+	retval = ext2fs_read_bitmaps(fs);
-+	if (retval)
-+		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
-+
-+	fs->super->s_state |= EXT2_ERROR_FS;
-+	ext2fs_mark_super_dirty(fs);
-+	ext2fs_flush(fs);
-+
-+	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 1", fs->io);
-+	fix_uninit_block_bitmaps(fs);
-+	print_resource_track(rfs, &rtrack, fs->io);
- 	retval = ext2fs_dup_handle(fs, &rfs->new_fs);
- 	if (retval)
- 		goto errout;
- 
-+	init_resource_track(&rtrack, "adjust_superblock", fs->io);
- 	retval = adjust_superblock(rfs, *new_size);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+
-+	init_resource_track(&rtrack, "fix_uninit_block_bitmaps 2", fs->io);
- 	fix_uninit_block_bitmaps(rfs->new_fs);
-+	print_resource_track(rfs, &rtrack, fs->io);
- 	/* Clear the block bitmap uninit flag for the last block group */
- 	ext2fs_bg_flags_clear(rfs->new_fs, rfs->new_fs->group_desc_count - 1,
- 			     EXT2_BG_BLOCK_UNINIT);
- 
- 	*new_size = ext2fs_blocks_count(rfs->new_fs->super);
- 
-+	init_resource_track(&rtrack, "blocks_to_move", fs->io);
- 	retval = blocks_to_move(rfs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
- #ifdef RESIZE2FS_DEBUG
- 	if (rfs->flags & RESIZE_DEBUG_BMOVE)
-@@ -124,36 +138,52 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
- 		       rfs->needed_blocks);
- #endif
- 
-+	init_resource_track(&rtrack, "block_mover", fs->io);
- 	retval = block_mover(rfs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "inode_scan_and_fix", fs->io);
- 	retval = inode_scan_and_fix(rfs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "inode_ref_fix", fs->io);
- 	retval = inode_ref_fix(rfs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "move_itables", fs->io);
- 	retval = move_itables(rfs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "calculate_summary_stats", fs->io);
- 	retval = ext2fs_calculate_summary_stats(rfs->new_fs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "fix_resize_inode", fs->io);
- 	retval = fix_resize_inode(rfs->new_fs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
-+	init_resource_track(&rtrack, "fix_sb_journal_backup", fs->io);
- 	retval = fix_sb_journal_backup(rfs->new_fs);
- 	if (retval)
- 		goto errout;
-+	print_resource_track(rfs, &rtrack, fs->io);
- 
- 	rfs->new_fs->super->s_state &= ~EXT2_ERROR_FS;
- 	rfs->new_fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
-+
-+	print_resource_track(rfs, &overall_track, fs->io);
- 	retval = ext2fs_close(rfs->new_fs);
- 	if (retval)
- 		goto errout;
-diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-index 2184759..d425491 100644
---- a/resize/resize2fs.h
-+++ b/resize/resize2fs.h
-@@ -76,11 +76,26 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
- #define RESIZE_DEBUG_BMOVE		0x0002
- #define RESIZE_DEBUG_INODEMAP		0x0004
- #define RESIZE_DEBUG_ITABLEMOVE		0x0008
-+#define RESIZE_DEBUG_RTRACK		0x0010
- 
- #define RESIZE_PERCENT_COMPLETE		0x0100
- #define RESIZE_VERBOSE			0x0200
- 
- /*
-+ * This structure is used for keeping track of how much resources have
-+ * been used for a particular resize2fs pass.
-+ */
-+struct resource_track {
-+	const char *desc;
-+	struct timeval time_start;
-+	struct timeval user_start;
-+	struct timeval system_start;
-+	void	*brk_start;
-+	unsigned long long bytes_read;
-+	unsigned long long bytes_written;
-+};
-+
-+/*
-  * The core state structure for the ext2 resizer
-  */
- typedef struct ext2_resize_struct *ext2_resize_t;
-@@ -148,6 +163,13 @@ extern errcode_t ext2fs_iterate_extent(ext2_extent extent, __u64 *old_loc,
- extern errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
- 				  blk64_t *new_size, int flags);
- 
-+/* resource_track.c */
-+extern void init_resource_track(struct resource_track *track, const char *desc,
-+				io_channel channel);
-+extern void print_resource_track(ext2_resize_t rfs,
-+				 struct resource_track *track,
-+				 io_channel channel);
-+
- /* sim_progress.c */
- extern errcode_t ext2fs_progress_init(ext2_sim_progmeter *ret_prog,
- 				      const char *label,
-diff --git a/resize/resource_track.c b/resize/resource_track.c
-new file mode 100644
-index 0000000..f0efe11
---- /dev/null
-+++ b/resize/resource_track.c
-@@ -0,0 +1,128 @@
-+/*
-+ * resource_track.c --- resource tracking
-+ *
-+ * Copyright (C) 2013 by Theodore Ts'o
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Public
-+ * License.
-+ * %End-Header%
-+ */
-+
-+
-+#include "config.h"
-+#include "resize2fs.h"
-+#include <time.h>
-+#ifdef HAVE_MALLOC_H
-+#include <malloc.h>
-+#endif
-+#include <sys/resource.h>
-+
-+void init_resource_track(struct resource_track *track, const char *desc,
-+			 io_channel channel)
-+{
-+#ifdef HAVE_GETRUSAGE
-+	struct rusage r;
-+#endif
-+	io_stats io_start = 0;
-+
-+	track->desc = desc;
-+	track->brk_start = sbrk(0);
-+	gettimeofday(&track->time_start, 0);
-+#ifdef HAVE_GETRUSAGE
-+#ifdef sun
-+	memset(&r, 0, sizeof(struct rusage));
-+#endif
-+	getrusage(RUSAGE_SELF, &r);
-+	track->user_start = r.ru_utime;
-+	track->system_start = r.ru_stime;
-+#else
-+	track->user_start.tv_sec = track->user_start.tv_usec = 0;
-+	track->system_start.tv_sec = track->system_start.tv_usec = 0;
-+#endif
-+	track->bytes_read = 0;
-+	track->bytes_written = 0;
-+	if (channel && channel->manager && channel->manager->get_stats)
-+		channel->manager->get_stats(channel, &io_start);
-+	if (io_start) {
-+		track->bytes_read = io_start->bytes_read;
-+		track->bytes_written = io_start->bytes_written;
-+	}
-+}
-+
-+static float timeval_subtract(struct timeval *tv1,
-+			      struct timeval *tv2)
-+{
-+	return ((tv1->tv_sec - tv2->tv_sec) +
-+		((float) (tv1->tv_usec - tv2->tv_usec)) / 1000000);
-+}
-+
-+void print_resource_track(ext2_resize_t rfs, struct resource_track *track,
-+			  io_channel channel)
-+{
-+#ifdef HAVE_GETRUSAGE
-+	struct rusage r;
-+#endif
-+#ifdef HAVE_MALLINFO
-+	struct mallinfo	malloc_info;
-+#endif
-+	struct timeval time_end;
-+
-+	if ((rfs->flags & RESIZE_DEBUG_RTRACK) == 0)
-+		return;
-+
-+	gettimeofday(&time_end, 0);
-+
-+	if (track->desc)
-+		printf("%s: ", track->desc);
-+
-+#ifdef HAVE_MALLINFO
-+#define kbytes(x)	(((unsigned long)(x) + 1023) / 1024)
-+
-+	malloc_info = mallinfo();
-+	printf("Memory used: %luk/%luk (%luk/%luk), ",
-+		kbytes(malloc_info.arena), kbytes(malloc_info.hblkhd),
-+		kbytes(malloc_info.uordblks), kbytes(malloc_info.fordblks));
-+#else
-+	printf("Memory used: %lu, ",
-+		(unsigned long) (((char *) sbrk(0)) -
-+				 ((char *) track->brk_start)));
-+#endif
-+#ifdef HAVE_GETRUSAGE
-+	getrusage(RUSAGE_SELF, &r);
-+
-+	printf("time: %5.2f/%5.2f/%5.2f\n",
-+		timeval_subtract(&time_end, &track->time_start),
-+		timeval_subtract(&r.ru_utime, &track->user_start),
-+		timeval_subtract(&r.ru_stime, &track->system_start));
-+#else
-+	printf("elapsed time: %6.3f\n",
-+		timeval_subtract(&time_end, &track->time_start));
-+#endif
-+#define mbytes(x)	(((x) + 1048575) / 1048576)
-+	if (channel && channel->manager && channel->manager->get_stats) {
-+		io_stats delta = 0;
-+		unsigned long long bytes_read = 0;
-+		unsigned long long bytes_written = 0;
-+
-+		channel->manager->get_stats(channel, &delta);
-+		if (delta) {
-+			bytes_read = delta->bytes_read - track->bytes_read;
-+			bytes_written = delta->bytes_written -
-+				track->bytes_written;
-+			if (bytes_read == 0 && bytes_written == 0)
-+				goto skip_io;
-+			if (track->desc)
-+				printf("%s: ", track->desc);
-+			printf("I/O read: %lluMB, write: %lluMB, "
-+			       "rate: %.2fMB/s\n",
-+			       mbytes(bytes_read),
-+			       mbytes(bytes_written),
-+			       (double)mbytes(bytes_read + bytes_written) /
-+			       timeval_subtract(&time_end, &track->time_start));
-+		}
-+	}
-+skip_io:
-+	fflush(stdout);
-+}
-+
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/ext4.h  |    1 -
+>  fs/ext4/inode.c |  128 ++++++-------------------------------------------------
+>  fs/ext4/super.c |    7 +--
+>  3 files changed, 16 insertions(+), 120 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 8462eb3..70c7030 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -985,7 +985,6 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+>  #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+>  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+> -#define EXT4_MOUNT_MBLK_IO_SUBMIT	0x4000000 /* multi-block io submits */
+>  #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+>  #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+>  #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index cb1c1ab..f95b511 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -134,8 +134,6 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+>  static void ext4_invalidatepage(struct page *page, unsigned long offset);
+>  static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
+>  				   struct buffer_head *bh_result, int create);
+> -static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode);
+> -static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate);
+>  static int __ext4_journalled_writepage(struct page *page, unsigned int len);
+>  static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh);
+>  static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+> @@ -808,11 +806,10 @@ int ext4_walk_page_buffers(handle_t *handle,
+>   * and the commit_write().  So doing the jbd2_journal_start at the start of
+>   * prepare_write() is the right place.
+>   *
+> - * Also, this function can nest inside ext4_writepage() ->
+> - * block_write_full_page(). In that case, we *know* that ext4_writepage()
+> - * has generated enough buffer credits to do the whole page.  So we won't
+> - * block on the journal in that case, which is good, because the caller may
+> - * be PF_MEMALLOC.
+> + * Also, this function can nest inside ext4_writepage().  In that case, we
+> + * *know* that ext4_writepage() has generated enough buffer credits to do the
+> + * whole page.  So we won't block on the journal in that case, which is good,
+> + * because the caller may be PF_MEMALLOC.
+>   *
+>   * By accident, ext4 can be reentered when a transaction is open via
+>   * quota file writes.  If we were to commit the transaction while thus
+> @@ -1463,18 +1460,9 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+>  			 */
+>  			if (unlikely(journal_data && PageChecked(page)))
+>  				err = __ext4_journalled_writepage(page, len);
+> -			else if (test_opt(inode->i_sb, MBLK_IO_SUBMIT))
+> +			else
+>  				err = ext4_bio_write_page(&io_submit, page,
+>  							  len, mpd->wbc);
+> -			else if (buffer_uninit(page_bufs)) {
+> -				ext4_set_bh_endio(page_bufs, inode);
+> -				err = block_write_full_page_endio(page,
+> -					noalloc_get_block_write,
+> -					mpd->wbc, ext4_end_io_buffer_write);
+> -			} else
+> -				err = block_write_full_page(page,
+> -					noalloc_get_block_write, mpd->wbc);
+> -
+>  			if (!err)
+>  				mpd->pages_written++;
+>  			/*
+> @@ -1891,16 +1879,16 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  }
+>  
+>  /*
+> - * This function is used as a standard get_block_t calback function
+> - * when there is no desire to allocate any blocks.  It is used as a
+> - * callback function for block_write_begin() and block_write_full_page().
+> - * These functions should only try to map a single block at a time.
+> + * This function is used as a standard get_block_t calback function when there
+> + * is no desire to allocate any blocks.  It is used as a callback function for
+> + * block_write_begin().  These functions should only try to map a single block
+> + * at a time.
+>   *
+>   * Since this function doesn't do block allocations even if the caller
+>   * requests it by passing in create=1, it is critically important that
+>   * any caller checks to make sure that any buffer heads are returned
+>   * by this function are either all already mapped or marked for
+> - * delayed allocation before calling  block_write_full_page().  Otherwise,
+> + * delayed allocation before calling ext4_bio_write_page().  Otherwise,
+>   * b_blocknr could be left unitialized, and the page write functions will
+>   * be taken by surprise.
+>   */
+> @@ -2040,6 +2028,7 @@ static int ext4_writepage(struct page *page,
+>  	unsigned int len;
+>  	struct buffer_head *page_bufs = NULL;
+>  	struct inode *inode = page->mapping->host;
+> +	struct ext4_io_submit io_submit;
+>  
+>  	trace_ext4_writepage(page);
+>  	size = i_size_read(inode);
+> @@ -2089,14 +2078,9 @@ static int ext4_writepage(struct page *page,
+>  		 */
+>  		return __ext4_journalled_writepage(page, len);
+>  
+> -	if (buffer_uninit(page_bufs)) {
+> -		ext4_set_bh_endio(page_bufs, inode);
+> -		ret = block_write_full_page_endio(page, noalloc_get_block_write,
+> -					    wbc, ext4_end_io_buffer_write);
+> -	} else
+> -		ret = block_write_full_page(page, noalloc_get_block_write,
+> -					    wbc);
+> -
+> +	memset(&io_submit, 0, sizeof(io_submit));
+> +	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
+> +	ext4_io_submit(&io_submit);
+>  	return ret;
+>  }
+>  
+> @@ -2858,26 +2842,6 @@ ext4_readpages(struct file *file, struct address_space *mapping,
+>  	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+>  }
+>  
+> -static void ext4_invalidatepage_free_endio(struct page *page, unsigned long offset)
+> -{
+> -	struct buffer_head *head, *bh;
+> -	unsigned int curr_off = 0;
+> -
+> -	if (!page_has_buffers(page))
+> -		return;
+> -	head = bh = page_buffers(page);
+> -	do {
+> -		if (offset <= curr_off && test_clear_buffer_uninit(bh)
+> -					&& bh->b_private) {
+> -			ext4_free_io_end(bh->b_private);
+> -			bh->b_private = NULL;
+> -			bh->b_end_io = NULL;
+> -		}
+> -		curr_off = curr_off + bh->b_size;
+> -		bh = bh->b_this_page;
+> -	} while (bh != head);
+> -}
+> -
+>  static void ext4_invalidatepage(struct page *page, unsigned long offset)
+>  {
+>  	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
+> @@ -2885,11 +2849,6 @@ static void ext4_invalidatepage(struct page *page, unsigned long offset)
+>  	trace_ext4_invalidatepage(page, offset);
+>  
+>  	/*
+> -	 * free any io_end structure allocated for buffers to be discarded
+> -	 */
+> -	if (ext4_should_dioread_nolock(page->mapping->host))
+> -		ext4_invalidatepage_free_endio(page, offset);
+> -	/*
+>  	 * If it's a full truncate we just forget about the pending dirtying
+>  	 */
+>  	if (offset == 0)
+> @@ -2977,65 +2936,6 @@ out:
+>  	ext4_add_complete_io(io_end);
+>  }
+>  
+> -static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+> -{
+> -	ext4_io_end_t *io_end = bh->b_private;
+> -	struct inode *inode;
+> -
+> -	if (!test_clear_buffer_uninit(bh) || !io_end)
+> -		goto out;
+> -
+> -	if (!(io_end->inode->i_sb->s_flags & MS_ACTIVE)) {
+> -		ext4_msg(io_end->inode->i_sb, KERN_INFO,
+> -			 "sb umounted, discard end_io request for inode %lu",
+> -			 io_end->inode->i_ino);
+> -		ext4_free_io_end(io_end);
+> -		goto out;
+> -	}
+> -
+> -	/*
+> -	 * It may be over-defensive here to check EXT4_IO_END_UNWRITTEN now,
+> -	 * but being more careful is always safe for the future change.
+> -	 */
+> -	inode = io_end->inode;
+> -	ext4_set_io_unwritten_flag(inode, io_end);
+> -	ext4_add_complete_io(io_end);
+> -out:
+> -	bh->b_private = NULL;
+> -	bh->b_end_io = NULL;
+> -	clear_buffer_uninit(bh);
+> -	end_buffer_async_write(bh, uptodate);
+> -}
+> -
+> -static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode)
+> -{
+> -	ext4_io_end_t *io_end;
+> -	struct page *page = bh->b_page;
+> -	loff_t offset = (sector_t)page->index << PAGE_CACHE_SHIFT;
+> -	size_t size = bh->b_size;
+> -
+> -retry:
+> -	io_end = ext4_init_io_end(inode, GFP_ATOMIC);
+> -	if (!io_end) {
+> -		pr_warn_ratelimited("%s: allocation fail\n", __func__);
+> -		schedule();
+> -		goto retry;
+> -	}
+> -	io_end->offset = offset;
+> -	io_end->size = size;
+> -	/*
+> -	 * We need to hold a reference to the page to make sure it
+> -	 * doesn't get evicted before ext4_end_io_work() has a chance
+> -	 * to convert the extent from written to unwritten.
+> -	 */
+> -	io_end->page = page;
+> -	get_page(io_end->page);
+> -
+> -	bh->b_private = io_end;
+> -	bh->b_end_io = ext4_end_io_buffer_write;
+> -	return 0;
+> -}
+> -
+>  /*
+>   * For ext4 extent files, ext4 will do direct-io write to holes,
+>   * preallocated extents, and those write extend the file, no need to
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index e09f7d1..afbe974 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1280,8 +1280,8 @@ static const match_table_t tokens = {
+>  	{Opt_stripe, "stripe=%u"},
+>  	{Opt_delalloc, "delalloc"},
+>  	{Opt_nodelalloc, "nodelalloc"},
+> -	{Opt_mblk_io_submit, "mblk_io_submit"},
+> -	{Opt_nomblk_io_submit, "nomblk_io_submit"},
+> +	{Opt_removed, "mblk_io_submit"},
+> +	{Opt_removed, "nomblk_io_submit"},
+>  	{Opt_block_validity, "block_validity"},
+>  	{Opt_noblock_validity, "noblock_validity"},
+>  	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
+> @@ -1414,8 +1414,6 @@ static const struct mount_opts {
+>  	{Opt_bsd_df, EXT4_MOUNT_MINIX_DF, MOPT_CLEAR},
+>  	{Opt_grpid, EXT4_MOUNT_GRPID, MOPT_SET},
+>  	{Opt_nogrpid, EXT4_MOUNT_GRPID, MOPT_CLEAR},
+> -	{Opt_mblk_io_submit, EXT4_MOUNT_MBLK_IO_SUBMIT, MOPT_SET},
+> -	{Opt_nomblk_io_submit, EXT4_MOUNT_MBLK_IO_SUBMIT, MOPT_CLEAR},
+>  	{Opt_block_validity, EXT4_MOUNT_BLOCK_VALIDITY, MOPT_SET},
+>  	{Opt_noblock_validity, EXT4_MOUNT_BLOCK_VALIDITY, MOPT_CLEAR},
+>  	{Opt_dioread_nolock, EXT4_MOUNT_DIOREAD_NOLOCK, MOPT_SET},
+> @@ -3373,7 +3371,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  #ifdef CONFIG_EXT4_FS_POSIX_ACL
+>  	set_opt(sb, POSIX_ACL);
+>  #endif
+> -	set_opt(sb, MBLK_IO_SUBMIT);
+>  	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+>  		set_opt(sb, JOURNAL_DATA);
+>  	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
+> -- 
+> 1.7.1
+> 
 -- 
-1.7.12.rc0.22.gcdd159b
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
