@@ -1,54 +1,94 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/2 v2] debugfs: dump a sparse file as a new sparse file
-Date: Fri, 4 Jan 2013 12:05:05 +0800
-Message-ID: <20130104040505.GA27833@gmail.com>
-References: <1357043415-24668-1-git-send-email-wenqing.lz@taobao.com>
- <1357043415-24668-3-git-send-email-wenqing.lz@taobao.com>
- <20130101203858.GB12554@thunk.org>
+Subject: Re: [RFC][PATCH 8/9 v1] ext4: refine unwritten extent conversion
+Date: Fri, 4 Jan 2013 12:26:01 +0800
+Message-ID: <20130104042601.GB27833@gmail.com>
+References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
+ <1356335742-11793-9-git-send-email-wenqing.lz@taobao.com>
+ <20121231215815.GM7564@quack.suse.cz>
+ <20130101052445.GC7546@gmail.com>
+ <20130103105613.GA30695@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, George Spelvin <linux@horizon.com>,
+Cc: linux-ext4@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Christoph Hellwig <hch@infradead.org>,
 	Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f47.google.com ([209.85.210.47]:61787 "EHLO
-	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754187Ab3ADDv1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jan 2013 22:51:27 -0500
-Received: by mail-da0-f47.google.com with SMTP id s35so7273514dak.34
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 19:51:26 -0800 (PST)
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:57067 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753899Ab3ADEM0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jan 2013 23:12:26 -0500
+Received: by mail-pb0-f52.google.com with SMTP id ro2so8965596pbb.39
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 20:12:25 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130101203858.GB12554@thunk.org>
+In-Reply-To: <20130103105613.GA30695@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 01, 2013 at 03:38:58PM -0500, Theodore Ts'o wrote:
-> On Tue, Jan 01, 2013 at 08:30:15PM +0800, Zheng Liu wrote:
-> > +errcode_t ext2fs_file_read2(ext2_file_t file, void *buf,
-> > +			    unsigned int wanted, unsigned int *got,
-> > +			    ext2_off64_t *seek)
+On Thu, Jan 03, 2013 at 11:56:13AM +0100, Jan Kara wrote:
+> On Tue 01-01-13 13:24:45, Zheng Liu wrote:
+> > On Mon, Dec 31, 2012 at 10:58:15PM +0100, Jan Kara wrote:
+> > > On Mon 24-12-12 15:55:41, Zheng Liu wrote:
+> > > > From: Zheng Liu <wenqing.lz@taobao.com>
+> > > > 
+> > > > Currently all unwritten extent conversion work is pushed into a workqueue to be
+> > > > done because DIO end_io is in a irq context and this conversion needs to take
+> > > > i_data_sem locking.  But we couldn't take a semaphore in a irq context.  After
+> > > > tracking all extent status, we can first convert this unwritten extent in extent
+> > > > status tree, and call aio_complete() and inode_dio_done() to notify upper level
+> > > > that this dio has done.  We don't need to be worried about exposing a stale data
+> > > > because we first try to lookup in extent status tree.  So it makes us to see the
+> > > > latest extent status.  Meanwhile we queue a work to convert this unwritten
+> > > > extent in extent tree.  After this improvement, reader also needn't wait this
+> > > > conversion to be done when dioread_nolock is enabled.
+> > > > 
+> > > > CC: Jan Kara <jack@suse.cz>
+> > > > CC: "Darrick J. Wong" <darrick.wong@oracle.com>
+> > > > CC: Christoph Hellwig <hch@infradead.org>
+> > > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > >   OK, so after reading other patches this should work fine. Just I think we
+> > > should somehow mark in the extent status tree that the extent tree is
+> > > inconsistent with what's on disk - something like extent dirty bit. It will
+> > > be set for UNWRITTEN extents where conversion is pending logically it would
+> > > also make sence to have it set for DELAYED extents. Then if we need to
+> > > reclaim some extents due to memory pressure we know we have to keep dirty
+> > > extents because those cache irreplacible information. What do you think?
+> > 
+> > Dirty bit is a good idea for UNWRITTEN extent because we can feel free
+> > to reclaim all WRITTEN extents and all UNWRITTEN extents that are
+> > without dirty bit.  But we can not reclaim DEALYED extents no matter
+> > whether they are dirty or not because they are used to lookup an delayed
+> > extent in fiemap, seek_data/hole, and bigalloc.  So at least DEALYED
+> > extent must be kept in status tree.  That is why in step 1 status tree
+> > only tracks all DELAYED extents in the tree.
+>   So I was thinking about this some more and also testing some code and I
+> realized that using extent status tree won't be enough (sadly). In case of
+> AIO DIO with O_SYNC set, we have to perform extent conversion on *disk*
+> before we can complete the AIO. So extent status tree won't help us in any
+> way.
+
+Ah, I see.  Conversion must be done in disk before aio_complete() is
+called if AIO DIO with O_SYNC set.  So now we must call aio_complete()
+after ext4_convert_unwritten_extents() in ext4_end_io().
+
 > 
-> I'm a bit concenred about this abstraction.  Consider what happens if
-> wanted is greater than a block size --- for example, consider if
-> wanted is 16k, and every other 1k block is uninitialized.
+> Furthermore O_SYNC writes end up calling ->fsync() after IO is finished
+> which currently waits for all unwritten extents to convert and that
+> effectively deadlocks the conversion thread if there are more DIO
+> conversions pending. To fix this we would have to hack around
+> ext4_file_fsync() to avoid waiting in case of O_SYNC AIO writes and that
+> gets nasty quickly. So I'm currently back to my original plan of completing
+> IO only after extent conversion happens... I'll see how that works out.
+> 
+> Eventually we could *optimize* that by doing the extent conversion only in
+> the extent status tree if possible but I wouldn't bother with it right now.
+> For one thing, I also realized we would probably have to somehow throttle
+> writers so that there are not too many outstanding conversions (when we
+> complete AIO only after the conversion is finished, writer is naturally
+> limited by the amount of AIOs allowed).
 
-Hi Ted, 
-
-I wonder why wanted is 16k.  If a program calls ext2fs_file_read()
-function, seek will be 0 and SEEK flag won't be marked.  The behavior of
-ext2fs_file_read() is the same as before.  If ext2fs_file_read2() is
-called by dump_file(), seek won't be 0 and wanted is always equal to
-block size.  That is why I fix the hard-coded buffer length in dump_file().
-If I miss something, please let me know.
+Sorry, currently no any idea is in my mind.  I will think about it. :-(
 
 Thanks,
                                                 - Zheng
-
-> 
-> Then ext2fs_file_read2() will return *got set to 8k, and *seek set to
-> 8k, and the buffer will contain the blocks that are initialized packed
-> up right against each other.
-> 
-> Worse, ext2fs_file_read() will do the same thing, so this commit
-> changes how ext2fs_file_read() functions, and a program which expects
-> to get the correct contents from the file will malfunction.
