@@ -1,94 +1,56 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RFC][PATCH 8/9 v1] ext4: refine unwritten extent conversion
-Date: Fri, 4 Jan 2013 12:26:01 +0800
-Message-ID: <20130104042601.GB27833@gmail.com>
-References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
- <1356335742-11793-9-git-send-email-wenqing.lz@taobao.com>
- <20121231215815.GM7564@quack.suse.cz>
- <20130101052445.GC7546@gmail.com>
- <20130103105613.GA30695@quack.suse.cz>
+From: Chen Gang <gang.chen@asianux.com>
+Subject: Re: [Suggestion] fs/ext3: memory leak by calling set_qf_name or clear_qf_name,
+ many times.
+Date: Fri, 04 Jan 2013 13:39:37 +0800
+Message-ID: <50E66B19.5060907@asianux.com>
+References: <50DA857B.1050808@asianux.com> <20121231120621.GD7564@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Zheng Liu <wenqing.lz@taobao.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Ts'o <tytso@mit.edu>, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f52.google.com ([209.85.160.52]:57067 "EHLO
-	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753899Ab3ADEM0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jan 2013 23:12:26 -0500
-Received: by mail-pb0-f52.google.com with SMTP id ro2so8965596pbb.39
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 20:12:25 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20130103105613.GA30695@quack.suse.cz>
+Received: from intranet.asianux.com ([58.214.24.6]:12710 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750936Ab3ADFiq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 00:38:46 -0500
+In-Reply-To: <20121231120621.GD7564@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 03, 2013 at 11:56:13AM +0100, Jan Kara wrote:
-> On Tue 01-01-13 13:24:45, Zheng Liu wrote:
-> > On Mon, Dec 31, 2012 at 10:58:15PM +0100, Jan Kara wrote:
-> > > On Mon 24-12-12 15:55:41, Zheng Liu wrote:
-> > > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > > 
-> > > > Currently all unwritten extent conversion work is pushed into a workqueue to be
-> > > > done because DIO end_io is in a irq context and this conversion needs to take
-> > > > i_data_sem locking.  But we couldn't take a semaphore in a irq context.  After
-> > > > tracking all extent status, we can first convert this unwritten extent in extent
-> > > > status tree, and call aio_complete() and inode_dio_done() to notify upper level
-> > > > that this dio has done.  We don't need to be worried about exposing a stale data
-> > > > because we first try to lookup in extent status tree.  So it makes us to see the
-> > > > latest extent status.  Meanwhile we queue a work to convert this unwritten
-> > > > extent in extent tree.  After this improvement, reader also needn't wait this
-> > > > conversion to be done when dioread_nolock is enabled.
-> > > > 
-> > > > CC: Jan Kara <jack@suse.cz>
-> > > > CC: "Darrick J. Wong" <darrick.wong@oracle.com>
-> > > > CC: Christoph Hellwig <hch@infradead.org>
-> > > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> > >   OK, so after reading other patches this should work fine. Just I think we
-> > > should somehow mark in the extent status tree that the extent tree is
-> > > inconsistent with what's on disk - something like extent dirty bit. It will
-> > > be set for UNWRITTEN extents where conversion is pending logically it would
-> > > also make sence to have it set for DELAYED extents. Then if we need to
-> > > reclaim some extents due to memory pressure we know we have to keep dirty
-> > > extents because those cache irreplacible information. What do you think?
-> > 
-> > Dirty bit is a good idea for UNWRITTEN extent because we can feel free
-> > to reclaim all WRITTEN extents and all UNWRITTEN extents that are
-> > without dirty bit.  But we can not reclaim DEALYED extents no matter
-> > whether they are dirty or not because they are used to lookup an delayed
-> > extent in fiemap, seek_data/hole, and bigalloc.  So at least DEALYED
-> > extent must be kept in status tree.  That is why in step 1 status tree
-> > only tracks all DELAYED extents in the tree.
->   So I was thinking about this some more and also testing some code and I
-> realized that using extent status tree won't be enough (sadly). In case of
-> AIO DIO with O_SYNC set, we have to perform extent conversion on *disk*
-> before we can complete the AIO. So extent status tree won't help us in any
-> way.
+=E4=BA=8E 2012=E5=B9=B412=E6=9C=8831=E6=97=A5 20:06, Jan Kara =E5=86=99=
+=E9=81=93:
+>   Thanks for report. Yes, memory leak seems to be possible. Attached =
+patch
+> should fix it, I have added it to my tree.
+>=20
+> 									Honza
+>=20
 
-Ah, I see.  Conversion must be done in disk before aio_complete() is
-called if AIO DIO with O_SYNC set.  So now we must call aio_complete()
-after ext4_convert_unwritten_extents() in ext4_end_io().
+  after read your patch, today (although I am not a reviewer).
+  is it a possible situation like this (just my imagination):
+    1st let it call clear_qf_name successfully.
+    2nd let it call set_qf_name successfully.
+    3rd call clear_qf_name again ?
+    ...
+  if this situation is possible.
+    I guess the memory still leak, after apply your patch.
 
-> 
-> Furthermore O_SYNC writes end up calling ->fsync() after IO is finished
-> which currently waits for all unwritten extents to convert and that
-> effectively deadlocks the conversion thread if there are more DIO
-> conversions pending. To fix this we would have to hack around
-> ext4_file_fsync() to avoid waiting in case of O_SYNC AIO writes and that
-> gets nasty quickly. So I'm currently back to my original plan of completing
-> IO only after extent conversion happens... I'll see how that works out.
-> 
-> Eventually we could *optimize* that by doing the extent conversion only in
-> the extent status tree if possible but I wouldn't bother with it right now.
-> For one thing, I also realized we would probably have to somehow throttle
-> writers so that there are not too many outstanding conversions (when we
-> complete AIO only after the conversion is finished, writer is naturally
-> limited by the amount of AIOs allowed).
+  if what I guess is true
+    it seems we have to duplicate memory for old_opts in ext3_remount.
+    and for clear_qf_name, set_qf_name, ext3_remount:
+      use normal memory allocation and free ways instead of current usi=
+ng.
 
-Sorry, currently no any idea is in my mind.  I will think about it. :-(
+  Regards
 
-Thanks,
-                                                - Zheng
+--=20
+Chen Gang
+
+Asianux Corporation
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
