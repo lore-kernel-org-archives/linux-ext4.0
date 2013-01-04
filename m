@@ -1,64 +1,183 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 3/5] ext4: Remove bogus wait for unwritten extents in
- ext4_ind_direct_IO
-Date: Fri, 4 Jan 2013 15:24:37 +0800
-Message-ID: <20130104072437.GC31130@gmail.com>
+Subject: Re: [PATCH 4/5] ext4: Disable merging of uninitialized extents
+Date: Fri, 4 Jan 2013 15:25:33 +0800
+Message-ID: <20130104072533.GD31130@gmail.com>
 References: <1357148744-4895-1-git-send-email-jack@suse.cz>
- <1357148744-4895-4-git-send-email-jack@suse.cz>
+ <1357148744-4895-5-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f47.google.com ([209.85.210.47]:50095 "EHLO
-	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751900Ab3ADHK5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 02:10:57 -0500
-Received: by mail-da0-f47.google.com with SMTP id s35so7347539dak.34
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 23:10:57 -0800 (PST)
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:54523 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751900Ab3ADHLw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 02:11:52 -0500
+Received: by mail-pa0-f54.google.com with SMTP id bi5so9191241pad.41
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 23:11:52 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1357148744-4895-4-git-send-email-jack@suse.cz>
+In-Reply-To: <1357148744-4895-5-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 02, 2013 at 06:45:42PM +0100, Jan Kara wrote:
-> When using indirect blocks there is no possibility to have any unwritten
-> extents. So wait for them in ext4_ind_direct_IO() is just bogus.
+On Wed, Jan 02, 2013 at 06:45:43PM +0100, Jan Kara wrote:
+> Merging of uninitialized extents creates all sorts of interesting race
+> possibilities when writeback / DIO races with fallocate. Thus
+> ext4_convert_unwritten_extents_endio() has to deal with a case where
+> extent to be converted needs to be split out first. That isn't nice
+> for two reasons:
+> 
+> 1) It may need allocation of extent tree block so ENOSPC is possible.
+> 2) It complicates end_io handling code
+> 
+> So we disable merging of uninitialized extents which allows us to simplify
+> the code. Extents will get merged after they are converted to initialized
+> ones.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Hi Jan,
-
-Just for the note, this patch conflicts with my patch set of extent
-status tree.  I guess your patch series will be applied before my patch
-set.  So I will rebase my patch set against the latest kernel. :-)
-
-Otherwise, the patch looks good to me.  You can add:
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-
 Regards,
                                                 - Zheng
 
 > ---
->  fs/ext4/indirect.c |    5 -----
->  1 files changed, 0 insertions(+), 5 deletions(-)
+>  fs/ext4/extents.c |   61 +++++++++++++++-------------------------------------
+>  1 files changed, 18 insertions(+), 43 deletions(-)
 > 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 20862f9..993247c 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 26af228..f1ce33a 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -54,9 +54,6 @@
+>  #define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
+>  #define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
 >  
->  retry:
->  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> -		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
-> -			mutex_lock(&inode->i_mutex);
-> -			ext4_flush_unwritten_io(inode);
-> -			mutex_unlock(&inode->i_mutex);
+> -#define EXT4_EXT_DATA_VALID1	0x8  /* first half contains valid data */
+> -#define EXT4_EXT_DATA_VALID2	0x10 /* second half contains valid data */
+> -
+>  static __le32 ext4_extent_block_csum(struct inode *inode,
+>  				     struct ext4_extent_header *eh)
+>  {
+> @@ -1579,20 +1576,17 @@ int
+>  ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+>  				struct ext4_extent *ex2)
+>  {
+> -	unsigned short ext1_ee_len, ext2_ee_len, max_len;
+> +	unsigned ext1_ee_len, ext2_ee_len;
+>  
+>  	/*
+> -	 * Make sure that either both extents are uninitialized, or
+> -	 * both are _not_.
+> +	 * Make sure that both extents are initialized. We don't merge
+> +	 * uninitialized extents so that we can be sure that end_io code has
+> +	 * the extent that was written properly split out and conversion to
+> +	 * initialized is trivial.
+>  	 */
+> -	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
+> +	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
+>  		return 0;
+>  
+> -	if (ext4_ext_is_uninitialized(ex1))
+> -		max_len = EXT_UNINIT_MAX_LEN;
+> -	else
+> -		max_len = EXT_INIT_MAX_LEN;
+> -
+>  	ext1_ee_len = ext4_ext_get_actual_len(ex1);
+>  	ext2_ee_len = ext4_ext_get_actual_len(ex2);
+>  
+> @@ -1605,7 +1599,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+>  	 * as an RO_COMPAT feature, refuse to merge to extents if
+>  	 * this can result in the top bit of ee_len being set.
+>  	 */
+> -	if (ext1_ee_len + ext2_ee_len > max_len)
+> +	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
+>  		return 0;
+>  #ifdef AGGRESSIVE_TEST
+>  	if (ext1_ee_len >= 4)
+> @@ -2959,9 +2953,6 @@ static int ext4_split_extent_at(handle_t *handle,
+>  	unsigned int ee_len, depth;
+>  	int err = 0;
+>  
+> -	BUG_ON((split_flag & (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2)) ==
+> -	       (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2));
+> -
+>  	ext_debug("ext4_split_extents_at: inode %lu, logical"
+>  		"block %llu\n", inode->i_ino, (unsigned long long)split);
+>  
+> @@ -3020,14 +3011,7 @@ static int ext4_split_extent_at(handle_t *handle,
+>  
+>  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
+>  	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
+> -		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
+> -			if (split_flag & EXT4_EXT_DATA_VALID1)
+> -				err = ext4_ext_zeroout(inode, ex2);
+> -			else
+> -				err = ext4_ext_zeroout(inode, ex);
+> -		} else
+> -			err = ext4_ext_zeroout(inode, &orig_ex);
+> -
+> +		err = ext4_ext_zeroout(inode, &orig_ex);
+>  		if (err)
+>  			goto fix_extent_len;
+>  		/* update the extent length and mark as initialized */
+> @@ -3085,8 +3069,6 @@ static int ext4_split_extent(handle_t *handle,
+>  		if (uninitialized)
+>  			split_flag1 |= EXT4_EXT_MARK_UNINIT1 |
+>  				       EXT4_EXT_MARK_UNINIT2;
+> -		if (split_flag & EXT4_EXT_DATA_VALID2)
+> -			split_flag1 |= EXT4_EXT_DATA_VALID1;
+>  		err = ext4_split_extent_at(handle, inode, path,
+>  				map->m_lblk + map->m_len, split_flag1, flags1);
+>  		if (err)
+> @@ -3099,8 +3081,7 @@ static int ext4_split_extent(handle_t *handle,
+>  		return PTR_ERR(path);
+>  
+>  	if (map->m_lblk >= ee_block) {
+> -		split_flag1 = split_flag & (EXT4_EXT_MAY_ZEROOUT |
+> -					    EXT4_EXT_DATA_VALID2);
+> +		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
+>  		if (uninitialized)
+>  			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
+>  		if (split_flag & EXT4_EXT_MARK_UNINIT2)
+> @@ -3379,8 +3360,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
+>  
+>  	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
+>  	split_flag |= EXT4_EXT_MARK_UNINIT2;
+> -	if (flags & EXT4_GET_BLOCKS_CONVERT)
+> -		split_flag |= EXT4_EXT_DATA_VALID2;
+> +
+>  	flags |= EXT4_GET_BLOCKS_PRE_IO;
+>  	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
+>  }
+> @@ -3405,20 +3385,15 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+>  		"block %llu, max_blocks %u\n", inode->i_ino,
+>  		  (unsigned long long)ee_block, ee_len);
+>  
+> -	/* If extent is larger than requested then split is required */
+> +	/* Extent is larger than requested? */
+>  	if (ee_block != map->m_lblk || ee_len > map->m_len) {
+> -		err = ext4_split_unwritten_extents(handle, inode, map, path,
+> -						   EXT4_GET_BLOCKS_CONVERT);
+> -		if (err < 0)
+> -			goto out;
+> -		ext4_ext_drop_refs(path);
+> -		path = ext4_ext_find_extent(inode, map->m_lblk, path);
+> -		if (IS_ERR(path)) {
+> -			err = PTR_ERR(path);
+> -			goto out;
 > -		}
->  		/*
->  		 * Nolock dioread optimization may be dynamically disabled
->  		 * via ext4_inode_block_unlocked_dio(). Check inode's state
+> -		depth = ext_depth(inode);
+> -		ex = path[depth].p_ext;
+> +		EXT4_ERROR_INODE(inode, "Written extent modified before IO"
+> +			" finished: extent logical block %llu, len %u; IO"
+> +			" logical block %llu, len %u\n",
+> +			(unsigned long long)ee_block, ee_len,
+> +			(unsigned long long)map->m_lblk, map->m_len);
+> +		err = -EIO;
+> +		goto out;
+>  	}
+>  
+>  	err = ext4_ext_get_access(handle, inode, path + depth);
 > -- 
 > 1.7.1
 > 
