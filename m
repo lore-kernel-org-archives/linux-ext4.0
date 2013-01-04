@@ -1,86 +1,64 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/5] ext4: Use redirty_page_for_writepage() in
- ext4_bio_write_page()
-Date: Fri, 4 Jan 2013 15:20:33 +0800
-Message-ID: <20130104072033.GB31130@gmail.com>
+Subject: Re: [PATCH 3/5] ext4: Remove bogus wait for unwritten extents in
+ ext4_ind_direct_IO
+Date: Fri, 4 Jan 2013 15:24:37 +0800
+Message-ID: <20130104072437.GC31130@gmail.com>
 References: <1357148744-4895-1-git-send-email-jack@suse.cz>
- <1357148744-4895-3-git-send-email-jack@suse.cz>
+ <1357148744-4895-4-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:49117 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751682Ab3ADHGy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 02:06:54 -0500
-Received: by mail-pa0-f53.google.com with SMTP id hz1so9087143pad.26
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 23:06:53 -0800 (PST)
+Received: from mail-da0-f47.google.com ([209.85.210.47]:50095 "EHLO
+	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751900Ab3ADHK5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 02:10:57 -0500
+Received: by mail-da0-f47.google.com with SMTP id s35so7347539dak.34
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jan 2013 23:10:57 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1357148744-4895-3-git-send-email-jack@suse.cz>
+In-Reply-To: <1357148744-4895-4-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 02, 2013 at 06:45:41PM +0100, Jan Kara wrote:
-> When we cannot write a page we should use redirty_page_for_writepage()
-> instead of plain set_page_dirty(). That tells writeback code we have
-> problems, redirties only the page (redirtying buffers is not needed),
-> and updates mm accounting of failed page writes.
-> 
-> Also move clearing of buffer dirty flag after io_submit_add_bh(). At that
-> moment we are sure buffer will be going to disk.
+On Wed, Jan 02, 2013 at 06:45:42PM +0100, Jan Kara wrote:
+> When using indirect blocks there is no possibility to have any unwritten
+> extents. So wait for them in ext4_ind_direct_IO() is just bogus.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
+Hi Jan,
+
+Just for the note, this patch conflicts with my patch set of extent
+status tree.  I guess your patch series will be applied before my patch
+set.  So I will rebase my patch set against the latest kernel. :-)
+
+Otherwise, the patch looks good to me.  You can add:
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+
 Regards,
                                                 - Zheng
 
 > ---
->  fs/ext4/page-io.c |    7 ++++---
->  1 files changed, 4 insertions(+), 3 deletions(-)
+>  fs/ext4/indirect.c |    5 -----
+>  1 files changed, 0 insertions(+), 5 deletions(-)
 > 
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 0016fbc..8e5722a 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -23,6 +23,7 @@
->  #include <linux/workqueue.h>
->  #include <linux/kernel.h>
->  #include <linux/slab.h>
-> +#include <linux/mm.h>
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index 20862f9..993247c 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
 >  
->  #include "ext4_jbd2.h"
->  #include "xattr.h"
-> @@ -436,7 +437,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
->  
->  	io_page = kmem_cache_alloc(io_page_cachep, GFP_NOFS);
->  	if (!io_page) {
-> -		set_page_dirty(page);
-> +		redirty_page_for_writepage(wbc, page);
->  		unlock_page(page);
->  		return -ENOMEM;
->  	}
-> @@ -468,7 +469,6 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
->  			set_buffer_uptodate(bh);
->  			continue;
->  		}
-> -		clear_buffer_dirty(bh);
->  		ret = io_submit_add_bh(io, io_page, inode, wbc, bh);
->  		if (ret) {
->  			/*
-> @@ -476,9 +476,10 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
->  			 * we can do but mark the page as dirty, and
->  			 * better luck next time.
->  			 */
-> -			set_page_dirty(page);
-> +			redirty_page_for_writepage(wbc, page);
->  			break;
->  		}
-> +		clear_buffer_dirty(bh);
->  	}
->  	unlock_page(page);
->  	/*
+>  retry:
+>  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
+> -		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
+> -			mutex_lock(&inode->i_mutex);
+> -			ext4_flush_unwritten_io(inode);
+> -			mutex_unlock(&inode->i_mutex);
+> -		}
+>  		/*
+>  		 * Nolock dioread optimization may be dynamically disabled
+>  		 * via ext4_inode_block_unlocked_dio(). Check inode's state
 > -- 
 > 1.7.1
 > 
