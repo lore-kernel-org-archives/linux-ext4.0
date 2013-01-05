@@ -1,109 +1,60 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] config: silence printf format warnings
-Date: Fri, 4 Jan 2013 15:27:12 -0500
-Message-ID: <20130104202711.GA22365@wallace>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/3 V2] ext2fsprogs: Symlink support
+Date: Fri, 4 Jan 2013 19:15:21 -0500
+Message-ID: <20130105001521.GD6501@thunk.org>
+References: <1357329660-28639-1-git-send-email-dvhart@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca, sgw@linux.intel.com,
+	darrick.wong@oracle.com
+To: Darren Hart <dvhart@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:49391 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754788Ab3ADU1S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2013 15:27:18 -0500
-Received: by mail-vc0-f182.google.com with SMTP id fy27so16929657vcb.41
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2013 12:27:17 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:41791 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754963Ab3AEAPa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 4 Jan 2013 19:15:30 -0500
 Content-Disposition: inline
+In-Reply-To: <1357329660-28639-1-git-send-email-dvhart@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jan 04, 2013 at 12:00:57PM -0800, Darren Hart wrote:
+> The following series adds symlink support the libext2fs and adds the command to
+> debugfs. Basic testing demonstrates functional duplication of a small test
+> directory including fastlinks and slowlinks in both the root and a single
+> subdirectory.
 
-The printfs in the asm_types.c code contained within parse-types.sh
-expect sizeof to return an int.  Fix this for architectures where
-this isn't true (x86_64, etc.) so we don't see warning messages while
-running the configure script.
+One thing I'd really appreciate is if you could write a regression
+test for this new code.  You can use tests/d_loaddump and
+tests/f_dup4/script as a model; I'd suggest calling it d_symlink, and
+it would be good if it created a short symlink and a long symlink, and
+that the script verified that you get the expected output when you
+stat the small and long symlinks using debugfs.  Then run e2fsck on
+the file system and make sure the file system is consistent.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- config/parse-types.sh |   16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+Note the use of the debugfs commands:
 
-diff --git a/config/parse-types.sh b/config/parse-types.sh
-index d7cb9cc..c02d8cb 100755
---- a/config/parse-types.sh
-+++ b/config/parse-types.sh
-@@ -31,7 +31,7 @@ main(int argc, char **argv)
- #ifdef __U8_TYPEDEF
- 	if (sizeof(__U8_TYPEDEF) != 1) {
- 		printf("Sizeof(__U8__TYPEDEF) is %d should be 1\n", 
--		       sizeof(__U8_TYPEDEF));
-+		       (int) sizeof(__U8_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -40,7 +40,7 @@ main(int argc, char **argv)
- #ifdef __S8_TYPEDEF
- 	if (sizeof(__S8_TYPEDEF) != 1) {
- 		printf("Sizeof(_S8__TYPEDEF) is %d should be 1\n", 
--		       sizeof(__S8_TYPEDEF));
-+		       (int) sizeof(__S8_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -49,7 +49,7 @@ main(int argc, char **argv)
- #ifdef __U16_TYPEDEF
- 	if (sizeof(__U16_TYPEDEF) != 2) {
- 		printf("Sizeof(__U16__TYPEDEF) is %d should be 2\n", 
--		       sizeof(__U16_TYPEDEF));
-+		       (int) sizeof(__U16_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -58,7 +58,7 @@ main(int argc, char **argv)
- #ifdef __S16_TYPEDEF
- 	if (sizeof(__S16_TYPEDEF) != 2) {
- 		printf("Sizeof(__S16__TYPEDEF) is %d should be 2\n", 
--		       sizeof(__S16_TYPEDEF));
-+		       (int) sizeof(__S16_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -68,7 +68,7 @@ main(int argc, char **argv)
- #ifdef __U32_TYPEDEF
- 	if (sizeof(__U32_TYPEDEF) != 4) {
- 		printf("Sizeof(__U32__TYPEDEF) is %d should be 4\n", 
--		       sizeof(__U32_TYPEDEF));
-+		       (int) sizeof(__U32_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -77,7 +77,7 @@ main(int argc, char **argv)
- #ifdef __S32_TYPEDEF
- 	if (sizeof(__S32_TYPEDEF) != 4) {
- 		printf("Sizeof(__S32__TYPEDEF) is %d should be 4\n", 
--		       sizeof(__S32_TYPEDEF));
-+		       (int) sizeof(__S32_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -87,7 +87,7 @@ main(int argc, char **argv)
- #ifdef __U64_TYPEDEF
- 	if (sizeof(__U64_TYPEDEF) != 8) {
- 		printf("Sizeof(__U64__TYPEDEF) is %d should be 8\n", 
--		       sizeof(__U64_TYPEDEF));
-+		       (int) sizeof(__U64_TYPEDEF));
- 		exit(1);
- 	}
- #else
-@@ -96,7 +96,7 @@ main(int argc, char **argv)
- #ifdef __S64_TYPEDEF
- 	if (sizeof(__S64_TYPEDEF) != 8) {
- 		printf("Sizeof(__S64__TYPEDEF) is %d should be 8\n", 
--		       sizeof(__S64_TYPEDEF));
-+		       (int) sizeof(__S64_TYPEDEF));
- 		exit(1);
- 	}
- #else
--- 
-1.7.10.4
+	set_current_time 200704102100
+	set_super_value lastcheck 0
+	set_super_value hash_seed null
+	set_super_value mkfs_time 0
+
+and the environment variable: 
+
+	E2FSCK_TIME=200704102100
+
+in f_dup4's script.  These are used to control various variable
+(random or time-specific) values such that so that you can use a
+simple comparison of the output of programs such as debugfs, mke2fs,
+and dumpe2fs using "diff".
+
+Thanks again!!
+
+						- Ted
+
+P.S.  Actually, while you're at it, if you could also have the script
+create some block and character device files using the debugfs mknod
+command, and perhaps call the test d_create_spec_files instead of
+d_symlink, that would be great!   (Since I don't think those functions
+currently any good test coverage.) 
 
