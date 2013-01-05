@@ -1,47 +1,52 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH 3/3] ext4: remove duplicate assignment in ext4_init_new_dir()
-Date: Sat, 05 Jan 2013 16:05:31 +0800
-Message-ID: <50E7DECB.7080707@tao.ma>
-References: <1357371781-18194-1-git-send-email-yan@linux.vnet.ibm.com> <1357371781-18194-3-git-send-email-yan@linux.vnet.ibm.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 2/3] ext4: release buffer in failed path in dx_probe()
+Date: Sat, 5 Jan 2013 11:41:35 -0800
+Message-ID: <20130105194135.GK20106@blackbox.djwong.org>
+References: <1357371781-18194-1-git-send-email-yan@linux.vnet.ibm.com>
+ <1357371781-18194-2-git-send-email-yan@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Tao Ma <boyu.mt@taobao.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: Guo Chao <yan@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy13-pub.unifiedlayer.com ([69.89.16.30]:48356 "HELO
-	oproxy13-pub.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754706Ab3AEIMO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jan 2013 03:12:14 -0500
-In-Reply-To: <1357371781-18194-3-git-send-email-yan@linux.vnet.ibm.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:29387 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755832Ab3AETlm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jan 2013 14:41:42 -0500
+Content-Disposition: inline
+In-Reply-To: <1357371781-18194-2-git-send-email-yan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/05/2013 03:43 PM, Guo Chao wrote:
-> It should be a typo unless I miss something.
+On Sat, Jan 05, 2013 at 03:43:00PM +0800, Guo Chao wrote:
+> If checksum fails, we should also release the buffer
+> read from previous iteration.
 > 
-> Cc: Tao Ma <boyu.mt@taobao.com>
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
 > Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
-oh, you are right. Thanks for the fix. And I really can't recall how I
-messed this up.
-
-Acked-by: Tao Ma <boyu.mt@taobao.com>
 > ---
->  fs/ext4/namei.c |    1 -
->  1 file changed, 1 deletion(-)
+>  fs/ext4/namei.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
 > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index e249a47..db3b1e9 100644
+> index 843e29f..e249a47 100644
 > --- a/fs/ext4/namei.c
 > +++ b/fs/ext4/namei.c
-> @@ -2368,7 +2368,6 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
->  	}
->  
->  	inode->i_size = EXT4_I(inode)->i_disksize = blocksize;
-> -	dir_block = ext4_bread(handle, inode, 0, 1, &err);
->  	if (!(dir_block = ext4_bread(handle, inode, 0, 1, &err))) {
->  		if (!err) {
->  			err = -EIO;
-> 
+> @@ -722,7 +722,7 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+>  			ext4_warning(dir->i_sb, "Node failed checksum");
+>  			brelse(bh);
+>  			*err = ERR_BAD_DX_DIR;
+> -			goto fail;
+> +			goto fail2;
 
+Good catch!
+
+Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+--D
+>  		}
+>  		set_buffer_verified(bh);
+>  
+> -- 
+> 1.7.9.5
+> 
