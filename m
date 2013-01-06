@@ -1,51 +1,46 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] mke2fs: check extents feature when bigalloc feature is enabled
-Date: Sun,  6 Jan 2013 20:25:17 +0800
-Message-ID: <1357475117-5095-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>
+From: =?UTF-8?q?Cristian=20Rodr=C3=ADguez?= <crrodriguez@opensuse.org>
+Subject: [PATCH] =?UTF-8?q?lib/ext2fs:=20Use=20=5F=5Fbuiltin=5Fpopcount=20?= =?UTF-8?q?when=20available=20Signed-off-by:=20Cristian=20Rodr=C3=ADguez?= =?UTF-8?q?=20<crrodriguez@opensuse.org>?=
+Date: Sun,  6 Jan 2013 12:04:43 -0300
+Message-ID: <1357484683-3021-1-git-send-email-crrodriguez@opensuse.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: =?UTF-8?q?Cristian=20Rodr=C3=ADguez?= <crrodriguez@opensuse.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:33954 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752129Ab3AFMLg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jan 2013 07:11:36 -0500
-Received: by mail-pa0-f51.google.com with SMTP id fb11so10180159pad.10
-        for <linux-ext4@vger.kernel.org>; Sun, 06 Jan 2013 04:11:36 -0800 (PST)
+Received: from mail-gh0-f169.google.com ([209.85.160.169]:64185 "EHLO
+	mail-gh0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756039Ab3AFP2m (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jan 2013 10:28:42 -0500
+Received: by mail-gh0-f169.google.com with SMTP id r11so2276927ghr.28
+        for <linux-ext4@vger.kernel.org>; Sun, 06 Jan 2013 07:28:41 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
-
-When bigalloc feature is enabled in mkfs, extents feature also needs to be
-enabled.  But now when bigalloc feature is enabled without extents feature,
-users will not get any warning messages until they try to mount this file
-system.
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- misc/mke2fs.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ lib/ext2fs/bitops.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index a288147..713eb21 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1988,6 +1988,15 @@ profile_error:
- 		fs_param.s_feature_ro_compat &=
- 				~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
+diff --git a/lib/ext2fs/bitops.c b/lib/ext2fs/bitops.c
+index 7c3f215..0668469 100644
+--- a/lib/ext2fs/bitops.c
++++ b/lib/ext2fs/bitops.c
+@@ -125,11 +125,15 @@ static unsigned int popcount8(unsigned int w)
  
-+	/* Can't support bigalloc feature without extents feature */
-+	if ((fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
-+	    !(fs_param.s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) {
-+		com_err(program_name, 0,
-+			_("Can't support bigalloc feature without "
-+			  "extents feature"));
-+		exit(1);
-+	}
-+
- 	/* Since sparse_super is the default, we would only have a problem
- 	 * here if it was explicitly disabled.
- 	 */
+ static unsigned int popcount32(unsigned int w)
+ {
++#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
++	return __builtin_popcount(w);
++#else
+ 	unsigned int res = w - ((w >> 1) & 0x55555555);
+ 	res = (res & 0x33333333) + ((res >> 2) & 0x33333333);
+ 	res = (res + (res >> 4)) & 0x0F0F0F0F;
+ 	res = res + (res >> 8);
+ 	return (res + (res >> 16)) & 0x000000FF;
++#endif
+ }
+ 
+ unsigned int ext2fs_bitcount(const void *addr, unsigned int nbytes)
 -- 
-1.7.12.rc2.18.g61b472e
+1.8.1
 
