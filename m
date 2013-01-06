@@ -1,47 +1,95 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] lib/ext2fs: Add ext2fs_symlink
-Date: Sat, 5 Jan 2013 17:40:59 -0500
-Message-ID: <20130105224059.GA29789@thunk.org>
-References: <1357329660-28639-1-git-send-email-dvhart@infradead.org>
- <3fd850c4bf72f868b0d93bb0a5acced51fd25caa.1357329054.git.dvhart@infradead.org>
- <20130105200716.GM20106@blackbox.djwong.org>
+From: Guo Chao <yan@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/3] ext4: report error if things go wrong when do
+ checksum
+Date: Sun, 6 Jan 2013 10:37:14 +0800
+Message-ID: <20130106023713.GA5497@yanx>
+References: <1357371781-18194-1-git-send-email-yan@linux.vnet.ibm.com>
+ <20130105195054.GL20106@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Darren Hart <dvhart@infradead.org>, linux-ext4@vger.kernel.org,
-	adilger@dilger.ca, sgw@linux.intel.com
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:41883 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755865Ab3AEWlK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Jan 2013 17:41:10 -0500
+Received: from e28smtp01.in.ibm.com ([122.248.162.1]:47278 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755120Ab3AFChY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jan 2013 21:37:24 -0500
+Received: from /spool/local
+	by e28smtp01.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
+	Sun, 6 Jan 2013 08:06:07 +0530
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by d28dlp02.in.ibm.com (Postfix) with ESMTP id F1B22394004C
+	for <linux-ext4@vger.kernel.org>; Sun,  6 Jan 2013 08:07:17 +0530 (IST)
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r062bGbf40239316
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Jan 2013 08:07:16 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r062bH0X021081
+	for <linux-ext4@vger.kernel.org>; Sun, 6 Jan 2013 13:37:17 +1100
 Content-Disposition: inline
-In-Reply-To: <20130105200716.GM20106@blackbox.djwong.org>
+In-Reply-To: <20130105195054.GL20106@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 05, 2013 at 12:07:16PM -0800, Darrick J. Wong wrote:
-> Given that you can have at most one data block anyway, does it matter to set
-> EXTENTS_FL?
 
-It doesn't matter either way.
+Hello, Darrick,
 
-> Also, what happens to the inode + data block if the ext2fs_link fails?  I don't
-> see any code that explicitly rolls back those allocations, but maybe I missed
-> something?
+On Sat, Jan 05, 2013 at 11:50:54AM -0800, Darrick J. Wong wrote:
+> On Sat, Jan 05, 2013 at 03:42:59PM +0800, Guo Chao wrote:
+> > In ext4_dx_csum_verify(), if we detect corrupted data,
+> > we do not compare checksum because checksum itself may
+> > be wrong, but we should report error in this case.
+> > 
+> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> > Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
+> > ---
+> >  fs/ext4/namei.c |    4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> > index cac4482..843e29f 100644
+> > --- a/fs/ext4/namei.c
+> > +++ b/fs/ext4/namei.c
+> > @@ -370,14 +370,14 @@ static int ext4_dx_csum_verify(struct inode *inode,
+> >  	c = get_dx_countlimit(inode, dirent, &count_offset);
+> >  	if (!c) {
+> >  		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
+> > -		return 1;
+> > +		return 0;
+> >  	}
+> >  	limit = le16_to_cpu(c->limit);
+> >  	count = le16_to_cpu(c->count);
+> >  	if (count_offset + (limit * sizeof(struct dx_entry)) >
+> >  	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
+> >  		warn_no_space_for_csum(inode);
+> > -		return 1;
+> > +		return 0;
+> 
+> In both of these cases we cannot figure out where the dx block checksum lives,
+> and therefore we have no stored checksum to compare against.  This can result
+> from enabling checksums on a existing filesystem and ignoring tune2fs' request
+> to run fsck -D to rebuild dx blocks that are completely full.  However, since
+> we haven't a checksum that we could use to decide if there's real corruption,
+> there's no cause to return -EIO to the user.  Therefore, we print a warning and
+> trust the sanity checks to catch totally bogus blocks, which is the best we can
+> hope for.
+> 
+> Sorry, but this doesn't seem necessary.
 
-It's fine.  We don't actually update the block bitmap, nor update the
-block group statistics, until the very end, when the proposed code does this:
+Thanks for the explaination. 
 
-	 */
-	if (!fastlink)
-		ext2fs_block_alloc_stats2(fs, blk, +1);
-	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
+I think ext4_dirent_csum_verify() can encounter similar problem but return
+error. But I'm not sure it's the same case.
 
-This is one of the reasons why ext2fs_new_block and ext2fs_new_inode
-don't actually mark the block and inode as in use.  You could argue
-they are misnamed; something like ext2fs_find_unused_{block,inode}()
-would have been better names, but what I can say?  I didn't think of
-that back in 1996....
+Thanks,
+Guo Chao
 
-					- Ted
+> --D
+> >  	}
+> >  	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+> >  
+> > -- 
+> > 1.7.9.5
+> > 
+
