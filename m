@@ -1,60 +1,51 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: [PATCH] ext4: fix configuration dependencies for ext4 ACLs and
- security labels
-Date: Sun, 06 Jan 2013 13:17:46 +0800
-Message-ID: <50E908FA.2030001@tao.ma>
-References: <1357444389-4895-1-git-send-email-val@vaaconsulting.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	David Brown <davidb@codeaurora.org>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Tao Ma <boyu.mt@taobao.com>
-To: Valerie Aurora <val@vaaconsulting.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH] mke2fs: check extents feature when bigalloc feature is enabled
+Date: Sun,  6 Jan 2013 20:25:17 +0800
+Message-ID: <1357475117-5095-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy5-pub.bluehost.com ([67.222.38.55]:57689 "HELO
-	oproxy5-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750734Ab3AFFY3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jan 2013 00:24:29 -0500
-In-Reply-To: <1357444389-4895-1-git-send-email-val@vaaconsulting.com>
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:33954 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752129Ab3AFMLg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jan 2013 07:11:36 -0500
+Received: by mail-pa0-f51.google.com with SMTP id fb11so10180159pad.10
+        for <linux-ext4@vger.kernel.org>; Sun, 06 Jan 2013 04:11:36 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/06/2013 11:53 AM, Valerie Aurora wrote:
-> Commit "ext4: Remove CONFIG_EXT4_FS_XATTR" removed the configuration
-> dependencies for ext4 xattrs from the ext4 ACLs and security labels
-> configuration options, but did not replace them with a dependency on
-> ext4 itself.  Add back the dependency on ext4 so the options only show
-> up if ext4 is enabled.
-> 
-> Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
-Thanks.
-Acked-by: Tao Ma <boyu.mt@taobao.com>
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-> ---
->  fs/ext4/Kconfig |    2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-> index 0a475c8..9873587 100644
-> --- a/fs/ext4/Kconfig
-> +++ b/fs/ext4/Kconfig
-> @@ -41,6 +41,7 @@ config EXT4_USE_FOR_EXT23
->  
->  config EXT4_FS_POSIX_ACL
->  	bool "Ext4 POSIX Access Control Lists"
-> +	depends on EXT4_FS
->  	select FS_POSIX_ACL
->  	help
->  	  POSIX Access Control Lists (ACLs) support permissions for users and
-> @@ -53,6 +54,7 @@ config EXT4_FS_POSIX_ACL
->  
->  config EXT4_FS_SECURITY
->  	bool "Ext4 Security Labels"
-> +	depends on EXT4_FS
->  	help
->  	  Security labels support alternative access control models
->  	  implemented by security modules like SELinux.  This option
-> 
+When bigalloc feature is enabled in mkfs, extents feature also needs to be
+enabled.  But now when bigalloc feature is enabled without extents feature,
+users will not get any warning messages until they try to mount this file
+system.
+
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ misc/mke2fs.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index a288147..713eb21 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1988,6 +1988,15 @@ profile_error:
+ 		fs_param.s_feature_ro_compat &=
+ 				~EXT4_FEATURE_RO_COMPAT_GDT_CSUM;
+ 
++	/* Can't support bigalloc feature without extents feature */
++	if ((fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC) &&
++	    !(fs_param.s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)) {
++		com_err(program_name, 0,
++			_("Can't support bigalloc feature without "
++			  "extents feature"));
++		exit(1);
++	}
++
+ 	/* Since sparse_super is the default, we would only have a problem
+ 	 * here if it was explicitly disabled.
+ 	 */
+-- 
+1.7.12.rc2.18.g61b472e
 
