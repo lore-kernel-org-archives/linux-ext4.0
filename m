@@ -1,34 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix configuration dependencies for ext4 ACLs and
- security labels
-Date: Sun, 6 Jan 2013 23:07:49 -0500
-Message-ID: <20130107040749.GA4956@thunk.org>
-References: <1357444389-4895-1-git-send-email-val@vaaconsulting.com>
+Subject: Re: [PATCH 2/3] ext4: release buffer in failed path in dx_probe()
+Date: Sun, 6 Jan 2013 23:24:52 -0500
+Message-ID: <20130107042451.GB4956@thunk.org>
+References: <1357371781-18194-1-git-send-email-yan@linux.vnet.ibm.com>
+ <1357371781-18194-2-git-send-email-yan@linux.vnet.ibm.com>
+ <20130105194135.GK20106@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, David Brown <davidb@codeaurora.org>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Tao Ma <boyu.mt@taobao.com>
-To: Valerie Aurora <val@vaaconsulting.com>
+Cc: Guo Chao <yan@linux.vnet.ibm.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:42088 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:42093 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753413Ab3AGEH7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Jan 2013 23:07:59 -0500
+	id S1753511Ab3AGEY5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Jan 2013 23:24:57 -0500
 Content-Disposition: inline
-In-Reply-To: <1357444389-4895-1-git-send-email-val@vaaconsulting.com>
+In-Reply-To: <20130105194135.GK20106@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 05, 2013 at 07:53:09PM -0800, Valerie Aurora wrote:
-> Commit "ext4: Remove CONFIG_EXT4_FS_XATTR" removed the configuration
-> dependencies for ext4 xattrs from the ext4 ACLs and security labels
-> configuration options, but did not replace them with a dependency on
-> ext4 itself.  Add back the dependency on ext4 so the options only show
-> up if ext4 is enabled.
-> 
-> Signed-off-by: Valerie Aurora <val@vaaconsulting.com>
+On Sat, Jan 05, 2013 at 11:41:35AM -0800, Darrick J. Wong wrote:
+> On Sat, Jan 05, 2013 at 03:43:00PM +0800, Guo Chao wrote:
+> > If checksum fails, we should also release the buffer
+> > read from previous iteration.
+> > 
+> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> > Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
 
-Thanks Val, for catching this!  I've queued this on the ext4 tree.
+Thanks, applied.
 
-       	    		 	     	    	 - Ted
+> Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+BTW, technically speaking it should be "Reviewed-by"; that's what I've
+used in the commit.
+
+"Acked-by:" gets used when a commit touches multiple subsystem trees.
+For example, suppose someone changes a function in fs/direct-io.c,
+which also required changes in btrfs, xfs, and ext4.  This commit
+might go through Al Viro's vfs tree, and might have an Acked-by from
+Chris Mason, Dave Chinner, and me, indicating that developers who are
+well versed in those trees have agreed that the patches which touched
+those other subsystems looked sane.
+
+Since in this case the commit only touches ext4 code, and is going
+through the ext4 tree, "Reviewed-by" is what normally gets used.
+
+Cheers,
+
+					- Ted
