@@ -1,51 +1,46 @@
-From: =?UTF-8?B?Q3Jpc3RpYW4gUm9kcsOtZ3Vleg==?= <crrodriguez@opensuse.org>
-Subject: =?UTF-8?B?UmU6IFtQQVRDSF0gbGliL2V4dDJmczogVXNlIF9fYnVpbHRpbl9wb3A=?=
- =?UTF-8?B?Y291bnQgd2hlbiBhdmFpbGFibGUgU2lnbmVkLW9mZi1ieTogQ3Jpc3RpYW4gUm8=?=
- =?UTF-8?B?ZHLDrWd1ZXogPGNycm9kcmlndWV6QG9wZW5zdXNlLm9yZz4=?=
-Date: Sun, 06 Jan 2013 21:53:47 -0300
-Message-ID: <50EA1C9B.8040304@opensuse.org>
-References: <1357484683-3021-1-git-send-email-crrodriguez@opensuse.org> <20130106222020.GA9482@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] lib/ext2fs: =?iso-8859-1?Q?Use?=
+ =?iso-8859-1?Q?_=5F=5Fbuiltin=5Fpopcount_when_available_Signed-off-by=3A_?=
+ =?iso-8859-1?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>
+Date: Sun, 6 Jan 2013 20:31:56 -0500
+Message-ID: <20130107013156.GB12838@thunk.org>
+References: <1357484683-3021-1-git-send-email-crrodriguez@opensuse.org>
+ <20130106222020.GA9482@thunk.org>
+ <50EA1C9B.8040304@opensuse.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+To: Cristian =?iso-8859-1?Q?Rodr=EDguez?= <crrodriguez@opensuse.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ob0-f170.google.com ([209.85.214.170]:42436 "EHLO
-	mail-ob0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752294Ab3AGAyS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jan 2013 19:54:18 -0500
-Received: by mail-ob0-f170.google.com with SMTP id wp18so16795542obc.15
-        for <linux-ext4@vger.kernel.org>; Sun, 06 Jan 2013 16:54:18 -0800 (PST)
-In-Reply-To: <20130106222020.GA9482@thunk.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42059 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752664Ab3AGBcA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Jan 2013 20:32:00 -0500
+Content-Disposition: inline
+In-Reply-To: <50EA1C9B.8040304@opensuse.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-El dom 06 ene 2013 19:20:20 CLST, Theodore Ts'o escribi=C3=B3:
+On Sun, Jan 06, 2013 at 09:53:47PM -0300, Cristian Rodr=EDguez wrote:
+>=20
+> Yeah, I asked GCC developers exactly this, was told to fill a
+> enhancement request.
 
+If you could also sned them a bug/enhancement request to use a more
+optimized version of __popcountdi2, that would be great.  I'm not sure
+it helps e2fsprogs much, since it's too hard for us to tell whether we
+are using a version of the gcc runtime that has a optimized or
+unuptomized version of builtin_popcount().
 
-> I could imagine a patch which explicitly checks the CPU type using th=
-e
-> x86 cpuinfo instructure, and only optionally uses the popcount
-> instruction if it exists, and uses the optimized code if it doesn't,
-> but then again, it's not clear how much it's worth it.
+But since it doesn't make that much difference, my preference is to
+just ignore builtin_popcount() for now.  If someone is really using
+128TB ext4 file systems, and cares about that extra 6 seconds of CPU,
+it's probably going to require the ugly approach of using x86 asm
+statements to determine whether or not we're running on a CPU that
+supports the popcount instruction or not....
 
-The first incarnation of this patch did exactly that, too ugly didnt=20
-not send it. ;)
-
-> Better yet would be if gcc was taught how to recognize the C
-> statements in popcount32(), since that's one of the standard,
-> intelligent ways of implementing popcount32 (as opposed to the stupid
-> way which is apparently used by gcc's runtime library, sigh), and
-> inserted code which automatically did the cpuinfo check and fallback
-> to popcount if the CPU supports it.  This would be even better since
-> then gcc could do a single cpuinfo check, and then automatically use
-> the faster SSE[234] instructions as necessary, without having to ask
-> application programmers to put in gcc-specific __builtin_* functions
-
-Yeah, I asked GCC developers exactly this, was told to fill a=20
-enhancement request.
+						- Ted
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
