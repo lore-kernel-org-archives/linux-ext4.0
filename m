@@ -1,348 +1,181 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
- size and count calculation
-Date: Mon, 7 Jan 2013 20:20:16 +0100
-Message-ID: <20130107192016.GD13659@quack.suse.cz>
-References: <50DD20B2.6040204@asianux.com>
- <50E646BC.2090201@asianux.com>
- <50E64A4E.7010408@asianux.com>
- <50E64BFD.6090000@asianux.com>
+Subject: Re: [Suggestion] fs/ext3: memory leak by calling set_qf_name or
+ clear_qf_name, many times.
+Date: Mon, 7 Jan 2013 20:54:25 +0100
+Message-ID: <20130107195425.GE13659@quack.suse.cz>
+References: <50DA857B.1050808@asianux.com>
+ <20121231120621.GD7564@quack.suse.cz>
+ <50E66B19.5060907@asianux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, akpm@linux-foundation.org, adilger.kernel@dilger.ca,
-	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
-	dwmw2@infradead.org, torvalds@linux-foundation.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="45Z9DzgjV8m4Oswq"
+Content-Transfer-Encoding: 8bit
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org
 To: Chen Gang <gang.chen@asianux.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:50756 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753812Ab3AGTy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jan 2013 14:54:28 -0500
 Content-Disposition: inline
-In-Reply-To: <50E64BFD.6090000@asianux.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <50E66B19.5060907@asianux.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 04-01-13 11:26:53, Chen Gang wrote:
-> 
->   give comments (by Theodore Ts'o)
-> 
->     ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
-> 
->     [1] Where * is the regexp sense of "0 or more times"
->     [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
->         otherwise skip ACL_MASK.
-  Note that I actually updated the entry [2] to be more precise in my
-suggested comment. I wrote:
-[2] If ACL_USER or ACL_GROUP is present, then ACL_MASK must be present.
 
-  Please use this formulation because the old version suggests ACL_MASK
-cannot be present if neither ACL_USER nor ACL_GROUP are present and that's
-not true. Otherwise your patch looks fine. Thanks!
+--45Z9DzgjV8m4Oswq
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 
-								Honza
+On Fri 04-01-13 13:39:37, Chen Gang wrote:
+> 于 2012年12月31日 20:06, Jan Kara 写道:
+> >   Thanks for report. Yes, memory leak seems to be possible. Attached patch
+> > should fix it, I have added it to my tree.
+> > 
+> > 									Honza
+> > 
+> 
+>   after read your patch, today (although I am not a reviewer).
+>   is it a possible situation like this (just my imagination):
+>     1st let it call clear_qf_name successfully.
+>     2nd let it call set_qf_name successfully.
+>     3rd call clear_qf_name again ?
+  Although this is not likely in practice, if you specify mount options
+like usrjquota=aquota.user,usrjquota=,usrjquota=aquota.user it can happen.
+Thanks for spotting this.
 
+>     ...
+>   if this situation is possible.
+>     I guess the memory still leak, after apply your patch.
 > 
->   give comments (by Jan Kara)
->     posix_acl_valid() makes sure that if there are <= 4 ACL entries, then
->     all of them are short. Otherwise exactly 4 entries are short ones and
->     other have full length. See comment before that function for exact ACL
->     format.
-> 
->   use macro instead of hard code number (by Chen Gang)
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Chen Gang <gang.chen@asianux.com>
-> ---
->  fs/ext2/acl.h             |   10 +++++-----
->  fs/ext3/acl.h             |   10 +++++-----
->  fs/ext4/acl.h             |   10 +++++-----
->  fs/f2fs/acl.c             |   12 +++++++-----
->  fs/jffs2/acl.c            |   15 +++++++++------
->  fs/posix_acl.c            |    8 ++++++++
->  fs/reiserfs/acl.h         |   10 +++++-----
->  include/linux/posix_acl.h |    8 ++++++++
->  8 files changed, 52 insertions(+), 31 deletions(-)
-> 
-> diff --git a/fs/ext2/acl.h b/fs/ext2/acl.h
-> index 503bfb0..9af79d0 100644
-> --- a/fs/ext2/acl.h
-> +++ b/fs/ext2/acl.h
-> @@ -25,13 +25,13 @@ typedef struct {
->  
->  static inline size_t ext2_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(ext2_acl_header) +
->  		       count * sizeof(ext2_acl_entry_short);
->  	} else {
->  		return sizeof(ext2_acl_header) +
-> -		       4 * sizeof(ext2_acl_entry_short) +
-> -		       (count - 4) * sizeof(ext2_acl_entry);
-> +		       ACL_MAX_SHORT_ENTRY * sizeof(ext2_acl_entry_short) +
-> +		       (count - ACL_MAX_SHORT_ENTRY) * sizeof(ext2_acl_entry);
->  	}
->  }
->  
-> @@ -39,7 +39,7 @@ static inline int ext2_acl_count(size_t size)
->  {
->  	ssize_t s;
->  	size -= sizeof(ext2_acl_header);
-> -	s = size - 4 * sizeof(ext2_acl_entry_short);
-> +	s = size - ACL_MAX_SHORT_ENTRY * sizeof(ext2_acl_entry_short);
->  	if (s < 0) {
->  		if (size % sizeof(ext2_acl_entry_short))
->  			return -1;
-> @@ -47,7 +47,7 @@ static inline int ext2_acl_count(size_t size)
->  	} else {
->  		if (s % sizeof(ext2_acl_entry))
->  			return -1;
-> -		return s / sizeof(ext2_acl_entry) + 4;
-> +		return s / sizeof(ext2_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/fs/ext3/acl.h b/fs/ext3/acl.h
-> index dbc921e..b1cf2c0 100644
-> --- a/fs/ext3/acl.h
-> +++ b/fs/ext3/acl.h
-> @@ -25,13 +25,13 @@ typedef struct {
->  
->  static inline size_t ext3_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(ext3_acl_header) +
->  		       count * sizeof(ext3_acl_entry_short);
->  	} else {
->  		return sizeof(ext3_acl_header) +
-> -		       4 * sizeof(ext3_acl_entry_short) +
-> -		       (count - 4) * sizeof(ext3_acl_entry);
-> +		       ACL_MAX_SHORT_ENTRY * sizeof(ext3_acl_entry_short) +
-> +		       (count - ACL_MAX_SHORT_ENTRY) * sizeof(ext3_acl_entry);
->  	}
->  }
->  
-> @@ -39,7 +39,7 @@ static inline int ext3_acl_count(size_t size)
->  {
->  	ssize_t s;
->  	size -= sizeof(ext3_acl_header);
-> -	s = size - 4 * sizeof(ext3_acl_entry_short);
-> +	s = size - ACL_MAX_SHORT_ENTRY * sizeof(ext3_acl_entry_short);
->  	if (s < 0) {
->  		if (size % sizeof(ext3_acl_entry_short))
->  			return -1;
-> @@ -47,7 +47,7 @@ static inline int ext3_acl_count(size_t size)
->  	} else {
->  		if (s % sizeof(ext3_acl_entry))
->  			return -1;
-> -		return s / sizeof(ext3_acl_entry) + 4;
-> +		return s / sizeof(ext3_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
-> index 18cb39e..66d1fa3 100644
-> --- a/fs/ext4/acl.h
-> +++ b/fs/ext4/acl.h
-> @@ -25,13 +25,13 @@ typedef struct {
->  
->  static inline size_t ext4_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(ext4_acl_header) +
->  		       count * sizeof(ext4_acl_entry_short);
->  	} else {
->  		return sizeof(ext4_acl_header) +
-> -		       4 * sizeof(ext4_acl_entry_short) +
-> -		       (count - 4) * sizeof(ext4_acl_entry);
-> +		       ACL_MAX_SHORT_ENTRY * sizeof(ext4_acl_entry_short) +
-> +		       (count - ACL_MAX_SHORT_ENTRY) * sizeof(ext4_acl_entry);
->  	}
->  }
->  
-> @@ -39,7 +39,7 @@ static inline int ext4_acl_count(size_t size)
->  {
->  	ssize_t s;
->  	size -= sizeof(ext4_acl_header);
-> -	s = size - 4 * sizeof(ext4_acl_entry_short);
-> +	s = size - ACL_MAX_SHORT_ENTRY * sizeof(ext4_acl_entry_short);
->  	if (s < 0) {
->  		if (size % sizeof(ext4_acl_entry_short))
->  			return -1;
-> @@ -47,7 +47,7 @@ static inline int ext4_acl_count(size_t size)
->  	} else {
->  		if (s % sizeof(ext4_acl_entry))
->  			return -1;
-> -		return s / sizeof(ext4_acl_entry) + 4;
-> +		return s / sizeof(ext4_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
-> index fed74d1..42e0070 100644
-> --- a/fs/f2fs/acl.c
-> +++ b/fs/f2fs/acl.c
-> @@ -22,13 +22,15 @@
->  
->  static inline size_t f2fs_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(struct f2fs_acl_header) +
->  			count * sizeof(struct f2fs_acl_entry_short);
->  	} else {
->  		return sizeof(struct f2fs_acl_header) +
-> -			4 * sizeof(struct f2fs_acl_entry_short) +
-> -			(count - 4) * sizeof(struct f2fs_acl_entry);
-> +			ACL_MAX_SHORT_ENTRY
-> +			 * sizeof(struct f2fs_acl_entry_short) +
-> +			(count - ACL_MAX_SHORT_ENTRY)
-> +			 * sizeof(struct f2fs_acl_entry);
->  	}
->  }
->  
-> @@ -36,7 +38,7 @@ static inline int f2fs_acl_count(size_t size)
->  {
->  	ssize_t s;
->  	size -= sizeof(struct f2fs_acl_header);
-> -	s = size - 4 * sizeof(struct f2fs_acl_entry_short);
-> +	s = size - ACL_MAX_SHORT_ENTRY * sizeof(struct f2fs_acl_entry_short);
->  	if (s < 0) {
->  		if (size % sizeof(struct f2fs_acl_entry_short))
->  			return -1;
-> @@ -44,7 +46,7 @@ static inline int f2fs_acl_count(size_t size)
->  	} else {
->  		if (s % sizeof(struct f2fs_acl_entry))
->  			return -1;
-> -		return s / sizeof(struct f2fs_acl_entry) + 4;
-> +		return s / sizeof(struct f2fs_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/fs/jffs2/acl.c b/fs/jffs2/acl.c
-> index 223283c..48ef4b8 100644
-> --- a/fs/jffs2/acl.c
-> +++ b/fs/jffs2/acl.c
-> @@ -25,13 +25,15 @@
->  
->  static size_t jffs2_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(struct jffs2_acl_header)
->  		       + count * sizeof(struct jffs2_acl_entry_short);
->  	} else {
->  		return sizeof(struct jffs2_acl_header)
-> -		       + 4 * sizeof(struct jffs2_acl_entry_short)
-> -		       + (count - 4) * sizeof(struct jffs2_acl_entry);
-> +		       + ACL_MAX_SHORT_ENTRY
-> +				 * sizeof(struct jffs2_acl_entry_short)
-> +		       + (count - ACL_MAX_SHORT_ENTRY)
-> +				 * sizeof(struct jffs2_acl_entry);
->  	}
->  }
->  
-> @@ -40,15 +42,16 @@ static int jffs2_acl_count(size_t size)
->  	size_t s;
->  
->  	size -= sizeof(struct jffs2_acl_header);
-> -	if (size < 4 * sizeof(struct jffs2_acl_entry_short)) {
-> +	if (size < ACL_MAX_SHORT_ENTRY * sizeof(struct jffs2_acl_entry_short)) {
->  		if (size % sizeof(struct jffs2_acl_entry_short))
->  			return -1;
->  		return size / sizeof(struct jffs2_acl_entry_short);
->  	} else {
-> -		s = size - 4 * sizeof(struct jffs2_acl_entry_short);
-> +		s = size - ACL_MAX_SHORT_ENTRY
-> +				 * sizeof(struct jffs2_acl_entry_short);
->  		if (s % sizeof(struct jffs2_acl_entry))
->  			return -1;
-> -		return s / sizeof(struct jffs2_acl_entry) + 4;
-> +		return s / sizeof(struct jffs2_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-> index 8bd2135..8cfdebe 100644
-> --- a/fs/posix_acl.c
-> +++ b/fs/posix_acl.c
-> @@ -72,6 +72,14 @@ posix_acl_clone(const struct posix_acl *acl, gfp_t flags)
->  
->  /*
->   * Check if an acl is valid. Returns 0 if it is, or -E... otherwise.
-> + *
-> + * make sure ACL format is the following:
-> + *
-> + *   ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK[2] ACL_OTHER
-> + *
-> + *   [1] Where * is the regexp sense of "0 or more times"
-> + *   [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
-> + *       otherwise skip ACL_MASK.
->   */
->  int
->  posix_acl_valid(const struct posix_acl *acl)
-> diff --git a/fs/reiserfs/acl.h b/fs/reiserfs/acl.h
-> index f096b80..cb967a3 100644
-> --- a/fs/reiserfs/acl.h
-> +++ b/fs/reiserfs/acl.h
-> @@ -20,13 +20,13 @@ typedef struct {
->  
->  static inline size_t reiserfs_acl_size(int count)
->  {
-> -	if (count <= 4) {
-> +	if (count <= ACL_MAX_SHORT_ENTRY) {
->  		return sizeof(reiserfs_acl_header) +
->  		    count * sizeof(reiserfs_acl_entry_short);
->  	} else {
->  		return sizeof(reiserfs_acl_header) +
-> -		    4 * sizeof(reiserfs_acl_entry_short) +
-> -		    (count - 4) * sizeof(reiserfs_acl_entry);
-> +		    ACL_MAX_SHORT_ENTRY * sizeof(reiserfs_acl_entry_short) +
-> +		    (count - ACL_MAX_SHORT_ENTRY) * sizeof(reiserfs_acl_entry);
->  	}
->  }
->  
-> @@ -34,7 +34,7 @@ static inline int reiserfs_acl_count(size_t size)
->  {
->  	ssize_t s;
->  	size -= sizeof(reiserfs_acl_header);
-> -	s = size - 4 * sizeof(reiserfs_acl_entry_short);
-> +	s = size - ACL_MAX_SHORT_ENTRY * sizeof(reiserfs_acl_entry_short);
->  	if (s < 0) {
->  		if (size % sizeof(reiserfs_acl_entry_short))
->  			return -1;
-> @@ -42,7 +42,7 @@ static inline int reiserfs_acl_count(size_t size)
->  	} else {
->  		if (s % sizeof(reiserfs_acl_entry))
->  			return -1;
-> -		return s / sizeof(reiserfs_acl_entry) + 4;
-> +		return s / sizeof(reiserfs_acl_entry) + ACL_MAX_SHORT_ENTRY;
->  	}
->  }
->  
-> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-> index 7931efe..2c5609c 100644
-> --- a/include/linux/posix_acl.h
-> +++ b/include/linux/posix_acl.h
-> @@ -26,6 +26,14 @@
->  #define ACL_MASK		(0x10)
->  #define ACL_OTHER		(0x20)
->  
-> +/*
-> + * posix_acl_valid() makes sure that if there are <= 4 ACL entries, then
-> + * all of them are short. Otherwise exactly 4 entries are short ones and
-> + * other have full length. See comment before that function for exact ACL
-> + * format.
-> + */
-> +#define ACL_MAX_SHORT_ENTRY	4
-> +
->  /* permissions in the e_perm field */
->  #define ACL_READ		(0x04)
->  #define ACL_WRITE		(0x02)
-> -- 
-> 1.7.10.4
+>   if what I guess is true
+>     it seems we have to duplicate memory for old_opts in ext3_remount.
+>     and for clear_qf_name, set_qf_name, ext3_remount:
+>       use normal memory allocation and free ways instead of current using.
+  Yes. Updated patch attached.
+
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+
+--45Z9DzgjV8m4Oswq
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext3-Fix-memory-leak-when-quota-options-are-specifie.patch"
+
+>From c36504046b93419fba7ec0029a43afd2bbdd6c48 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Mon, 31 Dec 2012 12:38:36 +0100
+Subject: [PATCH] ext3: Fix memory leak when quota options are specified multiple times
+
+When usrjquota or grpjquota mount options are specified several times,
+we leak memory storing the names. Free the memory correctly.
+
+Reported-by: Chen Gang <gang.chen@asianux.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/super.c |   51 ++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 30 insertions(+), 21 deletions(-)
+
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 6e50223..0926fe4 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -916,21 +916,24 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+ 			"Not enough memory for storing quotafile name");
+ 		return 0;
+ 	}
+-	if (sbi->s_qf_names[qtype] &&
+-		strcmp(sbi->s_qf_names[qtype], qname)) {
+-		ext3_msg(sb, KERN_ERR,
+-			"%s quota file already specified", QTYPE2NAME(qtype));
++	if (sbi->s_qf_names[qtype]) {
++		int same = !strcmp(sbi->s_qf_names[qtype], qname);
++
+ 		kfree(qname);
+-		return 0;
++		if (!same) {
++			ext3_msg(sb, KERN_ERR,
++				 "%s quota file already specified",
++				 QTYPE2NAME(qtype));
++		}
++		return same;
+ 	}
+-	sbi->s_qf_names[qtype] = qname;
+-	if (strchr(sbi->s_qf_names[qtype], '/')) {
++	if (strchr(qname, '/')) {
+ 		ext3_msg(sb, KERN_ERR,
+ 			"quotafile must be on filesystem root");
+-		kfree(sbi->s_qf_names[qtype]);
+-		sbi->s_qf_names[qtype] = NULL;
++		kfree(qname);
+ 		return 0;
+ 	}
++	sbi->s_qf_names[qtype] = qname;
+ 	set_opt(sbi->s_mount_opt, QUOTA);
+ 	return 1;
+ }
+@@ -945,11 +948,10 @@ static int clear_qf_name(struct super_block *sb, int qtype) {
+ 			" when quota turned on");
+ 		return 0;
+ 	}
+-	/*
+-	 * The space will be released later when all options are confirmed
+-	 * to be correct
+-	 */
+-	sbi->s_qf_names[qtype] = NULL;
++	if (sbi->s_qf_names[qtype]) {
++		kfree(sbi->s_qf_names[qtype]);
++		sbi->s_qf_names[qtype] = NULL;
++	}
+ 	return 1;
+ }
+ #endif
+@@ -2605,7 +2607,18 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ #ifdef CONFIG_QUOTA
+ 	old_opts.s_jquota_fmt = sbi->s_jquota_fmt;
+ 	for (i = 0; i < MAXQUOTAS; i++)
+-		old_opts.s_qf_names[i] = sbi->s_qf_names[i];
++		if (sbi->s_qf_names[i]) {
++			old_opts.s_qf_names[i] = kstrdup(sbi->s_qf_names[i],
++							 GFP_KERNEL);
++			if (!old_opts.s_qf_names[i]) {
++				int j;
++
++				for (j = 0; j < i; j++)
++					kfree(old_opts.s_qf_names[j]);
++				return -ENOMEM;
++			}
++		} else
++			old_opts.s_qf_names[i] = NULL;
+ #endif
+ 
+ 	/*
+@@ -2698,9 +2711,7 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ #ifdef CONFIG_QUOTA
+ 	/* Release old quota file names */
+ 	for (i = 0; i < MAXQUOTAS; i++)
+-		if (old_opts.s_qf_names[i] &&
+-		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
+-			kfree(old_opts.s_qf_names[i]);
++		kfree(old_opts.s_qf_names[i]);
+ #endif
+ 	if (enable_quota)
+ 		dquot_resume(sb, -1);
+@@ -2714,9 +2725,7 @@ restore_opts:
+ #ifdef CONFIG_QUOTA
+ 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+ 	for (i = 0; i < MAXQUOTAS; i++) {
+-		if (sbi->s_qf_names[i] &&
+-		    old_opts.s_qf_names[i] != sbi->s_qf_names[i])
+-			kfree(sbi->s_qf_names[i]);
++		kfree(sbi->s_qf_names[i]);
+ 		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+ 	}
+ #endif
+-- 
+1.7.1
+
+
+--45Z9DzgjV8m4Oswq--
