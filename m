@@ -1,48 +1,44 @@
-From: Chris Mason <chris.mason@fusionio.com>
-Subject: Re: data=guarded mode in ext3
-Date: Mon, 7 Jan 2013 10:59:25 -0500
-Message-ID: <20130107155925.GC30947@shiny>
-References: <CAKaWdxYi_RpjSAp9sL9oeM2i1sCR5foKpvV2bCHDrbM0Dj3DtA@mail.gmail.com>
- <50EAEDF0.4010609@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 regression fixes for 3.8
+Date: Mon, 07 Jan 2013 11:42:47 -0500
+Message-ID: <nsx38ydt054.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Keith Chew <keith.chew@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Chris Mason <clmason@fusionio.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Ric Wheeler <rwheeler@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.fusionio.com ([66.114.96.30]:33140 "EHLO mx1.fusionio.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753508Ab3AGP7a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jan 2013 10:59:30 -0500
-Content-Disposition: inline
-In-Reply-To: <50EAEDF0.4010609@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:42201 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751675Ab3AGQmt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jan 2013 11:42:49 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 07, 2013 at 08:46:56AM -0700, Ric Wheeler wrote:
-> On 12/03/2012 09:34 PM, Keith Chew wrote:
-> > Hi
-> >
-> > Just wanted to check if the "'Data=guarded' mode in Ext3" work started
-> > by Chris Mason, is still being considered for merging to the mainline
-> > kernel? Or has that effort stopped?
-> >
-> > Regards
-> > Keith
-> >
-> 
-> Hi Keith,
-> 
-> I think that Chris is spending pretty much all of his time on btrfs these days. 
-> I believe this work is pretty much abandoned at this point...
-> 
-> What are you looking for specifically from this?
 
-Ric has it right, the change was big enough that I didn't think it was
-worth the risk of changing how ext3 works.  Most people are going to
-want ext4 anyway for a lot of reasons, so it made sense to focus bigger
-changes in the ext4 code base.
+The following changes since commit d1c3ed669a2d452cacfb48c2d171a1f364dae2ed:
 
--chris
+  Linux 3.8-rc2 (2013-01-02 18:13:21 -0800)
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+
+for you to fetch changes up to fef0ebdb229bedce888b63923e2a1ba4e6c6a84c:
+
+  ext4: remove duplicate call to ext4_bread() in ext4_init_new_dir() (2013-01-06 23:40:25 -0500)
+
+----------------------------------------------------------------
+Bug fixes, including two regressions introduced in v3.8.  The most
+serious of these regressions is a buffer cache leak.
+
+----------------------------------------------------------------
+Guo Chao (2):
+      ext4: release buffer in failed path in dx_probe()
+      ext4: remove duplicate call to ext4_bread() in ext4_init_new_dir()
+
+Valerie Aurora (1):
+      ext4: fix configuration dependencies for ext4 ACLs and security labels
+
+ fs/ext4/Kconfig | 2 ++
+ fs/ext4/namei.c | 3 +--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
