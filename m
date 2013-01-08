@@ -1,95 +1,150 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC][PATCH 3/9 v1] ext4: add physical block and status member
- into extent status tree
-Date: Tue, 8 Jan 2013 12:27:54 +1100
-Message-ID: <20130108012754.GY3120@dastard>
-References: <1356335742-11793-1-git-send-email-wenqing.lz@taobao.com>
- <1356335742-11793-4-git-send-email-wenqing.lz@taobao.com>
- <20121231214952.GL7564@quack.suse.cz>
- <20130101051607.GB7546@gmail.com>
- <20130102112255.GA30633@quack.suse.cz>
- <20130105024401.GA4031@gmail.com>
+From: Chen Gang <gang.chen@asianux.com>
+Subject: Re: [PATCH v3] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
+ size and count calculation
+Date: Tue, 08 Jan 2013 10:02:44 +0800
+Message-ID: <50EB7E44.1040707@asianux.com>
+References: <50DD20B2.6040204@asianux.com> <50E646BC.2090201@asianux.com> <50E64A4E.7010408@asianux.com> <50E64BFD.6090000@asianux.com> <20130107192016.GD13659@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: akpm@linux-foundation.org, adilger.kernel@dilger.ca,
+	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
+	dwmw2@infradead.org, torvalds@linux-foundation.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:36416 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751980Ab3AHB17 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jan 2013 20:27:59 -0500
-Content-Disposition: inline
-In-Reply-To: <20130105024401.GA4031@gmail.com>
+Received: from intranet.asianux.com ([58.214.24.6]:6527 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753750Ab3AHCBw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jan 2013 21:01:52 -0500
+In-Reply-To: <20130107192016.GD13659@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 05, 2013 at 10:44:01AM +0800, Zheng Liu wrote:
-> On Wed, Jan 02, 2013 at 12:22:55PM +0100, Jan Kara wrote:
-> > On Tue 01-01-13 13:16:07, Zheng Liu wrote:
-> > > On Mon, Dec 31, 2012 at 10:49:52PM +0100, Jan Kara wrote:
-> > > > On Mon 24-12-12 15:55:36, Zheng Liu wrote:
-> > > > > From: Zheng Liu <wenqing.lz@taobao.com>
-> > > > > 
-> > > > > es_pblk is used to record physical block that maps to the disk.  es_status is
-> > > > > used to record the status of the extent.  Three status are defined, which are
-> > > > > written, unwritten and delayed.
-> > > >   So this means one extent is 48 bytes on 64-bit architectures. If I'm a
-> > > > nasty user and create artificially fragmented file (by allocating every
-> > > > second block), extent tree takes 6 MB per GB of file. That's quite a bit
-> > > > and I think you need to provide a way for kernel to reclaim extent
-> > > > structures...
-> > > 
-> > > Indeed, when a file has a lot of fragmentations, status tree will occupy
-> > > a number of memory.  That is why it will be loaded on-demand.  When I make
-> > > it, there are two solutions to load status tree.  One is loading
-> > > on-demand, and another is loading complete extent tree in
-> > > ext4_alloc_inode().  Finally I choose the former because it can reduce
-> > > the pressure of memory at most of time.  But it has a disadvantage that
-> > > status tree doesn't be fully trusted because it hasn't track a
-> > > completely status of extent tree on disk.
-> >   Not reading the whole extent tree in ext4_alloc_inode() is a good start
-> > but it's not the whole solution IMHO. It saves us from unnecessary reading
-> > of extents but still if someone reads the whole filesystem (like
-> > grep -R "foo" /) you will still end up with all extents cached. And that
-> > will make ext4 inodes pretty heavy in memory. Surely inode reclaim will
-> > eventually release these inodes including cached extents but it is usually
-> > more beneficial to cache the inode itself than more extents so allowing us
-> > to strip cached extents without releasing inode itself would be good.
-> > 
-> > > I will provide a way to reclaim extent structures from status tree.  Now
-> > > I have an idea in my mind that we can reclaim all extent which are
-> > > WRITTEN/UNWRITTEN status because we always need DELAYED extent in
-> > > fiemap, seek_data/hole and bigalloc code.  Furthermore, as you said in
-> > > another mail, some unwritten extent which will be converted into
-> > > written also doesn't be reclaimed.
-> > > 
-> > > Another question is when do these extents reclaim?  Currently when
-> > > clear_inode() is called, the whole status tree will be reclaimed.  Maybe
-> > > a switch in sysfs is a optional choice.  Any thoughts?
-> >   The natural way to handle the shrinking is using 'shrinker' framework. In
-> > this case, we could register a shrinker for shrinking extents. Just having
-> > LRU of extents would increase the size of extent structure by 2 pointers
-> > which is too big I'd think and I'm not yet sure how to choose extents for
-> > reclaim in some other way. I will think about it...
-> 
-> Hi Jan,
-> 
-> Sorry for the delay.  'shrinker' framework is an option.  We can define
-> a callback function to reclaim extents from status tree.  When we access
-> an extent in an inode, we will move this inode into the tail of LRU list.
-> But this way has a defect that the spinlock which protects the LRU list
-> has a heavy contention because all inodes need to take this lock.  I
-> guess this overhead is unacceptable for us.  Any comments?
+=E4=BA=8E 2013=E5=B9=B401=E6=9C=8808=E6=97=A5 03:20, Jan Kara =E5=86=99=
+=E9=81=93:
+> On Fri 04-01-13 11:26:53, Chen Gang wrote:
+>> >=20
+>> >   give comments (by Theodore Ts'o)
+>> >=20
+>> >     ACL_USER_OBJ ACL_USER*[1] ACL_GROUP_OBJ ACL_GROUP*[1] ACL_MASK=
+[2] ACL_OTHER
+>> >=20
+>> >     [1] Where * is the regexp sense of "0 or more times"
+>> >     [2] Only if there is at least one ACL_USER or ACL_GROUP tag;
+>> >         otherwise skip ACL_MASK.
+>   Note that I actually updated the entry [2] to be more precise in my
+> suggested comment. I wrote:
+> [2] If ACL_USER or ACL_GROUP is present, then ACL_MASK must be presen=
+t.
+>=20
+>   Please use this formulation because the old version suggests ACL_MA=
+SK
+> cannot be present if neither ACL_USER nor ACL_GROUP are present and t=
+hat's
+> not true. Otherwise your patch looks fine. Thanks!
 
-Measure it first. There are several filesystem global locks still
-in existance at the VFS level. solve the simple problem first, and
-then the hard problem might get solved for you by someone else. e.g:
+  according to the implementation of posix_acl_valid (contents at botto=
+m).
+    new comments are more precise to match the implementation.
+    it means:
+      if new comments was incorrect, the implementation would be incorr=
+ect.
+  welcome another members (especially Theodore Ts'o) to giving confirma=
+tion or completion.=20
 
-http://oss.sgi.com/archives/xfs/2012-11/msg00643.html
+  I should wait 2 days, before send patch v4 with new comments.
+    no additional reply within 2 days, means new comments is correct.
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+  Regards
+
+gchen.
+
+
+ 76 int
+ 77 posix_acl_valid(const struct posix_acl *acl)
+ 78 {
+ 79         const struct posix_acl_entry *pa, *pe;
+ 80         int state =3D ACL_USER_OBJ;
+ 81         kuid_t prev_uid =3D INVALID_UID;
+ 82         kgid_t prev_gid =3D INVALID_GID;
+ 83         int needs_mask =3D 0;
+ 84=20
+ 85         FOREACH_ACL_ENTRY(pa, acl, pe) {
+ 86                 if (pa->e_perm & ~(ACL_READ|ACL_WRITE|ACL_EXECUTE))
+ 87                         return -EINVAL;
+ 88                 switch (pa->e_tag) {
+ 89                         case ACL_USER_OBJ:
+ 90                                 if (state =3D=3D ACL_USER_OBJ) {
+ 91                                         state =3D ACL_USER;
+ 92                                         break;
+ 93                                 }
+ 94                                 return -EINVAL;
+ 95=20
+ 96                         case ACL_USER:
+ 97                                 if (state !=3D ACL_USER)
+ 98                                         return -EINVAL;
+ 99                                 if (!uid_valid(pa->e_uid))
+100                                         return -EINVAL;
+101                                 if (uid_valid(prev_uid) &&
+102                                     uid_lte(pa->e_uid, prev_uid))
+103                                         return -EINVAL;
+104                                 prev_uid =3D pa->e_uid;
+105                                 needs_mask =3D 1;
+106                                 break;
+107=20
+108                         case ACL_GROUP_OBJ:
+109                                 if (state =3D=3D ACL_USER) {
+110                                         state =3D ACL_GROUP;
+111                                         break;
+112                                 }
+113                                 return -EINVAL;
+114=20
+115                         case ACL_GROUP:
+116                                 if (state !=3D ACL_GROUP)
+117                                         return -EINVAL;
+118                                 if (!gid_valid(pa->e_gid))
+119                                         return -EINVAL;
+120                                 if (gid_valid(prev_gid) &&
+121                                     gid_lte(pa->e_gid, prev_gid))
+122                                         return -EINVAL;
+123                                 prev_gid =3D pa->e_gid;
+124                                 needs_mask =3D 1;
+125                                 break;
+126=20
+127                         case ACL_MASK:
+128                                 if (state !=3D ACL_GROUP)
+129                                         return -EINVAL;
+130                                 state =3D ACL_OTHER;
+131                                 break;
+132=20
+133                         case ACL_OTHER:
+134                                 if (state =3D=3D ACL_OTHER ||
+135                                     (state =3D=3D ACL_GROUP && !nee=
+ds_mask)) {
+136                                         state =3D 0;
+137                                         break;
+138                                 }
+139                                 return -EINVAL;
+140=20
+141                         default:
+142                                 return -EINVAL;
+143                 }
+144         }
+145         if (state =3D=3D 0)
+146                 return 0;
+147         return -EINVAL;
+148 }
+
+
+--=20
+Chen Gang
+
+Asianux Corporation
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
