@@ -1,37 +1,50 @@
-From: "George Spelvin" <linux@horizon.com>
-Subject: Re: [PATCH 2/2 v2] debugfs: dump a sparse file as a new sparse file
-Date: 9 Jan 2013 19:42:32 -0500
-Message-ID: <20130110004232.9651.qmail@science.horizon.com>
-References: <20130109145854.GA27630@thunk.org>
-To: linux-ext4@vger.kernel.org, linux@horizon.com, tytso@mit.edu,
-	wenqing.lz@taobao.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:42187 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932242Ab3AJAmd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jan 2013 19:42:33 -0500
-In-Reply-To: <20130109145854.GA27630@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Miao Xie <miaox@cn.fujitsu.com>
+Subject: Re: [PATCH RESEND] vfs: re-implement writeback_inodes_sb(_nr)_if_idle()
+ and rename them
+Date: Thu, 10 Jan 2013 11:24:15 +0800
+Message-ID: <50EE345F.1090600@cn.fujitsu.com>
+References: <50D2E3DF.4010105@cn.fujitsu.com> <20121228143338.GW14116@twin.jikos.cz>
+Reply-To: miaox@cn.fujitsu.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux Btrfs <linux-btrfs@vger.kernel.org>,
+	Linux Ext4 <linux-ext4@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Kamal Mostafa <kamal@canonical.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>
+To: dsterba@suse.cz
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20121228143338.GW14116@twin.jikos.cz>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> 2) If the sparse flag is set, then ext2_file_read() will stop the read
-> when it runs into the first uninitialized or sparse block.  That is,
-> consider the example file which has 8k of data, a 4k uninitialized
-> block, and then 12k of data after that.  If the sparse flag is passed
-> to ext2_file_open(), then ext2fs_file_read(fd, buf, 16384, &got) will
-> read 8k of data into buf, and return with got set to 8192.
+On Fri, 28 Dec 2012 15:33:38 +0100, David Sterba wrote:
+> On Thu, Dec 20, 2012 at 06:09:35PM +0800, Miao Xie wrote:
+>> --- a/fs/fs-writeback.c
+>> +++ b/fs/fs-writeback.c
+>> @@ -1314,7 +1314,6 @@ void writeback_inodes_sb_nr(struct super_block *sb,
+>>  	bdi_queue_work(sb->s_bdi, &work);
+>>  	wait_for_completion(&done);
+>>  }
+>> -EXPORT_SYMBOL(writeback_inodes_sb_nr);
 > 
-> 3) To distinguish between EOF and a sparse block, if the current file
-> offset is pointed at a sparse/uninitialized block, and the sparse flag
-> was passed to ext2_file_open(), then in addition to *got getting set
-> 0, ext2_file_read() will also return a new error code,
-> EXT2_ET_READ_HOLE_FOUND.
+> Why do you remove the export? writeback_inodes_sb is exported as well.
 
-Given that the current model of ext2fs_file_read is that it returns
-some valid data in *got, AND the reason it stopped short as the retval,
-wouldn't it make more sense to return EXT2_ET_READ_HOLE_FOUND from the
-*first* read call?
+As you said below, there is no user now.
 
-It's a minor thing, as you just end up falling back to the Unix syscall
-model of deferring the error until the next read call, but wouldn't
-it be more consistent?
+> Originally the _nr variant has been introduced for btrfs
+> (3259f8bed2f0f57c2fdcdac1b510c3fa319ef97e) and there are no other users
+> now, so from that point it would make sense. From the other side, the
+> change is not strictly necessary for this patch and keeps the writeback
+> API a bit more flexible. I vote for keeping it.
+
+Maybe you are right, I'll send out a new one.
+
+> Otherwise (for the btrfs part),
+> Tested-by: David Sterba <dsterba@suse.cz>
+
+Thanks for your test and review.
+Miao
+
