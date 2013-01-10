@@ -1,202 +1,534 @@
-From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: [PATCH V2] vfs: re-implement writeback_inodes_sb(_nr)_if_idle() and
- rename them
-Date: Thu, 10 Jan 2013 13:47:57 +0800
-Message-ID: <50EE560D.6040604@cn.fujitsu.com>
-References: <50D2E3DF.4010105@cn.fujitsu.com> <20121228143338.GW14116@twin.jikos.cz>
-Reply-To: miaox@cn.fujitsu.com
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH V5 18/30] fs: add read_iter and write_iter to several
+ file systems
+Date: Thu, 10 Jan 2013 14:40:49 +0200
+Message-ID: <50EEB6D1.6070204@panasas.com>
+References: <1357761525-22718-1-git-send-email-dave.kleikamp@oracle.com>
+ <1357761525-22718-19-git-send-email-dave.kleikamp@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: dsterba@suse.cz, Christoph Hellwig <hch@infradead.org>,
-	Kamal Mostafa <kamal@canonical.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Linux Fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Btrfs <linux-btrfs@vger.kernel.org>,
-	Linux Ext4 <linux-ext4@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:13952 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751113Ab3AJFrY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Jan 2013 00:47:24 -0500
-In-Reply-To: <20121228143338.GW14116@twin.jikos.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
+ Bob Copeland <me@bobcopeland.com>, linux-karma-devel@lists.sourceforge.net,
+ linux-mtd@lists.infradead.org,
+ Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+ linux-nilfs@vger.kernel.org, Richard Weinberger <richard@nod.at>,
+ Christoph Hellwig <hch@infradead.org>, v9fs-developer@lists.sourceforge.net,
+ linux-ext4@vger.kernel.org, Jeff Dike <jdike@addtoit.com>,
+ Evgeniy Dushistov <dushistov@mail.ru>,
+ user-mode-linux-devel@lists.sourceforge.net,
+ Prasad Joshi <prasadjoshi.linux@gmail.com>, reiserfs-devel@vger.kernel.org,
+ osd-dev@open-osd.org, OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+ Joern Engel <joern@logfs.org>,
+ "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+ linux-kernel@vger.kernel.org, logfs@logfs.org,
+ Benny Halevy <bhalevy@tonian.com>, linux-fsdevel@vger.kernel.org,
+ Andreas Dilger <adilger.kernel@di
+To: Dave Kleikamp <dave.kleikamp@oracle.com>
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+In-Reply-To: <1357761525-22718-19-git-send-email-dave.kleikamp@oracle.com>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: linux-mtd-bounces@lists.infradead.org
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+List-Id: linux-ext4.vger.kernel.org
 
-writeback_inodes_sb(_nr)_if_idle() is re-implemented by replacing down_read()
-with down_read_trylock() because
-- If ->s_umount is write locked, then the sb is not idle. That is
-  writeback_inodes_sb(_nr)_if_idle() needn't wait for the lock.
-- writeback_inodes_sb(_nr)_if_idle() grabs s_umount lock when it want to start
-  writeback, it may bring us deadlock problem when doing umount. In order to
-  fix the problem, ext4 and btrfs implemented their own writeback functions
-  instead of writeback_inodes_sb(_nr)_if_idle(), but it introduced the redundant
-  code, it is better to implement a new writeback_inodes_sb(_nr)_if_idle().
+On 01/09/2013 09:58 PM, Dave Kleikamp wrote:
+> These are the simple ones.
+> 
+> File systems that use generic_file_aio_read() and generic_file_aio_write()
+> can trivially support generic_file_read_iter() and generic_file_write_iter().
+> 
+> This patch adds those file_operations for 9p, adfs, affs, bfs, exofs, ext2,
+> ext3, fat, f2fs, hfs, hfsplus, hostfs, hpfs, jfs, jffs2, logfs, minix, nilfs2,
+> omfs, ramfs, reiserfs, romfs, sysv, and ufs.
+> 
+> Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+> Cc: Zach Brown <zab@zabbo.net>
+> Cc: v9fs-developer@lists.sourceforge.net
+> Cc: Tigran A. Aivazian <tigran@aivazian.fsnet.co.uk>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
 
-The name of these two functions is cumbersome, so rename them to
-try_to_writeback_inodes_sb(_nr).
+Thanks looks good.
+ACK-by: Boaz Harrosh <bharrosh@panasas.com>
 
-This idea came from Christoph Hellwig.
-Some code is from the patch of Kamal Mostafa.
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> Cc: Benny Halevy <bhalevy@tonian.com>
+> Cc: osd-dev@open-osd.org
 
-Signed-off-by: Miao Xie <miaox@cn.fujitsu.com>
----
-Changelog v1 -> v2:
-- do not remove EXPORT_SYMBOL of writeback_inodes_sb_br()
----
- fs/btrfs/extent-tree.c    | 20 +++-----------------
- fs/ext4/inode.c           |  8 ++------
- fs/fs-writeback.c         | 44 ++++++++++++++++++++------------------------
- include/linux/writeback.h |  6 +++---
- 4 files changed, 28 insertions(+), 50 deletions(-)
+> Cc: Jeff Dike <jdike@addtoit.com>
+> Cc: Richard Weinberger <richard@nod.at>
+> Cc: user-mode-linux-devel@lists.sourceforge.net
+> Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
+> Cc: jfs-discussion@lists.sourceforge.net
+> Cc: David Woodhouse <dwmw2@infradead.org>
+> Cc: linux-mtd@lists.infradead.org
+> Cc: Joern Engel <joern@logfs.org>
+> Cc: Prasad Joshi <prasadjoshi.linux@gmail.com>
+> Cc: logfs@logfs.org
+> Cc: linux-nilfs@vger.kernel.org
+> Cc: Bob Copeland <me@bobcopeland.com>
+> Cc: linux-karma-devel@lists.sourceforge.net
+> Cc: reiserfs-devel@vger.kernel.org
+> Cc: Christoph Hellwig <hch@infradead.org>
+> Cc: Evgeniy Dushistov <dushistov@mail.ru>
+> ---
+>  fs/9p/vfs_addr.c        | 4 ++--
+>  fs/9p/vfs_file.c        | 8 ++++----
+>  fs/adfs/file.c          | 4 ++--
+>  fs/affs/file.c          | 4 ++--
+>  fs/bfs/file.c           | 4 ++--
+>  fs/exofs/file.c         | 4 ++--
+>  fs/ext2/file.c          | 4 ++--
+>  fs/ext3/file.c          | 4 ++--
+>  fs/f2fs/file.c          | 4 ++--
+>  fs/fat/file.c           | 4 ++--
+>  fs/hfs/inode.c          | 4 ++--
+>  fs/hfsplus/inode.c      | 4 ++--
+>  fs/hostfs/hostfs_kern.c | 4 ++--
+>  fs/hpfs/file.c          | 4 ++--
+>  fs/jffs2/file.c         | 8 ++++----
+>  fs/jfs/file.c           | 4 ++--
+>  fs/logfs/file.c         | 4 ++--
+>  fs/minix/file.c         | 4 ++--
+>  fs/nilfs2/file.c        | 4 ++--
+>  fs/omfs/file.c          | 4 ++--
+>  fs/ramfs/file-mmu.c     | 4 ++--
+>  fs/ramfs/file-nommu.c   | 4 ++--
+>  fs/reiserfs/file.c      | 4 ++--
+>  fs/romfs/mmap-nommu.c   | 2 +-
+>  fs/sysv/file.c          | 4 ++--
+>  fs/ufs/file.c           | 4 ++--
+>  26 files changed, 55 insertions(+), 55 deletions(-)
+> 
+> diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+> index e70f239..01c0673 100644
+> --- a/fs/9p/vfs_addr.c
+> +++ b/fs/9p/vfs_addr.c
+> @@ -249,8 +249,8 @@ static int v9fs_launder_page(struct page *page)
+>   * the VFS gets them, so this method should never be called.
+>   *
+>   * Direct IO is not 'yet' supported in the cached mode. Hence when
+> - * this routine is called through generic_file_aio_read(), the read/write fails
+> - * with an error.
+> + * this routine is called through generic_file_read_iter(), the read/write
+> + * fails with an error.
+>   *
+>   */
+>  static ssize_t
+> diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
+> index c2483e9..2e9441d 100644
+> --- a/fs/9p/vfs_file.c
+> +++ b/fs/9p/vfs_file.c
+> @@ -746,8 +746,8 @@ const struct file_operations v9fs_cached_file_operations = {
+>  	.llseek = generic_file_llseek,
+>  	.read = v9fs_cached_file_read,
+>  	.write = v9fs_cached_file_write,
+> -	.aio_read = generic_file_aio_read,
+> -	.aio_write = generic_file_aio_write,
+> +	.read_iter = generic_file_read_iter,
+> +	.write_iter = generic_file_write_iter,
+>  	.open = v9fs_file_open,
+>  	.release = v9fs_dir_release,
+>  	.lock = v9fs_file_lock,
+> @@ -759,8 +759,8 @@ const struct file_operations v9fs_cached_file_operations_dotl = {
+>  	.llseek = generic_file_llseek,
+>  	.read = v9fs_cached_file_read,
+>  	.write = v9fs_cached_file_write,
+> -	.aio_read = generic_file_aio_read,
+> -	.aio_write = generic_file_aio_write,
+> +	.read_iter = generic_file_read_iter,
+> +	.write_iter = generic_file_write_iter,
+>  	.open = v9fs_file_open,
+>  	.release = v9fs_dir_release,
+>  	.lock = v9fs_file_lock_dotl,
+> diff --git a/fs/adfs/file.c b/fs/adfs/file.c
+> index a36da53..da1e021 100644
+> --- a/fs/adfs/file.c
+> +++ b/fs/adfs/file.c
+> @@ -24,11 +24,11 @@
+>  const struct file_operations adfs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.fsync		= generic_file_fsync,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.splice_read	= generic_file_splice_read,
+>  };
+>  
+> diff --git a/fs/affs/file.c b/fs/affs/file.c
+> index af3261b..d09a2db 100644
+> --- a/fs/affs/file.c
+> +++ b/fs/affs/file.c
+> @@ -28,9 +28,9 @@ static int affs_file_release(struct inode *inode, struct file *filp);
+>  const struct file_operations affs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.open		= affs_file_open,
+>  	.release	= affs_file_release,
+> diff --git a/fs/bfs/file.c b/fs/bfs/file.c
+> index ad3ea14..3d14806 100644
+> --- a/fs/bfs/file.c
+> +++ b/fs/bfs/file.c
+> @@ -24,9 +24,9 @@
+>  const struct file_operations bfs_file_operations = {
+>  	.llseek 	= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.splice_read	= generic_file_splice_read,
+>  };
+> diff --git a/fs/exofs/file.c b/fs/exofs/file.c
+> index 491c6c0..20564f8a 100644
+> --- a/fs/exofs/file.c
+> +++ b/fs/exofs/file.c
+> @@ -69,8 +69,8 @@ const struct file_operations exofs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.open		= generic_file_open,
+>  	.release	= exofs_release_file,
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index a5b3a5d..6af043b 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -64,8 +64,8 @@ const struct file_operations ext2_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.unlocked_ioctl = ext2_ioctl,
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= ext2_compat_ioctl,
+> diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+> index 25cb413..a796771 100644
+> --- a/fs/ext3/file.c
+> +++ b/fs/ext3/file.c
+> @@ -52,8 +52,8 @@ const struct file_operations ext3_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.unlocked_ioctl	= ext3_ioctl,
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= ext3_compat_ioctl,
+> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+> index f9e085d..86d9c4b 100644
+> --- a/fs/f2fs/file.c
+> +++ b/fs/f2fs/file.c
+> @@ -624,8 +624,8 @@ const struct file_operations f2fs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.open		= generic_file_open,
+>  	.mmap		= f2fs_file_mmap,
+>  	.fsync		= f2fs_sync_file,
+> diff --git a/fs/fat/file.c b/fs/fat/file.c
+> index a62e0ec..92d587b 100644
+> --- a/fs/fat/file.c
+> +++ b/fs/fat/file.c
+> @@ -164,8 +164,8 @@ const struct file_operations fat_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.release	= fat_file_release,
+>  	.unlocked_ioctl	= fat_generic_ioctl,
+> diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
+> index 2a87ba4..0db0679 100644
+> --- a/fs/hfs/inode.c
+> +++ b/fs/hfs/inode.c
+> @@ -666,9 +666,9 @@ static int hfs_file_fsync(struct file *filp, loff_t start, loff_t end,
+>  static const struct file_operations hfs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.splice_read	= generic_file_splice_read,
+>  	.fsync		= hfs_file_fsync,
+> diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
+> index c87b26c..9b8cdb6 100644
+> --- a/fs/hfsplus/inode.c
+> +++ b/fs/hfsplus/inode.c
+> @@ -373,9 +373,9 @@ static const struct inode_operations hfsplus_file_inode_operations = {
+>  static const struct file_operations hfsplus_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.splice_read	= generic_file_splice_read,
+>  	.fsync		= hfsplus_file_fsync,
+> diff --git a/fs/hostfs/hostfs_kern.c b/fs/hostfs/hostfs_kern.c
+> index 457addc..4593a9a 100644
+> --- a/fs/hostfs/hostfs_kern.c
+> +++ b/fs/hostfs/hostfs_kern.c
+> @@ -382,8 +382,8 @@ static const struct file_operations hostfs_file_fops = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.splice_read	= generic_file_splice_read,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.write		= do_sync_write,
+>  	.mmap		= generic_file_mmap,
+>  	.open		= hostfs_file_open,
+> diff --git a/fs/hpfs/file.c b/fs/hpfs/file.c
+> index fbfe2df..efc8cd9 100644
+> --- a/fs/hpfs/file.c
+> +++ b/fs/hpfs/file.c
+> @@ -162,9 +162,9 @@ const struct file_operations hpfs_file_ops =
+>  {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= hpfs_file_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.release	= hpfs_file_release,
+>  	.fsync		= hpfs_file_fsync,
+> diff --git a/fs/jffs2/file.c b/fs/jffs2/file.c
+> index 1506673..1d7ab8b 100644
+> --- a/fs/jffs2/file.c
+> +++ b/fs/jffs2/file.c
+> @@ -51,10 +51,10 @@ const struct file_operations jffs2_file_operations =
+>  {
+>  	.llseek =	generic_file_llseek,
+>  	.open =		generic_file_open,
+> - 	.read =		do_sync_read,
+> - 	.aio_read =	generic_file_aio_read,
+> - 	.write =	do_sync_write,
+> - 	.aio_write =	generic_file_aio_write,
+> +	.read =		do_sync_read,
+> +	.read_iter =	generic_file_read_iter,
+> +	.write =	do_sync_write,
+> +	.write_iter =	generic_file_write_iter,
+>  	.unlocked_ioctl=jffs2_ioctl,
+>  	.mmap =		generic_file_readonly_mmap,
+>  	.fsync =	jffs2_fsync,
+> diff --git a/fs/jfs/file.c b/fs/jfs/file.c
+> index dd7442c..040b6c7 100644
+> --- a/fs/jfs/file.c
+> +++ b/fs/jfs/file.c
+> @@ -151,8 +151,8 @@ const struct file_operations jfs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.write		= do_sync_write,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.splice_read	= generic_file_splice_read,
+>  	.splice_write	= generic_file_splice_write,
+> diff --git a/fs/logfs/file.c b/fs/logfs/file.c
+> index 3886cde..ca35c88 100644
+> --- a/fs/logfs/file.c
+> +++ b/fs/logfs/file.c
+> @@ -263,8 +263,8 @@ const struct inode_operations logfs_reg_iops = {
+>  };
+>  
+>  const struct file_operations logfs_reg_fops = {
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.fsync		= logfs_fsync,
+>  	.unlocked_ioctl	= logfs_ioctl,
+>  	.llseek		= generic_file_llseek,
+> diff --git a/fs/minix/file.c b/fs/minix/file.c
+> index adc6f54..346d8f37 100644
+> --- a/fs/minix/file.c
+> +++ b/fs/minix/file.c
+> @@ -15,9 +15,9 @@
+>  const struct file_operations minix_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.fsync		= generic_file_fsync,
+>  	.splice_read	= generic_file_splice_read,
+> diff --git a/fs/nilfs2/file.c b/fs/nilfs2/file.c
+> index 6194688..3e4337e 100644
+> --- a/fs/nilfs2/file.c
+> +++ b/fs/nilfs2/file.c
+> @@ -153,8 +153,8 @@ const struct file_operations nilfs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+>  	.write		= do_sync_write,
+> -	.aio_read	= generic_file_aio_read,
+> -	.aio_write	= generic_file_aio_write,
+> +	.read_iter	= generic_file_read_iter,
+> +	.write_iter	= generic_file_write_iter,
+>  	.unlocked_ioctl	= nilfs_ioctl,
+>  #ifdef CONFIG_COMPAT
+>  	.compat_ioctl	= nilfs_compat_ioctl,
+> diff --git a/fs/omfs/file.c b/fs/omfs/file.c
+> index e0d9b3e..badafd8 100644
+> --- a/fs/omfs/file.c
+> +++ b/fs/omfs/file.c
+> @@ -339,8 +339,8 @@ const struct file_operations omfs_file_operations = {
+>  	.llseek = generic_file_llseek,
+>  	.read = do_sync_read,
+>  	.write = do_sync_write,
+> -	.aio_read = generic_file_aio_read,
+> -	.aio_write = generic_file_aio_write,
+> +	.read_iter = generic_file_read_iter,
+> +	.write_iter = generic_file_write_iter,
+>  	.mmap = generic_file_mmap,
+>  	.fsync = generic_file_fsync,
+>  	.splice_read = generic_file_splice_read,
+> diff --git a/fs/ramfs/file-mmu.c b/fs/ramfs/file-mmu.c
+> index 4884ac5..c4d8572 100644
+> --- a/fs/ramfs/file-mmu.c
+> +++ b/fs/ramfs/file-mmu.c
+> @@ -39,9 +39,9 @@ const struct address_space_operations ramfs_aops = {
+>  
+>  const struct file_operations ramfs_file_operations = {
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.fsync		= noop_fsync,
+>  	.splice_read	= generic_file_splice_read,
+> diff --git a/fs/ramfs/file-nommu.c b/fs/ramfs/file-nommu.c
+> index d5378d0..1d6be6c 100644
+> --- a/fs/ramfs/file-nommu.c
+> +++ b/fs/ramfs/file-nommu.c
+> @@ -39,9 +39,9 @@ const struct file_operations ramfs_file_operations = {
+>  	.mmap			= ramfs_nommu_mmap,
+>  	.get_unmapped_area	= ramfs_nommu_get_unmapped_area,
+>  	.read			= do_sync_read,
+> -	.aio_read		= generic_file_aio_read,
+> +	.read_iter		= generic_file_read_iter,
+>  	.write			= do_sync_write,
+> -	.aio_write		= generic_file_aio_write,
+> +	.write_iter		= generic_file_write_iter,
+>  	.fsync			= noop_fsync,
+>  	.splice_read		= generic_file_splice_read,
+>  	.splice_write		= generic_file_splice_write,
+> diff --git a/fs/reiserfs/file.c b/fs/reiserfs/file.c
+> index 50302d6..831703d 100644
+> --- a/fs/reiserfs/file.c
+> +++ b/fs/reiserfs/file.c
+> @@ -304,8 +304,8 @@ const struct file_operations reiserfs_file_operations = {
+>  	.open = reiserfs_file_open,
+>  	.release = reiserfs_file_release,
+>  	.fsync = reiserfs_sync_file,
+> -	.aio_read = generic_file_aio_read,
+> -	.aio_write = generic_file_aio_write,
+> +	.read_iter = generic_file_read_iter,
+> +	.write_iter = generic_file_write_iter,
+>  	.splice_read = generic_file_splice_read,
+>  	.splice_write = generic_file_splice_write,
+>  	.llseek = generic_file_llseek,
+> diff --git a/fs/romfs/mmap-nommu.c b/fs/romfs/mmap-nommu.c
+> index e1a7779..e34d51a 100644
+> --- a/fs/romfs/mmap-nommu.c
+> +++ b/fs/romfs/mmap-nommu.c
+> @@ -70,7 +70,7 @@ static int romfs_mmap(struct file *file, struct vm_area_struct *vma)
+>  const struct file_operations romfs_ro_fops = {
+>  	.llseek			= generic_file_llseek,
+>  	.read			= do_sync_read,
+> -	.aio_read		= generic_file_aio_read,
+> +	.read_iter		= generic_file_read_iter,
+>  	.splice_read		= generic_file_splice_read,
+>  	.mmap			= romfs_mmap,
+>  	.get_unmapped_area	= romfs_get_unmapped_area,
+> diff --git a/fs/sysv/file.c b/fs/sysv/file.c
+> index 9d4dc68..ff4b363 100644
+> --- a/fs/sysv/file.c
+> +++ b/fs/sysv/file.c
+> @@ -22,9 +22,9 @@
+>  const struct file_operations sysv_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.fsync		= generic_file_fsync,
+>  	.splice_read	= generic_file_splice_read,
+> diff --git a/fs/ufs/file.c b/fs/ufs/file.c
+> index 33afa20..e155e4c 100644
+> --- a/fs/ufs/file.c
+> +++ b/fs/ufs/file.c
+> @@ -36,9 +36,9 @@
+>  const struct file_operations ufs_file_operations = {
+>  	.llseek		= generic_file_llseek,
+>  	.read		= do_sync_read,
+> -	.aio_read	= generic_file_aio_read,
+> +	.read_iter	= generic_file_read_iter,
+>  	.write		= do_sync_write,
+> -	.aio_write	= generic_file_aio_write,
+> +	.write_iter	= generic_file_write_iter,
+>  	.mmap		= generic_file_mmap,
+>  	.open           = generic_file_open,
+>  	.fsync		= generic_file_fsync,
+> 
 
-diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
-index 521e9d4..f31abb1 100644
---- a/fs/btrfs/extent-tree.c
-+++ b/fs/btrfs/extent-tree.c
-@@ -3689,20 +3689,6 @@ static int can_overcommit(struct btrfs_root *root,
- 	return 0;
- }
- 
--static int writeback_inodes_sb_nr_if_idle_safe(struct super_block *sb,
--					       unsigned long nr_pages,
--					       enum wb_reason reason)
--{
--	if (!writeback_in_progress(sb->s_bdi) &&
--	    down_read_trylock(&sb->s_umount)) {
--		writeback_inodes_sb_nr(sb, nr_pages, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	}
--
--	return 0;
--}
--
- /*
-  * shrink metadata reservation for delalloc
-  */
-@@ -3735,9 +3721,9 @@ static void shrink_delalloc(struct btrfs_root *root, u64 to_reclaim, u64 orig,
- 	while (delalloc_bytes && loops < 3) {
- 		max_reclaim = min(delalloc_bytes, to_reclaim);
- 		nr_pages = max_reclaim >> PAGE_CACHE_SHIFT;
--		writeback_inodes_sb_nr_if_idle_safe(root->fs_info->sb,
--						    nr_pages,
--						    WB_REASON_FS_FREE_SPACE);
-+		try_to_writeback_inodes_sb_nr(root->fs_info->sb,
-+					      nr_pages,
-+					      WB_REASON_FS_FREE_SPACE);
- 
- 		/*
- 		 * We need to wait for the async pages to actually start before
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cbfe13b..5f6eef7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2512,12 +2512,8 @@ static int ext4_nonda_switch(struct super_block *sb)
- 	/*
- 	 * Start pushing delalloc when 1/2 of free blocks are dirty.
- 	 */
--	if (dirty_blocks && (free_blocks < 2 * dirty_blocks) &&
--	    !writeback_in_progress(sb->s_bdi) &&
--	    down_read_trylock(&sb->s_umount)) {
--		writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
--		up_read(&sb->s_umount);
--	}
-+	if (dirty_blocks && (free_blocks < 2 * dirty_blocks))
-+		try_to_writeback_inodes_sb(sb, WB_REASON_FS_FREE_SPACE);
- 
- 	if (2 * free_blocks < 3 * dirty_blocks ||
- 		free_blocks < (dirty_blocks + EXT4_FREECLUSTERS_WATERMARK)) {
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 310972b..ad3cc46 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1332,47 +1332,43 @@ void writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- EXPORT_SYMBOL(writeback_inodes_sb);
- 
- /**
-- * writeback_inodes_sb_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb_nr - try to start writeback if none underway
-  * @sb: the superblock
-- * @reason: reason why some writeback work was initiated
-+ * @nr: the number of pages to write
-+ * @reason: the reason of writeback
-  *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-+ * Invoke writeback_inodes_sb_nr if no writeback is currently underway.
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_if_idle(struct super_block *sb, enum wb_reason reason)
-+int try_to_writeback_inodes_sb_nr(struct super_block *sb,
-+				  unsigned long nr,
-+				  enum wb_reason reason)
- {
--	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb(sb, reason);
--		up_read(&sb->s_umount);
-+	if (writeback_in_progress(sb->s_bdi))
- 		return 1;
--	} else
-+
-+	if (!down_read_trylock(&sb->s_umount))
- 		return 0;
-+
-+	writeback_inodes_sb_nr(sb, nr, reason);
-+	up_read(&sb->s_umount);
-+	return 1;
- }
--EXPORT_SYMBOL(writeback_inodes_sb_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb_nr);
- 
- /**
-- * writeback_inodes_sb_nr_if_idle	-	start writeback if none underway
-+ * try_to_writeback_inodes_sb - try to start writeback if none underway
-  * @sb: the superblock
-- * @nr: the number of pages to write
-  * @reason: reason why some writeback work was initiated
-  *
-- * Invoke writeback_inodes_sb if no writeback is currently underway.
-+ * Implement by try_to_writeback_inodes_sb_nr()
-  * Returns 1 if writeback was started, 0 if not.
-  */
--int writeback_inodes_sb_nr_if_idle(struct super_block *sb,
--				   unsigned long nr,
--				   enum wb_reason reason)
-+int try_to_writeback_inodes_sb(struct super_block *sb, enum wb_reason reason)
- {
--	if (!writeback_in_progress(sb->s_bdi)) {
--		down_read(&sb->s_umount);
--		writeback_inodes_sb_nr(sb, nr, reason);
--		up_read(&sb->s_umount);
--		return 1;
--	} else
--		return 0;
-+	return try_to_writeback_inodes_sb_nr(sb, get_nr_dirty_pages(), reason);
- }
--EXPORT_SYMBOL(writeback_inodes_sb_nr_if_idle);
-+EXPORT_SYMBOL(try_to_writeback_inodes_sb);
- 
- /**
-  * sync_inodes_sb	-	sync sb inode pages
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index b82a83a..9a9367c 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -87,9 +87,9 @@ int inode_wait(void *);
- void writeback_inodes_sb(struct super_block *, enum wb_reason reason);
- void writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
- 							enum wb_reason reason);
--int writeback_inodes_sb_if_idle(struct super_block *, enum wb_reason reason);
--int writeback_inodes_sb_nr_if_idle(struct super_block *, unsigned long nr,
--							enum wb_reason reason);
-+int try_to_writeback_inodes_sb(struct super_block *, enum wb_reason reason);
-+int try_to_writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
-+				  enum wb_reason reason);
- void sync_inodes_sb(struct super_block *);
- long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages,
- 				enum wb_reason reason);
--- 
-1.7.11.7
 
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
