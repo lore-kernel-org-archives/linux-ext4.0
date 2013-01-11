@@ -1,94 +1,78 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] resize2fs: add debug switch to use old online interface
-Date: Fri, 11 Jan 2013 11:52:53 -0600
-Message-ID: <50F05175.8060502@redhat.com>
+Subject: [PATCH] debugfs: document zap_block & dump_block
+Date: Fri, 11 Jan 2013 11:40:25 -0600
+Message-ID: <50F04E89.7070501@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Carlos Maiolino <cmaiolino@redhat.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46168 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64480 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754776Ab3AKRwz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Jan 2013 12:52:55 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0BHqtHj028192
+	id S1754886Ab3AKSiw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jan 2013 13:38:52 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0BIcqXS029864
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2013 12:52:55 -0500
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2013 13:38:52 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r0BHePbv020618
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2013 12:40:32 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The old online resize ioctl interfaces are still present
-in the kernel; add a debug switch to resize2fs to be able
-to test them.
+What little docs there were had a cut & paste error.
+We can do better. :)
 
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-diff --git a/resize/online.c b/resize/online.c
-index d3d3546..9b38ac8 100644
---- a/resize/online.c
-+++ b/resize/online.c
-@@ -22,7 +22,7 @@ extern char *program_name;
- #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+diff --git a/debugfs/debug_cmds.ct b/debugfs/debug_cmds.ct
+index 520933a..9a05ef7 100644
+--- a/debugfs/debug_cmds.ct
++++ b/debugfs/debug_cmds.ct
+@@ -181,10 +181,10 @@ request do_set_mmp_value, "Set MMP value",
+ request do_extent_open, "Open inode for extent manipulation",
+ 	extent_open, eo;
  
- errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
--			   blk64_t *new_size, int flags EXT2FS_ATTR((unused)))
-+			   blk64_t *new_size, int flags)
- {
- #ifdef __linux__
- 	struct ext2_new_group_input input;
-@@ -94,9 +94,11 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
- 		exit(1);
- 	}
+-request do_zap_block, "Zap block",
++request do_zap_block, "Zap block: fill with 0, pattern, flip bits etc.",
+ 	zap_block, zap;
  
--	if (ioctl(fd, EXT4_IOC_RESIZE_FS, new_size)) {
-+	if (flags & RESIZE_DEBUG_OLD ||
-+	    ioctl(fd, EXT4_IOC_RESIZE_FS, new_size)) {
- 		/*
--		 * If kernel does not support EXT4_IOC_RESIZE_FS, use the
-+		 * If kernel does not support EXT4_IOC_RESIZE_FS, or -d 16
-+		 * is specified on the resize2fs command line, use the
- 		 * old online resize. Note that the old approach does not
- 		 * handle >32 bit file systems
- 		 *
-@@ -109,7 +111,9 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
- 		 * in the kernel sources.  This is probably a kernel
- 		 * bug, but work around it here.
- 		 */
--		if ((errno != ENOTTY) && (errno != EINVAL)) {
-+		if (flags & RESIZE_DEBUG_OLD) {
-+			printf("Old resize interface requested.\n");
-+		} else if ((errno != ENOTTY) && (errno != EINVAL)) {
- 			if (errno == EPERM)
- 				com_err(program_name, 0,
- 				_("Permission denied to resize filesystem"));
-diff --git a/resize/resize2fs.8.in b/resize/resize2fs.8.in
-index 9ff6e0a..766c4d8 100644
---- a/resize/resize2fs.8.in
-+++ b/resize/resize2fs.8.in
-@@ -99,6 +99,8 @@ from the following list:
- 	4	\-\ Debug inode relocations
- .br
- 	8	\-\ Debug moving the inode table
-+.br
-+	16	\-\ Debug old online resize interface
- .TP 
- .B \-f
- Forces resize2fs to proceed with the filesystem resize operation, overriding
-diff --git a/resize/resize2fs.h b/resize/resize2fs.h
-index 2184759..58fc04d 100644
---- a/resize/resize2fs.h
-+++ b/resize/resize2fs.h
-@@ -76,6 +76,8 @@ typedef struct ext2_sim_progress *ext2_sim_progmeter;
- #define RESIZE_DEBUG_BMOVE		0x0002
- #define RESIZE_DEBUG_INODEMAP		0x0004
- #define RESIZE_DEBUG_ITABLEMOVE		0x0008
-+/* old online resize interface */
-+#define RESIZE_DEBUG_OLD		0x0010
+-request do_dump_block, "Zap block",
++request do_dump_block, "Dump contents of a block",
+ 	block_dump, bp;
  
- #define RESIZE_PERCENT_COMPLETE		0x0100
- #define RESIZE_VERBOSE			0x0200
-
+ end;
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index bfcb1a8..4164c3a 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -215,6 +215,10 @@ option is given set the owner, group and permissions information on
+ to match 
+ .IR filespec .
+ .TP
++.I dump_block [-f out_file] block_num
++Dump the contents of a block, optionally to
++.IR out_file .
++.TP
+ .I dump_mmp
+ Display the multiple-mount protection (mmp) field values.
+ .TP
+@@ -612,6 +616,14 @@ Create a file in the filesystem named
+ and copy the contents of
+ .I source_file
+ into the destination file.
++.TP
++.I zap_block [-f file] [-o offset] [-l length] [-p pattern] block_num
++Zero, or pattern-fill, portions of a block within a file or
++within the filesystem.
++.TP
++.I zap_block [-f file] [-b bit] block_num
++Bit-flip portions of a block within a file or
++within the filesystem.
+ .SH ENVIRONMENT VARIABLES
+ .TP
+ .B DEBUGFS_PAGER, PAGER
 
