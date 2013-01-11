@@ -1,281 +1,169 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 7/7 v2] ext4: reclaim extents from extent status tree
-Date: Fri, 11 Jan 2013 18:53:47 +0800
-Message-ID: <1357901627-3068-8-git-send-email-wenqing.lz@taobao.com>
-References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Jan kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: new block group bitmaps not being initialized after resize!?
+Date: Fri, 11 Jan 2013 09:47:01 -0600
+Message-ID: <50F033F5.6080008@redhat.com>
+References: <20130111000711.GA2490@andromeda.usersys.redhat.com> <50EF65C3.8010406@redhat.com> <25BFE2C2-8FF2-4064-86D3-6CFBF5A2931F@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Carlos Maiolino <cmaiolino@redhat.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f54.google.com ([209.85.160.54]:51150 "EHLO
-	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753556Ab3AKKkv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jan 2013 05:40:51 -0500
-Received: by mail-pb0-f54.google.com with SMTP id wz12so893779pbc.41
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Jan 2013 02:40:50 -0800 (PST)
-In-Reply-To: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mx1.redhat.com ([209.132.183.28]:8875 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754784Ab3AKPrD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jan 2013 10:47:03 -0500
+In-Reply-To: <25BFE2C2-8FF2-4064-86D3-6CFBF5A2931F@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On 1/11/13 12:44 AM, Andreas Dilger wrote:
+> On 2013-01-10, at 6:07 PM, Eric Sandeen wrote:
+>> On 1/10/13 6:07 PM, Carlos Maiolino wrote:
+>>> I'm working on a Fedora bugzilla (https://bugzilla.redhat.com/show_bug.cgi?id=852833)
+>>> together with Eric and we found that the problem described on the
+>>> bugzilla happens when the commit 93f9052643 is not applied, which
+>>> is the case of the Fedora 16 kernel being discussed there.
+>>
+>> Also, to be clear, this is with older e2fsprogs which was using the
+>> old resize interface.  Not sure what the behavior is w/ newer
+>> e2fsprogs, but we don't see the corruption.
+>>
+>> Note, we see the corruption on these older kernels even when resizing from say 100G to 120G.  It appears fixed upstream, but so much has
+>> changed, we need to be sure the older interface doesn't have bugs
+>> lurking, I think.
+> 
+> The original resize code didn't ever know about uninit_bg, so it
+> would always zero out the inode table, so I suspect that this was
+> added at some later point. 
 
-Although extent status is loaded on-demand, we also need to reclaim extent
-from the tree when we are under a heavy memory pressure because in some cases
-fragmented extent tree causes status tree costs too much memory.
+Ok, so that must have gotten dropped when everything was reworked
+to the new interface.
 
-Here shrinker framework is used to do this work.  When the tree of an inode is
-accessed, this inode will be inserted into the tail of lru list.  The inode is
-removed from lru list as clear_inode is called.  When shrinker tries to reclaim
-some memory, we will try to reclaim written/unwritten extents from the tree.
-Delayed extent shouldn't be reclaimed because they are used by fiemap, bigalloc,
-and seek_data/hole.
+We probably should have a (hidden?) switch in resize2fs to exercise
+the old interface, so we can test this.
 
-CC: Jan kara <jack@suse.cz>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
----
- fs/ext4/ext4.h           |   4 ++
- fs/ext4/extents_status.c | 109 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/extents_status.h |  12 ++++++
- fs/ext4/super.c          |   6 +++
- 4 files changed, 131 insertions(+)
+>>> Although we already found the solution to the problem in the commit
+>>> above, looking through the commit have raised some questions
+>>> regarding to the bitmap of the newer block groups added to the FS
+>>> after it is extended.
+>>>
+>>> The newer block groups do not have flags ITABLE_ZEROED and
+>>> INODE_UNINIT set, even when 'lazy_itable_init' is enabled.
+>>
+>> In particular, we see things like this in the last pre-resize group:
+>>
+>> Group 799: (Blocks 26181632-26214399) [INODE_UNINIT, ITABLE_ZEROED]
+>>  Checksum 0xafe7, unused inodes 1936
+>>  Block bitmap at 25165855 (bg #768 + 31), Inode bitmap at 25166111 (bg #768 + 287)
+>>  Inode table at 25170087-25170207 (bg #768 + 4263)
+>>  32768 free blocks, 1936 free inodes, 0 directories, 1936 unused inodes
+>>  Free blocks: 26181632-26214399
+>>  Free inodes: 1546865-1548800
+>>
+>> and this in the newly-added groups:
+>>
+>> Group 800: (Blocks 26214400-26247167)
+>>  Checksum 0xddc4, unused inodes 0
+>>  Block bitmap at 26236224 (+21824), Inode bitmap at 26236225 (+21825)
+>>  Inode table at 26214400-26214520
+>>  32645 free blocks, 1936 free inodes, 0 directories
+>>  Free blocks: 26214521-26236223, 26236226-26247167
+>>  Free inodes: 1548801-1550736
+>>
+>> so it says 0 unused inodes, but also 1936 free inodes (?), and
+>> no UNINIT or ZEROED flags set.  e2fsck finds stale data in the inode table, and goes nuts.
+> 
+> Zeroing the inode table but not setting the INODE_ZEROED flag
+> would not be harmful, but this seems to not be the case.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 36145ef1..d31f254 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -893,6 +893,7 @@ struct ext4_inode_info {
- 	/* extents status tree */
- 	struct ext4_es_tree i_es_tree;
- 	rwlock_t i_es_lock;
-+	struct list_head i_es_lru;
- 
- 	/* ialloc */
- 	ext4_group_t	i_last_alloc_group;
-@@ -1308,6 +1309,9 @@ struct ext4_sb_info {
- 
- 	/* Precomputed FS UUID checksum for seeding other checksums */
- 	__u32 s_csum_seed;
-+
-+	/* Extent status tree shrinker */
-+	struct ext4_es_shrinker s_es_shrinker;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index ac9bb80..f9e7867 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -141,6 +141,7 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
- 			      struct extent_status *newes);
- static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
- 			      ext4_lblk_t end);
-+static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc);
- 
- int __init ext4_init_es(void)
- {
-@@ -275,6 +276,8 @@ out:
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
-+
- 	trace_ext4_es_find_extent_exit(inode, es, ret);
- 	return ret;
- }
-@@ -449,6 +452,8 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
-+
- 	ext4_es_print_tree(inode);
- 
- 	return err;
-@@ -509,6 +514,8 @@ out:
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
-+
- 	trace_ext4_es_lookup_extent_exit(inode, es, found);
- 	return found;
- }
-@@ -621,6 +628,108 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	write_lock(&EXT4_I(inode)->i_es_lock);
- 	err = __es_remove_extent(tree, lblk, end);
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
-+	ext4_es_lru_add(inode);
- 	ext4_es_print_tree(inode);
- 	return err;
- }
-+
-+void ext4_es_register_shrinker(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi;
-+
-+	sbi = EXT4_SB(sb);
-+	INIT_LIST_HEAD(&sbi->s_es_shrinker.es_lru);
-+	spin_lock_init(&sbi->s_es_shrinker.es_lru_lock);
-+	sbi->s_es_shrinker.es_shrinker.shrink = ext4_es_shrink;
-+	sbi->s_es_shrinker.es_shrinker.seeks = DEFAULT_SEEKS;
-+	register_shrinker(&sbi->s_es_shrinker.es_shrinker);
-+}
-+
-+void ext4_es_unregister_shrinker(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi;
-+
-+	sbi = EXT4_SB(sb);
-+	unregister_shrinker(&sbi->s_es_shrinker.es_shrinker);
-+}
-+
-+static int ext4_es_do_shrink(struct ext4_inode_info *ei)
-+{
-+	struct ext4_es_tree *tree;
-+	struct rb_node *node;
-+	struct extent_status *es;
-+	int shrunk_nr = 0;
-+
-+	tree = &ei->i_es_tree;
-+
-+	write_lock(&ei->i_es_lock);
-+	node = rb_first(&tree->root);
-+	while (node != NULL) {
-+		es = rb_entry(node, struct extent_status, rb_node);
-+		node = rb_next(&es->rb_node);
-+		/*
-+		 * We can't reclaim delayed extent from status tree because
-+		 * fiemap, bigalloc, and seek_data/hole need to use it.
-+		 */
-+		if (!ext4_es_is_delayed(es)) {
-+			rb_erase(&es->rb_node, &tree->root);
-+			ext4_es_free_extent(es);
-+			shrunk_nr++;
-+		}
-+	}
-+	tree->cache_es = NULL;
-+	write_unlock(&ei->i_es_lock);
-+	return shrunk_nr;
-+}
-+
-+static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
-+{
-+	struct ext4_es_shrinker *es_shrinker = container_of(shrink,
-+				struct ext4_es_shrinker, es_shrinker);
-+	struct ext4_inode_info *ei;
-+	int nr_to_scan = sc->nr_to_scan;
-+	int ret, shrunk_nr = 0;
-+
-+	if (!nr_to_scan)
-+		return shrunk_nr;
-+
-+	spin_lock(&es_shrinker->es_lru_lock);
-+	while (!list_empty(&es_shrinker->es_lru)) {
-+		if (nr_to_scan-- <= 0)
-+			break;
-+
-+		ei = list_first_entry(&es_shrinker->es_lru,
-+				      struct ext4_inode_info, i_es_lru);
-+		ret = ext4_es_do_shrink(ei);
-+		shrunk_nr += ret;
-+		nr_to_scan -= ret;
-+	}
-+	spin_unlock(&es_shrinker->es_lru_lock);
-+	return shrunk_nr;
-+}
-+
-+void ext4_es_lru_add(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_es_shrinker *es_shrinker = &sbi->s_es_shrinker;
-+
-+	spin_lock(&es_shrinker->es_lru_lock);
-+	if (list_empty(&ei->i_es_lru))
-+		list_add_tail(&ei->i_es_lru, &es_shrinker->es_lru);
-+	else
-+		list_move_tail(&ei->i_es_lru, &es_shrinker->es_lru);
-+	spin_unlock(&es_shrinker->es_lru_lock);
-+}
-+
-+void ext4_es_lru_del(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	struct ext4_es_shrinker *es_shrinker = &sbi->s_es_shrinker;
-+
-+	spin_lock(&es_shrinker->es_lru_lock);
-+	if (!list_empty(&ei->i_es_lru))
-+		list_del_init(&ei->i_es_lru);
-+	spin_unlock(&es_shrinker->es_lru_lock);
-+}
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 45e623e..422a11e 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -39,6 +39,13 @@ struct ext4_es_tree {
- 	struct extent_status *cache_es;	/* recently accessed extent */
- };
- 
-+struct ext4_es_shrinker {
-+	struct shrinker es_shrinker;
-+	struct list_head es_lru;
-+	spinlock_t es_lru_lock ____cacheline_aligned_in_smp;
-+	unsigned int es_lru_nr;
-+};
-+
- extern int __init ext4_init_es(void);
- extern void ext4_exit_es(void);
- extern void ext4_es_init_tree(struct ext4_es_tree *tree);
-@@ -73,4 +80,9 @@ static inline ext4_fsblk_t ext4_es_get_pblock(struct extent_status *es,
- 	return (ext4_es_is_delayed(es) ? ~0 : pb);
- }
- 
-+extern void ext4_es_register_shrinker(struct super_block *sb);
-+extern void ext4_es_unregister_shrinker(struct super_block *sb);
-+extern void ext4_es_lru_add(struct inode *inode);
-+extern void ext4_es_lru_del(struct inode *inode);
-+
- #endif /* _EXT4_EXTENTS_STATUS_H */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3d4fb81..baedc75 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -858,6 +858,7 @@ static void ext4_put_super(struct super_block *sb)
- 			ext4_abort(sb, "Couldn't clean up the journal");
- 	}
- 
-+	ext4_es_unregister_shrinker(sb);
- 	del_timer(&sbi->s_err_report);
- 	ext4_release_system_zone(sb);
- 	ext4_mb_release(sb);
-@@ -944,6 +945,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&ei->i_prealloc_lock);
- 	ext4_es_init_tree(&ei->i_es_tree);
- 	rwlock_init(&ei->i_es_lock);
-+	INIT_LIST_HEAD(&ei->i_es_lru);
- 	ei->i_reserved_data_blocks = 0;
- 	ei->i_reserved_meta_blocks = 0;
- 	ei->i_allocated_meta_blocks = 0;
-@@ -1031,6 +1033,7 @@ void ext4_clear_inode(struct inode *inode)
- 	dquot_drop(inode);
- 	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-+	ext4_es_lru_del(inode);
- 	if (EXT4_I(inode)->jinode) {
- 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
- 					       EXT4_I(inode)->jinode);
-@@ -3324,6 +3327,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto cantfind_ext4;
- 	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
- 
-+	/* Register extent status tree shrinker */
-+	ext4_es_register_shrinker(sb);
-+
- 	/* Warn if metadata_csum and gdt_csum are both set. */
- 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) &&
--- 
-1.7.12.rc2.18.g61b472e
+we appear to be not zeroing the table, and not setting INODE_ZEROED.
+But we should have set INODE_UNINIT, or zeroed it, right?
+
+> When the filesystem is remounted, does the kernel lazyinit
+> thread zero out the new groups in the inode table?
+
+Don't think so.
+
+> 
+>>> Without this commit, inode stale data might be exposed and also makes fsck complain about all inodes of the newer block groups.
+>>
+>> *nod* :)
+> 
+> That's why 
+> 
+>> so 93f9052643 seems to have accidentally fixed this, by setting
+>> the unused counter to EXT4_INODES_PER_GROUP(), but it feels like
+>> we've missed properly setting up this block group.
+> 
+> Actually, just setting the unused counter is not enough to properly
+> fix this problem.  The lazyinit thread should be started to do
+> background zeroing of the inode table, otherwise if the group
+> descriptor is corrupted and the bg_itable_unused value is wrong,
+> then the uninitialized inodes would be accessed.
+> 
+>> To be honest, though, sometimes I get lost in the sea of flags.
+>>
+>>> The question is, are these flags expected to not be found on
+>>> these newer block groups or they should be set?
+>>
+>> *nod* :)
+> 
+> Depends on how it is implemented. :-/  The flag should definitely
+> not be set unless the itable is actually overwritten with zeroes.
+> It makes sense that the lazyinit thread would do this in the
+> background while the filesystem is mounted instead of waiting for
+> the next time that the filesystem is mounted.
+> 
+> Looking at the code, it appears that this is not happening at the
+> end of the resize, since ext4_register_li_request() is marked
+> static for the superblock.  It looks like it would be relatively
+> straight forward to add a call to ext4_register_li_request() to
+> ext4_resize_end() with the first group added to the resize.
+> 
+> It looks like ext4_run_li_request() will skip groups that are
+> already marked as INODE_ZERO, so it is fine to always call it even
+> if the kernel is already setting this itself in some cases (not
+> that I see this happening).
+
+Hum, but lazyinit will take some time to complete; in this case
+we resized, unmounted, ran fsck and everything was a mess.  Even if
+we'd started lazyinit I don't think that'ts enough, because we never
+flagged the group as uninit.
+
+>>> The lack of these flags on newer block groups is an expected
+>>> behaviour or is something that should be fixed?
+>>>
+>>> FWIW, in the old ext4_group_add(), we added EXT4_BG_INODE_ZEROED
+>>> flag to the bg_flags, also, I did some tests here and the lack
+>>> of these flags look to not be affecting filesystem integrity,
+>>> i.e. new inodes can be properly allocated, which sounds that
+>>> these uninitialized inodes/bitmaps are set to be initialized
+>>> as soon as a first inode is allocated on these new BGs.
+> 
+> Well, the old code always zeroed the inode table, and it made sense
+> to mark it as such.
+
+so I think we need to either:
+
+1) mark it as UNINIT and start the background thread, or
+2) just zero the darned thing out on resize.
+
+and
+
+3) make this testable, again.  :/
+
+-Eric
+
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
