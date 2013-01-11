@@ -1,112 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] call end_page_writeback after converting unwritten
- extents in ext4_end_io
-Date: Thu, 10 Jan 2013 15:47:19 +0100
-Message-ID: <20130110144719.GA26413@quack.suse.cz>
-References: <20130110055617.GA4415@gmail.com>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: new block group bitmaps not being initialized after resize!?
+Date: Thu, 10 Jan 2013 22:07:11 -0200
+Message-ID: <20130111000711.GA2490@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: sandeen@redhat.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45138 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:58064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753225Ab3AJOrV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 10 Jan 2013 09:47:21 -0500
+	id S1754332Ab3AKAHS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Jan 2013 19:07:18 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0B07IvD025785
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2013 19:07:18 -0500
 Content-Disposition: inline
-In-Reply-To: <20130110055617.GA4415@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+Hi guys,
 
-On Thu 10-01-13 13:56:17, Zheng Liu wrote:
-> Now I am trying to handle AIO DIO with O_SYNC using extent status tree in ext4.
-> After applied Christoph's patch series, O_SYNC semantics in ext4 will be broken.
-> This problem can be fixed using extent status tree.  But we will get a deadlock
-> because i_mutex needs to be taken in ext4_sync_file() and then it will wait on
-> i_unwritten==0.  So let's consider what happends after applied Christoph's
-> patches and using extent status tree to ensure AIO DIO with O_SYNC semantics.
-> 
->   ext4_ext_direct_IO:              ext4_ind_direct_IO:
->                                    ->ext4_file_write()
->                                      ->mutex_lock(i_mutex)
->                                        ->ext4_ind_direct_IO()
->                                          [if this is an append dio]
->                                      ->mutex_unlock(i_mutex)
->   ->ext4_file_write()
->     ->mutex_lock(i_mutex)
->     ->ext4_ext_direct_IO()
->     ->mutex_unlock(i_mutex)
->                                      ->generic_write_sync()
->                                        ->ext4_sync_file()
->                                          ->mutex_lock(i_mutex)
->                                          ->ext4_flush_unwritten_io()
->                                            ->ext4_do_flush_complete_IO()
->                                              [there is empty list]
->                                            ->ext4_unwritten_wait()
->                                              [wait on i_unwritten==0 because
->                                               in ext4_ext_direct_IO i_unwritten
->                                               has been increased]
->   kworkd:
->   ->dio_complete()
->     ->ext4_end_dio()
->       ->ext4_es_convert_unwritten_extents()
->         [convert unwritten extents in status
->          tree to ensure O_SYNC semantics]
->       ->ext4_add_complete_io()
->     ->generic_write_sync()
->       ->ext4_sync_file()
->         ->mutex_lock(i_mutex)
->           [*DEADLOCK*]
-> 
-> Thus all we need to do is do not wait on i_unwritten==0.  But, as this
-> commit (c278531d) described, there is a time window that integrity is
-> broken.  So we need to call end_page_writeback() after converting
-> unwritten extents in ext4_end_io().  However, if we call end_page_writeback()
-> after conversion has been done in ext4_end_io(), we will get another deadlock
-> because in ext4_convert_unwritten_extents() we need to start a journal and it is
-> possible to cause a journal commit.  At the time if ext4_write_begin() is
-> called, it also will start a journal and then it will wait on writeback in
-> grab_cache_page_write_begin().
-  Exactly.
+I'm working on a Fedora bugzilla (https://bugzilla.redhat.com/show_bug.cgi?id=852833)
+together with Eric and we found that the problem described on the bugzilla
+happens when the commit 93f9052643 is not applied, which is the case of the
+Fedora 16 kernel being discussed there.
 
-> Now I have an idea to solve this problem.  We start a journal before submitting
-> an io request rather than start it in ext4_convert_unwritten_extents().  The
-> reason of starting a journal in ext4_convert_unwritten_extents() is that we need
-> to calculate credits for journal.  But as far as I understand the credits is not
-> increased in this function because we have splitted extents before submitting
-> this io request.  A 'handle_t *handle' will be added into ext4_io_end_t, and it
-> will be used in ext4_convert_unwritten_extents().  Then we can avoid to
-> trigger a journal commit when starting a journal.
-  I'm actually already working on a solution. The disadvantage of starting
-a transaction before IO submission is that the handle will hold transaction
-open all the time until IO is finished and extent converted. So it can
-effectively block any filesystem activity for a relatively long time. I've
-already written a patch for JBD2 to allow transaction reservation - it
-reserves blocks in the journal but they are not attached to a particular
-transaction. Later during extent conversion we transform this reservation
-into a real handle (without waiting for the journal so locking is OK).
+Although we already found the solution to the problem in the commit above,
+looking through the commit have raised some questions regarding to the bitmap of
+the newer block groups added to the FS after it is extended.
 
-The part I'm missing so far is adding transaction reservation into IO
-submission path. That is actually somewhat tricky because we have to do it
-before taking page locks and propagate the reserved handle all the way down
-to the point where we allocate io_end. And furthermore we have to somehow
-deal with the fact that IO to one extent can be split among multiple BIOs
-(as it happens e.g. when an extent is longer than 512 KB which is usual
-limit on BIO size) and thus multiple io_end structures are created and
-extent is converted in parts (actually we didn't think about this problem
-previously in extent conversion code).  We don't know in advance how much
-BIOs we'll need to write the extents (bio_add_page() decides when the BIO
-is full and there are other constraints on BIO than just the total size) so
-what we need to do it so have one io_end structure shared by all the BIOs
-covering the extent. That will also save us from unnecessary splitting and
-joining of extents for conversion. But doing that requires some changes to
-io submission path which is why it's taking me longer than I'd like (plus I
-have other obligations than just improving ext4 ;) But I'm working on it so
-please stay tuned...
+The newer block groups do not have flags ITABLE_ZEROED and INODE_UNINIT set,
+even when 'lazy_itable_init' is enabled.
 
-								Honza
+Without this commit, inode stale data might be exposed and also makes fsck
+complain about all inodes of the newer block groups.
+
+The question is, are these flags expected to not be found on these newer block
+groups or they should be set?
+
+The lack of these flags on newer block groups is an expected behaviour or is
+something that should be fixed?
+
+FWIW, in the old ext4_group_add(), we added EXT4_BG_INODE_ZEROED flag to the
+bg_flags, also, I did some tests here and the lack of these flags look to not be
+affecting filesystem integrity, i.e. new inodes can be properly allocated, which
+sounds that these uninitialized inodes/bitmaps are set to be initialized as soon
+as a first inode is allocated on these new BGs.
+
+
+Anything else I'm missing Eric?
+
+Cheers,
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Carlos
