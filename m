@@ -1,86 +1,259 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH] ext4: check bh in ext4_read_block_bitmap()
-Date: Sat, 12 Jan 2013 18:05:11 +0800
-Message-ID: <1357985111-11937-1-git-send-email-guaneryu@gmail.com>
-Cc: Eryu Guan <guaneryu@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f44.google.com ([209.85.210.44]:49354 "EHLO
-	mail-da0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752639Ab3ALKGI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Jan 2013 05:06:08 -0500
-Received: by mail-da0-f44.google.com with SMTP id z20so1127829dae.3
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Jan 2013 02:06:08 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: return ENOMEM if sb_getblk() fails
+Date: Sat, 12 Jan 2013 16:12:14 -0500
+Message-ID: <1358025134-20167-1-git-send-email-tytso@mit.edu>
+References: <20130112203050.GA10950@thunk.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20130112203050.GA10950@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-bh returned by ext4_read_block_bitmap_nowait() might be NULL, validate
-the bh pointer before using it.
+The only reason for sb_getblk() failing is if it can't allocate the
+buffer_head.  So ENOMEM is more appropriate than EIO.  In addition,
+make sure that the file system is marked as being inconsistent if
+sb_getblk() fails.
 
-I've seen this in fsfuzz testing.
-
- EXT4-fs error (device loop0): ext4_read_block_bitmap_nowait:385: comm touch: Cannot get buffer for block bitmap - block_group = 0, block_bitmap = 3925999616
- BUG: unable to handle kernel NULL pointer dereference at           (null)
- IP: [<ffffffff8121de25>] ext4_wait_block_bitmap+0x25/0xe0
- ...
- Call Trace:
-  [<ffffffff8121e1e5>] ext4_read_block_bitmap+0x35/0x60
-  [<ffffffff8125e9c6>] ext4_free_blocks+0x236/0xb80
-  [<ffffffff811d0d36>] ? __getblk+0x36/0x70
-  [<ffffffff811d0a5f>] ? __find_get_block+0x8f/0x210
-  [<ffffffff81191ef3>] ? kmem_cache_free+0x33/0x140
-  [<ffffffff812678e5>] ext4_xattr_release_block+0x1b5/0x1d0
-  [<ffffffff812679be>] ext4_xattr_delete_inode+0xbe/0x100
-  [<ffffffff81222a7c>] ext4_free_inode+0x7c/0x4d0
-  [<ffffffff812277b8>] ? ext4_mark_inode_dirty+0x88/0x230
-  [<ffffffff8122993c>] ext4_evict_inode+0x32c/0x490
-  [<ffffffff811b8cd7>] evict+0xa7/0x1c0
-  [<ffffffff811b8ed3>] iput_final+0xe3/0x170
-  [<ffffffff811b8f9e>] iput+0x3e/0x50
-  [<ffffffff812316fd>] ext4_add_nondir+0x4d/0x90
-  [<ffffffff81231d0b>] ext4_create+0xeb/0x170
-  [<ffffffff811aae9c>] vfs_create+0xac/0xd0
-  [<ffffffff811ac845>] lookup_open+0x185/0x1c0
-  [<ffffffff8129e3b9>] ? selinux_inode_permission+0xa9/0x170
-  [<ffffffff811acb54>] do_last+0x2d4/0x7a0
-  [<ffffffff811af743>] path_openat+0xb3/0x480
-  [<ffffffff8116a8a1>] ? handle_mm_fault+0x251/0x3b0
-  [<ffffffff811afc49>] do_filp_open+0x49/0xa0
-  [<ffffffff811bbaad>] ? __alloc_fd+0xdd/0x150
-  [<ffffffff8119da28>] do_sys_open+0x108/0x1f0
-  [<ffffffff8119db51>] sys_open+0x21/0x30
-  [<ffffffff81618959>] system_call_fastpath+0x16/0x1b
-
-Also fix comment for ext4_read_block_bitmap_nowait()
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/balloc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c  | 21 ++++++++++++---------
+ fs/ext4/indirect.c |  9 ++++++---
+ fs/ext4/inline.c   |  2 +-
+ fs/ext4/inode.c    |  9 +++------
+ fs/ext4/mmp.c      |  2 ++
+ fs/ext4/resize.c   |  8 ++++----
+ fs/ext4/xattr.c    |  3 ++-
+ 7 files changed, 30 insertions(+), 24 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index cf18217..33938c1 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -358,7 +358,7 @@ void ext4_validate_block_bitmap(struct super_block *sb,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5ae1674..6913a8d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -725,6 +725,7 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 	struct ext4_extent_header *eh;
+ 	struct buffer_head *bh;
+ 	short int depth, i, ppos = 0, alloc = 0;
++	int ret;
+ 
+ 	eh = ext_inode_hdr(inode);
+ 	depth = ext_depth(inode);
+@@ -752,12 +753,15 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		path[ppos].p_ext = NULL;
+ 
+ 		bh = sb_getblk(inode->i_sb, path[ppos].p_block);
+-		if (unlikely(!bh))
++		if (unlikely(!bh)) {
++			ret = -ENOMEM;
+ 			goto err;
++		}
+ 		if (!bh_uptodate_or_lock(bh)) {
+ 			trace_ext4_ext_load_extent(inode, block,
+ 						path[ppos].p_block);
+-			if (bh_submit_read(bh) < 0) {
++			ret = bh_submit_read(bh);
++			if (ret < 0) {
+ 				put_bh(bh);
+ 				goto err;
+ 			}
+@@ -768,13 +772,15 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 			put_bh(bh);
+ 			EXT4_ERROR_INODE(inode,
+ 					 "ppos %d > depth %d", ppos, depth);
++			ret = -EIO;
+ 			goto err;
+ 		}
+ 		path[ppos].p_bh = bh;
+ 		path[ppos].p_hdr = eh;
+ 		i--;
+ 
+-		if (ext4_ext_check_block(inode, eh, i, bh))
++		ret = ext4_ext_check_block(inode, eh, i, bh);
++		if (ret < 0)
+ 			goto err;
+ 	}
+ 
+@@ -796,7 +802,7 @@ err:
+ 	ext4_ext_drop_refs(path);
+ 	if (alloc)
+ 		kfree(path);
+-	return ERR_PTR(-EIO);
++	return ERR_PTR(ret);
  }
  
- /**
-- * ext4_read_block_bitmap()
-+ * ext4_read_block_bitmap_nowait()
-  * @sb:			super block
-  * @block_group:	given block group
-  *
-@@ -457,6 +457,8 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	struct buffer_head *bh;
+ /*
+@@ -1136,11 +1142,8 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 		return err;
  
- 	bh = ext4_read_block_bitmap_nowait(sb, block_group);
+ 	bh = sb_getblk(inode->i_sb, newblock);
+-	if (!bh) {
+-		err = -EIO;
+-		ext4_std_error(inode->i_sb, err);
+-		return err;
+-	}
 +	if (!bh)
-+		return NULL;
- 	if (ext4_wait_block_bitmap(sb, block_group, bh)) {
- 		put_bh(bh);
++		return -ENOMEM;
+ 	lock_buffer(bh);
+ 
+ 	err = ext4_journal_get_create_access(handle, bh);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 20862f9..8d83d1e 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -146,6 +146,7 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
+ 	struct super_block *sb = inode->i_sb;
+ 	Indirect *p = chain;
+ 	struct buffer_head *bh;
++	int ret = -EIO;
+ 
+ 	*err = 0;
+ 	/* i_data is not going away, no lock needed */
+@@ -154,8 +155,10 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
+ 		goto no_block;
+ 	while (--depth) {
+ 		bh = sb_getblk(sb, le32_to_cpu(p->key));
+-		if (unlikely(!bh))
++		if (unlikely(!bh)) {
++			ret = -ENOMEM;
+ 			goto failure;
++		}
+ 
+ 		if (!bh_uptodate_or_lock(bh)) {
+ 			if (bh_submit_read(bh) < 0) {
+@@ -177,7 +180,7 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
+ 	return NULL;
+ 
+ failure:
+-	*err = -EIO;
++	*err = ret;
+ no_block:
+ 	return p;
+ }
+@@ -471,7 +474,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
+ 		 */
+ 		bh = sb_getblk(inode->i_sb, new_blocks[n-1]);
+ 		if (unlikely(!bh)) {
+-			err = -EIO;
++			err = -ENOMEM;
+ 			goto failed;
+ 		}
+ 
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 387c47c..93a3408 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1188,7 +1188,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 
+ 	data_bh = sb_getblk(inode->i_sb, map.m_pblk);
+ 	if (!data_bh) {
+-		error = -EIO;
++		error = -ENOMEM;
+ 		goto out_restore;
+ 	}
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cbfe13b..9ccc140 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -714,7 +714,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 
+ 	bh = sb_getblk(inode->i_sb, map.m_pblk);
+ 	if (!bh) {
+-		*errp = -EIO;
++		*errp = -ENOMEM;
  		return NULL;
+ 	}
+ 	if (map.m_flags & EXT4_MAP_NEW) {
+@@ -3660,11 +3660,8 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	iloc->offset = (inode_offset % inodes_per_block) * EXT4_INODE_SIZE(sb);
+ 
+ 	bh = sb_getblk(sb, block);
+-	if (!bh) {
+-		EXT4_ERROR_INODE_BLOCK(inode, block,
+-				       "unable to read itable block");
+-		return -EIO;
+-	}
++	if (!bh)
++		return -ENOMEM;
+ 	if (!buffer_uptodate(bh)) {
+ 		lock_buffer(bh);
+ 
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index fe7c63f..44734f1 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -80,6 +80,8 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+ 	 * is not blocked in the elevator. */
+ 	if (!*bh)
+ 		*bh = sb_getblk(sb, mmp_block);
++	if (!*bh)
++		return -ENOMEM;
+ 	if (*bh) {
+ 		get_bh(*bh);
+ 		lock_buffer(*bh);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index d99387b..02824dc 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -334,7 +334,7 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
+ 
+ 	bh = sb_getblk(sb, blk);
+ 	if (!bh)
+-		return ERR_PTR(-EIO);
++		return ERR_PTR(-ENOMEM);
+ 	if ((err = ext4_journal_get_write_access(handle, bh))) {
+ 		brelse(bh);
+ 		bh = ERR_PTR(err);
+@@ -411,7 +411,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 
+ 		bh = sb_getblk(sb, flex_gd->groups[group].block_bitmap);
+ 		if (!bh)
+-			return -EIO;
++			return -ENOMEM;
+ 
+ 		err = ext4_journal_get_write_access(handle, bh);
+ 		if (err)
+@@ -501,7 +501,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 
+ 			gdb = sb_getblk(sb, block);
+ 			if (!gdb) {
+-				err = -EIO;
++				err = -ENOMEM;
+ 				goto out;
+ 			}
+ 
+@@ -1065,7 +1065,7 @@ static void update_backups(struct super_block *sb, int blk_off, char *data,
+ 
+ 		bh = sb_getblk(sb, backup_block);
+ 		if (!bh) {
+-			err = -EIO;
++			err = -ENOMEM;
+ 			break;
+ 		}
+ 		ext4_debug("update metadata backup %llu(+%llu)\n",
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 3a91ebc..07d684a 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -887,16 +887,17 @@ inserted:
+ 
+ 			new_bh = sb_getblk(sb, block);
+ 			if (!new_bh) {
++				error = -ENOMEM;
+ getblk_failed:
+ 				ext4_free_blocks(handle, inode, NULL, block, 1,
+ 						 EXT4_FREE_BLOCKS_METADATA);
+-				error = -EIO;
+ 				goto cleanup;
+ 			}
+ 			lock_buffer(new_bh);
+ 			error = ext4_journal_get_create_access(handle, new_bh);
+ 			if (error) {
+ 				unlock_buffer(new_bh);
++				error = -EIO;
+ 				goto getblk_failed;
+ 			}
+ 			memcpy(new_bh->b_data, s->base, new_bh->b_size);
 -- 
-1.7.11.7
-
+1.7.12.rc0.22.gcdd159b
