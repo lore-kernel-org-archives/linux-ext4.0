@@ -1,99 +1,136 @@
-From: Radek Pazdera <rpazdera@redhat.com>
-Subject: [RFC] Optimizing readdir()
-Date: Sun, 13 Jan 2013 16:22:04 +0100
-Message-ID: <20130113152204.GB26803@laptop.redhat.com>
+From: =?UTF-8?q?Cristian=20Rodr=C3=ADguez?= <crrodriguez@opensuse.org>
+Subject: [PATCH] lib/ext2fs/bitops.h: Use the optmized/documented byteswapping routines
+Date: Sat, 12 Jan 2013 16:32:25 -0300
+Message-ID: <1358019145-2774-1-git-send-email-crrodriguez@opensuse.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?UTF-8?q?Cristian=20Rodr=C3=ADguez?= <crrodriguez@opensuse.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60892 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755193Ab3AMPZl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Jan 2013 10:25:41 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0DFPfYu009971
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Jan 2013 10:25:41 -0500
-Content-Disposition: inline; filename="ext4-proposal.txt"
+Received: from mail-ye0-f180.google.com ([209.85.213.180]:61472 "EHLO
+	mail-ye0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755969Ab3AMTlc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jan 2013 14:41:32 -0500
+Received: by mail-ye0-f180.google.com with SMTP id m9so581428yen.39
+        for <linux-ext4@vger.kernel.org>; Sun, 13 Jan 2013 11:41:31 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+In x86, it will not make much difference but other targets that
+are not covered by the old code will be able to generate better code.
 
-I am a student at Brno University of Technology working on my "final
-project". I'm doing this with great help of Lukas Czerner, who acts
-as my mentor and leads me on the project.
+Signed-off-by: Cristian Rodr=C3=ADguez <crrodriguez@opensuse.org>
+---
+ lib/ext2fs/bitops.h | 91 +++++++++++----------------------------------=
+--------
+ 1 file changed, 18 insertions(+), 73 deletions(-)
 
-I'd like to optimize the problem of getents() returning entries in
-hash order, which can have an impact on performance in some cases.
-It was mentioned here a few times already [1][2].
-
-I did some tests [3] and it seems to me that the amount of available
-page cache plays a crucial role in this case. It can compensate for
-the seeks if the directory is "small enough". However, in case
-of memory pressure or when something starts to evict your pages, the
-performance can go down.
-
-The biggest performance can be observed when copying an entire directory
-(ext4-spd are with the spd_readdir preload - and it's *fast*):
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/clean-3-1-block-files/cp.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/clean-3-1-block-files/cp.results
-
-Raw readdir() and stat() on every file is ok up to really large dirs
-(as long as your page cache can hold all the inode tables, I think).
-ext4's dir index is ok even with aged dirs:
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/readdir-stat_clean-vs-aged.results
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/clean-1/readdir-stat.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/aged/readdir-stat.png
-
-
-My idea was to try to add a second tree to the current index that would
-be used to retrieve entries in inode-order. Its structure could be very
-similar to the current HTree (the hash is 32bits and so are inode
-numbers).
-
-Question is, how hard would this hit creates/deletes, and renames.
-Isolated create/delete would be definitely slower (ext4 would do
-the same thing twice). But page cache could save the case of
-creating/deleting a whole directory. Deletion might in fact benefit
-from the inode-order readdir a little (compare ext4 and ext4-spd):
-
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/clean-1/delete.png
-    http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/clean-1/delete.results
-
-One downside is, it would roughly double the size of directory metadata, as
-there probably would have to be two dirents for each entry (for each tree).
-If one tree would link to another's dirents, it would make node splits,
-extremely expensive. I had an idea about using a array of dirents shared
-between the trees, but I'm not really sure how to manage free space in it
-efficiently.
-
-On-disk format would remain the same, apart from the dx_root structure,
-which would have to carry a pointer to the root of the second tree. I
-think, there might be a place in the embedded dx_root_info:
-
-struct dx_root_info
-{
-        __le32 reserved_zero;
-        u8 hash_version;
--        u8 info_length; /* 8 */
-+        u8 info_length; /* 12 */
-        u8 indirect_levels;
-        u8 unused_flags;
-+        __le32 itree_root_block;
-}
-
-
-What do you think about this approach? Is it worth trying?
-Any feedback or sugesstions are greatly appreciated :).
-
-
-Radek Pazdera
-
-
-[1] http://thread.gmane.org/gmane.comp.file-systems.ext4/23794
-[2] http://thread.gmane.org/gmane.linux.file-systems/61910
-[3] http://www.stud.fit.vutbr.cz/~xpazde00/ext4-tests/
+diff --git a/lib/ext2fs/bitops.h b/lib/ext2fs/bitops.h
+index 1559539..8437b1e 100644
+--- a/lib/ext2fs/bitops.h
++++ b/lib/ext2fs/bitops.h
+@@ -10,33 +10,24 @@
+  * %End-Header%
+  */
+=20
+-#ifdef WORDS_BIGENDIAN
+-#define ext2fs_cpu_to_le64(x) ext2fs_swab64((x))
+-#define ext2fs_le64_to_cpu(x) ext2fs_swab64((x))
+-#define ext2fs_cpu_to_le32(x) ext2fs_swab32((x))
+-#define ext2fs_le32_to_cpu(x) ext2fs_swab32((x))
+-#define ext2fs_cpu_to_le16(x) ext2fs_swab16((x))
+-#define ext2fs_le16_to_cpu(x) ext2fs_swab16((x))
+-#define ext2fs_cpu_to_be64(x) ((__u64)(x))
+-#define ext2fs_be64_to_cpu(x) ((__u64)(x))
+-#define ext2fs_cpu_to_be32(x) ((__u32)(x))
+-#define ext2fs_be32_to_cpu(x) ((__u32)(x))
+-#define ext2fs_cpu_to_be16(x) ((__u16)(x))
+-#define ext2fs_be16_to_cpu(x) ((__u16)(x))
+-#else
+-#define ext2fs_cpu_to_le64(x) ((__u64)(x))
+-#define ext2fs_le64_to_cpu(x) ((__u64)(x))
+-#define ext2fs_cpu_to_le32(x) ((__u32)(x))
+-#define ext2fs_le32_to_cpu(x) ((__u32)(x))
+-#define ext2fs_cpu_to_le16(x) ((__u16)(x))
+-#define ext2fs_le16_to_cpu(x) ((__u16)(x))
+-#define ext2fs_cpu_to_be64(x) ext2fs_swab64((x))
+-#define ext2fs_be64_to_cpu(x) ext2fs_swab64((x))
+-#define ext2fs_cpu_to_be32(x) ext2fs_swab32((x))
+-#define ext2fs_be32_to_cpu(x) ext2fs_swab32((x))
+-#define ext2fs_cpu_to_be16(x) ext2fs_swab16((x))
+-#define ext2fs_be16_to_cpu(x) ext2fs_swab16((x))
+-#endif
++#include <byteswap.h>
++#include <endian.h>
++
++#define ext2fs_swab32(x)    bswap_32(x)
++#define ext2fs_swab16(x)    bswap_16(x)
++#define ext2fs_swab64(x)    bswap_64(x)
++#define ext2fs_cpu_to_le64(x) htole64((x))
++#define ext2fs_le64_to_cpu(x) le64toh((x))
++#define ext2fs_cpu_to_le32(x) htole32((x))
++#define ext2fs_le32_to_cpu(x) le32toh((x))
++#define ext2fs_cpu_to_le16(x) htole16((x))
++#define ext2fs_le16_to_cpu(x) le16toh((x))
++#define ext2fs_cpu_to_be64(x) htobe64((x))
++#define ext2fs_be64_to_cpu(x) be64toh((x))
++#define ext2fs_cpu_to_be32(x) htobe32((x))
++#define ext2fs_be32_to_cpu(x) be32toh((x))
++#define ext2fs_cpu_to_be16(x) htobe16((x))
++#define ext2fs_be16_to_cpu(x) be16toh((x))
+=20
+ /*
+  * EXT2FS bitmap manipulation routines.
+@@ -319,54 +310,11 @@ _INLINE_ int ext2fs_test_bit(unsigned int nr, con=
+st void * addr)
+ 	return oldbit;
+ }
+=20
+-_INLINE_ __u32 ext2fs_swab32(__u32 val)
+-{
+-#ifdef EXT2FS_REQUIRE_486
+-	__asm__("bswap %0" : "=3Dr" (val) : "0" (val));
+-#else
+-	__asm__("xchgb %b0,%h0\n\t"	/* swap lower bytes	*/
+-		"rorl $16,%0\n\t"	/* swap words		*/
+-		"xchgb %b0,%h0"		/* swap higher bytes	*/
+-		:"=3Dq" (val)
+-		: "0" (val));
+-#endif
+-	return val;
+-}
+-
+-_INLINE_ __u16 ext2fs_swab16(__u16 val)
+-{
+-	__asm__("xchgb %b0,%h0"		/* swap bytes		*/ \
+-		: "=3Dq" (val) \
+-		:  "0" (val)); \
+-		return val;
+-}
+-
+ #undef EXT2FS_ADDR
+=20
+ #endif	/* i386 */
+=20
+=20
+-#if !defined(_EXT2_HAVE_ASM_SWAB_)
+-
+-_INLINE_ __u16 ext2fs_swab16(__u16 val)
+-{
+-	return (val >> 8) | (val << 8);
+-}
+-
+-_INLINE_ __u32 ext2fs_swab32(__u32 val)
+-{
+-	return ((val>>24) | ((val>>8)&0xFF00) |
+-		((val<<8)&0xFF0000) | (val<<24));
+-}
+-
+-#endif /* !_EXT2_HAVE_ASM_SWAB */
+-
+-_INLINE_ __u64 ext2fs_swab64(__u64 val)
+-{
+-	return (ext2fs_swab32(val >> 32) |
+-		(((__u64)ext2fs_swab32(val & 0xFFFFFFFFUL)) << 32));
+-}
