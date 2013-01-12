@@ -1,28 +1,53 @@
-From: gab.sgc@ifam.edu.br
-Subject: Quick Loans
-Date: Sat, 12 Jan 2013 00:32:31 -0400 (AMT)
-Message-ID: <a992b9ba-290b-43b2-b556-5f8f2589fc5a__18763.6325289079$1357977826$gmane$org@novo.ifam.edu.br>
-Reply-To: sec.capitaloan@kimo.com
+From: shilong wang <wangshilong1991@gmail.com>
+Subject: [PATCH 1/2] Ext2: use unlikely to improve the efficiency of the kernel
+Date: Sat, 12 Jan 2013 01:34:50 -0800
+Message-ID: <CAP9B-Qkxe-hmCJN9dR1qbjqE35XyWn=KTa47j57Zn3ww2QBjeg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tucano2.ifam.edu.br ([200.129.168.170]:47615 "EHLO ifam.edu.br"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751604Ab3ALIDV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Jan 2013 03:03:21 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 
+Because the function 'sb_getblk' seldomly fails to return
+NULL value. It will be better to use unlikely to optimize it.
 
-Good Day,
+Signed-off-by: Wang shilong <wangsl-fnst@cn.fujitsu.com>
+---
+ fs/ext2/super.c |    2 +-
+ fs/ext2/xattr.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Do you need a personal or business loan without stress and quick approval? If yes, contact us today as we are currently offering loans at superb interest rate. Our loan is secured and safe, our customers happiness is our strength. For more information and Application.
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index af74d9e..c0f4fc6 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1495,7 +1495,7 @@ static ssize_t ext2_quota_write(struct
+super_block *sb, int type,
+ 			bh = sb_bread(sb, tmp_bh.b_blocknr);
+ 		else
+ 			bh = sb_getblk(sb, tmp_bh.b_blocknr);
+-		if (!bh) {
++		if (unlikely(!bh)) {
+ 			err = -EIO;
+ 			goto out;
+ 		}
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index b6754db..06209ec 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -662,7 +662,7 @@ ext2_xattr_set2(struct inode *inode, struct
+buffer_head *old_bh,
+ 			ea_idebug(inode, "creating block %d", block);
 
-Sincerely,
-Mrs Rosa Luna
-
-SEC capitals Inc.
-Public Relations Officer.
+ 			new_bh = sb_getblk(sb, block);
+-			if (!new_bh) {
++			if (unlikely(!new_bh)) {
+ 				ext2_free_blocks(inode, block, 1);
+ 				mark_inode_dirty(inode);
+ 				error = -EIO;
+-- 
+1.7.7.6
