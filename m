@@ -1,46 +1,150 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: new block group bitmaps not being initialized after resize!?
-Date: Sun, 13 Jan 2013 08:37:06 -0500
-Message-ID: <20130113133706.GA30477@thunk.org>
-References: <20130111000711.GA2490@andromeda.usersys.redhat.com>
- <50EF65C3.8010406@redhat.com>
- <25BFE2C2-8FF2-4064-86D3-6CFBF5A2931F@dilger.ca>
- <50F033F5.6080008@redhat.com>
- <20130113043615.GE19503@thunk.org>
- <AA104FC2-C0C6-4465-8AA1-74D99E19EE9C@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Carlos Maiolino <cmaiolino@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <esandeen@redhat.com>
+Subject: [PATCH] ext4: trigger the lazy inode table initialization after resize
+Date: Sun, 13 Jan 2013 08:42:51 -0500
+Message-ID: <1358084571-3042-1-git-send-email-tytso@mit.edu>
+References: <20130113133706.GA30477@thunk.org>
+Cc: esandeen@redhat.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43063 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43066 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755121Ab3AMNhM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Jan 2013 08:37:12 -0500
-Content-Disposition: inline
-In-Reply-To: <AA104FC2-C0C6-4465-8AA1-74D99E19EE9C@redhat.com>
+	id S1755133Ab3AMNmy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Jan 2013 08:42:54 -0500
+In-Reply-To: <20130113133706.GA30477@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 13, 2013 at 12:26:45AM -0500, Eric Sandeen wrote:
-> > The flag names are confusing.  INODE_ZEROED means that the inode table
-> > is not zero'ed.
-> 
-> Please tell me you said that backwards?
+After we have finished extending the file system, we need to trigger a
+the lazy inode table thread to zero out the inode tables.
 
-Yes, sorry...
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h   |  2 ++
+ fs/ext4/ioctl.c  |  9 +++++++++
+ fs/ext4/resize.c |  8 +++++---
+ fs/ext4/super.c  | 21 +++++++++++----------
+ 4 files changed, 27 insertions(+), 13 deletions(-)
 
-> If setting the unused inode count is enough, then I guess it's resolved...
-
-Well, modulo a patch to make sure the lazy init thread gets kicked
-off, so that eventually we do end up zeroing the inode table (just in
-case something goes wrong and we can't trust the block group
-descriptor checksum).  I just finished that off last night, and it's
-now ready for review (see next message).
-
-						- Ted
-
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8462eb3..8024623 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2227,6 +2227,8 @@ extern int ext4_group_desc_csum_verify(struct super_block *sb, __u32 group,
+ 				       struct ext4_group_desc *gdp);
+ extern void ext4_group_desc_csum_set(struct super_block *sb, __u32 group,
+ 				     struct ext4_group_desc *gdp);
++extern int ext4_register_li_request(struct super_block *sb,
++				    ext4_group_t first_not_zeroed);
+ 
+ static inline int ext4_has_group_desc_csum(struct super_block *sb)
+ {
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 5747f52..4784ac2 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -313,6 +313,9 @@ mext_out:
+ 		if (err == 0)
+ 			err = err2;
+ 		mnt_drop_write_file(filp);
++		if (!err && ext4_has_group_desc_csum(sb) &&
++		    test_opt(sb, INIT_INODE_TABLE))
++			err = ext4_register_li_request(sb, input.group);
+ group_add_out:
+ 		ext4_resize_end(sb);
+ 		return err;
+@@ -358,6 +361,7 @@ group_add_out:
+ 		ext4_fsblk_t n_blocks_count;
+ 		struct super_block *sb = inode->i_sb;
+ 		int err = 0, err2 = 0;
++		ext4_group_t o_group = EXT4_SB(sb)->s_groups_count;
+ 
+ 		if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 			       EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
+@@ -388,6 +392,11 @@ group_add_out:
+ 		if (err == 0)
+ 			err = err2;
+ 		mnt_drop_write_file(filp);
++		if (!err && (o_group > EXT4_SB(sb)->s_groups_count) &&
++		    ext4_has_group_desc_csum(sb) &&
++		    test_opt(sb, INIT_INODE_TABLE))
++			err = ext4_register_li_request(sb, o_group);
++
+ resizefs_out:
+ 		ext4_resize_end(sb);
+ 		return err;
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 05f8d45..8eefb63 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1506,10 +1506,12 @@ static int ext4_setup_next_flex_gd(struct super_block *sb,
+ 		group_data[i].blocks_count = blocks_per_group;
+ 		overhead = ext4_group_overhead_blocks(sb, group + i);
+ 		group_data[i].free_blocks_count = blocks_per_group - overhead;
+-		if (ext4_has_group_desc_csum(sb))
++		if (ext4_has_group_desc_csum(sb)) {
+ 			flex_gd->bg_flags[i] = EXT4_BG_BLOCK_UNINIT |
+ 					       EXT4_BG_INODE_UNINIT;
+-		else
++			if (!test_opt(sb, INIT_INODE_TABLE))
++				flex_gd->bg_flags[i] |= EXT4_BG_INODE_ZEROED;
++		} else
+ 			flex_gd->bg_flags[i] = EXT4_BG_INODE_ZEROED;
+ 	}
+ 
+@@ -1594,7 +1596,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 
+ 	err = ext4_alloc_flex_bg_array(sb, input->group + 1);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+ 	err = ext4_mb_alloc_groupinfo(sb, input->group + 1);
+ 	if (err)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3d4fb81..c014edd 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2776,7 +2776,7 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 			break;
+ 	}
+ 
+-	if (group == ngroups)
++	if (group >= ngroups)
+ 		ret = 1;
+ 
+ 	if (!ret) {
+@@ -3016,33 +3016,34 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
+ 	return elr;
+ }
+ 
+-static int ext4_register_li_request(struct super_block *sb,
+-				    ext4_group_t first_not_zeroed)
++int ext4_register_li_request(struct super_block *sb,
++			     ext4_group_t first_not_zeroed)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_li_request *elr;
++	struct ext4_li_request *elr = NULL;
+ 	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
+ 	int ret = 0;
+ 
++	mutex_lock(&ext4_li_mtx);
+ 	if (sbi->s_li_request != NULL) {
+ 		/*
+ 		 * Reset timeout so it can be computed again, because
+ 		 * s_li_wait_mult might have changed.
+ 		 */
+ 		sbi->s_li_request->lr_timeout = 0;
+-		return 0;
++		goto out;
+ 	}
+ 
+ 	if (first_not_zeroed == ngroups ||
+ 	    (sb->s_flags & MS_RDONLY) ||
+ 	    !test_opt(sb, INIT_INODE_TABLE))
+-		return 0;
++		goto out;
+ 
+ 	elr = ext4_li_request_new(sb, first_not_zeroed);
+-	if (!elr)
+-		return -ENOMEM;
