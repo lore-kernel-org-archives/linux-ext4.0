@@ -1,66 +1,53 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: new block group bitmaps not being initialized after resize!?
-Date: Sun, 13 Jan 2013 00:26:45 -0500 (EST)
-Message-ID: <AA104FC2-C0C6-4465-8AA1-74D99E19EE9C@redhat.com>
-References: <20130111000711.GA2490@andromeda.usersys.redhat.com> <50EF65C3.8010406@redhat.com> <25BFE2C2-8FF2-4064-86D3-6CFBF5A2931F@dilger.ca> <50F033F5.6080008@redhat.com> <20130113043615.GE19503@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Carlos Maiolino <cmaiolino@redhat.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 1/3] mke2fs: indicate bigalloc feature explicity when cluster-size is enabled
+Date: Sun, 13 Jan 2013 17:08:13 +0800
+Message-ID: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:57801 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750746Ab3AMF0t (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jan 2013 00:26:49 -0500
-In-Reply-To: <20130113043615.GE19503@thunk.org>
+Received: from mail-pb0-f41.google.com ([209.85.160.41]:33625 "EHLO
+	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751772Ab3AMIyr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jan 2013 03:54:47 -0500
+Received: by mail-pb0-f41.google.com with SMTP id xa7so1651577pbc.14
+        for <linux-ext4@vger.kernel.org>; Sun, 13 Jan 2013 00:54:46 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 12, 2013, at 10:36 PM, "Theodore Ts'o" <tytso@mit.edu> wrote:
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-> On Fri, Jan 11, 2013 at 09:47:01AM -0600, Eric Sandeen wrote:
->>> Zeroing the inode table but not setting the INODE_ZEROED flag
->>> would not be harmful, but this seems to not be the case.
->> 
->> we appear to be not zeroing the table, and not setting INODE_ZEROED.
->> But we should have set INODE_UNINIT, or zeroed it, right?
-> 
-> The flag names are confusing.  INODE_ZEROED means that the inode table
-> is not zero'ed.
+When cluster-size is enabled without bigalloc feature, mke2fs will ignore this
+argument silently.  But user might think bigalloc feature has been enabled
+unless they use 'stats' command to check it in debugfs.  So now we ask user
+to set bigalloc feature explicity when cluster-size is enabled.  This can
+make sure that users understand what they are doing because bigalloc might
+impact the performance for some workloads.
 
-Please tell me you said that backwards?
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+---
+ misc/mke2fs.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
->  This is correct.
-> 
-> INODE_UNINIT refers to the inode allocation bitmap not being
-> initialized, and what we are doing is correct as well.
-> 
-> What we should be doing is making sure that we kick off the lazyinit
-> thread.  So it's basically a missing call to
-> ext4_register_li_request(sb).
-> 
->> Hum, but lazyinit will take some time to complete; in this case
->> we resized, unmounted, ran fsck and everything was a mess.  Even if
->> we'd started lazyinit I don't think that'ts enough, because we never
->> flagged the group as uninit.
-> 
-> But as near as I can tell, at least with the latest upstream kernel,
-> the flags are being set correctly.  INODE_ZEROED is not being set, but
-> that's correct, because the inode table has not been zeroed.  
-> 
-> The real problem was the bug which was fixed by 93f905264; previous to
-> this commit, the unused inode count was incorrect.  My fault for not
-> understanding the consequences of this bug.  I was thinking in terms
-> of the e2fsck taking too long, but of course if there were previously
-> valid inodes in those blocks, e2fsck would in fact go crazy.  So that
-> commit really should have been marked cc: stable@vger.kernel.org.
-> 
-If setting the unused inode count is enough, then I guess it's resolved...
-> Regards,
-> 
->                        - Ted
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index a288147..bf4d7a2 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1915,8 +1915,14 @@ profile_error:
+ 							    blocksize*16);
+ 		fs_param.s_log_cluster_size =
+ 			int_log2(cluster_size >> EXT2_MIN_CLUSTER_LOG_SIZE);
+-	} else
++	} else if (cluster_size) {
++		com_err(program_name, EINVAL,
++			_("while setting clustersize; You need to enable "
++			  "bigalloc feature explicity"));
++		exit(1);
++	} else {
+ 		fs_param.s_log_cluster_size = fs_param.s_log_block_size;
++	}
+ 
+ 	if (inode_ratio == 0) {
+ 		inode_ratio = get_int_from_profile(fs_types, "inode_ratio",
+-- 
+1.7.12.rc2.18.g61b472e
+
