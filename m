@@ -1,58 +1,57 @@
-From: Chen Gang <gang.chen@asianux.com>
-Subject: Re: [Suggestion] fs/ext3: memory leak by calling set_qf_name or clear_qf_name,
- many times.
-Date: Mon, 14 Jan 2013 10:29:16 +0800
-Message-ID: <50F36D7C.2020107@asianux.com>
-References: <50DA857B.1050808@asianux.com> <20121231120621.GD7564@quack.suse.cz> <50E66B19.5060907@asianux.com> <20130107195425.GE13659@quack.suse.cz> <50EB8EDA.3020709@asianux.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] Ext3: return ENOMEM rather than EIO if sb_getblk
+ fails
+Date: Sun, 13 Jan 2013 22:45:38 -0500
+Message-ID: <20130114034538.GB29329@thunk.org>
+References: <1294915634-3413-1-git-send-email-wangshilong1991@gmail.com>
+ <20130113044342.GA11738@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Ts'o <tytso@mit.edu>, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Wang shilong <wangshilong1991@gmail.com>, jack@suse.cz,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+To: Greg KH <gregkh@linuxfoundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from intranet.asianux.com ([58.214.24.6]:54274 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755706Ab3ANC2e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jan 2013 21:28:34 -0500
-In-Reply-To: <50EB8EDA.3020709@asianux.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43173 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755295Ab3ANDpq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Jan 2013 22:45:46 -0500
+Content-Disposition: inline
+In-Reply-To: <20130113044342.GA11738@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=E4=BA=8E 2013=E5=B9=B401=E6=9C=8808=E6=97=A5 11:13, Chen Gang =E5=86=99=
-=E9=81=93:
-> =E4=BA=8E 2013=E5=B9=B401=E6=9C=8808=E6=97=A5 03:54, Jan Kara =E5=86=99=
-=E9=81=93:
->> > On Fri 04-01-13 13:39:37, Chen Gang wrote:
->>> >>   if what I guess is true
->>> >>     it seems we have to duplicate memory for old_opts in ext3_re=
-mount.
->>> >>     and for clear_qf_name, set_qf_name, ext3_remount:
->>> >>       use normal memory allocation and free ways instead of curr=
-ent using.
->> >   Yes. Updated patch attached.
->> >=20
->   at least for me, Jan Kara's patch is ok. thanks.
->=20
->   welcome another members (especially Theodore Ts'o) to giving confir=
-mation or completion.
->   also welcome to checking this suggestion whether valid for fs/ext4.
+On Sat, Jan 12, 2013 at 08:43:42PM -0800, Greg KH wrote:
+> On Thu, Jan 13, 2011 at 06:47:14PM +0800, Wang shilong wrote:
+> > From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> > 
+> > It will be better to have ENOMEM return rather than EIO,because
+> > the only reason that sb_getblk fails is allocation fails.
+> > 
+> 
+> <formletter>
+> 
+> This is not the correct way to submit patches for inclusion in the
+> stable kernel tree.  Please read Documentation/stable_kernel_rules.txt
+> for how to do this properly.
+> 
+> </formletter>
 
-  I will send a relative patch for fs/ext4, just according to Jan Kara'=
-s patch.
-  I will send it within 2 weeks (excuse me, I have to do another things=
- this week).
+Did Wang Shilong bcc stable@vger.kernel.org?  He didn't need to send
+this to linux-fsdevel@vger.kernel.org (the linux-ext4 list is
+sufficient), but I didn't see anything which indicated he was trying
+to submit this for inclusion in the stable kernel tree.
 
-  welcome any additional suggestions and completions.
+My personal opinion is this isn't an important enough patch to warrant
+going into stable@vger.kernel.org, although I don't think it would do
+any harm or is really dangerous, so I wouldn't object strongly if it did.
 
-  thanks.
+I did mark a similar change for ext4 as going to stable, but not
+because of the error code change; but rather because I also fixed a
+problem where an out-of-memory failure might result in the file system
+getting marked as containing errors (and thus might cause an unneeded
+fsck).
 
---=20
-Chen Gang
+Cheers,
 
-Asianux Corporation
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
