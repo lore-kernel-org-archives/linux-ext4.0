@@ -1,116 +1,67 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] Ext3: use unlikely to improve the efficiency of
- the kernel
-Date: Mon, 14 Jan 2013 15:22:05 +0100
-Message-ID: <20130114142205.GE6597@quack.suse.cz>
-References: <CAP9B-Q=GiV8fBk5cqR+yySUGidaFy=XKyNvZW=kQAKpqYsat4w@mail.gmail.com>
+Subject: Re: [PATCH V1 1/2] Ext2: return ENOMEM rather than EIO if
+ sb_getblk fails
+Date: Mon, 14 Jan 2013 15:25:41 +0100
+Message-ID: <20130114142541.GF6597@quack.suse.cz>
+References: <1358073846-1662-1-git-send-email-wangshilong1991@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: shilong wang <wangshilong1991@gmail.com>
+Cc: jack@suse.cz, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+To: Wang shilong <wangshilong1991@gmail.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAP9B-Q=GiV8fBk5cqR+yySUGidaFy=XKyNvZW=kQAKpqYsat4w@mail.gmail.com>
+In-Reply-To: <1358073846-1662-1-git-send-email-wangshilong1991@gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat 12-01-13 01:36:17, shilong wang wrote:
+On Sun 13-01-13 18:44:06, Wang shilong wrote:
 > From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 > 
-> Because the function 'sb_getblk' seldomly fails to return
-> NULL value,it will be better to use unlikely to check it.
-  Thanks. I've merged the patch. Here also applies my comment about line
-wrapping from the previous patch...
-
-								Honza
+> As the only reason that sb_getblk fails is that allocation fails.
+> It will be better to use ENOMEM rather than EIO.
 > 
 > Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 > ---
->  fs/ext3/inode.c  |    6 +++---
->  fs/ext3/resize.c |    6 +++---
->  fs/ext3/xattr.c  |    2 +-
->  3 files changed, 7 insertions(+), 7 deletions(-)
+>  fs/ext2/super.c | 2 +-
+>  fs/ext2/xattr.c | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index 61bc8bd..7338a76 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1083,7 +1083,7 @@ struct buffer_head *ext3_getblk(handle_t
-> *handle, struct inode *inode,
->  	if (!err && buffer_mapped(&dummy)) {
->  		struct buffer_head *bh;
->  		bh = sb_getblk(inode->i_sb, dummy.b_blocknr);
-> -		if (!bh) {
-> +		if (unlikely(!bh)) {
->  			*errp = -EIO;
->  			goto err;
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 663fdcd..3308a55 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -1457,7 +1457,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
+>  		else
+>  			bh = sb_getblk(sb, tmp_bh.b_blocknr);
+>  		if (unlikely(!bh)) {
+> -			err = -EIO;
+> +			err = -ENOMEM;
+  This is actually wrong. sb_bread() can return NULL in case of IO error as
+well as in case of ENOMEM. In theory you could split the error check for
+the sb_getblk() and sb_bread() branch but I prefer not to bother...
+
+								Honza
+>  			goto out;
 >  		}
-> @@ -2734,7 +2734,7 @@ static int __ext3_get_inode_loc(struct inode *inode,
->  		return -EIO;
-> 
->  	bh = sb_getblk(inode->i_sb, block);
-> -	if (!bh) {
-> +	if (unlikely(!bh)) {
->  		ext3_error (inode->i_sb, "ext3_get_inode_loc",
->  				"unable to read inode block - "
->  				"inode=%lu, block="E3FSBLK,
-> @@ -2788,7 +2788,7 @@ static int __ext3_get_inode_loc(struct inode *inode,
-> 
->  			bitmap_bh = sb_getblk(inode->i_sb,
->  					le32_to_cpu(desc->bg_inode_bitmap));
-> -			if (!bitmap_bh)
-> +			if (unlikely(!bitmap_bh))
->  				goto make_io;
-> 
->  			/*
-> diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
-> index 0f814f3..704e8ce 100644
-> --- a/fs/ext3/resize.c
-> +++ b/fs/ext3/resize.c
-> @@ -116,7 +116,7 @@ static struct buffer_head *bclean(handle_t
-> *handle, struct super_block *sb,
->  	int err;
-> 
->  	bh = sb_getblk(sb, blk);
-> -	if (!bh)
-> +	if (unlikely(!bh))
->  		return ERR_PTR(-EIO);
->  	if ((err = ext3_journal_get_write_access(handle, bh))) {
->  		brelse(bh);
-> @@ -234,7 +234,7 @@ static int setup_new_group_blocks(struct super_block *sb,
->  			goto exit_bh;
-> 
->  		gdb = sb_getblk(sb, block);
-> -		if (!gdb) {
-> +		if (unlikely(!gdb)) {
->  			err = -EIO;
->  			goto exit_bh;
->  		}
-> @@ -722,7 +722,7 @@ static void update_backups(struct super_block *sb,
->  			break;
-> 
->  		bh = sb_getblk(sb, group * bpg + blk_off);
-> -		if (!bh) {
-> +		if (unlikely(!bh)) {
->  			err = -EIO;
->  			break;
->  		}
-> diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-> index d22ebb7..9f57470 100644
-> --- a/fs/ext3/xattr.c
-> +++ b/fs/ext3/xattr.c
-> @@ -813,7 +813,7 @@ inserted:
->  			ea_idebug(inode, "creating block %d", block);
-> 
->  			new_bh = sb_getblk(sb, block);
-> -			if (!new_bh) {
-> +			if (unlikely(!new_bh)) {
->  getblk_failed:
->  				ext3_free_blocks(handle, inode, block, 1);
->  				error = -EIO;
+>  		lock_buffer(bh);
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 06209ec..2d7557d 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -665,7 +665,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+>  			if (unlikely(!new_bh)) {
+>  				ext2_free_blocks(inode, block, 1);
+>  				mark_inode_dirty(inode);
+> -				error = -EIO;
+> +				error = -ENOMEM;
+>  				goto cleanup;
+>  			}
+>  			lock_buffer(new_bh);
 > -- 
-> 1.7.7.6
+> 1.7.11.7
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
