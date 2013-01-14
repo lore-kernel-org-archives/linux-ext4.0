@@ -1,72 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V1 2/2] Ext3: return ENOMEM rather than EIO if
- sb_getblk fails
-Date: Mon, 14 Jan 2013 15:29:25 +0100
-Message-ID: <20130114142925.GG6597@quack.suse.cz>
-References: <1358073895-1734-1-git-send-email-wangshilong1991@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: trigger the lazy inode table initialization after
+ resize
+Date: Mon, 14 Jan 2013 09:33:17 -0500
+Message-ID: <20130114143317.GE12052@thunk.org>
+References: <20130113133706.GA30477@thunk.org>
+ <1358084571-3042-1-git-send-email-tytso@mit.edu>
+ <20130114130415.GB3906@andromeda.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-To: Wang shilong <wangshilong1991@gmail.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	esandeen@redhat.com
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58079 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756667Ab3ANO32 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Jan 2013 09:29:28 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:43285 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756303Ab3ANOdU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jan 2013 09:33:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1358073895-1734-1-git-send-email-wangshilong1991@gmail.com>
+In-Reply-To: <20130114130415.GB3906@andromeda.usersys.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 13-01-13 18:44:55, Wang shilong wrote:
-> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+On Mon, Jan 14, 2013 at 11:04:15AM -0200, Carlos Maiolino wrote:
+> > @@ -388,6 +392,11 @@ group_add_out:
+> >  		if (err == 0)
+> >  			err = err2;
+> >  		mnt_drop_write_file(filp);
+> > +		if (!err && (o_group > EXT4_SB(sb)->s_groups_count) &&
 > 
-> It will be better to have ENOMEM return rather than EIO,because
-> the only reason that sb_getblk fails is allocation fails.
-  Again one case is wrong. See below.
+> Maybe a n00b question Ted, but can o_group here be bigger than ->s_groups_count
+> in any chance? 
 
-> 
-> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> ---
->  fs/ext3/inode.c  | 6 +++---
->  fs/ext3/resize.c | 6 +++---
->  fs/ext3/xattr.c  | 2 +-
->  3 files changed, 7 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index c91f8bf..d5315d5 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1084,7 +1084,7 @@ struct buffer_head *ext3_getblk(handle_t *handle, struct inode *inode,
->  		struct buffer_head *bh;
->  		bh = sb_getblk(inode->i_sb, dummy.b_blocknr);
->  		if (unlikely(!bh)) {
-> -			*errp = -EIO;
-> +			*errp = -ENOMEM;
->  			goto err;
->  		}
->  		if (buffer_new(&dummy)) {
-> @@ -2739,7 +2739,7 @@ static int __ext3_get_inode_loc(struct inode *inode,
->  				"unable to read inode block - "
->  				"inode=%lu, block="E3FSBLK,
->  				 inode->i_ino, block);
-> -		return -EIO;
-> +		return -ENOMEM;
->  	}
->  	if (!buffer_uptodate(bh)) {
->  		lock_buffer(bh);
-> @@ -2833,7 +2833,7 @@ make_io:
->  					"inode=%lu, block="E3FSBLK,
->  					inode->i_ino, block);
->  			brelse(bh);
-> -			return -EIO;
-> +			return -ENOMEM;
-  This is wrong. Here we really failed because of IO error (buffer was not
-uptodate).
+o_group can never be smaller than s_groups_count (since we don't
+support online shrink).  o_group can be larger than s_groups_count if
+ext4_resize_fs() has added one or more block groups to the file system
+--- which is when we might need to kick off the lazy init thread.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Cheers,
+
+						- Ted
