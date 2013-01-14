@@ -1,51 +1,35 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/3] mke2fs: reduce the range of cluster-size
-Date: Mon, 14 Jan 2013 10:41:34 -0700
-Message-ID: <4825A0BF-7505-4273-AD04-C3043BDAF414@dilger.ca>
-References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com> <1358068095-9034-2-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0 (Apple Message framework v1085)
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] mke2fs: indicate bigalloc feature explicity when
+ cluster-size is enabled
+Date: Mon, 14 Jan 2013 15:28:00 -0500
+Message-ID: <20130114202800.GA8049@thunk.org>
+References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f52.google.com ([209.85.210.52]:37635 "EHLO
-	mail-da0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756275Ab3ANRlT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2013 12:41:19 -0500
-Received: by mail-da0-f52.google.com with SMTP id f10so1904918dak.25
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2013 09:41:18 -0800 (PST)
-In-Reply-To: <1358068095-9034-2-git-send-email-wenqing.lz@taobao.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43325 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758692Ab3ANU2F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jan 2013 15:28:05 -0500
+Content-Disposition: inline
+In-Reply-To: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-01-13, at 2:08 AM, Zheng Liu wrote:
-> Here we reduce the range of cluster-size and check s_blocks_per_group=0 to avoid 'division by zero' error.
+On Sun, Jan 13, 2013 at 05:08:13PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> When cluster-size is enabled without bigalloc feature, mke2fs will ignore this
+> argument silently.  But user might think bigalloc feature has been enabled
+> unless they use 'stats' command to check it in debugfs.  So now we ask user
+> to set bigalloc feature explicity when cluster-size is enabled.  This can
+> make sure that users understand what they are doing because bigalloc might
+> impact the performance for some workloads.
 > 
 > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index bf4d7a2..f4140a1 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1384,8 +1384,8 @@ profile_error:
-> 			break;
-> 		case 'C':
-> 			cluster_size = strtoul(optarg, &tmp, 0);
-> -			if (cluster_size < EXT2_MIN_CLUSTER_SIZE ||
-> -			    cluster_size > EXT2_MAX_CLUSTER_SIZE || *tmp) {
-> +			if (cluster_size <= EXT2_MIN_CLUSTER_SIZE ||
-> +			    cluster_size >= EXT2_MAX_CLUSTER_SIZE || *tmp) {
-> 				com_err(program_name, 0,
-> 					_("invalid cluster size - %s"),
-> 					optarg);
 
-Wouldn't it make more sense to change EXT2_MIN_CLUSTER_SIZE and EXT2_MAX_CLUSTER_SIZE?  Otherwise, those constants don't really
-contain the min/max cluster size, and it is confusing to use them
-in other code.
+Thanks, applied.
 
-Cheers, Andreas
-
-
-
-
-
+						- Ted
