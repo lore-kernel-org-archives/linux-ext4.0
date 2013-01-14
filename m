@@ -1,35 +1,116 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] lib/ext2fs/bitops.h: Use the optmized/documented
- byteswapping routines
-Date: Mon, 14 Jan 2013 09:20:05 -0500
-Message-ID: <20130114142005.GC12052@thunk.org>
-References: <1358019145-2774-1-git-send-email-crrodriguez@opensuse.org>
- <20130114141356.GA12052@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] Ext3: use unlikely to improve the efficiency of
+ the kernel
+Date: Mon, 14 Jan 2013 15:22:05 +0100
+Message-ID: <20130114142205.GE6597@quack.suse.cz>
+References: <CAP9B-Q=GiV8fBk5cqR+yySUGidaFy=XKyNvZW=kQAKpqYsat4w@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Cristian =?iso-8859-1?Q?Rodr=EDguez?= <crrodriguez@opensuse.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43274 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755348Ab3ANOUH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Jan 2013 09:20:07 -0500
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: shilong wang <wangshilong1991@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130114141356.GA12052@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAP9B-Q=GiV8fBk5cqR+yySUGidaFy=XKyNvZW=kQAKpqYsat4w@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 14, 2013 at 09:13:56AM -0500, Theodore Ts'o wrote:
-> The problem is that bswap_{16,32,64}() and the existence of
-> <byteswap.h> is not guaranted by any standard that I'm not aware of.
-> A quick Google search indicates that it's not available for the
-> following platforms....
+On Sat 12-01-13 01:36:17, shilong wang wrote:
+> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> 
+> Because the function 'sb_getblk' seldomly fails to return
+> NULL value,it will be better to use unlikely to check it.
+  Thanks. I've merged the patch. Here also applies my comment about line
+wrapping from the previous patch...
 
-P.S.  This "all the world's a Linux platforms" attitude is why a lot
-of people are very snide about how many Linux userspace programmers
-will introduced vast bloated, slow, infuriating autoconf and automake
-infrastructure, and then use Linux'isms that completely break all
-portability for anything other than Linux systems....  at which point,
-why bother using autoconf and automake?
-
-	    		       	    	  - Ted
+								Honza
+> 
+> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> ---
+>  fs/ext3/inode.c  |    6 +++---
+>  fs/ext3/resize.c |    6 +++---
+>  fs/ext3/xattr.c  |    2 +-
+>  3 files changed, 7 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 61bc8bd..7338a76 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1083,7 +1083,7 @@ struct buffer_head *ext3_getblk(handle_t
+> *handle, struct inode *inode,
+>  	if (!err && buffer_mapped(&dummy)) {
+>  		struct buffer_head *bh;
+>  		bh = sb_getblk(inode->i_sb, dummy.b_blocknr);
+> -		if (!bh) {
+> +		if (unlikely(!bh)) {
+>  			*errp = -EIO;
+>  			goto err;
+>  		}
+> @@ -2734,7 +2734,7 @@ static int __ext3_get_inode_loc(struct inode *inode,
+>  		return -EIO;
+> 
+>  	bh = sb_getblk(inode->i_sb, block);
+> -	if (!bh) {
+> +	if (unlikely(!bh)) {
+>  		ext3_error (inode->i_sb, "ext3_get_inode_loc",
+>  				"unable to read inode block - "
+>  				"inode=%lu, block="E3FSBLK,
+> @@ -2788,7 +2788,7 @@ static int __ext3_get_inode_loc(struct inode *inode,
+> 
+>  			bitmap_bh = sb_getblk(inode->i_sb,
+>  					le32_to_cpu(desc->bg_inode_bitmap));
+> -			if (!bitmap_bh)
+> +			if (unlikely(!bitmap_bh))
+>  				goto make_io;
+> 
+>  			/*
+> diff --git a/fs/ext3/resize.c b/fs/ext3/resize.c
+> index 0f814f3..704e8ce 100644
+> --- a/fs/ext3/resize.c
+> +++ b/fs/ext3/resize.c
+> @@ -116,7 +116,7 @@ static struct buffer_head *bclean(handle_t
+> *handle, struct super_block *sb,
+>  	int err;
+> 
+>  	bh = sb_getblk(sb, blk);
+> -	if (!bh)
+> +	if (unlikely(!bh))
+>  		return ERR_PTR(-EIO);
+>  	if ((err = ext3_journal_get_write_access(handle, bh))) {
+>  		brelse(bh);
+> @@ -234,7 +234,7 @@ static int setup_new_group_blocks(struct super_block *sb,
+>  			goto exit_bh;
+> 
+>  		gdb = sb_getblk(sb, block);
+> -		if (!gdb) {
+> +		if (unlikely(!gdb)) {
+>  			err = -EIO;
+>  			goto exit_bh;
+>  		}
+> @@ -722,7 +722,7 @@ static void update_backups(struct super_block *sb,
+>  			break;
+> 
+>  		bh = sb_getblk(sb, group * bpg + blk_off);
+> -		if (!bh) {
+> +		if (unlikely(!bh)) {
+>  			err = -EIO;
+>  			break;
+>  		}
+> diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+> index d22ebb7..9f57470 100644
+> --- a/fs/ext3/xattr.c
+> +++ b/fs/ext3/xattr.c
+> @@ -813,7 +813,7 @@ inserted:
+>  			ea_idebug(inode, "creating block %d", block);
+> 
+>  			new_bh = sb_getblk(sb, block);
+> -			if (!new_bh) {
+> +			if (unlikely(!new_bh)) {
+>  getblk_failed:
+>  				ext3_free_blocks(handle, inode, block, 1);
+>  				error = -EIO;
+> -- 
+> 1.7.7.6
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
