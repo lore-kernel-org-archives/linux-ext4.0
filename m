@@ -1,74 +1,56 @@
-From: Stewart Smith <stewart@flamingspork.com>
-Subject: Re: [RFC] Optimizing readdir()
-Date: Mon, 14 Jan 2013 17:09:26 +1100
-Message-ID: <87wqvge1nt.fsf@flamingspork.com>
-References: <20130113152204.GB26803@laptop.redhat.com> <20130114045152.GF29329@thunk.org>
+From: shilong wang <wangshilong1991@gmail.com>
+Subject: Re: [PATCH 2/2] Ext3: return ENOMEM rather than EIO if sb_getblk fails
+Date: Mon, 14 Jan 2013 19:33:00 +0800
+Message-ID: <CAP9B-Qm7fD90C6FQxBzbfht_pM-GpNcaXfrtY=sQV3XdvqNchQ@mail.gmail.com>
+References: <0rm2m33qfluh6ajvvbqqeljp.1358136405625@email.android.com>
+	<20130114041828.GD29329@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-To: Theodore Ts'o <tytso@mit.edu>, Radek Pazdera <rpazdera@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org, Greg KH <gregkh@linuxfoundation.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kaylee.flamingspork.com ([74.207.245.61]:44466 "EHLO
-	kaylee.flamingspork.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750894Ab3ANGQO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2013 01:16:14 -0500
-In-Reply-To: <20130114045152.GF29329@thunk.org>
+Received: from mail-ee0-f54.google.com ([74.125.83.54]:57271 "EHLO
+	mail-ee0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756059Ab3ANLdC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2013 06:33:02 -0500
+Received: by mail-ee0-f54.google.com with SMTP id c41so202544eek.13
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2013 03:33:00 -0800 (PST)
+In-Reply-To: <20130114041828.GD29329@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Transfer-Encoding: quoted-printable
+Hi,
 
-Theodore Ts'o <tytso@mit.edu> writes:
-> I wonder if the better approach is to just simply have some
-> easy-to-use library routines that do a readdir/sort in userspace.  The
-> spd_readdir does basically this, and as we can see it's good enough
-> for most purposes.  The problem is danger when using this in threaded
-> programs, or if you have programs doing really strange things with
-> telldir/seekdir, etc.
+2013/1/14 Theodore Ts'o <tytso@mit.edu>:
+> On Mon, Jan 14, 2013 at 12:10:51PM +0800, Wang wrote:
+>> I am sorry, i am a newbie....
+>> I make it confused what it  means if
+>> i bcc stable@vger.kernel.org......
 >
-> But it wouldn't be that hard to write a generic library function which
-> if it were used for find, ls, tar, and a few other key programs, would
-> solve the problem for most use cases.
+> Yeah, don't do that.  (1) Bcc's are bad since they're not visible, so
+> others can't comment on whether it's appropriate for a patch to be
+> marked as going into stable, and (2) what's important is that the
+> commit is tagged as going into the stable in the commit description,
+> so when the commit hits Linus's git tree, the scripts run by the
+> stable kernel maintainers will automatically take those commits and
+> start processing them for backporting into the stable git trees.
+>
+> You can tag a patch with Cc: stable@vger.kernel.org, i.e:
+>
+>     Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>     Cc: stable@vger.kernel.org
+>
+> Generally the maintainer (i.e., me for ext4, Jan Kara for ext3) will
+> take care of adding the stable@vger.kernel.org if we think it's
+> appropriate.  Feel free to add such an annotation as a suggestion to
+> us, but we may end up adding or removing such a tag, just as I often
+> will end up clarifying the commit description (either for English
+> grammar/readability, or to make it clearer for people deciding whether
+> they should backport the patch into distro kernels, etc.)
+>
+ I get it ,thanks very much for your help!
 
-Many times I've used scandir(3) to do this.
-
-(copying out of notmuch/notmuch-new.c):
-
-static int
-dirent_sort_inode (const struct dirent **a, const struct dirent **b)
-{
-    return ((*a)->d_ino < (*b)->d_ino) ? -1 : 1;
-}
-
-(as then doing stat() on each file is *much* faster in inode order)
-
-glibc provides alphasort() (POSIX.1-2008) and versionsort() (GNU
-extension), it'd probably be great if it also provided inodesort()
-
-=2D-=20
-Stewart Smith
-
---=-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAEBAgAGBQJQ86EXAAoJEP08notdpDyvvhsP/22+zbigK0+8/BPMU2j+YO7z
-IBIgT7XppgIsJ7caxz9pnJfwuoV0a01O6Cu43CWwxsODWnTI+WIwUMlseIDoCQcQ
-13vlxoAQc0uriiQ3uX5TEALoiCx0xMD6wzTOuG113N5ZTjI+1gOBSexJGgtPAwNm
-9lMnts6OOp0wpNSPMr1dRnAv2fvzDNGoxI09gorfRbWLfmV9cUbovTH4GE2U8aoK
-4E/C5HblPNfDuH/SOmoV848THVurlsE1ud1jQS6uvdAW3mrdjk6kmOFmH3uk+Cxk
-yC/uamf7K5ramnzdaOGIbuROKa9uvP2d1ocnpJRdM+YrQ0ncIX44jvYWmNAXI5Ck
-6tI29ZVLGD07bWzH4PQiy3WLowZMM6ISb5ahCWWvG/95AQkzlIAPxLnLGwLYUDJ3
-az5JRaQS+FNn8HTAQyKyh4f2vebekZISBn1u6RNbcrbs12TWYVpbgCuOI2t++i5W
-t2aTQRfCuaA2qeJgfRbTqYbiu+ZCrWKVkuMfZlf95CGoVub+jPkaCLQ5zduts3D8
-PskxDmYN0ZC37WHmKwJ2g7syERDgFQvddUrYjTOFyR6U7YSm8WqV+lzSK4gYLwm6
-8QB8ILN/1+UMQ/770rE3uNC21d+ppd5CnvSi3DtWrHX8/xFfzd2cmRTuLjEVJaSQ
-st4xJpsqDcu7IMBZpyHi
-=F/S3
------END PGP SIGNATURE-----
---=-=-=--
+> Cheers.
+>
+>                                                 - Ted
