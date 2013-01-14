@@ -1,48 +1,37 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] ext4: trigger the lazy inode table initialization after
- resize
-Date: Mon, 14 Jan 2013 12:42:01 -0200
-Message-ID: <20130114144201.GA10537@andromeda.usersys.redhat.com>
-References: <20130113133706.GA30477@thunk.org>
- <1358084571-3042-1-git-send-email-tytso@mit.edu>
- <20130114130415.GB3906@andromeda.usersys.redhat.com>
- <20130114143317.GE12052@thunk.org>
+From: =?ISO-8859-1?Q?Cristian_Rodr=EDguez?= <crrodriguez@opensuse.org>
+Subject: Re: [PATCH] lib/ext2fs/bitops.h: Use the optmized/documented byteswapping
+ routines
+Date: Mon, 14 Jan 2013 12:33:31 -0300
+Message-ID: <50F4254B.9040102@opensuse.org>
+References: <1358019145-2774-1-git-send-email-crrodriguez@opensuse.org> <20130114141356.GA12052@thunk.org> <20130114142005.GC12052@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	esandeen@redhat.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11408 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756170Ab3ANOyL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Jan 2013 09:54:11 -0500
-Content-Disposition: inline
-In-Reply-To: <20130114143317.GE12052@thunk.org>
+Received: from mail-oa0-f43.google.com ([209.85.219.43]:59704 "EHLO
+	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756283Ab3ANPei (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2013 10:34:38 -0500
+Received: by mail-oa0-f43.google.com with SMTP id k1so4078164oag.2
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2013 07:34:38 -0800 (PST)
+In-Reply-To: <20130114142005.GC12052@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 14, 2013 at 09:33:17AM -0500, Theodore Ts'o wrote:
-> On Mon, Jan 14, 2013 at 11:04:15AM -0200, Carlos Maiolino wrote:
-> > > @@ -388,6 +392,11 @@ group_add_out:
-> > >  		if (err == 0)
-> > >  			err = err2;
-> > >  		mnt_drop_write_file(filp);
-> > > +		if (!err && (o_group > EXT4_SB(sb)->s_groups_count) &&
-> > 
-> > Maybe a n00b question Ted, but can o_group here be bigger than ->s_groups_count
-> > in any chance? 
-> 
-> o_group can never be smaller than s_groups_count (since we don't
-> support online shrink).  o_group can be larger than s_groups_count if
-> ext4_resize_fs() has added one or more block groups to the file system
-> --- which is when we might need to kick off the lazy init thread.
-> 
-Thanks to catch the right question :)
+On 01/14/2013 11:20 AM, Theodore Ts'o wrote:
 
-> Cheers,
-> 
-> 						- Ted
+> why bother using autoconf and automake
 
--- 
-Carlos
+For a very simple reason, fixing hand written makefiles is the number 1 
+burden in distribution mainteniance.
+
+Any autotools stuff provided is always better and causes less pain than 
+ad-hoc build scripts.
+
+This is why you see frecuent requests to use autotools, because hand 
+crafted stuff breaks literally everyday, just ask any distribution 
+packager if you dont believe me.
+
+
+
