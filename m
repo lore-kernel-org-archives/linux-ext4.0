@@ -1,12 +1,13 @@
-From: Jan Kara <jack@suse.cz>
+From: Steven Whitehouse <swhiteho@redhat.com>
 Subject: Re: [PATCH 2/6] mm: Only enforce stable page writes if the backing
  device requires it
-Date: Tue, 15 Jan 2013 11:19:34 +0100
-Message-ID: <20130115101934.GC1778@quack.suse.cz>
+Date: Tue, 15 Jan 2013 10:59:26 +0000
+Message-ID: <1358247566.2728.12.camel@menhir>
 References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
- <20130115054250.1563.40740.stgit@blackbox.djwong.org>
+	 <20130115054250.1563.40740.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
 	tytso@mit.edu, viro@zeniv.linux.org.uk, rminnich@sandia.gov,
 	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
@@ -16,26 +17,23 @@ Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
 	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43470 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:39816 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755800Ab3AOKTg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jan 2013 05:19:36 -0500
-Content-Disposition: inline
+	id S1753673Ab3AOLCV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jan 2013 06:02:21 -0500
 In-Reply-To: <20130115054250.1563.40740.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-01-13 21:42:50, Darrick J. Wong wrote:
+Hi,
+
+On Mon, 2013-01-14 at 21:42 -0800, Darrick J. Wong wrote:
 > Create a helper function to check if a backing device requires stable page
 > writes and, if so, performs the necessary wait.  Then, make it so that all
 > points in the memory manager that handle making pages writable use the helper
 > function.  This should provide stable page write support to most filesystems,
 > while eliminating unnecessary waiting for devices that don't require the
 > feature.
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
@@ -48,6 +46,14 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 >  mm/page-writeback.c     |   20 ++++++++++++++++++++
 >  7 files changed, 27 insertions(+), 5 deletions(-)
 > 
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+
+Are there any other places that need patching in order to have stable
+page writes working with GFS2? Do we need to unmap in certain places or
+are the hooks for that already in the core code?
+
+Steve.
+
 > 
 > diff --git a/fs/buffer.c b/fs/buffer.c
 > index c017a2d..2981449 100644
@@ -163,6 +169,9 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 > +}
 > +EXPORT_SYMBOL_GPL(wait_for_stable_page);
 > 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
