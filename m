@@ -1,35 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/5] libext2fs: avoid 32-bit overflow in
- ext2fs_initialize with a 512M cluster size
-Date: Tue, 15 Jan 2013 14:10:30 -0500
-Message-ID: <20130115191030.GC17719@thunk.org>
-References: <20130114211014.GA22642@thunk.org>
- <1358210232-30578-1-git-send-email-tytso@mit.edu>
- <1358210232-30578-5-git-send-email-tytso@mit.edu>
- <20130115153331.GE19209@gmail.com>
+Subject: Re: [PATCH 3/3] mke2fs: document bigalloc and cluster-size
+Date: Tue, 15 Jan 2013 14:12:54 -0500
+Message-ID: <20130115191254.GD17719@thunk.org>
+References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
+ <1358068095-9034-3-git-send-email-wenqing.lz@taobao.com>
+ <20130115031006.GB31857@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43547 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43552 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751280Ab3AOTKb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jan 2013 14:10:31 -0500
+	id S1755589Ab3AOTM5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jan 2013 14:12:57 -0500
 Content-Disposition: inline
-In-Reply-To: <20130115153331.GE19209@gmail.com>
+In-Reply-To: <20130115031006.GB31857@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 11:33:31PM +0800, Zheng Liu wrote:
-> 
-> FWIW, I wonder why we need to add such complex logical to handle a
-> corner case.  I guess no one wants to use a 512MB cluster.  So changing
-> max cluster size from 512MB to 256MB is very simple and straightfoward.
+On Mon, Jan 14, 2013 at 10:10:06PM -0500, Theodore Ts'o wrote:
+> On Sun, Jan 13, 2013 at 05:08:15PM +0800, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> >=20
+> > Bigalloc feature has been used for a long time, but the documentati=
+on in mke2fs
+> > is still missing.  So add it.
+> >=20
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+>=20
+> Applied (with some changes to improve the english/wording).
 
-I agree that it seems very unlikely that there would be much interest
-in using a 512MB cluster.  However, we would still need to do the
-check in the case of a 16k block size (on an PowerPC or Itanium
-system) at a 256MB or 128MB cluster.  So part of this check would be
-needed anyway.
+BTW, I used the following modified text:
 
-						- Ted
+                   bigalloc
+                          This  feature  enables clustered allocation, =
+so that
+                          the unit of allocation is a power of two  num=
+ber  of
+                          blocks.   That  is,  each bit in the what had=
+ tradi=E2=80=90
+                          tionally been known as the block  allocation =
+ bitmap
+                          now  indicates  whether  a cluster is in use =
+or not,
+                          where a cluster is by default composed of 16 =
+blocks.
+                          This  feature  can  decrease the time spent o=
+n doing
+                          block allocation and brings  smaller  fragmen=
+tation,
+                          especially  for large files.  The size can be=
+ speci=E2=80=90
+                          fied using the -C option.
+
+                          Warning: The bigalloc feature is still under =
+ devel=E2=80=90
+                          opment,  and  may  not  be fully supported wi=
+th your
+                          kernel or may have various bugs.  Please see =
+the web
+                          page  http://ext4.wiki.kernel.org/index.php/B=
+igalloc
+                          for details.
+
+And I populated the page on the ext4 wiki so that when we finally fix
+the delalloc/bigalloc problem, we can update the ext4 wiki to reflect
+this.
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
