@@ -1,60 +1,87 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 2/5] mke2fs: the -g option will now specify the clusters
- per block group
-Date: Tue, 15 Jan 2013 23:22:50 +0800
-Message-ID: <20130115152250.GB19209@gmail.com>
+Subject: Re: [PATCH 3/5] libe2p: teach parse_num_blocks2() to return bytes if
+ log_block_size < 0
+Date: Tue, 15 Jan 2013 23:23:37 +0800
+Message-ID: <20130115152337.GC19209@gmail.com>
 References: <20130114211014.GA22642@thunk.org>
  <1358210232-30578-1-git-send-email-tytso@mit.edu>
- <1358210232-30578-2-git-send-email-tytso@mit.edu>
+ <1358210232-30578-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:55437 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757150Ab3AOPJL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 10:09:11 -0500
-Received: by mail-pa0-f41.google.com with SMTP id bj3so154071pad.14
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 07:09:11 -0800 (PST)
+Received: from mail-da0-f48.google.com ([209.85.210.48]:63864 "EHLO
+	mail-da0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751795Ab3AOPJt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 10:09:49 -0500
+Received: by mail-da0-f48.google.com with SMTP id k18so74692dae.7
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 07:09:49 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1358210232-30578-2-git-send-email-tytso@mit.edu>
+In-Reply-To: <1358210232-30578-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 14, 2013 at 07:37:09PM -0500, Theodore Ts'o wrote:
-> If bigalloc is enabled, then -g will specify the clusters per block
-> group.  (If bigalloc is not enabled, then a cluster == a block, so the
-> meaning of -g is not changed.)
+On Mon, Jan 14, 2013 at 07:37:10PM -0500, Theodore Ts'o wrote:
+> Previously the behavior of parse_num_block2 was undefined if
+> log_block_size was less than zero.  It will now return a number in
+> units of bytes.
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Regards,
                                                 - Zheng
 > ---
->  misc/mke2fs.c | 9 +++++++++
->  1 file changed, 9 insertions(+)
+>  lib/e2p/parse_num.c | 24 ++++++++++++++++++++----
+>  1 file changed, 20 insertions(+), 4 deletions(-)
 > 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 75d0e48..5cb49b3 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1962,6 +1962,15 @@ profile_error:
->  		}
+> diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
+> index d9ad3e7..cb0dc5b 100644
+> --- a/lib/e2p/parse_num.c
+> +++ b/lib/e2p/parse_num.c
+> @@ -35,10 +35,16 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
+>  		num <<= 10;
+>  		/* fallthrough */
+>  	case 'K': case 'k':
+> -		num >>= log_block_size;
+> +		if (log_block_size < 0)
+> +			num <<= 10;
+> +		else
+> +			num >>= log_block_size;
+>  		break;
+>  	case 's':
+> -		num >>= (1+log_block_size);
+> +		if (log_block_size < 0)
+> +			num << 1;
+> +		else
+> +			num >>= (1+log_block_size);
+>  		break;
+>  	case '\0':
+>  		break;
+> @@ -62,11 +68,21 @@ main(int argc, char **argv)
+>  	unsigned long num;
+>  	int log_block_size = 0;
+>  
+> -	if (argc != 2) {
+> -		fprintf(stderr, "Usage: %s arg\n", argv[0]);
+> +	if (argc != 2 && argc != 3) {
+> +		fprintf(stderr, "Usage: %s arg [log_block_size]\n", argv[0]);
+>  		exit(1);
 >  	}
 >  
-> +	/*
-> +	 * If the bigalloc feature is enabled, then the -g option will
-> +	 * specify the number of clusters per group.
-> +	 */
-> +	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC) {
-> +		fs_param.s_clusters_per_group = fs_param.s_blocks_per_group;
-> +		fs_param.s_blocks_per_group = 0;
+> +	if (argc == 3) {
+> +		char *p;
+> +
+> +		log_block_size = strtol(argv[2], &p, 0);
+> +		if (*p) {
+> +			fprintf(stderr, "Bad log_block_size: %s\n", argv[2]);
+> +			exit(1);
+> +		}
 > +	}
 > +
->  	if (inode_size == 0)
->  		inode_size = get_int_from_profile(fs_types, "inode_size", 0);
->  	if (!flex_bg_size && (fs_param.s_feature_incompat &
+>  	num = parse_num_blocks(argv[1], log_block_size);
+>  
+>  	printf("Parsed number: %lu\n", num);
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
