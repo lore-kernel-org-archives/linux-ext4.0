@@ -1,160 +1,77 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: [PATCH] e2image: add -a switch to include all data
-Date: Tue, 15 Jan 2013 15:31:23 -0500
-Message-ID: <1358281883-18199-1-git-send-email-psusi@ubuntu.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Phillip Susi <psusi@ubuntu.com>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:44033 "EHLO
-	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750863Ab3AOUjy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 15:39:54 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v2.4 0/3] mm/fs: Remove unnecessary waiting for stable
+ pages
+Date: Tue, 15 Jan 2013 14:46:08 -0800
+Message-ID: <20130115144608.722180b7.akpm@linux-foundation.org>
+References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	tytso@mit.edu, viro@zeniv.linux.org.uk, rminnich@sandia.gov,
+	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
+	hch@infradead.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Normally the raw and QCOW2 images only contain fs metadata.
-Add a new switch ( -a ) to include all data.  This makes it
-possible to use e2image to clone a whole filesystem.
+On Mon, 14 Jan 2013 21:42:35 -0800
+"Darrick J. Wong" <darrick.wong@oracle.com> wrote:
 
-Signed-off-by: Phillip Susi <psusi@ubuntu.com>
----
- misc/e2image.8.in |   22 +++++++++++++++++++++-
- misc/e2image.c    |   31 ++++++++++++++++++++++++-------
- 2 files changed, 45 insertions(+), 8 deletions(-)
+> This patchset ("stable page writes, part 2") makes some key modifications to
+> the original 'stable page writes' patchset.  First, it provides creators
+> (devices and filesystems) of a backing_dev_info a flag that declares whether or
+> not it is necessary to ensure that page contents cannot change during writeout.
+> It is no longer assumed that this is true of all devices (which was never true
+> anyway).  Second, the flag is used to relaxed the wait_on_page_writeback calls
+> so that wait only occurs if the device needs it.  Third, it fixes up the
+> remaining disk-backed filesystems to use this improved conditional-wait logic
+> to provide stable page writes on those filesystems.
+> 
+> It is hoped that (for people not using checksumming devices, anyway) this
+> patchset will give back unnecessary performance decreases since the original
+> stable page write patchset went into 3.0.  Sorry about not fixing it sooner.
+> 
+> Complaints were registered by several people about the long write latencies
+> introduced by the original stable page write patchset.  Generally speaking, the
+> kernel ought to allocate as little extra memory as possible to facilitate
+> writeout, but for people who simply cannot wait, a second page stability
+> strategy is (re)introduced: snapshotting page contents.  The waiting behavior
+> is still the default strategy; to enable page snapshotting, a superblock flag
+> (MS_SNAP_STABLE) must be set.  This flag is used to bandaid^Henable stable page
+> writeback on ext3[1], and is not used anywhere else.
+> 
+> Given that there are already a few storage devices and network FSes that have
+> rolled their own page stability wait/page snapshot code, it would be nice to
+> move towards consolidating all of these.  It seems possible that iscsi and
+> raid5 may wish to use the new stable page write support to enable zero-copy
+> writeout.
+> 
+> Thank you to Jan Kara for helping fix a couple more filesystems.
 
-diff --git a/misc/e2image.8.in b/misc/e2image.8.in
-index 8876e77..f8205a6 100644
---- a/misc/e2image.8.in
-+++ b/misc/e2image.8.in
-@@ -8,7 +8,7 @@ e2image \- Save critical ext2/ext3/ext4 filesystem metadata to a file
- .SH SYNOPSIS
- .B e2image
- [
--.B \-rsI
-+.B \-rsIQa
- ]
- .I device
- .I image-file
-@@ -171,6 +171,26 @@ is regular QCOW2 image and can be processed by tools aware of QCOW2 format
- such as for example
- .BR qemu-img .
- .PP
-+You can convert a qcow2 image into a raw image with:
-+.PP
-+.br
-+\	\fBe2image \-r hda1.qcow2 hda1.raw\fR
-+.br
-+.PP
-+This can be useful to write a qcow2 image containing all data to a
-+sparse image file where it can be loop mounted, or to a disk partition.
-+Note that this may not work with qcow2 images not generated by e2image.
-+.PP
-+.SH INCLUDING DATA
-+Normally
-+.B e2image
-+only includes fs metadata, not regular file data.  The 
-+.B \-a
-+option can be specified to include all data.  This will
-+give an image that is suitible to use to clone the entire FS or
-+for backup purposes.  Note that this option only works with the
-+raw or QCOW2 formats.
-+.PP
- .SH AUTHOR
- .B e2image
- was written by Theodore Ts'o (tytso@mit.edu).
-diff --git a/misc/e2image.c b/misc/e2image.c
-index e6ea52a..3d77e76 100644
---- a/misc/e2image.c
-+++ b/misc/e2image.c
-@@ -52,6 +52,9 @@ extern int optind;
- 
- const char * program_name = "e2image";
- char * device_name = NULL;
-+char all_data;
-+char output_is_blk;
-+/* writing to blk device: don't skip zeroed blocks */
- 
- static void lseek_error_and_exit(int errnum)
- {
-@@ -84,7 +87,7 @@ static int get_bits_from_size(size_t size)
- 
- static void usage(void)
- {
--	fprintf(stderr, _("Usage: %s [-rsIQ] device image_file\n"),
-+	fprintf(stderr, _("Usage: %s [-rsIQa] device image_file\n"),
- 		program_name);
- 	exit (1);
- }
-@@ -309,7 +312,7 @@ static int process_file_block(ext2_filsys fs EXT2FS_ATTR((unused)),
- 			      int ref_offset EXT2FS_ATTR((unused)),
- 			      void *priv_data EXT2FS_ATTR((unused)))
- {
--	if (blockcnt < 0) {
-+	if (blockcnt < 0 || all_data) {
- 		ext2fs_mark_block_bitmap2(meta_block_map, *block_nr);
- 		meta_blocks_count++;
- 	}
-@@ -341,11 +344,12 @@ static void mark_table_blocks(ext2_filsys fs)
- 		/*
- 		 * Mark the blocks used for the inode table
- 		 */
--		if (!ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) &&
-+		if ((output_is_blk || !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT)) &&
- 		    ext2fs_inode_table_loc(fs, i)) {
- 			unsigned int end = (unsigned) fs->inode_blocks_per_group;
- 			/* skip unused blocks */
--			if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+			if (!output_is_blk &&
-+			    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
- 						       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
- 				end -= (ext2fs_bg_itable_unused(fs, i) /
- 					EXT2_INODES_PER_BLOCK(fs->super));
-@@ -387,6 +391,8 @@ static int check_zero_block(char *buf, int blocksize)
- 	char	*cp = buf;
- 	int	left = blocksize;
- 
-+	if (output_is_blk)
-+		return 0;
- 	while (left > 0) {
- 		if (*cp++)
- 			return 0;
-@@ -1134,7 +1140,7 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
- 			if ((inode.i_flags & EXT4_EXTENTS_FL) ||
- 			    inode.i_block[EXT2_IND_BLOCK] ||
- 			    inode.i_block[EXT2_DIND_BLOCK] ||
--			    inode.i_block[EXT2_TIND_BLOCK]) {
-+			    inode.i_block[EXT2_TIND_BLOCK] || all_data) {
- 				retval = ext2fs_block_iterate3(fs,
- 				       ino, BLOCK_FLAG_READ_ONLY, block_buf,
- 				       process_file_block, &pb);
-@@ -1249,6 +1255,7 @@ int main (int argc, char ** argv)
- 	int qcow2_fd = 0;
- 	int fd = 0;
- 	int ret = 0;
-+	struct stat st;
- 
- #ifdef ENABLE_NLS
- 	setlocale(LC_MESSAGES, "");
-@@ -1262,7 +1269,7 @@ int main (int argc, char ** argv)
- 	if (argc && *argv)
- 		program_name = *argv;
- 	add_error_table(&et_ext2_error_table);
--	while ((c = getopt(argc, argv, "rsIQ")) != EOF)
-+	while ((c = getopt(argc, argv, "rsIQa")) != EOF)
- 		switch (c) {
- 		case 'I':
- 			flags |= E2IMAGE_INSTALL_FLAG;
-@@ -1280,6 +1287,9 @@ int main (int argc, char ** argv)
- 		case 's':
- 			flags |= E2IMAGE_SCRAMBLE_FLAG;
- 			break;
-+		case 'a':
-+			all_data = 1;
-+			break;
- 		default:
- 			usage();
- 		}
-@@ -1327,7 +1337,14 @@ skip_device:
- 					 "the stdout!\n");
- 		exit(1);
- 	}
+I have to say that 3d08bcc887 ("mm: Wait for writeback when grabbing
+pages to begin a write") was a massive faceplant.  How the heck did that
+happen?
+
+Looking back at the 19 May 2011 patchset, I see that we all managed to
+avoid cc'ing the guy who wrote and designed that code and who introduced
+the PageWriteback/wait_on_page_writeback() infrastructure to avoid exactly
+the problem which 3d08bcc887 added.  Sigh.
+
+> This patchset has been tested on 3.8.0-rc3 on x64 with ext3, ext4, and xfs.
+> What does everyone think about queueing this for 3.9?
+
+This patchset lacks any performance testing results.
+
+
+The patchset looks OK to me, but one thing I find unclear:
+
+For clarity's sake, please provide a description of which filesystems
+(and under which circumstances) will block behind writeback when
+userspace is attempting to dirty a page.  Both before and, particularly,
+after this patchset.  IOW, did everything get fixed?
