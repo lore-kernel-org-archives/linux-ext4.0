@@ -1,44 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] mke2fs: document bigalloc and cluster-size
-Date: Tue, 15 Jan 2013 14:57:41 -0500
-Message-ID: <20130115195741.GG17719@thunk.org>
-References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
- <1358068095-9034-3-git-send-email-wenqing.lz@taobao.com>
- <20130115031006.GB31857@thunk.org>
- <20130115191254.GD17719@thunk.org>
- <50F5B209.40900@ubuntu.com>
+Subject: Re: debuge2fs not displaying /dev folder
+Date: Tue, 15 Jan 2013 15:14:42 -0500
+Message-ID: <20130115201442.GI17719@thunk.org>
+References: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com>
+ <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Phillip Susi <psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org
+To: Prashant Shah <pshah.mumbai@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43579 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43586 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755137Ab3AOT5p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jan 2013 14:57:45 -0500
+	id S1752370Ab3AOUOo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jan 2013 15:14:44 -0500
 Content-Disposition: inline
-In-Reply-To: <50F5B209.40900@ubuntu.com>
+In-Reply-To: <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 02:46:17PM -0500, Phillip Susi wrote:
+On Tue, Jan 15, 2013 at 11:31:53AM +0530, Prashant Shah wrote:
 > 
-> Does this mean that a cluster is the minimum allocation unit, or can
-> two small files allocate different blocks in the same cluster, leaving
-> the cluster partially used?  If the former, then how is this different
-> than just using a larger block size?
+> When using debuge2fs on a ext3 partition the /dev partition does not
+> show any entries at all. While running it on a ext4 partition only
+> part of entries are shown for /dev.
 
-The former.  The difference is that we use units of blocks in the
-indirect blocks and extents --- and the reason for this is because
-there's a pretty fundamental limitation baked into the MM layer that
-the file system block size is less than or equal to the page size.  So
-on architectures where we have 16k page sizes, we can use a 16k block
-size --- but then you won't be able to mount that file system on an
-x86 system.
+Are you sure you don't have a pseudo-filesystem mounted on top of
+/dev?
 
-So bigalloc is basically a hack because it was easier to make this
-change in the file system than it is to deal with block sizes greater
-than the page size.
+What does "df /dev" report.  If it's something like this, you are
+using a pseudo-filesystem for /dev:
 
-						- Ted
+% df /dev
+Filesystem     1K-blocks  Used Available Use% Mounted on
+udev               10240     0     10240   0% /dev
+
+In that case, what debugfs is showing is the entries in your /dev
+directory before the udev file system is mounted on top of /dev.
+
+Regards,
+
+					- Ted
