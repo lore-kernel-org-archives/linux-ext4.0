@@ -1,248 +1,100 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/6] block: Optionally snapshot page contents to provide
- stable pages during write
-Date: Mon, 14 Jan 2013 21:43:05 -0800
-Message-ID: <20130115054305.1563.48197.stgit@blackbox.djwong.org>
-References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
+From: Prashant Shah <pshah.mumbai@gmail.com>
+Subject: debuge2fs not displaying /dev folder
+Date: Tue, 15 Jan 2013 11:31:53 +0530
+Message-ID: <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
+References: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	Andy Lutomirski <luto@amacapital.net>,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
-	darrick.wong@oracle.com, ericvh@gmail.com, tytso@mit.edu,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ea0-f179.google.com ([209.85.215.179]:54133 "EHLO
+	mail-ea0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750963Ab3AOGCO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 01:02:14 -0500
+Received: by mail-ea0-f179.google.com with SMTP id i12so1965659eaa.10
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2013 22:02:13 -0800 (PST)
+In-Reply-To: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This provides a band-aid to provide stable page writes on jbd without needing
-to backport the fixed locking and page writeback bit handling schemes of jbd2.
-The band-aid works by using bounce buffers to snapshot page contents instead of
-waiting.
+Hi,
 
-For those wondering about the ext3 bandage -- fixing the jbd locking (which was
-done as part of ext4dev years ago) is a lot of surgery, and setting
-PG_writeback on data pages when we actually hold the page lock dropped ext3
-performance by nearly an order of magnitude.  If we're going to migrate iscsi
-and raid to use stable page writes, the complaints about high latency will
-likely return.  We might as well centralize their page snapshotting thing to
-one place.
+When using debuge2fs on a ext3 partition the /dev partition does not
+show any entries at all. While running it on a ext4 partition only
+part of entries are shown for /dev.
 
-Tested-by: Andy Lutomirski <luto@amacapital.net>
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- arch/tile/Kconfig       |    6 ------
- block/blk-core.c        |    8 +++++---
- fs/ext3/super.c         |    1 +
- include/uapi/linux/fs.h |    1 +
- mm/Kconfig              |   13 +++++++++++++
- mm/bounce.c             |   47 +++++++++++++++++++++++++++++++++++++++++++----
- mm/page-writeback.c     |    4 ++++
- 7 files changed, 67 insertions(+), 13 deletions(-)
+Below is the list of files and folder within /dev folder residing on a
+ext4 partition. Using "debugfs" shows around 92 entries while "ls"
+shows around 217 entries. A block level dump also shows the same
+folders as "debugfs".
 
+--------------------- debugfs --------------------
+ 3014659  (12) .    2  (12) ..    3014663  (12) fd    3014664  (16) mapper
+ 3014665  (12) pts    3014666  (12) shm    3014667  (16) agpgart
+ 3014668  (16) audio    3014669  (16) audio1    3014670  (16) audio2
+ 3014671  (16) audio3    3014672  (16) audioctl    3014673  (16) console
+ 3014674  (12) core    3014675  (12) dsp    3014676  (12) dsp1
+ 3014677  (12) dsp2    3014678  (12) dsp3    3014679  (12) full
+ 3014680  (12) fuse    3014681  (12) kmem    3014682  (16) loop0
+ 3014683  (16) loop1    3014684  (16) loop2    3014685  (16) loop3
+ 3014686  (16) loop4    3014687  (16) loop5    3014688  (16) loop6
+ 3014689  (16) loop7    3014690  (12) mem    3014691  (16) midi0
+ 3014692  (16) midi00    3014693  (16) midi01    3014694  (16) midi02
+ 3014695  (16) midi03    3014696  (16) midi1    3014697  (16) midi2
+ 3014698  (16) midi3    3014699  (16) mixer    3014700  (16) mixer1
+ 3014701  (16) mixer2    3014702  (16) mixer3    3014703  (20) mpu401data
+ 3014704  (20) mpu401stat    3014705  (12) null    3014706  (12) port
+ 3014707  (12) ptmx    3014708  (12) ram    3014709  (12) ram0
+ 3014710  (12) ram1    3014711  (16) ram10    3014712  (16) ram11
+ 3014713  (16) ram12    3014714  (16) ram13    3014715  (16) ram14
+ 3014716  (16) ram15    3014717  (16) ram16    3014718  (12) ram2
+ 3014719  (12) ram3    3014720  (12) ram4    3014721  (12) ram5
+ 3014722  (12) ram6    3014723  (12) ram7    3014724  (12) ram8
+ 3014725  (12) ram9    3014726  (16) random    3014727  (16) rmidi0
+ 3014728  (16) rmidi1    3014729  (16) rmidi2    3014730  (16) rmidi3
+ 3014731  (20) sequencer    3014732  (16) smpte0    3014733  (16) smpte1
+ 3014734  (16) smpte2    3014735  (16) smpte3    3014736  (16) sndstat
+ 3014737  (16) stderr    3014738  (16) stdin    3014739  (16) stdout
+ 3014740  (12) tty    3014741  (12) tty0    3014742  (12) tty1
+ 3014743  (12) tty2    3014744  (12) tty3    3014745  (12) tty4
+ 3014746  (12) tty5    3014747  (12) tty6    3014748  (12) tty7
+ 3014749  (12) tty8    3014750  (12) tty9    3014751  (16) urandom
+ 3014752  (2784) zero
 
-diff --git a/arch/tile/Kconfig b/arch/tile/Kconfig
-index 875d008..c671fda 100644
---- a/arch/tile/Kconfig
-+++ b/arch/tile/Kconfig
-@@ -410,12 +410,6 @@ config TILE_USB
- 	  Provides USB host adapter support for the built-in EHCI and OHCI
- 	  interfaces on TILE-Gx chips.
- 
--# USB OHCI needs the bounce pool since tilegx will often have more
--# than 4GB of memory, but we don't currently use the IOTLB to present
--# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
--config NEED_BOUNCE_POOL
--	def_bool USB_OHCI_HCD
--
- source "drivers/pci/hotplug/Kconfig"
- 
- endmenu
-diff --git a/block/blk-core.c b/block/blk-core.c
-index c973249..277134c 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1474,6 +1474,11 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
- 	 */
- 	blk_queue_bounce(q, &bio);
- 
-+	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio)) {
-+		bio_endio(bio, -EIO);
-+		return;
-+	}
-+
- 	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA)) {
- 		spin_lock_irq(q->queue_lock);
- 		where = ELEVATOR_INSERT_FLUSH;
-@@ -1714,9 +1719,6 @@ generic_make_request_checks(struct bio *bio)
- 	 */
- 	blk_partition_remap(bio);
- 
--	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio))
--		goto end_io;
--
- 	if (bio_check_eod(bio, nr_sectors))
- 		goto end_io;
- 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 6e50223..4ba2683 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2065,6 +2065,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA ? "journal":
- 		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA ? "ordered":
- 		"writeback");
-+	sb->s_flags |= MS_SNAP_STABLE;
- 
- 	return 0;
- 
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 780d4c6..0144fbb 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -69,6 +69,7 @@ struct inodes_stat_t {
- #define MS_REMOUNT	32	/* Alter flags of a mounted FS */
- #define MS_MANDLOCK	64	/* Allow mandatory locks on an FS */
- #define MS_DIRSYNC	128	/* Directory modifications are synchronous */
-+#define MS_SNAP_STABLE	256	/* Snapshot pages during writeback, if needed */
- #define MS_NOATIME	1024	/* Do not update access times. */
- #define MS_NODIRATIME	2048	/* Do not update directory access times */
- #define MS_BIND		4096
-diff --git a/mm/Kconfig b/mm/Kconfig
-index 278e3ab..7901d83 100644
---- a/mm/Kconfig
-+++ b/mm/Kconfig
-@@ -258,6 +258,19 @@ config BOUNCE
- 	def_bool y
- 	depends on BLOCK && MMU && (ZONE_DMA || HIGHMEM)
- 
-+# On the 'tile' arch, USB OHCI needs the bounce pool since tilegx will often
-+# have more than 4GB of memory, but we don't currently use the IOTLB to present
-+# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
-+#
-+# We also use the bounce pool to provide stable page writes for jbd.  jbd
-+# initiates buffer writeback without locking the page or setting PG_writeback,
-+# and fixing that behavior (a second time; jbd2 doesn't have this problem) is
-+# a major rework effort.  Instead, use the bounce buffer to snapshot pages
-+# (until jbd goes away).  The only jbd user is ext3.
-+config NEED_BOUNCE_POOL
-+	bool
-+	default y if (TILE && USB_OHCI_HCD) || (BLK_DEV_INTEGRITY && JBD)
-+
- config NR_QUICK
- 	int
- 	depends on QUICKLIST
-diff --git a/mm/bounce.c b/mm/bounce.c
-index 0420867..a5b30f9 100644
---- a/mm/bounce.c
-+++ b/mm/bounce.c
-@@ -178,8 +178,44 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
- 	__bounce_end_io_read(bio, isa_page_pool, err);
- }
- 
-+#ifdef CONFIG_NEED_BOUNCE_POOL
-+static int must_snapshot_stable_pages(struct bio *bio)
-+{
-+	struct page *page;
-+	struct backing_dev_info *bdi;
-+	struct address_space *mapping;
-+	struct bio_vec *from;
-+	int i;
-+
-+	if (bio_data_dir(bio) != WRITE)
-+		return 0;
-+
-+	/*
-+	 * Based on the first page that has a valid mapping, decide whether or
-+	 * not we have to employ bounce buffering to guarantee stable pages.
-+	 */
-+	bio_for_each_segment(from, bio, i) {
-+		page = from->bv_page;
-+		mapping = page_mapping(page);
-+		if (!mapping)
-+			continue;
-+		bdi = mapping->backing_dev_info;
-+		if (!bdi_cap_stable_pages_required(bdi))
-+			return 0;
-+		return mapping->host->i_sb->s_flags & MS_SNAP_STABLE;
-+	}
-+
-+	return 0;
-+}
-+#else
-+static int must_snapshot_stable_pages(struct bio *bio)
-+{
-+	return 0;
-+}
-+#endif /* CONFIG_NEED_BOUNCE_POOL */
-+
- static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
--			       mempool_t *pool)
-+			       mempool_t *pool, int force)
- {
- 	struct page *page;
- 	struct bio *bio = NULL;
-@@ -192,7 +228,7 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
- 		/*
- 		 * is destination page below bounce pfn?
- 		 */
--		if (page_to_pfn(page) <= queue_bounce_pfn(q))
-+		if (page_to_pfn(page) <= queue_bounce_pfn(q) && !force)
- 			continue;
- 
- 		/*
-@@ -270,6 +306,7 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
- 
- void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
- {
-+	int must_bounce;
- 	mempool_t *pool;
- 
- 	/*
-@@ -278,13 +315,15 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
- 	if (!bio_has_data(*bio_orig))
- 		return;
- 
-+	must_bounce = must_snapshot_stable_pages(*bio_orig);
-+
- 	/*
- 	 * for non-isa bounce case, just check if the bounce pfn is equal
- 	 * to or bigger than the highest pfn in the system -- in that case,
- 	 * don't waste time iterating over bio segments
- 	 */
- 	if (!(q->bounce_gfp & GFP_DMA)) {
--		if (queue_bounce_pfn(q) >= blk_max_pfn)
-+		if (queue_bounce_pfn(q) >= blk_max_pfn && !must_bounce)
- 			return;
- 		pool = page_pool;
- 	} else {
-@@ -295,7 +334,7 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
- 	/*
- 	 * slow path
- 	 */
--	__blk_queue_bounce(q, bio_orig, pool);
-+	__blk_queue_bounce(q, bio_orig, pool, must_bounce);
- }
- 
- EXPORT_SYMBOL(blk_queue_bounce);
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 9c5af4d..75a13f3 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2305,6 +2305,10 @@ void wait_for_stable_page(struct page *page)
- 
- 	if (!bdi_cap_stable_pages_required(bdi))
- 		return;
-+#ifdef CONFIG_NEED_BOUNCE_POOL
-+	if (mapping->host->i_sb->s_flags & MS_SNAP_STABLE)
-+		return;
-+#endif /* CONFIG_NEED_BOUNCE_POOL */
- 
- 	wait_on_page_writeback(page);
- }
+--------- from ls -----------
+autofs           ecryptfs  loop6               pts    random    sr0
+ tty2   tty35  tty50  tty9       ttyS22  uinput      vcsa2
+block            fb0       loop7               ram0   rfkill    stderr
+ tty20  tty36  tty51  ttyprintk  ttyS23  urandom     vcsa3
+bsg              fd        loop-control        ram1   rtc       stdin
+ tty21  tty37  tty52  ttyS0      ttyS24  usbmon0     vcsa4
+btrfs-control    full      lp0                 ram10  rtc0      stdout
+ tty22  tty38  tty53  ttyS1      ttyS25  usbmon1     vcsa5
+bus              fuse      mapper              ram11  sda       tty
+ tty23  tty39  tty54  ttyS10     ttyS26  usbmon2     vcsa6
+cdrom            hidraw0   mcelog              ram12  sda1      tty0
+ tty24  tty4   tty55  ttyS11     ttyS27  vboxdrv     vg
+cdrw             hpet      mem                 ram13  sda2      tty1
+ tty25  tty40  tty56  ttyS12     ttyS28  vboxnetctl  vga_arbiter
+char             input     net                 ram14  sda3      tty10
+ tty26  tty41  tty57  ttyS13     ttyS29  vboxusb     zero
+console          kmsg      network_latency     ram15  sda4      tty11
+ tty27  tty42  tty58  ttyS14     ttyS3   vcs
+core             kvm       network_throughput  ram2   sda5      tty12
+ tty28  tty43  tty59  ttyS15     ttyS30  vcs1
+cpu              log       null                ram3   sda6      tty13
+ tty29  tty44  tty6   ttyS16     ttyS31  vcs2
+cpu_dma_latency  loop0     oldmem              ram4   sda7      tty14
+ tty3   tty45  tty60  ttyS17     ttyS4   vcs3
+disk             loop1     parport0            ram5   sg0       tty15
+ tty30  tty46  tty61  ttyS18     ttyS5   vcs4
+dm-0             loop2     port                ram6   sg1       tty16
+ tty31  tty47  tty62  ttyS19     ttyS6   vcs5
+dri              loop3     ppp                 ram7   shm       tty17
+ tty32  tty48  tty63  ttyS2      ttyS7   vcs6
+dvd              loop4     psaux               ram8   snapshot  tty18
+ tty33  tty49  tty7   ttyS20     ttyS8   vcsa
+dvdrw            loop5     ptmx                ram9   snd       tty19
+ tty34  tty5   tty8   ttyS21     ttyS9   vcsa1
+
+Regards.
