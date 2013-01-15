@@ -1,42 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: debuge2fs not displaying /dev folder
-Date: Tue, 15 Jan 2013 15:14:42 -0500
-Message-ID: <20130115201442.GI17719@thunk.org>
-References: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com>
- <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: [PATCH 3/3] mke2fs: document bigalloc and cluster-size
+Date: Tue, 15 Jan 2013 15:38:47 -0500
+Message-ID: <50F5BE57.1000305@ubuntu.com>
+References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com> <1358068095-9034-3-git-send-email-wenqing.lz@taobao.com> <20130115031006.GB31857@thunk.org> <20130115191254.GD17719@thunk.org> <50F5B209.40900@ubuntu.com> <20130115195741.GG17719@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Prashant Shah <pshah.mumbai@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43586 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752370Ab3AOUOo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jan 2013 15:14:44 -0500
-Content-Disposition: inline
-In-Reply-To: <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:49506 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754929Ab3AOUit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 15:38:49 -0500
+In-Reply-To: <20130115195741.GG17719@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 11:31:53AM +0530, Prashant Shah wrote:
-> 
-> When using debuge2fs on a ext3 partition the /dev partition does not
-> show any entries at all. While running it on a ext4 partition only
-> part of entries are shown for /dev.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Are you sure you don't have a pseudo-filesystem mounted on top of
-/dev?
+On 1/15/2013 2:57 PM, Theodore Ts'o wrote:
+> So bigalloc is basically a hack because it was easier to make this 
+> change in the file system than it is to deal with block sizes
+> greater than the page size.
 
-What does "df /dev" report.  If it's something like this, you are
-using a pseudo-filesystem for /dev:
+If it is only to get around the mm pagesize limit, then why not just
+have the fs automatically lie to the kernel about the block size and
+shift the references back and forth on the fly when it detects a
+larger blocksize?
 
-% df /dev
-Filesystem     1K-blocks  Used Available Use% Mounted on
-udev               10240     0     10240   0% /dev
 
-In that case, what debugfs is showing is the entries in your /dev
-directory before the udev file system is mounted on top of /dev.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-Regards,
-
-					- Ted
+iQEcBAEBAgAGBQJQ9b5XAAoJEJrBOlT6nu75ankH/39qiU2tahSVRekQ6kkyFeaY
+RnGMydXcKgSacKAlvmIgP6VOnqPmBCKtdM8oxlob4+orJUksWiLmT7nvMIukUOqs
+QGqPzsHtpIzNZnPB6soc6ToRbx+b53EM4fQ+XIt9egnJ4p6gDRiS83xKKjyZnywq
+94ZPH5Zg84Xr+zmyUFRqs/cDG2tmbo/6qgkqkVUeFfdLzygq2K4LO/dFpuRg3oqV
+ceUqVCieCfEplcjnyClT1uOv3RBrjCcyFW1j46UjEYiHkFENYsCSi/Hk4qOYDls+
+i/bETjWABSXz23BMD2/B0wZwhGwkrsX2Y5g1CjtRksgPFthW/rmk0HzvWniC9J4=
+=kJ8x
+-----END PGP SIGNATURE-----
