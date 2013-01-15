@@ -1,56 +1,76 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/5] mke2fs: enforce that the cluster size must be less that the block size
-Date: Mon, 14 Jan 2013 19:37:08 -0500
-Message-ID: <1358210232-30578-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/5] libe2p: teach parse_num_blocks2() to return bytes if log_block_size < 0
+Date: Mon, 14 Jan 2013 19:37:10 -0500
+Message-ID: <1358210232-30578-3-git-send-email-tytso@mit.edu>
 References: <20130114211014.GA22642@thunk.org>
+ <1358210232-30578-1-git-send-email-tytso@mit.edu>
 Cc: gnehzuil.liu@gmail.com, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43389 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:43392 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756764Ab3AOAhT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Jan 2013 19:37:19 -0500
-In-Reply-To: <20130114211014.GA22642@thunk.org>
+	id S1756760Ab3AOAhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Jan 2013 19:37:24 -0500
+In-Reply-To: <1358210232-30578-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In addition, do not allow a cluster size of 1024, since that will be
-interpreted by ext2fs_initialize() as requesting the default cluster
-size.
+Previously the behavior of parse_num_block2 was undefined if
+log_block_size was less than zero.  It will now return a number in
+units of bytes.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reported-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- misc/mke2fs.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ lib/e2p/parse_num.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 4748f4a..75d0e48 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1346,7 +1346,7 @@ profile_error:
- 			break;
- 		case 'C':
- 			cluster_size = strtoul(optarg, &tmp, 0);
--			if (cluster_size < EXT2_MIN_CLUSTER_SIZE ||
-+			if (cluster_size <= EXT2_MIN_CLUSTER_SIZE ||
- 			    cluster_size > EXT2_MAX_CLUSTER_SIZE || *tmp) {
- 				com_err(program_name, 0,
- 					_("invalid cluster size - %s"),
-@@ -1847,6 +1847,13 @@ profile_error:
- 							    blocksize*16);
- 		fs_param.s_log_cluster_size =
- 			int_log2(cluster_size >> EXT2_MIN_CLUSTER_LOG_SIZE);
-+		if (fs_param.s_log_cluster_size &&
-+		    fs_param.s_log_cluster_size < fs_param.s_log_block_size) {
-+			com_err(program_name, 0,
-+				_("The cluster size must not be "
-+				  "smaller than the block size.\n"));
+diff --git a/lib/e2p/parse_num.c b/lib/e2p/parse_num.c
+index d9ad3e7..cb0dc5b 100644
+--- a/lib/e2p/parse_num.c
++++ b/lib/e2p/parse_num.c
+@@ -35,10 +35,16 @@ unsigned long long parse_num_blocks2(const char *arg, int log_block_size)
+ 		num <<= 10;
+ 		/* fallthrough */
+ 	case 'K': case 'k':
+-		num >>= log_block_size;
++		if (log_block_size < 0)
++			num <<= 10;
++		else
++			num >>= log_block_size;
+ 		break;
+ 	case 's':
+-		num >>= (1+log_block_size);
++		if (log_block_size < 0)
++			num << 1;
++		else
++			num >>= (1+log_block_size);
+ 		break;
+ 	case '\0':
+ 		break;
+@@ -62,11 +68,21 @@ main(int argc, char **argv)
+ 	unsigned long num;
+ 	int log_block_size = 0;
+ 
+-	if (argc != 2) {
+-		fprintf(stderr, "Usage: %s arg\n", argv[0]);
++	if (argc != 2 && argc != 3) {
++		fprintf(stderr, "Usage: %s arg [log_block_size]\n", argv[0]);
+ 		exit(1);
+ 	}
+ 
++	if (argc == 3) {
++		char *p;
++
++		log_block_size = strtol(argv[2], &p, 0);
++		if (*p) {
++			fprintf(stderr, "Bad log_block_size: %s\n", argv[2]);
 +			exit(1);
 +		}
- 	} else if (cluster_size) {
- 		com_err(program_name, 0,
- 			_("specifying a cluster size requires the "
++	}
++
+ 	num = parse_num_blocks(argv[1], log_block_size);
+ 
+ 	printf("Parsed number: %lu\n", num);
 -- 
 1.7.12.rc0.22.gcdd159b
 
