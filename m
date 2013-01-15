@@ -1,81 +1,53 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v2.4 0/3] mm/fs: Remove unnecessary waiting for stable
- pages
-Date: Tue, 15 Jan 2013 16:33:59 -0800
-Message-ID: <20130115163359.16d64ab4.akpm@linux-foundation.org>
-References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
-	<20130115144608.722180b7.akpm@linux-foundation.org>
-	<20130116002246.GI6426@blackbox.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] mke2fs: document bigalloc and cluster-size
+Date: Tue, 15 Jan 2013 17:28:24 -0500
+Message-ID: <20130115222824.GA5073@thunk.org>
+References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
+ <1358068095-9034-3-git-send-email-wenqing.lz@taobao.com>
+ <20130115031006.GB31857@thunk.org>
+ <20130115191254.GD17719@thunk.org>
+ <50F5B209.40900@ubuntu.com>
+ <20130115195741.GG17719@thunk.org>
+ <50F5BE57.1000305@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	tytso@mit.edu, viro@zeniv.linux.org.uk, rminnich@sandia.gov,
-	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130116002246.GI6426@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Phillip Susi <psusi@ubuntu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43640 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757646Ab3AOW23 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jan 2013 17:28:29 -0500
+Content-Disposition: inline
+In-Reply-To: <50F5BE57.1000305@ubuntu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 15 Jan 2013 16:22:46 -0800
-"Darrick J. Wong" <darrick.wong@oracle.com> wrote:
+On Tue, Jan 15, 2013 at 03:38:47PM -0500, Phillip Susi wrote:
+> 
+> If it is only to get around the mm pagesize limit, then why not just
+> have the fs automatically lie to the kernel about the block size and
+> shift the references back and forth on the fly when it detects a
+> larger blocksize?
 
-> > > This patchset has been tested on 3.8.0-rc3 on x64 with ext3, ext4, and xfs.
-> > > What does everyone think about queueing this for 3.9?
-> > 
-> > This patchset lacks any performance testing results.
-> 
-> On my setup (various consumer SSDs and spinny disks, none of which support
-> T10DIF) I see that the maximum write latency with these patches applied is
-> about half of what it is without the patches.  But don't take my word for it;
-> Andy Lutomirski[1] says that his soft-rt latency-sensitive programs no longer
-> freak out when he applies the patch set.  Afaik, Google and Taobao run custom
-> kernels with all this turned off, so they should see similar latency
-> improvements too.
-> 
-> Obviously, I see no difference on the DIF disk.
+Because of the pain in dealing with how to handle random writes into a
+sparse file.  We need to either track which blocks in the large block
+have been initialized, or we would need to erase the entire large
+block before writing the first page into the large block (and then you
+still need to track whether or not you are writing that first or
+subsequent page into a large block).
 
-We're talking 2001 here ;) Try leaping into your retro time machine and
-run dbench on ext2 on a spinny disk and I expect you'll see significant
-performance changes.
+What we're doing with bigalloc is effectively tracking which blocks in
+the cluster have been initialized by using entries in the extent tree,
+since entries to the allocation bitmaps is in units of clusters, but
+entries in the extent tree is in units of blocks.
 
-The problem back in 2001 was that we held lock_page() across the
-duration of page writeback, so if another thread came in and tried to
-dirty the page, it would block on lock_page() until IO completion.  I
-can't remember whether writeback would also block read().  Maybe it did,
-in which case the effects of this patchset won't be as dramatic as were
-the effects of splitting PG_lock into PG_lock and PG_writeback.
+Looking back at how complicated it has been to get delalloc right, it
+may have been the case that just using a brute-force sb_issue_zeroout
+when the block is freshly allocated, unless the arguments to the
+request to ext4_writepages() exactly covered the large block might
+have been simpler.  Getting the Direct I/O path right would have been
+messy, but perhaps it would have been less work in the end.
 
-> > For clarity's sake, please provide a description of which filesystems
-> > (and under which circumstances) will block behind writeback when
-> > userspace is attempting to dirty a page.  Both before and, particularly,
-> > after this patchset.  IOW, did everything get fixed?
-> 
-> Heh, this is complicated.
-> 
-> Before this patchset, all filesystems would block, regardless of whether or not
-> it was necessary.  ext3 would wait, but still generate occasional checksum
-> errors.  The network filesystems were left to do their own thing, so they'd
-> wait too.
-> 
-> After this patchset, all the disk filesystems except ext3 and btrfs will wait
-> only if the hardware requires it.  ext3 (if necessary) snapshots pages instead
-> of blocking, and btrfs provides its own bdi so the mm will never wait.  Network
-> filesystems haven't been touched, so either they provide their own wait code,
-> or they don't block at all.  The blocking behavior is back to what it was
-> before 3.0 if you don't have a disk requiring stable page writes.
-> 
-> (I will reconfirm this statement before sending out the next iteration.)
-> 
-> I will of course add all of this to the cover message.
-
-OK, thanks, that sounds reasonable.
-
-Do we generate nice kernel messages (at mount or device-probe time)
-which will permit people to work out which strategy their device/fs is
-using?
+       	   	      	    	      - Ted
