@@ -1,43 +1,56 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 5/5] libext2fs: avoid 32-bit overflow in
- ext2fs_initialize with a 512M cluster size
-Date: Tue, 15 Jan 2013 23:36:20 +0800
-Message-ID: <20130115153620.GF19209@gmail.com>
-References: <20130114211014.GA22642@thunk.org>
- <1358210232-30578-1-git-send-email-tytso@mit.edu>
- <1358210232-30578-5-git-send-email-tytso@mit.edu>
- <20130115153331.GE19209@gmail.com>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: debuge2fs not displaying /dev folder
+Date: Tue, 15 Jan 2013 10:43:49 -0700
+Message-ID: <CF3C02F1-C284-4E7F-9921-C6DB21A33EE5@dilger.ca>
+References: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com> <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1085)
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Prashant Shah <pshah.mumbai@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:64544 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756238Ab3AOPWd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 10:22:33 -0500
-Received: by mail-pa0-f46.google.com with SMTP id bh2so162671pad.5
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 07:22:33 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20130115153331.GE19209@gmail.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:58076 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755375Ab3AORpG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 12:45:06 -0500
+Received: by mail-pa0-f49.google.com with SMTP id bi1so240544pad.8
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 09:45:05 -0800 (PST)
+In-Reply-To: <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 11:33:31PM +0800, Zheng Liu wrote:
-> On Mon, Jan 14, 2013 at 07:37:12PM -0500, Theodore Ts'o wrote:
-> > If the user attemps to create a 512MB cluster, we need to adjust the
-> > defaults to avoid a 32-bit overflow of s_blocks_per_group.  Also check
-> > to make sure that the caller of ext2fs_initialize() has not given a
-> > value of s_clusters_per_group that would result in an overflow of
-> > s_blocks_per_group.
-> > 
-> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+On 2013-01-14, at 11:01 PM, Prashant Shah wrote:
+> When using debuge2fs on a ext3 partition the /dev partition does not
+> show any entries at all. While running it on a ext4 partition only
+> part of entries are shown for /dev.
 > 
-> The patch itself looks good to me.  Feel free to add:
-> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> Below is the list of files and folder within /dev folder residing on
+> a ext4 partition. Using "debugfs" shows around 92 entries while "ls"
+> shows around 217 entries. A block level dump also shows the same
+> folders as "debugfs".
 
-Sorry, forgot to say that '-C' option in manpage will need to be modified
-from 256MB to 512MB if this patch is applied.
+The first and most important question is whether "/dev" is a real
+filesystem, or if it is a virtual (e.g. "tmpfs" type) filesystem
+on your machine?
 
-Thanks,
-                                                - Zheng
+> --------------------- debugfs --------------------
+> 3014659  (12) .    2  (12) ..    3014663  (12) fd    3014664  (16) mapper
+> 3014665  (12) pts    3014666  (12) shm    3014667  (16) agpgart
+> 
+> 
+> --------- from ls -----------
+> autofs           ecryptfs  loop6               pts    random    sr0
+> tty2   tty35  tty50  tty9       ttyS22  uinput      vcsa2
+> block            fb0       loop7               ram0   rfkill    stderr
+
+It would be useful to show "ls -li" information for some of the
+entries that appear via debugfs (e.g. "fd", "pts", and "shm" above),
+and also some of the entries that do not appear in debugfs.
+
+Cheers, Andreas
+
+
+
+
+
