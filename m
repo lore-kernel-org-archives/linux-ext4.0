@@ -1,46 +1,31 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Ext4 developers get-together at the Collab Summit
-Date: Wed, 16 Jan 2013 13:01:56 +0100
-Message-ID: <20130116120156.GF29162@quack.suse.cz>
-References: <nsxzk0blt27.fsf@closure.thunk.org>
+From: "Janett Patterson" <j.patterson@yahoo.com>
+Subject: Fwd: bid to buy 2013 Audi A5 Coupe at 95% off only at
+ [Papayya.com]
+Date: Wed, 16 Jan 2013 13:51:26 +0200
+Message-ID: <43243243242432DFDFDWER3R323c6769e2b604d4ce180c6ef46982f266e@43243243242432dfdfdwer3r323>
+Reply-To: j.patterson@yahoo.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=windows-1257
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46951 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751047Ab3APMB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jan 2013 07:01:58 -0500
-Content-Disposition: inline
-In-Reply-To: <nsxzk0blt27.fsf@closure.thunk.org>
+Received: from mailfe01.tele2.nl ([212.247.154.14]:39759 "EHLO swip.net"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751047Ab3APM3E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jan 2013 07:29:04 -0500
+Received: from [83.188.178.84] (HELO 43243243242432dfdfdwer3r323)
+  by mailfe01.swip.net (CommuniGate Pro SMTP 5.4.4)
+  with SMTPS id 371661533 for linux-ext4@vger.kernel.org; Wed, 16 Jan 2013 13:23:59 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Ted,
+Hello, linux-ext4@vger.kernel.org !!! Lowest unique price wins, new kind of auction across the world. The auction where lowest price wins , not the highest. Buy Credits and bid on brand new electronics and cell phones or even on hard cash.
 
-On Mon 14-01-13 09:48:00, Ted Tso wrote:
-> 	The Linux Foundation's Collaboration Summit is April 15-17th,
-> and the Linux Storage, File System, and MM Summit is April 18-19th in
-> San Francisco (at the Parc 55 hotel).
-> 
-> 	I'd like to organize an ext4 developer's meeting during the
-> Collab Summit sometime April 15-17th, since so many of us will hopefully
-> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
-> 
-> 	If you're interested in attending, please reply to this thread,
-> and include some suggested topics that you'd be interested in
-> discussing.  Based on the number of topics and the number of people who
-> are planning on attending, I'll know how much time we need to reserve
-> and how big of a room to request.
-  I'd be interested in attending the ext4 meeting this year. What I'd like
-to do for the meeting is creating a "map" of ext4 mount options / features
-where we'd see what mount options do we have, which options (or fs features)
-work together and which don't. Then we can either convince ourselves the
-situation with too many / too complex interactions isn't that bad or we can
-come up with simplifications to work on.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
+Earn Passive Income every day or make commissions on every sale made to users enrolled by you as an affiliate. Wonna get some stuff for free ... go ahead and become and advertiser. Earn Chipz in multiple ways by logging on the site, by inviting new users, customers, etc. More details under GET FREE STUFF.
+
+
+
+MONEY TALKS
+
