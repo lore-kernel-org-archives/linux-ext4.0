@@ -1,53 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] mke2fs: document bigalloc and cluster-size
-Date: Tue, 15 Jan 2013 17:28:24 -0500
-Message-ID: <20130115222824.GA5073@thunk.org>
-References: <1358068095-9034-1-git-send-email-wenqing.lz@taobao.com>
- <1358068095-9034-3-git-send-email-wenqing.lz@taobao.com>
- <20130115031006.GB31857@thunk.org>
- <20130115191254.GD17719@thunk.org>
- <50F5B209.40900@ubuntu.com>
- <20130115195741.GG17719@thunk.org>
- <50F5BE57.1000305@ubuntu.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 5/5] libext2fs: avoid 32-bit overflow in
+ ext2fs_initialize with a 512M cluster size
+Date: Wed, 16 Jan 2013 09:49:14 +0800
+Message-ID: <20130116014914.GA20060@gmail.com>
+References: <20130114211014.GA22642@thunk.org>
+ <1358210232-30578-1-git-send-email-tytso@mit.edu>
+ <1358210232-30578-5-git-send-email-tytso@mit.edu>
+ <20130115153331.GE19209@gmail.com>
+ <20130115191030.GC17719@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Phillip Susi <psusi@ubuntu.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43640 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757646Ab3AOW23 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jan 2013 17:28:29 -0500
+Received: from mail-pb0-f47.google.com ([209.85.160.47]:63107 "EHLO
+	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756394Ab3APBf1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2013 20:35:27 -0500
+Received: by mail-pb0-f47.google.com with SMTP id wz17so397688pbc.20
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2013 17:35:27 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <50F5BE57.1000305@ubuntu.com>
+In-Reply-To: <20130115191030.GC17719@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 03:38:47PM -0500, Phillip Susi wrote:
+On Tue, Jan 15, 2013 at 02:10:30PM -0500, Theodore Ts'o wrote:
+> On Tue, Jan 15, 2013 at 11:33:31PM +0800, Zheng Liu wrote:
+> > 
+> > FWIW, I wonder why we need to add such complex logical to handle a
+> > corner case.  I guess no one wants to use a 512MB cluster.  So changing
+> > max cluster size from 512MB to 256MB is very simple and straightfoward.
 > 
-> If it is only to get around the mm pagesize limit, then why not just
-> have the fs automatically lie to the kernel about the block size and
-> shift the references back and forth on the fly when it detects a
-> larger blocksize?
+> I agree that it seems very unlikely that there would be much interest
+> in using a 512MB cluster.  However, we would still need to do the
+> check in the case of a 16k block size (on an PowerPC or Itanium
+> system) at a 256MB or 128MB cluster.  So part of this check would be
+> needed anyway.
 
-Because of the pain in dealing with how to handle random writes into a
-sparse file.  We need to either track which blocks in the large block
-have been initialized, or we would need to erase the entire large
-block before writing the first page into the large block (and then you
-still need to track whether or not you are writing that first or
-subsequent page into a large block).
+Yeah, I see.  Thanks for the explanation.
 
-What we're doing with bigalloc is effectively tracking which blocks in
-the cluster have been initialized by using entries in the extent tree,
-since entries to the allocation bitmaps is in units of clusters, but
-entries in the extent tree is in units of blocks.
-
-Looking back at how complicated it has been to get delalloc right, it
-may have been the case that just using a brute-force sb_issue_zeroout
-when the block is freshly allocated, unless the arguments to the
-request to ext4_writepages() exactly covered the large block might
-have been simpler.  Getting the Direct I/O path right would have been
-messy, but perhaps it would have been less work in the end.
-
-       	   	      	    	      - Ted
+Regards,
+                                                - Zheng
