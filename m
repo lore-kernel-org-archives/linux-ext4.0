@@ -1,45 +1,39 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 v2] libext2fs: introduce lseek SEEK_DATA/HOLE
-Date: Wed, 16 Jan 2013 09:59:18 -0500
-Message-ID: <20130116145918.GC6052@thunk.org>
-References: <1358173111-10511-1-git-send-email-wenqing.lz@taobao.com>
- <20130115185509.GA17719@thunk.org>
- <20130116120455.GA21029@gmail.com>
+From: Prashant Shah <pshah.mumbai@gmail.com>
+Subject: Re: debuge2fs not displaying /dev folder
+Date: Wed, 16 Jan 2013 21:16:14 +0530
+Message-ID: <CAD6i1fKA6T93OybrVmhy0o5_AW6k4JGJH9LV=xqjE+7OQP+L+A@mail.gmail.com>
+References: <CAD6i1f+GzTqewnV=2OefPTGT8YFzNo6+zmoPvxuJXMb9r0ABng@mail.gmail.com>
+ <CAD6i1f+p0-W2Pf-Pcf6phTNqrzn6h3OG+zXM3nc9hULdKq1zvw@mail.gmail.com> <20130115201442.GI17719@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:43788 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753149Ab3APO7X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jan 2013 09:59:23 -0500
-Content-Disposition: inline
-In-Reply-To: <20130116120455.GA21029@gmail.com>
+Received: from mail-ee0-f44.google.com ([74.125.83.44]:33543 "EHLO
+	mail-ee0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751557Ab3APPqh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jan 2013 10:46:37 -0500
+Received: by mail-ee0-f44.google.com with SMTP id l10so718911eei.3
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Jan 2013 07:46:36 -0800 (PST)
+In-Reply-To: <20130115201442.GI17719@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 16, 2013 at 08:04:56PM +0800, Zheng Liu wrote:
-> Yeah, it allows us to skip to the next data/hole directly if the extents
-> interface is used.  But if we do that, we will need to handle
-> extent-based file and indirect-based file resptively like this.
-> 
->         if (inode->i_flags & EXT4_EXTENTS_FL) {
->                 ext2fs_file_ext_llseek_data();
->                 ...
->         } else {
->                 ext2fs_file_ind_llseek_data();
->                 ...
->         }
-> 
-> I am not sure whether it is too complicated or not for us.  What do you
-> think?
+Hi,
 
-I'm not too worried about the performance issues for debugfs.  But for
-clients who are accessing ext[234] using libext2fs and FUSE, they
-would probably notice in at least some circumstances.  I'm not that
-worried about the complexity, but it's also not a high priority thing,
-either --- it's a "nice to have", not a "must have".
+On Wed, Jan 16, 2013 at 1:44 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Are you sure you don't have a pseudo-filesystem mounted on top of
+> /dev?
+>
+> What does "df /dev" report.  If it's something like this, you are
+> using a pseudo-filesystem for /dev:
+>
+> % df /dev
+> Filesystem     1K-blocks  Used Available Use% Mounted on
+> udev               10240     0     10240   0% /dev
+>
 
-Regards,
+Thanks ! I booted into live cd and listed the files in the unmounted
+/dev and I can see the exact same number of files as shown by debugfs.
 
-					- Ted
+Regards.
