@@ -1,43 +1,38 @@
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-Subject: Re: [PATCH 4/6] block: Optionally snapshot page contents to provide stable pages during write
-Date: Wed, 16 Jan 2013 22:26:36 -0500
-Message-ID: <yq1hamgjxqr.fsf@sermon.lab.mkp.net>
-References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
-	<20130115054305.1563.48197.stgit@blackbox.djwong.org>
-	<20130116020000.GA25806@quack.suse.cz>
-	<20130117030132.GK6426@blackbox.djwong.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] ext4: add tracepoint in punching hole
+Date: Wed, 16 Jan 2013 22:38:22 -0500
+Message-ID: <20130117033822.GA12191@thunk.org>
+References: <1345695941-15053-1-git-send-email-wenqing.lz@taobao.com>
+ <1345695941-15053-4-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jan Kara <jack@suse.cz>, axboe@kernel.dk, lucho@ionkov.net,
-	ericvh@gmail.com, tytso@mit.edu, viro@zeniv.linux.org.uk,
-	rminnich@sandia.gov, martin.petersen@oracle.com, neilb@suse.de,
-	david@fromorbit.com, gnehzuil.liu@gmail.com,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org,
-	Andy Lutomirski <luto@amacapital.net>,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130117030132.GK6426@blackbox.djwong.org> (Darrick J. Wong's
-	message of "Wed, 16 Jan 2013 19:01:32 -0800")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Lukas Czerner <lczerner@redhat.com>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:43897 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758362Ab3AQDia (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Jan 2013 22:38:30 -0500
+Content-Disposition: inline
+In-Reply-To: <1345695941-15053-4-git-send-email-wenqing.lz@taobao.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->>>>> "Darrick" == Darrick J Wong <darrick.wong@oracle.com> writes:
+On Thu, Aug 23, 2012 at 12:25:41PM +0800, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
+> 
+> This patch adds a tracepoint in ext4_punch_hole.
+> 
+> CC: Lukas Czerner <lczerner@redhat.com>
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 
->> Umm, why did you move this hunk?
+I'm still waiting for the next version of the indirect punch patches
+(which you said you'd work on after the extent status patches, given
+that I had noted other xfstest failures that were apparently caused by
+these patches), but in the mean time, adding a tracepoint for
+ext4_punch_hole() seem like it would make sense, so I've applied this
+patch to the ext4 tree.
 
-Darrick> I moved it so that the integrity data are generated against the
-Darrick> contents of the bounce buffer because the write paths don't
-Darrick> wait for writeback to finish if the snapshotting mode is
-Darrick> enabled, which means (I think) that programs can wander in and
-Darrick> scribble on the original page in between bio_integrity_prep and
-Darrick> blk_queue_bounce.
-
-It's also important that bio_integrity_prep() is run after partition
-remapping has taken place. But it looks like that's still the case after
-your change.
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+						- Ted
