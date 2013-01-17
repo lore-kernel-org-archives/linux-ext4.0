@@ -1,134 +1,118 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/6] block: Optionally snapshot page contents to
- provide stable pages during write
-Date: Thu, 17 Jan 2013 11:32:08 +0100
-Message-ID: <20130117103208.GA12562@quack.suse.cz>
-References: <20130115054235.1563.12967.stgit@blackbox.djwong.org>
- <20130115054305.1563.48197.stgit@blackbox.djwong.org>
- <20130116020000.GA25806@quack.suse.cz>
- <20130117030132.GK6426@blackbox.djwong.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: Ext4 developers get-together at the Collab Summit
+Date: Thu, 17 Jan 2013 21:15:00 +0800
+Message-ID: <20130117131500.GA19272@gmail.com>
+References: <nsxzk0blt27.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, axboe@kernel.dk, lucho@ionkov.net,
-	ericvh@gmail.com, tytso@mit.edu, viro@zeniv.linux.org.uk,
-	rminnich@sandia.gov, martin.petersen@oracle.com, neilb@suse.de,
-	david@fromorbit.com, gnehzuil.liu@gmail.com,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org,
-	Andy Lutomirski <luto@amacapital.net>,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Tao Ma <tm@tao.ma>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:40649 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753867Ab3AQNBJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2013 08:01:09 -0500
+Received: by mail-pa0-f47.google.com with SMTP id fa10so1464423pad.6
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2013 05:01:08 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130117030132.GK6426@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <nsxzk0blt27.fsf@closure.thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 16-01-13 19:01:32, Darrick J. Wong wrote:
-> > > diff --git a/block/blk-core.c b/block/blk-core.c
-> > > index c973249..277134c 100644
-> > > --- a/block/blk-core.c
-> > > +++ b/block/blk-core.c
-> > > @@ -1474,6 +1474,11 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
-> > >  	 */
-> > >  	blk_queue_bounce(q, &bio);
-> > >  
-> > > +	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio)) {
-> > > +		bio_endio(bio, -EIO);
-> > > +		return;
-> > > +	}
-> > > +
-> > >  	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA)) {
-> > >  		spin_lock_irq(q->queue_lock);
-> > >  		where = ELEVATOR_INSERT_FLUSH;
-> > > @@ -1714,9 +1719,6 @@ generic_make_request_checks(struct bio *bio)
-> > >  	 */
-> > >  	blk_partition_remap(bio);
-> > >  
-> > > -	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio))
-> > > -		goto end_io;
-> > > -
-> >   Umm, why did you move this hunk?
+Hello Ted,
+
+On Mon, Jan 14, 2013 at 09:48:00AM -0500, Theodore Ts'o wrote:
+> Hi,
 > 
-> I moved it so that the integrity data are generated against the contents of the
-> bounce buffer because the write paths don't wait for writeback to finish if the
-> snapshotting mode is enabled, which means (I think) that programs can wander in
-> and scribble on the original page in between bio_integrity_prep and
-> blk_queue_bounce.
-  Ah, I see. OK.
-
-> > >  	if (bio_check_eod(bio, nr_sectors))
-> > >  		goto end_io;
-> > 
-> > > diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-> > > index 780d4c6..0144fbb 100644
-> > > --- a/include/uapi/linux/fs.h
-> > > +++ b/include/uapi/linux/fs.h
-> > > @@ -69,6 +69,7 @@ struct inodes_stat_t {
-> > >  #define MS_REMOUNT	32	/* Alter flags of a mounted FS */
-> > >  #define MS_MANDLOCK	64	/* Allow mandatory locks on an FS */
-> > >  #define MS_DIRSYNC	128	/* Directory modifications are synchronous */
-> > > +#define MS_SNAP_STABLE	256	/* Snapshot pages during writeback, if needed */
-> > >  #define MS_NOATIME	1024	/* Do not update access times. */
-> > >  #define MS_NODIRATIME	2048	/* Do not update directory access times */
-> > >  #define MS_BIND		4096
-> >   Please don't mix MS_SNAP_STABLE flag among flags passed by mount(2)
-> > syscall. I think putting it at 1 << 27 might be acceptable. I remember
-> > Al Viro saying something along the lines that kernel internal superblock
-> > flags should be separated from those passed from userspace into a special
-> > superblock entry but that's a different story I guess.
+> 	The Linux Foundation's Collaboration Summit is April 15-17th,
+> and the Linux Storage, File System, and MM Summit is April 18-19th in
+> San Francisco (at the Parc 55 hotel).
 > 
-> Ok, I'll change it to 1<<27.  I'll add a comment stating that we're trying to
-> keep internal sb flags separate.  It looks like those last four flags are all
-> internal?
-  Yes. Flags with low numbers are part of kernel ABI...
+> 	I'd like to organize an ext4 developer's meeting during the
+> Collab Summit sometime April 15-17th, since so many of us will hopefully
+> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
+> 
+> 	If you're interested in attending, please reply to this thread,
+> and include some suggested topics that you'd be interested in
+> discussing.  Based on the number of topics and the number of people who
+> are planning on attending, I'll know how much time we need to reserve
+> and how big of a room to request.
+> 
+> 	Also, if you need a invitation letter for Visa purposes, also
+> please let me know.  I can arrange for the Linux Foundation to get that
+> letter sent, so that folks have enough time to get a Visa.
 
-> > > diff --git a/mm/bounce.c b/mm/bounce.c
-> > > index 0420867..a5b30f9 100644
-> > > --- a/mm/bounce.c
-> > > +++ b/mm/bounce.c
-> > > @@ -178,8 +178,44 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
-> > >  	__bounce_end_io_read(bio, isa_page_pool, err);
-> > >  }
-> > >  
-> > > +#ifdef CONFIG_NEED_BOUNCE_POOL
-> > > +static int must_snapshot_stable_pages(struct bio *bio)
-> > > +{
-> > > +	struct page *page;
-> > > +	struct backing_dev_info *bdi;
-> > > +	struct address_space *mapping;
-> > > +	struct bio_vec *from;
-> > > +	int i;
-> > > +
-> > > +	if (bio_data_dir(bio) != WRITE)
-> > > +		return 0;
-> > > +
-> > > +	/*
-> > > +	 * Based on the first page that has a valid mapping, decide whether or
-> > > +	 * not we have to employ bounce buffering to guarantee stable pages.
-> > > +	 */
-> > > +	bio_for_each_segment(from, bio, i) {
-> > > +		page = from->bv_page;
-> > > +		mapping = page_mapping(page);
-> > > +		if (!mapping)
-> > > +			continue;
-> > > +		bdi = mapping->backing_dev_info;
-> > > +		if (!bdi_cap_stable_pages_required(bdi))
-> > > +			return 0;
-> > > +		return mapping->host->i_sb->s_flags & MS_SNAP_STABLE;
-> > > +	}
-> > > +
-> > > +	return 0;
-> > > +}
-> >   How about using q->backing_dev_info for the
-> > bdi_cap_stable_pages_required() check? It will be a fast path and this check
-> > will be faster..
-> Ok.
-  And maybe I should have told explicitely that then you can move the check
-before bio_for_each_segment() loop...
+Tao and I would like to attend the ext4 workshop this year.  Here are some
+topics that we want to discuss with other folks at this meeting.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+* Optimization for different devices
+  We can consume more resources (e.g. Memory) for Flash/SSD device to get a
+better performance.  Meanwhile we want to reduce the consumption and provide
+a best effort performance for HDD in a low-end server with a ARM CPU, only 1G
+memory, and 4 x 3T disks.  This are two different directions of optimization.
+
+* Stable tree and long-term tree
+  I remember that Ted has talked about ext4 stable and long-term tree.  So we
+can discuss in this meeting how to maintain them and other detail.
+
+* Extent tree disk layout
+  In this mail [1], Ted metioned that extent structure could be extented to
+support larger file, such as 64-bits physical block, bigger logical block, and
+using cluster-size as unit in extent.  All these can make us better support
+large filesystem.
+
+1. http://comments.gmane.org/gmane.comp.file-systems.ext4/35490
+
+* Block allocation hint
+  An interface (e.g. ioctl(2)) is provided to let the app give a block
+allocation hint.  Filesystem can allocate some blocks that can be read/written
+faster than other blocks for a file, such as allocating blocks on outter track
+in HDD.
+
+* Latency
+  Chris had presented a proposal that is 'data=guarded', which aims at imporving
+the latency of sync.  We can discuss how to provide stable latency in ext4.
+Forgive me that I compare two filesystems here, but the result of the following
+test case shows that the latency of ext4 is higher than xfs's.  So maybe we can
+improve it.
+
+I use 'fio' to do the following test.  I revert the patches of stable page write
+for avoiding the impact of it.  Meanwhile I disable delalloc feature in ext4.  I
+repeat the test case serveral times, but the result of ext4 is higher than xfs.
+
+[global]
+iodepth=1
+directory=/mnt/sda3
+direct=0
+group_reporting
+thread
+fallocate=0
+runtime=120
+
+[log-append]
+ioengine=sync
+rw=write
+bs=4k
+size=10g
+filesize=10g
+rate=5m
+numjobs=1
+
+I pick the best result of two filesystems and paste them here.
+
+[ext4]
+  write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
+    clat (usec): min=11 , max=149 , avg=14.12, stdev= 1.73
+     lat (usec): min=11 , max=150 , avg=14.54, stdev= 1.81
+
+[xfs]
+  write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
+    clat (usec): min=4 , max=89 , avg= 8.42, stdev= 1.85
+     lat (usec): min=4 , max=89 , avg= 8.80, stdev= 1.94
+
+
+BTW, Tao and I need a invitation letter for applying our visa.  Please let me
+know if there are something we need to do.
+
+Thanks,
+						- Zheng
