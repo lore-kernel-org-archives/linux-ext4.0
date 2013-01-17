@@ -1,118 +1,76 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: Ext4 developers get-together at the Collab Summit
-Date: Thu, 17 Jan 2013 21:15:00 +0800
-Message-ID: <20130117131500.GA19272@gmail.com>
-References: <nsxzk0blt27.fsf@closure.thunk.org>
+From: Radek Pazdera <rpazdera@redhat.com>
+Subject: Re: [RFC] Optimizing readdir()
+Date: Thu, 17 Jan 2013 16:53:12 +0100
+Message-ID: <20130117155312.GA13339@laptop.brq.redhat.com>
+References: <20130113152204.GB26803@laptop.redhat.com>
+ <20130114045152.GF29329@thunk.org>
+ <20130115072143.GA21506@laptop.redhat.com>
+ <B52E6F5A-F266-433C-AE80-2E78FD6920B9@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Tao Ma <tm@tao.ma>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:40649 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753867Ab3AQNBJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2013 08:01:09 -0500
-Received: by mail-pa0-f47.google.com with SMTP id fa10so1464423pad.6
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2013 05:01:08 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:55362 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756737Ab3AQP55 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2013 10:57:57 -0500
 Content-Disposition: inline
-In-Reply-To: <nsxzk0blt27.fsf@closure.thunk.org>
+In-Reply-To: <B52E6F5A-F266-433C-AE80-2E78FD6920B9@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Ted,
+On Tue, Jan 15, 2013 at 03:44:57PM -0700, Andreas Dilger wrote:
+>Did you consider my proposal to order the inode allocations so
+>that they are (partially) ordered by the directory hash?  That
+>would not require any on-disk format changes at all.  The theory
+>is that keeping the entries mostly sorted in the inode table is
+>enough to avoid the pathological case in large directories where
+>only a single entry in each block is processed per transaction.
 
-On Mon, Jan 14, 2013 at 09:48:00AM -0500, Theodore Ts'o wrote:
-> Hi,
-> 
-> 	The Linux Foundation's Collaboration Summit is April 15-17th,
-> and the Linux Storage, File System, and MM Summit is April 18-19th in
-> San Francisco (at the Parc 55 hotel).
-> 
-> 	I'd like to organize an ext4 developer's meeting during the
-> Collab Summit sometime April 15-17th, since so many of us will hopefully
-> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
-> 
-> 	If you're interested in attending, please reply to this thread,
-> and include some suggested topics that you'd be interested in
-> discussing.  Based on the number of topics and the number of people who
-> are planning on attending, I'll know how much time we need to reserve
-> and how big of a room to request.
-> 
-> 	Also, if you need a invitation letter for Visa purposes, also
-> please let me know.  I can arrange for the Linux Foundation to get that
-> letter sent, so that folks have enough time to get a Visa.
+I only found a mention in an article about the status of ext3 from
+OLS [1], but I didn't understand it at that time. I found the original
+thread [2] (at least I think it is the right one). I'll have a look
+at it. Thanks for pointing that out!
 
-Tao and I would like to attend the ext4 workshop this year.  Here are some
-topics that we want to discuss with other folks at this meeting.
+[1] http://www.kernel.org/doc/ols/2005/ols2005v1-pages-77-104.pdf
+[2] http://lwn.net/Articles/25012/
 
-* Optimization for different devices
-  We can consume more resources (e.g. Memory) for Flash/SSD device to get a
-better performance.  Meanwhile we want to reduce the consumption and provide
-a best effort performance for HDD in a low-end server with a ARM CPU, only 1G
-memory, and 4 x 3T disks.  This are two different directions of optimization.
+>Having an upper limit on the directory cache is OK too.  Read all
+>of the entries that fit into the cache size, sort them, and return
+>them to the caller.  When the caller has processed all of those
+>entries, read another batch, sort it, return this list, repeat.
+>
+>As long as the list is piecewise ordered, I suspect it would gain
+>most of the benefit of linear ordering (sequential inode table
+>reads, avoiding repeated lookups of blocks).  Maybe worthwhile if
+>you could test this out?
 
-* Stable tree and long-term tree
-  I remember that Ted has talked about ext4 stable and long-term tree.  So we
-can discuss in this meeting how to maintain them and other detail.
+I will try that out. It shouldn't be hard to modify the spd_readdir
+preload from Ted to do just this and run the tests again.
 
-* Extent tree disk layout
-  In this mail [1], Ted metioned that extent structure could be extented to
-support larger file, such as 64-bits physical block, bigger logical block, and
-using cluster-size as unit in extent.  All these can make us better support
-large filesystem.
+>At the same time, the smaller the system, the smaller the directory
+>will typically be, so I don't think we need to go to extremes.  If
+>the piecewise ordering of readdir entries gives a sufficient speedup,
+>then it would be possible to efficiently process directories of 
+>arbitrary size, and optimally process the most common directories
+>that fit within the buffer.
 
-1. http://comments.gmane.org/gmane.comp.file-systems.ext4/35490
+You're right, huge directories are not common at small devices. It just
+occured to me, because I am using Raspberry Pi at home for backups. But
+this is probably not that common.
 
-* Block allocation hint
-  An interface (e.g. ioctl(2)) is provided to let the app give a block
-allocation hint.  Filesystem can allocate some blocks that can be read/written
-faster than other blocks for a file, such as allocating blocks on outter track
-in HDD.
+Thank you for your suggestions!
 
-* Latency
-  Chris had presented a proposal that is 'data=guarded', which aims at imporving
-the latency of sync.  We can discuss how to provide stable latency in ext4.
-Forgive me that I compare two filesystems here, but the result of the following
-test case shows that the latency of ext4 is higher than xfs's.  So maybe we can
-improve it.
+Cheers,
 
-I use 'fio' to do the following test.  I revert the patches of stable page write
-for avoiding the impact of it.  Meanwhile I disable delalloc feature in ext4.  I
-repeat the test case serveral times, but the result of ext4 is higher than xfs.
+Radek
 
-[global]
-iodepth=1
-directory=/mnt/sda3
-direct=0
-group_reporting
-thread
-fallocate=0
-runtime=120
-
-[log-append]
-ioengine=sync
-rw=write
-bs=4k
-size=10g
-filesize=10g
-rate=5m
-numjobs=1
-
-I pick the best result of two filesystems and paste them here.
-
-[ext4]
-  write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
-    clat (usec): min=11 , max=149 , avg=14.12, stdev= 1.73
-     lat (usec): min=11 , max=150 , avg=14.54, stdev= 1.81
-
-[xfs]
-  write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
-    clat (usec): min=4 , max=89 , avg= 8.42, stdev= 1.85
-     lat (usec): min=4 , max=89 , avg= 8.80, stdev= 1.94
-
-
-BTW, Tao and I need a invitation letter for applying our visa.  Please let me
-know if there are something we need to do.
-
-Thanks,
-						- Zheng
+>
+>Cheers, Andreas
+>
+>
+>
+>
+>
