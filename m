@@ -1,39 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/5] ext4: Use redirty_page_for_writepage() in
- ext4_bio_write_page()
-Date: Thu, 17 Jan 2013 13:35:01 -0500
-Message-ID: <20130117183501.GD29972@thunk.org>
-References: <1357148744-4895-1-git-send-email-jack@suse.cz>
- <1357148744-4895-3-git-send-email-jack@suse.cz>
+Subject: Re: Release candidate for e2fsprogs 1.42.7
+Date: Thu, 17 Jan 2013 14:52:01 -0500
+Message-ID: <20130117195201.GA477@thunk.org>
+References: <nsx1udkewcz.fsf@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44036 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44048 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750834Ab3AQSfD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jan 2013 13:35:03 -0500
+	id S1755114Ab3AQTwF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jan 2013 14:52:05 -0500
 Content-Disposition: inline
-In-Reply-To: <1357148744-4895-3-git-send-email-jack@suse.cz>
+In-Reply-To: <nsx1udkewcz.fsf@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 02, 2013 at 06:45:41PM +0100, Jan Kara wrote:
-> When we cannot write a page we should use redirty_page_for_writepage()
-> instead of plain set_page_dirty(). That tells writeback code we have
-> problems, redirties only the page (redirtying buffers is not needed),
-> and updates mm accounting of failed page writes.
+On Wed, Jan 16, 2013 at 02:55:24PM -0500, Theodore Ts'o wrote:
+> Hi all,
 > 
-> Also move clearing of buffer dirty flag after io_submit_add_bh(). At that
-> moment we are sure buffer will be going to disk.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> I've just pushed an update to the e2fsprogs maint repository, and commit
+> 8359f626a4e9 (the tip of the maint branch) is a release candidate for
+> 1.42.7.  Please give it a test!  If I don't get any show-stopping bug
+> reports, I plan to release it as 1.42.7 in the day or two.
 
-This sounds like a bug fix, not just a clean up.  Do you think the
-impact of not using redirty_page_for_writeback() is bad enough that we
-should add a cc: stable@vger.kernel.org tag?  As I recall, not doing
-this would end up leaving the page flags and radix tree to be
-inconsistent, right?
+I screwed up and didn't do the final push to git.kernel.org.  So the
+maint branch didn't have the most recent commit (8359f626a4e9, dated
+January 16th) until just a few minutes ago.
 
-	    	       	   	      - Ted
+Sorry about that.  I'll give folks another day to test things out.
+
+      	    	   	     	   	       	  - Ted
