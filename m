@@ -1,106 +1,133 @@
-From: Guo Chao <yan@linux.vnet.ibm.com>
-Subject: [PATCH 1/4] ext4: release buffer when checksum failed
-Date: Fri, 18 Jan 2013 16:01:11 +0800
-Message-ID: <1358496074-6228-1-git-send-email-yan@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org, "D. J. Wong" <darrick.wong@oracle.com>
-To: tytso@mit.edu
+From: Tao Ma <tm@tao.ma>
+Subject: Re: Ext4 developers get-together at the Collab Summit
+Date: Fri, 18 Jan 2013 16:06:51 +0800
+Message-ID: <50F9029B.5050600@tao.ma>
+References: <nsxzk0blt27.fsf@closure.thunk.org> <20130117131500.GA19272@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:48627 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750759Ab3ARIB3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 03:01:29 -0500
-Received: from /spool/local
-	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-ext4@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
-	Fri, 18 Jan 2013 17:57:29 +1000
-Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [9.190.235.152])
-	by d23dlp01.au.ibm.com (Postfix) with ESMTP id 541452CE804C
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 19:01:18 +1100 (EST)
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r0I7nSIJ53674214
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 18:49:28 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r0I81GMA031858
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 19:01:17 +1100
+Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:50851 "HELO
+	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750755Ab3ARIG6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 03:06:58 -0500
+In-Reply-To: <20130117131500.GA19272@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit b0336e8d (ext4: calculate and verify checksums of directory leaf
-blocks) and commit dbe89444 (ext4: Calculate and verify checksums for
-htree nodes) forget to release buffer when checksum failed, at some places.
+On 01/17/2013 09:15 PM, Zheng Liu wrote:
+> Hello Ted,
+> 
+> On Mon, Jan 14, 2013 at 09:48:00AM -0500, Theodore Ts'o wrote:
+>> Hi,
+>>
+>> 	The Linux Foundation's Collaboration Summit is April 15-17th,
+>> and the Linux Storage, File System, and MM Summit is April 18-19th in
+>> San Francisco (at the Parc 55 hotel).
+>>
+>> 	I'd like to organize an ext4 developer's meeting during the
+>> Collab Summit sometime April 15-17th, since so many of us will hopefully
+>> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
+>>
+>> 	If you're interested in attending, please reply to this thread,
+>> and include some suggested topics that you'd be interested in
+>> discussing.  Based on the number of topics and the number of people who
+>> are planning on attending, I'll know how much time we need to reserve
+>> and how big of a room to request.
+>>
+>> 	Also, if you need a invitation letter for Visa purposes, also
+>> please let me know.  I can arrange for the Linux Foundation to get that
+>> letter sent, so that folks have enough time to get a Visa.
+> 
+> Tao and I would like to attend the ext4 workshop this year.  Here are some
+> topics that we want to discuss with other folks at this meeting.
+> 
+> * Optimization for different devices
+>   We can consume more resources (e.g. Memory) for Flash/SSD device to get a
+> better performance.  Meanwhile we want to reduce the consumption and provide
+> a best effort performance for HDD in a low-end server with a ARM CPU, only 1G
+> memory, and 4 x 3T disks.  This are two different directions of optimization.
+To be more precisely we are willing to do improvements for the 2 scenarios:
+1. high end servers with very fast SSDs like FusionIO, we want to do
+file read/write as fast as possible.
+2. low end servers with cpu like ARM, small memory and large volumes. In
+this case, we want to save cpu power and memory usage.
 
-Cc: D. J. Wong <darrick.wong@oracle.com>
-Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
----
- fs/ext4/dir.c   |    1 +
- fs/ext4/namei.c |   12 ++++++++++--
- 2 files changed, 11 insertions(+), 2 deletions(-)
+One more thing Zheng forgot to mention is the ability to do online fsck.
+That may be a new direction and we actually haven't think much about it yet.
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 80a28b2..3882fbc 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -185,6 +185,7 @@ static int ext4_readdir(struct file *filp,
- 					"at offset %llu",
- 					(unsigned long long)filp->f_pos);
- 			filp->f_pos += sb->s_blocksize - offset;
-+			brelse(bh);
- 			continue;
- 		}
- 		set_buffer_verified(bh);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 8990165..a445247 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -837,6 +837,7 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
- 		    !ext4_dx_csum_verify(dir,
- 					 (struct ext4_dir_entry *)bh->b_data)) {
- 			ext4_warning(dir->i_sb, "Node failed checksum");
-+			brelse(bh);
- 			return -EIO;
- 		}
- 		set_buffer_verified(bh);
-@@ -877,8 +878,11 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	}
- 
- 	if (!buffer_verified(bh) &&
--	    !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-+			!ext4_dirent_csum_verify(dir,
-+				(struct ext4_dir_entry *)bh->b_data)) {
-+		brelse(bh);
- 		return -EIO;
-+	}
- 	set_buffer_verified(bh);
- 
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
-@@ -1929,8 +1933,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		}
- 		if (!buffer_verified(bh) &&
- 		    !ext4_dirent_csum_verify(dir,
--				(struct ext4_dir_entry *)bh->b_data))
-+				(struct ext4_dir_entry *)bh->b_data)) {
-+			brelse(bh);
- 			return -EIO;
-+		}
- 		set_buffer_verified(bh);
- 		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
- 		if (retval != -ENOSPC) {
-@@ -2493,6 +2499,7 @@ static int empty_dir(struct inode *inode)
- 			(struct ext4_dir_entry *)bh->b_data)) {
- 		EXT4_ERROR_INODE(inode, "checksum error reading directory "
- 				 "lblock 0");
-+		brelse(bh);
- 		return -EIO;
- 	}
- 	set_buffer_verified(bh);
-@@ -2537,6 +2544,7 @@ static int empty_dir(struct inode *inode)
- 					(struct ext4_dir_entry *)bh->b_data)) {
- 				EXT4_ERROR_INODE(inode, "checksum error "
- 						 "reading directory lblock 0");
-+				brelse(bh);
- 				return -EIO;
- 			}
- 			set_buffer_verified(bh);
--- 
-1.7.9.5
+Thanks,
+Tao
+> 
+> * Stable tree and long-term tree
+>   I remember that Ted has talked about ext4 stable and long-term tree.  So we
+> can discuss in this meeting how to maintain them and other detail.
+> 
+> * Extent tree disk layout
+>   In this mail [1], Ted metioned that extent structure could be extented to
+> support larger file, such as 64-bits physical block, bigger logical block, and
+> using cluster-size as unit in extent.  All these can make us better support
+> large filesystem.
+> 
+> 1. http://comments.gmane.org/gmane.comp.file-systems.ext4/35490
+> 
+> * Block allocation hint
+>   An interface (e.g. ioctl(2)) is provided to let the app give a block
+> allocation hint.  Filesystem can allocate some blocks that can be read/written
+> faster than other blocks for a file, such as allocating blocks on outter track
+> in HDD.
+> 
+> * Latency
+>   Chris had presented a proposal that is 'data=guarded', which aims at imporving
+> the latency of sync.  We can discuss how to provide stable latency in ext4.
+> Forgive me that I compare two filesystems here, but the result of the following
+> test case shows that the latency of ext4 is higher than xfs's.  So maybe we can
+> improve it.
+> 
+> I use 'fio' to do the following test.  I revert the patches of stable page write
+> for avoiding the impact of it.  Meanwhile I disable delalloc feature in ext4.  I
+> repeat the test case serveral times, but the result of ext4 is higher than xfs.
+> 
+> [global]
+> iodepth=1
+> directory=/mnt/sda3
+> direct=0
+> group_reporting
+> thread
+> fallocate=0
+> runtime=120
+> 
+> [log-append]
+> ioengine=sync
+> rw=write
+> bs=4k
+> size=10g
+> filesize=10g
+> rate=5m
+> numjobs=1
+> 
+> I pick the best result of two filesystems and paste them here.
+> 
+> [ext4]
+>   write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
+>     clat (usec): min=11 , max=149 , avg=14.12, stdev= 1.73
+>      lat (usec): min=11 , max=150 , avg=14.54, stdev= 1.81
+> 
+> [xfs]
+>   write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
+>     clat (usec): min=4 , max=89 , avg= 8.42, stdev= 1.85
+>      lat (usec): min=4 , max=89 , avg= 8.80, stdev= 1.94
+> 
+> 
+> BTW, Tao and I need a invitation letter for applying our visa.  Please let me
+> know if there are something we need to do.
+> 
+> Thanks,
+> 						- Zheng
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
