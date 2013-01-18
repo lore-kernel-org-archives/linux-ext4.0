@@ -1,116 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/12] ext4: Simplify mpage_add_bh_to_extent()
-Date: Fri, 18 Jan 2013 13:00:44 +0100
-Message-ID: <1358510446-19174-11-git-send-email-jack@suse.cz>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: Ext4 developers get-together at the Collab Summit
+Date: Fri, 18 Jan 2013 07:06:26 -0500
+Message-ID: <20130118120626.GB2761@localhost.localdomain>
+References: <nsxzk0blt27.fsf@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35019 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:18994 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754037Ab3ARMA6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jan 2013 07:00:58 -0500
-In-Reply-To: <1358510446-19174-1-git-send-email-jack@suse.cz>
+	id S1751137Ab3ARMGd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jan 2013 07:06:33 -0500
+Content-Disposition: inline
+In-Reply-To: <nsxzk0blt27.fsf@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The argument b_size of mpage_add_bh_to_extent() was bogus since it was
-always == blocksize (which we can easily derive from inode->i_blkbits).
-Also second branch of condition:
-	if (nrblocks >= EXT4_MAX_TRANS_DATA) {
-	} else if ((nrblocks + (b_size >> mpd->inode->i_blkbits)) >
-						EXT4_MAX_TRANS_DATA) {
-	}
-was never taken because (b_size >> mpd->inode->i_blkbits) == 1.
+Hi Ted,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c |   29 +++++++++--------------------
- 1 files changed, 9 insertions(+), 20 deletions(-)
+I'm not sure yet if I'll be able to go to LSF (need invite), but if I go, I'd
+like to attend Ext4 meeting, and I'd like to bring a discussion about a topic we
+already discussed but didn't go further, about the mount options we
+should/shouldn't support for each filesystem, i.e. today we have some mount
+options that although are not supported for a specific filesystem, it can be
+used to mount that filesystem, one example is mounting ext3 using
+journal_checksum and ext2 with commit=nrsec.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0eb27e1..3b6bb61 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1647,16 +1647,16 @@ submit_io:
-  *
-  * @mpd->lbh - extent of blocks
-  * @logical - logical number of the block in the file
-- * @bh - bh of the block (used to access block's state)
-+ * @b_state - b_state of the buffer head added
-  *
-  * the function is used to collect contig. blocks in same state
-  */
--static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
--				   sector_t logical, size_t b_size,
-+static void mpage_add_bh_to_extent(struct mpage_da_data *mpd, sector_t logical,
- 				   unsigned long b_state)
- {
- 	sector_t next;
--	int nrblocks = mpd->b_size >> mpd->inode->i_blkbits;
-+	int blkbits = mpd->inode->i_blkbits;
-+	int nrblocks = mpd->b_size >> blkbits;
- 
- 	/*
- 	 * XXX Don't go larger than mballoc is willing to allocate
-@@ -1664,11 +1664,11 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 	 * mpage_da_submit_io() into this function and then call
- 	 * ext4_map_blocks() multiple times in a loop
- 	 */
--	if (nrblocks >= 8*1024*1024/mpd->inode->i_sb->s_blocksize)
-+	if (nrblocks >= (8*1024*1024 >> blkbits))
- 		goto flush_it;
- 
--	/* check if thereserved journal credits might overflow */
--	if (!(ext4_test_inode_flag(mpd->inode, EXT4_INODE_EXTENTS))) {
-+	/* check if the reserved journal credits might overflow */
-+	if (!ext4_test_inode_flag(mpd->inode, EXT4_INODE_EXTENTS)) {
- 		if (nrblocks >= EXT4_MAX_TRANS_DATA) {
- 			/*
- 			 * With non-extent format we are limited by the journal
-@@ -1677,16 +1677,6 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 			 * nrblocks.  So limit nrblocks.
- 			 */
- 			goto flush_it;
--		} else if ((nrblocks + (b_size >> mpd->inode->i_blkbits)) >
--				EXT4_MAX_TRANS_DATA) {
--			/*
--			 * Adding the new buffer_head would make it cross the
--			 * allowed limit for which we have journal credit
--			 * reserved. So limit the new bh->b_size
--			 */
--			b_size = (EXT4_MAX_TRANS_DATA - nrblocks) <<
--						mpd->inode->i_blkbits;
--			/* we will do mpage_da_submit_io in the next loop */
- 		}
- 	}
- 	/*
-@@ -1694,7 +1684,7 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 	 */
- 	if (mpd->b_size == 0) {
- 		mpd->b_blocknr = logical;
--		mpd->b_size = b_size;
-+		mpd->b_size = 1 << blkbits;
- 		mpd->b_state = b_state & BH_FLAGS;
- 		return;
- 	}
-@@ -1704,7 +1694,7 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 	 * Can we merge the block to our big extent?
- 	 */
- 	if (logical == next && (b_state & BH_FLAGS) == mpd->b_state) {
--		mpd->b_size += b_size;
-+		mpd->b_size += 1 << blkbits;
- 		return;
- 	}
- 
-@@ -2156,7 +2146,6 @@ static int write_cache_pages_da(handle_t *handle,
- 				 */
- 				if (ext4_bh_delay_or_unwritten(NULL, bh)) {
- 					mpage_add_bh_to_extent(mpd, logical,
--							       bh->b_size,
- 							       bh->b_state);
- 					if (mpd->io_done)
- 						goto ret_extent_tail;
+Once we are mostly using ext4 driver to mount ext3 and ext2 fs, I wonder we
+should handle these mount options and deny/warning a mount with
+wrong/non-supported options. Also, I wonder how useful would be to start do
+deprecate ext2/ext3 drivers and just add bugfix to these. Not sure if this is
+already being done, but keeping ext4 as primary ext2/3/4 driver should reduce
+code maintenance and duplication.
+
+
+
+On Mon, Jan 14, 2013 at 09:48:00AM -0500, Theodore Ts'o wrote:
+> Hi,
+> 
+> 	The Linux Foundation's Collaboration Summit is April 15-17th,
+> and the Linux Storage, File System, and MM Summit is April 18-19th in
+> San Francisco (at the Parc 55 hotel).
+> 
+> 	I'd like to organize an ext4 developer's meeting during the
+> Collab Summit sometime April 15-17th, since so many of us will hopefully
+> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
+> 
+> 	If you're interested in attending, please reply to this thread,
+> and include some suggested topics that you'd be interested in
+> discussing.  Based on the number of topics and the number of people who
+> are planning on attending, I'll know how much time we need to reserve
+> and how big of a room to request.
+> 
+> 	Also, if you need a invitation letter for Visa purposes, also
+> please let me know.  I can arrange for the Linux Foundation to get that
+> letter sent, so that folks have enough time to get a Visa.
+> 
+> 	Thanks!!
+> 
+>                                                 - Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.1
-
+Carlos
