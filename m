@@ -1,172 +1,299 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 04/12] ext4: Disable merging of uninitialized extents
-Date: Fri, 18 Jan 2013 13:00:38 +0100
-Message-ID: <1358510446-19174-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 01/12] ext4: Always use ext4_bio_write_page() for writeout
+Date: Fri, 18 Jan 2013 13:00:35 +0100
+Message-ID: <1358510446-19174-2-git-send-email-jack@suse.cz>
 References: <1358510446-19174-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34998 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:34996 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216Ab3ARMA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751052Ab3ARMA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 18 Jan 2013 07:00:57 -0500
 In-Reply-To: <1358510446-19174-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Merging of uninitialized extents creates all sorts of interesting race
-possibilities when writeback / DIO races with fallocate. Thus
-ext4_convert_unwritten_extents_endio() has to deal with a case where
-extent to be converted needs to be split out first. That isn't nice
-for two reasons:
-
-1) It may need allocation of extent tree block so ENOSPC is possible.
-2) It complicates end_io handling code
-
-So we disable merging of uninitialized extents which allows us to simplify
-the code. Extents will get merged after they are converted to initialized
-ones.
+Currently we sometimes used block_write_full_page() and sometimes
+ext4_bio_write_page() for writeback (depending on mount options and call
+path). Let's always use ext4_bio_write_page() to simplify things a bit.
 
 Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c |   61 +++++++++++++++-------------------------------------
- 1 files changed, 18 insertions(+), 43 deletions(-)
+ fs/ext4/ext4.h    |    2 -
+ fs/ext4/inode.c   |  128 ++++++-----------------------------------------------
+ fs/ext4/page-io.c |    2 -
+ fs/ext4/super.c   |    7 +--
+ 4 files changed, 16 insertions(+), 123 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 26af228..f1ce33a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -54,9 +54,6 @@
- #define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
- #define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
- 
--#define EXT4_EXT_DATA_VALID1	0x8  /* first half contains valid data */
--#define EXT4_EXT_DATA_VALID2	0x10 /* second half contains valid data */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8462eb3..fb40ee2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -215,7 +215,6 @@ typedef struct ext4_io_end {
+ 	struct list_head	list;		/* per-file finished IO list */
+ 	struct inode		*inode;		/* file being written to */
+ 	unsigned int		flag;		/* unwritten or not */
+-	struct page		*page;		/* for writepage() path */
+ 	loff_t			offset;		/* offset in the file */
+ 	ssize_t			size;		/* size of the extent */
+ 	struct work_struct	work;		/* data work queue */
+@@ -985,7 +984,6 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+-#define EXT4_MOUNT_MBLK_IO_SUBMIT	0x4000000 /* multi-block io submits */
+ #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cb1c1ab..f95b511 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -134,8 +134,6 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+ static void ext4_invalidatepage(struct page *page, unsigned long offset);
+ static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
+ 				   struct buffer_head *bh_result, int create);
+-static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode);
+-static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate);
+ static int __ext4_journalled_writepage(struct page *page, unsigned int len);
+ static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh);
+ static int ext4_discard_partial_page_buffers_no_lock(handle_t *handle,
+@@ -808,11 +806,10 @@ int ext4_walk_page_buffers(handle_t *handle,
+  * and the commit_write().  So doing the jbd2_journal_start at the start of
+  * prepare_write() is the right place.
+  *
+- * Also, this function can nest inside ext4_writepage() ->
+- * block_write_full_page(). In that case, we *know* that ext4_writepage()
+- * has generated enough buffer credits to do the whole page.  So we won't
+- * block on the journal in that case, which is good, because the caller may
+- * be PF_MEMALLOC.
++ * Also, this function can nest inside ext4_writepage().  In that case, we
++ * *know* that ext4_writepage() has generated enough buffer credits to do the
++ * whole page.  So we won't block on the journal in that case, which is good,
++ * because the caller may be PF_MEMALLOC.
+  *
+  * By accident, ext4 can be reentered when a transaction is open via
+  * quota file writes.  If we were to commit the transaction while thus
+@@ -1463,18 +1460,9 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd,
+ 			 */
+ 			if (unlikely(journal_data && PageChecked(page)))
+ 				err = __ext4_journalled_writepage(page, len);
+-			else if (test_opt(inode->i_sb, MBLK_IO_SUBMIT))
++			else
+ 				err = ext4_bio_write_page(&io_submit, page,
+ 							  len, mpd->wbc);
+-			else if (buffer_uninit(page_bufs)) {
+-				ext4_set_bh_endio(page_bufs, inode);
+-				err = block_write_full_page_endio(page,
+-					noalloc_get_block_write,
+-					mpd->wbc, ext4_end_io_buffer_write);
+-			} else
+-				err = block_write_full_page(page,
+-					noalloc_get_block_write, mpd->wbc);
 -
- static __le32 ext4_extent_block_csum(struct inode *inode,
- 				     struct ext4_extent_header *eh)
+ 			if (!err)
+ 				mpd->pages_written++;
+ 			/*
+@@ -1891,16 +1879,16 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ }
+ 
+ /*
+- * This function is used as a standard get_block_t calback function
+- * when there is no desire to allocate any blocks.  It is used as a
+- * callback function for block_write_begin() and block_write_full_page().
+- * These functions should only try to map a single block at a time.
++ * This function is used as a standard get_block_t calback function when there
++ * is no desire to allocate any blocks.  It is used as a callback function for
++ * block_write_begin().  These functions should only try to map a single block
++ * at a time.
+  *
+  * Since this function doesn't do block allocations even if the caller
+  * requests it by passing in create=1, it is critically important that
+  * any caller checks to make sure that any buffer heads are returned
+  * by this function are either all already mapped or marked for
+- * delayed allocation before calling  block_write_full_page().  Otherwise,
++ * delayed allocation before calling ext4_bio_write_page().  Otherwise,
+  * b_blocknr could be left unitialized, and the page write functions will
+  * be taken by surprise.
+  */
+@@ -2040,6 +2028,7 @@ static int ext4_writepage(struct page *page,
+ 	unsigned int len;
+ 	struct buffer_head *page_bufs = NULL;
+ 	struct inode *inode = page->mapping->host;
++	struct ext4_io_submit io_submit;
+ 
+ 	trace_ext4_writepage(page);
+ 	size = i_size_read(inode);
+@@ -2089,14 +2078,9 @@ static int ext4_writepage(struct page *page,
+ 		 */
+ 		return __ext4_journalled_writepage(page, len);
+ 
+-	if (buffer_uninit(page_bufs)) {
+-		ext4_set_bh_endio(page_bufs, inode);
+-		ret = block_write_full_page_endio(page, noalloc_get_block_write,
+-					    wbc, ext4_end_io_buffer_write);
+-	} else
+-		ret = block_write_full_page(page, noalloc_get_block_write,
+-					    wbc);
+-
++	memset(&io_submit, 0, sizeof(io_submit));
++	ret = ext4_bio_write_page(&io_submit, page, len, wbc);
++	ext4_io_submit(&io_submit);
+ 	return ret;
+ }
+ 
+@@ -2858,26 +2842,6 @@ ext4_readpages(struct file *file, struct address_space *mapping,
+ 	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
+ }
+ 
+-static void ext4_invalidatepage_free_endio(struct page *page, unsigned long offset)
+-{
+-	struct buffer_head *head, *bh;
+-	unsigned int curr_off = 0;
+-
+-	if (!page_has_buffers(page))
+-		return;
+-	head = bh = page_buffers(page);
+-	do {
+-		if (offset <= curr_off && test_clear_buffer_uninit(bh)
+-					&& bh->b_private) {
+-			ext4_free_io_end(bh->b_private);
+-			bh->b_private = NULL;
+-			bh->b_end_io = NULL;
+-		}
+-		curr_off = curr_off + bh->b_size;
+-		bh = bh->b_this_page;
+-	} while (bh != head);
+-}
+-
+ static void ext4_invalidatepage(struct page *page, unsigned long offset)
  {
-@@ -1579,20 +1576,17 @@ int
- ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
- 				struct ext4_extent *ex2)
- {
--	unsigned short ext1_ee_len, ext2_ee_len, max_len;
-+	unsigned ext1_ee_len, ext2_ee_len;
+ 	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
+@@ -2885,11 +2849,6 @@ static void ext4_invalidatepage(struct page *page, unsigned long offset)
+ 	trace_ext4_invalidatepage(page, offset);
  
  	/*
--	 * Make sure that either both extents are uninitialized, or
--	 * both are _not_.
-+	 * Make sure that both extents are initialized. We don't merge
-+	 * uninitialized extents so that we can be sure that end_io code has
-+	 * the extent that was written properly split out and conversion to
-+	 * initialized is trivial.
+-	 * free any io_end structure allocated for buffers to be discarded
+-	 */
+-	if (ext4_should_dioread_nolock(page->mapping->host))
+-		ext4_invalidatepage_free_endio(page, offset);
+-	/*
+ 	 * If it's a full truncate we just forget about the pending dirtying
  	 */
--	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-+	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
- 		return 0;
- 
--	if (ext4_ext_is_uninitialized(ex1))
--		max_len = EXT_UNINIT_MAX_LEN;
--	else
--		max_len = EXT_INIT_MAX_LEN;
--
- 	ext1_ee_len = ext4_ext_get_actual_len(ex1);
- 	ext2_ee_len = ext4_ext_get_actual_len(ex2);
- 
-@@ -1605,7 +1599,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
- 	 * as an RO_COMPAT feature, refuse to merge to extents if
- 	 * this can result in the top bit of ee_len being set.
- 	 */
--	if (ext1_ee_len + ext2_ee_len > max_len)
-+	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
- 		return 0;
- #ifdef AGGRESSIVE_TEST
- 	if (ext1_ee_len >= 4)
-@@ -2959,9 +2953,6 @@ static int ext4_split_extent_at(handle_t *handle,
- 	unsigned int ee_len, depth;
- 	int err = 0;
- 
--	BUG_ON((split_flag & (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2)) ==
--	       (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2));
--
- 	ext_debug("ext4_split_extents_at: inode %lu, logical"
- 		"block %llu\n", inode->i_ino, (unsigned long long)split);
- 
-@@ -3020,14 +3011,7 @@ static int ext4_split_extent_at(handle_t *handle,
- 
- 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
- 	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
--		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
--			if (split_flag & EXT4_EXT_DATA_VALID1)
--				err = ext4_ext_zeroout(inode, ex2);
--			else
--				err = ext4_ext_zeroout(inode, ex);
--		} else
--			err = ext4_ext_zeroout(inode, &orig_ex);
--
-+		err = ext4_ext_zeroout(inode, &orig_ex);
- 		if (err)
- 			goto fix_extent_len;
- 		/* update the extent length and mark as initialized */
-@@ -3085,8 +3069,6 @@ static int ext4_split_extent(handle_t *handle,
- 		if (uninitialized)
- 			split_flag1 |= EXT4_EXT_MARK_UNINIT1 |
- 				       EXT4_EXT_MARK_UNINIT2;
--		if (split_flag & EXT4_EXT_DATA_VALID2)
--			split_flag1 |= EXT4_EXT_DATA_VALID1;
- 		err = ext4_split_extent_at(handle, inode, path,
- 				map->m_lblk + map->m_len, split_flag1, flags1);
- 		if (err)
-@@ -3099,8 +3081,7 @@ static int ext4_split_extent(handle_t *handle,
- 		return PTR_ERR(path);
- 
- 	if (map->m_lblk >= ee_block) {
--		split_flag1 = split_flag & (EXT4_EXT_MAY_ZEROOUT |
--					    EXT4_EXT_DATA_VALID2);
-+		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
- 		if (uninitialized)
- 			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
- 		if (split_flag & EXT4_EXT_MARK_UNINIT2)
-@@ -3379,8 +3360,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
- 
- 	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
- 	split_flag |= EXT4_EXT_MARK_UNINIT2;
--	if (flags & EXT4_GET_BLOCKS_CONVERT)
--		split_flag |= EXT4_EXT_DATA_VALID2;
-+
- 	flags |= EXT4_GET_BLOCKS_PRE_IO;
- 	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
+ 	if (offset == 0)
+@@ -2977,65 +2936,6 @@ out:
+ 	ext4_add_complete_io(io_end);
  }
-@@ -3405,20 +3385,15 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 		"block %llu, max_blocks %u\n", inode->i_ino,
- 		  (unsigned long long)ee_block, ee_len);
  
--	/* If extent is larger than requested then split is required */
-+	/* Extent is larger than requested? */
- 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
--		err = ext4_split_unwritten_extents(handle, inode, map, path,
--						   EXT4_GET_BLOCKS_CONVERT);
--		if (err < 0)
--			goto out;
--		ext4_ext_drop_refs(path);
--		path = ext4_ext_find_extent(inode, map->m_lblk, path);
--		if (IS_ERR(path)) {
--			err = PTR_ERR(path);
--			goto out;
--		}
--		depth = ext_depth(inode);
--		ex = path[depth].p_ext;
-+		EXT4_ERROR_INODE(inode, "Written extent modified before IO"
-+			" finished: extent logical block %llu, len %u; IO"
-+			" logical block %llu, len %u\n",
-+			(unsigned long long)ee_block, ee_len,
-+			(unsigned long long)map->m_lblk, map->m_len);
-+		err = -EIO;
-+		goto out;
- 	}
+-static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
+-{
+-	ext4_io_end_t *io_end = bh->b_private;
+-	struct inode *inode;
+-
+-	if (!test_clear_buffer_uninit(bh) || !io_end)
+-		goto out;
+-
+-	if (!(io_end->inode->i_sb->s_flags & MS_ACTIVE)) {
+-		ext4_msg(io_end->inode->i_sb, KERN_INFO,
+-			 "sb umounted, discard end_io request for inode %lu",
+-			 io_end->inode->i_ino);
+-		ext4_free_io_end(io_end);
+-		goto out;
+-	}
+-
+-	/*
+-	 * It may be over-defensive here to check EXT4_IO_END_UNWRITTEN now,
+-	 * but being more careful is always safe for the future change.
+-	 */
+-	inode = io_end->inode;
+-	ext4_set_io_unwritten_flag(inode, io_end);
+-	ext4_add_complete_io(io_end);
+-out:
+-	bh->b_private = NULL;
+-	bh->b_end_io = NULL;
+-	clear_buffer_uninit(bh);
+-	end_buffer_async_write(bh, uptodate);
+-}
+-
+-static int ext4_set_bh_endio(struct buffer_head *bh, struct inode *inode)
+-{
+-	ext4_io_end_t *io_end;
+-	struct page *page = bh->b_page;
+-	loff_t offset = (sector_t)page->index << PAGE_CACHE_SHIFT;
+-	size_t size = bh->b_size;
+-
+-retry:
+-	io_end = ext4_init_io_end(inode, GFP_ATOMIC);
+-	if (!io_end) {
+-		pr_warn_ratelimited("%s: allocation fail\n", __func__);
+-		schedule();
+-		goto retry;
+-	}
+-	io_end->offset = offset;
+-	io_end->size = size;
+-	/*
+-	 * We need to hold a reference to the page to make sure it
+-	 * doesn't get evicted before ext4_end_io_work() has a chance
+-	 * to convert the extent from written to unwritten.
+-	 */
+-	io_end->page = page;
+-	get_page(io_end->page);
+-
+-	bh->b_private = io_end;
+-	bh->b_end_io = ext4_end_io_buffer_write;
+-	return 0;
+-}
+-
+ /*
+  * For ext4 extent files, ext4 will do direct-io write to holes,
+  * preallocated extents, and those write extend the file, no need to
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 0016fbc..ddb3d40 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -73,8 +73,6 @@ void ext4_free_io_end(ext4_io_end_t *io)
+ 	BUG_ON(!list_empty(&io->list));
+ 	BUG_ON(io->flag & EXT4_IO_END_UNWRITTEN);
  
- 	err = ext4_ext_get_access(handle, inode, path + depth);
+-	if (io->page)
+-		put_page(io->page);
+ 	for (i = 0; i < io->num_io_pages; i++)
+ 		put_io_page(io->pages[i]);
+ 	io->num_io_pages = 0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e09f7d1..afbe974 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1280,8 +1280,8 @@ static const match_table_t tokens = {
+ 	{Opt_stripe, "stripe=%u"},
+ 	{Opt_delalloc, "delalloc"},
+ 	{Opt_nodelalloc, "nodelalloc"},
+-	{Opt_mblk_io_submit, "mblk_io_submit"},
+-	{Opt_nomblk_io_submit, "nomblk_io_submit"},
++	{Opt_removed, "mblk_io_submit"},
++	{Opt_removed, "nomblk_io_submit"},
+ 	{Opt_block_validity, "block_validity"},
+ 	{Opt_noblock_validity, "noblock_validity"},
+ 	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
+@@ -1414,8 +1414,6 @@ static const struct mount_opts {
+ 	{Opt_bsd_df, EXT4_MOUNT_MINIX_DF, MOPT_CLEAR},
+ 	{Opt_grpid, EXT4_MOUNT_GRPID, MOPT_SET},
+ 	{Opt_nogrpid, EXT4_MOUNT_GRPID, MOPT_CLEAR},
+-	{Opt_mblk_io_submit, EXT4_MOUNT_MBLK_IO_SUBMIT, MOPT_SET},
+-	{Opt_nomblk_io_submit, EXT4_MOUNT_MBLK_IO_SUBMIT, MOPT_CLEAR},
+ 	{Opt_block_validity, EXT4_MOUNT_BLOCK_VALIDITY, MOPT_SET},
+ 	{Opt_noblock_validity, EXT4_MOUNT_BLOCK_VALIDITY, MOPT_CLEAR},
+ 	{Opt_dioread_nolock, EXT4_MOUNT_DIOREAD_NOLOCK, MOPT_SET},
+@@ -3373,7 +3371,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	set_opt(sb, POSIX_ACL);
+ #endif
+-	set_opt(sb, MBLK_IO_SUBMIT);
+ 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+ 		set_opt(sb, JOURNAL_DATA);
+ 	else if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_ORDERED)
 -- 
 1.7.1
 
