@@ -1,76 +1,57 @@
-From: Zhi Yong Wu <zwu.kernel@gmail.com>
-Subject: Re: Ext4 developers get-together at the Collab Summit
-Date: Fri, 18 Jan 2013 09:57:23 +0800
-Message-ID: <CAEH94LhJqGmkSZa9XEiKcsjO+0wLbm7L-94KWNw0Pf+yqBN1Jg@mail.gmail.com>
-References: <nsxzk0blt27.fsf@closure.thunk.org>
-	<CAEH94LgxnhKGDpMtKn-22zzhmn8KUL0+aRQvHbce2aBuLa1LjA@mail.gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 3/5] ext4: Remove bogus wait for unwritten extents in
+ ext4_ind_direct_IO
+Date: Fri, 18 Jan 2013 10:15:59 +0800
+Message-ID: <20130118021558.GA2804@gmail.com>
+References: <1357148744-4895-1-git-send-email-jack@suse.cz>
+ <1357148744-4895-4-git-send-email-jack@suse.cz>
+ <20130104072437.GC31130@gmail.com>
+ <20130117215814.GA7356@thunk.org>
+ <20130117230239.GA10127@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, linuxram@linux.vnet.ibm.com,
-	pair@us.ibm.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:45153 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753294Ab3ARB5Y (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2013 20:57:24 -0500
-Received: by mail-qc0-f169.google.com with SMTP id t2so2128875qcq.28
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2013 17:57:23 -0800 (PST)
-In-Reply-To: <CAEH94LgxnhKGDpMtKn-22zzhmn8KUL0+aRQvHbce2aBuLa1LjA@mail.gmail.com>
+Received: from mail-pb0-f54.google.com ([209.85.160.54]:46513 "EHLO
+	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754008Ab3ARCCN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2013 21:02:13 -0500
+Received: by mail-pb0-f54.google.com with SMTP id wz12so1748360pbc.27
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2013 18:02:13 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20130117230239.GA10127@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 18, 2013 at 9:45 AM, Zhi Yong Wu <zwu.kernel@gmail.com> wrote:
-> HI, Ted,
->
->    I would like to attend this meeting this year if posssible,
-> although i am not one ext4 developer so far, i am working on some VFS
-> feature, and want to discuss about VFS hot tracking with other FS
-> folks, thanks.
->
->
-> On Mon, Jan 14, 2013 at 10:48 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->> Hi,
->>
->>         The Linux Foundation's Collaboration Summit is April 15-17th,
->> and the Linux Storage, File System, and MM Summit is April 18-19th in
->> San Francisco (at the Parc 55 hotel).
->>
->>         I'd like to organize an ext4 developer's meeting during the
->> Collab Summit sometime April 15-17th, since so many of us will hopefully
->> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
->>
->>         If you're interested in attending, please reply to this thread,
->> and include some suggested topics that you'd be interested in
->> discussing.  Based on the number of topics and the number of people who
->> are planning on attending, I'll know how much time we need to reserve
->> and how big of a room to request.
->>
->>         Also, if you need a invitation letter for Visa purposes, also
->> please let me know.  I can arrange for the Linux Foundation to get that
->> letter sent, so that folks have enough time to get a Visa.
-If i get the ticket for this meeting from our company, i also need to
-get one invitation letter for US Visa, thanks.
+On Fri, Jan 18, 2013 at 12:02:39AM +0100, Jan Kara wrote:
+> On Thu 17-01-13 16:58:14, Ted Tso wrote:
+> > On Fri, Jan 04, 2013 at 03:24:37PM +0800, Zheng Liu wrote:
+> > > On Wed, Jan 02, 2013 at 06:45:42PM +0100, Jan Kara wrote:
+> > > > When using indirect blocks there is no possibility to have any unwritten
+> > > > extents. So wait for them in ext4_ind_direct_IO() is just bogus.
+> > > > 
+> > > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > > 
+> > > Hi Jan,
+> > > 
+> > > Just for the note, this patch conflicts with my patch set of extent
+> > > status tree.  I guess your patch series will be applied before my patch
+> > > set.  So I will rebase my patch set against the latest kernel. :-)
+> > 
+> > Actually, the extent status tree patches are already in my tree,
+> > although I'm still testing and reviewing them. so they haven't been
+> > finalized yet (which is why I haven't sent an e-mail ack).  If the
+> > conflict is minor, I'll take care of it.  If it's non-trivial, I'll
+> > yell for help.  :-)
+>   This patch actually isn't in Zheng's latest submission so there shouldn't
+> be any conflict.
 
->>
->>         Thanks!!
->>
->>                                                 - Ted
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Regards,
->
-> Zhi Yong Wu
+Hi Ted,
 
+Sorry for the delay reply because of travelling.  As Jan said above, I
+have dropped the patch of unwritten extent conversion from the patch set
+of extent status tree.  So there isn't any conflict.
 
-
--- 
-Regards,
-
-Zhi Yong Wu
+Thanks,
+                                                - Zheng
