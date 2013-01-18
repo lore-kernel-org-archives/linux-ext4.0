@@ -1,133 +1,44 @@
-From: Tao Ma <tm@tao.ma>
-Subject: Re: Ext4 developers get-together at the Collab Summit
-Date: Fri, 18 Jan 2013 16:06:51 +0800
-Message-ID: <50F9029B.5050600@tao.ma>
-References: <nsxzk0blt27.fsf@closure.thunk.org> <20130117131500.GA19272@gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 3/7 v2] ext4: add physical block and status member into
+ extent status tree
+Date: Fri, 18 Jan 2013 17:49:34 +0800
+Message-ID: <20130118094934.GA20442@gmail.com>
+References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
+ <1357901627-3068-4-git-send-email-wenqing.lz@taobao.com>
+ <20130117044213.GA19734@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan kara <jack@suse.cz>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:50851 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750755Ab3ARIG6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 03:06:58 -0500
-In-Reply-To: <20130117131500.GA19272@gmail.com>
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:48873 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751032Ab3ARJfm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 04:35:42 -0500
+Received: by mail-pb0-f43.google.com with SMTP id jt11so579010pbb.30
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 01:35:41 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20130117044213.GA19734@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/17/2013 09:15 PM, Zheng Liu wrote:
-> Hello Ted,
+On Wed, Jan 16, 2013 at 11:42:13PM -0500, Theodore Ts'o wrote:
+> On Fri, Jan 11, 2013 at 06:53:43PM +0800, Zheng Liu wrote:
+> >  struct extent_status {
+> >  	struct rb_node rb_node;
+> >  	ext4_lblk_t es_lblk;	/* first logical block extent covers */
+> >  	ext4_lblk_t es_len;	/* length of extent in block */
+> > +	ext4_fsblk_t es_pblk;	/* first physical block */
+> > +	int es_status;		/* record the status of extent */
+> >  };
 > 
-> On Mon, Jan 14, 2013 at 09:48:00AM -0500, Theodore Ts'o wrote:
->> Hi,
->>
->> 	The Linux Foundation's Collaboration Summit is April 15-17th,
->> and the Linux Storage, File System, and MM Summit is April 18-19th in
->> San Francisco (at the Parc 55 hotel).
->>
->> 	I'd like to organize an ext4 developer's meeting during the
->> Collab Summit sometime April 15-17th, since so many of us will hopefully
->> be attending LSF.  (The CFP will hopefully be coming soon for LSF.)
->>
->> 	If you're interested in attending, please reply to this thread,
->> and include some suggested topics that you'd be interested in
->> discussing.  Based on the number of topics and the number of people who
->> are planning on attending, I'll know how much time we need to reserve
->> and how big of a room to request.
->>
->> 	Also, if you need a invitation letter for Visa purposes, also
->> please let me know.  I can arrange for the Linux Foundation to get that
->> letter sent, so that folks have enough time to get a Visa.
-> 
-> Tao and I would like to attend the ext4 workshop this year.  Here are some
-> topics that we want to discuss with other folks at this meeting.
-> 
-> * Optimization for different devices
->   We can consume more resources (e.g. Memory) for Flash/SSD device to get a
-> better performance.  Meanwhile we want to reduce the consumption and provide
-> a best effort performance for HDD in a low-end server with a ARM CPU, only 1G
-> memory, and 4 x 3T disks.  This are two different directions of optimization.
-To be more precisely we are willing to do improvements for the 2 scenarios:
-1. high end servers with very fast SSDs like FusionIO, we want to do
-file read/write as fast as possible.
-2. low end servers with cpu like ARM, small memory and large volumes. In
-this case, we want to save cpu power and memory usage.
+> Given that we only support 48 bits for the physical block number, and
+> we only need two bits for es_status, one thing we could do to save
+> memory is to stash the es_status bits in the top two bits of es_pblk.
 
-One more thing Zheng forgot to mention is the ability to do online fsck.
-That may be a new direction and we actually haven't think much about it yet.
+Thanks for the comment.  In next version, es_status will be stashed into
+es_pblk.
 
-Thanks,
-Tao
-> 
-> * Stable tree and long-term tree
->   I remember that Ted has talked about ext4 stable and long-term tree.  So we
-> can discuss in this meeting how to maintain them and other detail.
-> 
-> * Extent tree disk layout
->   In this mail [1], Ted metioned that extent structure could be extented to
-> support larger file, such as 64-bits physical block, bigger logical block, and
-> using cluster-size as unit in extent.  All these can make us better support
-> large filesystem.
-> 
-> 1. http://comments.gmane.org/gmane.comp.file-systems.ext4/35490
-> 
-> * Block allocation hint
->   An interface (e.g. ioctl(2)) is provided to let the app give a block
-> allocation hint.  Filesystem can allocate some blocks that can be read/written
-> faster than other blocks for a file, such as allocating blocks on outter track
-> in HDD.
-> 
-> * Latency
->   Chris had presented a proposal that is 'data=guarded', which aims at imporving
-> the latency of sync.  We can discuss how to provide stable latency in ext4.
-> Forgive me that I compare two filesystems here, but the result of the following
-> test case shows that the latency of ext4 is higher than xfs's.  So maybe we can
-> improve it.
-> 
-> I use 'fio' to do the following test.  I revert the patches of stable page write
-> for avoiding the impact of it.  Meanwhile I disable delalloc feature in ext4.  I
-> repeat the test case serveral times, but the result of ext4 is higher than xfs.
-> 
-> [global]
-> iodepth=1
-> directory=/mnt/sda3
-> direct=0
-> group_reporting
-> thread
-> fallocate=0
-> runtime=120
-> 
-> [log-append]
-> ioengine=sync
-> rw=write
-> bs=4k
-> size=10g
-> filesize=10g
-> rate=5m
-> numjobs=1
-> 
-> I pick the best result of two filesystems and paste them here.
-> 
-> [ext4]
->   write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
->     clat (usec): min=11 , max=149 , avg=14.12, stdev= 1.73
->      lat (usec): min=11 , max=150 , avg=14.54, stdev= 1.81
-> 
-> [xfs]
->   write: io=614404KB, bw=5119.2KB/s, iops=1279 , runt=120001msec
->     clat (usec): min=4 , max=89 , avg= 8.42, stdev= 1.85
->      lat (usec): min=4 , max=89 , avg= 8.80, stdev= 1.94
-> 
-> 
-> BTW, Tao and I need a invitation letter for applying our visa.  Please let me
-> know if there are something we need to do.
-> 
-> Thanks,
-> 						- Zheng
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+Regards,
+                                                - Zheng
