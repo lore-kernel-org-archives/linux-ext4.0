@@ -1,53 +1,51 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 6/7 v2] ext4: lookup block mapping in extent status tree
-Date: Fri, 18 Jan 2013 17:52:04 +0800
-Message-ID: <20130118095204.GB20442@gmail.com>
-References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
- <1357901627-3068-7-git-send-email-wenqing.lz@taobao.com>
- <20130118040006.GB13785@thunk.org>
+Subject: Re: [PATCH 1/2 v2] libext2fs: introduce lseek SEEK_DATA/HOLE
+Date: Fri, 18 Jan 2013 18:07:11 +0800
+Message-ID: <20130118100711.GC20442@gmail.com>
+References: <1358173111-10511-1-git-send-email-wenqing.lz@taobao.com>
+ <20130115185509.GA17719@thunk.org>
+ <20130116120455.GA21029@gmail.com>
+ <20130116145918.GC6052@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan kara <jack@suse.cz>,
-	Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f49.google.com ([209.85.160.49]:33851 "EHLO
-	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032Ab3ARJiZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 04:38:25 -0500
-Received: by mail-pb0-f49.google.com with SMTP id un15so1942028pbc.22
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 01:38:25 -0800 (PST)
+Received: from mail-pb0-f53.google.com ([209.85.160.53]:57716 "EHLO
+	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314Ab3ARJxT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 04:53:19 -0500
+Received: by mail-pb0-f53.google.com with SMTP id un1so1311485pbc.26
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Jan 2013 01:53:19 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130118040006.GB13785@thunk.org>
+In-Reply-To: <20130116145918.GC6052@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 17, 2013 at 11:00:06PM -0500, Theodore Ts'o wrote:
-> On Fri, Jan 11, 2013 at 06:53:46PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
+On Wed, Jan 16, 2013 at 09:59:18AM -0500, Theodore Ts'o wrote:
+> On Wed, Jan 16, 2013 at 08:04:56PM +0800, Zheng Liu wrote:
+> > Yeah, it allows us to skip to the next data/hole directly if the extents
+> > interface is used.  But if we do that, we will need to handle
+> > extent-based file and indirect-based file resptively like this.
 > > 
-> > After tracking all extent status, we already have a extent cache in memory.
-> > Every time we want to lookup a block mapping, we can first try to lookup it in
-> > extent status tree to avoid a potential disk I/O.
+> >         if (inode->i_flags & EXT4_EXTENTS_FL) {
+> >                 ext2fs_file_ext_llseek_data();
+> >                 ...
+> >         } else {
+> >                 ext2fs_file_ind_llseek_data();
+> >                 ...
+> >         }
 > > 
-> > A new function called ext4_es_lookup_extent is defined to finish this work.
-> > When we try to lookup a block mapping, we always call ext4_map_blocks and/or
-> > ext4_da_map_blocks.  So in these functions we first try to lookup a block
-> > mapping in extent status tree.
-> > 
-> > CC: Jan kara <jack@suse.cz>
-> > CC: "Theodore Ts'o" <tytso@mit.edu>
-> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > I am not sure whether it is too complicated or not for us.  What do you
+> > think?
 > 
-> Once we apply this this patch, we should be able to remove the the
-> single-entry extent cache in fs/ext4/extents.c ---
-> ext4_ext_put_in_cache(), ext4_ext_put_gap_in_cache(),
-> ext4_ext_in_cache() --- since the extent status tree makes this code
-> redundant (and will do a better job).  This would be a good follow up,
-> cleanup patch.
+> I'm not too worried about the performance issues for debugfs.  But for
+> clients who are accessing ext[234] using libext2fs and FUSE, they
+> would probably notice in at least some circumstances.  I'm not that
+> worried about the complexity, but it's also not a high priority thing,
+> either --- it's a "nice to have", not a "must have".
 
-Fair enough.  The patch that tries to remove extent cache will be sent out
-in next version.
+Understood.  Let me try it.
 
 Thanks,
                                                 - Zheng
