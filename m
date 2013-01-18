@@ -1,120 +1,44 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: [Lsf-pc] [CFP] Linux Storage, Filesystem and Memory Management Summit
- 2013
-Date: Fri, 18 Jan 2013 06:56:19 -0500
-Message-ID: <50F93863.8050508@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-btrfs <linux-btrfs@vger.kernel.org>, xfs@oss.sgi.com
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in ext4_ind_direct_IO
+Date: Fri, 18 Jan 2013 13:00:37 +0100
+Message-ID: <1358510446-19174-4-git-send-email-jack@suse.cz>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14483 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34997 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750957Ab3ARL40 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jan 2013 06:56:26 -0500
+	id S1751294Ab3ARMA4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jan 2013 07:00:56 -0500
+In-Reply-To: <1358510446-19174-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+When using indirect blocks there is no possibility to have any unwritten
+extents. So wait for them in ext4_ind_direct_IO() is just bogus.
 
-The annual Linux Storage, Filesystem and Memory Management Summit for
-2013 will be held on April 18th and 19th following the Linux Foundation
-Collaboration Summit at Parc 55 Hotel in San Francisco, CA:
+Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/indirect.c |    5 -----
+ 1 files changed, 0 insertions(+), 5 deletions(-)
 
-	https://events.linuxfoundation.org/events/collaboration-summit
-	https://events.linuxfoundation.org/events/lsfmm-summit
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 20862f9..993247c 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 
+ retry:
+ 	if (rw == READ && ext4_should_dioread_nolock(inode)) {
+-		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
+-			mutex_lock(&inode->i_mutex);
+-			ext4_flush_unwritten_io(inode);
+-			mutex_unlock(&inode->i_mutex);
+-		}
+ 		/*
+ 		 * Nolock dioread optimization may be dynamically disabled
+ 		 * via ext4_inode_block_unlocked_dio(). Check inode's state
+-- 
+1.7.1
 
-We'd therefore like to issue a call for agenda proposals that are
-suitable for cross-track discussion as well as more technical subjects
-for discussion in the breakout sessions.
-
-1) Suggestions for agenda topics should be sent before February 8th
-2013 to:
-
-	lsf-pc@lists.linux-foundation.org
-
-and optionally cc the Linux list which would be most interested in it:
-
-	ATA: linux-ide@vger.kernel.org
-	SCSI: linux-scsi@vger.kernel.org
-	FS: linux-fsdevel@vger.kernel.org
-	MM: linux-mm@kvack.org
-
-Please remember to tag your subject with [LSF/MM TOPIC] to make it
-easier to track. Agenda topics and attendees will be selected by the
-program committee, but the final agenda will be formed by consensus of
-the attendees on the day.
-
-We'll try to cap attendance at around 25-30 per track to facilitate
-discussions although the final numbers will depend on the room sizes at
-the venue.
-
-2) Requests to attend the summit should be sent to:
-
-	lsf-pc@lists.linux-foundation.org
-
-Please summarize what expertise you will bring to the meeting, and what
-you'd like to discuss.  please also tag your email with [ATTEND] so
-there's less chance of it getting lost in the large mail pile.
-
-Presentations are allowed to guide discussion, but are strongly
-discouraged. There will be no recording or audio bridge. However,
-written minutes will be published as in previous years:
-
-2012:
-	http://lwn.net/Articles/490114/
-	http://lwn.net/Articles/490501/
-
-2011:
-	http://lwn.net/Articles/436871/
-	http://lwn.net/Articles/437066/
-
-2010:
-	http://lwn.net/Articles/399148/
-	http://lwn.net/Articles/399313/
-	http://lwn.net/Articles/400589/
-
-2009:
-	http://lwn.net/Articles/327601/
-	http://lwn.net/Articles/327740/
-	http://lwn.net/Articles/328347/
-
-Prior years:
-	http://www.usenix.org/events/lsf08/tech/lsf08sums.pdf
-	http://www.usenix.org/publications/login/2007-06/openpdfs...
-
-3) If you have feedback on last year's meeting that we can use to
-improve this year's, please also send that to:
-
-	lsf-pc@lists.linux-foundation.org
-
-Thank you on behalf of the program committee:
-
-Storage:
-	Martin K. Petersen
-	Jens Axboe
-	James Bottomley
-
-Filesystems:
-	Ric Wheeler
-	Christoph Hellwig
-	Jaegeuk Kim
-	Jeffrey Layton
-	Tao Ma
-	Chris Mason
-	Trond Myklebust
-	Eric Sandeen
-	Theodore Ts'o
-	Sage Weil
-
-MM:
-	Rik van Riel
-	Mel Gorman
-	Ying Han
-
-
-
-_______________________________________________
-Lsf-pc mailing list
-Lsf-pc@lists.linux-foundation.org
-https://lists.linuxfoundation.org/mailman/listinfo/lsf-pc
