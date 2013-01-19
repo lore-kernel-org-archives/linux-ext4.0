@@ -1,51 +1,28 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 5/6] ocfs2: Wait for page writeback to provide stable pages
-Date: Fri, 18 Jan 2013 17:13:08 -0800
-Message-ID: <20130119011308.20902.44871.stgit@blackbox.djwong.org>
-References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+Subject: how to quotacheck with the new quota implementation (hidden inode)?
+Date: Sat, 19 Jan 2013 00:40:35 -0200
+Message-ID: <20730.1955.395545.141779@fisica.ufpr.br>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: martin.petersen@oracle.com, neilb@suse.de,
-	Mark Fasheh <mfasheh@suse.com>, david@fromorbit.com,
-	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, ocfs2-devel@oss.oracle.com,
-	bharrosh@panasas.com, jlayton@samba.org, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp,
-	Joel Becker <jlbec@evilplan.org>
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
-	darrick.wong@oracle.com, ericvh@gmail.com, viro@zeniv.linux.org.uk,
-	rminnich@sandia.gov, tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fisica.ufpr.br ([200.17.209.129]:41751 "EHLO fisica.ufpr.br"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751070Ab3ASCsK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jan 2013 21:48:10 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When stable pages are required, we have to wait if the page is just
-going to disk and we want to modify it. Add proper callback to
-ocfs2_grab_pages_for_write().
+I've started to use the new quota implementation (3.7.3 running now).
+I used tune2fs -Q to turn non {usr,grp}quota. It's nice, no need to
+run quotaon and all the jquota=file options. It works but it starts
+counting only what comes after the mount with the new quota. If there
+is already stuff in the filesystem it's not counted. How can we do a
+quotacheck?
 
-CC: ocfs2-devel@oss.oracle.com
-CC: Joel Becker <jlbec@evilplan.org>
-CC: Mark Fasheh <mfasheh@suse.com>
-From: Jan Kara <jack@suse.cz>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ocfs2/aops.c |    1 +
- 1 file changed, 1 insertion(+)
+Also, what happens if the machine crashes without umounting? How is
+the usage going to be handled? Is it in the journal? Anyway, it'd also
+be important to do a quotacheck.
 
-
-diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-index 6577432..9796330 100644
---- a/fs/ocfs2/aops.c
-+++ b/fs/ocfs2/aops.c
-@@ -1194,6 +1194,7 @@ static int ocfs2_grab_pages_for_write(struct address_space *mapping,
- 				goto out;
- 			}
- 		}
-+		wait_for_stable_page(wc->w_pages[i]);
- 
- 		if (index == target_index)
- 			wc->w_target_page = wc->w_pages[i];
+Is it possible?
