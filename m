@@ -1,102 +1,192 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/4] ext4: release buffer when checksum failed
-Date: Fri, 18 Jan 2013 13:28:38 -0800
-Message-ID: <20130118212838.GO6426@blackbox.djwong.org>
-References: <1358496074-6228-1-git-send-email-yan@linux.vnet.ibm.com>
+Subject: [PATCH 2/6] mm: Only enforce stable page writes if the backing device
+ requires it
+Date: Fri, 18 Jan 2013 17:12:46 -0800
+Message-ID: <20130119011246.20902.29669.stgit@blackbox.djwong.org>
+References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Guo Chao <yan@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:50804 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751829Ab3ARVdC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jan 2013 16:33:02 -0500
-Content-Disposition: inline
-In-Reply-To: <1358496074-6228-1-git-send-email-yan@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
+	hch@infradead.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	Steven Whitehouse <swhiteho@redhat.com>,
+	hirofumi@mail.parknet.co.jp
+To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
+	darrick.wong@oracle.com, ericvh@gmail.com, viro@zeniv.linux.org.uk,
+	rminnich@sandia.gov, tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 18, 2013 at 04:01:11PM +0800, Guo Chao wrote:
-> Commit b0336e8d (ext4: calculate and verify checksums of directory leaf
-> blocks) and commit dbe89444 (ext4: Calculate and verify checksums for
-> htree nodes) forget to release buffer when checksum failed, at some places.
-> 
-> Cc: D. J. Wong <darrick.wong@oracle.com>
-> Signed-off-by: Guo Chao <yan@linux.vnet.ibm.com>
+Create a helper function to check if a backing device requires stable page
+writes and, if so, performs the necessary wait.  Then, make it so that all
+points in the memory manager that handle making pages writable use the helper
+function.  This should provide stable page write support to most filesystems,
+while eliminating unnecessary waiting for devices that don't require the
+feature.
 
-I think this looks ok...
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/ext4/dir.c   |    1 +
->  fs/ext4/namei.c |   12 ++++++++++--
->  2 files changed, 11 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index 80a28b2..3882fbc 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -185,6 +185,7 @@ static int ext4_readdir(struct file *filp,
->  					"at offset %llu",
->  					(unsigned long long)filp->f_pos);
->  			filp->f_pos += sb->s_blocksize - offset;
-> +			brelse(bh);
->  			continue;
->  		}
->  		set_buffer_verified(bh);
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 8990165..a445247 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -837,6 +837,7 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
->  		    !ext4_dx_csum_verify(dir,
->  					 (struct ext4_dir_entry *)bh->b_data)) {
->  			ext4_warning(dir->i_sb, "Node failed checksum");
-> +			brelse(bh);
->  			return -EIO;
->  		}
->  		set_buffer_verified(bh);
-> @@ -877,8 +878,11 @@ static int htree_dirblock_to_tree(struct file *dir_file,
->  	}
->  
->  	if (!buffer_verified(bh) &&
-> -	    !ext4_dirent_csum_verify(dir, (struct ext4_dir_entry *)bh->b_data))
-> +			!ext4_dirent_csum_verify(dir,
-> +				(struct ext4_dir_entry *)bh->b_data)) {
-> +		brelse(bh);
->  		return -EIO;
-> +	}
->  	set_buffer_verified(bh);
->  
->  	de = (struct ext4_dir_entry_2 *) bh->b_data;
-> @@ -1929,8 +1933,10 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
->  		}
->  		if (!buffer_verified(bh) &&
->  		    !ext4_dirent_csum_verify(dir,
-> -				(struct ext4_dir_entry *)bh->b_data))
-> +				(struct ext4_dir_entry *)bh->b_data)) {
-> +			brelse(bh);
->  			return -EIO;
-> +		}
->  		set_buffer_verified(bh);
->  		retval = add_dirent_to_buf(handle, dentry, inode, NULL, bh);
->  		if (retval != -ENOSPC) {
-> @@ -2493,6 +2499,7 @@ static int empty_dir(struct inode *inode)
->  			(struct ext4_dir_entry *)bh->b_data)) {
->  		EXT4_ERROR_INODE(inode, "checksum error reading directory "
->  				 "lblock 0");
-> +		brelse(bh);
->  		return -EIO;
->  	}
->  	set_buffer_verified(bh);
-> @@ -2537,6 +2544,7 @@ static int empty_dir(struct inode *inode)
->  					(struct ext4_dir_entry *)bh->b_data)) {
->  				EXT4_ERROR_INODE(inode, "checksum error "
->  						 "reading directory lblock 0");
-> +				brelse(bh);
->  				return -EIO;
->  			}
->  			set_buffer_verified(bh);
-> -- 
-> 1.7.9.5
-> 
+Before this patchset, all filesystems would block, regardless of whether or not
+it was necessary.  ext3 would wait, but still generate occasional checksum
+errors.  The network filesystems were left to do their own thing, so they'd
+wait too.
+
+After this patchset, all the disk filesystems except ext3 and btrfs will wait
+only if the hardware requires it.  ext3 (if necessary) snapshots pages instead
+of blocking, and btrfs provides its own bdi so the mm will never wait.  Network
+filesystems haven't been touched, so either they provide their own stable page
+guarantees or they don't block at all.  The blocking behavior is back to what
+it was before 3.0 if you don't have a disk requiring stable page writes.
+
+Here's the result of using dbench to test latency on ext2:
+
+3.8.0-rc3:
+ Operation      Count    AvgLat    MaxLat
+ ----------------------------------------
+ WriteX        109347     0.028    59.817
+ ReadX         347180     0.004     3.391
+ Flush          15514    29.828   287.283
+
+Throughput 57.429 MB/sec  4 clients  4 procs  max_latency=287.290 ms
+
+3.8.0-rc3 + patches:
+ WriteX        105556     0.029     4.273
+ ReadX         335004     0.005     4.112
+ Flush          14982    30.540   298.634
+
+Throughput 55.4496 MB/sec  4 clients  4 procs  max_latency=298.650 ms
+
+As you can see, the maximum write latency drops considerably with this patch
+enabled.  The other filesystems (ext3/ext4/xfs/btrfs) behave similarly, but see
+the cover letter for those results.
+
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/buffer.c             |    2 +-
+ fs/ext4/inode.c         |    2 +-
+ fs/gfs2/file.c          |    2 +-
+ fs/nilfs2/file.c        |    2 +-
+ include/linux/pagemap.h |    1 +
+ mm/filemap.c            |    3 ++-
+ mm/page-writeback.c     |   20 ++++++++++++++++++++
+ 7 files changed, 27 insertions(+), 5 deletions(-)
+
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 7a75c3e..2ea9cd44 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2359,7 +2359,7 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	if (unlikely(ret < 0))
+ 		goto out_unlock;
+ 	set_page_dirty(page);
+-	wait_on_page_writeback(page);
++	wait_for_stable_page(page);
+ 	return 0;
+ out_unlock:
+ 	unlock_page(page);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cbfe13b..cd818d8b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4968,7 +4968,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 					    0, len, NULL,
+ 					    ext4_bh_unmapped)) {
+ 			/* Wait so that we don't change page under IO */
+-			wait_on_page_writeback(page);
++			wait_for_stable_page(page);
+ 			ret = VM_FAULT_LOCKED;
+ 			goto out;
+ 		}
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index 991ab2d..b9e0ca2 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -483,7 +483,7 @@ out:
+ 	gfs2_holder_uninit(&gh);
+ 	if (ret == 0) {
+ 		set_page_dirty(page);
+-		wait_on_page_writeback(page);
++		wait_for_stable_page(page);
+ 	}
+ 	sb_end_pagefault(inode->i_sb);
+ 	return block_page_mkwrite_return(ret);
+diff --git a/fs/nilfs2/file.c b/fs/nilfs2/file.c
+index 6194688..bec4af6 100644
+--- a/fs/nilfs2/file.c
++++ b/fs/nilfs2/file.c
+@@ -126,7 +126,7 @@ static int nilfs_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	nilfs_transaction_commit(inode->i_sb);
+ 
+  mapped:
+-	wait_on_page_writeback(page);
++	wait_for_stable_page(page);
+  out:
+ 	sb_end_pagefault(inode->i_sb);
+ 	return block_page_mkwrite_return(ret);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 6da609d..0e38e13 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -414,6 +414,7 @@ static inline void wait_on_page_writeback(struct page *page)
+ }
+ 
+ extern void end_page_writeback(struct page *page);
++void wait_for_stable_page(struct page *page);
+ 
+ /*
+  * Add an arbitrary waiter to a page's wait queue
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 83efee7..5577dc8 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1728,6 +1728,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * see the dirty page and writeprotect it again.
+ 	 */
+ 	set_page_dirty(page);
++	wait_for_stable_page(page);
+ out:
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+@@ -2274,7 +2275,7 @@ repeat:
+ 		return NULL;
+ 	}
+ found:
+-	wait_on_page_writeback(page);
++	wait_for_stable_page(page);
+ 	return page;
+ }
+ EXPORT_SYMBOL(grab_cache_page_write_begin);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 0713bfb..9c5af4d 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2289,3 +2289,23 @@ int mapping_tagged(struct address_space *mapping, int tag)
+ 	return radix_tree_tagged(&mapping->page_tree, tag);
+ }
+ EXPORT_SYMBOL(mapping_tagged);
++
++/**
++ * wait_for_stable_page() - wait for writeback to finish, if necessary.
++ * @page:	The page to wait on.
++ *
++ * This function determines if the given page is related to a backing device
++ * that requires page contents to be held stable during writeback.  If so, then
++ * it will wait for any pending writeback to complete.
++ */
++void wait_for_stable_page(struct page *page)
++{
++	struct address_space *mapping = page_mapping(page);
++	struct backing_dev_info *bdi = mapping->backing_dev_info;
++
++	if (!bdi_cap_stable_pages_required(bdi))
++		return;
++
++	wait_on_page_writeback(page);
++}
++EXPORT_SYMBOL_GPL(wait_for_stable_page);
