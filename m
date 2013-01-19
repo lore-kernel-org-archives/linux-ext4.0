@@ -1,63 +1,124 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 6/6] ubifs: Wait for page writeback to provide stable pages
-Date: Fri, 18 Jan 2013 17:13:16 -0800
-Message-ID: <20130119011316.20902.56721.stgit@blackbox.djwong.org>
+Subject: [PATCH 1/6] bdi: Allow block devices to say that they require stable
+ page writes
+Date: Fri, 18 Jan 2013 17:12:38 -0800
+Message-ID: <20130119011238.20902.38730.stgit@blackbox.djwong.org>
 References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: martin.petersen@oracle.com, Artem Bityutskiy <dedekind1@gmail.com>,
- neilb@suse.de, linux-kernel@vger.kernel.org, david@fromorbit.com,
- gnehzuil.liu@gmail.com, Adrian Hunter <adrian.hunter@intel.com>,
- hch@infradead.org, jlayton@samba.org, adilger.kernel@dilger.ca,
- bharrosh@panasas.com, linux-fsdevel@vger.kernel.org,
- linux-mtd@lists.infradead.org, akpm@linux-foundation.org,
- linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, darrick.wong@oracle.com,
- ericvh@gmail.com, viro@zeniv.linux.org.uk, rminnich@sandia.gov,
- tytso@mit.edu
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
+	hch@infradead.org, linux-fsdevel@vger.kernel.org,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	hirofumi@mail.parknet.co.jp
+To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
+	darrick.wong@oracle.com, ericvh@gmail.com, viro@zeniv.linux.org.uk,
+	rminnich@sandia.gov, tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: linux-mtd-bounces@lists.infradead.org
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When stable pages are required, we have to wait if the page is just
-going to disk and we want to modify it. Add proper callback to
-ubifs_vm_page_mkwrite().
+This creates a per-backing-device flag that tracks whether or not pages must be
+held immutable during writeout.  Eventually it will be used to waive
+wait_for_page_writeback() if nothing requires stable pages.
 
-CC: Artem Bityutskiy <dedekind1@gmail.com>
-CC: Adrian Hunter <adrian.hunter@intel.com>
-CC: linux-mtd@lists.infradead.org
-From: Jan Kara <jack@suse.cz>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/ubifs/file.c |    1 +
- 1 file changed, 1 insertion(+)
+ Documentation/ABI/testing/sysfs-class-bdi |    5 +++++
+ block/blk-integrity.c                     |    4 ++++
+ include/linux/backing-dev.h               |    6 ++++++
+ mm/backing-dev.c                          |   11 +++++++++++
+ 4 files changed, 26 insertions(+)
 
 
-diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
-index 5bc7781..4f6493c 100644
---- a/fs/ubifs/file.c
-+++ b/fs/ubifs/file.c
-@@ -1522,6 +1522,7 @@ static int ubifs_vm_page_mkwrite(struct vm_area_struct *vma,
- 			ubifs_release_dirty_inode_budget(c, ui);
- 	}
+diff --git a/Documentation/ABI/testing/sysfs-class-bdi b/Documentation/ABI/testing/sysfs-class-bdi
+index 5f50097..d773d56 100644
+--- a/Documentation/ABI/testing/sysfs-class-bdi
++++ b/Documentation/ABI/testing/sysfs-class-bdi
+@@ -48,3 +48,8 @@ max_ratio (read-write)
+ 	most of the write-back cache.  For example in case of an NFS
+ 	mount that is prone to get stuck, or a FUSE mount which cannot
+ 	be trusted to play fair.
++
++stable_pages_required (read-only)
++
++	If set, the backing device requires that all pages comprising a write
++	request must not be changed until writeout is complete.
+diff --git a/block/blk-integrity.c b/block/blk-integrity.c
+index da2a818..dabd221 100644
+--- a/block/blk-integrity.c
++++ b/block/blk-integrity.c
+@@ -420,6 +420,8 @@ int blk_integrity_register(struct gendisk *disk, struct blk_integrity *template)
+ 	} else
+ 		bi->name = bi_unsupported_name;
  
-+	wait_for_stable_page(page);
- 	unlock_page(page);
++	disk->queue->backing_dev_info.capabilities |= BDI_CAP_STABLE_WRITES;
++
  	return 0;
+ }
+ EXPORT_SYMBOL(blk_integrity_register);
+@@ -438,6 +440,8 @@ void blk_integrity_unregister(struct gendisk *disk)
+ 	if (!disk || !disk->integrity)
+ 		return;
  
-
-
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
++	disk->queue->backing_dev_info.capabilities &= ~BDI_CAP_STABLE_WRITES;
++
+ 	bi = disk->integrity;
+ 
+ 	kobject_uevent(&bi->kobj, KOBJ_REMOVE);
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 12731a1..3504599 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -254,6 +254,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
+ #define BDI_CAP_EXEC_MAP	0x00000040
+ #define BDI_CAP_NO_ACCT_WB	0x00000080
+ #define BDI_CAP_SWAP_BACKED	0x00000100
++#define BDI_CAP_STABLE_WRITES	0x00000200
+ 
+ #define BDI_CAP_VMFLAGS \
+ 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
+@@ -308,6 +309,11 @@ long wait_iff_congested(struct zone *zone, int sync, long timeout);
+ int pdflush_proc_obsolete(struct ctl_table *table, int write,
+ 		void __user *buffer, size_t *lenp, loff_t *ppos);
+ 
++static inline bool bdi_cap_stable_pages_required(struct backing_dev_info *bdi)
++{
++	return bdi->capabilities & BDI_CAP_STABLE_WRITES;
++}
++
+ static inline bool bdi_cap_writeback_dirty(struct backing_dev_info *bdi)
+ {
+ 	return !(bdi->capabilities & BDI_CAP_NO_WRITEBACK);
+diff --git a/mm/backing-dev.c b/mm/backing-dev.c
+index d3ca2b3..41733c5 100644
+--- a/mm/backing-dev.c
++++ b/mm/backing-dev.c
+@@ -221,12 +221,23 @@ static ssize_t max_ratio_store(struct device *dev,
+ }
+ BDI_SHOW(max_ratio, bdi->max_ratio)
+ 
++static ssize_t stable_pages_required_show(struct device *dev,
++					  struct device_attribute *attr,
++					  char *page)
++{
++	struct backing_dev_info *bdi = dev_get_drvdata(dev);
++
++	return snprintf(page, PAGE_SIZE-1, "%d\n",
++			bdi_cap_stable_pages_required(bdi) ? 1 : 0);
++}
++
+ #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
+ 
+ static struct device_attribute bdi_dev_attrs[] = {
+ 	__ATTR_RW(read_ahead_kb),
+ 	__ATTR_RW(min_ratio),
+ 	__ATTR_RW(max_ratio),
++	__ATTR_RO(stable_pages_required),
+ 	__ATTR_NULL,
+ };
+ 
