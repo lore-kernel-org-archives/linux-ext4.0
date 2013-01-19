@@ -1,192 +1,63 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/6] mm: Only enforce stable page writes if the backing device
- requires it
-Date: Fri, 18 Jan 2013 17:12:46 -0800
-Message-ID: <20130119011246.20902.29669.stgit@blackbox.djwong.org>
+Subject: [PATCH 6/6] ubifs: Wait for page writeback to provide stable pages
+Date: Fri, 18 Jan 2013 17:13:16 -0800
+Message-ID: <20130119011316.20902.56721.stgit@blackbox.djwong.org>
 References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
-	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	hirofumi@mail.parknet.co.jp
-To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz,
-	darrick.wong@oracle.com, ericvh@gmail.com, viro@zeniv.linux.org.uk,
-	rminnich@sandia.gov, tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: martin.petersen@oracle.com, Artem Bityutskiy <dedekind1@gmail.com>,
+ neilb@suse.de, linux-kernel@vger.kernel.org, david@fromorbit.com,
+ gnehzuil.liu@gmail.com, Adrian Hunter <adrian.hunter@intel.com>,
+ hch@infradead.org, jlayton@samba.org, adilger.kernel@dilger.ca,
+ bharrosh@panasas.com, linux-fsdevel@vger.kernel.org,
+ linux-mtd@lists.infradead.org, akpm@linux-foundation.org,
+ linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
+To: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, darrick.wong@oracle.com,
+ ericvh@gmail.com, viro@zeniv.linux.org.uk, rminnich@sandia.gov,
+ tytso@mit.edu
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
 In-Reply-To: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: linux-mtd-bounces@lists.infradead.org
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-Create a helper function to check if a backing device requires stable page
-writes and, if so, performs the necessary wait.  Then, make it so that all
-points in the memory manager that handle making pages writable use the helper
-function.  This should provide stable page write support to most filesystems,
-while eliminating unnecessary waiting for devices that don't require the
-feature.
+When stable pages are required, we have to wait if the page is just
+going to disk and we want to modify it. Add proper callback to
+ubifs_vm_page_mkwrite().
 
-Before this patchset, all filesystems would block, regardless of whether or not
-it was necessary.  ext3 would wait, but still generate occasional checksum
-errors.  The network filesystems were left to do their own thing, so they'd
-wait too.
-
-After this patchset, all the disk filesystems except ext3 and btrfs will wait
-only if the hardware requires it.  ext3 (if necessary) snapshots pages instead
-of blocking, and btrfs provides its own bdi so the mm will never wait.  Network
-filesystems haven't been touched, so either they provide their own stable page
-guarantees or they don't block at all.  The blocking behavior is back to what
-it was before 3.0 if you don't have a disk requiring stable page writes.
-
-Here's the result of using dbench to test latency on ext2:
-
-3.8.0-rc3:
- Operation      Count    AvgLat    MaxLat
- ----------------------------------------
- WriteX        109347     0.028    59.817
- ReadX         347180     0.004     3.391
- Flush          15514    29.828   287.283
-
-Throughput 57.429 MB/sec  4 clients  4 procs  max_latency=287.290 ms
-
-3.8.0-rc3 + patches:
- WriteX        105556     0.029     4.273
- ReadX         335004     0.005     4.112
- Flush          14982    30.540   298.634
-
-Throughput 55.4496 MB/sec  4 clients  4 procs  max_latency=298.650 ms
-
-As you can see, the maximum write latency drops considerably with this patch
-enabled.  The other filesystems (ext3/ext4/xfs/btrfs) behave similarly, but see
-the cover letter for those results.
-
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+CC: Artem Bityutskiy <dedekind1@gmail.com>
+CC: Adrian Hunter <adrian.hunter@intel.com>
+CC: linux-mtd@lists.infradead.org
+From: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/buffer.c             |    2 +-
- fs/ext4/inode.c         |    2 +-
- fs/gfs2/file.c          |    2 +-
- fs/nilfs2/file.c        |    2 +-
- include/linux/pagemap.h |    1 +
- mm/filemap.c            |    3 ++-
- mm/page-writeback.c     |   20 ++++++++++++++++++++
- 7 files changed, 27 insertions(+), 5 deletions(-)
+ fs/ubifs/file.c |    1 +
+ 1 file changed, 1 insertion(+)
 
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 7a75c3e..2ea9cd44 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2359,7 +2359,7 @@ int __block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	if (unlikely(ret < 0))
- 		goto out_unlock;
- 	set_page_dirty(page);
--	wait_on_page_writeback(page);
+diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
+index 5bc7781..4f6493c 100644
+--- a/fs/ubifs/file.c
++++ b/fs/ubifs/file.c
+@@ -1522,6 +1522,7 @@ static int ubifs_vm_page_mkwrite(struct vm_area_struct *vma,
+ 			ubifs_release_dirty_inode_budget(c, ui);
+ 	}
+ 
 +	wait_for_stable_page(page);
- 	return 0;
- out_unlock:
  	unlock_page(page);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cbfe13b..cd818d8b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4968,7 +4968,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 					    0, len, NULL,
- 					    ext4_bh_unmapped)) {
- 			/* Wait so that we don't change page under IO */
--			wait_on_page_writeback(page);
-+			wait_for_stable_page(page);
- 			ret = VM_FAULT_LOCKED;
- 			goto out;
- 		}
-diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-index 991ab2d..b9e0ca2 100644
---- a/fs/gfs2/file.c
-+++ b/fs/gfs2/file.c
-@@ -483,7 +483,7 @@ out:
- 	gfs2_holder_uninit(&gh);
- 	if (ret == 0) {
- 		set_page_dirty(page);
--		wait_on_page_writeback(page);
-+		wait_for_stable_page(page);
- 	}
- 	sb_end_pagefault(inode->i_sb);
- 	return block_page_mkwrite_return(ret);
-diff --git a/fs/nilfs2/file.c b/fs/nilfs2/file.c
-index 6194688..bec4af6 100644
---- a/fs/nilfs2/file.c
-+++ b/fs/nilfs2/file.c
-@@ -126,7 +126,7 @@ static int nilfs_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	nilfs_transaction_commit(inode->i_sb);
+ 	return 0;
  
-  mapped:
--	wait_on_page_writeback(page);
-+	wait_for_stable_page(page);
-  out:
- 	sb_end_pagefault(inode->i_sb);
- 	return block_page_mkwrite_return(ret);
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 6da609d..0e38e13 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -414,6 +414,7 @@ static inline void wait_on_page_writeback(struct page *page)
- }
- 
- extern void end_page_writeback(struct page *page);
-+void wait_for_stable_page(struct page *page);
- 
- /*
-  * Add an arbitrary waiter to a page's wait queue
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 83efee7..5577dc8 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1728,6 +1728,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	 * see the dirty page and writeprotect it again.
- 	 */
- 	set_page_dirty(page);
-+	wait_for_stable_page(page);
- out:
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
-@@ -2274,7 +2275,7 @@ repeat:
- 		return NULL;
- 	}
- found:
--	wait_on_page_writeback(page);
-+	wait_for_stable_page(page);
- 	return page;
- }
- EXPORT_SYMBOL(grab_cache_page_write_begin);
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 0713bfb..9c5af4d 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2289,3 +2289,23 @@ int mapping_tagged(struct address_space *mapping, int tag)
- 	return radix_tree_tagged(&mapping->page_tree, tag);
- }
- EXPORT_SYMBOL(mapping_tagged);
-+
-+/**
-+ * wait_for_stable_page() - wait for writeback to finish, if necessary.
-+ * @page:	The page to wait on.
-+ *
-+ * This function determines if the given page is related to a backing device
-+ * that requires page contents to be held stable during writeback.  If so, then
-+ * it will wait for any pending writeback to complete.
-+ */
-+void wait_for_stable_page(struct page *page)
-+{
-+	struct address_space *mapping = page_mapping(page);
-+	struct backing_dev_info *bdi = mapping->backing_dev_info;
-+
-+	if (!bdi_cap_stable_pages_required(bdi))
-+		return;
-+
-+	wait_on_page_writeback(page);
-+}
-+EXPORT_SYMBOL_GPL(wait_for_stable_page);
+
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
