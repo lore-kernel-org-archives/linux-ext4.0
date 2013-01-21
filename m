@@ -1,64 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] quota: autoload the quota_v2 module for QFMT_VFS_V1
- quota format
-Date: Mon, 21 Jan 2013 10:50:20 -0500
-Message-ID: <20130121155020.GD5618@thunk.org>
-References: <20130121054741.GB321@thunk.org>
- <1358750781-5670-1-git-send-email-tytso@mit.edu>
- <1358750781-5670-2-git-send-email-tytso@mit.edu>
- <20130121104017.GD5588@quack.suse.cz>
- <20130121150134.GB5618@thunk.org>
- <20130121151008.GM5588@quack.suse.cz>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 7/7 v2] ext4: reclaim extents from extent status tree
+Date: Tue, 22 Jan 2013 01:09:37 +0800
+Message-ID: <20130121170937.GB15473@gmail.com>
+References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
+ <1357901627-3068-8-git-send-email-wenqing.lz@taobao.com>
+ <20130118051921.GC13785@thunk.org>
+ <20130118053947.GD13785@thunk.org>
+ <20130121072443.GA24053@gmail.com>
+ <20130121150020.GA5618@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@vger.kernel.org, adityakali@google.com, adilger@dilger.ca
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan kara <jack@suse.cz>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44622 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752134Ab3AUPu0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2013 10:50:26 -0500
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:33758 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751610Ab3AUQzq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jan 2013 11:55:46 -0500
+Received: by mail-pb0-f46.google.com with SMTP id wy7so3405979pbc.5
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Jan 2013 08:55:44 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130121151008.GM5588@quack.suse.cz>
+In-Reply-To: <20130121150020.GA5618@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 21, 2013 at 04:10:08PM +0100, Jan Kara wrote:
->   Exactly. There shouldn't be any conflicts so just keep it in your tree.
-> You can add to the patch:
-> Acked-by: Jan Kara <jack@suse.cz>
+On Mon, Jan 21, 2013 at 10:00:20AM -0500, Theodore Ts'o wrote:
+> On Mon, Jan 21, 2013 at 03:24:43PM +0800, Zheng Liu wrote:
+> > 
+> > Do we need to CC' linux-fsdevel mailling list to let other folks review
+> > this patch?
+> 
+> For this patch, yes.  And we'll need a commit description which
+> explains why it's needed.  Since I wrote the patch, I'm happy to
+> supply the commit description.  We can include it as a separate patch
+> in your patch series, and I'll cc linux-fsdevel.
 
-Great, thanks.
+That would be great if you could give a commit description.
 
-BTW, do you have any plans to work on getting repquota support for
-ocfs2 and ext4 with the internal quota support into quotactl(2) and
-quotatools?  It's missing functionality that I think users who want to
-switch to the internal quota support will very much care about.
+> 
+> As Jan mentioned, the only other user of it is Dave Chinner for the
+> XFS code, and I had alreday checked to make sure that it shouldn't
+> affect him --- but it would be good to cc him so he's in the loop.
 
-The work list that I have currently for ext4 w/ internal quota support
-are:
+As I metioned at another mail, I will cc him.
 
-1)  Debugfs support for manipulating the quota inode directly.  (So we
-can introduce fs corruptions and make sure e2fsck deals
-appropriately).
+> 
+> Speaking of commit descriptions, I had made some other minor
+> adjustments to some of the commits in your last version of the patch
+> series, since I had already been assuming that I could take them until
+> I saw the potential problems with the memory shrinker patch.  So you
+> can just provide a new version of the memory shrinker patch --- or if
+> you have other changes you want to make to the earlier patches in that
+> patch series, let me know and I can extract out the various comments
+> and whitespace fixes that from the patches I have in my private tree,
+> so we can merge them with any additional updates to your patches.
 
-2)  Make sure e2fsck preserves the quota limits information when it
-repairs the quota information, and that it notices a missing quota
-record in the quota inode.
+Your meaning is that you have made some changes in my patches of extent
+status tree, aren't you?  Now I have stashed es_status into es_pblk in
+patch 3 (ext4: add physical block and status member into extent status
+tree), and added a new patch that removes single extent cache.  I am
+happy to merge your changes if you could give them to me.  Please let me
+know if I could provide some helps.
 
-3)  Make sure e2fsck notices repairs a quota inode which is corrupted
-in some way (and not just contains missing or incorrect usage
-information).
-
-4)  More regression tests in e2fsprogs.
-
-5) Add some kind of functional replacement for repquota.  If
-quotactl(2) support is not forthcoming in the near future, at the very
-least debugfs should have a way of dumping out the repquota
-information for an unmounted ext4 file system with internal quotas
-enabled.
-
-Can anyone think of other things which might be missing?
-
-					- Ted
+Thanks,
+                                                - Zheng
