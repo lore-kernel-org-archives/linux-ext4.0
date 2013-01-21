@@ -1,60 +1,53 @@
-From: Chen Gang <gang.chen@asianux.com>
-Subject: Re: [PATCH v4] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
- size and count calculation
-Date: Mon, 21 Jan 2013 18:40:34 +0800
-Message-ID: <50FD1B22.1020906@asianux.com>
-References: <50DD20B2.6040204@asianux.com> <50E646BC.2090201@asianux.com> <50E64A4E.7010408@asianux.com> <50E64BFD.6090000@asianux.com> <20130107192016.GD13659@quack.suse.cz> <50EFD427.8060100@asianux.com> <50FB9696.7090702@asianux.com> <20130121102428.GA5588@quack.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] quota: autoload the quota_v2 module for
+ QFMT_VFS_V1 quota format
+Date: Mon, 21 Jan 2013 11:40:17 +0100
+Message-ID: <20130121104017.GD5588@quack.suse.cz>
+References: <20130121054741.GB321@thunk.org>
+ <1358750781-5670-1-git-send-email-tytso@mit.edu>
+ <1358750781-5670-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: akpm@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>,
-	jaegeuk.kim@samsung.com, dwmw2@infradead.org,
-	viro@zeniv.linux.org.uk, paul.gortmaker@windriver.com,
-	ebiederm@xmission.com, adilger.kernel@dilger.ca,
-	torvalds@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from intranet.asianux.com ([58.214.24.6]:18137 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751509Ab3AUKjr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jan 2013 05:39:47 -0500
-In-Reply-To: <20130121102428.GA5588@quack.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1358750781-5670-2-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-=E4=BA=8E 2013=E5=B9=B401=E6=9C=8821=E6=97=A5 18:24, Jan Kara =E5=86=99=
-=E9=81=93:
->   Al Viro (you have him on CC list) is the right guy to merge this pa=
-tch.
-> But he's not very responsive at times... You can also check whether h=
-e just
-> didn't silently merge your patch into his tree -
-> http://git.kernel.org/?p=3Dlinux/kernel/git/viro/vfs.git
-> I don't see the patch there right now, last update to the tree has
-> happened 3 weeks ago. Maybe he's on vacation...
+On Mon 21-01-13 01:46:21, Ted Tso wrote:
+> Otherwise, ext4 file systems with the quota feature enable will get a
+> very confusing "No such process" error message if the quota code is
+> built as a mdoule and the quota_v2 module has not been loaded.
+  Thanks for the fix. Should I merge it via my tree or do you plan to do it
+via your tree?
 
-  thank you very much for your patient details replying.
-
-  sorry, it is my fault for my original mail address not including Viro=
-=20
-    so it is necessary to wait additional week for getting his response=
-=2E
-
-  next time, I need only use ./script/get_maintainers.pl to get mail ad=
-dress.
-
-  :-(
-
-
---=20
-Chen Gang
-
-Asianux Corporation
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: stable@vger.kernel.org
+> ---
+>  include/linux/quota.h | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/include/linux/quota.h b/include/linux/quota.h
+> index 58fdef12..d133711 100644
+> --- a/include/linux/quota.h
+> +++ b/include/linux/quota.h
+> @@ -405,6 +405,7 @@ struct quota_module_name {
+>  #define INIT_QUOTA_MODULE_NAMES {\
+>  	{QFMT_VFS_OLD, "quota_v1"},\
+>  	{QFMT_VFS_V0, "quota_v2"},\
+> +	{QFMT_VFS_V1, "quota_v2"},\
+>  	{0, NULL}}
+>  
+>  #endif /* _QUOTA_ */
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
