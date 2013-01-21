@@ -1,57 +1,97 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: release sysfs kobject when failing to enable quotas on mount
-Date: Mon, 21 Jan 2013 01:46:20 -0500
-Message-ID: <1358750781-5670-1-git-send-email-tytso@mit.edu>
-References: <20130121054741.GB321@thunk.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20130121054741.GB321@thunk.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 7/7 v2] ext4: reclaim extents from extent status tree
+Date: Mon, 21 Jan 2013 15:24:43 +0800
+Message-ID: <20130121072443.GA24053@gmail.com>
+References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
+ <1357901627-3068-8-git-send-email-wenqing.lz@taobao.com>
+ <20130118051921.GC13785@thunk.org>
+ <20130118053947.GD13785@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jan kara <jack@suse.cz>,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:55570 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751365Ab3AUHKr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jan 2013 02:10:47 -0500
+Received: by mail-pa0-f50.google.com with SMTP id hz10so3233631pad.9
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Jan 2013 23:10:46 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20130118053947.GD13785@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In addition, print the error returned from ext4_enable_quotas()
+On Fri, Jan 18, 2013 at 12:39:47AM -0500, Theodore Ts'o wrote:
+> On Fri, Jan 18, 2013 at 12:19:21AM -0500, Theodore Ts'o wrote:
+> > I'm a bit concerned we might be too aggressive,
+> > because there are two ways that items can be freed from the
+> > extent_status tree.  One is if the inode is not used at all, and when
+> > we release the inode, we'll drop all of the entries in the
+> > extent_status_tree for that inode.  The second way is via the shrinker
+> > which we've registered.
+> 
+> If we use the sb->s_op->free_cached_objects() approach, something like
+> the following change to prune_super() in fs/super.c might address the
+> above concern:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/super.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+Sorry for delay reply.  I believe that sb->s_op->free_cached_objbects()
+approach is better.  So in next version I will try to implement this approach.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 30651bd..0a6e9d5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4015,7 +4015,7 @@ no_journal:
- 	    !(sb->s_flags & MS_RDONLY)) {
- 		err = ext4_enable_quotas(sb);
- 		if (err)
--			goto failed_mount7;
-+			goto failed_mount8;
- 	}
- #endif  /* CONFIG_QUOTA */
- 
-@@ -4042,6 +4042,8 @@ cantfind_ext4:
- 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
- 	goto failed_mount;
- 
-+failed_mount8:
-+	kobject_del(&sbi->s_kobj);
- failed_mount7:
- 	ext4_unregister_li_request(sb);
- failed_mount6:
-@@ -5012,9 +5014,9 @@ static int ext4_enable_quotas(struct super_block *sb)
- 						DQUOT_USAGE_ENABLED);
- 			if (err) {
- 				ext4_warning(sb,
--					"Failed to enable quota (type=%d) "
--					"tracking. Please run e2fsck to fix.",
--					type);
-+					"Failed to enable quota tracking "
-+					"(type=%d, err=%d). Please run "
-+					"e2fsck to fix.", type, err);
- 				return err;
- 			}
- 		}
--- 
-1.7.12.rc0.22.gcdd159b
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index 12f1237..fb57bd2 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -80,6 +80,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  	if (sc->nr_to_scan) {
+>  		int	dentries;
+>  		int	inodes;
+> +		int	fs_to_scan = 0;
+>  
+>  		/* proportion the scan between the caches */
+>  		dentries = (sc->nr_to_scan * sb->s_nr_dentry_unused) /
+> @@ -87,7 +88,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		inodes = (sc->nr_to_scan * sb->s_nr_inodes_unused) /
+>  							total_objects;
+>  		if (fs_objects)
+> -			fs_objects = (sc->nr_to_scan * fs_objects) /
+> +			fs_to_scan = (sc->nr_to_scan * fs_objects) /
+>  							total_objects;
+>  		/*
+>  		 * prune the dcache first as the icache is pinned by it, then
+> @@ -96,8 +97,23 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		prune_dcache_sb(sb, dentries);
+>  		prune_icache_sb(sb, inodes);
+>  
+> -		if (fs_objects && sb->s_op->free_cached_objects) {
+> -			sb->s_op->free_cached_objects(sb, fs_objects);
+> +		/*
+> +		 * If as a result of pruning the icache, we released some
+> +		 * of the fs_objects, give credit to the fact and
+> +		 * reduce the number of fs objects that we should try
+> +		 * to release.
+> +		 */
+> +		if (fs_to_scan) {
+> +			int fs_objects_now = sb->s_op->nr_cached_objects(sb);
+> +
+> +			if (fs_objects_now < fs_objects)
+> +				fs_to_scan -= fs_objects - fs_objects_now;
+> +			if (fs_to_scan < 0)
+> +				fs_to_scan = 0;
+> +		}
+> +
+> +		if (fs_to_scan && sb->s_op->free_cached_objects) {
+> +			sb->s_op->free_cached_objects(sb, fs_to_scan);
+>  			fs_objects = sb->s_op->nr_cached_objects(sb);
+>  		}
+>  		total_objects = sb->s_nr_dentry_unused +
+> 
+> What do folks think?
+
+Do we need to CC' linux-fsdevel mailling list to let other folks review
+this patch?
+
+Thanks,
+                                                - Zheng
