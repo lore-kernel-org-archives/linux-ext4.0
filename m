@@ -1,174 +1,267 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Mon, 21 Jan 2013 15:07:38 +0100
-Message-ID: <20130121140738.GI5588@quack.suse.cz>
-References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com>
- <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com>
- <20130121104733.GE5588@quack.suse.cz>
- <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com>
- <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
+Subject: Re: [PATCH 4/6] block: Optionally snapshot page contents to
+ provide stable pages during write
+Date: Mon, 21 Jan 2013 15:12:23 +0100
+Message-ID: <20130121141223.GJ5588@quack.suse.cz>
+References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
+ <20130119011301.20902.41628.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>, mszeredi@suse.cz
-To: Sedat Dilek <sedat.dilek@gmail.com>
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
+	martin.petersen@oracle.com, neilb@suse.de, david@fromorbit.com,
+	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
+	hch@infradead.org, linux-fsdevel@vger.kernel.org,
+	Andy Lutomirski <luto@amacapital.net>,
+	adilger.kernel@dilger.ca, bharrosh@panasas.com, jlayton@samba.org,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	hirofumi@mail.parknet.co.jp
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57243 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:57534 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752621Ab3AUOHk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2013 09:07:40 -0500
+	id S1755285Ab3AUOM3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Jan 2013 09:12:29 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
+In-Reply-To: <20130119011301.20902.41628.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 21-01-13 13:30:26, Sedat Dilek wrote:
-> On Mon, Jan 21, 2013 at 12:40 PM, Sedat Dilek <sedat.dilek@gmail.com> wrote:
-> > On Mon, Jan 21, 2013 at 11:47 AM, Jan Kara <jack@suse.cz> wrote:
-> >>   The traces don't suggest an ext4/jbd2 problem. What is happening is that
-> >> jbd2 is waiting for IO to finish and that never happens. Seeing that you
-> >> loop device I'd think it's some interaction of the loop device and
-> >> freezing. Can you reproduce the issue without the loop device (i.e. with
-> >> the filesystem directly on e.g. scsi disk)? I suspect the reason is
-> >> something like that the backing filesystem is already frozen so filesystem
-> >> on top of it cannot write all the data and hangs waiting for IO -> suspend
-> >> doesn't happen. Contents of /proc/mounts and losetup -l would help us
-> >> understand what's going on.
-> >>
-> >
-> > As said I am here in a very uncommon WUBI environment means my
-> > Ubuntu/precise rootfs-image lays on the Win7-partition (NTFS).
-> > Your explanation sounds reasonable to me as this line from my attached
-> > testcase causes the troubles.
-> >
-> >      echo mem > /sys/power/state && sleep 1
-> >
-> > So, /sys/ is not writable immediately after freezer ends
-> >
-> > I checked again and again my logs and have seen "starving" lines
-> > reported by rtkit-daemon, but did not really get wiser what they want
-> > to tell me. Stopping rtkit-daemon or resetting all or all-known
-> > threads before running my pm_test/freezer did not help, too.
-> >
-> > /usr/sbin/rtkitctl --help
-> > rtkitctl [options]
-> >
-> >   -h, --help         Show this help
-> >       --version      Show version
-> >
-> >       --reset-known  Reset real-time status of known threads
-> >       --reset-all    Reset real-time status of all threads
-> >       --start        Start RealtimeKit if it is not running already
-> >   -k, --exit         Terminate running RealtimeKit daemon
-> >
-> > Here are the outputs you wanted with some more (fstab, grub-config) etc.
-> > I have here no -l option for losetup command.
-> >
-> >
-> > - Sedat -
-> >
-> > P.S.: Outputs for Honza...
-> >
-> > $ sudo cat /proc/mounts
-> > rootfs / rootfs rw 0 0
-> > sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-> > proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-> > udev /dev devtmpfs rw,relatime,size=1966948k,nr_inodes=491737,mode=755 0 0
-> > devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
-> > tmpfs /run tmpfs rw,nosuid,relatime,size=788076k,mode=755 0 0
-> > /dev/sda2 /host fuseblk
-> > rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other,blksize=4096
-> > 0 0
-> > /dev/loop0 / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> > none /sys/fs/fuse/connections fusectl rw,relatime 0 0
-> > none /sys/kernel/debug debugfs rw,relatime 0 0
-> > none /sys/kernel/security securityfs rw,relatime 0 0
-> > none /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
-> > none /run/shm tmpfs rw,nosuid,nodev,relatime 0 0
-> > gvfs-fuse-daemon /home/wearefam/.gvfs fuse.gvfs-fuse-daemon
-> > rw,nosuid,nodev,relatime,user_id=1000,group_id=1000 0 0
-> >
-> > $ sudo losetup --all --verbose
-> > /dev/loop0: [0802]:17982 (/host/ubuntu/disks/root.disk)
-> >
-> > $ sudo losetup --find --verbose
-> > Loop device is /dev/loop1
-> > /dev/loop1
-> >
-> >  [ /etc/fstab ]
-> > # /etc/fstab: static file system information.
-> >
-> > # Use 'blkid' to print the universally unique identifier for a
-> > # device; this may be used with UUID= as a more robust way to name devices
-> > # that works even if disks are added and removed. See fstab(5).
-> >
-> > # <file system>                 <mount point>   <type>  <options>
-> >          <dump>  <pass>
-> > proc                            /proc           proc
-> > nodev,noexec,nosuid     0       0
-> > /host/ubuntu/disks/root.disk    /               ext4
-> > loop,errors=remount-ro  0       1
-> > /host/ubuntu/disks/swap.disk    none            swap    loop,sw
-> >          0       0
-> > - EOF -
-> >
-> > [ /boot/grub/grub.cfg ]
-> > ...
-> > menuentry 'Ubuntu, mit Linux 3.8.0-rc4-next20130121-1-iniza-generic'
-> > --class ubuntu --class gnu-linux --class gnu --class os {
-> >         set gfxpayload=$linux_gfx_mode
-> >         insmod part_msdos
-> >         insmod ntfs
-> >         set root='(hd0,msdos2)'
-> >         search --no-floppy --fs-uuid --set=root 001AADA61AAD9964
-> >         loopback loop0 /ubuntu/disks/root.disk
-> >         set root=(loop0)
-> >         linux   /boot/vmlinuz-3.8.0-rc4-next20130121-1-iniza-generic
-> > root=UUID=001AADA61AAD9964 loop=/ubuntu/disks/root.disk ro
-> >         initrd  /boot/initrd.img-3.8.0-rc4-next20130121-1-iniza-generic
-> > }
-> > ...
-> >
+On Fri 18-01-13 17:13:01, Darrick J. Wong wrote:
+> This provides a band-aid to provide stable page writes on jbd without needing
+> to backport the fixed locking and page writeback bit handling schemes of jbd2.
+> The band-aid works by using bounce buffers to snapshot page contents instead of
+> waiting.
 > 
-> Here some more useful outputs:
+> For those wondering about the ext3 bandage -- fixing the jbd locking (which was
+> done as part of ext4dev years ago) is a lot of surgery, and setting
+> PG_writeback on data pages when we actually hold the page lock dropped ext3
+> performance by nearly an order of magnitude.  If we're going to migrate iscsi
+> and raid to use stable page writes, the complaints about high latency will
+> likely return.  We might as well centralize their page snapshotting thing to
+> one place.
 > 
-> $ LC_ALL=C df -h -T
-> Filesystem     Type      Size  Used Avail Use% Mounted on
-> rootfs         rootfs     17G   15G  1.5G  92% /
-> udev           devtmpfs  1.9G   12K  1.9G   1% /dev
-> tmpfs          tmpfs     770M  892K  769M   1% /run
-> /dev/sda2      fuseblk   444G   81G  364G  19% /host
-> /dev/loop0     ext4       17G   15G  1.5G  92% /
-> none           tmpfs     5.0M     0  5.0M   0% /run/lock
-> none           tmpfs     1.9G  260K  1.9G   1% /run/shm
-> 
-> $ sudo LC_ALL=C fdisk -l /dev/sda
-> 
-> Disk /dev/sda: 500.1 GB, 500107862016 bytes
-> 255 heads, 63 sectors/track, 60801 cylinders, total 976773168 sectors
-> Units = sectors of 1 * 512 = 512 bytes
-> Sector size (logical/physical): 512 bytes / 4096 bytes
-> I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-> Disk identifier: 0xcb9885ab
-> 
->    Device Boot      Start         End      Blocks   Id  System
-> /dev/sda1   *        2048      206847      102400    7  HPFS/NTFS/exFAT
-> /dev/sda2          206848   931299327   465546240    7  HPFS/NTFS/exFAT
-> /dev/sda3       931299328   976773119    22736896   27  Hidden NTFS WinRE
-> 
-> I am still reflecting on any shitty userspace app is causing all the
-> trouble, but I have zero clue how to dig that...
-  Well, I think the outputs make it pretty clear. /dev/loop0 is a mounted
-image from fuse filesystem. Fuse daemon making filesystem accessible gets
-frozen before /dev/loop0 gets fully written out and so jbd2 journal thread
-hangs. Maybe Miklos (added to CC) could fill in some details / ideas but I
-think the setup like you have never really worked...
+> Tested-by: Andy Lutomirski <luto@amacapital.net>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  arch/tile/Kconfig       |    6 ------
+>  block/blk-core.c        |    8 +++++---
+>  fs/ext3/super.c         |    1 +
+>  include/uapi/linux/fs.h |    3 +++
+>  mm/Kconfig              |   13 +++++++++++++
+>  mm/bounce.c             |   48 +++++++++++++++++++++++++++++++++++++++++++----
+>  mm/page-writeback.c     |    4 ++++
+>  7 files changed, 70 insertions(+), 13 deletions(-)
+> 
+> 
+> diff --git a/arch/tile/Kconfig b/arch/tile/Kconfig
+> index 875d008..c671fda 100644
+> --- a/arch/tile/Kconfig
+> +++ b/arch/tile/Kconfig
+> @@ -410,12 +410,6 @@ config TILE_USB
+>  	  Provides USB host adapter support for the built-in EHCI and OHCI
+>  	  interfaces on TILE-Gx chips.
+>  
+> -# USB OHCI needs the bounce pool since tilegx will often have more
+> -# than 4GB of memory, but we don't currently use the IOTLB to present
+> -# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
+> -config NEED_BOUNCE_POOL
+> -	def_bool USB_OHCI_HCD
+> -
+>  source "drivers/pci/hotplug/Kconfig"
+>  
+>  endmenu
+> diff --git a/block/blk-core.c b/block/blk-core.c
+> index c973249..277134c 100644
+> --- a/block/blk-core.c
+> +++ b/block/blk-core.c
+> @@ -1474,6 +1474,11 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
+>  	 */
+>  	blk_queue_bounce(q, &bio);
+>  
+> +	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio)) {
+> +		bio_endio(bio, -EIO);
+> +		return;
+> +	}
+> +
+>  	if (bio->bi_rw & (REQ_FLUSH | REQ_FUA)) {
+>  		spin_lock_irq(q->queue_lock);
+>  		where = ELEVATOR_INSERT_FLUSH;
+> @@ -1714,9 +1719,6 @@ generic_make_request_checks(struct bio *bio)
+>  	 */
+>  	blk_partition_remap(bio);
+>  
+> -	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio))
+> -		goto end_io;
+> -
+>  	if (bio_check_eod(bio, nr_sectors))
+>  		goto end_io;
+>  
+> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+> index 6e50223..4ba2683 100644
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2065,6 +2065,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+>  		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_JOURNAL_DATA ? "journal":
+>  		test_opt(sb,DATA_FLAGS) == EXT3_MOUNT_ORDERED_DATA ? "ordered":
+>  		"writeback");
+> +	sb->s_flags |= MS_SNAP_STABLE;
+>  
+>  	return 0;
+>  
+> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+> index 780d4c6..c7fc1e6 100644
+> --- a/include/uapi/linux/fs.h
+> +++ b/include/uapi/linux/fs.h
+> @@ -86,6 +86,9 @@ struct inodes_stat_t {
+>  #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+>  #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+>  #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
+> +
+> +/* These sb flags are internal to the kernel */
+> +#define MS_SNAP_STABLE	(1<<27) /* Snapshot pages during writeback, if needed */
+>  #define MS_NOSEC	(1<<28)
+>  #define MS_BORN		(1<<29)
+>  #define MS_ACTIVE	(1<<30)
+> diff --git a/mm/Kconfig b/mm/Kconfig
+> index 278e3ab..7901d83 100644
+> --- a/mm/Kconfig
+> +++ b/mm/Kconfig
+> @@ -258,6 +258,19 @@ config BOUNCE
+>  	def_bool y
+>  	depends on BLOCK && MMU && (ZONE_DMA || HIGHMEM)
+>  
+> +# On the 'tile' arch, USB OHCI needs the bounce pool since tilegx will often
+> +# have more than 4GB of memory, but we don't currently use the IOTLB to present
+> +# a 32-bit address to OHCI.  So we need to use a bounce pool instead.
+> +#
+> +# We also use the bounce pool to provide stable page writes for jbd.  jbd
+> +# initiates buffer writeback without locking the page or setting PG_writeback,
+> +# and fixing that behavior (a second time; jbd2 doesn't have this problem) is
+> +# a major rework effort.  Instead, use the bounce buffer to snapshot pages
+> +# (until jbd goes away).  The only jbd user is ext3.
+> +config NEED_BOUNCE_POOL
+> +	bool
+> +	default y if (TILE && USB_OHCI_HCD) || (BLK_DEV_INTEGRITY && JBD)
+> +
+>  config NR_QUICK
+>  	int
+>  	depends on QUICKLIST
+> diff --git a/mm/bounce.c b/mm/bounce.c
+> index 0420867..5f89017 100644
+> --- a/mm/bounce.c
+> +++ b/mm/bounce.c
+> @@ -178,8 +178,45 @@ static void bounce_end_io_read_isa(struct bio *bio, int err)
+>  	__bounce_end_io_read(bio, isa_page_pool, err);
+>  }
+>  
+> +#ifdef CONFIG_NEED_BOUNCE_POOL
+> +static int must_snapshot_stable_pages(struct request_queue *q, struct bio *bio)
+> +{
+> +	struct page *page;
+> +	struct backing_dev_info *bdi;
+> +	struct address_space *mapping;
+> +	struct bio_vec *from;
+> +	int i;
+> +
+> +	if (bio_data_dir(bio) != WRITE)
+> +		return 0;
+> +
+> +	if (!bdi_cap_stable_pages_required(&q->backing_dev_info))
+> +		return 0;
+> +
+> +	/*
+> +	 * Based on the first page that has a valid mapping, decide whether or
+> +	 * not we have to employ bounce buffering to guarantee stable pages.
+> +	 */
+> +	bio_for_each_segment(from, bio, i) {
+> +		page = from->bv_page;
+> +		mapping = page_mapping(page);
+> +		if (!mapping)
+> +			continue;
+> +		bdi = mapping->backing_dev_info;
+> +		return mapping->host->i_sb->s_flags & MS_SNAP_STABLE;
+> +	}
+> +
+> +	return 0;
+> +}
+> +#else
+> +static int must_snapshot_stable_pages(struct request_queue *q, struct bio *bio)
+> +{
+> +	return 0;
+> +}
+> +#endif /* CONFIG_NEED_BOUNCE_POOL */
+> +
+>  static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
+> -			       mempool_t *pool)
+> +			       mempool_t *pool, int force)
+>  {
+>  	struct page *page;
+>  	struct bio *bio = NULL;
+> @@ -192,7 +229,7 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
+>  		/*
+>  		 * is destination page below bounce pfn?
+>  		 */
+> -		if (page_to_pfn(page) <= queue_bounce_pfn(q))
+> +		if (page_to_pfn(page) <= queue_bounce_pfn(q) && !force)
+>  			continue;
+>  
+>  		/*
+> @@ -270,6 +307,7 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
+>  
+>  void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
+>  {
+> +	int must_bounce;
+>  	mempool_t *pool;
+>  
+>  	/*
+> @@ -278,13 +316,15 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
+>  	if (!bio_has_data(*bio_orig))
+>  		return;
+>  
+> +	must_bounce = must_snapshot_stable_pages(q, *bio_orig);
+> +
+>  	/*
+>  	 * for non-isa bounce case, just check if the bounce pfn is equal
+>  	 * to or bigger than the highest pfn in the system -- in that case,
+>  	 * don't waste time iterating over bio segments
+>  	 */
+>  	if (!(q->bounce_gfp & GFP_DMA)) {
+> -		if (queue_bounce_pfn(q) >= blk_max_pfn)
+> +		if (queue_bounce_pfn(q) >= blk_max_pfn && !must_bounce)
+>  			return;
+>  		pool = page_pool;
+>  	} else {
+> @@ -295,7 +335,7 @@ void blk_queue_bounce(struct request_queue *q, struct bio **bio_orig)
+>  	/*
+>  	 * slow path
+>  	 */
+> -	__blk_queue_bounce(q, bio_orig, pool);
+> +	__blk_queue_bounce(q, bio_orig, pool, must_bounce);
+>  }
+>  
+>  EXPORT_SYMBOL(blk_queue_bounce);
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 9c5af4d..75a13f3 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -2305,6 +2305,10 @@ void wait_for_stable_page(struct page *page)
+>  
+>  	if (!bdi_cap_stable_pages_required(bdi))
+>  		return;
+> +#ifdef CONFIG_NEED_BOUNCE_POOL
+> +	if (mapping->host->i_sb->s_flags & MS_SNAP_STABLE)
+> +		return;
+> +#endif /* CONFIG_NEED_BOUNCE_POOL */
+>  
+>  	wait_on_page_writeback(page);
+>  }
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
