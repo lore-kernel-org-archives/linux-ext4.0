@@ -1,39 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] quota: autoload the quota_v2 module for QFMT_VFS_V1 quota format
-Date: Mon, 21 Jan 2013 01:46:21 -0500
-Message-ID: <1358750781-5670-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: release sysfs kobject when failing to enable quotas on mount
+Date: Mon, 21 Jan 2013 01:46:20 -0500
+Message-ID: <1358750781-5670-1-git-send-email-tytso@mit.edu>
 References: <20130121054741.GB321@thunk.org>
- <1358750781-5670-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	stable@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <1358750781-5670-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20130121054741.GB321@thunk.org>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Otherwise, ext4 file systems with the quota feature enable will get a
-very confusing "No such process" error message if the quota code is
-built as a mdoule and the quota_v2 module has not been loaded.
+In addition, print the error returned from ext4_enable_quotas()
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
 Cc: stable@vger.kernel.org
 ---
- include/linux/quota.h | 1 +
- 1 file changed, 1 insertion(+)
+ fs/ext4/super.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index 58fdef12..d133711 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -405,6 +405,7 @@ struct quota_module_name {
- #define INIT_QUOTA_MODULE_NAMES {\
- 	{QFMT_VFS_OLD, "quota_v1"},\
- 	{QFMT_VFS_V0, "quota_v2"},\
-+	{QFMT_VFS_V1, "quota_v2"},\
- 	{0, NULL}}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 30651bd..0a6e9d5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4015,7 +4015,7 @@ no_journal:
+ 	    !(sb->s_flags & MS_RDONLY)) {
+ 		err = ext4_enable_quotas(sb);
+ 		if (err)
+-			goto failed_mount7;
++			goto failed_mount8;
+ 	}
+ #endif  /* CONFIG_QUOTA */
  
- #endif /* _QUOTA_ */
+@@ -4042,6 +4042,8 @@ cantfind_ext4:
+ 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+ 	goto failed_mount;
+ 
++failed_mount8:
++	kobject_del(&sbi->s_kobj);
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+@@ -5012,9 +5014,9 @@ static int ext4_enable_quotas(struct super_block *sb)
+ 						DQUOT_USAGE_ENABLED);
+ 			if (err) {
+ 				ext4_warning(sb,
+-					"Failed to enable quota (type=%d) "
+-					"tracking. Please run e2fsck to fix.",
+-					type);
++					"Failed to enable quota tracking "
++					"(type=%d, err=%d). Please run "
++					"e2fsck to fix.", type, err);
+ 				return err;
+ 			}
+ 		}
 -- 
 1.7.12.rc0.22.gcdd159b
