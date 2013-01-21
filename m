@@ -1,160 +1,72 @@
 From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Mon, 21 Jan 2013 07:02:21 -0500
-Message-ID: <20130121120221.GA5789@localhost.localdomain>
-References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com>
- <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com>
- <20130121104733.GE5588@quack.suse.cz>
+Subject: Re: [PATCH 1/2] ext4: release sysfs kobject when failing to enable
+ quotas on mount
+Date: Mon, 21 Jan 2013 07:12:20 -0500
+Message-ID: <20130121121220.GB5789@localhost.localdomain>
+References: <20130121054741.GB321@thunk.org>
+ <1358750781-5670-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Sedat Dilek <sedat.dilek@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130121104733.GE5588@quack.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <1358750781-5670-1-git-send-email-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 21, 2013 at 11:47:33AM +0100, Jan Kara wrote:
-> On Sun 20-01-13 01:06:40, Sedat Dilek wrote:
-> > On Sun, Jan 20, 2013 at 12:44 AM, Sedat Dilek <sedat.dilek@gmail.com> wrote:
-> > > Hi,
-> > >
-> > > I and some others hit a similiar problem in Linux-Next
-> > > (next-20130118), please see [1] and [2].
-> > >
-> > > [3] has a interim analyze of my problems.
-> > >
-> > > After suspecting the problem was caused by TTY-NEXT, it turned out to
-> > > be a JBD2 problem finally.
-> > > The freezer/pm_test was helpful to hit the issue (Thanks Rafael for the hint!).
-> > >
-> > > So, the issue has two faces: TTY and JBD2.
-> > > [4] gives a list and URLs of the patches I had to apply to have a
-> > > clean system again.
-> > >
-> > > After applying the two TTY patches (without Eric's JBD2-fix!) the
-> > > call-trace after freezer/pm_test looked like this;
-> > >
-> > > [  433.527986] PM: Syncing filesystems ... done.
-> > > [  433.843761] PM: Preparing system for mem sleep
-> > > [  436.306002] Freezing user space processes ...
-> > > [  456.304956] Freezing of tasks failed after 20.01 seconds (1 tasks
-> > > refusing to freeze, wq_busy=0):
-> > > [  456.305060] Cache I/O       D ffffffff8180d780     0  2132      1 0x00000004
-> > > [  456.305065]  ffff88007b9dfe18 0000000000000046 ffff88007b9dfdc8
-> > > 0000000300000001
-> > > [  456.305069]  ffff880097e21720 ffff88007b9dffd8 ffff88007b9dffd8
-> > > ffff88007b9dffd8
-> > > [  456.305072]  ffff880119b32e40 ffff880097e21720 ffff88007b9dfe28
-> > > ffff880118077800
-> > > [  456.305076] Call Trace:
-> > > [  456.305085]  [<ffffffff816b7469>] schedule+0x29/0x70
-> > > [  456.305089]  [<ffffffff8129067d>] jbd2_log_wait_commit+0xcd/0x1a0
-> > > [  456.305094]  [<ffffffff8107eac0>] ? add_wait_queue+0x60/0x60
-> > > [  456.305098]  [<ffffffff812307a5>] ext4_sync_file+0x205/0x380
-> > > [  456.305103]  [<ffffffff811c43ad>] do_fsync+0x5d/0x90
-> > > [  456.305108]  [<ffffffff8119442b>] ? sys_write+0x6b/0xa0
-> > > [  456.305111]  [<ffffffff811c4790>] sys_fsync+0x10/0x20
-> > > [  456.305114]  [<ffffffff816c0edd>] system_call_fastpath+0x1a/0x1f
-> > > [  456.305122]
-> > > [  456.305124] Restarting tasks ... done.
-> > > [  456.315056] video LNXVIDEO:00: Restoring backlight state
-> > >
-> > > After applying Eric's patch [5], I could not hit the call-trace again.
-> > > NOTE: The patch is from December 2012 and is not shipped in latest Linux-Next.
-> > >
-> > > The attached testcase script was helpful to force the call-trace.
-> > > I have run 50 loops of it w/o an issue!
-> > >
-> > > Feel free to add a Reported-by/Tested-by.
-> > > ( The issue kept me busy for the last days. )
-> > >
-> > > Regards,
-> > > - Sedat -
-> > >
-> > > [1] http://marc.info/?t=135283664600002&r=1&w=2
-> > > [2] http://marc.info/?t=135862023700004&r=1&w=2
-> > > [3] http://marc.info/?l=linux-kernel&m=135862010419101&w=2
-> > > [4] http://marc.info/?l=linux-next&m=135863550923093&w=2
-> > > [5] http://patchwork.ozlabs.org/patch/207237/
-> > 
-> > Hi all,
-> > 
-> > this is really ugly... I could cry!
-> > 
-> > GRRR, I have hit the original issue again while running my testcase script!
-> > 
-> > [  363.831226] PM: Syncing filesystems ... done.
-> > [  363.988855] PM: Preparing system for mem sleep
-> > [  369.032965] Freezing user space processes ... (elapsed 0.11 seconds) done.
-> > [  369.145792] Freezing remaining freezable tasks ...
-> > [  389.137643] Freezing of tasks failed after 20.01 seconds (1 tasks
-> > refusing to freeze, wq_busy=0):
-> > [  389.137760] jbd2/loop0-8    D ffffffff8180d780     0   295      2 0x00000000
-> > [  389.137769]  ffff8801181dfb68 0000000000000046 ffff880117de5c80
-> > 0000000000000001
-> > [  389.137778]  ffff880117de5c80 ffff8801181dffd8 ffff8801181dffd8
-> > ffff8801181dffd8
-> > [  389.137784]  ffffffff81c15440 ffff880117de5c80 ffff8801181dfb68
-> > ffff88011fa14738
-> > [  389.137791] Call Trace:
-> > [  389.137810]  [<ffffffff811c6830>] ? __wait_on_buffer+0x30/0x30
-> > [  389.137819]  [<ffffffff816b7479>] schedule+0x29/0x70
-> > [  389.137825]  [<ffffffff816b754f>] io_schedule+0x8f/0xd0
-> > [  389.137832]  [<ffffffff811c683e>] sleep_on_buffer+0xe/0x20
-> > [  389.137842]  [<ffffffff816b5d4f>] __wait_on_bit+0x5f/0x90
-> > [  389.137849]  [<ffffffff811c5ef1>] ? submit_bh+0x121/0x1e0
-> > [  389.137856]  [<ffffffff811c6830>] ? __wait_on_buffer+0x30/0x30
-> > [  389.137864]  [<ffffffff816b5dfc>] out_of_line_wait_on_bit+0x7c/0x90
-> > [  389.137873]  [<ffffffff8107eb00>] ? autoremove_wake_function+0x40/0x40
-> > [  389.137879]  [<ffffffff811c682e>] __wait_on_buffer+0x2e/0x30
-> > [  389.137891]  [<ffffffff8128c02c>]
-> > jbd2_journal_commit_transaction+0x18cc/0x1d60
-> > [  389.137899]  [<ffffffff816b860e>] ? _raw_spin_lock_irqsave+0x2e/0x40
-> > [  389.137908]  [<ffffffff81069fbf>] ? try_to_del_timer_sync+0x4f/0x70
-> > [  389.137915]  [<ffffffff81290836>] kjournald2+0xd6/0x3e0
-> > [  389.137921]  [<ffffffff8107eac0>] ? add_wait_queue+0x60/0x60
-> > [  389.137926]  [<ffffffff81290760>] ? commit_timeout+0x10/0x10
-> > [  389.137932]  [<ffffffff8107ded0>] kthread+0xc0/0xd0
-> > [  389.137939]  [<ffffffff8107de10>] ? flush_kthread_worker+0xb0/0xb0
-> > [  389.137946]  [<ffffffff816c0e2c>] ret_from_fork+0x7c/0xb0
-> > [  389.137951]  [<ffffffff8107de10>] ? flush_kthread_worker+0xb0/0xb0
-> > [  389.138017]
-> > [  389.138021] Restarting kernel threads ... done.
-> > [  389.138173] Restarting tasks ... done.
-> > [  389.147980] video LNXVIDEO:00: Restoring backlight state
-> > 
-> > I suspect there are still issues in JBD2 (BTW I run here EXT4FS).
-> > 
-> > [  389.137643] Freezing of tasks failed after 20.01 seconds (1 tasks
-> > refusing to freeze, wq_busy=0):
-> > [  389.137760] jbd2/loop0-8    D ffffffff8180d780     0   295      2 0x00000000
-> > 
-> > Have a good night, /me -> watching TV!
->   The traces don't suggest an ext4/jbd2 problem. What is happening is that
-> jbd2 is waiting for IO to finish and that never happens. Seeing that you
-> loop device I'd think it's some interaction of the loop device and
-> freezing. Can you reproduce the issue without the loop device (i.e. with
-> the filesystem directly on e.g. scsi disk)? I suspect the reason is
-> something like that the backing filesystem is already frozen so filesystem
-> on top of it cannot write all the data and hangs waiting for IO -> suspend
-> doesn't happen. Contents of /proc/mounts and losetup -l would help us
-> understand what's going on.
-						^^^ Shouldn't be `losetup -a`?
+Looks Good,
+
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+> In addition, print the error returned from ext4_enable_quotas()
 > 
-> 								Honza
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/super.c | 10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 30651bd..0a6e9d5 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4015,7 +4015,7 @@ no_journal:
+>  	    !(sb->s_flags & MS_RDONLY)) {
+>  		err = ext4_enable_quotas(sb);
+>  		if (err)
+> -			goto failed_mount7;
+> +			goto failed_mount8;
+>  	}
+>  #endif  /* CONFIG_QUOTA */
+>  
+> @@ -4042,6 +4042,8 @@ cantfind_ext4:
+>  		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+>  	goto failed_mount;
+>  
+> +failed_mount8:
+> +	kobject_del(&sbi->s_kobj);
+>  failed_mount7:
+>  	ext4_unregister_li_request(sb);
+>  failed_mount6:
+> @@ -5012,9 +5014,9 @@ static int ext4_enable_quotas(struct super_block *sb)
+>  						DQUOT_USAGE_ENABLED);
+>  			if (err) {
+>  				ext4_warning(sb,
+> -					"Failed to enable quota (type=%d) "
+> -					"tracking. Please run e2fsck to fix.",
+> -					type);
+> +					"Failed to enable quota tracking "
+> +					"(type=%d, err=%d). Please run "
+> +					"e2fsck to fix.", type, err);
+>  				return err;
+>  			}
+>  		}
 > -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+> 1.7.12.rc0.22.gcdd159b
+> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
