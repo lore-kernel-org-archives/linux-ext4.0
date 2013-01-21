@@ -1,28 +1,71 @@
-From: Carlos Carvalho <carlos@fisica.ufpr.br>
-Subject: Re: how to quotacheck with the new quota implementation (hidden
- inode)?
-Date: Mon, 21 Jan 2013 15:26:00 -0200
-Message-ID: <20733.31272.134910.805714@fisica.ufpr.br>
-References: <20730.1955.395545.141779@fisica.ufpr.br>
-	<20130121054741.GB321@thunk.org>
+From: Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: jbd2: don't wake kjournald unnecessarily
+Date: Mon, 21 Jan 2013 18:39:39 +0100
+Message-ID: <1358789979.8755.0.camel@tucsk.piliscsaba.szeredi.hu>
+References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com>
+	 <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com>
+	 <20130121104733.GE5588@quack.suse.cz>
+	 <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com>
+	 <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
+	 <20130121140738.GI5588@quack.suse.cz>
+	 <CA+icZUVya4cYGcmX=YeOKZNhXpgEBioDFp8o1Q=TKWmKEvFm6Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adityakali@google.com, jack@suse.cz
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fisica.ufpr.br ([200.17.209.129]:41751 "EHLO fisica.ufpr.br"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751915Ab3AUR0C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2013 12:26:02 -0500
-In-Reply-To: <20130121054741.GB321@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-next <linux-next@vger.kernel.org>
+To: sedat.dilek@gmail.com
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <CA+icZUVya4cYGcmX=YeOKZNhXpgEBioDFp8o1Q=TKWmKEvFm6Q@mail.gmail.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Ts'o (tytso@mit.edu) wrote on 21 January 2013 00:47:
- >Also, we're still missing repquota functionality for ocfs2 and ext4
- >with the hidden inode feature
+On Mon, 2013-01-21 at 15:28 +0100, Sedat Dilek wrote:
+> On Mon, Jan 21, 2013 at 3:07 PM, Jan Kara <jack@suse.cz> wrote:
 
-It works here with ext4. I haven't removed users yet but current ones
-are shown. Both repquota and repquota -v work in the same way as the
-vfs one.
+> >   Well, I think the outputs make it pretty clear. /dev/loop0 is a mounted
+> > image from fuse filesystem. Fuse daemon making filesystem accessible gets
+> > frozen before /dev/loop0 gets fully written out and so jbd2 journal thread
+> > hangs. Maybe Miklos (added to CC) could fill in some details / ideas but I
+> > think the setup like you have never really worked...
+> >
+> 
+> Thank you for the explanations.
+> Before doing some patches for Linux Test Project and replying to
+> LLVMLinux I was reflecting about FUSE when saw the 'df -h -T' line.
+> You might be right, that pm_test/freezer could never be OK here.
+> I wantend to test against Linux v3.8-rc4 to be sure.
+> Anyway, thanks for sharing your thoughts with me!
+
+There are several problems with this setup.  Loop over fuse has always
+been problematic because of interaction with the memory management.
+E.g. the kernel is trying to allocate memory and is writing out dirty
+pages to the loop device then that write ends up in the userspace
+filesystem process which may want to allocate additional memory to
+complete the write.  This may end up deadlocking the writeout, which is
+not good.  So loop over fuse (for write) is not a good idea in any case.
+
+One way to get around this limitation is to use mountlo, which does a
+loop mount in userspace using UML and fuse.   That will probably be
+better. 
+
+Unfortunately fuse has a bad interaction with the freezer as well.  The
+reason for that is the freezer wants all syscalls to finish but with a
+frozen userspace a fuse daemon will not be able to complete the work
+necessary to finish those syscalls.  We thought about this long and hard
+and there are no easy solutions.   We can allow the freezer to proceed
+for cases when the syscall is directly waiting for a fuse filesystem
+daemon reply.  But the syscall may be waiting for the filesystem daemon
+indirectly, e.g. sleeping on i_mutex, and that's rather more difficult
+to fix.  It's not impossible but it's a big project.
+
+To conclude:  writable loop over fuse is broken and was always broken,
+it should not be used.  Other solutions should work better but fuse is
+currently not 
+
+Thanks,
+Miklos
