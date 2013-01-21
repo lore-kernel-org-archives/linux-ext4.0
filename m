@@ -1,185 +1,97 @@
-From: Sedat Dilek <sedat.dilek@gmail.com>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Mon, 21 Jan 2013 15:28:44 +0100
-Message-ID: <CA+icZUVya4cYGcmX=YeOKZNhXpgEBioDFp8o1Q=TKWmKEvFm6Q@mail.gmail.com>
-References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com>
-	<CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com>
-	<20130121104733.GE5588@quack.suse.cz>
-	<CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com>
-	<CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
-	<20130121140738.GI5588@quack.suse.cz>
-Reply-To: sedat.dilek@gmail.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 7/7 v2] ext4: reclaim extents from extent status tree
+Date: Mon, 21 Jan 2013 15:43:36 +0100
+Message-ID: <20130121144336.GK5588@quack.suse.cz>
+References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
+ <1357901627-3068-8-git-send-email-wenqing.lz@taobao.com>
+ <20130118051921.GC13785@thunk.org>
+ <20130118053947.GD13785@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>, mszeredi@suse.cz
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20130121140738.GI5588@quack.suse.cz>
-Sender: linux-next-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+	Jan kara <jack@suse.cz>, Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59334 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755882Ab3AUOnj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Jan 2013 09:43:39 -0500
+Content-Disposition: inline
+In-Reply-To: <20130118053947.GD13785@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 21, 2013 at 3:07 PM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 21-01-13 13:30:26, Sedat Dilek wrote:
->> On Mon, Jan 21, 2013 at 12:40 PM, Sedat Dilek <sedat.dilek@gmail.com> wrote:
->> > On Mon, Jan 21, 2013 at 11:47 AM, Jan Kara <jack@suse.cz> wrote:
->> >>   The traces don't suggest an ext4/jbd2 problem. What is happening is that
->> >> jbd2 is waiting for IO to finish and that never happens. Seeing that you
->> >> loop device I'd think it's some interaction of the loop device and
->> >> freezing. Can you reproduce the issue without the loop device (i.e. with
->> >> the filesystem directly on e.g. scsi disk)? I suspect the reason is
->> >> something like that the backing filesystem is already frozen so filesystem
->> >> on top of it cannot write all the data and hangs waiting for IO -> suspend
->> >> doesn't happen. Contents of /proc/mounts and losetup -l would help us
->> >> understand what's going on.
->> >>
->> >
->> > As said I am here in a very uncommon WUBI environment means my
->> > Ubuntu/precise rootfs-image lays on the Win7-partition (NTFS).
->> > Your explanation sounds reasonable to me as this line from my attached
->> > testcase causes the troubles.
->> >
->> >      echo mem > /sys/power/state && sleep 1
->> >
->> > So, /sys/ is not writable immediately after freezer ends
->> >
->> > I checked again and again my logs and have seen "starving" lines
->> > reported by rtkit-daemon, but did not really get wiser what they want
->> > to tell me. Stopping rtkit-daemon or resetting all or all-known
->> > threads before running my pm_test/freezer did not help, too.
->> >
->> > /usr/sbin/rtkitctl --help
->> > rtkitctl [options]
->> >
->> >   -h, --help         Show this help
->> >       --version      Show version
->> >
->> >       --reset-known  Reset real-time status of known threads
->> >       --reset-all    Reset real-time status of all threads
->> >       --start        Start RealtimeKit if it is not running already
->> >   -k, --exit         Terminate running RealtimeKit daemon
->> >
->> > Here are the outputs you wanted with some more (fstab, grub-config) etc.
->> > I have here no -l option for losetup command.
->> >
->> >
->> > - Sedat -
->> >
->> > P.S.: Outputs for Honza...
->> >
->> > $ sudo cat /proc/mounts
->> > rootfs / rootfs rw 0 0
->> > sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
->> > proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
->> > udev /dev devtmpfs rw,relatime,size=1966948k,nr_inodes=491737,mode=755 0 0
->> > devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
->> > tmpfs /run tmpfs rw,nosuid,relatime,size=788076k,mode=755 0 0
->> > /dev/sda2 /host fuseblk
->> > rw,nosuid,nodev,relatime,user_id=0,group_id=0,allow_other,blksize=4096
->> > 0 0
->> > /dev/loop0 / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
->> > none /sys/fs/fuse/connections fusectl rw,relatime 0 0
->> > none /sys/kernel/debug debugfs rw,relatime 0 0
->> > none /sys/kernel/security securityfs rw,relatime 0 0
->> > none /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
->> > none /run/shm tmpfs rw,nosuid,nodev,relatime 0 0
->> > gvfs-fuse-daemon /home/wearefam/.gvfs fuse.gvfs-fuse-daemon
->> > rw,nosuid,nodev,relatime,user_id=1000,group_id=1000 0 0
->> >
->> > $ sudo losetup --all --verbose
->> > /dev/loop0: [0802]:17982 (/host/ubuntu/disks/root.disk)
->> >
->> > $ sudo losetup --find --verbose
->> > Loop device is /dev/loop1
->> > /dev/loop1
->> >
->> >  [ /etc/fstab ]
->> > # /etc/fstab: static file system information.
->> >
->> > # Use 'blkid' to print the universally unique identifier for a
->> > # device; this may be used with UUID= as a more robust way to name devices
->> > # that works even if disks are added and removed. See fstab(5).
->> >
->> > # <file system>                 <mount point>   <type>  <options>
->> >          <dump>  <pass>
->> > proc                            /proc           proc
->> > nodev,noexec,nosuid     0       0
->> > /host/ubuntu/disks/root.disk    /               ext4
->> > loop,errors=remount-ro  0       1
->> > /host/ubuntu/disks/swap.disk    none            swap    loop,sw
->> >          0       0
->> > - EOF -
->> >
->> > [ /boot/grub/grub.cfg ]
->> > ...
->> > menuentry 'Ubuntu, mit Linux 3.8.0-rc4-next20130121-1-iniza-generic'
->> > --class ubuntu --class gnu-linux --class gnu --class os {
->> >         set gfxpayload=$linux_gfx_mode
->> >         insmod part_msdos
->> >         insmod ntfs
->> >         set root='(hd0,msdos2)'
->> >         search --no-floppy --fs-uuid --set=root 001AADA61AAD9964
->> >         loopback loop0 /ubuntu/disks/root.disk
->> >         set root=(loop0)
->> >         linux   /boot/vmlinuz-3.8.0-rc4-next20130121-1-iniza-generic
->> > root=UUID=001AADA61AAD9964 loop=/ubuntu/disks/root.disk ro
->> >         initrd  /boot/initrd.img-3.8.0-rc4-next20130121-1-iniza-generic
->> > }
->> > ...
->> >
->>
->> Here some more useful outputs:
->>
->> $ LC_ALL=C df -h -T
->> Filesystem     Type      Size  Used Avail Use% Mounted on
->> rootfs         rootfs     17G   15G  1.5G  92% /
->> udev           devtmpfs  1.9G   12K  1.9G   1% /dev
->> tmpfs          tmpfs     770M  892K  769M   1% /run
->> /dev/sda2      fuseblk   444G   81G  364G  19% /host
->> /dev/loop0     ext4       17G   15G  1.5G  92% /
->> none           tmpfs     5.0M     0  5.0M   0% /run/lock
->> none           tmpfs     1.9G  260K  1.9G   1% /run/shm
->>
->> $ sudo LC_ALL=C fdisk -l /dev/sda
->>
->> Disk /dev/sda: 500.1 GB, 500107862016 bytes
->> 255 heads, 63 sectors/track, 60801 cylinders, total 976773168 sectors
->> Units = sectors of 1 * 512 = 512 bytes
->> Sector size (logical/physical): 512 bytes / 4096 bytes
->> I/O size (minimum/optimal): 4096 bytes / 4096 bytes
->> Disk identifier: 0xcb9885ab
->>
->>    Device Boot      Start         End      Blocks   Id  System
->> /dev/sda1   *        2048      206847      102400    7  HPFS/NTFS/exFAT
->> /dev/sda2          206848   931299327   465546240    7  HPFS/NTFS/exFAT
->> /dev/sda3       931299328   976773119    22736896   27  Hidden NTFS WinRE
->>
->> I am still reflecting on any shitty userspace app is causing all the
->> trouble, but I have zero clue how to dig that...
->   Well, I think the outputs make it pretty clear. /dev/loop0 is a mounted
-> image from fuse filesystem. Fuse daemon making filesystem accessible gets
-> frozen before /dev/loop0 gets fully written out and so jbd2 journal thread
-> hangs. Maybe Miklos (added to CC) could fill in some details / ideas but I
-> think the setup like you have never really worked...
->
+On Fri 18-01-13 00:39:47, Ted Tso wrote:
+> On Fri, Jan 18, 2013 at 12:19:21AM -0500, Theodore Ts'o wrote:
+> > I'm a bit concerned we might be too aggressive,
+> > because there are two ways that items can be freed from the
+> > extent_status tree.  One is if the inode is not used at all, and when
+> > we release the inode, we'll drop all of the entries in the
+> > extent_status_tree for that inode.  The second way is via the shrinker
+> > which we've registered.
+> 
+> If we use the sb->s_op->free_cached_objects() approach, something like
+> the following change to prune_super() in fs/super.c might address the
+> above concern:
+  Yeah, this would make sence to me. When you submit the final patch don't
+forget to include Dave Chinner. He's the author of the shrinker framework
+and XFS uses nr_cached_objects / free_cached_objects. AFAICS it uses it for
+its separate inode cache so your change shouldn't affect it but better be
+sure.
 
-Thank you for the explanations.
-Before doing some patches for Linux Test Project and replying to
-LLVMLinux I was reflecting about FUSE when saw the 'df -h -T' line.
-You might be right, that pm_test/freezer could never be OK here.
-I wantend to test against Linux v3.8-rc4 to be sure.
-Anyway, thanks for sharing your thoughts with me!
-
-Let's see what Miklos says...
-
-Regards,
-- Sedat -
-
->                                                                 Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+								Honza
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index 12f1237..fb57bd2 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -80,6 +80,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  	if (sc->nr_to_scan) {
+>  		int	dentries;
+>  		int	inodes;
+> +		int	fs_to_scan = 0;
+>  
+>  		/* proportion the scan between the caches */
+>  		dentries = (sc->nr_to_scan * sb->s_nr_dentry_unused) /
+> @@ -87,7 +88,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		inodes = (sc->nr_to_scan * sb->s_nr_inodes_unused) /
+>  							total_objects;
+>  		if (fs_objects)
+> -			fs_objects = (sc->nr_to_scan * fs_objects) /
+> +			fs_to_scan = (sc->nr_to_scan * fs_objects) /
+>  							total_objects;
+>  		/*
+>  		 * prune the dcache first as the icache is pinned by it, then
+> @@ -96,8 +97,23 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		prune_dcache_sb(sb, dentries);
+>  		prune_icache_sb(sb, inodes);
+>  
+> -		if (fs_objects && sb->s_op->free_cached_objects) {
+> -			sb->s_op->free_cached_objects(sb, fs_objects);
+> +		/*
+> +		 * If as a result of pruning the icache, we released some
+> +		 * of the fs_objects, give credit to the fact and
+> +		 * reduce the number of fs objects that we should try
+> +		 * to release.
+> +		 */
+> +		if (fs_to_scan) {
+> +			int fs_objects_now = sb->s_op->nr_cached_objects(sb);
+> +
+> +			if (fs_objects_now < fs_objects)
+> +				fs_to_scan -= fs_objects - fs_objects_now;
+> +			if (fs_to_scan < 0)
+> +				fs_to_scan = 0;
+> +		}
+> +
+> +		if (fs_to_scan && sb->s_op->free_cached_objects) {
+> +			sb->s_op->free_cached_objects(sb, fs_to_scan);
+>  			fs_objects = sb->s_op->nr_cached_objects(sb);
+>  		}
+>  		total_objects = sb->s_nr_dentry_unused +
+> 
+> What do folks think?
+> 
+> 						- Ted
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
