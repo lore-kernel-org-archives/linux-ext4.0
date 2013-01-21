@@ -1,71 +1,65 @@
-From: Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Mon, 21 Jan 2013 18:39:39 +0100
-Message-ID: <1358789979.8755.0.camel@tucsk.piliscsaba.szeredi.hu>
-References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com>
-	 <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com>
-	 <20130121104733.GE5588@quack.suse.cz>
-	 <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com>
-	 <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
-	 <20130121140738.GI5588@quack.suse.cz>
-	 <CA+icZUVya4cYGcmX=YeOKZNhXpgEBioDFp8o1Q=TKWmKEvFm6Q@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] quota: autoload the quota_v2 module for
+ QFMT_VFS_V1 quota format
+Date: Mon, 21 Jan 2013 20:08:10 +0100
+Message-ID: <20130121190810.GA20178@quack.suse.cz>
+References: <20130121054741.GB321@thunk.org>
+ <1358750781-5670-1-git-send-email-tytso@mit.edu>
+ <1358750781-5670-2-git-send-email-tytso@mit.edu>
+ <20130121104017.GD5588@quack.suse.cz>
+ <20130121150134.GB5618@thunk.org>
+ <20130121151008.GM5588@quack.suse.cz>
+ <20130121155020.GD5618@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>
-To: sedat.dilek@gmail.com
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <CA+icZUVya4cYGcmX=YeOKZNhXpgEBioDFp8o1Q=TKWmKEvFm6Q@mail.gmail.com>
-Sender: linux-next-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	stable@vger.kernel.org, adityakali@google.com, adilger@dilger.ca
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:43180 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751190Ab3AUTIP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Jan 2013 14:08:15 -0500
+Content-Disposition: inline
+In-Reply-To: <20130121155020.GD5618@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2013-01-21 at 15:28 +0100, Sedat Dilek wrote:
-> On Mon, Jan 21, 2013 at 3:07 PM, Jan Kara <jack@suse.cz> wrote:
-
-> >   Well, I think the outputs make it pretty clear. /dev/loop0 is a mounted
-> > image from fuse filesystem. Fuse daemon making filesystem accessible gets
-> > frozen before /dev/loop0 gets fully written out and so jbd2 journal thread
-> > hangs. Maybe Miklos (added to CC) could fill in some details / ideas but I
-> > think the setup like you have never really worked...
-> >
+On Mon 21-01-13 10:50:20, Ted Tso wrote:
+> On Mon, Jan 21, 2013 at 04:10:08PM +0100, Jan Kara wrote:
+> >   Exactly. There shouldn't be any conflicts so just keep it in your tree.
+> > You can add to the patch:
+> > Acked-by: Jan Kara <jack@suse.cz>
 > 
-> Thank you for the explanations.
-> Before doing some patches for Linux Test Project and replying to
-> LLVMLinux I was reflecting about FUSE when saw the 'df -h -T' line.
-> You might be right, that pm_test/freezer could never be OK here.
-> I wantend to test against Linux v3.8-rc4 to be sure.
-> Anyway, thanks for sharing your thoughts with me!
+> Great, thanks.
+> 
+> BTW, do you have any plans to work on getting repquota support for
+> ocfs2 and ext4 with the internal quota support into quotactl(2) and
+> quotatools?  It's missing functionality that I think users who want to
+> switch to the internal quota support will very much care about.
+  As Carlos mentioned, it kind-of works. If repquota(8) doesn't have a way
+to iterate over quota structures directly, it iterates over entries in
+/etc/passwd and uses Q_GETQUOTA to find the information. It is not a
+perfect solution (e.g. when you have a huge LDAP database instead of
+/etc/passwd) but in lots of cases it works just fine.
 
-There are several problems with this setup.  Loop over fuse has always
-been problematic because of interaction with the memory management.
-E.g. the kernel is trying to allocate memory and is writing out dirty
-pages to the loop device then that write ends up in the userspace
-filesystem process which may want to allocate additional memory to
-complete the write.  This may end up deadlocking the writeout, which is
-not good.  So loop over fuse (for write) is not a good idea in any case.
+> 5) Add some kind of functional replacement for repquota.  If
+> quotactl(2) support is not forthcoming in the near future, at the very
+> least debugfs should have a way of dumping out the repquota
+> information for an unmounted ext4 file system with internal quotas
+> enabled.
+  I have it on my todo list for a long time. The problem is noone wants it
+enough to get to the top of the list... Also it won't be completely trivial
+interface because we'll have to return some handle with which we could
+associate scanning state. My plan would be to likely return an ordinary
+read-only file handle (mostly to avoid various problems with what happens
+when process exits without closing the handle or what happens on fork)
+where f_pos would mean [ug]id to report next and reading would fill the
+buffer with quota structures (if_dqblk + [ug]id). But I haven't tried
+coding this...
 
-One way to get around this limitation is to use mountlo, which does a
-loop mount in userspace using UML and fuse.   That will probably be
-better. 
-
-Unfortunately fuse has a bad interaction with the freezer as well.  The
-reason for that is the freezer wants all syscalls to finish but with a
-frozen userspace a fuse daemon will not be able to complete the work
-necessary to finish those syscalls.  We thought about this long and hard
-and there are no easy solutions.   We can allow the freezer to proceed
-for cases when the syscall is directly waiting for a fuse filesystem
-daemon reply.  But the syscall may be waiting for the filesystem daemon
-indirectly, e.g. sleeping on i_mutex, and that's rather more difficult
-to fix.  It's not impossible but it's a big project.
-
-To conclude:  writable loop over fuse is broken and was always broken,
-it should not be used.  Other solutions should work better but fuse is
-currently not 
-
-Thanks,
-Miklos
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
