@@ -1,30 +1,25 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in
- ext4_ind_direct_IO
-Date: Tue, 22 Jan 2013 22:22:21 +0800
-Message-ID: <20130122142221.GA1763@gmail.com>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-4-git-send-email-jack@suse.cz>
- <87k3r5qxpf.fsf@openvz.org>
- <20130122134400.GB28331@quack.suse.cz>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in ext4_ind_direct_IO
+Date: Tue, 22 Jan 2013 18:12:38 +0400
+Message-ID: <87ehhdqpbd.fsf@openvz.org>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz> <1358510446-19174-4-git-send-email-jack@suse.cz> <87k3r5qxpf.fsf@openvz.org> <20130122134400.GB28331@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, Ted Tso <tytso@mit.edu>,
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f54.google.com ([209.85.210.54]:56241 "EHLO
-	mail-da0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752438Ab3AVOI1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jan 2013 09:08:27 -0500
-Received: by mail-da0-f54.google.com with SMTP id n2so3277911dad.41
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2013 06:08:26 -0800 (PST)
-Content-Disposition: inline
+Received: from mail-lb0-f181.google.com ([209.85.217.181]:50269 "EHLO
+	mail-lb0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752624Ab3AVOMn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jan 2013 09:12:43 -0500
+Received: by mail-lb0-f181.google.com with SMTP id gm6so1309669lbb.40
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2013 06:12:41 -0800 (PST)
 In-Reply-To: <20130122134400.GB28331@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 22, 2013 at 02:44:00PM +0100, Jan Kara wrote:
+On Tue, 22 Jan 2013 14:44:00 +0100, Jan Kara <jack@suse.cz> wrote:
 > On Tue 22-01-13 15:11:24, Dmitry Monakhov wrote:
 > > On Fri, 18 Jan 2013 13:00:37 +0100, Jan Kara <jack@suse.cz> wrote:
 > > > When using indirect blocks there is no possibility to have any unwritten
@@ -41,11 +36,27 @@ On Tue, Jan 22, 2013 at 02:44:00PM +0100, Jan Kara wrote:
 > afraid using dioread_nolock for inodes with indirect map causes data
 > exposure bugs when unlocked DIO read races with DIO write because such
 > inodes don't support uninitialized extents.
+Yes that's why dioread_nolock works only for extent based inodes
 
-Sorry, but I am still confused.  dioread_nolock is only for extent-based
-file.  So when a file system without extent feature, dioread_nolock
-couldn't be enabled.  It seems that we don't need to worry about
-exposing stale data here.
+static inline int ext4_should_dioread_nolock(struct inode *inode)
+{
+        if (!test_opt(inode->i_sb, DIOREAD_NOLOCK))
+                return 0;
+        if (!S_ISREG(inode->i_mode))
+                return 0;
+                if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+                   return 0;
+                   if (ext4_should_journal_data(inode))
+                return 0;
+        return 1;
+}
 
-Thanks,
-                                                - Zheng
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
