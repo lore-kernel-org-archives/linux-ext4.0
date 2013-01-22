@@ -1,68 +1,34 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in
- ext4_ind_direct_IO
-Date: Wed, 23 Jan 2013 00:14:32 +0100
-Message-ID: <20130122231432.GA7244@quack.suse.cz>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-4-git-send-email-jack@suse.cz>
- <87k3r5qxpf.fsf@openvz.org>
- <20130122134400.GB28331@quack.suse.cz>
- <20130122142221.GA1763@gmail.com>
- <20130122152243.GB32366@quack.suse.cz>
- <20130122160017.GA2072@gmail.com>
+From: "Bradley C. Kuszmaul" <kuszmaul@gmail.com>
+Subject: Re: hole punching in ext4
+Date: Tue, 22 Jan 2013 18:50:00 -0500
+Message-ID: <CAKSyJXew+Sx0AB8HgDZxtOvXyKt8Z_UOe4eG1C=27m2_ubdMVw@mail.gmail.com>
+References: <CAKSyJXfvTFjGMO2ZZPsnSjc_fnUzfs2oMrYf7UQoPvO0=98FxA@mail.gmail.com>
+ <CAKSyJXdbwtOQi==rPZ3nS72bLb9wd0rrmt8RTNPJMUCph-B1Ow@mail.gmail.com> <20130122162009.GB2072@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
-	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46007 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755965Ab3AVXOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jan 2013 18:14:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20130122160017.GA2072@gmail.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:45361 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752241Ab3AVXuW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jan 2013 18:50:22 -0500
+Received: by mail-ie0-f181.google.com with SMTP id 16so12607834iea.26
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2013 15:50:22 -0800 (PST)
+In-Reply-To: <20130122162009.GB2072@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 23-01-13 00:00:17, Zheng Liu wrote:
-> On Tue, Jan 22, 2013 at 04:22:43PM +0100, Jan Kara wrote:
-> > On Tue 22-01-13 22:22:21, Zheng Liu wrote:
-> > > On Tue, Jan 22, 2013 at 02:44:00PM +0100, Jan Kara wrote:
-> > > > On Tue 22-01-13 15:11:24, Dmitry Monakhov wrote:
-> > > > > On Fri, 18 Jan 2013 13:00:37 +0100, Jan Kara <jack@suse.cz> wrote:
-> > > > > > When using indirect blocks there is no possibility to have any unwritten
-> > > > > > extents. So wait for them in ext4_ind_direct_IO() is just bogus.
-> > > > > But as soon as i remember indirect implementation may also be used by
-> > > > > extents based inodes 3074: ext4_ext_direct_IO
-> > > > >     /* Use the old path for reads and writes beyond i_size. */
-> > > > >     if (rw != WRITE || final_size > inode->i_size)
-> > > > >        return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
-> > > > > 
-> > > > > Am I missing ?
-> > > >   Ah, that's a catch. Thanks for pointing that out! So my patch is wrong
-> > > > and that code path needs some cleaning and commenting. In particular I'm
-> > > > afraid using dioread_nolock for inodes with indirect map causes data
-> > > > exposure bugs when unlocked DIO read races with DIO write because such
-> > > > inodes don't support uninitialized extents.
-> > > 
-> > > Sorry, but I am still confused.  dioread_nolock is only for extent-based
-> > > file.  So when a file system without extent feature, dioread_nolock
-> > > couldn't be enabled.  It seems that we don't need to worry about
-> > > exposing stale data here.
-> >   Well, you can have fs with extent feature enabled but still with inodes
-> > using indirect map. But as Dmitry pointed out, ext4_should_dioread_nolock()
-> > handles that correctly. So there's not a bug I was suspecting.
-> 
-> Yep, the patch itself is fine.  But that would be great if a comment is
-> added here.
-  No, the patch is wrong. The code before the patch is correct. We can get
-to that code for extent based inode which has unwritten conversions pending
-and we need to wait for those as otherwise we could return 0s in places
-where we acknowledged successful write just a while ago. Or am I missing
-something?
+Thanks, this has been a very helpful thread.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+How do I determine and control whether a file is extent-based?
+
+-Bradley
+
+
+On Tue, Jan 22, 2013 at 11:20 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+> Ext4 file system supports hole punching.  But until now only extent-based
+> file supports it.  As far as I know, redhat distributions don't support
+> hole punching.  You can find a sample program from e2fsprogs which is in
+> $e2fsprogs/conrib/fallocate.c.  The latest fallocate(1) in util-linux
+> also can be as a demo.
