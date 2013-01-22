@@ -1,30 +1,30 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in
  ext4_ind_direct_IO
-Date: Tue, 22 Jan 2013 16:21:17 +0100
-Message-ID: <20130122152117.GA32366@quack.suse.cz>
+Date: Tue, 22 Jan 2013 16:22:43 +0100
+Message-ID: <20130122152243.GB32366@quack.suse.cz>
 References: <1358510446-19174-1-git-send-email-jack@suse.cz>
  <1358510446-19174-4-git-send-email-jack@suse.cz>
  <87k3r5qxpf.fsf@openvz.org>
  <20130122134400.GB28331@quack.suse.cz>
- <87ehhdqpbd.fsf@openvz.org>
+ <20130122142221.GA1763@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
+	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56141 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:56217 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754531Ab3AVPVV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jan 2013 10:21:21 -0500
+	id S1753972Ab3AVPWq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jan 2013 10:22:46 -0500
 Content-Disposition: inline
-In-Reply-To: <87ehhdqpbd.fsf@openvz.org>
+In-Reply-To: <20130122142221.GA1763@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 22-01-13 18:12:38, Dmitry Monakhov wrote:
-> On Tue, 22 Jan 2013 14:44:00 +0100, Jan Kara <jack@suse.cz> wrote:
+On Tue 22-01-13 22:22:21, Zheng Liu wrote:
+> On Tue, Jan 22, 2013 at 02:44:00PM +0100, Jan Kara wrote:
 > > On Tue 22-01-13 15:11:24, Dmitry Monakhov wrote:
 > > > On Fri, 18 Jan 2013 13:00:37 +0100, Jan Kara <jack@suse.cz> wrote:
 > > > > When using indirect blocks there is no possibility to have any unwritten
@@ -41,24 +41,17 @@ On Tue 22-01-13 18:12:38, Dmitry Monakhov wrote:
 > > afraid using dioread_nolock for inodes with indirect map causes data
 > > exposure bugs when unlocked DIO read races with DIO write because such
 > > inodes don't support uninitialized extents.
-> Yes that's why dioread_nolock works only for extent based inodes
 > 
-> static inline int ext4_should_dioread_nolock(struct inode *inode)
-> {
->         if (!test_opt(inode->i_sb, DIOREAD_NOLOCK))
->                 return 0;
->         if (!S_ISREG(inode->i_mode))
->                 return 0;
->                 if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
->                    return 0;
->                    if (ext4_should_journal_data(inode))
->                 return 0;
->         return 1;
-> }
-  Sure, I was confused. Things work correctly just the code flow is a bit
-confusing.
+> Sorry, but I am still confused.  dioread_nolock is only for extent-based
+> file.  So when a file system without extent feature, dioread_nolock
+> couldn't be enabled.  It seems that we don't need to worry about
+> exposing stale data here.
+  Well, you can have fs with extent feature enabled but still with inodes
+using indirect map. But as Dmitry pointed out, ext4_should_dioread_nolock()
+handles that correctly. So there's not a bug I was suspecting.
 
-								Honza
+							Honza
+
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
