@@ -1,60 +1,74 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in ext4_ind_direct_IO
-Date: Tue, 22 Jan 2013 15:11:24 +0400
-Message-ID: <87k3r5qxpf.fsf@openvz.org>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz> <1358510446-19174-4-git-send-email-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: very long fsck(weeks) for a small(500GB) ext4 partition.
+Date: Tue, 22 Jan 2013 14:23:51 +0100
+Message-ID: <20130122132351.GA28331@quack.suse.cz>
+References: <20130119174044.53b84456@x60.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Denis 'GNUtoo' Carikli <GNUtoo@no-log.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-la0-f47.google.com ([209.85.215.47]:49001 "EHLO
-	mail-la0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751449Ab3AVLL3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jan 2013 06:11:29 -0500
-Received: by mail-la0-f47.google.com with SMTP id fh20so7166180lab.20
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2013 03:11:28 -0800 (PST)
-In-Reply-To: <1358510446-19174-4-git-send-email-jack@suse.cz>
+Received: from cantor2.suse.de ([195.135.220.15]:49797 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751103Ab3AVNXx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jan 2013 08:23:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20130119174044.53b84456@x60.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 18 Jan 2013 13:00:37 +0100, Jan Kara <jack@suse.cz> wrote:
-> When using indirect blocks there is no possibility to have any unwritten
-> extents. So wait for them in ext4_ind_direct_IO() is just bogus.
-But as soon as i remember indirect implementation may also be used by
-extents based inodes 3074: ext4_ext_direct_IO
-    /* Use the old path for reads and writes beyond i_size. */
-    if (rw != WRITE || final_size > inode->i_size)
-       return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+  Hello,
 
-Am I missing ?
+On Sat 19-01-13 17:40:44, Denis 'GNUtoo' Carikli wrote:
+> I was shrinking my ext4 partition with resize2fs when the electricity
+> went off.
+  Heh, bad luck...
+
+> Then I launched an fsck against my partition which is
+> at /dev/mapper/something because it's an opened LUKS partition.
+> The partition is a bit less than 500GB in size because it's a 500GB hdd.
+  When something really bad happens, as it happened to you, it is a good
+idea to spend some more time, find some external hard drive or spare space
+elsewhere and backup the corrupted device. When you later come to a
+situation like "Oh, I forgot to give -y to fsck", you can just stop it
+without thinking twice and you will be glad you spent the extra time with
+finding free space.
+
+> Now the problem is that it's checking the filesystem since more than
+> 433 hours according to htop.
 > 
-> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/indirect.c |    5 -----
->  1 files changed, 0 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 20862f9..993247c 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
->  
->  retry:
->  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> -		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
-> -			mutex_lock(&inode->i_mutex);
-> -			ext4_flush_unwritten_io(inode);
-> -			mutex_unlock(&inode->i_mutex);
-> -		}
->  		/*
->  		 * Nolock dioread optimization may be dynamically disabled
->  		 * via ext4_inode_block_unlocked_dio(). Check inode's state
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> since I've forgetten to add -y in the fsck command I've something
+> mechanical that keep pressing y on the keyboard all the time.
+  ;)
+
+> here's what fsck says at the time of writing the email:
+> File ... (inode #129283, mod time Tue Sep 25 21:09:35 2012) 
+>   has 3 multiply-claimed block(s), shared with 1 file(s):
+> /home/gnutoo/networking/SDR/uhd.20121031204636/host/build/docs/doxygen/???/structuhd_1_1not__implemented__error.html 
+> (inode #14946569, mod time Tue Sep 25 21:09:35 2012)
+> Clone multiply-claimed blocks<y>? yes
+  I suppose the first inode number is increasing right? As you can see you
+are now at inode 129283. I estimate your filesystem has about 31250000
+inodes (chosen by mke2fs with default settings for your fs size) and although
+not all of them are used by far, it will take years before the fsck will
+finish. So I think you can terminate it with peace in mind. There's no
+point in letting it run.
+ 
+> 1) Can I stop the fsck and continue it later?
+  You can run it again (with -y this time). It shouldn't do much harm
+AFAIK.
+
+> 2) I've no idea how much inodes there are in the filesystem but I fear
+> that it it's only at the beginning of it and will last forever.
+  Yup.
+
+> 3) If I stop, and mount it, maybe I'll be able to copy the data?
+  Maybe. It's definitely worth a try. Make sure to mount read-only.
+
+> e2fsprogs are at version 1.41.14-1ubuntu3.
+  And using newer e2fsprogs may give better results as well.
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
