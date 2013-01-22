@@ -1,108 +1,49 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] mke2fs, tune2fs, resize2fs: add warning messages for bigalloc and quota
-Date: Mon, 21 Jan 2013 19:09:57 -0500
-Message-ID: <1358813397-26528-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] contrib: fix namespace leakage in spd_readdir
+Date: Mon, 21 Jan 2013 19:09:50 -0500
+Message-ID: <1358813390-26466-3-git-send-email-tytso@mit.edu>
+References: <1358813390-26466-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44702 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:44698 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752308Ab3AVAJ6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 21 Jan 2013 19:09:58 -0500
+	id S1751541Ab3AVAJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 21 Jan 2013 19:09:56 -0500
+In-Reply-To: <1358813390-26466-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The bigalloc and quota features have some known issues, so issue
-warnings in case users try to use them.
-
-More information can be found here:
-	https://ext4.wiki.kernel.org/index.php/Bigalloc
-	https://ext4.wiki.kernel.org/index.php/Quota
+Declare the internal symbols alloc_dirstruct() and cache_dirstruct()
+as static so they don't leak out into the global namespace.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- misc/mke2fs.c  | 12 ++++++++++++
- misc/tune2fs.c |  4 ++++
- resize/main.c  | 14 ++++++++++++++
- 3 files changed, 30 insertions(+)
+ contrib/spd_readdir.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index ace9eae..fe5ce7d 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1942,6 +1942,18 @@ profile_error:
- 		exit(1);
- 	}
- 
-+	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_BIGALLOC)
-+		fprintf(stderr, _("\nWarning: the bigalloc feature is still "
-+				  "under development\n"
-+				  "See https://ext4.wiki.kernel.org/"
-+				  "index.php/Bigalloc for more information\n\n"));
-+
-+	if (fs_param.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_QUOTA)
-+		fprintf(stderr, _("\nWarning: the quota feature is still "
-+				  "under development\n"
-+				  "See https://ext4.wiki.kernel.org/"
-+				  "index.php/Quota for more information\n\n"));
-+
- 	/* Since sparse_super is the default, we would only have a problem
- 	 * here if it was explicitly disabled.
- 	 */
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 2c8b9e8..849f3a0 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -736,6 +736,10 @@ void handle_quota_options(ext2_filsys fs)
- 	quota_release_context(&qctx);
- 
- 	if ((usrquota == QOPT_ENABLE) || (grpquota == QOPT_ENABLE)) {
-+		fprintf(stderr, _("\nWarning: the quota feature is still "
-+				  "under development\n"
-+				  "See https://ext4.wiki.kernel.org/"
-+				  "index.php/Quota for more information\n\n"));
- 		fs->super->s_feature_ro_compat |= EXT4_FEATURE_RO_COMPAT_QUOTA;
- 		ext2fs_mark_super_dirty(fs);
- 	} else if (!fs->super->s_usr_quota_inum &&
-diff --git a/resize/main.c b/resize/main.c
-index 711e375..4cbfe69 100644
---- a/resize/main.c
-+++ b/resize/main.c
-@@ -147,6 +147,18 @@ static void determine_fs_stride(ext2_filsys fs)
- #endif
+diff --git a/contrib/spd_readdir.c b/contrib/spd_readdir.c
+index 910b104..8345fa1 100644
+--- a/contrib/spd_readdir.c
++++ b/contrib/spd_readdir.c
+@@ -186,7 +186,7 @@ static int ino_cmp(const void *a, const void *b)
+ 	return (i_a - i_b);
  }
  
-+static bigalloc_check(ext2_filsys fs, int force)
-+{
-+	if (!force && EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-+				EXT4_FEATURE_RO_COMPAT_BIGALLOC)) {
-+		fprintf(stderr, _("\nResizing bigalloc file systems has "
-+				  "not been fully tested.  Proceed\n"
-+				  "at your own risk!  Use the force option "
-+				  "if you want to go ahead anyway.\n\n"));
-+		exit(1);
-+	}
-+}
-+
- int main (int argc, char ** argv)
+-struct dir_s *alloc_dirstruct(DIR *dir)
++static struct dir_s *alloc_dirstruct(DIR *dir)
  {
- 	errcode_t	retval;
-@@ -428,6 +440,7 @@ int main (int argc, char ** argv)
- 		exit(0);
- 	}
- 	if (mount_flags & EXT2_MF_MOUNTED) {
-+		bigalloc_check(fs, force);
- 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
- 	} else {
- 		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
-@@ -438,6 +451,7 @@ int main (int argc, char ** argv)
- 				device_name);
- 			exit(1);
- 		}
-+		bigalloc_check(fs, force);
- 		printf(_("Resizing the filesystem on "
- 			 "%s to %llu (%dk) blocks.\n"),
- 		       device_name, new_size, fs->blocksize / 1024);
+ 	struct dir_s	*dirstruct;
+ 	static pthread_mutexattr_t mutexattr;
+@@ -200,7 +200,7 @@ struct dir_s *alloc_dirstruct(DIR *dir)
+ 	return dirstruct;
+ }
+ 
+-void cache_dirstruct(struct dir_s *dirstruct)
++static void cache_dirstruct(struct dir_s *dirstruct)
+ {
+ 	struct dirent_s *ds, *dnew;
+ 	struct dirent64 *d;
 -- 
 1.7.12.rc0.22.gcdd159b
 
