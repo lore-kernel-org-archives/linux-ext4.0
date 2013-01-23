@@ -1,64 +1,110 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: check incompatible mount options when mounting
- ext2/3 [V2]
-Date: Wed, 23 Jan 2013 14:00:37 +0100
-Message-ID: <20130123130037.GA23741@quack.suse.cz>
-References: <1351798331-14456-1-git-send-email-cmaiolino@redhat.com>
- <1358870878-7369-1-git-send-email-cmaiolino@redhat.com>
- <20130123103917.GD9821@quack.suse.cz>
- <20130123122249.GA1423@localhost.localdomain>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH] fs: allow for fs-specific objects to be pruned as part
+ of pruning inodes
+Date: Wed, 23 Jan 2013 08:06:35 -0500
+Message-ID: <20130123130635.GB1423@localhost.localdomain>
+References: <20130121170937.GB15473@gmail.com>
+ <1358921168-30921-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Carlos Maiolino <cmaiolino@redhat.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	gnehzuil.liu@gmail.com, linux-fsdevel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43532 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:28831 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754716Ab3AWNAi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2013 08:00:38 -0500
+	id S1755062Ab3AWNGl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Jan 2013 08:06:41 -0500
 Content-Disposition: inline
-In-Reply-To: <20130123122249.GA1423@localhost.localdomain>
+In-Reply-To: <1358921168-30921-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 23-01-13 07:22:49, Carlos Maiolino wrote:
-> On Wed, Jan 23, 2013 at 11:39:17AM +0100, Jan Kara wrote:
-> > On Tue 22-01-13 11:07:58, Carlos Maiolino wrote:
-> > > This checks for incompatible mounting options when using ext4 module to mount
-> > > ext3 or ext2 filesystems.
-> > > 
-> > > Sets two new flags to group ext4 mount options that are incompatible with ext2
-> > > and ext3, and then add two functions -- check_ext2/3_incompat_mount() -- to
-> > > check and warn/fail mount, if any of these options are being used.
-> > > 
-> > > I believe, some options like those expecting an argument needs to be checked
-> > > during parsing time.
-> > > 
-> > > barrier mount, although it has a flag, when mounting an ext2fs, where
-> > > barriers are not supported (afaik), should also be checked during parse
-> > > time, otherwise the BARRIER mount flag will be set.
-> > > 
-> > > I didn't add all mount options I believe to need to raise a warning, just
-> > > those with a flag set on superblock, another flags should be added after a
-> > > discussion to reach a concensus of all ext2/3 options that should be rejected by
-> > > ext4 mount.
-> >   Thinking about it a bit more I'm not sure if restricting mount options is
-> > the right thing to start with.  IMHO what we should restrict is mounting
-> > filesystem with certain *features* as ext3/ext2. So e.g. filesystem with
-> > EXT4_FEATURE_INCOMPAT_EXTENTS cannot be mounted as ext2 or ext3. Similarly
-> > as currently we forbid mounting ext3 filesystem with
-> > EXT3_FEATURE_INCOMPAT_RECOVER as ext2... This should avoid the confusion
-> > which could arise when someone reports problems with "ext3" filesystem but
-> > actually has some of the ext4 features enabled.
-> > 
-> This is interesting, but I wonder if not restricting mount options, but
-> features, would open a 'window' to let users change their filesystem on-disk
-> format without know what they are doing, but I might be wrong.
-  If there are mount options that enable features, then these should be
-disallowed for ext2/ext3 mounts. But I think we already got rid of these
-traps on users...
+Looks good to me:
 
-								Honza
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
+
+On Wed, Jan 23, 2013 at 01:06:08AM -0500, Theodore Ts'o wrote:
+> The VFS's prune_super() function allows for the file system to prune
+> file-system specific objects.  Ext4 would like to use this to prune
+> parts of the inode's extent cache.  The object lifetime rules used by
+> ext4 is somewhat different from the those of the dentry and inode in
+> the VFS.  Ext4's extent cache objects can be pruned without removing
+> the inode; however if an inode is pruned, all of the extent cache
+> objects associated with the inode are immediately removed.
+> 
+> To accomodate this rule, we measure the number of fs-specific objects
+> before the dentry and inodes are pruned, and then measure them again
+> afterwards.  If the number of fs-specific objects have decreased, we
+> credit that decrease as part of the shrink operation, so that we do
+> not end up removing too many fs-specific objects.
+> 
+> In the case where fs-specific objects are not removed when inodes are
+> removed, this will not change the behavior of prune_super() in any
+> appreciable way.  (Currently the only other user of this facility is
+> XFS, and this change should not affect XFS's usage of this facility
+> for this reason.)
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: linux-fsdevel@vger.kernel.org
+> ---
+>  fs/super.c | 22 +++++++++++++++++++---
+>  1 file changed, 19 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index 12f1237..fb57bd2 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -80,6 +80,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  	if (sc->nr_to_scan) {
+>  		int	dentries;
+>  		int	inodes;
+> +		int	fs_to_scan = 0;
+>  
+>  		/* proportion the scan between the caches */
+>  		dentries = (sc->nr_to_scan * sb->s_nr_dentry_unused) /
+> @@ -87,7 +88,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		inodes = (sc->nr_to_scan * sb->s_nr_inodes_unused) /
+>  							total_objects;
+>  		if (fs_objects)
+> -			fs_objects = (sc->nr_to_scan * fs_objects) /
+> +			fs_to_scan = (sc->nr_to_scan * fs_objects) /
+>  							total_objects;
+>  		/*
+>  		 * prune the dcache first as the icache is pinned by it, then
+> @@ -96,8 +97,23 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
+>  		prune_dcache_sb(sb, dentries);
+>  		prune_icache_sb(sb, inodes);
+>  
+> -		if (fs_objects && sb->s_op->free_cached_objects) {
+> -			sb->s_op->free_cached_objects(sb, fs_objects);
+> +		/*
+> +		 * If as a result of pruning the icache, we released some
+> +		 * of the fs_objects, give credit to the fact and
+> +		 * reduce the number of fs objects that we should try
+> +		 * to release.
+> +		 */
+> +		if (fs_to_scan) {
+> +			int fs_objects_now = sb->s_op->nr_cached_objects(sb);
+> +
+> +			if (fs_objects_now < fs_objects)
+> +				fs_to_scan -= fs_objects - fs_objects_now;
+> +			if (fs_to_scan < 0)
+> +				fs_to_scan = 0;
+> +		}
+> +
+> +		if (fs_to_scan && sb->s_op->free_cached_objects) {
+> +			sb->s_op->free_cached_objects(sb, fs_to_scan);
+>  			fs_objects = sb->s_op->nr_cached_objects(sb);
+>  		}
+>  		total_objects = sb->s_nr_dentry_unused +
+> -- 
+> 1.7.12.rc0.22.gcdd159b
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Carlos
