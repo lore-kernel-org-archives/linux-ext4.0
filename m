@@ -1,50 +1,99 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/7 v2] ext4: track all extent status in extent status
- tree
-Date: Tue, 22 Jan 2013 23:31:16 -0500
-Message-ID: <20130123043116.GD21696@thunk.org>
-References: <1357901627-3068-1-git-send-email-wenqing.lz@taobao.com>
- <1357901627-3068-6-git-send-email-wenqing.lz@taobao.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 03/12] ext4: Remove bogus wait for unwritten extents in
+ ext4_ind_direct_IO
+Date: Wed, 23 Jan 2013 14:11:41 +0800
+Message-ID: <20130123061141.GA10440@gmail.com>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+ <1358510446-19174-4-git-send-email-jack@suse.cz>
+ <87k3r5qxpf.fsf@openvz.org>
+ <20130122134400.GB28331@quack.suse.cz>
+ <20130122142221.GA1763@gmail.com>
+ <20130122152243.GB32366@quack.suse.cz>
+ <20130122160017.GA2072@gmail.com>
+ <20130122231432.GA7244@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan kara <jack@suse.cz>,
-	Zheng Liu <wenqing.lz@taobao.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, Ted Tso <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:44957 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752732Ab3AWEbX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jan 2013 23:31:23 -0500
+Received: from mail-da0-f46.google.com ([209.85.210.46]:58725 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750950Ab3AWF5n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jan 2013 00:57:43 -0500
+Received: by mail-da0-f46.google.com with SMTP id p5so3601030dak.19
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2013 21:57:42 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1357901627-3068-6-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <20130122231432.GA7244@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 11, 2013 at 06:53:45PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
+On Wed, Jan 23, 2013 at 12:14:32AM +0100, Jan Kara wrote:
+> On Wed 23-01-13 00:00:17, Zheng Liu wrote:
+> > On Tue, Jan 22, 2013 at 04:22:43PM +0100, Jan Kara wrote:
+> > > On Tue 22-01-13 22:22:21, Zheng Liu wrote:
+> > > > On Tue, Jan 22, 2013 at 02:44:00PM +0100, Jan Kara wrote:
+> > > > > On Tue 22-01-13 15:11:24, Dmitry Monakhov wrote:
+> > > > > > On Fri, 18 Jan 2013 13:00:37 +0100, Jan Kara <jack@suse.cz> wrote:
+> > > > > > > When using indirect blocks there is no possibility to have any unwritten
+> > > > > > > extents. So wait for them in ext4_ind_direct_IO() is just bogus.
+> > > > > > But as soon as i remember indirect implementation may also be used by
+> > > > > > extents based inodes 3074: ext4_ext_direct_IO
+> > > > > >     /* Use the old path for reads and writes beyond i_size. */
+> > > > > >     if (rw != WRITE || final_size > inode->i_size)
+> > > > > >        return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
+> > > > > > 
+> > > > > > Am I missing ?
+> > > > >   Ah, that's a catch. Thanks for pointing that out! So my patch is wrong
+> > > > > and that code path needs some cleaning and commenting. In particular I'm
+> > > > > afraid using dioread_nolock for inodes with indirect map causes data
+> > > > > exposure bugs when unlocked DIO read races with DIO write because such
+> > > > > inodes don't support uninitialized extents.
+> > > > 
+> > > > Sorry, but I am still confused.  dioread_nolock is only for extent-based
+> > > > file.  So when a file system without extent feature, dioread_nolock
+> > > > couldn't be enabled.  It seems that we don't need to worry about
+> > > > exposing stale data here.
+> > >   Well, you can have fs with extent feature enabled but still with inodes
+> > > using indirect map. But as Dmitry pointed out, ext4_should_dioread_nolock()
+> > > handles that correctly. So there's not a bug I was suspecting.
+> > 
+> > Yep, the patch itself is fine.  But that would be great if a comment is
+> > added here.
+>   No, the patch is wrong. The code before the patch is correct. We can get
+> to that code for extent based inode which has unwritten conversions pending
+> and we need to wait for those as otherwise we could return 0s in places
+> where we acknowledged successful write just a while ago. Or am I missing
+> something?
 
-Please line-wrap the commit description to 72 columns.  (This way the
-output of "git log" will look nice even on 80 column terminal windows)".
+Ah, I see.  I guess that the problem is that the dio read races with buffered
+write.
 
-> After record phycisal block and status, extent status tree is able to track the
+   dio read                         buffered write
+                                    ->ext4_file_write
+                                      ->ext4_da_write_begin
+                                      ->ext4_da_write_end
+                                      [buffered write has finished, but the data
+                                       and metadata has not been flushed]
+   ->generic_file_aio_read
+     ->filemap_write_and_wait_range
+       ->do_writepages
+         ->ext4_da_writepages
+     ->filemap_fdatawait_range
+       ->wait_on_page_writeback
+                                    ->ext4_end_bio
+                                      ->end_page_writeback
+                                        [unwritten extent has not been
+                                         converted]
+     ->ext4_ind_direct_IO
+       [here we need to flush unwritten io]
 
-"By recording the physical block and status, ...."
+So it seems that this patch could be applied after reworking unwritten extent
+conversion.
 
-> status of every extents.  When we call _map_blocks functions to lookup an extent
-> or create a new written/unwritten/delayed extent, this extent will be inserted
-> into extent status tree.
-> 
-> We don't load all extents from disk in alloc_inode() because it costs too much
-> memory, and, when open/close a file very frequently, it will takes too much time
+FWIW, after applied this patch, the latency of dio read could be reduced
+dramatically.  So that would be great if this patch can be applied when it
+doesn't break something.
 
-"...and if a file is opened and closed frequently"..."
-
-> to load all extent information.  So currently when we create/lookup an extent,
-> this extent will be inserted into extent status tree.  Hence, the status in
-> extent status tree might be not completely.
-
-"Hence, the extent status tree may not comprehensively contain all of
-the extents found in the file."
-
-						- Ted
+Thanks,
+						- Zheng
