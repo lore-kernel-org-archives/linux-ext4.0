@@ -1,142 +1,147 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] fs: allow for fs-specific objects to be pruned as part
- of pruning inodes
-Date: Thu, 24 Jan 2013 00:32:31 +1100
-Message-ID: <20130123133231.GS2498@dastard>
-References: <20130121170937.GB15473@gmail.com>
- <1358921168-30921-1-git-send-email-tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: jbd2: don't wake kjournald unnecessarily
+Date: Wed, 23 Jan 2013 09:20:38 -0600
+Message-ID: <50FFFFC6.8070308@redhat.com>
+References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com> <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com> <20130121104733.GE5588@quack.suse.cz> <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com> <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com> <20130121140738.GI5588@quack.suse.cz> <CA+icZUXLcdnNPvA9o8d5msOQ0MkMci8mPXujLZ3zcYjYcVZ7JQ@mail.gmail.com> <20130121231130.GB12410@thunk.org> <20130122235041.GA7497@quack.suse.cz> <50FF3EEA.2030408@redhat.com> <20130123094421.GB9821@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	gnehzuil.liu@gmail.com, linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Sedat Dilek <sedat.dilek@gmail.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-next <linux-next@vger.kernel.org>, mszeredi@suse.cz
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:28650 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752584Ab3AWNcf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2013 08:32:35 -0500
-Content-Disposition: inline
-In-Reply-To: <1358921168-30921-1-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:4594 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754584Ab3AWPxY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 23 Jan 2013 10:53:24 -0500
+In-Reply-To: <20130123094421.GB9821@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 23, 2013 at 01:06:08AM -0500, Theodore Ts'o wrote:
-> The VFS's prune_super() function allows for the file system to prune
-> file-system specific objects.  Ext4 would like to use this to prune
-> parts of the inode's extent cache.  The object lifetime rules used by
-> ext4 is somewhat different from the those of the dentry and inode in
-> the VFS.  Ext4's extent cache objects can be pruned without removing
-> the inode; however if an inode is pruned, all of the extent cache
-> objects associated with the inode are immediately removed.
+On 1/23/13 3:44 AM, Jan Kara wrote:
+> On Tue 22-01-13 19:37:46, Eric Sandeen wrote:
+>> On 1/22/13 5:50 PM, Jan Kara wrote:
+>>> On Mon 21-01-13 18:11:30, Ted Tso wrote:
+>>>> On Tue, Jan 22, 2013 at 12:04:32AM +0100, Sedat Dilek wrote:
+>>>>>
+>>>>> Beyond the FUSE/LOOP fun, will you apply this patch to your linux-next GIT tree?
+>>>>>
+>>>>> Feel free to add...
+>>>>>
+>>>>>      Tested-by: Sedat Dilek <sedat.dilek@gmail.com>
+>>>>>
+>>>>> A similiar patch for JBD went through your tree into mainline (see [1] and [2]).
+>>>>
+>>>> I'm not at all convinced that this patch has anything to do with your
+>>>> problem.  I don't see how it could affect things, and I believe you
+>>>> mentioned that you saw the problem even with this patch applied?  (I'm
+>>>> not sure; some of your messages which you sent were hard to
+>>>> understand, and you mentioned something about trying to send messages
+>>>> when low on sleep :-).
+>>>>
+>>>> In any case, the reason why I haven't pulled this patch into the ext4
+>>>> tree is because I was waiting for Eric and some of the performance
+>>>> team folks at Red Hat to supply some additional information about why
+>>>> this commit was making a difference in performance for a particular
+>>>> proprietary, closed source benchmark.
+>>>   Just a small correction - it was aim7 AFAIK which isn't closed source
+>>> (anymore). You can download it from SourceForge
+>>> (http://sourceforge.net/projects/aimbench/files/aim-suite7/Initial%20release/).
+>>> Now I have some reservations about what the benchmark does but historically
+>>> it has found quite a few issues for us as well.
+>>>
+>>>> I'm very suspicious about applying patches under the "cargo cult"
+>>>> school of programming.  ("We don't understand why it makes a
+>>>> difference, but it seems to be good, so bombs away!" :-)
+>>>   Well, neither am I ;) But it is obvious the patch speeds up
+>>> log_start_commit() by 'a bit' (taking spinlock, disabling irqs, ...). And
+>>> apparently 'a bit' is noticeable for particular workload on a particular
+>>> machine - commit statistics Eric provided showed that clearly. I'd still be
+>>> happier if Eric also told us how much log_start_commit() calls there were
+>>> so that one could verify that 'a bit' could indeed multiply to a measurable
+>>> difference. But given how simple the patch is, I gave away after a while
+>>> and just merged it...
+>>
+>> I am still trying to get our perf guys to collect that data, FWIW...
+>> I will send it when I get it.  I bugged them again today.  :)
+>>
+>> (Just to be sure: I was going to measure the wakeups the old way, and the
+>> avoided wakeups with the new change; sound ok?)
+>   Yes, that would be what I'm interested in.
+
+Holy cow, this is much more than I expected, but here's what they report:
+
+old JBD: AIM7 jobs/min 97624.39;  got 78193 jbd wakeups
+new JBD: AIM7 jobs/min 85929.43;  got 6306999 jbd wakeups, 6264684 extra wakeups
+
+The "extra wakeups" were hacked in like:
+
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index d492d57..3e0c4eb 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -433,15 +433,25 @@ int __log_space_left(journal_t *journal)
+ 	return left;
+ }
+ 
++unsigned long jbd_wakeups;
++unsigned long jbd_extra_wakeups;
++
+ /*
+  * Called under j_state_lock.  Returns true if a transaction commit was started.
+  */
+ int __log_start_commit(journal_t *journal, tid_t target)
+ {
+ 	/*
+-	 * Are we already doing a recent enough commit?
++	 * The only transaction we can possibly wait upon is the
++	 * currently running transaction (if it exists).  Otherwise,
++	 * the target tid must be an old one.
+ 	 */
+-	if (!tid_geq(journal->j_commit_request, target)) {
++	if (/* journal->j_commit_request != target && <--- ERS: Undo "fix" */
++	    journal->j_running_transaction &&
++	    journal->j_running_transaction->t_tid == target) {
++		/* if we already have the right target, this is extra */
++		if (journal->j_commit_request == target)
++			jbd_extra_wakeups++;
+ 		/*
+ 		 * We want a new commit: OK, mark the request and wakup the
+ 		 * commit thread.  We do _not_ do the commit ourselves.
+@@ -451,9 +461,17 @@ int __log_start_commit(journal_t *journal, tid_t target)
+ 		jbd_debug(1, "JBD: requesting commit %d/%d\n",
+ 			  journal->j_commit_request,
+ 			  journal->j_commit_sequence);
++		jbd_wakeups++;
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+-	}
++	} else if (!tid_geq(journal->j_commit_request, target))
++		/* This should never happen, but if it does, preserve
++		   the evidence before kjournald goes into a loop and
++		   increments j_commit_sequence beyond all recognition. */
++		WARN_ONCE(1, "jbd: bad log_start_commit: %u %u %u %u\n",
++		    journal->j_commit_request, journal->j_commit_sequence,
++		    target, journal->j_running_transaction ?
++		    journal->j_running_transaction->t_tid : 0);
+ 	return 0;
+ }
+ 
+@@ -2039,6 +2057,7 @@ static void __exit journal_exit(void)
+ 	if (n)
+ 		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
+ #endif
++	printk("got %lu jbd wakeups, %lu extra wakeups\n", jbd_wakeups, jbd_extra_wakeups);
+ 	jbd_remove_debugfs_entry();
+ 	journal_destroy_caches();
+ }
+
+-Eric
+
+> 								Honza
 > 
-> To accomodate this rule, we measure the number of fs-specific objects
-> before the dentry and inodes are pruned, and then measure them again
-> afterwards.  If the number of fs-specific objects have decreased, we
-> credit that decrease as part of the shrink operation, so that we do
-> not end up removing too many fs-specific objects.
 
-Doesn't work. Shrinkers run concurrently on the same context, so a
-shrinker can be running on multiple CPUs and hence "interfere" with
-each other. i.e. A shrinker call on CPU 2 could see a reduction in
-a cache as a result of the same shrinker running on CPU 1 in the
-same context, and that would mean the shrinker on CPU 2 doesn't do
-the work it was asked (and needs) to do to reclaim memory.
-
-It also seems somewhat incompatible with the proposed memcg/NUMA
-aware shrinker infrastructure, where the shrinker has much more
-fine-grained context for operation than the current infrastructure.
-This seems to assume that there is global context relationship
-between inode cache and the fs specific cache.
-
-Also, the superblock shrinker is designed around a direct 1:1:1
-dependency relationship between the superblock dentry, inode and "fs
-cache" objects. i.e. dentry pins inode pins fs cache object.  It is
-designed to keep a direct balance of the three caches by ensuring
-they get scanned in amounts directly proportional to the relative
-differences in their object counts.  That can't be done with
-separate shrinkers, hence the use of the superblock shrinker to
-define the dependent relationship between the caches.
-
-i.e. the relationship between the VFS inode and the XFS inode is
-that they are the same object, but the "XFS inode" lives for some
-time after the VFS is done with it. IOWs, the VFS inode reclaim does
-not free any memory, so the reclaim work needs to be transferred
-directly to the "fscache shrinker" to free the inode objects.
-
-e.g.  if we have a batch of 100 objects to scan and al the caches
-are of equal sizes, 33 dentries are scanned, 33 VFS indoes are
-scanned, and 33 XFS inodes are scanned, The result is that for every
-100 objects scanned, we'll free 33 dentries and 33 inodes. And if
-the caches are out of balance, the biasing of the reclaim towards
-different caches will pull them back into even proportions of object
-counts.  i.e. the proportioning is very carefully balanced around
-maintaining the fixed relationship between the different types
-objects...
-
-In your proposed use case, the ext4 extent cache size has no direct
-relationship to the size of the VFS inode cache - the can both
-change size independently and not impact the balance of the system
-as long as the hot objects are kept in their respective caches when
-under memory pressure.
-
-When the cache size proportion varies with workload, you want
-separate shrinkers for the caches so that the memory pressure and
-number of active objects the workload generates determines the cache
-size. That's exactly what I'd say is necessary for an extent cache -
-it will balloon out massively larger than the inode cache when you
-have fragmented files, but if you have well formed files, it will
-stay relatively small. However, the number of inodes doesn't change,
-and hence what we have here is the optimal cache size proportions
-change with workload...
-
-i.e. the superblock fscache shrinker callout is the wrong thing to
-use here asit doesn't model the relationship between objects at all
-well. A separate shrinker instance for the extent cache is a much
-better match....
-
-> In the case where fs-specific objects are not removed when inodes are
-> removed, this will not change the behavior of prune_super() in any
-> appreciable way.  (Currently the only other user of this facility is
-> XFS, and this change should not affect XFS's usage of this facility
-> for this reason.)
-
-It can change behaviour is surprisingly subtle, nasty ways.
-
-The XFS superblock shrinker is what provides that memory reclaim
-rate throttling for XFS, similar to the way the page cache throttles
-writes to the rate at which dirty data can be written to disk. In
-effect, it throttles the rate of cache allocation to the rate at
-which we clean and free inodes and hence maintains a good system
-balance.
-
-The shrinker is also designed to prevent overloading and contention
-in the case of concurent execution on large node count machines. It
-prevents different CPUs/nodes executing reclaim on the same caches
-and hence contending on locks. This also further throttles the rate
-of reclaim by blocking shrinkers until they can do the work they
-were asked to do by reclaim. IOWs, there are several layers of
-throttling in the XFS shrinker, and the system balance is dependent
-on the XFS inode shrinker being called appropriately.
-
-With these two cache counters, XFS is guaranteed to see different
-inode counts as shrinker reclaim always happens concurrently, not to
-mention there is also background inode reclaim also running
-concurrently. The result of decreasing counts (as will happen
-frequently) is that the cwthis shrinker-based reclaim will not be
-run, and hence inode reclaim will not get throttled to the rate at
-which we can clean inodes or relcaim them without contention.
-
-The result is that the system becomes unstable and unpredictable
-under memory pressure, especially under workloads that dirty a lot
-of metadata. Think "random OOM conditions" and "my system stopped
-responding for minutes" type of issues....
-
-Like I said, surprisingly subtle and nasty....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
