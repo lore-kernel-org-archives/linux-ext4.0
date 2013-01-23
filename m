@@ -1,97 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Wed, 23 Jan 2013 20:29:11 +0100
-Message-ID: <20130123192911.GB21112@quack.suse.cz>
-References: <20130121104733.GE5588@quack.suse.cz>
- <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com>
- <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com>
- <20130121140738.GI5588@quack.suse.cz>
- <CA+icZUXLcdnNPvA9o8d5msOQ0MkMci8mPXujLZ3zcYjYcVZ7JQ@mail.gmail.com>
- <20130121231130.GB12410@thunk.org>
- <20130122235041.GA7497@quack.suse.cz>
- <50FF3EEA.2030408@redhat.com>
- <20130123094421.GB9821@quack.suse.cz>
- <50FFFFC6.8070308@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 6/6] ubifs: Wait for page writeback to provide stable
+ pages
+Date: Wed, 23 Jan 2013 13:43:12 -0800
+Message-ID: <20130123134312.b69c53cd.akpm@linux-foundation.org>
+References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
+	<20130119011316.20902.56721.stgit@blackbox.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Sedat Dilek <sedat.dilek@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>, mszeredi@suse.cz
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
+	martin.petersen@oracle.com, Artem Bityutskiy <dedekind1@gmail.com>,
+	neilb@suse.de, Adrian Hunter <adrian.hunter@intel.com>,
+	david@fromorbit.com, gnehzuil.liu@gmail.com,
+	linux-kernel@vger.kernel.org, hch@infradead.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+	hirofumi@mail.parknet.co.jp
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34944 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750813Ab3AWT3N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2013 14:29:13 -0500
-Content-Disposition: inline
-In-Reply-To: <50FFFFC6.8070308@redhat.com>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:54275 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752052Ab3AWVnO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jan 2013 16:43:14 -0500
+In-Reply-To: <20130119011316.20902.56721.stgit@blackbox.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 23-01-13 09:20:38, Eric Sandeen wrote:
-> On 1/23/13 3:44 AM, Jan Kara wrote:
-> > On Tue 22-01-13 19:37:46, Eric Sandeen wrote:
-> >> On 1/22/13 5:50 PM, Jan Kara wrote:
-> >>> On Mon 21-01-13 18:11:30, Ted Tso wrote:
-> >>>> On Tue, Jan 22, 2013 at 12:04:32AM +0100, Sedat Dilek wrote:
-> >>>>>
-> >>>>> Beyond the FUSE/LOOP fun, will you apply this patch to your linux-next GIT tree?
-> >>>>>
-> >>>>> Feel free to add...
-> >>>>>
-> >>>>>      Tested-by: Sedat Dilek <sedat.dilek@gmail.com>
-> >>>>>
-> >>>>> A similiar patch for JBD went through your tree into mainline (see [1] and [2]).
-> >>>>
-> >>>> I'm not at all convinced that this patch has anything to do with your
-> >>>> problem.  I don't see how it could affect things, and I believe you
-> >>>> mentioned that you saw the problem even with this patch applied?  (I'm
-> >>>> not sure; some of your messages which you sent were hard to
-> >>>> understand, and you mentioned something about trying to send messages
-> >>>> when low on sleep :-).
-> >>>>
-> >>>> In any case, the reason why I haven't pulled this patch into the ext4
-> >>>> tree is because I was waiting for Eric and some of the performance
-> >>>> team folks at Red Hat to supply some additional information about why
-> >>>> this commit was making a difference in performance for a particular
-> >>>> proprietary, closed source benchmark.
-> >>>   Just a small correction - it was aim7 AFAIK which isn't closed source
-> >>> (anymore). You can download it from SourceForge
-> >>> (http://sourceforge.net/projects/aimbench/files/aim-suite7/Initial%20release/).
-> >>> Now I have some reservations about what the benchmark does but historically
-> >>> it has found quite a few issues for us as well.
-> >>>
-> >>>> I'm very suspicious about applying patches under the "cargo cult"
-> >>>> school of programming.  ("We don't understand why it makes a
-> >>>> difference, but it seems to be good, so bombs away!" :-)
-> >>>   Well, neither am I ;) But it is obvious the patch speeds up
-> >>> log_start_commit() by 'a bit' (taking spinlock, disabling irqs, ...). And
-> >>> apparently 'a bit' is noticeable for particular workload on a particular
-> >>> machine - commit statistics Eric provided showed that clearly. I'd still be
-> >>> happier if Eric also told us how much log_start_commit() calls there were
-> >>> so that one could verify that 'a bit' could indeed multiply to a measurable
-> >>> difference. But given how simple the patch is, I gave away after a while
-> >>> and just merged it...
-> >>
-> >> I am still trying to get our perf guys to collect that data, FWIW...
-> >> I will send it when I get it.  I bugged them again today.  :)
-> >>
-> >> (Just to be sure: I was going to measure the wakeups the old way, and the
-> >> avoided wakeups with the new change; sound ok?)
-> >   Yes, that would be what I'm interested in.
-> 
-> Holy cow, this is much more than I expected, but here's what they report:
-> 
-> old JBD: AIM7 jobs/min 97624.39;  got 78193 jbd wakeups
-> new JBD: AIM7 jobs/min 85929.43;  got 6306999 jbd wakeups, 6264684 extra wakeups
-  Yeah, that's a lot. My guess would be *a lot* of processes are hanging in
-start_this_handle() and waiting for transaction commit. Each of them calls
-__log_start_commit() and things add up. Thanks for getting these numbers.
+On Fri, 18 Jan 2013 17:13:16 -0800
+"Darrick J. Wong" <darrick.wong@oracle.com> wrote:
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> When stable pages are required, we have to wait if the page is just
+> going to disk and we want to modify it. Add proper callback to
+> ubifs_vm_page_mkwrite().
+> 
+> CC: Artem Bityutskiy <dedekind1@gmail.com>
+> CC: Adrian Hunter <adrian.hunter@intel.com>
+> CC: linux-mtd@lists.infradead.org
+> From: Jan Kara <jack@suse.cz>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+A couple of these patches had this From:Jan strangely embedded in the
+signoff area.  I have assumed that they were indeed authored by Jan.
+
+Please note that authorship is indicated by putting the From: line
+right at the start of the chagnelog.
+
+
+I grabbed the patches.  They should appear in linux-next tomorrow if I
+can get the current pooppile to build.
+
