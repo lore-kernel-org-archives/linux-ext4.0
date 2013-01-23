@@ -1,108 +1,82 @@
 From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH] fs: allow for fs-specific objects to be pruned as part
- of pruning inodes
-Date: Wed, 23 Jan 2013 08:06:35 -0500
-Message-ID: <20130123130635.GB1423@localhost.localdomain>
-References: <20130121170937.GB15473@gmail.com>
- <1358921168-30921-1-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 1/4] ext4: Fix possible use-after-free with AIO
+Date: Wed, 23 Jan 2013 08:18:10 -0500
+Message-ID: <20130123131810.GC1423@localhost.localdomain>
+References: <1358945780-23661-1-git-send-email-jack@suse.cz>
+ <1358945780-23661-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	gnehzuil.liu@gmail.com, linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28831 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755062Ab3AWNGl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2013 08:06:41 -0500
+Cc: linux-fsdevel@vger.kernel.org, tytso@mit.edu, bpm@sgi.com,
+	jlbec@evilplan.org, linux-ext4@vger.kernel.org,
+	stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1358921168-30921-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1358945780-23661-2-git-send-email-jack@suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Looks good to me:
+Looks Good,
 
 Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
-
-On Wed, Jan 23, 2013 at 01:06:08AM -0500, Theodore Ts'o wrote:
-> The VFS's prune_super() function allows for the file system to prune
-> file-system specific objects.  Ext4 would like to use this to prune
-> parts of the inode's extent cache.  The object lifetime rules used by
-> ext4 is somewhat different from the those of the dentry and inode in
-> the VFS.  Ext4's extent cache objects can be pruned without removing
-> the inode; however if an inode is pruned, all of the extent cache
-> objects associated with the inode are immediately removed.
+On Wed, Jan 23, 2013 at 01:56:17PM +0100, Jan Kara wrote:
+> Running AIO is pinning inode in memory using file reference. Once AIO
+> is completed using aio_complete(), file reference is put and inode can
+> be freed from memory. So we have to be sure that calling aio_complete()
+> is the last thing we do with the inode.
 > 
-> To accomodate this rule, we measure the number of fs-specific objects
-> before the dentry and inodes are pruned, and then measure them again
-> afterwards.  If the number of fs-specific objects have decreased, we
-> credit that decrease as part of the shrink operation, so that we do
-> not end up removing too many fs-specific objects.
-> 
-> In the case where fs-specific objects are not removed when inodes are
-> removed, this will not change the behavior of prune_super() in any
-> appreciable way.  (Currently the only other user of this facility is
-> XFS, and this change should not affect XFS's usage of this facility
-> for this reason.)
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: linux-fsdevel@vger.kernel.org
+> CC: linux-ext4@vger.kernel.org
+> CC: "Theodore Ts'o" <tytso@mit.edu>
+> CC: stable@vger.kernel.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
 > ---
->  fs/super.c | 22 +++++++++++++++++++---
->  1 file changed, 19 insertions(+), 3 deletions(-)
+>  fs/ext4/inode.c   |    2 +-
+>  fs/ext4/page-io.c |    9 ++++-----
+>  2 files changed, 5 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/super.c b/fs/super.c
-> index 12f1237..fb57bd2 100644
-> --- a/fs/super.c
-> +++ b/fs/super.c
-> @@ -80,6 +80,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  	if (sc->nr_to_scan) {
->  		int	dentries;
->  		int	inodes;
-> +		int	fs_to_scan = 0;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index cbfe13b..ba06638 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2977,9 +2977,9 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+>  	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
+>  		ext4_free_io_end(io_end);
+>  out:
+> +		inode_dio_done(inode);
+>  		if (is_async)
+>  			aio_complete(iocb, ret, 0);
+> -		inode_dio_done(inode);
+>  		return;
+>  	}
 >  
->  		/* proportion the scan between the caches */
->  		dentries = (sc->nr_to_scan * sb->s_nr_dentry_unused) /
-> @@ -87,7 +88,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  		inodes = (sc->nr_to_scan * sb->s_nr_inodes_unused) /
->  							total_objects;
->  		if (fs_objects)
-> -			fs_objects = (sc->nr_to_scan * fs_objects) /
-> +			fs_to_scan = (sc->nr_to_scan * fs_objects) /
->  							total_objects;
->  		/*
->  		 * prune the dcache first as the icache is pinned by it, then
-> @@ -96,8 +97,23 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  		prune_dcache_sb(sb, dentries);
->  		prune_icache_sb(sb, inodes);
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 0016fbc..b42d04f 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -103,14 +103,13 @@ static int ext4_end_io(ext4_io_end_t *io)
+>  			 "(inode %lu, offset %llu, size %zd, error %d)",
+>  			 inode->i_ino, offset, size, ret);
+>  	}
+> -	if (io->iocb)
+> -		aio_complete(io->iocb, io->result, 0);
+> -
+> -	if (io->flag & EXT4_IO_END_DIRECT)
+> -		inode_dio_done(inode);
+>  	/* Wake up anyone waiting on unwritten extent conversion */
+>  	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
+>  		wake_up_all(ext4_ioend_wq(inode));
+> +	if (io->flag & EXT4_IO_END_DIRECT)
+> +		inode_dio_done(inode);
+> +	if (io->iocb)
+> +		aio_complete(io->iocb, io->result, 0);
+>  	return ret;
+>  }
 >  
-> -		if (fs_objects && sb->s_op->free_cached_objects) {
-> -			sb->s_op->free_cached_objects(sb, fs_objects);
-> +		/*
-> +		 * If as a result of pruning the icache, we released some
-> +		 * of the fs_objects, give credit to the fact and
-> +		 * reduce the number of fs objects that we should try
-> +		 * to release.
-> +		 */
-> +		if (fs_to_scan) {
-> +			int fs_objects_now = sb->s_op->nr_cached_objects(sb);
-> +
-> +			if (fs_objects_now < fs_objects)
-> +				fs_to_scan -= fs_objects - fs_objects_now;
-> +			if (fs_to_scan < 0)
-> +				fs_to_scan = 0;
-> +		}
-> +
-> +		if (fs_to_scan && sb->s_op->free_cached_objects) {
-> +			sb->s_op->free_cached_objects(sb, fs_to_scan);
->  			fs_objects = sb->s_op->nr_cached_objects(sb);
->  		}
->  		total_objects = sb->s_nr_dentry_unused +
 > -- 
-> 1.7.12.rc0.22.gcdd159b
+> 1.7.1
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
