@@ -1,114 +1,82 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] fs: allow for fs-specific objects to be pruned as part
- of pruning inodes
-Date: Wed, 23 Jan 2013 11:52:27 +0100
-Message-ID: <20130123105227.GE9821@quack.suse.cz>
-References: <20130121170937.GB15473@gmail.com>
- <1358921168-30921-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	gnehzuil.liu@gmail.com, linux-fsdevel@vger.kernel.org,
-	dchinner@redhat.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38725 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754597Ab3AWKw3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 23 Jan 2013 05:52:29 -0500
-Content-Disposition: inline
-In-Reply-To: <1358921168-30921-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 00/10 v3] ext4: extent status tree (step2)
+Date: Wed, 23 Jan 2013 20:03:50 +0800
+Message-ID: <1358942640-2262-1-git-send-email-wenqing.lz@taobao.com>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-01-13 01:06:08, Ted Tso wrote:
-> The VFS's prune_super() function allows for the file system to prune
-> file-system specific objects.  Ext4 would like to use this to prune
-> parts of the inode's extent cache.  The object lifetime rules used by
-> ext4 is somewhat different from the those of the dentry and inode in
-> the VFS.  Ext4's extent cache objects can be pruned without removing
-> the inode; however if an inode is pruned, all of the extent cache
-> objects associated with the inode are immediately removed.
-> 
-> To accomodate this rule, we measure the number of fs-specific objects
-> before the dentry and inodes are pruned, and then measure them again
-> afterwards.  If the number of fs-specific objects have decreased, we
-> credit that decrease as part of the shrink operation, so that we do
-> not end up removing too many fs-specific objects.
-> 
-> In the case where fs-specific objects are not removed when inodes are
-> removed, this will not change the behavior of prune_super() in any
-> appreciable way.  (Currently the only other user of this facility is
-> XFS, and this change should not affect XFS's usage of this facility
-> for this reason.)
-  The patch looks good to me. So you can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+Hi all,
 
-I've also added Dave to CC.
+Here is my third try to implement the second step of extent status tree.
+The first step has been applied into upstream kernel.  In the second
+step, extent status tree will track all extent status, and it will be as
+a extent cache for extent tree.  Thus, we can first try to lookup a
+block mapping in this tree before accessing extent tree.  Meanwhile we
+add nr_cached_objects() and free_cached_objects() callback functions to
+try to reclaim extents from the extent status tree under a heavy memory
+pressure because fragmented extent tree causes that extent status tree
+costs too much memory.
 
-								Honza
+This patch series is also sent to linux-fsdevel mailing list because
+we want to change prune_super() function so that we could avoid to
+reclaim too many cached objects.
 
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: linux-fsdevel@vger.kernel.org
-> ---
->  fs/super.c | 22 +++++++++++++++++++---
->  1 file changed, 19 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/super.c b/fs/super.c
-> index 12f1237..fb57bd2 100644
-> --- a/fs/super.c
-> +++ b/fs/super.c
-> @@ -80,6 +80,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  	if (sc->nr_to_scan) {
->  		int	dentries;
->  		int	inodes;
-> +		int	fs_to_scan = 0;
->  
->  		/* proportion the scan between the caches */
->  		dentries = (sc->nr_to_scan * sb->s_nr_dentry_unused) /
-> @@ -87,7 +88,7 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  		inodes = (sc->nr_to_scan * sb->s_nr_inodes_unused) /
->  							total_objects;
->  		if (fs_objects)
-> -			fs_objects = (sc->nr_to_scan * fs_objects) /
-> +			fs_to_scan = (sc->nr_to_scan * fs_objects) /
->  							total_objects;
->  		/*
->  		 * prune the dcache first as the icache is pinned by it, then
-> @@ -96,8 +97,23 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
->  		prune_dcache_sb(sb, dentries);
->  		prune_icache_sb(sb, inodes);
->  
-> -		if (fs_objects && sb->s_op->free_cached_objects) {
-> -			sb->s_op->free_cached_objects(sb, fs_objects);
-> +		/*
-> +		 * If as a result of pruning the icache, we released some
-> +		 * of the fs_objects, give credit to the fact and
-> +		 * reduce the number of fs objects that we should try
-> +		 * to release.
-> +		 */
-> +		if (fs_to_scan) {
-> +			int fs_objects_now = sb->s_op->nr_cached_objects(sb);
-> +
-> +			if (fs_objects_now < fs_objects)
-> +				fs_to_scan -= fs_objects - fs_objects_now;
-> +			if (fs_to_scan < 0)
-> +				fs_to_scan = 0;
-> +		}
-> +
-> +		if (fs_to_scan && sb->s_op->free_cached_objects) {
-> +			sb->s_op->free_cached_objects(sb, fs_to_scan);
->  			fs_objects = sb->s_op->nr_cached_objects(sb);
->  		}
->  		total_objects = sb->s_nr_dentry_unused +
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+changelog:
+v3 <- v2:
+ - use prune_super() to reclaim extents from extent status tree
+ - stashed es_status into es_pblk
+ - remove single extent cache
+ - rebase against 3.8-rc4
+
+v2 <- v1:
+ - drop patches that try to improve unwritten extent conversion
+ - remove EXT4_MAP_FROM_CLUSTER flag
+ - add tracepoint for ext4_es_lookup_extent()
+ - drop a patch, which tries to fix a warning when bigalloc and delalloc are
+   enabled
+ - add a shrinker to reclaim memory from extent status tree
+ - rebase against 3.8-rc2
+
+v2: http://lwn.net/Articles/532446/
+v1: http://lwn.net/Articles/531065/
+
+Any comments or feedbacks are welcome.
+
+Regards,
+						- Zheng
+
+Theodore Ts'o (1):
+  fs: allow for fs-specific objects to be pruned as part of pruning
+    inodes
+
+Zheng Liu (9):
+  ext4: refine extent status tree
+  ext4: remove EXT4_MAP_FROM_CLUSTER flag
+  ext4: add physical block and status member into extent status tree
+  ext4: adjust interfaces of extent status tree
+  ext4: track all extent status in extent status tree
+  ext4: lookup block mapping in extent status tree
+  ext4: remove single extent cache
+  ext4: adjust some functions for reclaiming extents from extent status
+    tree
+  ext4: reclaim extents from extent status tree
+
+ fs/ext4/ext4.h              |  33 +--
+ fs/ext4/ext4_extents.h      |   6 -
+ fs/ext4/extents.c           | 256 ++++----------------
+ fs/ext4/extents_status.c    | 554 ++++++++++++++++++++++++++++++++------------
+ fs/ext4/extents_status.h    |  50 +++-
+ fs/ext4/file.c              |  14 +-
+ fs/ext4/inode.c             | 138 ++++++++---
+ fs/ext4/move_extent.c       |   3 -
+ fs/ext4/super.c             |  20 +-
+ fs/super.c                  |  22 +-
+ include/trace/events/ext4.h | 158 ++++++++++---
+ 11 files changed, 783 insertions(+), 471 deletions(-)
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.12.rc2.18.g61b472e
+
