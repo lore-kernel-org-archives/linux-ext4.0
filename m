@@ -1,7 +1,7 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 03/10 v3] ext4: add physical block and status member into extent status tree
-Date: Wed, 23 Jan 2013 20:03:53 +0800
-Message-ID: <1358942640-2262-4-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 04/10 v3] ext4: adjust interfaces of extent status tree
+Date: Wed, 23 Jan 2013 20:03:54 +0800
+Message-ID: <1358942640-2262-5-git-send-email-wenqing.lz@taobao.com>
 References: <1358942640-2262-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
@@ -12,45 +12,328 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-es_pblk is used to record physical block that maps to the disk.
-es_status is used to record the status of the extent.  Three status
-are defined, which are written, unwritten and delayed.
+Due to two members are added into extent status tree, all interfaces
+need to be adjusted.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents_status.h | 16 ++++++++++++++--
- 1 file changed, 14 insertions(+), 2 deletions(-)
+ fs/ext4/extents_status.c    | 56 ++++++++++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h    | 24 ++++++++++++++++++-
+ fs/ext4/inode.c             |  3 ++-
+ include/trace/events/ext4.h | 34 +++++++++++++++++----------
+ 4 files changed, 92 insertions(+), 25 deletions(-)
 
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 1ce4a69..7cbb916 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -179,7 +179,8 @@ static void ext4_es_print_tree(struct inode *inode)
+ 	while (node) {
+ 		struct extent_status *es;
+ 		es = rb_entry(node, struct extent_status, rb_node);
+-		printk(KERN_DEBUG " [%u/%u)", es->es_lblk, es->es_len);
++		printk(KERN_DEBUG " [%u/%u) %llu %u",
++		       es->es_lblk, es->es_len, es->es_pblk, es->es_status);
+ 		node = rb_next(node);
+ 	}
+ 	printk(KERN_DEBUG "\n");
+@@ -234,7 +235,7 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
+  * @es: delayed extent that we found
+  *
+  * Returns the first block of the next extent after es, otherwise
+- * EXT_MAX_BLOCKS if no delay extent is found.
++ * EXT_MAX_BLOCKS if no extent is found.
+  * Delayed extent is returned via @es.
+  */
+ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+@@ -249,12 +250,14 @@ ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+ 	read_lock(&EXT4_I(inode)->i_es_lock);
+ 	tree = &EXT4_I(inode)->i_es_tree;
+ 
+-	/* find delay extent in cache firstly */
++	/* find extent in cache firstly */
+ 	if (tree->cache_es) {
+ 		es1 = tree->cache_es;
+ 		if (in_range(es->es_lblk, es1->es_lblk, es1->es_len)) {
+-			es_debug("%u cached by [%u/%u)\n",
+-				 es->es_lblk, es1->es_lblk, es1->es_len);
++			es_debug("%u cached by [%u/%u) %llu %u\n",
++				 es->es_lblk, es1->es_lblk, es1->es_len,
++				 (unsigned long long)es1->es_pblk,
++				 es1->es_status);
+ 			goto out;
+ 		}
+ 	}
+@@ -267,6 +270,8 @@ out:
+ 		tree->cache_es = es1;
+ 		es->es_lblk = es1->es_lblk;
+ 		es->es_len = es1->es_len;
++		es->es_pblk = es1->es_pblk;
++		es->es_status = es1->es_status;
+ 		node = rb_next(&es1->rb_node);
+ 		if (node) {
+ 			es1 = rb_entry(node, struct extent_status, rb_node);
+@@ -281,7 +286,8 @@ out:
+ }
+ 
+ static struct extent_status *
+-ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len)
++ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len,
++		     ext4_fsblk_t pblk, int status)
+ {
+ 	struct extent_status *es;
+ 	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
+@@ -289,6 +295,8 @@ ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len)
+ 		return NULL;
+ 	es->es_lblk = lblk;
+ 	es->es_len = len;
++	es->es_pblk = pblk;
++	es->es_status = status;
+ 	return es;
+ }
+ 
+@@ -301,6 +309,8 @@ static void ext4_es_free_extent(struct extent_status *es)
+  * Check whether or not two extents can be merged
+  * Condition:
+  *  - logical block number is contiguous
++ *  - physical block number is contiguous
++ *  - status is equal
+  */
+ static int ext4_es_can_be_merged(struct extent_status *es1,
+ 				 struct extent_status *es2)
+@@ -308,6 +318,13 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
+ 	if (es1->es_lblk + es1->es_len != es2->es_lblk)
+ 		return 0;
+ 
++	if (es1->es_status != es2->es_status)
++		return 0;
++
++	if (!ext4_es_is_delayed(es1) &&
++	    (es1->es_pblk + es1->es_len != es2->es_pblk))
++		return 0;
++
+ 	return 1;
+ }
+ 
+@@ -370,6 +387,8 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
+ 			if (ext4_es_can_be_merged(newes, es)) {
+ 				es->es_lblk = newes->es_lblk;
+ 				es->es_len += newes->es_len;
++				es->es_pblk = ext4_es_get_pblock(es,
++							newes->es_pblk);
+ 				es = ext4_es_try_to_merge_left(tree, es);
+ 				goto out;
+ 			}
+@@ -387,7 +406,8 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
+ 		}
+ 	}
+ 
+-	es = ext4_es_alloc_extent(newes->es_lblk, newes->es_len);
++	es = ext4_es_alloc_extent(newes->es_lblk, newes->es_len,
++				  newes->es_pblk, newes->es_status);
+ 	if (!es)
+ 		return -ENOMEM;
+ 	rb_link_node(&es->rb_node, parent, p);
+@@ -406,21 +426,23 @@ out:
+  * Return 0 on success, error code on failure.
+  */
+ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-			  ext4_lblk_t len)
++			  ext4_lblk_t len, ext4_fsblk_t pblk, int status)
+ {
+ 	struct ext4_es_tree *tree;
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+ 	int err = 0;
+ 
+-	trace_ext4_es_insert_extent(inode, lblk, len);
+-	es_debug("add [%u/%u) to extent status tree of inode %lu\n",
+-		 lblk, len, inode->i_ino);
++	es_debug("add [%u/%u) %llu %d to extent status tree of inode %lu\n",
++		 lblk, len, pblk, status, inode->i_ino);
+ 
+ 	BUG_ON(end < lblk);
+ 
+ 	newes.es_lblk = lblk;
+ 	newes.es_len = len;
++	newes.es_pblk = pblk;
++	newes.es_status = status;
++	trace_ext4_es_insert_extent(inode, &newes);
+ 
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
+ 	tree = &EXT4_I(inode)->i_es_tree;
+@@ -457,6 +479,9 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 
+ 	orig_es.es_lblk = es->es_lblk;
+ 	orig_es.es_len = es->es_len;
++	orig_es.es_pblk = es->es_pblk;
++	orig_es.es_status = es->es_status;
++
+ 	len1 = lblk > es->es_lblk ? lblk - es->es_lblk : 0;
+ 	len2 = ext4_es_end(es) > end ? ext4_es_end(es) - end : 0;
+ 	if (len1 > 0)
+@@ -467,6 +492,9 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 
+ 			newes.es_lblk = end + 1;
+ 			newes.es_len = len2;
++			newes.es_pblk = ext4_es_get_pblock(&orig_es,
++				orig_es.es_pblk + orig_es.es_len - len2);
++			newes.es_status = orig_es.es_status;
+ 			err = __es_insert_extent(tree, &newes);
+ 			if (err) {
+ 				es->es_lblk = orig_es.es_lblk;
+@@ -476,6 +504,8 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 		} else {
+ 			es->es_lblk = end + 1;
+ 			es->es_len = len2;
++			es->es_pblk = ext4_es_get_pblock(es,
++				orig_es.es_pblk + orig_es.es_len - len2);
+ 		}
+ 		goto out;
+ 	}
+@@ -500,9 +530,13 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 	}
+ 
+ 	if (es && es->es_lblk < end + 1) {
++		ext4_lblk_t orig_len = es->es_len;
++
+ 		len1 = ext4_es_end(es) - end;
+ 		es->es_lblk = end + 1;
+ 		es->es_len = len1;
++		es->es_pblk = ext4_es_get_pblock(es,
++						 es->es_pblk + orig_len - len1);
+ 	}
+ 
+ out:
 diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 81e9339..2eb9cc3 100644
+index 2eb9cc3..1345c06 100644
 --- a/fs/ext4/extents_status.h
 +++ b/fs/ext4/extents_status.h
-@@ -20,10 +20,22 @@
- #define es_debug(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
- #endif
+@@ -48,10 +48,32 @@ extern void ext4_exit_es(void);
+ extern void ext4_es_init_tree(struct ext4_es_tree *tree);
  
-+enum {
-+	EXTENT_STATUS_WRITTEN = 0,	/* written extent */
-+	EXTENT_STATUS_UNWRITTEN = 1,	/* unwritten extent */
-+	EXTENT_STATUS_DELAYED = 2,	/* delayed extent */
-+};
+ extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-				 ext4_lblk_t len);
++				 ext4_lblk_t len, ext4_fsblk_t pblk,
++				 int status);
+ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len);
+ extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
+ 				struct extent_status *es);
+ 
++static inline int ext4_es_is_written(struct extent_status *es)
++{
++	return (es->es_status == EXTENT_STATUS_WRITTEN);
++}
 +
-+/*
-+ * Here for save memory es_status is stashed into es_pblk because we only have
-+ * 48 bits physical block and es_status only needs 2 bits.
-+ */
- struct extent_status {
- 	struct rb_node rb_node;
--	ext4_lblk_t es_lblk;	/* first logical block extent covers */
--	ext4_lblk_t es_len;	/* length of extent in block */
-+	ext4_lblk_t es_lblk;		/* first logical block extent covers */
-+	ext4_lblk_t es_len;		/* length of extent in block */
-+	ext4_fsblk_t es_pblk : 62;	/* first physical block */
-+	ext4_fsblk_t es_status : 2;	/* record the status of extent */
- };
++static inline int ext4_es_is_unwritten(struct extent_status *es)
++{
++	return (es->es_status == EXTENT_STATUS_UNWRITTEN);
++}
++
++static inline int ext4_es_is_delayed(struct extent_status *es)
++{
++	return (es->es_status == EXTENT_STATUS_DELAYED);
++}
++
++static inline ext4_fsblk_t ext4_es_get_pblock(struct extent_status *es,
++					      ext4_fsblk_t pb)
++{
++	return (ext4_es_is_delayed(es) ? ~0 : pb);
++}
++
+ #endif /* _EXT4_EXTENTS_STATUS_H */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4d066f3..e09c7cf 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1819,7 +1819,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 				goto out_unlock;
+ 		}
  
- struct ext4_es_tree {
+-		retval = ext4_es_insert_extent(inode, map->m_lblk, map->m_len);
++		retval = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++					       ~0, EXTENT_STATUS_DELAYED);
+ 		if (retval)
+ 			goto out_unlock;
+ 
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 952628a..43f335a 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2068,28 +2068,33 @@ TRACE_EVENT(ext4_ext_remove_space_done,
+ );
+ 
+ TRACE_EVENT(ext4_es_insert_extent,
+-	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len),
++	TP_PROTO(struct inode *inode, struct extent_status *es),
+ 
+-	TP_ARGS(inode, lblk, len),
++	TP_ARGS(inode, es),
+ 
+ 	TP_STRUCT__entry(
+-		__field(	dev_t,	dev			)
+-		__field(	ino_t,	ino			)
+-		__field(	loff_t,	lblk			)
+-		__field(	loff_t, len			)
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	lblk		)
++		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_fsblk_t,	pblk		)
++		__field(	int,		status		)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->dev	= inode->i_sb->s_dev;
+ 		__entry->ino	= inode->i_ino;
+-		__entry->lblk	= lblk;
+-		__entry->len	= len;
++		__entry->lblk	= es->es_lblk;
++		__entry->len	= es->es_len;
++		__entry->pblk	= es->es_pblk;
++		__entry->status	= es->es_status;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
++	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+-		  __entry->lblk, __entry->len)
++		  __entry->lblk, __entry->len,
++		  __entry->pblk, __entry->status)
+ );
+ 
+ TRACE_EVENT(ext4_es_remove_extent,
+@@ -2150,6 +2155,8 @@ TRACE_EVENT(ext4_es_find_extent_exit,
+ 		__field(	ino_t,		ino		)
+ 		__field(	ext4_lblk_t,	lblk		)
+ 		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_fsblk_t,	pblk		)
++		__field(	int,		status		)
+ 		__field(	ext4_lblk_t,	ret		)
+ 	),
+ 
+@@ -2158,13 +2165,16 @@ TRACE_EVENT(ext4_es_find_extent_exit,
+ 		__entry->ino	= inode->i_ino;
+ 		__entry->lblk	= es->es_lblk;
+ 		__entry->len	= es->es_len;
++		__entry->pblk	= es->es_pblk;
++		__entry->status	= es->es_status;
+ 		__entry->ret	= ret;
+ 	),
+ 
+-	TP_printk("dev %d,%d ino %lu es [%u/%u) ret %u",
++	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %u ret %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		  (unsigned long) __entry->ino,
+-		  __entry->lblk, __entry->len, __entry->ret)
++		  __entry->lblk, __entry->len,
++		  __entry->pblk, __entry->status, __entry->ret)
+ );
+ 
+ #endif /* _TRACE_EXT4_H */
 -- 
 1.7.12.rc2.18.g61b472e
 
