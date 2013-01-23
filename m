@@ -1,77 +1,58 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: jbd2: don't wake kjournald unnecessarily
-Date: Tue, 22 Jan 2013 19:37:46 -0600
-Message-ID: <50FF3EEA.2030408@redhat.com>
-References: <CA+icZUWOvk5i+XY22xdZYuxu=Vy3fG2QxJStEgNFQVS4u55y-w@mail.gmail.com> <CA+icZUUzNYE9QAh_p7=ZNuvZbxRPCb9zd4k7+aW-hv34mQWz=A@mail.gmail.com> <20130121104733.GE5588@quack.suse.cz> <CA+icZUVy-=jJkRsEKmX+ZGRjiGr4wwp3pqdxuLCRHeqW_H0x9Q@mail.gmail.com> <CA+icZUVAP4ArN+j34GTUwMxte5DtLPJSrLmK9T6Na8Qy+aM0Rg@mail.gmail.com> <20130121140738.GI5588@quack.suse.cz> <CA+icZUXLcdnNPvA9o8d5msOQ0MkMci8mPXujLZ3zcYjYcVZ7JQ@mail.gmail.com> <20130121231130.GB12410@thunk.org> <20130122235041.GA7497@quack.suse.cz>
+Subject: Re: hole punching in ext4
+Date: Tue, 22 Jan 2013 19:38:38 -0600
+Message-ID: <50FF3F1E.30001@redhat.com>
+References: <CAKSyJXfvTFjGMO2ZZPsnSjc_fnUzfs2oMrYf7UQoPvO0=98FxA@mail.gmail.com> <CAKSyJXdbwtOQi==rPZ3nS72bLb9wd0rrmt8RTNPJMUCph-B1Ow@mail.gmail.com> <20130122162009.GB2072@gmail.com> <CAKSyJXew+Sx0AB8HgDZxtOvXyKt8Z_UOe4eG1C=27m2_ubdMVw@mail.gmail.com> <59CF9743-8837-4279-9B5A-8AD0878BF5F2@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Sedat Dilek <sedat.dilek@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-next <linux-next@vger.kernel.org>, mszeredi@suse.cz
-To: Jan Kara <jack@suse.cz>
+Cc: "Bradley C. Kuszmaul" <kuszmaul@gmail.com>,
+	Zheng Liu <gnehzuil.liu@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48769 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11612 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752718Ab3AWBid (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 22 Jan 2013 20:38:33 -0500
-In-Reply-To: <20130122235041.GA7497@quack.suse.cz>
+	id S1752655Ab3AWBjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 22 Jan 2013 20:39:42 -0500
+In-Reply-To: <59CF9743-8837-4279-9B5A-8AD0878BF5F2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/22/13 5:50 PM, Jan Kara wrote:
-> On Mon 21-01-13 18:11:30, Ted Tso wrote:
->> On Tue, Jan 22, 2013 at 12:04:32AM +0100, Sedat Dilek wrote:
->>>
->>> Beyond the FUSE/LOOP fun, will you apply this patch to your linux-next GIT tree?
->>>
->>> Feel free to add...
->>>
->>>      Tested-by: Sedat Dilek <sedat.dilek@gmail.com>
->>>
->>> A similiar patch for JBD went through your tree into mainline (see [1] and [2]).
+On 1/22/13 6:03 PM, Andreas Dilger wrote:
+> On 2013-01-22, at 4:50 PM, Bradley C. Kuszmaul wrote:
+>> Thanks, this has been a very helpful thread.
 >>
->> I'm not at all convinced that this patch has anything to do with your
->> problem.  I don't see how it could affect things, and I believe you
->> mentioned that you saw the problem even with this patch applied?  (I'm
->> not sure; some of your messages which you sent were hard to
->> understand, and you mentioned something about trying to send messages
->> when low on sleep :-).
->>
->> In any case, the reason why I haven't pulled this patch into the ext4
->> tree is because I was waiting for Eric and some of the performance
->> team folks at Red Hat to supply some additional information about why
->> this commit was making a difference in performance for a particular
->> proprietary, closed source benchmark.
->   Just a small correction - it was aim7 AFAIK which isn't closed source
-> (anymore). You can download it from SourceForge
-> (http://sourceforge.net/projects/aimbench/files/aim-suite7/Initial%20release/).
-> Now I have some reservations about what the benchmark does but historically
-> it has found quite a few issues for us as well.
+>> How do I determine and control whether a file is extent-based?
 > 
->> I'm very suspicious about applying patches under the "cargo cult"
->> school of programming.  ("We don't understand why it makes a
->> difference, but it seems to be good, so bombs away!" :-)
->   Well, neither am I ;) But it is obvious the patch speeds up
-> log_start_commit() by 'a bit' (taking spinlock, disabling irqs, ...). And
-> apparently 'a bit' is noticeable for particular workload on a particular
-> machine - commit statistics Eric provided showed that clearly. I'd still be
-> happier if Eric also told us how much log_start_commit() calls there were
-> so that one could verify that 'a bit' could indeed multiply to a measurable
-> difference. But given how simple the patch is, I gave away after a while
-> and just merged it...
+> You can use "lsattr" on the file, and look for the "e" attribute.
+> 
+> This should be standard for any ext4-formatted filesystem.  For
+> filesystems upgraded from ext3, you need to "tune2fs -O extents"
+> to enable this feature.
 
-I am still trying to get our perf guys to collect that data, FWIW...
-I will send it when I get it.  I bugged them again today.  :)
-
-(Just to be sure: I was going to measure the wakeups the old way, and the
-avoided wakeups with the new change; sound ok?)
+But since it sounds like you might be on RHEL, don't do that.  We don't
+test it or support it.  If you want ext4, mkfs.ext4 the device and go
+from there.
 
 -Eric
 
-> 								Honza
+> Cheers, Andreas
+> 
+>> On Tue, Jan 22, 2013 at 11:20 AM, Zheng Liu <gnehzuil.liu@gmail.com> wrote:
+>>> Ext4 file system supports hole punching.  But until now only extent-based
+>>> file supports it.  As far as I know, redhat distributions don't support
+>>> hole punching.  You can find a sample program from e2fsprogs which is in
+>>> $e2fsprogs/conrib/fallocate.c.  The latest fallocate(1) in util-linux
+>>> also can be as a demo.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
