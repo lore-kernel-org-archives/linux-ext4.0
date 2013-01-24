@@ -1,85 +1,53 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] fs: allow for fs-specific objects to be pruned as part
- of pruning inodes
-Date: Fri, 25 Jan 2013 07:03:10 +1100
-Message-ID: <20130124200310.GF2667@dastard>
-References: <20130121170937.GB15473@gmail.com>
- <1358921168-30921-1-git-send-email-tytso@mit.edu>
- <20130123133231.GS2498@dastard>
- <20130124005816.bce599de.akpm@linux-foundation.org>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: [PATCH] e2fslibs: fix llseek on i386
+Date: Thu, 24 Jan 2013 15:22:37 -0500
+Message-ID: <5101980D.30904@ubuntu.com>
+References: <1359044517-18243-1-git-send-email-psusi@ubuntu.com> <20130124195158.GC9477@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	gnehzuil.liu@gmail.com, linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20130124005816.bce599de.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:51336 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756455Ab3AXUWk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 15:22:40 -0500
+In-Reply-To: <20130124195158.GC9477@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 24, 2013 at 12:58:16AM -0800, Andrew Morton wrote:
-> On Thu, 24 Jan 2013 00:32:31 +1100 Dave Chinner <david@fromorbit.com> wrote:
-> 
-> > Also, the superblock shrinker is designed around a direct 1:1:1
-> > dependency relationship between the superblock dentry, inode and "fs
-> > cache" objects. i.e. dentry pins inode pins fs cache object.  It is
-> > designed to keep a direct balance of the three caches by ensuring
-> > they get scanned in amounts directly proportional to the relative
-> > differences in their object counts.  That can't be done with
-> > separate shrinkers, hence the use of the superblock shrinker to
-> > define the dependent relationship between the caches.
-> 
-> I was staring at the code and at the 0e1fdafd9 changelog trying to work
-> out why prune_super() does its weird shrinker-in-a-shrinker thing.  And
-> failing.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-commit 8daaa83145ef1f0a146680618328dbbd0fa76939
-Author: Dave Chinner <dchinner@redhat.com>
-Date:   Fri Jul 8 14:14:46 2011 +1000
+On 1/24/2013 2:51 PM, Theodore Ts'o wrote:
+> How did you find this?  I've done a quick search for SEEK_CUR, and
+> it looks like only place where this could cause a problem is with 
+> e2image.  And a quick test of a i386 version of e2image with a
+> large file system is that it does indeed blow up with an
+> "Inappropriate ioctl for device" error.
 
-    xfs: make use of new shrinker callout for the inode cache
-    
-    Convert the inode reclaim shrinker to use the new per-sb shrinker
-    operations. This allows much bigger reclaim batches to be used, and
-    allows the XFS inode cache to be shrunk in proportion with the VFS
-    dentry and inode caches. This avoids the problem of the VFS caches
-    being shrunk significantly before the XFS inode cache is shrunk
-    resulting in imbalances in the caches during reclaim.
-    
-    Signed-off-by: Dave Chinner <dchinner@redhat.com>
-    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+That's where I found it, but the error should be "seek: Value too
+large for defined data type"
 
-Basically, it's to allow filesystems with their own inode cache
-management to shrink the cache in direct proportion to the VFS inode
-cache so that we don't get situations where the VFS caches get
-shrunk to nothing while the filesystem inode cache stays large (and
-hence no memory is reclaimed) and vice-versa. The reclaim imbalance
-problem ended up so bad I could OOM machines simply by running a
-metadata intensive workload....
+> Is there any other potential problems that are caused by this bug?
+> I like to explain the impacts of bug fixes in libext2fs for folks
+> who are doing bug fix / code archeology.
 
-> IOW it needs a code comment, please.  Ideally one which explains *why*
-> "It is designed to keep a direct balance of the three caches...".  What
-> would go wrong if the fs were to just register its own shrinker in the
-> expected manner?
+If e2image is the only internal user of the call with SEEK_CUR, then I
+guess it only affects any external users of the library who were doing
+this ( I am not aware of any ).
 
-Nothing, unless there is a direct reclaim relationship between the
-filesystem cache and the VFS caches and then independent shrinkers
-cannot maintain the balanced relationship between the dependent
-caches.  XFS uses normal shrinkers for it's other caches that don't
-have a direct 1:1 relationship to the VFS inode and dentry caches,
-and that works just fine.
 
-As it is, if you just want to keep random caches at the same object
-count as the inodes and dentries, then the fs callout will work just
-fine. But if you want something that does not have an equivalent
-object count relationship, then a separate shrinker is what is
-needed.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (MingW32)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+iQEcBAEBAgAGBQJRAZgNAAoJEJrBOlT6nu752g0IAN4czK0LevEa9Mx2htaZ3oms
+TtcpKe7tuXgmvLB0XWv8Q2f6zCDMH7qmWqWZORdx98jg2XeynaEbZvVIQFEsfOVa
+05r7sk64TPGXrdkwuqFTe4M7MYmrQmLnfGzd2NMddlWcXOc+R4pFUrrvYbU7QQv/
+SGfb9Uo+EFZhSuJLPY1QW4EO09ghD4k6XHnHtioAsgjyxSa4p2NcZiBxmFT7ZJdw
+DbET65wHkKT2s+jLQQAOPx/IYAftrZuV7t+YoX7RTS4tdpENlgoVlZ3drCvHB2aG
+LwDDns4C1e0cAMncGKh3HY4/CInMZ1jFWHYW+VvuzZNJ7Uxur2mG6NUyWp6cNqU=
+=WeEv
+-----END PGP SIGNATURE-----
