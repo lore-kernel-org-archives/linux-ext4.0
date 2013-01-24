@@ -1,259 +1,91 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 04/12] ext4: Disable merging of uninitialized extents
-Date: Thu, 24 Jan 2013 19:32:22 +0400
-Message-ID: <87sj5qd2bd.fsf@openvz.org>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz> <1358510446-19174-5-git-send-email-jack@suse.cz> <87vcamdi6e.fsf@openvz.org> <20130124151224.GC21818@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH] e2fslibs: fix llseek on i386
+Date: Thu, 24 Jan 2013 11:21:56 -0500
+Message-ID: <1359044517-18243-1-git-send-email-psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org, Phillip Susi <psusi@ubuntu.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bk0-f42.google.com ([209.85.214.42]:52781 "EHLO
-	mail-bk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752430Ab3AXPc2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 10:32:28 -0500
-Received: by mail-bk0-f42.google.com with SMTP id ji2so5242887bkc.29
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2013 07:32:26 -0800 (PST)
-In-Reply-To: <20130124151224.GC21818@quack.suse.cz>
+Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:40218 "EHLO
+	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753065Ab3AXQWF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 11:22:05 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 24 Jan 2013 16:12:24 +0100, Jan Kara <jack@suse.cz> wrote:
-> On Thu 24-01-13 13:49:45, Dmitry Monakhov wrote:
-> > On Fri, 18 Jan 2013 13:00:38 +0100, Jan Kara <jack@suse.cz> wrote:
-> > > Merging of uninitialized extents creates all sorts of interesting race
-> > > possibilities when writeback / DIO races with fallocate. Thus
-> > > ext4_convert_unwritten_extents_endio() has to deal with a case where
-> > > extent to be converted needs to be split out first. That isn't nice
-> > > for two reasons:
-> > > 
-> > > 1) It may need allocation of extent tree block so ENOSPC is possible.
-> > > 2) It complicates end_io handling code
-> > As we already discussed your idea is 100% correct, but even with
-> > what patch I still able to trigger situation where split it required.
-> > I've got following error with this patch applied on top of 7f5118629f7
-> > EXT4-fs error (device dm-3): ext4_convert_unwritten_extents_endio:3411:
-> > inode #12: comm kworker/u:4: Written extent modified before IO finished:
-> > extent logical block 1379787, len 64; IO logical block 1379787, len 21
->   Drat, thanks for heads up. I did run xfstests on the patch set but
-> apparently you are doing something more evil :) If I get your test & error
-> right, you do AIO DIO to a file while doing truncate 0, fallocate SIZE, in
-> a loop. And extent is found longer when we finish the IO. Am I right?
-Correct. AFAIU we have another bug which break things
-I've added prink for ext4_can_extents_be_merged if it was positive
-And have got following output:     lblk    len  pblk uninit   lblk    len  pblk     uninit 
-ext4_can_extents_be_merged:1618 ex1[2254944:32, 2052192]:0 ex2[2254976:32, 2052224]:0
-ext4_can_extents_be_merged:1618 ex1[398176:32, 2198368]:0 ex2[398208:32,2198400]:0
-ext4_can_extents_be_merged:1618 ex1[584704:32, 1379328]:0 ex2[584736:32,1379360]:0
-ext4_can_extents_be_merged:1618 ex1[1407488:32, 762368]:0 ex2[1407520:32, 762400]:0
-ext4_can_extents_be_merged:1618 ex1[443744:32, 2495456]:0 ex2[443776:32,2495488]:0
-ext4_can_extents_be_merged:1618 ex1[1057230:1, 2190944]:0 ex2[1057231:17, 2190945]:0
-ext4_can_extents_be_merged:1618 ex1[2108160:832, 2563328]:0 ex2[2108992:32, 2564160]:0
-##### Here Both extents was initialized                  ^^^                        ^^^
-EXT4-fs error (device dm-3): ext4_convert_unwritten_extents_endio:3426: inode #12: comm kworker/u:4: Written extent modif
-ied before IO finished: extent logical block 2108576, len 448; IO logical block 2108576, len 32
-#####But right after that it is appeared uninitialized.
+ext2fs_llseek() was using lseek instead of lseek64.  The
+only time it would use lseek64 is if passed an offset that
+overflowed 32 bits.  This works for SEEK_SET, but not
+SEEK_CUR, which can apply a small offset to move the file
+pointer past the 32 bit limit.
 
-> 
-> 								Honza
-> > ------------[ cut here ]------------
-> > WARNING: at fs/ext4/extents.c:4518
-> > ext4_convert_unwritten_extents+0x149/0x210 [ext4]()
-> > Hardware name:         
-> > Modules linked in: ext4 jbd2 cpufreq_ondemand acpi_cpufreq freq_table
-> > mperf coretemp kvm_intel kvm crc32c_intel microcode sg button ext3 jbd
-> > mbcache sd_mod crc_t10dif ahci libahci pata_acpi ata_generic dm_mirror
-> > dm_region_hash dm_log dm_mod
-> > Pid: 249, comm: kworker/u:4 Not tainted 3.8.0-rc3+ #16
-> > Call Trace:
-> >  [<ffffffff8106fc23>] warn_slowpath_common+0xc3/0xf0
-> >  [<ffffffff8106fc6a>] warn_slowpath_null+0x1a/0x20
-> >  [<ffffffffa03fb909>] ext4_convert_unwritten_extents+0x149/0x210 [ext4]
-> >  [<ffffffff811064fa>] ? __lock_release+0x1da/0x1f0
-> >  [<ffffffffa03c368e>] ext4_end_io+0x3e/0x160 [ext4]
-> >  [<ffffffff813aab40>] ? __list_del_entry+0x210/0x250
-> >  [<ffffffffa03c3a21>] ext4_do_flush_completed_IO+0x101/0x280 [ext4]
-> >  [<ffffffffa03c3bb6>] ext4_end_io_work+0x16/0x20 [ext4]
-> >  [<ffffffff8109f7dd>] process_one_work+0x4ad/0x780
-> >  [<ffffffff8109f6d2>] ? process_one_work+0x3a2/0x780
-> >  [<ffffffffa03c3ba0>] ? ext4_do_flush_completed_IO+0x280/0x280 [ext4]
-> >  [<ffffffff810a3ed1>] worker_thread+0x3f1/0x590
-> >  [<ffffffff810a3ae0>] ? manage_workers+0x210/0x210
-> >  [<ffffffff810ac870>] kthread+0x100/0x110
-> >  [<ffffffff810ac770>] ? __init_kthread_worker+0x70/0x70
-> >  [<ffffffff81812e2c>] ret_from_fork+0x7c/0xb0
-> >  [<ffffffff810ac770>] ? __init_kthread_worker+0x70/0x70
-> > ---[ end trace add5cefed72186f8 ]---
-> > EXT4-fs (dm-3): ext4_convert_unwritten_extents:4522: inode #12: block
-> > 1379787: len 21: ext4_ext_map_blocks returned -5
-> > EXT4-fs (dm-3): failed to convert unwritten extents to written
-> > extents -- potential data loss!  (inode 12, offset 5651562496, size
-> > 131072, error -5)
-> > 
-> > I've run 286'th xfstest (this is my own copy of xfstest so 286'th test
-> > is differ from mainstream one) you can find it here
-> > https://raw.github.com/dmonakhov/xfstests/devel/286
-> > In two words it is stress test which run DIO/AIO,truncate,fallocate in parallel.
-> > Also you need recent FIO(http://git.kernel.dk/?p=fio.git;a=summary)
-> > 
-> > Currently I try to understand what caused this issue.
-> > > 
-> > > So we disable merging of uninitialized extents which allows us to simplify
-> > > the code. Extents will get merged after they are converted to initialized
-> > > ones.
-> > > 
-> > > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/ext4/extents.c |   61 +++++++++++++++-------------------------------------
-> > >  1 files changed, 18 insertions(+), 43 deletions(-)
-> > > 
-> > > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > > index 26af228..f1ce33a 100644
-> > > --- a/fs/ext4/extents.c
-> > > +++ b/fs/ext4/extents.c
-> > > @@ -54,9 +54,6 @@
-> > >  #define EXT4_EXT_MARK_UNINIT1	0x2  /* mark first half uninitialized */
-> > >  #define EXT4_EXT_MARK_UNINIT2	0x4  /* mark second half uninitialized */
-> > >  
-> > > -#define EXT4_EXT_DATA_VALID1	0x8  /* first half contains valid data */
-> > > -#define EXT4_EXT_DATA_VALID2	0x10 /* second half contains valid data */
-> > > -
-> > >  static __le32 ext4_extent_block_csum(struct inode *inode,
-> > >  				     struct ext4_extent_header *eh)
-> > >  {
-> > > @@ -1579,20 +1576,17 @@ int
-> > >  ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> > >  				struct ext4_extent *ex2)
-> > >  {
-> > > -	unsigned short ext1_ee_len, ext2_ee_len, max_len;
-> > > +	unsigned ext1_ee_len, ext2_ee_len;
-> > >  
-> > >  	/*
-> > > -	 * Make sure that either both extents are uninitialized, or
-> > > -	 * both are _not_.
-> > > +	 * Make sure that both extents are initialized. We don't merge
-> > > +	 * uninitialized extents so that we can be sure that end_io code has
-> > > +	 * the extent that was written properly split out and conversion to
-> > > +	 * initialized is trivial.
-> > >  	 */
-> > > -	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-> > > +	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
-> > >  		return 0;
-> > >  
-> > > -	if (ext4_ext_is_uninitialized(ex1))
-> > > -		max_len = EXT_UNINIT_MAX_LEN;
-> > > -	else
-> > > -		max_len = EXT_INIT_MAX_LEN;
-> > > -
-> > >  	ext1_ee_len = ext4_ext_get_actual_len(ex1);
-> > >  	ext2_ee_len = ext4_ext_get_actual_len(ex2);
-> > >  
-> > > @@ -1605,7 +1599,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> > >  	 * as an RO_COMPAT feature, refuse to merge to extents if
-> > >  	 * this can result in the top bit of ee_len being set.
-> > >  	 */
-> > > -	if (ext1_ee_len + ext2_ee_len > max_len)
-> > > +	if (ext1_ee_len + ext2_ee_len > EXT_INIT_MAX_LEN)
-> > >  		return 0;
-> > >  #ifdef AGGRESSIVE_TEST
-> > >  	if (ext1_ee_len >= 4)
-> > > @@ -2959,9 +2953,6 @@ static int ext4_split_extent_at(handle_t *handle,
-> > >  	unsigned int ee_len, depth;
-> > >  	int err = 0;
-> > >  
-> > > -	BUG_ON((split_flag & (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2)) ==
-> > > -	       (EXT4_EXT_DATA_VALID1 | EXT4_EXT_DATA_VALID2));
-> > > -
-> > >  	ext_debug("ext4_split_extents_at: inode %lu, logical"
-> > >  		"block %llu\n", inode->i_ino, (unsigned long long)split);
-> > >  
-> > > @@ -3020,14 +3011,7 @@ static int ext4_split_extent_at(handle_t *handle,
-> > >  
-> > >  	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
-> > >  	if (err == -ENOSPC && (EXT4_EXT_MAY_ZEROOUT & split_flag)) {
-> > > -		if (split_flag & (EXT4_EXT_DATA_VALID1|EXT4_EXT_DATA_VALID2)) {
-> > > -			if (split_flag & EXT4_EXT_DATA_VALID1)
-> > > -				err = ext4_ext_zeroout(inode, ex2);
-> > > -			else
-> > > -				err = ext4_ext_zeroout(inode, ex);
-> > > -		} else
-> > > -			err = ext4_ext_zeroout(inode, &orig_ex);
-> > > -
-> > > +		err = ext4_ext_zeroout(inode, &orig_ex);
-> > >  		if (err)
-> > >  			goto fix_extent_len;
-> > >  		/* update the extent length and mark as initialized */
-> > > @@ -3085,8 +3069,6 @@ static int ext4_split_extent(handle_t *handle,
-> > >  		if (uninitialized)
-> > >  			split_flag1 |= EXT4_EXT_MARK_UNINIT1 |
-> > >  				       EXT4_EXT_MARK_UNINIT2;
-> > > -		if (split_flag & EXT4_EXT_DATA_VALID2)
-> > > -			split_flag1 |= EXT4_EXT_DATA_VALID1;
-> > >  		err = ext4_split_extent_at(handle, inode, path,
-> > >  				map->m_lblk + map->m_len, split_flag1, flags1);
-> > >  		if (err)
-> > > @@ -3099,8 +3081,7 @@ static int ext4_split_extent(handle_t *handle,
-> > >  		return PTR_ERR(path);
-> > >  
-> > >  	if (map->m_lblk >= ee_block) {
-> > > -		split_flag1 = split_flag & (EXT4_EXT_MAY_ZEROOUT |
-> > > -					    EXT4_EXT_DATA_VALID2);
-> > > +		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
-> > >  		if (uninitialized)
-> > >  			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
-> > >  		if (split_flag & EXT4_EXT_MARK_UNINIT2)
-> > > @@ -3379,8 +3360,7 @@ static int ext4_split_unwritten_extents(handle_t *handle,
-> > >  
-> > >  	split_flag |= ee_block + ee_len <= eof_block ? EXT4_EXT_MAY_ZEROOUT : 0;
-> > >  	split_flag |= EXT4_EXT_MARK_UNINIT2;
-> > > -	if (flags & EXT4_GET_BLOCKS_CONVERT)
-> > > -		split_flag |= EXT4_EXT_DATA_VALID2;
-> > > +
-> > >  	flags |= EXT4_GET_BLOCKS_PRE_IO;
-> > >  	return ext4_split_extent(handle, inode, path, map, split_flag, flags);
-> > >  }
-> > > @@ -3405,20 +3385,15 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
-> > >  		"block %llu, max_blocks %u\n", inode->i_ino,
-> > >  		  (unsigned long long)ee_block, ee_len);
-> > >  
-> > > -	/* If extent is larger than requested then split is required */
-> > > +	/* Extent is larger than requested? */
-> > >  	if (ee_block != map->m_lblk || ee_len > map->m_len) {
-> > > -		err = ext4_split_unwritten_extents(handle, inode, map, path,
-> > > -						   EXT4_GET_BLOCKS_CONVERT);
-> > > -		if (err < 0)
-> > > -			goto out;
-> > > -		ext4_ext_drop_refs(path);
-> > > -		path = ext4_ext_find_extent(inode, map->m_lblk, path);
-> > > -		if (IS_ERR(path)) {
-> > > -			err = PTR_ERR(path);
-> > > -			goto out;
-> > > -		}
-> > > -		depth = ext_depth(inode);
-> > > -		ex = path[depth].p_ext;
-> > > +		EXT4_ERROR_INODE(inode, "Written extent modified before IO"
-> > > +			" finished: extent logical block %llu, len %u; IO"
-> > > +			" logical block %llu, len %u\n",
-> > > +			(unsigned long long)ee_block, ee_len,
-> > > +			(unsigned long long)map->m_lblk, map->m_len);
-> > > +		err = -EIO;
-> > > +		goto out;
-> > >  	}
-> > >  
-> > >  	err = ext4_ext_get_access(handle, inode, path + depth);
-> > > -- 
-> > > 1.7.1
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The code has been changed to instead try lseek64 first, and
+fall back to lseek if that fails.  It also was doing a
+runtime check of the size of off_t.  This has been moved to
+compile time.
+
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+---
+ configure.in        |    3 +++
+ lib/config.h.in     |    3 +++
+ lib/ext2fs/llseek.c |   13 +++++--------
+ 3 files changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/configure.in b/configure.in
+index ac3cd92..181faeb 100644
+--- a/configure.in
++++ b/configure.in
+@@ -970,14 +970,17 @@ AC_CHECK_SIZEOF(short)
+ AC_CHECK_SIZEOF(int)
+ AC_CHECK_SIZEOF(long)
+ AC_CHECK_SIZEOF(long long)
++AC_CHECK_SIZEOF(off_t)
+ SIZEOF_SHORT=$ac_cv_sizeof_short
+ SIZEOF_INT=$ac_cv_sizeof_int
+ SIZEOF_LONG=$ac_cv_sizeof_long
+ SIZEOF_LONG_LONG=$ac_cv_sizeof_long_long
++SIZEOF_OFF_T=$ac_cv_sizeof_off_t
+ AC_SUBST(SIZEOF_SHORT)
+ AC_SUBST(SIZEOF_INT)
+ AC_SUBST(SIZEOF_LONG)
+ AC_SUBST(SIZEOF_LONG_LONG)
++AC_SUBST(SIZEOF_OFF_T)
+ AC_C_BIGENDIAN
+ BUILD_CC="$BUILD_CC" CPP="$CPP" /bin/sh $ac_aux_dir/parse-types.sh
+ ASM_TYPES_HEADER=./asm_types.h
+diff --git a/lib/config.h.in b/lib/config.h.in
+index 6f88c9c..eebb75d 100644
+--- a/lib/config.h.in
++++ b/lib/config.h.in
+@@ -552,6 +552,9 @@
+ /* The size of `long long', as computed by sizeof. */
+ #undef SIZEOF_LONG_LONG
+ 
++/* The size of `off_t', as computed by sizeof. */
++#undef SIZEOF_OFF_T
++
+ /* The size of `short', as computed by sizeof. */
+ #undef SIZEOF_SHORT
+ 
+diff --git a/lib/ext2fs/llseek.c b/lib/ext2fs/llseek.c
+index b0576e4..e5cb784 100644
+--- a/lib/ext2fs/llseek.c
++++ b/lib/ext2fs/llseek.c
+@@ -90,18 +90,14 @@ static ext2_loff_t my_llseek (int fd, ext2_loff_t offset, int origin)
+ 
+ ext2_loff_t ext2fs_llseek (int fd, ext2_loff_t offset, int origin)
+ {
++#if SIZEOF_OFF_T >= SIZEOF_LONG_LONG
++	return lseek (fd, offset, origin);
++#else
+ 	ext2_loff_t result;
+ 	static int do_compat = 0;
+ 
+-	if ((sizeof(off_t) >= sizeof(ext2_loff_t)) ||
+-	    (offset < ((ext2_loff_t) 1 << ((sizeof(off_t)*8) -1))))
++	if (do_compat)
+ 		return lseek(fd, (off_t) offset, origin);
+-
+-	if (do_compat) {
+-		errno = EINVAL;
+-		return -1;
+-	}
