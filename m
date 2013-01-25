@@ -1,55 +1,28 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [RESEND][PATCH 2/2 v2] ext4: let us fully support punching hole
- feature in fallocate
-Date: Fri, 25 Jan 2013 11:59:12 +0800
-Message-ID: <20130125035912.GA15806@gmail.com>
-References: <1358493381-20150-1-git-send-email-wenqing.lz@taobao.com>
- <1358493381-20150-2-git-send-email-wenqing.lz@taobao.com>
- <20130125033201.GD28908@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix memory leak when quota options are specified
+ multiple times
+Date: Thu, 24 Jan 2013 22:49:20 -0500
+Message-ID: <20130125034920.GE28908@thunk.org>
+References: <50FBC2D8.9070807@asianux.com>
+ <20130121103138.GB5588@quack.suse.cz>
+ <50FD1FA1.8060104@asianux.com>
+ <20130121110524.GG5588@quack.suse.cz>
+ <50FD2187.30708@asianux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org
+To: Chen Gang <gang.chen@asianux.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f43.google.com ([209.85.210.43]:36989 "EHLO
-	mail-da0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752453Ab3AYDpK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 22:45:10 -0500
-Received: by mail-da0-f43.google.com with SMTP id u36so4589791dak.16
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2013 19:45:10 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:45387 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754372Ab3AYDt0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jan 2013 22:49:26 -0500
 Content-Disposition: inline
-In-Reply-To: <20130125033201.GD28908@thunk.org>
+In-Reply-To: <50FD2187.30708@asianux.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 24, 2013 at 10:32:01PM -0500, Theodore Ts'o wrote:
-> On Fri, Jan 18, 2013 at 03:16:21PM +0800, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > After adding indirect punching hole feature, we need to enable it in fallocate.
-> > For this purpose, some sanity checks need to be adjusted.  Currently we need to
-> > check FALLOC_FL_PUNCH_HOLE flag before other sanity checks.
-> 
-> I've folded these two patches into one since the first patch in this
-> series since there won't be any way to exercise the new code paths
-> until we enable this in fallocate(), and it doesn't really change
-> existing code paths.  If it did make huge changes in the normal code
-> path, it might be useful to keep the two commits separate, but that's
-> not the case here.
+Thanks, applied.
 
-Thanks for pointing out. :-)
-
-> 
-> Anyway, they look good so I've checked them into my tree.  I'm
-> currently kicking off a test run to make sure there aren't any
-> problems except for the test 255 failure when testing w/o extents, but
-> I don't really anticipate any issues.
-
-I wonder that maybe we need to submit a patch to let xfstest understand
-that a filesystem supports extents or not because after applied this
-patch indirect-based file in ext4 has supported seek_data/hole and hole
-punching.  I usually run xfstest automatically, and every time I need
-to check the result of #255 and #285 manually.  That is annoying for me.
-
-Regards,
-                                                - Zheng
+						- Ted
