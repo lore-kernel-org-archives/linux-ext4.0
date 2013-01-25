@@ -1,42 +1,85 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: [PATCH] libext2fs: fix ext2fs_llseek on i386
-Date: Thu, 24 Jan 2013 23:34:43 -0500
-Message-ID: <51020B63.5000404@ubuntu.com>
-References: <20130125041313.GF28908@thunk.org> <1359087258-13276-1-git-send-email-tytso@mit.edu>
+From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
+Subject: Use EXT4_BOOT_LOADER_INO for boot loader GRUB?
+Date: Fri, 25 Jan 2013 09:18:50 +0100
+Message-ID: <51023FEA.7000802@reinform.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:46322 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753389Ab3AYEeo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 23:34:44 -0500
-In-Reply-To: <1359087258-13276-1-git-send-email-tytso@mit.edu>
+Received: from gw1.reinform.de ([82.141.45.9]:47640 "EHLO
+	mail-out.dmz.loef.reinform.de" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751431Ab3AYI3M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jan 2013 03:29:12 -0500
+Received: from postfix.loef.reinform.de (postfix.loef.reinform.de [10.1.1.39])
+	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id 93B64A83C3
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 09:18:52 +0100 (CET)
+Received: from mail.reinform.de (mail.reinform.de [82.141.45.14])
+	by postfix.loef.reinform.de (Postfix) with ESMTP id 4E32A1BD84
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 08:50:57 +0100 (CET)
+Received: from [10.1.1.108] (stick.loef.reinform.de [10.1.1.108])
+	(using TLSv1 with cipher DHE-RSA-CAMELLIA256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.reinform.de (Postfix) with ESMTPSA id E614CBB4E4
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 09:18:51 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+There is a long discussion about booting GRUB2 from a partition 
+containing ext2/3/4 (e.g. 
+https://bugzilla.redhat.com/show_bug.cgi?id=872826 and many more on the 
+net). This is typically a multiboot scenario with a primary boot loader 
+in the MBR loading a second bootloader (here "GRUB2") from a partition.
 
-On 01/24/2013 11:14 PM, Theodore Ts'o wrote:
-> +	fallback: +		if (offset < ((ext2_loff_t) 1 << ((sizeof(off_t)*8)
-> -1))) +			return lseek(fd, (off_t) offset, origin); errno =
-> EINVAL;
+Currently GRUB2 prints an error message when trying to install to a 
+ext2/3/4 filesystem with:
 
-Shouldn't that be EOVERFLOW?
+"Attempting to install GRUB to a partition instead of the MBR.  This is 
+a BAD idea. Embedding is not possible. GRUB can only be installed in 
+this setup by using blocklists. However, blocklists are UNRELIABLE and 
+their use is discouraged."
 
+The basic problem is, that GRUB needs a safe place to store (currently 
+32k) for its boot loader "core.img". That place should be simple to find 
+from the primary boot code ("stage1") and the place should be safe for 
+user intervention.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Using GnuPG with undefined - http://www.enigmail.net/
+QUESTION:
 
-iQEcBAEBAgAGBQJRAgtjAAoJEJrBOlT6nu75II4H/07hJXsFEGxetEpJGdshSxBc
-YTixcONEBDlzppAtLr/aLmHDGr+0269Wjrdj0EhrEqIqlkMG3sRcEkkBoGE7bXbm
-3oYLru+YtdVFuDfvZ6PDuConYD/Ud711uLP1Bu2gJN0fGO0l+cg0v1VIirKgaDMO
-pB468llpVxMY3Tj9SN5JB7Np0ZS3qxhMpYc3RGsObRamU/BHcIRYw65K8Vsgi4xa
-jtf6O8/bQm2AUB+d4IRBuR+KV0/HWFCYtcfSBh/iv/e3aWr2CXA59J5WuGpCfWAM
-a72+S9Ek7IOiTi2H59swh2bCSajf01da1JvA26f6yBH7KrY2mvWys1/C/3liUzs=
-=/V1N
------END PGP SIGNATURE-----
+You have reserved a special inode #5 called "EXT4_BOOT_LOADER_INO". Is 
+this inode currently used or supported by kernel or user land? What is 
+the idea of this inode?
+
+PROPOSAL:
+
+I can think of using that inode to store the file "core.img" of GRUB. 
+That file is used by GRUB to boot and the block list of that file is 
+stored in GRUB when using "--force" to override the above error.
+
+ext2/3/4 must make sure, that the block list of that file never changes. 
+I propose an additional EXT4 ioctl to tell ext4, which file to store in 
+EXT4_BOOT_LOADER_INO.
+
+Probably there must be more changes to e2fsck and friends.
+
+Any ideas?
+
+Till
+
+-- 
++-------+-------------------------------------------------------------+
+|       | dr. tilmann bubeck               reinform medien- und       |
+|       |                                  informationstechnologie AG |
+| rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
+| form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
+|    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
+|       | email: t.bubeck@reinform.de      http://www.reinform.de     |
+|       +-------------------------------------------------------------+
+|       | pflichtangaben nach paragraph 80, AktG:                     |
+|       | reinform medien- und informationstechnologie AG, stuttgart  |
+|       | handelsregister stuttgart, HRB 23001                        |
+|       | vorstand:     dr. tilmann bubeck (vorsitz)                  |
+|       | aufsichtsrat: frank stege (vorsitz)                         |
++-------+-------------------------------------------------------------+
+
