@@ -1,44 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RESEND][PATCH 2/2 v2] ext4: let us fully support punching hole
- feature in fallocate
-Date: Thu, 24 Jan 2013 23:21:22 -0500
-Message-ID: <20130125042122.GG28908@thunk.org>
-References: <1358493381-20150-1-git-send-email-wenqing.lz@taobao.com>
- <1358493381-20150-2-git-send-email-wenqing.lz@taobao.com>
- <20130125033201.GD28908@thunk.org>
- <20130125035912.GA15806@gmail.com>
+Subject: Re: [ext4:dev 6/9] fs/ext4/super.c:4039:1: warning: label
+ 'failed_mount8' defined but not used
+Date: Thu, 24 Jan 2013 23:24:45 -0500
+Message-ID: <20130125042445.GH28908@thunk.org>
+References: <51020468.kToCHrt5WwL/Cp68%fengguang.wu@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org
+To: kbuild test robot <fengguang.wu@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45397 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45400 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751065Ab3AYEV0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jan 2013 23:21:26 -0500
+	id S1751065Ab3AYEYr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jan 2013 23:24:47 -0500
 Content-Disposition: inline
-In-Reply-To: <20130125035912.GA15806@gmail.com>
+In-Reply-To: <51020468.kToCHrt5WwL/Cp68%fengguang.wu@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 11:59:12AM +0800, Zheng Liu wrote:
+On Fri, Jan 25, 2013 at 12:04:56PM +0800, kbuild test robot wrote:
+> tree:   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+> head:   a16d0247541d300a1a1027212725c86a16180a0a
+> commit: 99d0e4f8d1d88b303219c50b3a2c1192eab6b3e2 [6/9] ext4: release sysfs kobject when failing to enable quotas on mount
+> config: x86_64-randconfig-x988 (attached as .config)
 > 
-> I wonder that maybe we need to submit a patch to let xfstest understand
-> that a filesystem supports extents or not because after applied this
-> patch indirect-based file in ext4 has supported seek_data/hole and hole
-> punching.  I usually run xfstest automatically, and every time I need
-> to check the result of #255 and #285 manually.  That is annoying for me.
+> All warnings:
+> 
+>    fs/ext4/super.c: In function 'ext4_fill_super':
+> >> fs/ext4/super.c:4039:1: warning: label 'failed_mount8' defined but not used [-Wunused-label]
 
-I would think the right thing to do is to have xfstests make sure it
-understands that fallocate working with FALLOC_FL_PUNCH_HOLE does not
-imply that fallocate without the FALLOC_FL_PUNCH_HOLE flag OR'ed in
-will work.  It should test for support for preallocation and hole
-punching separately, and do tests accordingly.
+Sigh.... I'll add the following to make this go away.
 
-That way we don't have to add explicit ext4 knowledge/logic to
-xfstests.  (Maybe in the future there will be some other file system
-which supports punch hole but not preallocate, and it might not be
-based on whether or not the file is using ext4 extents or not.)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 96a3cc9..3ac3060 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4036,8 +4036,10 @@ cantfind_ext4:
+ 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+ 	goto failed_mount;
+ 
++#ifdef CONFIG_QUOTA
+ failed_mount8:
+ 	kobject_del(&sbi->s_kobj);
++#endif
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
 
-Cheers,
-
-						- Ted
+					- Ted
