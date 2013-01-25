@@ -1,85 +1,66 @@
-From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
-Subject: Use EXT4_BOOT_LOADER_INO for boot loader GRUB?
-Date: Fri, 25 Jan 2013 09:18:50 +0100
-Message-ID: <51023FEA.7000802@reinform.de>
+From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: call WARN_ON after the debug message
+Date: Fri, 25 Jan 2013 10:22:44 +0100 (CET)
+Message-ID: <alpine.LFD.2.00.1301251012200.20753@localhost>
+References: <1359045044-31435-1-git-send-email-lczerner@redhat.com> <20130124195458.GD9477@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw1.reinform.de ([82.141.45.9]:47640 "EHLO
-	mail-out.dmz.loef.reinform.de" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751431Ab3AYI3M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jan 2013 03:29:12 -0500
-Received: from postfix.loef.reinform.de (postfix.loef.reinform.de [10.1.1.39])
-	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id 93B64A83C3
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 09:18:52 +0100 (CET)
-Received: from mail.reinform.de (mail.reinform.de [82.141.45.14])
-	by postfix.loef.reinform.de (Postfix) with ESMTP id 4E32A1BD84
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 08:50:57 +0100 (CET)
-Received: from [10.1.1.108] (stick.loef.reinform.de [10.1.1.108])
-	(using TLSv1 with cipher DHE-RSA-CAMELLIA256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.reinform.de (Postfix) with ESMTPSA id E614CBB4E4
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 09:18:51 +0100 (CET)
+Received: from mx1.redhat.com ([209.132.183.28]:39112 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751275Ab3AYJWt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jan 2013 04:22:49 -0500
+In-Reply-To: <20130124195458.GD9477@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is a long discussion about booting GRUB2 from a partition 
-containing ext2/3/4 (e.g. 
-https://bugzilla.redhat.com/show_bug.cgi?id=872826 and many more on the 
-net). This is typically a multiboot scenario with a primary boot loader 
-in the MBR loading a second bootloader (here "GRUB2") from a partition.
+On Thu, 24 Jan 2013, Theodore Ts'o wrote:
 
-Currently GRUB2 prints an error message when trying to install to a 
-ext2/3/4 filesystem with:
+> Date: Thu, 24 Jan 2013 14:54:58 -0500
+> From: Theodore Ts'o <tytso@mit.edu>
+> To: Lukas Czerner <lczerner@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Subject: Re: [PATCH 1/2] ext4: call WARN_ON after the debug message
+> 
+> On Thu, Jan 24, 2013 at 05:30:43PM +0100, Lukas Czerner wrote:
+> > In two places we call WARN_ON() before we print out the debug message,
+> > however the custom is to print such messages before we call WARN_ON() so
+> > change that.
+> > 
+> > Also use ext4_msg() instead of plain printk().
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> I was actually thinking about removing the WARN_ON entirely, or at
+> least suppressing it when the error begin returned from
+> ext4_map_blocks is EIO.  The reason for that is the warning is causing
+> noise for automated log scanners, and if the problem is caused by a
+> hardware failure, there's no real point in dumping out a stack trace.
+> More generally, is there any reason why we need the stack trace at
+> all?
+> 
+> Also maybe we should use ext4_warning() instead of ext4_msg()?
+> 
+>      	      	     	 		- Ted
 
-"Attempting to install GRUB to a partition instead of the MBR.  This is 
-a BAD idea. Embedding is not possible. GRUB can only be installed in 
-this setup by using blocklists. However, blocklists are UNRELIABLE and 
-their use is discouraged."
+Hi Ted,
 
-The basic problem is, that GRUB needs a safe place to store (currently 
-32k) for its boot loader "core.img". That place should be simple to find 
-from the primary boot code ("stage1") and the place should be safe for 
-user intervention.
+we can get the EIO error from ext4_map_blocks not only in the case
+of hardware error. The extent tree might not be in consistent state,
+or we could even ask for blocks outside the file system itself (I
+believe I've seen this before) and I think that in those cases it
+might be worth to all WARN_ON.
 
-QUESTION:
+Also people from ABRT are working on kerneloops.org replacement (so
+far it only works for Fedora)
+https://retrace.fedoraproject.org/faf/problems/hot/ so we can notice
+such problems, yes they catch even kernel WARNs because it usually
+means that we have bug somewhere else.
 
-You have reserved a special inode #5 called "EXT4_BOOT_LOADER_INO". Is 
-this inode currently used or supported by kernel or user land? What is 
-the idea of this inode?
+I agree that it would be better to use ext4_warning(), so I'll
+resend the patch.
 
-PROPOSAL:
-
-I can think of using that inode to store the file "core.img" of GRUB. 
-That file is used by GRUB to boot and the block list of that file is 
-stored in GRUB when using "--force" to override the above error.
-
-ext2/3/4 must make sure, that the block list of that file never changes. 
-I propose an additional EXT4 ioctl to tell ext4, which file to store in 
-EXT4_BOOT_LOADER_INO.
-
-Probably there must be more changes to e2fsck and friends.
-
-Any ideas?
-
-Till
-
--- 
-+-------+-------------------------------------------------------------+
-|       | dr. tilmann bubeck               reinform medien- und       |
-|       |                                  informationstechnologie AG |
-| rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
-| form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
-|    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
-|       | email: t.bubeck@reinform.de      http://www.reinform.de     |
-|       +-------------------------------------------------------------+
-|       | pflichtangaben nach paragraph 80, AktG:                     |
-|       | reinform medien- und informationstechnologie AG, stuttgart  |
-|       | handelsregister stuttgart, HRB 23001                        |
-|       | vorstand:     dr. tilmann bubeck (vorsitz)                  |
-|       | aufsichtsrat: frank stege (vorsitz)                         |
-+-------+-------------------------------------------------------------+
-
+Thanks!
+-Lukas
