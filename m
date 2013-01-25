@@ -1,286 +1,165 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 1/2 v4] libext2fs: introduce lseek SEEK_DATA/HOLE
-Date: Fri, 25 Jan 2013 11:39:04 +0800
-Message-ID: <1359085145-15490-2-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 2/2 v4] debugfs: dump a sparse file
+Date: Fri, 25 Jan 2013 11:39:05 +0800
+Message-ID: <1359085145-15490-3-git-send-email-wenqing.lz@taobao.com>
 References: <1359085145-15490-1-git-send-email-wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, Zheng Liu <wenqing.lz@taobao.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:54558 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751065Ab3AYDZL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 22:25:11 -0500
-Received: by mail-pa0-f43.google.com with SMTP id fb10so5927560pad.16
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2013 19:25:11 -0800 (PST)
+Received: from mail-da0-f47.google.com ([209.85.210.47]:42931 "EHLO
+	mail-da0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753775Ab3AYDZQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2013 22:25:16 -0500
+Received: by mail-da0-f47.google.com with SMTP id s35so4563204dak.20
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2013 19:25:15 -0800 (PST)
 In-Reply-To: <1359085145-15490-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-ext2fs_file_llseek is extented to introduce SEEK_DATA/HOLE.  In *_data()
-function it will find the next data, and in *_hole() function it will
-find the next hole.  A new error code called EXT2_ET_SEEK_BEYOND_EOF is
-define to indicate that the offset is beyond the end of file.
+When ext2fs_file_open() is called with EXT2_FILE_SPAESE flag,
+ext2fs_file_read() will return EXT2_ET_READ_HOLE_FOUND if it
+meets a hole/uninitialized block.  Then we can handle a sparse
+file in dump_file() according to this return value.
 
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 ---
- lib/ext2fs/ext2_err.et.in |   3 +
- lib/ext2fs/ext2fs.h       |   2 +
- lib/ext2fs/fileio.c       | 197 +++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 201 insertions(+), 1 deletion(-)
+ debugfs/dump.c            | 48 +++++++++++++++++++++++++++++++++++++++--------
+ lib/ext2fs/ext2_err.et.in |  3 +++
+ lib/ext2fs/ext2fs.h       |  1 +
+ lib/ext2fs/fileio.c       | 11 +++++++++--
+ 4 files changed, 53 insertions(+), 10 deletions(-)
 
+diff --git a/debugfs/dump.c b/debugfs/dump.c
+index 9409ab6..3f93fa9 100644
+--- a/debugfs/dump.c
++++ b/debugfs/dump.c
+@@ -107,13 +107,20 @@ static void dump_file(const char *cmdname, ext2_ino_t ino, int fd,
+ 	struct ext2_inode	inode;
+ 	char		*buf = 0;
+ 	ext2_file_t	e2_file;
+-	int		nbytes;
++	ext2_off64_t	ret_pos, offset;
++	int		nbytes, flags = 0;
+ 	unsigned int	got, blocksize = current_fs->blocksize;
+ 
+ 	if (debugfs_read_inode(ino, &inode, cmdname))
+ 		return;
+ 
+-	retval = ext2fs_file_open(current_fs, ino, 0, &e2_file);
++	/*
++	 * We need to handle stdout because this function is called by
++	 * do_cat() and do_dump().
++	 */
++	if (fd != 1)
++		flags = EXT2_FILE_SPARSE;
++	retval = ext2fs_file_open(current_fs, ino, flags, &e2_file);
+ 	if (retval) {
+ 		com_err(cmdname, retval, "while opening ext2 file");
+ 		return;
+@@ -125,13 +132,38 @@ static void dump_file(const char *cmdname, ext2_ino_t ino, int fd,
+ 	}
+ 	while (1) {
+ 		retval = ext2fs_file_read(e2_file, buf, blocksize, &got);
+-		if (retval)
++		if (retval && retval != EXT2_ET_READ_HOLE_FOUND)
+ 			com_err(cmdname, retval, "while reading ext2 file");
+-		if (got == 0)
+-			break;
+-		nbytes = write(fd, buf, got);
+-		if ((unsigned) nbytes != got)
+-			com_err(cmdname, errno, "while writing file");
++		if (retval == EXT2_ET_READ_HOLE_FOUND) {
++			if (got) {
++				nbytes = write(fd, buf, got);
++				if ((unsigned) nbytes != got)
++					com_err(cmdname, errno,
++						"while writing file");
++			}
++			retval = ext2fs_file_llseek(e2_file, 0, EXT2_SEEK_CUR,
++						    &offset);
++			if (retval)
++				com_err(cmdname, retval,
++					"while lseeking ext2 file");
++			retval = ext2fs_file_llseek(e2_file, offset,
++						    EXT2_SEEK_DATA, &ret_pos);
++			if (retval == EXT2_ET_SEEK_BEYOND_EOF)
++				break;
++			if (retval)
++				com_err(cmdname, retval,
++					"while lseeking ext2 file");
++			ret_pos = ext2fs_llseek(fd, ret_pos, SEEK_SET);
++			if (ret_pos < 0)
++				com_err(cmdname, retval,
++					"while lseeking target file");
++		} else {
++			if (got == 0)
++				break;
++			nbytes = write(fd, buf, got);
++			if ((unsigned) nbytes != got)
++				com_err(cmdname, errno, "while writing file");
++		}
+ 	}
+ 	if (buf)
+ 		ext2fs_free_mem(&buf);
 diff --git a/lib/ext2fs/ext2_err.et.in b/lib/ext2fs/ext2_err.et.in
-index d20c6b7..6e79b97 100644
+index 6e79b97..f854df0 100644
 --- a/lib/ext2fs/ext2_err.et.in
 +++ b/lib/ext2fs/ext2_err.et.in
-@@ -476,4 +476,7 @@ ec	EXT2_ET_MMP_CSUM_INVALID,
- ec	EXT2_ET_FILE_EXISTS,
- 	"Ext2 file already exists"
+@@ -479,4 +479,7 @@ ec	EXT2_ET_FILE_EXISTS,
+ ec	EXT2_ET_SEEK_BEYOND_EOF,
+ 	"lseek beyond the EOF"
  
-+ec	EXT2_ET_SEEK_BEYOND_EOF,
-+	"lseek beyond the EOF"
++ec	EXT2_ET_READ_HOLE_FOUND,
++	"We read a hole/uninitialized block with EXT2_FILE_SPARSE flag"
 +
  	end
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 7139b4d..ce7c38a 100644
+index ce7c38a..e757b40 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -160,6 +160,8 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_SEEK_SET	0
- #define EXT2_SEEK_CUR	1
- #define EXT2_SEEK_END	2
-+#define EXT2_SEEK_DATA	3
-+#define EXT2_SEEK_HOLE	4
+@@ -149,6 +149,7 @@ typedef struct ext2_struct_dblist *ext2_dblist;
  
- /*
-  * Flags for the ext2_filsys structure and for ext2fs_open()
+ #define EXT2_FILE_WRITE		0x0001
+ #define EXT2_FILE_CREATE	0x0002
++#define EXT2_FILE_SPARSE	0x0004
+ 
+ #define EXT2_FILE_MASK		0x00FF
+ 
 diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
-index 1f7002c..6cb2e43 100644
+index 6cb2e43..be658d8 100644
 --- a/lib/ext2fs/fileio.c
 +++ b/lib/ext2fs/fileio.c
-@@ -312,10 +312,201 @@ fail:
- 	return retval;
- }
- 
-+static errcode_t ext2fs_file_llseek_data_ext(ext2_file_t file, __u64 offset)
-+{
-+	ext2_extent_handle_t	handle = 0;
-+	struct ext2fs_extent	extent;
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval = 0;
-+	unsigned int	dataoff;
-+
-+	retval = ext2fs_extent_open2(fs, file->ino, &file->inode, &handle);
-+	if (retval)
-+		return retval;
-+
-+	while (file->blockno * fs->blocksize < EXT2_I_SIZE(&file->inode)) {
-+		retval = ext2fs_extent_goto(handle, file->blockno);
-+		if (retval && retval != EXT2_ET_EXTENT_NOT_FOUND)
-+			goto done;
-+		if (retval == EXT2_ET_EXTENT_NOT_FOUND) {
-+			file->blockno++;
-+		} else {
-+			retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT,
-+						   &extent);
-+			if (retval)
-+				goto done;
-+			/*
-+			 * Here we skip uninit block because uninit block is
-+			 * as a hole.
-+			 */
-+			if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT) {
-+				file->blockno++;
-+				continue;
-+			}
-+			dataoff = file->blockno - extent.e_lblk;
-+			if (file->blockno >= extent.e_lblk &&
-+			    dataoff <= extent.e_len) {
-+				if (file->blockno == offset / fs->blocksize)
-+					file->pos = offset;
-+				else
-+					file->pos = file->blockno *
-+						    fs->blocksize;
-+				break;
-+			}
-+		}
-+	}
-+
-+done:
-+	ext2fs_extent_free(handle);
-+	return retval;
-+}
-+
-+static errcode_t ext2fs_file_llseek_data_ind(ext2_file_t file, __u64 offset)
-+{
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval = 0;
-+
-+	while (file->blockno * fs->blocksize < EXT2_I_SIZE(&file->inode)) {
-+		retval = ext2fs_bmap2(fs, file->ino, &file->inode, BMAP_BUFFER,
-+				      0, file->blockno, 0, &file->physblock);
-+		if (retval)
-+			return retval;
-+		/*
-+		 * Here we don't care about uninit block because indirect-based
-+		 * file doesn't support it.
-+		 */
-+		if (file->physblock == 0) {
-+			file->blockno++;
-+		} else {
-+			if (file->blockno == offset / fs->blocksize)
-+				file->pos = offset;
-+			else
-+				file->pos = file->blockno * fs->blocksize;
-+			break;
-+		}
-+	}
-+
-+	return retval;
-+}
-+
-+static errcode_t ext2fs_file_llseek_data(ext2_file_t file, __u64 offset)
-+{
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval;
-+
-+	file->blockno = offset / fs->blocksize;
-+
-+	if (file->inode.i_flags & EXT4_EXTENTS_FL)
-+		retval = ext2fs_file_llseek_data_ext(file, offset);
-+	else
-+		retval = ext2fs_file_llseek_data_ind(file, offset);
-+
-+	/* notify the caller that there is no any data */
-+	if (file->blockno * fs->blocksize >= EXT2_I_SIZE(&file->inode))
-+		return EXT2_ET_SEEK_BEYOND_EOF;
-+
-+	return retval;
-+}
-+
-+static errcode_t ext2fs_file_llseek_hole_ext(ext2_file_t file, __u64 offset)
-+{
-+	ext2_extent_handle_t	handle = 0;
-+	struct ext2fs_extent	extent;
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval = 0;
-+	unsigned int	dataoff;
-+
-+	retval = ext2fs_extent_open2(fs, file->ino, &file->inode, &handle);
-+	if (retval)
-+		return retval;
-+
-+	while (file->blockno * fs->blocksize < EXT2_I_SIZE(&file->inode)) {
-+		retval = ext2fs_extent_goto(handle, file->blockno);
-+		if (retval && retval != EXT2_ET_EXTENT_NOT_FOUND)
-+			goto done;
-+		if (retval == EXT2_ET_EXTENT_NOT_FOUND) {
-+			if (file->blockno == offset / fs->blocksize)
-+				file->pos = offset;
-+			else
-+				file->pos = file->blockno * fs->blocksize;
-+			break;
-+		} else {
-+			retval = ext2fs_extent_get(handle, EXT2_EXTENT_CURRENT,
-+						   &extent);
-+			if (retval)
-+				goto done;
-+			/* Here uninit block is as a hole */
-+			if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT) {
-+				if (file->blockno == offset / fs->blocksize)
-+					file->pos = offset;
-+				else
-+					file->pos = file->blockno *
-+						    fs->blocksize;
-+				break;
-+			}
-+			dataoff = file->blockno - extent.e_lblk;
-+			if (file->blockno >= extent.e_lblk &&
-+			    dataoff <= extent.e_len)
-+				file->blockno = extent.e_lblk + extent.e_len;
-+		}
-+	}
-+
-+done:
-+	ext2fs_extent_free(handle);
-+	return retval;
-+}
-+
-+static errcode_t ext2fs_file_llseek_hole_ind(ext2_file_t file, __u64 offset)
-+{
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval = 0;
-+
-+	while (file->blockno * fs->blocksize < EXT2_I_SIZE(&file->inode)) {
-+		retval = ext2fs_bmap2(fs, file->ino, &file->inode, BMAP_BUFFER,
-+				      0, file->blockno, 0, &file->physblock);
-+		if (retval)
-+			return retval;
-+		/*
-+		 * Here we don't care about uninit block because indirect-based
-+		 * file doesn't support it.
-+		 */
-+		if (file->physblock == 0) {
-+			if (file->blockno == offset / fs->blocksize)
-+				file->pos = offset;
-+			else
-+				file->pos = file->blockno * fs->blocksize;
-+			break;
-+		} else {
-+			file->blockno++;
-+		}
-+	}
-+
-+	return retval;
-+}
-+
-+static errcode_t ext2fs_file_llseek_hole(ext2_file_t file, __u64 offset)
-+{
-+	ext2_filsys	fs = file->fs;
-+	errcode_t	retval;
-+
-+	if (offset >= EXT2_I_SIZE(&file->inode))
-+		return EXT2_ET_SEEK_BEYOND_EOF;
-+
-+	file->blockno = offset / fs->blocksize;
-+
-+	if (file->inode.i_flags & EXT4_EXTENTS_FL)
-+		retval = ext2fs_file_llseek_hole_ext(file, offset);
-+	else
-+		retval = ext2fs_file_llseek_hole_ind(file, offset);
-+
-+	return retval;
-+}
-+
- errcode_t ext2fs_file_llseek(ext2_file_t file, __u64 offset,
- 			    int whence, __u64 *ret_pos)
+@@ -185,11 +185,12 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
  {
- 	EXT2_CHECK_MAGIC(file, EXT2_ET_MAGIC_EXT2_FILE);
-+	errcode_t retval = 0;
+ 	ext2_filsys	fs = file->fs;
+ 	errcode_t	retval;
++	int		ret_flags = 0;
  
- 	if (whence == EXT2_SEEK_SET)
- 		file->pos = offset;
-@@ -323,13 +514,17 @@ errcode_t ext2fs_file_llseek(ext2_file_t file, __u64 offset,
- 		file->pos += offset;
- 	else if (whence == EXT2_SEEK_END)
- 		file->pos = EXT2_I_SIZE(&file->inode) + offset;
-+	else if (whence == EXT2_SEEK_DATA)
-+		retval = ext2fs_file_llseek_data(file, offset);
-+	else if (whence == EXT2_SEEK_HOLE)
-+		retval = ext2fs_file_llseek_hole(file, offset);
- 	else
- 		return EXT2_ET_INVALID_ARGUMENT;
- 
- 	if (ret_pos)
- 		*ret_pos = file->pos;
- 
--	return 0;
-+	return retval;
+ 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
+ 		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
+-				     BMAP_BUFFER, 0, file->blockno, 0,
+-				     &file->physblock);
++				     BMAP_BUFFER, 0, file->blockno,
++				     &ret_flags, &file->physblock);
+ 		if (retval)
+ 			return retval;
+ 		if (!dontfill) {
+@@ -203,6 +204,12 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
+ 				memset(file->buf, 0, fs->blocksize);
+ 		}
+ 		file->flags |= EXT2_FILE_BUF_VALID;
++		if (file->flags & EXT2_FILE_SPARSE) {
++			if (file->physblock == 0 ||
++			    (ret_flags & BMAP_RET_UNINIT)) {
++				return EXT2_ET_READ_HOLE_FOUND;
++			}
++		}
+ 	}
+ 	return 0;
  }
- 
- errcode_t ext2fs_file_lseek(ext2_file_t file, ext2_off_t offset,
 -- 
 1.7.12.rc2.18.g61b472e
 
