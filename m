@@ -1,64 +1,158 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2] ext4: call WARN_ON after the debug message
-Date: Fri, 25 Jan 2013 16:14:30 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1301251613260.20753@localhost>
-References: <1359045044-31435-1-git-send-email-lczerner@redhat.com> <20130124195458.GD9477@thunk.org> <alpine.LFD.2.00.1301251012200.20753@localhost> <20130125150948.GK28908@thunk.org>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-274057290-1359126873=:20753"
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: [PATCH 2/3] e2image: perform in-place move
+Date: Fri, 25 Jan 2013 10:29:11 -0500
+Message-ID: <1359127752-7125-2-git-send-email-psusi@ubuntu.com>
+References: <1359127752-7125-1-git-send-email-psusi@ubuntu.com>
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25438 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756368Ab3AYPOf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jan 2013 10:14:35 -0500
-In-Reply-To: <20130125150948.GK28908@thunk.org>
+Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:40924 "EHLO
+	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756856Ab3AYP3O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2013 10:29:14 -0500
+In-Reply-To: <1359127752-7125-1-git-send-email-psusi@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+If given at least one offset and only one file, assume source
+and dest are the same, and do an in place move.
 
---8323328-274057290-1359126873=:20753
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+Signed-off-by: Phillip Susi <psusi@ubuntu.com>
+---
+ misc/e2image.8.in |    3 +++
+ misc/e2image.c    |   57 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 53 insertions(+), 7 deletions(-)
 
-On Fri, 25 Jan 2013, Theodore Ts'o wrote:
+diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+index 763f9c7..8ed5d82 100644
+--- a/misc/e2image.8.in
++++ b/misc/e2image.8.in
+@@ -227,6 +227,9 @@ MiB for a partition table with:
+ \	\fBe2image -arO 1048576 /dev/sda1 img\fR
+ .br
+ .PP
++If you specify at least one offset, and only one file, an in-place
++move will be performed, allowing you to safely move the filesystem
++from one offset to another.
+ .SH AUTHOR
+ .B e2image
+ was written by Theodore Ts'o (tytso@mit.edu).
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 07e18a1..2830709 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -56,6 +56,7 @@ char all_data;
+ char output_is_blk;
+ /* writing to blk device: don't skip zeroed blocks */
+ blk64_t source_offset, dest_offset;
++char move_mode;
+ 
+ static void lseek_error_and_exit(int errnum)
+ {
+@@ -488,6 +489,9 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
+ 	blk64_t		blk;
+ 	char		*buf, *zero_buf;
+ 	int		sparse = 0;
++	blk64_t		start = 0;
++	blk64_t		distance = 0;
++	blk64_t		end = ext2fs_blocks_count(fs->super);
+ 
+ 	retval = ext2fs_get_mem(fs->blocksize, &buf);
+ 	if (retval) {
+@@ -499,7 +503,19 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
+ 		com_err(program_name, retval, "while allocating buffer");
+ 		exit(1);
+ 	}
+-	for (blk = 0; blk < ext2fs_blocks_count(fs->super); blk++) {
++	/* when doing an in place move to the right, you can't start
++	   at the beginning or you will overwrite data, so instead
++	   divide the fs up into distance size chunks and write them
++	   in reverse. */
++	if (move_mode && dest_offset > source_offset) {
++		distance = (dest_offset - source_offset) / fs->blocksize;
++		if (distance < ext2fs_blocks_count(fs->super))
++			start = ext2fs_blocks_count(fs->super) - distance;
++	}
++more_blocks:
++	if (distance)
++		ext2fs_llseek (fd, (start * fs->blocksize) + dest_offset, SEEK_SET);
++	for (blk = start; blk < end; blk++) {
+ 		if ((blk >= fs->super->s_first_data_block) &&
+ 		    ext2fs_test_block_bitmap2(meta_block_map, blk)) {
+ 			retval = io_channel_read_blk64(fs->io, blk, 1, buf);
+@@ -528,9 +544,31 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
+ 			}
+ 		}
+ 	}
++	if (distance && start) {
++		if (start < distance) {
++			end = start;
++			start = 0;
++		} else {
++			end -= distance;
++			start -= distance;
++			if (end < distance) {
++				/* past overlap, do rest in one go */
++				end = start;
++				start = 0;
++			}
++		}
++		sparse = 0;
++		goto more_blocks;
++	}
+ #ifdef HAVE_FTRUNCATE64
+ 	if (sparse) {
+-		ext2_loff_t offset = ext2fs_llseek(fd, sparse, SEEK_CUR);
++		ext2_loff_t offset;
++		if (distance)
++			offset = ext2fs_llseek(
++				fd,
++				fs->blocksize * ext2fs_blocks_count(fs->super) + dest_offset,
++				SEEK_SET);
++		else offset = ext2fs_llseek(fd, sparse, SEEK_CUR);
+ 
+ 		if (offset < 0)
+ 			lseek_error_and_exit(errno);
+@@ -538,7 +576,7 @@ static void output_meta_data_blocks(ext2_filsys fs, int fd)
+ 			write_block(fd, zero_buf, -1, 1, -1);
+ 	}
+ #else
+-	if (sparse)
++	if (sparse && !distance)
+ 		write_block(fd, zero_buf, sparse-1, 1, -1);
+ #endif
+ 	ext2fs_free_mem(&zero_buf);
+@@ -1301,10 +1339,15 @@ int main (int argc, char ** argv)
+ 		default:
+ 			usage();
+ 		}
+-	if (optind != argc - 2 )
++	if (optind == argc - 1 &&
++	    (source_offset || dest_offset))
++		    move_mode = 1;
++	else if (optind != argc - 2 )
+ 		usage();
+ 	device_name = argv[optind];
+-	image_fn = argv[optind+1];
++	if (move_mode)
++		image_fn = device_name;
++	else image_fn = argv[optind+1];
+ 
+ 	if (flags & E2IMAGE_INSTALL_FLAG) {
+ 		install_image(device_name, image_fn, img_type);
+@@ -1334,10 +1377,10 @@ skip_device:
+ 	if (strcmp(image_fn, "-") == 0)
+ 		fd = 1;
+ 	else {
+-		fd = ext2fs_open_file(image_fn, O_CREAT|O_TRUNC|O_WRONLY, 0600);
++		fd = ext2fs_open_file(image_fn, O_CREAT|O_WRONLY, 0600);
+ 		if (fd < 0) {
+ 			com_err(program_name, errno,
+-				_("while trying to open %s"), argv[optind+1]);
++				_("while trying to open %s"), image_fn);
+ 			exit(1);
+ 		}
+ 	}
+-- 
+1.7.9.5
 
-> Date: Fri, 25 Jan 2013 10:09:48 -0500
-> From: Theodore Ts'o <tytso@mit.edu>
-> To: Lukáš Czerner <lczerner@redhat.com>
-> Cc: linux-ext4@vger.kernel.org
-> Subject: Re: [PATCH 1/2] ext4: call WARN_ON after the debug message
-> 
-> On Fri, Jan 25, 2013 at 10:22:44AM +0100, Lukáš Czerner wrote:
-> > 
-> > we can get the EIO error from ext4_map_blocks not only in the case
-> > of hardware error. The extent tree might not be in consistent state,
-> > or we could even ask for blocks outside the file system itself (I
-> > believe I've seen this before) and I think that in those cases it
-> > might be worth to all WARN_ON.
-> 
-> Sure, but in those cases, the file system is corrupt, and we should
-> have thrown an ext4_error() in ext4_map_blocks().  The point is that a
-> WARN_ON is only useful if there is a potential programming bug.  If we
-> know for sure that it's caused by a file system corruption, then we
-> don't want to throw a WARN_ON.
-> 
-> Even if there is a kerneloops.org replacement --- in fact, especially
-> if there is kerneloops.org replacement --- we only want to throw
-> WARN_ON's in cases where it's just a pedestrian file system
-> corruption.  Otherwise we'll end up wasting a lot of time chasing down
-> something which was caused by a hardware error, and needing to calm
-> down users (and breathless, spectacularizing, irresponsible journalism
-> from web sites such as Phoronix).
-> 
-> 					- Ted
-
-Fair enough, I'll remove the WARN_ON and use ext4_warning() instead
-of ext4_msg.
-
-Thanks!
--Lukas
---8323328-274057290-1359126873=:20753--
