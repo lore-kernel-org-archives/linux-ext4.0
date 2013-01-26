@@ -1,43 +1,30 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH 2/2] Ext3: remove a useless check for the function ext3_free_blocks_sb
-Date: Sat, 26 Jan 2013 14:58:31 -0800
-Message-ID: <51045F97.9070602@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Ext4: remove a useless check for the function
+ ext4_data_block_valid
+Date: Sat, 26 Jan 2013 10:38:26 -0500
+Message-ID: <20130126153826.GB5887@thunk.org>
+References: <51045F77.5000106@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: jack@suse.cz
+To: Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f51.google.com ([209.85.160.51]:56189 "EHLO
-	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751014Ab3AZG4e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jan 2013 01:56:34 -0500
-Received: by mail-pb0-f51.google.com with SMTP id ro12so610844pbb.10
-        for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2013 22:56:34 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:45572 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751293Ab3AZPi3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Jan 2013 10:38:29 -0500
+Content-Disposition: inline
+In-Reply-To: <51045F77.5000106@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+On Sat, Jan 26, 2013 at 02:57:59PM -0800, Wang Shilong wrote:
+> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> 
+> Because it is no doubt 'start_blk + count < start_blk' always comes to
+> false. It is useless to have this check,remove it.
 
-Because 'block + count < block' always comes to false, it is useless
-to have this check, just remove it.
+Actually, it can be true --- if start_blk + count (which are both
+unsigned integers) overflows....
 
-Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
----
- fs/ext3/balloc.c | 1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-index 22548f5..c557f22 100644
---- a/fs/ext3/balloc.c
-+++ b/fs/ext3/balloc.c
-@@ -507,7 +507,6 @@ void ext3_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	sbi = EXT3_SB(sb);
- 	es = sbi->s_es;
- 	if (block < le32_to_cpu(es->s_first_data_block) ||
--	    block + count < block ||
- 	    block + count > le32_to_cpu(es->s_blocks_count)) {
- 		ext3_error (sb, "ext3_free_blocks",
- 			    "Freeing blocks not in datazone - "
--- 1.7.11.7
-
+					- Ted
