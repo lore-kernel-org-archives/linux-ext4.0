@@ -1,43 +1,62 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: [PATCH] mke2fs: clarify inode ratio in man page
-Date: Fri, 25 Jan 2013 10:53:43 -0500
-Message-ID: <1359129223-7366-1-git-send-email-psusi@ubuntu.com>
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RESEND][PATCH 2/2 v2] ext4: let us fully support punching hole
+ feature in fallocate
+Date: Sat, 26 Jan 2013 11:47:07 +1100
+Message-ID: <20130126004707.GG2667@dastard>
+References: <1358493381-20150-1-git-send-email-wenqing.lz@taobao.com>
+ <1358493381-20150-2-git-send-email-wenqing.lz@taobao.com>
+ <20130125033201.GD28908@thunk.org>
+ <20130125035912.GA15806@gmail.com>
+ <20130125042122.GG28908@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	xfs@oss.sgi.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rrcs-67-78-168-186.se.biz.rr.com ([67.78.168.186]:40946 "EHLO
-	iriserv.iradimed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755747Ab3AYPxo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2013 10:53:44 -0500
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:14947 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753441Ab3AZArM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jan 2013 19:47:12 -0500
+Content-Disposition: inline
+In-Reply-To: <20130125042122.GG28908@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The man page still said it was not possible to change the number
-of inodes on a filesystem after creating it.  You actually can
-by resizing the fs, so clarify this language a bit.
+[cc xfs@oss.sgi.com]
 
-Signed-off-by: Phillip Susi <psusi@ubuntu.com>
----
- misc/mke2fs.8.in |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+On Thu, Jan 24, 2013 at 11:21:22PM -0500, Theodore Ts'o wrote:
+> On Fri, Jan 25, 2013 at 11:59:12AM +0800, Zheng Liu wrote:
+> > 
+> > I wonder that maybe we need to submit a patch to let xfstest understand
+> > that a filesystem supports extents or not because after applied this
+> > patch indirect-based file in ext4 has supported seek_data/hole and hole
+> > punching.  I usually run xfstest automatically, and every time I need
+> > to check the result of #255 and #285 manually.  That is annoying for me.
+> 
+> I would think the right thing to do is to have xfstests make sure it
+> understands that fallocate working with FALLOC_FL_PUNCH_HOLE does not
+> imply that fallocate without the FALLOC_FL_PUNCH_HOLE flag OR'ed in
+> will work.
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 023ba49..5e5e889 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -340,9 +340,9 @@ bytes of space on the disk.  The larger the
- ratio, the fewer inodes will be created.  This value generally shouldn't
- be smaller than the blocksize of the filesystem, since in that case more
- inodes would be made than can ever be used.  Be warned that it is not
--possible to expand the number
--of inodes on a filesystem after it is created, so be careful deciding the
--correct value for this parameter.
-+possible to change this ratio on a filesystem after it is created, so be
-+careful deciding the correct value for this parameter.  Note that resizing
-+a filesystem changes the numer of inodes to maintain this ratio.
- .TP
- .BI \-I " inode-size"
- Specify the size of each inode in bytes.
+We already have this capabiity in xfstests via
+_require_xfs_io_falloc_punch and _require_xfs_io_falloc. That,
+however,  doesn't mean the tests that use these calls do the correct
+requirement checks. That's the problem with 255 - it doesn't call
+_require_xfs_io_falloc.
+
+As to 285, the seek_sanity_test does it's own check for seek
+hole/data support, and error out if it fails. This needs to be
+turned into an equivalent _require_seek_hole_data (e.g. by running
+"seek_sanity_test -t" to test for support) and 285 needs to the call
+the _require_seek_hole_data before running the test proper.
+
+Please send patches to xfs@oss.sgi.com....
+
+Cheers,
+
+Dave.
 -- 
-1.7.9.5
-
+Dave Chinner
+david@fromorbit.com
