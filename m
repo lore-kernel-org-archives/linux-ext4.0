@@ -1,105 +1,32 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH] ext4: correct the number of blocks that has been deallocated in ext4_free_hole_blocks
-Date: Mon, 28 Jan 2013 11:44:27 +0800
-Message-ID: <1359344667-12068-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] build: quiet build warnings for "gcc -Wall"
+Date: Sun, 27 Jan 2013 22:39:17 -0500
+Message-ID: <20130128033917.GA9412@thunk.org>
+References: <1358897549-8058-1-git-send-email-adilger@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f51.google.com ([209.85.210.51]:33828 "EHLO
-	mail-da0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753196Ab3A1Da3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Jan 2013 22:30:29 -0500
-Received: by mail-da0-f51.google.com with SMTP id i30so1034226dad.10
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Jan 2013 19:30:28 -0800 (PST)
+Received: from li9-11.members.linode.com ([67.18.176.11]:45754 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753368Ab3A1DjV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Jan 2013 22:39:21 -0500
+Content-Disposition: inline
+In-Reply-To: <1358897549-8058-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Jan 22, 2013 at 04:32:29PM -0700, adilger@dilger.ca wrote:
+> From: Andreas Dilger <adilger@dilger.ca>
+> 
+> - quiet unused variable warnings
+> - fix "main()" prototype declaration in parse-types.sh
+> - fix printf() argument prototype in do_one_pass()
+> 
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-This commit fixes a bug in ext4_free_hole_blocks that iff the number of
-hole blocks is equal to EXT4_NDIR_BLOCKS and the first block of the hole
-is a direct block, the number of deallocated blocks is wrong.
+Thanks!  I split up this patch into two commits, one which I applied
+to the maint branch, and one which I applied to the next branch.
 
-This bug can be triggered by the following commands:
-
-  dd if=/dev/zero of=/mnt/testfile bs=4k count=16
-  xfs_io -c "fpunch 4k 48k" -c "fiemap -v" /mnt/testfile
-
-[wrong result]
- EXT: FILE-OFFSET      BLOCK-RANGE      TOTAL FLAGS
-   0: [0..7]:          274560..274567       8 0x1000
-   1: [8..95]:         hole                88
-   2: [96..127]:       274656..274687      32 0x1001
-
-[expected result]
- EXT: FILE-OFFSET      BLOCK-RANGE      TOTAL FLAGS
-   0: [0..7]:          278528..278535       8 0x1000
-   1: [8..103]:        hole                96
-   2: [104..127]:      278632..278655      24 0x1001
-
-Moreover this commit calls ext4_es_remove_extents() to remove some
-delayed extents from extent status tree because now extent status tree
-has been applied in the lastest kernel.  Meanwhile we never disable
-dioread_nolock in ext4_ind_punch_hole() because this feature couldn't be
-enabled for a indirect-based file, and we don't flush any unwritten io
-because for a indirect-based file it needn't convert unwritten extents.
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
----
-[This patch bases against dev branch]
-
- fs/ext4/indirect.c | 12 ++++--------
- 1 file changed, 4 insertions(+), 8 deletions(-)
-
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 3a33ca2..96a5c1f 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1582,7 +1582,7 @@ static int ext4_free_hole_blocks(handle_t *handle, struct inode *inode,
- 					       level, first, count, num);
- 			if (ret)
- 				goto err;
--			if (count > max)
-+			if (count > max - first)
- 				count -= max - first;
- 			else
- 				break;
-@@ -1661,15 +1661,11 @@ int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	}
- 
- 	/* Wait all existing dio works, newcomers will block on i_mutex */
--	ext4_inode_block_unlocked_dio(inode);
--	err = ext4_flush_unwritten_io(inode);
--	if (err)
--		goto out_dio;
- 	inode_dio_wait(inode);
- 
- 	handle = start_transaction(inode);
- 	if (IS_ERR(handle))
--		goto out_dio;
-+		goto out_mutex;
- 
- 	/*
- 	 * Now we need to zero out the non-page-aligned data in the
-@@ -1738,6 +1734,8 @@ int ext4_ind_punch_hole(struct file *file, loff_t offset, loff_t length)
- 	down_write(&EXT4_I(inode)->i_data_sem);
- 	ext4_discard_preallocations(inode);
- 
-+	err = ext4_es_remove_extent(inode, first_block,
-+				    stop_block - first_block);
- 	err = ext4_free_hole_blocks(handle, inode, first_block, stop_block);
- 
- 	ext4_discard_preallocations(inode);
-@@ -1752,8 +1750,6 @@ out:
- 	ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
- 
--out_dio:
--	ext4_inode_resume_unlocked_dio(inode);
- out_mutex:
- 	mutex_unlock(&inode->i_mutex);
- 
--- 
-1.7.12.rc2.18.g61b472e
-
+       	     	     	     	   - Ted
