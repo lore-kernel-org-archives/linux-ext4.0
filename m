@@ -1,56 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 04/12] ext4: Disable merging of uninitialized extents
-Date: Mon, 28 Jan 2013 10:38:36 -0500
-Message-ID: <20130128153836.GH22711@thunk.org>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-5-git-send-email-jack@suse.cz>
- <87vcamdi6e.fsf@openvz.org>
- <20130128143647.GD22711@thunk.org>
- <871ud5fizk.fsf@openvz.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: punch command works incorrect in debugfs
+Date: Tue, 29 Jan 2013 01:36:47 +0800
+Message-ID: <20130128173647.GA23868@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45878 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752130Ab3A1Pis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2013 10:38:48 -0500
+Received: from mail-pb0-f50.google.com ([209.85.160.50]:62181 "EHLO
+	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756247Ab3A1RWp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2013 12:22:45 -0500
+Received: by mail-pb0-f50.google.com with SMTP id ro8so721326pbb.9
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Jan 2013 09:22:44 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <871ud5fizk.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 28, 2013 at 07:02:55PM +0400, Dmitry Monakhov wrote:
-> Actually this patch consists of two peaces
-> 1) disable merging of uninitialized extents. (1 line change) I'm
-> absolutely agree with it.
+Hi all,
 
-To be clear, that's this patch chunk (one line change not including
-comments :-), right?
+I found a bug in debugfs that 'punch' command work incorrect for a
+indirect-based file.  The bug can be triggered by the following
+commands, and it seems that the problem is in libext2fs library.  I
+file this bug in mailing list because I have no time to look at it
+carefully and I doubt that this command is not used frequently.
 
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1579,11 +1576,13 @@ int
- ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
- 				struct ext4_extent *ex2)
- {
- 
- 	/*
--	 * Make sure that either both extents are uninitialized, or
--	 * both are _not_.
-+	 * Make sure that both extents are initialized. We don't merge
-+	 * uninitialized extents so that we can be sure that end_io code has
-+	 * the extent that was written properly split out and conversion to
-+	 * initialized is trivial.
- 	 */
--	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-+	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
- 		return 0;
- 
+[reproduce steps]
+  sudo mkfs.ext4 -O ^extent ${DEV}
+  sudo mount -t ext4 ${DEV} ${MNT}
+  sudo dd if=/dev/zero of=${MNT}/punch-file bs=4k count=16
+  sync
+  sudo umount ${MNT}
+  sudo debugfs ${DEV} -R 'stat punch-file'
+  sudo debugfs -w ${DEV} -R 'punch punch-file 4 6'
+  sudo debugfs ${DEV} -R 'stat punch-file'
 
-The one thing I'm a bit worried about is how much worse will extent
-fragmentation be once we do this, but it's clear we need to strive for
-correctness first.
+[expected result]
+...
+BLOCKS:
+(0-3):34304-34307, (6-11):34310-34315, (IND):33793, (12-15):34316-34319
+...
 
-							- Ted
+[wrong result]
+...
+BLOCKS:
+(0-11):34304-34315, (IND):33793, (12-15):34316-34319
+...
+
+Regards,
+                                                - Zheng
