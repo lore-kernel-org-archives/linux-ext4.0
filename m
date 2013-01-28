@@ -1,37 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 06/12] ext4: Move work from io_end to inode
-Date: Mon, 28 Jan 2013 09:45:28 -0500
-Message-ID: <20130128144528.GF22711@thunk.org>
+Subject: Re: [PATCH 07/12] ext4: Simplify list handling in
+ ext4_do_flush_completed_IO()
+Date: Mon, 28 Jan 2013 09:51:48 -0500
+Message-ID: <20130128145148.GG22711@thunk.org>
 References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-7-git-send-email-jack@suse.cz>
+ <1358510446-19174-8-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45865 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45870 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756982Ab3A1Opb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2013 09:45:31 -0500
+	id S1751755Ab3A1Ov6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jan 2013 09:51:58 -0500
 Content-Disposition: inline
-In-Reply-To: <1358510446-19174-7-git-send-email-jack@suse.cz>
+In-Reply-To: <1358510446-19174-8-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 18, 2013 at 01:00:40PM +0100, Jan Kara wrote:
-> It does not make much sense to have struct work in ext4_io_end_t because we
-> always use it for only one ext4_io_end_t per inode (the first one in the
-> i_completed_io list). So just move the structure to inode itself.  This also
-> allows for a small simplification in processing io_end structures.
+On Fri, Jan 18, 2013 at 01:00:41PM +0100, Jan Kara wrote:
+> The function splices i_completed_io_list to its private list first. From that
+> moment on we don't need any lock for working with io_end structures because all
+> io_end structure on the list are only our own. So we can remove the other two
+> lists in the function and free io_end immediately after we are done with it.
 > 
+> CC: Dmitry Monakhov <dmonakhov@openvz.org>
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-(Note, I haven't applied patch 5 yet because it has a dependency on
-patch #4, and I'm waiting to hear whether we should apply this given
-the race condition which Dmitry has found.  It sounds like it's a
-pre-existing condition, and not a regression, but I want get a
-confirmation that applying patches 5 and 6 won't make things worse...)
-
-	     	  	   	     	   - Ted
+						- Ted
