@@ -1,34 +1,28 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 12/12] ext4: Fix ext4_writepage() to achieve data=ordered
- guarantees
-Date: Mon, 28 Jan 2013 21:08:10 -0500
-Message-ID: <20130129020810.GC7003@thunk.org>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-13-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH v2] ext4: remove unused variable flags
+Date: Mon, 28 Jan 2013 21:14:47 -0500
+Message-ID: <20130129021447.GD7003@thunk.org>
+References: <1359364399-4504-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:45951 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:45954 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752523Ab3A2CIQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jan 2013 21:08:16 -0500
+	id S1751958Ab3A2COu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jan 2013 21:14:50 -0500
 Content-Disposition: inline
-In-Reply-To: <1358510446-19174-13-git-send-email-jack@suse.cz>
+In-Reply-To: <1359364399-4504-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 18, 2013 at 01:00:46PM +0100, Jan Kara wrote:
-> So far ext4_writepage() skipped writing pages that had any delayed or
-> unwritten buffers attached. When blocksize < pagesize this breaks
-> data=ordered mode guarantees as we can have a page with one freshly
-> allocated buffer whose allocation is part of the committing transaction
-> and another buffer in the page which is delayed or unwritten. So fix this
-> problem by calling ext4_bio_writepage() anyway. It will submit mapped
-> buffers and leave others alone.
+On Mon, Jan 28, 2013 at 10:13:19AM +0100, Lukas Czerner wrote:
+> Remove unused variable flags from dump_completed_IO(). The code is only
+> exercised when EXT4FS_DEBUG is defined.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
 
 Thanks, applied.
 
