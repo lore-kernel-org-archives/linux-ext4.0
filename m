@@ -1,73 +1,56 @@
-From: Chen Gang <gang.chen@asianux.com>
-Subject: Re: [PATCH v4] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
- size and count calculation
-Date: Tue, 29 Jan 2013 16:24:05 +0800
-Message-ID: <51078725.9000802@asianux.com>
-References: <50DD20B2.6040204@asianux.com> <50E646BC.2090201@asianux.com> <50E64A4E.7010408@asianux.com> <50E64BFD.6090000@asianux.com> <20130107192016.GD13659@quack.suse.cz> <50EFD427.8060100@asianux.com> <50FB9696.7090702@asianux.com> <20130121102428.GA5588@quack.suse.cz> <50FD1B22.1020906@asianux.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] Ext3: remove a useless check for the function
+ ext3_free_blocks_sb
+Date: Tue, 29 Jan 2013 15:40:14 +0100
+Message-ID: <20130129144014.GE32246@quack.suse.cz>
+References: <51045F97.9070602@gmail.com>
+ <20130128140757.GB32246@quack.suse.cz>
+ <510765B1.7000100@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
-	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
-	dwmw2@infradead.org, paul.gortmaker@windriver.com,
-	ebiederm@xmission.com, adilger.kernel@dilger.ca,
-	torvalds@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: viro@zeniv.linux.org.uk
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <50FD1B22.1020906@asianux.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Wang Shilong <wangshilong1991@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59125 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753567Ab3A2Ok0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2013 09:40:26 -0500
+Content-Disposition: inline
+In-Reply-To: <510765B1.7000100@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Al Viro:
-
-  could you give a glance for this comment patch when you have time ?
-
-    (at least for me, most of comment patches are valuable for integrat=
-ing)
-
-
-  thanks.
-
-gchen.
-
-
-=E4=BA=8E 2013=E5=B9=B401=E6=9C=8821=E6=97=A5 18:40, Chen Gang =E5=86=99=
-=E9=81=93:
-> =E4=BA=8E 2013=E5=B9=B401=E6=9C=8821=E6=97=A5 18:24, Jan Kara =E5=86=99=
-=E9=81=93:
->>   Al Viro (you have him on CC list) is the right guy to merge this p=
-atch.
->> But he's not very responsive at times... You can also check whether =
-he just
->> didn't silently merge your patch into his tree -
->> http://git.kernel.org/?p=3Dlinux/kernel/git/viro/vfs.git
->> I don't see the patch there right now, last update to the tree has
->> happened 3 weeks ago. Maybe he's on vacation...
+On Mon 28-01-13 22:01:21, Wang Shilong wrote:
+> =E4=BA=8E 2013-1-28 6:07, Jan Kara =E5=86=99=E9=81=93:
+> > On Sat 26-01-13 14:58:31, Wang Shilong wrote:
+> >> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> >>
+> >> Because 'block + count < block' always comes to false, it is usele=
+ss
+> >> to have this check, just remove it.
+> >   As Andreas commented, the test is actually correct. BTW any reaso=
+n why
+> > you sent the patch three times?
+> My linux run in the virtual machine..and the clock is wrong...so i se=
+nd the patch not clarified correctly
+> in marc.info..when i find it..I correct it, but first time i correct =
+the time as 2012....how stupid it was..:-[
+> so i send the patch three times...sorry to bother...
 >=20
->   thank you very much for your patient details replying.
->=20
->   sorry, it is my fault for my original mail address not including Vi=
-ro=20
->     so it is necessary to wait additional week for getting his respon=
-se.
->=20
->   next time, I need only use ./script/get_maintainers.pl to get mail =
-address.
->=20
->   :-(
->=20
->=20
+> BTW =EF=BC=8C may i have a question....
+> As we know the block to be freed can not be superblock and GDT..
+> I don't see any check about it in ext2/ext3/ext4....
+  Yes, you are right we apparently don't check for superblock or GDT
+blocks. But checking for those will be a bit more complex and they are
+really scarce so I don't think it's worth the overhead.
 
-
+								Honza
 --=20
-Chen Gang
-
-Asianux Corporation
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 --
-To unsubscribe from this list: send the line "unsubscribe reiserfs-deve=
-l" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
