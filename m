@@ -1,104 +1,95 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC V2] mke2fs: wipe out old btrfs superblocks
-Date: Tue, 29 Jan 2013 11:10:49 -0600
-Message-ID: <51080299.9040507@redhat.com>
-References: <510800B6.4090505@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 03/10 v3] ext4: add physical block and status member into
+ extent status tree
+Date: Tue, 29 Jan 2013 12:28:14 -0500
+Message-ID: <20130129172814.GC4261@thunk.org>
+References: <1358942640-2262-1-git-send-email-wenqing.lz@taobao.com>
+ <1358942640-2262-4-git-send-email-wenqing.lz@taobao.com>
+ <20130129030353.GK7003@thunk.org>
+ <20130129053415.GA27002@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42933 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753021Ab3A2RKv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jan 2013 12:10:51 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0THApaQ021346
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:10:51 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r0THAnoN031833
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:10:50 -0500
-In-Reply-To: <510800B6.4090505@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130129053415.GA27002@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-btrfs sticks superblocks at 64k, 64M, and 256G.  If we don't
-overwrite those, libblkid may accidentally identify an ext*
-filesystem with old btrfs superblocks as btrfs, and we'll
-be sad.
+On Tue, Jan 29, 2013 at 01:34:15PM +0800, Zheng Liu wrote:
+> 
+> Another choice is like this:
+> 
+>         struct extent_status {
+>                 ...
+>                 ext4_fsblk_t es_pblk;   /* first physical block */
+>         };
+> 
+>         #define EXTENT_STATUS_WRITTEN   (1ULL << 60)
+>         #define EXTENT_STATUS_UNWRITTEN (1ULL << 61)
+>         #define EXTENT_STATUS_DELAYED   (1ULL << 62)
+> 
+> When we want to set extent status, we will need to do like the following:
+> 
+>         es->es_pblk |= EXTENT_STATUS_WRITTEN;
+> 
+> This can make us avoid non-protable code.  I am happy to refine this
+> patch if you think the latter one is better.
 
-libblkid provides a blkid_wipe_fs() functionality to zero
-all existing signatures, but that'd break our handy-dandy
-undo capability, I think.  So I'm not sure we have any
-other choice but to do it ourselves.
+This is probably the way I would have done it myself, but the then you
+need to make sure that all of the places where es_pblk is used you
+have to mask off the high bits.
 
-There is a slight error here in that if the mkfs
-does not span the entire device, we won't overwrite
-signatures past the end of the filesystem, but that case
-should be pretty rare.  (The same slight error in logic
-applies to the existing "wipe old MD superblock" path).
+At this point, though, I don't think it's worth it to make the change
+now, especially since we're almost at -rc6, I want to make sure this
+gets into linux-next and so we get lots of testing.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com
-Resolves-RHBZ: 902512
----
+As a matter of fact, I've already started testing the v3 vesion of the
+extent status patches from January 23rd, with the v2 version of the
+slab reclaim patch.  It's in the unstable portion of the ext4 git
+tree, at:
 
-v2: skip this on "noaction"
+      http://repo.or.cz/w/ext4-patch-queue.git /
+      git://repo.or.cz/ext4-patch-queue.git
 
-I decided not to be tricky about previous zero-returning
-discards, there seems to be little point to that, we're
-just doing 3 IOs post discard, at worst.
+I'm waiting for your next version of your patch series before I move
+it into the dev branch which will get fed into linux-next; my
+understanding is you're just about ready to push it out, right?
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index bbf477a..0c67134 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2307,6 +2307,32 @@ static int mke2fs_discard_device(ext2_filsys fs)
- 	return retval;
- }
- 
-+static int mke2fs_wipe_btrfs(ext2_filsys fs)
-+{
-+	int blocks;	/* nr of blocks to zero */
-+	blk64_t start;	/* location to zero out */
-+	int retval = 0; /* accumulate any failures */
-+
-+	blocks = 1;
-+	if (fs->blocksize < 4096)
-+		blocks = 4096 / fs->blocksize;
-+	/*
-+	 * Wipe out any old btrfs superblocks, at
-+	 * 64k, 64M, and 256G.
-+	 */
-+	start = 64ULL * 1024 / fs->blocksize;
-+	retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
-+	start = 64ULL * 1024 * 1024 / fs->blocksize;
-+	if (start + blocks <= ext2fs_blocks_count(fs->super))
-+		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
-+	start = 256ULL * 1024 * 1024 * 1024 / fs->blocksize;
-+	if (start + blocks <= ext2fs_blocks_count(fs->super))
-+		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
-+	/* free the static zeroing buffer */
-+	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
-+	return retval;
-+}
-+
- static void fix_cluster_bg_counts(ext2_filsys fs)
- {
- 	blk64_t	cluster, num_clusters, tot_free;
-@@ -2440,6 +2466,12 @@ int main (int argc, char *argv[])
- 		}
- 	}
- 
-+	if (!noaction) {
-+		retval = mke2fs_wipe_btrfs(fs);
-+		if (retval)
-+			printf(_("Failed to wipe old btrfs super locations\n"));
-+	}
-+
- 	sprintf(tdb_string, "tdb_data_size=%d", fs->blocksize <= 4096 ?
- 		32768 : fs->blocksize * 8);
- 	io_channel_set_options(fs->io, tdb_string);
+If we want to move away from using bitfields, we can do that as a
+separate patch that gets submitted later, since that's pretty easy to
+audit and verify for correctness.  Also, I've since tested clang and
+noted that it supports bitfields for unsigned long long.  There is
+some differences between how gcc and clang handles sign extension for
+unsigned long values, though:
+
+#include <stdio.h>
+struct s
+{
+        unsigned long long a:2;
+        unsigned long long b:40;
+        unsigned long long c:22;
+};
+
+int main()
+{
+        struct s t = {1, 2, 3};
+        printf("0x%llx\n",(t.b-8));
+}
+
+Gcc 4.7.2 will print "0xfffffffffa", while clang 3.0-6 will print
+"0xfffffffffffffffa" for the same program.
+
+I don't think this is a huge issue for us, but it's worth keeping in
+mind...
+
+So let's go ahead and keep the bitfields at least for the initial
+patch submission.
+
+Thanks for all your on this patch series!
+
+					- Ted
+
 
 
