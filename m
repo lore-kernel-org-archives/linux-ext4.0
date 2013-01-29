@@ -1,67 +1,92 @@
-From: Radek Pazdera <rpazdera@redhat.com>
-Subject: Re: [RFC] Optimizing readdir()
-Date: Tue, 29 Jan 2013 17:38:46 +0100
-Message-ID: <20130129163846.GA17169@laptop.brq.redhat.com>
-References: <20130113152204.GB26803@laptop.redhat.com>
- <20130114045152.GF29329@thunk.org>
- <20130115072143.GA21506@laptop.redhat.com>
- <B52E6F5A-F266-433C-AE80-2E78FD6920B9@dilger.ca>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] mke2fs: wipe out old btrfs superblocks
+Date: Tue, 29 Jan 2013 11:02:46 -0600
+Message-ID: <510800B6.4090505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	=?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63065 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5441 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751342Ab3A2QjV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jan 2013 11:39:21 -0500
-Content-Disposition: inline; filename="ext4m.txt"
-In-Reply-To: <B52E6F5A-F266-433C-AE80-2E78FD6920B9@dilger.ca>
+	id S1751392Ab3A2RCs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2013 12:02:48 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0TH2mIQ007704
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:02:48 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r0TH2ksh020046
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:02:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 03:44:57PM -0700, Andreas Dilger wrote:
->Having an upper limit on the directory cache is OK too.  Read all
->of the entries that fit into the cache size, sort them, and return
->them to the caller.  When the caller has processed all of those
->entries, read another batch, sort it, return this list, repeat.
->
->As long as the list is piecewise ordered, I suspect it would gain
->most of the benefit of linear ordering (sequential inode table
->reads, avoiding repeated lookups of blocks).  Maybe worthwhile if
->you could test this out?
+btrfs sticks superblocks at 64k, 64M, and 256G.  If we don't
+overwrite those, libblkid may accidentally identify an ext*
+filesystem with old btrfs superblocks as btrfs, and we'll
+be sad.
 
-I did the tests last week. I modified the spd_readdir preload to
-read at most $SPD_READDIR_CACHE_LIMIT entries, sort them and repeat.
-The patch is here:
+libblkid provides a blkid_wipe_fs() functionality to zero
+all existing signatures, but that'd break our handy-dandy
+undo capability, I think.  So I'm not sure we have any
+other choice but to do it ourselves.
 
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/dir-index-test-ext4/
+There is a slight error here in that if the mkfs
+does not span the entire device, we won't overwrite
+signatures past the end of the filesystem, but that case
+should be pretty rare.  (The same slight error in logic
+applies to the existing "wipe old MD superblock" path).
 
-I tested it with the limit set to 0 (i.e., no limit), 1000, 10000,
-50000, and completely without the preload. The test runs were
-performed on the same directory, so the results shouldn't be
-affected by positioning on disk.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com
+Resolves-RHBZ: 902512
+---
 
-Directory sizes went from 10k to 1.5M. The tests were run twice.
-The first run is only with metadata. In the second run, each file
-has 4096B of data.
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..e68c705 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2307,6 +2307,32 @@ static int mke2fs_discard_device(ext2_filsys fs)
+ 	return retval;
+ }
+ 
++static int mke2fs_wipe_btrfs(ext2_filsys fs)
++{
++	int blocks;	/* nr of blocks to zero */
++	blk64_t start;	/* location to zero out */
++	int retval = 0; /* accumulate any failures */
++
++	blocks = 1;
++	if (fs->blocksize < 4096)
++		blocks = 4096 / fs->blocksize;
++	/*
++	 * Wipe out any old btrfs superblocks, at
++	 * 64k, 64M, and 256G.
++	 */
++	start = 64ULL * 1024 / fs->blocksize;
++	retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	start = 64ULL * 1024 * 1024 / fs->blocksize;
++	if (start + blocks <= ext2fs_blocks_count(fs->super))
++		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	start = 256ULL * 1024 * 1024 * 1024 / fs->blocksize;
++	if (start + blocks <= ext2fs_blocks_count(fs->super))
++		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	/* free the static zeroing buffer */
++	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
++	return retval;
++}
++
+ static void fix_cluster_bg_counts(ext2_filsys fs)
+ {
+ 	blk64_t	cluster, num_clusters, tot_free;
+@@ -2439,6 +2465,9 @@ int main (int argc, char *argv[])
+ 			itable_zeroed = 1;
+ 		}
+ 	}
++		retval = mke2fs_wipe_btrfs(fs);
++		if (retval)
++			printf(_("Failed to wipe old btrfs super locations\n"));
+ 
+ 	sprintf(tdb_string, "tdb_data_size=%d", fs->blocksize <= 4096 ?
+ 		32768 : fs->blocksize * 8);
 
-Here are the results:
-  0B files:
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/dir-index-test-ext4/0B-files
-
-  4096B files:
-    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/dir-index-test-ext4/4096B-files/
-
-The times seem to decrease accordingly as the limit of the cache
-increases. The differences are bigger in case of 4096B files, where
-the data blocks start to evict the inode tables. However, copying is
-still more than two times slower for 1.5M files when 50000 entries
-are cached.
-
-It might be interesting to test what happens when the size of the
-files in the directory increases.
-
-Best Regards
-Radek
