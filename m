@@ -1,60 +1,104 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] Ext3: remove a useless check for the function
- ext3_free_blocks_sb
-Date: Tue, 29 Jan 2013 12:08:09 -0500
-Message-ID: <20130129170809.GB4261@thunk.org>
-References: <51045F97.9070602@gmail.com>
- <20130128140757.GB32246@quack.suse.cz>
- <510765B1.7000100@gmail.com>
- <20130129144014.GE32246@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC V2] mke2fs: wipe out old btrfs superblocks
+Date: Tue, 29 Jan 2013 11:10:49 -0600
+Message-ID: <51080299.9040507@redhat.com>
+References: <510800B6.4090505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Wang Shilong <wangshilong1991@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46043 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753075Ab3A2RIS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jan 2013 12:08:18 -0500
-Content-Disposition: inline
-In-Reply-To: <20130129144014.GE32246@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:42933 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753021Ab3A2RKv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jan 2013 12:10:51 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0THApaQ021346
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:10:51 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r0THAnoN031833
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 12:10:50 -0500
+In-Reply-To: <510800B6.4090505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 29, 2013 at 03:40:14PM +0100, Jan Kara wrote:
-> > As we know the block to be freed can not be superblock and GDT..
-> > I don't see any check about it in ext2/ext3/ext4....
->   Yes, you are right we apparently don't check for superblock or GDT
-> blocks. But checking for those will be a bit more complex and they are
-> really scarce so I don't think it's worth the overhead.
+btrfs sticks superblocks at 64k, 64M, and 256G.  If we don't
+overwrite those, libblkid may accidentally identify an ext*
+filesystem with old btrfs superblocks as btrfs, and we'll
+be sad.
 
-We actually do have code to test for that in ext4.  Take a look at
-fs/ext4/block_validity.c.  We normally only check to make sure the
-data block is within the file system bounds, but if you mount the file
-system with the block_validity, it will actually check to make sure
-the block being allocated or freed is not part of the superblock, GDT,
-allocation bitmaps, or inode table.
+libblkid provides a blkid_wipe_fs() functionality to zero
+all existing signatures, but that'd break our handy-dandy
+undo capability, I think.  So I'm not sure we have any
+other choice but to do it ourselves.
 
-I use this mount option when running my xfstests, just to add an
-additional level of checking.  It's not enabled by default, since it
-does increase CPU usage.  I suspect it would only be visible for
-benchmarks such as TPC-C, but it's not something we've actually
-measured to see if we could afford to enable by default.
+There is a slight error here in that if the mkfs
+does not span the entire device, we won't overwrite
+signatures past the end of the filesystem, but that case
+should be pretty rare.  (The same slight error in logic
+applies to the existing "wipe old MD superblock" path).
 
-The other major short coming is that we don't update the system zone
-after an online resize, which means we don't protect the newly
-metadata blocks until the next time the file system is mounted.  If we
-added updating after a online resize, we'd also have to add some kind
-of locking to protect the rbtree while it is being changed, and this
-would increase its overhead if people wanted to use it in production.
-We might be able to use RCU to avoid doing a real hard lock, but it's
-not something that I've considered high priority.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com
+Resolves-RHBZ: 902512
+---
 
-If someone wanted to look at this, it would actually be a pretty good
-starter project for someone who wanted to get started with doing ext4
-hacking.
+v2: skip this on "noaction"
 
-Cheers,
+I decided not to be tricky about previous zero-returning
+discards, there seems to be little point to that, we're
+just doing 3 IOs post discard, at worst.
 
-						- Ted
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..0c67134 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2307,6 +2307,32 @@ static int mke2fs_discard_device(ext2_filsys fs)
+ 	return retval;
+ }
+ 
++static int mke2fs_wipe_btrfs(ext2_filsys fs)
++{
++	int blocks;	/* nr of blocks to zero */
++	blk64_t start;	/* location to zero out */
++	int retval = 0; /* accumulate any failures */
++
++	blocks = 1;
++	if (fs->blocksize < 4096)
++		blocks = 4096 / fs->blocksize;
++	/*
++	 * Wipe out any old btrfs superblocks, at
++	 * 64k, 64M, and 256G.
++	 */
++	start = 64ULL * 1024 / fs->blocksize;
++	retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	start = 64ULL * 1024 * 1024 / fs->blocksize;
++	if (start + blocks <= ext2fs_blocks_count(fs->super))
++		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	start = 256ULL * 1024 * 1024 * 1024 / fs->blocksize;
++	if (start + blocks <= ext2fs_blocks_count(fs->super))
++		retval += ext2fs_zero_blocks2(fs, start, blocks, NULL, NULL);
++	/* free the static zeroing buffer */
++	ext2fs_zero_blocks2(0, 0, 0, 0, 0);
++	return retval;
++}
++
+ static void fix_cluster_bg_counts(ext2_filsys fs)
+ {
+ 	blk64_t	cluster, num_clusters, tot_free;
+@@ -2440,6 +2466,12 @@ int main (int argc, char *argv[])
+ 		}
+ 	}
+ 
++	if (!noaction) {
++		retval = mke2fs_wipe_btrfs(fs);
++		if (retval)
++			printf(_("Failed to wipe old btrfs super locations\n"));
++	}
++
+ 	sprintf(tdb_string, "tdb_data_size=%d", fs->blocksize <= 4096 ?
+ 		32768 : fs->blocksize * 8);
+ 	io_channel_set_options(fs->io, tdb_string);
+
+
