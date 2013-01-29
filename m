@@ -1,90 +1,73 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 04/12] ext4: Disable merging of uninitialized extents
-Date: Tue, 29 Jan 2013 16:37:00 +0800
-Message-ID: <20130129083700.GA31325@gmail.com>
-References: <1358510446-19174-1-git-send-email-jack@suse.cz>
- <1358510446-19174-5-git-send-email-jack@suse.cz>
- <87vcamdi6e.fsf@openvz.org>
- <20130128143647.GD22711@thunk.org>
- <871ud5fizk.fsf@openvz.org>
- <20130128153836.GH22711@thunk.org>
- <87y5fce8rq.fsf@openvz.org>
+From: Chen Gang <gang.chen@asianux.com>
+Subject: Re: [PATCH v4] fs/ext*,f2fs,jffs2,reiserfs: give comments for acl
+ size and count calculation
+Date: Tue, 29 Jan 2013 16:24:05 +0800
+Message-ID: <51078725.9000802@asianux.com>
+References: <50DD20B2.6040204@asianux.com> <50E646BC.2090201@asianux.com> <50E64A4E.7010408@asianux.com> <50E64BFD.6090000@asianux.com> <20130107192016.GD13659@quack.suse.cz> <50EFD427.8060100@asianux.com> <50FB9696.7090702@asianux.com> <20130121102428.GA5588@quack.suse.cz> <50FD1B22.1020906@asianux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f44.google.com ([209.85.210.44]:52988 "EHLO
-	mail-da0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753190Ab3A2IW4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2013 03:22:56 -0500
-Received: by mail-da0-f44.google.com with SMTP id z20so108568dae.31
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2013 00:22:56 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <87y5fce8rq.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, akpm@linux-foundation.org,
+	Theodore Ts'o <tytso@mit.edu>, jaegeuk.kim@samsung.com,
+	dwmw2@infradead.org, paul.gortmaker@windriver.com,
+	ebiederm@xmission.com, adilger.kernel@dilger.ca,
+	torvalds@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: viro@zeniv.linux.org.uk
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <50FD1B22.1020906@asianux.com>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 29, 2013 at 11:41:13AM +0400, Dmitry Monakhov wrote:
-> On Mon, 28 Jan 2013 10:38:36 -0500, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Mon, Jan 28, 2013 at 07:02:55PM +0400, Dmitry Monakhov wrote:
-> > > Actually this patch consists of two peaces
-> > > 1) disable merging of uninitialized extents. (1 line change) I'm
-> > > absolutely agree with it.
-> > 
-> > To be clear, that's this patch chunk (one line change not including
-> > comments :-), right?
-> Off course.
-> > 
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -1579,11 +1576,13 @@ int
-> >  ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> >  				struct ext4_extent *ex2)
-> >  {
-> >  
-> >  	/*
-> > -	 * Make sure that either both extents are uninitialized, or
-> > -	 * both are _not_.
-> > +	 * Make sure that both extents are initialized. We don't merge
-> > +	 * uninitialized extents so that we can be sure that end_io code has
-> > +	 * the extent that was written properly split out and conversion to
-> > +	 * initialized is trivial.
-> >  	 */
-> > -	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-> > +	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
-> >  		return 0;
-> >  
-> > 
-> > The one thing I'm a bit worried about is how much worse will extent
-> > fragmentation be once we do this, but it's clear we need to strive for
-> > correctness first.
-> This change should not affect fragmentation because
-> 1) Most people call fallocate(2) on big chunks (>4M)
-> 2) Once uninitialized extent filled with data and converted to
-> initialized extents  will be merged immediately.
-> 3) Most people use fallocate(2) for preallocation before write(2)
->    so effectively calls are interleaved so merging works as expected.
-> 
-> The only case where fragmentation will increase is when someone
-> performs many fallocate(2) calls for small chunks (4k) w/o writes.
-> As result leaf block will consist of 256 extents 4k each.
-> Later writes can't help us because we can not merge extents from two
-> leaf blocks. But I still think that this use case it inconvenient.
+Hello Al Viro:
 
-Yes, I doubt that no one does like this because it can not brings any
-benefit.  We usually call fallocate(2) to preallocate some sequential
-spaces.  Obviously preallocating a small chunk is useless.
+  could you give a glance for this comment patch when you have time ?
 
-> 
-> BTW why do we not try to merge extents from two leaf blocs?
-> I do not see any technical difficulties. If two adjacent leaf blocks
-> are covered by common index block merging is possible (but we need +1
-> journal block).
+    (at least for me, most of comment patches are valuable for integrat=
+ing)
 
-Yep, I also notice this.  I don't think there is a technical difficulty.
-That would be great if two adjacent leaf blocks could be merged.
 
-Regards,
-                                                - Zheng
+  thanks.
+
+gchen.
+
+
+=E4=BA=8E 2013=E5=B9=B401=E6=9C=8821=E6=97=A5 18:40, Chen Gang =E5=86=99=
+=E9=81=93:
+> =E4=BA=8E 2013=E5=B9=B401=E6=9C=8821=E6=97=A5 18:24, Jan Kara =E5=86=99=
+=E9=81=93:
+>>   Al Viro (you have him on CC list) is the right guy to merge this p=
+atch.
+>> But he's not very responsive at times... You can also check whether =
+he just
+>> didn't silently merge your patch into his tree -
+>> http://git.kernel.org/?p=3Dlinux/kernel/git/viro/vfs.git
+>> I don't see the patch there right now, last update to the tree has
+>> happened 3 weeks ago. Maybe he's on vacation...
+>=20
+>   thank you very much for your patient details replying.
+>=20
+>   sorry, it is my fault for my original mail address not including Vi=
+ro=20
+>     so it is necessary to wait additional week for getting his respon=
+se.
+>=20
+>   next time, I need only use ./script/get_maintainers.pl to get mail =
+address.
+>=20
+>   :-(
+>=20
+>=20
+
+
+--=20
+Chen Gang
+
+Asianux Corporation
+--
+To unsubscribe from this list: send the line "unsubscribe reiserfs-deve=
+l" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
