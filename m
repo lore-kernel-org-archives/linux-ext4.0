@@ -1,56 +1,137 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] Ext3: remove a useless check for the function
- ext3_free_blocks_sb
-Date: Tue, 29 Jan 2013 15:40:14 +0100
-Message-ID: <20130129144014.GE32246@quack.suse.cz>
-References: <51045F97.9070602@gmail.com>
- <20130128140757.GB32246@quack.suse.cz>
- <510765B1.7000100@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Wang Shilong <wangshilong1991@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59125 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567Ab3A2Ok0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jan 2013 09:40:26 -0500
-Content-Disposition: inline
-In-Reply-To: <510765B1.7000100@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: [PATCH V6 20/30] ext4: add support for read_iter and write_iter
+Date: Tue, 29 Jan 2013 10:23:33 -0600
+Message-ID: <1359476623-10544-21-git-send-email-dave.kleikamp@oracle.com>
+References: <1359476623-10544-1-git-send-email-dave.kleikamp@oracle.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Zach Brown <zab@zabbo.net>,
+	"Maxim V. Patlasov" <mpatlasov@parallels.com>,
+	Dave Kleikamp <dave.kleikamp@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1359476623-10544-1-git-send-email-dave.kleikamp@oracle.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 28-01-13 22:01:21, Wang Shilong wrote:
-> =E4=BA=8E 2013-1-28 6:07, Jan Kara =E5=86=99=E9=81=93:
-> > On Sat 26-01-13 14:58:31, Wang Shilong wrote:
-> >> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
-> >>
-> >> Because 'block + count < block' always comes to false, it is usele=
-ss
-> >> to have this check, just remove it.
-> >   As Andreas commented, the test is actually correct. BTW any reaso=
-n why
-> > you sent the patch three times?
-> My linux run in the virtual machine..and the clock is wrong...so i se=
-nd the patch not clarified correctly
-> in marc.info..when i find it..I correct it, but first time i correct =
-the time as 2012....how stupid it was..:-[
-> so i send the patch three times...sorry to bother...
->=20
-> BTW =EF=BC=8C may i have a question....
-> As we know the block to be freed can not be superblock and GDT..
-> I don't see any check about it in ext2/ext3/ext4....
-  Yes, you are right we apparently don't check for superblock or GDT
-blocks. But checking for those will be a bit more complex and they are
-really scarce so I don't think it's worth the overhead.
+use the generic_file_read_iter(), create ext4_file_write_iter() based on
+ext4_file_write(), and make ext4_file_write() a wrapper around
+ext4_file_write_iter().
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Zach Brown <zab@zabbo.net>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext4/file.c | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 405565a..54aa681 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -73,12 +73,11 @@ void ext4_unwritten_wait(struct inode *inode)
+  * or one thread will zero the other's data, causing corruption.
+  */
+ static int
+-ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+-		   unsigned long nr_segs, loff_t pos)
++ext4_unaligned_aio(struct inode *inode, struct iov_iter *iter, loff_t pos)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int blockmask = sb->s_blocksize - 1;
+-	size_t count = iov_length(iov, nr_segs);
++	size_t count = iov_iter_count(iter);
+ 	loff_t final_size = pos + count;
+ 
+ 	if (pos >= inode->i_size)
+@@ -91,8 +90,8 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
+ }
+ 
+ static ssize_t
+-ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+-		    unsigned long nr_segs, loff_t pos)
++ext4_file_dio_write(struct kiocb *iocb, struct iov_iter *iter,
++		    loff_t pos)
+ {
+ 	struct file *file = iocb->ki_filp;
+ 	struct inode *inode = file->f_mapping->host;
+@@ -100,11 +99,11 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+ 	int unaligned_aio = 0;
+ 	ssize_t ret;
+ 	int overwrite = 0;
+-	size_t length = iov_length(iov, nr_segs);
++	size_t length = iov_iter_count(iter);
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
+ 	    !is_sync_kiocb(iocb))
+-		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
++		unaligned_aio = ext4_unaligned_aio(inode, iter, pos);
+ 
+ 	/* Unaligned direct AIO must be serialized; see comment above */
+ 	if (unaligned_aio) {
+@@ -145,7 +144,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+ 			overwrite = 1;
+ 	}
+ 
+-	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
++	ret = __generic_file_write_iter(iocb, iter, &iocb->ki_pos);
+ 	mutex_unlock(&inode->i_mutex);
+ 
+ 	if (ret > 0 || ret == -EIOCBQUEUED) {
+@@ -164,8 +163,7 @@ ext4_file_dio_write(struct kiocb *iocb, const struct iovec *iov,
+ }
+ 
+ static ssize_t
+-ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos)
++ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *iter, loff_t pos)
+ {
+ 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
+ 	ssize_t ret;
+@@ -177,22 +175,24 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 
+ 	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+ 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-		size_t length = iov_length(iov, nr_segs);
++		size_t length = iov_iter_count(iter);
+ 
+ 		if ((pos > sbi->s_bitmap_maxbytes ||
+ 		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
+ 			return -EFBIG;
+ 
+ 		if (pos + length > sbi->s_bitmap_maxbytes) {
+-			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
+-					      sbi->s_bitmap_maxbytes - pos);
++			ret = iov_iter_shorten(iter,
++					       sbi->s_bitmap_maxbytes - pos);
++			if (ret)
++				return ret;
+ 		}
+ 	}
+ 
+ 	if (unlikely(iocb->ki_filp->f_flags & O_DIRECT))
+-		ret = ext4_file_dio_write(iocb, iov, nr_segs, pos);
++		ret = ext4_file_dio_write(iocb, iter, pos);
+ 	else
+-		ret = generic_file_aio_write(iocb, iov, nr_segs, pos);
++		ret = generic_file_write_iter(iocb, iter, pos);
+ 
+ 	return ret;
+ }
+@@ -630,8 +630,8 @@ const struct file_operations ext4_file_operations = {
+ 	.llseek		= ext4_llseek,
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+-	.aio_read	= generic_file_aio_read,
+-	.aio_write	= ext4_file_write,
++	.read_iter	= generic_file_read_iter,
++	.write_iter	= ext4_file_write_iter,
+ 	.unlocked_ioctl = ext4_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext4_compat_ioctl,
+-- 
+1.8.1.1
