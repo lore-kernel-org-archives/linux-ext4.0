@@ -1,68 +1,109 @@
-From: Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH 5/6] ocfs2: Wait for page writeback to provide stable
- pages
-Date: Tue, 29 Jan 2013 17:03:57 -0800
-Message-ID: <20130130010356.GL26439@localhost>
-References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
- <20130119011308.20902.44871.stgit@blackbox.djwong.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 03/10 v3] ext4: add physical block and status member into
+ extent status tree
+Date: Wed, 30 Jan 2013 10:43:33 +0800
+Message-ID: <20130130024332.GA12111@gmail.com>
+References: <1358942640-2262-1-git-send-email-wenqing.lz@taobao.com>
+ <1358942640-2262-4-git-send-email-wenqing.lz@taobao.com>
+ <20130129030353.GK7003@thunk.org>
+ <20130129053415.GA27002@gmail.com>
+ <20130129172814.GC4261@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, neilb@suse.de,
-	Mark Fasheh <mfasheh@suse.com>, david@fromorbit.com,
-	gnehzuil.liu@gmail.com, linux-kernel@vger.kernel.org,
-	hch@infradead.org, linux-fsdevel@vger.kernel.org,
-	adilger.kernel@dilger.ca, ocfs2-devel@oss.oracle.com,
-	bharrosh@panasas.com, jlayton@samba.org, akpm@linux-foundation.org,
-	linux-ext4@vger.kernel.org, hirofumi@mail.parknet.co.jp
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-da0-f45.google.com ([209.85.210.45]:57788 "EHLO
+	mail-da0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752506Ab3A3C32 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2013 21:29:28 -0500
 Content-Disposition: inline
-In-Reply-To: <20130119011308.20902.44871.stgit@blackbox.djwong.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130129172814.GC4261@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Acked-by: Joel Becker <jlbec@evilplan.org>
-
-On Fri, Jan 18, 2013 at 05:13:08PM -0800, Darrick J. Wong wrote:
-> When stable pages are required, we have to wait if the page is just
-> going to disk and we want to modify it. Add proper callback to
-> ocfs2_grab_pages_for_write().
+On Tue, Jan 29, 2013 at 12:28:14PM -0500, Theodore Ts'o wrote:
+> On Tue, Jan 29, 2013 at 01:34:15PM +0800, Zheng Liu wrote:
+> > 
+> > Another choice is like this:
+> > 
+> >         struct extent_status {
+> >                 ...
+> >                 ext4_fsblk_t es_pblk;   /* first physical block */
+> >         };
+> > 
+> >         #define EXTENT_STATUS_WRITTEN   (1ULL << 60)
+> >         #define EXTENT_STATUS_UNWRITTEN (1ULL << 61)
+> >         #define EXTENT_STATUS_DELAYED   (1ULL << 62)
+> > 
+> > When we want to set extent status, we will need to do like the following:
+> > 
+> >         es->es_pblk |= EXTENT_STATUS_WRITTEN;
+> > 
+> > This can make us avoid non-protable code.  I am happy to refine this
+> > patch if you think the latter one is better.
 > 
-> CC: ocfs2-devel@oss.oracle.com
-> CC: Joel Becker <jlbec@evilplan.org>
-> CC: Mark Fasheh <mfasheh@suse.com>
-> From: Jan Kara <jack@suse.cz>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/ocfs2/aops.c |    1 +
->  1 file changed, 1 insertion(+)
+> This is probably the way I would have done it myself, but the then you
+> need to make sure that all of the places where es_pblk is used you
+> have to mask off the high bits.
 > 
+> At this point, though, I don't think it's worth it to make the change
+> now, especially since we're almost at -rc6, I want to make sure this
+> gets into linux-next and so we get lots of testing.
 > 
-> diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-> index 6577432..9796330 100644
-> --- a/fs/ocfs2/aops.c
-> +++ b/fs/ocfs2/aops.c
-> @@ -1194,6 +1194,7 @@ static int ocfs2_grab_pages_for_write(struct address_space *mapping,
->  				goto out;
->  			}
->  		}
-> +		wait_for_stable_page(wc->w_pages[i]);
->  
->  		if (index == target_index)
->  			wc->w_target_page = wc->w_pages[i];
+> As a matter of fact, I've already started testing the v3 vesion of the
+> extent status patches from January 23rd, with the v2 version of the
+> slab reclaim patch.  It's in the unstable portion of the ext4 git
+> tree, at:
 > 
+>       http://repo.or.cz/w/ext4-patch-queue.git /
+>       git://repo.or.cz/ext4-patch-queue.git
+> 
+> I'm waiting for your next version of your patch series before I move
+> it into the dev branch which will get fed into linux-next; my
+> understanding is you're just about ready to push it out, right?
 
--- 
+Yes, I am running xfstests to make sure that the patch series doesn't
+break anything.  Later it will be sent out.
 
-"This is the end, beautiful friend.
- This is the end, my only friend the end
- Of our elaborate plans, the end
- Of everything that stands, the end
- No safety or surprise, the end
- I'll never look into your eyes again."
+> 
+> If we want to move away from using bitfields, we can do that as a
+> separate patch that gets submitted later, since that's pretty easy to
+> audit and verify for correctness.  Also, I've since tested clang and
+> noted that it supports bitfields for unsigned long long.  There is
+> some differences between how gcc and clang handles sign extension for
+> unsigned long values, though:
+> 
+> #include <stdio.h>
+> struct s
+> {
+>         unsigned long long a:2;
+>         unsigned long long b:40;
+>         unsigned long long c:22;
+> };
+> 
+> int main()
+> {
+>         struct s t = {1, 2, 3};
+>         printf("0x%llx\n",(t.b-8));
+> }
+> 
+> Gcc 4.7.2 will print "0xfffffffffa", while clang 3.0-6 will print
+> "0xfffffffffffffffa" for the same program.
 
-			http://www.jlbec.org/
-			jlbec@evilplan.org
+Clang is first coming in my mind.  I know that some one try to use it
+to build a linux kernel and get a lot of problems that are about gcc
+extension.  But for us it seems that things are not too bad. ;)
+
+> 
+> I don't think this is a huge issue for us, but it's worth keeping in
+> mind...
+> 
+> So let's go ahead and keep the bitfields at least for the initial
+> patch submission.
+
+Yes, just keep in mind and go ahead.
+
+Thanks for teaching me a lot,
+                                                - Zheng
