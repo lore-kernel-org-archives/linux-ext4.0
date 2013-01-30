@@ -1,58 +1,106 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] jbd2: don't wake kjournald unnecessarily
-Date: Wed, 30 Jan 2013 00:39:28 -0500
-Message-ID: <1359524369-31234-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] jbd2: commit as soon as possible after log_start_commit
+Date: Wed, 30 Jan 2013 00:39:29 -0500
+Message-ID: <1359524369-31234-2-git-send-email-tytso@mit.edu>
 References: <20130130052658.GE25006@thunk.org>
+ <1359524369-31234-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
 	Sedat Dilek <sedat.dilek@gmail.com>, mszeredi@suse.cz
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46154 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46149 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751220Ab3A3Fji (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Jan 2013 00:39:38 -0500
-In-Reply-To: <20130130052658.GE25006@thunk.org>
+	id S1750732Ab3A3Fjg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jan 2013 00:39:36 -0500
+In-Reply-To: <1359524369-31234-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't send an extra wakeup to kjournald in the case where we
-already have the proper target in j_commit_request, i.e. that
-transaction has already been requested for commit.
+Once a transaction has been requested to be committed, don't let any
+other handles start under that transaction, and don't allow any
+pending transactions to be extended (i.e., in the case of
+unlink/ftruncate).
 
-commit deeeaf13 "jbd2: fix fsync() tid wraparound bug" changed
-the logic leading to a wakeup, but it caused some extra wakeups
-which were found to lead to a measurable performance regression.
+The idea is once the transaction has had log_start_commit() called on
+it, at least one thread is blocked waiting for that transaction to
+commit, and over time, more and more threads will end up getting
+blocked.  In order to avoid high variability in file system operations
+getting blocked behind the a blocked start_this_handle(), we should
+try to get the commit started as soon as possible.
 
-Reported-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Eric Sandeen <sandeen@redhat.com>
 Cc: Sedat Dilek <sedat.dilek@gmail.com>
 Cc: mszeredi@suse.cz
 ---
+ fs/jbd2/commit.c      | 3 ++-
+ fs/jbd2/journal.c     | 1 +
+ fs/jbd2/transaction.c | 6 ++++--
+ include/linux/jbd2.h  | 1 +
+ 4 files changed, 8 insertions(+), 3 deletions(-)
 
-Eric,
-
-I think this might be clearer than the patch which you proposed; what do
-you think?
-
- fs/jbd2/journal.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3091d42..fd2ac94 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -424,7 +424,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	J_ASSERT(journal->j_committing_transaction == NULL);
+ 
+ 	commit_transaction = journal->j_running_transaction;
+-	J_ASSERT(commit_transaction->t_state == T_RUNNING);
++	J_ASSERT(commit_transaction->t_state == T_REQUESTED ||
++		 commit_transaction->t_state == T_RUNNING);
+ 
+ 	trace_jbd2_start_commit(journal, commit_transaction);
+ 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index dbf41f9..1a80e31 100644
+index 1a80e31..c22773b 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -513,6 +513,10 @@ int __jbd2_log_space_left(journal_t *journal)
-  */
- int __jbd2_log_start_commit(journal_t *journal, tid_t target)
- {
-+	/* Return if the txn has already requested to be committed */
-+	if (journal->j_commit_request == target)
-+		return 0;
-+
- 	/*
- 	 * The only transaction we can possibly wait upon is the
- 	 * currently running transaction (if it exists).  Otherwise,
+@@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ 		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
+ 			  journal->j_commit_request,
+ 			  journal->j_commit_sequence);
++		journal->j_running_transaction->t_state = T_REQUESTED;
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+ 	} else if (!tid_geq(journal->j_commit_request, target))
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index df9f297..6daff29 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -224,7 +224,8 @@ repeat:
+ 	 * If the current transaction is locked down for commit, wait for the
+ 	 * lock to be released.
+ 	 */
+-	if (transaction->t_state == T_LOCKED) {
++	if ((transaction->t_state == T_LOCKED) ||
++	    (transaction->t_state == T_REQUESTED)) {
+ 		DEFINE_WAIT(wait);
+ 
+ 		prepare_to_wait(&journal->j_wait_transaction_locked,
+@@ -2179,7 +2180,8 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
+ 	else
+ 		jlist = BJ_Reserved;
+ 	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
+-	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
++	J_ASSERT_JH(jh, (jh->b_transaction->t_state == T_RUNNING ||
++			 jh->b_transaction->t_state == T_REQUESTED));
+ 
+ 	if (was_dirty)
+ 		set_buffer_jbddirty(bh);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e30b663..920a8d0 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -493,6 +493,7 @@ struct transaction_s
+ 	 */
+ 	enum {
+ 		T_RUNNING,
++		T_REQUESTED,
+ 		T_LOCKED,
+ 		T_FLUSH,
+ 		T_COMMIT,
 -- 
 1.7.12.rc0.22.gcdd159b
 
