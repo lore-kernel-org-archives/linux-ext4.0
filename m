@@ -1,71 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/4] ext4: Fix possible use-after-free with AIO
-Date: Wed, 30 Jan 2013 00:27:58 +0100
-Message-ID: <1359502081-20240-2-git-send-email-jack@suse.cz>
-References: <1359502081-20240-1-git-send-email-jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
-	stable@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <1359502081-20240-1-git-send-email-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Stephen Warren <swarren@wwwdotorg.org>
+Subject: [PATCH] ext4: only define label failed_mount8 when used
+Date: Tue, 29 Jan 2013 17:09:00 -0700
+Message-ID: <1359504540-23474-1-git-send-email-swarren@wwwdotorg.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Stephen Warren <swarren@nvidia.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from avon.wwwdotorg.org ([70.85.31.133]:35326 "EHLO
+	avon.wwwdotorg.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751344Ab3A3AJT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2013 19:09:19 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Running AIO is pinning inode in memory using file reference. Once AIO
-is completed using aio_complete(), file reference is put and inode can
-be freed from memory. So we have to be sure that calling aio_complete()
-is the last thing we do with the inode.
+From: Stephen Warren <swarren@nvidia.com>
 
-CC: linux-ext4@vger.kernel.org
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: stable@vger.kernel.org
-Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
-Acked-by: Jeff Moyer <jmoyer@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+This fixes:
+
+fs/ext4/super.c: In function 'ext4_fill_super':
+fs/ext4/super.c:4040:1: warning: label 'failed_mount8' defined but not used
+
+This label is only jumped to by code under ifdef CONFIG_QUOTA, so only
+define the label in that case too.
+
+Signed-off-by: Stephen Warren <swarren@nvidia.com>
 ---
- fs/ext4/inode.c   |    2 +-
- fs/ext4/page-io.c |    9 ++++-----
- 2 files changed, 5 insertions(+), 6 deletions(-)
+ fs/ext4/super.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cbfe13b..ba06638 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2977,9 +2977,9 @@ static void ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 	if (!(io_end->flag & EXT4_IO_END_UNWRITTEN)) {
- 		ext4_free_io_end(io_end);
- out:
-+		inode_dio_done(inode);
- 		if (is_async)
- 			aio_complete(iocb, ret, 0);
--		inode_dio_done(inode);
- 		return;
- 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 861ffa0..3b04d15 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4037,8 +4037,10 @@ cantfind_ext4:
+ 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+ 	goto failed_mount;
  
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 0016fbc..b42d04f 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -103,14 +103,13 @@ static int ext4_end_io(ext4_io_end_t *io)
- 			 "(inode %lu, offset %llu, size %zd, error %d)",
- 			 inode->i_ino, offset, size, ret);
- 	}
--	if (io->iocb)
--		aio_complete(io->iocb, io->result, 0);
--
--	if (io->flag & EXT4_IO_END_DIRECT)
--		inode_dio_done(inode);
- 	/* Wake up anyone waiting on unwritten extent conversion */
- 	if (atomic_dec_and_test(&EXT4_I(inode)->i_unwritten))
- 		wake_up_all(ext4_ioend_wq(inode));
-+	if (io->flag & EXT4_IO_END_DIRECT)
-+		inode_dio_done(inode);
-+	if (io->iocb)
-+		aio_complete(io->iocb, io->result, 0);
- 	return ret;
- }
- 
++#ifdef CONFIG_QUOTA
+ failed_mount8:
+ 	kobject_del(&sbi->s_kobj);
++#endif
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
 -- 
-1.7.1
+1.7.10.4
+
