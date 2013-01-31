@@ -1,51 +1,184 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] jbd2: don't wake kjournald unnecessarily
-Date: Thu, 31 Jan 2013 12:53:06 -0500
-Message-ID: <1359654788-6078-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] jbd2: track request delay statistics
+Date: Thu, 31 Jan 2013 12:53:08 -0500
+Message-ID: <1359654788-6078-4-git-send-email-tytso@mit.edu>
 References: <1359654788-6078-1-git-send-email-tytso@mit.edu>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46396 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46393 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754197Ab3AaRxQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753928Ab3AaRxQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 31 Jan 2013 12:53:16 -0500
 In-Reply-To: <1359654788-6078-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+Track the delay between when we first request that the commit begin
+and when it actually begins, so we can see how much of a gap exists.
+In theory, this should just be the remaining time scheduling quantuum
+of the thread which requested the commit (assuming it was not a
+synchronous operation which triggered the commit request) plus
+scheduling overhead; however, it's possible that real time processes
+might get in the way of letting the kjournald thread from executing.
 
-Don't send an extra wakeup to kjournald in the case where we
-already have the proper target in j_commit_request, i.e. that
-transaction has already been requested for commit.
+In addition, since we now prohibit handles from being newly started or
+extended once a commit has been requested, calculate the commit
+running time from when the commit was first requested, and include the
+request delay as part of the transaction lockdown delay.
 
-commit deeeaf13 "jbd2: fix fsync() tid wraparound bug" changed
-the logic leading to a wakeup, but it caused some extra wakeups
-which were found to lead to a measurable performance regression.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-[tytso@mit.edu: reworked check to make it clearer]
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd2/journal.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/jbd2/commit.c            | 10 ++++++++++
+ fs/jbd2/journal.c           | 12 +++++++++---
+ fs/jbd2/transaction.c       |  1 +
+ include/linux/jbd2.h        |  7 +++++++
+ include/trace/events/jbd2.h |  8 ++++++--
+ 5 files changed, 33 insertions(+), 5 deletions(-)
 
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index fd2ac94..20dde86 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -436,7 +436,14 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 
+ 	trace_jbd2_commit_locking(journal, commit_transaction);
+ 	stats.run.rs_wait = commit_transaction->t_max_wait;
++	stats.run.rs_request_delay = 0;
+ 	stats.run.rs_locked = jiffies;
++	if (commit_transaction->t_requested) {
++		stats.run.rs_request_delay =
++			jbd2_time_diff(commit_transaction->t_requested,
++				       stats.run.rs_locked);
++		stats.run.rs_locked = commit_transaction->t_requested;
++	}
+ 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
+ 					      stats.run.rs_locked);
+ 
+@@ -1117,7 +1124,10 @@ restart_loop:
+ 	 */
+ 	spin_lock(&journal->j_history_lock);
+ 	journal->j_stats.ts_tid++;
++	if (commit_transaction->t_requested)
++		journal->j_stats.ts_requested++;
+ 	journal->j_stats.run.rs_wait += stats.run.rs_wait;
++	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
+ 	journal->j_stats.run.rs_running += stats.run.rs_running;
+ 	journal->j_stats.run.rs_locked += stats.run.rs_locked;
+ 	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index dbf41f9..1a80e31 100644
+index c22773b..f6ad0c0 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -513,6 +513,10 @@ int __jbd2_log_space_left(journal_t *journal)
-  */
- int __jbd2_log_start_commit(journal_t *journal, tid_t target)
- {
-+	/* Return if the txn has already requested to be committed */
-+	if (journal->j_commit_request == target)
-+		return 0;
-+
+@@ -534,6 +534,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ 			  journal->j_commit_request,
+ 			  journal->j_commit_sequence);
+ 		journal->j_running_transaction->t_state = T_REQUESTED;
++		journal->j_running_transaction->t_requested = jiffies;
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+ 	} else if (!tid_geq(journal->j_commit_request, target))
+@@ -899,13 +900,18 @@ static int jbd2_seq_info_show(struct seq_file *seq, void *v)
+ 
+ 	if (v != SEQ_START_TOKEN)
+ 		return 0;
+-	seq_printf(seq, "%lu transaction, each up to %u blocks\n",
+-			s->stats->ts_tid,
+-			s->journal->j_max_transaction_buffers);
++	seq_printf(seq, "%lu transactions (%lu requested), "
++		   "each up to %u blocks\n",
++		   s->stats->ts_tid, s->stats->ts_requested,
++		   s->journal->j_max_transaction_buffers);
+ 	if (s->stats->ts_tid == 0)
+ 		return 0;
+ 	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
+ 	    jiffies_to_msecs(s->stats->run.rs_wait / s->stats->ts_tid));
++	seq_printf(seq, "  %ums request delay\n",
++	    (s->stats->ts_requested == 0) ? 0 :
++	    jiffies_to_msecs(s->stats->run.rs_request_delay /
++			     s->stats->ts_requested));
+ 	seq_printf(seq, "  %ums running transaction\n",
+ 	    jiffies_to_msecs(s->stats->run.rs_running / s->stats->ts_tid));
+ 	seq_printf(seq, "  %ums transaction was being locked\n",
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6daff29..7fbc68f 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -100,6 +100,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
+ 	journal->j_running_transaction = transaction;
+ 	transaction->t_max_wait = 0;
+ 	transaction->t_start = jiffies;
++	transaction->t_requested = 0;
+ 
+ 	return transaction;
+ }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 920a8d0..95c1ca8 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -582,6 +582,11 @@ struct transaction_s
+ 	unsigned long		t_start;
+ 
  	/*
- 	 * The only transaction we can possibly wait upon is the
- 	 * currently running transaction (if it exists).  Otherwise,
++	 * When commit was requested
++	 */
++	unsigned long		t_requested;
++
++	/*
+ 	 * Checkpointing stats [j_checkpoint_sem]
+ 	 */
+ 	struct transaction_chp_stats_s t_chp_stats;
+@@ -638,6 +643,7 @@ struct transaction_s
+ 
+ struct transaction_run_stats_s {
+ 	unsigned long		rs_wait;
++	unsigned long		rs_request_delay;
+ 	unsigned long		rs_running;
+ 	unsigned long		rs_locked;
+ 	unsigned long		rs_flushing;
+@@ -650,6 +656,7 @@ struct transaction_run_stats_s {
+ 
+ struct transaction_stats_s {
+ 	unsigned long		ts_tid;
++	unsigned long		ts_requested;
+ 	struct transaction_run_stats_s run;
+ };
+ 
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index 127993d..5419f57 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -142,6 +142,7 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__field(		dev_t,	dev		)
+ 		__field(	unsigned long,	tid		)
+ 		__field(	unsigned long,	wait		)
++		__field(	unsigned long,	request_delay	)
+ 		__field(	unsigned long,	running		)
+ 		__field(	unsigned long,	locked		)
+ 		__field(	unsigned long,	flushing	)
+@@ -155,6 +156,7 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__entry->dev		= dev;
+ 		__entry->tid		= tid;
+ 		__entry->wait		= stats->rs_wait;
++		__entry->request_delay	= stats->rs_request_delay;
+ 		__entry->running	= stats->rs_running;
+ 		__entry->locked		= stats->rs_locked;
+ 		__entry->flushing	= stats->rs_flushing;
+@@ -164,10 +166,12 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__entry->blocks_logged	= stats->rs_blocks_logged;
+ 	),
+ 
+-	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
+-		  "logging %u handle_count %u blocks %u blocks_logged %u",
++	TP_printk("dev %d,%d tid %lu wait %u request_delay %u running %u "
++		  "locked %u flushing %u logging %u handle_count %u "
++		  "blocks %u blocks_logged %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->wait),
++		  jiffies_to_msecs(__entry->request_delay),
+ 		  jiffies_to_msecs(__entry->running),
+ 		  jiffies_to_msecs(__entry->locked),
+ 		  jiffies_to_msecs(__entry->flushing),
 -- 
 1.7.12.rc0.22.gcdd159b
 
