@@ -1,58 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 0/3 v2] jbd2 performance improvements
-Date: Thu, 31 Jan 2013 12:53:05 -0500
-Message-ID: <1359654788-6078-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/3] jbd2: don't wake kjournald unnecessarily
+Date: Thu, 31 Jan 2013 12:53:06 -0500
+Message-ID: <1359654788-6078-2-git-send-email-tytso@mit.edu>
+References: <1359654788-6078-1-git-send-email-tytso@mit.edu>
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46391 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:46396 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753613Ab3AaRxP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2013 12:53:15 -0500
+	id S1754197Ab3AaRxQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2013 12:53:16 -0500
+In-Reply-To: <1359654788-6078-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've added a patch which tracks the delay between when a commit was
-first requested, and when the commit thread actually starts processing
-the commit.  In addition to helping to assess the effects of the "commit
-as soon as possible after log_start_commit", it is also useful in
-debugging problems caused by real time processes which might interfere
-with the kjournald thread (since we've had one user ask a question about
-this already).
+From: Eric Sandeen <sandeen@redhat.com>
 
-There are other performance metrics that we should consider adding,
-including:
+Don't send an extra wakeup to kjournald in the case where we
+already have the proper target in j_commit_request, i.e. that
+transaction has already been requested for commit.
 
-*) using a per-cpu variable to track t_max_wait, so we can measure this
-   performance metric without incurring a scalability penalty; we
-   currently disable this unless debugging is enabled, which is
-   unfortunate.
-*) how many handles are getting blocked waiting for a transaction to
-   finish, and not just the max wait time
-*) keeping statistics of why various commits have been started (was it
-   due to an explicit fsync, or due to O_SYNC, or due to the transaction
-   time expiring --- and in the latter case, whether it is due to an
-   expiry while the file system was idle, and hence was picked up by
-   kjournald, or during the stop_this_handle processing)
+commit deeeaf13 "jbd2: fix fsync() tid wraparound bug" changed
+the logic leading to a wakeup, but it caused some extra wakeups
+which were found to lead to a measurable performance regression.
 
-But these are things we can save for another time...
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+[tytso@mit.edu: reworked check to make it clearer]
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/jbd2/journal.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-        	      	     	    	     - Ted
-
-Eric Sandeen (1):
-  jbd2: don't wake kjournald unnecessarily
-
-Theodore Ts'o (2):
-  jbd2: commit as soon as possible after log_start_commit
-  jbd2: track request delay statistics
-
- fs/jbd2/commit.c            | 13 ++++++++++++-
- fs/jbd2/journal.c           | 17 ++++++++++++++---
- fs/jbd2/transaction.c       |  7 +++++--
- include/linux/jbd2.h        |  8 ++++++++
- include/trace/events/jbd2.h |  8 ++++++--
- 5 files changed, 45 insertions(+), 8 deletions(-)
-
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index dbf41f9..1a80e31 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -513,6 +513,10 @@ int __jbd2_log_space_left(journal_t *journal)
+  */
+ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ {
++	/* Return if the txn has already requested to be committed */
++	if (journal->j_commit_request == target)
++		return 0;
++
+ 	/*
+ 	 * The only transaction we can possibly wait upon is the
+ 	 * currently running transaction (if it exists).  Otherwise,
 -- 
 1.7.12.rc0.22.gcdd159b
 
