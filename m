@@ -1,127 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4:  ext4_split_extent shoult take care about extent
- zeroout
-Date: Thu, 31 Jan 2013 15:18:34 +0100
-Message-ID: <20130131141834.GC4612@quack.suse.cz>
-References: <1359617098-18451-1-git-send-email-dmonakhov@openvz.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	xiaoqiangnk@gmail.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: ext4_split_extent shoult take care about extent zeroout v2
+Date: Thu, 31 Jan 2013 18:48:58 +0400
+Message-ID: <1359643738-22435-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, jack@suse.cz, xiaoqiangnk@gmail.com,
+	Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:40329 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:44912 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750921Ab3AaOSq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2013 09:18:46 -0500
-Content-Disposition: inline
-In-Reply-To: <1359617098-18451-1-git-send-email-dmonakhov@openvz.org>
+	id S1751523Ab3AaOuM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2013 09:50:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-On Thu 31-01-13 11:24:58, Dmitry Monakhov wrote:
-> We have to update extent's state after first ext4_split_extent_at otherwise this result
-> in following trace:
-> ->ext4_ext_handle_uninitialized_extents (ex=[1000:20:uninit], lblock 1000, max_blocks 10)
->   ->ext4_split_extent_at(ex=[1000,128], lblk 10010) /// First split
->     ->ext4_ext_split() -> ENOSPC
->     ->ext4_ext_zeroout
->       ->ext4_ext_dirty  -> ex=[1000:20:init]
->   ->ext4_split_extent_at(ex=[1000,128], lblk 10000) /// Second split
->      if(split == ee_block)
->          if (split_flag & EXT4_EXT_MARK_UNINIT2)
->             ext4_ext_mark_uninitialized(ex); ex=[1000:20:uninit] /// The bug!
->      ->ext4_ext_dirty ->ex=[1000:20:uninit]
-> 
-> At the end ext4_convert_unwritten_extents_endio() will findout large uninitialized
-> extent.
-  Thanks for debugging this. You fix look correct so you can add
-Reviewed-by: Jan Kara <jack@suse.cz>
-  but I have to say the above changelog isn't optimal. I had to look into
-the code to verify you are actually speaking about what I think you are
-speaking. I think there are some mistakes in block numbers and notation for
-extents isn't comletely clear either. Can we make the changelog something
-like:
 
 When ext4_split_extent_at() ends up doing zeroout & conversion to
 initialized instead of split & conversion, ext4_split_extent() gets
 confused and can wrongly mark the extent back as uninitialized resulting in
-end IO code getting confused from large unwritten extents (it doesn't
-result in data corruption mostly by luck).
+end IO code getting confused from large unwritten extents and may result in
+data loss.
 
 The example of problematic behavior is:
-                           lblk len              lblk len
+			    lblk len              lblk len
   ext4_split_extent() (ex=[1000,30,uninit], map=[1010,10])
     ext4_split_extent_at() (split [1000,30,uninit] at 1020)
       ext4_ext_insert_extent() -> ENOSPC
       ext4_ext_zeroout()
-        -> extent [1000,30] is now initialized
+	 -> extent [1000,30] is now initialized
     ext4_split_extent_at() (split [1000,30,init] at 1010,
-			    MARK_UNINIT1 | MARK_UNINIT2)
+			     MARK_UNINIT1 | MARK_UNINIT2)
       -> extent is split and parts marked as uninitialized
 
 Fix the problem by rechecking extent type after the first
-ext4_split_extent_at() returns.
+ext4_split_extent_at() returns. None of split_flags can not be applied to
+initialized extent so this patch also add BUG_ON to prevent similar issues
+in future.
+
+TESTCASE: https://github.com/dmonakhov/xfstests/commit/1a1c4f337d4d198803436c63a56625b1a78d8a5e
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
+ fs/ext4/extents.c |   22 ++++++++++++++++------
+ 1 files changed, 16 insertions(+), 6 deletions(-)
 
-What do you think? BTW: we don't have to further try to split the extent
-once it gets initialized do we? For now I'd keep your fix just to make
-ext4_split_extent() generic but noone really calls that function for
-initialized extent or is interested in splitting once the extent gets
-initialized. That code seriously needs some diet...
-
-								Honza
-
-> 
-> TESTCASE: https://github.com/dmonakhov/xfstests/commit/1a1c4f337d4d198803436c63a56625b1a78d8a5e
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/extents.c |   14 ++++++++++----
->  1 files changed, 10 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 97cac01..7a3f679 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3091,18 +3091,24 @@ static int ext4_split_extent(handle_t *handle,
->  		if (err)
->  			goto out;
->  	}
-> -
-> +	/* Update path is required because previous ext4_split_extent_at() may
-> +	 * result in split of original leaf or extent zeroout.
-> +	 */
-  Style nit comment should look like:
-	/*
-	 * Update path is required because previous ext4_split_extent_at() may
-	 * result in split of original leaf or extent zeroout.
-	 */
-
->  	ext4_ext_drop_refs(path);
->  	path = ext4_ext_find_extent(inode, map->m_lblk, path);
->  	if (IS_ERR(path))
->  		return PTR_ERR(path);
-> +	depth = ext_depth(inode);
-> +	ex = path[depth].p_ext;
-> +	uninitialized = ext4_ext_is_uninitialized(ex);
->  
->  	if (map->m_lblk >= ee_block) {
->  		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
-> -		if (uninitialized)
-> +		if (uninitialized) {
->  			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
-> -		if (split_flag & EXT4_EXT_MARK_UNINIT2)
-> -			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
-> +			if (split_flag & EXT4_EXT_MARK_UNINIT2)
-> +				split_flag1 |= EXT4_EXT_MARK_UNINIT2;
-> +		}
->  		err = ext4_split_extent_at(handle, inode, path,
->  				map->m_lblk, split_flag1, flags);
->  		if (err)
-> -- 
-> 1.7.1
-> 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index fd51469..05222d5 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2982,6 +2982,10 @@ static int ext4_split_extent_at(handle_t *handle,
+ 	newblock = split - ee_block + ext4_ext_pblock(ex);
+ 
+ 	BUG_ON(split < ee_block || split >= (ee_block + ee_len));
++	BUG_ON(!ext4_ext_is_uninitialized(ex) &&
++	       split_flag & (EXT4_EXT_MAY_ZEROOUT |
++			     EXT4_EXT_MARK_UNINIT1 |
++			     EXT4_EXT_MARK_UNINIT2));
+ 
+ 	err = ext4_ext_get_access(handle, inode, path + depth);
+ 	if (err)
+@@ -3091,18 +3095,24 @@ static int ext4_split_extent(handle_t *handle,
+ 		if (err)
+ 			goto out;
+ 	}
+-
++	/*
++	 * Update path is required because previous ext4_split_extent_at() may
++	 * result in split of original leaf or extent zeroout.
++	 */
+ 	ext4_ext_drop_refs(path);
+ 	path = ext4_ext_find_extent(inode, map->m_lblk, path);
+ 	if (IS_ERR(path))
+ 		return PTR_ERR(path);
++	depth = ext_depth(inode);
++	ex = path[depth].p_ext;
++	uninitialized = ext4_ext_is_uninitialized(ex);
++	split_flag1 = 0;
+ 
+ 	if (map->m_lblk >= ee_block) {
+-		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
+-		if (uninitialized)
+-			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
+-		if (split_flag & EXT4_EXT_MARK_UNINIT2)
+-			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
++		if (uninitialized) {
++			split_flag1 = EXT4_EXT_MARK_UNINIT1;
++			split_flag1 |= split_flag & (EXT4_EXT_MAY_ZEROOUT | EXT4_EXT_MARK_UNINIT2);
++		}
+ 		err = ext4_split_extent_at(handle, inode, path,
+ 				map->m_lblk, split_flag1, flags);
+ 		if (err)
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.1
+
