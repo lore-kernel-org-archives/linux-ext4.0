@@ -1,219 +1,107 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/9 v4] ext4: adjust interfaces of extent status tree
-Date: Thu, 31 Jan 2013 17:02:06 +0100
-Message-ID: <20130131160206.GD4612@quack.suse.cz>
-References: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
- <1359609477-29845-5-git-send-email-wenqing.lz@taobao.com>
+Subject: Re: [PATCH] ext4: ext4_split_extent shoult take care about extent
+ zeroout v2
+Date: Thu, 31 Jan 2013 17:12:58 +0100
+Message-ID: <20130131161258.GE4612@quack.suse.cz>
+References: <1359643738-22435-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	xiaoqiangnk@gmail.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45446 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:45995 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751375Ab3AaQCT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2013 11:02:19 -0500
+	id S1752775Ab3AaQNK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2013 11:13:10 -0500
 Content-Disposition: inline
-In-Reply-To: <1359609477-29845-5-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1359643738-22435-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 31-01-13 13:17:52, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On Thu 31-01-13 18:48:58, Dmitry Monakhov wrote:
+> When ext4_split_extent_at() ends up doing zeroout & conversion to
+> initialized instead of split & conversion, ext4_split_extent() gets
+> confused and can wrongly mark the extent back as uninitialized resulting in
+> end IO code getting confused from large unwritten extents and may result in
+> data loss.
 > 
-> Due to two members are added into extent status tree, all interfaces
-> need to be adjusted.
-  I have one minor comment below...
-
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/extents_status.c    | 56 ++++++++++++++++++++++++++++++++++++---------
->  fs/ext4/extents_status.h    | 24 ++++++++++++++++++-
->  fs/ext4/inode.c             |  3 ++-
->  include/trace/events/ext4.h | 34 +++++++++++++++++----------
->  4 files changed, 92 insertions(+), 25 deletions(-)
+> The example of problematic behavior is:
+> 			    lblk len              lblk len
+>   ext4_split_extent() (ex=[1000,30,uninit], map=[1010,10])
+>     ext4_split_extent_at() (split [1000,30,uninit] at 1020)
+>       ext4_ext_insert_extent() -> ENOSPC
+>       ext4_ext_zeroout()
+> 	 -> extent [1000,30] is now initialized
+>     ext4_split_extent_at() (split [1000,30,init] at 1010,
+> 			     MARK_UNINIT1 | MARK_UNINIT2)
+>       -> extent is split and parts marked as uninitialized
 > 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index aa4d346..9c7984c 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-<snip>
-> @@ -465,6 +490,9 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  
->  			newes.es_lblk = end + 1;
->  			newes.es_len = len2;
-> +			newes.es_pblk = ext4_es_get_pblock(&orig_es,
-> +				orig_es.es_pblk + orig_es.es_len - len2);
-> +			newes.es_status = orig_es.es_status;
->  			err = __es_insert_extent(tree, &newes);
->  			if (err) {
->  				es->es_lblk = orig_es.es_lblk;
-> @@ -474,6 +502,8 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  		} else {
->  			es->es_lblk = end + 1;
->  			es->es_len = len2;
-> +			es->es_pblk = ext4_es_get_pblock(es,
-> +				orig_es.es_pblk + orig_es.es_len - len2);
->  		}
->  		goto out;
->  	}
-> @@ -498,9 +528,13 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  	}
->  
->  	if (es && es->es_lblk < end + 1) {
-> +		ext4_lblk_t orig_len = es->es_len;
-> +
->  		len1 = ext4_es_end(es) - end;
->  		es->es_lblk = end + 1;
->  		es->es_len = len1;
-> +		es->es_pblk = ext4_es_get_pblock(es,
-> +						 es->es_pblk + orig_len - len1);
->  	}
->  
->  out:
-  So ext4_es_get_pblock() seems a bit confusing. I understand that for
-delayed extents physical block doesn't make sence and that you wanted to
-save some typing by that function but IMHO it's making the code less
-readable. I'd rather see there e.g.:
-  if (!ext4_es_is_delayed(es))
-	es->es_pblk += orig_len - len1;
-and for delayed extents we can just leave es_pblk undefined because nobody
-should really look at it anyway.
+> Fix the problem by rechecking extent type after the first
+> ext4_split_extent_at() returns. None of split_flags can not be applied to
+> initialized extent so this patch also add BUG_ON to prevent similar issues
+> in future.
+> 
+> TESTCASE: https://github.com/dmonakhov/xfstests/commit/1a1c4f337d4d198803436c63a56625b1a78d8a5e
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> index 2eb9cc3..1345c06 100644
-> --- a/fs/ext4/extents_status.h
-> +++ b/fs/ext4/extents_status.h
-> @@ -48,10 +48,32 @@ extern void ext4_exit_es(void);
->  extern void ext4_es_init_tree(struct ext4_es_tree *tree);
+> ---
+>  fs/ext4/extents.c |   22 ++++++++++++++++------
+>  1 files changed, 16 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index fd51469..05222d5 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2982,6 +2982,10 @@ static int ext4_split_extent_at(handle_t *handle,
+>  	newblock = split - ee_block + ext4_ext_pblock(ex);
 >  
->  extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
-> -				 ext4_lblk_t len);
-> +				 ext4_lblk_t len, ext4_fsblk_t pblk,
-> +				 int status);
->  extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  				 ext4_lblk_t len);
->  extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
->  				struct extent_status *es);
+>  	BUG_ON(split < ee_block || split >= (ee_block + ee_len));
+> +	BUG_ON(!ext4_ext_is_uninitialized(ex) &&
+> +	       split_flag & (EXT4_EXT_MAY_ZEROOUT |
+> +			     EXT4_EXT_MARK_UNINIT1 |
+> +			     EXT4_EXT_MARK_UNINIT2));
 >  
-> +static inline int ext4_es_is_written(struct extent_status *es)
-> +{
-> +	return (es->es_status == EXTENT_STATUS_WRITTEN);
-> +}
-> +
-> +static inline int ext4_es_is_unwritten(struct extent_status *es)
-> +{
-> +	return (es->es_status == EXTENT_STATUS_UNWRITTEN);
-> +}
-> +
-> +static inline int ext4_es_is_delayed(struct extent_status *es)
-> +{
-> +	return (es->es_status == EXTENT_STATUS_DELAYED);
-> +}
-> +
-> +static inline ext4_fsblk_t ext4_es_get_pblock(struct extent_status *es,
-> +					      ext4_fsblk_t pb)
-> +{
-> +	return (ext4_es_is_delayed(es) ? ~0 : pb);
-> +}
-> +
->  #endif /* _EXT4_EXTENTS_STATUS_H */
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 4d066f3..e09c7cf 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1819,7 +1819,8 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
->  				goto out_unlock;
->  		}
+>  	err = ext4_ext_get_access(handle, inode, path + depth);
+>  	if (err)
+> @@ -3091,18 +3095,24 @@ static int ext4_split_extent(handle_t *handle,
+>  		if (err)
+>  			goto out;
+>  	}
+> -
+> +	/*
+> +	 * Update path is required because previous ext4_split_extent_at() may
+> +	 * result in split of original leaf or extent zeroout.
+> +	 */
+>  	ext4_ext_drop_refs(path);
+>  	path = ext4_ext_find_extent(inode, map->m_lblk, path);
+>  	if (IS_ERR(path))
+>  		return PTR_ERR(path);
+> +	depth = ext_depth(inode);
+> +	ex = path[depth].p_ext;
+> +	uninitialized = ext4_ext_is_uninitialized(ex);
+> +	split_flag1 = 0;
 >  
-> -		retval = ext4_es_insert_extent(inode, map->m_lblk, map->m_len);
-> +		retval = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-> +					       ~0, EXTENT_STATUS_DELAYED);
->  		if (retval)
->  			goto out_unlock;
->  
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index 952628a..43f335a 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -2068,28 +2068,33 @@ TRACE_EVENT(ext4_ext_remove_space_done,
->  );
->  
->  TRACE_EVENT(ext4_es_insert_extent,
-> -	TP_PROTO(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len),
-> +	TP_PROTO(struct inode *inode, struct extent_status *es),
->  
-> -	TP_ARGS(inode, lblk, len),
-> +	TP_ARGS(inode, es),
->  
->  	TP_STRUCT__entry(
-> -		__field(	dev_t,	dev			)
-> -		__field(	ino_t,	ino			)
-> -		__field(	loff_t,	lblk			)
-> -		__field(	loff_t, len			)
-> +		__field(	dev_t,		dev		)
-> +		__field(	ino_t,		ino		)
-> +		__field(	ext4_lblk_t,	lblk		)
-> +		__field(	ext4_lblk_t,	len		)
-> +		__field(	ext4_fsblk_t,	pblk		)
-> +		__field(	int,		status		)
->  	),
->  
->  	TP_fast_assign(
->  		__entry->dev	= inode->i_sb->s_dev;
->  		__entry->ino	= inode->i_ino;
-> -		__entry->lblk	= lblk;
-> -		__entry->len	= len;
-> +		__entry->lblk	= es->es_lblk;
-> +		__entry->len	= es->es_len;
-> +		__entry->pblk	= es->es_pblk;
-> +		__entry->status	= es->es_status;
->  	),
->  
-> -	TP_printk("dev %d,%d ino %lu es [%lld/%lld)",
-> +	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %u",
->  		  MAJOR(__entry->dev), MINOR(__entry->dev),
->  		  (unsigned long) __entry->ino,
-> -		  __entry->lblk, __entry->len)
-> +		  __entry->lblk, __entry->len,
-> +		  __entry->pblk, __entry->status)
->  );
->  
->  TRACE_EVENT(ext4_es_remove_extent,
-> @@ -2150,6 +2155,8 @@ TRACE_EVENT(ext4_es_find_extent_exit,
->  		__field(	ino_t,		ino		)
->  		__field(	ext4_lblk_t,	lblk		)
->  		__field(	ext4_lblk_t,	len		)
-> +		__field(	ext4_fsblk_t,	pblk		)
-> +		__field(	int,		status		)
->  		__field(	ext4_lblk_t,	ret		)
->  	),
->  
-> @@ -2158,13 +2165,16 @@ TRACE_EVENT(ext4_es_find_extent_exit,
->  		__entry->ino	= inode->i_ino;
->  		__entry->lblk	= es->es_lblk;
->  		__entry->len	= es->es_len;
-> +		__entry->pblk	= es->es_pblk;
-> +		__entry->status	= es->es_status;
->  		__entry->ret	= ret;
->  	),
->  
-> -	TP_printk("dev %d,%d ino %lu es [%u/%u) ret %u",
-> +	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %u ret %u",
->  		  MAJOR(__entry->dev), MINOR(__entry->dev),
->  		  (unsigned long) __entry->ino,
-> -		  __entry->lblk, __entry->len, __entry->ret)
-> +		  __entry->lblk, __entry->len,
-> +		  __entry->pblk, __entry->status, __entry->ret)
->  );
->  
->  #endif /* _TRACE_EXT4_H */
+>  	if (map->m_lblk >= ee_block) {
+> -		split_flag1 = split_flag & EXT4_EXT_MAY_ZEROOUT;
+> -		if (uninitialized)
+> -			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
+> -		if (split_flag & EXT4_EXT_MARK_UNINIT2)
+> -			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
+> +		if (uninitialized) {
+> +			split_flag1 = EXT4_EXT_MARK_UNINIT1;
+> +			split_flag1 |= split_flag & (EXT4_EXT_MAY_ZEROOUT | EXT4_EXT_MARK_UNINIT2);
+> +		}
+>  		err = ext4_split_extent_at(handle, inode, path,
+>  				map->m_lblk, split_flag1, flags);
+>  		if (err)
 > -- 
-> 1.7.12.rc2.18.g61b472e
+> 1.7.1
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
