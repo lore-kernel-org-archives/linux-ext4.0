@@ -1,407 +1,51 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 9/9 v4] ext4: reclaim extents from extent status tree
-Date: Thu, 31 Jan 2013 13:17:57 +0800
-Message-ID: <1359609477-29845-10-git-send-email-wenqing.lz@taobao.com>
-References: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+From: "Jon ERNST" <jonernst@gmx.com>
+Subject: extents_status comment small modification
+Date: Thu, 31 Jan 2013 07:08:34 +0100
+Message-ID: <20130131060835.23270@gmx.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:34110 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751628Ab3AaFFA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jan 2013 00:05:00 -0500
-Received: by mail-pa0-f45.google.com with SMTP id bg2so1519657pad.32
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Jan 2013 21:05:00 -0800 (PST)
-In-Reply-To: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
+Received: from mout.gmx.net ([212.227.15.19]:49793 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751772Ab3AaGIh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2013 01:08:37 -0500
+Received: from mailout-eu.gmx.com ([10.1.101.214]) by mrigmx.server.lan
+ (mrigmx001) with ESMTP (Nemesis) id 0MSFoz-1UOoLg3Sw7-00TTVl for
+ <linux-ext4@vger.kernel.org>; Thu, 31 Jan 2013 07:08:35 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
-
-Although extent status is loaded on-demand, we also need to reclaim
-extent from the tree when we are under a heavy memory pressure because
-in some cases fragmented extent tree causes status tree costs too much
-memory.
-
-Here we maintain a lru list in super_block.  When the extent status of
-an inode is accessed and changed, this inode will be move to the tail
-of the list.  The inode will be dropped from this list when it is
-cleared.  In the inode, a counter is added to count the number of
-cached objects in extent status tree.  Here only written/unwritten
-extent is counted because delayed extent doesn't be reclaimed due to
-fiemap, bigalloc and seek_data/hole need it.  The counter will be
-increased as a new extent is allocated, and it will be decreased as a
-extent is freed.
-
-In this commit we use normal shrinker framework to reclaim memory from
-the status tree.  ext4_es_reclaim_extents_count() traverses the lru list
-to count the number of reclaimable extents.  ext4_es_shrink() tries to
-reclaim written/unwritten extents from extent status tree.  The inode
-that has been shrunk is moved to the tail of lru list.
-
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h              |   7 ++
- fs/ext4/extents_status.c    | 156 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/extents_status.h    |   5 ++
- fs/ext4/super.c             |   7 ++
- include/trace/events/ext4.h |  60 +++++++++++++++++
- 5 files changed, 235 insertions(+)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 60d16d1..a565701 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -881,6 +881,8 @@ struct ext4_inode_info {
- 	/* extents status tree */
- 	struct ext4_es_tree i_es_tree;
- 	rwlock_t i_es_lock;
-+	struct list_head i_es_lru;
-+	unsigned int i_es_lru_nr;	/* protected by i_es_lock */
- 
- 	/* ialloc */
- 	ext4_group_t	i_last_alloc_group;
-@@ -1296,6 +1298,11 @@ struct ext4_sb_info {
- 
- 	/* Precomputed FS UUID checksum for seeding other checksums */
- 	__u32 s_csum_seed;
-+
-+	/* Reclaim extents from extent status tree */
-+	struct shrinker s_es_shrinker;
-+	struct list_head s_es_lru;
-+	spinlock_t s_es_lru_lock ____cacheline_aligned_in_smp;
- };
- 
- static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 01fb000..9727597 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -145,6 +145,9 @@ static struct kmem_cache *ext4_es_cachep;
- static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
- static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 			      ext4_lblk_t end);
-+static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
-+				       int nr_to_scan);
-+static int ext4_es_reclaim_extents_count(struct super_block *sb);
- 
- int __init ext4_init_es(void)
- {
-@@ -280,6 +283,7 @@ out:
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
- 	trace_ext4_es_find_extent_exit(inode, es, ret);
- 	return ret;
- }
-@@ -296,11 +300,24 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
- 	es->es_len = len;
- 	es->es_pblk = pblk;
- 	es->es_status = status;
-+
-+	/*
-+	 * We don't count delayed extent because we never try to reclaim them
-+	 */
-+	if (!ext4_es_is_delayed(es))
-+		EXT4_I(inode)->i_es_lru_nr++;
-+
- 	return es;
- }
- 
- static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
- {
-+	/* Decrease the lru counter when this es is not delayed */
-+	if (!ext4_es_is_delayed(es)) {
-+		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
-+		EXT4_I(inode)->i_es_lru_nr--;
-+	}
-+
- 	kmem_cache_free(ext4_es_cachep, es);
- }
- 
-@@ -451,6 +468,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- error:
- 	write_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
- 	ext4_es_print_tree(inode);
- 
- 	return err;
-@@ -511,6 +529,7 @@ out:
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
- 
-+	ext4_es_lru_add(inode);
- 	trace_ext4_es_lookup_extent_exit(inode, es, found);
- 	return found;
- }
-@@ -624,3 +643,140 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	ext4_es_print_tree(inode);
- 	return err;
- }
-+
-+static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
-+{
-+	struct ext4_sb_info *sbi = container_of(shrink,
-+					struct ext4_sb_info, s_es_shrinker);
-+	struct ext4_inode_info *ei;
-+	struct list_head *cur, *tmp, scanned;
-+	int nr_to_scan = sc->nr_to_scan;
-+	int ret, nr_shrunk = 0;
-+
-+	trace_ext4_es_shrink_enter(sbi->s_sb, nr_to_scan);
-+
-+	if (!nr_to_scan)
-+		return ext4_es_reclaim_extents_count(sbi->s_sb);
-+
-+	INIT_LIST_HEAD(&scanned);
-+
-+	spin_lock(&sbi->s_es_lru_lock);
-+	list_for_each_safe(cur, tmp, &sbi->s_es_lru) {
-+		list_move_tail(cur, &scanned);
-+
-+		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
-+
-+		read_lock(&ei->i_es_lock);
-+		if (ei->i_es_lru_nr == 0) {
-+			read_unlock(&ei->i_es_lock);
-+			continue;
-+		}
-+		read_unlock(&ei->i_es_lock);
-+
-+		write_lock(&ei->i_es_lock);
-+		ret = __es_try_to_reclaim_extents(ei, nr_to_scan);
-+		write_unlock(&ei->i_es_lock);
-+
-+		nr_shrunk += ret;
-+		nr_to_scan -= ret;
-+		if (nr_to_scan == 0)
-+			break;
-+	}
-+	list_splice_tail(&scanned, &sbi->s_es_lru);
-+	spin_unlock(&sbi->s_es_lru_lock);
-+	trace_ext4_es_shrink_exit(sbi->s_sb, nr_shrunk);
-+
-+	return ext4_es_reclaim_extents_count(sbi->s_sb);
-+}
-+
-+void ext4_es_register_shrinker(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi;
-+
-+	sbi = EXT4_SB(sb);
-+	INIT_LIST_HEAD(&sbi->s_es_lru);
-+	spin_lock_init(&sbi->s_es_lru_lock);
-+	sbi->s_es_shrinker.shrink = ext4_es_shrink;
-+	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
-+	register_shrinker(&sbi->s_es_shrinker);
-+}
-+
-+void ext4_es_unregister_shrinker(struct super_block *sb)
-+{
-+	unregister_shrinker(&EXT4_SB(sb)->s_es_shrinker);
-+}
-+
-+void ext4_es_lru_add(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+
-+	spin_lock(&sbi->s_es_lru_lock);
-+	if (list_empty(&ei->i_es_lru))
-+		list_add_tail(&ei->i_es_lru, &sbi->s_es_lru);
-+	else
-+		list_move_tail(&ei->i_es_lru, &sbi->s_es_lru);
-+	spin_unlock(&sbi->s_es_lru_lock);
-+}
-+
-+void ext4_es_lru_del(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+
-+	spin_lock(&sbi->s_es_lru_lock);
-+	if (!list_empty(&ei->i_es_lru))
-+		list_del_init(&ei->i_es_lru);
-+	spin_unlock(&sbi->s_es_lru_lock);
-+}
-+
-+static int ext4_es_reclaim_extents_count(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_inode_info *ei;
-+	struct list_head *cur;
-+	int nr_cached = 0;
-+
-+	spin_lock(&sbi->s_es_lru_lock);
-+	list_for_each(cur, &sbi->s_es_lru) {
-+		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
-+		read_lock(&ei->i_es_lock);
-+		nr_cached += ei->i_es_lru_nr;
-+		read_unlock(&ei->i_es_lock);
-+	}
-+	spin_unlock(&sbi->s_es_lru_lock);
-+	trace_ext4_es_reclaim_extents_count(sb, nr_cached);
-+	return nr_cached;
-+}
-+
-+static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
-+				       int nr_to_scan)
-+{
-+	struct inode *inode = &ei->vfs_inode;
-+	struct ext4_es_tree *tree = &ei->i_es_tree;
-+	struct rb_node *node;
-+	struct extent_status *es;
-+	int nr_shrunk = 0;
-+
-+	if (ei->i_es_lru_nr == 0)
-+		return 0;
-+
-+	node = rb_first(&tree->root);
-+	while (node != NULL) {
-+		es = rb_entry(node, struct extent_status, rb_node);
-+		node = rb_next(&es->rb_node);
-+		/*
-+		 * We can't reclaim delayed extent from status tree because
-+		 * fiemap, bigallic, and seek_data/hole need to use it.
-+		 */
-+		if (!ext4_es_is_delayed(es)) {
-+			rb_erase(&es->rb_node, &tree->root);
-+			ext4_es_free_extent(inode, es);
-+			nr_shrunk++;
-+			if (--nr_to_scan == 0)
-+				break;
-+		}
-+	}
-+	tree->cache_es = NULL;
-+	return nr_shrunk;
-+}
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 6350d35..d199a51 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -77,4 +77,9 @@ static inline ext4_fsblk_t ext4_es_get_pblock(struct extent_status *es,
- 	return (ext4_es_is_delayed(es) ? ~0 : pb);
- }
- 
-+extern void ext4_es_register_shrinker(struct super_block *sb);
-+extern void ext4_es_unregister_shrinker(struct super_block *sb);
-+extern void ext4_es_lru_add(struct inode *inode);
-+extern void ext4_es_lru_del(struct inode *inode);
-+
- #endif /* _EXT4_EXTENTS_STATUS_H */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a35c6c1..64d78b1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -858,6 +858,7 @@ static void ext4_put_super(struct super_block *sb)
- 			ext4_abort(sb, "Couldn't clean up the journal");
- 	}
- 
-+	ext4_es_unregister_shrinker(sb);
- 	del_timer(&sbi->s_err_report);
- 	ext4_release_system_zone(sb);
- 	ext4_mb_release(sb);
-@@ -943,6 +944,8 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&ei->i_prealloc_lock);
- 	ext4_es_init_tree(&ei->i_es_tree);
- 	rwlock_init(&ei->i_es_lock);
-+	INIT_LIST_HEAD(&ei->i_es_lru);
-+	ei->i_es_lru_nr = 0;
- 	ei->i_reserved_data_blocks = 0;
- 	ei->i_reserved_meta_blocks = 0;
- 	ei->i_allocated_meta_blocks = 0;
-@@ -1030,6 +1033,7 @@ void ext4_clear_inode(struct inode *inode)
- 	dquot_drop(inode);
- 	ext4_discard_preallocations(inode);
- 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-+	ext4_es_lru_del(inode);
- 	if (EXT4_I(inode)->jinode) {
- 		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
- 					       EXT4_I(inode)->jinode);
-@@ -3771,6 +3775,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_max_writeback_mb_bump = 128;
- 	sbi->s_extent_max_zeroout_kb = 32;
- 
-+	/* Register extent status tree shrinker */
-+	ext4_es_register_shrinker(sb);
-+
- 	/*
- 	 * set up enough so that it can read an inode
- 	 */
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index f23c177..05318dc 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2233,6 +2233,66 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
- 		  __entry->found ? __entry->status : 0)
- );
- 
-+TRACE_EVENT(ext4_es_reclaim_extents_count,
-+	TP_PROTO(struct super_block *sb, int nr_cached),
-+
-+	TP_ARGS(sb, nr_cached),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	int,	nr_cached		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= sb->s_dev;
-+		__entry->nr_cached	= nr_cached;
-+	),
-+
-+	TP_printk("dev %d,%d cached objects nr %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->nr_cached)
-+);
-+
-+TRACE_EVENT(ext4_es_shrink_enter,
-+	TP_PROTO(struct super_block *sb, int nr_to_scan),
-+
-+	TP_ARGS(sb, nr_to_scan),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	int,	nr_to_scan		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= sb->s_dev;
-+		__entry->nr_to_scan	= nr_to_scan;
-+	),
-+
-+	TP_printk("dev %d,%d nr to scan %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->nr_to_scan)
-+);
-+
-+TRACE_EVENT(ext4_es_shrink_exit,
-+	TP_PROTO(struct super_block *sb, int shrunk_nr),
-+
-+	TP_ARGS(sb, shrunk_nr),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	int,	shrunk_nr		)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev		= sb->s_dev;
-+		__entry->shrunk_nr	= shrunk_nr;
-+	),
-+
-+	TP_printk("dev %d,%d nr to scan %d",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->shrunk_nr)
-+);
-+
- #endif /* _TRACE_EXT4_H */
- 
- /* This part must be outside protection */
--- 
-1.7.12.rc2.18.g61b472e
-
+ Hi list,
+=20
+ I guess is a small helpful typo fix.
+=20
+ diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+ index 564d981..ca4c810 100644
+ --- a/fs/ext4/extents_status.c
+ +++ b/fs/ext4/extents_status.c
+ @@ -104,7 +104,7 @@
+ =C2=A0 *=C2=A0=C2=A0=C2=A0=C2=A0 a space.
+ =C2=A0 *
+ =C2=A0 *=C2=A0=C2=A0 --=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 race=
+ on a delayed extent tree
+ - *=C2=A0=C2=A0=C2=A0=C2=A0 Delayed extent tree is protected inode->i_=
+es_lock.
+ + *=C2=A0=C2=A0=C2=A0=C2=A0 Delayed extent tree is protected by inode-=
+>i_es_lock.
+ =C2=A0 *
+ =C2=A0 *
+ =C2=A0 * =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D
+=20
+=20
+ Regards,
+ Jon
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
