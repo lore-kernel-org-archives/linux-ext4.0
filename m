@@ -1,35 +1,49 @@
-From: Carlos Carvalho <carlos@fisica.ufpr.br>
-Subject: Re: how to quotacheck with the new quota implementation (hidden inode)?
-Date: Thu, 31 Jan 2013 17:13:16 -0200
-Message-ID: <20746.49740.638811.698394@fisica.ufpr.br>
-References: <20730.1955.395545.141779@fisica.ufpr.br>
-	<20130121054741.GB321@thunk.org>
-	<20746.49010.569691.44452@fisica.ufpr.br>
-	<CAGr1F2F=mffm7PORykm2CbXt3EWt1=Zgerw-OEy7oGzUQ2dEQA@mail.gmail.com>
+From: Joel Becker <jlbec@evilplan.org>
+Subject: Re: [PATCH 0/4 v2] Fix possible use after free with AIO
+Date: Thu, 31 Jan 2013 11:31:57 -0800
+Message-ID: <20130131193156.GA20817@localhost>
+References: <1359502081-20240-1-git-send-email-jack@suse.cz>
+ <20130130144535.GK4503@ZenIV.linux.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>
-To: Aditya Kali <adityakali@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fisica.ufpr.br ([200.17.209.129]:41751 "EHLO fisica.ufpr.br"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751945Ab3AaTNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2013 14:13:18 -0500
-In-Reply-To: <CAGr1F2F=mffm7PORykm2CbXt3EWt1=Zgerw-OEy7oGzUQ2dEQA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	ocfs2-devel@oss.oracle.com
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130130144535.GK4503@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Aditya Kali (adityakali@google.com) wrote on 31 January 2013 11:04:
- >By default, only usage is enabled when the filesystem is mounted. You
- >will need to call quotaon to turn on limit enforcement. If it doesn't
- >even after that, then its a bug.
+On Wed, Jan 30, 2013 at 02:45:35PM +0000, Al Viro wrote:
+> On Wed, Jan 30, 2013 at 12:27:57AM +0100, Jan Kara wrote:
+> > 
+> >   Hi,
+> > 
+> >   since nobody seem to have picked up any of the patches (at least
+> > nobody told me so), I've added acks I received to the patches and I'm
+> > sending them to Al for merging. Al, can you please merge these? Thanks.
+> 
+> VFS part (4/4) picked; IMO at least ext* and xfs should go through the
+> filesystem trees.  If ocfs2 folks don't pick fs/ocfs2 part, I'll grab
+> it as well - not sure how active their tree is these days...
 
-Ah, fine. It works, fortunately :-). Thanks.
+	I thought akpm had this through -mm.  I acked it there.
 
-It's not clear what can be dropped and what must still be used in the
-new implementation. It'd be nice to state it in the man page of
-tune2fs, for example. I thought that if we wanted to stop quotas it'd
-be necessary to umount and tune2fs again.
+Joel
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+
+"Same dancers in the same old shoes.
+ You get too careful with the steps you choose.
+ You don't care about winning but you don't want to lose
+ After the thrill is gone."
+
+			http://www.jlbec.org/
+			jlbec@evilplan.org
