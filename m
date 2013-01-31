@@ -1,103 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/9 v4] ext4: track all extent status in extent status
- tree
-Date: Thu, 31 Jan 2013 17:50:55 +0100
-Message-ID: <20130131165055.GF4612@quack.suse.cz>
-References: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
- <1359609477-29845-6-git-send-email-wenqing.lz@taobao.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 04/12] ext4: Disable merging of uninitialized extents
+Date: Thu, 31 Jan 2013 11:54:06 -0500
+Message-ID: <20130131165406.GA14486@thunk.org>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+ <1358510446-19174-5-git-send-email-jack@suse.cz>
+ <87vcamdi6e.fsf@openvz.org>
+ <87a9rpssj8.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47485 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751688Ab3AaQvJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Jan 2013 11:51:09 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:46376 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752485Ab3AaQy1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 31 Jan 2013 11:54:27 -0500
 Content-Disposition: inline
-In-Reply-To: <1359609477-29845-6-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <87a9rpssj8.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 31-01-13 13:17:53, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> By recording the phycisal block and status, extent status tree is able
-> to track the status of every extents.  When we call _map_blocks
-> functions to lookup an extent or create a new written/unwritten/delayed
-> extent, this extent will be inserted into extent status tree.
-> 
-> We don't load all extents from disk in alloc_inode() because it costs
-> too much memory, and if a file is opened and closed frequently it will
-> takes too much time to load all extent information.  So currently when
-> we create/lookup an extent, this extent will be inserted into extent
-> status tree.  Hence, the extent status tree may not comprehensively
-> contain all of the extents found in the file.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/extents.c |  5 +++-
->  fs/ext4/file.c    |  6 +++--
->  fs/ext4/inode.c   | 73 ++++++++++++++++++++++++++++++++++++-------------------
->  3 files changed, 56 insertions(+), 28 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index aa9a6d2..d23a654 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2074,7 +2074,7 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
->  		}
->  
->  		/* This is possible iff next == next_del == EXT_MAX_BLOCKS */
-> -		if (next == next_del) {
-> +		if (next == next_del && next_del == EXT_MAX_BLOCKS) {
-  This doesn't seem to be related, does it?
+On Thu, Jan 31, 2013 at 11:47:23AM +0400, Dmitry Monakhov wrote:
+> OK I've found it. I'm a bit disappointed, it is even not a race
+> condition, but simple corruption.
+> Patch is available here: http://article.gmane.org/gmane.comp.file-systems.ext4/36762
+> link for sain mailer client: <1359617098-18451-1-git-send-email-dmonakhov@openvz.org>
+> After this bug was fixed it is safe to apply both Jan's patches:
+> [PATCH 04/12] ext4: Disable merging of uninitialized extents
+> [PATCH 05/12] ext4: Remove unnecessary wait for extent conversion in ext4_fallocate()
+> At least it survives after all my tests.
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e09c7cf..f0dda2a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -615,18 +615,27 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
->  			ext4_da_update_reserve_space(inode, retval, 1);
->  	}
-> -	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
-> +	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
->  		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
->  
-> -		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-> -			int ret;
-> -delayed_mapped:
-> -			/* delayed allocation blocks has been allocated */
-> -			ret = ext4_es_remove_extent(inode, map->m_lblk,
-> -						    map->m_len);
-> -			if (ret < 0)
-> -				retval = ret;
-> -		}
-> +	if (retval > 0) {
-> +		int ret, status;
-> +
-> +		if (flags & EXT4_GET_BLOCKS_PRE_IO)
-> +			status = EXTENT_STATUS_UNWRITTEN;
-> +		else if (flags & EXT4_GET_BLOCKS_CONVERT)
-> +			status = EXTENT_STATUS_WRITTEN;
-> +		else if (flags & EXT4_GET_BLOCKS_UNINIT_EXT)
-> +			status = EXTENT_STATUS_UNWRITTEN;
-> +		else if (flags & EXT4_GET_BLOCKS_CREATE)
-> +			status = EXTENT_STATUS_WRITTEN;
-> +		else
-> +			BUG_ON(1);
-> +
-> +		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-> +					    map->m_pblk, status);
-> +		if (ret < 0)
-> +			retval = ret;
-  Hum, are you sure the extent status will be correct? Won't it be safer to
-just use whatever we have in 'map'?
+Thanks for finding it!  As folks have probably noticed the dev branch
+and linux-next already has all of the other patches (except for #3,
+which we've agreed isn't needed since the original code was correct
+as-is).  I'll work on reviewing your patch and then applying the last
+three, and then over the weekend I'll push the master branch up, thus
+casting all of the patches currently in the tree into stone.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> BTW: It is appeared that ext4_debug() infrastructure is almost unusable
+> because based on printk() instead of light-wait event tracing infrastructure.
+> I'm now work on patch-set which fix that.
+
+Yes, I haven't used the ext4_debug infrastructure in quite some time.
+As I've needed to do debugging I've added new tracepoints, and in some
+cases I hadn't gotten around to removing the old ext4_debug code, on
+the assumption that maybe someone else was still using it, but mostly
+because I was lazy.   That would be a great thing to do.
+
+	      	      	   	      	    - Ted
