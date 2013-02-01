@@ -1,96 +1,200 @@
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-Subject: Re: [PATCH V6 18/30] fs: add read_iter and write_iter to several
- file systems
-Date: Fri, 01 Feb 2013 14:40:56 -0600
-Message-ID: <510C2858.9040708@oracle.com>
-References: <1359476623-10544-1-git-send-email-dave.kleikamp@oracle.com>
- <1359476623-10544-19-git-send-email-dave.kleikamp@oracle.com>
- <1359705069.32509.67.camel@sauron.fi.intel.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 10/18] mm: teach truncate_inode_pages_range() to handle
+	non page aligned ranges
+Date: Fri, 1 Feb 2013 15:15:02 -0800
+Message-ID: <20130201151502.59398b29.akpm@linux-foundation.org>
+References: <1359715424-32318-1-git-send-email-lczerner@redhat.com>
+	<1359715424-32318-11-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>,
- Bob Copeland <me@bobcopeland.com>, linux-mtd@lists.infradead.org,
- Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
- linux-nilfs@vger.kernel.org, Richard Weinberger <richard@nod.at>,
- Christoph Hellwig <hch@infradead.org>, v9fs-developer@lists.sourceforge.net,
- linux-ext4@vger.kernel.org, Prasad Joshi <prasadjoshi.linux@gmail.com>,
- "Maxim V. Patlasov" <mpatlasov@parallels.com>,
- Evgeniy Dushistov <dushistov@mail.ru>,
- user-mode-linux-devel@lists.sourceforge.net, Jeff Dike <jdike@addtoit.com>,
- reiserfs-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
- OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Joern Engel <joern@logfs.org>,
- "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
- linux-kernel@vger.kernel.org, logfs@logfs.org,
- Benny Halevy <bhalevy@tonian.com>, linux-fsdevel@vger.kernel.org,
- Andreas
-To: dedekind1@gmail.com
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-In-Reply-To: <1359705069.32509.67.camel@sauron.fi.intel.com>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: linux-mtd-bounces@lists.infradead.org
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Cc: Hugh Dickins <hughd@google.com>, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1359715424-32318-11-git-send-email-lczerner@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+On Fri,  1 Feb 2013 11:43:36 +0100
+Lukas Czerner <lczerner@redhat.com> wrote:
 
-On 02/01/2013 01:51 AM, Artem Bityutskiy wrote:
-> On Tue, 2013-01-29 at 10:23 -0600, Dave Kleikamp wrote:
->> -       .aio_read = generic_file_aio_read, -       .aio_write =
->> generic_file_aio_write, +       .read_iter =
->> generic_file_read_iter, +       .write_iter =
->> generic_file_write_iter,
+> This commit changes truncate_inode_pages_range() so it can handle non
+> page aligned regions of the truncate. Currently we can hit BUG_ON when
+> the end of the range is not page aligned, but we can handle unaligned
+> start of the range.
 > 
-> The new names a lot less self-documenting than the old ones - I
-> read them as "read iteration", because "iter" is often used for
-> "iteration", and this gives me no clue that they are related to
-> AIO...
+> Being able to handle non page aligned regions of the page can help file
+> system punch_hole implementations and save some work, because once we're
+> holding the page we might as well deal with it right away.
+> 
+> In previous commits we've changed ->invalidatepage() prototype to accept
+> 'length' argument to be able to specify range to invalidate. No we can
+> use that new ability in truncate_inode_pages_range().
 
-Zach Brown originally came up with these (or at least he's the one who
-did the majority of the initial work with this patchset) and I can't
-speak for him, but I'm not sure if I could come up with a better name.
-(Maybe aio_read_iter/aio_write_iter?) These operations are
-differentiated from aio_read/write because they take the iov_iter
-argument rather than an iovec, so "iter" does seem appropriate.
+The change seems sensible.
 
-> I apologize if this was already discussed, but why did you choose 
-> "iter"?
+> This was based on the code provided by Hugh Dickins
 
-It hasn't been discussed, but nobody has said anything about the names
-until now. I hesitate to change the proposed names now unless there's
-some kind of consensus to do so.
+Despite this ;)
 
-If others chime in and want me to change these to aio_read_iter and
-aio_write_iter or something else, I'll consider it.
+> changes to make use of do_invalidatepage_range().
+>
+> ...
+>
+>  void truncate_inode_pages_range(struct address_space *mapping,
+>  				loff_t lstart, loff_t lend)
+>  {
+> -	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
+> -	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
+> +	pgoff_t start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+> +	pgoff_t end = (lend + 1) >> PAGE_CACHE_SHIFT;
+> +	unsigned int partial_start = lstart & (PAGE_CACHE_SIZE - 1);
+> +	unsigned int partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
+>  	struct pagevec pvec;
+>  	pgoff_t index;
+> -	pgoff_t end;
+>  	int i;
 
-Thanks,
-Shaggy
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+This is starting to get pretty hairy.  Some of these "end" variables
+are inclusive and some are exclusive.
 
-iQIcBAEBAgAGBQJRDChYAAoJEDaohF61QIxkRAkP/0HRsRwVPU/mKJx3BSlw44st
-sWrbKNPhVaMpHQtJP+w7CisgwC/PzP0mi6wV5FyQ0ZmUkMEkWJ1Eog8QExCNKnih
-VLBsWTBYLmVWQhRzuO6K91H2/n3rkTN2f5s0CT6bgDvBnme295UrRCpb5Yb5r/Xr
-eW16lX+4W8G5tEfDCKpvtzr0zSpxzIt5S8CsQEAaeVuskfZ+s/UKDjLUtQi4H2jP
-MVJNBrXzJ4zlDPIRXrh3PPfcG1ii2ai9+3UQChWw5XGhln4ttmh5GT9PHEyznizM
-iSn9DYUxa3OPJCwx759eZAUzK/s4es/S9vwg1psJqBU6nIIcl9UQRQhbNdywoqQ5
-N6JmSXF8oToTH4HTBc4K32zJ1P9qi2oQeVu1Jzdpoz6v8XgJGUnrkoceVgQTjJRF
-H1kramDQB6zwzfCmYlZniAhP1LcbZ6ON/GgpdtOwl2q++gHO9+e5LGIDJNMhd3Kc
-MJ3jJXDvy5Flsi9qY4h7Mh7hdpQAmF4ZpMXRlHtHFPlK3RvjDoW5UwBcjGiulVYt
-9tx9hhLHztBe1Fs9b1GbUDTs2fZHH4g75+pSUfQgyPhk6DNz21KBA1eClC0JZpYK
-UYFpnUf4p9aYK3WwB+nrchASmiWYisxL7xTQKCn2NVCG48XpDjtJj8dQGvcgBG9n
-YS/fnE0ljbrWW4W+yZG5
-=VJcR
------END PGP SIGNATURE-----
+Can we improve things?  We can drop all this tiresome
+intialisation-at-declaration-site stuff and do:
 
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+	pgoff_t start;			/* inclusive */
+	pgoff_t end;			/* exclusive */
+	unsigned int partial_start;	/* inclusive */
+	unsigned int partial_end;	/* exclusive */
+	struct pagevec pvec;
+	pgoff_t index;
+	int i;
+
+	start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+	end = (lend + 1) >> PAGE_CACHE_SHIFT;
+	partial_start = lstart & (PAGE_CACHE_SIZE - 1);
+	partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
+
+And lo, I see that the "inclusive" thing only applies to incoming arg
+`lend'.  I seem to recall that being my handiwork and somehow I seem to
+not have documented the reason: it was so that we can pass
+lend=0xffffffff into truncate_inode_pages_range) to indicate "end of
+file".
+
+Your code handles this in a rather nasty fashion.  It permits the above
+overflow to occur then later fixes it up with an explicit test for -1. 
+And it then sets `end' (which is a pgoff_t!) to -1.
+
+I guess this works, but let's make it clearer, with something like:
+
+	if (lend == -1) {
+		/*
+		 * Nice explanation goes here
+		 */
+		end = -1;
+	} else {
+		end = (lend + 1) >> PAGE_CACHE_SHIFT;
+	}
+
+
+>  	cleancache_invalidate_inode(mapping);
+>  	if (mapping->nrpages == 0)
+>  		return;
+>  
+> -	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
+> -	end = (lend >> PAGE_CACHE_SHIFT);
+> +	if (lend == -1)
+> +		end = -1;	/* unsigned, so actually very big */
+>  
+>  	pagevec_init(&pvec, 0);
+>  	index = start;
+> -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
+> -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
+> +	while (index < end && pagevec_lookup(&pvec, mapping, index,
+> +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
+
+Here, my brain burst.  You've effectively added 1 to (end - index).  Is
+that correct?
+
+>  		mem_cgroup_uncharge_start();
+>  		for (i = 0; i < pagevec_count(&pvec); i++) {
+>  			struct page *page = pvec.pages[i];
+>  
+>  			/* We rely upon deletion not changing page->index */
+>  			index = page->index;
+> -			if (index > end)
+> +			if (index >= end)
+
+hm.  This change implies that the patch changed `end' from inclusive to
+exclusive.  But the patch didn't do that.
+
+>  				break;
+>  
+>  			if (!trylock_page(page))
+> @@ -250,27 +247,51 @@ void truncate_inode_pages_range(struct address_space *mapping,
+>  		index++;
+>  	}
+>  
+> -	if (partial) {
+> +	if (partial_start) {
+>  		struct page *page = find_lock_page(mapping, start - 1);
+>  		if (page) {
+> +			unsigned int top = PAGE_CACHE_SIZE;
+> +			if (start > end) {
+
+How can this be true?
+
+> +				top = partial_end;
+> +				partial_end = 0;
+> +			}
+> +			wait_on_page_writeback(page);
+> +			zero_user_segment(page, partial_start, top);
+> +			cleancache_invalidate_page(mapping, page);
+> +			if (page_has_private(page))
+> +				do_invalidatepage(page, partial_start,
+> +						  top - partial_start);
+> +			unlock_page(page);
+> +			page_cache_release(page);
+> +		}
+> +	}
+> +	if (partial_end) {
+> +		struct page *page = find_lock_page(mapping, end);
+> +		if (page) {
+>  			wait_on_page_writeback(page);
+> -			truncate_partial_page(page, partial);
+> +			zero_user_segment(page, 0, partial_end);
+> +			cleancache_invalidate_page(mapping, page);
+> +			if (page_has_private(page))
+> +				do_invalidatepage(page, 0,
+> +						  partial_end);
+>  			unlock_page(page);
+>  			page_cache_release(page);
+>  		}
+>  	}
+> +	if (start >= end)
+> +		return;
+
+Again, how can start be greater than end??
+
+I suspect a lot of the confustion and churn in here is due to `end'
+being kinda-exclusive.  If `lend' was 4094 then `end' is zero.  But if
+`lend' was 4095' then `end' is 1.  So even though `end' refers to the same
+page, it has a different value!
+
+Would the code be simpler and clearer if we were to make `end' "pgoff_t
+of the last-affected page", and document it as such?
+
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
