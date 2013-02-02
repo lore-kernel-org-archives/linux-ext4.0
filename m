@@ -1,130 +1,95 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/2] jbd2: commit as soon as possible after log_start_commit
-Date: Sat, 2 Feb 2013 12:33:43 -0700
-Message-ID: <6D3A8DA5-0101-4EC2-A317-CF3A6EF4248F@dilger.ca>
-References: <20130130052658.GE25006@thunk.org> <1359524369-31234-1-git-send-email-tytso@mit.edu> <1359524369-31234-2-git-send-email-tytso@mit.edu>
+Subject: Re: [RFC] Optimizing readdir()
+Date: Sat, 2 Feb 2013 12:45:36 -0700
+Message-ID: <5C77B553-74D5-4C30-861E-B667CA8C68A6@dilger.ca>
+References: <20130113152204.GB26803@laptop.redhat.com> <20130114045152.GF29329@thunk.org> <20130115072143.GA21506@laptop.redhat.com> <B52E6F5A-F266-433C-AE80-2E78FD6920B9@dilger.ca> <20130129163846.GA17169@laptop.brq.redhat.com> <alpine.LFD.2.00.1301301227410.28271@dhcp-1-104.brq.redhat.com>
 Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Sedat Dilek <sedat.dilek@gmail.com>, mszeredi@suse.cz
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Radek Pazdera <rpazdera@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: =?windows-1252?Q?Luk=E1=9A_Czerner?= <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:59602 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758065Ab3BBTdp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2013 14:33:45 -0500
-Received: by mail-pb0-f41.google.com with SMTP id ro12so2628039pbb.28
-        for <linux-ext4@vger.kernel.org>; Sat, 02 Feb 2013 11:33:45 -0800 (PST)
-In-Reply-To: <1359524369-31234-2-git-send-email-tytso@mit.edu>
+Received: from mail-da0-f49.google.com ([209.85.210.49]:42589 "EHLO
+	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757731Ab3BBTpi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Feb 2013 14:45:38 -0500
+Received: by mail-da0-f49.google.com with SMTP id v40so2154395dad.36
+        for <linux-ext4@vger.kernel.org>; Sat, 02 Feb 2013 11:45:38 -0800 (PST)
+In-Reply-To: <alpine.LFD.2.00.1301301227410.28271@dhcp-1-104.brq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013-01-29, at 10:39 PM, Theodore Ts'o wrote:
-> Once a transaction has been requested to be committed, don't let any
-> other handles start under that transaction, and don't allow any
-> pending transactions to be extended (i.e., in the case of
-> unlink/ftruncate).
-> 
-> The idea is once the transaction has had log_start_commit() called on
-> it, at least one thread is blocked waiting for that transaction to
-> commit, and over time, more and more threads will end up getting
-> blocked.  In order to avoid high variability in file system operations
-> getting blocked behind the a blocked start_this_handle(), we should
-> try to get the commit started as soon as possible.
+On 2013-01-30, at 4:34 AM, Luk=E1=9A Czerner wrote:
+> On Tue, 29 Jan 2013, Radek Pazdera wrote:
+>> Radek Pazdera <rpazdera@redhat.com> wrote:
+>> On Tue, Jan 15, 2013 at 03:44:57PM -0700, Andreas Dilger wrote:
+>>> Having an upper limit on the directory cache is OK too.  Read all
+>>> of the entries that fit into the cache size, sort them, and return
+>>> them to the caller.  When the caller has processed all of those
+>>> entries, read another batch, sort it, return this list, repeat.
+>>>=20
+>>> As long as the list is piecewise ordered, I suspect it would gain
+>>> most of the benefit of linear ordering (sequential inode table
+>>> reads, avoiding repeated lookups of blocks).  Maybe worthwhile if
+>>> you could test this out?
+>>=20
+>> I did the tests last week. I modified the spd_readdir preload to
+>> read at most $SPD_READDIR_CACHE_LIMIT entries, sort them and repeat.
+>> The patch is here:
+>>=20
+>>    http://www.stud.fit.vutbr.cz/~xpazde00/soubory/dir-index-test-ext=
+4/
+>>=20
+>> I tested it with the limit set to 0 (i.e., no limit), 1000, 10000,
+>> 50000, and completely without the preload. The test runs were
+>> performed on the same directory, so the results shouldn't be
+>> affected by positioning on disk.
+>>=20
+>> Directory sizes went from 10k to 1.5M. The tests were run twice.
+>> The first run is only with metadata. In the second run, each file
+>> has 4096B of data.
+>>=20
+>> The times seem to decrease accordingly as the limit of the cache
+>> increases. The differences are bigger in case of 4096B files, where
+>> the data blocks start to evict the inode tables. However, copying is
+>> still more than two times slower for 1.5M files when 50000 entries
+>> are cached.
 
-I was thinking this could break transaction batching from multiple
-threads, which would hurt performance significantly in a multi-
-threaded sync-heavy workload.
+Still, caching 50k entries is twice as fast as caching none for
+the 1.5M directory entries.  How much memory is that in total?
+ Maybe 2.5MB, which isn't too bad at all for any kind of modern
+system,=20
 
-However, it seems that jbd2_journal_stop() blocks the h_sync thread
-before it calls jbd2_log_start_commit(), so it looks like it should
-be OK.
+>> It might be interesting to test what happens when the size of the
+>> files in the directory increases.
 
-You can add my:
+Hopefully ext4 will move the large files into a different group.
 
-Acked-by: Andreas Dilger <adilger@dilger.ca>
+> those are interesting results and it supports the idea that you can
+> get most of the performance of completely sorted inode list by doing
+> it in "batches" as long as the size of the batch is sufficiently
+> large. However I do not think that using spd_readdir is the best
+> approach for the problem, nor do I think that it should be part of
+> the generic library. Aside from it's "hackish" nature and the fact
+> you will never be able to tell how much memory you can actually use
+> for the sorting, the fact is that other file systems can handle this
+> problem well enough in comparison with ext4 and we should really
+> focus on fixing it, rather than going around it.
 
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Eric Sandeen <sandeen@redhat.com>
-> Cc: Sedat Dilek <sedat.dilek@gmail.com>
-> Cc: mszeredi@suse.cz
-> ---
-> fs/jbd2/commit.c      | 3 ++-
-> fs/jbd2/journal.c     | 1 +
-> fs/jbd2/transaction.c | 6 ++++--
-> include/linux/jbd2.h  | 1 +
-> 4 files changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 3091d42..fd2ac94 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -424,7 +424,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-> 	J_ASSERT(journal->j_committing_transaction == NULL);
-> 
-> 	commit_transaction = journal->j_running_transaction;
-> -	J_ASSERT(commit_transaction->t_state == T_RUNNING);
-> +	J_ASSERT(commit_transaction->t_state == T_REQUESTED ||
-> +		 commit_transaction->t_state == T_RUNNING);
-> 
-> 	trace_jbd2_start_commit(journal, commit_transaction);
-> 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 1a80e31..c22773b 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
-> 		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
-> 			  journal->j_commit_request,
-> 			  journal->j_commit_sequence);
-> +		journal->j_running_transaction->t_state = T_REQUESTED;
-> 		wake_up(&journal->j_wait_commit);
-> 		return 1;
-> 	} else if (!tid_geq(journal->j_commit_request, target))
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index df9f297..6daff29 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -224,7 +224,8 @@ repeat:
-> 	 * If the current transaction is locked down for commit, wait for the
-> 	 * lock to be released.
-> 	 */
-> -	if (transaction->t_state == T_LOCKED) {
-> +	if ((transaction->t_state == T_LOCKED) ||
-> +	    (transaction->t_state == T_REQUESTED)) {
-> 		DEFINE_WAIT(wait);
-> 
-> 		prepare_to_wait(&journal->j_wait_transaction_locked,
-> @@ -2179,7 +2180,8 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
-> 	else
-> 		jlist = BJ_Reserved;
-> 	__jbd2_journal_file_buffer(jh, jh->b_transaction, jlist);
-> -	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
-> +	J_ASSERT_JH(jh, (jh->b_transaction->t_state == T_RUNNING ||
-> +			 jh->b_transaction->t_state == T_REQUESTED));
-> 
-> 	if (was_dirty)
-> 		set_buffer_jbddirty(bh);
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index e30b663..920a8d0 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -493,6 +493,7 @@ struct transaction_s
-> 	 */
-> 	enum {
-> 		T_RUNNING,
-> +		T_REQUESTED,
-> 		T_LOCKED,
-> 		T_FLUSH,
-> 		T_COMMIT,
-> -- 
-> 1.7.12.rc0.22.gcdd159b
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I would argue that even if some on-disk optimization is found, it
+will not help the majority of users that do not have their files
+laid out with the new format.  Also, the spd-readdir can help all
+filesystems, not just ext4.  It will help ext2, ext3, ext4, isofs,
+etc.  It could statfs() and detect the filesystem type, and skip
+XFS and Btrfs if this proves to not help for them...
 
+I'm not against fixing this in the filesystem as well, but I think
+it will be several years before the majority of users see it in a
+kernel they are using.
+
+Cheers, Andreas--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
