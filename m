@@ -1,46 +1,33 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 9/16] fs/ext4/indirect.c: use WARN
-Date: Fri, 1 Feb 2013 20:07:37 -0500
-Message-ID: <20130202010737.GA9892@thunk.org>
-References: <1351940317-14812-1-git-send-email-Julia.Lawall@lip6.fr>
- <1351940317-14812-10-git-send-email-Julia.Lawall@lip6.fr>
+From: Wuqixuan <wuqixuan@huawei.com>
+Subject: Help to know the stable ver of ext4 for commercial app.
+Date: Sat, 2 Feb 2013 02:30:11 +0000
+Message-ID: <BB7C62C2B0732E4DA93834A501E8464544E6181A@SZXEML519-MBS.china.huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: kernel-janitors@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Julia Lawall <Julia.Lawall@lip6.fr>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger@sun.com" <adilger@sun.com>, "tm@tao.ma" <tm@tao.ma>,
+	"xiaoqiangnk@gmail.com" <xiaoqiangnk@gmail.com>,
+	Lizefan <lizefan@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46566 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756771Ab3BBBHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 Feb 2013 20:07:44 -0500
-Content-Disposition: inline
-In-Reply-To: <1351940317-14812-10-git-send-email-Julia.Lawall@lip6.fr>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:51978 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757349Ab3BBCaX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Feb 2013 21:30:23 -0500
+Content-Language: zh-CN
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 03, 2012 at 11:58:30AM +0100, Julia Lawall wrote:
-> From: Julia Lawall <Julia.Lawall@lip6.fr>
-> 
-> Use WARN rather than printk followed by WARN_ON(1), for conciseness.
-> 
-> A simplified version of the semantic patch that makes this transformation
-> is as follows: (http://coccinelle.lip6.fr/)
-> 
-> // <smpl>
-> @@
-> expression list es;
-> @@
-> 
-> -printk(
-> +WARN(1,
->   es);
-> -WARN_ON(1);
-> // </smpl>
-> 
-> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+Hi all, 
 
-Thanks, applied.
-
-					- Ted
+   Currently we are choocing ssd/sata file system using for stream media application. We are using 2.6.34.10 (can be upgraded to 2.6.34.14). We are consider of ext3 or ext4.  Even in wikipedia, it mentions ext4 is stable from 2.6.28, I still have some doubts: 
+ 
+    1. Whether 2.6.34.10 of ext4 is stable enough for commercial use or not. 
+    2. Are there many mature commercial application on ext4 on 2.6.34.10 or before? Can tell some famous company or app name ? 
+ 
+    Any answer is helpful and welcome. 
+    Thanks a lot. 
+ 
+Best Regards!
+Wuqixuan
