@@ -1,33 +1,34 @@
-From: Wuqixuan <wuqixuan@huawei.com>
-Subject: Help to know the stable ver of ext4 for commercial app.
-Date: Sat, 2 Feb 2013 02:30:11 +0000
-Message-ID: <BB7C62C2B0732E4DA93834A501E8464544E6181A@SZXEML519-MBS.china.huawei.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Fix race in ext4_mb_add_n_trim()
+Date: Fri, 1 Feb 2013 21:32:28 -0500
+Message-ID: <20130202023228.GA22080@thunk.org>
+References: <50EA669E.1030008@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger@sun.com" <adilger@sun.com>, "tm@tao.ma" <tm@tao.ma>,
-	"xiaoqiangnk@gmail.com" <xiaoqiangnk@gmail.com>,
-	Lizefan <lizefan@huawei.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, yawei.niu@intel.com,
+	Alex Zhuravlev <bzzz@whamcloud.com>
+To: Niu Yawei <yawei.niu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga02-in.huawei.com ([119.145.14.65]:51978 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757349Ab3BBCaX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Feb 2013 21:30:23 -0500
-Content-Language: zh-CN
+Received: from li9-11.members.linode.com ([67.18.176.11]:46575 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757258Ab3BBCcd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Feb 2013 21:32:33 -0500
+Content-Disposition: inline
+In-Reply-To: <50EA669E.1030008@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all, 
+On Sun, Jan 06, 2013 at 08:09:34PM -0000, Niu Yawei wrote:
+> >From 020243735e97f327ecba729ec05d4e3facdddc78 Mon Sep 17 00:00:00 2001
+> From: Niu Yawei <niu@whamcloud.com>
+> Date: Mon, 7 Jan 2013 01:03:26 -0500
+> Subject: [PATCH] Fix race in ext4_mb_add_n_trim()
+> 
+> In ext4_mb_add_n_trim(), lg_prealloc_lock should be taken when
+> changing the lg_prealloc_list.
+> 
+> Signed-off-by: Niu Yawei <yawei.niu@intel.com>
 
-   Currently we are choocing ssd/sata file system using for stream media application. We are using 2.6.34.10 (can be upgraded to 2.6.34.14). We are consider of ext3 or ext4.  Even in wikipedia, it mentions ext4 is stable from 2.6.28, I still have some doubts: 
- 
-    1. Whether 2.6.34.10 of ext4 is stable enough for commercial use or not. 
-    2. Are there many mature commercial application on ext4 on 2.6.34.10 or before? Can tell some famous company or app name ? 
- 
-    Any answer is helpful and welcome. 
-    Thanks a lot. 
- 
-Best Regards!
-Wuqixuan
+Applied, thanks!
+
+						- Ted
