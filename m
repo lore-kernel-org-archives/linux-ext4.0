@@ -1,200 +1,46 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 10/18] mm: teach truncate_inode_pages_range() to handle
-	non page aligned ranges
-Date: Fri, 1 Feb 2013 15:15:02 -0800
-Message-ID: <20130201151502.59398b29.akpm@linux-foundation.org>
-References: <1359715424-32318-1-git-send-email-lczerner@redhat.com>
-	<1359715424-32318-11-git-send-email-lczerner@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 9/16] fs/ext4/indirect.c: use WARN
+Date: Fri, 1 Feb 2013 20:07:37 -0500
+Message-ID: <20130202010737.GA9892@thunk.org>
+References: <1351940317-14812-1-git-send-email-Julia.Lawall@lip6.fr>
+ <1351940317-14812-10-git-send-email-Julia.Lawall@lip6.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Hugh Dickins <hughd@google.com>, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1359715424-32318-11-git-send-email-lczerner@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: kernel-janitors@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Julia Lawall <Julia.Lawall@lip6.fr>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46566 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756771Ab3BBBHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Feb 2013 20:07:44 -0500
+Content-Disposition: inline
+In-Reply-To: <1351940317-14812-10-git-send-email-Julia.Lawall@lip6.fr>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri,  1 Feb 2013 11:43:36 +0100
-Lukas Czerner <lczerner@redhat.com> wrote:
-
-> This commit changes truncate_inode_pages_range() so it can handle non
-> page aligned regions of the truncate. Currently we can hit BUG_ON when
-> the end of the range is not page aligned, but we can handle unaligned
-> start of the range.
+On Sat, Nov 03, 2012 at 11:58:30AM +0100, Julia Lawall wrote:
+> From: Julia Lawall <Julia.Lawall@lip6.fr>
 > 
-> Being able to handle non page aligned regions of the page can help file
-> system punch_hole implementations and save some work, because once we're
-> holding the page we might as well deal with it right away.
+> Use WARN rather than printk followed by WARN_ON(1), for conciseness.
 > 
-> In previous commits we've changed ->invalidatepage() prototype to accept
-> 'length' argument to be able to specify range to invalidate. No we can
-> use that new ability in truncate_inode_pages_range().
+> A simplified version of the semantic patch that makes this transformation
+> is as follows: (http://coccinelle.lip6.fr/)
+> 
+> // <smpl>
+> @@
+> expression list es;
+> @@
+> 
+> -printk(
+> +WARN(1,
+>   es);
+> -WARN_ON(1);
+> // </smpl>
+> 
+> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
 
-The change seems sensible.
+Thanks, applied.
 
-> This was based on the code provided by Hugh Dickins
-
-Despite this ;)
-
-> changes to make use of do_invalidatepage_range().
->
-> ...
->
->  void truncate_inode_pages_range(struct address_space *mapping,
->  				loff_t lstart, loff_t lend)
->  {
-> -	const pgoff_t start = (lstart + PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
-> -	const unsigned partial = lstart & (PAGE_CACHE_SIZE - 1);
-> +	pgoff_t start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-> +	pgoff_t end = (lend + 1) >> PAGE_CACHE_SHIFT;
-> +	unsigned int partial_start = lstart & (PAGE_CACHE_SIZE - 1);
-> +	unsigned int partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
->  	struct pagevec pvec;
->  	pgoff_t index;
-> -	pgoff_t end;
->  	int i;
-
-This is starting to get pretty hairy.  Some of these "end" variables
-are inclusive and some are exclusive.
-
-Can we improve things?  We can drop all this tiresome
-intialisation-at-declaration-site stuff and do:
-
-	pgoff_t start;			/* inclusive */
-	pgoff_t end;			/* exclusive */
-	unsigned int partial_start;	/* inclusive */
-	unsigned int partial_end;	/* exclusive */
-	struct pagevec pvec;
-	pgoff_t index;
-	int i;
-
-	start = (lstart + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-	end = (lend + 1) >> PAGE_CACHE_SHIFT;
-	partial_start = lstart & (PAGE_CACHE_SIZE - 1);
-	partial_end = (lend + 1) & (PAGE_CACHE_SIZE - 1);
-
-And lo, I see that the "inclusive" thing only applies to incoming arg
-`lend'.  I seem to recall that being my handiwork and somehow I seem to
-not have documented the reason: it was so that we can pass
-lend=0xffffffff into truncate_inode_pages_range) to indicate "end of
-file".
-
-Your code handles this in a rather nasty fashion.  It permits the above
-overflow to occur then later fixes it up with an explicit test for -1. 
-And it then sets `end' (which is a pgoff_t!) to -1.
-
-I guess this works, but let's make it clearer, with something like:
-
-	if (lend == -1) {
-		/*
-		 * Nice explanation goes here
-		 */
-		end = -1;
-	} else {
-		end = (lend + 1) >> PAGE_CACHE_SHIFT;
-	}
-
-
->  	cleancache_invalidate_inode(mapping);
->  	if (mapping->nrpages == 0)
->  		return;
->  
-> -	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
-> -	end = (lend >> PAGE_CACHE_SHIFT);
-> +	if (lend == -1)
-> +		end = -1;	/* unsigned, so actually very big */
->  
->  	pagevec_init(&pvec, 0);
->  	index = start;
-> -	while (index <= end && pagevec_lookup(&pvec, mapping, index,
-> -			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
-> +	while (index < end && pagevec_lookup(&pvec, mapping, index,
-> +			min(end - index, (pgoff_t)PAGEVEC_SIZE))) {
-
-Here, my brain burst.  You've effectively added 1 to (end - index).  Is
-that correct?
-
->  		mem_cgroup_uncharge_start();
->  		for (i = 0; i < pagevec_count(&pvec); i++) {
->  			struct page *page = pvec.pages[i];
->  
->  			/* We rely upon deletion not changing page->index */
->  			index = page->index;
-> -			if (index > end)
-> +			if (index >= end)
-
-hm.  This change implies that the patch changed `end' from inclusive to
-exclusive.  But the patch didn't do that.
-
->  				break;
->  
->  			if (!trylock_page(page))
-> @@ -250,27 +247,51 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  		index++;
->  	}
->  
-> -	if (partial) {
-> +	if (partial_start) {
->  		struct page *page = find_lock_page(mapping, start - 1);
->  		if (page) {
-> +			unsigned int top = PAGE_CACHE_SIZE;
-> +			if (start > end) {
-
-How can this be true?
-
-> +				top = partial_end;
-> +				partial_end = 0;
-> +			}
-> +			wait_on_page_writeback(page);
-> +			zero_user_segment(page, partial_start, top);
-> +			cleancache_invalidate_page(mapping, page);
-> +			if (page_has_private(page))
-> +				do_invalidatepage(page, partial_start,
-> +						  top - partial_start);
-> +			unlock_page(page);
-> +			page_cache_release(page);
-> +		}
-> +	}
-> +	if (partial_end) {
-> +		struct page *page = find_lock_page(mapping, end);
-> +		if (page) {
->  			wait_on_page_writeback(page);
-> -			truncate_partial_page(page, partial);
-> +			zero_user_segment(page, 0, partial_end);
-> +			cleancache_invalidate_page(mapping, page);
-> +			if (page_has_private(page))
-> +				do_invalidatepage(page, 0,
-> +						  partial_end);
->  			unlock_page(page);
->  			page_cache_release(page);
->  		}
->  	}
-> +	if (start >= end)
-> +		return;
-
-Again, how can start be greater than end??
-
-I suspect a lot of the confustion and churn in here is due to `end'
-being kinda-exclusive.  If `lend' was 4094 then `end' is zero.  But if
-`lend' was 4095' then `end' is 1.  So even though `end' refers to the same
-page, it has a different value!
-
-Would the code be simpler and clearer if we were to make `end' "pgoff_t
-of the last-affected page", and document it as such?
-
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+					- Ted
