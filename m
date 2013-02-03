@@ -1,291 +1,100 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/4] ext4: make mount option parsing loop more logical
-Date: Sat,  2 Feb 2013 23:44:04 -0500
-Message-ID: <1359866646-29876-3-git-send-email-tytso@mit.edu>
-References: <1359866646-29876-1-git-send-email-tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46696 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752812Ab3BCEoO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Feb 2013 23:44:14 -0500
-In-Reply-To: <1359866646-29876-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 03/10 v3] ext4: add physical block and status member into
+ extent status tree
+Date: Sun, 3 Feb 2013 13:21:13 +0800
+Message-ID: <20130203052113.GA9823@gmail.com>
+References: <1358942640-2262-1-git-send-email-wenqing.lz@taobao.com>
+ <1358942640-2262-4-git-send-email-wenqing.lz@taobao.com>
+ <20130129030353.GK7003@thunk.org>
+ <20130129053415.GA27002@gmail.com>
+ <20130129172814.GC4261@thunk.org>
+ <20130130024332.GA12111@gmail.com>
+ <20130203030343.GB1359@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Christopher Li <sparse@chrisli.org>,
+	linux-sparse@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-sparse-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20130203030343.GB1359@thunk.org>
+Sender: linux-sparse-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+On Sat, Feb 02, 2013 at 10:03:43PM -0500, Theodore Ts'o wrote:
+> On Wed, Jan 30, 2013 at 10:43:33AM +0800, Zheng Liu wrote:
+> > 
+> > Clang is first coming in my mind.  I know that some one try to use it
+> > to build a linux kernel and get a lot of problems that are about gcc
+> > extension.  But for us it seems that things are not too bad. ;)
+> 
+> Clang accepts bitfields with "unsigned long long", but I've discovered
+> something which does _not_ support unsigned long long --- the "sparse"
+> tool.  :-(
 
-The loop looking for correct mount option entry is more logical if it is
-written rewritten as an empty loop looking for correct option entry and then
-code handling the option. It also saves one level of indentation for a lot of
-code so we can join a couple of split lines.
+Yes, this problem has been reported by Fengguang.  So I am plan to use
+another method to define extent_status structure as last time we
+discuessed.  What do you think?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c | 230 ++++++++++++++++++++++++++++----------------------------
- 1 file changed, 113 insertions(+), 117 deletions(-)
+Thanks,
+                                                - Zheng
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 78c9336..e8d3c2f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1511,8 +1511,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 	case Opt_sb:
- 		return 1;	/* handled by get_sb_block() */
- 	case Opt_removed:
--		ext4_msg(sb, KERN_WARNING,
--			 "Ignoring removed %s option", opt);
-+		ext4_msg(sb, KERN_WARNING, "Ignoring removed %s option", opt);
- 		return 1;
- 	case Opt_abort:
- 		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
-@@ -1522,132 +1521,129 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		return 1;
- 	}
- 
--	for (m = ext4_mount_opts; m->token != Opt_err; m++) {
--		if (token != m->token)
--			continue;
--		if (args->from && match_int(args, &arg))
-+	for (m = ext4_mount_opts; m->token != Opt_err; m++)
-+		if (token == m->token)
-+			break;
-+
-+	if (m->token == Opt_err) {
-+		ext4_msg(sb, KERN_ERR, "Unrecognized mount option \"%s\" "
-+			 "or missing value", opt);
-+		return -1;
-+	}
-+
-+	if (args->from && match_int(args, &arg))
-+		return -1;
-+	if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
-+		return -1;
-+	if (m->flags & MOPT_EXPLICIT)
-+		set_opt2(sb, EXPLICIT_DELALLOC);
-+	if (m->flags & MOPT_CLEAR_ERR)
-+		clear_opt(sb, ERRORS_MASK);
-+	if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
-+		ext4_msg(sb, KERN_ERR, "Cannot change quota "
-+			 "options when quota turned on");
-+		return -1;
-+	}
-+
-+	if (m->flags & MOPT_NOSUPPORT) {
-+		ext4_msg(sb, KERN_ERR, "%s option not supported", opt);
-+	} else if (token == Opt_commit) {
-+		if (arg == 0)
-+			arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
-+		sbi->s_commit_interval = HZ * arg;
-+	} else if (token == Opt_max_batch_time) {
-+		if (arg == 0)
-+			arg = EXT4_DEF_MAX_BATCH_TIME;
-+		sbi->s_max_batch_time = arg;
-+	} else if (token == Opt_min_batch_time) {
-+		sbi->s_min_batch_time = arg;
-+	} else if (token == Opt_inode_readahead_blks) {
-+		if (arg > (1 << 30))
- 			return -1;
--		if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
-+		if (arg && !is_power_of_2(arg)) {
-+			ext4_msg(sb, KERN_ERR, "EXT4-fs: inode_readahead_blks"
-+				 " must be a power of 2");
- 			return -1;
--		if (m->flags & MOPT_EXPLICIT)
--			set_opt2(sb, EXPLICIT_DELALLOC);
--		if (m->flags & MOPT_CLEAR_ERR)
--			clear_opt(sb, ERRORS_MASK);
--		if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
--			ext4_msg(sb, KERN_ERR, "Cannot change quota "
--				 "options when quota turned on");
-+		}
-+		sbi->s_inode_readahead_blks = arg;
-+	} else if (token == Opt_init_itable) {
-+		set_opt(sb, INIT_INODE_TABLE);
-+		if (!args->from)
-+			arg = EXT4_DEF_LI_WAIT_MULT;
-+		sbi->s_li_wait_mult = arg;
-+	} else if (token == Opt_max_dir_size_kb) {
-+		sbi->s_max_dir_size_kb = arg;
-+	} else if (token == Opt_stripe) {
-+		sbi->s_stripe = arg;
-+	} else if (token == Opt_resuid) {
-+		uid = make_kuid(current_user_ns(), arg);
-+		if (!uid_valid(uid)) {
-+			ext4_msg(sb, KERN_ERR, "Invalid uid value %d", arg);
- 			return -1;
- 		}
--
--		if (m->flags & MOPT_NOSUPPORT) {
--			ext4_msg(sb, KERN_ERR, "%s option not supported", opt);
--		} else if (token == Opt_commit) {
--			if (arg == 0)
--				arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
--			sbi->s_commit_interval = HZ * arg;
--		} else if (token == Opt_max_batch_time) {
--			if (arg == 0)
--				arg = EXT4_DEF_MAX_BATCH_TIME;
--			sbi->s_max_batch_time = arg;
--		} else if (token == Opt_min_batch_time) {
--			sbi->s_min_batch_time = arg;
--		} else if (token == Opt_inode_readahead_blks) {
--			if (arg > (1 << 30))
--				return -1;
--			if (arg && !is_power_of_2(arg)) {
--				ext4_msg(sb, KERN_ERR,
--					 "EXT4-fs: inode_readahead_blks"
--					 " must be a power of 2");
--				return -1;
--			}
--			sbi->s_inode_readahead_blks = arg;
--		} else if (token == Opt_init_itable) {
--			set_opt(sb, INIT_INODE_TABLE);
--			if (!args->from)
--				arg = EXT4_DEF_LI_WAIT_MULT;
--			sbi->s_li_wait_mult = arg;
--		} else if (token == Opt_max_dir_size_kb) {
--			sbi->s_max_dir_size_kb = arg;
--		} else if (token == Opt_stripe) {
--			sbi->s_stripe = arg;
--		} else if (token == Opt_resuid) {
--			uid = make_kuid(current_user_ns(), arg);
--			if (!uid_valid(uid)) {
--				ext4_msg(sb, KERN_ERR,
--					 "Invalid uid value %d", arg);
--				return -1;
--			}
--			sbi->s_resuid = uid;
--		} else if (token == Opt_resgid) {
--			gid = make_kgid(current_user_ns(), arg);
--			if (!gid_valid(gid)) {
--				ext4_msg(sb, KERN_ERR,
--					 "Invalid gid value %d", arg);
--				return -1;
--			}
--			sbi->s_resgid = gid;
--		} else if (token == Opt_journal_dev) {
--			if (is_remount) {
--				ext4_msg(sb, KERN_ERR,
--					 "Cannot specify journal on remount");
--				return -1;
--			}
--			*journal_devnum = arg;
--		} else if (token == Opt_journal_ioprio) {
--			if (arg > 7) {
-+		sbi->s_resuid = uid;
-+	} else if (token == Opt_resgid) {
-+		gid = make_kgid(current_user_ns(), arg);
-+		if (!gid_valid(gid)) {
-+			ext4_msg(sb, KERN_ERR, "Invalid gid value %d", arg);
-+			return -1;
-+		}
-+		sbi->s_resgid = gid;
-+	} else if (token == Opt_journal_dev) {
-+		if (is_remount) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Cannot specify journal on remount");
-+			return -1;
-+		}
-+		*journal_devnum = arg;
-+	} else if (token == Opt_journal_ioprio) {
-+		if (arg > 7) {
-+			ext4_msg(sb, KERN_ERR, "Invalid journal IO priority"
-+				 " (must be 0-7)");
-+			return -1;
-+		}
-+		*journal_ioprio =
-+			IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
-+	} else if (m->flags & MOPT_DATAJ) {
-+		if (is_remount) {
-+			if (!sbi->s_journal)
-+				ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
-+			else if (test_opt(sb, DATA_FLAGS) != m->mount_opt) {
- 				ext4_msg(sb, KERN_ERR,
--					 "Invalid journal IO priority"
--					 " (must be 0-7)");
--				return -1;
--			}
--			*journal_ioprio =
--				IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, arg);
--		} else if (m->flags & MOPT_DATAJ) {
--			if (is_remount) {
--				if (!sbi->s_journal)
--					ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
--				else if (test_opt(sb, DATA_FLAGS) !=
--					 m->mount_opt) {
--					ext4_msg(sb, KERN_ERR,
- 					 "Cannot change data mode on remount");
--					return -1;
--				}
--			} else {
--				clear_opt(sb, DATA_FLAGS);
--				sbi->s_mount_opt |= m->mount_opt;
--			}
--#ifdef CONFIG_QUOTA
--		} else if (m->flags & MOPT_QFMT) {
--			if (sb_any_quota_loaded(sb) &&
--			    sbi->s_jquota_fmt != m->mount_opt) {
--				ext4_msg(sb, KERN_ERR, "Cannot "
--					 "change journaled quota options "
--					 "when quota turned on");
- 				return -1;
- 			}
--			sbi->s_jquota_fmt = m->mount_opt;
--#endif
- 		} else {
--			if (!args->from)
--				arg = 1;
--			if (m->flags & MOPT_CLEAR)
--				arg = !arg;
--			else if (unlikely(!(m->flags & MOPT_SET))) {
--				ext4_msg(sb, KERN_WARNING,
--					 "buggy handling of option %s", opt);
--				WARN_ON(1);
--				return -1;
--			}
--			if (arg != 0)
--				sbi->s_mount_opt |= m->mount_opt;
--			else
--				sbi->s_mount_opt &= ~m->mount_opt;
-+			clear_opt(sb, DATA_FLAGS);
-+			sbi->s_mount_opt |= m->mount_opt;
- 		}
--		return 1;
-+#ifdef CONFIG_QUOTA
-+	} else if (m->flags & MOPT_QFMT) {
-+		if (sb_any_quota_loaded(sb) &&
-+		    sbi->s_jquota_fmt != m->mount_opt) {
-+			ext4_msg(sb, KERN_ERR, "Cannot change journaled "
-+				 "quota options when quota turned on");
-+			return -1;
-+		}
-+		sbi->s_jquota_fmt = m->mount_opt;
-+#endif
-+	} else {
-+		if (!args->from)
-+			arg = 1;
-+		if (m->flags & MOPT_CLEAR)
-+			arg = !arg;
-+		else if (unlikely(!(m->flags & MOPT_SET))) {
-+			ext4_msg(sb, KERN_WARNING,
-+				 "buggy handling of option %s", opt);
-+			WARN_ON(1);
-+			return -1;
-+		}
-+		if (arg != 0)
-+			sbi->s_mount_opt |= m->mount_opt;
-+		else
-+			sbi->s_mount_opt &= ~m->mount_opt;
- 	}
--	ext4_msg(sb, KERN_ERR, "Unrecognized mount option \"%s\" "
--		 "or missing value", opt);
--	return -1;
-+	return 1;
- }
- 
- static int parse_options(char *options, struct super_block *sb,
--- 
-1.7.12.rc0.22.gcdd159b
-
+> 
+> I discovered this when running "make C=1", i.e.:
+> 
+>   rm -f fs/ext4/extents_status.o
+>   make C=1 fs/ext4/extents_status.o
+> 
+> Here's a simple test case which demo's that sparse doesn't deal well
+> with unsigned long long.  If we change the last two fields in struct
+> extents_status to:
+> 
+> 	unsigned long es_pblk : 30;	/* first physical block */
+> 	unsigned long es_status : 2;	/* record the status of extent */
+> 
+> sparse doesn't complain.  But as shown below, sparse complains bitterly:
+> 
+> /tmp/foo.c:22:24: warning: invalid access past the end of 'es' (24 28)
+> 
+> I'm not sure Chris will consider this a bug, since bitfields
+> with "unsigned long long" isn't standards complaint, even if gcc and
+> clang supports it.   Chris, what do you think?
+> 
+>               	       		      	       - Ted
+>    	
+> 
+> #!/bin/sh
+> cat > /tmp/foo.c << EOF
+> #include <unistd.h>
+> #include <stdio.h>
+> 
+> struct rb_node {
+> 	unsigned long  __rb_parent_color;
+> 	struct rb_node *rb_right;
+> 	struct rb_node *rb_left;
+> } __attribute__((aligned(sizeof(long))));
+> 
+> struct extent_status {
+> 	struct rb_node rb_node;
+> 	unsigned long es_lblk;		/* first logical block extent covers */
+> 	unsigned long es_len;		/* length of extent in block */
+> 	unsigned long long es_pblk : 62;	/* first physical block */
+> 	unsigned long long es_status : 2;	/* record the status of extent */
+> };
+> 
+> int main(int argc, char **argv)
+> {
+> 	struct extent_status es;
+> 
+> 	es.es_status = 3;
+> 
+> 	printf("%d\n", es.es_status);
+> 	printf("size %u\n", sizeof(es));
+> }
+> EOF
+> sparse /tmp/foo.c
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
