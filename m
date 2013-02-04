@@ -1,124 +1,62 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH 2/2] mke2fs: disallow creating FS on a loop mounted file with
- no option
-Date: Mon, 04 Feb 2013 17:04:11 +0900
-Message-ID: <510F6B7B.3020303@sx.jp.nec.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: how to quotacheck with the new quota implementation (hidden
+ inode)?
+Date: Mon, 4 Feb 2013 10:42:10 +0100
+Message-ID: <20130204094210.GA7523@quack.suse.cz>
+References: <20730.1955.395545.141779@fisica.ufpr.br>
+ <20130121054741.GB321@thunk.org>
+ <20746.49010.569691.44452@fisica.ufpr.br>
+ <CAGr1F2F=mffm7PORykm2CbXt3EWt1=Zgerw-OEy7oGzUQ2dEQA@mail.gmail.com>
+ <20746.49740.638811.698394@fisica.ufpr.br>
+ <20130131220312.GA15322@thunk.org>
+ <20130131222817.GB13525@quack.suse.cz>
+ <20130131230330.GB15322@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Carlos Carvalho <carlos@fisica.ufpr.br>,
+	Aditya Kali <adityakali@google.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:34330 "EHLO
-	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752701Ab3BDINi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 03:13:38 -0500
-Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
-	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id r148DbB2019697
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Feb 2013 17:13:37 +0900 (JST)
+Received: from cantor2.suse.de ([195.135.220.15]:40349 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752565Ab3BDJmN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Feb 2013 04:42:13 -0500
+Content-Disposition: inline
+In-Reply-To: <20130131230330.GB15322@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When /etc/mtab is a symlink of /proc/mounts, mke2fs can create a filesystem
-on the loop mounted file without -F option. In this case, we should specify
--F option twice.
+On Thu 31-01-13 18:03:30, Ted Tso wrote:
+> On Thu, Jan 31, 2013 at 11:28:17PM +0100, Jan Kara wrote:
+> >   What version of quota-tools are you using? If I didn't screw up
+> > something, version 4.01 shouldn't need the -o quota mount option anymore...
+> 
+> Ah, I was using 4.00-4 from Debian Testing (which hopefully will soon
+> be the new Debian Obsolete^H^H^H^H^H^H^H^H Stable).
+> 
+> I'll have to upgrade to a newer quota tools for my testing, but we
+> should definitely note that users who want to use the internal quota
+> needs to be using a newer quota-tools than what is shipping in Debian
+> Stable, Debian Testing, Ubuntu Precise, etc.
+> 
+> Is there an easy way to find what version of quota-tools is being used
+> in various versions of Fedora or OpenSuSE (I assume all of the
+> enterprise distro's will have prehistoric softare, so I'm not even
+> worrying about them :-).  This would be good information to put up on:
+> 
+>       https://ext4.wiki.kernel.org/index.php/Quota
+  I don't know about Fedora but for openSUSE one can have a look at:
+http://software.opensuse.org/package/quota
+  There you see the version for the latest distro (12.2 - has version
+4.00), if you click on "Show other versions", you can check the version in
+older releases.
 
-How to reproduce:
-  # mke2fs -t ext4 -Fq /mnt/mp1/fs.img
-  # mount -o loop /mnt/mp1/fs.img /mnt/mp2
-  # mke2fs -t ext4 -q /mnt/mp1/fs.img
-  /mnt/mp1/fs.img is not a block special device.
-  Proceed anyway? (y,n) y
-  # echo $?
-  0
+  Actually I can see there that openSUSE Factory still has 4.00 (so that
+will end up in soon to be released 12.3) so I have to ping our quota
+packager to update.
 
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
----
- configure.in           |    2 ++
- lib/ext2fs/ismounted.c |   38 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 40 insertions(+), 0 deletions(-)
-
-diff --git a/configure.in b/configure.in
-index 0b96b8d..438d127 100644
---- a/configure.in
-+++ b/configure.in
-@@ -896,6 +896,8 @@ AC_CHECK_HEADERS(m4_flatten([
- 	linux/falloc.h
- 	linux/fd.h
- 	linux/major.h
-+	linux/version.h
-+	linux/loop.h
- 	net/if_dl.h
- 	netinet/in.h
- 	sys/disklabel.h
-diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c
-index bf532ae..655e40a 100644
---- a/lib/ext2fs/ismounted.c
-+++ b/lib/ext2fs/ismounted.c
-@@ -21,6 +21,14 @@
- #ifdef HAVE_LINUX_FD_H
- #include <linux/fd.h>
- #endif
-+#ifdef HAVE_LINUX_VERSION_H
-+#include <linux/version.h>
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0) /* kernel >= 2.6 */
-+#ifdef HAVE_LINUX_LOOP_H
-+#include <linux/loop.h>
-+#endif /* HAVE_LINUX_LOOP_H */
-+#endif /* kernel >= 2.6 */
-+#endif /* HAVE_LINUX_VERSION_H */
- #ifdef HAVE_MNTENT_H
- #include <mntent.h>
- #endif
-@@ -31,6 +39,7 @@
- #endif /* HAVE_GETMNTINFO */
- #include <string.h>
- #include <sys/stat.h>
-+#include <sys/ioctl.h>
- 
- #include "ext2_fs.h"
- #include "ext2fs.h"
-@@ -51,6 +60,11 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- 	ino_t		file_ino=0;
- 	FILE 		*f;
- 	int		fd;
-+#if defined(HAVE_LINUX_LOOP_H) && defined(LOOP_GET_STATUS64)
-+	int		result = 0;
-+	struct loop_info64 lo_info;
-+	memset(&lo_info, 0, sizeof(struct loop_info64));
-+#endif /* defined(HAVE_LINUX_LOOP_H) && defined(LOOP_GET_STATUS64) */
- 
- 	*mount_flags = 0;
- 	if ((f = setmntent (mtab_file, "r")) == NULL)
-@@ -70,6 +84,30 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- 			continue;
- 		if (strcmp(file, mnt->mnt_fsname) == 0)
- 			break;
-+#if defined(HAVE_LINUX_LOOP_H) && defined(LOOP_GET_STATUS64)
-+		/*
-+		 * Check to see if a regular file is mounted.
-+		 * If /etc/mtab/ is a symlink of /proc/mounts, you will need
-+		 * the following check because the name in /proc/mounts
-+		 * is a loopback device not a regular file.
-+		 */
-+		if (strncmp(mnt->mnt_fsname, "/dev/loop", 9) == 0) {
-+			fd = open(mnt->mnt_fsname, O_RDONLY);
-+			if (fd < 0) {
-+				retval = errno;
-+				goto errout;
-+			}
-+			result = ioctl(fd, LOOP_GET_STATUS64, &lo_info);
-+			close(fd);
-+			if (result < 0) {
-+				retval = errno;
-+				goto errout;
-+			}
-+			if (file_dev == lo_info.lo_device &&
-+				file_ino == lo_info.lo_inode)
-+				break;
-+		}
-+#endif /* defined(HAVE_LINUX_LOOP_H) && defined(LOOP_GET_STATUS64) */
- 		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
- 			if (S_ISBLK(st_buf.st_mode)) {
- #ifndef __GNU__
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
