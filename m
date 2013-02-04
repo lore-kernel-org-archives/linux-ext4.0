@@ -1,32 +1,94 @@
-From: Prashant Shah <pshah.mumbai@gmail.com>
-Subject: Re: Maximum number of directories
-Date: Mon, 4 Feb 2013 21:28:53 +0530
-Message-ID: <CAD6i1fKvHhP8TrLY0PKMgPEeeUuQsdjCdOxRSOhrYCFHMcDTBw@mail.gmail.com>
-References: <17001225.1MS6YREEfJ@deuteros> <CAD6i1fKHDP3m8EQZVaY-3VQ+6kh5=Bv7SQhLozJJEb7UJ5q=VQ@mail.gmail.com>
- <3667261.Q2Z9h3nZ4l@deuteros>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH RFC] ext4: optimize mballoc for large allocations
+Date: Mon,  4 Feb 2013 11:03:01 -0500
+Message-ID: <1359993781-1542-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ea0-f179.google.com ([209.85.215.179]:37275 "EHLO
-	mail-ea0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754962Ab3BDP7P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 10:59:15 -0500
-Received: by mail-ea0-f179.google.com with SMTP id d12so2728011eaa.24
-        for <linux-ext4@vger.kernel.org>; Mon, 04 Feb 2013 07:59:13 -0800 (PST)
-In-Reply-To: <3667261.Q2Z9h3nZ4l@deuteros>
+Received: from li9-11.members.linode.com ([67.18.176.11]:46910 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754585Ab3BDQDH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Feb 2013 11:03:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+The ext4 block allocator only maintains buddy bitmaps for chunks which
+are less than or equal to one quarter of a block group.  That is, for
+a file aystem with a 1k blocksize, and where the number of blocks in a
+block group is 8192 blocks, the largest chunk size tracked by buddy
+bitmaps is 2048 blocks.
 
-On Mon, Feb 4, 2013 at 7:06 PM, Tvrtko Ursulin
-<tvrtko.ursulin@onelan.co.uk> wrote:
->> Try $blk
->
-> What is that?
+For a file system with a 4k blocksize, and where the number of blocks
+in a block group is 32768 blocks, the largest chunk size tracked by
+buddy bitmaps is 8192 blocks.
 
-Typo :)
+To work around this code, mballoc.c before this commit would truncate
+allocation requests to the number of blocks in a block group minus 10.
+Why 10?  Aside from being a completely arbitrary number, it avoids
+block allocation to be a power of two larger than 25% of the block
+group.  If you try to explicitly fallocate 50% of the block group
+size, this will demonstrate the problem; the block allocation code
+will scan the all of the blocks in the file system with cr==0 (since
+the request is for a natural power of two), but then completely fail
+for all blocks groups, since the buddy bitmaps don't track chunk sizes
+of 50% of the block group.
 
-Regards.
+To fix this, in these we use ext4_mb_complex_scan_group() instead of
+ext4_mb_simple_scan_group().
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>
+---
+ fs/ext4/mballoc.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 061727a..ff95fac 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1884,15 +1884,19 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 	case 0:
+ 		BUG_ON(ac->ac_2order == 0);
+ 
+-		if (grp->bb_largest_free_order < ac->ac_2order)
+-			return 0;
+-
+ 		/* Avoid using the first bg of a flexgroup for data files */
+ 		if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
+ 		    (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
+ 		    ((group % flex_size) == 0))
+ 			return 0;
+ 
++		if ((ac->ac_2order > ac->ac_sb->s_bllocksize_bits+1) ||
++		    (free / fragments) >= ac->ac_g_ex.fe_len)
++			return 1;
++
++		if (grp->bb_largest_free_order < ac->ac_2order)
++			return 0;
++
+ 		return 1;
+ 	case 1:
+ 		if ((free / fragments) >= ac->ac_g_ex.fe_len)
+@@ -2007,7 +2011,7 @@ repeat:
+ 			}
+ 
+ 			ac->ac_groups_scanned++;
+-			if (cr == 0)
++			if (cr == 0 && ac->ac_2order < sb->s_blocksize_bits+2)
+ 				ext4_mb_simple_scan_group(ac, &e4b);
+ 			else if (cr == 1 && sbi->s_stripe &&
+ 					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
+@@ -4005,8 +4009,8 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 	len = ar->len;
+ 
+ 	/* just a dirty hack to filter too big requests  */
+-	if (len >= EXT4_CLUSTERS_PER_GROUP(sb) - 10)
+-		len = EXT4_CLUSTERS_PER_GROUP(sb) - 10;
++	if (len >= EXT4_CLUSTERS_PER_GROUP(sb))
++		len = EXT4_CLUSTERS_PER_GROUP(sb);
+ 
+ 	/* start searching from the goal */
+ 	goal = ar->goal;
+-- 
+1.7.12.rc0.22.gcdd159b
+
