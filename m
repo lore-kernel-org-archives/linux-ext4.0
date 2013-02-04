@@ -1,94 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH RFC] ext4: optimize mballoc for large allocations
-Date: Mon,  4 Feb 2013 11:03:01 -0500
-Message-ID: <1359993781-1542-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: qixuan wu <wuqixuan@gmail.com>
+Subject: Re: Help to know the stable ver of ext4 for commercial app.
+Date: Tue, 5 Feb 2013 01:52:38 +0800
+Message-ID: <CAEjEV8A90nYC74yPg+0n+KimWV2BPEVdOHtwbrkGuSDQpCGjFQ@mail.gmail.com>
+References: <BB7C62C2B0732E4DA93834A501E8464544E6181A@SZXEML519-MBS.china.huawei.com>
+	<20130202032307.GA16364@thunk.org>
+	<BB7C62C2B0732E4DA93834A501E8464544E62844@SZXEML519-MBS.china.huawei.com>
+	<9FEF1A06-2C24-4D37-A896-3C63D7AB29FE@dilger.ca>
+	<BB7C62C2B0732E4DA93834A501E8464544E628B1@SZXEML519-MBS.china.huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>, tm@tao.ma,
+	xiaoqiangnk@gmail.com, Li Zefan <lizefan@huawei.com>,
+	wuqixuan <wuqixuan@huawei.com>
+To: adilger@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:46910 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754585Ab3BDQDH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Feb 2013 11:03:07 -0500
+Received: from mail-ia0-f170.google.com ([209.85.210.170]:38211 "EHLO
+	mail-ia0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753762Ab3BDRwk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 12:52:40 -0500
+Received: by mail-ia0-f170.google.com with SMTP id k20so8435236iak.15
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Feb 2013 09:52:40 -0800 (PST)
+In-Reply-To: <BB7C62C2B0732E4DA93834A501E8464544E628B1@SZXEML519-MBS.china.huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4 block allocator only maintains buddy bitmaps for chunks which
-are less than or equal to one quarter of a block group.  That is, for
-a file aystem with a 1k blocksize, and where the number of blocks in a
-block group is 8192 blocks, the largest chunk size tracked by buddy
-bitmaps is 2048 blocks.
+On Sun, Feb 3, 2013 at 8:43 PM, Wuqixuan <wuqixuan@huawei.com> wrote:
 
-For a file system with a 4k blocksize, and where the number of blocks
-in a block group is 32768 blocks, the largest chunk size tracked by
-buddy bitmaps is 8192 blocks.
+> On 2013-02-02, at 0:20, Wuqixuan <wuqixuan@huawei.com> wrote:
+>>
+>> Thanks a lot for your information. Has some doubt below.
+>>
+>>> On Sat, Feb 02, 2013 at 02:30:11AM +0000, Wuqixuan wrote:
+>>>>
+>>>>   Currently we are choocing ssd/sata file system using for stream media application. We are using 2.6.34.10 (can be upgraded to 2.6.34.14). We are consider of ext3 or ext4.  Even in wikipedia, it mentions ext4 is stable from 2.6.28, I still have some doubts:
+>>>>
+>>>>    1. Whether 2.6.34.10 of ext4 is stable enough for commercial use or not.
+>>>>    2. Are there many mature commercial application on ext4 on 2.6.34.10 or before? Can tell some famous company or app name ?
+>>
+>>> Well, it's _possible_ to use 2.6.34 as a base for a production server.
+>>> Red Hat's RHEL 5 was based on kernel of approximately that vintage
+>>> (with many, many patches).  Google announced it was upgrading its data
+>>> centers to use ext4 just about the time I was hired at Google[1], in
+>>> January 2010, and 2.6.34 dates from May 2010.
+>
+> If you are looking at stability for a commercial application, I think you would be best off to choose something like RHEL6 2.6.32 which has back ported all of these patches for ext4 already and will continue to get fixes for years to come.
+>
+> Next best would be to pick something like FC18 3.8(?), which also has the needed patches, but will not be supported for as long a time.  This is definitely still better than picking the vanilla kernel of the same version.
+>
+> That way, you can focus on your application, and not on becoming a kernel maintainer...
 
-To work around this code, mballoc.c before this commit would truncate
-allocation requests to the number of blocks in a block group minus 10.
-Why 10?  Aside from being a completely arbitrary number, it avoids
-block allocation to be a power of two larger than 25% of the block
-group.  If you try to explicitly fallocate 50% of the block group
-size, this will demonstrate the problem; the block allocation code
-will scan the all of the blocks in the file system with cr==0 (since
-the request is for a natural power of two), but then completely fail
-for all blocks groups, since the buddy bitmaps don't track chunk sizes
-of 50% of the block group.
+Thanks andreas, will check the RHEL6 2.6.32 ext4 and compare with
+Windriver 4.3 (2.6.34.10) which we are ready to use. Do you have any
+idea of ext4 of Windriver 4.3 (2.6.34.10) ?
 
-To fix this, in these we use ext4_mb_complex_scan_group() instead of
-ext4_mb_simple_scan_group().
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/mballoc.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 061727a..ff95fac 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1884,15 +1884,19 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 	case 0:
- 		BUG_ON(ac->ac_2order == 0);
- 
--		if (grp->bb_largest_free_order < ac->ac_2order)
--			return 0;
--
- 		/* Avoid using the first bg of a flexgroup for data files */
- 		if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
- 		    (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
- 		    ((group % flex_size) == 0))
- 			return 0;
- 
-+		if ((ac->ac_2order > ac->ac_sb->s_bllocksize_bits+1) ||
-+		    (free / fragments) >= ac->ac_g_ex.fe_len)
-+			return 1;
-+
-+		if (grp->bb_largest_free_order < ac->ac_2order)
-+			return 0;
-+
- 		return 1;
- 	case 1:
- 		if ((free / fragments) >= ac->ac_g_ex.fe_len)
-@@ -2007,7 +2011,7 @@ repeat:
- 			}
- 
- 			ac->ac_groups_scanned++;
--			if (cr == 0)
-+			if (cr == 0 && ac->ac_2order < sb->s_blocksize_bits+2)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 && sbi->s_stripe &&
- 					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
-@@ -4005,8 +4009,8 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	len = ar->len;
- 
- 	/* just a dirty hack to filter too big requests  */
--	if (len >= EXT4_CLUSTERS_PER_GROUP(sb) - 10)
--		len = EXT4_CLUSTERS_PER_GROUP(sb) - 10;
-+	if (len >= EXT4_CLUSTERS_PER_GROUP(sb))
-+		len = EXT4_CLUSTERS_PER_GROUP(sb);
- 
- 	/* start searching from the goal */
- 	goal = ar->goal;
--- 
-1.7.12.rc0.22.gcdd159b
-
+Best Regards.
+Wood.
