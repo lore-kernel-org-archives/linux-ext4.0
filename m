@@ -1,44 +1,39 @@
-From: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
-Subject: Maximum number of directories
-Date: Mon, 04 Feb 2013 10:55:54 +0000
-Message-ID: <17001225.1MS6YREEfJ@deuteros>
+From: Prashant Shah <pshah.mumbai@gmail.com>
+Subject: Re: Maximum number of directories
+Date: Mon, 4 Feb 2013 18:49:54 +0530
+Message-ID: <CAD6i1fKHDP3m8EQZVaY-3VQ+6kh5=Bv7SQhLozJJEb7UJ5q=VQ@mail.gmail.com>
+References: <17001225.1MS6YREEfJ@deuteros>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-ext4@vger.kernel.org
+To: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from claranet-outbound-smtp06.uk.clara.net ([195.8.89.39]:49984 "EHLO
-	claranet-outbound-smtp06.uk.clara.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754007Ab3BDL3V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 06:29:21 -0500
-Received: from 110.100.155.90.in-addr.arpa ([90.155.100.110]:38662 helo=deuteros.localnet)
-	by relay06.mail.eu.clara.net (relay.clara.net [213.253.3.46]:1025)
-	with esmtps (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	id 1U2JiN-0001Ry-JQ  for linux-ext4@vger.kernel.org
-	(return-path <tvrtko.ursulin@onelan.co.uk>); Mon, 04 Feb 2013 10:55:55 +0000
+Received: from mail-ea0-f172.google.com ([209.85.215.172]:59198 "EHLO
+	mail-ea0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754460Ab3BDN2T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 08:28:19 -0500
+Received: by mail-ea0-f172.google.com with SMTP id f13so2797564eaa.17
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Feb 2013 05:28:18 -0800 (PST)
+In-Reply-To: <17001225.1MS6YREEfJ@deuteros>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-Hi all,
+On Mon, Feb 4, 2013 at 4:25 PM, Tvrtko Ursulin
+<tvrtko.ursulin@onelan.co.uk> wrote:
 
-What is the maximum number of directories ext4 can hold in a tree layout with 
-a depth of ~160 and each directory node having then a couple to couple dozen 
-subdirectories?
+> I was creating such a (crazy?) tree and hit -ENOSPC at ~31 million directories
+> created in total with df showing only 40% use:
 
-I was creating such a (crazy?) tree and hit -ENOSPC at ~31 million directories 
-created in total with df showing only 40% use:
+> Inode count:              29868032
+> Free inodes:              29848131
 
-Filesystem                 1K-blocks       Used  Available Use% Mounted on
-/dev/mapper/data           477277612K 177766152K 275621952K  40% /data
+Since, each directory will use a inode entry, there is some mismatch
+with ~31 million directories and 19901 inodes in use. The inode usage
+count should be much larger. You have max 29 million inodes available
+- so max can be 29 million directories.
 
-Some lines from tune2fs made me think it should hold more, but obviously I was 
-mistaken? Or it is a bug?
+Try $blk
 
-Inode count:              29868032
-Free inodes:              29848131
-
-Regards,
-
-Tvrtko
-
+Regards.
