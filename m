@@ -1,66 +1,75 @@
-From: Mark Tinguely <tinguely@sgi.com>
-Subject: Re: [PATCH 0/4] xfstests: seek data/hole and hole punching improvements
-Date: Tue, 05 Feb 2013 09:39:46 -0600
-Message-ID: <511127C2.2010409@sgi.com>
-References: <1359358371-21411-1-git-send-email-wenqing.lz@taobao.com>
+From: Sage Weil <sage@inktank.com>
+Subject: Re: [PATCH v2 07/18] ceph: use ->invalidatepage() length argument
+Date: Tue, 5 Feb 2013 08:39:50 -0800 (PST)
+Message-ID: <alpine.DEB.2.00.1302050839260.23011@cobra.newdream.net>
+References: <1360055531-26309-1-git-send-email-lczerner@redhat.com> <1360055531-26309-8-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	Jie Liu <jeff.liu@oracle.com>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:37581 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751437Ab3BEPjr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Feb 2013 10:39:47 -0500
-In-Reply-To: <1359358371-21411-1-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+    linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+    ceph-devel@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1360055531-26309-8-git-send-email-lczerner@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 01/28/13 01:32, Zheng Liu wrote:
-> Hi all,
->
-> Here is my first try to improve seek data/hole and hole punching test
-> cases in xfstests.  The key issue in 255 and 285 is that they assume that
-> all file systems that are tested support unwritten extent preallocation.
-> Before 3.8 kernel it is correct.  But now ext4 file system has ability
-> to seek data/hole and punch a hole for a file w/o unwritten extent.  So
-> it is time to improve these test cases.
->
-> In this patch series it calls _require_xfs_io_falloc in 255 and 285 to
-> make sure that unwritten extent is supprted by tested file system.  A
-> new argument '-t' is added into seek_sanity_test to check a file system
-> that supports seek data/hole or not.  In the mean time _require_seek_data_hole
-> is defined to be used by all tests.
->
-> Further two new test cases are created to test seek data/hole and hole
-> punching w/o unwritten extent, which do the same thing like 255 and 285
-> except that they don't do some test cases which are related to unwritten
-> extent.
->
-> Any comments or feedbacks are welcome.
->
-> Thanks,
-> 						- Zheng
+On Tue, 5 Feb 2013, Lukas Czerner wrote:
+> ->invalidatepage() aop now accepts range to invalidate so we can make
+> use of it in ceph_invalidatepage().
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Cc: ceph-devel@vger.kernel.org
 
-Hi Zheng,
+Reviewed-by: Sage Weil <sage@inktank.com>
 
-I wonder if reviving the idea of putting the SEEK_DATA/SEEK_HOLE
-feature into xfs_io would simplify the existing tests and future ones.
+> ---
+>  fs/ceph/addr.c |   12 ++++++------
+>  1 files changed, 6 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
+> index 8953532..1e09410 100644
+> --- a/fs/ceph/addr.c
+> +++ b/fs/ceph/addr.c
+> @@ -164,20 +164,20 @@ static void ceph_invalidatepage(struct page *page, unsigned int offset,
+>  	if (!PageDirty(page))
+>  		pr_err("%p invalidatepage %p page not dirty\n", inode, page);
+>  
+> -	if (offset == 0)
+> +	if (offset == 0 && length == PAGE_CACHE_SIZE)
+>  		ClearPageChecked(page);
+>  
+>  	ci = ceph_inode(inode);
+> -	if (offset == 0) {
+> -		dout("%p invalidatepage %p idx %lu full dirty page %u\n",
+> -		     inode, page, page->index, offset);
+> +	if (offset == 0 && length == PAGE_CACHE_SIZE) {
+> +		dout("%p invalidatepage %p idx %lu full dirty page\n",
+> +		     inode, page, page->index);
+>  		ceph_put_wrbuffer_cap_refs(ci, 1, snapc);
+>  		ceph_put_snap_context(snapc);
+>  		page->private = 0;
+>  		ClearPagePrivate(page);
+>  	} else {
+> -		dout("%p invalidatepage %p idx %lu partial dirty page\n",
+> -		     inode, page, page->index);
+> +		dout("%p invalidatepage %p idx %lu partial dirty page %u(%u)\n",
+> +		     inode, page, page->index, offset, length);
+>  	}
+>  }
+>  
+> -- 
+> 1.7.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
 
-My last version of the SEEK_DATA/SEEK_HOLE xfs_io extension should be
-sightly changed to make the hole only test output to be consistent with
-the data test; namely, it should end with an EOF entry.
-
-	http://oss.sgi.com/archives/xfs/2012-11/msg00106.html
-
-I know there will be some result filtering needed for holes which the C
-program based tests already provide.
-
-Just a thought.
-
---Mark.
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
