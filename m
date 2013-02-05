@@ -1,64 +1,85 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/9 v4] ext4: track all extent status in extent status
- tree
-Date: Tue, 5 Feb 2013 14:27:38 +0100
-Message-ID: <20130205132738.GA7959@quack.suse.cz>
-References: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
- <1359609477-29845-6-git-send-email-wenqing.lz@taobao.com>
- <20130131165055.GF4612@quack.suse.cz>
- <20130201053308.GA6274@gmail.com>
- <20130204112709.GC7523@quack.suse.cz>
- <20130205033221.GA18864@gmail.com>
- <20130205120854.GC5943@quack.suse.cz>
- <20130205132433.GA27601@gmail.com>
+From: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
+Subject: Re: Maximum number of directories
+Date: Tue, 05 Feb 2013 14:30:24 +0000
+Message-ID: <2743619.5F0TAJAmZW@deuteros>
+References: <17001225.1MS6YREEfJ@deuteros> <3667261.Q2Z9h3nZ4l@deuteros> <alpine.LFD.2.00.1302051309320.3225@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Prashant Shah <pshah.mumbai@gmail.com>, linux-ext4@vger.kernel.org
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49863 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753986Ab3BEN1l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Feb 2013 08:27:41 -0500
-Content-Disposition: inline
-In-Reply-To: <20130205132433.GA27601@gmail.com>
+Received: from claranet-outbound-smtp04.uk.clara.net ([195.8.89.37]:54968 "EHLO
+	claranet-outbound-smtp04.uk.clara.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754378Ab3BEOac convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Feb 2013 09:30:32 -0500
+In-Reply-To: <alpine.LFD.2.00.1302051309320.3225@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 05-02-13 21:24:33, Zheng Liu wrote:
-> On Tue, Feb 05, 2013 at 01:08:54PM +0100, Jan Kara wrote:
-> [snip]
-> > > After tracking all extent status in status tree, ext4_es_find_extent()
-> > > returns not only delayed extent, but also written/unwritten extents.  So
-> > > it is possible that next_del == next and its value is not
-> > > EXT_MAX_BLOCKS.  *But* in latest version ext4_es_find_extent() will be
-> > > changed to only return delayed extent.  So the problem will be fixed.
-> >   Ah, now I see. You added the condition checking whether extent is delayed
-> > only to the newex->ec_start == 0 branch. So if we don't take that branch,
-> > we could have returned an extent which isn't delayed.
-> > 
-> > IMHO it is a wrong decision for ext4_es_find_extent() to return only
-> > delayed extents. That should really return any extent that contains given
-> > block (or is after it). It is ext4_find_delayed_extent() that should really
-> > be changed to return only delayed extents as its name suggests...
-> 
-> I revised the patch series and found that ext4_es_find_extent() is
-> only used to lookup a delayed extent by the following functions:
-> 
->  - ext4_find_delalloc_range()
->  - ext4_find_delayed_extent()
->  - ext4_seek_data()
->  - ext4_seek_hole()
-> 
-> So IMHO the better decision is to rename it to ext4_es_find_delayed_extent()
-> and let it only return delayed extent.  In patch 6/9, a new function
-> called ext4_es_lookup_extent() is defined to do this job that returns an
-> extent that contains given block.  What do you think?
-  Yes, this works for me. Thanks for looking into it.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Hi,
+
+On Tuesday 05 February 2013 14:06:14 Luk=C3=A1=C5=A1 Czerner wrote:
+> On Mon, 4 Feb 2013, Tvrtko Ursulin wrote:
+> > Date: Mon, 04 Feb 2013 13:36:29 +0000
+> > From: Tvrtko Ursulin <tvrtko.ursulin@onelan.co.uk>
+> > To: Prashant Shah <pshah.mumbai@gmail.com>
+> > Cc: linux-ext4@vger.kernel.org
+> > Subject: Re: Maximum number of directories
+> >=20
+> > On Monday 04 February 2013 18:49:54 Prashant Shah wrote:
+> > > Hi,
+> > >=20
+> > > On Mon, Feb 4, 2013 at 4:25 PM, Tvrtko Ursulin
+> > >=20
+> > > <tvrtko.ursulin@onelan.co.uk> wrote:
+> > > > I was creating such a (crazy?) tree and hit -ENOSPC at ~31 mill=
+ion
+> > > > directories created in total with df showing only 40% use:
+> > > >=20
+> > > > Inode count:              29868032
+> > > > Free inodes:              29848131
+> > >=20
+> > > Since, each directory will use a inode entry, there is some misma=
+tch
+> > > with ~31 million directories and 19901 inodes in use. The inode u=
+sage
+> > > count should be much larger. You have max 29 million inodes avail=
+able
+> > > - so max can be 29 million directories.
+> >=20
+> > Yeah, I totally forgot about the inode situation on ext filesystems=
+=2E So is
+> > tune2fs giving wrong stats for live (mounted) filesystems?
+>=20
+> Not sure what situation you're referring to. Directory as any other
+> file is represented by an inode and there is a limited number of
+> inodes in the file system.
+
+The situation that inode blocks are statically allocated at mkfs time.
+
+> Using tune2fs on live/mounted file system is bad idea and the
+> information might not be correct (exactly for this reason it is
+> _NOT_ recommended to run fsck on live file system). Use 'df -i' if
+> you want to get information about inode count.
+
+Yes, later I figured out that tune2fs -l does not give current stats fo=
+r live=20
+filesystems. I did not expect that to be dangerous though. And I also f=
+orgot=20
+about 'df -i'. Thing is, I did not hit this limit since the previous ce=
+ntury=20
+so guess I subconsciously assumed inode limits are an outdated concept.=
+ :)=20
+=20
+Regards,
+
+Tvrtko
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
