@@ -1,56 +1,174 @@
-From: Li Zefan <lizefan@huawei.com>
-Subject: Re: Help to know the stable ver of ext4 for commercial app.
-Date: Tue, 5 Feb 2013 09:17:51 +0800
-Message-ID: <51105DBF.5080202@huawei.com>
-References: <BB7C62C2B0732E4DA93834A501E8464544E6181A@SZXEML519-MBS.china.huawei.com> <20130202032307.GA16364@thunk.org> <BB7C62C2B0732E4DA93834A501E8464544E62844@SZXEML519-MBS.china.huawei.com> <9FEF1A06-2C24-4D37-A896-3C63D7AB29FE@dilger.ca> <BB7C62C2B0732E4DA93834A501E8464544E628B1@SZXEML519-MBS.china.huawei.com> <CAEjEV8A90nYC74yPg+0n+KimWV2BPEVdOHtwbrkGuSDQpCGjFQ@mail.gmail.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH 5/9 v4] ext4: track all extent status in extent status
+ tree
+Date: Tue, 5 Feb 2013 11:32:21 +0800
+Message-ID: <20130205033221.GA18864@gmail.com>
+References: <1359609477-29845-1-git-send-email-wenqing.lz@taobao.com>
+ <1359609477-29845-6-git-send-email-wenqing.lz@taobao.com>
+ <20130131165055.GF4612@quack.suse.cz>
+ <20130201053308.GA6274@gmail.com>
+ <20130204112709.GC7523@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: <adilger@dilger.ca>, "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	<tm@tao.ma>, <xiaoqiangnk@gmail.com>,
-	wuqixuan <wuqixuan@huawei.com>
-To: qixuan wu <wuqixuan@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga01-in.huawei.com ([119.145.14.64]:17399 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753769Ab3BEBSL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 20:18:11 -0500
-In-Reply-To: <CAEjEV8A90nYC74yPg+0n+KimWV2BPEVdOHtwbrkGuSDQpCGjFQ@mail.gmail.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:35145 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab3BEDSH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2013 22:18:07 -0500
+Received: by mail-pa0-f50.google.com with SMTP id fa11so1190911pad.37
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Feb 2013 19:18:06 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20130204112709.GC7523@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013/2/5 1:52, qixuan wu wrote:
-> On Sun, Feb 3, 2013 at 8:43 PM, Wuqixuan <wuqixuan@huawei.com> wrote:
+On Mon, Feb 04, 2013 at 12:27:09PM +0100, Jan Kara wrote:
+> On Fri 01-02-13 13:33:08, Zheng Liu wrote:
+> > On Thu, Jan 31, 2013 at 05:50:55PM +0100, Jan Kara wrote:
+> > > On Thu 31-01-13 13:17:53, Zheng Liu wrote:
+> > > > From: Zheng Liu <wenqing.lz@taobao.com>
+> > > > 
+> > > > By recording the phycisal block and status, extent status tree is able
+> > > > to track the status of every extents.  When we call _map_blocks
+> > > > functions to lookup an extent or create a new written/unwritten/delayed
+> > > > extent, this extent will be inserted into extent status tree.
+> > > > 
+> > > > We don't load all extents from disk in alloc_inode() because it costs
+> > > > too much memory, and if a file is opened and closed frequently it will
+> > > > takes too much time to load all extent information.  So currently when
+> > > > we create/lookup an extent, this extent will be inserted into extent
+> > > > status tree.  Hence, the extent status tree may not comprehensively
+> > > > contain all of the extents found in the file.
+> > > > 
+> > > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > > > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > > > ---
+> > > >  fs/ext4/extents.c |  5 +++-
+> > > >  fs/ext4/file.c    |  6 +++--
+> > > >  fs/ext4/inode.c   | 73 ++++++++++++++++++++++++++++++++++++-------------------
+> > > >  3 files changed, 56 insertions(+), 28 deletions(-)
+> > > > 
+> > > > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> > > > index aa9a6d2..d23a654 100644
+> > > > --- a/fs/ext4/extents.c
+> > > > +++ b/fs/ext4/extents.c
+> > > > @@ -2074,7 +2074,7 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
+> > > >  		}
+> > > >  
+> > > >  		/* This is possible iff next == next_del == EXT_MAX_BLOCKS */
+> > > > -		if (next == next_del) {
+> > > > +		if (next == next_del && next_del == EXT_MAX_BLOCKS) {
+> > >   This doesn't seem to be related, does it?
+> > 
+> > ext4_ext_next_allocated_block() will return EXT_MAX_BLOCKS when it
+> > reaches the end of file.  ext4_find_delayed_extent() does the same
+> > thing.
+>   Yes.
 > 
->> On 2013-02-02, at 0:20, Wuqixuan <wuqixuan@huawei.com> wrote:
->>>
->>> Thanks a lot for your information. Has some doubt below.
->>>
->>>> On Sat, Feb 02, 2013 at 02:30:11AM +0000, Wuqixuan wrote:
->>>>>
->>>>>   Currently we are choocing ssd/sata file system using for stream media application. We are using 2.6.34.10 (can be upgraded to 2.6.34.14). We are consider of ext3 or ext4.  Even in wikipedia, it mentions ext4 is stable from 2.6.28, I still have some doubts:
->>>>>
->>>>>    1. Whether 2.6.34.10 of ext4 is stable enough for commercial use or not.
->>>>>    2. Are there many mature commercial application on ext4 on 2.6.34.10 or before? Can tell some famous company or app name ?
->>>
->>>> Well, it's _possible_ to use 2.6.34 as a base for a production server.
->>>> Red Hat's RHEL 5 was based on kernel of approximately that vintage
->>>> (with many, many patches).  Google announced it was upgrading its data
->>>> centers to use ext4 just about the time I was hired at Google[1], in
->>>> January 2010, and 2.6.34 dates from May 2010.
->>
->> If you are looking at stability for a commercial application, I think you would be best off to choose something like RHEL6 2.6.32 which has back ported all of these patches for ext4 already and will continue to get fixes for years to come.
->>
->> Next best would be to pick something like FC18 3.8(?), which also has the needed patches, but will not be supported for as long a time.  This is definitely still better than picking the vanilla kernel of the same version.
->>
->> That way, you can focus on your application, and not on becoming a kernel maintainer...
-> 
-> Thanks andreas, will check the RHEL6 2.6.32 ext4 and compare with
-> Windriver 4.3 (2.6.34.10) which we are ready to use. Do you have any
-> idea of ext4 of Windriver 4.3 (2.6.34.10) ?
-> 
+> > Before tracking written/unwritten extent it is correct because
+> > next never equals to next_del unless both of them equal to
+> > EXT_MAX_BLOCKS.  However, after that next is possible to equal to
+> > next_del when they don't reach the end of file.
+>   Hum, I have to say I'm somewhat lost in ext4_find_delayed_extent().
+> ext4_es_find_extent() returns the first extent from extent status tree
+> containing at / after the given offset. So es.len == 0 iff there's extent
+> in status tree at or after newex->ec_block. The comment before that
+> condition suggest something different and I'd expect the return value to be
+> EXT_MAX_BLOCKS, not 0? Also ext4_find_delayed_extent() would be much less
+> confusing if it just returned position of next delalloc extent after given
+> block and didn't try to return length of a hole before that extent in
+> newex? That value can be easily computed from 'next' and 'next_del' in
+> ext4_fill_fiemap_extents() anyway... But that's slightly off topic.
 
-I think you should stop asking about Windriver as you were already told
-so twice.
+Yes, ext4_find_delayed_extent is not very clearly now, and I agree with
+you that it need to be refactored.  Certainly it is another topic.
 
+> 
+> To our current discussion ext4_find_delayed_extent() either returns 0 or
+> start of next delalloc extent (if we found extent of other type in the
+> status tree we just return 0) so I don't see how next_del == next for other
+> value than EXT_MAX_BLOCKS. But maybe I miss something.
+
+After tracking all extent status in status tree, ext4_es_find_extent()
+returns not only delayed extent, but also written/unwritten extents.  So
+it is possible that next_del == next and its value is not
+EXT_MAX_BLOCKS.  *But* in latest version ext4_es_find_extent() will be
+changed to only return delayed extent.  So the problem will be fixed.
+
+> 
+> > So we need to make sure next equals to next_del and both of them equal to
+> > EXT_MAX_BLOCKS.  In this condition it indicates that we reach the end of
+> > file.  Am I miss something?
+> > 
+> > > 
+> > > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > > index e09c7cf..f0dda2a 100644
+> > > > --- a/fs/ext4/inode.c
+> > > > +++ b/fs/ext4/inode.c
+> > > > @@ -615,18 +615,27 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+> > > >  			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
+> > > >  			ext4_da_update_reserve_space(inode, retval, 1);
+> > > >  	}
+> > > > -	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
+> > > > +	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+> > > >  		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
+> > > >  
+> > > > -		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+> > > > -			int ret;
+> > > > -delayed_mapped:
+> > > > -			/* delayed allocation blocks has been allocated */
+> > > > -			ret = ext4_es_remove_extent(inode, map->m_lblk,
+> > > > -						    map->m_len);
+> > > > -			if (ret < 0)
+> > > > -				retval = ret;
+> > > > -		}
+> > > > +	if (retval > 0) {
+> > > > +		int ret, status;
+> > > > +
+> > > > +		if (flags & EXT4_GET_BLOCKS_PRE_IO)
+> > > > +			status = EXTENT_STATUS_UNWRITTEN;
+> > > > +		else if (flags & EXT4_GET_BLOCKS_CONVERT)
+> > > > +			status = EXTENT_STATUS_WRITTEN;
+> > > > +		else if (flags & EXT4_GET_BLOCKS_UNINIT_EXT)
+> > > > +			status = EXTENT_STATUS_UNWRITTEN;
+> > > > +		else if (flags & EXT4_GET_BLOCKS_CREATE)
+> > > > +			status = EXTENT_STATUS_WRITTEN;
+> > > > +		else
+> > > > +			BUG_ON(1);
+> > > > +
+> > > > +		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+> > > > +					    map->m_pblk, status);
+> > > > +		if (ret < 0)
+> > > > +			retval = ret;
+> > >   Hum, are you sure the extent status will be correct? Won't it be safer to
+> > > just use whatever we have in 'map'?
+> > 
+> > Your meaning is that we need to ignore the error when we insert a extent
+> > into the extent status tree, right?  But that would causes an
+> > inconsistency between status tree and extent tree.  Further,
+> > ext4_es_insert_extent() returns EINVAL or ENOMEM.  I believe that
+> > reporting an error is a better choice.  What do you think?
+>   No, I meant something else. For example you decide extent at given
+> position is 'UNWRITTEN' just on the basis that someone passed
+> EXT4_GET_BLOCKS_PRE_IO as get_blocks flags. How do you know? Cannot someone
+> pass EXT4_GET_BLOCKS_PRE_IO and we actually find out the extent at given
+> position is fully allocated extent (i.e. WRITTEN) so we do nothing? Then
+> you would cache bad state in the extent tree... That's why I'd rather see
+> we derive current 'status' from 'map' where we are sure to have correct
+> information and don't have to guess it from passed flags.
+
+First of all, we don't need to worry about this problem because we
+always lookup an extent before trying to create it.  So when it is an
+written extent, we will return from ext4_map_blocks() directly and won't
+try to create it.  So status tree don't be touched.
+
+Secondly, as far as I know, ext4_ext_map_blocks() will never return
+EXT4_MAP_UNWRITTEN flags after it tries to allocate an unwritten extent.
+So that means that 'm_flags' in map is incorrect.  Maybe I miss
+something.
+
+Thanks,
+                                                - Zheng
