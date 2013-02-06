@@ -1,46 +1,89 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 1/3] Ext2: remove the overhead check about sb in the
- function ext2_new_blocks
-Date: Wed, 6 Feb 2013 14:56:46 +0800
-Message-ID: <20130206065645.GA32665@gmail.com>
-References: <5112BB97.8040206@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/3] Ext2: mark inode dirty after the function
+ dquot_free_block_nodirty is called
+Date: Wed, 6 Feb 2013 13:44:20 +0100
+Message-ID: <20130206124420.GB6330@quack.suse.cz>
+References: <1360131268-1615-1-git-send-email-wangshilong1991@gmail.com>
+ <1360131268-1615-2-git-send-email-wangshilong1991@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Wang Shilong <wangshilong1991@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org,
+	Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+To: Wang shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:36436 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751719Ab3BFGm0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2013 01:42:26 -0500
-Received: by mail-pa0-f52.google.com with SMTP id fb1so608748pad.11
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Feb 2013 22:42:25 -0800 (PST)
+Received: from cantor2.suse.de ([195.135.220.15]:37655 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751107Ab3BFMod (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Feb 2013 07:44:33 -0500
 Content-Disposition: inline
-In-Reply-To: <5112BB97.8040206@gmail.com>
+In-Reply-To: <1360131268-1615-2-git-send-email-wangshilong1991@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 06, 2013 at 12:22:47PM -0800, Wang Shilong wrote:
+  Hello,
+
+On Wed 06-02-13 14:14:27, Wang shilong wrote:
 > From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
->=20
-> It can be guranteed that inode->i_sb should not be null in vfs.
-> So here the check about it is overhead.
->=20
+> 
+> We should mark inode dirty after the function dquot_free_block_nodirty
+> is called.Besides,add a check whether it is necessary to call
+> dquot_free_block_nodirty functon.
+  Thanks for the patch. Just one comment below.
+
 > Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 > ---
->=20
-> sorry about wrong format patch=EF=BC=8C i will resend it later.
+>  fs/ext2/balloc.c | 15 ++++++++++-----
+>  fs/ext2/xattr.c  |  1 +
+>  2 files changed, 11 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 22993a0..9d372bf 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -568,8 +568,11 @@ do_more:
+>  	}
+>  error_return:
+>  	brelse(bitmap_bh);
+> -	release_blocks(sb, freed);
+> -	dquot_free_block_nodirty(inode, freed);
+> +	if (freed) {
+> +		release_blocks(sb, freed);
+> +		dquot_free_block_nodirty(inode, freed);
+> +		mark_inode_dirty(inode);
+> +	}
+>  }
+>  
+>  /**
+> @@ -1412,9 +1415,11 @@ allocated:
+>  
+>  	*errp = 0;
+>  	brelse(bitmap_bh);
+> -	dquot_free_block_nodirty(inode, *count-num);
+> -	mark_inode_dirty(inode);
+> -	*count = num;
+> +	if (num < *count) {
+> +		dquot_free_block_nodirty(inode, *count-num);
+> +		mark_inode_dirty(inode);
+> +		*count = num;
+> +	}
+>  	return ret_block;
+>  
+>  io_error:
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index b6754db..4c4cda9 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -795,6 +795,7 @@ ext2_xattr_delete_inode(struct inode *inode)
+>  		if (IS_SYNC(inode))
+>  			sync_dirty_buffer(bh);
+>  		dquot_free_block_nodirty(inode, 1);
+> +		mark_inode_dirty(inode);
+>  	}
+>  	EXT2_I(inode)->i_file_acl = 0;
+  This isn't necessary as the function is meant to be called only when
+inode is going to be deleted and thus there's no point in marking it dirty.
 
-Hi Shilong,
-
-If you want to re-send a patch series, add [RESEND] in subject, please.
-Because it could make us know which is the latest one. :-)
-
-Regards,
-                                                - Zheng
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
