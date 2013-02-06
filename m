@@ -1,47 +1,35 @@
 From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH 3/3] Ext2: remove the static function release_blocks to optimize
- the kernel
-Date: Wed, 06 Feb 2013 12:03:23 -0800
-Message-ID: <5112B70B.7020805@gmail.com>
+Subject: [PATCH 1/3] Ext2: remove the overhead check about sb in the function
+ ext2_new_blocks
+Date: Wed, 06 Feb 2013 12:22:47 -0800
+Message-ID: <5112BB97.8040206@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:38338 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755382Ab3BFEBG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Feb 2013 23:01:06 -0500
-Received: by mail-pa0-f46.google.com with SMTP id kp14so543067pab.5
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Feb 2013 20:01:05 -0800 (PST)
+Received: from mail-ia0-f172.google.com ([209.85.210.172]:51664 "EHLO
+	mail-ia0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754856Ab3BFEWj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Feb 2013 23:22:39 -0500
+Received: by mail-ia0-f172.google.com with SMTP id u8so1068089iag.3
+        for <linux-ext4@vger.kernel.org>; Tue, 05 Feb 2013 20:22:39 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+=46rom: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 
-Because the static function 'release_blocks' is only called
-when releasing blocks,it will be more simple and efficient to
-call the function 'percpu_counter_add' directly.
+It can be guranteed that inode->i_sb should not be null in vfs.
+So here the check about it is overhead.
 
 Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
 ---
-fs/ext2/balloc.c | 11 +----------
-1 file changed, 1 insertion(+), 10 deletions(-)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 9d372bf..d5a6afd 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -159,15 +159,6 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
-return bh;
-}
+sorry about wrong format patch=A3=AC i will resend it later.
 
--static void release_blocks(struct super_block *sb, int count)
--{
-- if (count) {
-- struct ext2_sb_info *sbi = EXT2_SB(sb);
--
-- percpu_counter_add(&sbi->s_freeblocks_counter, count);
-- }
--}
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
