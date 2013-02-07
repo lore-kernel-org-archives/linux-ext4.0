@@ -1,42 +1,63 @@
-From: "Subranshu Patel - ERS, HCL Tech" <Subranshu.P@hcl.com>
-Subject: df command on EXT4 and XFS filesystem
-Date: Thu, 7 Feb 2013 12:18:26 +0530
-Message-ID: <60A0C755EDF2954AA9C18966C50DB31429E2A0A49C@NDA-HCLT-EVS05.HCLT.CORP.HCL.IN>
+From: Martin Wilck <martin.wilck@ts.fujitsu.com>
+Subject: GRUB and the risk of block list corruption in extX
+Date: Thu, 07 Feb 2013 11:18:30 +0100
+Message-ID: <51137F76.8070705@ts.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gws05.hcl.com ([203.105.185.23]:35871 "EHLO gws05.hcl.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751714Ab3BGG6Y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2013 01:58:24 -0500
-Content-Language: en-US
+Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:50818 "EHLO
+	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757351Ab3BGK3I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2013 05:29:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have an observation on EXT4 filesystem. I created filesystem of size 1TB, 4TB, and 7TB and then checked the output of df command. 
+Hello,
 
-df command showed the number of 1KB blocks used. The result was:
-1TB: 204056
-4TB: 198680
-7TB: 181784 
+you may have seen the following warning that is displayed when
+someone tries to install GRUB2 on in a extX partition:
 
-This trend was surprising, with increasing filesystem size, the number of used blocks decreased. Why it is so? 
+  "/sbin/grub-setup: warn: Embedding is not possible. GRUB can only be
+  installed in this setup by using blocklists. However, blocklists are
+  UNRELIABLE and their use is discouraged."
 
+Recently I have been involved in discussions about this on
+https://bugzilla.redhat.com/show_bug.cgi?id=872826.
 
-::DISCLAIMER::
-----------------------------------------------------------------------------------------------------------------------------------------------------
+The Grub manual says "installing to a filesystem means that GRUB is
+vulnerable to its blocks being moved around by filesystem features such
+as tail packing, or even by aggressive fsck implementations".
 
-The contents of this e-mail and any attachment(s) are confidential and intended for the named recipient(s) only.
-E-mail transmission is not guaranteed to be secure or error-free as information could be intercepted, corrupted,
-lost, destroyed, arrive late or incomplete, or may contain viruses in transmission. The e mail and its contents
-(with or without referred errors) shall therefore not attach any liability on the originator or HCL or its affiliates.
-Views or opinions, if any, presented in this email are solely those of the author and may not necessarily reflect the
-views or opinions of HCL or its affiliates. Any form of reproduction, dissemination, copying, disclosure, modification,
-distribution and / or publication of this message without the prior written consent of authorized representative of
-HCL is strictly prohibited. If you have received this email in error please delete it and notify the sender immediately.
-Before opening any email and/or attachments, please check them for viruses and other defects.
+My question to the extX experts: Under what circumstances (except
+modifying, overwriting, deleting the bootloader image "core.img" itself)
+can a block list referencing "core.img" be corrupted? In particular:
 
-----------------------------------------------------------------------------------------------------------------------------------------------------
+ 1) could it happen during ordinary operation, filesystem code silently
+   moving blocks around?
+ 2) could it happen in an e2fsck run?
+ 3) could it be caused by e4defrag?
+ 4) could it happen with resize2fs even if the blocks occupied by the
+file fit in the size that the FS is resized to (otherwise obviously "yes")?
+ 5) Anything else?
+ 6) if the file was protected with the IMMUTABLE flag, would any of 1-5
+still be able to corrupt the file?
 
+Regards
+Martin
+
+-- 
+Dr. Martin Wilck
+PRIMERGY System Software Engineer
+x86 Server Engineering
+
+FUJITSU
+Fujitsu Technology Solutions GmbH
+Heinz-Nixdorf-Ring 1
+33106 Paderborn, Germany
+Phone:			++49 5251 525 2796
+Fax:			++49 5251 525 2820
+Email:			martin.wilck@ts.fujitsu.com
+Internet:		http://ts.fujitsu.com
+Company Details:	http://ts.fujitsu.com/imprint
