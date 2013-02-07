@@ -1,54 +1,74 @@
-From: shilong wang <wangshilong1991@gmail.com>
-Subject: Re: [PATCH 1/3] Ext2: remove the overhead check about sb in the
- function ext2_new_blocks
-Date: Thu, 7 Feb 2013 23:22:21 +0800
-Message-ID: <CAP9B-Qk-BQL9goEGfxhHPBAG45Va1joRNP0QBJ5C_AEXhvof=A@mail.gmail.com>
-References: <5112BB97.8040206@gmail.com>
-	<20130206065645.GA32665@gmail.com>
-	<20130206182931.GB1410@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v1 2/3] Ext2: mark inode dirty after the function
+ dquot_free_block_nodirty is called
+Date: Thu, 7 Feb 2013 16:45:21 +0100
+Message-ID: <20130207154521.GC25392@quack.suse.cz>
+References: <1360249074-2642-1-git-send-email-wangshilong1991@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	gnehzuil.liu@gmail.com
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Wang shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:46546 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758321Ab3BGPWW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Feb 2013 10:22:22 -0500
-Received: by mail-ie0-f172.google.com with SMTP id c10so3658825ieb.31
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Feb 2013 07:22:21 -0800 (PST)
-In-Reply-To: <20130206182931.GB1410@thunk.org>
+Received: from cantor2.suse.de ([195.135.220.15]:36230 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757809Ab3BGPpd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Feb 2013 10:45:33 -0500
+Content-Disposition: inline
+In-Reply-To: <1360249074-2642-1-git-send-email-wangshilong1991@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2013/2/7 Theodore Ts'o <tytso@mit.edu>:
-> On Wed, Feb 06, 2013 at 02:56:46PM +0800, Zheng Liu wrote:
->>
->> If you want to re-send a patch series, add [RESEND] in subject, please.
->> Because it could make us know which is the latest one. :-)
->
-> Ideally, use RESEND if you haven't changed the patch series since the
-> last time you've sent it.  If you have changed it, please use [PATCH
-> v2], [PATCH v3], etc.
+On Thu 07-02-13 22:57:53, Wang shilong wrote:
+> From: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> 
+> We should mark inode dirty after the function dquot_free_block_nodirty
+> is called.Besides,add a check whether it is necessary to call
+> dquot_free_block_nodirty functon.
+  Thanks. I've added the patch to my tree.
 
-I get it..
-Thanks, thanks every one  for teaching me so much...
-
-Now i am trying to do something for ext4 development in my leisure time..
-Since i don't know anything about filesystem before.. i have to study
-about it from minix to ext2..ext3..ext4..btrfs..
-
-However, it still seems a little hard for me to figure everything out
-just by reading code... So i wonder where i can get
-some papers or articles about the new concept of filesystems.. for
-example extent management or something else for ext4..etc
-Maybe it helps a lot for me...
-
-Thanks,
-Wang
-
->
-> Thanks,
->
->                                                 - Ted
+								Honza
+> 
+> Signed-off-by: Wang Shilong <wangsl-fnst@cn.fujitsu.com>
+> ---
+>  fs/ext2/balloc.c | 15 ++++++++++-----
+>  1 file changed, 10 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 22993a0..9d372bf 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -568,8 +568,11 @@ do_more:
+>  	}
+>  error_return:
+>  	brelse(bitmap_bh);
+> -	release_blocks(sb, freed);
+> -	dquot_free_block_nodirty(inode, freed);
+> +	if (freed) {
+> +		release_blocks(sb, freed);
+> +		dquot_free_block_nodirty(inode, freed);
+> +		mark_inode_dirty(inode);
+> +	}
+>  }
+>  
+>  /**
+> @@ -1412,9 +1415,11 @@ allocated:
+>  
+>  	*errp = 0;
+>  	brelse(bitmap_bh);
+> -	dquot_free_block_nodirty(inode, *count-num);
+> -	mark_inode_dirty(inode);
+> -	*count = num;
+> +	if (num < *count) {
+> +		dquot_free_block_nodirty(inode, *count-num);
+> +		mark_inode_dirty(inode);
+> +		*count = num;
+> +	}
+>  	return ret_block;
+>  
+>  io_error:
+> -- 
+> 1.7.11.7
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
