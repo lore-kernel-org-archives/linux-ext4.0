@@ -1,437 +1,208 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 06/10 v5] ext4: remove single extent cache
-Date: Fri,  8 Feb 2013 16:44:02 +0800
-Message-ID: <1360313046-9876-7-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 07/10 v5] ext4: adjust some functions for reclaiming extents from extent status tree
+Date: Fri,  8 Feb 2013 16:44:03 +0800
+Message-ID: <1360313046-9876-8-git-send-email-wenqing.lz@taobao.com>
 References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Jan kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:37965 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759842Ab3BHIaS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2013 03:30:18 -0500
-Received: by mail-pa0-f49.google.com with SMTP id kp6so1931935pab.8
-        for <linux-ext4@vger.kernel.org>; Fri, 08 Feb 2013 00:30:17 -0800 (PST)
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:52488 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759842Ab3BHIaX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Feb 2013 03:30:23 -0500
+Received: by mail-pa0-f48.google.com with SMTP id hz10so1976870pad.7
+        for <linux-ext4@vger.kernel.org>; Fri, 08 Feb 2013 00:30:22 -0800 (PST)
 In-Reply-To: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-Single extent cache could be removed because we have extent status tree
-as a extent cache, and it would be better.
+This commit changes some interfaces in extent status tree because we
+need to use inode to count the cached objects in a extent status tree.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Jan kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h         |  12 ----
- fs/ext4/ext4_extents.h |   6 --
- fs/ext4/extents.c      | 177 +++++++++++--------------------------------------
- fs/ext4/move_extent.c  |   3 -
- fs/ext4/super.c        |   1 -
- 5 files changed, 37 insertions(+), 162 deletions(-)
+ fs/ext4/extents_status.c | 50 +++++++++++++++++++++++-------------------------
+ 1 file changed, 24 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ad885b5..12b1fc7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -812,17 +812,6 @@ do {									       \
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index ca7dc9f..84fe78d 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -142,9 +142,8 @@
  
- #endif /* defined(__KERNEL__) || defined(__linux__) */
+ static struct kmem_cache *ext4_es_cachep;
  
--/*
-- * storage for cached extent
-- * If ec_len == 0, then the cache is invalid.
-- * If ec_start == 0, then the cache represents a gap (null mapping)
-- */
--struct ext4_ext_cache {
--	ext4_fsblk_t	ec_start;
--	ext4_lblk_t	ec_block;
--	__u32		ec_len; /* must be 32bit to return holes */
--};
--
- #include "extents_status.h"
+-static int __es_insert_extent(struct ext4_es_tree *tree,
+-			      struct extent_status *newes);
+-static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
++static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
++static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			      ext4_lblk_t end);
  
- /*
-@@ -889,7 +878,6 @@ struct ext4_inode_info {
- 	struct inode vfs_inode;
- 	struct jbd2_inode *jinode;
- 
--	struct ext4_ext_cache i_cached_extent;
- 	/*
- 	 * File creation time. Its function is same as that of
- 	 * struct timespec i_{a,c,m}time in the generic inode.
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 487fda1..8643ff5 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -193,12 +193,6 @@ static inline unsigned short ext_depth(struct inode *inode)
- 	return le16_to_cpu(ext_inode_hdr(inode)->eh_depth);
+ int __init ext4_init_es(void)
+@@ -296,7 +295,8 @@ out:
  }
  
--static inline void
--ext4_ext_invalidate_cache(struct inode *inode)
--{
--	EXT4_I(inode)->i_cached_extent.ec_len = 0;
--}
--
- static inline void ext4_ext_mark_uninitialized(struct ext4_extent *ext)
+ static struct extent_status *
+-ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len, ext4_fsblk_t pblk)
++ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
++		     ext4_fsblk_t pblk)
  {
- 	/* We can not have an uninitialized extent of zero length! */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 1be8955..9f21430 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -112,7 +112,7 @@ static int ext4_split_extent_at(handle_t *handle,
- 			     int flags);
- 
- static int ext4_find_delayed_extent(struct inode *inode,
--				    struct ext4_ext_cache *newex);
-+				    struct extent_status *newes);
- 
- static int ext4_ext_truncate_extend_restart(handle_t *handle,
- 					    struct inode *inode,
-@@ -714,7 +714,6 @@ int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
- 	eh->eh_magic = EXT4_EXT_MAGIC;
- 	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, 0));
- 	ext4_mark_inode_dirty(handle, inode);
--	ext4_ext_invalidate_cache(inode);
- 	return 0;
+ 	struct extent_status *es;
+ 	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
+@@ -308,7 +308,7 @@ ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len, ext4_fsblk_t pblk)
+ 	return es;
  }
  
-@@ -1960,7 +1959,6 @@ cleanup:
- 		ext4_ext_drop_refs(npath);
- 		kfree(npath);
- 	}
--	ext4_ext_invalidate_cache(inode);
- 	return err;
- }
- 
-@@ -1969,8 +1967,8 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 				    struct fiemap_extent_info *fieinfo)
+-static void ext4_es_free_extent(struct extent_status *es)
++static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
  {
- 	struct ext4_ext_path *path = NULL;
--	struct ext4_ext_cache newex;
- 	struct ext4_extent *ex;
-+	struct extent_status es;
- 	ext4_lblk_t next, next_del, start = 0, end = 0;
- 	ext4_lblk_t last = block + num;
- 	int exists, depth = 0, err = 0;
-@@ -2044,31 +2042,31 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 		BUG_ON(end <= start);
- 
- 		if (!exists) {
--			newex.ec_block = start;
--			newex.ec_len = end - start;
--			newex.ec_start = 0;
-+			es.es_lblk = start;
-+			es.es_len = end - start;
-+			es.es_pblk = 0;
- 		} else {
--			newex.ec_block = le32_to_cpu(ex->ee_block);
--			newex.ec_len = ext4_ext_get_actual_len(ex);
--			newex.ec_start = ext4_ext_pblock(ex);
-+			es.es_lblk = le32_to_cpu(ex->ee_block);
-+			es.es_len = ext4_ext_get_actual_len(ex);
-+			es.es_pblk = ext4_ext_pblock(ex);
- 			if (ext4_ext_is_uninitialized(ex))
- 				flags |= FIEMAP_EXTENT_UNWRITTEN;
- 		}
- 
- 		/*
--		 * Find delayed extent and update newex accordingly. We call
--		 * it even in !exists case to find out whether newex is the
-+		 * Find delayed extent and update es accordingly. We call
-+		 * it even in !exists case to find out whether es is the
- 		 * last existing extent or not.
- 		 */
--		next_del = ext4_find_delayed_extent(inode, &newex);
-+		next_del = ext4_find_delayed_extent(inode, &es);
- 		if (!exists && next_del) {
- 			exists = 1;
- 			flags |= FIEMAP_EXTENT_DELALLOC;
- 		}
- 		up_read(&EXT4_I(inode)->i_data_sem);
- 
--		if (unlikely(newex.ec_len == 0)) {
--			EXT4_ERROR_INODE(inode, "newex.ec_len == 0");
-+		if (unlikely(es.es_len == 0)) {
-+			EXT4_ERROR_INODE(inode, "es.es_len == 0");
- 			err = -EIO;
- 			break;
- 		}
-@@ -2089,9 +2087,9 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 
- 		if (exists) {
- 			err = fiemap_fill_next_extent(fieinfo,
--				(__u64)newex.ec_block << blksize_bits,
--				(__u64)newex.ec_start << blksize_bits,
--				(__u64)newex.ec_len << blksize_bits,
-+				(__u64)es.es_lblk << blksize_bits,
-+				(__u64)es.es_pblk << blksize_bits,
-+				(__u64)es.es_len << blksize_bits,
- 				flags);
- 			if (err < 0)
- 				break;
-@@ -2101,7 +2099,7 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 			}
- 		}
- 
--		block = newex.ec_block + newex.ec_len;
-+		block = es.es_lblk + es.es_len;
- 	}
- 
- 	if (path) {
-@@ -2112,21 +2110,6 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- 	return err;
+ 	kmem_cache_free(ext4_es_cachep, es);
+ }
+@@ -337,8 +337,9 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
  }
  
--static void
--ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
--			__u32 len, ext4_fsblk_t start)
--{
--	struct ext4_ext_cache *cex;
--	BUG_ON(len == 0);
--	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--	trace_ext4_ext_put_in_cache(inode, block, len, start);
--	cex = &EXT4_I(inode)->i_cached_extent;
--	cex->ec_block = block;
--	cex->ec_len = len;
--	cex->ec_start = start;
--	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
--}
--
- /*
-  * ext4_ext_put_gap_in_cache:
-  * calculate boundaries of the gap that the requested block fits into
-@@ -2143,9 +2126,10 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+ static struct extent_status *
+-ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
++ext4_es_try_to_merge_left(struct inode *inode, struct extent_status *es)
+ {
++	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+ 	struct extent_status *es1;
+ 	struct rb_node *node;
  
- 	ex = path[depth].p_ext;
- 	if (ex == NULL) {
--		/* there is no extent yet, so gap is [0;-] */
--		lblock = 0;
--		len = EXT_MAX_BLOCKS;
-+		/*
-+		 * there is no extent yet, so gap is [0;-] and we
-+		 * don't cache it
-+		 */
- 		ext_debug("cache gap(whole file):");
- 	} else if (block < le32_to_cpu(ex->ee_block)) {
- 		lblock = block;
-@@ -2177,52 +2161,6 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+@@ -350,7 +351,7 @@ ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
+ 	if (ext4_es_can_be_merged(es1, es)) {
+ 		es1->es_len += es->es_len;
+ 		rb_erase(&es->rb_node, &tree->root);
+-		ext4_es_free_extent(es);
++		ext4_es_free_extent(inode, es);
+ 		es = es1;
  	}
  
- 	ext_debug(" -> %u:%lu\n", lblock, len);
--	ext4_ext_put_in_cache(inode, lblock, len, 0);
--}
--
--/*
-- * ext4_ext_in_cache()
-- * Checks to see if the given block is in the cache.
-- * If it is, the cached extent is stored in the given
-- * cache extent pointer.
-- *
-- * @inode: The files inode
-- * @block: The block to look for in the cache
-- * @ex:    Pointer where the cached extent will be stored
-- *         if it contains block
-- *
-- * Return 0 if cache is invalid; 1 if the cache is valid
-- */
--static int
--ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
--		  struct ext4_extent *ex)
--{
--	struct ext4_ext_cache *cex;
--	int ret = 0;
--
--	/*
--	 * We borrow i_block_reservation_lock to protect i_cached_extent
--	 */
--	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--	cex = &EXT4_I(inode)->i_cached_extent;
--
--	/* has cache valid data? */
--	if (cex->ec_len == 0)
--		goto errout;
--
--	if (in_range(block, cex->ec_block, cex->ec_len)) {
--		ex->ee_block = cpu_to_le32(cex->ec_block);
--		ext4_ext_store_pblock(ex, cex->ec_start);
--		ex->ee_len = cpu_to_le16(cex->ec_len);
--		ext_debug("%u cached by %u:%u:%llu\n",
--				block,
--				cex->ec_block, cex->ec_len, cex->ec_start);
--		ret = 1;
--	}
--errout:
--	trace_ext4_ext_in_cache(inode, block, ret);
--	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
--	return ret;
+@@ -358,8 +359,9 @@ ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
  }
  
- /*
-@@ -2662,8 +2600,6 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 		return PTR_ERR(handle);
+ static struct extent_status *
+-ext4_es_try_to_merge_right(struct ext4_es_tree *tree, struct extent_status *es)
++ext4_es_try_to_merge_right(struct inode *inode, struct extent_status *es)
+ {
++	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+ 	struct extent_status *es1;
+ 	struct rb_node *node;
  
- again:
--	ext4_ext_invalidate_cache(inode);
--
- 	trace_ext4_ext_remove_space(inode, start, depth);
+@@ -371,15 +373,15 @@ ext4_es_try_to_merge_right(struct ext4_es_tree *tree, struct extent_status *es)
+ 	if (ext4_es_can_be_merged(es, es1)) {
+ 		es->es_len += es1->es_len;
+ 		rb_erase(node, &tree->root);
+-		ext4_es_free_extent(es1);
++		ext4_es_free_extent(inode, es1);
+ 	}
  
- 	/*
-@@ -3906,35 +3842,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		  map->m_lblk, map->m_len, inode->i_ino);
- 	trace_ext4_ext_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
+ 	return es;
+ }
  
--	/* check in cache */
--	if (ext4_ext_in_cache(inode, map->m_lblk, &newex)) {
--		if (!newex.ee_start_lo && !newex.ee_start_hi) {
--			if ((sbi->s_cluster_ratio > 1) &&
--			    ext4_find_delalloc_cluster(inode, map->m_lblk))
--				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
--
--			if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
--				/*
--				 * block isn't allocated yet and
--				 * user doesn't want to allocate it
--				 */
--				goto out2;
--			}
--			/* we should allocate requested block */
--		} else {
--			/* block is already allocated */
--			if (sbi->s_cluster_ratio > 1)
--				map->m_flags |= EXT4_MAP_FROM_CLUSTER;
--			newblock = map->m_lblk
--				   - le32_to_cpu(newex.ee_block)
--				   + ext4_ext_pblock(&newex);
--			/* number of remaining blocks in the extent */
--			allocated = ext4_ext_get_actual_len(&newex) -
--				(map->m_lblk - le32_to_cpu(newex.ee_block));
--			goto out;
--		}
--	}
--
- 	/* find extent for this block */
- 	path = ext4_ext_find_extent(inode, map->m_lblk, NULL);
- 	if (IS_ERR(path)) {
-@@ -3981,15 +3888,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			ext_debug("%u fit into %u:%d -> %llu\n", map->m_lblk,
- 				  ee_block, ee_len, newblock);
- 
--			/*
--			 * Do not put uninitialized extent
--			 * in the cache
--			 */
--			if (!ext4_ext_is_uninitialized(ex)) {
--				ext4_ext_put_in_cache(inode, ee_block,
--					ee_len, ee_start);
-+			if (!ext4_ext_is_uninitialized(ex))
+-static int __es_insert_extent(struct ext4_es_tree *tree,
+-			      struct extent_status *newes)
++static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
+ {
++	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+ 	struct rb_node **p = &tree->root.rb_node;
+ 	struct rb_node *parent = NULL;
+ 	struct extent_status *es;
+@@ -396,14 +398,14 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
+ 				    ext4_es_is_unwritten(es))
+ 					ext4_es_store_pblock(es,
+ 							     newes->es_pblk);
+-				es = ext4_es_try_to_merge_left(tree, es);
++				es = ext4_es_try_to_merge_left(inode, es);
  				goto out;
--			}
-+
- 			allocated = ext4_ext_handle_uninitialized_extents(
- 				handle, inode, map, path, flags,
- 				allocated, newblock);
-@@ -4251,10 +4152,9 @@ got_allocated_blocks:
- 	 * Cache the extent and update transaction to commit on fdatasync only
- 	 * when it is _not_ an uninitialized extent.
- 	 */
--	if ((flags & EXT4_GET_BLOCKS_UNINIT_EXT) == 0) {
--		ext4_ext_put_in_cache(inode, map->m_lblk, allocated, newblock);
-+	if ((flags & EXT4_GET_BLOCKS_UNINIT_EXT) == 0)
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
--	} else
-+	else
- 		ext4_update_inode_fsync_trans(handle, inode, 0);
- out:
- 	if (allocated > map->m_len)
-@@ -4313,7 +4213,6 @@ void ext4_ext_truncate(struct inode *inode)
- 		goto out_stop;
+ 			}
+ 			p = &(*p)->rb_left;
+ 		} else if (newes->es_lblk > ext4_es_end(es)) {
+ 			if (ext4_es_can_be_merged(es, newes)) {
+ 				es->es_len += newes->es_len;
+-				es = ext4_es_try_to_merge_right(tree, es);
++				es = ext4_es_try_to_merge_right(inode, es);
+ 				goto out;
+ 			}
+ 			p = &(*p)->rb_right;
+@@ -413,7 +415,7 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
+ 		}
+ 	}
  
- 	down_write(&EXT4_I(inode)->i_data_sem);
--	ext4_ext_invalidate_cache(inode);
+-	es = ext4_es_alloc_extent(newes->es_lblk, newes->es_len,
++	es = ext4_es_alloc_extent(inode, newes->es_lblk, newes->es_len,
+ 				  newes->es_pblk);
+ 	if (!es)
+ 		return -ENOMEM;
+@@ -437,7 +439,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			  ext4_lblk_t len, ext4_fsblk_t pblk,
+ 			  unsigned long long status)
+ {
+-	struct ext4_es_tree *tree;
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+ 	int err = 0;
+@@ -454,11 +455,10 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	trace_ext4_es_insert_extent(inode, &newes);
  
- 	ext4_discard_preallocations(inode);
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
+-	tree = &EXT4_I(inode)->i_es_tree;
+-	err = __es_remove_extent(tree, lblk, end);
++	err = __es_remove_extent(inode, lblk, end);
+ 	if (err != 0)
+ 		goto error;
+-	err = __es_insert_extent(tree, &newes);
++	err = __es_insert_extent(inode, &newes);
  
-@@ -4563,40 +4462,40 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+ error:
+ 	write_unlock(&EXT4_I(inode)->i_es_lock);
+@@ -527,9 +527,10 @@ out:
+ 	return found;
  }
  
- /*
-- * If newex is not existing extent (newex->ec_start equals zero) find
-- * delayed extent at start of newex and update newex accordingly and
-+ * If newes is not existing extent (newes->ec_pblk equals zero) find
-+ * delayed extent at start of newes and update newes accordingly and
-  * return start of the next delayed extent.
-  *
-- * If newex is existing extent (newex->ec_start is not equal zero)
-+ * If newes is existing extent (newes->ec_pblk is not equal zero)
-  * return start of next delayed extent or EXT_MAX_BLOCKS if no delayed
-- * extent found. Leave newex unmodified.
-+ * extent found. Leave newes unmodified.
-  */
- static int ext4_find_delayed_extent(struct inode *inode,
--				    struct ext4_ext_cache *newex)
-+				    struct extent_status *newes)
+-static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+-				 ext4_lblk_t end)
++static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
++			      ext4_lblk_t end)
  {
- 	struct extent_status es;
- 	ext4_lblk_t next_del;
++	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+ 	struct rb_node *node;
+ 	struct extent_status *es;
+ 	struct extent_status orig_es;
+@@ -567,7 +568,7 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 				ext4_es_store_pblock(&newes, block);
+ 			}
+ 			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
+-			err = __es_insert_extent(tree, &newes);
++			err = __es_insert_extent(inode, &newes);
+ 			if (err) {
+ 				es->es_lblk = orig_es.es_lblk;
+ 				es->es_len = orig_es.es_len;
+@@ -596,7 +597,7 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+ 	while (es && ext4_es_end(es) <= end) {
+ 		node = rb_next(&es->rb_node);
+ 		rb_erase(&es->rb_node, &tree->root);
+-		ext4_es_free_extent(es);
++		ext4_es_free_extent(inode, es);
+ 		if (!node) {
+ 			es = NULL;
+ 			break;
+@@ -628,7 +629,6 @@ out:
+ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			  ext4_lblk_t len)
+ {
+-	struct ext4_es_tree *tree;
+ 	ext4_lblk_t end;
+ 	int err = 0;
  
--	es.es_lblk = newex->ec_block;
-+	es.es_lblk = newes->es_lblk;
- 	next_del = ext4_es_find_delayed_extent(inode, &es);
+@@ -639,10 +639,8 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	end = lblk + len - 1;
+ 	BUG_ON(end < lblk);
  
--	if (newex->ec_start == 0) {
-+	if (newes->es_pblk == 0) {
- 		/*
--		 * No extent in extent-tree contains block @newex->ec_start,
-+		 * No extent in extent-tree contains block @newes->es_pblk,
- 		 * then the block may stay in 1)a hole or 2)delayed-extent.
- 		 */
- 		if (es.es_len == 0)
- 			/* A hole found. */
- 			return 0;
- 
--		if (es.es_lblk > newex->ec_block) {
-+		if (es.es_lblk > newes->es_lblk) {
- 			/* A hole found. */
--			newex->ec_len = min(es.es_lblk - newex->ec_block,
--					    newex->ec_len);
-+			newes->es_len = min(es.es_lblk - newes->es_lblk,
-+					    newes->es_len);
- 			return 0;
- 		}
- 
--		newex->ec_len = es.es_lblk + es.es_len - newex->ec_block;
-+		newes->es_len = es.es_lblk + es.es_len - newes->es_lblk;
- 	}
- 
- 	return next_del;
-@@ -4796,14 +4695,12 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		goto out;
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
--	ext4_ext_invalidate_cache(inode);
- 	ext4_discard_preallocations(inode);
- 
- 	err = ext4_es_remove_extent(inode, first_block,
- 				    stop_block - first_block);
- 	err = ext4_ext_remove_space(inode, first_block, stop_block - 1);
- 
--	ext4_ext_invalidate_cache(inode);
- 	ext4_discard_preallocations(inode);
- 
- 	if (IS_SYNC(inode))
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index d9cc5ee..b9222c8 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -761,9 +761,6 @@ out:
- 		kfree(donor_path);
- 	}
- 
--	ext4_ext_invalidate_cache(orig_inode);
--	ext4_ext_invalidate_cache(donor_inode);
+-	tree = &EXT4_I(inode)->i_es_tree;
