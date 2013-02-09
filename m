@@ -1,89 +1,267 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 08/12] ext4: start handle at the last possible moment in ext4_rmdir()
-Date: Sat,  9 Feb 2013 16:53:48 -0500
-Message-ID: <1360446832-12724-9-git-send-email-tytso@mit.edu>
+Subject: [PATCH 12/12] ext4: start handle at the last possible moment when creating inodes
+Date: Sat,  9 Feb 2013 16:53:52 -0500
+Message-ID: <1360446832-12724-13-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47603 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47613 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760834Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1760842Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Feb 2013 16:53:55 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't start the jbd2 transaction handle until after the directory
-entry has been found, to minimize the amount of time that a handle is
-held active.
+In ext4_{create,mknod,mkdir,symlink}(), don't start the journal handle
+until the inode has been succesfully allocated.  In order to do this,
+we need to start the handle in the ext4_new_inode().  So create a new
+variant of this function, ext4_new_inode_start_handle(), so the handle
+can be created at the last possible minute, before we need to modify
+the inode allocation bitmap block.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/namei.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h   | 17 ++++++++--
+ fs/ext4/ialloc.c | 15 +++++++--
+ fs/ext4/namei.c  | 94 ++++++++++++++++++++++++++------------------------------
+ 3 files changed, 71 insertions(+), 55 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9897cdf..05940ce 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1991,9 +1991,20 @@ extern int ext4fs_dirhash(const char *name, int len, struct
+ 			  dx_hash_info *hinfo);
+ 
+ /* ialloc.c */
+-extern struct inode *ext4_new_inode(handle_t *, struct inode *, umode_t,
+-				    const struct qstr *qstr, __u32 goal,
+-				    uid_t *owner);
++extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
++				      const struct qstr *qstr, __u32 goal,
++				      uid_t *owner, int handle_type,
++				      unsigned int line_no, int nblocks);
++
++#define ext4_new_inode(handle, dir, mode, qstr, goal, owner) \
++	__ext4_new_inode((handle), (dir), (mode), (qstr), (goal), (owner), \
++			 0, 0, 0)
++#define ext4_new_inode_start_handle(dir, mode, qstr, goal, owner, \
++				    type, nblocks)		    \
++	__ext4_new_inode(0, (dir), (mode), (qstr), (goal), (owner), \
++			 (type), __LINE__, (nblocks))
++
++
+ extern void ext4_free_inode(handle_t *, struct inode *);
+ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
+ extern unsigned long ext4_count_free_inodes(struct super_block *);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 10bd6fe..943665b 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -634,8 +634,10 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+  * For other inodes, search forward from the parent directory's block
+  * group to find a free inode.
+  */
+-struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, umode_t mode,
+-			     const struct qstr *qstr, __u32 goal, uid_t *owner)
++struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
++			       umode_t mode, const struct qstr *qstr,
++			       __u32 goal, uid_t *owner, int handle_type,
++			       unsigned int line_no, int nblocks)
+ {
+ 	struct super_block *sb;
+ 	struct buffer_head *inode_bitmap_bh = NULL;
+@@ -725,6 +727,15 @@ repeat_in_this_group:
+ 				   "inode=%lu", ino + 1);
+ 			continue;
+ 		}
++		if (!handle) {
++			BUG_ON(nblocks == 0);
++			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
++							 handle_type, nblocks);
++			if (IS_ERR(handle)) {
++				err = PTR_ERR(handle);
++				goto fail;
++			}
++		}
+ 		BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
+ 		err = ext4_journal_get_write_access(handle, inode_bitmap_bh);
+ 		if (err)
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4a27069..36a4afd 100644
+index 5f3d2b5..3e1529c 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2725,26 +2725,18 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+@@ -2257,30 +2257,28 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ {
+ 	handle_t *handle;
  	struct inode *inode;
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
--	handle_t *handle;
-+	handle_t *handle = NULL;
+-	int err, retries = 0;
++	int err, credits, retries = 0;
  
- 	/* Initialize quotas before so that eventual writes go in
- 	 * separate transaction */
  	dquot_initialize(dir);
- 	dquot_initialize(dentry->d_inode);
  
++	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ retry:
 -	handle = ext4_journal_start(dir, EXT4_HT_DIR,
--				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+-		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
 -	if (IS_ERR(handle))
 -		return PTR_ERR(handle);
 -
- 	retval = -ENOENT;
- 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
- 	if (!bh)
- 		goto end_rmdir;
- 
 -	if (IS_DIRSYNC(dir))
 -		ext4_handle_sync(handle);
 -
- 	inode = dentry->d_inode;
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
++	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
++					    NULL, EXT4_HT_DIR, credits);
++	handle = ext4_journal_current_handle();
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(inode);
+ 		err = ext4_add_nondir(handle, dentry, inode);
++		if (!err && IS_DIRSYNC(dir))
++			ext4_handle_sync(handle);
+ 	}
+-	ext4_journal_stop(handle);
++	if (handle)
++		ext4_journal_stop(handle);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -2291,32 +2289,30 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ {
+ 	handle_t *handle;
+ 	struct inode *inode;
+-	int err, retries = 0;
++	int err, credits, retries = 0;
  
- 	retval = -EIO;
-@@ -2755,6 +2747,17 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	if (!empty_dir(inode))
- 		goto end_rmdir;
+ 	if (!new_valid_dev(rdev))
+ 		return -EINVAL;
  
-+	handle = ext4_journal_start(dir, EXT4_HT_DIR,
-+				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-+	if (IS_ERR(handle)) {
-+		retval = PTR_ERR(handle);
-+		handle = NULL;
-+		goto end_rmdir;
-+	}
-+
+ 	dquot_initialize(dir);
+ 
++	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_HT_DIR,
+-		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
+-
+-	if (IS_DIRSYNC(dir))
+-		ext4_handle_sync(handle);
+-
+-	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
++	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
++					    NULL, EXT4_HT_DIR, credits);
++	handle = ext4_journal_current_handle();
+ 	err = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		init_special_inode(inode, inode->i_mode, rdev);
+ 		inode->i_op = &ext4_special_inode_operations;
+ 		err = ext4_add_nondir(handle, dentry, inode);
++		if (!err && IS_DIRSYNC(dir))
++			ext4_handle_sync(handle);
+ 	}
+-	ext4_journal_stop(handle);
++	if (handle)
++		ext4_journal_stop(handle);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -2408,26 +2404,21 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ {
+ 	handle_t *handle;
+ 	struct inode *inode;
+-	int err, retries = 0;
++	int err, credits, retries = 0;
+ 
+ 	if (EXT4_DIR_LINK_MAX(dir))
+ 		return -EMLINK;
+ 
+ 	dquot_initialize(dir);
+ 
++	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_HT_DIR,
+-		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
+-
+-	if (IS_DIRSYNC(dir))
+-		ext4_handle_sync(handle);
+-
+-	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
+-			       &dentry->d_name, 0, NULL);
++	inode = ext4_new_inode_start_handle(dir, S_IFDIR | mode,
++					    &dentry->d_name,
++					    0, NULL, EXT4_HT_DIR, credits);
++	handle = ext4_journal_current_handle();
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+@@ -2455,8 +2446,12 @@ out_clear_inode:
+ 		goto out_clear_inode;
+ 	unlock_new_inode(inode);
+ 	d_instantiate(dentry, inode);
 +	if (IS_DIRSYNC(dir))
 +		ext4_handle_sync(handle);
 +
- 	retval = ext4_delete_entry(handle, dir, de, bh);
- 	if (retval)
- 		goto end_rmdir;
-@@ -2776,8 +2779,9 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	ext4_mark_inode_dirty(handle, dir);
- 
- end_rmdir:
+ out_stop:
 -	ext4_journal_stop(handle);
- 	brelse(bh);
 +	if (handle)
 +		ext4_journal_stop(handle);
- 	return retval;
- }
- 
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -2883,15 +2878,10 @@ static int ext4_symlink(struct inode *dir,
+ 			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
+ 	}
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_HT_DIR, credits);
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
+-
+-	if (IS_DIRSYNC(dir))
+-		ext4_handle_sync(handle);
+-
+-	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
+-			       &dentry->d_name, 0, NULL);
++	inode = ext4_new_inode_start_handle(dir, S_IFLNK|S_IRWXUGO,
++					    &dentry->d_name, 0, NULL,
++					    EXT4_HT_DIR, credits);
++	handle = ext4_journal_current_handle();
+ 	err = PTR_ERR(inode);
+ 	if (IS_ERR(inode))
+ 		goto out_stop;
+@@ -2944,8 +2934,12 @@ retry:
+ 	}
+ 	EXT4_I(inode)->i_disksize = inode->i_size;
+ 	err = ext4_add_nondir(handle, dentry, inode);
++	if (!err && IS_DIRSYNC(dir))
++		ext4_handle_sync(handle);
++
+ out_stop:
+-	ext4_journal_stop(handle);
++	if (handle)
++		ext4_journal_stop(handle);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
 -- 
 1.7.12.rc0.22.gcdd159b
 
