@@ -1,269 +1,273 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 04/12] ext4: move the jbd2 wrapper functions out of super.c
-Date: Sat,  9 Feb 2013 16:53:44 -0500
-Message-ID: <1360446832-12724-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 11/12] ext4: fix the number of credits needed for acl ops with inline data
+Date: Sat,  9 Feb 2013 16:53:51 -0500
+Message-ID: <1360446832-12724-12-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Tao Ma <boyu.mt@taobao.com>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47601 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47618 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758791Ab3BIVxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 16:53:54 -0500
+	id S1758791Ab3BIVx4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 16:53:56 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move the jbd2 wrapper functions which start and stop handles out of
-super.c, where they don't really logically belong, and into
-ext4_jbd2.c.
+Operations which modify extended attributes may need extra journal
+credits if inline data is used, since there is a chance that some
+extended attributes may need to get pushed to an external attribute
+block.
+
+Changes to reflect this was made in xattr.c, but they were missed in
+fs/ext4/acl.c.  To fix this, abstract the calculation of the number of
+credits needed for xattr operations to an inline function defined in
+ext4_jbd2.h, and use it in acl.c and xattr.c.
+
+Also move the function declarations used in inline.c from xattr.h
+(where they are non-obviously hidden, and caused problems since
+ext4_jbd2.h needs to use the function ext4_has_inline_data), and move
+them to ext4.h.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Tao Ma <boyu.mt@taobao.com>
 ---
- fs/ext4/ext4.h      |   2 +
- fs/ext4/ext4_jbd2.c | 101 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c     | 107 +---------------------------------------------------
- 3 files changed, 105 insertions(+), 105 deletions(-)
+ fs/ext4/acl.c       |  4 +--
+ fs/ext4/ext4.h      | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4_jbd2.h | 14 +++++++++++
+ fs/ext4/xattr.c     |  9 +------
+ fs/ext4/xattr.h     | 68 ---------------------------------------------------
+ 5 files changed, 87 insertions(+), 78 deletions(-)
 
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 406cf8b..39a54a0 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -325,7 +325,7 @@ ext4_acl_chmod(struct inode *inode)
+ 		return error;
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+-			EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
++				    ext4_jbd2_credits_xattr(inode));
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 		ext4_std_error(inode->i_sb, error);
+@@ -423,7 +423,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+ 
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+-				    EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
++				    ext4_jbd2_credits_xattr(inode));
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 		goto release_and_out;
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 829cba9..c2c64da 100644
+index c2c64da..9897cdf 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2136,6 +2136,8 @@ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
- extern void ext4_kvfree(void *ptr);
- extern int ext4_alloc_flex_bg_array(struct super_block *sb,
- 				    ext4_group_t ngroup);
-+extern const char *ext4_decode_error(struct super_block *sb, int errno,
-+				     char nbuf[16]);
- extern __printf(4, 5)
- void __ext4_error(struct super_block *, const char *, unsigned int,
- 		  const char *, ...);
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index b4323ba..6f61145 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -6,6 +6,107 @@
+@@ -2443,6 +2443,75 @@ extern const struct file_operations ext4_file_operations;
+ extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
+ extern void ext4_unwritten_wait(struct inode *inode);
  
- #include <trace/events/ext4.h>
++/* inline.c */
++extern int ext4_has_inline_data(struct inode *inode);
++extern int ext4_get_inline_size(struct inode *inode);
++extern int ext4_get_max_inline_size(struct inode *inode);
++extern int ext4_find_inline_data_nolock(struct inode *inode);
++extern void ext4_write_inline_data(struct inode *inode,
++				   struct ext4_iloc *iloc,
++				   void *buffer, loff_t pos,
++				   unsigned int len);
++extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
++				    unsigned int len);
++extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
++				 unsigned int len);
++extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
++
++extern int ext4_readpage_inline(struct inode *inode, struct page *page);
++extern int ext4_try_to_write_inline_data(struct address_space *mapping,
++					 struct inode *inode,
++					 loff_t pos, unsigned len,
++					 unsigned flags,
++					 struct page **pagep);
++extern int ext4_write_inline_data_end(struct inode *inode,
++				      loff_t pos, unsigned len,
++				      unsigned copied,
++				      struct page *page);
++extern struct buffer_head *
++ext4_journalled_write_inline_data(struct inode *inode,
++				  unsigned len,
++				  struct page *page);
++extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
++					   struct inode *inode,
++					   loff_t pos, unsigned len,
++					   unsigned flags,
++					   struct page **pagep,
++					   void **fsdata);
++extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
++					 unsigned len, unsigned copied,
++					 struct page *page);
++extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
++				     struct inode *inode);
++extern int ext4_try_create_inline_dir(handle_t *handle,
++				      struct inode *parent,
++				      struct inode *inode);
++extern int ext4_read_inline_dir(struct file *filp,
++				void *dirent, filldir_t filldir,
++				int *has_inline_data);
++extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
++					const struct qstr *d_name,
++					struct ext4_dir_entry_2 **res_dir,
++					int *has_inline_data);
++extern int ext4_delete_inline_entry(handle_t *handle,
++				    struct inode *dir,
++				    struct ext4_dir_entry_2 *de_del,
++				    struct buffer_head *bh,
++				    int *has_inline_data);
++extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
++extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
++					struct ext4_dir_entry_2 **parent_de,
++					int *retval);
++extern int ext4_inline_data_fiemap(struct inode *inode,
++				   struct fiemap_extent_info *fieinfo,
++				   int *has_inline);
++extern int ext4_try_to_evict_inline_data(handle_t *handle,
++					 struct inode *inode,
++					 int needed);
++extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
++
++extern int ext4_convert_inline_data(struct inode *inode);
++
+ /* namei.c */
+ extern const struct inode_operations ext4_dir_inode_operations;
+ extern const struct inode_operations ext4_special_inode_operations;
+@@ -2539,6 +2608,7 @@ extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
+ extern int ext4_mmp_csum_verify(struct super_block *sb,
+ 				struct mmp_struct *mmp);
  
-+/* Just increment the non-pointer handle value */
-+static handle_t *ext4_get_nojournal(void)
++
+ /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+ enum ext4_state_bits {
+ 	BH_Uninit	/* blocks are allocated but uninitialized on disk */
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index c1fc2dc..4c216b1 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -104,6 +104,20 @@
+ #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+ #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+ 
++static inline int ext4_jbd2_credits_xattr(struct inode *inode)
 +{
-+	handle_t *handle = current->journal_info;
-+	unsigned long ref_cnt = (unsigned long)handle;
++	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
 +
-+	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
-+
-+	ref_cnt++;
-+	handle = (handle_t *)ref_cnt;
-+
-+	current->journal_info = handle;
-+	return handle;
-+}
-+
-+
-+/* Decrement the non-pointer handle value */
-+static void ext4_put_nojournal(handle_t *handle)
-+{
-+	unsigned long ref_cnt = (unsigned long)handle;
-+
-+	BUG_ON(ref_cnt == 0);
-+
-+	ref_cnt--;
-+	handle = (handle_t *)ref_cnt;
-+
-+	current->journal_info = handle;
-+}
-+
-+/*
-+ * Wrappers for jbd2_journal_start/end.
-+ */
-+handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-+{
-+	journal_t *journal;
-+
-+	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
-+	if (sb->s_flags & MS_RDONLY)
-+		return ERR_PTR(-EROFS);
-+
-+	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-+	journal = EXT4_SB(sb)->s_journal;
-+	if (!journal)
-+		return ext4_get_nojournal();
 +	/*
-+	 * Special case here: if the journal has aborted behind our
-+	 * backs (eg. EIO in the commit thread), then we still need to
-+	 * take the FS itself readonly cleanly.
++	 * In case of inline data, we may push out the data to a block,
++	 * so we need to reserve credits for this eventuality
 +	 */
-+	if (is_journal_aborted(journal)) {
-+		ext4_abort(sb, "Detected aborted journal");
-+		return ERR_PTR(-EROFS);
-+	}
-+	return jbd2_journal_start(journal, nblocks);
++	if (ext4_has_inline_data(inode))
++		credits += ext4_writepage_trans_blocks(inode) + 1;
++	return credits;
 +}
 +
-+int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
-+{
-+	struct super_block *sb;
-+	int err;
-+	int rc;
 +
-+	if (!ext4_handle_valid(handle)) {
-+		ext4_put_nojournal(handle);
-+		return 0;
-+	}
-+	sb = handle->h_transaction->t_journal->j_private;
-+	err = handle->h_err;
-+	rc = jbd2_journal_stop(handle);
-+
-+	if (!err)
-+		err = rc;
-+	if (err)
-+		__ext4_std_error(sb, where, line, err);
-+	return err;
-+}
-+
-+void ext4_journal_abort_handle(const char *caller, unsigned int line,
-+			       const char *err_fn, struct buffer_head *bh,
-+			       handle_t *handle, int err)
-+{
-+	char nbuf[16];
-+	const char *errstr = ext4_decode_error(NULL, err, nbuf);
-+
-+	BUG_ON(!ext4_handle_valid(handle));
-+
-+	if (bh)
-+		BUFFER_TRACE(bh, "abort");
-+
-+	if (!handle->h_err)
-+		handle->h_err = err;
-+
-+	if (is_handle_aborted(handle))
-+		return;
-+
-+	printk(KERN_ERR "EXT4-fs: %s:%d: aborting transaction: %s in %s\n",
-+	       caller, line, errstr, err_fn);
-+
-+	jbd2_journal_abort_handle(handle);
-+}
-+
- int __ext4_journal_get_write_access(const char *where, unsigned int line,
- 				    handle_t *handle, struct buffer_head *bh)
+ /*
+  * Ext4 handle operation types -- for logging purposes
+  */
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 2efc560..cc31da0 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1165,16 +1165,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
  {
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b132df5..5812f29 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -69,8 +69,6 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
- static void ext4_clear_journal_err(struct super_block *sb,
- 				   struct ext4_super_block *es);
- static int ext4_sync_fs(struct super_block *sb, int wait);
--static const char *ext4_decode_error(struct super_block *sb, int errno,
--				     char nbuf[16]);
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
- static int ext4_unfreeze(struct super_block *sb);
-@@ -296,107 +294,6 @@ void ext4_itable_unused_set(struct super_block *sb,
- }
+ 	handle_t *handle;
+ 	int error, retries = 0;
+-	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
++	int credits = ext4_jbd2_credits_xattr(inode);
  
- 
--/* Just increment the non-pointer handle value */
--static handle_t *ext4_get_nojournal(void)
--{
--	handle_t *handle = current->journal_info;
--	unsigned long ref_cnt = (unsigned long)handle;
--
--	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
--
--	ref_cnt++;
--	handle = (handle_t *)ref_cnt;
--
--	current->journal_info = handle;
--	return handle;
--}
--
--
--/* Decrement the non-pointer handle value */
--static void ext4_put_nojournal(handle_t *handle)
--{
--	unsigned long ref_cnt = (unsigned long)handle;
--
--	BUG_ON(ref_cnt == 0);
--
--	ref_cnt--;
--	handle = (handle_t *)ref_cnt;
--
--	current->journal_info = handle;
--}
--
--/*
-- * Wrappers for jbd2_journal_start/end.
-- */
--handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
--{
--	journal_t *journal;
--
--	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
--	if (sb->s_flags & MS_RDONLY)
--		return ERR_PTR(-EROFS);
--
--	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
--	journal = EXT4_SB(sb)->s_journal;
--	if (!journal)
--		return ext4_get_nojournal();
+ retry:
 -	/*
--	 * Special case here: if the journal has aborted behind our
--	 * backs (eg. EIO in the commit thread), then we still need to
--	 * take the FS itself readonly cleanly.
+-	 * In case of inline data, we may push out the data to a block,
+-	 * So reserve the journal space first.
 -	 */
--	if (is_journal_aborted(journal)) {
--		ext4_abort(sb, "Detected aborted journal");
--		return ERR_PTR(-EROFS);
--	}
--	return jbd2_journal_start(journal, nblocks);
--}
+-	if (ext4_has_inline_data(inode))
+-		credits += ext4_writepage_trans_blocks(inode) + 1;
 -
--int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
--{
--	struct super_block *sb;
--	int err;
--	int rc;
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 69eda78..aa25deb 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -125,74 +125,6 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
+ 				       struct ext4_xattr_info *i,
+ 				       struct ext4_xattr_ibody_find *is);
+ 
+-extern int ext4_has_inline_data(struct inode *inode);
+-extern int ext4_get_inline_size(struct inode *inode);
+-extern int ext4_get_max_inline_size(struct inode *inode);
+-extern int ext4_find_inline_data_nolock(struct inode *inode);
+-extern void ext4_write_inline_data(struct inode *inode,
+-				   struct ext4_iloc *iloc,
+-				   void *buffer, loff_t pos,
+-				   unsigned int len);
+-extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
+-				    unsigned int len);
+-extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+-				 unsigned int len);
+-extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
 -
--	if (!ext4_handle_valid(handle)) {
--		ext4_put_nojournal(handle);
--		return 0;
--	}
--	sb = handle->h_transaction->t_journal->j_private;
--	err = handle->h_err;
--	rc = jbd2_journal_stop(handle);
+-extern int ext4_readpage_inline(struct inode *inode, struct page *page);
+-extern int ext4_try_to_write_inline_data(struct address_space *mapping,
+-					 struct inode *inode,
+-					 loff_t pos, unsigned len,
+-					 unsigned flags,
+-					 struct page **pagep);
+-extern int ext4_write_inline_data_end(struct inode *inode,
+-				      loff_t pos, unsigned len,
+-				      unsigned copied,
+-				      struct page *page);
+-extern struct buffer_head *
+-ext4_journalled_write_inline_data(struct inode *inode,
+-				  unsigned len,
+-				  struct page *page);
+-extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
+-					   struct inode *inode,
+-					   loff_t pos, unsigned len,
+-					   unsigned flags,
+-					   struct page **pagep,
+-					   void **fsdata);
+-extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+-					 unsigned len, unsigned copied,
+-					 struct page *page);
+-extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
+-				     struct inode *inode);
+-extern int ext4_try_create_inline_dir(handle_t *handle,
+-				      struct inode *parent,
+-				      struct inode *inode);
+-extern int ext4_read_inline_dir(struct file *filp,
+-				void *dirent, filldir_t filldir,
+-				int *has_inline_data);
+-extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+-					const struct qstr *d_name,
+-					struct ext4_dir_entry_2 **res_dir,
+-					int *has_inline_data);
+-extern int ext4_delete_inline_entry(handle_t *handle,
+-				    struct inode *dir,
+-				    struct ext4_dir_entry_2 *de_del,
+-				    struct buffer_head *bh,
+-				    int *has_inline_data);
+-extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+-extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+-					struct ext4_dir_entry_2 **parent_de,
+-					int *retval);
+-extern int ext4_inline_data_fiemap(struct inode *inode,
+-				   struct fiemap_extent_info *fieinfo,
+-				   int *has_inline);
+-extern int ext4_try_to_evict_inline_data(handle_t *handle,
+-					 struct inode *inode,
+-					 int needed);
+-extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
 -
--	if (!err)
--		err = rc;
--	if (err)
--		__ext4_std_error(sb, where, line, err);
--	return err;
--}
--
--void ext4_journal_abort_handle(const char *caller, unsigned int line,
--			       const char *err_fn, struct buffer_head *bh,
--			       handle_t *handle, int err)
--{
--	char nbuf[16];
--	const char *errstr = ext4_decode_error(NULL, err, nbuf);
--
--	BUG_ON(!ext4_handle_valid(handle));
--
--	if (bh)
--		BUFFER_TRACE(bh, "abort");
--
--	if (!handle->h_err)
--		handle->h_err = err;
--
--	if (is_handle_aborted(handle))
--		return;
--
--	printk(KERN_ERR "EXT4-fs: %s:%d: aborting transaction: %s in %s\n",
--	       caller, line, errstr, err_fn);
--
--	jbd2_journal_abort_handle(handle);
--}
+-extern int ext4_convert_inline_data(struct inode *inode);
