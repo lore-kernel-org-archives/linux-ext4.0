@@ -1,73 +1,177 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 10/12] ext4: fix the number of credits needed for ext4_unlink() and ext4_rmdir()
-Date: Sat,  9 Feb 2013 16:53:50 -0500
-Message-ID: <1360446832-12724-11-git-send-email-tytso@mit.edu>
+Subject: [PATCH 01/12] jbd2: track request delay statistics
+Date: Sat,  9 Feb 2013 16:53:41 -0500
+Message-ID: <1360446832-12724-2-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47609 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47622 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760838Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 16:53:55 -0500
+	id S1760852Ab3BIVx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 16:53:59 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_unlink() and ext4_rmdir() don't actually release the blocks
-associated with the file/directory.  This gets done in a separate jbd2
-handle called via ext4_evict_inode().  Thus, we don't need to reserve
-lots of journal credits for the truncate.
-
-Note that using too many journal credits is non-optimal because it can
-leading to the journal transmit getting closed too early, before it is
-strictly necessary.
+Track the delay between when we first request that the commit begin
+and when it actually begins, so we can see how much of a gap exists.
+In theory, this should just be the remaining scheduling quantuum of
+the thread which requested the commit (assuming it was not a
+synchronous operation which triggered the commit request) plus
+scheduling overhead; however, it's possible that real time processes
+might get in the way of letting the kjournald thread from executing.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4_jbd2.h | 6 ------
- fs/ext4/namei.c     | 4 ++--
- 2 files changed, 2 insertions(+), 8 deletions(-)
+ fs/jbd2/commit.c            |  8 ++++++++
+ fs/jbd2/journal.c           | 12 +++++++++---
+ fs/jbd2/transaction.c       |  1 +
+ include/linux/jbd2.h        |  7 +++++++
+ include/trace/events/jbd2.h |  8 ++++++--
+ 5 files changed, 31 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 302814b..c1fc2dc 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -59,12 +59,6 @@
- #define EXT4_META_TRANS_BLOCKS(sb)	(EXT4_XATTR_TRANS_BLOCKS + \
- 					EXT4_MAXQUOTAS_TRANS_BLOCKS(sb))
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3091d42..750c701 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -435,7 +435,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
  
--/* Delete operations potentially hit one directory's namespace plus an
-- * entire inode, plus arbitrary amounts of bitmap/indirection data.  Be
-- * generous.  We can grow the delete transaction later if necessary. */
--
--#define EXT4_DELETE_TRANS_BLOCKS(sb)	(2 * EXT4_DATA_TRANS_BLOCKS(sb) + 64)
--
- /* Define an arbitrary limit for the amount of data we will anticipate
-  * writing to any given transaction.  For unbounded transactions such as
-  * write(2) and truncate(2) we can write more than this, but we always
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 36a4afd..5f3d2b5 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2748,7 +2748,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 		goto end_rmdir;
+ 	trace_jbd2_commit_locking(journal, commit_transaction);
+ 	stats.run.rs_wait = commit_transaction->t_max_wait;
++	stats.run.rs_request_delay = 0;
+ 	stats.run.rs_locked = jiffies;
++	if (commit_transaction->t_requested)
++		stats.run.rs_request_delay =
++			jbd2_time_diff(commit_transaction->t_requested,
++				       stats.run.rs_locked);
+ 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
+ 					      stats.run.rs_locked);
  
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
--				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-+				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle)) {
- 		retval = PTR_ERR(handle);
- 		handle = NULL;
-@@ -2811,7 +2811,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 		goto end_unlink;
+@@ -1116,7 +1121,10 @@ restart_loop:
+ 	 */
+ 	spin_lock(&journal->j_history_lock);
+ 	journal->j_stats.ts_tid++;
++	if (commit_transaction->t_requested)
++		journal->j_stats.ts_requested++;
+ 	journal->j_stats.run.rs_wait += stats.run.rs_wait;
++	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
+ 	journal->j_stats.run.rs_running += stats.run.rs_running;
+ 	journal->j_stats.run.rs_locked += stats.run.rs_locked;
+ 	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 1a80e31..4ba2e81 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+ 		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
+ 			  journal->j_commit_request,
+ 			  journal->j_commit_sequence);
++		journal->j_running_transaction->t_requested = jiffies;
+ 		wake_up(&journal->j_wait_commit);
+ 		return 1;
+ 	} else if (!tid_geq(journal->j_commit_request, target))
+@@ -898,13 +899,18 @@ static int jbd2_seq_info_show(struct seq_file *seq, void *v)
  
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
--				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-+				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
- 	if (IS_ERR(handle)) {
- 		retval = PTR_ERR(handle);
- 		handle = NULL;
+ 	if (v != SEQ_START_TOKEN)
+ 		return 0;
+-	seq_printf(seq, "%lu transaction, each up to %u blocks\n",
+-			s->stats->ts_tid,
+-			s->journal->j_max_transaction_buffers);
++	seq_printf(seq, "%lu transactions (%lu requested), "
++		   "each up to %u blocks\n",
++		   s->stats->ts_tid, s->stats->ts_requested,
++		   s->journal->j_max_transaction_buffers);
+ 	if (s->stats->ts_tid == 0)
+ 		return 0;
+ 	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
+ 	    jiffies_to_msecs(s->stats->run.rs_wait / s->stats->ts_tid));
++	seq_printf(seq, "  %ums request delay\n",
++	    (s->stats->ts_requested == 0) ? 0 :
++	    jiffies_to_msecs(s->stats->run.rs_request_delay /
++			     s->stats->ts_requested));
+ 	seq_printf(seq, "  %ums running transaction\n",
+ 	    jiffies_to_msecs(s->stats->run.rs_running / s->stats->ts_tid));
+ 	seq_printf(seq, "  %ums transaction was being locked\n",
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index df9f297..735609e 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -100,6 +100,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
+ 	journal->j_running_transaction = transaction;
+ 	transaction->t_max_wait = 0;
+ 	transaction->t_start = jiffies;
++	transaction->t_requested = 0;
+ 
+ 	return transaction;
+ }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e30b663..e0aafc4 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -581,6 +581,11 @@ struct transaction_s
+ 	unsigned long		t_start;
+ 
+ 	/*
++	 * When commit was requested
++	 */
++	unsigned long		t_requested;
++
++	/*
+ 	 * Checkpointing stats [j_checkpoint_sem]
+ 	 */
+ 	struct transaction_chp_stats_s t_chp_stats;
+@@ -637,6 +642,7 @@ struct transaction_s
+ 
+ struct transaction_run_stats_s {
+ 	unsigned long		rs_wait;
++	unsigned long		rs_request_delay;
+ 	unsigned long		rs_running;
+ 	unsigned long		rs_locked;
+ 	unsigned long		rs_flushing;
+@@ -649,6 +655,7 @@ struct transaction_run_stats_s {
+ 
+ struct transaction_stats_s {
+ 	unsigned long		ts_tid;
++	unsigned long		ts_requested;
+ 	struct transaction_run_stats_s run;
+ };
+ 
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index 127993d..5419f57 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -142,6 +142,7 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__field(		dev_t,	dev		)
+ 		__field(	unsigned long,	tid		)
+ 		__field(	unsigned long,	wait		)
++		__field(	unsigned long,	request_delay	)
+ 		__field(	unsigned long,	running		)
+ 		__field(	unsigned long,	locked		)
+ 		__field(	unsigned long,	flushing	)
+@@ -155,6 +156,7 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__entry->dev		= dev;
+ 		__entry->tid		= tid;
+ 		__entry->wait		= stats->rs_wait;
++		__entry->request_delay	= stats->rs_request_delay;
+ 		__entry->running	= stats->rs_running;
+ 		__entry->locked		= stats->rs_locked;
+ 		__entry->flushing	= stats->rs_flushing;
+@@ -164,10 +166,12 @@ TRACE_EVENT(jbd2_run_stats,
+ 		__entry->blocks_logged	= stats->rs_blocks_logged;
+ 	),
+ 
+-	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
+-		  "logging %u handle_count %u blocks %u blocks_logged %u",
++	TP_printk("dev %d,%d tid %lu wait %u request_delay %u running %u "
++		  "locked %u flushing %u logging %u handle_count %u "
++		  "blocks %u blocks_logged %u",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+ 		  jiffies_to_msecs(__entry->wait),
++		  jiffies_to_msecs(__entry->request_delay),
+ 		  jiffies_to_msecs(__entry->running),
+ 		  jiffies_to_msecs(__entry->locked),
+ 		  jiffies_to_msecs(__entry->flushing),
 -- 
 1.7.12.rc0.22.gcdd159b
 
