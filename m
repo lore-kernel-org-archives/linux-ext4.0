@@ -1,177 +1,723 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 01/12] jbd2: track request delay statistics
-Date: Sat,  9 Feb 2013 16:53:41 -0500
-Message-ID: <1360446832-12724-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 05/12] ext4: pass context information to jbd2__journal_start()
+Date: Sat,  9 Feb 2013 16:53:45 -0500
+Message-ID: <1360446832-12724-6-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47622 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47615 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760852Ab3BIVx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 16:53:59 -0500
+	id S1760843Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 16:53:55 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Track the delay between when we first request that the commit begin
-and when it actually begins, so we can see how much of a gap exists.
-In theory, this should just be the remaining scheduling quantuum of
-the thread which requested the commit (assuming it was not a
-synchronous operation which triggered the commit request) plus
-scheduling overhead; however, it's possible that real time processes
-might get in the way of letting the kjournald thread from executing.
+So we can better understand what bits of ext4 are responsible for
+long-running jbd2 handles, use jbd2__journal_start() so we can pass
+context information for logging purposes.
+
+The recommended way for finding the longer-running handles is:
+
+   T=/sys/kernel/debug/tracing
+   EVENT=$T/events/jbd2/jbd2_handle_stats
+   echo "interval > 5" > $EVENT/filter
+   echo 1 > $EVENT/enable
+
+   ./run-my-fs-benchmark
+
+   cat $T/trace > /tmp/problem-handles
+
+This will list handles that were active for longer than 20ms.  Having
+longer-running handles is bad, because a commit started at the wrong
+time could stall for those 20+ milliseconds, which could delay an
+fsync() or an O_SYNC operation.  Here is an example line from the
+trace file describing a handle which lived on for 311 jiffies, or over
+1.2 seconds:
+
+postmark-2917  [000] ....   196.435786: jbd2_handle_stats: dev 254,32
+   tid 570 type 2 line_no 2541 interval 311 sync 0 requested_blocks 1
+   dirtied_blocks 0
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd2/commit.c            |  8 ++++++++
- fs/jbd2/journal.c           | 12 +++++++++---
- fs/jbd2/transaction.c       |  1 +
- include/linux/jbd2.h        |  7 +++++++
- include/trace/events/jbd2.h |  8 ++++++--
- 5 files changed, 31 insertions(+), 5 deletions(-)
+ fs/ext4/acl.c         |  5 +++--
+ fs/ext4/ext4_jbd2.c   |  5 +++--
+ fs/ext4/ext4_jbd2.h   | 31 ++++++++++++++++++++++++++++---
+ fs/ext4/extents.c     | 11 ++++++-----
+ fs/ext4/file.c        |  2 +-
+ fs/ext4/ialloc.c      |  2 +-
+ fs/ext4/indirect.c    |  7 ++++---
+ fs/ext4/inline.c      | 10 +++++-----
+ fs/ext4/inode.c       | 33 ++++++++++++++++++++-------------
+ fs/ext4/ioctl.c       |  4 ++--
+ fs/ext4/migrate.c     |  4 ++--
+ fs/ext4/move_extent.c |  2 +-
+ fs/ext4/namei.c       | 42 ++++++++++++++++++++++++------------------
+ fs/ext4/resize.c      | 10 +++++-----
+ fs/ext4/super.c       | 10 +++++-----
+ fs/ext4/xattr.c       |  2 +-
+ 16 files changed, 111 insertions(+), 69 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 3091d42..750c701 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -435,7 +435,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index e6e0d98..406cf8b 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -324,7 +324,7 @@ ext4_acl_chmod(struct inode *inode)
+ 	if (error)
+ 		return error;
+ retry:
+-	handle = ext4_journal_start(inode,
++	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+ 			EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+@@ -422,7 +422,8 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+ 		acl = NULL;
  
- 	trace_jbd2_commit_locking(journal, commit_transaction);
- 	stats.run.rs_wait = commit_transaction->t_max_wait;
-+	stats.run.rs_request_delay = 0;
- 	stats.run.rs_locked = jiffies;
-+	if (commit_transaction->t_requested)
-+		stats.run.rs_request_delay =
-+			jbd2_time_diff(commit_transaction->t_requested,
-+				       stats.run.rs_locked);
- 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
- 					      stats.run.rs_locked);
+ retry:
+-	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
++	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
++				    EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 		goto release_and_out;
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 6f61145..7058975 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -38,7 +38,8 @@ static void ext4_put_nojournal(handle_t *handle)
+ /*
+  * Wrappers for jbd2_journal_start/end.
+  */
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
++handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
++				  int type, int nblocks)
+ {
+ 	journal_t *journal;
  
-@@ -1116,7 +1121,10 @@ restart_loop:
- 	 */
- 	spin_lock(&journal->j_history_lock);
- 	journal->j_stats.ts_tid++;
-+	if (commit_transaction->t_requested)
-+		journal->j_stats.ts_requested++;
- 	journal->j_stats.run.rs_wait += stats.run.rs_wait;
-+	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
- 	journal->j_stats.run.rs_running += stats.run.rs_running;
- 	journal->j_stats.run.rs_locked += stats.run.rs_locked;
- 	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 1a80e31..4ba2e81 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
- 		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
- 			  journal->j_commit_request,
- 			  journal->j_commit_sequence);
-+		journal->j_running_transaction->t_requested = jiffies;
- 		wake_up(&journal->j_wait_commit);
- 		return 1;
- 	} else if (!tid_geq(journal->j_commit_request, target))
-@@ -898,13 +899,18 @@ static int jbd2_seq_info_show(struct seq_file *seq, void *v)
- 
- 	if (v != SEQ_START_TOKEN)
- 		return 0;
--	seq_printf(seq, "%lu transaction, each up to %u blocks\n",
--			s->stats->ts_tid,
--			s->journal->j_max_transaction_buffers);
-+	seq_printf(seq, "%lu transactions (%lu requested), "
-+		   "each up to %u blocks\n",
-+		   s->stats->ts_tid, s->stats->ts_requested,
-+		   s->journal->j_max_transaction_buffers);
- 	if (s->stats->ts_tid == 0)
- 		return 0;
- 	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
- 	    jiffies_to_msecs(s->stats->run.rs_wait / s->stats->ts_tid));
-+	seq_printf(seq, "  %ums request delay\n",
-+	    (s->stats->ts_requested == 0) ? 0 :
-+	    jiffies_to_msecs(s->stats->run.rs_request_delay /
-+			     s->stats->ts_requested));
- 	seq_printf(seq, "  %ums running transaction\n",
- 	    jiffies_to_msecs(s->stats->run.rs_running / s->stats->ts_tid));
- 	seq_printf(seq, "  %ums transaction was being locked\n",
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index df9f297..735609e 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -100,6 +100,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
- 	journal->j_running_transaction = transaction;
- 	transaction->t_max_wait = 0;
- 	transaction->t_start = jiffies;
-+	transaction->t_requested = 0;
- 
- 	return transaction;
+@@ -59,7 +60,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+ 		ext4_abort(sb, "Detected aborted journal");
+ 		return ERR_PTR(-EROFS);
+ 	}
+-	return jbd2_journal_start(journal, nblocks);
++	return jbd2__journal_start(journal, nblocks, GFP_NOFS, type, line);
  }
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index e30b663..e0aafc4 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -581,6 +581,11 @@ struct transaction_s
- 	unsigned long		t_start;
  
- 	/*
-+	 * When commit was requested
-+	 */
-+	unsigned long		t_requested;
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 7177f9b..302814b 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -110,6 +110,22 @@
+ #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+ #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+ 
++/*
++ * Ext4 handle operation types -- for logging purposes
++ */
++#define EXT4_HT_MISC             0
++#define EXT4_HT_INODE            1
++#define EXT4_HT_WRITE_PAGE       2
++#define EXT4_HT_MAP_BLOCKS       3
++#define EXT4_HT_DIR              4
++#define EXT4_HT_TRUNCATE         5
++#define EXT4_HT_QUOTA            6
++#define EXT4_HT_RESIZE           7
++#define EXT4_HT_MIGRATE          8
++#define EXT4_HT_MOVE_EXTENTS     9
++#define EXT4_HT_XATTR           10
++#define EXT4_HT_MAX             11
 +
-+	/*
- 	 * Checkpointing stats [j_checkpoint_sem]
+ /**
+  *   struct ext4_journal_cb_entry - Base structure for callback information.
+  *
+@@ -234,7 +250,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ #define ext4_handle_dirty_super(handle, sb) \
+ 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
+ 
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
++handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
++				  int type, int nblocks);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+ 
+ #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+@@ -268,9 +285,17 @@ static inline int ext4_handle_has_enough_credits(handle_t *handle, int needed)
+ 	return 1;
+ }
+ 
+-static inline handle_t *ext4_journal_start(struct inode *inode, int nblocks)
++#define ext4_journal_start_sb(sb, type, nblocks)			\
++	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks))
++
++#define ext4_journal_start(inode, type, nblocks)			\
++	__ext4_journal_start((inode), __LINE__, (type), (nblocks))
++
++static inline handle_t *__ext4_journal_start(struct inode *inode,
++					     unsigned int line, int type,
++					     int nblocks)
+ {
+-	return ext4_journal_start_sb(inode->i_sb, nblocks);
++	return __ext4_journal_start_sb(inode->i_sb, line, type, nblocks);
+ }
+ 
+ #define ext4_journal_stop(handle) \
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e95acb0..d3a7e1c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2545,7 +2545,7 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 	ext_debug("truncate since %u to %u\n", start, end);
+ 
+ 	/* probably first extent we're gonna free will be last in block */
+-	handle = ext4_journal_start(inode, depth + 1);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, depth + 1);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -4129,7 +4129,7 @@ void ext4_ext_truncate(struct inode *inode)
+ 	 * probably first extent we're gonna free will be last in block
  	 */
- 	struct transaction_chp_stats_s t_chp_stats;
-@@ -637,6 +642,7 @@ struct transaction_s
+ 	err = ext4_writepage_trans_blocks(inode);
+-	handle = ext4_journal_start(inode, err);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, err);
+ 	if (IS_ERR(handle))
+ 		return;
  
- struct transaction_run_stats_s {
- 	unsigned long		rs_wait;
-+	unsigned long		rs_request_delay;
- 	unsigned long		rs_running;
- 	unsigned long		rs_locked;
- 	unsigned long		rs_flushing;
-@@ -649,6 +655,7 @@ struct transaction_run_stats_s {
+@@ -4295,7 +4295,8 @@ retry:
+ 	while (ret >= 0 && ret < max_blocks) {
+ 		map.m_lblk = map.m_lblk + ret;
+ 		map.m_len = max_blocks = max_blocks - ret;
+-		handle = ext4_journal_start(inode, credits);
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
++					    credits);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+ 			break;
+@@ -4373,7 +4374,7 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
+ 	while (ret >= 0 && ret < max_blocks) {
+ 		map.m_lblk += ret;
+ 		map.m_len = (max_blocks -= ret);
+-		handle = ext4_journal_start(inode, credits);
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+ 			break;
+@@ -4554,7 +4555,7 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	inode_dio_wait(inode);
  
- struct transaction_stats_s {
- 	unsigned long		ts_tid;
-+	unsigned long		ts_requested;
- 	struct transaction_run_stats_s run;
- };
+ 	credits = ext4_writepage_trans_blocks(inode);
+-	handle = ext4_journal_start(inode, credits);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
+ 		goto out_dio;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index afaf9f15..b41d92c 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -240,7 +240,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 			handle_t *handle;
+ 			int err;
  
-diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-index 127993d..5419f57 100644
---- a/include/trace/events/jbd2.h
-+++ b/include/trace/events/jbd2.h
-@@ -142,6 +142,7 @@ TRACE_EVENT(jbd2_run_stats,
- 		__field(		dev_t,	dev		)
- 		__field(	unsigned long,	tid		)
- 		__field(	unsigned long,	wait		)
-+		__field(	unsigned long,	request_delay	)
- 		__field(	unsigned long,	running		)
- 		__field(	unsigned long,	locked		)
- 		__field(	unsigned long,	flushing	)
-@@ -155,6 +156,7 @@ TRACE_EVENT(jbd2_run_stats,
- 		__entry->dev		= dev;
- 		__entry->tid		= tid;
- 		__entry->wait		= stats->rs_wait;
-+		__entry->request_delay	= stats->rs_request_delay;
- 		__entry->running	= stats->rs_running;
- 		__entry->locked		= stats->rs_locked;
- 		__entry->flushing	= stats->rs_flushing;
-@@ -164,10 +166,12 @@ TRACE_EVENT(jbd2_run_stats,
- 		__entry->blocks_logged	= stats->rs_blocks_logged;
- 	),
+-			handle = ext4_journal_start_sb(sb, 1);
++			handle = ext4_journal_start_sb(sb, EXT4_HT_MISC, 1);
+ 			if (IS_ERR(handle))
+ 				return PTR_ERR(handle);
+ 			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 3f32c80..10bd6fe 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1137,7 +1137,7 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED))
+ 		goto out;
  
--	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
--		  "logging %u handle_count %u blocks %u blocks_logged %u",
-+	TP_printk("dev %d,%d tid %lu wait %u request_delay %u running %u "
-+		  "locked %u flushing %u logging %u handle_count %u "
-+		  "blocks %u blocks_logged %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
- 		  jiffies_to_msecs(__entry->wait),
-+		  jiffies_to_msecs(__entry->request_delay),
- 		  jiffies_to_msecs(__entry->running),
- 		  jiffies_to_msecs(__entry->locked),
- 		  jiffies_to_msecs(__entry->flushing),
+-	handle = ext4_journal_start_sb(sb, 1);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_MISC, 1);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 1932810..c541ab8 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -791,7 +791,7 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
+ 
+ 		if (final_size > inode->i_size) {
+ 			/* Credits for sb + inode write */
+-			handle = ext4_journal_start(inode, 2);
++			handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 			if (IS_ERR(handle)) {
+ 				ret = PTR_ERR(handle);
+ 				goto out;
+@@ -851,7 +851,7 @@ locked:
+ 		int err;
+ 
+ 		/* Credits for sb + inode write */
+-		handle = ext4_journal_start(inode, 2);
++		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 		if (IS_ERR(handle)) {
+ 			/* This is really bad luck. We've written the data
+ 			 * but cannot extend i_size. Bail out and pretend
+@@ -950,7 +950,8 @@ static handle_t *start_transaction(struct inode *inode)
+ {
+ 	handle_t *result;
+ 
+-	result = ext4_journal_start(inode, ext4_blocks_for_truncate(inode));
++	result = ext4_journal_start(inode, EXT4_HT_TRUNCATE,
++				    ext4_blocks_for_truncate(inode));
+ 	if (!IS_ERR(result))
+ 		return result;
+ 
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 93a3408..bc5f871 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -545,7 +545,7 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 		return ret;
+ 
+ retry:
+-	handle = ext4_journal_start(inode, needed_blocks);
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		handle = NULL;
+@@ -657,7 +657,7 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
+ 	 * The possible write could happen in the inode,
+ 	 * so try to reserve the space in inode first.
+ 	 */
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		handle = NULL;
+@@ -853,7 +853,7 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
+ 	if (ret)
+ 		return ret;
+ 
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		handle = NULL;
+@@ -1770,7 +1770,7 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 
+ 
+ 	needed_blocks = ext4_writepage_trans_blocks(inode);
+-	handle = ext4_journal_start(inode, needed_blocks);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, needed_blocks);
+ 	if (IS_ERR(handle))
+ 		return;
+ 
+@@ -1862,7 +1862,7 @@ int ext4_convert_inline_data(struct inode *inode)
+ 	if (error)
+ 		return error;
+ 
+-	handle = ext4_journal_start(inode, needed_blocks);
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 		goto out_free;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fb1907d..c3c47e2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -234,7 +234,8 @@ void ext4_evict_inode(struct inode *inode)
+ 	 * protection against it
+ 	 */
+ 	sb_start_intwrite(inode->i_sb);
+-	handle = ext4_journal_start(inode, ext4_blocks_for_truncate(inode)+3);
++	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE,
++				    ext4_blocks_for_truncate(inode)+3);
+ 	if (IS_ERR(handle)) {
+ 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
+ 		/*
+@@ -687,7 +688,8 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 		if (map.m_len > DIO_MAX_BLOCKS)
+ 			map.m_len = DIO_MAX_BLOCKS;
+ 		dio_credits = ext4_chunk_trans_blocks(inode, map.m_len);
+-		handle = ext4_journal_start(inode, dio_credits);
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
++					    dio_credits);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+ 			return ret;
+@@ -912,7 +914,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 
+ retry:
+-	handle = ext4_journal_start(inode, needed_blocks);
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+@@ -1947,7 +1949,8 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	 * references to buffers so we are safe */
+ 	unlock_page(page);
+ 
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
++				    ext4_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+@@ -2378,7 +2381,8 @@ retry:
+ 		needed_blocks = ext4_da_writepages_trans_blocks(inode);
+ 
+ 		/* start a new transaction*/
+-		handle = ext4_journal_start(inode, needed_blocks);
++		handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
++					    needed_blocks);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+ 			ext4_msg(inode->i_sb, KERN_CRIT, "%s: jbd2_start: "
+@@ -2534,7 +2538,7 @@ retry:
+ 	 * to journalling the i_disksize update if writes to the end
+ 	 * of file which has an already mapped buffer.
+ 	 */
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, 1);
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+@@ -4281,8 +4285,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 		/* (user+group)*(old+new) structure, inode write (sb,
+ 		 * inode block, ? - but truncate inode update has it) */
+-		handle = ext4_journal_start(inode, (EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)+
+-					EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb))+3);
++		handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
++			(EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb) +
++			 EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb)) + 3);
+ 		if (IS_ERR(handle)) {
+ 			error = PTR_ERR(handle);
+ 			goto err_out;
+@@ -4317,7 +4322,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	    (attr->ia_size < inode->i_size)) {
+ 		handle_t *handle;
+ 
+-		handle = ext4_journal_start(inode, 3);
++		handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
+ 		if (IS_ERR(handle)) {
+ 			error = PTR_ERR(handle);
+ 			goto err_out;
+@@ -4337,7 +4342,8 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 							    attr->ia_size);
+ 			if (error) {
+ 				/* Do as much error cleanup as possible */
+-				handle = ext4_journal_start(inode, 3);
++				handle = ext4_journal_start(inode,
++							    EXT4_HT_INODE, 3);
+ 				if (IS_ERR(handle)) {
+ 					ext4_orphan_del(NULL, inode);
+ 					goto err_out;
+@@ -4678,7 +4684,7 @@ void ext4_dirty_inode(struct inode *inode, int flags)
+ {
+ 	handle_t *handle;
+ 
+-	handle = ext4_journal_start(inode, 2);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 	if (IS_ERR(handle))
+ 		goto out;
+ 
+@@ -4779,7 +4785,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 
+ 	/* Finally we can mark the inode as dirty. */
+ 
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -4857,7 +4863,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	else
+ 		get_block = ext4_get_block;
+ retry_alloc:
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE,
++				    ext4_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = VM_FAULT_SIGBUS;
+ 		goto out;
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 4784ac2..31f4f56 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -104,7 +104,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		} else if (oldflags & EXT4_EOFBLOCKS_FL)
+ 			ext4_truncate(inode);
+ 
+-		handle = ext4_journal_start(inode, 1);
++		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 		if (IS_ERR(handle)) {
+ 			err = PTR_ERR(handle);
+ 			goto flags_out;
+@@ -173,7 +173,7 @@ flags_out:
+ 		}
+ 
+ 		mutex_lock(&inode->i_mutex);
+-		handle = ext4_journal_start(inode, 1);
++		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 		if (IS_ERR(handle)) {
+ 			err = PTR_ERR(handle);
+ 			goto unlock_out;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index db8226d..4e4fcfd 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -456,7 +456,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 		 */
+ 		return retval;
+ 
+-	handle = ext4_journal_start(inode,
++	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE,
+ 					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+ 					EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)
+@@ -507,7 +507,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	ext4_set_inode_state(inode, EXT4_STATE_EXT_MIGRATE);
+ 	up_read((&EXT4_I(inode)->i_data_sem));
+ 
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
+ 	if (IS_ERR(handle)) {
+ 		/*
+ 		 * It is impossible to update on-disk structures without
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index cd90b7e..d78c33e 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -920,7 +920,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ again:
+ 	*err = 0;
+ 	jblocks = ext4_writepage_trans_blocks(orig_inode) * 2;
+-	handle = ext4_journal_start(orig_inode, jblocks);
++	handle = ext4_journal_start(orig_inode, EXT4_HT_MOVE_EXTENTS, jblocks);
+ 	if (IS_ERR(handle)) {
+ 		*err = PTR_ERR(handle);
+ 		return 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 34ed624..5184103 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2262,9 +2262,10 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 	dquot_initialize(dir);
+ 
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2298,9 +2299,10 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ 	dquot_initialize(dir);
+ 
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2414,9 +2416,10 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	dquot_initialize(dir);
+ 
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+-					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
++		 EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb)));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2729,7 +2732,8 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	dquot_initialize(dir);
+ 	dquot_initialize(dentry->d_inode);
+ 
+-	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2791,7 +2795,8 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	dquot_initialize(dir);
+ 	dquot_initialize(dentry->d_inode);
+ 
+-	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2870,7 +2875,7 @@ static int ext4_symlink(struct inode *dir,
+ 			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
+ 	}
+ retry:
+-	handle = ext4_journal_start(dir, credits);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, credits);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -2908,7 +2913,7 @@ retry:
+ 		 * Now inode is being linked into dir (EXT4_DATA_TRANS_BLOCKS
+ 		 * + EXT4_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
+ 		 */
+-		handle = ext4_journal_start(dir,
++		handle = ext4_journal_start(dir, EXT4_HT_DIR,
+ 				EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+ 				EXT4_INDEX_EXTRA_TRANS_BLOCKS + 1);
+ 		if (IS_ERR(handle)) {
+@@ -2955,8 +2960,9 @@ static int ext4_link(struct dentry *old_dentry,
+ 	dquot_initialize(dir);
+ 
+ retry:
+-	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -3039,9 +3045,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	 * in separate transaction */
+ 	if (new_dentry->d_inode)
+ 		dquot_initialize(new_dentry->d_inode);
+-	handle = ext4_journal_start(old_dir, 2 *
+-					EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
+-					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
++	handle = ext4_journal_start(old_dir, EXT4_HT_DIR,
++		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
++		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 8eefb63..c7f4d75 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -466,7 +466,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 	meta_bg = EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG);
+ 
+ 	/* This transaction may be extended/restarted along the way */
+-	handle = ext4_journal_start_sb(sb, EXT4_MAX_TRANS_DATA);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, EXT4_MAX_TRANS_DATA);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+@@ -1031,7 +1031,7 @@ static void update_backups(struct super_block *sb, int blk_off, char *data,
+ 	handle_t *handle;
+ 	int err = 0, err2;
+ 
+-	handle = ext4_journal_start_sb(sb, EXT4_MAX_TRANS_DATA);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, EXT4_MAX_TRANS_DATA);
+ 	if (IS_ERR(handle)) {
+ 		group = 1;
+ 		err = PTR_ERR(handle);
+@@ -1412,7 +1412,7 @@ static int ext4_flex_group_add(struct super_block *sb,
+ 	 * modify each of the reserved GDT dindirect blocks.
+ 	 */
+ 	credit = flex_gd->count * 4 + reserved_gdb;
+-	handle = ext4_journal_start_sb(sb, credit);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, credit);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
+ 		goto exit;
+@@ -1624,7 +1624,7 @@ static int ext4_group_extend_no_check(struct super_block *sb,
+ 	/* We will update the superblock, one block bitmap, and
+ 	 * one group descriptor via ext4_group_add_blocks().
+ 	 */
+-	handle = ext4_journal_start_sb(sb, 3);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, 3);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
+ 		ext4_warning(sb, "error %d on journal start", err);
+@@ -1788,7 +1788,7 @@ static int ext4_convert_meta_bg(struct super_block *sb, struct inode *inode)
+ 		credits += 3;	/* block bitmap, bg descriptor, resize inode */
+ 	}
+ 
+-	handle = ext4_journal_start_sb(sb, credits);
++	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, credits);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5812f29..373d46c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4768,7 +4768,7 @@ static int ext4_write_dquot(struct dquot *dquot)
+ 	struct inode *inode;
+ 
+ 	inode = dquot_to_inode(dquot);
+-	handle = ext4_journal_start(inode,
++	handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
+ 				    EXT4_QUOTA_TRANS_BLOCKS(dquot->dq_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -4784,7 +4784,7 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+ 	int ret, err;
+ 	handle_t *handle;
+ 
+-	handle = ext4_journal_start(dquot_to_inode(dquot),
++	handle = ext4_journal_start(dquot_to_inode(dquot), EXT4_HT_QUOTA,
+ 				    EXT4_QUOTA_INIT_BLOCKS(dquot->dq_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -4800,7 +4800,7 @@ static int ext4_release_dquot(struct dquot *dquot)
+ 	int ret, err;
+ 	handle_t *handle;
+ 
+-	handle = ext4_journal_start(dquot_to_inode(dquot),
++	handle = ext4_journal_start(dquot_to_inode(dquot), EXT4_HT_QUOTA,
+ 				    EXT4_QUOTA_DEL_BLOCKS(dquot->dq_sb));
+ 	if (IS_ERR(handle)) {
+ 		/* Release dquot anyway to avoid endless cycle in dqput() */
+@@ -4832,7 +4832,7 @@ static int ext4_write_info(struct super_block *sb, int type)
+ 	handle_t *handle;
+ 
+ 	/* Data block + inode block */
+-	handle = ext4_journal_start(sb->s_root->d_inode, 2);
++	handle = ext4_journal_start(sb->s_root->d_inode, EXT4_HT_QUOTA, 2);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 	ret = dquot_commit_info(sb, type);
+@@ -4978,7 +4978,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
+ 
+ 	/* Update modification times of quota files when userspace can
+ 	 * start looking at them */
+-	handle = ext4_journal_start(inode, 1);
++	handle = ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
+ 	if (IS_ERR(handle))
+ 		goto out;
+ 	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index c68990c..2efc560 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1175,7 +1175,7 @@ retry:
+ 	if (ext4_has_inline_data(inode))
+ 		credits += ext4_writepage_trans_blocks(inode) + 1;
+ 
+-	handle = ext4_journal_start(inode, credits);
++	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+ 	} else {
 -- 
 1.7.12.rc0.22.gcdd159b
 
