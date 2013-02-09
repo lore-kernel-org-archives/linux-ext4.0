@@ -1,54 +1,269 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 02/12] jbd2: revert "jbd2: add COW fields to struct jbd2_journal_handle"
-Date: Sat,  9 Feb 2013 16:53:42 -0500
-Message-ID: <1360446832-12724-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 04/12] ext4: move the jbd2 wrapper functions out of super.c
+Date: Sat,  9 Feb 2013 16:53:44 -0500
+Message-ID: <1360446832-12724-5-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47599 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47601 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758694Ab3BIVxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1758791Ab3BIVxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Feb 2013 16:53:54 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This reverts commit 93737456d68ddcb86232f669b83da673dd12e351.
-
-The cow-snapshots effort is no longer active, so remove these extra
-fields to shrink down the handle structure.
+Move the jbd2 wrapper functions which start and stop handles out of
+super.c, where they don't really logically belong, and into
+ext4_jbd2.c.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- include/linux/jbd2.h | 28 +++-------------------------
- 1 file changed, 3 insertions(+), 25 deletions(-)
+ fs/ext4/ext4.h      |   2 +
+ fs/ext4/ext4_jbd2.c | 101 +++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/super.c     | 107 +---------------------------------------------------
+ 3 files changed, 105 insertions(+), 105 deletions(-)
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index e0aafc4..24db725 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -397,35 +397,13 @@ struct jbd2_journal_handle
- 	int			h_err;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 829cba9..c2c64da 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2136,6 +2136,8 @@ extern void *ext4_kvzalloc(size_t size, gfp_t flags);
+ extern void ext4_kvfree(void *ptr);
+ extern int ext4_alloc_flex_bg_array(struct super_block *sb,
+ 				    ext4_group_t ngroup);
++extern const char *ext4_decode_error(struct super_block *sb, int errno,
++				     char nbuf[16]);
+ extern __printf(4, 5)
+ void __ext4_error(struct super_block *, const char *, unsigned int,
+ 		  const char *, ...);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index b4323ba..6f61145 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -6,6 +6,107 @@
  
- 	/* Flags [no locking] */
--	unsigned int	h_sync:1;	/* sync-on-close */
--	unsigned int	h_jdata:1;	/* force data journaling */
--	unsigned int	h_aborted:1;	/* fatal error on handle */
--	unsigned int	h_cowing:1;	/* COWing block to snapshot */
--
--	/* Number of buffers requested by user:
--	 * (before adding the COW credits factor) */
--	unsigned int	h_base_credits:14;
--
--	/* Number of buffers the user is allowed to dirty:
--	 * (counts only buffers dirtied when !h_cowing) */
--	unsigned int	h_user_credits:14;
--
-+	unsigned int	h_sync:		1;	/* sync-on-close */
-+	unsigned int	h_jdata:	1;	/* force data journaling */
-+	unsigned int	h_aborted:	1;	/* fatal error on handle */
+ #include <trace/events/ext4.h>
  
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- 	struct lockdep_map	h_lockdep_map;
- #endif
++/* Just increment the non-pointer handle value */
++static handle_t *ext4_get_nojournal(void)
++{
++	handle_t *handle = current->journal_info;
++	unsigned long ref_cnt = (unsigned long)handle;
++
++	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
++
++	ref_cnt++;
++	handle = (handle_t *)ref_cnt;
++
++	current->journal_info = handle;
++	return handle;
++}
++
++
++/* Decrement the non-pointer handle value */
++static void ext4_put_nojournal(handle_t *handle)
++{
++	unsigned long ref_cnt = (unsigned long)handle;
++
++	BUG_ON(ref_cnt == 0);
++
++	ref_cnt--;
++	handle = (handle_t *)ref_cnt;
++
++	current->journal_info = handle;
++}
++
++/*
++ * Wrappers for jbd2_journal_start/end.
++ */
++handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
++{
++	journal_t *journal;
++
++	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
++	if (sb->s_flags & MS_RDONLY)
++		return ERR_PTR(-EROFS);
++
++	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
++	journal = EXT4_SB(sb)->s_journal;
++	if (!journal)
++		return ext4_get_nojournal();
++	/*
++	 * Special case here: if the journal has aborted behind our
++	 * backs (eg. EIO in the commit thread), then we still need to
++	 * take the FS itself readonly cleanly.
++	 */
++	if (is_journal_aborted(journal)) {
++		ext4_abort(sb, "Detected aborted journal");
++		return ERR_PTR(-EROFS);
++	}
++	return jbd2_journal_start(journal, nblocks);
++}
++
++int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
++{
++	struct super_block *sb;
++	int err;
++	int rc;
++
++	if (!ext4_handle_valid(handle)) {
++		ext4_put_nojournal(handle);
++		return 0;
++	}
++	sb = handle->h_transaction->t_journal->j_private;
++	err = handle->h_err;
++	rc = jbd2_journal_stop(handle);
++
++	if (!err)
++		err = rc;
++	if (err)
++		__ext4_std_error(sb, where, line, err);
++	return err;
++}
++
++void ext4_journal_abort_handle(const char *caller, unsigned int line,
++			       const char *err_fn, struct buffer_head *bh,
++			       handle_t *handle, int err)
++{
++	char nbuf[16];
++	const char *errstr = ext4_decode_error(NULL, err, nbuf);
++
++	BUG_ON(!ext4_handle_valid(handle));
++
++	if (bh)
++		BUFFER_TRACE(bh, "abort");
++
++	if (!handle->h_err)
++		handle->h_err = err;
++
++	if (is_handle_aborted(handle))
++		return;
++
++	printk(KERN_ERR "EXT4-fs: %s:%d: aborting transaction: %s in %s\n",
++	       caller, line, errstr, err_fn);
++
++	jbd2_journal_abort_handle(handle);
++}
++
+ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 				    handle_t *handle, struct buffer_head *bh)
+ {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b132df5..5812f29 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -69,8 +69,6 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ static void ext4_clear_journal_err(struct super_block *sb,
+ 				   struct ext4_super_block *es);
+ static int ext4_sync_fs(struct super_block *sb, int wait);
+-static const char *ext4_decode_error(struct super_block *sb, int errno,
+-				     char nbuf[16]);
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+@@ -296,107 +294,6 @@ void ext4_itable_unused_set(struct super_block *sb,
+ }
+ 
+ 
+-/* Just increment the non-pointer handle value */
+-static handle_t *ext4_get_nojournal(void)
+-{
+-	handle_t *handle = current->journal_info;
+-	unsigned long ref_cnt = (unsigned long)handle;
+-
+-	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
+-
+-	ref_cnt++;
+-	handle = (handle_t *)ref_cnt;
+-
+-	current->journal_info = handle;
+-	return handle;
+-}
+-
+-
+-/* Decrement the non-pointer handle value */
+-static void ext4_put_nojournal(handle_t *handle)
+-{
+-	unsigned long ref_cnt = (unsigned long)handle;
+-
+-	BUG_ON(ref_cnt == 0);
+-
+-	ref_cnt--;
+-	handle = (handle_t *)ref_cnt;
+-
+-	current->journal_info = handle;
+-}
+-
+-/*
+- * Wrappers for jbd2_journal_start/end.
+- */
+-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+-{
+-	journal_t *journal;
+-
+-	trace_ext4_journal_start(sb, nblocks, _RET_IP_);
+-	if (sb->s_flags & MS_RDONLY)
+-		return ERR_PTR(-EROFS);
+-
+-	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+-	journal = EXT4_SB(sb)->s_journal;
+-	if (!journal)
+-		return ext4_get_nojournal();
+-	/*
+-	 * Special case here: if the journal has aborted behind our
+-	 * backs (eg. EIO in the commit thread), then we still need to
+-	 * take the FS itself readonly cleanly.
+-	 */
+-	if (is_journal_aborted(journal)) {
+-		ext4_abort(sb, "Detected aborted journal");
+-		return ERR_PTR(-EROFS);
+-	}
+-	return jbd2_journal_start(journal, nblocks);
+-}
+-
+-int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
+-{
+-	struct super_block *sb;
+-	int err;
+-	int rc;
+-
+-	if (!ext4_handle_valid(handle)) {
+-		ext4_put_nojournal(handle);
+-		return 0;
+-	}
+-	sb = handle->h_transaction->t_journal->j_private;
+-	err = handle->h_err;
+-	rc = jbd2_journal_stop(handle);
+-
+-	if (!err)
+-		err = rc;
+-	if (err)
+-		__ext4_std_error(sb, where, line, err);
+-	return err;
+-}
+-
+-void ext4_journal_abort_handle(const char *caller, unsigned int line,
+-			       const char *err_fn, struct buffer_head *bh,
+-			       handle_t *handle, int err)
+-{
+-	char nbuf[16];
+-	const char *errstr = ext4_decode_error(NULL, err, nbuf);
+-
+-	BUG_ON(!ext4_handle_valid(handle));
+-
+-	if (bh)
+-		BUFFER_TRACE(bh, "abort");
+-
+-	if (!handle->h_err)
+-		handle->h_err = err;
+-
+-	if (is_handle_aborted(handle))
+-		return;
+-
+-	printk(KERN_ERR "EXT4-fs: %s:%d: aborting transaction: %s in %s\n",
+-	       caller, line, errstr, err_fn);
+-
+-	jbd2_journal_abort_handle(handle);
+-}
