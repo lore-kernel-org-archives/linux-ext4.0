@@ -1,51 +1,89 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 09/12] ext4: fix the number of credits needed for ext4_ext_migrate()
-Date: Sat,  9 Feb 2013 16:53:49 -0500
-Message-ID: <1360446832-12724-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH 08/12] ext4: start handle at the last possible moment in ext4_rmdir()
+Date: Sat,  9 Feb 2013 16:53:48 -0500
+Message-ID: <1360446832-12724-9-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47611 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47603 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760839Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1760834Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Feb 2013 16:53:55 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The migration ioctl creates a temporary inode.  Since this inode is
-never linked to a directory, we don't need to reserve journal credits
-required for modifying the directory.
+Don't start the jbd2 transaction handle until after the directory
+entry has been found, to minimize the amount of time that a handle is
+held active.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/migrate.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/ext4/namei.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 4e4fcfd..480acf4 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -456,11 +456,14 @@ int ext4_ext_migrate(struct inode *inode)
- 		 */
- 		return retval;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 4a27069..36a4afd 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2725,26 +2725,18 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	struct inode *inode;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
+-	handle_t *handle;
++	handle_t *handle = NULL;
  
-+	/*
-+	 * Worst case we can touch the allocation bitmaps, a bgd
-+	 * block, and a block to link in the orphan list.  We do need
-+	 * need to worry about credits for modifying the quota inode.
-+	 */
- 	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE,
--					EXT4_DATA_TRANS_BLOCKS(inode->i_sb) +
--					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
--					EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb)
--					+ 1);
-+		4 + EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb));
+ 	/* Initialize quotas before so that eventual writes go in
+ 	 * separate transaction */
+ 	dquot_initialize(dir);
+ 	dquot_initialize(dentry->d_inode);
+ 
+-	handle = ext4_journal_start(dir, EXT4_HT_DIR,
+-				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
+-
+ 	retval = -ENOENT;
+ 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+ 	if (!bh)
+ 		goto end_rmdir;
+ 
+-	if (IS_DIRSYNC(dir))
+-		ext4_handle_sync(handle);
+-
+ 	inode = dentry->d_inode;
+ 
+ 	retval = -EIO;
+@@ -2755,6 +2747,17 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	if (!empty_dir(inode))
+ 		goto end_rmdir;
+ 
++	handle = ext4_journal_start(dir, EXT4_HT_DIR,
++				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
++	if (IS_ERR(handle)) {
++		retval = PTR_ERR(handle);
++		handle = NULL;
++		goto end_rmdir;
++	}
 +
- 	if (IS_ERR(handle)) {
- 		retval = PTR_ERR(handle);
- 		return retval;
++	if (IS_DIRSYNC(dir))
++		ext4_handle_sync(handle);
++
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_rmdir;
+@@ -2776,8 +2779,9 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_mark_inode_dirty(handle, dir);
+ 
+ end_rmdir:
+-	ext4_journal_stop(handle);
+ 	brelse(bh);
++	if (handle)
++		ext4_journal_stop(handle);
+ 	return retval;
+ }
+ 
 -- 
 1.7.12.rc0.22.gcdd159b
 
