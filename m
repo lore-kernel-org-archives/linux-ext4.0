@@ -1,85 +1,248 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 07/12] ext4: start handle at the last possible moment in ext4_unlink()
-Date: Sat,  9 Feb 2013 16:53:47 -0500
-Message-ID: <1360446832-12724-8-git-send-email-tytso@mit.edu>
+Subject: [PATCH 03/12] jbd2: add tracepoints which provide per-handle statistics
+Date: Sat,  9 Feb 2013 16:53:43 -0500
+Message-ID: <1360446832-12724-4-git-send-email-tytso@mit.edu>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47605 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47624 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758694Ab3BIVxz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 16:53:55 -0500
+	id S1760853Ab3BIVx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 16:53:59 -0500
 In-Reply-To: <1360446832-12724-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don't start the jbd2 transaction handle until after the directory
-entry has been found, to minimize the amount of time that a handle is
-held active.
+Handles which stay open a long time are problematic when it comes time
+to close down a transaction so it can be committed.  These tracepoints
+will help us determine which ones are the problematic ones, and to
+validate whether changes makes things better or worse.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/namei.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+ fs/jbd2/transaction.c       | 28 ++++++++++++-
+ include/linux/jbd2.h        |  8 +++-
+ include/trace/events/jbd2.h | 98 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 131 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5184103..4a27069 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2787,7 +2787,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	struct inode *inode;
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
--	handle_t *handle;
-+	handle_t *handle = NULL;
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 735609e..b7e2385 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -30,6 +30,8 @@
+ #include <linux/bug.h>
+ #include <linux/module.h>
  
- 	trace_ext4_unlink_enter(dir, dentry);
- 	/* Initialize quotas before so that eventual writes go
-@@ -2795,14 +2795,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	dquot_initialize(dir);
- 	dquot_initialize(dentry->d_inode);
- 
--	handle = ext4_journal_start(dir, EXT4_HT_DIR,
--				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
--	if (IS_ERR(handle))
--		return PTR_ERR(handle);
--
--	if (IS_DIRSYNC(dir))
--		ext4_handle_sync(handle);
--
- 	retval = -ENOENT;
- 	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
- 	if (!bh)
-@@ -2814,6 +2806,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (le32_to_cpu(de->inode) != inode->i_ino)
- 		goto end_unlink;
- 
-+	handle = ext4_journal_start(dir, EXT4_HT_DIR,
-+				    EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-+	if (IS_ERR(handle)) {
-+		retval = PTR_ERR(handle);
-+		handle = NULL;
-+		goto end_unlink;
-+	}
++#include <trace/events/jbd2.h>
 +
-+	if (IS_DIRSYNC(dir))
-+		ext4_handle_sync(handle);
-+
- 	if (!inode->i_nlink) {
- 		ext4_warning(inode->i_sb,
- 			     "Deleting nonexistent file (%lu), %d",
-@@ -2834,8 +2837,9 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	retval = 0;
+ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh);
+ static void __jbd2_journal_unfile_buffer(struct journal_head *jh);
  
- end_unlink:
--	ext4_journal_stop(handle);
- 	brelse(bh);
-+	if (handle)
-+		ext4_journal_stop(handle);
- 	trace_ext4_unlink_exit(dentry, retval);
- 	return retval;
+@@ -307,6 +309,8 @@ repeat:
+ 	 */
+ 	update_t_max_wait(transaction, ts);
+ 	handle->h_transaction = transaction;
++	handle->h_requested_credits = nblocks;
++	handle->h_start_jiffies = jiffies;
+ 	atomic_inc(&transaction->t_updates);
+ 	atomic_inc(&transaction->t_handle_count);
+ 	jbd_debug(4, "Handle %p given %d credits (total %d, free %d)\n",
+@@ -353,7 +357,8 @@ static handle_t *new_handle(int nblocks)
+  * Return a pointer to a newly allocated handle, or an ERR_PTR() value
+  * on failure.
+  */
+-handle_t *jbd2__journal_start(journal_t *journal, int nblocks, gfp_t gfp_mask)
++handle_t *jbd2__journal_start(journal_t *journal, int nblocks, gfp_t gfp_mask,
++			      unsigned int type, unsigned int line_no)
+ {
+ 	handle_t *handle = journal_current_handle();
+ 	int err;
+@@ -379,6 +384,11 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, gfp_t gfp_mask)
+ 		current->journal_info = NULL;
+ 		handle = ERR_PTR(err);
+ 	}
++	handle->h_type = type;
++	handle->h_line_no = line_no;
++	trace_jbd2_handle_start(journal->j_fs_dev->bd_dev,
++				handle->h_transaction->t_tid, type,
++				line_no, nblocks);
+ 	return handle;
  }
+ EXPORT_SYMBOL(jbd2__journal_start);
+@@ -386,7 +396,7 @@ EXPORT_SYMBOL(jbd2__journal_start);
+ 
+ handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+ {
+-	return jbd2__journal_start(journal, nblocks, GFP_NOFS);
++	return jbd2__journal_start(journal, nblocks, GFP_NOFS, 0, 0);
+ }
+ EXPORT_SYMBOL(jbd2_journal_start);
+ 
+@@ -448,7 +458,14 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 		goto unlock;
+ 	}
+ 
++	trace_jbd2_handle_extend(journal->j_fs_dev->bd_dev,
++				 handle->h_transaction->t_tid,
++				 handle->h_type, handle->h_line_no,
++				 handle->h_buffer_credits,
++				 nblocks);
++
+ 	handle->h_buffer_credits += nblocks;
++	handle->h_requested_credits += nblocks;
+ 	atomic_add(nblocks, &transaction->t_outstanding_credits);
+ 	result = 0;
+ 
+@@ -1377,6 +1394,13 @@ int jbd2_journal_stop(handle_t *handle)
+ 	}
+ 
+ 	jbd_debug(4, "Handle %p going down\n", handle);
++	trace_jbd2_handle_stats(journal->j_fs_dev->bd_dev,
++				handle->h_transaction->t_tid,
++				handle->h_type, handle->h_line_no,
++				jiffies - handle->h_start_jiffies,
++				handle->h_sync, handle->h_requested_credits,
++				(handle->h_requested_credits -
++				 handle->h_buffer_credits));
+ 
+ 	/*
+ 	 * Implement synchronous transaction batching.  If the handle
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 24db725..fa5fea1 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -400,6 +400,11 @@ struct jbd2_journal_handle
+ 	unsigned int	h_sync:		1;	/* sync-on-close */
+ 	unsigned int	h_jdata:	1;	/* force data journaling */
+ 	unsigned int	h_aborted:	1;	/* fatal error on handle */
++	unsigned int	h_type:		8;	/* for handle statistics */
++	unsigned int	h_line_no:	16;	/* for handle statistics */
++
++	unsigned long		h_start_jiffies;
++	unsigned int		h_requested_credits;
+ 
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ 	struct lockdep_map	h_lockdep_map;
+@@ -1071,7 +1076,8 @@ static inline handle_t *journal_current_handle(void)
+  */
+ 
+ extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+-extern handle_t *jbd2__journal_start(journal_t *, int nblocks, gfp_t gfp_mask);
++extern handle_t *jbd2__journal_start(journal_t *, int nblocks, gfp_t gfp_mask,
++				     unsigned int type, unsigned int line_no);
+ extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+ extern int	 jbd2__journal_restart(handle_t *, int nblocks, gfp_t gfp_mask);
+ extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index 5419f57..070df49 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -132,6 +132,104 @@ TRACE_EVENT(jbd2_submit_inode_data,
+ 		  (unsigned long) __entry->ino)
+ );
+ 
++TRACE_EVENT(jbd2_handle_start,
++	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
++		 unsigned int line_no, int requested_blocks),
++
++	TP_ARGS(dev, tid, type, line_no, requested_blocks),
++
++	TP_STRUCT__entry(
++		__field(		dev_t,	dev		)
++		__field(	unsigned long,	tid		)
++		__field(	 unsigned int,	type		)
++		__field(	 unsigned int,	line_no		)
++		__field(		  int,	requested_blocks)
++	),
++
++	TP_fast_assign(
++		__entry->dev		  = dev;
++		__entry->tid		  = tid;
++		__entry->type		  = type;
++		__entry->line_no	  = line_no;
++		__entry->requested_blocks = requested_blocks;
++	),
++
++	TP_printk("dev %d,%d tid %lu type %u line_no %u "
++		  "requested_blocks %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
++		  __entry->type, __entry->line_no, __entry->requested_blocks)
++);
++
++TRACE_EVENT(jbd2_handle_extend,
++	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
++		 unsigned int line_no, int buffer_credits,
++		 int requested_blocks),
++
++	TP_ARGS(dev, tid, type, line_no, buffer_credits, requested_blocks),
++
++	TP_STRUCT__entry(
++		__field(		dev_t,	dev		)
++		__field(	unsigned long,	tid		)
++		__field(	 unsigned int,	type		)
++		__field(	 unsigned int,	line_no		)
++		__field(		  int,	buffer_credits  )
++		__field(		  int,	requested_blocks)
++	),
++
++	TP_fast_assign(
++		__entry->dev		  = dev;
++		__entry->tid		  = tid;
++		__entry->type		  = type;
++		__entry->line_no	  = line_no;
++		__entry->buffer_credits   = buffer_credits;
++		__entry->requested_blocks = requested_blocks;
++	),
++
++	TP_printk("dev %d,%d tid %lu type %u line_no %u "
++		  "buffer_credits %d requested_blocks %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
++		  __entry->type, __entry->line_no, __entry->buffer_credits,
++		  __entry->requested_blocks)
++);
++
++TRACE_EVENT(jbd2_handle_stats,
++	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
++		 unsigned int line_no, int interval, int sync,
++		 int requested_blocks, int dirtied_blocks),
++
++	TP_ARGS(dev, tid, type, line_no, interval, sync,
++		requested_blocks, dirtied_blocks),
++
++	TP_STRUCT__entry(
++		__field(		dev_t,	dev		)
++		__field(	unsigned long,	tid		)
++		__field(	 unsigned int,	type		)
++		__field(	 unsigned int,	line_no		)
++		__field(		  int,	interval	)
++		__field(		  int,	sync		)
++		__field(		  int,	requested_blocks)
++		__field(		  int,	dirtied_blocks	)
++	),
++
++	TP_fast_assign(
++		__entry->dev		  = dev;
++		__entry->tid		  = tid;
++		__entry->type		  = type;
++		__entry->line_no	  = line_no;
++		__entry->interval	  = interval;
++		__entry->sync		  = sync;
++		__entry->requested_blocks = requested_blocks;
++		__entry->dirtied_blocks	  = dirtied_blocks;
++	),
++
++	TP_printk("dev %d,%d tid %lu type %u line_no %u interval %d "
++		  "sync %d requested_blocks %d dirtied_blocks %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
++		  __entry->type, __entry->line_no, __entry->interval,
++		  __entry->sync, __entry->requested_blocks,
++		  __entry->dirtied_blocks)
++);
++
+ TRACE_EVENT(jbd2_run_stats,
+ 	TP_PROTO(dev_t dev, unsigned long tid,
+ 		 struct transaction_run_stats_s *stats),
 -- 
 1.7.12.rc0.22.gcdd159b
 
