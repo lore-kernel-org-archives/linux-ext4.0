@@ -1,145 +1,149 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: use module parameters instead of debugfs for mballoc_debug
-Date: Sat,  9 Feb 2013 20:42:13 -0500
-Message-ID: <1360460534-818-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/2] jbd2: use module parameters instead of debugfs for jbd_debug
+Date: Sat,  9 Feb 2013 20:42:14 -0500
+Message-ID: <1360460534-818-2-git-send-email-tytso@mit.edu>
+References: <1360460534-818-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47648 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47646 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760923Ab3BJBmQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1760903Ab3BJBmQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 9 Feb 2013 20:42:16 -0500
+In-Reply-To: <1360460534-818-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 There are multiple reasons to move away from debugfs.  First of all,
 we are only using it for a single parameter, and it is much more
 complicated to set up (some 30 lines of code compared to 3), and one
-more thing that might fail while loading the ext4 module.
+more thing that might fail while loading the jbd2 module.
 
 Secondly, as a module paramter it can be specified as a boot option if
-ext4 is built into the kernel, or as a parameter when the module is
+jbd2 is built into the kernel, or as a parameter when the module is
 loaded, and it can also be manipulated dynamically under
-/sys/module/ext4/parameters/mballoc_debug.  So it is more flexible.
+/sys/module/jbd2/parameters/jbd2_debug.  So it is more flexible.
 
-Ultimately we want to move away from using mb_debug() towards
+Ultimately we want to move away from using jbd_debug() towards
 tracepoints, but for now this is still a useful simplification of the
 code base.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c | 47 +++++++++--------------------------------------
- fs/ext4/mballoc.h |  4 ++--
- 2 files changed, 11 insertions(+), 40 deletions(-)
+ fs/jbd2/journal.c    | 50 ++++++++------------------------------------------
+ include/linux/jbd2.h |  3 +--
+ 2 files changed, 9 insertions(+), 44 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e350885..6540ebe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -23,11 +23,18 @@
- 
- #include "ext4_jbd2.h"
- #include "mballoc.h"
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 4ba2e81..ed10991 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -35,7 +35,6 @@
+ #include <linux/kthread.h>
+ #include <linux/poison.h>
+ #include <linux/proc_fs.h>
 -#include <linux/debugfs.h>
- #include <linux/log2.h>
-+#include <linux/module.h>
- #include <linux/slab.h>
- #include <trace/events/ext4.h>
+ #include <linux/seq_file.h>
+ #include <linux/math64.h>
+ #include <linux/hash.h>
+@@ -51,6 +50,14 @@
+ #include <asm/uaccess.h>
+ #include <asm/page.h>
  
-+#ifdef CONFIG_EXT4_DEBUG
-+ushort ext4_mballoc_debug __read_mostly;
++#ifdef CONFIG_JBD2_DEBUG
++ushort jbd2_journal_enable_debug __read_mostly;
++EXPORT_SYMBOL(jbd2_journal_enable_debug);
 +
-+module_param_named(mballoc_debug, ext4_mballoc_debug, ushort, 0644);
-+MODULE_PARM_DESC(mballoc_debug, "Debugging level for ext4's mballoc");
++module_param_named(jbd2_debug, jbd2_journal_enable_debug, ushort, 0644);
++MODULE_PARM_DESC(jbd2_debug, "Debugging level for jbd2");
 +#endif
 +
- /*
-  * MUSTDO:
-  *   - test ext4_ext_search_left() and ext4_ext_search_right()
-@@ -2660,40 +2667,6 @@ static void ext4_free_data_callback(struct super_block *sb,
- 	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+ EXPORT_SYMBOL(jbd2_journal_extend);
+ EXPORT_SYMBOL(jbd2_journal_stop);
+ EXPORT_SYMBOL(jbd2_journal_lock_updates);
+@@ -2495,45 +2502,6 @@ restart:
+ 	spin_unlock(&journal->j_list_lock);
  }
  
--#ifdef CONFIG_EXT4_DEBUG
--u8 mb_enable_debug __read_mostly;
+-/*
+- * debugfs tunables
+- */
+-#ifdef CONFIG_JBD2_DEBUG
+-u8 jbd2_journal_enable_debug __read_mostly;
+-EXPORT_SYMBOL(jbd2_journal_enable_debug);
 -
--static struct dentry *debugfs_dir;
--static struct dentry *debugfs_debug;
+-#define JBD2_DEBUG_NAME "jbd2-debug"
 -
--static void __init ext4_create_debugfs_entry(void)
+-static struct dentry *jbd2_debugfs_dir;
+-static struct dentry *jbd2_debug;
+-
+-static void __init jbd2_create_debugfs_entry(void)
 -{
--	debugfs_dir = debugfs_create_dir("ext4", NULL);
--	if (debugfs_dir)
--		debugfs_debug = debugfs_create_u8("mballoc-debug",
--						  S_IRUGO | S_IWUSR,
--						  debugfs_dir,
--						  &mb_enable_debug);
+-	jbd2_debugfs_dir = debugfs_create_dir("jbd2", NULL);
+-	if (jbd2_debugfs_dir)
+-		jbd2_debug = debugfs_create_u8(JBD2_DEBUG_NAME,
+-					       S_IRUGO | S_IWUSR,
+-					       jbd2_debugfs_dir,
+-					       &jbd2_journal_enable_debug);
 -}
 -
--static void ext4_remove_debugfs_entry(void)
+-static void __exit jbd2_remove_debugfs_entry(void)
 -{
--	debugfs_remove(debugfs_debug);
--	debugfs_remove(debugfs_dir);
+-	debugfs_remove(jbd2_debug);
+-	debugfs_remove(jbd2_debugfs_dir);
 -}
 -
 -#else
 -
--static void __init ext4_create_debugfs_entry(void)
+-static void __init jbd2_create_debugfs_entry(void)
 -{
 -}
 -
--static void ext4_remove_debugfs_entry(void)
+-static void __exit jbd2_remove_debugfs_entry(void)
 -{
 -}
 -
 -#endif
--
- int __init ext4_init_mballoc(void)
- {
- 	ext4_pspace_cachep = KMEM_CACHE(ext4_prealloc_space,
-@@ -2715,7 +2688,6 @@ int __init ext4_init_mballoc(void)
- 		kmem_cache_destroy(ext4_ac_cachep);
- 		return -ENOMEM;
- 	}
--	ext4_create_debugfs_entry();
- 	return 0;
+ 
+ #ifdef CONFIG_PROC_FS
+ 
+@@ -2619,7 +2587,6 @@ static int __init journal_init(void)
+ 
+ 	ret = journal_init_caches();
+ 	if (ret == 0) {
+-		jbd2_create_debugfs_entry();
+ 		jbd2_create_jbd_stats_proc_entry();
+ 	} else {
+ 		jbd2_journal_destroy_caches();
+@@ -2634,7 +2601,6 @@ static void __exit journal_exit(void)
+ 	if (n)
+ 		printk(KERN_EMERG "JBD2: leaked %d journal_heads!\n", n);
+ #endif
+-	jbd2_remove_debugfs_entry();
+ 	jbd2_remove_jbd_stats_proc_entry();
+ 	jbd2_journal_destroy_caches();
  }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index fa5fea1..50e5a5e 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -20,7 +20,6 @@
+ #ifndef __KERNEL__
+ #include "jfs_compat.h"
+ #define JBD2_DEBUG
+-#define jfs_debug jbd_debug
+ #else
  
-@@ -2730,7 +2702,6 @@ void ext4_exit_mballoc(void)
- 	kmem_cache_destroy(ext4_ac_cachep);
- 	kmem_cache_destroy(ext4_free_data_cachep);
- 	ext4_groupinfo_destroy_slabs();
--	ext4_remove_debugfs_entry();
- }
- 
- 
-@@ -3876,7 +3847,7 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
- 	struct super_block *sb = ac->ac_sb;
- 	ext4_group_t ngroups, i;
- 
--	if (!mb_enable_debug ||
-+	if (!ext4_mballoc_debug ||
- 	    (EXT4_SB(sb)->s_mount_flags & EXT4_MF_FS_ABORTED))
- 		return;
- 
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 3ccd889..08481ee 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -37,11 +37,11 @@
- /*
+ #include <linux/types.h>
+@@ -57,7 +56,7 @@
+  * CONFIG_JBD2_DEBUG is on.
   */
- #ifdef CONFIG_EXT4_DEBUG
--extern u8 mb_enable_debug;
-+extern ushort ext4_mballoc_debug;
+ #define JBD2_EXPENSIVE_CHECKING
+-extern u8 jbd2_journal_enable_debug;
++extern ushort jbd2_journal_enable_debug;
  
- #define mb_debug(n, fmt, a...)	                                        \
+ #define jbd_debug(n, f, a...)						\
  	do {								\
--		if ((n) <= mb_enable_debug) {		        	\
-+		if ((n) <= ext4_mballoc_debug) {		        \
- 			printk(KERN_DEBUG "(%s, %d): %s: ",		\
- 			       __FILE__, __LINE__, __func__);		\
- 			printk(fmt, ## a);				\
 -- 
 1.7.12.rc0.22.gcdd159b
 
