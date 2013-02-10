@@ -1,305 +1,102 @@
-From: Shentino <shentino@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 11/12] ext4: fix the number of credits needed for acl ops
  with inline data
-Date: Sun, 10 Feb 2013 10:15:14 -0800
-Message-ID: <CAGDaZ_q7H1AMS2a6mjsBTq6zJAW8aWd08TQRgCDFC29qRJJTdQ@mail.gmail.com>
+Date: Sun, 10 Feb 2013 14:43:10 -0500
+Message-ID: <20130210194310.GB10801@thunk.org>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
- <1360446832-12724-12-git-send-email-tytso@mit.edu> <5117A3E2.6090802@tao.ma>
+ <1360446832-12724-12-git-send-email-tytso@mit.edu>
+ <5117A3E2.6090802@tao.ma>
+ <CAGDaZ_q7H1AMS2a6mjsBTq6zJAW8aWd08TQRgCDFC29qRJJTdQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Tao Ma <tm@tao.ma>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Tao Ma <boyu.mt@taobao.com>
-To: Tao Ma <tm@tao.ma>
+To: Shentino <shentino@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ve0-f182.google.com ([209.85.128.182]:53120 "EHLO
-	mail-ve0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756178Ab3BJSPz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Feb 2013 13:15:55 -0500
-Received: by mail-ve0-f182.google.com with SMTP id ox1so4619094veb.13
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Feb 2013 10:15:54 -0800 (PST)
-In-Reply-To: <5117A3E2.6090802@tao.ma>
+Received: from li9-11.members.linode.com ([67.18.176.11]:47759 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754772Ab3BJTnS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Feb 2013 14:43:18 -0500
+Content-Disposition: inline
+In-Reply-To: <CAGDaZ_q7H1AMS2a6mjsBTq6zJAW8aWd08TQRgCDFC29qRJJTdQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Quick question from a n00b.
+On Sun, Feb 10, 2013 at 10:15:14AM -0800, Shentino wrote:
+> Quick question from a n00b.
+> 
+> What are "credits"?
+> 
+> I imagine I'm not the only onlooker curious about ti either.
 
-What are "credits"?
+A group of operations which need to be applied to the file system as
+an atomic set of block updates are grouped by handles.  This is very
+to "BEGIN TRANSACTION" and "END TRANSACTION" pairs in SQL.  For example:
 
-I imagine I'm not the only onlooker curious about ti either.
+BEGIN TRANSACTION
+INSERT INTO INODE_TABLE (ino, i_blocks, i_size, i_uid) VALUES
+     (11, 2, 1024, 12);
+UPDATE INODE_ALLOCATION_BITMAP SET in_use=TRUE where ino=11;
+END TRANSACTION
 
-On Sun, Feb 10, 2013 at 5:42 AM, Tao Ma <tm@tao.ma> wrote:
-> On 02/10/2013 05:53 AM, Theodore Ts'o wrote:
->> Operations which modify extended attributes may need extra journal
->> credits if inline data is used, since there is a chance that some
->> extended attributes may need to get pushed to an external attribute
->> block.
->>
->> Changes to reflect this was made in xattr.c, but they were missed in
->> fs/ext4/acl.c.  To fix this, abstract the calculation of the number of
->> credits needed for xattr operations to an inline function defined in
->> ext4_jbd2.h, and use it in acl.c and xattr.c.
-> Oh, yes, I forgot about the acl.
->
-> Reviewed-by: Tao Ma <boyu.mt@taobao.com>
->
-> Thanks,
-> Tao
->>
->> Also move the function declarations used in inline.c from xattr.h
->> (where they are non-obviously hidden, and caused problems since
->> ext4_jbd2.h needs to use the function ext4_has_inline_data), and move
->> them to ext4.h.
->>
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> Cc: Tao Ma <boyu.mt@taobao.com>
->> ---
->>  fs/ext4/acl.c       |  4 +--
->>  fs/ext4/ext4.h      | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/ext4/ext4_jbd2.h | 14 +++++++++++
->>  fs/ext4/xattr.c     |  9 +------
->>  fs/ext4/xattr.h     | 68 ---------------------------------------------------
->>  5 files changed, 87 insertions(+), 78 deletions(-)
->>
->> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
->> index 406cf8b..39a54a0 100644
->> --- a/fs/ext4/acl.c
->> +++ b/fs/ext4/acl.c
->> @@ -325,7 +325,7 @@ ext4_acl_chmod(struct inode *inode)
->>               return error;
->>  retry:
->>       handle = ext4_journal_start(inode, EXT4_HT_XATTR,
->> -                     EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
->> +                                 ext4_jbd2_credits_xattr(inode));
->>       if (IS_ERR(handle)) {
->>               error = PTR_ERR(handle);
->>               ext4_std_error(inode->i_sb, error);
->> @@ -423,7 +423,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
->>
->>  retry:
->>       handle = ext4_journal_start(inode, EXT4_HT_XATTR,
->> -                                 EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
->> +                                 ext4_jbd2_credits_xattr(inode));
->>       if (IS_ERR(handle)) {
->>               error = PTR_ERR(handle);
->>               goto release_and_out;
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index c2c64da..9897cdf 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -2443,6 +2443,75 @@ extern const struct file_operations ext4_file_operations;
->>  extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
->>  extern void ext4_unwritten_wait(struct inode *inode);
->>
->> +/* inline.c */
->> +extern int ext4_has_inline_data(struct inode *inode);
->> +extern int ext4_get_inline_size(struct inode *inode);
->> +extern int ext4_get_max_inline_size(struct inode *inode);
->> +extern int ext4_find_inline_data_nolock(struct inode *inode);
->> +extern void ext4_write_inline_data(struct inode *inode,
->> +                                struct ext4_iloc *iloc,
->> +                                void *buffer, loff_t pos,
->> +                                unsigned int len);
->> +extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
->> +                                 unsigned int len);
->> +extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
->> +                              unsigned int len);
->> +extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
->> +
->> +extern int ext4_readpage_inline(struct inode *inode, struct page *page);
->> +extern int ext4_try_to_write_inline_data(struct address_space *mapping,
->> +                                      struct inode *inode,
->> +                                      loff_t pos, unsigned len,
->> +                                      unsigned flags,
->> +                                      struct page **pagep);
->> +extern int ext4_write_inline_data_end(struct inode *inode,
->> +                                   loff_t pos, unsigned len,
->> +                                   unsigned copied,
->> +                                   struct page *page);
->> +extern struct buffer_head *
->> +ext4_journalled_write_inline_data(struct inode *inode,
->> +                               unsigned len,
->> +                               struct page *page);
->> +extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
->> +                                        struct inode *inode,
->> +                                        loff_t pos, unsigned len,
->> +                                        unsigned flags,
->> +                                        struct page **pagep,
->> +                                        void **fsdata);
->> +extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
->> +                                      unsigned len, unsigned copied,
->> +                                      struct page *page);
->> +extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
->> +                                  struct inode *inode);
->> +extern int ext4_try_create_inline_dir(handle_t *handle,
->> +                                   struct inode *parent,
->> +                                   struct inode *inode);
->> +extern int ext4_read_inline_dir(struct file *filp,
->> +                             void *dirent, filldir_t filldir,
->> +                             int *has_inline_data);
->> +extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
->> +                                     const struct qstr *d_name,
->> +                                     struct ext4_dir_entry_2 **res_dir,
->> +                                     int *has_inline_data);
->> +extern int ext4_delete_inline_entry(handle_t *handle,
->> +                                 struct inode *dir,
->> +                                 struct ext4_dir_entry_2 *de_del,
->> +                                 struct buffer_head *bh,
->> +                                 int *has_inline_data);
->> +extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
->> +extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
->> +                                     struct ext4_dir_entry_2 **parent_de,
->> +                                     int *retval);
->> +extern int ext4_inline_data_fiemap(struct inode *inode,
->> +                                struct fiemap_extent_info *fieinfo,
->> +                                int *has_inline);
->> +extern int ext4_try_to_evict_inline_data(handle_t *handle,
->> +                                      struct inode *inode,
->> +                                      int needed);
->> +extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
->> +
->> +extern int ext4_convert_inline_data(struct inode *inode);
->> +
->>  /* namei.c */
->>  extern const struct inode_operations ext4_dir_inode_operations;
->>  extern const struct inode_operations ext4_special_inode_operations;
->> @@ -2539,6 +2608,7 @@ extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
->>  extern int ext4_mmp_csum_verify(struct super_block *sb,
->>                               struct mmp_struct *mmp);
->>
->> +
->>  /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
->>  enum ext4_state_bits {
->>       BH_Uninit       /* blocks are allocated but uninitialized on disk */
->> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
->> index c1fc2dc..4c216b1 100644
->> --- a/fs/ext4/ext4_jbd2.h
->> +++ b/fs/ext4/ext4_jbd2.h
->> @@ -104,6 +104,20 @@
->>  #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
->>  #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
->>
->> +static inline int ext4_jbd2_credits_xattr(struct inode *inode)
->> +{
->> +     int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
->> +
->> +     /*
->> +      * In case of inline data, we may push out the data to a block,
->> +      * so we need to reserve credits for this eventuality
->> +      */
->> +     if (ext4_has_inline_data(inode))
->> +             credits += ext4_writepage_trans_blocks(inode) + 1;
->> +     return credits;
->> +}
->> +
->> +
->>  /*
->>   * Ext4 handle operation types -- for logging purposes
->>   */
->> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
->> index 2efc560..cc31da0 100644
->> --- a/fs/ext4/xattr.c
->> +++ b/fs/ext4/xattr.c
->> @@ -1165,16 +1165,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
->>  {
->>       handle_t *handle;
->>       int error, retries = 0;
->> -     int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
->> +     int credits = ext4_jbd2_credits_xattr(inode);
->>
->>  retry:
->> -     /*
->> -      * In case of inline data, we may push out the data to a block,
->> -      * So reserve the journal space first.
->> -      */
->> -     if (ext4_has_inline_data(inode))
->> -             credits += ext4_writepage_trans_blocks(inode) + 1;
->> -
->>       handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
->>       if (IS_ERR(handle)) {
->>               error = PTR_ERR(handle);
->> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
->> index 69eda78..aa25deb 100644
->> --- a/fs/ext4/xattr.h
->> +++ b/fs/ext4/xattr.h
->> @@ -125,74 +125,6 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
->>                                      struct ext4_xattr_info *i,
->>                                      struct ext4_xattr_ibody_find *is);
->>
->> -extern int ext4_has_inline_data(struct inode *inode);
->> -extern int ext4_get_inline_size(struct inode *inode);
->> -extern int ext4_get_max_inline_size(struct inode *inode);
->> -extern int ext4_find_inline_data_nolock(struct inode *inode);
->> -extern void ext4_write_inline_data(struct inode *inode,
->> -                                struct ext4_iloc *iloc,
->> -                                void *buffer, loff_t pos,
->> -                                unsigned int len);
->> -extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
->> -                                 unsigned int len);
->> -extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
->> -                              unsigned int len);
->> -extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
->> -
->> -extern int ext4_readpage_inline(struct inode *inode, struct page *page);
->> -extern int ext4_try_to_write_inline_data(struct address_space *mapping,
->> -                                      struct inode *inode,
->> -                                      loff_t pos, unsigned len,
->> -                                      unsigned flags,
->> -                                      struct page **pagep);
->> -extern int ext4_write_inline_data_end(struct inode *inode,
->> -                                   loff_t pos, unsigned len,
->> -                                   unsigned copied,
->> -                                   struct page *page);
->> -extern struct buffer_head *
->> -ext4_journalled_write_inline_data(struct inode *inode,
->> -                               unsigned len,
->> -                               struct page *page);
->> -extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
->> -                                        struct inode *inode,
->> -                                        loff_t pos, unsigned len,
->> -                                        unsigned flags,
->> -                                        struct page **pagep,
->> -                                        void **fsdata);
->> -extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
->> -                                      unsigned len, unsigned copied,
->> -                                      struct page *page);
->> -extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
->> -                                  struct inode *inode);
->> -extern int ext4_try_create_inline_dir(handle_t *handle,
->> -                                   struct inode *parent,
->> -                                   struct inode *inode);
->> -extern int ext4_read_inline_dir(struct file *filp,
->> -                             void *dirent, filldir_t filldir,
->> -                             int *has_inline_data);
->> -extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
->> -                                     const struct qstr *d_name,
->> -                                     struct ext4_dir_entry_2 **res_dir,
->> -                                     int *has_inline_data);
->> -extern int ext4_delete_inline_entry(handle_t *handle,
->> -                                 struct inode *dir,
->> -                                 struct ext4_dir_entry_2 *de_del,
->> -                                 struct buffer_head *bh,
->> -                                 int *has_inline_data);
->> -extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
->> -extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
->> -                                     struct ext4_dir_entry_2 **parent_de,
->> -                                     int *retval);
->> -extern int ext4_inline_data_fiemap(struct inode *inode,
->> -                                struct fiemap_extent_info *fieinfo,
->> -                                int *has_inline);
->> -extern int ext4_try_to_evict_inline_data(handle_t *handle,
->> -                                      struct inode *inode,
->> -                                      int needed);
->> -extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
->> -
->> -extern int ext4_convert_inline_data(struct inode *inode);
->> -
->>  #ifdef CONFIG_EXT4_FS_SECURITY
->>  extern int ext4_init_security(handle_t *handle, struct inode *inode,
->>                             struct inode *dir, const struct qstr *qstr);
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The reason why we use the terminology "starting a handle" instead of
+"starting a transaction" is because a large number of handles are
+bundled together to form a jbd2 transaction.  This is because commits
+are expensive, and for performance reasons we batch a large number of
+handles, or perhaps what you might call "micro-transactions" into a
+one large jbd2 transaction, which in general gets commited once every
+five seconds or so, unless a commit is explicitly requested, or we
+start running out of space in the journal.
+
+In order to make sure that we don't run out of space, before we start
+a handle, we have to declare how the maximum number of blocks we are
+planning on modifying --- this reservation of space in the journal is
+also referred as journal credits, since each time we call
+ext4_journal_get_write_access(), if that block is not already part of
+the transaction, the number of credits associated with the handle will
+be decremented by one.
+
+When we open a handle, if there is not sufficient space (credits) left
+in the current transaction, then start_this_handle() will request that
+the current transaction be committed, and then block until the a new
+transaction can be started.
+
+When we are done, we close the handle.  If it turns out that we didn't
+need to modify as many blocks as we had declared when we opened the
+handle, or if some of the blocks that we modified were already part of
+the transaction, those excess credits are returned to the transaction.
+
+So as an example, suppose we need to modify two metadata blocks
+associated with an inode.  That sequence might look like this:
+
+	/* start a handle with two credits */
+	/* note: this can trigger a journal commit if there 
+	   is not enough space left in the journal */
+	handle = ext4_journal_start(inode, 2);
+
+	ext4_journal_get_write_access(handle, bh);
+	<modify the metadata block found in bh>
+	ext4_handle_dirty_metadata(handle, inode, bh)
+
+	ext4_journal_get_write_access(handle, bh2);
+	<modify the metadata block found in bh2>
+	ext4_handle_dirty_metadata(handle, inode, bh2)
+
+	/* note: this can trigger a journal commit if the handle
+	   is marked synchronous, or if enough time has elapsed --- i.e.,
+	   the 5 second commit timer. */
+	ext4_journal_stop(handle);
+
+In the case where we are running in no journal mode,
+ext4_journal_start(), ext4_journal_get_write_access(), and
+ext4_journal_stop() are effectively no-ops, and
+ext4_handle_dirty_metadata() is mapped to mark_buffer_dirty_inode(bh,
+inode), or mark_buffer_dirty(bh) if inode is NULL.  (inode is NULL if
+we are modifying metadata blocks belonging to a specific inode, such
+as a block group descriptor block or an inode table block.)
+
+Hope this helps / is interesting to those who are following along at
+home.  :-)
+
+						- Ted
