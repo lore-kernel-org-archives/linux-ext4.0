@@ -1,472 +1,292 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 09/10 v5] ext4: convert unwritten extents from extent
- status tree in end_io
-Date: Sun, 10 Feb 2013 16:45:11 +0800
-Message-ID: <20130210084511.GB14075@gmail.com>
-References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-10-git-send-email-wenqing.lz@taobao.com>
+From: Tao Ma <tm@tao.ma>
+Subject: Re: [PATCH 11/12] ext4: fix the number of credits needed for acl
+ ops with inline data
+Date: Sun, 10 Feb 2013 21:42:58 +0800
+Message-ID: <5117A3E2.6090802@tao.ma>
+References: <1360446832-12724-1-git-send-email-tytso@mit.edu> <1360446832-12724-12-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <wenqing.lz@taobao.com>, Jan kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Tao Ma <boyu.mt@taobao.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f51.google.com ([209.85.160.51]:44282 "EHLO
-	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752373Ab3BJIap (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Feb 2013 03:30:45 -0500
-Received: by mail-pb0-f51.google.com with SMTP id un15so313353pbc.24
-        for <linux-ext4@vger.kernel.org>; Sun, 10 Feb 2013 00:30:44 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <1360313046-9876-10-git-send-email-wenqing.lz@taobao.com>
+Received: from oproxy13-pub.unifiedlayer.com ([69.89.16.30]:46598 "HELO
+	oproxy13-pub.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1754674Ab3BJNtn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Feb 2013 08:49:43 -0500
+In-Reply-To: <1360446832-12724-12-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 08, 2013 at 04:44:05PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On 02/10/2013 05:53 AM, Theodore Ts'o wrote:
+> Operations which modify extended attributes may need extra journal
+> credits if inline data is used, since there is a chance that some
+> extended attributes may need to get pushed to an external attribute
+> block.
 > 
-> This commit tries to convert unwritten extents from extent status tree
-> in end_io callback functions and ext4_ext_direct_IO.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan kara <jack@suse.cz>
-> ---
->  fs/ext4/extents.c           |   6 +-
->  fs/ext4/extents_status.c    | 180 ++++++++++++++++++++++++++++++++++++++++----
->  fs/ext4/extents_status.h    |   2 +
->  fs/ext4/inode.c             |   5 ++
->  fs/ext4/page-io.c           |   8 +-
->  include/trace/events/ext4.h |  25 ++++++
->  6 files changed, 208 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 9f21430..a03cabf 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4443,8 +4443,10 @@ int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
->  			ret = PTR_ERR(handle);
->  			break;
->  		}
-> -		ret = ext4_map_blocks(handle, inode, &map,
-> -				      EXT4_GET_BLOCKS_IO_CONVERT_EXT);
-> +		down_write(&EXT4_I(inode)->i_data_sem);
-> +		ret = ext4_ext_map_blocks(handle, inode, &map,
-> +					  EXT4_GET_BLOCKS_IO_CONVERT_EXT);
-> +		up_write(&EXT4_I(inode)->i_data_sem);
->  		if (ret <= 0) {
->  			WARN_ON(ret <= 0);
->  			ext4_msg(inode->i_sb, KERN_ERR,
+> Changes to reflect this was made in xattr.c, but they were missed in
+> fs/ext4/acl.c.  To fix this, abstract the calculation of the number of
+> credits needed for xattr operations to an inline function defined in
+> ext4_jbd2.h, and use it in acl.c and xattr.c.
+Oh, yes, I forgot about the acl.
 
-Hi Ted,
-
-This chunk is missing in your 'dev' branch of ext4.  If we call
-ext4_map_blocks here, unwritten extent in disk will never be converted
-because ext4_map_blocks first tries to lookup extent status tree and the
-unwriten extent in this tree has been converted in end_io callback
-function.  It always looks up a written extent in cache, and return
-immdiately.  Please check it again.
+Reviewed-by: Tao Ma <boyu.mt@taobao.com>
 
 Thanks,
-                                                - Zheng
-
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index bac5286..eab8893 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -248,10 +248,11 @@ ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
->  	struct extent_status *es1 = NULL;
->  	struct rb_node *node;
->  	ext4_lblk_t ret = EXT_MAX_BLOCKS;
-> +	unsigned long flags;
->  
->  	trace_ext4_es_find_delayed_extent_enter(inode, es->es_lblk);
->  
-> -	read_lock(&EXT4_I(inode)->i_es_lock);
-> +	read_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
->  	tree = &EXT4_I(inode)->i_es_tree;
->  
->  	/* find extent in cache firstly */
-> @@ -291,7 +292,7 @@ out:
->  		}
->  	}
->  
-> -	read_unlock(&EXT4_I(inode)->i_es_lock);
-> +	read_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
->  
->  	ext4_es_lru_add(inode);
->  	trace_ext4_es_find_delayed_extent_exit(inode, es, ret);
-> @@ -458,6 +459,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  {
->  	struct extent_status newes;
->  	ext4_lblk_t end = lblk + len - 1;
-> +	unsigned long flags;
->  	int err = 0;
->  
->  	es_debug("add [%u/%u) %llu %llx to extent status tree of inode %lu\n",
-> @@ -471,14 +473,14 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  	ext4_es_store_status(&newes, status);
->  	trace_ext4_es_insert_extent(inode, &newes);
->  
-> -	write_lock(&EXT4_I(inode)->i_es_lock);
-> +	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
->  	err = __es_remove_extent(inode, lblk, end);
->  	if (err != 0)
->  		goto error;
->  	err = __es_insert_extent(inode, &newes);
->  
->  error:
-> -	write_unlock(&EXT4_I(inode)->i_es_lock);
-> +	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
->  
->  	ext4_es_lru_add(inode);
->  	ext4_es_print_tree(inode);
-> @@ -498,13 +500,14 @@ int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es)
->  	struct ext4_es_tree *tree;
->  	struct extent_status *es1 = NULL;
->  	struct rb_node *node;
-> +	unsigned long flags;
->  	int found = 0;
->  
->  	trace_ext4_es_lookup_extent_enter(inode, es->es_lblk);
->  	es_debug("lookup extent in block %u\n", es->es_lblk);
->  
->  	tree = &EXT4_I(inode)->i_es_tree;
-> -	read_lock(&EXT4_I(inode)->i_es_lock);
-> +	read_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
->  
->  	/* find extent in cache firstly */
->  	es->es_len = es->es_pblk = 0;
-> @@ -539,7 +542,7 @@ out:
->  		es->es_pblk = es1->es_pblk;
->  	}
->  
-> -	read_unlock(&EXT4_I(inode)->i_es_lock);
-> +	read_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
->  
->  	ext4_es_lru_add(inode);
->  	trace_ext4_es_lookup_extent_exit(inode, es, found);
-> @@ -649,6 +652,7 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  			  ext4_lblk_t len)
->  {
->  	ext4_lblk_t end;
-> +	unsigned long flags;
->  	int err = 0;
->  
->  	trace_ext4_es_remove_extent(inode, lblk, len);
-> @@ -658,9 +662,9 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  	end = lblk + len - 1;
->  	BUG_ON(end < lblk);
->  
-> -	write_lock(&EXT4_I(inode)->i_es_lock);
-> +	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
->  	err = __es_remove_extent(inode, lblk, end);
-> -	write_unlock(&EXT4_I(inode)->i_es_lock);
-> +	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
->  	ext4_es_print_tree(inode);
->  	return err;
->  }
-> @@ -671,6 +675,7 @@ static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
->  					struct ext4_sb_info, s_es_shrinker);
->  	struct ext4_inode_info *ei;
->  	struct list_head *cur, *tmp, scanned;
-> +	unsigned long flags;
->  	int nr_to_scan = sc->nr_to_scan;
->  	int ret, nr_shrunk = 0;
->  
-> @@ -687,16 +692,16 @@ static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
->  
->  		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
->  
-> -		read_lock(&ei->i_es_lock);
-> +		read_lock_irqsave(&ei->i_es_lock, flags);
->  		if (ei->i_es_lru_nr == 0) {
-> -			read_unlock(&ei->i_es_lock);
-> +			read_unlock_irqrestore(&ei->i_es_lock, flags);
->  			continue;
->  		}
-> -		read_unlock(&ei->i_es_lock);
-> +		read_unlock_irqrestore(&ei->i_es_lock, flags);
->  
-> -		write_lock(&ei->i_es_lock);
-> +		write_lock_irqsave(&ei->i_es_lock, flags);
->  		ret = __es_try_to_reclaim_extents(ei, nr_to_scan);
-> -		write_unlock(&ei->i_es_lock);
-> +		write_unlock_irqrestore(&ei->i_es_lock, flags);
->  
->  		nr_shrunk += ret;
->  		nr_to_scan -= ret;
-> @@ -756,14 +761,15 @@ static int ext4_es_reclaim_extents_count(struct super_block *sb)
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	struct ext4_inode_info *ei;
->  	struct list_head *cur;
-> +	unsigned long flags;
->  	int nr_cached = 0;
->  
->  	spin_lock(&sbi->s_es_lru_lock);
->  	list_for_each(cur, &sbi->s_es_lru) {
->  		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
-> -		read_lock(&ei->i_es_lock);
-> +		read_lock_irqsave(&ei->i_es_lock, flags);
->  		nr_cached += ei->i_es_lru_nr;
-> -		read_unlock(&ei->i_es_lock);
-> +		read_unlock_irqrestore(&ei->i_es_lock, flags);
->  	}
->  	spin_unlock(&sbi->s_es_lru_lock);
->  	trace_ext4_es_reclaim_extents_count(sb, nr_cached);
-> @@ -801,3 +807,147 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
->  	tree->cache_es = NULL;
->  	return nr_shrunk;
->  }
-> +
-> +int ext4_es_convert_unwritten_extents(struct inode *inode, loff_t offset,
-> +				      size_t size)
-> +{
-> +	struct ext4_es_tree *tree;
-> +	struct rb_node *node;
-> +	struct extent_status *es, orig_es, conv_es;
-> +	ext4_lblk_t end, len1, len2;
-> +	ext4_lblk_t lblk = 0, len = 0;
-> +	ext4_fsblk_t block;
-> +	unsigned long flags;
-> +	unsigned int blkbits;
-> +	int err = 0;
-> +
-> +	trace_ext4_es_convert_unwritten_extents(inode, offset, size);
-> +	blkbits = inode->i_blkbits;
-> +	lblk = offset >> blkbits;
-> +	len = (EXT4_BLOCK_ALIGN(offset + size, blkbits) >> blkbits) - lblk;
-> +
-> +	end = lblk + len - 1;
-> +	BUG_ON(end < lblk);
-> +
-> +	tree = &EXT4_I(inode)->i_es_tree;
-> +
-> +	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
-> +	es = __es_tree_search(&tree->root, lblk);
-> +	if (!es)
-> +		goto out;
-> +	if (es->es_lblk > end)
-> +		goto out;
-> +
-> +	tree->cache_es = NULL;
-> +
-> +	orig_es.es_lblk = es->es_lblk;
-> +	orig_es.es_len = es->es_len;
-> +	orig_es.es_pblk = es->es_pblk;
-> +
-> +	len1 = lblk > es->es_lblk ? lblk - es->es_lblk : 0;
-> +	len2 = ext4_es_end(es) > end ?
-> +	       ext4_es_end(es) - end : 0;
-> +	if (len1 > 0)
-> +		es->es_len = len1;
-> +	if (len2 > 0) {
-> +		if (len1 > 0) {
-> +			struct extent_status newes;
-> +
-> +			newes.es_lblk = end + 1;
-> +			newes.es_len = len2;
-> +			block = ext4_es_pblock(&orig_es) +
-> +				orig_es.es_len - len2;
-> +			ext4_es_store_pblock(&newes, block);
-> +			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
-> +			err = __es_insert_extent(inode, &newes);
-> +			if (err) {
-> +				es->es_lblk = orig_es.es_lblk;
-> +				es->es_len = orig_es.es_len;
-> +				es->es_pblk = orig_es.es_pblk;
-> +				goto out;
-> +			}
-> +
-> +			conv_es.es_lblk = orig_es.es_lblk + len1;
-> +			conv_es.es_len = orig_es.es_len - len1 - len2;
-> +			block = ext4_es_pblock(&orig_es) + len1;
-> +			ext4_es_store_pblock(&conv_es, block);
-> +			ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
-> +			err = __es_insert_extent(inode, &conv_es);
-> +			if (err) {
-> +				int err2 = __es_remove_extent(inode,
-> +							conv_es.es_lblk,
-> +							ext4_es_end(&newes));
-> +				if (err2)
-> +					goto out;
-> +				es->es_lblk = orig_es.es_lblk;
-> +				es->es_len = orig_es.es_len;
-> +				es->es_pblk = orig_es.es_pblk;
-> +				goto out;
-> +			}
-> +		} else {
-> +			es->es_lblk = end + 1;
-> +			es->es_len = len2;
-> +			block = ext4_es_pblock(&orig_es) +
-> +				orig_es.es_len - len2;
-> +			ext4_es_store_pblock(es, block);
-> +
-> +			conv_es.es_lblk = orig_es.es_lblk;
-> +			conv_es.es_len = orig_es.es_len - len2;
-> +			ext4_es_store_pblock(&conv_es,
-> +					     ext4_es_pblock(&orig_es));
-> +			ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
-> +			err = __es_insert_extent(inode, &conv_es);
-> +			if (err) {
-> +				es->es_lblk = orig_es.es_lblk;
-> +				es->es_len = orig_es.es_len;
-> +				es->es_pblk = orig_es.es_pblk;
-> +			}
-> +		}
-> +		goto out;
-> +	}
-> +
-> +	if (len1 > 0) {
-> +		node = rb_next(&es->rb_node);
-> +		if (node)
-> +			es = rb_entry(node, struct extent_status, rb_node);
-> +		else
-> +			es = NULL;
-> +	}
-> +
-> +	while (es && ext4_es_end(es) <= end) {
-> +		node = rb_next(&es->rb_node);
-> +		ext4_es_store_status(es, EXTENT_STATUS_WRITTEN);
-> +		if (!inode) {
-> +			es = NULL;
-> +			break;
-> +		}
-> +		es = rb_entry(node, struct extent_status, rb_node);
-> +	}
-> +
-> +	if (es && es->es_lblk < end + 1) {
-> +		ext4_lblk_t orig_len = es->es_len;
-> +
-> +		/*
-> +		 * Here we first set conv_es just because of avoiding copy the
-> +		 * value of es to a temporary variable.
-> +		 */
-> +		len1 = ext4_es_end(es) - end;
-> +		conv_es.es_lblk = es->es_lblk;
-> +		conv_es.es_len = es->es_len - len1;
-> +		ext4_es_store_pblock(&conv_es, ext4_es_pblock(es));
-> +		ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
-> +
-> +		es->es_lblk = end + 1;
-> +		es->es_len = len1;
-> +		block = ext4_es_pblock(es) + orig_len - len1;
-> +		ext4_es_store_pblock(es, block);
-> +
-> +		err = __es_insert_extent(inode, &conv_es);
-> +		if (err)
-> +			goto out;
-> +	}
-> +
-> +out:
-> +	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
-> +	return err;
-> +}
-> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> index 938ad2b..2849d74 100644
-> --- a/fs/ext4/extents_status.h
-> +++ b/fs/ext4/extents_status.h
-> @@ -54,6 +54,8 @@ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  extern ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
->  					       struct extent_status *es);
->  extern int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es);
-> +extern int ext4_es_convert_unwritten_extents(struct inode *inode, loff_t offset,
-> +					     size_t size);
->  
->  static inline int ext4_es_is_written(struct extent_status *es)
->  {
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 670779a..08cf720 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3063,6 +3063,7 @@ out:
->  		io_end->result = ret;
->  	}
->  
-> +	ext4_es_convert_unwritten_extents(inode, offset, size);
->  	ext4_add_complete_io(io_end);
->  }
->  
-> @@ -3088,6 +3089,7 @@ static void ext4_end_io_buffer_write(struct buffer_head *bh, int uptodate)
->  	 */
->  	inode = io_end->inode;
->  	ext4_set_io_unwritten_flag(inode, io_end);
-> +	ext4_es_convert_unwritten_extents(inode, io_end->offset, io_end->size);
->  	ext4_add_complete_io(io_end);
->  out:
->  	bh->b_private = NULL;
-> @@ -3246,6 +3248,9 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
->  	} else if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
->  						EXT4_STATE_DIO_UNWRITTEN)) {
->  		int err;
-> +		err = ext4_es_convert_unwritten_extents(inode, offset, ret);
-> +		if (err)
-> +			ret = err;
->  		/*
->  		 * for non AIO case, since the IO is already
->  		 * completed, we could do the conversion right here
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 0016fbc..66ea30e 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -276,6 +276,13 @@ static void ext4_end_bio(struct bio *bio, int error)
->  		error = 0;
->  	bio_put(bio);
->  
-> +	/*
-> +	 * We need to convert unwrittne extents in extent status tree before
-> +	 * end_page_writeback() is called.  Otherwise, when dioread_nolock is
-> +	 * enabled, we will be likely to read stale data.
-> +	 */
-> +	inode = io_end->inode;
-> +	ext4_es_convert_unwritten_extents(inode, io_end->offset, io_end->size);
->  	for (i = 0; i < io_end->num_io_pages; i++) {
->  		struct page *page = io_end->pages[i]->p_page;
->  		struct buffer_head *bh, *head;
-> @@ -305,7 +312,6 @@ static void ext4_end_bio(struct bio *bio, int error)
->  		put_io_page(io_end->pages[i]);
->  	}
->  	io_end->num_io_pages = 0;
-> -	inode = io_end->inode;
->  
->  	if (error) {
->  		io_end->flag |= EXT4_IO_END_ERROR;
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index f0734b3..d32e3d5 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -2233,6 +2233,31 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
->  		  __entry->found ? __entry->status : 0)
->  );
->  
-> +TRACE_EVENT(ext4_es_convert_unwritten_extents,
-> +	TP_PROTO(struct inode *inode, loff_t offset, loff_t size),
-> +
-> +	TP_ARGS(inode, offset, size),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	dev_t,	dev			)
-> +		__field(	ino_t,	ino			)
-> +		__field(	loff_t,	offset			)
-> +		__field(	loff_t, size			)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev	= inode->i_sb->s_dev;
-> +		__entry->ino	= inode->i_ino;
-> +		__entry->offset	= offset;
-> +		__entry->size	= size;
-> +	),
-> +
-> +	TP_printk("dev %d,%d ino %lu convert unwritten extents [%llu/%llu",
-> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> +		  (unsigned long) __entry->ino,
-> +		  __entry->offset, __entry->size)
-> +);
-> +
->  TRACE_EVENT(ext4_es_reclaim_extents_count,
->  	TP_PROTO(struct super_block *sb, int nr_cached),
->  
-> -- 
-> 1.7.12.rc2.18.g61b472e
+Tao
 > 
+> Also move the function declarations used in inline.c from xattr.h
+> (where they are non-obviously hidden, and caused problems since
+> ext4_jbd2.h needs to use the function ext4_has_inline_data), and move
+> them to ext4.h.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Tao Ma <boyu.mt@taobao.com>
+> ---
+>  fs/ext4/acl.c       |  4 +--
+>  fs/ext4/ext4.h      | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/ext4_jbd2.h | 14 +++++++++++
+>  fs/ext4/xattr.c     |  9 +------
+>  fs/ext4/xattr.h     | 68 ---------------------------------------------------
+>  5 files changed, 87 insertions(+), 78 deletions(-)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index 406cf8b..39a54a0 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -325,7 +325,7 @@ ext4_acl_chmod(struct inode *inode)
+>  		return error;
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+> -			EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+> +				    ext4_jbd2_credits_xattr(inode));
+>  	if (IS_ERR(handle)) {
+>  		error = PTR_ERR(handle);
+>  		ext4_std_error(inode->i_sb, error);
+> @@ -423,7 +423,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+>  
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+> -				    EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+> +				    ext4_jbd2_credits_xattr(inode));
+>  	if (IS_ERR(handle)) {
+>  		error = PTR_ERR(handle);
+>  		goto release_and_out;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index c2c64da..9897cdf 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2443,6 +2443,75 @@ extern const struct file_operations ext4_file_operations;
+>  extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
+>  extern void ext4_unwritten_wait(struct inode *inode);
+>  
+> +/* inline.c */
+> +extern int ext4_has_inline_data(struct inode *inode);
+> +extern int ext4_get_inline_size(struct inode *inode);
+> +extern int ext4_get_max_inline_size(struct inode *inode);
+> +extern int ext4_find_inline_data_nolock(struct inode *inode);
+> +extern void ext4_write_inline_data(struct inode *inode,
+> +				   struct ext4_iloc *iloc,
+> +				   void *buffer, loff_t pos,
+> +				   unsigned int len);
+> +extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
+> +				    unsigned int len);
+> +extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+> +				 unsigned int len);
+> +extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
+> +
+> +extern int ext4_readpage_inline(struct inode *inode, struct page *page);
+> +extern int ext4_try_to_write_inline_data(struct address_space *mapping,
+> +					 struct inode *inode,
+> +					 loff_t pos, unsigned len,
+> +					 unsigned flags,
+> +					 struct page **pagep);
+> +extern int ext4_write_inline_data_end(struct inode *inode,
+> +				      loff_t pos, unsigned len,
+> +				      unsigned copied,
+> +				      struct page *page);
+> +extern struct buffer_head *
+> +ext4_journalled_write_inline_data(struct inode *inode,
+> +				  unsigned len,
+> +				  struct page *page);
+> +extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
+> +					   struct inode *inode,
+> +					   loff_t pos, unsigned len,
+> +					   unsigned flags,
+> +					   struct page **pagep,
+> +					   void **fsdata);
+> +extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+> +					 unsigned len, unsigned copied,
+> +					 struct page *page);
+> +extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
+> +				     struct inode *inode);
+> +extern int ext4_try_create_inline_dir(handle_t *handle,
+> +				      struct inode *parent,
+> +				      struct inode *inode);
+> +extern int ext4_read_inline_dir(struct file *filp,
+> +				void *dirent, filldir_t filldir,
+> +				int *has_inline_data);
+> +extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+> +					const struct qstr *d_name,
+> +					struct ext4_dir_entry_2 **res_dir,
+> +					int *has_inline_data);
+> +extern int ext4_delete_inline_entry(handle_t *handle,
+> +				    struct inode *dir,
+> +				    struct ext4_dir_entry_2 *de_del,
+> +				    struct buffer_head *bh,
+> +				    int *has_inline_data);
+> +extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+> +extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+> +					struct ext4_dir_entry_2 **parent_de,
+> +					int *retval);
+> +extern int ext4_inline_data_fiemap(struct inode *inode,
+> +				   struct fiemap_extent_info *fieinfo,
+> +				   int *has_inline);
+> +extern int ext4_try_to_evict_inline_data(handle_t *handle,
+> +					 struct inode *inode,
+> +					 int needed);
+> +extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+> +
+> +extern int ext4_convert_inline_data(struct inode *inode);
+> +
+>  /* namei.c */
+>  extern const struct inode_operations ext4_dir_inode_operations;
+>  extern const struct inode_operations ext4_special_inode_operations;
+> @@ -2539,6 +2608,7 @@ extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
+>  extern int ext4_mmp_csum_verify(struct super_block *sb,
+>  				struct mmp_struct *mmp);
+>  
+> +
+>  /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
+>  enum ext4_state_bits {
+>  	BH_Uninit	/* blocks are allocated but uninitialized on disk */
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index c1fc2dc..4c216b1 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -104,6 +104,20 @@
+>  #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+>  #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+>  
+> +static inline int ext4_jbd2_credits_xattr(struct inode *inode)
+> +{
+> +	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
+> +
+> +	/*
+> +	 * In case of inline data, we may push out the data to a block,
+> +	 * so we need to reserve credits for this eventuality
+> +	 */
+> +	if (ext4_has_inline_data(inode))
+> +		credits += ext4_writepage_trans_blocks(inode) + 1;
+> +	return credits;
+> +}
+> +
+> +
+>  /*
+>   * Ext4 handle operation types -- for logging purposes
+>   */
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 2efc560..cc31da0 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -1165,16 +1165,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+>  {
+>  	handle_t *handle;
+>  	int error, retries = 0;
+> -	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
+> +	int credits = ext4_jbd2_credits_xattr(inode);
+>  
+>  retry:
+> -	/*
+> -	 * In case of inline data, we may push out the data to a block,
+> -	 * So reserve the journal space first.
+> -	 */
+> -	if (ext4_has_inline_data(inode))
+> -		credits += ext4_writepage_trans_blocks(inode) + 1;
+> -
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+>  	if (IS_ERR(handle)) {
+>  		error = PTR_ERR(handle);
+> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+> index 69eda78..aa25deb 100644
+> --- a/fs/ext4/xattr.h
+> +++ b/fs/ext4/xattr.h
+> @@ -125,74 +125,6 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
+>  				       struct ext4_xattr_info *i,
+>  				       struct ext4_xattr_ibody_find *is);
+>  
+> -extern int ext4_has_inline_data(struct inode *inode);
+> -extern int ext4_get_inline_size(struct inode *inode);
+> -extern int ext4_get_max_inline_size(struct inode *inode);
+> -extern int ext4_find_inline_data_nolock(struct inode *inode);
+> -extern void ext4_write_inline_data(struct inode *inode,
+> -				   struct ext4_iloc *iloc,
+> -				   void *buffer, loff_t pos,
+> -				   unsigned int len);
+> -extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
+> -				    unsigned int len);
+> -extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
+> -				 unsigned int len);
+> -extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
+> -
+> -extern int ext4_readpage_inline(struct inode *inode, struct page *page);
+> -extern int ext4_try_to_write_inline_data(struct address_space *mapping,
+> -					 struct inode *inode,
+> -					 loff_t pos, unsigned len,
+> -					 unsigned flags,
+> -					 struct page **pagep);
+> -extern int ext4_write_inline_data_end(struct inode *inode,
+> -				      loff_t pos, unsigned len,
+> -				      unsigned copied,
+> -				      struct page *page);
+> -extern struct buffer_head *
+> -ext4_journalled_write_inline_data(struct inode *inode,
+> -				  unsigned len,
+> -				  struct page *page);
+> -extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
+> -					   struct inode *inode,
+> -					   loff_t pos, unsigned len,
+> -					   unsigned flags,
+> -					   struct page **pagep,
+> -					   void **fsdata);
+> -extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+> -					 unsigned len, unsigned copied,
+> -					 struct page *page);
+> -extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
+> -				     struct inode *inode);
+> -extern int ext4_try_create_inline_dir(handle_t *handle,
+> -				      struct inode *parent,
+> -				      struct inode *inode);
+> -extern int ext4_read_inline_dir(struct file *filp,
+> -				void *dirent, filldir_t filldir,
+> -				int *has_inline_data);
+> -extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+> -					const struct qstr *d_name,
+> -					struct ext4_dir_entry_2 **res_dir,
+> -					int *has_inline_data);
+> -extern int ext4_delete_inline_entry(handle_t *handle,
+> -				    struct inode *dir,
+> -				    struct ext4_dir_entry_2 *de_del,
+> -				    struct buffer_head *bh,
+> -				    int *has_inline_data);
+> -extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
+> -extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
+> -					struct ext4_dir_entry_2 **parent_de,
+> -					int *retval);
+> -extern int ext4_inline_data_fiemap(struct inode *inode,
+> -				   struct fiemap_extent_info *fieinfo,
+> -				   int *has_inline);
+> -extern int ext4_try_to_evict_inline_data(handle_t *handle,
+> -					 struct inode *inode,
+> -					 int needed);
+> -extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+> -
+> -extern int ext4_convert_inline_data(struct inode *inode);
+> -
+>  #ifdef CONFIG_EXT4_FS_SECURITY
+>  extern int ext4_init_security(handle_t *handle, struct inode *inode,
+>  			      struct inode *dir, const struct qstr *qstr);
+> 
+
