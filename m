@@ -1,122 +1,155 @@
-From: Chris Murphy <lists@colorremedies.com>
-Subject: Re: GRUB and the risk of block list corruption in extX
-Date: Sat, 9 Feb 2013 17:17:58 -0700
-Message-ID: <B6CCAB6A-D340-47F8-9231-1280151552DC@colorremedies.com>
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: support simple conversion of extent-mapped inodes to use i_blocks
+Date: Sat,  9 Feb 2013 22:29:37 -0500
+Message-ID: <1360466977-8843-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from slmp-550-94.slc.westdc.net ([50.115.112.57]:22004 "EHLO
-	slmp-550-94.slc.westdc.net" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1760903Ab3BJBt3 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 20:49:29 -0500
-Received: from c-24-9-205-42.hsd1.co.comcast.net ([24.9.205.42]:50658 helo=mingisapsycho.hsd1.co.comcast.net)
-	by slmp-550-94.slc.westdc.net with esmtpsa (TLSv1:AES128-SHA:128)
-	(Exim 4.80)
-	(envelope-from <lists@colorremedies.com>)
-	id 1U4KcK-003Gii-6e
-	for linux-ext4@vger.kernel.org; Sat, 09 Feb 2013 17:18:00 -0700
+Received: from li9-11.members.linode.com ([67.18.176.11]:47653 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756944Ab3BJD3k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 22:29:40 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+In order to make it simpler to test the code which support
+i_blocks/indirect-mapped inodes, support the conversion of inodes
+which are less than 12 blocks and which are contained in no more than
+a single extent.
 
-On 2013-02-07 15:50:07 GMT Eric Sandeen wrote:
+The primary intended use of this code is to converting freshly created
+zero-length files and empty directories.
 
-> To be clear, this is only the case when installing the bootloader its=
-elf to a partition containing a filesystem, not when installing to the =
-MBR, correct?
+Note that the version of chattr in e2fsprogs 1.42.7 and earlier has a
+check that prevents the clearing of the extent flag.  A simple patch
+which allows "chattr -e <file>" to work will be checked into the
+e2fsprogs git repository.
 
-Correct.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |  3 ++-
+ fs/ext4/extents.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c   | 20 ++++++++------------
+ 3 files changed, 60 insertions(+), 13 deletions(-)
 
-> Which is different than saying "/boot is on ext4" - it's putting the =
-bootloader itself on a partition containing a filesystem, something whi=
-ch is a bit more unusual, I think.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1876b95..95d01ec 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -403,7 +403,7 @@ struct flex_groups {
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+ #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
++#define EXT4_FL_USER_MODIFIABLE		0x004380FF /* User modifiable flags */
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+@@ -2602,6 +2602,7 @@ extern int ext4_ext_check_inode(struct inode *inode);
+ extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
++extern int ext4_ind_migrate(struct inode *inode);
+ 
+ 
+ /* move_extent.c */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 143cb77..2034146 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4766,3 +4766,53 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 
+ 	return error;
+ }
++
++/*
++ * Migrate a simple extent-based inode to use the i_blocks[] array
++ */
++int ext4_ind_migrate(struct inode *inode)
++{
++	struct ext4_extent_header	*eh;
++	struct ext4_super_block		*es = EXT4_SB(inode->i_sb)->s_es;
++	struct ext4_inode_info		*ei = EXT4_I(inode);
++	struct ext4_extent		*ex;
++	unsigned int			i, len;
++	ext4_fsblk_t			blk;
++	handle_t			*handle;
++	int				ret;
++
++	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
++	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
++		return -EINVAL;
++
++	ret = ext4_ext_check_inode(inode);
++	if (ret)
++		return ret;
++
++	eh = ext_inode_hdr(inode);
++	ex  = EXT_FIRST_EXTENT(eh);
++	if (ext4_blocks_count(es) > EXT4_MAX_BLOCK_FILE_PHYS ||
++	    eh->eh_depth != 0 || eh->eh_entries > 1)
++		return -EOPNOTSUPP;
++	if (eh->eh_entries == 0)
++		blk = len = 0;
++	else {
++		len = ex->ee_len;
++		blk = ext4_ext_pblock(ex);
++		if (len > EXT4_NDIR_BLOCKS)
++			return -EOPNOTSUPP;
++	}
++
++	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
++
++	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
++	memset(ei->i_data, 0, sizeof(ei->i_data));
++	for (i=0; i < len; i++)
++		ei->i_data[i] = cpu_to_le32(blk++);
++	ext4_mark_inode_dirty(handle, inode);
++	ext4_journal_stop(handle);
++	return 0;
++}
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 31f4f56..a9aab2e 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -83,17 +83,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			if (!capable(CAP_SYS_RESOURCE))
+ 				goto flags_out;
+ 		}
+-		if (oldflags & EXT4_EXTENTS_FL) {
+-			/* We don't support clearning extent flags */
+-			if (!(flags & EXT4_EXTENTS_FL)) {
+-				err = -EOPNOTSUPP;
+-				goto flags_out;
+-			}
+-		} else if (flags & EXT4_EXTENTS_FL) {
+-			/* migrate the file */
++		if ((flags ^ oldflags) & EXT4_EXTENTS_FL)
+ 			migrate = 1;
+-			flags &= ~EXT4_EXTENTS_FL;
+-		}
+ 
+ 		if (flags & EXT4_EOFBLOCKS_FL) {
+ 			/* we don't support adding EOFBLOCKS flag */
+@@ -137,8 +128,13 @@ flags_err:
+ 			err = ext4_change_inode_journal_flag(inode, jflag);
+ 		if (err)
+ 			goto flags_out;
+-		if (migrate)
+-			err = ext4_ext_migrate(inode);
++		if (migrate) {
++			if (flags & EXT4_EXTENTS_FL)
++				err = ext4_ext_migrate(inode);
++			else
++				err = ext4_ind_migrate(inode);
++		}
++
+ flags_out:
+ 		mutex_unlock(&inode->i_mutex);
+ 		mnt_drop_write_file(filp);
+-- 
+1.7.12.rc0.22.gcdd159b
 
-Some users apparently want distribution specific boot loaders as second=
-ary, chain loaded from a primary boot loader that goes in the MBR gap.
-
-
-
-On 2013-02-07 20:53:35 GMT Theodore Ts'o wrote:
-
-> This only happens if grub2 can't install itself in the space between =
-the MBR and the beginning of the first partition.
-
-The message also happens when the user explicitly requests grub-install=
- to "install to a partition" instead of to the MBR gap, on ext.
-
-grub-install /dev/sda1
-
-instead of
-
-grub-install /dev/sda
-
-There are different behaviors depending on file system: Not allowed at =
-all on XFS (with or without --force); only possible with --force on ext=
-; only possible without --force on btrfs.
-
-
-> I think the grub2 developers are being far too paranoid.
-
-
-Possibly. On the one hand syslinux/extlinus works in a similar way to G=
-RUB's --force option creating a blocklist, although I'm not familiar en=
-ough with extlinux to know if there's a significant difference.
-
-On the other hand=85
-
-> There are some folks who are proposing that we use a bootloader inode=
-:
-> for grub's benefit.=20
-
-Who are requesting this? If not GRUB's devs, it would seem there are ot=
-her developers who are also paranoid.
-
-> But it's not something that has been terribly high priority, since it=
-'s basically more of a security blanket for the grub2 developers more t=
-han anything else=85.
-
-It may be a security blanket for grub2 developers. However, it appears =
-to me users want a security blanket also.=20
-
-Users can do what they want now, with existing tools. The bug report de=
-tails the two simple commands to enable this, but some users find that =
-inadequate. What they really want is a GUI switch in their OS installer=
- to do this for them, and would be managed by fulfilling RH BZ 886502 (=
-related bug to the OP's cited bug).
-
-Despite my bias against two bootloaders (I think it's ridiculous, but t=
-hen I prefer 1/2 a boot loader), the question I have is if a blocklist =
-is really needed to find and load the 2nd boot loader? Because needing =
-a blocklist in the VBR implies the first boot loader doesn't understand=
- ext(4). If true, before engineering file system changes, users need to=
- upgrade their ancient primary boot loader.
-
-GRUB legacy 5+ years ago (and extlinux) can "chain" load to GRUB 2 by d=
-irectly reading ext, and locate /boot/grub2/i386-pc/core.img; even if i=
-t is fragmented, even if aggressive fsck, or online defragmenting is pe=
-rformed. The only thing the blocklist does is point to core.img, the th=
-ing that's normally in the MBR gap (or BIOS Boot partition on GPT).
-
-And GRUB2 as a primary bootloader goes a step easier which is it can fi=
-nd, load, display and execute distribution specific grub configuration =
-files, both current and legacy formats. It's not even necessary to chai=
-n load from GRUB2 to GRUB1 or 2.
-
-So I don't actually understand what the request really is for, it seems=
- there are multiple other ways of arriving at the goal, and the request=
- for blocklist safety and boot loader inodes is uncompelling.=20
-
-Maybe increasing ext's VBR is useful since GRUB and extlinux already ha=
-ve code to leverage that method of embedding for btrfs, which has a 64K=
-B pad at the start (vs ext's 1KB). But even here I'm skeptical of the n=
-eed.
-
-
-Chris Murphy--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
