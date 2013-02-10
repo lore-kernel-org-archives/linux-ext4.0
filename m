@@ -1,155 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: support simple conversion of extent-mapped inodes to use i_blocks
-Date: Sat,  9 Feb 2013 22:29:37 -0500
-Message-ID: <1360466977-8843-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: GRUB and the risk of block list corruption in extX
+Date: Sat, 9 Feb 2013 23:45:55 -0500
+Message-ID: <20130210044555.GD8526@thunk.org>
+References: <B6CCAB6A-D340-47F8-9231-1280151552DC@colorremedies.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Chris Murphy <lists@colorremedies.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47653 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47664 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756944Ab3BJD3k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 9 Feb 2013 22:29:40 -0500
+	id S1761083Ab3BJEp6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 9 Feb 2013 23:45:58 -0500
+Content-Disposition: inline
+In-Reply-To: <B6CCAB6A-D340-47F8-9231-1280151552DC@colorremedies.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to make it simpler to test the code which support
-i_blocks/indirect-mapped inodes, support the conversion of inodes
-which are less than 12 blocks and which are contained in no more than
-a single extent.
+On Sat, Feb 09, 2013 at 05:17:58PM -0700, Chris Murphy wrote:
+> On the other hand=E2=80=A6
+>=20
+> > There are some folks who are proposing that we use a bootloader ino=
+de:
+> > for grub's benefit.=20
+>=20
+> Who are requesting this? If not GRUB's devs, it would seem there are
+> other developers who are also paranoid.
 
-The primary intended use of this code is to converting freshly created
-zero-length files and empty directories.
+Well, it was one of the participants (or observers) of=20
 
-Note that the version of chattr in e2fsprogs 1.42.7 and earlier has a
-check that prevents the clearing of the extent flag.  A simple patch
-which allows "chattr -e <file>" to work will be checked into the
-e2fsprogs git repository.
+     https://bugzilla.redhat.com/show_bug.cgi?id=3D872826
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |  3 ++-
- fs/ext4/extents.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c   | 20 ++++++++------------
- 3 files changed, 60 insertions(+), 13 deletions(-)
+He posted on the linux-ext4 list a week or so ago:
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1876b95..95d01ec 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -403,7 +403,7 @@ struct flex_groups {
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x004380FF /* User modifiable flags */
- 
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-@@ -2602,6 +2602,7 @@ extern int ext4_ext_check_inode(struct inode *inode);
- extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
-+extern int ext4_ind_migrate(struct inode *inode);
- 
- 
- /* move_extent.c */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 143cb77..2034146 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4766,3 +4766,53 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 
- 	return error;
- }
-+
-+/*
-+ * Migrate a simple extent-based inode to use the i_blocks[] array
-+ */
-+int ext4_ind_migrate(struct inode *inode)
-+{
-+	struct ext4_extent_header	*eh;
-+	struct ext4_super_block		*es = EXT4_SB(inode->i_sb)->s_es;
-+	struct ext4_inode_info		*ei = EXT4_I(inode);
-+	struct ext4_extent		*ex;
-+	unsigned int			i, len;
-+	ext4_fsblk_t			blk;
-+	handle_t			*handle;
-+	int				ret;
-+
-+	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
-+				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
-+	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-+		return -EINVAL;
-+
-+	ret = ext4_ext_check_inode(inode);
-+	if (ret)
-+		return ret;
-+
-+	eh = ext_inode_hdr(inode);
-+	ex  = EXT_FIRST_EXTENT(eh);
-+	if (ext4_blocks_count(es) > EXT4_MAX_BLOCK_FILE_PHYS ||
-+	    eh->eh_depth != 0 || eh->eh_entries > 1)
-+		return -EOPNOTSUPP;
-+	if (eh->eh_entries == 0)
-+		blk = len = 0;
-+	else {
-+		len = ex->ee_len;
-+		blk = ext4_ext_pblock(ex);
-+		if (len > EXT4_NDIR_BLOCKS)
-+			return -EOPNOTSUPP;
-+	}
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_MIGRATE, 1);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	memset(ei->i_data, 0, sizeof(ei->i_data));
-+	for (i=0; i < len; i++)
-+		ei->i_data[i] = cpu_to_le32(blk++);
-+	ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+	return 0;
-+}
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 31f4f56..a9aab2e 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -83,17 +83,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			if (!capable(CAP_SYS_RESOURCE))
- 				goto flags_out;
- 		}
--		if (oldflags & EXT4_EXTENTS_FL) {
--			/* We don't support clearning extent flags */
--			if (!(flags & EXT4_EXTENTS_FL)) {
--				err = -EOPNOTSUPP;
--				goto flags_out;
--			}
--		} else if (flags & EXT4_EXTENTS_FL) {
--			/* migrate the file */
-+		if ((flags ^ oldflags) & EXT4_EXTENTS_FL)
- 			migrate = 1;
--			flags &= ~EXT4_EXTENTS_FL;
--		}
- 
- 		if (flags & EXT4_EOFBLOCKS_FL) {
- 			/* we don't support adding EOFBLOCKS flag */
-@@ -137,8 +128,13 @@ flags_err:
- 			err = ext4_change_inode_journal_flag(inode, jflag);
- 		if (err)
- 			goto flags_out;
--		if (migrate)
--			err = ext4_ext_migrate(inode);
-+		if (migrate) {
-+			if (flags & EXT4_EXTENTS_FL)
-+				err = ext4_ext_migrate(inode);
-+			else
-+				err = ext4_ind_migrate(inode);
-+		}
-+
- flags_out:
- 		mutex_unlock(&inode->i_mutex);
- 		mnt_drop_write_file(filp);
--- 
-1.7.12.rc0.22.gcdd159b
+    http://comments.gmane.org/gmane.comp.file-systems.ext4/36637
 
+> > But it's not something that has been terribly high priority, since
+> > it's basically more of a security blanket for the grub2 developers
+> > more than anything else=E2=80=A6.
+>=20
+> It may be a security blanket for grub2 developers. However, it
+> appears to me users want a security blanket also.
+
+Well, a participant of on the redhat bugzilla inquired about it.
+
+If someone wants to send me some patches, I'm happy to review them.  I
+personally think it's not a great use of time, but that's the
+wonderful thing about open source.  You can always send patches.  :-)
+
+> Despite my bias against two bootloaders (I think it's ridiculous,
+> but then I prefer 1/2 a boot loader), the question I have is if a
+> blocklist is really needed to find and load the 2nd boot loader?
+> Because needing a blocklist in the VBR implies the first boot loader
+> doesn't understand ext(4). If true, before engineering file system
+> changes, users need to upgrade their ancient primary boot loader.
+
+It's been a long time since I really spent a lot of time studying
+grub, but my understanding is that the first boot loader (which fits
+in the MBR) is just too small to have room to understand the ext[234]
+file system; you can't really do a lot in 492 bytes of x86
+assembly.....  That's why it uses a block list instead.
+
+But honestly, I really don't care a whole lot about the emotional
+insecurity of the grub2 developers, and if distributions are worried
+about their users being insecure, they can always comment out the
+alarmist message in grub2.  Or they can send me patches.  :-)
+
+	 	    	       	    	     - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
