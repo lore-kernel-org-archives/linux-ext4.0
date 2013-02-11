@@ -1,39 +1,67 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 09/10 v5] ext4: convert unwritten extents from extent
- status tree in end_io
-Date: Sun, 10 Feb 2013 20:52:41 -0500
-Message-ID: <20130211015241.GA13161@thunk.org>
-References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-10-git-send-email-wenqing.lz@taobao.com>
- <20130210084511.GB14075@gmail.com>
+Subject: Re: ext4 xfstests-bld results for 3.8-rc6 on Pandaboard ES
+Date: Sun, 10 Feb 2013 21:08:36 -0500
+Message-ID: <20130211020836.GC13161@thunk.org>
+References: <20130207220536.GA16092@wallace>
+ <20130208035547.GA19703@gmail.com>
+ <20130211013523.GD10801@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Zheng Liu <wenqing.lz@taobao.com>, Jan kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47811 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:47822 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751903Ab3BKBwr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Feb 2013 20:52:47 -0500
+	id S1751862Ab3BKCIk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Feb 2013 21:08:40 -0500
 Content-Disposition: inline
-In-Reply-To: <20130210084511.GB14075@gmail.com>
+In-Reply-To: <20130211013523.GD10801@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 10, 2013 at 04:45:11PM +0800, Zheng Liu wrote:
-> 
-> This chunk is missing in your 'dev' branch of ext4.  If we call
-> ext4_map_blocks here, unwritten extent in disk will never be converted
-> because ext4_map_blocks first tries to lookup extent status tree and the
-> unwriten extent in this tree has been converted in end_io callback
-> function.  It always looks up a written extent in cache, and return
-> immdiately.  Please check it again.
+Here is the latest results using "quick" on the dev branch.  I'm happy
+to say that there are no regressions amongst the set of tests found in
+the quick group, although this is because the dev branch does not
+include three patches which I've excluded since they cause a
+regression with dioread_nolock.
 
-Thanks for catching this!  I missed the the patch hunk getting
-rejected because I had been distracted with the patch hunk rejection
-caused by the fact that we've since dropped the function
-ext4_end_io_buffer_write().
+					- Ted
 
-I've fixed this up and pushed an updated git "dev" branch.
-
-     	   	       	      	 	 - Ted
+[    0.000000] Linux version 3.8.0-rc3-00060-gec333eb (tytso@closure) (gcc version 4.7.2 (Debian 4.7.2-4) ) #844 SMP Sun Feb 10 15:47:42 EST 2013
+FSTESTCFG is "all"
+FSTESTSET is "-g quick"
+BEGIN TEST: Ext4 4k block Sun Feb 10 15:50:03 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Passed all 67 tests
+END TEST: Ext4 4k block Sun Feb 10 16:29:39 EST 2013
+BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Feb 10 16:29:53 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 215 219 221 225 230 235 236 237 240 245 246 247 248 249 255 256 257 258 263 271 277 289
+Failures: 255
+END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Feb 10 16:53:31 EST 2013
+BEGIN TEST: Ext4 4k block w/ no journal Sun Feb 10 16:53:33 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Passed all 67 tests
+END TEST: Ext4 4k block w/ no journal Sun Feb 10 17:23:55 EST 2013
+BEGIN TEST: Ext4 1k block Sun Feb 10 17:24:08 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Passed all 68 tests
+END TEST: Ext4 1k block Sun Feb 10 18:25:39 EST 2013
+BEGIN TEST: Ext4 4k block w/nodelalloc and no flex_bg Sun Feb 10 18:25:43 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Failures: 223
+END TEST: Ext4 4k block w/nodelalloc and no flex_bg Sun Feb 10 18:47:15 EST 2013
+BEGIN TEST: Ext4 4k block w/metadata_csum Sun Feb 10 18:47:18 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Passed all 68 tests
+END TEST: Ext4 4k block w/metadata_csum Sun Feb 10 19:09:48 EST 2013
+BEGIN TEST: Ext4 4k block w/dioread_nolock Sun Feb 10 19:09:48 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Passed all 67 tests
+END TEST: Ext4 4k block w/dioread_nolock Sun Feb 10 19:50:21 EST 2013
+BEGIN TEST: Ext4 4k block w/data=journal Sun Feb 10 19:50:33 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 255 256 257 258 263 271 277 289
+Failures: 223
+END TEST: Ext4 4k block w/data=journal Sun Feb 10 20:26:21 EST 2013
+BEGIN TEST: Ext4 4k block w/bigalloc Sun Feb 10 20:26:35 EST 2013
+Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 075 076 079 088 091 105 112 113 117 120 123 124 126 128 129 130 131 135 141 169 184 193 198 207 210 211 212 213 214 215 219 221 223 225 228 230 235 236 237 240 243 245 246 247 248 249 257 258 263 271 277 289
+Failures: 219 235
+END TEST: Ext4 4k block w/bigalloc Sun Feb 10 20:48:06 EST 2013
