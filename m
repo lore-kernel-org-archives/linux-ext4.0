@@ -1,68 +1,95 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 05/12] ext4: pass context information to
- jbd2__journal_start()
-Date: Mon, 11 Feb 2013 15:14:41 -0500
-Message-ID: <20130211201441.GA14005@thunk.org>
-References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
- <1360446832-12724-6-git-send-email-tytso@mit.edu>
- <20130211161634.GI5318@quack.suse.cz>
- <20130211181335.GA8724@thunk.org>
- <20130211195855.GB14172@quack.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] mke2fs: set s_overhead_blocks
+Date: Mon, 11 Feb 2013 14:45:34 -0600
+Message-ID: <5119586E.8060400@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:47909 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758792Ab3BKUOo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Feb 2013 15:14:44 -0500
-Content-Disposition: inline
-In-Reply-To: <20130211195855.GB14172@quack.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:48261 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758813Ab3BKUp2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2013 15:45:28 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1BKjRaE018482
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2013 15:45:27 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r1BKjOA6002451
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-CAMELLIA256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2013 15:45:25 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 11, 2013 at 08:58:55PM +0100, Jan Kara wrote:
-> > Another downside of using a pointer to __FILE__, or some static
-> > character pointer, is that it doesn't work for the applications such
-> > as perf (and I think ftrace, although I'm not certain about the ftrace
-> > tool, since I never use it) can't handle printing the char *, since
-> > they use the ring buffer syscall directly instead of using the
-> > TP_printk statement.  So all they get is a kernel address, and
-> > something which is useful to decode.
->
->   One can overcome this relatively easily by defining the trace
-> event to have __array(char, file, 32) and then strcpy() the name to is in
-> TP_fast_assign(). We do this in lot of other trace points as well (with
-> device names etc.).
+The recent thread on the list about strange df behavior made me go
+look at how we were calculating s_overhead_blocks again, and I realized
+that mkfs still doesn't set it.  It seems like a simple thing to do;
+just look at how many blocks are in use when mkfs is done.
 
-True, but then the tradeoff is that we've bloated the size of the
-tracepoint in the ring buffer.  Given how many handles can be created
-and closed per second, keeping the tracepoint size small is also
-desireable.  Of course one thing we could do is use a small integer,
-and then have a sysfs interface which maps the integer to the file
-name.   That may be overkill, though.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-> 
-> > But for users who are using the /sys/kernel/debug/tracing interface
-> > via echo and cat, I do agree that using a static char *JBD_FILE so
-> > that /sys/kernel/debug/trace has real file names would be a bit more
-> > convenient for them.
->   Convenience of use is one thing, having programmer properly assign new
-> handle types (or use old ones) is another. And you also have questions like
-> - there are three call sites with this handle type but I cannot figure out
-> which of them is causing problems.
+However, I realize that resize2fs breaks this.  And by the time
+we have a populated fs, with bigalloc/meta/flex/whatnot, the
+calculation of overhead gets very tricky again.  (at least
+for shrinking; growing is probably easier)
 
-Well, that's what the line number is for (so you can distinguish the
-call site).  The other reason why using a type separate from the file
-name is sometimes the best way to classify different types of handle
-operations isn't necessarily by file name.  As far as the effort of
-programmers to assign new handle types, I don't really anticipate that
-this will be a common thing; it's pretty rare that we introduce code
-which requires new calls to ext4_journal_start/ext4_journal_stop.  And
-when programmers do need to do this, the question of which handle type
-to use or whether to create a new handle type is a pretty minor issue.
-The much greater difficulty is figuring out how many journal credits
-to reserve.  :-)
+Ted, did you have a better patch for this?  You added the
+superblock field so maybe you had something in mind to keep it
+up to date as the filesystem size changes?
 
-						- Ted
+
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index bbf477a..3413bb2 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2346,6 +2346,38 @@ static int create_quota_inodes(ext2_filsys fs)
+ 	return 0;
+ }
+ 
++/*
++ * Set the filesystem's metadata overhead - the number of blocks
++ * used for all mkfs-time metadata.  We could carefully account
++ * for all blocks, or do it the easy way:  See how many blocks
++ * have been used by mkfs, at the end of mkfs.  Add the space used
++ * by the root dir and lost+found back in.
++ */
++void set_fs_overhead(ext2_filsys fs) {
++	unsigned int		overhead;
++	struct ext2_inode       inode;
++	ext2_ino_t		inum;
++	blk64_t			iblocks;
++
++	/* overhead is everything mkfs has used ... */
++	overhead = ext2fs_blocks_count(fs->super) -
++		ext2fs_free_blocks_count(fs->super);
++
++	/* ... not counting / and /lost+found */
++	if (!ext2fs_read_inode(fs, EXT2_ROOT_INO, &inode)) {
++		iblocks = ext2fs_inode_i_blocks(fs, &inode);
++		overhead -= (iblocks << 9) / fs->blocksize;
++	}
++
++	if (!ext2fs_lookup(fs, EXT2_ROOT_INO, "lost+found", 10, 0, &inum) &&
++	    !ext2fs_read_inode(fs, inum, &inode)) {
++		iblocks = ext2fs_inode_i_blocks(fs, &inode);
++		overhead -= (iblocks << 9) / fs->blocksize;
++	}
++
++	fs->super->s_overhead_blocks = overhead;
++}
++
+ int main (int argc, char *argv[])
+ {
+ 	errcode_t	retval = 0;
+@@ -2733,6 +2764,8 @@ no_journal:
+ 				       EXT4_FEATURE_RO_COMPAT_QUOTA))
+ 		create_quota_inodes(fs);
+ 
++	set_fs_overhead(fs);
++
+ 	if (!quiet)
+ 		printf(_("Writing superblocks and "
+ 		       "filesystem accounting information: "));
+
