@@ -1,95 +1,193 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 xfstests-bld results for 3.8-rc6 on Pandaboard ES
-Date: Mon, 11 Feb 2013 09:56:12 -0600
-Message-ID: <5119149C.1030602@redhat.com>
-References: <20130207220536.GA16092@wallace> <20130208035547.GA19703@gmail.com> <20130211013523.GD10801@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 01/12] jbd2: track request delay statistics
+Date: Mon, 11 Feb 2013 16:57:46 +0100
+Message-ID: <20130211155746.GG5318@quack.suse.cz>
+References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
+ <1360446832-12724-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47686 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:37588 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751988Ab3BKP4G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Feb 2013 10:56:06 -0500
-In-Reply-To: <20130211013523.GD10801@thunk.org>
+	id S1751988Ab3BKP5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2013 10:57:48 -0500
+Content-Disposition: inline
+In-Reply-To: <1360446832-12724-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/10/13 7:35 PM, Theodore Ts'o wrote:
-> Here's the results of my xfstests run using "auto" on the kernel which
-> includes all of the ext4 patches that were merged before 3.8-rc2.  (It
-> doesn't include three fixup ext4 patches which got merged before
-> 3.8-rc2 and 3.8-rc3.)  My goal is to make sure the patches I submit to
-> Linus during the next merge window has no regressions compared to this
-> xfstests run.
+On Sat 09-02-13 16:53:41, Ted Tso wrote:
+> Track the delay between when we first request that the commit begin
+> and when it actually begins, so we can see how much of a gap exists.
+> In theory, this should just be the remaining scheduling quantuum of
+> the thread which requested the commit (assuming it was not a
+> synchronous operation which triggered the commit request) plus
+> scheduling overhead; however, it's possible that real time processes
+> might get in the way of letting the kjournald thread from executing.
+  Looks good. I just wonder whether jiffies really have enough precision to
+get you meaningful numbers. Did you try that?
 
-So the superset of failing tests seems to be:
-
-223 270 274 280
-
-223: file alignment tests (mkfs w/ stripe geom, check for allocation on stripe boundary)
-- not critical, always been flaky AFAIK
-
-270: stress fs at ENOSPC, check fs & quota consistency
-- this one is a little worrisome, only failing on nodelalloc+noflexbg,
-  but maybe that means "failing when running an ext3 filesystem?"
-
-274: prealloc reservation test
-- this fails because it's a diabolical test, with reservation into badly
-  fragmented freespace, and there is not sufficient space reserved for
-  metadata, so writes into prealloc'd space fails, breaking the fallocate
-  guarantees.
-
-280: Test quota vs. suspend/freeze deadlock
-- If this is failing it's a regression, supposedly 
-  dcdbed85 quota: Fix deadlock with suspend and quotas
-  fixed this once already.
-
--Eric
-
-> 						- Ted
+								Honza
 > 
-> [    0.000000] Linux version 3.8.0-rc1-00048-g7c8b4e6 (tytso@closure) (gcc version 4.7.1 (Debian 4.7.1-7) ) #668 SMP Sun Dec 30 13:27:49 EST 2012
-> FSTESTCFG is "all"
-> FSTESTSET is "-g auto"
-> BEGIN TEST: Ext4 4k block Sun Dec 30 13:30:15 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 274 280
-> END TEST: Ext4 4k block Sun Dec 30 15:13:45 EST 2012
-> BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Dec 30 15:13:53 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 215 219 221 224 225 226 230 231 232 233 234 235 236 237 239 240 245 246 247 248 249 257 258 263 269 270 271 272 273 275 277 280 285
-> Failures: 280
-> END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Sun Dec 30 16:57:12 EST 2012
-> BEGIN TEST: Ext4 4k block w/ no journal Sun Dec 30 16:57:14 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 285
-> Failures: 274
-> END TEST: Ext4 4k block w/ no journal Sun Dec 30 17:40:08 EST 2012
-> BEGIN TEST: Ext4 1k block Sun Dec 30 17:40:13 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 274 280
-> END TEST: Ext4 1k block Sun Dec 30 21:04:02 EST 2012
-> BEGIN TEST: Ext4 4k block w/nodelalloc and no flex_bg Sun Dec 30 21:04:05 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 223 270 274 280
-> END TEST: Ext4 4k block w/nodelalloc and no flex_bg Sun Dec 30 22:38:40 EST 2012
-> BEGIN TEST: Ext4 4k block w/metadata_csum Sun Dec 30 22:38:43 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 274 280
-> END TEST: Ext4 4k block w/metadata_csum Mon Dec 31 00:19:13 EST 2012
-> BEGIN TEST: Ext4 4k block w/dioread_nolock Mon Dec 31 00:19:13 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 274 280
-> END TEST: Ext4 4k block w/dioread_nolock Mon Dec 31 02:07:29 EST 2012
-> BEGIN TEST: Ext4 4k block w/data=journal Mon Dec 31 02:07:34 EST 2012
-> Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129 130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 213 214 215 219 221 223 224 225 226 228 230 231 232 233 234 235 236 237 239 240 243 245 246 247 248 249 255 256 257 258 263 269 270 271 272 273 274 275 277 280 285
-> Failures: 223 274 280
-> END TEST: Ext4 4k block w/data=journal Mon Dec 31 03:54:25 EST 2012
-> BEGIN TEST: Ext4 4k block w/bigalloc Mon Dec 31 03:54:32 EST 2012
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/jbd2/commit.c            |  8 ++++++++
+>  fs/jbd2/journal.c           | 12 +++++++++---
+>  fs/jbd2/transaction.c       |  1 +
+>  include/linux/jbd2.h        |  7 +++++++
+>  include/trace/events/jbd2.h |  8 ++++++--
+>  5 files changed, 31 insertions(+), 5 deletions(-)
 > 
-> <end of test; as of 3.8-rc2, with bigalloc, the test run hangs with a
-> huge number of errors spewed out to the console during xfstest #15.
-> See the attached (compressed) log for more details>
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 3091d42..750c701 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -435,7 +435,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>  
+>  	trace_jbd2_commit_locking(journal, commit_transaction);
+>  	stats.run.rs_wait = commit_transaction->t_max_wait;
+> +	stats.run.rs_request_delay = 0;
+>  	stats.run.rs_locked = jiffies;
+> +	if (commit_transaction->t_requested)
+> +		stats.run.rs_request_delay =
+> +			jbd2_time_diff(commit_transaction->t_requested,
+> +				       stats.run.rs_locked);
+>  	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
+>  					      stats.run.rs_locked);
+>  
+> @@ -1116,7 +1121,10 @@ restart_loop:
+>  	 */
+>  	spin_lock(&journal->j_history_lock);
+>  	journal->j_stats.ts_tid++;
+> +	if (commit_transaction->t_requested)
+> +		journal->j_stats.ts_requested++;
+>  	journal->j_stats.run.rs_wait += stats.run.rs_wait;
+> +	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
+>  	journal->j_stats.run.rs_running += stats.run.rs_running;
+>  	journal->j_stats.run.rs_locked += stats.run.rs_locked;
+>  	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 1a80e31..4ba2e81 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+>  		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
+>  			  journal->j_commit_request,
+>  			  journal->j_commit_sequence);
+> +		journal->j_running_transaction->t_requested = jiffies;
+>  		wake_up(&journal->j_wait_commit);
+>  		return 1;
+>  	} else if (!tid_geq(journal->j_commit_request, target))
+> @@ -898,13 +899,18 @@ static int jbd2_seq_info_show(struct seq_file *seq, void *v)
+>  
+>  	if (v != SEQ_START_TOKEN)
+>  		return 0;
+> -	seq_printf(seq, "%lu transaction, each up to %u blocks\n",
+> -			s->stats->ts_tid,
+> -			s->journal->j_max_transaction_buffers);
+> +	seq_printf(seq, "%lu transactions (%lu requested), "
+> +		   "each up to %u blocks\n",
+> +		   s->stats->ts_tid, s->stats->ts_requested,
+> +		   s->journal->j_max_transaction_buffers);
+>  	if (s->stats->ts_tid == 0)
+>  		return 0;
+>  	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
+>  	    jiffies_to_msecs(s->stats->run.rs_wait / s->stats->ts_tid));
+> +	seq_printf(seq, "  %ums request delay\n",
+> +	    (s->stats->ts_requested == 0) ? 0 :
+> +	    jiffies_to_msecs(s->stats->run.rs_request_delay /
+> +			     s->stats->ts_requested));
+>  	seq_printf(seq, "  %ums running transaction\n",
+>  	    jiffies_to_msecs(s->stats->run.rs_running / s->stats->ts_tid));
+>  	seq_printf(seq, "  %ums transaction was being locked\n",
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index df9f297..735609e 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -100,6 +100,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
+>  	journal->j_running_transaction = transaction;
+>  	transaction->t_max_wait = 0;
+>  	transaction->t_start = jiffies;
+> +	transaction->t_requested = 0;
+>  
+>  	return transaction;
+>  }
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index e30b663..e0aafc4 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -581,6 +581,11 @@ struct transaction_s
+>  	unsigned long		t_start;
+>  
+>  	/*
+> +	 * When commit was requested
+> +	 */
+> +	unsigned long		t_requested;
+> +
+> +	/*
+>  	 * Checkpointing stats [j_checkpoint_sem]
+>  	 */
+>  	struct transaction_chp_stats_s t_chp_stats;
+> @@ -637,6 +642,7 @@ struct transaction_s
+>  
+>  struct transaction_run_stats_s {
+>  	unsigned long		rs_wait;
+> +	unsigned long		rs_request_delay;
+>  	unsigned long		rs_running;
+>  	unsigned long		rs_locked;
+>  	unsigned long		rs_flushing;
+> @@ -649,6 +655,7 @@ struct transaction_run_stats_s {
+>  
+>  struct transaction_stats_s {
+>  	unsigned long		ts_tid;
+> +	unsigned long		ts_requested;
+>  	struct transaction_run_stats_s run;
+>  };
+>  
+> diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+> index 127993d..5419f57 100644
+> --- a/include/trace/events/jbd2.h
+> +++ b/include/trace/events/jbd2.h
+> @@ -142,6 +142,7 @@ TRACE_EVENT(jbd2_run_stats,
+>  		__field(		dev_t,	dev		)
+>  		__field(	unsigned long,	tid		)
+>  		__field(	unsigned long,	wait		)
+> +		__field(	unsigned long,	request_delay	)
+>  		__field(	unsigned long,	running		)
+>  		__field(	unsigned long,	locked		)
+>  		__field(	unsigned long,	flushing	)
+> @@ -155,6 +156,7 @@ TRACE_EVENT(jbd2_run_stats,
+>  		__entry->dev		= dev;
+>  		__entry->tid		= tid;
+>  		__entry->wait		= stats->rs_wait;
+> +		__entry->request_delay	= stats->rs_request_delay;
+>  		__entry->running	= stats->rs_running;
+>  		__entry->locked		= stats->rs_locked;
+>  		__entry->flushing	= stats->rs_flushing;
+> @@ -164,10 +166,12 @@ TRACE_EVENT(jbd2_run_stats,
+>  		__entry->blocks_logged	= stats->rs_blocks_logged;
+>  	),
+>  
+> -	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
+> -		  "logging %u handle_count %u blocks %u blocks_logged %u",
+> +	TP_printk("dev %d,%d tid %lu wait %u request_delay %u running %u "
+> +		  "locked %u flushing %u logging %u handle_count %u "
+> +		  "blocks %u blocks_logged %u",
+>  		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+>  		  jiffies_to_msecs(__entry->wait),
+> +		  jiffies_to_msecs(__entry->request_delay),
+>  		  jiffies_to_msecs(__entry->running),
+>  		  jiffies_to_msecs(__entry->locked),
+>  		  jiffies_to_msecs(__entry->flushing),
+> -- 
+> 1.7.12.rc0.22.gcdd159b
 > 
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
