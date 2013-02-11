@@ -1,186 +1,83 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 01/12] jbd2: track request delay statistics
-Date: Mon, 11 Feb 2013 16:57:46 +0100
-Message-ID: <20130211155746.GG5318@quack.suse.cz>
+Subject: Re: [PATCH 02/12] jbd2: revert "jbd2: add COW fields to struct
+ jbd2_journal_handle"
+Date: Mon, 11 Feb 2013 16:58:36 +0100
+Message-ID: <20130211155836.GH5318@quack.suse.cz>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
- <1360446832-12724-2-git-send-email-tytso@mit.edu>
+ <1360446832-12724-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37588 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:37635 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751988Ab3BKP5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Feb 2013 10:57:48 -0500
+	id S1756660Ab3BKP6j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2013 10:58:39 -0500
 Content-Disposition: inline
-In-Reply-To: <1360446832-12724-2-git-send-email-tytso@mit.edu>
+In-Reply-To: <1360446832-12724-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 09-02-13 16:53:41, Ted Tso wrote:
-> Track the delay between when we first request that the commit begin
-> and when it actually begins, so we can see how much of a gap exists.
-> In theory, this should just be the remaining scheduling quantuum of
-> the thread which requested the commit (assuming it was not a
-> synchronous operation which triggered the commit request) plus
-> scheduling overhead; however, it's possible that real time processes
-> might get in the way of letting the kjournald thread from executing.
-  Looks good. I just wonder whether jiffies really have enough precision to
-get you meaningful numbers. Did you try that?
+On Sat 09-02-13 16:53:42, Ted Tso wrote:
+> This reverts commit 93737456d68ddcb86232f669b83da673dd12e351.
+> 
+> The cow-snapshots effort is no longer active, so remove these extra
+> fields to shrink down the handle structure.
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
 > 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/jbd2/commit.c            |  8 ++++++++
->  fs/jbd2/journal.c           | 12 +++++++++---
->  fs/jbd2/transaction.c       |  1 +
->  include/linux/jbd2.h        |  7 +++++++
->  include/trace/events/jbd2.h |  8 ++++++--
->  5 files changed, 31 insertions(+), 5 deletions(-)
+>  include/linux/jbd2.h | 28 +++-------------------------
+>  1 file changed, 3 insertions(+), 25 deletions(-)
 > 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 3091d42..750c701 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -435,7 +435,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
->  
->  	trace_jbd2_commit_locking(journal, commit_transaction);
->  	stats.run.rs_wait = commit_transaction->t_max_wait;
-> +	stats.run.rs_request_delay = 0;
->  	stats.run.rs_locked = jiffies;
-> +	if (commit_transaction->t_requested)
-> +		stats.run.rs_request_delay =
-> +			jbd2_time_diff(commit_transaction->t_requested,
-> +				       stats.run.rs_locked);
->  	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
->  					      stats.run.rs_locked);
->  
-> @@ -1116,7 +1121,10 @@ restart_loop:
->  	 */
->  	spin_lock(&journal->j_history_lock);
->  	journal->j_stats.ts_tid++;
-> +	if (commit_transaction->t_requested)
-> +		journal->j_stats.ts_requested++;
->  	journal->j_stats.run.rs_wait += stats.run.rs_wait;
-> +	journal->j_stats.run.rs_request_delay += stats.run.rs_request_delay;
->  	journal->j_stats.run.rs_running += stats.run.rs_running;
->  	journal->j_stats.run.rs_locked += stats.run.rs_locked;
->  	journal->j_stats.run.rs_flushing += stats.run.rs_flushing;
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 1a80e31..4ba2e81 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -533,6 +533,7 @@ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
->  		jbd_debug(1, "JBD2: requesting commit %d/%d\n",
->  			  journal->j_commit_request,
->  			  journal->j_commit_sequence);
-> +		journal->j_running_transaction->t_requested = jiffies;
->  		wake_up(&journal->j_wait_commit);
->  		return 1;
->  	} else if (!tid_geq(journal->j_commit_request, target))
-> @@ -898,13 +899,18 @@ static int jbd2_seq_info_show(struct seq_file *seq, void *v)
->  
->  	if (v != SEQ_START_TOKEN)
->  		return 0;
-> -	seq_printf(seq, "%lu transaction, each up to %u blocks\n",
-> -			s->stats->ts_tid,
-> -			s->journal->j_max_transaction_buffers);
-> +	seq_printf(seq, "%lu transactions (%lu requested), "
-> +		   "each up to %u blocks\n",
-> +		   s->stats->ts_tid, s->stats->ts_requested,
-> +		   s->journal->j_max_transaction_buffers);
->  	if (s->stats->ts_tid == 0)
->  		return 0;
->  	seq_printf(seq, "average: \n  %ums waiting for transaction\n",
->  	    jiffies_to_msecs(s->stats->run.rs_wait / s->stats->ts_tid));
-> +	seq_printf(seq, "  %ums request delay\n",
-> +	    (s->stats->ts_requested == 0) ? 0 :
-> +	    jiffies_to_msecs(s->stats->run.rs_request_delay /
-> +			     s->stats->ts_requested));
->  	seq_printf(seq, "  %ums running transaction\n",
->  	    jiffies_to_msecs(s->stats->run.rs_running / s->stats->ts_tid));
->  	seq_printf(seq, "  %ums transaction was being locked\n",
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index df9f297..735609e 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -100,6 +100,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
->  	journal->j_running_transaction = transaction;
->  	transaction->t_max_wait = 0;
->  	transaction->t_start = jiffies;
-> +	transaction->t_requested = 0;
->  
->  	return transaction;
->  }
 > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index e30b663..e0aafc4 100644
+> index e0aafc4..24db725 100644
 > --- a/include/linux/jbd2.h
 > +++ b/include/linux/jbd2.h
-> @@ -581,6 +581,11 @@ struct transaction_s
->  	unsigned long		t_start;
+> @@ -397,35 +397,13 @@ struct jbd2_journal_handle
+>  	int			h_err;
 >  
->  	/*
-> +	 * When commit was requested
-> +	 */
-> +	unsigned long		t_requested;
-> +
-> +	/*
->  	 * Checkpointing stats [j_checkpoint_sem]
->  	 */
->  	struct transaction_chp_stats_s t_chp_stats;
-> @@ -637,6 +642,7 @@ struct transaction_s
+>  	/* Flags [no locking] */
+> -	unsigned int	h_sync:1;	/* sync-on-close */
+> -	unsigned int	h_jdata:1;	/* force data journaling */
+> -	unsigned int	h_aborted:1;	/* fatal error on handle */
+> -	unsigned int	h_cowing:1;	/* COWing block to snapshot */
+> -
+> -	/* Number of buffers requested by user:
+> -	 * (before adding the COW credits factor) */
+> -	unsigned int	h_base_credits:14;
+> -
+> -	/* Number of buffers the user is allowed to dirty:
+> -	 * (counts only buffers dirtied when !h_cowing) */
+> -	unsigned int	h_user_credits:14;
+> -
+> +	unsigned int	h_sync:		1;	/* sync-on-close */
+> +	unsigned int	h_jdata:	1;	/* force data journaling */
+> +	unsigned int	h_aborted:	1;	/* fatal error on handle */
 >  
->  struct transaction_run_stats_s {
->  	unsigned long		rs_wait;
-> +	unsigned long		rs_request_delay;
->  	unsigned long		rs_running;
->  	unsigned long		rs_locked;
->  	unsigned long		rs_flushing;
-> @@ -649,6 +655,7 @@ struct transaction_run_stats_s {
->  
->  struct transaction_stats_s {
->  	unsigned long		ts_tid;
-> +	unsigned long		ts_requested;
->  	struct transaction_run_stats_s run;
+>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
+>  	struct lockdep_map	h_lockdep_map;
+>  #endif
+> -
+> -#ifdef CONFIG_JBD2_DEBUG
+> -	/* COW debugging counters: */
+> -	unsigned int h_cow_moved; /* blocks moved to snapshot */
+> -	unsigned int h_cow_copied; /* blocks copied to snapshot */
+> -	unsigned int h_cow_ok_jh; /* blocks already COWed during current
+> -				     transaction */
+> -	unsigned int h_cow_ok_bitmap; /* blocks not set in COW bitmap */
+> -	unsigned int h_cow_ok_mapped;/* blocks already mapped in snapshot */
+> -	unsigned int h_cow_bitmaps; /* COW bitmaps created */
+> -	unsigned int h_cow_excluded; /* blocks set in exclude bitmap */
+> -#endif
 >  };
 >  
-> diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-> index 127993d..5419f57 100644
-> --- a/include/trace/events/jbd2.h
-> +++ b/include/trace/events/jbd2.h
-> @@ -142,6 +142,7 @@ TRACE_EVENT(jbd2_run_stats,
->  		__field(		dev_t,	dev		)
->  		__field(	unsigned long,	tid		)
->  		__field(	unsigned long,	wait		)
-> +		__field(	unsigned long,	request_delay	)
->  		__field(	unsigned long,	running		)
->  		__field(	unsigned long,	locked		)
->  		__field(	unsigned long,	flushing	)
-> @@ -155,6 +156,7 @@ TRACE_EVENT(jbd2_run_stats,
->  		__entry->dev		= dev;
->  		__entry->tid		= tid;
->  		__entry->wait		= stats->rs_wait;
-> +		__entry->request_delay	= stats->rs_request_delay;
->  		__entry->running	= stats->rs_running;
->  		__entry->locked		= stats->rs_locked;
->  		__entry->flushing	= stats->rs_flushing;
-> @@ -164,10 +166,12 @@ TRACE_EVENT(jbd2_run_stats,
->  		__entry->blocks_logged	= stats->rs_blocks_logged;
->  	),
 >  
-> -	TP_printk("dev %d,%d tid %lu wait %u running %u locked %u flushing %u "
-> -		  "logging %u handle_count %u blocks %u blocks_logged %u",
-> +	TP_printk("dev %d,%d tid %lu wait %u request_delay %u running %u "
-> +		  "locked %u flushing %u logging %u handle_count %u "
-> +		  "blocks %u blocks_logged %u",
->  		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
->  		  jiffies_to_msecs(__entry->wait),
-> +		  jiffies_to_msecs(__entry->request_delay),
->  		  jiffies_to_msecs(__entry->running),
->  		  jiffies_to_msecs(__entry->locked),
->  		  jiffies_to_msecs(__entry->flushing),
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
