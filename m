@@ -1,65 +1,172 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 xfstests-bld results for 3.8-rc6 on Pandaboard ES
-Date: Mon, 11 Feb 2013 16:29:08 +0100
-Message-ID: <20130211152908.GE5318@quack.suse.cz>
-References: <20130207220536.GA16092@wallace>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/2] ext4: use module parameters instead of debugfs for
+ mballoc_debug
+Date: Mon, 11 Feb 2013 09:36:48 -0600
+Message-ID: <51191010.50402@redhat.com>
+References: <1360460534-818-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36220 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:32061 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756758Ab3BKP3K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Feb 2013 10:29:10 -0500
-Content-Disposition: inline
-In-Reply-To: <20130207220536.GA16092@wallace>
+	id S1754209Ab3BKPgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2013 10:36:43 -0500
+In-Reply-To: <1360460534-818-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 07-02-13 17:05:36, Eric Whitney wrote:
-> Here's the lockdep report for xfstest 113 run in the dioread_nolock scenario
-> as mentioned above (the taint is due to an unrelated warning from the clk
-> subsystem believed to be unique to 3.8 on Pandaboards/OMAP):
-  Thanks for the report!
-
-> [ INFO: possible circular locking dependency detected ]
-> 3.8.0-rc6 #1 Tainted: G        W   
-> -------------------------------------------------------
-> aio-stress/8597 is trying to acquire lock:
->  (&mm->mmap_sem){++++++}, at: [<c00f1928>] get_user_pages_fast+0x48/0x88
+On 2/9/13 7:42 PM, Theodore Ts'o wrote:
+> There are multiple reasons to move away from debugfs.  First of all,
+> we are only using it for a single parameter, and it is much more
+> complicated to set up (some 30 lines of code compared to 3), and one
+> more thing that might fail while loading the ext4 module.
 > 
-> but task is already holding lock:
->  (&ei->i_data_sem){++++.+}, at: [<c01ae2a8>] ext4_direct_IO+0x3d4/0x450
+> Secondly, as a module paramter it can be specified as a boot option if
+> ext4 is built into the kernel, or as a parameter when the module is
+> loaded, and it can also be manipulated dynamically under
+> /sys/module/ext4/parameters/mballoc_debug.  So it is more flexible.
+> 
+> Ultimately we want to move away from using mb_debug() towards
+> tracepoints, but for now this is still a useful simplification of the
+> code base.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+Good idea.
+
+My only suggestion would be to add parameter information to the descriptions -
+default value and permissible value range?  I guess nothing enforces that
+like for proc entries, right?
+
+ "Debugging level for ext4's mballoc: 0/1 (default 0)"
+
+(hm, we never pass anything but "1" o_O)
+
+It doesn't seem like the values need sanity checking at module load time,
+but maybe it'd be worth it just out of paranoia.
+
+Updating Documentation/filesystems/ext4.txt would be good too.
+
+Thanks,
+-Eric
+
+-Eric
+
+> ---
+>  fs/ext4/mballoc.c | 47 +++++++++--------------------------------------
+>  fs/ext4/mballoc.h |  4 ++--
+>  2 files changed, 11 insertions(+), 40 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index e350885..6540ebe 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -23,11 +23,18 @@
 >  
-> which lock already depends on the new lock.
-  Drat, this looks like a real deadlock possibility. I didn't realize this
-when reviewing the dioread_nolock patches but i_data_sem ranks below
-mmap_sem because we need to grab it in page fault path to map blocks. So we
-cannot acquire it in ext4_ext_direct_IO() as it calls
-__blockdev_direct_IO() which gets mmap_sem to fault in user-provided pages.
-That will be tough to fix... Luckily, the deadlock isn't easy to hit in
-practice as it requires mmap and DIO to happen on the same file (already
-unlikely) and furthermore three processes, two of them sharing mm, to race
-in the right way:
+>  #include "ext4_jbd2.h"
+>  #include "mballoc.h"
+> -#include <linux/debugfs.h>
+>  #include <linux/log2.h>
+> +#include <linux/module.h>
+>  #include <linux/slab.h>
+>  #include <trace/events/ext4.h>
+>  
+> +#ifdef CONFIG_EXT4_DEBUG
+> +ushort ext4_mballoc_debug __read_mostly;
+> +
+> +module_param_named(mballoc_debug, ext4_mballoc_debug, ushort, 0644);
+> +MODULE_PARM_DESC(mballoc_debug, "Debugging level for ext4's mballoc");
+> +#endif
+> +
+>  /*
+>   * MUSTDO:
+>   *   - test ext4_ext_search_left() and ext4_ext_search_right()
+> @@ -2660,40 +2667,6 @@ static void ext4_free_data_callback(struct super_block *sb,
+>  	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+>  }
+>  
+> -#ifdef CONFIG_EXT4_DEBUG
+> -u8 mb_enable_debug __read_mostly;
+> -
+> -static struct dentry *debugfs_dir;
+> -static struct dentry *debugfs_debug;
+> -
+> -static void __init ext4_create_debugfs_entry(void)
+> -{
+> -	debugfs_dir = debugfs_create_dir("ext4", NULL);
+> -	if (debugfs_dir)
+> -		debugfs_debug = debugfs_create_u8("mballoc-debug",
+> -						  S_IRUGO | S_IWUSR,
+> -						  debugfs_dir,
+> -						  &mb_enable_debug);
+> -}
+> -
+> -static void ext4_remove_debugfs_entry(void)
+> -{
+> -	debugfs_remove(debugfs_debug);
+> -	debugfs_remove(debugfs_dir);
+> -}
+> -
+> -#else
+> -
+> -static void __init ext4_create_debugfs_entry(void)
+> -{
+> -}
+> -
+> -static void ext4_remove_debugfs_entry(void)
+> -{
+> -}
+> -
+> -#endif
+> -
+>  int __init ext4_init_mballoc(void)
+>  {
+>  	ext4_pspace_cachep = KMEM_CACHE(ext4_prealloc_space,
+> @@ -2715,7 +2688,6 @@ int __init ext4_init_mballoc(void)
+>  		kmem_cache_destroy(ext4_ac_cachep);
+>  		return -ENOMEM;
+>  	}
+> -	ext4_create_debugfs_entry();
+>  	return 0;
+>  }
+>  
+> @@ -2730,7 +2702,6 @@ void ext4_exit_mballoc(void)
+>  	kmem_cache_destroy(ext4_ac_cachep);
+>  	kmem_cache_destroy(ext4_free_data_cachep);
+>  	ext4_groupinfo_destroy_slabs();
+> -	ext4_remove_debugfs_entry();
+>  }
+>  
+>  
+> @@ -3876,7 +3847,7 @@ static void ext4_mb_show_ac(struct ext4_allocation_context *ac)
+>  	struct super_block *sb = ac->ac_sb;
+>  	ext4_group_t ngroups, i;
+>  
+> -	if (!mb_enable_debug ||
+> +	if (!ext4_mballoc_debug ||
+>  	    (EXT4_SB(sb)->s_mount_flags & EXT4_MF_FS_ABORTED))
+>  		return;
+>  
+> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+> index 3ccd889..08481ee 100644
+> --- a/fs/ext4/mballoc.h
+> +++ b/fs/ext4/mballoc.h
+> @@ -37,11 +37,11 @@
+>  /*
+>   */
+>  #ifdef CONFIG_EXT4_DEBUG
+> -extern u8 mb_enable_debug;
+> +extern ushort ext4_mballoc_debug;
+>  
+>  #define mb_debug(n, fmt, a...)	                                        \
+>  	do {								\
+> -		if ((n) <= mb_enable_debug) {		        	\
+> +		if ((n) <= ext4_mballoc_debug) {		        \
+>  			printk(KERN_DEBUG "(%s, %d): %s: ",		\
+>  			       __FILE__, __LINE__, __func__);		\
+>  			printk(fmt, ## a);				\
+> 
 
-Thread 1		Thread 2	Thread 3
-down_read(mmap_sem);
-			mmap()
-...			  down_write(mmap_sem); [blocked]
-  ext4_page_mkwrite();
-					ext4_ext_direct_IO()
-					  down_read(i_data_sem);
-					  ...
-					  __blockdev_direct_IO();
-					    get_user_pages_fast();
-					      down_read(mmap_sem); [blocked]
-    ...
-    ext4_da_get_block_prep();
-      down_write(i_data_sem); [blocked]
-
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
