@@ -1,292 +1,231 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 11/12] ext4: fix the number of credits needed for acl
- ops with inline data
-Date: Mon, 11 Feb 2013 17:30:46 +0100
-Message-ID: <20130211163046.GN5318@quack.suse.cz>
+Subject: Re: [PATCH 06/12] ext4: grab page before starting transaction
+ handle in write_begin()
+Date: Mon, 11 Feb 2013 17:35:49 +0100
+Message-ID: <20130211163549.GO5318@quack.suse.cz>
 References: <1360446832-12724-1-git-send-email-tytso@mit.edu>
- <1360446832-12724-12-git-send-email-tytso@mit.edu>
+ <1360446832-12724-7-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Tao Ma <boyu.mt@taobao.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39056 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:39269 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757900Ab3BKQat (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Feb 2013 11:30:49 -0500
+	id S1757785Ab3BKQfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Feb 2013 11:35:51 -0500
 Content-Disposition: inline
-In-Reply-To: <1360446832-12724-12-git-send-email-tytso@mit.edu>
+In-Reply-To: <1360446832-12724-7-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 09-02-13 16:53:51, Ted Tso wrote:
-> Operations which modify extended attributes may need extra journal
-> credits if inline data is used, since there is a chance that some
-> extended attributes may need to get pushed to an external attribute
-> block.
+On Sat 09-02-13 16:53:46, Ted Tso wrote:
+> The grab_cache_page_write_begin() function can potentially sleep for a
+> long time, since it may need to do memory allocation which can block
+> if the system is under significant memory pressure, and because it may
+> be blocked on page writeback.  If it does take a long time to grab the
+> page, it's better that we not hold an active jbd2 handle.
 > 
-> Changes to reflect this was made in xattr.c, but they were missed in
-> fs/ext4/acl.c.  To fix this, abstract the calculation of the number of
-> credits needed for xattr operations to an inline function defined in
-> ext4_jbd2.h, and use it in acl.c and xattr.c.
+> So grab a handle on the page first, and _then_ start the transaction
+> handle.
 > 
-> Also move the function declarations used in inline.c from xattr.h
-> (where they are non-obviously hidden, and caused problems since
-> ext4_jbd2.h needs to use the function ext4_has_inline_data), and move
-> them to ext4.h.
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+> This commit fixes the following long transaction handle hold time:
+> 
+> postmark-2917  [000] ....   196.435786: jbd2_handle_stats: dev 254,32
+>    tid 570 type 2 line_no 2541 interval 311 sync 0 requested_blocks 1
+>    dirtied_blocks 0
+  OK, the patch looks correct. ext4_write_begin() becomes a bit complex but
+it's still well contained so I guess it's worth the improvement. You can
+add:
+  Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> 
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Tao Ma <boyu.mt@taobao.com>
 > ---
->  fs/ext4/acl.c       |  4 +--
->  fs/ext4/ext4.h      | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/ext4_jbd2.h | 14 +++++++++++
->  fs/ext4/xattr.c     |  9 +------
->  fs/ext4/xattr.h     | 68 ---------------------------------------------------
->  5 files changed, 87 insertions(+), 78 deletions(-)
+>  fs/ext4/inode.c | 111 ++++++++++++++++++++++++++++++++++----------------------
+>  1 file changed, 68 insertions(+), 43 deletions(-)
 > 
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 406cf8b..39a54a0 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -325,7 +325,7 @@ ext4_acl_chmod(struct inode *inode)
->  		return error;
->  retry:
->  	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
-> -			EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
-> +				    ext4_jbd2_credits_xattr(inode));
->  	if (IS_ERR(handle)) {
->  		error = PTR_ERR(handle);
->  		ext4_std_error(inode->i_sb, error);
-> @@ -423,7 +423,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c3c47e2..38164a8 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -906,32 +906,40 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+>  		ret = ext4_try_to_write_inline_data(mapping, inode, pos, len,
+>  						    flags, pagep);
+>  		if (ret < 0)
+> -			goto out;
+> -		if (ret == 1) {
+> -			ret = 0;
+> -			goto out;
+> -		}
+> +			return ret;
+> +		if (ret == 1)
+> +			return 0;
+>  	}
 >  
->  retry:
->  	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
-> -				    EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
-> +				    ext4_jbd2_credits_xattr(inode));
->  	if (IS_ERR(handle)) {
->  		error = PTR_ERR(handle);
->  		goto release_and_out;
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index c2c64da..9897cdf 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2443,6 +2443,75 @@ extern const struct file_operations ext4_file_operations;
->  extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
->  extern void ext4_unwritten_wait(struct inode *inode);
->  
-> +/* inline.c */
-> +extern int ext4_has_inline_data(struct inode *inode);
-> +extern int ext4_get_inline_size(struct inode *inode);
-> +extern int ext4_get_max_inline_size(struct inode *inode);
-> +extern int ext4_find_inline_data_nolock(struct inode *inode);
-> +extern void ext4_write_inline_data(struct inode *inode,
-> +				   struct ext4_iloc *iloc,
-> +				   void *buffer, loff_t pos,
-> +				   unsigned int len);
-> +extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
-> +				    unsigned int len);
-> +extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
-> +				 unsigned int len);
-> +extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
-> +
-> +extern int ext4_readpage_inline(struct inode *inode, struct page *page);
-> +extern int ext4_try_to_write_inline_data(struct address_space *mapping,
-> +					 struct inode *inode,
-> +					 loff_t pos, unsigned len,
-> +					 unsigned flags,
-> +					 struct page **pagep);
-> +extern int ext4_write_inline_data_end(struct inode *inode,
-> +				      loff_t pos, unsigned len,
-> +				      unsigned copied,
-> +				      struct page *page);
-> +extern struct buffer_head *
-> +ext4_journalled_write_inline_data(struct inode *inode,
-> +				  unsigned len,
-> +				  struct page *page);
-> +extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
-> +					   struct inode *inode,
-> +					   loff_t pos, unsigned len,
-> +					   unsigned flags,
-> +					   struct page **pagep,
-> +					   void **fsdata);
-> +extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
-> +					 unsigned len, unsigned copied,
-> +					 struct page *page);
-> +extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
-> +				     struct inode *inode);
-> +extern int ext4_try_create_inline_dir(handle_t *handle,
-> +				      struct inode *parent,
-> +				      struct inode *inode);
-> +extern int ext4_read_inline_dir(struct file *filp,
-> +				void *dirent, filldir_t filldir,
-> +				int *has_inline_data);
-> +extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
-> +					const struct qstr *d_name,
-> +					struct ext4_dir_entry_2 **res_dir,
-> +					int *has_inline_data);
-> +extern int ext4_delete_inline_entry(handle_t *handle,
-> +				    struct inode *dir,
-> +				    struct ext4_dir_entry_2 *de_del,
-> +				    struct buffer_head *bh,
-> +				    int *has_inline_data);
-> +extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
-> +extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
-> +					struct ext4_dir_entry_2 **parent_de,
-> +					int *retval);
-> +extern int ext4_inline_data_fiemap(struct inode *inode,
-> +				   struct fiemap_extent_info *fieinfo,
-> +				   int *has_inline);
-> +extern int ext4_try_to_evict_inline_data(handle_t *handle,
-> +					 struct inode *inode,
-> +					 int needed);
-> +extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
-> +
-> +extern int ext4_convert_inline_data(struct inode *inode);
-> +
->  /* namei.c */
->  extern const struct inode_operations ext4_dir_inode_operations;
->  extern const struct inode_operations ext4_special_inode_operations;
-> @@ -2539,6 +2608,7 @@ extern void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp);
->  extern int ext4_mmp_csum_verify(struct super_block *sb,
->  				struct mmp_struct *mmp);
->  
-> +
->  /* BH_Uninit flag: blocks are allocated but uninitialized on disk */
->  enum ext4_state_bits {
->  	BH_Uninit	/* blocks are allocated but uninitialized on disk */
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index c1fc2dc..4c216b1 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -104,6 +104,20 @@
->  #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
->  #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
->  
-> +static inline int ext4_jbd2_credits_xattr(struct inode *inode)
-> +{
-> +	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
-> +
+> -retry:
 > +	/*
-> +	 * In case of inline data, we may push out the data to a block,
-> +	 * so we need to reserve credits for this eventuality
+> +	 * grab_cache_page_write_begin() can take a long time if the
+> +	 * system is thrashing due to memory pressure, or if the page
+> +	 * is being written back.  So grab it first before we start
+> +	 * the transaction handle.  This also allows us to allocate
+> +	 * the page (if needed) without using GFP_NOFS.
 > +	 */
-> +	if (ext4_has_inline_data(inode))
-> +		credits += ext4_writepage_trans_blocks(inode) + 1;
-> +	return credits;
-> +}
+> +retry_grab:
+> +	page = grab_cache_page_write_begin(mapping, index, flags);
+> +	if (!page)
+> +		return -ENOMEM;
+> +	unlock_page(page);
 > +
-> +
->  /*
->   * Ext4 handle operation types -- for logging purposes
->   */
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 2efc560..cc31da0 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1165,16 +1165,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
->  {
->  	handle_t *handle;
->  	int error, retries = 0;
-> -	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
-> +	int credits = ext4_jbd2_credits_xattr(inode);
->  
->  retry:
-> -	/*
-> -	 * In case of inline data, we may push out the data to a block,
-> -	 * So reserve the journal space first.
-> -	 */
-> -	if (ext4_has_inline_data(inode))
-> -		credits += ext4_writepage_trans_blocks(inode) + 1;
-> -
->  	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+> +retry_journal:
+>  	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
 >  	if (IS_ERR(handle)) {
->  		error = PTR_ERR(handle);
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index 69eda78..aa25deb 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -125,74 +125,6 @@ extern int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
->  				       struct ext4_xattr_info *i,
->  				       struct ext4_xattr_ibody_find *is);
+> -		ret = PTR_ERR(handle);
+> -		goto out;
+> +		page_cache_release(page);
+> +		return PTR_ERR(handle);
+>  	}
 >  
-> -extern int ext4_has_inline_data(struct inode *inode);
-> -extern int ext4_get_inline_size(struct inode *inode);
-> -extern int ext4_get_max_inline_size(struct inode *inode);
-> -extern int ext4_find_inline_data_nolock(struct inode *inode);
-> -extern void ext4_write_inline_data(struct inode *inode,
-> -				   struct ext4_iloc *iloc,
-> -				   void *buffer, loff_t pos,
-> -				   unsigned int len);
-> -extern int ext4_prepare_inline_data(handle_t *handle, struct inode *inode,
-> -				    unsigned int len);
-> -extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
-> -				 unsigned int len);
-> -extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
+> -	/* We cannot recurse into the filesystem as the transaction is already
+> -	 * started */
+> -	flags |= AOP_FLAG_NOFS;
 > -
-> -extern int ext4_readpage_inline(struct inode *inode, struct page *page);
-> -extern int ext4_try_to_write_inline_data(struct address_space *mapping,
-> -					 struct inode *inode,
-> -					 loff_t pos, unsigned len,
-> -					 unsigned flags,
-> -					 struct page **pagep);
-> -extern int ext4_write_inline_data_end(struct inode *inode,
-> -				      loff_t pos, unsigned len,
-> -				      unsigned copied,
-> -				      struct page *page);
-> -extern struct buffer_head *
-> -ext4_journalled_write_inline_data(struct inode *inode,
-> -				  unsigned len,
-> -				  struct page *page);
-> -extern int ext4_da_write_inline_data_begin(struct address_space *mapping,
-> -					   struct inode *inode,
-> -					   loff_t pos, unsigned len,
-> -					   unsigned flags,
-> -					   struct page **pagep,
-> -					   void **fsdata);
-> -extern int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
-> -					 unsigned len, unsigned copied,
-> -					 struct page *page);
-> -extern int ext4_try_add_inline_entry(handle_t *handle, struct dentry *dentry,
-> -				     struct inode *inode);
-> -extern int ext4_try_create_inline_dir(handle_t *handle,
-> -				      struct inode *parent,
-> -				      struct inode *inode);
-> -extern int ext4_read_inline_dir(struct file *filp,
-> -				void *dirent, filldir_t filldir,
-> -				int *has_inline_data);
-> -extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
-> -					const struct qstr *d_name,
-> -					struct ext4_dir_entry_2 **res_dir,
-> -					int *has_inline_data);
-> -extern int ext4_delete_inline_entry(handle_t *handle,
-> -				    struct inode *dir,
-> -				    struct ext4_dir_entry_2 *de_del,
-> -				    struct buffer_head *bh,
-> -				    int *has_inline_data);
-> -extern int empty_inline_dir(struct inode *dir, int *has_inline_data);
-> -extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
-> -					struct ext4_dir_entry_2 **parent_de,
-> -					int *retval);
-> -extern int ext4_inline_data_fiemap(struct inode *inode,
-> -				   struct fiemap_extent_info *fieinfo,
-> -				   int *has_inline);
-> -extern int ext4_try_to_evict_inline_data(handle_t *handle,
-> -					 struct inode *inode,
-> -					 int needed);
-> -extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+> -	page = grab_cache_page_write_begin(mapping, index, flags);
+> -	if (!page) {
+> +	lock_page(page);
+> +	if (page->mapping != mapping) {
+> +		/* The page got truncated from under us */
+> +		unlock_page(page);
+> +		page_cache_release(page);
+>  		ext4_journal_stop(handle);
+> -		ret = -ENOMEM;
+> -		goto out;
+> +		goto retry_grab;
+>  	}
 > -
-> -extern int ext4_convert_inline_data(struct inode *inode);
-> -
->  #ifdef CONFIG_EXT4_FS_SECURITY
->  extern int ext4_init_security(handle_t *handle, struct inode *inode,
->  			      struct inode *dir, const struct qstr *qstr);
+> -	*pagep = page;
+> +	wait_on_page_writeback(page);
+>  
+>  	if (ext4_should_dioread_nolock(inode))
+>  		ret = __block_write_begin(page, pos, len, ext4_get_block_write);
+> @@ -946,7 +954,6 @@ retry:
+>  
+>  	if (ret) {
+>  		unlock_page(page);
+> -		page_cache_release(page);
+>  		/*
+>  		 * __block_write_begin may have instantiated a few blocks
+>  		 * outside i_size.  Trim these off again. Don't need
+> @@ -970,11 +977,14 @@ retry:
+>  			if (inode->i_nlink)
+>  				ext4_orphan_del(NULL, inode);
+>  		}
+> -	}
+>  
+> -	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+> -		goto retry;
+> -out:
+> +		if (ret == -ENOSPC &&
+> +		    ext4_should_retry_alloc(inode->i_sb, &retries))
+> +			goto retry_journal;
+> +		page_cache_release(page);
+> +		return ret;
+> +	}
+> +	*pagep = page;
+>  	return ret;
+>  }
+>  
+> @@ -2524,42 +2534,52 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+>  						      pos, len, flags,
+>  						      pagep, fsdata);
+>  		if (ret < 0)
+> -			goto out;
+> -		if (ret == 1) {
+> -			ret = 0;
+> -			goto out;
+> -		}
+> +			return ret;
+> +		if (ret == 1)
+> +			return 0;
+>  	}
+>  
+> -retry:
+> +	/*
+> +	 * grab_cache_page_write_begin() can take a long time if the
+> +	 * system is thrashing due to memory pressure, or if the page
+> +	 * is being written back.  So grab it first before we start
+> +	 * the transaction handle.  This also allows us to allocate
+> +	 * the page (if needed) without using GFP_NOFS.
+> +	 */
+> +retry_grab:
+> +	page = grab_cache_page_write_begin(mapping, index, flags);
+> +	if (!page)
+> +		return -ENOMEM;
+> +	unlock_page(page);
+> +
+>  	/*
+>  	 * With delayed allocation, we don't log the i_disksize update
+>  	 * if there is delayed block allocation. But we still need
+>  	 * to journalling the i_disksize update if writes to the end
+>  	 * of file which has an already mapped buffer.
+>  	 */
+> +retry_journal:
+>  	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, 1);
+>  	if (IS_ERR(handle)) {
+> -		ret = PTR_ERR(handle);
+> -		goto out;
+> +		page_cache_release(page);
+> +		return PTR_ERR(handle);
+>  	}
+> -	/* We cannot recurse into the filesystem as the transaction is already
+> -	 * started */
+> -	flags |= AOP_FLAG_NOFS;
+>  
+> -	page = grab_cache_page_write_begin(mapping, index, flags);
+> -	if (!page) {
+> +	lock_page(page);
+> +	if (page->mapping != mapping) {
+> +		/* The page got truncated from under us */
+> +		unlock_page(page);
+> +		page_cache_release(page);
+>  		ext4_journal_stop(handle);
+> -		ret = -ENOMEM;
+> -		goto out;
+> +		goto retry_grab;
+>  	}
+> -	*pagep = page;
+> +	/* In case writeback began while the page was unlocked */
+> +	wait_on_page_writeback(page);
+>  
+>  	ret = __block_write_begin(page, pos, len, ext4_da_get_block_prep);
+>  	if (ret < 0) {
+>  		unlock_page(page);
+>  		ext4_journal_stop(handle);
+> -		page_cache_release(page);
+>  		/*
+>  		 * block_write_begin may have instantiated a few blocks
+>  		 * outside i_size.  Trim these off again. Don't need
+> @@ -2567,11 +2587,16 @@ retry:
+>  		 */
+>  		if (pos + len > inode->i_size)
+>  			ext4_truncate_failed_write(inode);
+> +
+> +		if (ret == -ENOSPC &&
+> +		    ext4_should_retry_alloc(inode->i_sb, &retries))
+> +			goto retry_journal;
+> +
+> +		page_cache_release(page);
+> +		return ret;
+>  	}
+>  
+> -	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+> -		goto retry;
+> -out:
+> +	*pagep = page;
+>  	return ret;
+>  }
+>  
 > -- 
 > 1.7.12.rc0.22.gcdd159b
 > 
