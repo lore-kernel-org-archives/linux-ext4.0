@@ -1,41 +1,50 @@
-From: Tim Gardner <tim.gardner@canonical.com>
-Subject: [PATCH linux-next] jbd: start_this_handle(): remove kfree() redundant null check
-Date: Tue, 12 Feb 2013 11:23:24 -0700
-Message-ID: <1360693404-61617-1-git-send-email-tim.gardner@canonical.com>
-Cc: Tim Gardner <tim.gardner@canonical.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: regressions due to 64-bit ext4 directory cookies
+Date: Tue, 12 Feb 2013 15:28:41 -0500
+Message-ID: <20130212202841.GC10267@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	Theodore Ts'o <tytso@mit.edu>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	gluster-devel@nongnu.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:40023 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750895Ab3BLU2o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 15:28:44 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-smatch analysis:
+06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
+and previous patches solved problems with hash collisions in large
+directories by using 64- instead of 32- bit directory hashes in some
+cases.  But it caused problems for users who assume directory offsets
+are "small".  Two cases we've run across:
 
-fs/jbd/transaction.c:236 start_this_handle() info: redundant null
- check on new_transaction calling kfree()
+	- older NFS clients: 64-bit cookies cause applications on many
+	  older clients to fail.
+	- gluster: gluster assumed that it could take the top bits of
+	  the offset for its own use.
 
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
----
- fs/jbd/transaction.c |    3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+In both cases we could argue we're in the right: the nfs protocol
+defines cookies to be 64 bits, so clients should be prepared to handle
+them (remapping to smaller integers if necessary to placate applications
+using older system interfaces).  And gluster was incorrect to assume
+that the "offset" was really an "offset" as opposed to just an opaque
+value.
 
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 071d690..ee40b4e 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -232,8 +232,7 @@ repeat_locked:
- 
- 	lock_map_acquire(&handle->h_lockdep_map);
- out:
--	if (unlikely(new_transaction))		/* It's usually NULL */
--		kfree(new_transaction);
-+	kfree(new_transaction);
- 	return ret;
- }
- 
--- 
-1.7.9.5
+But in practice things that worked fine for a long time break on a
+kernel upgrade.
+
+So at a minimum I think we owe people a workaround, and turning off
+dir_index may not be practical for everyone.
+
+A "no_64bit_cookies" export option would provide a workaround for NFS 
+servers with older NFS clients, but not for applications like gluster.
+
+For that reason I'd rather have a way to turn this off on a given ext4 
+filesystem.  Is that practical?
+
+--b.
