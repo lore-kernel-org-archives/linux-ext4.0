@@ -1,68 +1,75 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Date: Tue, 12 Feb 2013 16:00:54 -0500
-Message-ID: <20130212210054.GF10267@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <511AAC89.3060409@itwm.fraunhofer.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: REGRESSION: [PATCH 04/12] ext4: Disable merging of
+ uninitialized extents
+Date: Tue, 12 Feb 2013 22:58:32 +0100
+Message-ID: <20130212215832.GA25984@quack.suse.cz>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+ <1358510446-19174-5-git-send-email-jack@suse.cz>
+ <20130209171015.GC8091@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Theodore Ts'o <tytso@mit.edu>, gluster-devel@nongnu.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46546 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43884 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755030Ab3BLVA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 16:00:57 -0500
+	id S1752886Ab3BLV6f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 16:58:35 -0500
 Content-Disposition: inline
-In-Reply-To: <511AAC89.3060409@itwm.fraunhofer.de>
+In-Reply-To: <20130209171015.GC8091@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 12, 2013 at 09:56:41PM +0100, Bernd Schubert wrote:
-> On 02/12/2013 09:28 PM, J. Bruce Fields wrote:
-> > 06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
-> > and previous patches solved problems with hash collisions in large
-> > directories by using 64- instead of 32- bit directory hashes in some
-> > cases.  But it caused problems for users who assume directory offsets
-> > are "small".  Two cases we've run across:
+On Sat 09-02-13 12:10:15, Ted Tso wrote:
+> On Fri, Jan 18, 2013 at 01:00:38PM +0100, Jan Kara wrote:
+> > Merging of uninitialized extents creates all sorts of interesting race
+> > possibilities when writeback / DIO races with fallocate. Thus
+> > ext4_convert_unwritten_extents_endio() has to deal with a case where
+> > extent to be converted needs to be split out first. That isn't nice
+> > for two reasons:
 > > 
-> > 	- older NFS clients: 64-bit cookies cause applications on many
-> > 	  older clients to fail.
-> > 	- gluster: gluster assumed that it could take the top bits of
-> > 	  the offset for its own use.
+> > 1) It may need allocation of extent tree block so ENOSPC is possible.
+> > 2) It complicates end_io handling code
 > > 
-> > In both cases we could argue we're in the right: the nfs protocol
-> > defines cookies to be 64 bits, so clients should be prepared to handle
-> > them (remapping to smaller integers if necessary to placate applications
-> > using older system interfaces).  And gluster was incorrect to assume
-> > that the "offset" was really an "offset" as opposed to just an opaque
-> > value.
+> > So we disable merging of uninitialized extents which allows us to simplify
+> > the code. Extents will get merged after they are converted to initialized
+> > ones.
 > > 
-> > But in practice things that worked fine for a long time break on a
-> > kernel upgrade.
-> > 
-> > So at a minimum I think we owe people a workaround, and turning off
-> > dir_index may not be practical for everyone.
-> > 
-> > A "no_64bit_cookies" export option would provide a workaround for NFS 
-> > servers with older NFS clients, but not for applications like gluster.
-> > 
-> > For that reason I'd rather have a way to turn this off on a given ext4 
-> > filesystem.  Is that practical?
+> > Reviewed-by: Zheng Liu <wenqing.lz@taobao.com>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> I think Ted needs to answer if he would accept another mount option. But
-> before we are going this way, what is gluster doing if there are hash
-> collions?
+> Sorry for not noticing this earlier, but this patch is causing a
+> regression.  It is loading to test 113 failing when dioread_nolock is
+> used:
+> 
+> 113	[   47.619363] EXT4-fs error (device vdb): ext4_convert_unwritten_extents_endio:3411: i
+> node #10951: comm kworker/u:0: Written extent modified before IO finished: extent logical block
+>  1024, len 1024; IO logical block 1024, len 127
+> [   47.619363] 
+> [   47.623239] EXT4-fs warning (device vdb): ext4_convert_unwritten_extents:4522: inode #10951:
+>  block 1024: len 127: ext4_ext_map_blocks returned -5
+> [   47.628975] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potenti
+> al data loss!  (inode 10951, offset 4194304, size 520192, error -5)
+  Hum, yes. Thanks for letting us know. I was able to reproduce this and
+I'm looking into it now. I guess it is a similar problem as Dmitry fixed in
+his fix...
 
-They probably just haven't tested NFS with large enough directories.
-The birthday paradox says you'd need about 2^16 entries to have a 50-50
-chance of hitting the problem.
+> As a result, I am considering whether or not I should to drop the
+> following patches from the ext4 tree:
+> 
+> e63dd9c ext4: disable merging of uninitialized extents
+> de39534 ext4: remove unnecessary wait for extent conversion in ext4_fallocate()
+> 37bf0a8 ext4: ext4_split_extent should take care of extent zeroout
+> 
+> I know that these patches fix other potential races which causes data
+> loss, but they've been around for a while, and in practice seem to be
+> relatively rarely hit.
+  The third patch is a fix which shouldn't cause any issues. So you can
+take just that one and leave the other two aside until we are able to
+resolve the issue.
 
-I don't know enough about ext4 directory performance.  But unfortunately
-I suspect there's a range of directory sizes that are too small to have
-a significant chance of having directory collisions, but still large
-enough to need dir_index?
-
---b.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
