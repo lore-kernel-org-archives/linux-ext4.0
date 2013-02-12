@@ -1,117 +1,125 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/10 v5] ext4: remove bogus wait for unwritten extents
- in ext4_ind_direct_IO
-Date: Tue, 12 Feb 2013 13:58:19 +0100
-Message-ID: <20130212125819.GE19583@quack.suse.cz>
-References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-11-git-send-email-wenqing.lz@taobao.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4: Used block count in df
+Date: Tue, 12 Feb 2013 10:01:30 -0600
+Message-ID: <511A675A.8050004@redhat.com>
+References: <CANBXnM=H0ghqzQ5aJ_O+1C_sMJ850LQ9TOHLncOYkCKVSnUrAw@mail.gmail.com> <5113DB2D.4000305@redhat.com> <CANBXnMmbEBgN5j2UvbYvznO9nUrXkmi4m8_xnqytPi3=zSGOPg@mail.gmail.com> <51192B14.4030301@redhat.com> <CANBXnMkKA7qjMoO-yEGhbyKYQMRzvVA+GExg_KGCWPEHNVnyDQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49868 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933099Ab3BLM6V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 07:58:21 -0500
-Content-Disposition: inline
-In-Reply-To: <1360313046-9876-11-git-send-email-wenqing.lz@taobao.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Adil Mujeeb <mujeeb.adil@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CANBXnMkKA7qjMoO-yEGhbyKYQMRzvVA+GExg_KGCWPEHNVnyDQ@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 08-02-13 16:44:06, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
+On 2/12/13 12:14 AM, Adil Mujeeb wrote:
+> Hi,
 > 
-> After converting unwritten extents from extent status tree in end_io, we
-> can safely remove this bogus wait and don't worry about read stale data
-> because we always try to lookup a block mapping in extent status tree
-> firstly and unwritten extents in the tree has been converted at this
-> time.
-  But you have to make sure the extent for the range really is in the
-status tree (you didn't in the previous patch I think) and cannot be
-reclaimed until the conversion is performed on disk.
+>> My only point is, default ext4 statfs behavior is quite complicated, and it
+>> looks like you have found a bug related to the calculation of metadata overhead.
+> 
+> I see.
+> Where should I report this issue to get it confirm by developers?
 
-								Honza
+Here is fine.  :)
 
-> Before that commit, we need to flush unwritten ios before a dio read
-> when dioread_nolock is enabled because in ext4_end_io_buffer_write and
-> ext4_end_bio end_page_writeback() is called before converting unwritten
-> extents in disk.  So here is a window that a dio reader will read stale
-> data as below if we don't wait for unwritten extents:
+It would be good to file a bug on bugzilla.kernel.org too if you like.
+
+The problem is, I think ext4's metadata behavior has gotten so complex,
+the consensus so far seems to be to just accept the inaccuracy in this
+style of df reporting:
+
+ * Note: calculating the overhead so we can be compatible with
+ * historical BSD practice is quite difficult in the face of
+ * clusters/bigalloc.  This is because multiple metadata blocks from
+ * different block group can end up in the same allocation cluster.
+ * Calculating the exact overhead in the face of clustered allocation
+ * requires either O(all block bitmaps) in memory or O(number of block
+ * groups**2) in time.  We will still calculate the superblock for
+ * older file systems --- and if we come across with a bigalloc file
+ * system with zero in s_overhead_clusters the estimate will be close to
+ * correct ...
+
+but it is odd behavior, and filing a bug would probably be good.
+
+-Eric
+
+>> It should only be a reporting issue, and should not cause any runtime issues.
 > 
->    dio read                         buffered write
->                                     ->ext4_file_write
->                                       ->ext4_da_write_begin
->                                       ->ext4_da_write_end
->                                       [buffered write has finished, but
->                                        the data and metadata has not
->                                        been flushed]
->    ->generic_file_aio_read
->      ->filemap_write_and_wait_range
->        ->do_writepages
->          ->ext4_da_writepages
->      ->filemap_fdatawait_range
->        ->wait_on_page_writeback
->                                     ->ext4_end_bio
->                                       ->end_page_writeback
->                                         [unwritten extent has not been
->                                          converted]
->      ->ext4_ind_direct_IO
->        [here we need to flush unwritten io]
+> OK, I understand.
 > 
-> After that commit, we never need to wait for unwritten extents.
+> Thanks,
+> Adil
 > 
->    dio read                         buffered write
->                                     ->ext4_file_write
->                                       ->ext4_da_write_begin
->                                       ->ext4_da_write_end
->                                       [buffered write has finished, but
->                                        the data and metadata has not
->                                        been flushed]
->    ->generic_file_aio_read
->      ->filemap_write_and_wait_range
->        ->do_writepages
->          ->ext4_da_writepages
->      ->filemap_fdatawait_range
->        ->wait_on_page_writeback
->                                     ->ext4_end_bio
->                                       ->ext4_es_convert_unwritten_extents
->                                       ->end_page_writeback
->                                         [unwritten extent has not been
->                                          converted in disk, but they are
->                                          converted in extent status tree]
->      ->ext4_ind_direct_IO
->        [here we will see the written
->         extents in extent status tree]
-> 
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan kara <jack@suse.cz>
-> ---
->  fs/ext4/indirect.c | 5 -----
->  1 file changed, 5 deletions(-)
-> 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 20862f9..993247c 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -807,11 +807,6 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
->  
->  retry:
->  	if (rw == READ && ext4_should_dioread_nolock(inode)) {
-> -		if (unlikely(atomic_read(&EXT4_I(inode)->i_unwritten))) {
-> -			mutex_lock(&inode->i_mutex);
-> -			ext4_flush_unwritten_io(inode);
-> -			mutex_unlock(&inode->i_mutex);
-> -		}
->  		/*
->  		 * Nolock dioread optimization may be dynamically disabled
->  		 * via ext4_inode_block_unlocked_dio(). Check inode's state
-> -- 
-> 1.7.12.rc2.18.g61b472e
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> On Mon, Feb 11, 2013 at 11:02 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+>> On 2/11/13 12:36 AM, Adil Mujeeb wrote:
+>>> Thanks Eric.
+>>>
+>>>>> I have an observation on EXT4 filesystem. I created filesystem of size
+>>>>> 1TB, 4TB, and 7TB and then checked the output of df command.
+>>>>
+>>>> Telling us which version of e2fsprogs and which kernel would be helpful,
+>>>> but:
+>>>
+>>> its 1.41.12.
+>>>
+>>>> It reserves blocks for the superuser (5% by default) and also uses a lot
+>>>> of blocks up-front for filesytem metadata - inode tables, block bitmaps,
+>>>> and the like.
+>>>
+>>> I also thinks so. But with this assumption, the number of 1KB blocks
+>>> used should increase as per filesystem size increase. No?
+>>>
+>>>>
+>>>> But what you are seeing here is this:
+>>>>
+>>>> It also defaults to "bsd df" which does not count filesystem
+>>>> metadata when telling you about the number of blocks used.  So in theory,
+>>>> a freshly made fs should actually tell you 0 blocks used, I think.
+>>>
+>>> Agree if "bsd df" assumes so.
+>>>
+>>>> Looking at the dumpe2fs output for the 4t file, I see:
+>>>>
+>>>> # dumpe2fs -h 4tfile-ext4 | grep -i block
+>>>> dumpe2fs 1.41.12 (17-May-2010)
+>>>> Block count:              1073741824
+>>>> Reserved block count:     53687091
+>>>> Free blocks:              1056843748
+>>>> ...
+>>>>
+>>>> and 1073741824-1056843748 is 16898076 4k blocks, or 67592304 1k blocks
+>>>> actually used.
+>>>>
+>>>> If we ask for "minix df" by mounting with -o minixdf which is true blocks used, we get:
+>>>>
+>>>> # df 4t-ext4/
+>>>> Filesystem           1K-blocks      Used Available Use% Mounted on
+>>>> /mnt/test2/mkfs-test/4tfile-ext4
+>>>>                      4294967296  67592304 4012626628   2% /mnt/test2/mkfs-test/4t-ext4
+>>>>
+>>>> I'd say this appears to be a slight inaccuracy in ext4_statfs, coupled with
+>>>> the strangeness of the "bsd df" reporting.  It is apparently miscalculating
+>>>> the filesystem metadata "overhead."
+>>>
+>>> In your example, dumpe2fs and minix df both are reporting same value, isn't it?
+>>>
+>>> I am still not able to understand why increasing the filesystem size
+>>> decreases used 1K block count :(
+>>> Am I missing some basic things here? Sorry if i am not able to catch
+>>> your point :(
+>>
+>> My only point is, default ext4 statfs behavior is quite complicated, and it
+>> looks like you have found a bug related to the calculation of metadata overhead.
+>>
+>> It should only be a reporting issue, and should not cause any runtime issues.
+>>
+>> Thanks,
+>> -Eric
+>>
+>>> Regards,
+>>> Adil
+>>
+>>
+
