@@ -1,369 +1,189 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 05/10 v5] ext4: lookup block mapping in extent status
- tree
-Date: Tue, 12 Feb 2013 13:31:42 +0100
-Message-ID: <20130212123142.GC19583@quack.suse.cz>
+Subject: Re: [PATCH 09/10 v5] ext4: convert unwritten extents from extent
+ status tree in end_io
+Date: Tue, 12 Feb 2013 13:51:59 +0100
+Message-ID: <20130212125159.GD19583@quack.suse.cz>
 References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-6-git-send-email-wenqing.lz@taobao.com>
+ <1360313046-9876-10-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
 	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>
 To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48672 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:49583 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932927Ab3BLMbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 07:31:45 -0500
+	id S932967Ab3BLMwC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 07:52:02 -0500
 Content-Disposition: inline
-In-Reply-To: <1360313046-9876-6-git-send-email-wenqing.lz@taobao.com>
+In-Reply-To: <1360313046-9876-10-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 08-02-13 16:44:01, Zheng Liu wrote:
+On Fri 08-02-13 16:44:05, Zheng Liu wrote:
 > From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> After tracking all extent status, we already have a extent cache in
-> memory.  Every time we want to lookup a block mapping, we can first
-> try to lookup it in extent status tree to avoid a potential disk I/O.
-> 
-> A new function called ext4_es_lookup_extent is defined to finish this
-> work.  When we try to lookup a block mapping, we always call
-> ext4_map_blocks and/or ext4_da_map_blocks.  So in these functions we
-> first try to lookup a block mapping in extent status tree.
-> 
-> A new flag EXT4_GET_BLOCKS_NO_PUT_HOLE is used in ext4_da_map_blocks
-> in order not to put a hole into extent status tree because this hole
-> will be converted to delayed extent in the tree immediately.
-  It looks somewhat inconsistent that you put hole into the extent tree in
-ext4_ext_map_blocks() but all other extent types are handled in
-ext4_map_blocks() or ext4_da_map_blocks(). Can we put the handling in one
-place?
+> This commit tries to convert unwritten extents from extent status tree
+> in end_io callback functions and ext4_ext_direct_IO.
+  Why should we do this?
 
-Otherwise the patch looks OK.
-
-								Honza
-
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan kara <jack@suse.cz>
-> ---
->  fs/ext4/ext4.h              |  2 ++
->  fs/ext4/extents.c           |  7 ++++-
->  fs/ext4/extents_status.c    | 59 +++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/extents_status.h    |  1 +
->  fs/ext4/inode.c             | 64 +++++++++++++++++++++++++++++++++++++++++++--
->  include/trace/events/ext4.h | 56 +++++++++++++++++++++++++++++++++++++++
->  6 files changed, 186 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 8462eb3..ad885b5 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -582,6 +582,8 @@ enum {
->  #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
->  	/* Do not take i_data_sem locking in ext4_map_blocks */
->  #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
-> +	/* Do not put hole in extent cache */
-> +#define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
->  
->  /*
->   * Flags used by ext4_free_blocks
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 4b065ff..1be8955 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2154,6 +2154,8 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
->  				block,
->  				le32_to_cpu(ex->ee_block),
->  				 ext4_ext_get_actual_len(ex));
-> +		ext4_es_insert_extent(inode, lblock, len, ~0,
-> +				      EXTENT_STATUS_HOLE);
->  	} else if (block >= le32_to_cpu(ex->ee_block)
->  			+ ext4_ext_get_actual_len(ex)) {
->  		ext4_lblk_t next;
-> @@ -2167,6 +2169,8 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
->  				block);
->  		BUG_ON(next == lblock);
->  		len = next - lblock;
-> +		ext4_es_insert_extent(inode, lblock, len, ~0,
-> +				      EXTENT_STATUS_HOLE);
->  	} else {
->  		lblock = len = 0;
->  		BUG();
-> @@ -4006,7 +4010,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  		 * put just found gap into cache to speed up
->  		 * subsequent requests
->  		 */
-> -		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
-> +		if ((flags & EXT4_GET_BLOCKS_NO_PUT_HOLE) == 0)
-> +			ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
->  		goto out2;
->  	}
->  
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 71cb75a..ca7dc9f 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -468,6 +468,65 @@ error:
->  	return err;
+...
+> @@ -801,3 +807,147 @@ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+>  	tree->cache_es = NULL;
+>  	return nr_shrunk;
 >  }
->  
-> +/*
-> + * ext4_es_lookup_extent() looks up an extent in extent status tree.
-> + *
-> + * ext4_es_lookup_extent is called by ext4_map_blocks/ext4_da_map_blocks.
-> + *
-> + * Return: 1 on found, 0 on not
-> + */
-> +int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es)
+> +
+> +int ext4_es_convert_unwritten_extents(struct inode *inode, loff_t offset,
+> +				      size_t size)
 > +{
 > +	struct ext4_es_tree *tree;
-> +	struct extent_status *es1 = NULL;
 > +	struct rb_node *node;
-> +	int found = 0;
+> +	struct extent_status *es, orig_es, conv_es;
+> +	ext4_lblk_t end, len1, len2;
+> +	ext4_lblk_t lblk = 0, len = 0;
+> +	ext4_fsblk_t block;
+> +	unsigned long flags;
+> +	unsigned int blkbits;
+> +	int err = 0;
 > +
-> +	trace_ext4_es_lookup_extent_enter(inode, es->es_lblk);
-> +	es_debug("lookup extent in block %u\n", es->es_lblk);
+> +	trace_ext4_es_convert_unwritten_extents(inode, offset, size);
+> +	blkbits = inode->i_blkbits;
+> +	lblk = offset >> blkbits;
+> +	len = (EXT4_BLOCK_ALIGN(offset + size, blkbits) >> blkbits) - lblk;
+> +
+> +	end = lblk + len - 1;
+> +	BUG_ON(end < lblk);
 > +
 > +	tree = &EXT4_I(inode)->i_es_tree;
-> +	read_lock(&EXT4_I(inode)->i_es_lock);
 > +
-> +	/* find extent in cache firstly */
-> +	es->es_len = es->es_pblk = 0;
-> +	if (tree->cache_es) {
-> +		es1 = tree->cache_es;
-> +		if (in_range(es->es_lblk, es1->es_lblk, es1->es_len)) {
-> +			es_debug("%u cached by [%u/%u)\n",
-> +				 es->es_lblk, es1->es_lblk, es1->es_len);
-> +			found = 1;
-> +			goto out;
+> +	write_lock_irqsave(&EXT4_I(inode)->i_es_lock, flags);
+> +	es = __es_tree_search(&tree->root, lblk);
+> +	if (!es)
+> +		goto out;
+> +	if (es->es_lblk > end)
+> +		goto out;
+> +
+> +	tree->cache_es = NULL;
+> +
+> +	orig_es.es_lblk = es->es_lblk;
+> +	orig_es.es_len = es->es_len;
+> +	orig_es.es_pblk = es->es_pblk;
+> +
+> +	len1 = lblk > es->es_lblk ? lblk - es->es_lblk : 0;
+> +	len2 = ext4_es_end(es) > end ?
+> +	       ext4_es_end(es) - end : 0;
+> +	if (len1 > 0)
+> +		es->es_len = len1;
+> +	if (len2 > 0) {
+> +		if (len1 > 0) {
+> +			struct extent_status newes;
+> +
+> +			newes.es_lblk = end + 1;
+> +			newes.es_len = len2;
+> +			block = ext4_es_pblock(&orig_es) +
+> +				orig_es.es_len - len2;
+> +			ext4_es_store_pblock(&newes, block);
+> +			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
+> +			err = __es_insert_extent(inode, &newes);
+> +			if (err) {
+> +				es->es_lblk = orig_es.es_lblk;
+> +				es->es_len = orig_es.es_len;
+> +				es->es_pblk = orig_es.es_pblk;
+> +				goto out;
+> +			}
+> +
+> +			conv_es.es_lblk = orig_es.es_lblk + len1;
+> +			conv_es.es_len = orig_es.es_len - len1 - len2;
+> +			block = ext4_es_pblock(&orig_es) + len1;
+> +			ext4_es_store_pblock(&conv_es, block);
+> +			ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
+> +			err = __es_insert_extent(inode, &conv_es);
+> +			if (err) {
+> +				int err2 = __es_remove_extent(inode,
+> +							conv_es.es_lblk,
+> +							ext4_es_end(&newes));
+> +				if (err2)
+> +					goto out;
+> +				es->es_lblk = orig_es.es_lblk;
+> +				es->es_len = orig_es.es_len;
+> +				es->es_pblk = orig_es.es_pblk;
+> +				goto out;
+> +			}
+> +		} else {
+> +			es->es_lblk = end + 1;
+> +			es->es_len = len2;
+> +			block = ext4_es_pblock(&orig_es) +
+> +				orig_es.es_len - len2;
+> +			ext4_es_store_pblock(es, block);
+> +
+> +			conv_es.es_lblk = orig_es.es_lblk;
+> +			conv_es.es_len = orig_es.es_len - len2;
+> +			ext4_es_store_pblock(&conv_es,
+> +					     ext4_es_pblock(&orig_es));
+> +			ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
+> +			err = __es_insert_extent(inode, &conv_es);
+> +			if (err) {
+> +				es->es_lblk = orig_es.es_lblk;
+> +				es->es_len = orig_es.es_len;
+> +				es->es_pblk = orig_es.es_pblk;
+> +			}
 > +		}
+> +		goto out;
 > +	}
 > +
-> +	node = tree->root.rb_node;
-> +	while (node) {
-> +		es1 = rb_entry(node, struct extent_status, rb_node);
-> +		if (es->es_lblk < es1->es_lblk)
-> +			node = node->rb_left;
-> +		else if (es->es_lblk > ext4_es_end(es1))
-> +			node = node->rb_right;
-> +		else {
-> +			found = 1;
+> +	if (len1 > 0) {
+> +		node = rb_next(&es->rb_node);
+> +		if (node)
+> +			es = rb_entry(node, struct extent_status, rb_node);
+> +		else
+> +			es = NULL;
+> +	}
+> +
+> +	while (es && ext4_es_end(es) <= end) {
+> +		node = rb_next(&es->rb_node);
+> +		ext4_es_store_status(es, EXTENT_STATUS_WRITTEN);
+> +		if (!inode) {
+> +			es = NULL;
 > +			break;
 > +		}
+> +		es = rb_entry(node, struct extent_status, rb_node);
+> +	}
+> +
+> +	if (es && es->es_lblk < end + 1) {
+> +		ext4_lblk_t orig_len = es->es_len;
+> +
+> +		/*
+> +		 * Here we first set conv_es just because of avoiding copy the
+> +		 * value of es to a temporary variable.
+> +		 */
+> +		len1 = ext4_es_end(es) - end;
+> +		conv_es.es_lblk = es->es_lblk;
+> +		conv_es.es_len = es->es_len - len1;
+> +		ext4_es_store_pblock(&conv_es, ext4_es_pblock(es));
+> +		ext4_es_store_status(&conv_es, EXTENT_STATUS_WRITTEN);
+> +
+> +		es->es_lblk = end + 1;
+> +		es->es_len = len1;
+> +		block = ext4_es_pblock(es) + orig_len - len1;
+> +		ext4_es_store_pblock(es, block);
+> +
+> +		err = __es_insert_extent(inode, &conv_es);
+> +		if (err)
+> +			goto out;
 > +	}
 > +
 > +out:
-> +	if (found) {
-> +		BUG_ON(!es1);
-> +		es->es_lblk = es1->es_lblk;
-> +		es->es_len = es1->es_len;
-> +		es->es_pblk = es1->es_pblk;
-> +	}
-> +
-> +	read_unlock(&EXT4_I(inode)->i_es_lock);
-> +
-> +	trace_ext4_es_lookup_extent_exit(inode, es, found);
-> +	return found;
+> +	write_unlock_irqrestore(&EXT4_I(inode)->i_es_lock, flags);
+> +	return err;
 > +}
-> +
->  static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  				 ext4_lblk_t end)
->  {
-> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> index b5788eb..effe78c 100644
-> --- a/fs/ext4/extents_status.h
-> +++ b/fs/ext4/extents_status.h
-> @@ -53,6 +53,7 @@ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  				 ext4_lblk_t len);
->  extern ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
->  					       struct extent_status *es);
-> +extern int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es);
->  
->  static inline int ext4_es_is_written(struct extent_status *es)
->  {
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 16454fc..670779a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -508,12 +508,34 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
->  int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  		    struct ext4_map_blocks *map, int flags)
->  {
-> +	struct extent_status es;
->  	int retval;
->  
->  	map->m_flags = 0;
->  	ext_debug("ext4_map_blocks(): inode %lu, flag %d, max_blocks %u,"
->  		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
->  		  (unsigned long) map->m_lblk);
-> +
-> +	/* Lookup extent status tree firstly */
-> +	es.es_lblk = map->m_lblk;
-> +	if (ext4_es_lookup_extent(inode, &es)) {
-> +		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
-> +			map->m_pblk = ext4_es_pblock(&es) +
-> +					map->m_lblk - es.es_lblk;
-> +			map->m_flags |= ext4_es_is_written(&es) ?
-> +					EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
-> +			retval = es.es_len - (map->m_lblk - es.es_lblk);
-> +			if (retval > map->m_len)
-> +				retval = map->m_len;
-> +			map->m_len = retval;
-> +		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
-> +			retval = 0;
-> +		} else {
-> +			BUG_ON(1);
-> +		}
-> +		goto found;
-> +	}
-> +
->  	/*
->  	 * Try to see if we can get the block without requesting a new
->  	 * file system block.
-> @@ -541,6 +563,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
->  		up_read((&EXT4_I(inode)->i_data_sem));
->  
-> +found:
->  	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
->  		int ret = check_block_validity(inode, map);
->  		if (ret != 0)
-> @@ -1772,6 +1795,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
->  			      struct ext4_map_blocks *map,
->  			      struct buffer_head *bh)
->  {
-> +	struct extent_status es;
->  	int retval;
->  	sector_t invalid_block = ~((sector_t) 0xffff);
->  
-> @@ -1782,6 +1806,39 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
->  	ext_debug("ext4_da_map_blocks(): inode %lu, max_blocks %u,"
->  		  "logical block %lu\n", inode->i_ino, map->m_len,
->  		  (unsigned long) map->m_lblk);
-> +
-> +	/* Lookup extent status tree firstly */
-> +	es.es_lblk = iblock;
-> +	if (ext4_es_lookup_extent(inode, &es)) {
-> +
-> +		if (ext4_es_is_hole(&es)) {
-> +			retval = 0;
-> +			down_read((&EXT4_I(inode)->i_data_sem));
-> +			goto add_delayed;
-> +		}
-> +
-> +		if (ext4_es_is_delayed(&es)) {
-> +			map_bh(bh, inode->i_sb, invalid_block);
-> +			set_buffer_new(bh);
-> +			set_buffer_delay(bh);
-> +			return 0;
-> +		}
-> +
-> +		map->m_pblk = ext4_es_pblock(&es) + iblock - es.es_lblk;
-> +		retval = es.es_len - (iblock - es.es_lblk);
-> +		if (retval > map->m_len)
-> +			retval = map->m_len;
-> +		map->m_len = retval;
-> +		if (ext4_es_is_written(&es))
-> +			map->m_flags |= EXT4_MAP_MAPPED;
-> +		else if (ext4_es_is_unwritten(&es))
-> +			map->m_flags |= EXT4_MAP_UNWRITTEN;
-> +		else
-> +			BUG_ON(1);
-> +
-> +		return retval;
-> +	}
-> +
->  	/*
->  	 * Try to see if we can get the block without requesting a new
->  	 * file system block.
-> @@ -1800,10 +1857,13 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
->  			map->m_flags |= EXT4_MAP_FROM_CLUSTER;
->  		retval = 0;
->  	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> -		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
-> +		retval = ext4_ext_map_blocks(NULL, inode, map,
-> +					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
->  	else
-> -		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
-> +		retval = ext4_ind_map_blocks(NULL, inode, map,
-> +					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
->  
-> +add_delayed:
->  	if (retval == 0) {
->  		int ret;
->  		/*
-> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-> index d278ced..822780a 100644
-> --- a/include/trace/events/ext4.h
-> +++ b/include/trace/events/ext4.h
-> @@ -2177,6 +2177,62 @@ TRACE_EVENT(ext4_es_find_delayed_extent_exit,
->  		  __entry->pblk, __entry->status, __entry->ret)
->  );
->  
-> +TRACE_EVENT(ext4_es_lookup_extent_enter,
-> +	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
-> +
-> +	TP_ARGS(inode, lblk),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	dev_t,		dev		)
-> +		__field(	ino_t,		ino		)
-> +		__field(	ext4_lblk_t,	lblk		)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev	= inode->i_sb->s_dev;
-> +		__entry->ino	= inode->i_ino;
-> +		__entry->lblk	= lblk;
-> +	),
-> +
-> +	TP_printk("dev %d,%d ino %lu lblk %u",
-> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> +		  (unsigned long) __entry->ino, __entry->lblk)
-> +);
-> +
-> +TRACE_EVENT(ext4_es_lookup_extent_exit,
-> +	TP_PROTO(struct inode *inode, struct extent_status *es,
-> +		 int found),
-> +
-> +	TP_ARGS(inode, es, found),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(	dev_t,		dev		)
-> +		__field(	ino_t,		ino		)
-> +		__field(	ext4_lblk_t,	lblk		)
-> +		__field(	ext4_lblk_t,	len		)
-> +		__field(	ext4_fsblk_t,	pblk		)
-> +		__field(	unsigned long long,	status	)
-> +		__field(	int,		found		)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->dev	= inode->i_sb->s_dev;
-> +		__entry->ino	= inode->i_ino;
-> +		__entry->lblk	= es->es_lblk;
-> +		__entry->len	= es->es_len;
-> +		__entry->pblk	= ext4_es_pblock(es);
-> +		__entry->status	= ext4_es_status(es);
-> +		__entry->found	= found;
-> +	),
-> +
-> +	TP_printk("dev %d,%d ino %lu found %d [%u/%u) %llu %llx",
-> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
-> +		  (unsigned long) __entry->ino, __entry->found,
-> +		  __entry->lblk, __entry->len,
-> +		  __entry->found ? __entry->pblk : 0,
-> +		  __entry->found ? __entry->status : 0)
-> +);
-> +
->  #endif /* _TRACE_EXT4_H */
->  
->  /* This part must be outside protection */
-> -- 
-> 1.7.12.rc2.18.g61b472e
-> 
+  Is this really needed? Why don't you just use ext4_es_insert_extent() to
+insert new extent of proper type? Also the way you wrote it, we can return
+(freshly written) data to the user, then reclaim the extent status from
+memory and later return 0s because we read the original status from disk
+(conversion hasn't still happened on disk). That would be certainly
+confusing.
+
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
