@@ -1,134 +1,369 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: help about ext3 read-only issue on ext3(2.6.16.30)
-Date: Tue, 12 Feb 2013 13:19:49 +0100
-Message-ID: <20130212121949.GA19583@quack.suse.cz>
-References: <50BFF149.6080007@huawei.com>
- <20121206123744.GA17951@quack.suse.cz>
- <CAEjEV8CpTT1Sk5g=FkGL2VEa_sW4go1jpNeFh=jDcdKWN_n2XQ@mail.gmail.com>
- <20121206170913.GC21029@quack.suse.cz>
- <50C1BF05.6020605@huawei.com>
- <50C6E86F.8040308@huawei.com>
- <20121212100444.GB18885@quack.suse.cz>
- <50C86AFC.7080301@huawei.com>
- <50CEF92F.6050306@huawei.com>
- <20121220113213.GB3301@quack.suse.cz>
+Subject: Re: [PATCH 05/10 v5] ext4: lookup block mapping in extent status
+ tree
+Date: Tue, 12 Feb 2013 13:31:42 +0100
+Message-ID: <20130212123142.GC19583@quack.suse.cz>
+References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
+ <1360313046-9876-6-git-send-email-wenqing.lz@taobao.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, qixuan wu <wuqixuan@gmail.com>,
-	Tao Ma <tm@tao.ma>, Theodore Ts'o <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Yafang Shao <laoar.shao@gmail.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	wuqixuan@huawei.com, xieshuangyi@huawei.com, tao.peng@emc.com
-To: Li Zefan <lizefan@huawei.com>
+Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
+	Theodore Ts'o <tytso@mit.edu>, Jan kara <jack@suse.cz>
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48116 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:48672 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759190Ab3BLMT6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 07:19:58 -0500
+	id S932927Ab3BLMbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 07:31:45 -0500
 Content-Disposition: inline
-In-Reply-To: <20121220113213.GB3301@quack.suse.cz>
+In-Reply-To: <1360313046-9876-6-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 20-12-12 12:32:13, Jan Kara wrote:
->   Hello,
+On Fri 08-02-13 16:44:01, Zheng Liu wrote:
+> From: Zheng Liu <wenqing.lz@taobao.com>
 > 
-> On Mon 17-12-12 18:51:27, Li Zefan wrote:
-> > >>> last_offset=-1, last_fpos=-1, f_pos=4024
-> > >>>
-> > >>> -1 means we hit the bug in the first iteration in the insde while in
-> > >>> ext3_readdir().
-> > >>>
-> > >>> I've checked how ext3_readdir() works and how f_pos, f_version and i_version
-> > >>> get initialized and modified. Now I'm lost. I really can't see how f_pos got
-> > >>> corrupted. :(
-> > >>   Hum, it looks really curious. So f_pos has been 4024 when we entered
-> > >> ext3_readdir()?
-> > > 
-> > > dunno. but what else can be
-> > > 
-> > >> Do you know what it was when we last left ext3_readdir()
-> > >> for that filp? You can store that value in some debug entry added to struct
-> > >> file... Also any chance we ever hit:
-> > >>                                 if (version != filp->f_version)
-> > >>                                         goto revalidate;
-> > >> I don't think it can ever happen since we hold i_mutex and
-> > >> generic_file_llseek() takes i_mutex as well. But better be sure.
-> > >>
-> > > 
-> > > Yesterday I've added more debug aids, which convers all the above information
-> > > mentioned. Actually the code tracks all the places that change f_pos, and
-> > > I think only lseek() and readdir() can change it.
-> > > 
-> > > Now I'm waiting for the bug to happen again, can be several days...
-> > > 
-> > 
-> > The bug was triggered again:
-> > 
-> > EXT3-fs error (device sda7): ext3_readdir: bad entry in directory #9372013: rec_len is smaller than minimal - offset=4028, inode=0, rec_len=0, name_len=0
-> > 
-> > And I've confirmed f_pos=4028 when we entered ext3_readdir(), while it
-> > should be 4096.
->   OK, interesting.
->  
-> > I wrote a simple ring buffer to track operations on log dirs, and from the
-> > ring buffer, we can see that there were no lseek, unlink, rename, etc.
-> > 
-> > This is correct:
-> > 
-> > dir=9372013, seq=1549, spot=readdir_1, f_pos=0, f_pos_delta=0
-> > dir=9372013, seq=1550, spot=readdir_3, f_pos=0, f_pos_delta=0
-> > dir=9372013, seq=1551, spot=readdir_5, f_pos=12, f_pos_delta=12
-> > dir=9372013, seq=1552, spot=readdir_5, f_pos=24, f_pos_delta=12
-> > ...
-> > dir=9372013, seq=1595, spot=readdir_5, f_pos=1488, f_pos_delta=28
-> > dir=9372013, seq=1596, spot=readdir_5, f_pos=1516, f_pos_delta=28
-> > dir=9372013, seq=1597, spot=readdir_5, f_pos=1556, f_pos_delta=40
-> > dir=9372013, seq=1598, spot=readdir_5, f_pos=1584, f_pos_delta=28
-> > ...
-> > dir=9372013, seq=1627, spot=readdir_5, f_pos=2392, f_pos_delta=28
-> > dir=9372013, seq=1628, spot=readdir_5, f_pos=4096, f_pos_delta=1704
-> > dir=9372013, seq=1629, spot=readdir_1, f_pos=4096, f_pos_delta=0
-> > 
-> > (readir_1 is the entry of readdir(), and readdir_3 is when we enter
-> > (f_version != i_version), and readdir_5 is we iterate the dir block)
->   Can you post the readdir() code you now run including your logging?
-> Thanks!
+> After tracking all extent status, we already have a extent cache in
+> memory.  Every time we want to lookup a block mapping, we can first
+> try to lookup it in extent status tree to avoid a potential disk I/O.
 > 
-> > Then f_pos went wrong suddenly:
-> > 
-> > dir=9372013, seq=1676, spot=readdir_5, f_pos=1488, f_pos_delta=28
-> > dir=9372013, seq=1677, spot=readdir_5, f_pos=1516, f_pos_delta=28
-> > dir=9372013, seq=1678, spot=readdir_5, f_pos=1556, f_pos_delta=40
-> > dir=9372013, seq=1679, spot=readdir_5, f_pos=1516, f_pos_delta=28   <-- !!!!!!!!
-> > dir=9372013, seq=1680, spot=readdir_5, f_pos=1540, f_pos_delta=24
-> > ...
-> > dir=9372013, seq=1708, spot=readdir_5, f_pos=2324, f_pos_delta=28
-> > dir=9372013, seq=1709, spot=readdir_5, f_pos=4028, f_pos_delta=1704
-> > dir=9372013, seq=1710, spot=readdir_1, f_pos=4028, f_pos_delta=0
-> > 
-> > This is odd...
-> > 
-> > While f_pos was wrong, offset is always correct, and this is not some
-> > single-bit error in memory, so someone else changed f_pos? but we were
-> > holding i_mutex, and we see nothing else except readdir in the ring
-> > buffer...
->   How do you know 'offset' was correct? I don't see it in the ring
-> buffer... Anyway, this all points to us taking the:
->                                if (version != filp->f_version)
->                                         goto revalidate;
-> branch when 'offset' is already advanced but f_pos isn't. Then we don't
-> enter:
-> 	if (filp->f_version != inode->i_version) {
-> branch and thus f_pos and 'offset' stay out of sync and problems happen.
+> A new function called ext4_es_lookup_extent is defined to finish this
+> work.  When we try to lookup a block mapping, we always call
+> ext4_map_blocks and/or ext4_da_map_blocks.  So in these functions we
+> first try to lookup a block mapping in extent status tree.
 > 
-> But how these strange issues with f_version happen is a mystery for me so
-> far.
-  Were there any more test results regarding this? I'm just curious what
-the problem is / was...
+> A new flag EXT4_GET_BLOCKS_NO_PUT_HOLE is used in ext4_da_map_blocks
+> in order not to put a hole into extent status tree because this hole
+> will be converted to delayed extent in the tree immediately.
+  It looks somewhat inconsistent that you put hole into the extent tree in
+ext4_ext_map_blocks() but all other extent types are handled in
+ext4_map_blocks() or ext4_da_map_blocks(). Can we put the handling in one
+place?
+
+Otherwise the patch looks OK.
 
 								Honza
+
+> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Jan kara <jack@suse.cz>
+> ---
+>  fs/ext4/ext4.h              |  2 ++
+>  fs/ext4/extents.c           |  7 ++++-
+>  fs/ext4/extents_status.c    | 59 +++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/extents_status.h    |  1 +
+>  fs/ext4/inode.c             | 64 +++++++++++++++++++++++++++++++++++++++++++--
+>  include/trace/events/ext4.h | 56 +++++++++++++++++++++++++++++++++++++++
+>  6 files changed, 186 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 8462eb3..ad885b5 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -582,6 +582,8 @@ enum {
+>  #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
+>  	/* Do not take i_data_sem locking in ext4_map_blocks */
+>  #define EXT4_GET_BLOCKS_NO_LOCK			0x0100
+> +	/* Do not put hole in extent cache */
+> +#define EXT4_GET_BLOCKS_NO_PUT_HOLE		0x0200
+>  
+>  /*
+>   * Flags used by ext4_free_blocks
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 4b065ff..1be8955 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2154,6 +2154,8 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+>  				block,
+>  				le32_to_cpu(ex->ee_block),
+>  				 ext4_ext_get_actual_len(ex));
+> +		ext4_es_insert_extent(inode, lblock, len, ~0,
+> +				      EXTENT_STATUS_HOLE);
+>  	} else if (block >= le32_to_cpu(ex->ee_block)
+>  			+ ext4_ext_get_actual_len(ex)) {
+>  		ext4_lblk_t next;
+> @@ -2167,6 +2169,8 @@ ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
+>  				block);
+>  		BUG_ON(next == lblock);
+>  		len = next - lblock;
+> +		ext4_es_insert_extent(inode, lblock, len, ~0,
+> +				      EXTENT_STATUS_HOLE);
+>  	} else {
+>  		lblock = len = 0;
+>  		BUG();
+> @@ -4006,7 +4010,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  		 * put just found gap into cache to speed up
+>  		 * subsequent requests
+>  		 */
+> -		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
+> +		if ((flags & EXT4_GET_BLOCKS_NO_PUT_HOLE) == 0)
+> +			ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
+>  		goto out2;
+>  	}
+>  
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 71cb75a..ca7dc9f 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -468,6 +468,65 @@ error:
+>  	return err;
+>  }
+>  
+> +/*
+> + * ext4_es_lookup_extent() looks up an extent in extent status tree.
+> + *
+> + * ext4_es_lookup_extent is called by ext4_map_blocks/ext4_da_map_blocks.
+> + *
+> + * Return: 1 on found, 0 on not
+> + */
+> +int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es)
+> +{
+> +	struct ext4_es_tree *tree;
+> +	struct extent_status *es1 = NULL;
+> +	struct rb_node *node;
+> +	int found = 0;
+> +
+> +	trace_ext4_es_lookup_extent_enter(inode, es->es_lblk);
+> +	es_debug("lookup extent in block %u\n", es->es_lblk);
+> +
+> +	tree = &EXT4_I(inode)->i_es_tree;
+> +	read_lock(&EXT4_I(inode)->i_es_lock);
+> +
+> +	/* find extent in cache firstly */
+> +	es->es_len = es->es_pblk = 0;
+> +	if (tree->cache_es) {
+> +		es1 = tree->cache_es;
+> +		if (in_range(es->es_lblk, es1->es_lblk, es1->es_len)) {
+> +			es_debug("%u cached by [%u/%u)\n",
+> +				 es->es_lblk, es1->es_lblk, es1->es_len);
+> +			found = 1;
+> +			goto out;
+> +		}
+> +	}
+> +
+> +	node = tree->root.rb_node;
+> +	while (node) {
+> +		es1 = rb_entry(node, struct extent_status, rb_node);
+> +		if (es->es_lblk < es1->es_lblk)
+> +			node = node->rb_left;
+> +		else if (es->es_lblk > ext4_es_end(es1))
+> +			node = node->rb_right;
+> +		else {
+> +			found = 1;
+> +			break;
+> +		}
+> +	}
+> +
+> +out:
+> +	if (found) {
+> +		BUG_ON(!es1);
+> +		es->es_lblk = es1->es_lblk;
+> +		es->es_len = es1->es_len;
+> +		es->es_pblk = es1->es_pblk;
+> +	}
+> +
+> +	read_unlock(&EXT4_I(inode)->i_es_lock);
+> +
+> +	trace_ext4_es_lookup_extent_exit(inode, es, found);
+> +	return found;
+> +}
+> +
+>  static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
+>  				 ext4_lblk_t end)
+>  {
+> diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+> index b5788eb..effe78c 100644
+> --- a/fs/ext4/extents_status.h
+> +++ b/fs/ext4/extents_status.h
+> @@ -53,6 +53,7 @@ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>  				 ext4_lblk_t len);
+>  extern ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
+>  					       struct extent_status *es);
+> +extern int ext4_es_lookup_extent(struct inode *inode, struct extent_status *es);
+>  
+>  static inline int ext4_es_is_written(struct extent_status *es)
+>  {
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 16454fc..670779a 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -508,12 +508,34 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
+>  int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  		    struct ext4_map_blocks *map, int flags)
+>  {
+> +	struct extent_status es;
+>  	int retval;
+>  
+>  	map->m_flags = 0;
+>  	ext_debug("ext4_map_blocks(): inode %lu, flag %d, max_blocks %u,"
+>  		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
+>  		  (unsigned long) map->m_lblk);
+> +
+> +	/* Lookup extent status tree firstly */
+> +	es.es_lblk = map->m_lblk;
+> +	if (ext4_es_lookup_extent(inode, &es)) {
+> +		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+> +			map->m_pblk = ext4_es_pblock(&es) +
+> +					map->m_lblk - es.es_lblk;
+> +			map->m_flags |= ext4_es_is_written(&es) ?
+> +					EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+> +			retval = es.es_len - (map->m_lblk - es.es_lblk);
+> +			if (retval > map->m_len)
+> +				retval = map->m_len;
+> +			map->m_len = retval;
+> +		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
+> +			retval = 0;
+> +		} else {
+> +			BUG_ON(1);
+> +		}
+> +		goto found;
+> +	}
+> +
+>  	/*
+>  	 * Try to see if we can get the block without requesting a new
+>  	 * file system block.
+> @@ -541,6 +563,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+>  		up_read((&EXT4_I(inode)->i_data_sem));
+>  
+> +found:
+>  	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+>  		int ret = check_block_validity(inode, map);
+>  		if (ret != 0)
+> @@ -1772,6 +1795,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  			      struct ext4_map_blocks *map,
+>  			      struct buffer_head *bh)
+>  {
+> +	struct extent_status es;
+>  	int retval;
+>  	sector_t invalid_block = ~((sector_t) 0xffff);
+>  
+> @@ -1782,6 +1806,39 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  	ext_debug("ext4_da_map_blocks(): inode %lu, max_blocks %u,"
+>  		  "logical block %lu\n", inode->i_ino, map->m_len,
+>  		  (unsigned long) map->m_lblk);
+> +
+> +	/* Lookup extent status tree firstly */
+> +	es.es_lblk = iblock;
+> +	if (ext4_es_lookup_extent(inode, &es)) {
+> +
+> +		if (ext4_es_is_hole(&es)) {
+> +			retval = 0;
+> +			down_read((&EXT4_I(inode)->i_data_sem));
+> +			goto add_delayed;
+> +		}
+> +
+> +		if (ext4_es_is_delayed(&es)) {
+> +			map_bh(bh, inode->i_sb, invalid_block);
+> +			set_buffer_new(bh);
+> +			set_buffer_delay(bh);
+> +			return 0;
+> +		}
+> +
+> +		map->m_pblk = ext4_es_pblock(&es) + iblock - es.es_lblk;
+> +		retval = es.es_len - (iblock - es.es_lblk);
+> +		if (retval > map->m_len)
+> +			retval = map->m_len;
+> +		map->m_len = retval;
+> +		if (ext4_es_is_written(&es))
+> +			map->m_flags |= EXT4_MAP_MAPPED;
+> +		else if (ext4_es_is_unwritten(&es))
+> +			map->m_flags |= EXT4_MAP_UNWRITTEN;
+> +		else
+> +			BUG_ON(1);
+> +
+> +		return retval;
+> +	}
+> +
+>  	/*
+>  	 * Try to see if we can get the block without requesting a new
+>  	 * file system block.
+> @@ -1800,10 +1857,13 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+>  			map->m_flags |= EXT4_MAP_FROM_CLUSTER;
+>  		retval = 0;
+>  	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+> -		retval = ext4_ext_map_blocks(NULL, inode, map, 0);
+> +		retval = ext4_ext_map_blocks(NULL, inode, map,
+> +					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
+>  	else
+> -		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
+> +		retval = ext4_ind_map_blocks(NULL, inode, map,
+> +					     EXT4_GET_BLOCKS_NO_PUT_HOLE);
+>  
+> +add_delayed:
+>  	if (retval == 0) {
+>  		int ret;
+>  		/*
+> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> index d278ced..822780a 100644
+> --- a/include/trace/events/ext4.h
+> +++ b/include/trace/events/ext4.h
+> @@ -2177,6 +2177,62 @@ TRACE_EVENT(ext4_es_find_delayed_extent_exit,
+>  		  __entry->pblk, __entry->status, __entry->ret)
+>  );
+>  
+> +TRACE_EVENT(ext4_es_lookup_extent_enter,
+> +	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
+> +
+> +	TP_ARGS(inode, lblk),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(	dev_t,		dev		)
+> +		__field(	ino_t,		ino		)
+> +		__field(	ext4_lblk_t,	lblk		)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->dev	= inode->i_sb->s_dev;
+> +		__entry->ino	= inode->i_ino;
+> +		__entry->lblk	= lblk;
+> +	),
+> +
+> +	TP_printk("dev %d,%d ino %lu lblk %u",
+> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
+> +		  (unsigned long) __entry->ino, __entry->lblk)
+> +);
+> +
+> +TRACE_EVENT(ext4_es_lookup_extent_exit,
+> +	TP_PROTO(struct inode *inode, struct extent_status *es,
+> +		 int found),
+> +
+> +	TP_ARGS(inode, es, found),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(	dev_t,		dev		)
+> +		__field(	ino_t,		ino		)
+> +		__field(	ext4_lblk_t,	lblk		)
+> +		__field(	ext4_lblk_t,	len		)
+> +		__field(	ext4_fsblk_t,	pblk		)
+> +		__field(	unsigned long long,	status	)
+> +		__field(	int,		found		)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->dev	= inode->i_sb->s_dev;
+> +		__entry->ino	= inode->i_ino;
+> +		__entry->lblk	= es->es_lblk;
+> +		__entry->len	= es->es_len;
+> +		__entry->pblk	= ext4_es_pblock(es);
+> +		__entry->status	= ext4_es_status(es);
+> +		__entry->found	= found;
+> +	),
+> +
+> +	TP_printk("dev %d,%d ino %lu found %d [%u/%u) %llu %llx",
+> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
+> +		  (unsigned long) __entry->ino, __entry->found,
+> +		  __entry->lblk, __entry->len,
+> +		  __entry->found ? __entry->pblk : 0,
+> +		  __entry->found ? __entry->status : 0)
+> +);
+> +
+>  #endif /* _TRACE_EXT4_H */
+>  
+>  /* This part must be outside protection */
+> -- 
+> 1.7.12.rc2.18.g61b472e
+> 
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
