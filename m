@@ -1,37 +1,88 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] xfstests: add disk failure simulation test
-Date: Thu, 14 Feb 2013 08:32:17 +1100
-Message-ID: <20130213213217.GG26694@dastard>
-References: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Wed, 13 Feb 2013 16:33:46 -0500
+Message-ID: <20130213213346.GQ14195@fieldses.org>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, dchinner@redhat.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"sandeen@redhat.com" <sandeen@redhat.com>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	"gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:16178 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S964910Ab3BMVc4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2013 16:32:56 -0500
+Received: from fieldses.org ([174.143.236.118]:35765 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751861Ab3BMVdy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Feb 2013 16:33:54 -0500
 Content-Disposition: inline
-In-Reply-To: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 07:41:37PM +0400, Dmitry Monakhov wrote:
-> BE CAREFUL!! test known to cause memory corruption for XFS
-> see: https://gist.github.com/dmonakhov/4945005
+On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
+> On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
+> > Oops, probably should have cc'd linux-nfs.
+> > 
+> > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
+> > > The other thing that I'd note is that the readdir cookie has been
+> > > 64-bit since NFSv3, which was released in June ***1995***.  And the
+> > > explicit, stated purpose of making it be a 64-bit value (as stated in
+> > > RFC 1813) was to reduce interoperability problems.  If that were the
+> > > case, are you telling me that Sun (who has traditionally been pretty
+> > > good worrying about interoperability concerns, and in fact employed
+> > > the editors of RFC 1813) didn't get this right?  This seems
+> > > quite.... surprising to me.
+> > > 
+> > > I thought this was the whole point of the various NFS interoperability
+> > > testing done at Connectathon, for which Sun was a major sponsor?!?  No
+> > > one noticed?!?
+> > 
+> > Beats me.  But it's not necessarily easy to replace clients running
+> > legacy applications, so we're stuck working with the clients we have....
+> > 
+> > The linux client does remap the server-provided cookies to small
+> > integers, I believe exactly because older applications had trouble with
+> > servers returning "large" cookies.  So presumably ext4-exporting-Linux
+> > servers aren't the first to do this.
+> > 
+> > I don't know which client versions are affected--Connectathon's next
+> > week and I'll talk to people and make sure there's an ext4 export with
+> > this turned on to test against.
+> 
+> Actually, one of the main reasons for the Linux client not exporting raw
+> readdir cookies is because the glibc-2 folks in their infinite wisdom
+> declared that telldir()/seekdir() use an off_t. They then went yet one
+> further and decided to declare negative offsets to be illegal so that
+> they could use the negative values internally in their syscall wrappers.
+> 
+> The POSIX definition has none of the above rubbish
+> (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html)
+> and so glibc brilliantly saddled Linux with a crippled readdir
+> implementation that is _not_ POSIX compatible.
+> 
+> No, I'm not at all bitter...
 
-Commit 9f87832 (xfs: fix shutdown hang on invalid inode during
-create) might actually fix this. IIRC, it went into 3.8-rc7 so that
-wouldn't have been in the kernel you were testing. Can you retest
-with a more recent kernel and if it is still busted, send a bug
-report to the list?
+Oh, right, I knew I'd forgotten part of the story....
 
-Cheers,
+But then you must have actually been testing against servers that were
+using that 32nd bit?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I think ext4 actually only uses 31 bits even in the 32-bit case.  And
+for a server that was literally using an offset inside a directory file,
+that would be a colossal directory.
+
+So I'm wondering how you ran across it.
+
+Partly just pure curiosity.
+
+--b.
