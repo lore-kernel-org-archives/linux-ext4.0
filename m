@@ -1,333 +1,144 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests: add disk failure simulation test
-Date: Wed, 13 Feb 2013 10:28:35 -0600
-Message-ID: <511BBF33.20908@redhat.com>
-References: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org>
+From: "Myklebust, Trond" <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Wed, 13 Feb 2013 16:43:05 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+References: <20130212202841.GC10267@fieldses.org>
+	 <20130213040003.GB2614@thunk.org> <20130213133131.GE14195@fieldses.org>
+	 <20130213151455.GB17431@thunk.org> <20130213151953.GJ14195@fieldses.org>
+	 <20130213153654.GC17431@thunk.org> <20130213162059.GL14195@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	dchinner@redhat.com, xfs@oss.sgi.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org" <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	"gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org" <gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>,
+	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20130213162059.GL14195-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Content-Language: en-US
+Content-ID: <BB4769648796C749857DCF0BA5C274F4-oP88Kt8RkgzdA/Lu/QRl1Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2/13/13 9:41 AM, Dmitry Monakhov wrote:
-> There are many situations where disk may fail for example
-> 1) brutal usb dongle unplug
-> 2) iscsi (or any other netbdev) failure due to network issues
-> In this situation filesystem which use this blockdevice is
-> expected to fail(force RO remount, abort, etc) but whole system
-> should still be operational. In other words:
-> 1) Kernel should not panic
-> 2) Memory should not leak
-> 3) Data integrity operations (sync,fsync,fdatasync, directio) should fail
->    for affected filesystem
-> 4) It should be possible to umount broken filesystem
+On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
+> Oops, probably should have cc'd linux-nfs.
 > 
-> Later when disk becomes available again we expect(only for journaled filesystems):
-> 5) It will be possible to mount filesystem w/o explicit fsck (in order to caught
->    issues like https://patchwork.kernel.org/patch/1983981/)
-> 6) Filesystem should be operational
-> 7) After mount/umount has being done all errors should be fixed so fsck should
->    not spot any issues.
-
-Thanks, this should be very useful.  A couple questions & nitpicky
-things below.
-
-> This test use fault enjection (CONFIG_FAIL_MAKE_REQUEST=y config option )
-> which force all new IO requests to fail for a given device. Xfs already has
-> XFS_IOC_GOINGDOWN ioctl which provides similar behaviour, but it is fsspeciffic
-> and it does it in an easy way because it perform freeze_bdev() before actual
-> shotdown.
-
-Well, just FWIW it depends on the flags it was given:
-
-/*
- * Flags for going down operation
- */
-#define XFS_FSOP_GOING_FLAGS_DEFAULT            0x0     /* going down */
-#define XFS_FSOP_GOING_FLAGS_LOGFLUSH           0x1     /* flush log but not data */
-#define XFS_FSOP_GOING_FLAGS_NOLOGFLUSH         0x2     /* don't flush log nor data */
-
-Only the default case does freeze_bdev.
-
-> Test run fsstress in background and then force disk failure.
-> Once disk failed it check that (1)-(4) is true.
-> Then makes disk available again and check that (5)-(7) is also true
+> On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
+> > On Wed, Feb 13, 2013 at 10:19:53AM -0500, J. Bruce Fields wrote:
+> > > > > (In more detail: they're spreading a single directory across multiple
+> > > > > nodes, and encoding a node ID into the cookie they return, so they can
+> > > > > tell which node the cookie came from when they get it back.)
+> > > > > 
+> > > > > That works if you assume the cookie is an "offset" bounded above by some
+> > > > > measure of the directory size, hence unlikely to ever use the high
+> > > > > bits....
+> > > > 
+> > > > Right, but why wouldn't a nfs export option solave the problem for
+> > > > gluster?
+> > > 
+> > > No, gluster is running on ext4 directly.
+> > 
+> > OK, so let me see if I can get this straight.  Each local gluster node
+> > is running a userspace NFS server, right?
 > 
-> BE CAREFUL!! test known to cause memory corruption for XFS
-> see: https://gist.github.com/dmonakhov/4945005
-
-For other reviewers, this patch depends on the series:
-[PATCH 0/8] xfstests: Stress tests improments v3
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  292           |  137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
->  292.out       |    8 +++
->  common.config |    1 +
->  common.rc     |    6 +++
->  group         |    1 +
->  5 files changed, 153 insertions(+), 0 deletions(-)
->  create mode 100755 292
->  create mode 100644 292.out
+> My understanding is that only one frontend server is running the server.
+> So in your picture below, "NFS v3" should be some internal gluster
+> protocol:
 > 
-> diff --git a/292 b/292
-> new file mode 100755
-> index 0000000..3dd6608
-> --- /dev/null
-> +++ b/292
-> @@ -0,0 +1,136 @@
-> +#! /bin/bash
-> +# FSQA Test No. 292
-> +#
-> +# Run fsstress and simulate disk failure
-> +# check filesystem consystency at the end.
-
-"consistency," just to be picky.
-
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2006 Silicon Graphics, Inc.  All Rights Reserved.
-
-(c) 2013 Dmitry Monakhov
-
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#
-> +#-----------------------------------------------------------------------
-> +#
-> +# creator
-> +owner=dmonakhov@openvz.org
-> +
-> +seq=`basename $0`
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1	# failure is the default!
-> +
-> +# get standard environment, filters and checks
-> +. ./common.rc
-> +. ./common.filter
-> +
-> +# TODO move it to common.blkdev if necessery
-
-maybe a comment as to why you do this?  (presumably to find the right thing in /sys)
-I hope this always works with all udev schemes etc?
-
-> +SCRATCH_REAL_DEV=`readlink -f $SCRATCH_DEV`
-> +SCRATCH_BDEV=`basename $SCRATCH_REAL_DEV`
-> +
-> +allow_fail_make_request()
-> +{
-> +    [ -f "$DEBUGFS_MNT/fail_make_request/probability" ] \
-> +	|| _notrun "$DEBUGFS_MNT/fail_make_request \
-> + not found. Seems that CONFIG_FAIL_MAKE_REQUEST kernel config option not enabled"
-> +
-> +    echo "Allow global fail_make_request feature"
-> +    echo 100 > $DEBUGFS_MNT/fail_make_request/probability
-> +    echo 9999999 > $DEBUGFS_MNT/fail_make_request/times
-> +    echo 0 >  /sys/kernel/debug/fail_make_request/verbose
-> +
-> +}
-> +
-> +disallow_fail_make_request()
-> +{
-> +    echo "Disallow global fail_make_request feature"
-> +    echo 0 > $DEBUGFS_MNT/fail_make_request/probability
-> +    echo 0 > $DEBUGFS_MNT/fail_make_request/times
-> +}
-> +
-> +poweroff_scratch_dev()
-
-I guess I'd prefer just "fail_scratch_dev" since you aren't really
-powering off anything.  :)
-
-> +{
-> +    echo "Force SCRATCH_DEV device failure"
-> +    echo " echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-> +    echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail
-> +
-> +}
-> +
-> +poweron_scratch_dev()
-
-Hm "unfail_scratch_dev?" :)
-
-> +{
-> +    echo "Make SCRATCH_DEV device operatable again"
-
-"operable"
-
-> +    echo " echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-> +    echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail
-> +
-> +}
-> +
-> +_cleanup()
-> +{
-> +    poweron_scratch_dev
-> +    disallow_fail_make_request
-> +}
-> +trap "_cleanup; exit \$status" 1 2 3 15
-> +
-> +# Disable all sync operations to get higher load
-> +FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0 -f setattr=1"
-> +
-> +_workout()
-> +{
-> +	out=$SCRATCH_MNT/fsstress.$$
-> +	args=`_scale_fsstress_args -p 1 -n999999999 -f setattr=0 $FSSTRESS_AVOID -d $out`
-> +	echo ""
-> +	echo "Run fsstress"
-> +	echo ""
-> +	echo "fsstress $args" >> $here/$seq.full
-> +	$FSSTRESS_PROG $args > /dev/null 2>&1 &
-> +	pid=$!
-> +	# Let's it work for awhile
-> +	sleep $((20 + 10 * $TIME_FACTOR))
-> +	poweroff_scratch_dev
-> +	# After device turns in to failed state filesystem may not know about that
-> +	# so buffered write(2) may succeed, but any integrity operation such as
-> +	# (sync, fsync, fdatasync, direct-io) should fail.
-> +	dd if=/dev/zero of=$SCRATCH_MNT/touch_failed_filesystem count=1 bs=4k conv=fsync \
-> +	    >> $here/$seq.full 2>&1 && \
-> +	    _fail "failed: still able to perform integrity sync on $SCRATCH_MNT"
-> +
-> +	kill $pid
-> +	wait $pid
-> +
-> +	# We expect that broken fs is still can be umounted
-> +	run_check umount -f $SCRATCH_DEV
-
-why -f, out of curiosity?
-
-> +	poweron_scratch_dev
-> +
-> +	# In order to check that filesystem is able to recover journal on mount(2)
-> +	# perform mount/umount, after that all errors should be fixed
-> +	run_check _scratch_mount
-> +	run_check _scratch_unmount
-> +	_check_scratch_fs
-> +}
-> +
-> +# real QA test starts here
-> +_supported_fs ext3 ext4 xfs btrfs
-
-Could this be expanded to "generic" but only enforce a post-log-recovery clean
-fsck for filesystems we know have journaling?
-
-> +_supported_os Linux
-> +_need_to_be_root
-> +_require_scratch
-> +_require_debugfs
-
-should you have a:
-
-_require_fail_make_request
-
-here, instead of doing it in allow_fail_make_request ?
-Might just be a little more obvious, and possibly useful
-for other tests that build on this one.
-
-> +
-> +_scratch_mkfs >> $here/$seq.full 2>&1 || _fail "mkfs failed"
-> +_scratch_mount || _fail "mount failed"
-> +allow_fail_make_request
-> +_workout
-> +status=$?
-> +disallow_fail_make_request
-> +exit
-> diff --git a/292.out b/292.out
-> new file mode 100644
-> index 0000000..08d9820
-> --- /dev/null
-> +++ b/292.out
-> @@ -0,0 +1,8 @@
-> +QA output created by 292
-> +Allow global fail_make_request feature
-> +
-> +Run fsstress
-> +
-> +Force SCRATCH_DEV device failure
-> +Make SCRATCH_DEV device operatable again
-> +Disallow global fail_make_request feature
-> diff --git a/common.config b/common.config
-> index a956a46..f7a2422 100644
-> --- a/common.config
-> +++ b/common.config
-> @@ -75,6 +75,7 @@ export BENCH_PASSES=${BENCH_PASSES:=5}
->  export XFS_MKFS_OPTIONS=${XFS_MKFS_OPTIONS:=-bsize=4096}
->  export TIME_FACTOR=${TIME_FACTOR:=1}
->  export LOAD_FACTOR=${LOAD_FACTOR:=1}
-> +export DEBUGFS_MNT=${DEBUGFS_MNT:="/sys/kernel/debug"}
+> 
+>                                                    /------ GFS Storage
+>                                                   /        Server #1
+>    GFS Cluster     NFS V3      GFS Cluster      -- gluster protocol
+>    Client        <--------->   Frontend Server  ---------- GFS Storage
+>                                                 --         Server #2
+>                                                   \
+>                                                    \------ GFS Storage
+>                                                            Server #3
 >  
->  export PWD=`pwd`
->  #export DEBUG=${DEBUG:=...} # arbitrary CFLAGS really.
-> diff --git a/common.rc b/common.rc
-> index 5c3dda1..d5d9c9f 100644
-> --- a/common.rc
-> +++ b/common.rc
-> @@ -1027,6 +1027,12 @@ _require_sparse_files()
->      esac
->  }
->  
-> +_require_debugfs()
-> +{
-> +    #boot_params always present in debugfs
-> +    [ -d "$DEBUGFS_MNT/boot_params" ] || _notrun "Debugfs not mounted"
-> +}
-
-Would it make more sense to look for debugfs in /proc/filesystems
-as a test for it being *available* (as opposed to mounted somewhere?)
-
-I wonder if a helper (maybe in _require_debugfs) should work out if
-it's mounted, if not, try to mount it, and in the end, export DEBUGFS_MNT
-for any test that wants to use it.
-
-Otherwise if it happens to be mounted elsewhere, this'll all fail.
-Just a thought.  Maybe that's unusual enough that there's no point.
-But getting it mounted if it's not would be helpful I think.
-
-> +
->  # check that a FS on a device is mounted
->  # if so, return mount point
->  #
-> diff --git a/group b/group
-> index b962a33..c409957 100644
-> --- a/group
-> +++ b/group
-> @@ -415,3 +415,4 @@ stress
->  289 auto aio dangerous ioctl rw stress
->  290 auto aio dangerous ioctl rw stress
->  291 auto aio dangerous ioctl rw stress
-> +292 dangerous rw stress
 > 
+> That frontend server gets a readdir request for a directory which is
+> stored across several of the storage servers.  It has to return a
+> cookie.  It will get that cookie back from the client at some unknown
+> later time (possibly after the server has rebooted).  So their solution
+> is to return a cookie from one of the storage servers, plus some kind of
+> node id in the top bits so they can remember which server it came from.
+> 
+> (I don't know much about gluster, but I think that's the basic idea.)
+> 
+> I've assumed that users of directory cookies should treat them as
+> opaque, so I don't think what gluster is doing is correct.  But on the
+> other hand they are defined as integers and described as offsets here
+> and there.  And I can't actually think of anything else that would work,
+> short of gluster generating and storing its own cookies.
+> 
+> > Because if it were running
+> > a kernel-side NFS server, it would be sufficient to use an nfs export
+> > option.
+> > 
+> > A client which mounts a "gluster file system" is also doing this via
+> > NFSv3, right?  Or are they using their own protocol?  If they are
+> > using their own protocol, why can't they encode the node ID somewhere
+> > else?
+> > 
+> > So this a correct picture of what is going on:
+> > 
+> >                                                   /------ GFS Storage
+> >                                                  /        Server #1
+> >   GFS Cluster     NFS V3      GFS Cluster      -- NFS v3
+> >   Client        <--------->   Frontend Server  ---------- GFS Storage
+> >                                                --         Server #2
+> >                                                  \
+> >                                                   \------ GFS Storage
+> >                                                           Server #3
+> > 
+> > 
+> > And the reason why it needs to use the high bits is because when it
+> > needs to coalesce the results from each GFS Storage Server to the GFS
+> > Cluster client?
+> > 
+> > The other thing that I'd note is that the readdir cookie has been
+> > 64-bit since NFSv3, which was released in June ***1995***.  And the
+> > explicit, stated purpose of making it be a 64-bit value (as stated in
+> > RFC 1813) was to reduce interoperability problems.  If that were the
+> > case, are you telling me that Sun (who has traditionally been pretty
+> > good worrying about interoperability concerns, and in fact employed
+> > the editors of RFC 1813) didn't get this right?  This seems
+> > quite.... surprising to me.
+> > 
+> > I thought this was the whole point of the various NFS interoperability
+> > testing done at Connectathon, for which Sun was a major sponsor?!?  No
+> > one noticed?!?
+> 
+> Beats me.  But it's not necessarily easy to replace clients running
+> legacy applications, so we're stuck working with the clients we have....
+> 
+> The linux client does remap the server-provided cookies to small
+> integers, I believe exactly because older applications had trouble with
+> servers returning "large" cookies.  So presumably ext4-exporting-Linux
+> servers aren't the first to do this.
+> 
+> I don't know which client versions are affected--Connectathon's next
+> week and I'll talk to people and make sure there's an ext4 export with
+> this turned on to test against.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Actually, one of the main reasons for the Linux client not exporting raw
+readdir cookies is because the glibc-2 folks in their infinite wisdom
+declared that telldir()/seekdir() use an off_t. They then went yet one
+further and decided to declare negative offsets to be illegal so that
+they could use the negative values internally in their syscall wrappers.
+
+The POSIX definition has none of the above rubbish
+(http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html)
+and so glibc brilliantly saddled Linux with a crippled readdir
+implementation that is _not_ POSIX compatible.
+
+No, I'm not at all bitter...
+
+Trond
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
