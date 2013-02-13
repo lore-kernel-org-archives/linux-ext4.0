@@ -1,55 +1,75 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Date: Wed, 13 Feb 2013 08:40:33 -0500
-Message-ID: <20130213134033.GF14195@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <CA1BDE43-F265-48AF-9E6D-10974F0C45CB@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Merge window planning for ext4 and Ted's vacation
+Date: Wed, 13 Feb 2013 10:08:41 -0500
+Message-ID: <20130213150841.GA17431@thunk.org>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+ <1358510446-19174-5-git-send-email-jack@suse.cz>
+ <20130209171015.GC8091@thunk.org>
+ <20130212215832.GA25984@quack.suse.cz>
+ <20130213045759.GE2614@thunk.org>
+ <87ehgku11r.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Theodore Ts'o <tytso@mit.edu>,
-	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	gluster-devel@nongnu.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Zheng Liu <gnehzuil.liu@gmail.com>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43191 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755759Ab3BMNkh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2013 08:40:37 -0500
+Received: from li9-11.members.linode.com ([67.18.176.11]:48113 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934109Ab3BMPIv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Feb 2013 10:08:51 -0500
 Content-Disposition: inline
-In-Reply-To: <CA1BDE43-F265-48AF-9E6D-10974F0C45CB@gmail.com>
+In-Reply-To: <87ehgku11r.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 12, 2013 at 10:56:36PM -0800, Andreas Dilger wrote:
-> On 2013-02-12, at 12:28 PM, J. Bruce Fields wrote:
-> > 06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
-> > and previous patches solved problems with hash collisions in large
-> > directories by using 64- instead of 32- bit directory hashes in some
-> > cases.  But it caused problems for users who assume directory offsets
-> > are "small".  Two cases we've run across:
-> > 
-> > 	- older NFS clients: 64-bit cookies cause applications on
-> >           many older clients to fail.
-> > 	- gluster: gluster assumed that it could take the top bits of
-> > 	  the offset for its own use.
-> > 
-> > In both cases we could argue we're in the right: the nfs protocol
-> > defines cookies to be 64 bits, so clients should be prepared to handle them (remapping to smaller integers if necessary to placate 
-> > applications using older system interfaces).
+On Wed, Feb 13, 2013 at 11:26:40AM +0400, Dmitry Monakhov wrote:
+> This helps us to spot several hidden issues (number is still unknown)
+> so may be it is reasonable to split first patch in two parts:
+> 1) disable uninitialized extents merging itself.
+> 2) Print warning if split is required inside end_io(so only warning will
+> be printed, but w/o data corruption)
+> 3) Get rid of extent split machinery from end_io (because it is not
+> longer valid situation)
 > 
-> There appears to already be support for handling this for NFSv2
-> clients, so it should be possible to have an NFS server mount
-> option to set this for all clients:
-> 
->         /* NFSv2 only supports 32 bit cookies */
->         if (rqstp->rq_vers > 2)
->                 may_flags |= NFSD_MAY_64BIT_COOKIE;
-> 
-> Alternately, this might be detected on a per-client basis by
-> whitelist or blacklist if there is some way for the server to
-> identify the client?
+> (1) and (2) should be accepted ASAP and will help us to spot and fix
+> other hidden issues. And we fix all related issues it will be safe
+> to apply (3)'rd one.
+> I'll send patches soon.
 
-No, there isn't.
+That seems like reasonable approach; I'm not sure we'll be able to get
+to (3) by the time the merge window opens, but getting (1) and (2) in
+would be great; if the warning is getting triggered a lot, we might
+need to only enable it under CONFIG_EXT4_DEBUG, though.
 
---b.
+If you could you base the patches off of tip of the dev branch (which
+I just updated), I'd really appreciate it.  The last commit on the
+newly updated dev branch is:
+
+7eedefe ext4: support simple conversion of extent-mapped inodes to use i_blocks
+
+In this updated dev branch, I've moved the extent status patches to
+the unstable portion of the tree due to the bigalloc regressions.  So
+the plan for the merge window is that currently, the extent status
+patches and the uninitialized extent merging patches are currently on
+the unstable portion of the tree here:
+
+	http://repo.or.cz/w/ext4-patch-queue.git
+	git://repo.or.cz/ext4-patch-queue.git
+
+That way we can do intensive testing on the rest of the ext4 tree.
+Once the rest of the patches have been validated, I'll push the master
+branch on the ext4 git tree to point at the fully validated set of
+patches, and then we can try to push the rest of the patches that have
+been moved past the stable-boundary in the ext4 patch queue back onto
+the dev branch, and see if we can shake out the rest of the problems
+before the merge window opens.
+
+I will be leaving for Hawaii tomorrow, so the amount of time I will
+have to do a development/debugging work will be limited.  On the other
+hand, it's easy to let regression tests run in the hotel room while
+I'm visiting volcano craters, so please do send me updated patches,
+and I'll review and test them as I have time.  The joys of having the
+pre-merge window crunch coincide with your vacation...  :-)
+
+    	    	       	     	    	     - Ted
