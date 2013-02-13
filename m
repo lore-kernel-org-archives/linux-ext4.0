@@ -1,58 +1,48 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 5/8] xfstests: Move run_check to common.rc
-Date: Wed, 13 Feb 2013 12:50:00 +0400
-Message-ID: <1360745403-6373-6-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 2/8] xfstests: get rid of hardcoded /sbin/mkfs
+Date: Wed, 13 Feb 2013 12:49:57 +0400
+Message-ID: <1360745403-6373-3-git-send-email-dmonakhov@openvz.org>
 References: <1360745403-6373-1-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:44063 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932276Ab3BMIub (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Feb 2013 03:50:31 -0500
 In-Reply-To: <1360745403-6373-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- 276       |    6 ------
- common.rc |    8 +++++++-
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ common.rc |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/276 b/276
-index 082f943..c1ce8ac 100755
---- a/276
-+++ b/276
-@@ -165,12 +165,6 @@ _btrfs_inspect_check()
- 	return $ret
- }
- 
--run_check()
--{
--	echo "# $@" >> $seq.full 2>&1
--	"$@" >> $seq.full 2>&1 || _fail "failed: '$@'"
--}
--
- workout()
- {
- 	fsz=$1
 diff --git a/common.rc b/common.rc
-index ea5c477..5c3dda1 100644
+index f5027e7..196619d 100644
 --- a/common.rc
 +++ b/common.rc
-@@ -1806,7 +1806,13 @@ _scale_fsstress_args()
-     done
-     echo $args                                                                                            
+@@ -334,7 +334,7 @@ _scratch_mkfs()
+         $MKFS_BTRFS_PROG $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
+ 	;;
+     *)
+-	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
++	$MKFS_PROG -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
+ 	;;
+     esac
  }
--  
-+
-+run_check()
-+{
-+	echo "# $@" >> $seq.full 2>&1
-+	"$@" >> $seq.full 2>&1 || _fail "failed: '$@'"
-+}
-+
- ################################################################################
- 
- if [ "$iam" != new -a "$iam" != bench ]
+@@ -353,7 +353,7 @@ _scratch_mkfs_sized()
+ 	_scratch_mkfs_xfs -d size=$fssize -b size=$blocksize
+ 	;;
+     ext2|ext3|ext4|ext4dev)
+-	/sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
++	$MKFS_PROG -t $FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
+ 	;;
+     btrfs)
+ 	$MKFS_BTRFS_PROG $MKFS_OPTIONS -b $fssize $SCRATCH_DEV
 -- 
 1.7.1
 
