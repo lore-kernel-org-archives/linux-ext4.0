@@ -1,164 +1,43 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: track all extent status in extent status tree
-Date: Tue, 12 Feb 2013 22:46:22 -0500
-Message-ID: <1360727182-21881-2-git-send-email-tytso@mit.edu>
-References: <20130213032819.GA2614@thunk.org>
- <1360727182-21881-1-git-send-email-tytso@mit.edu>
-Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	Jan kara <jack@suse.cz>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Tue, 12 Feb 2013 23:00:03 -0500
+Message-ID: <20130213040003.GB2614@thunk.org>
+References: <20130212202841.GC10267@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	gluster-devel@nongnu.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48039 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48048 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754029Ab3BMDq1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 22:46:27 -0500
-In-Reply-To: <1360727182-21881-1-git-send-email-tytso@mit.edu>
+	id S1758502Ab3BMEAM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 23:00:12 -0500
+Content-Disposition: inline
+In-Reply-To: <20130212202841.GC10267@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On Tue, Feb 12, 2013 at 03:28:41PM -0500, J. Bruce Fields wrote:
+> 06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
+> and previous patches solved problems with hash collisions in large
+> directories by using 64- instead of 32- bit directory hashes in some
+> cases.  But it caused problems for users who assume directory offsets
+> are "small".  Two cases we've run across:
+> 
+> 	- older NFS clients: 64-bit cookies cause applications on many
+> 	  older clients to fail.
 
-By recording the phycisal block and status, extent status tree is able
-to track the status of every extents.  When we call _map_blocks
-functions to lookup an extent or create a new written/unwritten/delayed
-extent, this extent will be inserted into extent status tree.  The hole
-extent is inserted in ext4_ext_put_gap_in_cache().  If there is no any
-extent, we will not insert a hole extent [0, ~0] into the extent status
-tree in order to reduce the complextiy of code.
+Is there a list of clients (and version numbers) which are having
+problems?
 
-We don't load all extents from disk in alloc_inode() because it costs
-too much memory, and if a file is opened and closed frequently it will
-takes too much time to load all extent information.  So currently when
-we create/lookup an extent, this extent will be inserted into extent
-status tree.  Hence, the extent status tree may not comprehensively
-contain all of the extents found in the file.
+> A "no_64bit_cookies" export option would provide a workaround for NFS 
+> servers with older NFS clients, but not for applications like gluster.
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan kara <jack@suse.cz>
----
- fs/ext4/extents_status.c | 18 ++++++++++++----
- fs/ext4/inode.c          | 53 ++++++++++++++++++++++++++++++------------------
- 2 files changed, 47 insertions(+), 24 deletions(-)
+Why isn't it sufficient for gluster?  Are they doing something
+horrible such as assuming that telldir() cookies accessed from
+userspace are identical to NFS cookies?  Or is it some other horrible
+abstraction violation?
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index df72e95..839a91d 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -267,15 +267,25 @@ ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
- 	es1 = __es_tree_search(&tree->root, es->es_lblk);
- 
- out:
--	if (es1) {
-+	if (es1 && !ext4_es_is_delayed(es1)) {
-+		while ((node = rb_next(&es1->rb_node)) != NULL) {
-+			es1 = rb_entry(node, struct extent_status, rb_node);
-+			if (ext4_es_is_delayed(es1))
-+				break;
-+		}
-+	}
-+
-+	if (es1 && ext4_es_is_delayed(es1)) {
- 		tree->cache_es = es1;
- 		es->es_lblk = es1->es_lblk;
- 		es->es_len = es1->es_len;
- 		es->es_pblk = es1->es_pblk;
--		node = rb_next(&es1->rb_node);
--		if (node) {
-+		while ((node = rb_next(&es1->rb_node)) != NULL) {
- 			es1 = rb_entry(node, struct extent_status, rb_node);
--			ret = es1->es_lblk;
-+			if (ext4_es_is_delayed(es1)) {
-+				ret = es1->es_lblk;
-+				break;
-+			}
- 		}
- 	}
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cd75f65..01875fe 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -524,20 +524,22 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
- 	}
-+	if (retval > 0) {
-+		int ret;
-+		unsigned long long status;
-+
-+		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
-+				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+		ret = ext4_es_insert_extent(inode, map->m_lblk,
-+					    map->m_len, map->m_pblk, status);
-+		if (ret < 0)
-+			retval = ret;
-+	}
- 	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
- 		up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
--		int ret;
--		if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
--			/* delayed alloc may be allocated by fallocate and
--			 * coverted to initialized by directIO.
--			 * we need to handle delayed extent here.
--			 */
--			down_write((&EXT4_I(inode)->i_data_sem));
--			goto delayed_mapped;
--		}
--		ret = check_block_validity(inode, map);
-+		int ret = check_block_validity(inode, map);
- 		if (ret != 0)
- 			return ret;
- 	}
-@@ -606,18 +608,19 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
- 			ext4_da_update_reserve_space(inode, retval, 1);
- 	}
--	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
-+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
- 		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
- 
--		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
--			int ret;
--delayed_mapped:
--			/* delayed allocation blocks has been allocated */
--			ret = ext4_es_remove_extent(inode, map->m_lblk,
--						    map->m_len);
--			if (ret < 0)
--				retval = ret;
--		}
-+	if (retval > 0) {
-+		int ret;
-+		unsigned long long status;
-+
-+		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
-+				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-+					    map->m_pblk, status);
-+		if (ret < 0)
-+			retval = ret;
- 	}
- 
- 	up_write((&EXT4_I(inode)->i_data_sem));
-@@ -1787,6 +1790,16 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
- 		map_bh(bh, inode->i_sb, invalid_block);
- 		set_buffer_new(bh);
- 		set_buffer_delay(bh);
-+	} else if (retval > 0) {
-+		int ret;
-+		unsigned long long status;
-+
-+		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
-+				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
-+					    map->m_pblk, status);
-+		if (ret != 0)
-+			retval = ret;
- 	}
- 
- out_unlock:
--- 
-1.7.12.rc0.22.gcdd159b
-
+						- Ted
