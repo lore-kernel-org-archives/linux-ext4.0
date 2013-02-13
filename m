@@ -1,46 +1,86 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 53741] Used block count in df output
-Date: Wed, 13 Feb 2013 05:21:01 +0000 (UTC)
-Message-ID: <20130213052101.5F5F011FF3E@bugzilla.kernel.org>
-References: <bug-53741-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Tue, 12 Feb 2013 22:56:36 -0800
+Message-ID: <CA1BDE43-F265-48AF-9E6D-10974F0C45CB@gmail.com>
+References: <20130212202841.GC10267@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v1085)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	Theodore Ts'o <tytso@mit.edu>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	gluster-devel@nongnu.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:57793 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750868Ab3BMFVE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2013 00:21:04 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 2581E2028C
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2013 05:21:03 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id 68CA020275
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2013 05:21:01 +0000 (UTC)
-In-Reply-To: <bug-53741-13602@https.bugzilla.kernel.org/>
+Received: from mail-da0-f50.google.com ([209.85.210.50]:59388 "EHLO
+	mail-da0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753358Ab3BMG4j convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Feb 2013 01:56:39 -0500
+Received: by mail-da0-f50.google.com with SMTP id h15so408644dan.37
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Feb 2013 22:56:39 -0800 (PST)
+In-Reply-To: <20130212202841.GC10267@fieldses.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=53741
+On 2013-02-12, at 12:28 PM, J. Bruce Fields wrote:
+> 06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
+> and previous patches solved problems with hash collisions in large
+> directories by using 64- instead of 32- bit directory hashes in some
+> cases.  But it caused problems for users who assume directory offsets
+> are "small".  Two cases we've run across:
+> 
+> 	- older NFS clients: 64-bit cookies cause applications on
+>           many older clients to fail.
+> 	- gluster: gluster assumed that it could take the top bits of
+> 	  the offset for its own use.
+> 
+> In both cases we could argue we're in the right: the nfs protocol
+> defines cookies to be 64 bits, so clients should be prepared to handle them (remapping to smaller integers if necessary to placate 
+> applications using older system interfaces).
+
+There appears to already be support for handling this for NFSv2
+clients, so it should be possible to have an NFS server mount
+option to set this for all clients:
+
+        /* NFSv2 only supports 32 bit cookies */
+        if (rqstp->rq_vers > 2)
+                may_flags |= NFSD_MAY_64BIT_COOKIE;
+
+Alternately, this might be detected on a per-client basis by
+whitelist or blacklist if there is some way for the server to
+identify the client?
+
+> And gluster was incorrect to assume that the "offset" was really
+> an "offset" as opposed to just an opaque value.
+
+Hmm, userspace already can't use the top bit of the cookie,
+since the offset is a signed value, so gluster could continue
+to use that bit for itself.  It could, in theory, also downshift
+the cookie by one bit for 64-bit cookies and shift it back
+before use, but I'm not sure that is kosher for all filesystems.
+
+> But in practice things that worked fine for a long time break on a
+> kernel upgrade.
+> 
+> So at a minimum I think we owe people a workaround, and turning off
+> dir_index may not be practical for everyone.
+> 
+> A "no_64bit_cookies" export option would provide a workaround for NFS 
+> servers with older NFS clients, but not for applications like gluster.
+
+We added a "32bitapi" mount option to Lustre to handle the case
+where it is re-exporting via NFS to 32-bit clients, which is like
+your proposed "no_64bit_cookies" and "nfs.enable_ino64=0" together.
+
+> For that reason I'd rather have a way to turn this off on a given ext4 filesystem.  Is that practical?
+
+It wouldn't be impossible - pos2maj_hash() and pos2min_hash()
+could get a per-superblock and/or kernel option to force 32-bit
+hash values.
+
+Cheers, Andreas
 
 
-Eric Sandeen <sandeen@redhat.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |sandeen@redhat.com
 
 
 
-
---- Comment #1 from Eric Sandeen <sandeen@redhat.com>  2013-02-13 05:21:01 ---
-Specifically, I think this is a problem with the overhead calculations done in
-the default "bsddf" freespace reporting, which tries to not count the
-fundamental filesystem metadata blocks as "used".  With mount -o minixdf, which
-is the straightforward "report all blocks used as used" mode, the df output
-makes sense.
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
