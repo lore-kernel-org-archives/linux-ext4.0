@@ -1,88 +1,103 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: regressions due to 64-bit ext4 directory cookies
-Date: Wed, 13 Feb 2013 16:33:46 -0500
-Message-ID: <20130213213346.GQ14195@fieldses.org>
+Date: Wed, 13 Feb 2013 17:18:01 -0500
+Message-ID: <20130213221800.GS14195@fieldses.org>
 References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+ <511AAC89.3060409@itwm.fraunhofer.de>
+ <20130212210054.GF10267@fieldses.org>
+ <511B4C18.8030300@itwm.fraunhofer.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sandeen@redhat.com" <sandeen@redhat.com>,
-	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-	"gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	Theodore Ts'o <tytso@mit.edu>, gluster-devel@nongnu.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35765 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53603 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751861Ab3BMVdy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2013 16:33:54 -0500
+	id S1750736Ab3BMWSF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Feb 2013 17:18:05 -0500
 Content-Disposition: inline
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <511B4C18.8030300@itwm.fraunhofer.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
-> On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
-> > Oops, probably should have cc'd linux-nfs.
-> > 
-> > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
-> > > The other thing that I'd note is that the readdir cookie has been
-> > > 64-bit since NFSv3, which was released in June ***1995***.  And the
-> > > explicit, stated purpose of making it be a 64-bit value (as stated in
-> > > RFC 1813) was to reduce interoperability problems.  If that were the
-> > > case, are you telling me that Sun (who has traditionally been pretty
-> > > good worrying about interoperability concerns, and in fact employed
-> > > the editors of RFC 1813) didn't get this right?  This seems
-> > > quite.... surprising to me.
-> > > 
-> > > I thought this was the whole point of the various NFS interoperability
-> > > testing done at Connectathon, for which Sun was a major sponsor?!?  No
-> > > one noticed?!?
-> > 
-> > Beats me.  But it's not necessarily easy to replace clients running
-> > legacy applications, so we're stuck working with the clients we have....
-> > 
-> > The linux client does remap the server-provided cookies to small
-> > integers, I believe exactly because older applications had trouble with
-> > servers returning "large" cookies.  So presumably ext4-exporting-Linux
-> > servers aren't the first to do this.
-> > 
-> > I don't know which client versions are affected--Connectathon's next
-> > week and I'll talk to people and make sure there's an ext4 export with
-> > this turned on to test against.
+On Wed, Feb 13, 2013 at 09:17:28AM +0100, Bernd Schubert wrote:
+> On 02/12/2013 10:00 PM, J. Bruce Fields wrote:
+> >On Tue, Feb 12, 2013 at 09:56:41PM +0100, Bernd Schubert wrote:
+> >>On 02/12/2013 09:28 PM, J. Bruce Fields wrote:
+> >>>06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
+> >>>and previous patches solved problems with hash collisions in large
+> >>>directories by using 64- instead of 32- bit directory hashes in some
+> >>>cases.  But it caused problems for users who assume directory offsets
+> >>>are "small".  Two cases we've run across:
+> >>>
+> >>>	- older NFS clients: 64-bit cookies cause applications on many
+> >>>	  older clients to fail.
+> >>>	- gluster: gluster assumed that it could take the top bits of
+> >>>	  the offset for its own use.
+> >>>
+> >>>In both cases we could argue we're in the right: the nfs protocol
+> >>>defines cookies to be 64 bits, so clients should be prepared to handle
+> >>>them (remapping to smaller integers if necessary to placate applications
+> >>>using older system interfaces).  And gluster was incorrect to assume
+> >>>that the "offset" was really an "offset" as opposed to just an opaque
+> >>>value.
+> >>>
+> >>>But in practice things that worked fine for a long time break on a
+> >>>kernel upgrade.
+> >>>
+> >>>So at a minimum I think we owe people a workaround, and turning off
+> >>>dir_index may not be practical for everyone.
+> >>>
+> >>>A "no_64bit_cookies" export option would provide a workaround for NFS
+> >>>servers with older NFS clients, but not for applications like gluster.
+> >>>
+> >>>For that reason I'd rather have a way to turn this off on a given ext4
+> >>>filesystem.  Is that practical?
+> >>
+> >>I think Ted needs to answer if he would accept another mount option. But
+> >>before we are going this way, what is gluster doing if there are hash
+> >>collions?
+> >
+> >They probably just haven't tested NFS with large enough directories.
 > 
-> Actually, one of the main reasons for the Linux client not exporting raw
-> readdir cookies is because the glibc-2 folks in their infinite wisdom
-> declared that telldir()/seekdir() use an off_t. They then went yet one
-> further and decided to declare negative offsets to be illegal so that
-> they could use the negative values internally in their syscall wrappers.
+> Is it only related to NFS or generic readdir over gluster?
 > 
-> The POSIX definition has none of the above rubbish
-> (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html)
-> and so glibc brilliantly saddled Linux with a crippled readdir
-> implementation that is _not_ POSIX compatible.
+> >The birthday paradox says you'd need about 2^16 entries to have a 50-50
+> >chance of hitting the problem.
 > 
-> No, I'm not at all bitter...
+> We are frequently running into it with 50000 files per directory.
+> 
+> >
+> >I don't know enough about ext4 directory performance.  But unfortunately
+> >I suspect there's a range of directory sizes that are too small to have
+> >a significant chance of having directory collisions, but still large
+> >enough to need dir_index?
+> 
+> Here is a link to the initial benchmark:
+> http://search.luky.org/linux-kernel.2001/msg00117.html
 
-Oh, right, I knew I'd forgotten part of the story....
+Hm, so I still don't have a good feeling for when dir_index is likely to
+start winning.
 
-But then you must have actually been testing against servers that were
-using that 32nd bit?
+For comparison, assuming the probability of seeing a failure due to hash
+collisions in an n-entry directory is the probability of a collision
+among n numbers chosen uniformly at random from 2^31, that's about:
 
-I think ext4 actually only uses 31 bits even in the 32-bit case.  And
-for a server that was literally using an offset inside a directory file,
-that would be a colossal directory.
+	 0.0002% for n=  100
+	 0.006 % for n=  500
+	 0.02  % for n= 1000
+	 0.6   % for n= 5000
+	 2     % for n=10000
 
-So I'm wondering how you ran across it.
+So if we could tell anyone with directories smaller than 10,000 entries:
+"hey, you don't need dir_index anyway, just turn it off"--good, the only
+people still forced to deal with 64-bit cookies will be the ones that
+have probably already found that ext4 isn't reliable for their purposes.
 
-Partly just pure curiosity.
+If there are people with only a few hundred entries who still need
+dir_index--well, we may be making them unhappy as we're making them
+suffer to fix a bug that they've never actually seen.
 
 --b.
