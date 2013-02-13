@@ -1,89 +1,266 @@
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Wed, 13 Feb 2013 16:40:35 +0100
-Message-ID: <511BB3F3.7010608@itwm.fraunhofer.de>
-References: <20130212202841.GC10267@fieldses.org> <511AAC89.3060409@itwm.fraunhofer.de> <20130212210054.GF10267@fieldses.org> <20130213133133.GB23233@ndevos-laptop.usersys.redhat.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] xfstests: add disk failure simulation test
+Date: Wed, 13 Feb 2013 19:41:37 +0400
+Message-ID: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, sandeen@redhat.com,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	gluster-devel@nongnu.org
-To: Niels de Vos <ndevos@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:38875 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757615Ab3BMPkm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Feb 2013 10:40:42 -0500
-Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
-	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-9.4) with ESMTP id r1DFedff007519
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Feb 2013 16:40:39 +0100
-In-Reply-To: <20130213133133.GB23233@ndevos-laptop.usersys.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, dchinner@redhat.com
+To: xfs@oss.sgi.com
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On 02/13/2013 02:31 PM, Niels de Vos wrote:
-> On Tue, Feb 12, 2013 at 04:00:54PM -0500, J. Bruce Fields wrote:
->> On Tue, Feb 12, 2013 at 09:56:41PM +0100, Bernd Schubert wrote:
->>> On 02/12/2013 09:28 PM, J. Bruce Fields wrote:
->>>> 06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
->>>> and previous patches solved problems with hash collisions in large
->>>> directories by using 64- instead of 32- bit directory hashes in some
->>>> cases.  But it caused problems for users who assume directory offsets
->>>> are "small".  Two cases we've run across:
->>>>
->>>> 	- older NFS clients: 64-bit cookies cause applications on many
->>>> 	  older clients to fail.
->>>> 	- gluster: gluster assumed that it could take the top bits of
->>>> 	  the offset for its own use.
->>>>
->>>> In both cases we could argue we're in the right: the nfs protocol
->>>> defines cookies to be 64 bits, so clients should be prepared to handle
->>>> them (remapping to smaller integers if necessary to placate applications
->>>> using older system interfaces).  And gluster was incorrect to assume
->>>> that the "offset" was really an "offset" as opposed to just an opaque
->>>> value.
->>>>
->>>> But in practice things that worked fine for a long time break on a
->>>> kernel upgrade.
->>>>
->>>> So at a minimum I think we owe people a workaround, and turning off
->>>> dir_index may not be practical for everyone.
->>>>
->>>> A "no_64bit_cookies" export option would provide a workaround for NFS
->>>> servers with older NFS clients, but not for applications like gluster.
->>>>
->>>> For that reason I'd rather have a way to turn this off on a given ext4
->>>> filesystem.  Is that practical?
->>>
->>> I think Ted needs to answer if he would accept another mount option. But
->>> before we are going this way, what is gluster doing if there are hash
->>> collions?
->>
->> They probably just haven't tested NFS with large enough directories.
->> The birthday paradox says you'd need about 2^16 entries to have a 50-50
->> chance of hitting the problem.
->
-> The Gluster NFS-server gets into an infinite loop:
-> - https://bugzilla.redhat.com/show_bug.cgi?id=838784
+There are many situations where disk may fail for example
+1) brutal usb dongle unplug
+2) iscsi (or any other netbdev) failure due to network issues
+In this situation filesystem which use this blockdevice is
+expected to fail(force RO remount, abort, etc) but whole system
+should still be operational. In other words:
+1) Kernel should not panic
+2) Memory should not leak
+3) Data integrity operations (sync,fsync,fdatasync, directio) should fail
+   for affected filesystem
+4) It should be possible to umount broken filesystem
 
-Hmm, this bugzilla is not entirely what I meant, as it refers to 64-bit 
-hashes.
-My question actually was, what is gluster going to do if there is a 
-32-bit hash collision and ext4 seeks back to a random entry?
-That might end in an endless loop, but it also simply might list entries 
-multiple times on readdir().
-Of course, something that only happens rarely is better than something 
-that happens all the time, but it still would be better to properly fix 
-it, wouldn't it?
+Later when disk becomes available again we expect(only for journaled filesystems):
+5) It will be possible to mount filesystem w/o explicit fsck (in order to caught
+   issues like https://patchwork.kernel.org/patch/1983981/)
+6) Filesystem should be operational
+7) After mount/umount has being done all errors should be fixed so fsck should
+   not spot any issues.
 
-> The general advise (even before this Bug) is that XFS should be used,
-> which is not affected with this problem (yet?).
+This test use fault enjection (CONFIG_FAIL_MAKE_REQUEST=y config option )
+which force all new IO requests to fail for a given device. Xfs already has
+XFS_IOC_GOINGDOWN ioctl which provides similar behaviour, but it is fsspeciffic
+and it does it in an easy way because it perform freeze_bdev() before actual
+shotdown.
 
-Hmm, well, always depends on the workload.
+Test run fsstress in background and then force disk failure.
+Once disk failed it check that (1)-(4) is true.
+Then makes disk available again and check that (5)-(7) is also true
 
+BE CAREFUL!! test known to cause memory corruption for XFS
+see: https://gist.github.com/dmonakhov/4945005
 
-Cheers,
-Bernd
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ 292           |  137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 292.out       |    8 +++
+ common.config |    1 +
+ common.rc     |    6 +++
+ group         |    1 +
+ 5 files changed, 153 insertions(+), 0 deletions(-)
+ create mode 100755 292
+ create mode 100644 292.out
+
+diff --git a/292 b/292
+new file mode 100755
+index 0000000..3dd6608
+--- /dev/null
++++ b/292
+@@ -0,0 +1,136 @@
++#! /bin/bash
++# FSQA Test No. 292
++#
++# Run fsstress and simulate disk failure
++# check filesystem consystency at the end.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2006 Silicon Graphics, Inc.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=dmonakhov@openvz.org
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# TODO move it to common.blkdev if necessery
++SCRATCH_REAL_DEV=`readlink -f $SCRATCH_DEV`
++SCRATCH_BDEV=`basename $SCRATCH_REAL_DEV`
++
++allow_fail_make_request()
++{
++    [ -f "$DEBUGFS_MNT/fail_make_request/probability" ] \
++	|| _notrun "$DEBUGFS_MNT/fail_make_request \
++ not found. Seems that CONFIG_FAIL_MAKE_REQUEST kernel config option not enabled"
++
++    echo "Allow global fail_make_request feature"
++    echo 100 > $DEBUGFS_MNT/fail_make_request/probability
++    echo 9999999 > $DEBUGFS_MNT/fail_make_request/times
++    echo 0 >  /sys/kernel/debug/fail_make_request/verbose
++
++}
++
++disallow_fail_make_request()
++{
++    echo "Disallow global fail_make_request feature"
++    echo 0 > $DEBUGFS_MNT/fail_make_request/probability
++    echo 0 > $DEBUGFS_MNT/fail_make_request/times
++}
++
++poweroff_scratch_dev()
++{
++    echo "Force SCRATCH_DEV device failure"
++    echo " echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
++    echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail
++
++}
++
++poweron_scratch_dev()
++{
++    echo "Make SCRATCH_DEV device operatable again"
++    echo " echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
++    echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail
++
++}
++
++_cleanup()
++{
++    poweron_scratch_dev
++    disallow_fail_make_request
++}
++trap "_cleanup; exit \$status" 1 2 3 15
++
++# Disable all sync operations to get higher load
++FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0 -f setattr=1"
++
++_workout()
++{
++	out=$SCRATCH_MNT/fsstress.$$
++	args=`_scale_fsstress_args -p 1 -n999999999 -f setattr=0 $FSSTRESS_AVOID -d $out`
++	echo ""
++	echo "Run fsstress"
++	echo ""
++	echo "fsstress $args" >> $here/$seq.full
++	$FSSTRESS_PROG $args > /dev/null 2>&1 &
++	pid=$!
++	# Let's it work for awhile
++	sleep $((20 + 10 * $TIME_FACTOR))
++	poweroff_scratch_dev
++	# After device turns in to failed state filesystem may not know about that
++	# so buffered write(2) may succeed, but any integrity operation such as
++	# (sync, fsync, fdatasync, direct-io) should fail.
++	dd if=/dev/zero of=$SCRATCH_MNT/touch_failed_filesystem count=1 bs=4k conv=fsync \
++	    >> $here/$seq.full 2>&1 && \
++	    _fail "failed: still able to perform integrity sync on $SCRATCH_MNT"
++
++	kill $pid
++	wait $pid
++
++	# We expect that broken fs is still can be umounted
++	run_check umount -f $SCRATCH_DEV
++	poweron_scratch_dev
++
++	# In order to check that filesystem is able to recover journal on mount(2)
++	# perform mount/umount, after that all errors should be fixed
++	run_check _scratch_mount
++	run_check _scratch_unmount
++	_check_scratch_fs
++}
++
++# real QA test starts here
++_supported_fs ext3 ext4 xfs btrfs
++_supported_os Linux
++_need_to_be_root
++_require_scratch
++_require_debugfs
++
++_scratch_mkfs >> $here/$seq.full 2>&1 || _fail "mkfs failed"
++_scratch_mount || _fail "mount failed"
++allow_fail_make_request
++_workout
++status=$?
++disallow_fail_make_request
++exit
+diff --git a/292.out b/292.out
+new file mode 100644
+index 0000000..08d9820
+--- /dev/null
++++ b/292.out
+@@ -0,0 +1,8 @@
++QA output created by 292
++Allow global fail_make_request feature
++
++Run fsstress
++
++Force SCRATCH_DEV device failure
++Make SCRATCH_DEV device operatable again
++Disallow global fail_make_request feature
+diff --git a/common.config b/common.config
+index a956a46..f7a2422 100644
+--- a/common.config
++++ b/common.config
+@@ -75,6 +75,7 @@ export BENCH_PASSES=${BENCH_PASSES:=5}
+ export XFS_MKFS_OPTIONS=${XFS_MKFS_OPTIONS:=-bsize=4096}
+ export TIME_FACTOR=${TIME_FACTOR:=1}
+ export LOAD_FACTOR=${LOAD_FACTOR:=1}
++export DEBUGFS_MNT=${DEBUGFS_MNT:="/sys/kernel/debug"}
+ 
+ export PWD=`pwd`
+ #export DEBUG=${DEBUG:=...} # arbitrary CFLAGS really.
+diff --git a/common.rc b/common.rc
+index 5c3dda1..d5d9c9f 100644
+--- a/common.rc
++++ b/common.rc
+@@ -1027,6 +1027,12 @@ _require_sparse_files()
+     esac
+ }
+ 
++_require_debugfs()
++{
++    #boot_params always present in debugfs
++    [ -d "$DEBUGFS_MNT/boot_params" ] || _notrun "Debugfs not mounted"
++}
++
+ # check that a FS on a device is mounted
+ # if so, return mount point
+ #
+diff --git a/group b/group
+index b962a33..c409957 100644
+--- a/group
++++ b/group
+@@ -415,3 +415,4 @@ stress
+ 289 auto aio dangerous ioctl rw stress
+ 290 auto aio dangerous ioctl rw stress
+ 291 auto aio dangerous ioctl rw stress
++292 dangerous rw stress
+-- 
+1.7.1
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
