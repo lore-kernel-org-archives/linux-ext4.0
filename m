@@ -1,86 +1,158 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 04/10 v5] ext4: track all extent status in extent status
- tree
-Date: Tue, 12 Feb 2013 22:28:19 -0500
-Message-ID: <20130213032819.GA2614@thunk.org>
-References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-5-git-send-email-wenqing.lz@taobao.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Jan kara <jack@suse.cz>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: [PATCH 1/2] ext4: rename ext4_es_find_extent() to ext4_es_find_delayed_extent()
+Date: Tue, 12 Feb 2013 22:46:21 -0500
+Message-ID: <1360727182-21881-1-git-send-email-tytso@mit.edu>
+References: <20130213032819.GA2614@thunk.org>
+Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48034 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48042 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757861Ab3BMD21 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Feb 2013 22:28:27 -0500
-Content-Disposition: inline
-In-Reply-To: <1360313046-9876-5-git-send-email-wenqing.lz@taobao.com>
+	id S1757594Ab3BMDq3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Feb 2013 22:46:29 -0500
+In-Reply-To: <20130213032819.GA2614@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 08, 2013 at 04:44:00PM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> By recording the phycisal block and status, extent status tree is able
-> to track the status of every extents.  When we call _map_blocks
-> functions to lookup an extent or create a new written/unwritten/delayed
-> extent, this extent will be inserted into extent status tree.  The hole
-> extent is inserted in ext4_ext_put_gap_in_cache().  If there is no any
-> extent, we will not insert a hole extent [0, ~0] into the extent status
-> tree in order to reduce the complextiy of code.
-> 
-> We don't load all extents from disk in alloc_inode() because it costs
-> too much memory, and if a file is opened and closed frequently it will
-> takes too much time to load all extent information.  So currently when
-> we create/lookup an extent, this extent will be inserted into extent
-> status tree.  Hence, the extent status tree may not comprehensively
-> contain all of the extents found in the file.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan kara <jack@suse.cz>
+From: Zheng Liu <wenqing.lz@taobao.com>
 
-Unfortunately, this commit is apparently causing test failures with
-bigalloc:
+Rename ext4_es_find_extent() to ext4_es_find_delayed_extent() to make
+the purpose of this function clearer.
 
---- 013.out	2013-01-01 22:52:04.000000000 -0500
-+++ 013.out.bad	2013-02-12 22:08:47.110766615 -0500
-@@ -8,7 +8,4 @@
- -----------------------------------------------
- fsstress.2 : -p 20 -r
- -----------------------------------------------
--
-------------------------------------------------
--fsstress.3 : -p 4 -z -f rmdir=10 -f link=10 -f creat=10 -f mkdir=10 -f rename=30 -f stat=30 -f unlink=30 -f truncate=20
-------------------------------------------------
-+_check_generic_filesystem: filesystem on /dev/vdd is inconsistent (see 013.full)
-_check_generic_filesystem: filesystem on /dev/vdd is inconsistent (see 013.full)
-Ran: 013
-Failures: 013
-Failed 1 of 1 tests
-END TEST: Ext4 4k block w/bigalloc Tue Feb 12 22:08:49 EST 2013
-e2fsck 1.43-WIP (15-Jan-2013)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 618, i_blocks is 1408, should be 1536.  Fix? yes
+[ This was originally part of the next commit, but I separated this
+  out to make it easier to review and debug the next commit. -- Ted ]
 
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
+Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/extents.c           | 4 ++--
+ fs/ext4/extents_status.c    | 9 +++++----
+ fs/ext4/extents_status.h    | 4 ++--
+ fs/ext4/file.c              | 4 ++--
+ include/trace/events/ext4.h | 4 ++--
+ 5 files changed, 13 insertions(+), 12 deletions(-)
 
-/dev/vdd: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/vdd: 3969/81936 files (13.1% non-contiguous), 176208/1310720 blocks
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 06caa54..9802d64 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3529,7 +3529,7 @@ static int ext4_find_delalloc_range(struct inode *inode,
+ 	struct extent_status es;
+ 
+ 	es.es_lblk = lblk_start;
+-	(void)ext4_es_find_extent(inode, &es);
++	(void)ext4_es_find_delayed_extent(inode, &es);
+ 	if (es.es_len == 0)
+ 		return 0; /* there is no delay extent in this tree */
+ 	else if (es.es_lblk <= lblk_start &&
+@@ -4575,7 +4575,7 @@ static int ext4_find_delayed_extent(struct inode *inode,
+ 	ext4_lblk_t next_del;
+ 
+ 	es.es_lblk = newex->ec_block;
+-	next_del = ext4_es_find_extent(inode, &es);
++	next_del = ext4_es_find_delayed_extent(inode, &es);
+ 
+ 	if (newex->ec_start == 0) {
+ 		/*
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e7e1622..df72e95 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -229,7 +229,7 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
+ }
+ 
+ /*
+- * ext4_es_find_extent: find the 1st delayed extent covering @es->lblk
++ * ext4_es_find_delayed_extent: find the 1st delayed extent covering @es->lblk
+  * if it exists, otherwise, the next extent after @es->lblk.
+  *
+  * @inode: the inode which owns delayed extents
+@@ -239,14 +239,15 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
+  * EXT_MAX_BLOCKS if no extent is found.
+  * Delayed extent is returned via @es.
+  */
+-ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
++ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
++					struct extent_status *es)
+ {
+ 	struct ext4_es_tree *tree = NULL;
+ 	struct extent_status *es1 = NULL;
+ 	struct rb_node *node;
+ 	ext4_lblk_t ret = EXT_MAX_BLOCKS;
+ 
+-	trace_ext4_es_find_extent_enter(inode, es->es_lblk);
++	trace_ext4_es_find_delayed_extent_enter(inode, es->es_lblk);
+ 
+ 	read_lock(&EXT4_I(inode)->i_es_lock);
+ 	tree = &EXT4_I(inode)->i_es_tree;
+@@ -280,7 +281,7 @@ out:
+ 
+ 	read_unlock(&EXT4_I(inode)->i_es_lock);
+ 
+-	trace_ext4_es_find_extent_exit(inode, es, ret);
++	trace_ext4_es_find_delayed_extent_exit(inode, es, ret);
+ 	return ret;
+ }
+ 
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 2a5d69e..b5788eb 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -51,8 +51,8 @@ extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 unsigned long long status);
+ extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len);
+-extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
+-				struct extent_status *es);
++extern ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
++					       struct extent_status *es);
+ 
+ static inline int ext4_es_is_written(struct extent_status *es)
+ {
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 209802b..d2df517 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -465,7 +465,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
+ 		 * it will be as a data.
+ 		 */
+ 		es.es_lblk = last;
+-		(void)ext4_es_find_extent(inode, &es);
++		(void)ext4_es_find_delayed_extent(inode, &es);
+ 		if (last >= es.es_lblk && last < es.es_lblk + es.es_len) {
+ 			if (last != start)
+ 				dataoff = last << blkbits;
+@@ -549,7 +549,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
+ 		 * we will skip this extent.
+ 		 */
+ 		es.es_lblk = last;
+-		(void)ext4_es_find_extent(inode, &es);
++		(void)ext4_es_find_delayed_extent(inode, &es);
+ 		if (last >= es.es_lblk && last < es.es_lblk + es.es_len) {
+ 			last = es.es_lblk + es.es_len;
+ 			holeoff = last << blkbits;
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 0ee507f..0f30a8e 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2147,7 +2147,7 @@ TRACE_EVENT(ext4_es_remove_extent,
+ 		  __entry->lblk, __entry->len)
+ );
+ 
+-TRACE_EVENT(ext4_es_find_extent_enter,
++TRACE_EVENT(ext4_es_find_delayed_extent_enter,
+ 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
+ 
+ 	TP_ARGS(inode, lblk),
+@@ -2169,7 +2169,7 @@ TRACE_EVENT(ext4_es_find_extent_enter,
+ 		  (unsigned long) __entry->ino, __entry->lblk)
+ );
+ 
+-TRACE_EVENT(ext4_es_find_extent_exit,
++TRACE_EVENT(ext4_es_find_delayed_extent_exit,
+ 	TP_PROTO(struct inode *inode, struct extent_status *es,
+ 		 ext4_lblk_t ret),
+ 
+-- 
+1.7.12.rc0.22.gcdd159b
 
-
-I haven't been able to figure out what is going on here, but if we
-can't figure this out I may need to push off this patch series to the
-next merge window.  I've tried splitting up this patch into two pieces
-to make it clearer what is going on, but I still can't see how this
-would be affecting the i_blocks calculation.
-
-							- Ted
-
-
-					
