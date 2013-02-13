@@ -1,103 +1,96 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Date: Wed, 13 Feb 2013 17:18:01 -0500
-Message-ID: <20130213221800.GS14195@fieldses.org>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Date: Wed, 13 Feb 2013 17:20:52 -0500
+Message-ID: <20130213222052.GD5938@thunk.org>
 References: <20130212202841.GC10267@fieldses.org>
- <511AAC89.3060409@itwm.fraunhofer.de>
- <20130212210054.GF10267@fieldses.org>
- <511B4C18.8030300@itwm.fraunhofer.de>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	Theodore Ts'o <tytso@mit.edu>, gluster-devel@nongnu.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53603 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750736Ab3BMWSF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Feb 2013 17:18:05 -0500
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+To: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <511B4C18.8030300@itwm.fraunhofer.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 13, 2013 at 09:17:28AM +0100, Bernd Schubert wrote:
-> On 02/12/2013 10:00 PM, J. Bruce Fields wrote:
-> >On Tue, Feb 12, 2013 at 09:56:41PM +0100, Bernd Schubert wrote:
-> >>On 02/12/2013 09:28 PM, J. Bruce Fields wrote:
-> >>>06effdbb49af5f6c "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)"
-> >>>and previous patches solved problems with hash collisions in large
-> >>>directories by using 64- instead of 32- bit directory hashes in some
-> >>>cases.  But it caused problems for users who assume directory offsets
-> >>>are "small".  Two cases we've run across:
-> >>>
-> >>>	- older NFS clients: 64-bit cookies cause applications on many
-> >>>	  older clients to fail.
-> >>>	- gluster: gluster assumed that it could take the top bits of
-> >>>	  the offset for its own use.
-> >>>
-> >>>In both cases we could argue we're in the right: the nfs protocol
-> >>>defines cookies to be 64 bits, so clients should be prepared to handle
-> >>>them (remapping to smaller integers if necessary to placate applications
-> >>>using older system interfaces).  And gluster was incorrect to assume
-> >>>that the "offset" was really an "offset" as opposed to just an opaque
-> >>>value.
-> >>>
-> >>>But in practice things that worked fine for a long time break on a
-> >>>kernel upgrade.
-> >>>
-> >>>So at a minimum I think we owe people a workaround, and turning off
-> >>>dir_index may not be practical for everyone.
-> >>>
-> >>>A "no_64bit_cookies" export option would provide a workaround for NFS
-> >>>servers with older NFS clients, but not for applications like gluster.
-> >>>
-> >>>For that reason I'd rather have a way to turn this off on a given ext4
-> >>>filesystem.  Is that practical?
-> >>
-> >>I think Ted needs to answer if he would accept another mount option. But
-> >>before we are going this way, what is gluster doing if there are hash
-> >>collions?
-> >
-> >They probably just haven't tested NFS with large enough directories.
+On Wed, Feb 13, 2013 at 01:21:06PM -0800, Anand Avati wrote:
 > 
-> Is it only related to NFS or generic readdir over gluster?
-> 
-> >The birthday paradox says you'd need about 2^16 entries to have a 50-50
-> >chance of hitting the problem.
-> 
-> We are frequently running into it with 50000 files per directory.
-> 
-> >
-> >I don't know enough about ext4 directory performance.  But unfortunately
-> >I suspect there's a range of directory sizes that are too small to have
-> >a significant chance of having directory collisions, but still large
-> >enough to need dir_index?
-> 
-> Here is a link to the initial benchmark:
-> http://search.luky.org/linux-kernel.2001/msg00117.html
+> NFS uses the term cookies, while man pages of readdir/seekdir/telldir calls
+> them "offsets". 
 
-Hm, so I still don't have a good feeling for when dir_index is likely to
-start winning.
+Unfortunately, telldir and seekdir are part of the "unspeakable Unix
+design horrors" which has been with us for 25+ years.  To quote from
+the rationale section from the Single Unix Specification v3 (there is
+similar language in the Posix spec).
 
-For comparison, assuming the probability of seeing a failure due to hash
-collisions in an n-entry directory is the probability of a collision
-among n numbers chosen uniformly at random from 2^31, that's about:
+    The original standard developers perceived that there were
+    restrictions on the use of the seekdir() and telldir() functions
+    related to implementation details, and for that reason these
+    functions need not be supported on all POSIX-conforming
+    systems. They are required on implementations supporting the XSI
+    extension.
 
-	 0.0002% for n=  100
-	 0.006 % for n=  500
-	 0.02  % for n= 1000
-	 0.6   % for n= 5000
-	 2     % for n=10000
+    One of the perceived problems of implementation is that returning
+    to a given point in a directory is quite difficult to describe
+    formally, in spite of its intuitive appeal, when systems that use
+    B-trees, hashing functions, or other similar mechanisms to order
+    their directories are considered. The definition of seekdir() and
+    telldir() does not specify whether, when using these interfaces, a
+    given directory entry will be seen at all, or more than once.
 
-So if we could tell anyone with directories smaller than 10,000 entries:
-"hey, you don't need dir_index anyway, just turn it off"--good, the only
-people still forced to deal with 64-bit cookies will be the ones that
-have probably already found that ext4 isn't reliable for their purposes.
+    On systems not supporting these functions, their capability can
+    sometimes be accomplished by saving a filename found by readdir()
+    and later using rewinddir() and a loop on readdir() to relocate
+    the position from which the filename was saved.
 
-If there are people with only a few hundred entries who still need
-dir_index--well, we may be making them unhappy as we're making them
-suffer to fix a bug that they've never actually seen.
 
---b.
+Telldir() and seekdir() are basically implementation horrors for any
+file system that is using anything other than a simple array of
+directory entries ala the V7 Unix file system or the BSD FFS.  For any
+file system which is using a more advanced data structure, like
+b-trees hash trees, etc, there **can't** possibly be a "offset" into a
+readdir stream.  This is why ext3/ext4 uses a telldir cookie, and it's
+why the NFS specifications refer to it as a cookie.  If you are using
+a modern file system, it can't possibly be an offset.
+
+> You can always say "this is your fault" for interpreting the man pages
+> differently and punish us by leaving things as they are (and unfortunately
+> a big chunk of users who want both ext4 and gluster jeapordized). Or you
+> can be kind, generous and be considerate to the legacy apps and users (of
+> which gluster is only a subset) and only provide a mount option to control
+> the large d_off behavior.
+
+The problem is that we made this change to fix real problems that take
+place when you have hash collisions.  And if you are using a 31-bit
+cookie, the birthday paradox means that by the time you have a
+directory with 2**16 entries, the chances of hash collisions are very
+real.  This could result in NFS readdir getting stuck in loops where
+it constantly gets the file "foo.c", and then when it passes the
+31-bit cookie for "bar.c", since there is a hash collision, it gets
+"foo.c" again, and the readdir never terminates.
+
+So the problem is that you are effectively asking me to penalize
+well-behaved programs that don't try to steel bits from the top of the
+telldir cookie, just for the benefit of gluster.
+
+What if we have an ioctl or a process personality flag where a broken
+application can tell the file system "I'm broken, please give me a
+degraded telldir/seekdir cookie"?  That way we don't penalize programs
+that are doing the right thing, while providing some accomodation for
+programs who are abusing the telldir cookie.
+
+					- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
