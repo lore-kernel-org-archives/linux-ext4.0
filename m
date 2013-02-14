@@ -1,94 +1,102 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Wed, 13 Feb 2013 18:44:30 -0500
-Message-ID: <20130213234430.GF5938@thunk.org>
+From: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Wed, 13 Feb 2013 16:05:01 -0800
+Message-ID: <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
 References: <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
- <20130213224141.GU14195@fieldses.org>
- <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
- <20130213230511.GW14195@fieldses.org>
+	<20130213151953.GJ14195@fieldses.org>
+	<20130213153654.GC17431@thunk.org>
+	<20130213162059.GL14195@fieldses.org>
+	<CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+	<20130213222052.GD5938@thunk.org>
+	<20130213224141.GU14195@fieldses.org>
+	<20130213224720.GE5938@thunk.org>
+	<CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+	<20130213230511.GW14195@fieldses.org>
+	<20130213234430.GF5938@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+Content-Type: multipart/mixed; boundary="===============5388674227217865952=="
+Cc: Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
 	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20130213230511.GW14195-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+In-Reply-To: <20130213234430.GF5938-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+List-Unsubscribe: <https://lists.nongnu.org/mailman/options/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.nongnu.org/archive/html/gluster-devel>
+List-Post: <mailto:gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>
+List-Help: <mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.nongnu.org/mailman/listinfo/gluster-devel>,
+	<mailto:gluster-devel-request-qX2TKyscuCcdnm+yROfE0A@public.gmane.org?subject=subscribe>
+Errors-To: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+Sender: gluster-devel-bounces+gcfgd-gluster-devel=m.gmane.org-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 13, 2013 at 06:05:11PM -0500, J. Bruce Fields wrote:
-> 
-> Would it be possible to make something work like, for example, a 31-bit
-> hash plus an offset into a hash bucket?
-> 
-> I have trouble thinking about this, partly because I can't remember
-> where to find the requirements for readdir on concurrently modified
-> directories....
+--===============5388674227217865952==
+Content-Type: multipart/alternative; boundary=f46d0444edd393dc5f04d5a40293
 
-The requires are that for a directory entry which has not been
-modified since the last opendir() or rewindir(), readdir() must return
-that directory entry exactly once.
+--f46d0444edd393dc5f04d5a40293
+Content-Type: text/plain; charset=ISO-8859-1
 
-For a directory entry which has been added or removed since the last
-opendir() or rewinddir() call, it is undefined whether the directory
-entry is returned once or not at all.  And a rename is defined as a
-add/remove, so it's OK for the old filename and the new file name to
-appear in the readdir() stream; it would also be OK if neither
-appeared in the readdir() stream.
+On Wed, Feb 13, 2013 at 3:44 PM, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
+>
+> I suspect this would seriously screw over Gluster, though, and this
+> wouldn't be a solution for NFSv3, since NFS needs long-lived directory
+> cookies, and not the short-lived cookies which is all POSIX/SuSv3
+> guarantees.
+>
 
-The SUSv3 definition of readdir() can be found here:
+Actually this would work just fine with Gluster. Except in the case of
+gluster-NFS, the native client is only acting like a router/proxy of
+syscalls to the backend system. A directory opened by an application will
+have a matching directory fd opened on ext4, and readdir from an app will
+be translated into readdir on the matching fd on ext4. So the
+app-on-glusterfs and glusterfsd-on-ext4 are essentially "moving in tandem".
+As long as the offs^H^H^H^H cookies do not overflow in the transformation,
+Gluster would not have a problem.
 
-   http://pubs.opengroup.org/onlinepubs/009695399/functions/readdir.html
+However Gluster-NFS (and NFS in general, too) will break, as we
+opendir/closedir potentially on every request.
 
-Note also that if you look at the SuSv3 definition of seekdir(), it
-explicitly states that the value returned by telldir() is not
-guaranteed to be valid after a rewinddir() or across another opendir():
+Avati
 
-   If the value of loc was not obtained from an earlier call to
-   telldir(), or if a call to rewinddir() occurred between the call to
-   telldir() and the call to seekdir(), the results of subsequent
-   calls to readdir() are unspecified.
+--f46d0444edd393dc5f04d5a40293
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-Hence, it would be legal, and arguably more correct, if we created an
-internal array of pointers into the directory structure, where the
-first call to telldir() return 1, and the second call to telldir()
-returned 2, and the third call to telldir() returned 3, regardless of
-the position in the directory, and this number was used by seekdir()
-to index into the array of pointers to return the exact location in
-the b-tree.  This would completely eliminate the possibility of hash
-collisions, and guarantee that readdir() would never drop or return a
-directory entry multiple times after seekdir().
+<br><div class=3D"gmail_quote">On Wed, Feb 13, 2013 at 3:44 PM, Theodore Ts=
+&#39;o <span dir=3D"ltr">&lt;<a href=3D"mailto:tytso-3s7WtUTddSA@public.gmane.org" target=3D"_bl=
+ank">tytso-3s7WtUTddSA@public.gmane.org</a>&gt;</span> wrote:<blockquote class=3D"gmail_quote" s=
+tyle=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">
 
-This implementation approach would have a potential denial of service
-potential since each call to telldir() would potentially be allocating
-kernel memory, but as long as we make sure the OOM killler kills the
-nasty process which is calling telldir() a lot, this would probably be
-OK.
+I suspect this would seriously screw over Gluster, though, and this<br>
+wouldn&#39;t be a solution for NFSv3, since NFS needs long-lived directory<=
+br>
+cookies, and not the short-lived cookies which is all POSIX/SuSv3 guarantee=
+s.<br></blockquote><div>=A0</div><div><div>Actually this would work just fi=
+ne with Gluster. Except in the case of gluster-NFS, the native client is on=
+ly acting like a router/proxy of syscalls to the backend system. A director=
+y opened by an application will have a matching directory fd opened on ext4=
+, and readdir from an app will be translated into readdir on the matching f=
+d on ext4. So the app-on-glusterfs and glusterfsd-on-ext4 are essentially &=
+quot;moving in tandem&quot;. As long as the offs^H^H^H^H cookies do not ove=
+rflow in the transformation, Gluster would not have a problem.</div>
+<div><br></div><div>However Gluster-NFS (and NFS in general, too) will brea=
+k, as we opendir/closedir potentially on every request.</div></div><div><br=
+></div><div>Avati</div></div>
 
-It would also be legal to throw away this array after a call to
-rewinddir() and closedir(), since telldir() cookies and not guaranteed
-to valid indefinitely.  See:
+--f46d0444edd393dc5f04d5a40293--
 
-   http://pubs.opengroup.org/onlinepubs/009695399/functions/seekdir.html
 
-I suspect this would seriously screw over Gluster, though, and this
-wouldn't be a solution for NFSv3, since NFS needs long-lived directory
-cookies, and not the short-lived cookies which is all POSIX/SuSv3 guarantees.
+--===============5388674227217865952==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Regards,
+_______________________________________________
+Gluster-devel mailing list
+Gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
+https://lists.nongnu.org/mailman/listinfo/gluster-devel
 
-					- Ted
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--===============5388674227217865952==--
