@@ -1,87 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: use KERN_WARNING for warning messages
-Date: Thu, 14 Feb 2013 15:12:27 -0500
-Message-ID: <1360872747-22465-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: REGRESSION: [PATCH 04/12] ext4: Disable merging of
+ uninitialized extents
+Date: Thu, 14 Feb 2013 22:32:50 +0100
+Message-ID: <20130214213250.GA4887@quack.suse.cz>
+References: <1358510446-19174-1-git-send-email-jack@suse.cz>
+ <1358510446-19174-5-git-send-email-jack@suse.cz>
+ <20130209171015.GC8091@thunk.org>
+ <20130214161116.GB31269@quack.suse.cz>
+ <20130214190555.GA6641@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48312 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758814Ab3BNUMf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Feb 2013 15:12:35 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:57320 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932601Ab3BNVcx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Feb 2013 16:32:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20130214190555.GA6641@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some messages printed related to a WARN_ON(1) were printed using
-KERN_NOTICE.  Use KERN_WARNING or ext4_warning() instead so that
-context related to the WARN_ON() is printed at the same printk warning
-level (and log files, etc.)
+On Thu 14-02-13 14:05:55, Ted Tso wrote:
+> On Thu, Feb 14, 2013 at 05:11:16PM +0100, Jan Kara wrote:
+> >   OK, so I've debugged this. It wasn't actually that hard. The problem is
+> > that mpage_da_map_and_submit() prepares extent with e.g. 256 blocks but
+> > later we submit a shorter bio e.g. because it cannot carry that many pages.
+> > So ->end_io is called only for first 128 blocks or so. I spotted this
+> > problem already before, just it didn't come up when Ted sent me this bug
+> > report.
+> 
+> So can we get a corruption without these patches, but it was a lot
+> harder to hit that case before?
+  When the bio is shorter we just need to split the unwritten extent when
+processing end_io callback. That is properly handled after Dmitry's fixes
+so corruption can happen only when we are close to ENOSPC and the split
+fails. Now we started seeing the split is happening because one of the
+patches added the warning that the split from end_io is happening...
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c | 12 ++++++------
- fs/ext4/inode.c  |  6 +++---
- 2 files changed, 9 insertions(+), 9 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 91d8fe3..32fd2b9 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1028,17 +1028,17 @@ iget_failed:
- 	inode = NULL;
- bad_orphan:
- 	ext4_warning(sb, "bad orphan inode %lu!  e2fsck was run?", ino);
--	printk(KERN_NOTICE "ext4_test_bit(bit=%d, block=%llu) = %d\n",
-+	printk(KERN_WARNING "ext4_test_bit(bit=%d, block=%llu) = %d\n",
- 	       bit, (unsigned long long)bitmap_bh->b_blocknr,
- 	       ext4_test_bit(bit, bitmap_bh->b_data));
--	printk(KERN_NOTICE "inode=%p\n", inode);
-+	printk(KERN_WARNING "inode=%p\n", inode);
- 	if (inode) {
--		printk(KERN_NOTICE "is_bad_inode(inode)=%d\n",
-+		printk(KERN_WARNING "is_bad_inode(inode)=%d\n",
- 		       is_bad_inode(inode));
--		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
-+		printk(KERN_WARNING "NEXT_ORPHAN(inode)=%u\n",
- 		       NEXT_ORPHAN(inode));
--		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
--		printk(KERN_NOTICE "i_nlink=%u\n", inode->i_nlink);
-+		printk(KERN_WARNING "max_ino=%lu\n", max_ino);
-+		printk(KERN_WARNING "i_nlink=%u\n", inode->i_nlink);
- 		/* Avoid freeing blocks if we got a bad deleted inode */
- 		if (inode->i_nlink == 0)
- 			inode->i_blocks = 0;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2fa18bb..b85d5da 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -343,7 +343,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 	spin_lock(&ei->i_block_reservation_lock);
- 	trace_ext4_da_update_reserve_space(inode, used, quota_claim);
- 	if (unlikely(used > ei->i_reserved_data_blocks)) {
--		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, used %d "
-+		ext4_warning(inode->i_sb, "%s: ino %lu, used %d "
- 			 "with only %d reserved data blocks",
- 			 __func__, inode->i_ino, used,
- 			 ei->i_reserved_data_blocks);
-@@ -352,7 +352,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
- 	}
- 
- 	if (unlikely(ei->i_allocated_meta_blocks > ei->i_reserved_meta_blocks)) {
--		ext4_msg(inode->i_sb, KERN_NOTICE, "%s: ino %lu, allocated %d "
-+		ext4_warning(inode->i_sb, "%s: ino %lu, allocated %d "
- 			 "with only %d reserved metadata blocks\n", __func__,
- 			 inode->i_ino, ei->i_allocated_meta_blocks,
- 			 ei->i_reserved_meta_blocks);
-@@ -1263,7 +1263,7 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
- 		 * function is called from invalidate page, it's
- 		 * harmless to return without any action.
- 		 */
--		ext4_msg(inode->i_sb, KERN_NOTICE, "ext4_da_release_space: "
-+		ext4_warning(inode->i_sb, "ext4_da_release_space: "
- 			 "ino %lu, to_free %d with only %d reserved "
- 			 "data blocks", inode->i_ino, to_free,
- 			 ei->i_reserved_data_blocks);
+								Honza
 -- 
-1.7.12.rc0.22.gcdd159b
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
