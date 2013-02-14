@@ -1,58 +1,121 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Thu, 14 Feb 2013 16:32:15 +1100
-Message-ID: <20130214053215.GK26694@dastard>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Date: Thu, 14 Feb 2013 16:45:36 +1100
+Message-ID: <20130214054536.GL26694@dastard>
 References: <20130212202841.GC10267@fieldses.org>
- <511AAC89.3060409@itwm.fraunhofer.de>
- <20130212210054.GF10267@fieldses.org>
- <20130213133133.GB23233@ndevos-laptop.usersys.redhat.com>
- <511BB3F3.7010608@itwm.fraunhofer.de>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+ <20130213213346.GQ14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Niels de Vos <ndevos@redhat.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, sandeen@redhat.com,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	gluster-devel@nongnu.org
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:36762 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751126Ab3BNFcf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Feb 2013 00:32:35 -0500
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org" <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
+	"gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org" <gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>,
+	"linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Myklebust, Trond" <Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <511BB3F3.7010608@itwm.fraunhofer.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB-UCI0kNdgLrHLJmV3vhxcH3OR4cbS7gtM96Bgd4bDwmQ@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 13, 2013 at 04:40:35PM +0100, Bernd Schubert wrote:
-> >The general advise (even before this Bug) is that XFS should be used,
-> >which is not affected with this problem (yet?).
+On Thu, Feb 14, 2013 at 03:59:17AM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org]
+> > Sent: Wednesday, February 13, 2013 4:34 PM
+> > To: Myklebust, Trond
+> > Cc: Theodore Ts'o; linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org; sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org;
+> > Bernd Schubert; gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org; linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> > Subject: Re: regressions due to 64-bit ext4 directory cookies
+> > 
+> > On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
+> > > On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
+> > > > Oops, probably should have cc'd linux-nfs.
+> > > >
+> > > > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
+> > > > > The other thing that I'd note is that the readdir cookie has been
+> > > > > 64-bit since NFSv3, which was released in June ***1995***.  And
+> > > > > the explicit, stated purpose of making it be a 64-bit value (as
+> > > > > stated in RFC 1813) was to reduce interoperability problems.  If
+> > > > > that were the case, are you telling me that Sun (who has
+> > > > > traditionally been pretty good worrying about interoperability
+> > > > > concerns, and in fact employed the editors of RFC 1813) didn't get
+> > > > > this right?  This seems quite.... surprising to me.
+> > > > >
+> > > > > I thought this was the whole point of the various NFS
+> > > > > interoperability testing done at Connectathon, for which Sun was a
+> > > > > major sponsor?!?  No one noticed?!?
+> > > >
+> > > > Beats me.  But it's not necessarily easy to replace clients running
+> > > > legacy applications, so we're stuck working with the clients we have....
+> > > >
+> > > > The linux client does remap the server-provided cookies to small
+> > > > integers, I believe exactly because older applications had trouble
+> > > > with servers returning "large" cookies.  So presumably
+> > > > ext4-exporting-Linux servers aren't the first to do this.
+> > > >
+> > > > I don't know which client versions are affected--Connectathon's next
+> > > > week and I'll talk to people and make sure there's an ext4 export
+> > > > with this turned on to test against.
+> > >
+> > > Actually, one of the main reasons for the Linux client not exporting
+> > > raw readdir cookies is because the glibc-2 folks in their infinite
+> > > wisdom declared that telldir()/seekdir() use an off_t. They then went
+> > > yet one further and decided to declare negative offsets to be illegal
+> > > so that they could use the negative values internally in their syscall
+> > wrappers.
+> > >
+> > > The POSIX definition has none of the above rubbish
+> > > (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html
+> > > ) and so glibc brilliantly saddled Linux with a crippled readdir
+> > > implementation that is _not_ POSIX compatible.
+> > >
+> > > No, I'm not at all bitter...
+> > 
+> > Oh, right, I knew I'd forgotten part of the story....
+> > 
+> > But then you must have actually been testing against servers that were using
+> > that 32nd bit?
+> > 
+> > I think ext4 actually only uses 31 bits even in the 32-bit case.  And for a server
+> > that was literally using an offset inside a directory file, that would be a
+> > colossal directory.
+
+That's exactly what XFS directory cookies are - a direct encoding of
+the dirent offset into the directory file. Which means a overflow
+would occur at 16GB of directory data for XFS. That is in the realm
+of several hundreds of millions of files in a single directory,
+which I have seen done before....
+
+> > So I'm wondering how you ran across it.
+> > 
+> > Partly just pure curiosity.
 > 
-> Hmm, well, always depends on the workload.
+> IIRC, XFS on IRIX used 0xFFFFF as the readdir eof marker, which caused us to generate an EIO...
 
-XFS won't suffer from this collision bug, for 2 reasons. The first
-is that XFS uses a virtual mapping for directory data and uses an
-encoded index into that virtual mapping as the cookie data. You
-can't have 2 entries at the same index, so you cannot get cookie
-collisions.
+And this discussion explains the magic 0x7fffffff offset mask in the
+linux XFS readdir code. I've been trying to find out for years
+exactly why that was necessary, and now I know.
 
-The second is that the virtual mapping is for a 32GB data segment,
-(2^35 bytes) and, like so much of XFS, the cookie is made up of
-bitfields that encode a specific location. The high bits are the
-virtual block offset into the directory data segment, the low bits
-the offset into the directory block. Given that directory entries
-are aligned to 8 bytes, the offset into the directory block can have
-3 bits compressed out and hence we end up with only 32 bits being
-needed to address the entire 32GB directory data segment.
-
-So, there are no collisions or 32/64 bit issues with XFS directory
-cookies regardless of the workload.
+I probably should write a patch that makes it a "non-magic" number
+and remove it completely for 64 bit platforms before I forget again...
 
 Cheers,
 
 Dave.
 -- 
 Dave Chinner
-david@fromorbit.com
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
