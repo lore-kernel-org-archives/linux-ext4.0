@@ -1,56 +1,71 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Date: Thu, 14 Feb 2013 16:47:44 -0500
-Message-ID: <20130214214744.GC8343@fieldses.org>
-References: <20130213153654.GC17431@thunk.org>
+Date: Thu, 14 Feb 2013 17:01:10 -0500
+Message-ID: <20130214220110.GE8343@fieldses.org>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
  <20130213162059.GL14195@fieldses.org>
  <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
  <20130213222052.GD5938@thunk.org>
- <20130213224141.GU14195@fieldses.org>
- <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
- <20130213230511.GW14195@fieldses.org>
- <20130213234430.GF5938@thunk.org>
- <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
+ <20130214061002.GM26694@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Bernd Schubert <bernd.schubert-mPn0NPGs4xGatNDF+KUbs4QuADTiUCJX@public.gmane.org>,
-	sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, gluster-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org
-To: Anand Avati <anand.avati-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, Anand Avati <anand.avati@gmail.com>,
+	Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+	sandeen@redhat.com, linux-nfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, gluster-devel@nongnu.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:47101 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758235Ab3BNWBR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Feb 2013 17:01:17 -0500
 Content-Disposition: inline
-In-Reply-To: <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130214061002.GM26694@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 04:05:01PM -0800, Anand Avati wrote:
-> On Wed, Feb 13, 2013 at 3:44 PM, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
-> >
-> > I suspect this would seriously screw over Gluster, though, and this
-> > wouldn't be a solution for NFSv3, since NFS needs long-lived directory
-> > cookies, and not the short-lived cookies which is all POSIX/SuSv3
-> > guarantees.
-> >
+On Thu, Feb 14, 2013 at 05:10:02PM +1100, Dave Chinner wrote:
+> On Wed, Feb 13, 2013 at 05:20:52PM -0500, Theodore Ts'o wrote:
+> > Telldir() and seekdir() are basically implementation horrors for any
+> > file system that is using anything other than a simple array of
+> > directory entries ala the V7 Unix file system or the BSD FFS.  For any
+> > file system which is using a more advanced data structure, like
+> > b-trees hash trees, etc, there **can't** possibly be a "offset" into a
+> > readdir stream. 
 > 
-> Actually this would work just fine with Gluster. Except in the case of
-> gluster-NFS, the native client is only acting like a router/proxy of
-> syscalls to the backend system. A directory opened by an application will
-> have a matching directory fd opened on ext4, and readdir from an app will
-> be translated into readdir on the matching fd on ext4. So the
-> app-on-glusterfs and glusterfsd-on-ext4 are essentially "moving in tandem".
-> As long as the offs^H^H^H^H cookies do not overflow in the transformation,
-> Gluster would not have a problem.
+> I'll just point you to this:
 > 
-> However Gluster-NFS (and NFS in general, too) will break, as we
-> opendir/closedir potentially on every request.
+> http://marc.info/?l=linux-ext4&m=136081996316453&w=2
+> 
+> so you can see that XFS implements what you say can't possibly be
+> done. ;)
+> 
+> FWIW, that post only talked about the data segment. I didn't mention
+> that XFS has 2 other segments in the directory file (both beyond
+> EOF) for the directory data indexes. One contains the name-hash btree
+> index used for name based lookups and the other contains a freespace
+> index for tracking free space in the data segment.
 
-Yes.  And, of course, NFS cookies live forever--we have no idea when a
-client will hand one back to us and expect us to do something with it.
+OK, so in some sense that reduces the problem to that of implementing
+readdir cookies for directories that are stored in a simple linear
+array.
+
+Which I should know how to do but I don't: I guess all you need is a
+provision for making holes on remove (so that you aren't required move
+existing entries, messing up offsets for concurrent readers)?
+
+Purely out of curiosity: is there a more detailed writeup of XFS's
+directory format?  (Or a pointer to a piece of the code a person could
+understand without losing a month to it?)
 
 --b.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> 
+> IOWs persistent, deterministic, low cost telldir/seekdir behaviour
+> was a problem solved in the 1990s. :)
+
