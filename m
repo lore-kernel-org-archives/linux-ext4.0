@@ -1,30 +1,30 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
 Subject: Re: [PATCH 04/10 v5] ext4: track all extent status in extent status
  tree
-Date: Fri, 15 Feb 2013 14:45:11 +0800
-Message-ID: <20130215064511.GB26945@gmail.com>
+Date: Fri, 15 Feb 2013 14:53:35 +0800
+Message-ID: <20130215065335.GC26945@gmail.com>
 References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
  <1360313046-9876-5-git-send-email-wenqing.lz@taobao.com>
- <20130211122127.GB5318@quack.suse.cz>
+ <20130213032819.GA2614@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+	Jan kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:42240 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752683Ab3BOGak (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2013 01:30:40 -0500
-Received: by mail-pb0-f41.google.com with SMTP id um15so495019pbc.14
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2013 22:30:40 -0800 (PST)
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:33961 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751357Ab3BOGjE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2013 01:39:04 -0500
+Received: by mail-pa0-f41.google.com with SMTP id fb11so1631516pad.14
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2013 22:39:03 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130211122127.GB5318@quack.suse.cz>
+In-Reply-To: <20130213032819.GA2614@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 11, 2013 at 01:21:27PM +0100, Jan Kara wrote:
-> On Fri 08-02-13 16:44:00, Zheng Liu wrote:
+On Tue, Feb 12, 2013 at 10:28:19PM -0500, Theodore Ts'o wrote:
+> On Fri, Feb 08, 2013 at 04:44:00PM +0800, Zheng Liu wrote:
 > > From: Zheng Liu <wenqing.lz@taobao.com>
 > > 
 > > By recording the phycisal block and status, extent status tree is able
@@ -45,53 +45,55 @@ On Mon, Feb 11, 2013 at 01:21:27PM +0100, Jan Kara wrote:
 > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 > > Cc: "Theodore Ts'o" <tytso@mit.edu>
 > > Cc: Jan kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/extents.c           |  4 +--
-> >  fs/ext4/extents_status.c    | 27 ++++++++++++------
-> >  fs/ext4/extents_status.h    |  4 +--
-> >  fs/ext4/file.c              |  4 +--
-> >  fs/ext4/inode.c             | 68 ++++++++++++++++++++++++++++-----------------
-> >  include/trace/events/ext4.h |  4 +--
-> >  6 files changed, 70 insertions(+), 41 deletions(-)
-> > 
-> ...
-> > diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> > index 5093cee..71cb75a 100644
-> > --- a/fs/ext4/extents_status.c
-> > +++ b/fs/ext4/extents_status.c
-> > @@ -239,14 +239,15 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
-> >   * EXT_MAX_BLOCKS if no extent is found.
-> >   * Delayed extent is returned via @es.
-> >   */
-> > -ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
-> > +ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
-> > +					struct extent_status *es)
-> >  {
->   I have to say I'm still not very happy about this function (but it's much
-> better than it used to be so thanks for that!). I have two suggestions for
-> improvement:
-> 1) 'es' is both input and output argument where for input only es_lblk is
-> used. That's a bit confusing so how about making the function like:
 > 
-> ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t offset,
-> 			    struct extent_status *out);
+> Unfortunately, this commit is apparently causing test failures with
+> bigalloc:
 > 
->   to separate input and output? Also you can comment that we use the 'out'
-> parameter instead of returning the extent_status from the tree because that
-> can be freed once we drop the spinlock protecting status tree.
+> --- 013.out	2013-01-01 22:52:04.000000000 -0500
+> +++ 013.out.bad	2013-02-12 22:08:47.110766615 -0500
+> @@ -8,7 +8,4 @@
+>  -----------------------------------------------
+>  fsstress.2 : -p 20 -r
+>  -----------------------------------------------
+> -
+> ------------------------------------------------
+> -fsstress.3 : -p 4 -z -f rmdir=10 -f link=10 -f creat=10 -f mkdir=10 -f rename=30 -f stat=30 -f unlink=30 -f truncate=20
+> ------------------------------------------------
+> +_check_generic_filesystem: filesystem on /dev/vdd is inconsistent (see 013.full)
+> _check_generic_filesystem: filesystem on /dev/vdd is inconsistent (see 013.full)
+> Ran: 013
+> Failures: 013
+> Failed 1 of 1 tests
+> END TEST: Ext4 4k block w/bigalloc Tue Feb 12 22:08:49 EST 2013
+> e2fsck 1.43-WIP (15-Jan-2013)
+> Pass 1: Checking inodes, blocks, and sizes
+> Inode 618, i_blocks is 1408, should be 1536.  Fix? yes
 > 
-> 2) The returned value is somewhat surprisingly the logical offset of the
-> *next* delalloc extent. It's used only in ext4_fill_fiemap_extents()
-> AFAICS. It would be easier to understand if the function didn't return
-> anything. ext4_fill_fiemap_extents() would use
-> ext4_es_find_delayed_extent() to find both current and next delalloc extent
-> (which would become the 'current' one in the next iteration). As a bonus
-> you would also save some iteration of the extent status tree...
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> 
+> /dev/vdd: ***** FILE SYSTEM WAS MODIFIED *****
+> /dev/vdd: 3969/81936 files (13.1% non-contiguous), 176208/1310720 blocks
+> 
+> 
+> I haven't been able to figure out what is going on here, but if we
+> can't figure this out I may need to push off this patch series to the
+> next merge window.  I've tried splitting up this patch into two pieces
+> to make it clearer what is going on, but I still can't see how this
+> would be affecting the i_blocks calculation.
 
-I have seen that Ted has sent out two patches that split this patch.  I
-will pick them up and polish them according to your comments.  But
-before this, I need to fix the problem that triggers a failure of
-xfstests #13 with bigalloc.
+Hi Ted,
 
-Thanks,
+Oops, I run xfstests #13 serveral times and this bug can be triggered.
+Sorry about that.  I will look at it, but I am not sure whether it can
+be fixed before merge window opens.  Thanks for let me know.
+
+For this bug, I guess that the problem is in ext4_da_invalidatepages()
+because when a file is truncated this function will be called.  But it
+seems that the delay space reservation is the root cause.  Ah, let me
+trace it.
+
+Regards,
                                                 - Zheng
