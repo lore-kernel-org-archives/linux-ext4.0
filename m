@@ -1,78 +1,97 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 01/10 v5] ext4: refine extent status tree
-Date: Fri, 15 Feb 2013 14:38:30 +0800
-Message-ID: <20130215063830.GA26945@gmail.com>
+Subject: Re: [PATCH 04/10 v5] ext4: track all extent status in extent status
+ tree
+Date: Fri, 15 Feb 2013 14:45:11 +0800
+Message-ID: <20130215064511.GB26945@gmail.com>
 References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-2-git-send-email-wenqing.lz@taobao.com>
- <20130208153500.GA10226@quack.suse.cz>
+ <1360313046-9876-5-git-send-email-wenqing.lz@taobao.com>
+ <20130211122127.GB5318@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
 	Theodore Ts'o <tytso@mit.edu>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f50.google.com ([209.85.210.50]:46275 "EHLO
-	mail-da0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932428Ab3BOGX7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2013 01:23:59 -0500
-Received: by mail-da0-f50.google.com with SMTP id h15so1383639dan.9
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2013 22:23:59 -0800 (PST)
+Received: from mail-pb0-f41.google.com ([209.85.160.41]:42240 "EHLO
+	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752683Ab3BOGak (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2013 01:30:40 -0500
+Received: by mail-pb0-f41.google.com with SMTP id um15so495019pbc.14
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2013 22:30:40 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20130208153500.GA10226@quack.suse.cz>
+In-Reply-To: <20130211122127.GB5318@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 08, 2013 at 04:35:00PM +0100, Jan Kara wrote:
-[snip]
-> > -static int __es_insert_extent(struct ext4_es_tree *tree, ext4_lblk_t offset,
-> > -			      ext4_lblk_t len)
-> > +static int __es_insert_extent(struct ext4_es_tree *tree,
-> > +			      struct extent_status *newes)
+On Mon, Feb 11, 2013 at 01:21:27PM +0100, Jan Kara wrote:
+> On Fri 08-02-13 16:44:00, Zheng Liu wrote:
+> > From: Zheng Liu <wenqing.lz@taobao.com>
+> > 
+> > By recording the phycisal block and status, extent status tree is able
+> > to track the status of every extents.  When we call _map_blocks
+> > functions to lookup an extent or create a new written/unwritten/delayed
+> > extent, this extent will be inserted into extent status tree.  The hole
+> > extent is inserted in ext4_ext_put_gap_in_cache().  If there is no any
+> > extent, we will not insert a hole extent [0, ~0] into the extent status
+> > tree in order to reduce the complextiy of code.
+> > 
+> > We don't load all extents from disk in alloc_inode() because it costs
+> > too much memory, and if a file is opened and closed frequently it will
+> > takes too much time to load all extent information.  So currently when
+> > we create/lookup an extent, this extent will be inserted into extent
+> > status tree.  Hence, the extent status tree may not comprehensively
+> > contain all of the extents found in the file.
+> > 
+> > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: Jan kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/extents.c           |  4 +--
+> >  fs/ext4/extents_status.c    | 27 ++++++++++++------
+> >  fs/ext4/extents_status.h    |  4 +--
+> >  fs/ext4/file.c              |  4 +--
+> >  fs/ext4/inode.c             | 68 ++++++++++++++++++++++++++++-----------------
+> >  include/trace/events/ext4.h |  4 +--
+> >  6 files changed, 70 insertions(+), 41 deletions(-)
+> > 
+> ...
+> > diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> > index 5093cee..71cb75a 100644
+> > --- a/fs/ext4/extents_status.c
+> > +++ b/fs/ext4/extents_status.c
+> > @@ -239,14 +239,15 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
+> >   * EXT_MAX_BLOCKS if no extent is found.
+> >   * Delayed extent is returned via @es.
+> >   */
+> > -ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
+> > +ext4_lblk_t ext4_es_find_delayed_extent(struct inode *inode,
+> > +					struct extent_status *es)
 > >  {
-> >  	struct rb_node **p = &tree->root.rb_node;
-> >  	struct rb_node *parent = NULL;
-> >  	struct extent_status *es;
-> > -	ext4_lblk_t end = offset + len - 1;
-> > -
-> > -	BUG_ON(end < offset);
-> > -	es = tree->cache_es;
-> > -	if (es && offset == (extent_status_end(es) + 1)) {
-> > -		es_debug("cached by [%u/%u)\n", es->start, es->len);
-> > -		es->len += len;
-> > -		es = ext4_es_try_to_merge_right(tree, es);
-> > -		goto out;
-> > -	} else if (es && es->start == end + 1) {
-> > -		es_debug("cached by [%u/%u)\n", es->start, es->len);
-> > -		es->start = offset;
-> > -		es->len += len;
-> > -		es = ext4_es_try_to_merge_left(tree, es);
-> > -		goto out;
-> > -	} else if (es && es->start <= offset &&
-> > -		   end <= extent_status_end(es)) {
-> > -		es_debug("cached by [%u/%u)\n", es->start, es->len);
-> > -		goto out;
-> > -	}
-> >  
-> >  	while (*p) {
-> >  		parent = *p;
-> >  		es = rb_entry(parent, struct extent_status, rb_node);
-> >  
-> > -		if (offset < es->start) {
-> > -			if (es->start == end + 1) {
-> > -				es->start = offset;
-> > -				es->len += len;
-> > +		if (newes->es_lblk < es->es_lblk) {
-> > +			if (ext4_es_can_be_merged(newes, es)) {
-> > +				es->es_lblk = newes->es_lblk;
-> > +				es->es_len += newes->es_len;
->   This is wrong, isn't it? You cannot change es->es_lblk because that can
-> break ordering of elements in the tree... thinking ... ah, it's OK because
-> you have non-overlapping intervals. But it deserves a comment I guess.
+>   I have to say I'm still not very happy about this function (but it's much
+> better than it used to be so thanks for that!). I have two suggestions for
+> improvement:
+> 1) 'es' is both input and output argument where for input only es_lblk is
+> used. That's a bit confusing so how about making the function like:
+> 
+> ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t offset,
+> 			    struct extent_status *out);
+> 
+>   to separate input and output? Also you can comment that we use the 'out'
+> parameter instead of returning the extent_status from the tree because that
+> can be freed once we drop the spinlock protecting status tree.
+> 
+> 2) The returned value is somewhat surprisingly the logical offset of the
+> *next* delalloc extent. It's used only in ext4_fill_fiemap_extents()
+> AFAICS. It would be easier to understand if the function didn't return
+> anything. ext4_fill_fiemap_extents() would use
+> ext4_es_find_delayed_extent() to find both current and next delalloc extent
+> (which would become the 'current' one in the next iteration). As a bonus
+> you would also save some iteration of the extent status tree...
 
-Hi Jan,
-
-Sorry for the delay reply.  I will add a comment here to describe why
-es_lblk can be changed directly.
+I have seen that Ted has sent out two patches that split this patch.  I
+will pick them up and polish them according to your comments.  But
+before this, I need to fix the problem that triggers a failure of
+xfstests #13 with bigalloc.
 
 Thanks,
                                                 - Zheng
