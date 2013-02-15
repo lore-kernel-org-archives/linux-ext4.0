@@ -1,42 +1,171 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 10/10 v5] ext4: remove bogus wait for unwritten extents
- in ext4_ind_direct_IO
-Date: Fri, 15 Feb 2013 15:14:06 +0800
-Message-ID: <20130215071406.GF26945@gmail.com>
-References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
- <1360313046-9876-11-git-send-email-wenqing.lz@taobao.com>
- <20130212125819.GE19583@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: use ERR_PTR() abstraction for ext4_append()
+Date: Fri, 15 Feb 2013 03:45:07 -0500
+Message-ID: <1360917907-26367-2-git-send-email-tytso@mit.edu>
+References: <1360917907-26367-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f46.google.com ([209.85.210.46]:61821 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752683Ab3BOG7e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2013 01:59:34 -0500
-Received: by mail-da0-f46.google.com with SMTP id p5so1377070dak.5
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2013 22:59:34 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20130212125819.GE19583@quack.suse.cz>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48365 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932895Ab3BOIpK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Feb 2013 03:45:10 -0500
+In-Reply-To: <1360917907-26367-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 12, 2013 at 01:58:19PM +0100, Jan Kara wrote:
-> On Fri 08-02-13 16:44:06, Zheng Liu wrote:
-> > From: Zheng Liu <wenqing.lz@taobao.com>
-> > 
-> > After converting unwritten extents from extent status tree in end_io, we
-> > can safely remove this bogus wait and don't worry about read stale data
-> > because we always try to lookup a block mapping in extent status tree
-> > firstly and unwritten extents in the tree has been converted at this
-> > time.
->   But you have to make sure the extent for the range really is in the
-> status tree (you didn't in the previous patch I think) and cannot be
-> reclaimed until the conversion is performed on disk.
+Use ERR_PTR()/IS_ERR() abstraction instead of passing in a separate
+pointer to an integer for the error code, as a code cleanup.
 
-Thanks for pointing out.  I will fix this problem.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |  2 ++
+ fs/ext4/namei.c | 65 +++++++++++++++++++++++++++------------------------------
+ 2 files changed, 33 insertions(+), 34 deletions(-)
 
-Regards,
-                                                - Zheng
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c4e9177..f4466c3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -707,6 +707,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	/* ensure we send some value back into *errp */
+ 	*errp = 0;
+ 
++	if (create && err == 0)
++		err = -ENOSPC;	/* should never happen */
+ 	if (err < 0)
+ 		*errp = err;
+ 	if (err <= 0)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 0e28c74..f58c053 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -51,34 +51,28 @@
+ 
+ static struct buffer_head *ext4_append(handle_t *handle,
+ 					struct inode *inode,
+-					ext4_lblk_t *block, int *err)
++					ext4_lblk_t *block)
+ {
+ 	struct buffer_head *bh;
++	int err = 0;
+ 
+ 	if (unlikely(EXT4_SB(inode->i_sb)->s_max_dir_size_kb &&
+ 		     ((inode->i_size >> 10) >=
+-		      EXT4_SB(inode->i_sb)->s_max_dir_size_kb))) {
+-		*err = -ENOSPC;
+-		return NULL;
+-	}
++		      EXT4_SB(inode->i_sb)->s_max_dir_size_kb)))
++		return ERR_PTR(-ENOSPC);
+ 
+ 	*block = inode->i_size >> inode->i_sb->s_blocksize_bits;
+ 
+-	bh = ext4_bread(handle, inode, *block, 1, err);
+-	if (bh) {
+-		inode->i_size += inode->i_sb->s_blocksize;
+-		EXT4_I(inode)->i_disksize = inode->i_size;
+-		*err = ext4_journal_get_write_access(handle, bh);
+-		if (*err) {
+-			brelse(bh);
+-			bh = NULL;
+-		}
+-	}
+-	if (!bh && !(*err)) {
+-		*err = -EIO;
+-		ext4_error(inode->i_sb,
+-			   "Directory hole detected on inode %lu\n",
+-			   inode->i_ino);
++	bh = ext4_bread(handle, inode, *block, 1, &err);
++	if (!bh)
++		return ERR_PTR(err);
++	inode->i_size += inode->i_sb->s_blocksize;
++	EXT4_I(inode)->i_disksize = inode->i_size;
++	err = ext4_journal_get_write_access(handle, bh);
++	if (err) {
++		brelse(bh);
++		ext4_std_error(inode->i_sb, err);
++		return ERR_PTR(err);
+ 	}
+ 	return bh;
+ }
+@@ -1555,11 +1549,12 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 				       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+-	bh2 = ext4_append (handle, dir, &newblock, &err);
+-	if (!(bh2)) {
++	bh2 = ext4_append(handle, dir, &newblock);
++	if (IS_ERR(bh2)) {
+ 		brelse(*bh);
+ 		*bh = NULL;
+-		goto errout;
++		*error = PTR_ERR(bh2);
++		return NULL;
+ 	}
+ 
+ 	BUFFER_TRACE(*bh, "get_write_access");
+@@ -1640,7 +1635,6 @@ journal_error:
+ 	brelse(bh2);
+ 	*bh = NULL;
+ 	ext4_std_error(dir->i_sb, err);
+-errout:
+ 	*error = err;
+ 	return NULL;
+ }
+@@ -1815,10 +1809,10 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	len = ((char *) root) + (blocksize - csum_size) - (char *) de;
+ 
+ 	/* Allocate new block for the 0th block's dirents */
+-	bh2 = ext4_append(handle, dir, &block, &retval);
+-	if (!(bh2)) {
++	bh2 = ext4_append(handle, dir, &block);
++	if (IS_ERR(bh2)) {
+ 		brelse(bh);
+-		return retval;
++		return PTR_ERR(bh2);
+ 	}
+ 	ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
+ 	data1 = bh2->b_data;
+@@ -1950,9 +1944,9 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 			return make_indexed_dir(handle, dentry, inode, bh);
+ 		brelse(bh);
+ 	}
+-	bh = ext4_append(handle, dir, &block, &retval);
+-	if (!bh)
+-		return retval;
++	bh = ext4_append(handle, dir, &block);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	de->inode = 0;
+ 	de->rec_len = ext4_rec_len_to_disk(blocksize - csum_size, blocksize);
+@@ -2023,9 +2017,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
+ 			err = -ENOSPC;
+ 			goto cleanup;
+ 		}
+-		bh2 = ext4_append (handle, dir, &newblock, &err);
+-		if (!(bh2))
++		bh2 = ext4_append(handle, dir, &newblock);
++		if (IS_ERR(bh2)) {
++			err = PTR_ERR(bh2);
+ 			goto cleanup;
++		}
+ 		node2 = (struct dx_node *)(bh2->b_data);
+ 		entries2 = node2->entries;
+ 		memset(&node2->fake, 0, sizeof(struct fake_dirent));
+@@ -2364,8 +2360,9 @@ static int ext4_init_new_dir(handle_t *handle, struct inode *dir,
+ 	}
+ 
+ 	inode->i_size = 0;
+-	if (!(dir_block = ext4_append(handle, inode, &block, &err)))
+-		goto out;
++	dir_block = ext4_append(handle, inode, &block);
++	if (IS_ERR(dir_block))
++		return PTR_ERR(dir_block);
+ 	BUFFER_TRACE(dir_block, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, dir_block);
+ 	if (err)
+-- 
+1.7.12.rc0.22.gcdd159b
+
