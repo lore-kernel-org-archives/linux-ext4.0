@@ -1,85 +1,69 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 53951] New: race condition on mounting local disks with autofs
-Date: Sat, 16 Feb 2013 15:55:41 +0000 (UTC)
-Message-ID: <bug-53951-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Possible TODO projects for the map_blocks() code path (was: Re:
+ [PATCH 05/10 v5] ext4: lookup block mapping in extent status tree)
+Date: Sat, 16 Feb 2013 11:18:46 -0500
+Message-ID: <20130216161846.GA17158@thunk.org>
+References: <1360313046-9876-1-git-send-email-wenqing.lz@taobao.com>
+ <1360313046-9876-6-git-send-email-wenqing.lz@taobao.com>
+ <20130212123142.GC19583@quack.suse.cz>
+ <20130215070626.GD26945@gmail.com>
+ <20130215172549.GB31172@thunk.org>
+ <20130216023251.GA11195@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Zheng Liu <wenqing.lz@taobao.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.19.201]:51153 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753406Ab3BPPzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 Feb 2013 10:55:46 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 790E7201AB
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2013 15:55:45 +0000 (UTC)
-Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
-	by mail.kernel.org (Postfix) with ESMTP id B1435201B1
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Feb 2013 15:55:42 +0000 (UTC)
+Received: from li9-11.members.linode.com ([67.18.176.11]:48518 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753493Ab3BPQS7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 16 Feb 2013 11:18:59 -0500
+Content-Disposition: inline
+In-Reply-To: <20130216023251.GA11195@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=53951
+On Sat, Feb 16, 2013 at 10:32:51AM +0800, Zheng Liu wrote:
+> 
+> To be honest, my initial idea is only to split ext4_map_blocks into
+> ext4_map_blocks_read and ext4_map_blocks_write, and do some cleanups.
+> Thanks for your suggestions.  I will look at it carefully after the
+> patch series of extent status tree has been applied.
 
-           Summary: race condition on mounting local disks with autofs
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.7.7
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: harri@afaics.de
-        Regression: No
+Ah, when you said get_block_t functions, I had assumed you had meant
+changing the function signature --- because the function signature
+being fixed by the generic DIO code is one of the things holding back
+a number of improvements in the map_blocks code paths.
 
+For example:
 
-I am using autofs to mount a local disk to /misc/data6 on request. Problem: It
-seems that the first access silently fails, if the disk is not yet mounted.
+1) Thanks to the DIO code, we are ab(using) a struct buffer_head data
+structure to pass the mapping to the DIO code.  Normally the
+buffer_head maps only a single block's worth of data, but here b_size
+is repurposed to indcate the size of the logical to physical block
+mapping, and b_data is invalid (since it isn't a real buffer head).
+There are a number of other fields in the struct buffer_head which in
+the DIO codepath which are completely unused, which isn't just an
+aesthetic issue --- it's also wasting valuable (and limited) kernel
+stack space, since the struct buffer_head is allocated on the stack of
+do_blockdev_direct_IO().
 
+2) We are currently using inode flags to pass state flags between
+different parts of the writepages code and the map_blocks code.  This
+is bad because (a) it makes the code much harder to understand and
+maintain, and (b) it blocks us from being able to call map_blocks() in
+parallel.  If we fix this, it would be relatively trivial to add
+support for parallel non-create map_block calls, and if we decide to
+try to use the extent status tree for range locking, it might be
+possible to do parallel block allocations sa well.  (I believe some
+locking may be needed in mballoc.c for the inode-specific
+preallocation code, but that should be doable.)
 
-Below is an example. Before running it I had umounted /misc/data6 and restarted
-autofs.
+If we have multiple interested in working on various different
+projects, it might be useful to start documenting some of these
+proposed enhancements on the wiki, and certainly these would be good
+things for us to discuss at the ext4 developer's workshop in April.
 
-% find /misc/data6 | wc -l; find /misc/data6 | wc -l
-18
-find: `/misc/data6/lost+found': Permission denied
-358
+Regards,
 
-
-As you can see, the first "find" sees just a subset of the directory entries.
-The second "find" stumbles over lost+found (as expected) and finds all entries.
-
-Kernel is 3.7.7. There is no error message in kernel.log, only a line to
-mention the mount:
-
-EXT4-fs (sdd1): mounted filesystem with ordered data mode. Opts: (null)
-
-
-/etc/auto.master:
-/misc   /etc/auto.misc
-
-/etc/auto.misc:
-data1   -fstype=auto,noatime    :/dev/disk/by-label/data1
-data2   -fstype=auto,noatime    :/dev/disk/by-label/data2
-data3   -fstype=auto,noatime    :/dev/disk/by-label/data3
-data4   -fstype=auto,noatime    :/dev/disk/by-label/data4
-data5   -fstype=auto,noatime    :/dev/disk/by-label/data5
-data6   -fstype=auto,noatime    :/dev/disk/by-label/data6
-data7   -fstype=auto,noatime    :/dev/disk/by-label/data7
-data8   -fstype=auto,noatime    :/dev/disk/by-label/data8
-
-
-The problem is reproducible, as it seems. Please mail if I can help to track
-this down.
-
-Regards
-Harri
-
--- 
-Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+					- Ted
