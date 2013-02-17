@@ -1,257 +1,92 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 3/9 v6] ext4: ext4_es_find_extent improvement
-Date: Mon, 18 Feb 2013 00:27:48 +0800
-Message-ID: <1361118474-18310-4-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 4/9 v6] ext4: let ext4_ext_map_blocks return EXT4_MAP_UNWRITTEN flag
+Date: Mon, 18 Feb 2013 00:27:49 +0800
+Message-ID: <1361118474-18310-5-git-send-email-wenqing.lz@taobao.com>
 References: <1361118474-18310-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Jan kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:49460 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750923Ab3BQQNk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:13:40 -0500
-Received: by mail-pa0-f48.google.com with SMTP id hz10so2443791pad.7
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:13:39 -0800 (PST)
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:55013 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750929Ab3BQQNp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:13:45 -0500
+Received: by mail-pb0-f44.google.com with SMTP id wz12so1273361pbc.3
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:13:44 -0800 (PST)
 In-Reply-To: <1361118474-18310-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This commit renames ext4_es_find_extent with ext4_es_find_delayed_extent
-and improve this function.  First, we split input and output parameter.
-Second, this function never return the first block of the next delayed
-extent after 'es'.
+This commit lets ext4_ext_map_blocks return EXT4_MAP_UNWRITTEN flag
+because in later commit ext4_map_blocks needs to use this flag to
+determine the extent status.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Jan kara <jack@suse.cz>
 ---
- fs/ext4/extents.c           | 15 ++++++++++-----
- fs/ext4/extents_status.c    | 40 ++++++++++++++++++++--------------------
- fs/ext4/extents_status.h    |  4 ++--
- fs/ext4/file.c              |  6 ++----
- include/trace/events/ext4.h | 15 ++++++---------
- 5 files changed, 40 insertions(+), 40 deletions(-)
+ fs/ext4/extents.c |  6 +++++-
+ fs/ext4/inode.c   | 12 +++---------
+ 2 files changed, 8 insertions(+), 10 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f7bf616..c230840 100644
+index c230840..ad6c20e 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3525,8 +3525,7 @@ static int ext4_find_delalloc_range(struct inode *inode,
- {
- 	struct extent_status es;
- 
--	es.es_lblk = lblk_start;
--	(void)ext4_es_find_extent(inode, &es);
-+	ext4_es_find_delayed_extent(inode, lblk_start, &es);
- 	if (es.es_len == 0)
- 		return 0; /* there is no delay extent in this tree */
- 	else if (es.es_lblk <= lblk_start &&
-@@ -4566,10 +4565,9 @@ static int ext4_find_delayed_extent(struct inode *inode,
- 				    struct ext4_ext_cache *newex)
- {
- 	struct extent_status es;
--	ext4_lblk_t next_del;
-+	ext4_lblk_t block, next_del;
- 
--	es.es_lblk = newex->ec_block;
--	next_del = ext4_es_find_extent(inode, &es);
-+	ext4_es_find_delayed_extent(inode, newex->ec_block, &es);
- 
- 	if (newex->ec_start == 0) {
- 		/*
-@@ -4590,6 +4588,13 @@ static int ext4_find_delayed_extent(struct inode *inode,
- 		newex->ec_len = es.es_lblk + es.es_len - newex->ec_block;
- 	}
- 
-+	block = newex->ec_block + newex->ec_len;
-+	ext4_es_find_delayed_extent(inode, block, &es);
-+	if (es.es_len == 0)
-+		next_del = EXT_MAX_BLOCKS;
-+	else
-+		next_del = es.es_lblk;
-+
- 	return next_del;
- }
- /* fiemap flags we can handle specified here */
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 243611f..cf0fd41 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -229,59 +229,59 @@ static struct extent_status *__es_tree_search(struct rb_root *root,
- }
- 
- /*
-- * ext4_es_find_extent: find the 1st delayed extent covering @es->lblk
-+ * ext4_es_find_delayed_extent: find the 1st delayed extent covering @es->lblk
-  * if it exists, otherwise, the next extent after @es->lblk.
-  *
-  * @inode: the inode which owns delayed extents
-+ * @lblk: the offset where we start to search
-  * @es: delayed extent that we found
-- *
-- * Returns the first block of the next extent after es, otherwise
-- * EXT_MAX_BLOCKS if no extent is found.
-- * Delayed extent is returned via @es.
-  */
--ext4_lblk_t ext4_es_find_extent(struct inode *inode, struct extent_status *es)
-+void ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
-+				 struct extent_status *es)
- {
- 	struct ext4_es_tree *tree = NULL;
- 	struct extent_status *es1 = NULL;
- 	struct rb_node *node;
--	ext4_lblk_t ret = EXT_MAX_BLOCKS;
- 
--	trace_ext4_es_find_extent_enter(inode, es->es_lblk);
-+	BUG_ON(es == NULL);
-+	trace_ext4_es_find_delayed_extent_enter(inode, lblk);
- 
- 	read_lock(&EXT4_I(inode)->i_es_lock);
- 	tree = &EXT4_I(inode)->i_es_tree;
- 
- 	/* find extent in cache firstly */
--	es->es_len = es->es_pblk = 0;
-+	es->es_lblk = es->es_len = es->es_pblk = 0;
- 	if (tree->cache_es) {
- 		es1 = tree->cache_es;
--		if (in_range(es->es_lblk, es1->es_lblk, es1->es_len)) {
-+		if (in_range(lblk, es1->es_lblk, es1->es_len)) {
- 			es_debug("%u cached by [%u/%u) %llu %llx\n",
--				 es->es_lblk, es1->es_lblk, es1->es_len,
-+				 lblk, es1->es_lblk, es1->es_len,
- 				 ext4_es_pblock(es1), ext4_es_status(es1));
- 			goto out;
- 		}
- 	}
- 
--	es1 = __es_tree_search(&tree->root, es->es_lblk);
-+	es1 = __es_tree_search(&tree->root, lblk);
- 
- out:
--	if (es1) {
-+	if (es1 && !ext4_es_is_delayed(es1)) {
-+		while ((node = rb_next(&es1->rb_node)) != NULL) {
-+			es1 = rb_entry(node, struct extent_status, rb_node);
-+			if (ext4_es_is_delayed(es1))
-+				break;
-+		}
+@@ -3656,6 +3656,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 			ext4_set_io_unwritten_flag(inode, io);
+ 		else
+ 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
++		map->m_flags |= EXT4_MAP_UNWRITTEN;
+ 		if (ext4_should_dioread_nolock(inode))
+ 			map->m_flags |= EXT4_MAP_UNINIT;
+ 		goto out;
+@@ -3677,8 +3678,10 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
+ 	 * repeat fallocate creation request
+ 	 * we already have an unwritten extent
+ 	 */
+-	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT)
++	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT) {
++		map->m_flags |= EXT4_MAP_UNWRITTEN;
+ 		goto map_out;
 +	}
-+
-+	if (es1 && ext4_es_is_delayed(es1)) {
- 		tree->cache_es = es1;
- 		es->es_lblk = es1->es_lblk;
- 		es->es_len = es1->es_len;
- 		es->es_pblk = es1->es_pblk;
--		node = rb_next(&es1->rb_node);
--		if (node) {
--			es1 = rb_entry(node, struct extent_status, rb_node);
--			ret = es1->es_lblk;
--		}
- 	}
  
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
+ 	/* buffered READ or buffered write_begin() lookup */
+ 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+@@ -4108,6 +4111,7 @@ got_allocated_blocks:
+ 	/* Mark uninitialized */
+ 	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT){
+ 		ext4_ext_mark_uninitialized(&newex);
++		map->m_flags |= EXT4_MAP_UNWRITTEN;
+ 		/*
+ 		 * io_end structure was created for every IO write to an
+ 		 * uninitialized extent. To avoid unnecessary conversion,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7fb00d8..c7e9665 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -560,16 +560,10 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		return retval;
  
--	trace_ext4_es_find_extent_exit(inode, es, ret);
--	return ret;
-+	trace_ext4_es_find_delayed_extent_exit(inode, es);
- }
+ 	/*
+-	 * When we call get_blocks without the create flag, the
+-	 * BH_Unwritten flag could have gotten set if the blocks
+-	 * requested were part of a uninitialized extent.  We need to
+-	 * clear this flag now that we are committed to convert all or
+-	 * part of the uninitialized extent to be an initialized
+-	 * extent.  This is because we need to avoid the combination
+-	 * of BH_Unwritten and BH_Mapped flags being simultaneously
+-	 * set on the buffer_head.
++	 * Here we clear m_flags because after allocating an new extent,
++	 * it will be set again.
+ 	 */
+-	map->m_flags &= ~EXT4_MAP_UNWRITTEN;
++	map->m_flags &= ~EXT4_MAP_FLAGS;
  
- static struct extent_status *
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index 3cad833..3f69d09 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -51,8 +51,8 @@ extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 unsigned long long status);
- extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 				 ext4_lblk_t len);
--extern ext4_lblk_t ext4_es_find_extent(struct inode *inode,
--				struct extent_status *es);
-+extern void ext4_es_find_delayed_extent(struct inode *inode, ext4_lblk_t lblk,
-+					struct extent_status *es);
- 
- static inline int ext4_es_is_written(struct extent_status *es)
- {
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index aceaf5f..a7bd479 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -464,8 +464,7 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- 		 * If there is a delay extent at this offset,
- 		 * it will be as a data.
- 		 */
--		es.es_lblk = last;
--		(void)ext4_es_find_extent(inode, &es);
-+		ext4_es_find_delayed_extent(inode, last, &es);
- 		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
- 			if (last != start)
- 				dataoff = last << blkbits;
-@@ -548,8 +547,7 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
- 		 * If there is a delay extent at this offset,
- 		 * we will skip this extent.
- 		 */
--		es.es_lblk = last;
--		(void)ext4_es_find_extent(inode, &es);
-+		ext4_es_find_delayed_extent(inode, last, &es);
- 		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
- 			last = es.es_lblk + es.es_len;
- 			holeoff = last << blkbits;
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index ef2f96e..7f7d57b 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2122,7 +2122,7 @@ TRACE_EVENT(ext4_es_remove_extent,
- 		  __entry->lblk, __entry->len)
- );
- 
--TRACE_EVENT(ext4_es_find_extent_enter,
-+TRACE_EVENT(ext4_es_find_delayed_extent_enter,
- 	TP_PROTO(struct inode *inode, ext4_lblk_t lblk),
- 
- 	TP_ARGS(inode, lblk),
-@@ -2144,11 +2144,10 @@ TRACE_EVENT(ext4_es_find_extent_enter,
- 		  (unsigned long) __entry->ino, __entry->lblk)
- );
- 
--TRACE_EVENT(ext4_es_find_extent_exit,
--	TP_PROTO(struct inode *inode, struct extent_status *es,
--		 ext4_lblk_t ret),
-+TRACE_EVENT(ext4_es_find_delayed_extent_exit,
-+	TP_PROTO(struct inode *inode, struct extent_status *es),
- 
--	TP_ARGS(inode, es, ret),
-+	TP_ARGS(inode, es),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,		dev		)
-@@ -2157,7 +2156,6 @@ TRACE_EVENT(ext4_es_find_extent_exit,
- 		__field(	ext4_lblk_t,	len		)
- 		__field(	ext4_fsblk_t,	pblk		)
- 		__field(	unsigned long long, status	)
--		__field(	ext4_lblk_t,	ret		)
- 	),
- 
- 	TP_fast_assign(
-@@ -2167,14 +2165,13 @@ TRACE_EVENT(ext4_es_find_extent_exit,
- 		__entry->len	= es->es_len;
- 		__entry->pblk	= ext4_es_pblock(es);
- 		__entry->status	= ext4_es_status(es);
--		__entry->ret	= ret;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %llx ret %u",
-+	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %llx",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->lblk, __entry->len,
--		  __entry->pblk, __entry->status, __entry->ret)
-+		  __entry->pblk, __entry->status)
- );
- 
- #endif /* _TRACE_EXT4_H */
+ 	/*
+ 	 * New blocks allocate and/or writing to uninitialized extent
 -- 
 1.7.12.rc2.18.g61b472e
 
