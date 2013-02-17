@@ -1,230 +1,97 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 8/9] ext4: adjust some functions for reclaiming extents
- from extent status tree
-Date: Mon, 18 Feb 2013 00:33:23 +0800
-Message-ID: <20130217163323.GA18354@gmail.com>
-References: <1361118474-18310-1-git-send-email-wenqing.lz@taobao.com>
- <1361118474-18310-9-git-send-email-wenqing.lz@taobao.com>
+Subject: [REGRESSION] xfstests #269 without journal failure against 'dev'
+ branch
+Date: Mon, 18 Feb 2013 01:09:18 +0800
+Message-ID: <20130217170918.GA4059@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Zheng Liu <wenqing.lz@taobao.com>, Theodore Ts'o <tytso@mit.edu>,
-	Jan kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:48808 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751064Ab3BQQSm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:18:42 -0500
-Received: by mail-pb0-f47.google.com with SMTP id rp2so1280295pbb.34
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:18:42 -0800 (PST)
+Received: from mail-da0-f46.google.com ([209.85.210.46]:62656 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751105Ab3BQQyg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:54:36 -0500
+Received: by mail-da0-f46.google.com with SMTP id p5so2086739dak.19
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:54:36 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <1361118474-18310-9-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 18, 2013 at 12:27:53AM +0800, Zheng Liu wrote:
-> From: Zheng Liu <wenqing.lz@taobao.com>
-> 
-> This commit changes some interfaces in extent status tree because we
-> need to use inode to count the cached objects in a extent status tree.
-> 
-> Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan kara <jack@suse.cz>
+Hi Ted,
 
-Oops, I forgot to add 'v6' in subject.  The patch itself is right.
+There is a regression in 'dev' branch of ext4.  I can trigger it by
+xfstests #269 in my desktop with a SSD when journal is disabled.  I
+run this test case in 3.8-rc7 and it is ok.  So I think this is a
+regression in 'dev' branch.
 
-Regards,
+I know you are on vacation and maybe you don't have time to take a look
+at it.  But I think I need to let you know, and other folks might take a
+look at it.
+
+Enjoy your vacation. :-)
+
                                                 - Zheng
 
-> ---
->  fs/ext4/extents_status.c | 50 +++++++++++++++++++++++-------------------------
->  1 file changed, 24 insertions(+), 26 deletions(-)
-> 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 473a935..3021858 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -142,9 +142,8 @@
->  
->  static struct kmem_cache *ext4_es_cachep;
->  
-> -static int __es_insert_extent(struct ext4_es_tree *tree,
-> -			      struct extent_status *newes);
-> -static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
-> +static int __es_insert_extent(struct inode *inode, struct extent_status *newes);
-> +static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  			      ext4_lblk_t end);
->  
->  int __init ext4_init_es(void)
-> @@ -285,7 +284,8 @@ out:
->  }
->  
->  static struct extent_status *
-> -ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len, ext4_fsblk_t pblk)
-> +ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
-> +		     ext4_fsblk_t pblk)
->  {
->  	struct extent_status *es;
->  	es = kmem_cache_alloc(ext4_es_cachep, GFP_ATOMIC);
-> @@ -297,7 +297,7 @@ ext4_es_alloc_extent(ext4_lblk_t lblk, ext4_lblk_t len, ext4_fsblk_t pblk)
->  	return es;
->  }
->  
-> -static void ext4_es_free_extent(struct extent_status *es)
-> +static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
->  {
->  	kmem_cache_free(ext4_es_cachep, es);
->  }
-> @@ -326,8 +326,9 @@ static int ext4_es_can_be_merged(struct extent_status *es1,
->  }
->  
->  static struct extent_status *
-> -ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
-> +ext4_es_try_to_merge_left(struct inode *inode, struct extent_status *es)
->  {
-> +	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
->  	struct extent_status *es1;
->  	struct rb_node *node;
->  
-> @@ -339,7 +340,7 @@ ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
->  	if (ext4_es_can_be_merged(es1, es)) {
->  		es1->es_len += es->es_len;
->  		rb_erase(&es->rb_node, &tree->root);
-> -		ext4_es_free_extent(es);
-> +		ext4_es_free_extent(inode, es);
->  		es = es1;
->  	}
->  
-> @@ -347,8 +348,9 @@ ext4_es_try_to_merge_left(struct ext4_es_tree *tree, struct extent_status *es)
->  }
->  
->  static struct extent_status *
-> -ext4_es_try_to_merge_right(struct ext4_es_tree *tree, struct extent_status *es)
-> +ext4_es_try_to_merge_right(struct inode *inode, struct extent_status *es)
->  {
-> +	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
->  	struct extent_status *es1;
->  	struct rb_node *node;
->  
-> @@ -360,15 +362,15 @@ ext4_es_try_to_merge_right(struct ext4_es_tree *tree, struct extent_status *es)
->  	if (ext4_es_can_be_merged(es, es1)) {
->  		es->es_len += es1->es_len;
->  		rb_erase(node, &tree->root);
-> -		ext4_es_free_extent(es1);
-> +		ext4_es_free_extent(inode, es1);
->  	}
->  
->  	return es;
->  }
->  
-> -static int __es_insert_extent(struct ext4_es_tree *tree,
-> -			      struct extent_status *newes)
-> +static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
->  {
-> +	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
->  	struct rb_node **p = &tree->root.rb_node;
->  	struct rb_node *parent = NULL;
->  	struct extent_status *es;
-> @@ -389,14 +391,14 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
->  				    ext4_es_is_unwritten(es))
->  					ext4_es_store_pblock(es,
->  							     newes->es_pblk);
-> -				es = ext4_es_try_to_merge_left(tree, es);
-> +				es = ext4_es_try_to_merge_left(inode, es);
->  				goto out;
->  			}
->  			p = &(*p)->rb_left;
->  		} else if (newes->es_lblk > ext4_es_end(es)) {
->  			if (ext4_es_can_be_merged(es, newes)) {
->  				es->es_len += newes->es_len;
-> -				es = ext4_es_try_to_merge_right(tree, es);
-> +				es = ext4_es_try_to_merge_right(inode, es);
->  				goto out;
->  			}
->  			p = &(*p)->rb_right;
-> @@ -406,7 +408,7 @@ static int __es_insert_extent(struct ext4_es_tree *tree,
->  		}
->  	}
->  
-> -	es = ext4_es_alloc_extent(newes->es_lblk, newes->es_len,
-> +	es = ext4_es_alloc_extent(inode, newes->es_lblk, newes->es_len,
->  				  newes->es_pblk);
->  	if (!es)
->  		return -ENOMEM;
-> @@ -430,7 +432,6 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  			  ext4_lblk_t len, ext4_fsblk_t pblk,
->  			  unsigned long long status)
->  {
-> -	struct ext4_es_tree *tree;
->  	struct extent_status newes;
->  	ext4_lblk_t end = lblk + len - 1;
->  	int err = 0;
-> @@ -447,11 +448,10 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
->  	trace_ext4_es_insert_extent(inode, &newes);
->  
->  	write_lock(&EXT4_I(inode)->i_es_lock);
-> -	tree = &EXT4_I(inode)->i_es_tree;
-> -	err = __es_remove_extent(tree, lblk, end);
-> +	err = __es_remove_extent(inode, lblk, end);
->  	if (err != 0)
->  		goto error;
-> -	err = __es_insert_extent(tree, &newes);
-> +	err = __es_insert_extent(inode, &newes);
->  
->  error:
->  	write_unlock(&EXT4_I(inode)->i_es_lock);
-> @@ -521,9 +521,10 @@ out:
->  	return found;
->  }
->  
-> -static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
-> -				 ext4_lblk_t end)
-> +static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-> +			      ext4_lblk_t end)
->  {
-> +	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
->  	struct rb_node *node;
->  	struct extent_status *es;
->  	struct extent_status orig_es;
-> @@ -561,7 +562,7 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  				ext4_es_store_pblock(&newes, block);
->  			}
->  			ext4_es_store_status(&newes, ext4_es_status(&orig_es));
-> -			err = __es_insert_extent(tree, &newes);
-> +			err = __es_insert_extent(inode, &newes);
->  			if (err) {
->  				es->es_lblk = orig_es.es_lblk;
->  				es->es_len = orig_es.es_len;
-> @@ -590,7 +591,7 @@ static int __es_remove_extent(struct ext4_es_tree *tree, ext4_lblk_t lblk,
->  	while (es && ext4_es_end(es) <= end) {
->  		node = rb_next(&es->rb_node);
->  		rb_erase(&es->rb_node, &tree->root);
-> -		ext4_es_free_extent(es);
-> +		ext4_es_free_extent(inode, es);
->  		if (!node) {
->  			es = NULL;
->  			break;
-> @@ -622,7 +623,6 @@ out:
->  int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  			  ext4_lblk_t len)
->  {
-> -	struct ext4_es_tree *tree;
->  	ext4_lblk_t end;
->  	int err = 0;
->  
-> @@ -633,10 +633,8 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
->  	end = lblk + len - 1;
->  	BUG_ON(end < lblk);
->  
-> -	tree = &EXT4_I(inode)->i_es_tree;
-> -
->  	write_lock(&EXT4_I(inode)->i_es_lock);
-> -	err = __es_remove_extent(tree, lblk, end);
-> +	err = __es_remove_extent(inode, lblk, end);
->  	write_unlock(&EXT4_I(inode)->i_es_lock);
->  	ext4_es_print_tree(inode);
->  	return err;
-> -- 
-> 1.7.12.rc2.18.g61b472e
-> 
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 lz-desktop 3.8.0-rc3+
+MKFS_OPTIONS  -- -O ^has_journal /dev/sda2
+MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda2 /mnt/sda2
+
+269 32s ... [failed, exit status 1] - output mismatch (see 269.out.bad)
+    --- 269.out	2013-02-07 22:56:14.000000000 +0800
+    +++ 269.out.bad	2013-02-17 22:09:21.000000000 +0800
+    @@ -3,3 +3,4 @@
+     Run fsstress
+     
+     Run dd writers in parallel
+    +_check_generic_filesystem: filesystem on /dev/sda2 is inconsistent (see
+269.full)
+     ...
+     (Run 'diff -u 269.out 269.out.bad' to see the entire diff)
+Ran: 269
+Failures: 269
+Failed 1 of 1 tests
+
+wenqing: run xfstest 269
+kernel: EXT4-fs (sda2): mounted filesystem without journal. Opts: acl,user_xattr
+kernel: EXT4-fs (sda2): ext4_da_update_reserve_space: ino 1166, allocated 1 with
+only 0 reserved metadata blocks
+kernel:
+kernel: ------------[ cut here ]------------
+kernel: WARNING: at fs/ext4/inode.c:359 ext4_da_update_reserve_space+0x10f/0x21b
+[ext4]()
+kernel: Hardware name: OptiPlex 780                 
+kernel: Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand acpi_cpufreq mperf
+ipv6 dm_mirror dm_region_hash dm_log dm_mod parport_pc parport dcdbas serio_raw
+sg button pcspkr i2c_i801 i2c_core ehci_pci ehci_hcd e1000e ext3 jbd sd_mod ahci
+libahci libata scsi_mod uhci_hcd
+kernel: Pid: 2860, comm: flush-8:0 Not tainted 3.8.0-rc3+ #3
+kernel: Call Trace:
+kernel: [<ffffffff82031d5c>] warn_slowpath_common+0x85/0x9d
+kernel: [<ffffffff82031d8e>] warn_slowpath_null+0x1a/0x1c
+kernel: [<ffffffffa0203fa8>] ext4_da_update_reserve_space+0x10f/0x21b [ext4]
+kernel: [<ffffffffa022b9a5>] ext4_ext_map_blocks+0xdad/0xf68 [ext4]
+kernel: [<ffffffff820ba234>] ? release_pages+0x169/0x178
+kernel: [<ffffffffa020557b>] ? write_cache_pages_da+0x107/0x416 [ext4]
+kernel: [<ffffffffa02049ac>] ext4_map_blocks+0x135/0x1ef [ext4]
+kernel: [<ffffffffa02051ad>] mpage_da_map_and_submit+0x111/0x3d8 [ext4]
+kernel: [<ffffffffa0226265>] ? ext4_ext_index_trans_blocks+0x17/0x3a [ext4]
+kernel: [<ffffffffa0205c12>] ext4_da_writepages+0x388/0x530 [ext4]
+kernel: [<ffffffff821161cd>] ? __getblk+0x2d/0x264
+kernel: [<ffffffff820b8465>] do_writepages+0x20/0x29
+kernel: [<ffffffff8210f9ff>] __writeback_single_inode+0x48/0x119
+kernel: [<ffffffff82110be8>] writeback_sb_inodes+0x1ec/0x2fd
+kernel: [<ffffffff82110f4d>] wb_writeback+0x131/0x230
+kernel: [<ffffffff821110e1>] wb_do_writeback+0x95/0x1ea
+kernel: [<ffffffff8237ced9>] ? schedule_timeout+0x158/0x178
+kernel: [<ffffffff8203f7c5>] ? add_timer_on+0xae/0xae
+kernel: [<ffffffff821112f8>] bdi_writeback_thread+0xc2/0x1e2
+kernel: [<ffffffff82111236>] ? wb_do_writeback+0x1ea/0x1ea
+kernel: [<ffffffff82111236>] ? wb_do_writeback+0x1ea/0x1ea
+kernel: [<ffffffff8204e9f3>] kthread+0xb5/0xbd
+kernel: [<ffffffff8204e93e>] ? kthread_freezable_should_stop+0x65/0x65
+kernel: [<ffffffff8238615c>] ret_from_fork+0x7c/0xb0
+kernel: [<ffffffff8204e93e>] ? kthread_freezable_should_stop+0x65/0x65
+kernel: ---[ end trace 72c02955946d0799 ]---
+kernel: EXT4-fs (sda1): mounted filesystem without journal. Opts: acl,user_xattr
+
