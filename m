@@ -1,92 +1,229 @@
 From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH 4/9 v6] ext4: let ext4_ext_map_blocks return EXT4_MAP_UNWRITTEN flag
-Date: Mon, 18 Feb 2013 00:27:49 +0800
-Message-ID: <1361118474-18310-5-git-send-email-wenqing.lz@taobao.com>
+Subject: [PATCH 5/9 v6] ext4: track all extent status in extent status tree
+Date: Mon, 18 Feb 2013 00:27:50 +0800
+Message-ID: <1361118474-18310-6-git-send-email-wenqing.lz@taobao.com>
 References: <1361118474-18310-1-git-send-email-wenqing.lz@taobao.com>
 Cc: Zheng Liu <wenqing.lz@taobao.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	Jan kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:55013 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750929Ab3BQQNp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:13:45 -0500
-Received: by mail-pb0-f44.google.com with SMTP id wz12so1273361pbc.3
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:13:44 -0800 (PST)
+Received: from mail-da0-f48.google.com ([209.85.210.48]:41578 "EHLO
+	mail-da0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750947Ab3BQQNu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2013 11:13:50 -0500
+Received: by mail-da0-f48.google.com with SMTP id v40so2084026dad.35
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Feb 2013 08:13:50 -0800 (PST)
 In-Reply-To: <1361118474-18310-1-git-send-email-wenqing.lz@taobao.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Zheng Liu <wenqing.lz@taobao.com>
 
-This commit lets ext4_ext_map_blocks return EXT4_MAP_UNWRITTEN flag
-because in later commit ext4_map_blocks needs to use this flag to
-determine the extent status.
+By recording the phycisal block and status, extent status tree is able
+to track the status of every extents.  When we call _map_blocks
+functions to lookup an extent or create a new written/unwritten/delayed
+extent, this extent will be inserted into extent status tree.
+
+We don't load all extents from disk in alloc_inode() because it costs
+too much memory, and if a file is opened and closed frequently it will
+takes too much time to load all extent information.  So currently when
+we create/lookup an extent, this extent will be inserted into extent
+status tree.  Hence, the extent status tree may not comprehensively
+contain all of the extents found in the file.
+
+Here a condition we need to take care is that an extent might contains
+unwritten and delayed status simultaneously because an extent is delayed
+allocated and could be allocated by fallocate.  At this time we need to
+keep delayed status because later we need to update delayed reservation
+space using it.
 
 Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
 Cc: Jan kara <jack@suse.cz>
 ---
- fs/ext4/extents.c |  6 +++++-
- fs/ext4/inode.c   | 12 +++---------
- 2 files changed, 8 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h    |  3 +++
+ fs/ext4/extents.c | 20 +++++++++++----
+ fs/ext4/inode.c   | 76 +++++++++++++++++++++++++++++++++++++------------------
+ 3 files changed, 69 insertions(+), 30 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8462eb3..bf9d835 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2520,6 +2520,9 @@ extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
+ 						  struct ext4_ext_path *);
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *);
+ extern int ext4_ext_check_inode(struct inode *inode);
++extern int ext4_find_delalloc_range(struct inode *inode,
++				    ext4_lblk_t lblk_start,
++				    ext4_lblk_t lblk_end);
+ extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+ extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 			__u64 start, __u64 len);
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c230840..ad6c20e 100644
+index ad6c20e..a294db3 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3656,6 +3656,7 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 			ext4_set_io_unwritten_flag(inode, io);
- 		else
- 			ext4_set_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
-+		map->m_flags |= EXT4_MAP_UNWRITTEN;
- 		if (ext4_should_dioread_nolock(inode))
- 			map->m_flags |= EXT4_MAP_UNINIT;
- 		goto out;
-@@ -3677,8 +3678,10 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
- 	 * repeat fallocate creation request
- 	 * we already have an unwritten extent
- 	 */
--	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT)
-+	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT) {
-+		map->m_flags |= EXT4_MAP_UNWRITTEN;
- 		goto map_out;
-+	}
+@@ -2073,8 +2073,18 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
+ 			break;
+ 		}
  
- 	/* buffered READ or buffered write_begin() lookup */
- 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-@@ -4108,6 +4111,7 @@ got_allocated_blocks:
- 	/* Mark uninitialized */
- 	if (flags & EXT4_GET_BLOCKS_UNINIT_EXT){
- 		ext4_ext_mark_uninitialized(&newex);
-+		map->m_flags |= EXT4_MAP_UNWRITTEN;
- 		/*
- 		 * io_end structure was created for every IO write to an
- 		 * uninitialized extent. To avoid unnecessary conversion,
+-		/* This is possible iff next == next_del == EXT_MAX_BLOCKS */
+-		if (next == next_del) {
++		/*
++		 * This is possible iff next == next_del == EXT_MAX_BLOCKS.
++		 * we need to check next == EXT_MAX_BLOCKS because it is
++		 * possible that an extent is with unwritten and delayed
++		 * status due to when an extent is delayed allocated and
++		 * is allocated by fallocate status tree will track both of
++		 * them in a extent.
++		 *
++		 * So we could return a unwritten and delayed extent, and
++		 * its block is equal to 'next'.
++		 */
++		if (next == next_del && next == EXT_MAX_BLOCKS) {
+ 			flags |= FIEMAP_EXTENT_LAST;
+ 			if (unlikely(next_del != EXT_MAX_BLOCKS ||
+ 				     next != EXT_MAX_BLOCKS)) {
+@@ -3519,9 +3529,9 @@ out:
+  *
+  * Return 1 if there is a delalloc block in the range, otherwise 0.
+  */
+-static int ext4_find_delalloc_range(struct inode *inode,
+-				    ext4_lblk_t lblk_start,
+-				    ext4_lblk_t lblk_end)
++int ext4_find_delalloc_range(struct inode *inode,
++			     ext4_lblk_t lblk_start,
++			     ext4_lblk_t lblk_end)
+ {
+ 	struct extent_status es;
+ 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7fb00d8..c7e9665 100644
+index c7e9665..42c38e0 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -560,16 +560,10 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		return retval;
+@@ -527,20 +527,26 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
+ 					     EXT4_GET_BLOCKS_KEEP_SIZE);
+ 	}
++	if (retval > 0) {
++		int ret;
++		unsigned long long status;
++
++		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
++				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
++		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++		    ext4_find_delalloc_range(inode, map->m_lblk,
++					     map->m_lblk + map->m_len - 1))
++			status |= EXTENT_STATUS_DELAYED;
++		ret = ext4_es_insert_extent(inode, map->m_lblk,
++					    map->m_len, map->m_pblk, status);
++		if (ret < 0)
++			retval = ret;
++	}
+ 	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+ 		up_read((&EXT4_I(inode)->i_data_sem));
  
- 	/*
--	 * When we call get_blocks without the create flag, the
--	 * BH_Unwritten flag could have gotten set if the blocks
--	 * requested were part of a uninitialized extent.  We need to
--	 * clear this flag now that we are committed to convert all or
--	 * part of the uninitialized extent to be an initialized
--	 * extent.  This is because we need to avoid the combination
--	 * of BH_Unwritten and BH_Mapped flags being simultaneously
--	 * set on the buffer_head.
-+	 * Here we clear m_flags because after allocating an new extent,
-+	 * it will be set again.
- 	 */
--	map->m_flags &= ~EXT4_MAP_UNWRITTEN;
-+	map->m_flags &= ~EXT4_MAP_FLAGS;
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+-		int ret;
+-		if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
+-			/* delayed alloc may be allocated by fallocate and
+-			 * coverted to initialized by directIO.
+-			 * we need to handle delayed extent here.
+-			 */
+-			down_write((&EXT4_I(inode)->i_data_sem));
+-			goto delayed_mapped;
+-		}
+-		ret = check_block_validity(inode, map);
++		int ret = check_block_validity(inode, map);
+ 		if (ret != 0)
+ 			return ret;
+ 	}
+@@ -609,18 +615,23 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE))
+ 			ext4_da_update_reserve_space(inode, retval, 1);
+ 	}
+-	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
++	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+ 		ext4_clear_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED);
  
- 	/*
- 	 * New blocks allocate and/or writing to uninitialized extent
+-		if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+-			int ret;
+-delayed_mapped:
+-			/* delayed allocation blocks has been allocated */
+-			ret = ext4_es_remove_extent(inode, map->m_lblk,
+-						    map->m_len);
+-			if (ret < 0)
+-				retval = ret;
+-		}
++	if (retval > 0) {
++		int ret;
++		unsigned long long status;
++
++		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
++				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
++		if (!(flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) &&
++		    ext4_find_delalloc_range(inode, map->m_lblk,
++					     map->m_lblk + map->m_len - 1))
++			status |= EXTENT_STATUS_DELAYED;
++		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++					    map->m_pblk, status);
++		if (ret < 0)
++			retval = ret;
+ 	}
+ 
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+@@ -1802,6 +1813,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		retval = ext4_ind_map_blocks(NULL, inode, map, 0);
+ 
+ 	if (retval == 0) {
++		int ret;
+ 		/*
+ 		 * XXX: __block_prepare_write() unmaps passed block,
+ 		 * is it OK?
+@@ -1809,16 +1821,20 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		/* If the block was allocated from previously allocated cluster,
+ 		 * then we dont need to reserve it again. */
+ 		if (!(map->m_flags & EXT4_MAP_FROM_CLUSTER)) {
+-			retval = ext4_da_reserve_space(inode, iblock);
+-			if (retval)
++			ret = ext4_da_reserve_space(inode, iblock);
++			if (ret) {
+ 				/* not enough space to reserve */
++				retval = ret;
+ 				goto out_unlock;
++			}
+ 		}
+ 
+-		retval = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-					       ~0, EXTENT_STATUS_DELAYED);
+-		if (retval)
++		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++					    ~0, EXTENT_STATUS_DELAYED);
++		if (ret) {
++			retval = ret;
+ 			goto out_unlock;
++		}
+ 
+ 		/* Clear EXT4_MAP_FROM_CLUSTER flag since its purpose is served
+ 		 * and it should not appear on the bh->b_state.
+@@ -1828,6 +1844,16 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		map_bh(bh, inode->i_sb, invalid_block);
+ 		set_buffer_new(bh);
+ 		set_buffer_delay(bh);
++	} else if (retval > 0) {
++		int ret;
++		unsigned long long status;
++
++		status = map->m_flags & EXT4_MAP_UNWRITTEN ?
++				EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
++		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
++					    map->m_pblk, status);
++		if (ret != 0)
++			retval = ret;
+ 	}
+ 
+ out_unlock:
 -- 
 1.7.12.rc2.18.g61b472e
 
