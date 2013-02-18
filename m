@@ -1,81 +1,74 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Weird resize2fs failures when mounting ext3 as ext4
-Date: Mon, 18 Feb 2013 15:41:11 -0600
-Message-ID: <51229FF7.7090003@redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 6/8] xfstests: add fallocate/truncate vs AIO/DIO stress
+	test
+Date: Tue, 19 Feb 2013 10:43:16 +1100
+Message-ID: <20130218234316.GE26694@dastard>
+References: <1360745403-6373-1-git-send-email-dmonakhov@openvz.org>
+	<1360745403-6373-7-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53996 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755021Ab3BRVlN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2013 16:41:13 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1ILfCua021925
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2013 16:41:13 -0500
-Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r1ILfBGN016139
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2013 16:41:12 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	dchinner@redhat.com, xfs@oss.sgi.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <1360745403-6373-7-git-send-email-dmonakhov@openvz.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Can't remember how I stumbled on this testcase, but mounting
-an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
+On Wed, Feb 13, 2013 at 12:50:01PM +0400, Dmitry Monakhov wrote:
+> Run  DIO, fallocate and truncate threads on a common file in parallel.
+> If race exist old dio request may rewrite blocks after it was allocated
+> to another file, we will catch that by verifying blocks content.
+> 
+> this patch known to catch deadlock for ext4
+> http://lists.openwall.net/linux-ext4/2012/09/06/3
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  286     |  157 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  286.out |    5 ++
+>  group   |    1 +
+>  3 files changed, 163 insertions(+), 0 deletions(-)
+>  create mode 100755 286
+>  create mode 100644 286.out
+> 
+> diff --git a/286 b/286
+> new file mode 100755
+> index 0000000..588387c
+> --- /dev/null
+> +++ b/286
+> @@ -0,0 +1,157 @@
+> +#! /bin/bash
+> +# FSQA Test No. 286
+> +#
+> +# AIO/DIO stress test
+> +# Run random AIO/DIO activity and fallocate/truncate simultaneously
+> +# Test will operate on huge sparsed files so ENOSPC is expected.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2006 Silicon Graphics, Inc.  All Rights Reserved.
 
-With -o nodelalloc, the newly added space isn't seen by the allocator
-and we get ENOSPC for the extending writes in the script below.
+I think you need to put the correct copyright statements in these
+new tests ;)
 
-Without -o nodelalloc, the writes worked but I got an umount hang.
+Cheers,
 
-Without -t ext4 (but letting ext4.ko handle the ext3 mount) it seems
-to work fine.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
-Haven't looked into it much at all yet but wanted to put it out
-there for posterity.
-
-(script requires xfs_io, sorry, could be changed to dd I suppose)
-
--Eric
-
-#!/bin/bash
-
-# Initial setup to create block devices prior to test:
-# /root/fallocate -l 100g fsfile
-# losetup /dev/loop0 fsfile
-# pvcreate /dev/loop0
-# vgcreate VG /dev/loop0
-
-COUNT=20
-
-mkdir -p mnt
-umount mnt &>/dev/null
-lvremove -f /dev/VG/LV 
-lvcreate -L 75G -n LV /dev/VG
-mkfs.ext3 -K /dev/VG/LV 
-mount -t ext4 -o nodelalloc /dev/VG/LV mnt/
-
-for I in `seq 1 $COUNT`; do mkdir mnt/dir$I; dd if=/dev/zero of=mnt/dir$I/file$I bs=1M count=4096; done
-echo "before growing:"
-df mnt/
-
-umount mnt
-mount -t ext4 -o nodelalloc /dev/VG/LV mnt/
-
-lvextend -L +5g /dev/VG/LV 
-
-echo "growing:"
-resize2fs /dev/VG/LV
-
-echo "done growing:"
-df mnt/
-
-# This gets ENOSPC for all of them
-echo "try extending files:"
-for I in `seq 1 $COUNT`; do xfs_io -f -F -c "pwrite -b 60m 4g 120m" mnt/dir$I/file$I; done 
-df mnt/
-
-umount mnt
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
