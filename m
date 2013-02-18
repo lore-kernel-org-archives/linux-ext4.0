@@ -1,66 +1,82 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Large buffer cache in EXT4
-Date: Mon, 18 Feb 2013 09:22:57 -0600
-Message-ID: <51224751.3020002@redhat.com>
-References: <CAEUQcegw=gq9ndo=Zd4xC2gJDZrRzNpS2hAZW9x5Lh=KL_YDHQ@mail.gmail.com> <6F61E227-A6F7-4AD6-9B9C-39E9E9EAABFA@dilger.ca>
+Subject: Re: [PATCH] ext4: fix xattr block allocation/release with bigalloc
+Date: Mon, 18 Feb 2013 09:26:07 -0600
+Message-ID: <5122480F.9030100@redhat.com>
+References: <1361175262-16205-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Subranshu Patel <spatel.ml@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5226 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:61069 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753707Ab3BRPW7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Feb 2013 10:22:59 -0500
-In-Reply-To: <6F61E227-A6F7-4AD6-9B9C-39E9E9EAABFA@dilger.ca>
+	id S1752950Ab3BRP0G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Feb 2013 10:26:06 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1IFQ6JF031888
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2013 10:26:06 -0500
+In-Reply-To: <1361175262-16205-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/17/13 12:28 AM, Andreas Dilger wrote:
-> On 2013-02-16, at 21:04, Subranshu Patel <spatel.ml@gmail.com> wrote:
+On 2/18/13 2:14 AM, Lukas Czerner wrote:
+> Currently when new xattr block is created or released we we would call
+> dquot_free_block() or dquot_alloc_block() respectively, among the else
+> decrementing or incrementing the number of blocks assigned to the inode
+> by one block.
 > 
->> I created 2 filesystem on my system (RHEL 6.3, kernel version 2.6.32)
->> - XFS and EXT4 and mounted them.
->>
->> On both the filesystem I executed the mdtest tool(opensource tool) for
->> 64 concurrent process. Each process performed the following:
->> - Create large number of directories
->> - Remove all the directories
->>
->> During this time I monitored the memory usage of the system using sar
->> command. I checked the 3 components - kbmemused, kbbuffers and
->> kbcached
->>
->> kbmemused - Amount of used memory in kilobytes. This does not take
->> into account memory used by the kernel itself.
->> kbbuffers - buffer cache
->> kbcached - page cache
->>
->> While the kbmemused and kbcached component was almost similar in EXT4
->> and XFS (XFS being a little higher), the kbbuffer showed a totally
->> different trend.
->>
->> For EXT4, kbbuffers was:
->> 390999KB for dir creation
->> 364803KB for dir removal
->> For XFS, kbbuffers was:
->>
->> 1701KB for dir creation
->> 2738KB for dir removal
->>
->> In kernel 2.6, both buffer cache and page cache are merged. The page
->> cache caches pages of files. The buffer cache caches disk blocks which
->> consists of mainly metadata (not file data).
->>
->> Why is the buffer cache large in case of EXT4 and what is stored in
->> the buffer cache?
+> This however does not work for bigalloc file system because we always
+> allocate/free the whole cluster so we have to count with that in
+> dquot_free_block() and dquot_alloc_block() as well.
 > 
-> XFS does not use buffer cache, while ext[234] does use buffer cache. 
+> Use the clusters-to-blocks conversion EXT4_C2B() when passing number of
+> blocks to the dquot_alloc/free functions to fix the problem.
 > 
-> This is just a different code design. Ext4 uses the buffer cache to track metadata for journaling. 
+> The problem has been revealed by xfstests #117 (and possibly others).
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Use slabtop or similar to see what xfs slab caches grow during the test; look at xfs_buf for example.
+Thanks for finding this!
 
--Eric
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+
+> ---
+>  fs/ext4/xattr.c |    7 ++++---
+>  1 files changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 3a91ebc..b6741be 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -549,7 +549,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+>  		error = ext4_handle_dirty_xattr_block(handle, inode, bh);
+>  		if (IS_SYNC(inode))
+>  			ext4_handle_sync(handle);
+> -		dquot_free_block(inode, 1);
+> +		dquot_free_block(inode, EXT4_C2B(EXT4_SB(inode->i_sb), 1));
+>  		ea_bdebug(bh, "refcount now=%d; releasing",
+>  			  le32_to_cpu(BHDR(bh)->h_refcount));
+>  	}
+> @@ -832,7 +832,8 @@ inserted:
+>  			else {
+>  				/* The old block is released after updating
+>  				   the inode. */
+> -				error = dquot_alloc_block(inode, 1);
+> +				error = dquot_alloc_block(inode,
+> +						EXT4_C2B(EXT4_SB(sb), 1));
+>  				if (error)
+>  					goto cleanup;
+>  				error = ext4_journal_get_write_access(handle,
+> @@ -928,7 +929,7 @@ cleanup:
+>  	return error;
+>  
+>  cleanup_dquot:
+> -	dquot_free_block(inode, 1);
+> +	dquot_free_block(inode, EXT4_C2B(EXT4_SB(sb), 1));
+>  	goto cleanup;
+>  
+>  bad_block:
+> 
+
