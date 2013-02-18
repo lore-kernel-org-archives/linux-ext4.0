@@ -1,58 +1,67 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re:
-Date: Sun, 17 Feb 2013 22:59:50 -0500
-Message-ID: <20130218035950.GA10361@thunk.org>
-References: <CAFJqGkO3djXZHRxX0SUZ23EFvagYOEk=KUSkiHg2SgMu-QOLoQ@mail.gmail.com>
- <229CCD67-675F-4FB0-93B2-491DDA6BB7C3@redhat.com>
+Subject: Re: Large buffer cache in EXT4
+Date: Sun, 17 Feb 2013 23:35:17 -0500
+Message-ID: <20130218043517.GB10361@thunk.org>
+References: <CAEUQcegw=gq9ndo=Zd4xC2gJDZrRzNpS2hAZW9x5Lh=KL_YDHQ@mail.gmail.com>
+ <201302171125.40116.Martin@lichtvoll.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Somchai Smythe <buraphalinuxserver@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <esandeen@redhat.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Subranshu Patel <spatel.ml@gmail.com>, linux-ext4@vger.kernel.org
+To: Martin Steigerwald <Martin@lichtvoll.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:48693 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:48702 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754487Ab3BRD74 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Feb 2013 22:59:56 -0500
+	id S1756775Ab3BREfX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Feb 2013 23:35:23 -0500
 Content-Disposition: inline
-In-Reply-To: <229CCD67-675F-4FB0-93B2-491DDA6BB7C3@redhat.com>
+In-Reply-To: <201302171125.40116.Martin@lichtvoll.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 17, 2013 at 05:42:03PM -0500, Eric Sandeen wrote:
-> 
-> I haven't looked closely at this, but you could unmount and do
-> "e2image -r" of the fs to copy a metadata image.  If e2fsck fails
-> the same way on the image, you've saved a reproducer, and you could
-> re-make /tmp if you like.
+On Sun, Feb 17, 2013 at 11:25:39AM +0100, Martin Steigerwald wrote:
+>=20
+> What I never really understand was what is the clear distinction betw=
+een=20
+> dirty pages and disk block buffers. Why isn=B4t anything that is abou=
+t to be=20
+> written to disk in one cache?
 
-This is good advice; in general this error occurs when there is a
-hardware problem, where after we finishing running the journal, the
-"needs recovery flag" is cleared, and then we close the file system
-(to flush our internal caches, since the on-disk blocks might have
-gotten updated from running the journal), and then re-open it.  If the
-"needs recovery" flag is still set, then we issue this message.  It
-indicates either a severe programming bug in e2fsck and its libraries
-(in which case having a reproducible test case is really interesting),
-or much more commonly, it means that the disk write to the superblock
-to clear the "needs recovery" flag didn't "take", and the disk
-returned a data block different from the one which we just wrote, thus
-indicating some kind of hardware problem.
+The buffer cache is indexed by physical block number, and each buffer
+in the buffer cache is the size of the block size used for I/O to the
+device.
 
->From the e2fsck sources
+The page cache is indexed by <inode, page frame number>, and each page
+is the size of a VM page (i.e.4k for x86 systems, 16k for Power
+systems, etc.)
 
-			if (ctx->flags & E2F_FLAG_RESTARTED) {
-				/*
-				 * Whoops, we attempted to run the
-				 * journal twice.  This should never
-				 * happen, unless the hardware or
-				 * device driver is being bogus.
-				 */
-				com_err(ctx->program_name, 0,
-					_("unable to set superblock flags on %s\n"), ctx->device_name);
-				fatal_error(ctx, 0);
-			}
+Certain file systems, including ext3, ext4, and ocfs2, use the jbd or
+jbd2 layer to handle their physical block journalling, and this layer
+fundamentally uses the buffer cache, since it is concerned with
+controlling when specific file system blocks are allowed to ben
+written back to the hard drive.
 
-Regards,
+Other file systems may not support file system blocks smaller than 4k.
+This may make it easier for them to use the page cache for their
+metadata blocks, although I don't know what happens if you try to
+mount a btrfs file system formatted with 4k blocks on an architecture
+such as Power which has 16k pages.  I don't know if it will work, or
+blow up in a spectacular display of sparks.  :-)
 
-						- Ted
+In practice, it really doesn't matter.  The actual data storage for
+the buffer cache (i.e., where the b_data field points to in the struct
+buffer_head) is actually in the page cache, so from a space
+perspective it doesn't really matter.  File systems like ext3 and ext4
+which use the buffer cache for metadata blocks need to be careful than
+when a directory (which is metadata) is deleted, that the blocks in
+the buffer cache are zapped so that if the space on disk is reused for
+data file (which is cached in the page cache), that the stale entries
+in the buffer cache aren't at risk of being written back to the disk.
+But that's just a tiny a implementation detail....
+
+							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
