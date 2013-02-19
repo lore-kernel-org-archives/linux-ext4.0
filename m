@@ -1,312 +1,82 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 11/11] xfstests: add disk failure simulation test
-Date: Tue, 19 Feb 2013 15:37:23 +0400
-Message-ID: <1361273843-16094-11-git-send-email-dmonakhov@openvz.org>
-References: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, david@fromorbit.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Li Zefan <lizefan@huawei.com>
+Subject: Re: [RFC][PATCH] vfs: always protect diretory file->fpos with inode
+ mutex
+Date: Tue, 19 Feb 2013 19:47:30 +0800
+Message-ID: <51236652.1050608@huawei.com>
+References: <5122D3E0.6070800@huawei.com> <20130219091931.GB21945@quack.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	<andi@firstfloor.org>, Wuqixuan <wuqixuan@huawei.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>, <gregkh@linuxfoundation.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130219091931.GB21945@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-There are many situations where disk may fail for example
-1) brutal usb dongle unplug
-2) iscsi (or any other netbdev) failure due to network issues
-In this situation filesystem which use this blockdevice is
-expected to fail(force RO remount, abort, etc) but whole system
-should still be operational. In other words:
-1) Kernel should not panic
-2) Memory should not leak
-3) Data integrity operations (sync,fsync,fdatasync, directio) should fail
-   for affected filesystem
-4) It should be possible to umount broken filesystem
+On 2013/2/19 17:19, Jan Kara wrote:
+> On Tue 19-02-13 09:22:40, Li Zefan wrote:
+>> There's a long long-standing bug...As long as I don't know when it dates
+>> from.
+>>
+>> I've written and attached a simple program to reproduce this bug, and it can
+>> immediately trigger the bug in my box. It uses two threads, one keeps calling
+>> read(), and the other calling readdir(), both on the same directory fd.
+>   So the fact that read() or even write() to fd opened O_RDONLY has *any*
+> effect on f_pos looks really unexpected to me. I think we really should
+> have there:
+> 	if (ret >= 0)
+> 		file_pos_write(...);
 
-Later when disk becomes available again we expect(only for journaled filesystems):
-5) It will be possible to mount filesystem w/o explicit fsck (in order to caught
-   issues like https://patchwork.kernel.org/patch/1983981/)
-6) Filesystem should be operational
-7) After mount/umount has being done all errors should be fixed so fsck should
-   not spot any issues.
+I thought about this. The problem is then we have to check every fop->write()
+to see if any of them can return -errno with file->f_pos changed and fix them,
+though it's do-able.
 
-This test use fault enjection (CONFIG_FAIL_MAKE_REQUEST=y config option )
-which force all new IO requests to fail for a given device. Xfs already has
-XFS_IOC_GOINGDOWN ioctl which provides similar behaviour, but it is fsspeciffic
-and it does it in an easy way because it perform freeze_bdev() before actual
-shotdown.
+>   That would solve problems with read() and write() on directories for
+> pretty much every filesystem since the first usually returns -EISDIR and
+> the second -EBADF.
 
-Test run fsstress in background and then force disk failure.
-Once disk failed it check that (1)-(4) is true.
-Then makes disk available again and check that (5)-(7) is also true
+Yeah, seems ceph is the only filesystem that allows read() on directories.
 
-BE CAREFUL!! test known to cause memory corruption for XFS
-see: https://gist.github.com/dmonakhov/4953045
+> 
+>> When I ran it on ext3 (can be replaced with ext2/ext4) which has _dir_index_
+>> feature disabled, I got this:
+>>
+>> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
+>> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
+>> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
+>> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
+>> ...
+>>
+>> If we configured errors=remount-ro, the filesystem will become read-only.
+>>
+>> SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+>> {
+>> 	...
+>> 		loff_t pos = file_pos_read(file);
+>> 		ret = vfs_read(file, buf, count, &pos);
+>> 		file_pos_write(file, pos);
+>> 		fput_light(file, fput_needed);
+>> 	...
+>> }
+>>
+>> While readdir() is protected with i_mutex, f_pos can be changed without
+>> any locking in various read()/write() syscalls, which leads to this bug.
+>>
+>> What makes things worse is Andi removed i_mutex from generic_file_llseek,
+>> so you can trigger the same bug by replacing read() with lseek() in the
+>> test program.
+>   Yes, and here I'd say it's a filesystem issue. If filesystem needs f_pos
+> changed only under i_mutex, it should use default_llseek() or get the mutex
+> itself. That's what the callback is for. We shouldn't unnecessarily impose
+> the i_mutex restriction on llseek on a directory for every filesystem.
+> 
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- 292           |  186 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 292.out       |    9 +++
- common.config |    1 +
- common.rc     |   13 ++++
- group         |    1 +
- 5 files changed, 210 insertions(+), 0 deletions(-)
- create mode 100755 292
- create mode 100644 292.out
-
-diff --git a/292 b/292
-new file mode 100755
-index 0000000..725898f
---- /dev/null
-+++ b/292
-@@ -0,0 +1,186 @@
-+#! /bin/bash
-+# FSQA Test No. 292
-+#
-+# Run fsstress and fio(dio/aio and mmap) and simulate disk failure
-+# check filesystem consistency at the end.
-+#
-+#-----------------------------------------------------------------------
-+# (c) 2013 Dmitry Monakhov
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=dmonakhov@openvz.org
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+_supported_fs ext3 ext4 xfs btrfs reiserfs
-+_supported_os Linux
-+_need_to_be_root
-+_require_scratch
-+_require_fail_make_request
-+
-+# TODO: Function are common enough to be moved to common.blkdev
-+SCRATCH_REAL_DEV=`readlink -f $SCRATCH_DEV`
-+SCRATCH_BDEV=`basename $SCRATCH_REAL_DEV`
-+
-+allow_fail_make_request()
-+{
-+    echo "Allow global fail_make_request feature"
-+    echo 100 > $DEBUGFS_MNT/fail_make_request/probability
-+    echo 9999999 > $DEBUGFS_MNT/fail_make_request/times
-+    echo 0 >  /sys/kernel/debug/fail_make_request/verbose
-+}
-+
-+disallow_fail_make_request()
-+{
-+    echo "Disallow global fail_make_request feature"
-+    echo 0 > $DEBUGFS_MNT/fail_make_request/probability
-+    echo 0 > $DEBUGFS_MNT/fail_make_request/times
-+}
-+
-+start_fail_scratch_dev()
-+{
-+    echo "Force SCRATCH_DEV device failure"
-+    echo " echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-+    echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail
-+
-+}
-+
-+stop_fail_scratch_dev()
-+{
-+    echo "Make SCRATCH_DEV device operable again"
-+    echo " echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-+    echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail
-+
-+}
-+
-+_cleanup()
-+{
-+    poweron_scratch_dev
-+    disallow_fail_make_request
-+}
-+trap "_cleanup; exit \$status" 1 2 3 15
-+
-+RUN_TIME=$((20+10*$TIME_FACTOR))
-+NUM_JOBS=$((4*LOAD_FACTOR))
-+BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
-+FILE_SIZE=$((BLK_DEV_SIZE * 512))
-+
-+cat >$tmp-$seq.fio <<EOF
-+###########
-+# $seq test's fio activity
-+# Filenames derived from jobsname and jobid like follows:
-+# ${JOB_NAME}.${JOB_ID}.${ITERATION_ID}
-+[global]
-+ioengine=libaio
-+bs=4k
-+directory=${SCRATCH_MNT}
-+filesize=${FILE_SIZE}
-+size=9999T
-+continue_on_error=write
-+ignore_error=EIO,ENOSPC:EIO
-+error_dump=0
-+
-+[stress_dio_aio_activity]
-+create_on_open=1
-+fallocate=none
-+iodepth=128*${LOAD_FACTOR}
-+direct=1
-+buffered=0
-+numjobs=${NUM_JOBS}
-+rw=randwrite
-+runtime=40+${RUN_TIME}
-+time_based
-+
-+[stress_mmap_activity]
-+ioengine=mmap
-+create_on_open=0
-+fallocate=1
-+fdatasync=40960
-+filesize=8M
-+size=9999T
-+numjobs=${NUM_JOBS}
-+rw=randwrite
-+runtime=40+${RUN_TIME}
-+time_based
-+
-+EOF
-+
-+_require_fio $tmp-$seq.fio
-+
-+# Disable all sync operations to get higher load
-+FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0 -f setattr=1"
-+
-+_workout()
-+{
-+	out=$SCRATCH_MNT/fsstress.$$
-+	args=`_scale_fsstress_args -p 1 -n999999999 -f setattr=0 $FSSTRESS_AVOID -d $out`
-+	echo ""
-+	echo "Start fsstress.."
-+	echo ""
-+	echo "fsstress $args" >> $here/$seq.full
-+	$FSSTRESS_PROG $args > /dev/null 2>&1 &
-+	fs_pid=$!
-+	echo "Start fio.."
-+	cat $tmp-$seq.fio >>  $seq.full
-+	$FIO_PROG $tmp-$seq.fio >> $here/$seq.full 2>&1 &
-+	fio_pid=$!
-+
-+	# Let's it work for awhile, and force device failure
-+	sleep $RUN_TIME
-+	start_fail_scratch_dev
-+	# After device turns in to failed state filesystem may yet not know about
-+	# that so buffered write(2) may succeed, but any integrity operations
-+	# such as (sync, fsync, fdatasync, direct-io) should fail.
-+	dd if=/dev/zero of=$SCRATCH_MNT/touch_failed_filesystem count=1 bs=4k conv=fsync \
-+	    >> $here/$seq.full 2>&1 && \
-+	    _fail "failed: still able to perform integrity fsync on $SCRATCH_MNT"
-+
-+	kill $fs_pid
-+	wait $fs_pid
-+	wait $fio_pid
-+
-+	# We expect that broken FS still can be umounted
-+	run_check umount $SCRATCH_DEV
-+	# Once filesystem was umounted no one is able to write to block device
-+	# It is now safe to bring device back to normal state
-+	stop_fail_scratch_dev
-+
-+	# In order to check that filesystem is able to recover journal on mount(2)
-+	# perform mount/umount, after that all errors should be fixed
-+	run_check _scratch_mount
-+	run_check _scratch_unmount
-+	_check_scratch_fs
-+}
-+
-+# real QA test starts here
-+
-+_scratch_mkfs >> $here/$seq.full 2>&1 || _fail "mkfs failed"
-+_scratch_mount || _fail "mount failed"
-+allow_fail_make_request
-+_workout
-+status=$?
-+disallow_fail_make_request
-+exit
-diff --git a/292.out b/292.out
-new file mode 100644
-index 0000000..62eb8a9
---- /dev/null
-+++ b/292.out
-@@ -0,0 +1,9 @@
-+QA output created by 292
-+Allow global fail_make_request feature
-+
-+Start fsstress..
-+
-+Start fio..
-+Force SCRATCH_DEV device failure
-+Make SCRATCH_DEV device operable again
-+Disallow global fail_make_request feature
-diff --git a/common.config b/common.config
-index a956a46..f7a2422 100644
---- a/common.config
-+++ b/common.config
-@@ -75,6 +75,7 @@ export BENCH_PASSES=${BENCH_PASSES:=5}
- export XFS_MKFS_OPTIONS=${XFS_MKFS_OPTIONS:=-bsize=4096}
- export TIME_FACTOR=${TIME_FACTOR:=1}
- export LOAD_FACTOR=${LOAD_FACTOR:=1}
-+export DEBUGFS_MNT=${DEBUGFS_MNT:="/sys/kernel/debug"}
- 
- export PWD=`pwd`
- #export DEBUG=${DEBUG:=...} # arbitrary CFLAGS really.
-diff --git a/common.rc b/common.rc
-index 5c3dda1..cde1fda 100644
---- a/common.rc
-+++ b/common.rc
-@@ -1027,6 +1027,19 @@ _require_sparse_files()
-     esac
- }
- 
-+_require_debugfs()
-+{
-+    #boot_params always present in debugfs
-+    [ -d "$DEBUGFS_MNT/boot_params" ] || _notrun "Debugfs not mounted"
-+}
-+
-+_require_fail_make_request()
-+{
-+    [ -f "$DEBUGFS_MNT/fail_make_request/probability" ] \
-+	|| _notrun "$DEBUGFS_MNT/fail_make_request \
-+ not found. Seems that CONFIG_FAIL_MAKE_REQUEST kernel config option not enabled"
-+}
-+
- # check that a FS on a device is mounted
- # if so, return mount point
- #
-diff --git a/group b/group
-index 45c4fac..62367f3 100644
---- a/group
-+++ b/group
-@@ -415,3 +415,4 @@ stress
- 289 aio dangerous ioctl rw stress
- 290 aio dangerous ioctl rw stress
- 291 aio dangerous ioctl rw stress
-+292 dangerous enospc rw stress
--- 
-1.7.1
-
+One of my concern is, concurrent lseek() and readdir() doesn't seem to be
+well tested. I'll add a test case in xfstests.
