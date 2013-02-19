@@ -1,37 +1,71 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] xfstests #68 with data=journal hang against 3.8-rc7 and
- 'dev' branch
-Date: Tue, 19 Feb 2013 09:55:29 +0100
-Message-ID: <20130219085529.GA21945@quack.suse.cz>
-References: <20130217172208.GB4059@gmail.com>
+Subject: Re: [RFC][PATCH] vfs: always protect diretory file->fpos with
+ inode mutex
+Date: Tue, 19 Feb 2013 10:19:31 +0100
+Message-ID: <20130219091931.GB21945@quack.suse.cz>
+References: <5122D3E0.6070800@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41697 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755770Ab3BSJDe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Feb 2013 04:03:34 -0500
+Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>, andi@firstfloor.org,
+	Wuqixuan <wuqixuan@huawei.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>, gregkh@linuxfoundation.org
+To: Li Zefan <lizefan@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130217172208.GB4059@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <5122D3E0.6070800@huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hi,
+On Tue 19-02-13 09:22:40, Li Zefan wrote:
+> There's a long long-standing bug...As long as I don't know when it dates
+> from.
+> 
+> I've written and attached a simple program to reproduce this bug, and it can
+> immediately trigger the bug in my box. It uses two threads, one keeps calling
+> read(), and the other calling readdir(), both on the same directory fd.
+  So the fact that read() or even write() to fd opened O_RDONLY has *any*
+effect on f_pos looks really unexpected to me. I think we really should
+have there:
+	if (ret >= 0)
+		file_pos_write(...);
+  That would solve problems with read() and write() on directories for
+pretty much every filesystem since the first usually returns -EISDIR and
+the second -EBADF.
 
-On Mon 18-02-13 01:22:08, Zheng Liu wrote:
-> Xfstests #68 will hang with data=journal in 3.8-rc7 and 'dev' branch. I
-> remember that there has a patch for ext4 to fix filesystem freeze bug
-> but I am not sure whether it can fix this bug and it has been applied
-> into 'dev' branch.  So I file this bug here.
-  Yes, I also recently hit this bug. I found that the root cause is that in
-data=journal mode there are dirty pages even after syncing the whole
-filesystem. I didn't yet found out why that happens but dirty page handling
-is complex in data=journal mode as pages get marked dirty at the moment
-transaction is committing and buffers are filed into checkpoint lists so I
-find it quite possible there is some case I didn't think about where
-syncing results in non-clean filesystem.
+> When I ran it on ext3 (can be replaced with ext2/ext4) which has _dir_index_
+> feature disabled, I got this:
+> 
+> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
+> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
+> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
+> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
+> ...
+> 
+> If we configured errors=remount-ro, the filesystem will become read-only.
+> 
+> SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+> {
+> 	...
+> 		loff_t pos = file_pos_read(file);
+> 		ret = vfs_read(file, buf, count, &pos);
+> 		file_pos_write(file, pos);
+> 		fput_light(file, fput_needed);
+> 	...
+> }
+> 
+> While readdir() is protected with i_mutex, f_pos can be changed without
+> any locking in various read()/write() syscalls, which leads to this bug.
+> 
+> What makes things worse is Andi removed i_mutex from generic_file_llseek,
+> so you can trigger the same bug by replacing read() with lseek() in the
+> test program.
+  Yes, and here I'd say it's a filesystem issue. If filesystem needs f_pos
+changed only under i_mutex, it should use default_llseek() or get the mutex
+itself. That's what the callback is for. We shouldn't unnecessarily impose
+the i_mutex restriction on llseek on a directory for every filesystem.
 
 								Honza
 -- 
