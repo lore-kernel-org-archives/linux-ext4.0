@@ -1,525 +1,105 @@
 From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
-Subject: [PATCH] New ioctl "EXT4_IOC_SWAP_BOOT" to secure boot loader code.
-Date: Tue, 19 Feb 2013 22:10:55 +0100
-Message-ID: <1361308255-7991-1-git-send-email-t.bubeck@reinform.de>
-Cc: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
-To: linux-ext4@vger.kernel.org
+Subject: Re: Use EXT4_BOOT_LOADER_INO for boot loader GRUB?
+Date: Tue, 19 Feb 2013 22:15:37 +0100
+Message-ID: <5123EB79.4010101@reinform.de>
+References: <51023FEA.7000802@reinform.de> <20130126184927.GB20005@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw1.reinform.de ([82.141.45.9]:39363 "EHLO
+Received: from gw1.reinform.de ([82.141.45.9]:35718 "EHLO
 	mail-out.dmz.loef.reinform.de" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S933289Ab3BSVL1 (ORCPT
+	by vger.kernel.org with ESMTP id S1758582Ab3BSVPk (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Feb 2013 16:11:27 -0500
+	Tue, 19 Feb 2013 16:15:40 -0500
 Received: from postfix.loef.reinform.de (postfix.loef.reinform.de [10.1.1.39])
-	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id B88E7A83A0
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:11:23 +0100 (CET)
+	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id 48A9AA83A0
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:39 +0100 (CET)
 Received: from mail.reinform.de (mail.reinform.de [82.141.45.14])
-	by postfix.loef.reinform.de (Postfix) with ESMTP id D93521BC00
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 21:22:53 +0100 (CET)
+	by postfix.loef.reinform.de (Postfix) with ESMTP id AA49E1BC00
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 21:27:09 +0100 (CET)
+Received: from brain.wid.reinform.de (p3E9E8AFA.dip.t-dialin.net [62.158.138.250])
+	(using TLSv1 with cipher ADH-CAMELLIA256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.reinform.de (Postfix) with ESMTPSA id 8B642BB4F2
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:38 +0100 (CET)
+Received: from frodo.wid.reinform.de (frodo.wid.reinform.de [10.2.1.32])
+	by brain.wid.reinform.de (Postfix) with ESMTP id 4E4EF882CE
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:37 +0100 (CET)
+In-Reply-To: <20130126184927.GB20005@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
+Ted,
 
-Implementation of a new ioctl for ext4 called "EXT4_IOC_SWAP_BOOT":
+my previous email contains a first implementation of your idea. Did I 
+get it right or do you want me something to change?
 
-  "Swap i_blocks and associated attributes (like i_blocks, i_size,
-   i_flags, ...) from the associated inode with inode
-   EXT4_BOOT_LOADER_INO (#5). This is typically used to store a boot
-   loader in a secure part of the filesystem, where it can't be
-   changed by the user on accident.  The data blocks of the previous
-   boot loader will be associated with the given inode."
+I can also offer some shell scripts for mass testing the change to a 
+fresh ext4 filesystem to ensure, that it does not break anything. I ran 
+the script and indeed it does not break anything (as far as I can see).
 
-The implementation uses existing (static) functions from move_extent.c
-which therefore had to be changed in name and linkage.
+Kind regards,
+  Tilmann
 
-Also "ext4_iget()" was extended, so that it is able to return inode
-EXT4_BOOT_LOADER_INO, which has no valid i_mode and i_nlink.
+Am 26.01.2013 19:49, schrieb Theodore Ts'o:
+> On Fri, Jan 25, 2013 at 09:18:50AM +0100, Dr. Tilmann Bubeck wrote:
+>> The basic problem is, that GRUB needs a safe place to store
+>> (currently 32k) for its boot loader "core.img". That place should be
+>> simple to find from the primary boot code ("stage1") and the place
+>> should be safe for user intervention.
+>>
+>> QUESTION:
+>>
+>> You have reserved a special inode #5 called "EXT4_BOOT_LOADER_INO".
+>> Is this inode currently used or supported by kernel or user land?
+>> What is the idea of this inode?
+>
+> It was basically for something exactly like this.  :-)
+>
+>> PROPOSAL:
+>>
+>> I can think of using that inode to store the file "core.img" of
+>> GRUB. That file is used by GRUB to boot and the block list of that
+>> file is stored in GRUB when using "--force" to override the above
+>> error.
+>>
+>> ext2/3/4 must make sure, that the block list of that file never
+>> changes. I propose an additional EXT4 ioctl to tell ext4, which file
+>> to store in EXT4_BOOT_LOADER_INO.
+>
+> What I'm thinking about is a new ioctl that would swap the i_block and
+> i_blocks array of the BOOT_LOADER_INO and the file descriptor.  That
+> is, if there were any blocks attached to the boot_loader_ino, they
+> would become attached to the inode associated with the file
+> descriptor, and the blocks associated with that inode would be
+> attached to inode #5.
+>
+>> Probably there must be more changes to e2fsck and friends.
+>
+> Actually, no changes to e2fsck would be necessary.  The original plan
+> was that boot loader inode would be installed while the file system is
+> unmounted.  But it's already the case that blocks associated with
+> inode <5> are already accounted for by e2fsck.
+>
+>        	      	      		       - Ted
+>
 
-This usercode program is a simple example of the usage:
 
-int main(int argc, char *argv[])
-{
-  int fd;
-  int err;
-
-  if ( argc != 2 ) {
-    printf("usage: ext4-swap-boot-inode FILE-TO-SWAP\n");
-    exit(1);
-  }
-
-  fd = open(argv[1], O_RDONLY);
-  if ( fd < 0 ) {
-    perror("open");
-    exit(1);
-  }
-
-  err = ioctl(fd, EXT4_IOC_SWAP_BOOT);
-  if ( err < 0 ) {
-    perror("ioctl");
-    exit(1);
-  }
-
-  close(fd);
-  exit(0);
-}
-
-Signed-off-by: Dr. Tilmann Bubeck <t.bubeck@reinform.de>
----
- Documentation/filesystems/ext4.txt |  10 +++
- fs/ext4/ext4.h                     |  10 ++-
- fs/ext4/inode.c                    |  20 +++--
- fs/ext4/ioctl.c                    | 163 +++++++++++++++++++++++++++++++++++++
- fs/ext4/move_extent.c              |  47 +++++------
- 5 files changed, 218 insertions(+), 32 deletions(-)
-
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 34ea4f1..47f130e 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -587,6 +587,16 @@ Table of Ext4 specific ioctls
- 			      bitmaps and inode table, the userspace tool thus
- 			      just passes the new number of blocks.
- 
-+ EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
-+ 			      (like i_blocks, i_size, i_flags, ...) from
-+			      the associated inode with inode 
-+			      EXT4_BOOT_LOADER_INO (#5). This is typically
-+			      used to store a boot loader in a secure part of
-+			      the filesystem, where it can't be changed by the
-+			      user on accident.
-+			      The data blocks of the previous boot loader
-+			      will be associated with the given inode.
-+
- ..............................................................................
- 
- References
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d93393e..e4c02b9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -614,6 +614,7 @@ enum {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
-+#define EXT4_IOC_SWAP_BOOT		_IO('f', 17)
- 
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-@@ -1335,6 +1336,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- 	return ino == EXT4_ROOT_INO ||
- 		ino == EXT4_USR_QUOTA_INO ||
- 		ino == EXT4_GRP_QUOTA_INO ||
-+		ino == EXT4_BOOT_LOADER_INO ||
- 		ino == EXT4_JOURNAL_INO ||
- 		ino == EXT4_RESIZE_INO ||
- 		(ino >= EXT4_FIRST_INO(sb) &&
-@@ -2523,9 +2525,13 @@ extern int ext4_ext_check_inode(struct inode *inode);
- extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
--
--
- /* move_extent.c */
-+extern void ext4_double_down_write_data_sem(struct inode *first, 
-+                                       struct inode *second);
-+extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
-+                                     struct inode *donor_inode);
-+void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
-+void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 07d9def..767d2da 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3748,14 +3748,18 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (inode->i_nlink == 0) {
- 		if (inode->i_mode == 0 ||
- 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
--			/* this inode is deleted */
--			ret = -ESTALE;
--			goto bad_inode;
-+			if (ino != EXT4_BOOT_LOADER_INO) {
-+				/* this inode is deleted */
-+				ret = -ESTALE;
-+				goto bad_inode;
-+			}
-+			/* The only unlinked inodes we let through here have
-+			 * valid i_mode and are being read by the orphan
-+			 * recovery code: that's fine, we're about to complete
-+			 * the process of deleting those.
-+			 * OR it is the EXT4_BOOT_LOADER_INO which is
-+			 * not initialized on a prune filesystem. */
- 		}
--		/* The only unlinked inodes we let through here have
--		 * valid i_mode and are being read by the orphan
--		 * recovery code: that's fine, we're about to complete
--		 * the process of deleting those. */
- 	}
- 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
- 	inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
-@@ -3875,6 +3879,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		else
- 			init_special_inode(inode, inode->i_mode,
- 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
-+	} else if (ino == EXT4_BOOT_LOADER_INO) {
-+		make_bad_inode(inode);
- 	} else {
- 		ret = -EIO;
- 		EXT4_ERROR_INODE(inode, "bogus i_mode (%o)", inode->i_mode);
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 4784ac2..b17a1c2 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -17,9 +17,166 @@
- #include <asm/uaccess.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
-+#include "ext4_extents.h"
- 
- #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
- 
-+/**
-+ * Swap memory between @a and @b for @len bytes.
-+ *
-+ * @a:          pointer to first memory area
-+ * @b:          pointer to second memory area
-+ * @len:        number of bytes to swap
-+ *
-+ */
-+static void __memswap(void *a, void *b, size_t len)
-+{
-+	unsigned char *ap, *bp;
-+	unsigned char tmp;
-+
-+	ap = (unsigned char *)a;
-+	bp = (unsigned char *)b;
-+	while (len-- > 0) {
-+		tmp = *ap;
-+		*ap = *bp;
-+		*bp = tmp;
-+		ap++;
-+		bp++;
-+	}
-+}
-+
-+/**
-+ * Swap the information from the given @inode and the inode
-+ * EXT4_BOOT_LOADER_INO. It will basically swap i_data and all other
-+ * important fields of the inodes.
-+ *
-+ * @sb:         the super block of the filesystem
-+ * @inode:      the inode to swap with EXT4_BOOT_LOADER_INO
-+ *
-+ */
-+static long __swap_inode_boot_loader(struct super_block *sb,
-+				     struct inode *inode)
-+{
-+	handle_t *handle;
-+	int err, err2;
-+	struct inode *inode_bl;
-+	struct ext4_inode_info *ei;
-+	struct ext4_inode_info *ei_bl;
-+	long long isize;
-+	struct ext4_sb_info *sbi;
-+
-+	sbi = EXT4_SB(sb);
-+	ei = EXT4_I(inode);
-+
-+	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
-+	if (IS_ERR(inode_bl)) {
-+		err = PTR_ERR(inode_bl);
-+		goto swap_boot_out;
-+	}
-+	ei_bl = EXT4_I(inode_bl);
-+
-+	if (!inode_owner_or_capable(inode_bl)) {
-+		err = -EPERM;
-+		goto swap_boot_out;
-+	}
-+
-+	/* This is non obvious task to swap blocks for inodes with full
-+	 * jornaling enabled */
-+	if (ext4_should_journal_data(inode) ||
-+	    ext4_should_journal_data(inode_bl)) {
-+		err = -EINVAL;
-+		goto swap_boot_out;
-+	}
-+	/* Protect orig and boot loader inodes against a truncate */
-+	ext4_inode_double_lock(inode, inode_bl);
-+
-+	/* Wait for all existing dio workers */
-+	ext4_inode_block_unlocked_dio(inode);
-+	ext4_inode_block_unlocked_dio(inode_bl);
-+	inode_dio_wait(inode);
-+	inode_dio_wait(inode_bl);
-+
-+	/* Protect extent tree against block allocations via delalloc */
-+	ext4_double_down_write_data_sem(inode, inode_bl);
-+
-+	handle = ext4_journal_start(inode_bl, 2);
-+	if (IS_ERR(handle)) {
-+		err = -EINVAL;
-+		goto swap_boot_out;
-+	}
-+
-+	if (inode_bl->i_nlink == 0) {
-+		/* this inode has never been used as a BOOT_LOADER */
-+		set_nlink(inode_bl, 1);
-+		inode_bl->i_uid = 0;
-+		inode_bl->i_gid = 0;
-+		inode_bl->i_flags = inode->i_flags;
-+		ei_bl->i_flags = ei->i_flags;
-+		inode_bl->i_version = 1;
-+		ext4_ext_tree_init(handle, inode_bl);
-+	}
-+
-+	__memswap(&inode->i_flags, &inode_bl->i_flags, sizeof(inode->i_flags));
-+	__memswap(&inode->i_version, &inode_bl->i_version,
-+		  sizeof(inode->i_version));
-+	__memswap(&inode->i_blocks, &inode_bl->i_blocks,
-+		  sizeof(inode->i_blocks));
-+	__memswap(&inode->i_bytes, &inode_bl->i_bytes, sizeof(inode->i_bytes));
-+	__memswap(&inode->i_atime, &inode_bl->i_atime, sizeof(inode->i_atime));
-+	__memswap(&inode->i_mtime, &inode_bl->i_mtime, sizeof(inode->i_mtime));
-+
-+	__memswap(ei->i_data, ei_bl->i_data, sizeof(ei->i_data));
-+	__memswap(&ei->i_flags, &ei_bl->i_flags, sizeof(ei->i_flags));
-+	__memswap(&ei->i_disksize, &ei_bl->i_disksize, sizeof(ei->i_disksize));
-+	__memswap(&ei->i_cached_extent, &ei_bl->i_cached_extent,
-+		  sizeof(ei->i_cached_extent));
-+
-+	isize = i_size_read(inode);
-+	i_size_write(inode, i_size_read(inode_bl));
-+	i_size_write(inode_bl, isize);
-+
-+	inode->i_ctime = inode_bl->i_ctime = ext4_current_time(inode);
-+
-+	spin_lock(&sbi->s_next_gen_lock);
-+	inode_bl->i_generation = sbi->s_next_generation++;
-+	spin_unlock(&sbi->s_next_gen_lock);
-+
-+	ext4_ext_invalidate_cache(inode);
-+	ext4_ext_invalidate_cache(inode_bl);
-+	ext4_discard_preallocations(inode);
-+	ext4_discard_preallocations(inode_bl);
-+
-+	err = ext4_mark_inode_dirty(handle, inode);
-+	if (err < 0) {
-+		ext4_warning(inode->i_sb,
-+			     "couldn't mark inode dirty (err %d)", err);
-+	}
-+	err2 = ext4_mark_inode_dirty(handle, inode_bl);
-+	if (err2 < 0) {
-+		ext4_warning(inode->i_sb,
-+			     "couldn't mark inode dirty (err %d)", err2);
-+		err = err2;
-+	}
-+
-+	ext4_journal_stop(handle);
-+	ext4_double_up_write_data_sem(inode, inode_bl);
-+
-+	ext4_inode_resume_unlocked_dio(inode);
-+	ext4_inode_resume_unlocked_dio(inode_bl);
-+
-+	ext4_inode_double_unlock(inode, inode_bl);
-+
-+	truncate_inode_pages(&inode->i_data, 0);
-+	truncate_inode_pages(&inode_bl->i_data, 0);
-+	filemap_flush(inode->i_mapping);
-+	filemap_flush(inode_bl->i_mapping);
-+
-+	iput(inode_bl);
-+
-+swap_boot_out:
-+	return err;
-+}
-+
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = filp->f_dentry->d_inode;
-@@ -357,6 +514,12 @@ group_add_out:
- 		return err;
- 	}
- 
-+	case EXT4_IOC_SWAP_BOOT:
-+	{
-+		ext4_msg(sb, KERN_ERR, "%s/%d", __func__, __LINE__);
-+		return __swap_inode_boot_loader(sb, inode);
-+	}
-+
- 	case EXT4_IOC_RESIZE_FS: {
- 		ext4_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index d9cc5ee..ee7da4e 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -142,12 +142,13 @@ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
- }
- 
- /**
-- * double_down_write_data_sem - Acquire two inodes' write lock of i_data_sem
-+ * ext4_double_down_write_data_sem - Acquire two inodes' write lock 
-+ *                                   of i_data_sem
-  *
-  * Acquire write lock of i_data_sem of the two inodes
-  */
--static void
--double_down_write_data_sem(struct inode *first, struct inode *second)
-+void
-+ext4_double_down_write_data_sem(struct inode *first, struct inode *second)
- {
- 	if (first < second) {
- 		down_write(&EXT4_I(first)->i_data_sem);
-@@ -160,14 +161,14 @@ double_down_write_data_sem(struct inode *first, struct inode *second)
- }
- 
- /**
-- * double_up_write_data_sem - Release two inodes' write lock of i_data_sem
-+ * ext4_double_up_write_data_sem - Release two inodes' write lock of i_data_sem
-  *
-  * @orig_inode:		original inode structure to be released its lock first
-  * @donor_inode:	donor inode structure to be released its lock second
-  * Release write lock of i_data_sem of two inodes (orig and donor).
-  */
--static void
--double_up_write_data_sem(struct inode *orig_inode, struct inode *donor_inode)
-+void
-+ext4_double_up_write_data_sem(struct inode *orig_inode, struct inode *donor_inode)
- {
- 	up_write(&EXT4_I(orig_inode)->i_data_sem);
- 	up_write(&EXT4_I(donor_inode)->i_data_sem);
-@@ -965,7 +966,7 @@ again:
- 	 * necessary, just swap data blocks between orig and donor.
- 	 */
- 	if (uninit) {
--		double_down_write_data_sem(orig_inode, donor_inode);
-+		ext4_double_down_write_data_sem(orig_inode, donor_inode);
- 		/* If any of extents in range became initialized we have to
- 		 * fallback to data copying */
- 		uninit = mext_check_coverage(orig_inode, orig_blk_offset,
-@@ -979,7 +980,7 @@ again:
- 			goto drop_data_sem;
- 
- 		if (!uninit) {
--			double_up_write_data_sem(orig_inode, donor_inode);
-+			ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 			goto data_copy;
- 		}
- 		if ((page_has_private(pagep[0]) &&
-@@ -993,7 +994,7 @@ again:
- 						donor_inode, orig_blk_offset,
- 						block_len_in_page, err);
- 	drop_data_sem:
--		double_up_write_data_sem(orig_inode, donor_inode);
-+		ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 		goto unlock_pages;
- 	}
- data_copy:
-@@ -1054,11 +1055,11 @@ repair_branches:
- 	 * Extents are swapped already, but we are not able to copy data.
- 	 * Try to swap extents to it's original places
- 	 */
--	double_down_write_data_sem(orig_inode, donor_inode);
-+	ext4_double_down_write_data_sem(orig_inode, donor_inode);
- 	replaced_count = mext_replace_branches(handle, donor_inode, orig_inode,
- 					       orig_blk_offset,
- 					       block_len_in_page, &err2);
--	double_up_write_data_sem(orig_inode, donor_inode);
-+	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	if (replaced_count != block_len_in_page) {
- 		EXT4_ERROR_INODE_BLOCK(orig_inode, (sector_t)(orig_blk_offset),
- 				       "Unable to copy data block,"
-@@ -1198,15 +1199,15 @@ mext_check_arguments(struct inode *orig_inode,
- }
- 
- /**
-- * mext_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-+ * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
-  *
-  * @inode1:	the inode structure
-  * @inode2:	the inode structure
-  *
-  * Lock two inodes' i_mutex
-  */
--static void
--mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
-+void
-+ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
- {
- 	BUG_ON(inode1 == inode2);
- 	if (inode1 < inode2) {
-@@ -1219,15 +1220,15 @@ mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
- }
- 
- /**
-- * mext_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-+ * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
-  *
-  * @inode1:     the inode that is released first
-  * @inode2:     the inode that is released second
-  *
-  */
- 
--static void
--mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
-+void
-+ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
- {
- 	mutex_unlock(&inode1->i_mutex);
- 	mutex_unlock(&inode2->i_mutex);
-@@ -1322,7 +1323,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		return -EINVAL;
- 	}
- 	/* Protect orig and donor inodes against a truncate */
--	mext_inode_double_lock(orig_inode, donor_inode);
-+	ext4_inode_double_lock(orig_inode, donor_inode);
- 
- 	/* Wait for all existing dio workers */
- 	ext4_inode_block_unlocked_dio(orig_inode);
-@@ -1331,7 +1332,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 	inode_dio_wait(donor_inode);
- 
- 	/* Protect extent tree against block allocations via delalloc */
--	double_down_write_data_sem(orig_inode, donor_inode);
-+	ext4_double_down_write_data_sem(orig_inode, donor_inode);
- 	/* Check the filesystem environment whether move_extent can be done */
- 	ret = mext_check_arguments(orig_inode, donor_inode, orig_start,
- 				    donor_start, &len);
-@@ -1455,7 +1456,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 		 * b. racing with ->readpage, ->write_begin, and ext4_get_block
- 		 *    in move_extent_per_page
- 		 */
--		double_up_write_data_sem(orig_inode, donor_inode);
-+		ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 
- 		while (orig_page_offset <= seq_end_page) {
- 
-@@ -1489,7 +1490,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 				block_len_in_page = rest_blocks;
- 		}
- 
--		double_down_write_data_sem(orig_inode, donor_inode);
-+		ext4_double_down_write_data_sem(orig_inode, donor_inode);
- 		if (ret < 0)
- 			break;
- 
-@@ -1527,10 +1528,10 @@ out:
- 		ext4_ext_drop_refs(holecheck_path);
- 		kfree(holecheck_path);
- 	}
--	double_up_write_data_sem(orig_inode, donor_inode);
-+	ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 	ext4_inode_resume_unlocked_dio(orig_inode);
- 	ext4_inode_resume_unlocked_dio(donor_inode);
--	mext_inode_double_unlock(orig_inode, donor_inode);
-+	ext4_inode_double_unlock(orig_inode, donor_inode);
- 
- 	return ret;
- }
 -- 
-1.8.1.2
-
++-------+-------------------------------------------------------------+
+|       | dr. tilmann bubeck               reinform medien- und       |
+|       |                                  informationstechnologie AG |
+| rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
+| form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
+|    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
+|       | email: t.bubeck@reinform.de      http://www.reinform.de     |
+|       +-------------------------------------------------------------+
+|       | pflichtangaben nach paragraph 80, AktG:                     |
+|       | reinform medien- und informationstechnologie AG, stuttgart  |
+|       | handelsregister stuttgart, HRB 23001                        |
+|       | vorstand:     dr. tilmann bubeck (vorsitz)                  |
+|       | aufsichtsrat: frank stege (vorsitz)                         |
++-------+-------------------------------------------------------------+
