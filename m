@@ -1,49 +1,73 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 02/11] xfstests: get rid of hardcoded /sbin/mkfs
-Date: Tue, 19 Feb 2013 15:37:14 +0400
-Message-ID: <1361273843-16094-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 07/11] xfstest: move run_check to common.rc
+Date: Tue, 19 Feb 2013 15:37:19 +0400
+Message-ID: <1361273843-16094-7-git-send-email-dmonakhov@openvz.org>
 References: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com, david@fromorbit.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:45329 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757526Ab3BSLhr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Feb 2013 06:37:47 -0500
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com
+Return-path: <xfs-bounces@oss.sgi.com>
 In-Reply-To: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- common.rc |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ 276       |    6 ------
+ common.rc |    8 +++++++-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
+diff --git a/276 b/276
+index 082f943..c1ce8ac 100755
+--- a/276
++++ b/276
+@@ -165,12 +165,6 @@ _btrfs_inspect_check()
+ 	return $ret
+ }
+ 
+-run_check()
+-{
+-	echo "# $@" >> $seq.full 2>&1
+-	"$@" >> $seq.full 2>&1 || _fail "failed: '$@'"
+-}
+-
+ workout()
+ {
+ 	fsz=$1
 diff --git a/common.rc b/common.rc
-index f5027e7..196619d 100644
+index ea5c477..5c3dda1 100644
 --- a/common.rc
 +++ b/common.rc
-@@ -334,7 +334,7 @@ _scratch_mkfs()
-         $MKFS_BTRFS_PROG $MKFS_OPTIONS $* $SCRATCH_DEV > /dev/null
- 	;;
-     *)
--	/sbin/mkfs -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
-+	$MKFS_PROG -t $FSTYP -- $MKFS_OPTIONS $* $SCRATCH_DEV
- 	;;
-     esac
+@@ -1806,7 +1806,13 @@ _scale_fsstress_args()
+     done
+     echo $args                                                                                            
  }
-@@ -353,7 +353,7 @@ _scratch_mkfs_sized()
- 	_scratch_mkfs_xfs -d size=$fssize -b size=$blocksize
- 	;;
-     ext2|ext3|ext4|ext4dev)
--	/sbin/mkfs.$FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
-+	$MKFS_PROG -t $FSTYP $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
- 	;;
-     btrfs)
- 	$MKFS_BTRFS_PROG $MKFS_OPTIONS -b $fssize $SCRATCH_DEV
+-  
++
++run_check()
++{
++	echo "# $@" >> $seq.full 2>&1
++	"$@" >> $seq.full 2>&1 || _fail "failed: '$@'"
++}
++
+ ################################################################################
+ 
+ if [ "$iam" != new -a "$iam" != bench ]
 -- 
 1.7.1
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
