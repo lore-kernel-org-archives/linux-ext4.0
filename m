@@ -1,73 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC][PATCH] vfs: always protect diretory file->fpos with
- inode mutex
-Date: Tue, 19 Feb 2013 10:19:31 +0100
-Message-ID: <20130219091931.GB21945@quack.suse.cz>
-References: <5122D3E0.6070800@huawei.com>
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] xfstests: add disk failure simulation test
+Date: Tue, 19 Feb 2013 15:14:25 +0400
+Message-ID: <87bobg8sj2.fsf@openvz.org>
+References: <1360770097-6351-1-git-send-email-dmonakhov@openvz.org> <511BBF33.20908@redhat.com> <87621vngtw.fsf@openvz.org> <511CFFA2.8030905@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>, andi@firstfloor.org,
-	Wuqixuan <wuqixuan@huawei.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>, gregkh@linuxfoundation.org
-To: Li Zefan <lizefan@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <5122D3E0.6070800@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, dchinner@redhat.com
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <511CFFA2.8030905@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 19-02-13 09:22:40, Li Zefan wrote:
-> There's a long long-standing bug...As long as I don't know when it dates
-> from.
+On Thu, 14 Feb 2013 09:15:46 -0600, Eric Sandeen <sandeen@redhat.com> wrote:
+> On 2/14/13 7:52 AM, Dmitry Monakhov wrote:
+> > On Wed, 13 Feb 2013 10:28:35 -0600, Eric Sandeen <sandeen@redhat.com> wrote:
+> >> On 2/13/13 9:41 AM, Dmitry Monakhov wrote:
 > 
-> I've written and attached a simple program to reproduce this bug, and it can
-> immediately trigger the bug in my box. It uses two threads, one keeps calling
-> read(), and the other calling readdir(), both on the same directory fd.
-  So the fact that read() or even write() to fd opened O_RDONLY has *any*
-effect on f_pos looks really unexpected to me. I think we really should
-have there:
-	if (ret >= 0)
-		file_pos_write(...);
-  That would solve problems with read() and write() on directories for
-pretty much every filesystem since the first usually returns -EISDIR and
-the second -EBADF.
-
-> When I ran it on ext3 (can be replaced with ext2/ext4) which has _dir_index_
-> feature disabled, I got this:
+> <snip>
 > 
-> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
-> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
-> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=993, inode=0, rec_len=0, name_len=0
-> EXT3-fs error (device loop1): ext3_readdir: bad entry in directory #34817: rec_len is smaller than minimal - offset=1009, inode=0, rec_len=0, name_len=0
-> ...
+> >>> +# get standard environment, filters and checks
+> >>> +. ./common.rc
+> >>> +. ./common.filter
+> >>> +
+> >>> +# TODO move it to common.blkdev if necessery
+> >>
+> >> maybe a comment as to why you do this?  (presumably to find the right thing in /sys)
+> >> I hope this always works with all udev schemes etc?
+> > I just ment to say that functions below are good candidates to became
+> > common wrappers.
 > 
-> If we configured errors=remount-ro, the filesystem will become read-only.
+> Sure, but what is the reason for the wrapper?
 > 
-> SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
-> {
-> 	...
-> 		loff_t pos = file_pos_read(file);
-> 		ret = vfs_read(file, buf, count, &pos);
-> 		file_pos_write(file, pos);
-> 		fput_light(file, fput_needed);
-> 	...
-> }
+> On inspection I think its' because you need the right sysfs name; it'd
+> just be nice to say that it's the reason for the readlink/basename
+> frobbing of the existing $SCRATCH_DEV.  Not a huge deal.
+Most people use LVM's names similar to /dev/vg/log1, but real name is
+/dev/md-xxx, also some fancy SCSI targets may has crazy names.
 > 
-> While readdir() is protected with i_mutex, f_pos can be changed without
-> any locking in various read()/write() syscalls, which leads to this bug.
+> >>> +SCRATCH_REAL_DEV=`readlink -f $SCRATCH_DEV`
+> >>> +SCRATCH_BDEV=`basename $SCRATCH_REAL_DEV`
+> >>> +
 > 
-> What makes things worse is Andi removed i_mutex from generic_file_llseek,
-> so you can trigger the same bug by replacing read() with lseek() in the
-> test program.
-  Yes, and here I'd say it's a filesystem issue. If filesystem needs f_pos
-changed only under i_mutex, it should use default_llseek() or get the mutex
-itself. That's what the callback is for. We shouldn't unnecessarily impose
-the i_mutex restriction on llseek on a directory for every filesystem.
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> <snip>
+> 
+> >>> +_require_debugfs()
+> >>> +{
+> >>> +    #boot_params always present in debugfs
+> >>> +    [ -d "$DEBUGFS_MNT/boot_params" ] || _notrun "Debugfs not mounted"
+> >>> +}
+> >>
+> >> Would it make more sense to look for debugfs in /proc/filesystems
+> >> as a test for it being *available* (as opposed to mounted somewhere?)
+> >>
+> >> I wonder if a helper (maybe in _require_debugfs) should work out if
+> >> it's mounted, if not, try to mount it, and in the end, export DEBUGFS_MNT
+> >> for any test that wants to use it.
+> >>
+> >> Otherwise if it happens to be mounted elsewhere, this'll all fail.
+> >> Just a thought.  Maybe that's unusual enough that there's no point.
+> >> But getting it mounted if it's not would be helpful I think.
+> 
+> Any thoughts on this?  As it stands it requires debugfs to be
+> at /sys/kernel/debug (by default) *and* mounted prior to the test run.
+> So it's another (maybe unexpected) piece of pre-test setup which might
+> result in this test not getting run.
+I just try to preserve blktrace(8) behaviour which complain if
+debugfs is absent. IMHO debugfs is MUST_HAVE feature for testing environment.
+So if not mounted it was done with purpose.
+> 
+> -Eric
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
