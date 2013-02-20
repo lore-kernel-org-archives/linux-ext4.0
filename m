@@ -1,74 +1,54 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 01/10] xfstests: add fio requirement V2
-Date: Wed, 20 Feb 2013 14:42:06 +0400
-Message-ID: <1361356935-29153-2-git-send-email-dmonakhov@openvz.org>
-References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH 00/10] xfstests: Stress tests improments v5
+Date: Wed, 20 Feb 2013 14:42:05 +0400
+Message-ID: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-ext4@vger.kernel.org, dchinner@redhat.com
 To: xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-FIO is very flexible io generator, I would call it IO swiss knife.
-Currently we have tonns of hardcoded application which reproduces
-some predefined scenario. This approach has obvious dissadvantages
-1) Lack of flexability: one written it is hard to modify it in future
-2) Code base is large, many routines written again and again
+1   add fio requirement V2
+2   add configurable load factors
+3   hardcode fops for determinable fsstests runs
+4   fsstress add replace file operation
+5   allow fsstress to use load factor where appropriate
+6   move run_check to common.rc
+7   add  fallocate/truncate vs AIO/DIO stress test
+8   add  fallocate/punch_hole vs AIO/DIO stress test
+9   add defragmentation stress tests for ext4
+10  add disk failure simulation test
 
-At the same time add new fio based tast is just add simle INI file.
-This greatly simplify code review. I do beleve that some day we will
-replace most of hardcoded io binaries with fio.
+Known issues which can be triggered this test case:
+287'th over EXT4 result in https://gist.github.com/dmonakhov/4994589
+298'th (8'th patch) over XFS result in https://gist.github.com/dmonakhov/4994465
+300'th and 301'th over EXT4 result in https://gist.github.com/dmonakhov/4770294
+303'th over XFS result in https://gist.github.com/dmonakhov/4951456
 
-One who is planning to run $FIO_PROG should first check that system
-contains appropriate version which is able to handle jobfile
-for example:  _require_fio 286-job.fio
+Changes since V4
+Rebase on top of current dev tree.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- common.config |    1 +
- common.rc     |   15 +++++++++++++++
- 2 files changed, 16 insertions(+), 0 deletions(-)
 
-diff --git a/common.config b/common.config
-index 827c718..7681812 100644
---- a/common.config
-+++ b/common.config
-@@ -159,6 +159,7 @@ export KILLALL_PROG="`set_prog_path killall`"
- export INDENT_PROG="`set_prog_path indent`"
- export XFS_COPY_PROG="`set_prog_path xfs_copy`"
- export FSTRIM_PROG="`set_prog_path fstrim`"
-+export FIO_PROG="`set_prog_path fio`"
- 
- # Generate a comparable xfsprogs version number in the form of
- # major * 10000 + minor * 100 + release
-diff --git a/common.rc b/common.rc
-index 2e8581e..14de47b 100644
---- a/common.rc
-+++ b/common.rc
-@@ -1789,6 +1789,21 @@ _require_freeze()
- 	[ $result -eq 0 ] || _notrun "$FSTYP does not support freezing"
- }
- 
-+# Check that fio is present, and it is able to execute given jobfile
-+_require_fio()
-+{
-+	job=$1
-+
-+	_require_command $FIO_PROG
-+	if [ -z "$1" ]; then
-+		return 1;
-+	fi
-+	
-+	$FIO_PROG --warnings-fatal --showcmd $job >/dev/null 2>&1
-+	[ $? -eq 0 ] || _notrun "$FIO_PROG too old"
-+}
-+
-+
- # arg 1 is dev to remove and is output of the below eg.
- # ls -l /sys/class/block/sdd | rev | cut -d "/" -f 3 | rev
- _devmgt_remove()
--- 
-1.7.1
+Changes since V2
+Mostly code style cleanups accodring to Dave's comments
+- add _scale_fsstress_args function
+- move run_check function to common.rc
+- Add more comments
+- split combined e4defrag testcase in to disicated tescases
 
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
