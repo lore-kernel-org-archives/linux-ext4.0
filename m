@@ -1,315 +1,398 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 10/10] xfstests: add disk failure simulation test
-Date: Wed, 20 Feb 2013 14:42:15 +0400
-Message-ID: <1361356935-29153-11-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 05/10] xfstest: allow fsstress to use load factor where appropriate
+Date: Wed, 20 Feb 2013 14:42:10 +0400
+Message-ID: <1361356935-29153-6-git-send-email-dmonakhov@openvz.org>
 References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
 To: xfs@oss.sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:31102 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933273Ab3BTKmd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Feb 2013 05:42:33 -0500
 In-Reply-To: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-There are many situations where disk may fail for example
-1) brutal usb dongle unplug
-2) iscsi (or any other netbdev) failure due to network issues
-In this situation filesystem which use this blockdevice is
-expected to fail(force RO remount, abort, etc) but whole system
-should still be operational. In other words:
-1) Kernel should not panic
-2) Memory should not leak
-3) Data integrity operations (sync,fsync,fdatasync, directio) should fail
-   for affected filesystem
-4) It should be possible to umount broken filesystem
+1) Add _scale_fsstress_args function which transform argumets according
+   to load factors
+2) Let all non deterministic fsstress tests to use scaled arguments
 
-Later when disk becomes available again we expect(only for journaled filesystems):
-5) It will be possible to mount filesystem w/o explicit fsck (in order to caught
-   issues like https://patchwork.kernel.org/patch/1983981/)
-6) Filesystem should be operational
-7) After mount/umount has being done all errors should be fixed so fsck should
-   not spot any issues.
-
-This test use fault enjection (CONFIG_FAIL_MAKE_REQUEST=y config option )
-which force all new IO requests to fail for a given device. Xfs already has
-XFS_IOC_GOINGDOWN ioctl which provides similar behaviour, but it is fsspeciffic
-and it does it in an easy way because it perform freeze_bdev() before actual
-shotdown.
-
-Test run fsstress in background and then force disk failure.
-Once disk failed it check that (1)-(4) is true.
-Then makes disk available again and check that (5)-(7) is also true
-
-BE CAREFUL!! test known to cause memory corruption for XFS
-see: https://gist.github.com/dmonakhov/4953045
+I've able to trigger OOPS on xfs see:https://gist.github.com/dmonakhov/4762653
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- 303           |  186 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 303.out       |    9 +++
- common.config |    1 +
- common.rc     |   13 ++++
- group         |    3 +-
- 5 files changed, 211 insertions(+), 1 deletions(-)
- create mode 100755 303
- create mode 100644 303.out
+ 017       |    3 ++-
+ 068       |    4 ++--
+ 070       |    5 +++--
+ 076       |    5 +++--
+ 083       |    4 ++--
+ 087       |    3 ++-
+ 104       |    4 +++-
+ 114       |    4 ++--
+ 167       |    5 +++--
+ 232       |    4 ++--
+ 232.out   |    1 -
+ 233       |    6 +++---
+ 233.out   |    1 -
+ 269       |    2 +-
+ 270       |    2 +-
+ common.rc |   14 ++++++++++++++
+ group     |   26 +++++++++++++-------------
+ 17 files changed, 56 insertions(+), 37 deletions(-)
 
-diff --git a/303 b/303
-new file mode 100755
-index 0000000..01bc5f1
---- /dev/null
-+++ b/303
-@@ -0,0 +1,186 @@
-+#! /bin/bash
-+# FSQA Test No. 303
-+#
-+# Run fsstress and fio(dio/aio and mmap) and simulate disk failure
-+# check filesystem consistency at the end.
-+#
-+#-----------------------------------------------------------------------
-+# (c) 2013 Dmitry Monakhov
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#
-+#-----------------------------------------------------------------------
-+#
-+# creator
-+owner=dmonakhov@openvz.org
-+
-+seq=`basename $0`
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+
-+# get standard environment, filters and checks
-+. ./common.rc
-+. ./common.filter
-+_supported_fs ext3 ext4 xfs btrfs reiserfs
-+_supported_os Linux
-+_need_to_be_root
-+_require_scratch
-+_require_fail_make_request
-+
-+# TODO: Function are common enough to be moved to common.blkdev
-+SCRATCH_REAL_DEV=`readlink -f $SCRATCH_DEV`
-+SCRATCH_BDEV=`basename $SCRATCH_REAL_DEV`
-+
-+allow_fail_make_request()
-+{
-+    echo "Allow global fail_make_request feature"
-+    echo 100 > $DEBUGFS_MNT/fail_make_request/probability
-+    echo 9999999 > $DEBUGFS_MNT/fail_make_request/times
-+    echo 0 >  /sys/kernel/debug/fail_make_request/verbose
-+}
-+
-+disallow_fail_make_request()
-+{
-+    echo "Disallow global fail_make_request feature"
-+    echo 0 > $DEBUGFS_MNT/fail_make_request/probability
-+    echo 0 > $DEBUGFS_MNT/fail_make_request/times
-+}
-+
-+start_fail_scratch_dev()
-+{
-+    echo "Force SCRATCH_DEV device failure"
-+    echo " echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-+    echo 1 > /sys/block/$SCRATCH_BDEV/make-it-fail
-+
-+}
-+
-+stop_fail_scratch_dev()
-+{
-+    echo "Make SCRATCH_DEV device operable again"
-+    echo " echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail" >> $here/$seq.full
-+    echo 0 > /sys/block/$SCRATCH_BDEV/make-it-fail
-+
-+}
-+
-+_cleanup()
-+{
-+    poweron_scratch_dev
-+    disallow_fail_make_request
-+}
-+trap "_cleanup; exit \$status" 1 2 3 15
-+
-+RUN_TIME=$((20+10*$TIME_FACTOR))
-+NUM_JOBS=$((4*LOAD_FACTOR))
-+BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
-+FILE_SIZE=$((BLK_DEV_SIZE * 512))
-+
-+cat >$tmp-$seq.fio <<EOF
-+###########
-+# $seq test's fio activity
-+# Filenames derived from jobsname and jobid like follows:
-+# ${JOB_NAME}.${JOB_ID}.${ITERATION_ID}
-+[global]
-+ioengine=libaio
-+bs=4k
-+directory=${SCRATCH_MNT}
-+filesize=${FILE_SIZE}
-+size=9999T
-+continue_on_error=write
-+ignore_error=EIO,ENOSPC:EIO
-+error_dump=0
-+
-+[stress_dio_aio_activity]
-+create_on_open=1
-+fallocate=none
-+iodepth=128*${LOAD_FACTOR}
-+direct=1
-+buffered=0
-+numjobs=${NUM_JOBS}
-+rw=randwrite
-+runtime=40+${RUN_TIME}
-+time_based
-+
-+[stress_mmap_activity]
-+ioengine=mmap
-+create_on_open=0
-+fallocate=1
-+fdatasync=40960
-+filesize=8M
-+size=9999T
-+numjobs=${NUM_JOBS}
-+rw=randwrite
-+runtime=40+${RUN_TIME}
-+time_based
-+
-+EOF
-+
-+_require_fio $tmp-$seq.fio
-+
-+# Disable all sync operations to get higher load
-+FSSTRESS_AVOID="$FSSTRESS_AVOID -ffsync=0 -fsync=0 -ffdatasync=0 -f setattr=1"
-+
-+_workout()
-+{
-+	out=$SCRATCH_MNT/fsstress.$$
-+	args=`_scale_fsstress_args -p 1 -n999999999 -f setattr=0 $FSSTRESS_AVOID -d $out`
-+	echo ""
-+	echo "Start fsstress.."
-+	echo ""
-+	echo "fsstress $args" >> $here/$seq.full
-+	$FSSTRESS_PROG $args > /dev/null 2>&1 &
-+	fs_pid=$!
-+	echo "Start fio.."
-+	cat $tmp-$seq.fio >>  $seq.full
-+	$FIO_PROG $tmp-$seq.fio >> $here/$seq.full 2>&1 &
-+	fio_pid=$!
-+
-+	# Let's it work for awhile, and force device failure
-+	sleep $RUN_TIME
-+	start_fail_scratch_dev
-+	# After device turns in to failed state filesystem may yet not know about
-+	# that so buffered write(2) may succeed, but any integrity operations
-+	# such as (sync, fsync, fdatasync, direct-io) should fail.
-+	dd if=/dev/zero of=$SCRATCH_MNT/touch_failed_filesystem count=1 bs=4k conv=fsync \
-+	    >> $here/$seq.full 2>&1 && \
-+	    _fail "failed: still able to perform integrity fsync on $SCRATCH_MNT"
-+
-+	kill $fs_pid
-+	wait $fs_pid
-+	wait $fio_pid
-+
-+	# We expect that broken FS still can be umounted
-+	run_check umount $SCRATCH_DEV
-+	# Once filesystem was umounted no one is able to write to block device
-+	# It is now safe to bring device back to normal state
-+	stop_fail_scratch_dev
-+
-+	# In order to check that filesystem is able to recover journal on mount(2)
-+	# perform mount/umount, after that all errors should be fixed
-+	run_check _scratch_mount
-+	run_check _scratch_unmount
-+	_check_scratch_fs
-+}
-+
-+# real QA test starts here
-+
-+_scratch_mkfs >> $here/$seq.full 2>&1 || _fail "mkfs failed"
-+_scratch_mount || _fail "mount failed"
-+allow_fail_make_request
-+_workout
-+status=$?
-+disallow_fail_make_request
-+exit
-diff --git a/303.out b/303.out
-new file mode 100644
-index 0000000..a936471
---- /dev/null
-+++ b/303.out
-@@ -0,0 +1,9 @@
-+QA output created by 303
-+Allow global fail_make_request feature
-+
-+Start fsstress..
-+
-+Start fio..
-+Force SCRATCH_DEV device failure
-+Make SCRATCH_DEV device operable again
-+Disallow global fail_make_request feature
-diff --git a/common.config b/common.config
-index 8efc7f8..8643c0b 100644
---- a/common.config
-+++ b/common.config
-@@ -75,6 +75,7 @@ export BENCH_PASSES=${BENCH_PASSES:=5}
- export XFS_MKFS_OPTIONS=${XFS_MKFS_OPTIONS:=-bsize=4096}
- export TIME_FACTOR=${TIME_FACTOR:=1}
- export LOAD_FACTOR=${LOAD_FACTOR:=1}
-+export DEBUGFS_MNT=${DEBUGFS_MNT:="/sys/kernel/debug"}
+diff --git a/017 b/017
+index 9ca0e72..7db4667 100755
+--- a/017
++++ b/017
+@@ -67,7 +67,8 @@ echo "*** test"
+ for l in 0 1 2 3 4
+ do
+         echo "    *** test $l"
+-        $FSSTRESS_PROG -d $SCRATCH_MNT -n 1000 $FSSTRESS_AVOID >>$seq.full
++	FSSTRESS_ARGS=`_scale_fsstress_args -d $SCRATCH_MNT -n 1000 $FSSTRESS_AVOID`
++        $FSSTRESS_PROG  $FSSTRESS_ARGS >>$seq.full
  
- export PWD=`pwd`
- #export DEBUG=${DEBUG:=...} # arbitrary CFLAGS really.
-diff --git a/common.rc b/common.rc
-index e7ae9bf..b795c22 100644
---- a/common.rc
-+++ b/common.rc
-@@ -1049,6 +1049,19 @@ _require_sparse_files()
-     esac
+         _scratch_mount -o remount,ro \
+             || _fail "remount ro failed"
+diff --git a/068 b/068
+index a641e2f..cbfea95 100755
+--- a/068
++++ b/068
+@@ -82,8 +82,8 @@ touch $tmp.running
+       do
+       # We do both read & write IO - not only is this more realistic,
+       # but it also potentially tests atime updates
+-      $FSSTRESS_PROG -d $STRESS_DIR -p $procs -n $nops $FSSTRESS_AVOID \
+-	  > /dev/null 2>&1
++      FSSTRESS_ARGS=`_scale_fsstress_args -d $STRESS_DIR -p $procs -n $nops $FSSTRESS_AVOID`
++      $FSSTRESS_PROG $FSSTRESS_ARGS > /dev/null 2>&1
+     done
+ 
+     rm -r $STRESS_DIR/*
+diff --git a/070 b/070
+index f48c33c..334cce7 100755
+--- a/070
++++ b/070
+@@ -52,7 +52,7 @@ _require_attrs
+ 
+ _setup_testdir
+ 
+-$FSSTRESS_PROG \
++FSSTRESS_ARGS=`_scale_fsstress_args \
+ 	-d $testdir/fsstress \
+ 	-f allocsp=0 \
+ 	-f freesp=0 \
+@@ -62,7 +62,8 @@ $FSSTRESS_PROG \
+ 	-f unresvsp=0 \
+ 	-f attr_set=100 \
+ 	-f attr_remove=100 \
+-        -p 1 -n 10000 -S c >$seq.full 2>&1
++        -p 1 -n 10000 -S c`
++$FSSTRESS_PROG $FSSTRESS_ARGS >$seq.full 2>&1
+ 
+ status=$?
+ exit
+diff --git a/076 b/076
+index e472b26..793b869 100755
+--- a/076
++++ b/076
+@@ -74,8 +74,9 @@ echo "*** test concurrent block/fs access"
+ cat $SCRATCH_DEV >/dev/null &
+ pid=$!
+ 
+-$FSSTRESS_PROG -d $SCRATCH_MNT -p 2 -n 2000 $FSSTRESS_AVOID >>$seq.full
+-
++FSSTRESS_ARGS=`_scale_fsstress_args -p 2 -n 2000 $FSSTRESS_AVOID`
++echo "run fsstress with args: $FSSTRESS_ARGS" >>$seq.full
++$FSSTRESS_PROG $FSSTRESS_ARGS >>$seq.full
+ _lets_get_pidst
+ _check_scratch_fs
+ 
+diff --git a/083 b/083
+index e0670b9..f5349a9 100755
+--- a/083
++++ b/083
+@@ -84,8 +84,8 @@ workout()
+ 		|| _fail "mount failed"
+ 
+ 	# -w ensures that the only ops are ones which cause write I/O
+-	$FSSTRESS_PROG -d $SCRATCH_MNT -w -p $procs -n $nops $FSSTRESS_AVOID \
+-		>>$seq.full
++	FSSTRESS_ARGS=`_scale_fsstress_args -d $SCRATCH_MNT -w -p $procs -n $nops $FSSTRESS_AVOID`
++	$FSSTRESS_PROG $FSSTRESS_ARGS >>$seq.full
+ 	_check_scratch_fs
  }
  
-+_require_debugfs()
+diff --git a/087 b/087
+index 48e5eaa..e7be9a0 100755
+--- a/087
++++ b/087
+@@ -47,7 +47,8 @@ _do_meta()
+     param="-p 4 -z -f rmdir=10 -f link=10 -f creat=10 -f mkdir=10 \
+            -f rename=30 -f stat=30 -f unlink=30 -f truncate=20"
+     _echofull "calling fsstress $param -m8 -n $count"
+-    if ! $FSSTRESS_PROG $param $FSSTRESS_AVOID -m 8 -n $count -d $out >>$seq.full 2>&1
++    FSSTRESS_ARGS=`_scale_fsstress_args $param $FSSTRESS_AVOID -m 8 -n $count -d $out`
++    if ! $FSSTRESS_PROG $FSSTRESS_ARGS >>$seq.full 2>&1
+     then
+ 	_echofull "fsstress failed"
+     fi
+diff --git a/104 b/104
+index 14f2669..8db6d88 100755
+--- a/104
++++ b/104
+@@ -64,7 +64,9 @@ _stress_scratch()
+ 	procs=3
+ 	nops=1000
+ 	# -w ensures that the only ops are ones which cause write I/O
+-	$FSSTRESS_PROG -d $SCRATCH_MNT -w -p $procs -n $nops $FSSTRESS_AVOID > /dev/null &
++	FSSTRESS_ARGS=`_scale_fsstress_args -d $SCRATCH_MNT -w -p $procs \
++	    -n $nops $FSSTRESS_AVOID`
++	$FSSTRESS_PROG $FSSTRESS_ARGS >> $seq.full &
+ }
+ 
+ # real QA test starts here
+diff --git a/114 b/114
+index 7679222..edce0f4 100755
+--- a/114
++++ b/114
+@@ -246,11 +246,11 @@ _test_fsstress()
+ 
+ 	out=$SCRATCH_MNT/fsstress.$$
+ 	count=1000
+-	args="-z \
++	args=`_scale_fsstress_args -z \
+ -f rmdir=10 -f link=10 -f creat=10 \
+ -f mkdir=10 -f rename=30 -f unlink=10 \
+ -f symlink=10 \
+--n $count -d $out -p 3"
++-n $count -d $out -p 3`
+ 
+ 	echo "fsstress $args" | sed -e "s#$out#outdir#"
+ 	if ! $FSSTRESS_PROG $args | _filter_num
+diff --git a/167 b/167
+index ccb6c2a..5fb95e8 100755
+--- a/167
++++ b/167
+@@ -44,8 +44,9 @@ workout()
+ {
+ 	procs=100
+ 	nops=15000
+-	$FSSTRESS_PROG -d $SCRATCH_MNT -p $procs -n $nops $FSSTRESS_AVOID \
+-		>>$seq.full &
++	FSSTRESS_ARGS=`_scale_fsstress_args -d $SCRATCH_MNT -p $procs -n $nops \
++	    $FSSTRESS_AVOID`
++	$FSSTRESS_PROG $FSSTRESS_ARGS >> $seq.full &
+ 	sleep 2
+ }
+ 
+diff --git a/232 b/232
+index 2795da7..d915d42 100755
+--- a/232
++++ b/232
+@@ -54,9 +54,9 @@ _fsstress()
+ 
+ 	out=$SCRATCH_MNT/fsstress.$$
+ 	count=2000
+-	args="-n $count -d $out -p 7"
++	args=`_scale_fsstress_args -d $out -n $count -p 7`
+ 
+-	echo "fsstress $args" | tee -a $here/$seq.full | sed -e "s#$out#outdir#"
++	echo "fsstress $args" >> tee -a $here/$seq.full
+ 	if ! $FSSTRESS_PROG $args | tee -a $here/$seq.full | _filter_num
+ 	then
+ 		echo "    fsstress $args returned $?"
+diff --git a/232.out b/232.out
+index ef82a89..5da53d4 100644
+--- a/232.out
++++ b/232.out
+@@ -2,7 +2,6 @@ QA output created by 232
+ 
+ Testing fsstress
+ 
+-fsstress -n 2000 -d outdir -p 7
+ seed = S
+ Comparing user usage
+ Comparing group usage
+diff --git a/233 b/233
+index 28e6ac7..649de51 100755
+--- a/233
++++ b/233
+@@ -58,12 +58,12 @@ _fsstress()
+ 
+ 	out=$SCRATCH_MNT/fsstress.$$
+ 	count=5000
+-	args="-z \
++	args=`_scale_fsstress_args -z \
+ -f rmdir=20 -f link=10 -f creat=10 -f mkdir=10 -f unlink=20 -f symlink=10 \
+ -f rename=10 -f fsync=2 -f write=15 -f dwrite=15 \
+--n $count -d $out -p 7"
++-n $count -d $out -p 7`
+ 
+-	echo "fsstress $args" | tee -a $here/$seq.full | sed -e "s#$out#outdir#"
++	echo "fsstress $args" >> tee -a $here/$seq.full
+ 	if ! su $qa_user -c "$FSSTRESS_PROG $args" | tee -a $here/$seq.full | _filter_num
+ 	then
+ 		echo "    fsstress $args returned $?"
+diff --git a/233.out b/233.out
+index fa36ca3..91c1a30 100644
+--- a/233.out
++++ b/233.out
+@@ -2,7 +2,6 @@ QA output created by 233
+ 
+ Testing fsstress
+ 
+-fsstress -z -f rmdir=20 -f link=10 -f creat=10 -f mkdir=10 -f unlink=20 -f symlink=10 -f rename=10 -f fsync=2 -f write=15 -f dwrite=15 -n 5000 -d outdir -p 7
+ seed = S
+ Comparing user usage
+ Comparing group usage
+diff --git a/269 b/269
+index 7e13ed9..7d63b87 100755
+--- a/269
++++ b/269
+@@ -45,7 +45,7 @@ _workout()
+ 	num_iterations=10
+ 	enospc_time=2
+ 	out=$SCRATCH_MNT/fsstress.$$
+-	args="-p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out"
++	args=`_scale_fsstress_args -p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out`
+ 	echo "fsstress $args" >> $here/$seq.full
+ 	$FSSTRESS_PROG $args > /dev/null 2>&1 &
+ 	pid=$!
+diff --git a/270 b/270
+index b9ada27..b753923 100755
+--- a/270
++++ b/270
+@@ -48,7 +48,7 @@ _workout()
+ 	num_iterations=10
+ 	enospc_time=2
+ 	out=$SCRATCH_MNT/fsstress.$$
+-	args="-p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out"
++	args=`_scale_fsstress_args -p128 -n999999999 -f setattr=1 $FSSTRESS_AVOID -d $out`
+ 	echo "fsstress $args" >> $here/$seq.full
+ 	# Grant chown capability 
+ 	cp $FSSTRESS_PROG  $tmp.fsstress.bin
+diff --git a/common.rc b/common.rc
+index 14de47b..3635a45 100644
+--- a/common.rc
++++ b/common.rc
+@@ -1841,6 +1841,20 @@ _test_batched_discard()
+ 	$FSTRIM_PROG ${1} &>/dev/null
+ }
+ 
++_scale_fsstress_args()
 +{
-+    #boot_params always present in debugfs
-+    [ -d "$DEBUGFS_MNT/boot_params" ] || _notrun "Debugfs not mounted"
++    args=""                                                                                                         
++    while [ $# -gt 0 ]; do
++        case "$1" in
++            -n) args="$args $1 $(($2 * $TIME_FACTOR))"; shift ;;
++            -p) args="$args $1 $(($2 * $LOAD_FACTOR))"; shift ;;
++            *) args="$args $1" ;;
++        esac                                                                                                    
++        shift
++    done
++    echo $args                                                                                            
 +}
-+
-+_require_fail_make_request()
-+{
-+    [ -f "$DEBUGFS_MNT/fail_make_request/probability" ] \
-+	|| _notrun "$DEBUGFS_MNT/fail_make_request \
-+ not found. Seems that CONFIG_FAIL_MAKE_REQUEST kernel config option not enabled"
-+}
-+
- # check that a FS on a device is mounted
- # if so, return mount point
- #
++  
+ ################################################################################
+ 
+ if [ "$iam" != new -a "$iam" != bench ]
 diff --git a/group b/group
-index 2fe406b..20b7a9c 100644
+index 5504557..1fb2feb 100644
 --- a/group
 +++ b/group
-@@ -425,4 +425,5 @@ stress
- 299 aio dangerous ioctl rw stress
- 300 aio dangerous ioctl rw stress
- 301 aio dangerous ioctl rw stress
--302 aio dangerous ioctl rw stress
-\ No newline at end of file
-+302 aio dangerous ioctl rw stress
-+303 aio dangerous enospc rw stress
-\ No newline at end of file
+@@ -137,7 +137,7 @@ stress
+ 014 rw udf auto quick
+ 015 other auto quick
+ 016 rw auto quick
+-017 mount auto quick
++017 mount auto quick stress
+ 018 deprecated # log logprint v2log
+ 019 mkfs auto quick
+ 020 metadata attr udf auto quick
+@@ -188,26 +188,26 @@ stress
+ 065 dump auto
+ 066 dump ioctl auto quick
+ 067 acl attr auto quick
+-068 other auto freeze dangerous
++068 other auto freeze dangerous stress
+ 069 rw udf auto quick
+-070 attr udf auto quick
++070 attr udf auto quick stress
+ 071 rw auto
+ 072 rw auto prealloc quick
+ 073 copy auto
+ 074 rw udf auto
+ 075 rw udf auto quick
+-076 metadata rw udf auto quick
++076 metadata rw udf auto quick stress
+ 077 acl attr auto enospc
+ 078 growfs auto quick
+ 079 acl attr ioctl metadata auto quick
+ 080 rw ioctl
+ 081 deprecated # log logprint quota
+ 082 deprecated # log logprint v2log
+-083 rw auto
++083 rw auto enospc stress
+ 084 ioctl rw auto
+ 085 log auto quick
+ 086 log v2log auto
+-087 log v2log auto quota
++087 log v2log auto quota stress
+ 088 perms auto quick
+ 089 metadata auto
+ 090 rw auto
+@@ -224,7 +224,7 @@ stress
+ 101 udf
+ 102 udf
+ 103 metadata dir ioctl auto quick
+-104 growfs ioctl prealloc auto
++104 growfs ioctl prealloc auto stress
+ 105 acl auto quick
+ 106 quota
+ 107 quota
+@@ -234,7 +234,7 @@ stress
+ 111 ioctl
+ 112 rw aio auto quick
+ 113 rw aio auto quick
+-114 parent attr
++114 parent attr stress
+ 115 parent attr
+ 116 quota auto quick
+ 117 attr auto quick
+@@ -287,7 +287,7 @@ stress
+ 164 rw pattern auto prealloc quick
+ 165 rw pattern auto prealloc quick
+ 166 rw metadata auto quick
+-167 rw metadata auto
++167 rw metadata auto stress
+ 168 dmapi auto
+ 169 rw metadata auto quick
+ 170 rw filestreams auto quick
+@@ -355,8 +355,8 @@ stress
+ 229 auto rw
+ 230 auto quota quick
+ 231 auto quota
+-232 auto quota
+-233 auto quota
++232 auto quota stress
++233 auto quota stress
+ 234 auto quota
+ 235 auto quota quick
+ 236 auto quick metadata
+@@ -392,8 +392,8 @@ stress
+ 266 dump ioctl auto quick
+ 267 dump ioctl tape
+ 268 dump ioctl tape
+-269 auto rw prealloc ioctl enospc
+-270 auto quota rw prealloc ioctl enospc
++269 auto rw prealloc ioctl enospc stress
++270 auto quota rw prealloc ioctl enospc stress
+ 271 auto rw quick
+ 272 auto enospc rw
+ 273 auto rw
 -- 
 1.7.1
 
