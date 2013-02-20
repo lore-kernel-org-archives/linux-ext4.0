@@ -1,105 +1,51 @@
-From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
-Subject: Re: Use EXT4_BOOT_LOADER_INO for boot loader GRUB?
-Date: Tue, 19 Feb 2013 22:15:37 +0100
-Message-ID: <5123EB79.4010101@reinform.de>
-References: <51023FEA.7000802@reinform.de> <20130126184927.GB20005@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 01/11] xfstests: add fio requirement V2
+Date: Wed, 20 Feb 2013 12:19:21 +1100
+Message-ID: <20130220011854.GK10731@dastard>
+References: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw1.reinform.de ([82.141.45.9]:35718 "EHLO
-	mail-out.dmz.loef.reinform.de" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1758582Ab3BSVPk (ORCPT
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:20051 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932307Ab3BTBTY (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Feb 2013 16:15:40 -0500
-Received: from postfix.loef.reinform.de (postfix.loef.reinform.de [10.1.1.39])
-	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id 48A9AA83A0
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:39 +0100 (CET)
-Received: from mail.reinform.de (mail.reinform.de [82.141.45.14])
-	by postfix.loef.reinform.de (Postfix) with ESMTP id AA49E1BC00
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 21:27:09 +0100 (CET)
-Received: from brain.wid.reinform.de (p3E9E8AFA.dip.t-dialin.net [62.158.138.250])
-	(using TLSv1 with cipher ADH-CAMELLIA256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.reinform.de (Postfix) with ESMTPSA id 8B642BB4F2
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:38 +0100 (CET)
-Received: from frodo.wid.reinform.de (frodo.wid.reinform.de [10.2.1.32])
-	by brain.wid.reinform.de (Postfix) with ESMTP id 4E4EF882CE
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2013 22:15:37 +0100 (CET)
-In-Reply-To: <20130126184927.GB20005@thunk.org>
+	Tue, 19 Feb 2013 20:19:24 -0500
+Content-Disposition: inline
+In-Reply-To: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted,
+On Tue, Feb 19, 2013 at 03:37:13PM +0400, Dmitry Monakhov wrote:
+> FIO is very flexible io generator, I would call it IO swiss knife.
+> Currently we have tonns of hardcoded application which reproduces
+> some predefined scenario. This approach has obvious dissadvantages
+> 1) Lack of flexability: one written it is hard to modify it in future
+> 2) Code base is large, many routines written again and again
+> 
+> At the same time add new fio based tast is just add simle INI file.
+> This greatly simplify code review. I do beleve that some day we will
+> replace most of hardcoded io binaries with fio.
+> 
+> One who is planning to run $FIO_PROG should first check that system
+> contains appropriate version which is able to handle jobfile
+> for example:  _require_fio 286-job.fio
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-my previous email contains a first implementation of your idea. Did I 
-get it right or do you want me something to change?
+Hi Dimitry,
 
-I can also offer some shell scripts for mass testing the change to a 
-fresh ext4 filesystem to ensure, that it does not break anything. I ran 
-the script and indeed it does not break anything (as far as I can see).
+Can you rebase this series on top of a current xfstests tree? It
+doesn't apply without conflicts or trying to land on top of existing
+files, so that makes it hard to actually test and do a final review
+on....
 
-Kind regards,
-  Tilmann
+Cheers,
 
-Am 26.01.2013 19:49, schrieb Theodore Ts'o:
-> On Fri, Jan 25, 2013 at 09:18:50AM +0100, Dr. Tilmann Bubeck wrote:
->> The basic problem is, that GRUB needs a safe place to store
->> (currently 32k) for its boot loader "core.img". That place should be
->> simple to find from the primary boot code ("stage1") and the place
->> should be safe for user intervention.
->>
->> QUESTION:
->>
->> You have reserved a special inode #5 called "EXT4_BOOT_LOADER_INO".
->> Is this inode currently used or supported by kernel or user land?
->> What is the idea of this inode?
->
-> It was basically for something exactly like this.  :-)
->
->> PROPOSAL:
->>
->> I can think of using that inode to store the file "core.img" of
->> GRUB. That file is used by GRUB to boot and the block list of that
->> file is stored in GRUB when using "--force" to override the above
->> error.
->>
->> ext2/3/4 must make sure, that the block list of that file never
->> changes. I propose an additional EXT4 ioctl to tell ext4, which file
->> to store in EXT4_BOOT_LOADER_INO.
->
-> What I'm thinking about is a new ioctl that would swap the i_block and
-> i_blocks array of the BOOT_LOADER_INO and the file descriptor.  That
-> is, if there were any blocks attached to the boot_loader_ino, they
-> would become attached to the inode associated with the file
-> descriptor, and the blocks associated with that inode would be
-> attached to inode #5.
->
->> Probably there must be more changes to e2fsck and friends.
->
-> Actually, no changes to e2fsck would be necessary.  The original plan
-> was that boot loader inode would be installed while the file system is
-> unmounted.  But it's already the case that blocks associated with
-> inode <5> are already accounted for by e2fsck.
->
->        	      	      		       - Ted
->
-
-
+Dave.
 -- 
-+-------+-------------------------------------------------------------+
-|       | dr. tilmann bubeck               reinform medien- und       |
-|       |                                  informationstechnologie AG |
-| rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
-| form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
-|    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
-|       | email: t.bubeck@reinform.de      http://www.reinform.de     |
-|       +-------------------------------------------------------------+
-|       | pflichtangaben nach paragraph 80, AktG:                     |
-|       | reinform medien- und informationstechnologie AG, stuttgart  |
-|       | handelsregister stuttgart, HRB 23001                        |
-|       | vorstand:     dr. tilmann bubeck (vorsitz)                  |
-|       | aufsichtsrat: frank stege (vorsitz)                         |
-+-------+-------------------------------------------------------------+
+Dave Chinner
+david@fromorbit.com
