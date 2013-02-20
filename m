@@ -1,49 +1,220 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH 01/11] xfstests: add fio requirement V2
-Date: Wed, 20 Feb 2013 12:14:17 +0400
-Message-ID: <87y5ej767a.fsf@openvz.org>
-References: <1361273843-16094-1-git-send-email-dmonakhov@openvz.org> <20130220011854.GK10731@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Subject: [PATCH 07/10] xfstest: add  fallocate/truncate vs AIO/DIO stress test
+Date: Wed, 20 Feb 2013 14:42:12 +0400
+Message-ID: <1361356935-29153-8-git-send-email-dmonakhov@openvz.org>
+References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20130220011854.GK10731@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	dchinner@redhat.com, Dmitry Monakhov <dmonakhov@openvz.org>
+To: xfs@oss.sgi.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:12515 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933677Ab3BTKmf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Feb 2013 05:42:35 -0500
+In-Reply-To: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 20 Feb 2013 12:19:21 +1100, Dave Chinner <david@fromorbit.com> wrote:
-> On Tue, Feb 19, 2013 at 03:37:13PM +0400, Dmitry Monakhov wrote:
-> > FIO is very flexible io generator, I would call it IO swiss knife.
-> > Currently we have tonns of hardcoded application which reproduces
-> > some predefined scenario. This approach has obvious dissadvantages
-> > 1) Lack of flexability: one written it is hard to modify it in future
-> > 2) Code base is large, many routines written again and again
-> > 
-> > At the same time add new fio based tast is just add simle INI file.
-> > This greatly simplify code review. I do beleve that some day we will
-> > replace most of hardcoded io binaries with fio.
-> > 
-> > One who is planning to run $FIO_PROG should first check that system
-> > contains appropriate version which is able to handle jobfile
-> > for example:  _require_fio 286-job.fio
-> > 
-> > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> 
-> Hi Dimitry,
-> 
-> Can you rebase this series on top of a current xfstests tree? It
-Ohhh. I use  git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
-> doesn't apply without conflicts or trying to land on top of existing
-> files, so that makes it hard to actually test and do a final review
-> on....
-Will do ASAP.
+Run  DIO, fallocate and truncate threads on a common file in parallel.
+If race exist old dio request may rewrite blocks after it was allocated
+to another file, we will catch that by verifying blocks content.
 
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+this patch known to catch deadlock for ext4
+http://lists.openwall.net/linux-ext4/2012/09/06/3
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ 297     |  157 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 297.out |    5 ++
+ group   |    1 +
+ 3 files changed, 163 insertions(+), 0 deletions(-)
+ create mode 100755 297
+ create mode 100644 297.out
+
+diff --git a/297 b/297
+new file mode 100755
+index 0000000..83bc572
+--- /dev/null
++++ b/297
+@@ -0,0 +1,157 @@
++#! /bin/bash
++# FSQA Test No. 297
++#
++# AIO/DIO stress test
++# Run random AIO/DIO activity and fallocate/truncate simultaneously
++# Test will operate on huge sparsed files so ENOSPC is expected.
++#
++#-----------------------------------------------------------------------
++# (c) 2013 Dmitry Monakhov
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=dmonakhov@openvz.org
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "rm -f $tmp.*; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_need_to_be_root
++_require_scratch
++
++NUM_JOBS=$((4*LOAD_FACTOR))
++BLK_DEV_SIZE=`blockdev --getsz $SCRATCH_DEV`
++FILE_SIZE=$((BLK_DEV_SIZE * 512))
++
++cat >$tmp-$seq.fio <<EOF
++###########
++# $seq test fio activity
++# Filenames derived from jobsname and jobid like follows:
++# ${JOB_NAME}.${JOB_ID}.${ITERATION_ID}
++[global]
++ioengine=libaio
++bs=128k
++directory=${SCRATCH_MNT}
++filesize=${FILE_SIZE}
++size=999G
++iodepth=128*${LOAD_FACTOR}
++continue_on_error=write
++ignore_error=,ENOSPC
++error_dump=0
++create_on_open=1
++fallocate=none
++exitall=1
++
++## Perform direct aio, to files which may be truncated
++## by external task
++[direct_aio]
++direct=1
++buffered=0
++numjobs=${NUM_JOBS}
++rw=randwrite
++runtime=100*${TIME_FACTOR}
++time_based
++
++# Perform direct aio and verify data
++# This test case should check use-after-free issues
++[aio-dio-verifier]
++numjobs=1
++verify=crc32c-intel
++verify_fatal=1
++verify_dump=1
++verify_backlog=1024
++verify_async=4
++verifysort=1
++direct=1
++bs=4k
++rw=randrw
++filename=aio-dio-verifier
++
++# Perform buffered aio and verify data
++# This test case should check use-after-free issues
++[buffered-aio-verifier]
++numjobs=1
++verify=crc32c-intel
++verify_fatal=1
++verify_dump=1
++verify_backlog=1024
++verify_async=4
++verifysort=1
++direct=0
++buffered=1
++bs=4k
++rw=randrw
++filename=buffered-aio-verifier
++EOF
++
++_require_fio $tmp-$seq.fio
++
++_workout()
++{
++	echo ""
++	echo "Run fio with random aio-dio pattern"
++	echo ""
++	cat $tmp-$seq.fio >>  $seq.full
++	run_check $FIO_PROG $tmp-$seq.fio &
++	pid=$!
++	echo "Start fallocate/truncate loop"
++	
++	for ((i=0; ; i++))
++	do
++	    for ((k=1; k <= NUM_JOBS; k++))
++	    do
++		fallocate -l $FILE_SIZE $SCRATCH_MNT/direct_aio.$k.0 \
++		    	>> $seq.full 2>&1
++	    done
++	    for ((k=1; k <= NUM_JOBS; k++))
++	    do
++		truncate -s 0 $SCRATCH_MNT/direct_aio.$k.0
++	    done
++	    # Following like will check that pid is still run.
++	    # Once fio exit we can stop fallocate/truncate loop
++	    kill -0 $pid > /dev/null 2>&1 || break
++	done
++	wait $pid
++}
++
++_scratch_mkfs >> $seq.full 2>&1
++_scratch_mount
++
++if ! _workout; then
++	umount $SCRATCH_DEV 2>/dev/null
++	exit
++fi
++
++if ! _scratch_unmount; then
++	echo "failed to umount"
++	status=1
++	exit
++fi
++_check_scratch_fs
++status=$?
++exit
+diff --git a/297.out b/297.out
+new file mode 100644
+index 0000000..435fac7
+--- /dev/null
++++ b/297.out
+@@ -0,0 +1,5 @@
++QA output created by 297
++
++Run fio with random aio-dio pattern
++
++Start fallocate/truncate loop
+diff --git a/group b/group
+index 1fb2feb..2783286 100644
+--- a/group
++++ b/group
+@@ -420,3 +420,4 @@ stress
+ 294 auto quick
+ 295 auto logprint quick
+ 296 dump auto quick
++297 auto aio enospc rw stress
+\ No newline at end of file
+-- 
+1.7.1
+
