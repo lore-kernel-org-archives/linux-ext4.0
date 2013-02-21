@@ -1,67 +1,36 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 6/6] ubifs: Wait for page writeback to provide stable pages
-Date: Thu, 21 Feb 2013 14:40:44 -0800
-Message-ID: <20130221224044.GB4055@blackbox.djwong.org>
-References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
- <20130119011316.20902.56721.stgit@blackbox.djwong.org>
- <20130123134312.b69c53cd.akpm@linux-foundation.org>
- <20130221034834.GA4055@blackbox.djwong.org>
- <20130221143243.099bef3c.akpm@linux-foundation.org>
+From: Chris Naunton <chris@naunton.name>
+Subject: Re: Filesystem corrupted by offline resize
+Date: Fri, 22 Feb 2013 10:55:23 +1100
+Message-ID: <CACqGdtvvc_g-72_5dXJSQEirW2Qmyi6hki5p9_fcUYjDKZVJMw@mail.gmail.com>
+References: <CACqGdtvfi9a9z4F7KpOQmcqNkptdfWXyTTwgxH66RHNqcTAPSQ@mail.gmail.com>
+ <20130221195305.GC17322@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: lucho@ionkov.net, jack@suse.cz, neilb@suse.de, david@fromorbit.com,
- Adrian Hunter <adrian.hunter@intel.com>, adilger.kernel@dilger.ca,
- jlayton@samba.org, hch@infradead.org, gnehzuil.liu@gmail.com,
- bharrosh@panasas.com, linux-ext4@vger.kernel.org, ericvh@gmail.com,
- viro@zeniv.linux.org.uk, rminnich@sandia.gov, hirofumi@mail.parknet.co.jp,
- axboe@kernel.dk, tytso@mit.edu, martin.petersen@oracle.com,
- Artem Bityutskiy <dedekind1@gmail.com>, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-Content-Disposition: inline
-In-Reply-To: <20130221143243.099bef3c.akpm@linux-foundation.org>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: linux-mtd-bounces@lists.infradead.org
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ea0-f180.google.com ([209.85.215.180]:58667 "EHLO
+	mail-ea0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754910Ab3BUXzo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2013 18:55:44 -0500
+Received: by mail-ea0-f180.google.com with SMTP id c1so32491eaa.25
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 15:55:43 -0800 (PST)
+In-Reply-To: <20130221195305.GC17322@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 02:32:43PM -0800, Andrew Morton wrote:
-> On Wed, 20 Feb 2013 19:48:34 -0800
-> "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> 
-> > > I grabbed the patches.  They should appear in linux-next tomorrow if I
-> > > can get the current pooppile to build.
-> > 
-> > Well... these patches have been banging around in -next for a month or so now.
-> > As far as I know there haven't been any complaints.  Can we push these for 3.9?
-> 
-> yup.  You can normally assume that this is the case, unless the patches have
-> 
-> a) been causing bugs or
-> 
-> b) been getting rude review comments or
-> 
-> c) been getting a great string of fix-fix-fix-fix patches in -mm or
-> 
-> d) acquired rude akpm comments or unresolved questions against them
->    in http://ozlabs.org/~akpm/mmots/series
+Thanks so much for the detailed reply, Ted. And no need to apologise -
+no lost Ph.D. thesis or anything! I have a backup of the most
+important data. But there was over 3T of data and my backup capacity
+is only 500G, so there's still a lot that will be lost.
 
-I was simply making sure that I hadn't missed anything. :)
- 
---D
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'll give photorec a try. It's very lucky I have the backup - most of
+the critical data is encrypted with eCryptfs, so photorec wouldn't
+have been able to help there.
 
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+Really appreciate all the work you've put into Linux and the
+filesystem over the course of your career. I've been using and
+administering Linux systems for 13 yrs and this is the first time I've
+experienced major ext2/3/4 corruption that hasn't been the fault of
+hardware, so I'm still a happy customer, so to speak.
+
+Chris
