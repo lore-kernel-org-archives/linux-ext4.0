@@ -1,69 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Weird resize2fs failures when mounting ext3 as ext4
-Date: Thu, 21 Feb 2013 01:07:27 -0500
-Message-ID: <20130221060726.GA20124@thunk.org>
-References: <51229FF7.7090003@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: fix free clusters calculation in bigalloc filesystem
+Date: Thu, 21 Feb 2013 09:01:05 +0100
+Message-ID: <1361433665-16880-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49186 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751739Ab3BUGHa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2013 01:07:30 -0500
-Content-Disposition: inline
-In-Reply-To: <51229FF7.7090003@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:50313 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751782Ab3BUIBM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2013 03:01:12 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1L81C94020460
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 03:01:12 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 18, 2013 at 03:41:11PM -0600, Eric Sandeen wrote:
-> Can't remember how I stumbled on this testcase, but mounting
-> an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
-> 
-> With -o nodelalloc, the newly added space isn't seen by the allocator
-> and we get ENOSPC for the extending writes in the script below.
-> 
-> Without -o nodelalloc, the writes worked but I got an umount hang.
-> 
-> Without -t ext4 (but letting ext4.ko handle the ext3 mount) it seems
-> to work fine.
-> 
-> Haven't looked into it much at all yet but wanted to put it out
-> there for posterity.
+ext4_has_free_clusters() should tell us whether there is enough free
+clusters to allocate, however number of free clusters in the file system
+is converted to blocks using EXT4_C2B() which is not only wrong use of
+the macro (we should have used EXT4_NUM_B2C) but it's also completely
+wrong concept since everything else is in cluster units.
 
-At least one of the problems is that ext4_alloc_blocks() is buggy if
-it is asked to allocate one or more indirect blocks, and then it
-doesn't have room to allocate any direct blocks.  In that case,
-ext4_alloc_blocks() does not return ENOSPC, and so ext4_alloc_branch()
-doesn't fail.  But since the number of direct blocks allocated is
-zeor, ext4_splice_branch() will not actually initialize the indirect
-block, and then we end up looping forever and calling
-ext4_mballoc_alloc() --- demonstrating that one of the best definition
-of insanity is doing the same thing over and over again and expecting
-a different result:
+Moreover when calculating number of root clusters we should be using
+macro EXT4_NUM_B2C() instead of EXT4_C2B() otherwise the result will
+usually be off by one.
 
-    flush-254:32-2913  [001] ....  1073.028245: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
-    flush-254:32-2913  [001] ....  1073.050655: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
-    flush-254:32-2913  [001] ....  1073.073034: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
-    flush-254:32-2913  [001] ....  1073.112163: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
+As a result number of free clusters is much bigger than it should have
+been and ext4_has_free_clusters() would return 1 even if there is really
+not enough free clusters available.
 
-I suspect the right way to deal with this is to nuke
-ext4_alloc_blocks() from orbit, and change ext4_alloc_branch() to
-allocate the indirect and direct blocks directly, calling
-ext4_new_meta_block() and ext4_mb_new_blocks() directly.  What we have
-right now is pretty gross....
+Fix this by removing the EXT4_C2B() conversion of free clusters and
+using EXT4_NUM_B2C() when calculating number of root clusters. This bug
+affects number of xfstests tests covering file system ENOSPC situation
+handling. With this patch most of the ENOSPC problems with bigalloc file
+system disappear, especially the errors caused by delayed allocation not
+having enough space when the actual allocation is finally requested.
 
-The other problem is why resizing isn't adding the blocks so that they
-are visible to the allocator.  Since we are using the same code path
-for ext3 and ext4 file systems, I have a sneaking suspicion that we're
-not actually making all of the newly allocated blocks for ext4 file
-systems available too, but it's something like we're not making the
-first block in each flex_bg group available (and that happens to be all
-of the newly grown blocks for ext3 file systems).
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/balloc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-As near as I can tell this isn't a regression, but since this is a
-pretty seriouis bug, it's something we should try to fix during the
-3.8 development cycle.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index cf18217..9f4302a 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -482,11 +482,11 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
+ 
+ 	free_clusters  = percpu_counter_read_positive(fcc);
+ 	dirty_clusters = percpu_counter_read_positive(dcc);
+-	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
++	root_clusters = EXT4_NUM_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
+ 
+ 	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
+ 					EXT4_FREECLUSTERS_WATERMARK) {
+-		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
++		free_clusters  = percpu_counter_sum_positive(fcc);
+ 		dirty_clusters = percpu_counter_sum_positive(dcc);
+ 	}
+ 	/* Check whether we have space after accounting for current
+-- 
+1.7.7.6
 
-						 - Ted
