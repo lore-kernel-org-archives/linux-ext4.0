@@ -1,60 +1,66 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 6/6] ubifs: Wait for page writeback to provide stable
- pages
-Date: Wed, 20 Feb 2013 19:48:34 -0800
-Message-ID: <20130221034834.GA4055@blackbox.djwong.org>
-References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
- <20130119011316.20902.56721.stgit@blackbox.djwong.org>
- <20130123134312.b69c53cd.akpm@linux-foundation.org>
+From: Chris Naunton <chris@naunton.name>
+Subject: Filesystem corrupted by offline resize
+Date: Thu, 21 Feb 2013 16:40:42 +1100
+Message-ID: <CACqGdtvfi9a9z4F7KpOQmcqNkptdfWXyTTwgxH66RHNqcTAPSQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
-	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
-	martin.petersen@oracle.com, Artem Bityutskiy <dedekind1@gmail.com>,
-	neilb@suse.de, Adrian Hunter <adrian.hunter@intel.com>,
-	david@fromorbit.com, gnehzuil.liu@gmail.com,
-	linux-kernel@vger.kernel.org, hch@infradead.org,
-	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
-	bharrosh@panasas.com, jlayton@samba.org,
-	linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
-	hirofumi@mail.parknet.co.jp
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46011 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752582Ab3BUDuM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Feb 2013 22:50:12 -0500
-Content-Disposition: inline
-In-Reply-To: <20130123134312.b69c53cd.akpm@linux-foundation.org>
+Received: from mail-ee0-f51.google.com ([74.125.83.51]:55729 "EHLO
+	mail-ee0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751675Ab3BUFlF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2013 00:41:05 -0500
+Received: by mail-ee0-f51.google.com with SMTP id d17so4267519eek.38
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Feb 2013 21:41:03 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 23, 2013 at 01:43:12PM -0800, Andrew Morton wrote:
-> On Fri, 18 Jan 2013 17:13:16 -0800
-> "Darrick J. Wong" <darrick.wong@oracle.com> wrote:
-> 
-> > When stable pages are required, we have to wait if the page is just
-> > going to disk and we want to modify it. Add proper callback to
-> > ubifs_vm_page_mkwrite().
-> > 
-> > CC: Artem Bityutskiy <dedekind1@gmail.com>
-> > CC: Adrian Hunter <adrian.hunter@intel.com>
-> > CC: linux-mtd@lists.infradead.org
-> > From: Jan Kara <jack@suse.cz>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> A couple of these patches had this From:Jan strangely embedded in the
-> signoff area.  I have assumed that they were indeed authored by Jan.
-> 
-> Please note that authorship is indicated by putting the From: line
-> right at the start of the chagnelog.
-> 
-> 
-> I grabbed the patches.  They should appear in linux-next tomorrow if I
-> can get the current pooppile to build.
+I think I'm the victim of a resize2fs bug that was addressed in
+1.42.7: http://e2fsprogs.sourceforge.net/e2fsprogs-release.html#1.42.7
 
-Well... these patches have been banging around in -next for a month or so now.
-As far as I know there haven't been any complaints.  Can we push these for 3.9?
+"Fix resize2fs so that it can handle off-line resizes of file systems
+with the flex_bg feature but without a resize_inode (or if we run out
+of reserved gdt blocks). This also fixes a problem where if the user
+creates a filesystem with a restricted number of reserved gdt blocks,
+an off-line resize which grows the file system could potentially
+result in file system corruption."
 
---D
+My senario:
+
+* Running Ubuntu 12.10 with the latest x64 e2fsprogs package, which is 1.47.5
+
+* I have a 3.6T ext4 filesystem that had been created with the "resize" option:
+
+  mkfs -t ext4 -T ext4 -E stripe-width=64,resize=20T -i 1048576 -L
+data -m 0 /dev/raid5/data
+
+  (This was three years ago. I think at the time I assumed if I didn't
+specify this option my ability to resize would be limited.)
+
+* Added an extra disk to the mdadm RAID5 array and extended the LVM
+logical volume.
+
+* Decided to perform resize offline as I assumed it would be the safer option.
+
+* Offline fsck and resize completed successfully. No errors reported.
+Didn't immediately perform a fsck after resize, just rebooted.
+
+* Upon boot, filesytem errors detected and manual fsck is required. It
+reports what looks like massive and serious corruption.
+
+
+I've placed dumps of relevant output here as it's quite a few
+megabytes, even compressed:
+
+http://members.optusnet.com.au/~naunivans/ext4/
+
+
+So far I've left the corrupted filesystem untouched in the hope
+something can be done to repair it or recover data. I'm worried that
+not many (any?) usable files will be left after a "fsck -y".
+
+Is it likely that the bug was the cause of the corruption and if so,
+what is the likely extent of data loss?
+
+Thanks very much.
+Chris Naunton
