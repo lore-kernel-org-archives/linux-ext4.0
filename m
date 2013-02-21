@@ -1,70 +1,38 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Filesystem corrupted by offline resize
-Date: Thu, 21 Feb 2013 14:53:05 -0500
-Message-ID: <20130221195305.GC17322@thunk.org>
-References: <CACqGdtvfi9a9z4F7KpOQmcqNkptdfWXyTTwgxH66RHNqcTAPSQ@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v2 10/18] mm: teach truncate_inode_pages_range() to
+ handle non page aligned ranges
+Date: Thu, 21 Feb 2013 13:49:04 -0800
+Message-ID: <20130221134905.9a1e2c9e.akpm@linux-foundation.org>
+References: <1360055531-26309-1-git-send-email-lczerner@redhat.com>
+	<1360055531-26309-11-git-send-email-lczerner@redhat.com>
+	<20130207154042.92430aed.akpm@linux-foundation.org>
+	<alpine.LFD.2.00.1302080948110.3225@localhost>
+	<alpine.LFD.2.00.1302210929590.19354@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Chris Naunton <chris@naunton.name>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49318 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752231Ab3BUTxI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2013 14:53:08 -0500
-Content-Disposition: inline
-In-Reply-To: <CACqGdtvfi9a9z4F7KpOQmcqNkptdfWXyTTwgxH66RHNqcTAPSQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, Hugh Dickins
+ <hughd@google.com>
+To: =?UTF-8?Q?Luk=C3=A1=C5=A1?= Czerner <lczerner@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <alpine.LFD.2.00.1302210929590.19354@localhost>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 21, 2013 at 04:40:42PM +1100, Chris Naunton wrote:
-> I think I'm the victim of a resize2fs bug that was addressed in
-> 1.42.7: http://e2fsprogs.sourceforge.net/e2fsprogs-release.html#1.42.7
-> 
-> My senario:
-> 
-> * Running Ubuntu 12.10 with the latest x64 e2fsprogs package, which is 1.47.5
-> 
-> * I have a 3.6T ext4 filesystem that had been created with the "resize" option:
-> 
->   mkfs -t ext4 -T ext4 -E stripe-width=64,resize=20T -i 1048576 -L
-> data -m 0 /dev/raid5/data
-> 
->   (This was three years ago. I think at the time I assumed if I didn't
-> specify this option my ability to resize would be limited.)
->.....
+On Thu, 21 Feb 2013 09:33:56 +0100 (CET)
+Luk____ Czerner <lczerner@redhat.com> wrote:
 
-Yup, I think you're correct.  You hit the bug which we only discovered
-and fixed in time for the 1.42.7 release.  ;-(
+> what's the status of the patch set ?
 
-Unfortunately, the corruption that happened included wiping out parts
-of the inode table.  This means the data loss is going to be
-non-trivial, and possibly extremely bad.   Sorry.  :-(
+Forgotten about :(
 
-I don't know how big your RAID array is, and how recent was your last
-backups, but basically, if you can afford to make a disk image copy of
-the file system, I would recommend doing that first.  Then trying
-running fsck -y on the copy, and see if that allows you to recover all
-of the data that you really need.  If it doesn't, it may be possible
-to get more data back by doing either (a) using tools that search for
-critical keywords (i.e., if there is an extremely critical file, say
-like a Ph.D. thesis for which ten years of work was un backed up), or
-(b) by using tools that search for file signatures in the data blocks.
+> Can we get this in in this merge window ?
 
-The tool I recommend for the latter is called PhotoRec:
+Please do a full resend after 3.9-rc1 and let's take it up again.
 
-    http://www.cgsecurity.org/wiki/PhotoRec
-
-It was originally designed to extract digital photos from damaged SD
-cards, but it now understands hundreds of file formats, including
-OpenOffice/LibreOffice, zip files, MS Office files, etc.:
-
-    http://www.cgsecurity.org/wiki/File_Formats_Recovered_By_PhotoRec
-
-I'm sorry to have to tell you this, and I'm really sorry you ran
-across this bug before we had a chance to get it fixed and pushed out
-to the distributions.
-
-Regards,
-
-					- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
