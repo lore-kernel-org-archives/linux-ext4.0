@@ -1,84 +1,36 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Weird resize2fs failures when mounting ext3 as ext4
-Date: Thu, 21 Feb 2013 10:22:37 -0600
-Message-ID: <512649CD.5040801@redhat.com>
-References: <51229FF7.7090003@redhat.com> <20130221060726.GA20124@thunk.org>
+Subject: Another resize issue - corruption case
+Date: Thu, 21 Feb 2013 10:25:20 -0600
+Message-ID: <51264A70.3010106@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33927 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18531 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980Ab3BUQWl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2013 11:22:41 -0500
-In-Reply-To: <20130221060726.GA20124@thunk.org>
+	id S1753020Ab3BUQZW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:25:22 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1LGPL4Q019492
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 11:25:21 -0500
+Received: from liberator.sandeen.net (ovpn01.gateway.prod.ext.phx2.redhat.com [10.5.9.1])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r1LGPKfN001950
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 11:25:21 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/21/13 12:07 AM, Theodore Ts'o wrote:
-> On Mon, Feb 18, 2013 at 03:41:11PM -0600, Eric Sandeen wrote:
->> Can't remember how I stumbled on this testcase, but mounting
->> an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
->>
->> With -o nodelalloc, the newly added space isn't seen by the allocator
->> and we get ENOSPC for the extending writes in the script below.
->>
->> Without -o nodelalloc, the writes worked but I got an umount hang.
->>
->> Without -t ext4 (but letting ext4.ko handle the ext3 mount) it seems
->> to work fine.
->>
->> Haven't looked into it much at all yet but wanted to put it out
->> there for posterity.
-> 
-> At least one of the problems is that ext4_alloc_blocks() is buggy if
-> it is asked to allocate one or more indirect blocks, and then it
-> doesn't have room to allocate any direct blocks.  In that case,
-> ext4_alloc_blocks() does not return ENOSPC, and so ext4_alloc_branch()
-> doesn't fail.  But since the number of direct blocks allocated is
-> zeor, ext4_splice_branch() will not actually initialize the indirect
-> block, and then we end up looping forever and calling
-> ext4_mballoc_alloc() --- demonstrating that one of the best definition
-> of insanity is doing the same thing over and over again and expecting
-> a different result:
-> 
->     flush-254:32-2913  [001] ....  1073.028245: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
->     flush-254:32-2913  [001] ....  1073.050655: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
->     flush-254:32-2913  [001] ....  1073.073034: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
->     flush-254:32-2913  [001] ....  1073.112163: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
-> 
-> I suspect the right way to deal with this is to nuke
-> ext4_alloc_blocks() from orbit, and change ext4_alloc_branch() to
-> allocate the indirect and direct blocks directly, calling
-> ext4_new_meta_block() and ext4_mb_new_blocks() directly.  What we have
-> right now is pretty gross....
-> 
-> The other problem is why resizing isn't adding the blocks so that they
-> are visible to the allocator.  Since we are using the same code path
-> for ext3 and ext4 file systems, I have a sneaking suspicion that we're
-> not actually making all of the newly allocated blocks for ext4 file
-> systems available too, but it's something like we're not making the
-> first block in each flex_bg group available (and that happens to be all
-> of the newly grown blocks for ext3 file systems).
-> 
-> As near as I can tell this isn't a regression, but since this is a
-> pretty seriouis bug, it's something we should try to fix during the
-> 3.8 development cycle.
+Again, for posterity, and in case anyone starts to dig into resize soon:
 
-I think you're correct that it's not a regression.  Now I remember that
-the same basic bug came up w/ a RHEL customer who was doing this
-"mkfs ext3; mount -t ext4 -o nodelalloc" business.  Which really isn't
-tested or supported, but it's still quite the odd corner case.
+Bug 913245 - resize2fs w/ large block & inode count is going badly 
+https://bugzilla.redhat.com/show_bug.cgi?id=913245
 
-(Being RHEL, though, it wasn't clear that the same bug persisted upstream,
-but it appears that it does.  The older RHEL kernel was more noticeable
-because it spewed the ext4 allocation context errors as well).
+Contains a fair bit of weirdness, but the outright problematic bug is that it's allowing the number of inodes to grow past 2^32.  Loopback reproducer is in the bug.
 
-Thanks,
+The fs ends up quite corrupt, as well, and seems to not be growing by the correct amount, etc.
+
+Seems like resize needs a lot of love still.
+
 -Eric
-
-> 						 - Ted
-> 
-
