@@ -1,60 +1,145 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] e2fsprogs: fix flag settings in e2image.h
-Date: Thu, 21 Feb 2013 14:00:53 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1302211356490.19354@localhost>
-References: <1361448418-26688-1-git-send-email-tracek@redhat.com>
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: [PATCH] ext4: fix overhead calculation in bigalloc filesystem
+ (Re: ... )
+Date: Thu, 21 Feb 2013 21:49:43 +0800
+Message-ID: <20130221134943.GA3818@gmail.com>
+References: <1361433665-16880-1-git-send-email-lczerner@redhat.com>
+ <20130221121545.GA30821@gmail.com>
+ <alpine.LFD.2.00.1302211335390.19354@localhost>
+ <alpine.LFD.2.00.1302211346240.19354@localhost>
+ <alpine.LFD.2.00.1302211351090.19354@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Tomas Racek <tracek@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58329 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753102Ab3BUNA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2013 08:00:57 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1LD0uj5005171
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 08:00:56 -0500
-In-Reply-To: <1361448418-26688-1-git-send-email-tracek@redhat.com>
+Received: from mail-da0-f42.google.com ([209.85.210.42]:55035 "EHLO
+	mail-da0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752602Ab3BUNez (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2013 08:34:55 -0500
+Received: by mail-da0-f42.google.com with SMTP id z17so4153709dal.29
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2013 05:34:55 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <alpine.LFD.2.00.1302211351090.19354@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 21 Feb 2013, Tomas Racek wrote:
+On Thu, Feb 21, 2013 at 01:52:58PM +0100, Luk=C3=A1=C5=A1 Czerner wrote=
+:
+> On Thu, 21 Feb 2013, Luk=C3=A1=C5=A1 Czerner wrote:
+>=20
+> > Date: Thu, 21 Feb 2013 13:50:03 +0100 (CET)
+> > From: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > To: Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.com>
+> > Cc: Zheng Liu <gnehzuil.liu@gmail.com>, linux-ext4@vger.kernel.org,
+> >     Theodore Ts'o <tytso@mit.edu>
+> > Subject: Re: [PATCH] ext4: fix overhead calculation in bigalloc fil=
+esystem
+> >     (Re: ... )
+> >=20
+> > On Thu, 21 Feb 2013, Luk=C3=A1=C5=A1 Czerner wrote:
+> >=20
+> > ..snip...
+> >=20
+> > >=20
+> > > Hi Zheng,
+> > >=20
+> > > thanks for the review. I know about the other issues and I'm tryi=
+ng
+> > > to resolve those as well. Right now I have a patch which includes
+> > > the changes ext4_calculate_overhead() you've described below and =
+more,
+> > > but even with this I still see some problems remaining.
+> > >=20
+> > > Hopefully will send another patch soon.
+> > >=20
+> > > Thanks!
+> > > -Lukas
+> > >=20
+> > > >=20
+> > > > Subject: [PATCH] ext4: fix overhead calculation in bigalloc fil=
+esystem
+> > > >=20
+> > > > From: Zheng Liu <wenqing.lz@taobao.com>
+> > > >=20
+> > > > ext4_calculate_overhead() should compute the overhead and stash=
+ it in
+> > > > sbi->s_overhead.  But we miss use EXT4_B2C() to calculate the n=
+umber of
+> > > > clusters before first_data_block and the number of journal bloc=
+ks.  This
+> > > > commit use EXT4_NUM_B2C() instead of EXT4_B2C() to calculate th=
+e
+> > > > overhead.
+> > > >=20
+> > > > Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
+> > > > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > > > ---
+> > > >  fs/ext4/super.c | 4 ++--
+> > > >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > > >=20
+> > > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > > > index 3d4fb81..6165558 100644
+> > > > --- a/fs/ext4/super.c
+> > > > +++ b/fs/ext4/super.c
+> > > > @@ -3219,7 +3219,7 @@ int ext4_calculate_overhead(struct super_=
+block *sb)
+> > > >  	/*
+> > > >  	 * All of the blocks before first_data_block are overhead
+> > > >  	 */
+> > > > -	overhead =3D EXT4_B2C(sbi, le32_to_cpu(es->s_first_data_block=
+));
+> > > > +	overhead =3D EXT4_NUM_B2C(sbi, le32_to_cpu(es->s_first_data_b=
+lock));
+> >=20
+> > ...except this. I do not think this is right because we do not skip
+> > the first cluster right ? We're still using it, but we can never us=
+e
+> > the block before es->s_first_data_block. Please correct me if I am
+> > wrong.
 
-> Date: Thu, 21 Feb 2013 13:06:58 +0100
-> From: Tomas Racek <tracek@redhat.com>
-> To: linux-ext4@vger.kernel.org
-> Cc: Tomas Racek <tracek@redhat.com>
-> Subject: [PATCH] e2fsprogs: fix flag settings in e2image.h
-> 
-> This prevents from SIGSEGV when -s options is used.
+Yes, I think you are right.
 
-oops! Thanks for catching that. I just wonder why the regression
-test is not catching that ?
+>=20
+> moreover we do not allow bigalloc file system with block size < 4k.
 
+No, we allow user to use bigalloc with block size < 4k, such as:
 
-you can add
+  mkfs.ext4 -b 1024 -C 4096 -O bigalloc ${dev}
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+This command formats a bigalloc filesystem with blocksize =3D 1k and
+clustersize =3D 4k, at least in e2fsprogs 1.42.7 it works well.
 
-> 
-> Signed-off-by: Tomas Racek <tracek@redhat.com>
-> ---
->  lib/ext2fs/e2image.h | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/lib/ext2fs/e2image.h b/lib/ext2fs/e2image.h
-> index c918529..5537980 100644
-> --- a/lib/ext2fs/e2image.h
-> +++ b/lib/ext2fs/e2image.h
-> @@ -19,7 +19,7 @@
->  /* Image flags */
->  #define E2IMAGE_INSTALL_FLAG	1
->  #define E2IMAGE_SCRAMBLE_FLAG	2
-> -#define E2IMAGE_IS_QCOW2_FLAG	3
-> +#define E2IMAGE_IS_QCOW2_FLAG	4
->  
->  struct ext2_image_hdr {
->  	__u32	magic_number;	/* This must be EXT2_ET_MAGIC_E2IMAGE */
-> 
+>=20
+> >=20
+> >=20
+> > > > =20
+> > > >  	/*
+> > > >  	 * Add the overhead found in each block group
+> > > > @@ -3235,7 +3235,7 @@ int ext4_calculate_overhead(struct super_=
+block *sb)
+> > > >  	}
+> > > >  	/* Add the journal blocks as well */
+> > > >  	if (sbi->s_journal)
+> > > > -		overhead +=3D EXT4_B2C(sbi, sbi->s_journal->j_maxlen);
+> > > > +		overhead +=3D EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+> >=20
+> > This I already have in my patch I'm testing right now. And as I sai=
+d
+> > there are other places where we misuse EXT4_B2C().
+> >=20
+> > -Lukas
+> >=20
+> > > > =20
+> > > >  	sbi->s_overhead =3D overhead;
+> > > >  	smp_wmb();
+> > > >=20
+> > >=20
+> >=20
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
