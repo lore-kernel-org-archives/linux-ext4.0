@@ -1,59 +1,84 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix overhead calculation in bigalloc filesystem
- (Re: ... )
-Date: Thu, 21 Feb 2013 15:56:51 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1302211553060.14141@localhost>
-References: <1361433665-16880-1-git-send-email-lczerner@redhat.com> <20130221121545.GA30821@gmail.com> <alpine.LFD.2.00.1302211335390.19354@localhost> <alpine.LFD.2.00.1302211346240.19354@localhost> <alpine.LFD.2.00.1302211351090.19354@localhost>
- <20130221134943.GA3818@gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Weird resize2fs failures when mounting ext3 as ext4
+Date: Thu, 21 Feb 2013 10:22:37 -0600
+Message-ID: <512649CD.5040801@redhat.com>
+References: <51229FF7.7090003@redhat.com> <20130221060726.GA20124@thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12619 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33927 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753862Ab3BUO47 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Feb 2013 09:56:59 -0500
-In-Reply-To: <20130221134943.GA3818@gmail.com>
+	id S1753980Ab3BUQWl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:22:41 -0500
+In-Reply-To: <20130221060726.GA20124@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 21 Feb 2013, Zheng Liu wrote:
+On 2/21/13 12:07 AM, Theodore Ts'o wrote:
+> On Mon, Feb 18, 2013 at 03:41:11PM -0600, Eric Sandeen wrote:
+>> Can't remember how I stumbled on this testcase, but mounting
+>> an ext3 filesystem with "-t ext4" and then resizing leads to trouble.
+>>
+>> With -o nodelalloc, the newly added space isn't seen by the allocator
+>> and we get ENOSPC for the extending writes in the script below.
+>>
+>> Without -o nodelalloc, the writes worked but I got an umount hang.
+>>
+>> Without -t ext4 (but letting ext4.ko handle the ext3 mount) it seems
+>> to work fine.
+>>
+>> Haven't looked into it much at all yet but wanted to put it out
+>> there for posterity.
+> 
+> At least one of the problems is that ext4_alloc_blocks() is buggy if
+> it is asked to allocate one or more indirect blocks, and then it
+> doesn't have room to allocate any direct blocks.  In that case,
+> ext4_alloc_blocks() does not return ENOSPC, and so ext4_alloc_branch()
+> doesn't fail.  But since the number of direct blocks allocated is
+> zeor, ext4_splice_branch() will not actually initialize the indirect
+> block, and then we end up looping forever and calling
+> ext4_mballoc_alloc() --- demonstrating that one of the best definition
+> of insanity is doing the same thing over and over again and expecting
+> a different result:
+> 
+>     flush-254:32-2913  [001] ....  1073.028245: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
+>     flush-254:32-2913  [001] ....  1073.050655: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
+>     flush-254:32-2913  [001] ....  1073.073034: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
+>     flush-254:32-2913  [001] ....  1073.112163: ext4_mballoc_alloc: dev 254,32 inode 21824 orig 0/4031/64@4981 goal 0/4029/2048@4096 result 0/0/0@0 blks 0 grps 0 cr 3 flags 0x0c20 tail 0 broken 0
+> 
+> I suspect the right way to deal with this is to nuke
+> ext4_alloc_blocks() from orbit, and change ext4_alloc_branch() to
+> allocate the indirect and direct blocks directly, calling
+> ext4_new_meta_block() and ext4_mb_new_blocks() directly.  What we have
+> right now is pretty gross....
+> 
+> The other problem is why resizing isn't adding the blocks so that they
+> are visible to the allocator.  Since we are using the same code path
+> for ext3 and ext4 file systems, I have a sneaking suspicion that we're
+> not actually making all of the newly allocated blocks for ext4 file
+> systems available too, but it's something like we're not making the
+> first block in each flex_bg group available (and that happens to be all
+> of the newly grown blocks for ext3 file systems).
+> 
+> As near as I can tell this isn't a regression, but since this is a
+> pretty seriouis bug, it's something we should try to fix during the
+> 3.8 development cycle.
 
-..snip..
+I think you're correct that it's not a regression.  Now I remember that
+the same basic bug came up w/ a RHEL customer who was doing this
+"mkfs ext3; mount -t ext4 -o nodelalloc" business.  Which really isn't
+tested or supported, but it's still quite the odd corner case.
 
-> > > > >  	/*
-> > > > >  	 * All of the blocks before first_data_block are overhead
-> > > > >  	 */
-> > > > > -	overhead = EXT4_B2C(sbi, le32_to_cpu(es->s_first_data_block));
-> > > > > +	overhead = EXT4_NUM_B2C(sbi, le32_to_cpu(es->s_first_data_block));
-> > > 
-> > > ...except this. I do not think this is right because we do not skip
-> > > the first cluster right ? We're still using it, but we can never use
-> > > the block before es->s_first_data_block. Please correct me if I am
-> > > wrong.
-> 
-> Yes, I think you are right.
-> 
-> > 
-> > moreover we do not allow bigalloc file system with block size < 4k.
-> 
-> No, we allow user to use bigalloc with block size < 4k, such as:
-> 
->   mkfs.ext4 -b 1024 -C 4096 -O bigalloc ${dev}
-> 
-> This command formats a bigalloc filesystem with blocksize = 1k and
-> clustersize = 4k, at least in e2fsprogs 1.42.7 it works well.
+(Being RHEL, though, it wasn't clear that the same bug persisted upstream,
+but it appears that it does.  The older RHEL kernel was more noticeable
+because it spewed the ext4 allocation context errors as well).
+
+Thanks,
+-Eric
+
+> 						 - Ted
 > 
 
-Ok, i was pretty sure that we do not allow that, it's good to know.
-Also, does it make any sense ? I do not think so, and I would really
-consider the fact that we allow that as a bug. We should not allow
-that otherwise it unnecessarily extending the test matrix.
-
-What people think about restricting bigalloc _only_ for 4k block
-size file systems ?
-
-Thanks!
--Lukas
