@@ -1,38 +1,47 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v2 10/18] mm: teach truncate_inode_pages_range() to
- handle non page aligned ranges
-Date: Thu, 21 Feb 2013 13:49:04 -0800
-Message-ID: <20130221134905.9a1e2c9e.akpm@linux-foundation.org>
-References: <1360055531-26309-1-git-send-email-lczerner@redhat.com>
-	<1360055531-26309-11-git-send-email-lczerner@redhat.com>
-	<20130207154042.92430aed.akpm@linux-foundation.org>
-	<alpine.LFD.2.00.1302080948110.3225@localhost>
-	<alpine.LFD.2.00.1302210929590.19354@localhost>
+Subject: Re: [PATCH 6/6] ubifs: Wait for page writeback to provide stable
+ pages
+Date: Thu, 21 Feb 2013 14:32:43 -0800
+Message-ID: <20130221143243.099bef3c.akpm@linux-foundation.org>
+References: <20130119011231.20902.55954.stgit@blackbox.djwong.org>
+	<20130119011316.20902.56721.stgit@blackbox.djwong.org>
+	<20130123134312.b69c53cd.akpm@linux-foundation.org>
+	<20130221034834.GA4055@blackbox.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, Hugh Dickins
- <hughd@google.com>
-To: =?UTF-8?Q?Luk=C3=A1=C5=A1?= Czerner <lczerner@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <alpine.LFD.2.00.1302210929590.19354@localhost>
-Sender: owner-linux-mm@kvack.org
+Cc: axboe@kernel.dk, lucho@ionkov.net, jack@suse.cz, ericvh@gmail.com,
+	viro@zeniv.linux.org.uk, rminnich@sandia.gov, tytso@mit.edu,
+	martin.petersen@oracle.com, Artem Bityutskiy <dedekind1@gmail.com>,
+	neilb@suse.de, Adrian Hunter <adrian.hunter@intel.com>,
+	david@fromorbit.com, gnehzuil.liu@gmail.com,
+	linux-kernel@vger.kernel.org, hch@infradead.org,
+	linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+	bharrosh@panasas.com, jlayton@samba.org,
+	linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+	hirofumi@mail.parknet.co.jp
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20130221034834.GA4055@blackbox.djwong.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 21 Feb 2013 09:33:56 +0100 (CET)
-Luk____ Czerner <lczerner@redhat.com> wrote:
+On Wed, 20 Feb 2013 19:48:34 -0800
+"Darrick J. Wong" <darrick.wong@oracle.com> wrote:
 
-> what's the status of the patch set ?
+> > I grabbed the patches.  They should appear in linux-next tomorrow if I
+> > can get the current pooppile to build.
+> 
+> Well... these patches have been banging around in -next for a month or so now.
+> As far as I know there haven't been any complaints.  Can we push these for 3.9?
 
-Forgotten about :(
+yup.  You can normally assume that this is the case, unless the patches have
 
-> Can we get this in in this merge window ?
+a) been causing bugs or
 
-Please do a full resend after 3.9-rc1 and let's take it up again.
+b) been getting rude review comments or
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+c) been getting a great string of fix-fix-fix-fix patches in -mm or
+
+d) acquired rude akpm comments or unresolved questions against them
+   in http://ozlabs.org/~akpm/mmots/series
