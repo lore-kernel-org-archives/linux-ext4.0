@@ -1,79 +1,584 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [BUG] xfstests #68 with data=journal hang against 3.8-rc7 and
- 'dev' branch
-Date: Fri, 22 Feb 2013 14:46:21 -0500
-Message-ID: <20130222194621.GA27489@thunk.org>
-References: <20130217172208.GB4059@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Implementation of a new ioctl called "EXT4_IOC_SWAP_BOOT":
+Date: Sat, 23 Feb 2013 06:04:23 +0800
+Message-ID: <B726BFD8-B127-418F-877D-DFB879E61B21@dilger.ca>
+References: <1361558983-22050-1-git-send-email-t.bubeck@reinform.de>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
+To: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49485 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754400Ab3BVTqZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 22 Feb 2013 14:46:25 -0500
-Content-Disposition: inline
-In-Reply-To: <20130217172208.GB4059@gmail.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:55551 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756939Ab3BVWEa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Feb 2013 17:04:30 -0500
+Received: by mail-pa0-f49.google.com with SMTP id kp6so688998pab.8
+        for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2013 14:04:30 -0800 (PST)
+In-Reply-To: <1361558983-22050-1-git-send-email-t.bubeck@reinform.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 18, 2013 at 01:22:08AM +0800, Zheng Liu wrote:
-> Hi all,
+On 2013-02-23, at 2:49, "Dr. Tilmann Bubeck" <t.bubeck@reinform.de> wrote:
+
+> From: "Dr. Tilmann Bubeck" <t.bubeck@reinform.de>
 > 
-> Xfstests #68 will hang with data=journal in 3.8-rc7 and 'dev' branch. I
-> remember that there has a patch for ext4 to fix filesystem freeze bug
-> but I am not sure whether it can fix this bug and it has been applied
-> into 'dev' branch.  So I file this bug here.
+> "Swap i_blocks and associated attributes (like i_blocks, i_size,
+>  i_flags, ...) from the associated inode with inode
+>  EXT4_BOOT_LOADER_INO (#5). This is typically used to store a boot
+>  loader in a secure part of the filesystem, where it can't be
+>  changed by the user on accident.  The data blocks of the previous
+>  boot loader will be associated with the given inode."
+> 
+> This update includes all improvements suggested by Andreas Dilger in
+> his email from Wed, 20 Feb 2013 10:20:11 -0700:
+> 
+> * require filp to be opened O_WR
+> * removed __ before static function names
+> * fixed some typos
+> * swap i_data back if errors occurred
+> 
+> Please let me know, is there are more things to change. No problem.
 
-I've confirmed that I can reproduce this by using tmpfs imagea files
-under KVM.  I can replicate the bug as far back as the 3.0 kernel, so
-this is definitely not a recent regression.
+Thanks for the update. Just a question and a couple of comments inline below. 
 
-					- Ted
+> The implementation uses existing (static) functions from move_extent.c
+> which therefore had to be changed in name and linkage.
+> 
+> Also "ext4_iget()" was extended, so that it is able to return inode
+> EXT4_BOOT_LOADER_INO, which has no valid i_mode and i_nlink.
 
-kernel BUG at /tyt/linux/ext4/fs/jbd2/transaction.c:1986!
-invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
-Modules linked in:
-Pid: 3399, comm: fstest Not tainted 3.8.0-rc3-00026-ge7b04ac #54 Bochs Bochs
-EIP: 0060:[<c02b0bb7>] EFLAGS: 00010206 CPU: 0
-EIP is at jbd2_journal_invalidatepage+0x1bb/0x238
-EAX: 001c4025 EBX: f5f7ab38 ECX: 00000000 EDX: 00000246
-ESI: f481d3c8 EDI: f5b87800 EBP: f4d3dcac ESP: f4d3dc7c
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-CR0: 80050033 CR2: b7666000 CR3: 34cef000 CR4: 000006f0
-DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
-DR6: ffff0ff0 DR7: 00000400
-Process fstest (pid: 3399, ti=f4d3c000 task=f4d208a0 task.ti=f4d3c000)
-Stack:
- 00001000 f5f7ab38 f5f7ab38 00000001 f5b87b80 f5b87814 00000000 f7bbc788
- 00000000 f7bbc788 f5f5f794 00000000 f4d3dcc4 c02741b1 f5b87800 c02315a0
- f5f5f794 00000030 f4d3dccc c027524d f4d3dcd8 c01e9cab f7bbc788 f4d3dce8
-Call Trace:
- [<c02741b1>] __ext4_journalled_invalidatepage+0x60/0x66
- [<c02315a0>] ? sync_mapping_buffers+0x1e7/0x1e7
- [<c027524d>] ext4_journalled_invalidatepage+0xd/0x22
- [<c01e9cab>] do_invalidatepage+0x21/0x24
- [<c01e9cfd>] truncate_inode_page+0x4f/0x70
- [<c01e9dc6>] truncate_inode_pages_range+0xa8/0x206
- [<c01e9fd3>] truncate_inode_pages+0x11/0x15
- [<c01ea01f>] truncate_pagecache+0x48/0x64
- [<c0277f2f>] ext4_setattr+0x3cc/0x464
- [<c0277b63>] ? ext4_mark_inode_dirty+0x1b3/0x1b3
- [<c02200fd>] notify_change+0x1b1/0x272
- [<c08077ea>] ? mutex_lock_nested+0x26/0x2f
- [<c020c576>] do_truncate+0x69/0x82
- [<c0217ae7>] do_last+0x8af/0x8d6
- [<c0215aca>] ? inode_permission+0x45/0x47
- [<c0215b66>] ? link_path_walk+0x9a/0x3ab
- [<c0217bab>] path_openat+0x9d/0x2bc
- [<c0199afe>] ? lock_release_holdtime.part.21+0x5d/0x63
- [<c0199693>] ? trace_hardirqs_off+0xb/0xd
- [<c021800f>] do_filp_open+0x26/0x62
- [<c022116d>] ? __alloc_fd+0xbd/0xc8
- [<c020d0b5>] do_sys_open+0x58/0xd1
- [<c020d154>] sys_open+0x26/0x2e
- [<c0809748>] syscall_call+0x7/0xb
- [<c0800000>] ? no_context+0x67/0x1a5
-Code: 68 7d 00 00 8b 45 e0 e8 da 88 55 00 89 d8 e8 39 ee ff ff 8b 45 e4 e8 67 83 55 00 89 d8 e8 c6 ec ff ff 8b 03 a9 00 00 08 00 74 02 <0f> 0b f0 80 23 df f0 8
-3 bf f0 80 63 01 fd f0 80
-EIP: [<c02b0bb7>] jbd2_journal_invalidatepage+0x1bb/0x238 SS:ESP 0068:f4d3dc7c
+> This usercode program is a simple example of the usage:
+> 
+> int main(int argc, char *argv[])
+> {
+> int fd;
+> int err;
+> 
+> if ( argc != 2 ) {
+>   printf("usage: ext4-swap-boot-inode FILE-TO-SWAP\n");
+>   exit(1);
+> }
+> 
+> fd = open(argv[1], O_WRONLY);
+> if ( fd < 0 ) {
+>   perror("open");
+>   exit(1);
+> }
+> 
+> err = ioctl(fd, EXT4_IOC_SWAP_BOOT);
+> if ( err < 0 ) {
+>   perror("ioctl");
+>   exit(1);
+> }
+> 
+> close(fd);
+> exit(0);
+> }
+
+There also needs to be a patch to add this functionality to tune2fs, so that it can be used and tested. Also, adding an e2fsck test to e2fsprogs would be good. 
+
+> Signed-off-by: Dr. Tilmann Bubeck <t.bubeck@reinform.de>
+
+
+> ---
+> Documentation/filesystems/ext4.txt |  10 ++
+> fs/ext4/ext4.h                     |  10 +-
+> fs/ext4/inode.c                    |  11 ++-
+> fs/ext4/ioctl.c                    | 198 +++++++++++++++++++++++++++++++++++++
+> fs/ext4/move_extent.c              |  47 ++++-----
+> 5 files changed, 248 insertions(+), 28 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> index 34ea4f1..47f130e 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -587,6 +587,16 @@ Table of Ext4 specific ioctls
+>                 bitmaps and inode table, the userspace tool thus
+>                 just passes the new number of blocks.
+> 
+> + EXT4_IOC_SWAP_BOOT          Swap i_blocks and associated attributes
+> +                  (like i_blocks, i_size, i_flags, ...) from
+> +                  the associated inode with inode 
+> +                  EXT4_BOOT_LOADER_INO (#5). This is typically
+> +                  used to store a boot loader in a secure part of
+> +                  the filesystem, where it can't be changed by the
+> +                  user on accident.
+> +                  The data blocks of the previous boot loader
+> +                  will be associated with the given inode.
+> +
+> ..............................................................................
+> 
+> References
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index d93393e..e4c02b9 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -614,6 +614,7 @@ enum {
+> #define EXT4_IOC_ALLOC_DA_BLKS        _IO('f', 12)
+> #define EXT4_IOC_MOVE_EXT        _IOWR('f', 15, struct move_extent)
+> #define EXT4_IOC_RESIZE_FS        _IOW('f', 16, __u64)
+> +#define EXT4_IOC_SWAP_BOOT        _IO('f', 17)
+> 
+> #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+> /*
+> @@ -1335,6 +1336,7 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>   return ino == EXT4_ROOT_INO ||
+>       ino == EXT4_USR_QUOTA_INO ||
+>       ino == EXT4_GRP_QUOTA_INO ||
+> +        ino == EXT4_BOOT_LOADER_INO ||
+>       ino == EXT4_JOURNAL_INO ||
+>       ino == EXT4_RESIZE_INO ||
+>       (ino >= EXT4_FIRST_INO(sb) &&
+> @@ -2523,9 +2525,13 @@ extern int ext4_ext_check_inode(struct inode *inode);
+> extern int ext4_find_delalloc_cluster(struct inode *inode, ext4_lblk_t lblk);
+> extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+>           __u64 start, __u64 len);
+> -
+> -
+> /* move_extent.c */
+> +extern void ext4_double_down_write_data_sem(struct inode *first, 
+> +                                       struct inode *second);
+> +extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+> +                                     struct inode *donor_inode);
+> +void ext4_inode_double_lock(struct inode *inode1, struct inode *inode2);
+> +void ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2);
+> extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>                __u64 start_orig, __u64 start_donor,
+>                __u64 len, __u64 *moved_len);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 07d9def..3731ce8 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3746,8 +3746,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>    * NeilBrown 1999oct15
+>    */
+>   if (inode->i_nlink == 0) {
+> -        if (inode->i_mode == 0 ||
+> -            !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
+> +        if ((inode->i_mode == 0 ||
+> +             !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) &&
+> +            ino != EXT4_BOOT_LOADER_INO) {
+>           /* this inode is deleted */
+>           ret = -ESTALE;
+>           goto bad_inode;
+> @@ -3755,7 +3756,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>       /* The only unlinked inodes we let through here have
+>        * valid i_mode and are being read by the orphan
+>        * recovery code: that's fine, we're about to complete
+> -         * the process of deleting those. */
+> +         * the process of deleting those.
+> +         * OR it is the EXT4_BOOT_LOADER_INO which is
+> +         * not initialized on a new filesystem. */
+>   }
+>   ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+>   inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
+> @@ -3875,6 +3878,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>       else
+>           init_special_inode(inode, inode->i_mode,
+>              new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
+> +    } else if (ino == EXT4_BOOT_LOADER_INO) {
+> +        make_bad_inode(inode);
+>   } else {
+>       ret = -EIO;
+>       EXT4_ERROR_INODE(inode, "bogus i_mode (%o)", inode->i_mode);
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 4784ac2..10bf2c1 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -17,9 +17,202 @@
+> #include <asm/uaccess.h>
+> #include "ext4_jbd2.h"
+> #include "ext4.h"
+> +#include "ext4_extents.h"
+> 
+> #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+> 
+> +/**
+> + * Swap memory between @a and @b for @len bytes.
+> + *
+> + * @a:          pointer to first memory area
+> + * @b:          pointer to second memory area
+> + * @len:        number of bytes to swap
+> + *
+> + */
+> +static void memswap(void *a, void *b, size_t len)
+> +{
+> +    unsigned char *ap, *bp;
+> +    unsigned char tmp;
+> +
+> +    ap = (unsigned char *)a;
+> +    bp = (unsigned char *)b;
+> +    while (len-- > 0) {
+> +        tmp = *ap;
+> +        *ap = *bp;
+> +        *bp = tmp;
+> +        ap++;
+> +        bp++;
+> +    }
+> +}
+> +
+> +/**
+> + * Swap i_data and associated attributes between inode1 and inode2.
+> + * This function is used for the primary swap between inode1 and inode2
+> + * and also to revert this primary swap in case of errors.
+> + *
+> + * Therefore you have to make sure, that calling this method twice
+> + * will revert all changes.
+> + * 
+> + * @inode1:     pointer to first inode
+> + * @inode2:     pointer to second inode
+> + */
+> +static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+> +{
+> +    loff_t isize;
+> +    struct ext4_inode_info *ei1;
+> +    struct ext4_inode_info *ei2;
+> +
+> +    ei1 = EXT4_I(inode1);
+> +    ei2 = EXT4_I(inode2);
+> +
+> +    memswap(&inode1->i_flags, &inode2->i_flags, sizeof(inode1->i_flags));
+> +    memswap(&inode1->i_version, &inode2->i_version,
+> +          sizeof(inode1->i_version));
+> +    memswap(&inode1->i_blocks, &inode2->i_blocks,
+> +          sizeof(inode1->i_blocks));
+> +    memswap(&inode1->i_bytes, &inode2->i_bytes, sizeof(inode1->i_bytes));
+> +    memswap(&inode1->i_atime, &inode2->i_atime, sizeof(inode1->i_atime));
+> +    memswap(&inode1->i_mtime, &inode2->i_mtime, sizeof(inode1->i_mtime));
+> +
+> +    memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
+> +    memswap(&ei1->i_flags, &ei2->i_flags, sizeof(ei1->i_flags));
+> +    memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
+> +    memswap(&ei1->i_cached_extent, &ei2->i_cached_extent,
+> +          sizeof(ei1->i_cached_extent));
+> +
+> +    isize = i_size_read(inode1);
+> +    i_size_write(inode1, i_size_read(inode2));
+> +    i_size_write(inode2, isize);
+> +}
+> +
+> +/**
+> + * Swap the information from the given @inode and the inode
+> + * EXT4_BOOT_LOADER_INO. It will basically swap i_data and all other
+> + * important fields of the inodes.
+> + *
+> + * @sb:         the super block of the filesystem
+> + * @inode:      the inode to swap with EXT4_BOOT_LOADER_INO
+> + *
+> + */
+> +static long swap_inode_boot_loader(struct super_block *sb,
+> +                struct inode *inode)
+> +{
+> +    handle_t *handle;
+> +    int err, err2;
+> +    struct inode *inode_bl;
+> +    struct ext4_inode_info *ei;
+> +    struct ext4_inode_info *ei_bl;
+> +    struct ext4_sb_info *sbi;
+> +    
+> +    if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode)) {
+> +        err = -EINVAL;
+> +        goto swap_boot_out;
+> +    }
+> +    
+> +    sbi = EXT4_SB(sb);
+> +    ei = EXT4_I(inode);
+> +    
+> +    inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
+> +    if (IS_ERR(inode_bl)) {
+> +        err = PTR_ERR(inode_bl);
+> +        goto swap_boot_out;
+> +    }
+> +    ei_bl = EXT4_I(inode_bl);
+> +
+> +    if (ext4_should_journal_data(inode) ||
+> +        ext4_should_journal_data(inode_bl)) {
+> +        err = -EINVAL;
+> +        goto swap_boot_out;
+> +    }
+
+Sorry, I still don't understand why this won't work on data=journal filesystems?  At a minimum this should be in a comment here, though I'd of course prefer if it just worked correctly in that case as well.
+
+> +    /* Protect orig inodes against a truncate and make sure,
+> +     * that only 1 swap_inode_boot_loader is running. */
+> +    ext4_inode_double_lock(inode, inode_bl);
+> +
+> +    /* Wait for all existing dio workers */
+> +    ext4_inode_block_unlocked_dio(inode);
+> +    ext4_inode_block_unlocked_dio(inode_bl);
+> +    inode_dio_wait(inode);
+> +    inode_dio_wait(inode_bl);
+> +
+> +    /* Protect extent tree against block allocations via delalloc */
+> +    ext4_double_down_write_data_sem(inode, inode_bl);
+> +
+> +    handle = ext4_journal_start(inode_bl, 2);
+> +    if (IS_ERR(handle)) {
+> +        err = -EINVAL;
+> +        goto swap_boot_out;
+> +    }
+> +
+> +    if (inode_bl->i_nlink == 0) {
+> +        /* this inode has never been used as a BOOT_LOADER */
+> +        set_nlink(inode_bl, 1);
+> +        inode_bl->i_uid = 0;
+> +        inode_bl->i_gid = 0;
+> +        inode_bl->i_flags = 0;
+> +        ei_bl->i_flags = 0;
+> +        inode_bl->i_version = 1;
+> +        i_size_write(inode_bl, 0);
+> +        inode_bl->i_mode = S_IFREG;
+> +        ext4_ext_tree_init(handle, inode_bl);
+> +    }
+> +
+> +    if (!inode_owner_or_capable(inode_bl)) {
+> +        err = -EPERM;
+> +        goto swap_boot_out_with_journal;
+> +    }
+> +
+> +    swap_inode_data(inode, inode_bl);
+> +
+> +    inode->i_ctime = inode_bl->i_ctime = ext4_current_time(inode);
+> +
+> +    spin_lock(&sbi->s_next_gen_lock);
+> +    inode_bl->i_generation = sbi->s_next_generation++;
+> +    spin_unlock(&sbi->s_next_gen_lock);
+> +
+> +    ext4_ext_invalidate_cache(inode);
+> +    ext4_discard_preallocations(inode);
+> +
+> +    err = ext4_mark_inode_dirty(handle, inode);
+> +    if (err < 0) {
+> +        ext4_warning(inode->i_sb,
+> +            "couldn't mark inode #%lu dirty (err %d)", 
+> +            inode->i_ino, err);
+> +        /* Revert all changes: */
+> +        swap_inode_data(inode, inode_bl);
+> +    } else {
+> +        err2 = ext4_mark_inode_dirty(handle, inode_bl);
+
+Not critical, but having a separate err2 is not really needed anymore, since err is always zero at this point. 
+
+> +        if (err2 < 0) {
+> +            ext4_warning(inode_bl->i_sb,
+> +                "couldn't mark inode #%lu dirty (err %d)", 
+> +                inode_bl->i_ino, err2);
+> +            err = err2;
+> +            /* Revert all changes: */
+> +            swap_inode_data(inode, inode_bl);
+> +        }
+> +    }
+> +
+> +swap_boot_out_with_journal:
+> +    ext4_journal_stop(handle);
+> +    
+> +    ext4_double_up_write_data_sem(inode, inode_bl);
+> +
+> +    ext4_inode_resume_unlocked_dio(inode);
+> +    ext4_inode_resume_unlocked_dio(inode_bl);
+> +
+> +    ext4_inode_double_unlock(inode, inode_bl);
+> +
+> +    truncate_inode_pages(&inode->i_data, 0);
+> +    truncate_inode_pages(&inode_bl->i_data, 0);
+> +    filemap_flush(inode->i_mapping);
+> +    filemap_flush(inode_bl->i_mapping);
+> +
+> +    iput(inode_bl);
+> +
+> +swap_boot_out:
+> +    return err;
+> +}
+> +
+> long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+> {
+>   struct inode *inode = filp->f_dentry->d_inode;
+> @@ -357,6 +550,11 @@ group_add_out:
+>       return err;
+>   }
+> 
+> +    case EXT4_IOC_SWAP_BOOT:
+> +        if (!(filp->f_mode & FMODE_WRITE))
+> +            return -EBADF;
+> +        return swap_inode_boot_loader(sb, inode);
+> +
+>   case EXT4_IOC_RESIZE_FS: {
+>       ext4_fsblk_t n_blocks_count;
+>       struct super_block *sb = inode->i_sb;
+> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> index d9cc5ee..ee7da4e 100644
+> --- a/fs/ext4/move_extent.c
+> +++ b/fs/ext4/move_extent.c
+> @@ -142,12 +142,13 @@ mext_next_extent(struct inode *inode, struct ext4_ext_path *path,
+> }
+> 
+> /**
+> - * double_down_write_data_sem - Acquire two inodes' write lock of i_data_sem
+> + * ext4_double_down_write_data_sem - Acquire two inodes' write lock 
+> + *                                   of i_data_sem
+> *
+> * Acquire write lock of i_data_sem of the two inodes
+> */
+> -static void
+> -double_down_write_data_sem(struct inode *first, struct inode *second)
+> +void
+> +ext4_double_down_write_data_sem(struct inode *first, struct inode *second)
+> {
+>   if (first < second) {
+>       down_write(&EXT4_I(first)->i_data_sem);
+> @@ -160,14 +161,14 @@ double_down_write_data_sem(struct inode *first, struct inode *second)
+> }
+> 
+> /**
+> - * double_up_write_data_sem - Release two inodes' write lock of i_data_sem
+> + * ext4_double_up_write_data_sem - Release two inodes' write lock of i_data_sem
+> *
+> * @orig_inode:        original inode structure to be released its lock first
+> * @donor_inode:    donor inode structure to be released its lock second
+> * Release write lock of i_data_sem of two inodes (orig and donor).
+> */
+> -static void
+> -double_up_write_data_sem(struct inode *orig_inode, struct inode *donor_inode)
+> +void
+> +ext4_double_up_write_data_sem(struct inode *orig_inode, struct inode *donor_inode)
+> {
+>   up_write(&EXT4_I(orig_inode)->i_data_sem);
+>   up_write(&EXT4_I(donor_inode)->i_data_sem);
+> @@ -965,7 +966,7 @@ again:
+>    * necessary, just swap data blocks between orig and donor.
+>    */
+>   if (uninit) {
+> -        double_down_write_data_sem(orig_inode, donor_inode);
+> +        ext4_double_down_write_data_sem(orig_inode, donor_inode);
+>       /* If any of extents in range became initialized we have to
+>        * fallback to data copying */
+>       uninit = mext_check_coverage(orig_inode, orig_blk_offset,
+> @@ -979,7 +980,7 @@ again:
+>           goto drop_data_sem;
+> 
+>       if (!uninit) {
+> -            double_up_write_data_sem(orig_inode, donor_inode);
+> +            ext4_double_up_write_data_sem(orig_inode, donor_inode);
+>           goto data_copy;
+>       }
+>       if ((page_has_private(pagep[0]) &&
+> @@ -993,7 +994,7 @@ again:
+>                       donor_inode, orig_blk_offset,
+>                       block_len_in_page, err);
+>   drop_data_sem:
+> -        double_up_write_data_sem(orig_inode, donor_inode);
+> +        ext4_double_up_write_data_sem(orig_inode, donor_inode);
+>       goto unlock_pages;
+>   }
+> data_copy:
+> @@ -1054,11 +1055,11 @@ repair_branches:
+>    * Extents are swapped already, but we are not able to copy data.
+>    * Try to swap extents to it's original places
+>    */
+> -    double_down_write_data_sem(orig_inode, donor_inode);
+> +    ext4_double_down_write_data_sem(orig_inode, donor_inode);
+>   replaced_count = mext_replace_branches(handle, donor_inode, orig_inode,
+>                          orig_blk_offset,
+>                          block_len_in_page, &err2);
+> -    double_up_write_data_sem(orig_inode, donor_inode);
+> +    ext4_double_up_write_data_sem(orig_inode, donor_inode);
+>   if (replaced_count != block_len_in_page) {
+>       EXT4_ERROR_INODE_BLOCK(orig_inode, (sector_t)(orig_blk_offset),
+>                      "Unable to copy data block,"
+> @@ -1198,15 +1199,15 @@ mext_check_arguments(struct inode *orig_inode,
+> }
+> 
+> /**
+> - * mext_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+> + * ext4_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+> *
+> * @inode1:    the inode structure
+> * @inode2:    the inode structure
+> *
+> * Lock two inodes' i_mutex
+> */
+> -static void
+> -mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
+> +void
+> +ext4_inode_double_lock(struct inode *inode1, struct inode *inode2)
+> {
+>   BUG_ON(inode1 == inode2);
+>   if (inode1 < inode2) {
+> @@ -1219,15 +1220,15 @@ mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
+> }
+> 
+> /**
+> - * mext_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+> + * ext4_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+> *
+> * @inode1:     the inode that is released first
+> * @inode2:     the inode that is released second
+> *
+> */
+> 
+> -static void
+> -mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+> +void
+> +ext4_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+> {
+>   mutex_unlock(&inode1->i_mutex);
+>   mutex_unlock(&inode2->i_mutex);
+> @@ -1322,7 +1323,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>       return -EINVAL;
+>   }
+>   /* Protect orig and donor inodes against a truncate */
+> -    mext_inode_double_lock(orig_inode, donor_inode);
+> +    ext4_inode_double_lock(orig_inode, donor_inode);
+> 
+>   /* Wait for all existing dio workers */
+>   ext4_inode_block_unlocked_dio(orig_inode);
+> @@ -1331,7 +1332,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>   inode_dio_wait(donor_inode);
+> 
+>   /* Protect extent tree against block allocations via delalloc */
+> -    double_down_write_data_sem(orig_inode, donor_inode);
+> +    ext4_double_down_write_data_sem(orig_inode, donor_inode);
+>   /* Check the filesystem environment whether move_extent can be done */
+>   ret = mext_check_arguments(orig_inode, donor_inode, orig_start,
+>                   donor_start, &len);
+> @@ -1455,7 +1456,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>        * b. racing with ->readpage, ->write_begin, and ext4_get_block
+>        *    in move_extent_per_page
+>        */
+> -        double_up_write_data_sem(orig_inode, donor_inode);
+> +        ext4_double_up_write_data_sem(orig_inode, donor_inode);
+> 
+>       while (orig_page_offset <= seq_end_page) {
+> 
+> @@ -1489,7 +1490,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+>               block_len_in_page = rest_blocks;
+>       }
+> 
+> -        double_down_write_data_sem(orig_inode, donor_inode);
+> +        ext4_double_down_write_data_sem(orig_inode, donor_inode);
+>       if (ret < 0)
+>           break;
+> 
+> @@ -1527,10 +1528,10 @@ out:
+>       ext4_ext_drop_refs(holecheck_path);
+>       kfree(holecheck_path);
+>   }
+> -    double_up_write_data_sem(orig_inode, donor_inode);
+> +    ext4_double_up_write_data_sem(orig_inode, donor_inode);
+>   ext4_inode_resume_unlocked_dio(orig_inode);
+>   ext4_inode_resume_unlocked_dio(donor_inode);
+> -    mext_inode_double_unlock(orig_inode, donor_inode);
+> +    ext4_inode_double_unlock(orig_inode, donor_inode);
+> 
+>   return ret;
+> }
+> -- 
+> 1.8.1.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
