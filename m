@@ -1,60 +1,76 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH v2 10/18] mm: teach truncate_inode_pages_range() to handle
- non page aligned ranges
-Date: Fri, 22 Feb 2013 09:06:00 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1302220905200.14141@localhost>
-References: <1360055531-26309-1-git-send-email-lczerner@redhat.com> <1360055531-26309-11-git-send-email-lczerner@redhat.com> <20130207154042.92430aed.akpm@linux-foundation.org> <alpine.LFD.2.00.1302080948110.3225@localhost> <alpine.LFD.2.00.1302210929590.19354@localhost>
- <20130221134905.9a1e2c9e.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="8323328-1987193048-1361520364=:14141"
-Cc: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Hugh Dickins <hughd@google.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20130221134905.9a1e2c9e.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH v2] ext4: fix free clusters calculation in bigalloc filesystem
+Date: Fri, 22 Feb 2013 09:39:36 +0100
+Message-ID: <1361522376-32000-1-git-send-email-lczerner@redhat.com>
+References: <1361433665-16880-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:16642 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754220Ab3BVIjj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 22 Feb 2013 03:39:39 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1M8dcZa007166
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Feb 2013 03:39:39 -0500
+In-Reply-To: <1361433665-16880-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+ext4_has_free_clusters() should tell us whether there is enough free
+clusters to allocate, however number of free clusters in the file system
+is converted to blocks using EXT4_C2B() which is not only wrong use of
+the macro (we should have used EXT4_NUM_B2C) but it's also completely
+wrong concept since everything else is in cluster units.
 
---8323328-1987193048-1361520364=:14141
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: quoted-printable
+Moreover when calculating number of root clusters we should be using
+macro EXT4_NUM_B2C() instead of EXT4_B2C() otherwise the result might be
+off by one. However r_blocks_count should always be a multiple of the
+cluster ratio so doing a plain bit shift should be enough here. We
+avoid using EXT4_B2C() because it's confusing.
 
-On Thu, 21 Feb 2013, Andrew Morton wrote:
+As a result of the first problem number of free clusters is much bigger
+than it should have been and ext4_has_free_clusters() would return 1 even
+if there is really not enough free clusters available.
 
-> Date: Thu, 21 Feb 2013 13:49:04 -0800
-> From: Andrew Morton <akpm@linux-foundation.org>
-> To: Luk=E1=A8 Czerner <lczerner@redhat.com>
-> Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
->     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
->     Hugh Dickins <hughd@google.com>
-> Subject: Re: [PATCH v2 10/18] mm: teach truncate_inode_pages_range() to=
- handle
->      non page aligned ranges
->=20
-> On Thu, 21 Feb 2013 09:33:56 +0100 (CET)
-> Luk____ Czerner <lczerner@redhat.com> wrote:
->=20
-> > what's the status of the patch set ?
->=20
-> Forgotten about :(
->=20
-> > Can we get this in in this merge window ?
->=20
-> Please do a full resend after 3.9-rc1 and let's take it up again.
->=20
+Fix this by removing the EXT4_C2B() conversion of free clusters and
+using bit shift when calculating number of root clusters. This bug
+affects number of xfstests tests covering file system ENOSPC situation
+handling. With this patch most of the ENOSPC problems with bigalloc file
+system disappear, especially the errors caused by delayed allocation not
+having enough space when the actual allocation is finally requested.
 
-I'll do that. Thanks.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+v2: update description, use just bit shift to calculate root_clusters
 
--Lukas
---8323328-1987193048-1361520364=:14141--
+ fs/ext4/balloc.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index cf18217..30444b0 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -482,11 +482,16 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
+ 
+ 	free_clusters  = percpu_counter_read_positive(fcc);
+ 	dirty_clusters = percpu_counter_read_positive(dcc);
+-	root_clusters = EXT4_B2C(sbi, ext4_r_blocks_count(sbi->s_es));
++
++	/*
++	 * r_blocks_count should always be multiple of the cluster ratio so
++	 * we are safe to do a plane bit shift only.
++	 */
++	root_clusters = ext4_r_blocks_count(sbi->s_es) >> sbi->s_cluster_bits;
+ 
+ 	if (free_clusters - (nclusters + root_clusters + dirty_clusters) <
+ 					EXT4_FREECLUSTERS_WATERMARK) {
+-		free_clusters  = EXT4_C2B(sbi, percpu_counter_sum_positive(fcc));
++		free_clusters  = percpu_counter_sum_positive(fcc);
+ 		dirty_clusters = percpu_counter_sum_positive(dcc);
+ 	}
+ 	/* Check whether we have space after accounting for current
+-- 
+1.7.7.6
+
