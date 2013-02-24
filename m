@@ -1,91 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: no need to remove extent if len is 0 in
- ext4_es_remove_extent()
-Date: Sat, 23 Feb 2013 18:45:26 -0500
-Message-ID: <20130223234526.GA1196@thunk.org>
-References: <1361511243-2458-1-git-send-email-guaneryu@gmail.com>
- <20130222062509.GA2735@gmail.com>
- <20130222175557.GA21264@thunk.org>
- <CA+dCu89+h00LRts_wk2GTDmi7qR9nqZfGKvabFoAvee-FCUG7A@mail.gmail.com>
+Subject: Re: ext4 xfstest regression due to ext4_es_lookup_extent
+Date: Sat, 23 Feb 2013 19:14:47 -0500
+Message-ID: <20130224001447.GB1196@thunk.org>
+References: <87obfcs1x6.fsf@openvz.org>
+ <20130222180325.GB21264@thunk.org>
+ <87txp3cqwt.fsf@openvz.org>
+ <51289343.90704@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Eryu Guan <guaneryu@gmail.com>
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from li9-11.members.linode.com ([67.18.176.11]:49601 "EHLO
+Received: from li9-11.members.linode.com ([67.18.176.11]:49608 "EHLO
 	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759059Ab3BWXpd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Feb 2013 18:45:33 -0500
+	id S1758190Ab3BXAOw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Feb 2013 19:14:52 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+dCu89+h00LRts_wk2GTDmi7qR9nqZfGKvabFoAvee-FCUG7A@mail.gmail.com>
+In-Reply-To: <51289343.90704@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 23, 2013 at 11:40:13AM +0800, Eryu Guan wrote:
-> On Sat, Feb 23, 2013 at 1:55 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > This patch didn't apply since it was apparently against an older
-> > version of the extents status patches.  Here is the version after I
-> > fixed it up so it would apply into the current ext4 tree.  Zheng, can
+On Sat, Feb 23, 2013 at 06:00:35PM +0800, Zheng Liu wrote:
+> > Actually I think that the regression in 269'th you have found recently
+> > caused by similar issue and commit which you foud by bisecting ( the one
+> > which allow migration between indirect<->extent based inodes)
+> > simply helps to spot real issue in es_caching code.
 > 
-> Thanks Ted! I was making the patch on top of Linus' tree.
-> Linus' tree vs ext4 tree which one is preferred for submitting patch?
+> I will revise this patch.  IIRC, we forgot to update status tree after
+> an inode is migrated from extent-based to indirect-based.  Thanks for
+> pointing out.
 
-The ext4 tree in general is the one which is preferred; the dev branch
-is the tip of what we hope to push to Linus.  At the moment, it's in
-final testing.  The three branch pointers which are important on the
-ext4 tree are origin, master, and dev.  The origin branch is where we
-have branched off of Linus's tree.  At the moment, ext4/origin is
-pointing at v3.8-rc3.  The ext4/master branch is always between origin
-and dev (inclusive).  The dev branch is a rewinding branch, which
-means that everything between master and dev may be get modified
-(i.e., to add a Reviewed-by: or to fix up some comments, etc.), or may
-get dropped (if it turns out we discover the patch is not ready for
-prime time).  The dev branch is also what gets included into
-linux-next.
+Can you do this as a new commit?  I've already bumped the master
+pointer up since I finished running xfstests and I'm seeing no
+regressions (at least with my set of xfstests).  So given that
+everything has been tested and things looks pretty stable, I pushed up
+the master branch.
 
-The master branch represents those patches which have been
-"finalized", which means once we bump the master branch, all of the
-commits between origin and master (inclusive) are guaranteed not to
-change.  So for people who are building on top of master, it's safe
-for them to use git.  For people who are building on top of dev, if
-you want to make changes, it's recommended you use a tool like quilt,
-guilt, or stgit.
+I did remember that you were still working on this regression, but
+since we're already half-way through the merge window, I really want
+to make things are ready for a merge request to Linus.  (Which I
+probably will be sending to Linus by Monday or Tuesday.)
 
-Speaking of quilt/guilt, the set of patches between master and dev can
-be found here:
+I do plan to collect bug fixes and any remaining regression fixes to
+push to Linus by -rc2 or -rc3, so if don't rush fixing up defrag
+functionality.
 
-	http://repo.or.cz/w/ext4-patch-queue.git
-	git://repo.or.cz/ext4-patch-queue.git
+Thanks!!
 
-For those people who are interested, or who want to more easily cherry
-pick specific patches out of the ext4 patch queue, the ext4/dev branch
-(usually, assuming I've remembered to update the ext4 patch queue
-tree) can be reconstructed as follows:
-
-    git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git ext4
-    mkdir -p ext4/.git/patches
-    cd ext4/.git/patches
-    git clone git://repo.or.cz/ext4-patch-queue.git dev
-    cd dev
-    sh timestamps
-    cd ../../..
-    git branch dev $(head -1 .git/patches/dev/series | sed -e 's/# BASE //')
-    git checkout dev
-    guilt push stable-boundary
-    guilt pop
-
-(This assumes you are using guilt version v0.35, found at
-git://repo.or.cz/guilt.git; note that the tip of the guilt tree has
-incompatible changes in how they parse patches, so I haven't upgraded
-to the tip of guilt tree yet.)
-
-Anyway, most people will send me patches against Linus's tree, and
-that's fine; if there are problems, I can usually fix up the patches.
-But it's most convenient for me if people send against either the
-ext4/master, or most preferably, the ext4/dev branch.
-
-BTW, I've updated the ext4 wiki to include the above information.
-
-Thanks,
-
-     	  	      	   	   - Ted
+						- Ted
