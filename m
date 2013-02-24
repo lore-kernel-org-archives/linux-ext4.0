@@ -1,97 +1,127 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: [PATCH] ext4: no need to remove extent if len is 0 in ext4_es_remove_extent()
-Date: Sun, 24 Feb 2013 13:06:21 +0800
-Message-ID: <CA+dCu88diNbJfVf6O+_ySuq4MqGgcv8nai1tzU9TKX2on1A-dQ@mail.gmail.com>
-References: <1361511243-2458-1-git-send-email-guaneryu@gmail.com>
- <20130222062509.GA2735@gmail.com> <20130222175557.GA21264@thunk.org>
- <CA+dCu89+h00LRts_wk2GTDmi7qR9nqZfGKvabFoAvee-FCUG7A@mail.gmail.com> <20130223234526.GA1196@thunk.org>
-Reply-To: guaneryu@gmail.com
+From: Zheng Liu <gnehzuil.liu@gmail.com>
+Subject: Re: ext4 xfstest regression due to ext4_es_lookup_extent
+Date: Sun, 24 Feb 2013 22:58:37 +0800
+Message-ID: <20130224145837.GA3722@gmail.com>
+References: <87obfcs1x6.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:53030 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751005Ab3BXFGm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Feb 2013 00:06:42 -0500
-Received: by mail-wg0-f45.google.com with SMTP id dq12so1588552wgb.24
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Feb 2013 21:06:41 -0800 (PST)
-In-Reply-To: <20130223234526.GA1196@thunk.org>
+Received: from mail-da0-f42.google.com ([209.85.210.42]:51190 "EHLO
+	mail-da0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755497Ab3BXOno (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Feb 2013 09:43:44 -0500
+Received: by mail-da0-f42.google.com with SMTP id z17so1086658dal.1
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Feb 2013 06:43:43 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <87obfcs1x6.fsf@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 24, 2013 at 7:45 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sat, Feb 23, 2013 at 11:40:13AM +0800, Eryu Guan wrote:
->> On Sat, Feb 23, 2013 at 1:55 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> > This patch didn't apply since it was apparently against an older
->> > version of the extents status patches.  Here is the version after I
->> > fixed it up so it would apply into the current ext4 tree.  Zheng, can
->>
->> Thanks Ted! I was making the patch on top of Linus' tree.
->> Linus' tree vs ext4 tree which one is preferred for submitting patch?
->
-> The ext4 tree in general is the one which is preferred; the dev branch
-> is the tip of what we hope to push to Linus.  At the moment, it's in
-> final testing.  The three branch pointers which are important on the
-> ext4 tree are origin, master, and dev.  The origin branch is where we
-> have branched off of Linus's tree.  At the moment, ext4/origin is
-> pointing at v3.8-rc3.  The ext4/master branch is always between origin
-> and dev (inclusive).  The dev branch is a rewinding branch, which
-> means that everything between master and dev may be get modified
-> (i.e., to add a Reviewed-by: or to fix up some comments, etc.), or may
-> get dropped (if it turns out we discover the patch is not ready for
-> prime time).  The dev branch is also what gets included into
-> linux-next.
->
-> The master branch represents those patches which have been
-> "finalized", which means once we bump the master branch, all of the
-> commits between origin and master (inclusive) are guaranteed not to
-> change.  So for people who are building on top of master, it's safe
-> for them to use git.  For people who are building on top of dev, if
-> you want to make changes, it's recommended you use a tool like quilt,
-> guilt, or stgit.
->
-> Speaking of quilt/guilt, the set of patches between master and dev can
-> be found here:
->
->         http://repo.or.cz/w/ext4-patch-queue.git
->         git://repo.or.cz/ext4-patch-queue.git
->
-> For those people who are interested, or who want to more easily cherry
-> pick specific patches out of the ext4 patch queue, the ext4/dev branch
-> (usually, assuming I've remembered to update the ext4 patch queue
-> tree) can be reconstructed as follows:
->
->     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git ext4
->     mkdir -p ext4/.git/patches
->     cd ext4/.git/patches
->     git clone git://repo.or.cz/ext4-patch-queue.git dev
->     cd dev
->     sh timestamps
->     cd ../../..
->     git branch dev $(head -1 .git/patches/dev/series | sed -e 's/# BASE //')
->     git checkout dev
->     guilt push stable-boundary
->     guilt pop
->
-> (This assumes you are using guilt version v0.35, found at
-> git://repo.or.cz/guilt.git; note that the tip of the guilt tree has
-> incompatible changes in how they parse patches, so I haven't upgraded
-> to the tip of guilt tree yet.)
->
-> Anyway, most people will send me patches against Linus's tree, and
-> that's fine; if there are problems, I can usually fix up the patches.
-> But it's most convenient for me if people send against either the
-> ext4/master, or most preferably, the ext4/dev branch.
->
-> BTW, I've updated the ext4 wiki to include the above information.
+Hi Dmirty,
 
-Thanks for your excellent explanation! I think I'd like to try
-ext4/master first :)
+On Fri, Feb 22, 2013 at 09:17:57PM +0400, Dmitry Monakhov wrote:
+[snip]
+> From 65c5fc212b1c684c76899c6e5e1f24d88550c6fc Mon Sep 17 00:00:00 2001
+> From: Dmitry Monakhov <dmonakhov@openvz.org>
+> Date: Fri, 22 Feb 2013 20:55:52 +0400
+> Subject: [PATCH] ext4 add sanity ext4_es_lookup_extent
+> 
+> This patch does very simple thing: it recheck result returned from
+> ext4_es_lookup_extent() by comparing it old-good lookup via
+> ext4_{ind,ext}_map_blocks() under i_data_sem
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-Eryu
->
-> Thanks,
->
->                                    - Ted
+I try to apply the following patch in my tree, but I realize that it
+seems that we couldn't add this sanity check in ext4_map_blocks and
+ext4_da_map_blocks now.  The reason is that when we try to initialize an
+unwritten extent this extent could be zeroed out.  But we could know it
+in *_map_blocks, and status tree couldn't be updated.  So we will hit a
+BUG_ON(1) after added this sanity check.
+
+I agree with you that we need to add self-testing infrastructre after
+applied status tree patch series.  But it seems that we need to mix
+updating status tree code with extent tree code.  IMHO it is too
+complicated.  Any thought?
+
+Thanks,
+                                                - Zheng
+
+> ---
+>  fs/ext4/inode.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 42 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 95a0c62..706db1f 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -482,6 +482,41 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
+>  	return num;
+>  }
+>  
+> +#define ES_AGGRESSIVE_TEST 1
+> +#ifdef ES_AGGRESSIVE_TEST
+> +void ext4_map_blocks_es_recheck(handle_t *handle, struct inode *inode,
+> +				struct ext4_map_blocks *es_map, int es_ret,
+> +				struct ext4_map_blocks *map, int flags)
+> +{
+> +	int ret;
+> +
+> +	map->m_flags = 0;
+> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+> +		down_read((&EXT4_I(inode)->i_data_sem));
+> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+> +		ret = ext4_ext_map_blocks(handle, inode, map, flags &
+> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> +	} else {
+> +		ret = ext4_ind_map_blocks(handle, inode, map, flags &
+> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> +	}
+> +	if (es_map->m_lblk != map->m_lblk ||
+> +	    es_map->m_flags != map->m_flags ||
+> +	    es_map->m_len != map->m_len ||
+> +	    es_map->m_pblk != map->m_pblk ||
+> +	    es_ret != ret) {
+> +		printk("Assertation failed for inode:%lu "
+> +		       "es_cached_ex [%d/%d/%llu/%x]:%d != "
+> +		       "found_ex [%d/%d/%llu/%x]:%d\n", inode->i_ino,
+> +		       es_map->m_lblk, es_map->m_len, es_map->m_pblk,
+> +		       es_map->m_flags, es_ret,
+> +		       map->m_lblk, map->m_len, map->m_pblk, map->m_flags, ret);
+> +		BUG();
+> +	}
+> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
+> +		up_read((&EXT4_I(inode)->i_data_sem));
+> +}
+> +#endif
+>  /*
+>   * The ext4_map_blocks() function tries to look up the requested blocks,
+>   * and returns if the blocks are already mapped.
+> @@ -509,7 +544,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  {
+>  	struct extent_status es;
+>  	int retval;
+> +#ifdef ES_AGGRESSIVE_TEST
+> +	struct ext4_map_blocks orig_map;
+>  
+> +	memcpy(&orig_map, map, sizeof(*map));
+> +#endif
+>  	map->m_flags = 0;
+>  	ext_debug("ext4_map_blocks(): inode %lu, flag %d, max_blocks %u,"
+>  		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
+> @@ -531,6 +570,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  		} else {
+>  			BUG_ON(1);
+>  		}
+> +#ifdef ES_AGGRESSIVE_TEST
+> +		ext4_map_blocks_es_recheck(handle,inode, map, retval, &orig_map, flags);
+> +#endif
+>  		goto found;
+>  	}
+>  
+> -- 
+> 1.7.1
+> 
+
