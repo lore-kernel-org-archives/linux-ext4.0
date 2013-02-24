@@ -1,127 +1,66 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: ext4 xfstest regression due to ext4_es_lookup_extent
-Date: Sun, 24 Feb 2013 22:58:37 +0800
-Message-ID: <20130224145837.GA3722@gmail.com>
-References: <87obfcs1x6.fsf@openvz.org>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: ext4 xfstests results for 3.8 on Pandaboard ES (ARM)
+Date: Sun, 24 Feb 2013 14:35:52 -0500
+Message-ID: <20130224193552.GA2320@wallace>
+References: <20130223000955.GA3231@wallace>
+ <5128517A.7000501@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Zheng Liu <gnehzuil.liu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f42.google.com ([209.85.210.42]:51190 "EHLO
-	mail-da0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755497Ab3BXOno (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Feb 2013 09:43:44 -0500
-Received: by mail-da0-f42.google.com with SMTP id z17so1086658dal.1
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Feb 2013 06:43:43 -0800 (PST)
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:51388 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753641Ab3BXTf5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Feb 2013 14:35:57 -0500
+Received: by mail-qc0-f176.google.com with SMTP id n41so1002626qco.21
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Feb 2013 11:35:56 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <87obfcs1x6.fsf@openvz.org>
+In-Reply-To: <5128517A.7000501@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Dmirty,
+* Zheng Liu <gnehzuil.liu@gmail.com>:
 
-On Fri, Feb 22, 2013 at 09:17:57PM +0400, Dmitry Monakhov wrote:
-[snip]
-> From 65c5fc212b1c684c76899c6e5e1f24d88550c6fc Mon Sep 17 00:00:00 2001
-> From: Dmitry Monakhov <dmonakhov@openvz.org>
-> Date: Fri, 22 Feb 2013 20:55:52 +0400
-> Subject: [PATCH] ext4 add sanity ext4_es_lookup_extent
+<snip>
+
+> > BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Thu Feb 21
+> > 15:41:27 EST 2013
+> > Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076
+> >  077 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129
+> >  130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 215
+> >  219 221 224 225 226 230 231 232 233 234 235 236 237 239 240 245 246 247 248
+> >  249 257 258 263 269 270 271 272 273 275 277 280 285 289 294
+> > Failures: 125 285
+> > END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Thu Feb 21
+> >  17:24:32 EST 2013
+> > 
+> > Xfstest 285 fails reliably for me on both ARM and x86-64 and only in this test
+> > scenario.  I see the same failure on 3.7, so it's not a regression (however,
+> > this failure doesn't appear in Ted's early 3.8-rc results).
+> > 
+> >     --- 285.out	2013-02-19 15:58:25.110665500 -0500
+> >     +++ 285.out.bad	2013-02-21 17:23:45.156519882 -0500
+> >     @@ -1 +1,3 @@
+> >      QA output created by 285
+> >     +seek sanity check failed!
 > 
-> This patch does very simple thing: it recheck result returned from
-> ext4_es_lookup_extent() by comparing it old-good lookup via
-> ext4_{ind,ext}_map_blocks() under i_data_sem
+> This test case is used to test seek data/hole feature.  After 3.8 ext4
+> has supported it.  But it will fail without extents feature because
+> indirect-based file haven't unwritten extent.  Please check 285.full
+> file, and you will see that test07 fails.
 > 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-
-I try to apply the following patch in my tree, but I realize that it
-seems that we couldn't add this sanity check in ext4_map_blocks and
-ext4_da_map_blocks now.  The reason is that when we try to initialize an
-unwritten extent this extent could be zeroed out.  But we could know it
-in *_map_blocks, and status tree couldn't be updated.  So we will hit a
-BUG_ON(1) after added this sanity check.
-
-I agree with you that we need to add self-testing infrastructre after
-applied status tree patch series.  But it seems that we need to mix
-updating status tree code with extent tree code.  IMHO it is too
-complicated.  Any thought?
-
-Thanks,
-                                                - Zheng
-
-> ---
->  fs/ext4/inode.c |   42 ++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 42 insertions(+), 0 deletions(-)
+> BTW, I am trying to fix this problem for xfstests.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 95a0c62..706db1f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -482,6 +482,41 @@ static pgoff_t ext4_num_dirty_pages(struct inode *inode, pgoff_t idx,
->  	return num;
->  }
->  
-> +#define ES_AGGRESSIVE_TEST 1
-> +#ifdef ES_AGGRESSIVE_TEST
-> +void ext4_map_blocks_es_recheck(handle_t *handle, struct inode *inode,
-> +				struct ext4_map_blocks *es_map, int es_ret,
-> +				struct ext4_map_blocks *map, int flags)
-> +{
-> +	int ret;
-> +
-> +	map->m_flags = 0;
-> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-> +		down_read((&EXT4_I(inode)->i_data_sem));
-> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
-> +		ret = ext4_ext_map_blocks(handle, inode, map, flags &
-> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
-> +	} else {
-> +		ret = ext4_ind_map_blocks(handle, inode, map, flags &
-> +					     EXT4_GET_BLOCKS_KEEP_SIZE);
-> +	}
-> +	if (es_map->m_lblk != map->m_lblk ||
-> +	    es_map->m_flags != map->m_flags ||
-> +	    es_map->m_len != map->m_len ||
-> +	    es_map->m_pblk != map->m_pblk ||
-> +	    es_ret != ret) {
-> +		printk("Assertation failed for inode:%lu "
-> +		       "es_cached_ex [%d/%d/%llu/%x]:%d != "
-> +		       "found_ex [%d/%d/%llu/%x]:%d\n", inode->i_ino,
-> +		       es_map->m_lblk, es_map->m_len, es_map->m_pblk,
-> +		       es_map->m_flags, es_ret,
-> +		       map->m_lblk, map->m_len, map->m_pblk, map->m_flags, ret);
-> +		BUG();
-> +	}
-> +	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-> +		up_read((&EXT4_I(inode)->i_data_sem));
-> +}
-> +#endif
->  /*
->   * The ext4_map_blocks() function tries to look up the requested blocks,
->   * and returns if the blocks are already mapped.
-> @@ -509,7 +544,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  {
->  	struct extent_status es;
->  	int retval;
-> +#ifdef ES_AGGRESSIVE_TEST
-> +	struct ext4_map_blocks orig_map;
->  
-> +	memcpy(&orig_map, map, sizeof(*map));
-> +#endif
->  	map->m_flags = 0;
->  	ext_debug("ext4_map_blocks(): inode %lu, flag %d, max_blocks %u,"
->  		  "logical block %lu\n", inode->i_ino, flags, map->m_len,
-> @@ -531,6 +570,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  		} else {
->  			BUG_ON(1);
->  		}
-> +#ifdef ES_AGGRESSIVE_TEST
-> +		ext4_map_blocks_es_recheck(handle,inode, map, retval, &orig_map, flags);
-> +#endif
->  		goto found;
->  	}
->  
-> -- 
-> 1.7.1
+> Regards,
+> 						- Zheng
 > 
 
+Hi Zheng:
+
+Thanks very much for your explanation and reminder - it is indeed test07 that
+fails.  I'm looking forward to testing your fix when it's ready.
+
+Regards,
+Eric
