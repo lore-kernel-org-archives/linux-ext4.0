@@ -1,60 +1,50 @@
 From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 2/5] ext4: disable merging of uninitialized extents
-Date: Mon, 25 Feb 2013 20:07:40 +0400
-Message-ID: <1361808463-25471-2-git-send-email-dmonakhov@openvz.org>
+Subject: [PATCH 5/5] ext4: invalidate exntent-status-tree during extent_migration
+Date: Mon, 25 Feb 2013 20:07:43 +0400
+Message-ID: <1361808463-25471-5-git-send-email-dmonakhov@openvz.org>
 References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
 Cc: tytso@mit.edu, jack@suse.cz, wenqing.lz@taobao.com,
 	Dmitry Monakhov <dmonakhov@openvz.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:43824 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:23620 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759933Ab3BYQIz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1759948Ab3BYQIz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 25 Feb 2013 11:08:55 -0500
 In-Reply-To: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Derived from Jan's patch:http://permalink.gmane.org/gmane.comp.file-systems.ext4/36470
+mext_replace_branches() will change inode's extents layout so
+we have to drop corresponding cache.
 
-Merging of uninitialized extents creates all sorts of interesting race
-possibilities when writeback / DIO races with fallocate. Thus
-ext4_convert_unwritten_extents_endio() has to deal with a case where
-extent to be converted needs to be split out first. That isn't nice
-for two reasons:
-
-1) It may need allocation of extent tree block so ENOSPC is possible.
-2) It complicates end_io handling code
-
-So we disable merging of uninitialized extents which allows us to simplify
-the code. Extents will get merged after they are converted to initialized
-ones.
+TESTCASE:  301'th xfstest was not yet accepted to official xfstest's branch
+and can be found here: https://github.com/dmonakhov/xfstests/commit/7b7efeee30a41109201e2040034e71db9b66ddc0
 
 Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
- fs/ext4/extents.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ fs/ext4/move_extent.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3bd3ca5..1d37f2d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1584,10 +1584,12 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
- 	unsigned short ext1_ee_len, ext2_ee_len, max_len;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index d78c33e..c1f15b2 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -666,6 +666,14 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
+ 	int replaced_count = 0;
+ 	int dext_alen;
  
- 	/*
--	 * Make sure that either both extents are uninitialized, or
--	 * both are _not_.
-+	 * Make sure that both extents are initialized. We don't merge
-+	 * uninitialized extents so that we can be sure that end_io code has
-+	 * the extent that was written properly split out and conversion to
-+	 * initialized is trivial.
- 	 */
--	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-+	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
- 		return 0;
- 
- 	if (ext4_ext_is_uninitialized(ex1))
++	*err = ext4_es_remove_extent(orig_inode, from, count);
++	if (*err)
++		goto out;
++
++	*err = ext4_es_remove_extent(donor_inode, from, count);
++	if (*err)
++		goto out;
++
+ 	/* Get the original extent for the block "orig_off" */
+ 	*err = get_ext_path(orig_inode, orig_off, &orig_path);
+ 	if (*err)
 -- 
 1.7.1
 
