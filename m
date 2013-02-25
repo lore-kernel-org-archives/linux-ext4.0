@@ -1,72 +1,45 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/5] ext4: disable merging of uninitialized extents
-Date: Mon, 25 Feb 2013 19:09:46 +0100
-Message-ID: <20130225180946.GD17503@quack.suse.cz>
-References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
- <1361808463-25471-2-git-send-email-dmonakhov@openvz.org>
+From: Zach Brown <zab@zabbo.net>
+Subject: Re: [RFC] f_pos in readdir() (was Re: [RFC][PATCH] vfs: always
+ protect diretory file->fpos with inode mutex)
+Date: Mon, 25 Feb 2013 10:25:16 -0800
+Message-ID: <20130225182516.GI22221@lenny.home.zabbo.net>
+References: <5122D3E0.6070800@huawei.com>
+ <20130223173521.GP4503@ZenIV.linux.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
-	wenqing.lz@taobao.com
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60872 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759140Ab3BYSJt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2013 13:09:49 -0500
+Cc: Li Zefan <lizefan@huawei.com>, linux-fsdevel@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>, andi@firstfloor.org,
+	Wuqixuan <wuqixuan@huawei.com>, gregkh@linuxfoundation.org,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1361808463-25471-2-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130223173521.GP4503@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 25-02-13 20:07:40, Dmitry Monakhov wrote:
-> Derived from Jan's patch:http://permalink.gmane.org/gmane.comp.file-systems.ext4/36470
-> 
-> Merging of uninitialized extents creates all sorts of interesting race
-> possibilities when writeback / DIO races with fallocate. Thus
-> ext4_convert_unwritten_extents_endio() has to deal with a case where
-> extent to be converted needs to be split out first. That isn't nice
-> for two reasons:
-> 
-> 1) It may need allocation of extent tree block so ENOSPC is possible.
-> 2) It complicates end_io handling code
-> 
-> So we disable merging of uninitialized extents which allows us to simplify
-> the code. Extents will get merged after they are converted to initialized
-> ones.
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
+> As for ->readdir(), I'd like to resurrect an old proposal to change the ABI
+> of that sucker.  Quoting the thread from 4 years ago:
 
-								Honza
+I'd love to see the readdir() interface cleaned up, yes please.
 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/extents.c |    8 +++++---
->  1 files changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 3bd3ca5..1d37f2d 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1584,10 +1584,12 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->  	unsigned short ext1_ee_len, ext2_ee_len, max_len;
->  
->  	/*
-> -	 * Make sure that either both extents are uninitialized, or
-> -	 * both are _not_.
-> +	 * Make sure that both extents are initialized. We don't merge
-> +	 * uninitialized extents so that we can be sure that end_io code has
-> +	 * the extent that was written properly split out and conversion to
-> +	 * initialized is trivial.
->  	 */
-> -	if (ext4_ext_is_uninitialized(ex1) ^ ext4_ext_is_uninitialized(ex2))
-> +	if (ext4_ext_is_uninitialized(ex1) || ext4_ext_is_uninitialized(ex2))
->  		return 0;
->  
->  	if (ext4_ext_is_uninitialized(ex1))
-> -- 
-> 1.7.1
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Comments?
+
+Hmm.  Do we want to think about letting callers copy the name to
+userspace in fragments?
+
+I was looking at current readdir paths and saw that btrfs has an
+annoying wrinkle that its directory entries might be in large blocks
+that span disjoint pages.  So it copies them to a kmalloced()ed buffer
+to pass to filldir().
+
+Maybe it wouldn't be worth having to track incomplete entries in the
+core, but it'd be nice to get rid of this copy in btrfs.
+
+(btrfs could also be more clever and only do this dance when the name
+really does span pages.. it's very rare. :/).
+
+- z
