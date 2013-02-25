@@ -1,54 +1,36 @@
-From: Jeff Mahoney <jeffm@suse.com>
-Subject: [PATCH] ext4: cleanup sbi->s_kobj after quota initialization failure
-Date: Mon, 25 Feb 2013 15:55:23 -0500
-Message-ID: <512BCFBB.30208@suse.com>
+From: Ben Myers <bpm@sgi.com>
+Subject: Re: [PATCH 00/10] xfstests: Stress tests improments v5
+Date: Mon, 25 Feb 2013 15:28:11 -0600
+Message-ID: <20130225212811.GY22182@sgi.com>
+References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
+ <20130225154512.GA32171@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>, Aditya Kali <adityakali@google.com>,
-	Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dmitry Monakhov <dmonakhov@openvz.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	dchinner@redhat.com, xfs@oss.sgi.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:39889 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759800Ab3BYUzb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2013 15:55:31 -0500
+Received: from relay3.sgi.com ([192.48.152.1]:41277 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752513Ab3BYV2P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Feb 2013 16:28:15 -0500
+Content-Disposition: inline
+In-Reply-To: <20130225154512.GA32171@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ext4_enable_quotas fails, it jumps to failed_mount7, which doesn't
-tear down the kobj.
+Hey Ted,
 
-Cc: Aditya Kali <adityakali@google.com>
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Jeff Mahoney <jeffm@suse.com>
----
- fs/ext4/super.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+On Mon, Feb 25, 2013 at 10:45:12AM -0500, Theodore Ts'o wrote:
+> Hi, what's the status of this patch series?  It looks like Dmitry has
+> responded to all of Dave's concerns --- is that correct?
+> 
+> Is there anything else we need to do before these patches get merged
+> into the xfstests git tree?
 
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3794,7 +3794,7 @@ no_journal:
- 	    !(sb->s_flags & MS_RDONLY)) {
- 		err = ext4_enable_quotas(sb);
- 		if (err)
--			goto failed_mount7;
-+			goto failed_mount8;
- 	}
- #endif  /* CONFIG_QUOTA */
- 
-@@ -3813,6 +3813,10 @@ cantfind_ext4:
- 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
- 	goto failed_mount;
- 
-+failed_mount8:
-+	kobject_del(&sbi->s_kobj);
-+	kobject_put(&sbi->s_kobj);
-+	wait_for_completion(&sbi->s_kobj_unregister);
- failed_mount7:
- 	ext4_unregister_li_request(sb);
- failed_mount6:
+I think we just need a review to see if Dave's concerns have been addressed and
+then we're ready to go.
 
--- 
-Jeff Mahoney
-SUSE Labs
+Regards,
+	Ben
