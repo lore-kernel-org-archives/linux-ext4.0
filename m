@@ -1,60 +1,65 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/5] ext4: invalidate exntent-status-tree during
- extent_migration
-Date: Mon, 25 Feb 2013 19:06:54 +0100
-Message-ID: <20130225180654.GB17503@quack.suse.cz>
+Subject: Re: [PATCH 3/5] ext4: add warning to
+ ext4_convert_unwritten_extents_endio
+Date: Mon, 25 Feb 2013 19:08:57 +0100
+Message-ID: <20130225180857.GC17503@quack.suse.cz>
 References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
- <1361808463-25471-5-git-send-email-dmonakhov@openvz.org>
+ <1361808463-25471-3-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
 	wenqing.lz@taobao.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60724 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60794 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752493Ab3BYSG7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2013 13:06:59 -0500
+	id S1756577Ab3BYSJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Feb 2013 13:09:00 -0500
 Content-Disposition: inline
-In-Reply-To: <1361808463-25471-5-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1361808463-25471-3-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 25-02-13 20:07:43, Dmitry Monakhov wrote:
-> mext_replace_branches() will change inode's extents layout so
-> we have to drop corresponding cache.
-> 
-> TESTCASE:  301'th xfstest was not yet accepted to official xfstest's branch
-> and can be found here: https://github.com/dmonakhov/xfstests/commit/7b7efeee30a41109201e2040034e71db9b66ddc0
+On Mon 25-02-13 20:07:41, Dmitry Monakhov wrote:
+> Splitting extents inside endio is bad thing, but unfortunetly it is still
+> possible. In fact we are pretty close to the moment when all related
+> issues will be fixed. Let's warn developer if it still the case.
 > 
 > Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-  Makes sense. You can add:
+  Looks good. You can add:
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
 > ---
->  fs/ext4/move_extent.c |    8 ++++++++
->  1 files changed, 8 insertions(+), 0 deletions(-)
+>  fs/ext4/extents.c |   13 ++++++++++++-
+>  1 files changed, 12 insertions(+), 1 deletions(-)
 > 
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index d78c33e..c1f15b2 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -666,6 +666,14 @@ mext_replace_branches(handle_t *handle, struct inode *orig_inode,
->  	int replaced_count = 0;
->  	int dext_alen;
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 1d37f2d..78c2a91 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3386,8 +3386,19 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
+>  		"block %llu, max_blocks %u\n", inode->i_ino,
+>  		  (unsigned long long)ee_block, ee_len);
 >  
-> +	*err = ext4_es_remove_extent(orig_inode, from, count);
-> +	if (*err)
-> +		goto out;
-> +
-> +	*err = ext4_es_remove_extent(donor_inode, from, count);
-> +	if (*err)
-> +		goto out;
-> +
->  	/* Get the original extent for the block "orig_off" */
->  	*err = get_ext_path(orig_inode, orig_off, &orig_path);
->  	if (*err)
+> -	/* If extent is larger than requested then split is required */
+> +	/* If extent is larger than requested it is a clear sign that we still
+> +	 * have some extent state machine issues left. So extent_split is still
+> +	 * required.
+> +	 * TODO: Once all related issues will be fixed this situation should be
+> +	 * illegal.
+> +	 */
+>  	if (ee_block != map->m_lblk || ee_len > map->m_len) {
+> +#ifdef EXT4_DEBUG
+> +		ext4_warning("Inode (%ld) finished: extent logical block %llu,"
+> +			     " len %u; IO logical block %llu, len %u\n",
+> +			     inode->i_ino, (unsigned long long)ee_block, ee_len,
+> +			     (unsigned long long)map->m_lblk, map->m_len);
+> +#endif
+>  		err = ext4_split_unwritten_extents(handle, inode, map, path,
+>  						   EXT4_GET_BLOCKS_CONVERT);
+>  		if (err < 0)
 > -- 
 > 1.7.1
 > 
