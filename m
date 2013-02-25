@@ -1,74 +1,98 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: ext4 xfstests results for 3.8 on Pandaboard ES (ARM)
-Date: Mon, 25 Feb 2013 10:47:33 +0800
-Message-ID: <20130225024733.GA4477@gmail.com>
-References: <20130223000955.GA3231@wallace>
- <5128517A.7000501@gmail.com>
- <20130224193552.GA2320@wallace>
+From: Li Zefan <lizefan@huawei.com>
+Subject: Re: [RFC] f_pos in readdir() (was Re: [RFC][PATCH] vfs: always protect
+ diretory file->fpos with inode mutex)
+Date: Mon, 25 Feb 2013 14:09:30 +0800
+Message-ID: <512B001A.8040704@huawei.com>
+References: <5122D3E0.6070800@huawei.com> <20130223173521.GP4503@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-fsdevel@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	<andi@firstfloor.org>, Wuqixuan <wuqixuan@huawei.com>,
+	<gregkh@linuxfoundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f54.google.com ([209.85.210.54]:63849 "EHLO
-	mail-da0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759481Ab3BYCck (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Feb 2013 21:32:40 -0500
-Received: by mail-da0-f54.google.com with SMTP id p1so648345dad.27
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Feb 2013 18:32:39 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20130224193552.GA2320@wallace>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:23792 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751447Ab3BYGKf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Feb 2013 01:10:35 -0500
+In-Reply-To: <20130223173521.GP4503@ZenIV.linux.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Feb 24, 2013 at 02:35:52PM -0500, Eric Whitney wrote:
-> * Zheng Liu <gnehzuil.liu@gmail.com>:
+>> We can fix this bug in each filesystem, but can't we just make sure i_mutex is
+>> acquired in lseek(), read(), write() and readdir() for directory file operations?
+>>
+>> (the patch is for demonstration only)
 > 
-> <snip>
+> No.  This is a very massive overkill.  If anything, we want to *reduce* the
+> amount of time we hold ->i_mutex in that area.
 > 
-> > > BEGIN TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Thu Feb 21
-> > > 15:41:27 EST 2013
-> > > Ran: 001 002 005 006 007 011 013 014 015 020 053 062 068 069 070 074 075 076
-> > >  077 079 083 088 089 091 100 105 112 113 117 120 123 124 125 126 127 128 129
-> > >  130 131 132 133 135 141 169 184 192 193 198 204 207 208 209 210 211 212 215
-> > >  219 221 224 225 226 230 231 232 233 234 235 236 237 239 240 245 246 247 248
-> > >  249 257 258 263 269 270 271 272 273 275 277 280 285 289 294
-> > > Failures: 125 285
-> > > END TEST: Ext4 4k block w/nodelalloc, no flex_bg, and no extents Thu Feb 21
-> > >  17:24:32 EST 2013
-> > > 
-> > > Xfstest 285 fails reliably for me on both ARM and x86-64 and only in this test
-> > > scenario.  I see the same failure on 3.7, so it's not a regression (however,
-> > > this failure doesn't appear in Ted's early 3.8-rc results).
-> > > 
-> > >     --- 285.out	2013-02-19 15:58:25.110665500 -0500
-> > >     +++ 285.out.bad	2013-02-21 17:23:45.156519882 -0500
-> > >     @@ -1 +1,3 @@
-> > >      QA output created by 285
-> > >     +seek sanity check failed!
-> > 
-> > This test case is used to test seek data/hole feature.  After 3.8 ext4
-> > has supported it.  But it will fail without extents feature because
-> > indirect-based file haven't unwritten extent.  Please check 285.full
-> > file, and you will see that test07 fails.
-> > 
-> > BTW, I am trying to fix this problem for xfstests.
-> > 
-> > Regards,
-> > 						- Zheng
-> > 
+> There are several bugs mixed here:
+> 	* disappearing exclusion between readdir and lseek for directories.
+> Bad, since offset validation suddenly needs to be redone every time we look
+> at ->f_pos in ->readdir() instances *and* since ->readdir() itself updates
+> position, often by file->f_pos += something.
+> 	* write(2) doing "get a copy of f_pos, try and fail ->write(),
+> put that copy back".  With no locking whatsoever.  What we get is a f_pos
+> value reverting to what it used to be at some random earlier point.  Makes
+> life really nasty for everything that updates ->f_pos, obviously.
+> 	* read(2) doing the same, *and* some directories apparently having
+> ->read() now.
 > 
-> Hi Zheng:
+> ->readdir() part of that would be the simplest one - we need to stop messing
+> with ->f_pos and just pass an address of its copy, like we do for ->read()
+> et.al.  Preserving the method prototype is not worth it and this particular
+> method has needed an overhaul of calling conventions for many reasons.
 > 
-> Thanks very much for your explanation and reminder - it is indeed test07 that
-> fails.  I'm looking forward to testing your fix when it's ready.
+> The issue with write(2) and friends is potentially nastier.  I'm looking
+> at the ->f_pos users right now, and while the majority are ->readdir()
+> and ->llseek() instances, there's some stuff beyond that.  Some of that is
+> done with struct file opened kernel-side and not accessible to userland;
+> those are safe (and often really ugly - see drivers/media/pci/cx25821/
+> hits for f_pos).  Some are simply wrong - e.g. dev_mem_read()
+> (in drivers/net/wireless/ti/wlcore/debugfs.c) ignores *ppos value and uses
+> file->f_pos instead; wrong behaviour for ->read() instance.  I'm about
+> 20% through the list; so far everything seems to be possible to deal with
+> (especially if we add a couple of helpers for common lseek variants and
+> use existing generic_file_llseek_size()), so it might turn out to be
+> not a serious issue, but it's a potential minefield.  Hell knows...
+> 
+> As for ->readdir(), I'd like to resurrect an old proposal to change the ABI
+> of that sucker.  Quoting the thread from 4 years ago:
+> ====
+> As for the locking...  I toyed with one idea for a while: instead of passing
+> a callback and one of many completely different structs, how about a common
+> *beginning* of a struct, with callback stored in it along with several
+> common fields?  Namely,
+>         * count of filldir calls already made
+>         * pointer to file in question
+>         * "are we done" flag
+> And instead of calling filldir(buf, ...) ->readdir() would call one of several
+> helpers:
+>         * readdir_emit(buf, ...) - obvious
+>         * readdir_relax(buf) - called in a spot convenient for dropping
+> and retaking lock; returns whether we need to do revalidation.
+>         * readdir_eof(buf) - end of directory
+>         * maybe readdir_dot() and readdir_dotdot() - those are certainly
+> common enough
+> That's the obvious flagday stuff, but since we need to give serious beating
+> to most of the instances anyway...  Might as well consider something in
+> that direction.
+> ====
+> 
+> Back then it didn't go anywhere, but if we really go for change of calling
+> conventions (passing a pointer to copy of ->f_pos), it would make a lot of
+> sense, IMO.  Note that ->i_mutex contention could be seriously relieved that
+> way - e.g. ext* would just call readdir_relax() at the block boundaries,
+> since those locations are always valid there, etc.
+> 
 
-Actually I just let xfstest #285 check unwritten extent feature.  If the
-file system doesn't support it #285 will be skipped.  Meanwhile I create
-a new test case that only contains test case 1~6.  You can find first
-version in this link [1].
+So there will be no lock to protect f_pos in read/write/llseek in your proposal.
+Do we need to care about reading/writing fpos in 32 bit machine is not atomic?
 
-1. http://www.spinics.net/lists/xfs/msg16231.html
-
-Regards,
-                                                - Zheng
