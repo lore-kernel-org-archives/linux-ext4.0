@@ -1,43 +1,69 @@
-From: Ben Myers <bpm@sgi.com>
-Subject: Re: [PATCH 00/10] xfstests: Stress tests improments v5
-Date: Mon, 25 Feb 2013 17:00:07 -0600
-Message-ID: <20130225230007.GJ30652@sgi.com>
-References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
- <20130225154512.GA32171@thunk.org>
- <20130225212811.GY22182@sgi.com>
- <20130225220941.GH5551@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: cleanup sbi->s_kobj after quota initialization
+ failure
+Date: Tue, 26 Feb 2013 00:32:44 +0100
+Message-ID: <20130225233244.GA20992@quack.suse.cz>
+References: <512BCFBB.30208@suse.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
-	Dmitry Monakhov <dmonakhov@openvz.org>, dchinner@redhat.com
-To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>, Aditya Kali <adityakali@google.com>,
+	Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jeff Mahoney <jeffm@suse.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:50698 "EHLO relay.sgi.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45904 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752513Ab3BYXAJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2013 18:00:09 -0500
+	id S1759567Ab3BYXcs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Feb 2013 18:32:48 -0500
 Content-Disposition: inline
-In-Reply-To: <20130225220941.GH5551@dastard>
+In-Reply-To: <512BCFBB.30208@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon 25-02-13 15:55:23, Jeff Mahoney wrote:
+> If ext4_enable_quotas fails, it jumps to failed_mount7, which doesn't
+> tear down the kobj.
+  The patch looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-On Tue, Feb 26, 2013 at 09:09:41AM +1100, Dave Chinner wrote:
-> On Mon, Feb 25, 2013 at 03:28:11PM -0600, Ben Myers wrote:
-> > On Mon, Feb 25, 2013 at 10:45:12AM -0500, Theodore Ts'o wrote:
-> > > Hi, what's the status of this patch series?  It looks like Dmitry has
-> > > responded to all of Dave's concerns --- is that correct?
-> > > 
-> > > Is there anything else we need to do before these patches get merged
-> > > into the xfstests git tree?
-> > 
-> > I think we just need a review to see if Dave's concerns have been addressed and
-> > then we're ready to go.
+								Honza
+
+> Cc: Aditya Kali <adityakali@google.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Signed-off-by: Jeff Mahoney <jeffm@suse.com>
+> ---
+>  fs/ext4/super.c |    6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
 > 
-> That doesn't stop anyone else from reviewing it.
-
-Yes.  Anyone is welcome to extend a Reviewed-by.  ;)
-
--Ben
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3794,7 +3794,7 @@ no_journal:
+>  	    !(sb->s_flags & MS_RDONLY)) {
+>  		err = ext4_enable_quotas(sb);
+>  		if (err)
+> -			goto failed_mount7;
+> +			goto failed_mount8;
+>  	}
+>  #endif  /* CONFIG_QUOTA */
+>  
+> @@ -3813,6 +3813,10 @@ cantfind_ext4:
+>  		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+>  	goto failed_mount;
+>  
+> +failed_mount8:
+> +	kobject_del(&sbi->s_kobj);
+> +	kobject_put(&sbi->s_kobj);
+> +	wait_for_completion(&sbi->s_kobj_unregister);
+>  failed_mount7:
+>  	ext4_unregister_li_request(sb);
+>  failed_mount6:
+> 
+> -- 
+> Jeff Mahoney
+> SUSE Labs
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
