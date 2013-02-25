@@ -1,45 +1,111 @@
-From: Zach Brown <zab@zabbo.net>
-Subject: Re: [RFC] f_pos in readdir() (was Re: [RFC][PATCH] vfs: always
- protect diretory file->fpos with inode mutex)
-Date: Mon, 25 Feb 2013 10:25:16 -0800
-Message-ID: <20130225182516.GI22221@lenny.home.zabbo.net>
-References: <5122D3E0.6070800@huawei.com>
- <20130223173521.GP4503@ZenIV.linux.org.uk>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] ext4: ext4_split_extent shoult take care about
+ extent zeroout v3
+Date: Mon, 25 Feb 2013 19:33:37 +0100
+Message-ID: <20130225183337.GE17503@quack.suse.cz>
+References: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Li Zefan <lizefan@huawei.com>, linux-fsdevel@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>, andi@firstfloor.org,
-	Wuqixuan <wuqixuan@huawei.com>, gregkh@linuxfoundation.org,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+	wenqing.lz@taobao.com
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:33474 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758662Ab3BYSdk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Feb 2013 13:33:40 -0500
 Content-Disposition: inline
-In-Reply-To: <20130223173521.GP4503@ZenIV.linux.org.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1361808463-25471-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> As for ->readdir(), I'd like to resurrect an old proposal to change the ABI
-> of that sucker.  Quoting the thread from 4 years ago:
+On Mon 25-02-13 20:07:39, Dmitry Monakhov wrote:
+> When ext4_split_extent_at() ends up doing zeroout & conversion to
+> initialized instead of split & conversion, ext4_split_extent() gets
+> confused and can wrongly mark the extent back as uninitialized resulting in
+> end IO code getting confused from large unwritten extents and may result in
+> data loss.
+> 
+> The example of problematic behavior is:
+> 			    lblk len              lblk len
+>   ext4_split_extent() (ex=[1000,30,uninit], map=[1010,10])
+>     ext4_split_extent_at() (split [1000,30,uninit] at 1020)
+>       ext4_ext_insert_extent() -> ENOSPC
+>       ext4_ext_zeroout()
+> 	 -> extent [1000,30] is now initialized
+>     ext4_split_extent_at() (split [1000,30,init] at 1010,
+> 			     MARK_UNINIT1 | MARK_UNINIT2)
+>       -> extent is split and parts marked as uninitialized
+> 
+> Fix the problem by rechecking extent type after the first
+> ext4_split_extent_at() returns. None of split_flags can not be applied to
+> initialized extent so this patch also add BUG_ON to prevent similar issues
+> in future.
+> 
+> TESTCASE: https://github.com/dmonakhov/xfstests/commit/b8a55eb5ce28c6ff29e620ab090902fcd5833597
+> 
+> Changes since V2: Patch no longer depends on Jan's "disable-uninit-ext-mergring" patch.
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I'd love to see the readdir() interface cleaned up, yes please.
+								Honza
 
-> Comments?
-
-Hmm.  Do we want to think about letting callers copy the name to
-userspace in fragments?
-
-I was looking at current readdir paths and saw that btrfs has an
-annoying wrinkle that its directory entries might be in large blocks
-that span disjoint pages.  So it copies them to a kmalloced()ed buffer
-to pass to filldir().
-
-Maybe it wouldn't be worth having to track incomplete entries in the
-core, but it'd be nice to get rid of this copy in btrfs.
-
-(btrfs could also be more clever and only do this dance when the name
-really does span pages.. it's very rare. :/).
-
-- z
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/extents.c |   22 ++++++++++++++++------
+>  1 files changed, 16 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 372b2cb..3bd3ca5 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2943,6 +2943,10 @@ static int ext4_split_extent_at(handle_t *handle,
+>  	newblock = split - ee_block + ext4_ext_pblock(ex);
+>  
+>  	BUG_ON(split < ee_block || split >= (ee_block + ee_len));
+> +	BUG_ON(!ext4_ext_is_uninitialized(ex) &&
+> +	       split_flag & (EXT4_EXT_MAY_ZEROOUT |
+> +			     EXT4_EXT_MARK_UNINIT1 |
+> +			     EXT4_EXT_MARK_UNINIT2));
+>  
+>  	err = ext4_ext_get_access(handle, inode, path + depth);
+>  	if (err)
+> @@ -3061,19 +3065,25 @@ static int ext4_split_extent(handle_t *handle,
+>  		if (err)
+>  			goto out;
+>  	}
+> -
+> +	/*
+> +	 * Update path is required because previous ext4_split_extent_at() may
+> +	 * result in split of original leaf or extent zeroout.
+> +	 */
+>  	ext4_ext_drop_refs(path);
+>  	path = ext4_ext_find_extent(inode, map->m_lblk, path);
+>  	if (IS_ERR(path))
+>  		return PTR_ERR(path);
+> +	depth = ext_depth(inode);
+> +	ex = path[depth].p_ext;
+> +	uninitialized = ext4_ext_is_uninitialized(ex);
+> +	split_flag1 = 0;
+>  
+>  	if (map->m_lblk >= ee_block) {
+> -		split_flag1 = split_flag & (EXT4_EXT_MAY_ZEROOUT |
+> -					    EXT4_EXT_DATA_VALID2);
+> -		if (uninitialized)
+> +		split_flag1 = split_flag & EXT4_EXT_DATA_VALID2;
+> +		if (uninitialized) {
+>  			split_flag1 |= EXT4_EXT_MARK_UNINIT1;
+> -		if (split_flag & EXT4_EXT_MARK_UNINIT2)
+> -			split_flag1 |= EXT4_EXT_MARK_UNINIT2;
+> +			split_flag1 |= split_flag & (EXT4_EXT_MAY_ZEROOUT | EXT4_EXT_MARK_UNINIT2);
+> +		}
+>  		err = ext4_split_extent_at(handle, inode, path,
+>  				map->m_lblk, split_flag1, flags);
+>  		if (err)
+> -- 
+> 1.7.1
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
