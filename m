@@ -1,100 +1,81 @@
-From: Jeff Mahoney <jeffm@suse.com>
-Subject: Re: [PATCH] ext4: cleanup sbi->s_kobj after quota initialization
- failure
-Date: Mon, 25 Feb 2013 21:53:24 -0500
-Message-ID: <512C23A4.9060705@suse.com>
-References: <512BCFBB.30208@suse.com> <20130225233244.GA20992@quack.suse.cz> <CAGr1F2EjCa9Zm_TmMZtdXKO=GC5rrwusPJ4fwffHrtxVbpSyDA@mail.gmail.com>
+From: Phillip Susi <psusi@ubuntu.com>
+Subject: Re: readahead blocking on ext4 ( was: Something amiss with IO throttling
+ )
+Date: Mon, 25 Feb 2013 22:31:28 -0500
+Message-ID: <512C2C90.8090709@ubuntu.com>
+References: <512C0746.6020408@ubuntu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Aditya Kali <adityakali@google.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: linux-mm@kvack.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50394 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751577Ab3BZCxd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Feb 2013 21:53:33 -0500
-In-Reply-To: <CAGr1F2EjCa9Zm_TmMZtdXKO=GC5rrwusPJ4fwffHrtxVbpSyDA@mail.gmail.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:50414 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756614Ab3BZDba (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Feb 2013 22:31:30 -0500
+In-Reply-To: <512C0746.6020408@ubuntu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-On 2/25/13 8:14 PM, Aditya Kali wrote:
-> This seems to have been fixed in the ext4 master branch by commit 
-> http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commitdiff;h=72ba74508b2857e71d65fc93f0d6b684492fc740
+On 02/25/2013 07:52 PM, Phillip Susi wrote:
+> There seems to be something wrong with IO throttling in recent 
+> kernels.  I have noticed two problems recently:
+> 
+> 1)  I noticed that the man page for readahead() states that it
+> blocks until the data has been read, which is incorrect.  The whole
+> point of the call is that it initiates background read(ahead), in
+> the hopes that it will finish before the data is actually read,
+> just like posix_fadvise(POSIX_FADV_WILLNEED).  Testing however,
+> indicates that indeed, both readahead() and fadvise with
+> POSIX_FADV_WILLNEED does appear to be blocking at least for most of
+> the time it takes to read a large file.  In my case I'm reading a
+> 400mb file after dropping cache and having 2+gb of free ram, and
+> the readahead/fadvise blocks for nearly the 5 seconds it takes to
+> read that.
 
-Yep.
-> 
-You're right. It's been a while since I worked with sysfs code
-and I was still expecting the old kobject refcounting semantics. I
-suppose it would follow that the completion stuff in ext4_put_super is
-unnecessary now as well.
+Well, I solved this part and no longer think it is related to the
+second problem.  It turns out that the file I was using for testing
+had been downloaded via bit torrent, and while the data blocks were
+100% contiguous, the extent tree was slightly fragmented.  The file
+used 3 level 0 extent tree blocks, so it seems that the readahead
+blocked until most of the file was read, and the third extent tree
+block then could be read, and the remaining blocks mapped by it could
+be queued, then readahead would return.
 
-- -Jeff
+I'm adding linux-ext4 to Cc, and I'm hoping we can come up with some
+ideas to improve this.  It seems to me that the extent tree blocks
+should be read first, then all of the data blocks queued up so
+readahead only has to block once and shortly before returning.  What
+do you think?
 
-> On Mon, Feb 25, 2013 at 3:32 PM, Jan Kara <jack@suse.cz> wrote:
->> On Mon 25-02-13 15:55:23, Jeff Mahoney wrote:
->>> If ext4_enable_quotas fails, it jumps to failed_mount7, which 
->>> doesn't tear down the kobj.
->> The patch looks good. You can add: Reviewed-by: Jan Kara 
->> <jack@suse.cz>
->> 
->> Honza
->> 
->>> Cc: Aditya Kali <adityakali@google.com> Cc: Jan Kara 
->>> <jack@suse.cz> Signed-off-by: Jeff Mahoney <jeffm@suse.com>
->>> --- fs/ext4/super.c |    6 +++++- 1 file changed, 5
->>> insertions(+), 1 deletion(-)
->>> 
->>> --- a/fs/ext4/super.c +++ b/fs/ext4/super.c @@ -3794,7 +3794,7
->>>  @@ no_journal: !(sb->s_flags & MS_RDONLY)) { err = 
->>> ext4_enable_quotas(sb); if (err) -                     goto 
->>> failed_mount7; +                     goto failed_mount8; } 
->>> #endif  /* CONFIG_QUOTA */
->>> 
->>> @@ -3813,6 +3813,10 @@ cantfind_ext4: ext4_msg(sb, KERN_ERR, 
->>> "VFS: Can't find ext4 filesystem"); goto failed_mount;
->>> 
->>> +failed_mount8: +     kobject_del(&sbi->s_kobj); + 
->>> kobject_put(&sbi->s_kobj); + 
->>> wait_for_completion(&sbi->s_kobj_unregister); failed_mount7: 
->>> ext4_unregister_li_request(sb); failed_mount6:
->>> 
->>> -- Jeff Mahoney SUSE Labs -- To unsubscribe from this list: 
->>> send the line "unsubscribe linux-ext4" in the body of a message
->>> to majordomo@vger.kernel.org More majordomo info at 
->>> http://vger.kernel.org/majordomo-info.html
->> -- Jan Kara <jack@suse.cz> SUSE Labs, CR
-> 
-> 
-> 
-> --
-> 
-> Aditya
-> 
+Also it may be interesting to note that the three extent tree blocks
+were allocated seemingly at random:
 
+EXTENTS:
+(ETB0):33795, (0-30975):370688-401663, (30976-40191):401664-410879,
+(ETB0):483328, (40192-72575):410880-443263,
+(72576-81919):443264-452607, (ETB0):483329, (81920-111578):452608-482266
 
-- -- 
-Jeff Mahoney
-SUSE Labs
+Shouldn't the extent tree blocks be clustered a little better?  And
+shouldn't the actual extents be merged a little better?  With 111578
+logical blocks and a max of 32767 ( or was it 32768 initialized
+blocks, and 32767 uninit? ) per extent, this whole file should be able
+to fit within the 4 extents embedded in the inode, with no need for
+any extent tree blocks.
+
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG/MacGPG2 v2.0.18 (Darwin)
-Comment: GPGTools - http://gpgtools.org
+Version: GnuPG v1.4.12 (GNU/Linux)
+Comment: Using GnuPG with undefined - http://www.enigmail.net/
 
-iQIcBAEBAgAGBQJRLCOjAAoJEB57S2MheeWypD8P/3B3IQsKkwagguu9qv2isfuC
-Um4yDclKbHO54TexW8FV+JBS5gnivO/H6MOksN3n/q2EtvPH9phBP3i1W56P77A4
-bgGIsYW5hdSWTGhcgQiNzmFgeOfF53dl+r8nZCxpOcEvvp4QQPI8WPd4IsNKmjGN
-vmKhX8m1eY2TGV/dHubAmQ+EttIhn5tMnsM48reQoW3v/H3F70WNQrYEEFqja/tk
-xjTn8tlBWvKmR9qP3XzRQHXOGUC56QXBtKyIGLqzkquhrCiG2CywxWnyhwPRujDc
-QC26bf18jSThhnPic6GrDvgAwhkEUiuETTtz5hF3+eL5mLR3bFwDQlJsGOfNBWAe
-cQAuDv/fapD072wHSEdQ200JoTLEYYr4pCeaU/FlqMlUqX3mxmPANP3lgEaTI/Yh
-fmzYANO4eFgAYk9zklqWri57EB+JqFVejZVURE9HftrkWZCQfcHnyGiOdvA4RTSa
-HsNQsGA3ta++0H3mdUGGa+SoB+FZa851Gqw/vfN5i87gcHcu+lUfjGnoaNx0RfaU
-2qyQOxPODt0p+GDWhfDnCmZqha9wBiW0VPohMv9/Rnwl6QQEMbr6dgd1ZKR5ZWTf
-xHxSoC0qNX3EX5dwGUBUSgNFvwJIh1E3cNUxghe2Li0rluia6cmgDouHFGAfDL/A
-+vw2xYvvMqfvgUk63+yR
-=Uh7A
+iQEcBAEBAgAGBQJRLCyQAAoJEJrBOlT6nu75PEkIAK+SWfo6ugAV6cvgqGWiNkuz
+eAn6IfaGxdg/6TLH+xsnQbI8KTqe8Zg9VXTZyenfwdC2lsgFz2WOI19yzMbR6eWi
+fddzadKuvPbKN8BgpmF3I61wAOG1YdbpEcvJRHhyFU211+I10shOeowGnyIuj7II
+uoyGeBaWN1MpIuTzLySFVLAYdbZOofYlTbrxrjiCavAHhjG91WfZExMVR60OkY0z
+dxBQ0NF5B+YIx+egOx1fVbstXxfrFTIIqVSLpK6fF44DUN/rHWIRivT3vARJt1Pa
+ZxFmqyGMLUgqaq71n9B4L5FmfQ+anYM33plufm4cUjFfoEqBbowZvSnwN2p1mQk=
+=H8i2
 -----END PGP SIGNATURE-----
