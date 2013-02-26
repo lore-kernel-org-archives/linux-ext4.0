@@ -1,81 +1,54 @@
-From: Phillip Susi <psusi@ubuntu.com>
-Subject: Re: readahead blocking on ext4 ( was: Something amiss with IO throttling
- )
-Date: Mon, 25 Feb 2013 22:31:28 -0500
-Message-ID: <512C2C90.8090709@ubuntu.com>
-References: <512C0746.6020408@ubuntu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext4: Don't allow quota mount options when quota
+ feature enabled
+Date: Tue, 26 Feb 2013 14:18:22 +0100
+Message-ID: <20130226131822.GA3359@quack.suse.cz>
+References: <1361835369-19850-1-git-send-email-jack@suse.cz>
+ <20130226003943.GC7007@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:50414 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756614Ab3BZDba (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Feb 2013 22:31:30 -0500
-In-Reply-To: <512C0746.6020408@ubuntu.com>
+Received: from cantor2.suse.de ([195.135.220.15]:41674 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756759Ab3BZNSZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Feb 2013 08:18:25 -0500
+Content-Disposition: inline
+In-Reply-To: <20130226003943.GC7007@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-On 02/25/2013 07:52 PM, Phillip Susi wrote:
-> There seems to be something wrong with IO throttling in recent 
-> kernels.  I have noticed two problems recently:
+On Mon 25-02-13 19:39:43, Ted Tso wrote:
+> On Tue, Feb 26, 2013 at 12:36:08AM +0100, Jan Kara wrote:
+> > So far we silently ignored when quota mount options were set while quota
+> > feature was enabled. But this can create confusion in userspace when
+> > mount options are set but silently ignored and also creates opportunities
+> > for bugs when we don't properly test all quota types. Actually
+> > ext4_mark_dquot_dirty() forgets to test for quota feature so it was
+> > dependent on journaled quota options being set. OTOH ext4_orphan_cleanup()
+> > tries to enable journaled quota when quota options are specified which is
+> > wrong when quota feature is enabled.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> 1)  I noticed that the man page for readahead() states that it
-> blocks until the data has been read, which is incorrect.  The whole
-> point of the call is that it initiates background read(ahead), in
-> the hopes that it will finish before the data is actually read,
-> just like posix_fadvise(POSIX_FADV_WILLNEED).  Testing however,
-> indicates that indeed, both readahead() and fadvise with
-> POSIX_FADV_WILLNEED does appear to be blocking at least for most of
-> the time it takes to read a large file.  In my case I'm reading a
-> 400mb file after dropping cache and having 2+gb of free ram, and
-> the readahead/fadvise blocks for nearly the 5 seconds it takes to
-> read that.
+> I've been using the quota mount options since it's the only way to
+> test the quota patches when using an older version of the quota
+> userspace package.
+  Yeah, I know it's useful at moments to be able to use quota mount options
+even with quota feature. But older quota tools behave strangely with quota
+feature anyway at times so for production use I'd suggest at least version
+4.01 anyway. That's why I decided forcing quota mount options off with
+quota feature because that's going to cause the least confusion long term
+IMHO.
 
-Well, I solved this part and no longer think it is related to the
-second problem.  It turns out that the file I was using for testing
-had been downloaded via bit torrent, and while the data blocks were
-100% contiguous, the extent tree was slightly fragmented.  The file
-used 3 level 0 extent tree blocks, so it seems that the readahead
-blocked until most of the file was read, and the third extent tree
-block then could be read, and the remaining blocks mapped by it could
-be queued, then readahead would return.
+> I can build a newer version of the userspace quota package for my own
+> use (since version 4.01 isn't in Debian Testing yet nor Ubuntu yet),
+> but we probably need to make sure we document that users may need to
+> build their own version of the quota package.
+  True, I guess adding that to mke2fs manpage would be appropriate?
 
-I'm adding linux-ext4 to Cc, and I'm hoping we can come up with some
-ideas to improve this.  It seems to me that the extent tree blocks
-should be read first, then all of the data blocks queued up so
-readahead only has to block once and shortly before returning.  What
-do you think?
-
-Also it may be interesting to note that the three extent tree blocks
-were allocated seemingly at random:
-
-EXTENTS:
-(ETB0):33795, (0-30975):370688-401663, (30976-40191):401664-410879,
-(ETB0):483328, (40192-72575):410880-443263,
-(72576-81919):443264-452607, (ETB0):483329, (81920-111578):452608-482266
-
-Shouldn't the extent tree blocks be clustered a little better?  And
-shouldn't the actual extents be merged a little better?  With 111578
-logical blocks and a max of 32767 ( or was it 32768 initialized
-blocks, and 32767 uninit? ) per extent, this whole file should be able
-to fit within the 4 extents embedded in the inode, with no need for
-any extent tree blocks.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-Comment: Using GnuPG with undefined - http://www.enigmail.net/
-
-iQEcBAEBAgAGBQJRLCyQAAoJEJrBOlT6nu75PEkIAK+SWfo6ugAV6cvgqGWiNkuz
-eAn6IfaGxdg/6TLH+xsnQbI8KTqe8Zg9VXTZyenfwdC2lsgFz2WOI19yzMbR6eWi
-fddzadKuvPbKN8BgpmF3I61wAOG1YdbpEcvJRHhyFU211+I10shOeowGnyIuj7II
-uoyGeBaWN1MpIuTzLySFVLAYdbZOofYlTbrxrjiCavAHhjG91WfZExMVR60OkY0z
-dxBQ0NF5B+YIx+egOx1fVbstXxfrFTIIqVSLpK6fF44DUN/rHWIRivT3vARJt1Pa
-ZxFmqyGMLUgqaq71n9B4L5FmfQ+anYM33plufm4cUjFfoEqBbowZvSnwN2p1mQk=
-=H8i2
------END PGP SIGNATURE-----
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
