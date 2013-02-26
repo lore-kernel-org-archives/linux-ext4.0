@@ -1,92 +1,88 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Ext4 meeting at Collab summit
-Date: Tue, 26 Feb 2013 08:58:42 -0600
-Message-ID: <512CCDA2.6030809@redhat.com>
-References: <20130222150536.GC15083@quack.suse.cz> <alpine.LFD.2.00.1302250822020.5315@dhcp-1-104.brq.redhat.com> <57F53DA5-EFBA-473E-BBD1-730AFE1934A7@dilger.ca> <512B8005.5010002@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PULL REQUEST] ext2, ext3, udf updates for 3.9-rc1
+Date: Tue, 26 Feb 2013 16:15:09 +0100
+Message-ID: <20130226151509.GA8465@quack.suse.cz>
+References: <20130222152507.GD15083@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@dilger.ca>, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: mingming cao <mingming@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8629 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47437 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759233Ab3BZO7a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Feb 2013 09:59:30 -0500
-In-Reply-To: <512B8005.5010002@oracle.com>
+	id S1758921Ab3BZPPO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Feb 2013 10:15:14 -0500
+Content-Disposition: inline
+In-Reply-To: <20130222152507.GD15083@quack.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2/25/13 9:15 AM, mingming cao wrote:
-> I am planning attending LSF and Collab summit. but likely to have a
-> conflict on the 16th (Tuesday) if the ext4 meeting is hold that day.
+On Fri 22-02-13 16:25:07, Jan Kara wrote:
+>   Hello Linus,
+> 
+>   could you please pull from
+> 
+> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+> 
+>   to get several UDF fixes, a support for UDF extent cache, and couple of
+> ext2 and ext3 cleanups and minor fixes.
+  Did this get lost somehow? You didn't pull yet and I didn't get any hate
+mail from you either ;)...
 
-I'd choose Thurs 17th as well.
+								Honza
 
--Eric
-
-p.s. there are no XFS or BTRFS plans which would conflict, as far as
-I know.
-
-
-> On 02/25/2013 02:24 AM, Andreas Dilger wrote:
->> I'm also attending LSF, but only later in the week, so is only be
->> able to attend if it was on Thursday (or as a second choice Friday)
->> evening.
->>
->> Cheers, Andreas
->>
->> On 2013-02-25, at 15:24, Luk=C3=A1=C5=A1 Czerner <lczerner@redhat.co=
-m> wrote:
->>
->>> On Fri, 22 Feb 2013, Jan Kara wrote:
->>>
->>>> Date: Fri, 22 Feb 2013 16:05:36 +0100
->>>> From: Jan Kara <jack@suse.cz>
->>>> To: Ted Tso <tytso@mit.edu>
->>>> Cc: linux-ext4@vger.kernel.org
->>>> Subject: Ext4 meeting at Collab summit
->>>>
->>>>   Hi Ted,
->>>>
->>>>   I was wondering whether you already have an idea when will be th=
-e ext4
->>>> meeting you plan at Collab summit? I'll be ordering plane tickets =
-next week
->>>> and I'm considering arriving to SF on Monday so I want check wheth=
-er it
->>>> won't clash with your planning of ext4 meeting.
->>>>
->>>>                                 Honza
->>>
->>> Hi,
->>>
->>> I've got the LSF invitation so  I would like to attend the ext4
->>> meeting as well (still do not know the date), though I am not
->>> sure if there are any prerequisites ?
->>>
->>> -Lukas
->>> --=20
->>> To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --=20
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
-" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->=20
-> --=20
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Top of the tree is 712ddc5. The full shortlog is:
+> 
+> Guo Chao (1):
+>       ext3, ext4, ocfs2: remove unused macro NAMEI_RA_INDEX
+> 
+> Jan Kara (5):
+>       ext3: Fix memory leak when quota options are specified multiple times
+>       udf: Write LVID to disk after opening / closing
+>       udf: Fix bitmap overflow on large filesystems with small block size
+>       udf: Make s_block_bitmap standard array
+>       udf: Remove unused s_extLength from udf_bitmap
+> 
+> Namjae Jeon (1):
+>       udf: add extent cache support in case of file reading
+> 
+> Wang Shilong (9):
+>       Ext2: free memory allocated and forget buffer head when io error happens
+>       Ext3: add necessary check in case IO error happens
+>       Ext2: use unlikely to improve the efficiency of the kernel
+>       Ext3: use unlikely to improve the efficiency of the kernel
+>       Ext2: return ENOMEM rather than EIO if sb_getblk fails
+>       Ext3: return ENOMEM rather than EIO if sb_getblk fails
+>       Ext2: remove the overhead check about sb in the function ext2_new_blocks
+>       Ext2: mark inode dirty after the function dquot_free_block_nodirty is called
+>       Ext2: remove the static function release_blocks to optimize the kernel
+> 
+> The diffstat is
+> 
+>  fs/ext2/balloc.c |   28 ++++++-----------
+>  fs/ext2/inode.c  |   12 +++++++
+>  fs/ext2/super.c  |    2 +-
+>  fs/ext2/xattr.c  |    4 +-
+>  fs/ext3/inode.c  |   16 ++++++----
+>  fs/ext3/namei.c  |    1 -
+>  fs/ext3/resize.c |   12 ++++----
+>  fs/ext3/super.c  |   51 +++++++++++++++++++-------------
+>  fs/ext3/xattr.c  |    4 +-
+>  fs/ext4/namei.c  |    1 -
+>  fs/ocfs2/dir.c   |    1 -
+>  fs/udf/inode.c   |   86 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+>  fs/udf/super.c   |   11 ++++---
+>  fs/udf/udf_i.h   |   16 ++++++++++
+>  fs/udf/udf_sb.h  |    5 +--
+>  fs/udf/udfdecl.h |    5 ---
+>  16 files changed, 177 insertions(+), 78 deletions(-)
+> 
+> 							Thanks
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
