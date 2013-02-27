@@ -1,62 +1,41 @@
-From: =?ISO-8859-15?Q?Luk=E1=A8_Czerner?= <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix possible memory leak in ext4_remount()
-Date: Wed, 27 Feb 2013 13:45:11 +0100 (CET)
-Message-ID: <alpine.LFD.2.00.1302271343391.3310@localhost>
-References: <CAPgLHd-J=j=aVCpjutq2B1+NMqxz=v50xNcEQA_57Ni_7v9HKA@mail.gmail.com>
+From: Markus Trippelsdorf <markus@trippelsdorf.de>
+Subject: Re: [GIT PULL] ext4 updates for 3.9
+Date: Wed, 27 Feb 2013 13:47:27 +0100
+Message-ID: <20130227124727.GA225@x4>
+References: <nsxr4k2kdwv.fsf@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-	yongjun_wei@trendmicro.com.cn, linux-ext4@vger.kernel.org
-To: Wei Yongjun <weiyj.lk@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14609 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753583Ab3B0Mp0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Feb 2013 07:45:26 -0500
-In-Reply-To: <CAPgLHd-J=j=aVCpjutq2B1+NMqxz=v50xNcEQA_57Ni_7v9HKA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <nsxr4k2kdwv.fsf@closure.thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 27 Feb 2013, Wei Yongjun wrote:
+On 2013.02.26 at 15:39 -0500, Theodore Ts'o wrote:
+> 
+> The following changes since commit 9931faca02c604c22335f5a935a501bb2ace6e20:
+> 
+>   Linux 3.8-rc3 (2013-01-09 18:59:55 -0800)
+> 
+> are available in the git repository at:
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-> Date: Wed, 27 Feb 2013 13:18:53 +0800
-> From: Wei Yongjun <weiyj.lk@gmail.com>
-> To: tytso@mit.edu, adilger.kernel@dilger.ca
-> Cc: yongjun_wei@trendmicro.com.cn, linux-ext4@vger.kernel.org
-> Subject: [PATCH] ext4: fix possible memory leak in ext4_remount()
-> 
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> 
-> 'orig_data' is malloced in ext4_remount() and should be freed
-> before leaving from the error handling cases, otherwise it will
-> cause memory leak.
+Just booted todays Linux tree and got the following errors:
 
-Good catch, thanks!
+...
+Feb 27 13:33:31 x4 kernel: EXT4-fs (sda): mounted filesystem with ordered data mode. Opts: (null)
+...
+Feb 27 13:33:32 x4 kernel: EXT4-fs error (device sda): ext4_find_dest_de:1657: inode #70647809: block 14164000: comm cupsd: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=2569822761, rec_len=3837, name_len=1
+Feb 27 13:33:32 x4 kernel: EXT4-fs error (device sda): ext4_find_dest_de:1657: inode #70911401: block 15213579: comm pdnsd: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=2000846358, rec_len=36782, name_len=120
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+/dev/sda       ext4      1.4T  655G  651G  51% /var
+/dev/sda on /var type ext4 (rw,noatime,data=ordered)
 
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> ---
->  fs/ext4/super.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 373d46c..8ae09e3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4538,6 +4538,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  			if (!old_opts.s_qf_names[i]) {
->  				for (j = 0; j < i; j++)
->  					kfree(old_opts.s_qf_names[j]);
-> +				kfree(orig_data);
->  				return -ENOMEM;
->  			}
->  		} else
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Running "fsck.ext4 -f /dev/sda" shows no problems.
+
+-- 
+Markus
