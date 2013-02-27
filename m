@@ -1,7 +1,7 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
+From: Dave Jones <davej@redhat.com>
 Subject: Re: [GIT PULL] ext4 updates for 3.9
-Date: Wed, 27 Feb 2013 19:56:25 +0100
-Message-ID: <20130227185625.GA224@x4>
+Date: Wed, 27 Feb 2013 13:57:55 -0500
+Message-ID: <20130227185755.GA17786@redhat.com>
 References: <20130227124727.GA225@x4>
  <20130227153435.GB5609@thunk.org>
  <20130227154450.GA23402@x4>
@@ -14,11 +14,12 @@ References: <20130227124727.GA225@x4>
  <20130227184912.GA19624@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
+To: "Theodore Ts'o" <tytso@mit.edu>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>,
 	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
 	Zheng Liu <wenqing.lz@taobao.com>,
-	Dave Jones <davej@redhat.com>, Borislav Petkov <bp@alien8.de>,
+	Borislav Petkov <bp@alien8.de>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
@@ -27,12 +28,15 @@ In-Reply-To: <20130227184912.GA19624@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2013.02.27 at 13:49 -0500, Theodore Ts'o wrote:
+On Wed, Feb 27, 2013 at 01:49:12PM -0500, Theodore Ts'o wrote:
+ > Markus, Dave, can you confirm that this fixes your problem?
+ > 
+ > Thanks!!
+ > 
+ > (Sigh, this is a real brown paper bug; I'm embarassed I missed this in
+ > my code review.)
 
-> Markus, Dave, can you confirm that this fixes your problem?
+Building now.  Can you confirm that nothing on-disk should be awry ?
+Or will I need a new fsck to detect what happened ?
 
-Yes, it fixes the issue.
-Thanks Ted.
-
--- 
-Markus
+	Dave
