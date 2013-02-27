@@ -1,41 +1,59 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: Re: [GIT PULL] ext4 updates for 3.9
-Date: Wed, 27 Feb 2013 13:47:27 +0100
-Message-ID: <20130227124727.GA225@x4>
-References: <nsxr4k2kdwv.fsf@closure.thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 54551] New: write fails with one short >2GB write.
+Date: Wed, 27 Feb 2013 14:49:33 +0000 (UTC)
+Message-ID: <bug-54551-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <nsxr4k2kdwv.fsf@closure.thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.19.201]:60481 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759935Ab3B0Otg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Feb 2013 09:49:36 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 9E18520334
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Feb 2013 14:49:35 +0000 (UTC)
+Received: from bugzilla.kernel.org (bugzilla.kernel.org [198.145.19.217])
+	by mail.kernel.org (Postfix) with ESMTP id 9AFAC2031A
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Feb 2013 14:49:34 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 2013.02.26 at 15:39 -0500, Theodore Ts'o wrote:
-> 
-> The following changes since commit 9931faca02c604c22335f5a935a501bb2ace6e20:
-> 
->   Linux 3.8-rc3 (2013-01-09 18:59:55 -0800)
-> 
-> are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+https://bugzilla.kernel.org/show_bug.cgi?id=54551
 
-Just booted todays Linux tree and got the following errors:
+           Summary: write fails with one short >2GB write.
+           Product: File System
+           Version: 2.5
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: meetmehiro@gmail.com
+        Regression: No
 
-...
-Feb 27 13:33:31 x4 kernel: EXT4-fs (sda): mounted filesystem with ordered data mode. Opts: (null)
-...
-Feb 27 13:33:32 x4 kernel: EXT4-fs error (device sda): ext4_find_dest_de:1657: inode #70647809: block 14164000: comm cupsd: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=2569822761, rec_len=3837, name_len=1
-Feb 27 13:33:32 x4 kernel: EXT4-fs error (device sda): ext4_find_dest_de:1657: inode #70911401: block 15213579: comm pdnsd: bad entry in directory: rec_len % 4 != 0 - offset=0(0), inode=2000846358, rec_len=36782, name_len=120
 
-/dev/sda       ext4      1.4T  655G  651G  51% /var
-/dev/sda on /var type ext4 (rw,noatime,data=ordered)
+Hi,
 
-Running "fsck.ext4 -f /dev/sda" shows no problems.
+I have one application where we are writing on-short 3G of data but when write
+succeed, it writes only 2G of data.
+
+simple program.
+
+if ( (ret = write(fd,buf,3221225472)) != limit) {
+
+printf("\nError no:=%d",errno);
+printf("\nret : %d",ret);
+}
+
+in above program, write only writes 2GB data..
+
+could you please tell me, how to resolve this..
 
 -- 
-Markus
+Configure bugmail: https://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
