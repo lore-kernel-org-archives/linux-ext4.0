@@ -1,86 +1,88 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: [PATCH v2] xfstests: use right defrag program path
-Date: Fri,  1 Mar 2013 22:17:13 +0800
-Message-ID: <1362147433-5788-1-git-send-email-wenqing.lz@taobao.com>
-Cc: linux-ext4@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>,
-	Dave Chinner <david@fromorbit.com>
-To: xfs@oss.sgi.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:57232 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750764Ab3CAOCP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2013 09:02:15 -0500
-Received: by mail-pa0-f45.google.com with SMTP id kl14so1830668pab.18
-        for <linux-ext4@vger.kernel.org>; Fri, 01 Mar 2013 06:02:14 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [GIT PULL] ext4 updates for 3.9
+Date: Fri, 01 Mar 2013 09:41:28 -0600
+Message-ID: <5130CC28.1080204@redhat.com>
+References: <20130227154450.GA23402@x4> <20130227170157.GA222@x4> <98C6DE45-F050-4AAD-82E2-7352F5BB0A5D@gmail.com> <20130227172256.GA236@x4> <7BFB2135-A1F0-4B6D-9962-16E75E5560F8@gmail.com> <20130227174553.GA224@x4> <CA+55aFwWA1jPEEQNx_5oJ6Ze=3yFb6=E9nraBfX-Ve=WjRkQMw@mail.gmail.com> <20130227184912.GA19624@thunk.org> <20130227185625.GA224@x4> <20130227191923.GA1121@redhat.com> <20130227192907.GB14253@thunk.org> <87k3pteank.fsf@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
+	Zheng Liu <wenqing.lz@taobao.com>,
+	Borislav Petkov <bp@alien8.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <87k3pteank.fsf@openvz.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Zheng Liu <wenqing.lz@taobao.com>
+On 2/27/13 2:58 PM, Dmitry Monakhov wrote:
+> On Wed, 27 Feb 2013 14:29:07 -0500, Theodore Ts'o <tytso@mit.edu> wrote:
+>> On Wed, Feb 27, 2013 at 02:19:23PM -0500, Dave Jones wrote:
+>>>
+>>> Looks like it's fixed here too.
+>>>
+>>> How did this make it through -next without anyone hitting it ?
+>>>
+>>> I can't remember how many years ago I last bought a disk < 1TB,
+>>> and I can't be alone.  Or is everyone all about SSDs these days?
+>>
+>> I use LVM, so I have a number of volues which are smaler than 512GB,
+>> but very few which are actually larger than 1TB.  And none on my test
+>> boxes.  I was running the bleeding edge ext4 code on my laptop as for
+>> dogfooding purposes, but I have an 80GB mSATA SSD and a 500GB HDD on
+>> my X230 laptop (it requires a thin laptop drive, and 7mm drives don't
+>> come any bigger, alas).
+>>
+>>> Is anyone running xfstests or similar on linux-next regularly ?
+>>
+>> I run xfstests on the ext4 tree, and I ran it on ext4 plus Linus's tip
+>> before I submitted a pull request.  The problem is that XFSTESTS is
+>> S-L-O-W if you use large partitions, so typically I use a 5GB
+> Indeed. That's why i give-up rotated disks and run xfstest only on SSD
+> or brd module 
+>> partition sizes for my test runs.  Normally we're worried about race
+>> condition bugs, not something as bone-headed as a bitmasking problem,
+>> so it makes sense to use a smaller disk for most of your testing.
+>> (Some folks do their xfstests run on SSD's or tmpfs image files, again
+>> for speed reasons, and it's unlikely they would be big enough.)
+>>
+>> So what we probably need to do is to have a separate set of tests
+>> using a loopback mount, and perhaps an artificially created file
+>> system which has a large percentage of the blocks in the middle of the
+>> file system busied out, to make efficient testing of these sorts of
+>> bugs more efficient.  As I said, I'm thinking about how's the best way
+>> to improve our testing regime to catch such problems the next time around.
+> Amazing idea. Something like:
+> 
+> #dd if=/dev/zero of=/tmp/fs.img bs=1M seek=2000000 count=1
+> #mkfs.ext4 -m0 -i4096000 /tmp/fs.img
+> #mount /tmp/fs.img /mnt/ -oloop
+> #for ((i=0; i < 2000; i++));do   fallocate -l $((1024*1024*1024)) /mnt/f$i ;done
+> #for ((i=0; i < 2000; i++));do   truncate -s $((1023*1024*1024)) /mnt/f$i ;done
+> 
+> As result file system image has 2gb of free space wich is fragmented to ~2000
+> chunks 1Mb each. But image itself is quite small
+> # df /mnt
+> Filesystem      1K-blocks       Used Available Use% Mounted on
+> /dev/loop0     2047678076 2045679228   1998848 100% /mnt
+> # du -sch /tmp/fs.img 
+> 242M     /tmp/fs.img
+> 242M     total
+> 
+> Later we can simply run xfstest/fio/fsx on this image.
+> I'll prepare new xfstest based on that idea. But the only disadvantage
+> is that loop dev has bottleneck, all requests will be serialized on i_mutex.
 
-In _require_defrag defragmentation command path is fixed.  That will
-cause that this test case is skipped in some distributions.
+Before anyone does too much work, it would be worth revisiting
+dchinner's
+	[PATCH 0/10] xfstests: rework large filesystem testing
+series from July 2012 to see if it meets the needs already.
 
-Signed-off-by: Zheng Liu <wenqing.lz@taobao.com>
-Cc: Dave Chinner <david@fromorbit.com>
----
-[*NOTE*: this patch is Cc'ed to linux-ext4 mailing list because after
-applied it xfstests #218 will fail against 3.8 and dev branch.]
+It almost got all reviews, with one sticking point left, AFAICT.
 
-v2 <- v1:
- * Define 'E4DEFRAG_PROG' and 'FILEFRAG_PROG' in common.config with
-   set_prog_path
-
- common.config |  2 ++
- common.defrag | 10 +++++-----
- 2 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/common.config b/common.config
-index 7174127..9c99bfe 100644
---- a/common.config
-+++ b/common.config
-@@ -160,6 +160,8 @@ export INDENT_PROG="`set_prog_path indent`"
- export XFS_COPY_PROG="`set_prog_path xfs_copy`"
- export FSTRIM_PROG="`set_prog_path fstrim`"
- export DUMPE2FS_PROG="`set_prog_path dumpe2fs`"
-+export FILEFRAG_PROG="`set_prog_path filefrag`"
-+export E4DEFRAG_PROG="`set_prog_path e4defrag`"
- 
- # Generate a comparable xfsprogs version number in the form of
- # major * 10000 + minor * 100 + release
-diff --git a/common.defrag b/common.defrag
-index ea6c14c..9c9eb9b 100644
---- a/common.defrag
-+++ b/common.defrag
-@@ -24,10 +24,10 @@ _require_defrag()
- {
-     case "$FSTYP" in
-     xfs)
--        DEFRAG_PROG=/usr/sbin/xfs_fsr
-+        DEFRAG_PROG="$XFS_FSR_PROG"
- 	;;
-     ext4|ext4dev)
--        DEFRAG_PROG=/usr/bin/e4defrag
-+        DEFRAG_PROG="$E4DEFRAG_PROG"
- 	;;
-     btrfs)
- 	DEFRAG_PROG="$BTRFS_UTIL_PROG filesystem defragment"
-@@ -38,13 +38,13 @@ _require_defrag()
-     esac
- 
-     _require_command $DEFRAG_PROG
--    _require_command /usr/sbin/filefrag
-+    _require_command $FILEFRAG_PROG
- }
- 
- _extent_count()
- {
--	filefrag $1 | awk '{print $2}'
--	filefrag -v $1  >> $seq.full 2>&1
-+	$FILEFRAG_PROG $1 | awk '{print $2}'
-+	$FILEFRAG_PROG -v $1  >> $seq.full 2>&1
- }
- 
- # Defrag file, check it, and remove it.
--- 
-1.7.12.rc2.18.g61b472e
-
+-Eric
