@@ -1,74 +1,236 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [GIT PULL] ext4 updates for 3.9
-Date: Fri, 1 Mar 2013 00:18:13 +1100
-Message-ID: <20130228131813.GO5551@dastard>
-References: <20130227170157.GA222@x4>
- <98C6DE45-F050-4AAD-82E2-7352F5BB0A5D@gmail.com>
- <20130227172256.GA236@x4>
- <7BFB2135-A1F0-4B6D-9962-16E75E5560F8@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: optimize ext4_es_shrink()
+Date: Fri, 1 Mar 2013 00:00:29 -0500
+Message-ID: <20130301050029.GB4452@thunk.org>
+References: <7BFB2135-A1F0-4B6D-9962-16E75E5560F8@gmail.com>
  <20130227174553.GA224@x4>
  <CA+55aFwWA1jPEEQNx_5oJ6Ze=3yFb6=E9nraBfX-Ve=WjRkQMw@mail.gmail.com>
  <20130227184912.GA19624@thunk.org>
  <20130227185625.GA224@x4>
  <20130227191923.GA1121@redhat.com>
  <20130227192907.GB14253@thunk.org>
+ <20130227201217.GD14253@thunk.org>
+ <20130301033005.GA7081@redhat.com>
+ <20130301040039.GA4452@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Dave Jones <davej@redhat.com>,
-	Markus Trippelsdorf <markus@trippelsdorf.de>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
+To: Dave Jones <davej@redhat.com>,
 	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
 	Zheng Liu <wenqing.lz@taobao.com>,
-	Borislav Petkov <bp@alien8.de>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50706 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750915Ab3CAFAf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Mar 2013 00:00:35 -0500
 Content-Disposition: inline
-In-Reply-To: <20130227192907.GB14253@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20130301040039.GA4452@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 27, 2013 at 02:29:07PM -0500, Theodore Ts'o wrote:
-> On Wed, Feb 27, 2013 at 02:19:23PM -0500, Dave Jones wrote:
-> > 
-> > Looks like it's fixed here too.
-> > 
-> > How did this make it through -next without anyone hitting it ?
-> 
-> > Is anyone running xfstests or similar on linux-next regularly ?
-> 
-> I run xfstests on the ext4 tree, and I ran it on ext4 plus Linus's tip
-> before I submitted a pull request.  The problem is that XFSTESTS is
-> S-L-O-W if you use large partitions, so typically I use a 5GB
-> partition sizes for my test runs.
+When the system is under memory pressure, ext4_es_srhink() will get
+called very often.  So optimize returning the number of items in the
+file system's extent status cache by keeping a per-filesystem count,
+instead of calculating it each time by scanning all of the inodes in
+the extent status cache.
 
-This isn't the case for XFS. I typically see 1TB scratch devices
-only being ~10-20% slower than 10GB scratch devices, and 10TB only
-being a little slower than 1TB scratch devices. I have to use sparse
-devices and --large-fs for 100TB filesystem testing, so I can't
-directly compare the speeds to those that I run on physical devices.
-However I can say that it isn't significantly slower than using
-small scratch devices...
+Also rename the slab used for the extent status cache to be
+"ext4_extent_status" so it's obviousl the slab in question is created
+by ext4.
 
-> So what we probably need to do is to have a separate set of tests
-> using a loopback mount, and perhaps an artificially created file
-> system which has a large percentage of the blocks in the middle of the
-> file system busied out, to make efficient testing of these sorts of
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Zheng Liu <gnehzuil.liu@gmail.com>
+---
+ fs/ext4/ext4.h              |  1 +
+ fs/ext4/extents_status.c    | 39 +++++++++++++--------------------------
+ include/trace/events/ext4.h | 40 ++++++++++++----------------------------
+ 3 files changed, 26 insertions(+), 54 deletions(-)
 
-That's exactly what the --large-fs patch set I posted months ago does
-for ext4 - it uses fallocate() to fill all but 50GB of the large
-filesystem without actually writing any data and runs the standard
-tests in the remaining unused space.
-
-However, last time I tested ext4 with this patchset (when I posted
-the patches months ago), multi-TB preallocation on ext4 was still too
-slow to make it practical for testing on devices larger than 2-3TB.
-Perhaps it would make testing 1-2TB ext4 filesystems fast enough
-that you could do it regularly...
-
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6e16c18..96c1093 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1268,6 +1268,7 @@ struct ext4_sb_info {
+ 	atomic_t s_mb_preallocated;
+ 	atomic_t s_mb_discarded;
+ 	atomic_t s_lock_busy;
++	atomic_t s_extent_cache_cnt;
+ 
+ 	/* locality groups */
+ 	struct ext4_locality_group __percpu *s_locality_groups;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index f768f4a..27fcdd2 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -147,11 +147,12 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			      ext4_lblk_t end);
+ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+ 				       int nr_to_scan);
+-static int ext4_es_reclaim_extents_count(struct super_block *sb);
+ 
+ int __init ext4_init_es(void)
+ {
+-	ext4_es_cachep = KMEM_CACHE(extent_status, SLAB_RECLAIM_ACCOUNT);
++	ext4_es_cachep = kmem_cache_create("ext4_extent_status",
++					   sizeof(struct extent_status),
++					   0, (SLAB_RECLAIM_ACCOUNT), NULL);
+ 	if (ext4_es_cachep == NULL)
+ 		return -ENOMEM;
+ 	return 0;
+@@ -302,8 +303,10 @@ ext4_es_alloc_extent(struct inode *inode, ext4_lblk_t lblk, ext4_lblk_t len,
+ 	/*
+ 	 * We don't count delayed extent because we never try to reclaim them
+ 	 */
+-	if (!ext4_es_is_delayed(es))
++	if (!ext4_es_is_delayed(es)) {
+ 		EXT4_I(inode)->i_es_lru_nr++;
++		atomic_inc(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
++	}
+ 
+ 	return es;
+ }
+@@ -314,6 +317,7 @@ static void ext4_es_free_extent(struct inode *inode, struct extent_status *es)
+ 	if (!ext4_es_is_delayed(es)) {
+ 		BUG_ON(EXT4_I(inode)->i_es_lru_nr == 0);
+ 		EXT4_I(inode)->i_es_lru_nr--;
++		atomic_dec(&EXT4_SB(inode->i_sb)->s_extent_cache_cnt);
+ 	}
+ 
+ 	kmem_cache_free(ext4_es_cachep, es);
+@@ -674,10 +678,11 @@ static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
+ 	int nr_to_scan = sc->nr_to_scan;
+ 	int ret, nr_shrunk = 0;
+ 
+-	trace_ext4_es_shrink_enter(sbi->s_sb, nr_to_scan);
++	ret = atomic_read(&sbi->s_extent_cache_cnt);
++	trace_ext4_es_shrink_enter(sbi->s_sb, nr_to_scan, ret);
+ 
+ 	if (!nr_to_scan)
+-		return ext4_es_reclaim_extents_count(sbi->s_sb);
++		return ret;
+ 
+ 	INIT_LIST_HEAD(&scanned);
+ 
+@@ -705,9 +710,10 @@ static int ext4_es_shrink(struct shrinker *shrink, struct shrink_control *sc)
+ 	}
+ 	list_splice_tail(&scanned, &sbi->s_es_lru);
+ 	spin_unlock(&sbi->s_es_lru_lock);
+-	trace_ext4_es_shrink_exit(sbi->s_sb, nr_shrunk);
+ 
+-	return ext4_es_reclaim_extents_count(sbi->s_sb);
++	ret = atomic_read(&sbi->s_extent_cache_cnt);
++	trace_ext4_es_shrink_exit(sbi->s_sb, nr_shrunk, ret);
++	return ret;
+ }
+ 
+ void ext4_es_register_shrinker(struct super_block *sb)
+@@ -751,25 +757,6 @@ void ext4_es_lru_del(struct inode *inode)
+ 	spin_unlock(&sbi->s_es_lru_lock);
+ }
+ 
+-static int ext4_es_reclaim_extents_count(struct super_block *sb)
+-{
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_inode_info *ei;
+-	struct list_head *cur;
+-	int nr_cached = 0;
+-
+-	spin_lock(&sbi->s_es_lru_lock);
+-	list_for_each(cur, &sbi->s_es_lru) {
+-		ei = list_entry(cur, struct ext4_inode_info, i_es_lru);
+-		read_lock(&ei->i_es_lock);
+-		nr_cached += ei->i_es_lru_nr;
+-		read_unlock(&ei->i_es_lock);
+-	}
+-	spin_unlock(&sbi->s_es_lru_lock);
+-	trace_ext4_es_reclaim_extents_count(sb, nr_cached);
+-	return nr_cached;
+-}
+-
+ static int __es_try_to_reclaim_extents(struct ext4_inode_info *ei,
+ 				       int nr_to_scan)
+ {
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index c0457c0..4ee4710 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2255,64 +2255,48 @@ TRACE_EVENT(ext4_es_lookup_extent_exit,
+ 		  __entry->found ? __entry->status : 0)
+ );
+ 
+-TRACE_EVENT(ext4_es_reclaim_extents_count,
+-	TP_PROTO(struct super_block *sb, int nr_cached),
+-
+-	TP_ARGS(sb, nr_cached),
+-
+-	TP_STRUCT__entry(
+-		__field(	dev_t,	dev			)
+-		__field(	int,	nr_cached		)
+-	),
+-
+-	TP_fast_assign(
+-		__entry->dev		= sb->s_dev;
+-		__entry->nr_cached	= nr_cached;
+-	),
+-
+-	TP_printk("dev %d,%d cached objects nr %d",
+-		  MAJOR(__entry->dev), MINOR(__entry->dev),
+-		  __entry->nr_cached)
+-);
+-
+ TRACE_EVENT(ext4_es_shrink_enter,
+-	TP_PROTO(struct super_block *sb, int nr_to_scan),
++	TP_PROTO(struct super_block *sb, int nr_to_scan, int cache_cnt),
+ 
+-	TP_ARGS(sb, nr_to_scan),
++	TP_ARGS(sb, nr_to_scan, cache_cnt),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	int,	nr_to_scan		)
++		__field(	int,	cache_cnt		)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->dev		= sb->s_dev;
+ 		__entry->nr_to_scan	= nr_to_scan;
++		__entry->cache_cnt	= cache_cnt;
+ 	),
+ 
+-	TP_printk("dev %d,%d nr to scan %d",
++	TP_printk("dev %d,%d nr_to_scan %d cache_cnt %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+-		  __entry->nr_to_scan)
++		  __entry->nr_to_scan, __entry->cache_cnt)
+ );
+ 
+ TRACE_EVENT(ext4_es_shrink_exit,
+-	TP_PROTO(struct super_block *sb, int shrunk_nr),
++	TP_PROTO(struct super_block *sb, int shrunk_nr, int cache_cnt),
+ 
+-	TP_ARGS(sb, shrunk_nr),
++	TP_ARGS(sb, shrunk_nr, cache_cnt),
+ 
+ 	TP_STRUCT__entry(
+ 		__field(	dev_t,	dev			)
+ 		__field(	int,	shrunk_nr		)
++		__field(	int,	cache_cnt		)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->dev		= sb->s_dev;
+ 		__entry->shrunk_nr	= shrunk_nr;
++		__entry->cache_cnt	= cache_cnt;
+ 	),
+ 
+-	TP_printk("dev %d,%d nr to scan %d",
++	TP_printk("dev %d,%d shrunk_nr %d cache_cnt %d",
+ 		  MAJOR(__entry->dev), MINOR(__entry->dev),
+-		  __entry->shrunk_nr)
++		  __entry->shrunk_nr, __entry->cache_cnt)
+ );
+ 
+ #endif /* _TRACE_EXT4_H */
 -- 
-Dave Chinner
-david@fromorbit.com
+1.7.12.rc0.22.gcdd159b
+
