@@ -1,9 +1,10 @@
 From: Rich Johnston <rjohnston@sgi.com>
-Subject: Re: [PATCH 04/10] xfstets: fsstress add replace file operation
-Date: Fri, 1 Mar 2013 09:43:42 -0600
-Message-ID: <5130CCAE.2060108@sgi.com>
+Subject: Re: [PATCH 05/10] xfstest: allow fsstress to use load factor where
+	appropriate
+Date: Fri, 1 Mar 2013 09:43:54 -0600
+Message-ID: <5130CCBA.4000307@sgi.com>
 References: <1361356935-29153-1-git-send-email-dmonakhov@openvz.org>
-	<1361356935-29153-5-git-send-email-dmonakhov@openvz.org>
+	<1361356935-29153-6-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"; Format="flowed"
 Content-Transfer-Encoding: 7bit
@@ -11,7 +12,7 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	dchinner@redhat.com, xfs@oss.sgi.com
 To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1361356935-29153-5-git-send-email-dmonakhov@openvz.org>
+In-Reply-To: <1361356935-29153-6-git-send-email-dmonakhov@openvz.org>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -24,32 +25,17 @@ Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
 On 02/20/2013 04:42 AM, Dmitry Monakhov wrote:
-> The most common usecase for rename(2) syscall is an atomic replacement
-> of existing file with newer version. But rename_f() rename some existing
-> filename to newly generated (non existing) filename. As result the most
-> important usecase is not covered.
-
-Good catch.
-
-> Since rename_f() is already exist in fsstress and it has known behavior,
-> some tests already depends on that behaviour, let's add another operation
-> (replace_f) which invoke rename(2) for two existing entries.
-
+> 1) Add _scale_fsstress_args function which transform argumets according
+>     to load factors
+> 2) Let all non deterministic fsstress tests to use scaled arguments
 >
-> OUT_OF_COMMIT_DISCUSSION:
-> Off course replace_f() break naming convention where fun_name == syscall_f(),
-> but this is the only way I see to introduce new feature and not break
-> other tests. May be it is reasonable to call it rename2_f() ?
+> I've able to trigger OOPS on xfs see:https://gist.github.com/dmonakhov/4762653
 >
 
-I think this possible exposes a bug which was not exposed by before when 
-running for example test 076 and test 083 on both ext4 and xfs.
+I did not see any OOPS.  Looks good.
 
-Suggest this new function is called rename2_() so that we don't change 
-the existing known tests.
+Reviewed-by: Rich Johnston <rjohnston@sgi.com>
 
-Regards
---Rich
 
 _______________________________________________
 xfs mailing list
