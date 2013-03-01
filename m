@@ -1,46 +1,59 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: [PATCH 3/6] ext4: add self-testing infrastructure to do a sanity
- check
-Date: Fri, 1 Mar 2013 11:23:26 +0800
-Message-ID: <20130301032326.GA2765@gmail.com>
-References: <1362076004-10087-1-git-send-email-wenqing.lz@taobao.com>
- <1362076004-10087-4-git-send-email-wenqing.lz@taobao.com>
- <8738wgxnso.fsf@openvz.org>
- <20130301022816.GA10692@gmail.com>
- <20130301022946.GB10692@gmail.com>
+From: Dave Jones <davej@redhat.com>
+Subject: Re: [GIT PULL URGENT] ext4 regression fix for 3.9
+Date: Thu, 28 Feb 2013 22:30:05 -0500
+Message-ID: <20130301033005.GA7081@redhat.com>
+References: <98C6DE45-F050-4AAD-82E2-7352F5BB0A5D@gmail.com>
+ <20130227172256.GA236@x4>
+ <7BFB2135-A1F0-4B6D-9962-16E75E5560F8@gmail.com>
+ <20130227174553.GA224@x4>
+ <CA+55aFwWA1jPEEQNx_5oJ6Ze=3yFb6=E9nraBfX-Ve=WjRkQMw@mail.gmail.com>
+ <20130227184912.GA19624@thunk.org>
+ <20130227185625.GA224@x4>
+ <20130227191923.GA1121@redhat.com>
+ <20130227192907.GB14253@thunk.org>
+ <20130227201217.GD14253@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org,
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	Markus Trippelsdorf <markus@trippelsdorf.de>,
+	"gnehzuil.liu" <gnehzuil.liu@gmail.com>,
 	Zheng Liu <wenqing.lz@taobao.com>,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-da0-f49.google.com ([209.85.210.49]:37451 "EHLO
-	mail-da0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750816Ab3CADIb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Feb 2013 22:08:31 -0500
-Received: by mail-da0-f49.google.com with SMTP id t11so1167538daj.36
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Feb 2013 19:08:31 -0800 (PST)
+	Borislav Petkov <bp@alien8.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20130301022946.GB10692@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20130227201217.GD14253@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 01, 2013 at 10:29:46AM +0800, Zheng Liu wrote:
-[snip]
-> > > > +	if (!ext4_es_is_written(es) && !ext4_es_is_unwritten(es))
-> > > > +		return;
-> > > > +
-> > > > +	/*
-> > > > +	 * We don't need to worry about the race condition because
-> > > > +	 * caller takes i_data_sem locking.
-> > >          Yes, and it is good place to assertion that we hold it.
-> > 
-> > A BUG_ON(mutex_is_locked(&inode->i_mutex) will be added.
->            ^^^^^^^
->            !mutex_is_locked(&inode->i_mutex)
+On Wed, Feb 27, 2013 at 03:12:17PM -0500, Linus Torvalds wrote:
+ > The following changes since commit 304e220f0879198b1f5309ad6f0be862b4009491:
+ > 
+ >   ext4: fix free clusters calculation in bigalloc filesystem (2013-02-22 15:27:52 -0500)
+ > 
+ > are available in the git repository at:
+ > 
+ >   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+ > 
+ > for you to fetch changes up to 8e919d13048cd5acaadb2b15b48acbfb8832d3c2:
+ > 
+ >   ext4: fix extent status tree regression for file systems > 512GB (2013-02-27 14:54:37 -0500)
+ > 
+ > ----------------------------------------------------------------
+ > This fixes a real brown paper bag bug which causes ext4 to choke on
+ > file systems larger than 512GB.
+ > 
+ > ----------------------------------------------------------------
+ > Theodore Ts'o (1):
+ >       ext4: fix extent status tree regression for file systems > 512GB
+ > 
+ >  fs/ext4/extents_status.h | 19 +++++++++++--------
+ >  1 file changed, 11 insertions(+), 8 deletions(-)
 
-Sigh, it should be !rwsem_is_locked(&EXT4_I(inode)->i_data_sem).  Sorry
-for the noisy.
+This has fixed the problem I reported, but I notice now that my desktop is really
+sluggish. perf top shows it's almost constantly spinning in ext4_es_reclaim_extents_count
 
-Regards,
-                                                - Zheng
+Any ideas ?
+
+	Dave
